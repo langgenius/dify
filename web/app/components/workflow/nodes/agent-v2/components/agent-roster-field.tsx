@@ -174,11 +174,13 @@ function AgentRosterDrawer({
 export function AgentRosterField({
   agent,
   agentId,
+  canOpenPanel = true,
   portalContainerRef,
   onChange,
 }: {
   agent?: AgentRosterDisplayData
   agentId?: string
+  canOpenPanel?: boolean
   portalContainerRef: RefObject<HTMLDivElement | null>
   onChange: (agent: AgentRosterNodeData) => void
 }) {
@@ -189,6 +191,21 @@ export function AgentRosterField({
     ns: 'workflow',
     field: t(`${i18nPrefix}.roster.label`, { ns: 'workflow' }),
   })
+  const agentContent = agent
+    ? (
+        <>
+          <AgentRosterAvatar agent={agent} />
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
+            <span className="truncate system-sm-medium text-text-secondary">
+              {agent.name}
+            </span>
+            <span className="truncate system-xs-regular text-text-tertiary">
+              {agent.role}
+            </span>
+          </span>
+        </>
+      )
+    : null
 
   return (
     <FieldRoot name="agent_binding" className="gap-1 px-4 py-2">
@@ -228,33 +245,33 @@ export function AgentRosterField({
       </div>
       {agent
         ? (
-            <>
-              <button
-                type="button"
-                aria-label={t(`${i18nPrefix}.roster.openPanel`, { ns: 'workflow', name: agent.name })}
-                className="flex h-13 w-full min-w-0 cursor-pointer items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3 hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                onClick={() => setIsPanelOpen(true)}
-              >
-                <AgentRosterAvatar agent={agent} />
-                <span className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
-                  <span className="truncate system-sm-medium text-text-secondary">
-                    {agent.name}
-                  </span>
-                  <span className="truncate system-xs-regular text-text-tertiary">
-                    {agent.role}
-                  </span>
-                </span>
-                <span className="flex shrink-0 items-center text-text-tertiary">
-                  <span aria-hidden className="i-ri-arrow-right-line size-4" />
-                </span>
-              </button>
-              <AgentRosterDrawer
-                agent={agent}
-                open={isPanelOpen}
-                portalContainerRef={portalContainerRef}
-                onClose={() => setIsPanelOpen(false)}
-              />
-            </>
+            canOpenPanel
+              ? (
+                  <>
+                    <button
+                      type="button"
+                      aria-label={t(`${i18nPrefix}.roster.openPanel`, { ns: 'workflow', name: agent.name })}
+                      className="flex h-13 w-full min-w-0 cursor-pointer items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3 hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                      onClick={() => setIsPanelOpen(true)}
+                    >
+                      {agentContent}
+                      <span className="flex shrink-0 items-center text-text-tertiary">
+                        <span aria-hidden className="i-ri-arrow-right-line size-4" />
+                      </span>
+                    </button>
+                    <AgentRosterDrawer
+                      agent={agent}
+                      open={isPanelOpen}
+                      portalContainerRef={portalContainerRef}
+                      onClose={() => setIsPanelOpen(false)}
+                    />
+                  </>
+                )
+              : (
+                  <div className="flex h-13 w-full min-w-0 items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3">
+                    {agentContent}
+                  </div>
+                )
           )
         : agentId
           ? (

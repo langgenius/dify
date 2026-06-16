@@ -4,7 +4,13 @@ import { render, screen } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { AgentV2Node } from '../node'
 
-const mockUseAgentRosterDetail = vi.hoisted(() => vi.fn())
+const {
+  mockUseAgentRosterDetail,
+  mockUseWorkflowInlineAgentDetail,
+} = vi.hoisted(() => ({
+  mockUseAgentRosterDetail: vi.fn(),
+  mockUseWorkflowInlineAgentDetail: vi.fn(),
+}))
 
 vi.mock('../../_base/components/setting-item', () => ({
   SettingItem: ({
@@ -27,6 +33,7 @@ vi.mock('../../_base/components/setting-item', () => ({
 
 vi.mock('../hooks', () => ({
   useAgentRosterDetail: (agentId?: string) => mockUseAgentRosterDetail(agentId),
+  useWorkflowInlineAgentDetail: (nodeId?: string, agentId?: string | null) => mockUseWorkflowInlineAgentDetail(nodeId, agentId),
 }))
 
 const createData = (overrides: Partial<AgentV2NodeType> = {}): AgentV2NodeType => ({
@@ -54,6 +61,19 @@ describe('agent/node', () => {
             icon: 'N',
             icon_background: '#E9D7FE',
             icon_type: 'emoji',
+          }
+        : undefined,
+    }))
+    mockUseWorkflowInlineAgentDetail.mockImplementation((nodeId?: string, agentId?: string | null) => ({
+      data: nodeId && agentId
+        ? {
+            agent: {
+              id: agentId,
+              name: 'Workflow Agent 1',
+              description: '',
+              scope: 'workflow_only',
+              status: 'active',
+            },
           }
         : undefined,
     }))
@@ -104,6 +124,26 @@ describe('agent/node', () => {
     const robotIcon = container.querySelector('.i-custom-vender-agent-v2-robot-3')
     expect(robotIcon).toHaveClass('size-5')
     expect(robotIcon?.parentElement).toHaveClass('size-8', 'rounded-full', 'bg-background-default-burn')
+  })
+
+  it('renders inline agent name from workflow composer state', () => {
+    render(
+      <AgentV2Node
+        id="agent-node"
+        data={createData({
+          agent_binding: {
+            binding_type: 'inline_agent',
+            agent_id: 'inline-agent-1',
+            current_snapshot_id: 'snapshot-1',
+          },
+        })}
+      />,
+    )
+
+    expect(mockUseAgentRosterDetail).toHaveBeenCalledWith(undefined)
+    expect(mockUseWorkflowInlineAgentDetail).toHaveBeenCalledWith('agent-node', 'inline-agent-1')
+    expect(screen.getByText('Workflow Agent 1')).toHaveClass('system-xs-regular', 'text-text-secondary')
+    expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.type')).toHaveClass('system-2xs-regular', 'text-text-tertiary')
   })
 
   it('renders an error state when no roster agent is selected', () => {

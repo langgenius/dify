@@ -3,25 +3,38 @@ import type { NodePanelProps } from '../../types'
 import type { AgentV2NodeType } from './types'
 import { produce } from 'immer'
 import { useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import { AgentAdvancedSettings } from './components/agent-advanced-settings'
 import { AgentOutputVariables } from './components/agent-output-variables'
 import { AgentRosterField } from './components/agent-roster-field'
 import { AgentTaskField } from './components/agent-task-field'
-import { useAgentRosterDetail } from './hooks'
+import { useAgentRosterDetail, useWorkflowInlineAgentDetail } from './hooks'
 import { getAgentV2DeclaredOutputs } from './output-variables'
 
 export function AgentV2Panel({
   id,
   data,
 }: NodePanelProps<AgentV2NodeType>) {
+  const { t } = useTranslation()
   const { inputs, setInputs } = useNodeCrud<AgentV2NodeType>(id, data)
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
   const drawerPortalContainerRef = useRef<HTMLDivElement>(null)
   const declaredOutputs = getAgentV2DeclaredOutputs(inputs)
   const rosterAgentId = inputs.agent_binding?.binding_type === 'roster_agent' ? inputs.agent_binding.agent_id : undefined
+  const inlineAgentId = inputs.agent_binding?.binding_type === 'inline_agent' ? inputs.agent_binding.agent_id : undefined
   const rosterAgentQuery = useAgentRosterDetail(rosterAgentId)
+  const inlineAgentQuery = useWorkflowInlineAgentDetail(id, inlineAgentId)
+  const inlineAgent = inlineAgentQuery.data?.agent
+  const displayedAgent = rosterAgentQuery.data ?? (inlineAgent
+    ? {
+        id: inlineAgent.id,
+        name: inlineAgent.name,
+        description: inlineAgent.description,
+        role: t('nodes.agent.roster.inlineSetup.type', { ns: 'workflow' }),
+      }
+    : undefined)
 
   const handleTaskChange = useCallback((value: string) => {
     const newInputs = produce(inputs, (draft) => {
@@ -70,8 +83,9 @@ export function AgentV2Panel({
     <div ref={drawerPortalContainerRef} className="pt-2">
       <div className="border-b border-divider-subtle">
         <AgentRosterField
-          agent={rosterAgentQuery.data}
-          agentId={rosterAgentId}
+          agent={displayedAgent}
+          agentId={rosterAgentId ?? inlineAgentId ?? undefined}
+          canOpenPanel={!inlineAgentId}
           portalContainerRef={drawerPortalContainerRef}
           onChange={handleRosterChange}
         />

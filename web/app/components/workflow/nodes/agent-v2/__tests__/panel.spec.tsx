@@ -14,6 +14,7 @@ const {
   mockPromptEditorProps,
   mockSetInputs,
   mockUseAgentRosterDetail,
+  mockUseWorkflowInlineAgentDetail,
   mockUseNodeCrud,
 } = vi.hoisted(() => ({
   mockEditorFocus: vi.fn(),
@@ -23,6 +24,7 @@ const {
   mockPromptEditorProps: [] as PromptEditorProps[],
   mockSetInputs: vi.fn(),
   mockUseAgentRosterDetail: vi.fn(),
+  mockUseWorkflowInlineAgentDetail: vi.fn(),
   mockUseNodeCrud: vi.fn(),
 }))
 
@@ -111,6 +113,7 @@ vi.mock('@/app/components/workflow/block-selector/agent-selector', () => ({
 
 vi.mock('../hooks', () => ({
   useAgentRosterDetail: (agentId?: string) => mockUseAgentRosterDetail(agentId),
+  useWorkflowInlineAgentDetail: (nodeId?: string, agentId?: string | null) => mockUseWorkflowInlineAgentDetail(nodeId, agentId),
 }))
 
 vi.mock('../../_base/hooks/use-available-var-list', () => ({
@@ -171,6 +174,19 @@ describe('agent/panel', () => {
             icon_background: '#E9D7FE',
             icon_type: 'emoji',
             role: 'Researcher',
+          }
+        : undefined,
+    }))
+    mockUseWorkflowInlineAgentDetail.mockImplementation((nodeId?: string, agentId?: string | null) => ({
+      data: nodeId && agentId
+        ? {
+            agent: {
+              id: agentId,
+              name: 'Workflow Agent 1',
+              description: '',
+              scope: 'workflow_only',
+              status: 'active',
+            },
           }
         : undefined,
     }))
@@ -238,6 +254,28 @@ describe('agent/panel', () => {
     expect(screen.getByText('workflow.nodes.agent.task.label')).toBeInTheDocument()
     expect(screen.getByText('text')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
+  })
+
+  it('renders inline agent detail from workflow composer state', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          agent_binding: {
+            binding_type: 'inline_agent',
+            agent_id: 'inline-agent-1',
+            current_snapshot_id: 'snapshot-1',
+          },
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(mockUseAgentRosterDetail).toHaveBeenCalledWith(undefined)
+    expect(mockUseWorkflowInlineAgentDetail).toHaveBeenCalledWith('agent-node', 'inline-agent-1')
+    expect(screen.getByText('Workflow Agent 1')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.type')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ })).not.toBeInTheDocument()
   })
 
   it('updates roster agent binding from the selector', () => {

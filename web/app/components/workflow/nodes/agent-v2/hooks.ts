@@ -60,6 +60,21 @@ export function useAgentRosterDetail(agentId?: string) {
   }))
 }
 
+export function useWorkflowInlineAgentDetail(nodeId?: string, agentId?: string | null) {
+  const configsMap = useHooksStore(state => state.configsMap)
+
+  return useQuery(consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryOptions({
+    input: configsMap?.flowId && configsMap.flowType === FlowType.appFlow && nodeId && agentId
+      ? {
+          params: {
+            app_id: configsMap.flowId,
+            node_id: nodeId,
+          },
+        }
+      : skipToken,
+  }))
+}
+
 export function useCreateInlineAgentBinding() {
   const { t } = useTranslation('agentV2')
   const configsMap = useHooksStore(state => state.configsMap)

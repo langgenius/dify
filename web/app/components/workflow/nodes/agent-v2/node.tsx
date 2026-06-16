@@ -3,7 +3,7 @@ import type { AgentV2NodeType } from './types'
 import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
 import { useTranslation } from 'react-i18next'
 import { SettingItem } from '../_base/components/setting-item'
-import { useAgentRosterDetail } from './hooks'
+import { useAgentRosterDetail, useWorkflowInlineAgentDetail } from './hooks'
 import { hasInlineAgentBinding, hasValidRosterAgentBinding } from './types'
 
 function AgentNodeAvatar({
@@ -48,13 +48,15 @@ function AgentNodeAvatar({
 function AgentNodeModel({
   data,
   agent,
+  inlineAgentName,
 }: {
   data: AgentV2NodeType
   agent?: ReturnType<typeof useAgentRosterDetail>['data']
+  inlineAgentName?: string
 }) {
   const { t } = useTranslation()
   const isInlineAgent = hasInlineAgentBinding(data)
-  const name = isInlineAgent ? t('nodes.agent.roster.inlineSetup.name', { ns: 'workflow' }) : agent?.name
+  const name = isInlineAgent ? (inlineAgentName || t('nodes.agent.roster.inlineSetup.name', { ns: 'workflow' })) : agent?.name
   const role = isInlineAgent ? t('nodes.agent.roster.inlineSetup.type', { ns: 'workflow' }) : ''
   const showRosterPlaceholder = !isInlineAgent && !agent
 
@@ -91,15 +93,17 @@ function AgentNodeModel({
   )
 }
 
-export function AgentV2Node({ data }: NodeProps<AgentV2NodeType>) {
+export function AgentV2Node({ id, data }: NodeProps<AgentV2NodeType>) {
   const { t } = useTranslation()
   const hasValidAgent = hasValidRosterAgentBinding(data)
   const isInlineAgent = hasInlineAgentBinding(data)
   const rosterAgentId = data.agent_binding?.binding_type === 'roster_agent' ? data.agent_binding.agent_id : undefined
+  const inlineAgentId = data.agent_binding?.binding_type === 'inline_agent' ? data.agent_binding.agent_id : undefined
   const rosterAgentQuery = useAgentRosterDetail(rosterAgentId)
+  const inlineAgentQuery = useWorkflowInlineAgentDetail(id, inlineAgentId)
 
   if (isInlineAgent || hasValidAgent)
-    return <AgentNodeModel data={data} agent={rosterAgentQuery.data} />
+    return <AgentNodeModel data={data} agent={rosterAgentQuery.data} inlineAgentName={inlineAgentQuery.data?.agent?.name} />
 
   return (
     <div className="mb-1 space-y-1 px-3">
