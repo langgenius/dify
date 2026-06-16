@@ -1,9 +1,11 @@
+import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
 import type { AgentBinding, AgentRosterNodeData } from '@/app/components/workflow/block-selector/types'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 
 export type AgentV2NodeType = CommonNodeType & {
   agent_binding?: AgentBinding
+  agent_declared_outputs?: DeclaredOutputConfig[]
   agent_node_kind: 'dify_agent'
   agent_roster?: AgentRosterNodeData
   agent_task?: string

@@ -77,6 +77,53 @@ describe('variable utils', () => {
         type: VarType.object,
       })
     })
+
+    it('uses Agent v2 declared outputs from graph data', () => {
+      const node = createNode<AgentV2NodeType>({
+        type: BlockEnum.AgentV2,
+        title: 'Agent',
+        desc: '',
+        agent_node_kind: 'dify_agent',
+        agent_declared_outputs: [
+          {
+            name: 'summary',
+            type: 'string',
+            description: 'Short summary',
+          },
+          {
+            name: 'attachments',
+            type: 'array',
+            array_item: {
+              type: 'file',
+            },
+          },
+        ],
+        version: '2',
+      })
+
+      const availableVars = toNodeAvailableVars({
+        beforeNodes: [node],
+        isChatMode: false,
+        filterVar: () => true,
+        allPluginInfoList: {},
+      })
+
+      expect(availableVars).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            nodeId: 'node-1',
+            vars: [
+              { variable: 'summary', type: VarType.string },
+              { variable: 'attachments', type: VarType.arrayFile },
+            ],
+          }),
+        ]),
+      )
+      expect(availableVars.find(item => item.nodeId === 'node-1')?.vars).not.toContainEqual({
+        variable: 'text',
+        type: VarType.string,
+      })
+    })
   })
 
   describe('getNodeUsedVars', () => {

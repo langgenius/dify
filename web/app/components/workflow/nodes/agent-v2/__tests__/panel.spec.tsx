@@ -10,63 +10,18 @@ const {
   mockEditorFocus,
   mockEditorUpdate,
   mockHandleNodeDataUpdateWithSyncDraft,
-  mockInvalidateQueries,
   mockInsertNodes,
   mockPromptEditorProps,
   mockSetInputs,
-  mockUseComposerQuery,
   mockUseNodeCrud,
 } = vi.hoisted(() => ({
   mockEditorFocus: vi.fn(),
   mockEditorUpdate: vi.fn((callback: () => void) => callback()),
   mockHandleNodeDataUpdateWithSyncDraft: vi.fn((_payload, options) => options?.callback?.onSuccess?.()),
-  mockInvalidateQueries: vi.fn(),
   mockInsertNodes: vi.fn(),
   mockPromptEditorProps: [] as PromptEditorProps[],
   mockSetInputs: vi.fn(),
-  mockUseComposerQuery: vi.fn(),
   mockUseNodeCrud: vi.fn(),
-}))
-
-vi.mock('@tanstack/react-query', () => ({
-  skipToken: Symbol('skipToken'),
-  useQuery: () => mockUseComposerQuery(),
-  useQueryClient: () => ({
-    invalidateQueries: mockInvalidateQueries,
-  }),
-}))
-
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    apps: {
-      byAppId: {
-        workflows: {
-          draft: {
-            nodes: {
-              byNodeId: {
-                agentComposer: {
-                  get: {
-                    queryKey: (input: unknown) => ['workflow-agent-composer', input],
-                    queryOptions: (options: unknown) => ({
-                      queryKey: ['workflow-agent-composer', options],
-                    }),
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-}))
-
-vi.mock('@/app/components/workflow/hooks-store', () => ({
-  useHooksStore: (selector: (state: { configsMap: { flowId: string } }) => unknown) => selector({
-    configsMap: {
-      flowId: 'app-1',
-    },
-  }),
 }))
 
 vi.mock('../../_base/components/output-vars', () => ({
@@ -193,49 +148,10 @@ const createData = (overrides: Partial<AgentV2NodeType> = {}): AgentV2NodeType =
 
 const panelProps = {} as NodePanelProps<AgentV2NodeType>['panelProps']
 
-const createComposerState = (overrides: Record<string, unknown> = {}) => ({
-  node_job: {
-    schema_version: 1,
-    mode: 'tell_agent_what_to_do',
-    workflow_prompt: 'Composer task',
-    previous_node_output_refs: [],
-    declared_outputs: [],
-    human_contacts: [],
-    metadata: {},
-  },
-  effective_declared_outputs: [
-    {
-      name: 'text',
-      type: 'string',
-      required: false,
-      description: 'Free-form text answer.',
-    },
-    {
-      name: 'files',
-      type: 'array',
-      required: false,
-      description: 'Files produced by the agent.',
-      array_item: {
-        type: 'file',
-      },
-    },
-    {
-      name: 'json',
-      type: 'object',
-      required: false,
-      description: 'Free-form JSON object.',
-    },
-  ],
-  ...overrides,
-})
-
 describe('agent/panel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPromptEditorProps.length = 0
-    mockUseComposerQuery.mockReturnValue({
-      data: createComposerState(),
-    })
     mockUseNodeCrud.mockImplementation((_id: string, data: AgentV2NodeType) => ({
       inputs: data,
       setInputs: mockSetInputs,
@@ -332,7 +248,6 @@ describe('agent/panel', () => {
         notRefreshWhenSyncError: true,
       }),
     )
-    expect(mockInvalidateQueries).toHaveBeenCalled()
   })
 
   it('does not fall back to the roster agent description when role is empty', () => {
@@ -359,20 +274,6 @@ describe('agent/panel', () => {
   })
 
   it('updates agent task and opens prompt insertion shortcuts', () => {
-    mockUseComposerQuery.mockReturnValue({
-      data: createComposerState({
-        node_job: {
-          schema_version: 1,
-          mode: 'tell_agent_what_to_do',
-          workflow_prompt: 'Composer task',
-          previous_node_output_refs: [],
-          declared_outputs: [],
-          human_contacts: [],
-          metadata: {},
-        },
-      }),
-    })
-
     render(
       <AgentV2Panel
         id="agent-node"
@@ -422,31 +323,27 @@ describe('agent/panel', () => {
     }))
   })
 
-  it('renders effective declared outputs from the workflow composer until outputs are graph-backed', () => {
-    mockUseComposerQuery.mockReturnValue({
-      data: createComposerState({
-        effective_declared_outputs: [
-          {
-            name: 'summary',
-            type: 'string',
-            description: 'Short summary',
-          },
-          {
-            name: 'attachments',
-            type: 'array',
-            description: 'Generated files',
-            array_item: {
-              type: 'file',
-            },
-          },
-        ],
-      }),
-    })
-
+  it('renders declared outputs from workflow draft graph data', () => {
     render(
       <AgentV2Panel
         id="agent-node"
-        data={createData()}
+        data={createData({
+          agent_declared_outputs: [
+            {
+              name: 'summary',
+              type: 'string',
+              description: 'Short summary',
+            },
+            {
+              name: 'attachments',
+              type: 'array',
+              description: 'Generated files',
+              array_item: {
+                type: 'file',
+              },
+            },
+          ],
+        })}
         panelProps={panelProps}
       />,
     )

@@ -1,64 +1,21 @@
-import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
 import type { AgentRosterNodeData } from '../../block-selector/types'
 import type { NodePanelProps } from '../../types'
 import type { AgentV2NodeType } from './types'
-import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { consoleQuery } from '@/service/client'
 import OutputVars, { VarItem } from '../_base/components/output-vars'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import { AgentAdvancedSettings } from './components/agent-advanced-settings'
 import { AgentRosterField } from './components/agent-roster-field'
 import { AgentTaskField } from './components/agent-task-field'
+import { getAgentV2DeclaredOutputs, getDeclaredOutputTypeLabel } from './output-variables'
 
 const i18nPrefix = 'nodes.agent'
 
-const defaultEffectiveOutputs: DeclaredOutputConfig[] = [
-  {
-    name: 'text',
-    type: 'string',
-    required: false,
-    description: 'Free-form text answer.',
-  },
-  {
-    name: 'files',
-    type: 'array',
-    required: false,
-    description: 'Files produced by the agent.',
-    array_item: {
-      type: 'file',
-    },
-  },
-  {
-    name: 'json',
-    type: 'object',
-    required: false,
-    description: 'Free-form JSON object.',
-  },
-]
-
-const outputTypeLabels: Record<DeclaredOutputConfig['type'], string> = {
-  array: 'Array',
-  boolean: 'Boolean',
-  file: 'File',
-  number: 'Number',
-  object: 'Object',
-  string: 'String',
-}
-
-function getOutputTypeLabel(output: DeclaredOutputConfig) {
-  if (output.type === 'array')
-    return `Array[${output.array_item ? outputTypeLabels[output.array_item.type] : 'Object'}]`
-
-  return outputTypeLabels[output.type]
-}
-
 function getOutputDescription(
-  output: DeclaredOutputConfig,
+  output: ReturnType<typeof getAgentV2DeclaredOutputs>[number],
   t: ReturnType<typeof useTranslation>['t'],
 ) {
   if (output.name === 'text')
@@ -81,32 +38,7 @@ export function AgentV2Panel({
   const { inputs, setInputs } = useNodeCrud<AgentV2NodeType>(id, data)
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
   const drawerPortalContainerRef = useRef<HTMLDivElement>(null)
-  const appId = useHooksStore(s => s.configsMap?.flowId)
-  const queryClient = useQueryClient()
-  const composerQueryInput = appId
-    ? {
-        params: {
-          app_id: appId,
-          node_id: id,
-        },
-      }
-    : skipToken
-  const composerQueryKey = appId
-    ? consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
-        input: {
-          params: {
-            app_id: appId,
-            node_id: id,
-          },
-        },
-      })
-    : undefined
-  const composerQuery = useQuery(consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryOptions({
-    input: composerQueryInput,
-  }))
-  const effectiveOutputs = composerQuery.data?.effective_declared_outputs?.length
-    ? composerQuery.data.effective_declared_outputs
-    : defaultEffectiveOutputs
+  const declaredOutputs = getAgentV2DeclaredOutputs(inputs)
 
   const handleTaskChange = useCallback((value: string) => {
     const newInputs = produce(inputs, (draft) => {
@@ -131,15 +63,9 @@ export function AgentV2Panel({
       {
         sync: true,
         notRefreshWhenSyncError: true,
-        callback: {
-          onSuccess: () => {
-            if (composerQueryKey)
-              void queryClient.invalidateQueries({ queryKey: composerQueryKey })
-          },
-        },
       },
     )
-  }, [composerQueryKey, handleNodeDataUpdateWithSyncDraft, id, inputs, queryClient])
+  }, [handleNodeDataUpdateWithSyncDraft, id, inputs])
 
   return (
     <div ref={drawerPortalContainerRef} className="pt-2">
@@ -160,11 +86,11 @@ export function AgentV2Panel({
       <AgentAdvancedSettings />
       <div>
         <OutputVars>
-          {effectiveOutputs.map(output => (
+          {declaredOutputs.map(output => (
             <VarItem
               key={output.name}
               name={output.name}
-              type={getOutputTypeLabel(output)}
+              type={getDeclaredOutputTypeLabel(output)}
               description={getOutputDescription(output, t)}
             />
           ))}

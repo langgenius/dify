@@ -52,6 +52,7 @@ import {
   TEMPLATE_TRANSFORM_OUTPUT_STRUCT,
   TOOL_OUTPUT_STRUCT,
 } from '@/app/components/workflow/constants'
+import { getAgentV2OutputVars } from '@/app/components/workflow/nodes/agent-v2/output-variables'
 import { isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
 import DataSourceNodeDefault from '@/app/components/workflow/nodes/data-source/default'
 import HumanInputNodeDefault from '@/app/components/workflow/nodes/human-input/default'
@@ -595,7 +596,7 @@ const formatItem = (
 
     case BlockEnum.Agent: {
       if (isAgentV2NodeData(data)) {
-        res.vars = AGENT_OUTPUT_STRUCT
+        res.vars = getAgentV2OutputVars(data)
         break
       }
 
@@ -618,7 +619,7 @@ const formatItem = (
     }
 
     case BlockEnum.AgentV2: {
-      res.vars = AGENT_OUTPUT_STRUCT
+      res.vars = getAgentV2OutputVars(data as AgentV2NodeType)
       break
     }
 
