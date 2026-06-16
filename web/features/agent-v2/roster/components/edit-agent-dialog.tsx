@@ -1,6 +1,6 @@
 'use client'
 
-import type { AppPartial, UpdateAppPayload } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentAppUpdatePayload, AppPartial } from '@dify/contracts/api/console/agent/types.gen'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -73,7 +73,7 @@ const getAgentIconKey = (icon: AgentIconSelection) => {
   return `${icon.type}:${icon.icon}`
 }
 
-const applyIconPayload = (body: UpdateAppPayload, icon: AgentIconSelection) => {
+const applyIconPayload = (body: AgentAppUpdatePayload, icon: AgentIconSelection) => {
   if (icon.type === 'emoji') {
     body.icon_type = icon.type
     body.icon = icon.icon
@@ -113,7 +113,7 @@ export function EditAgentDialog({
     if (!trimmedName || !hasFormChanges || updateAgentMutation.isPending)
       return
 
-    const body: UpdateAppPayload = {
+    const body: AgentAppUpdatePayload = {
       name: trimmedName,
       description: trimmedDescription,
       role: trimmedRole,
