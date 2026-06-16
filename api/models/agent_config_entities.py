@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import re
 from enum import StrEnum
-from typing import Any, Final, Literal
+from typing import Annotated, Any, Final, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, WithJsonSchema, field_validator, model_validator
 
 from core.workflow.file_reference import is_canonical_file_reference
 from graphon.file import FileTransferMethod
@@ -27,6 +27,44 @@ class DeclaredOutputType(StrEnum):
     ARRAY = "array"
     BOOLEAN = "boolean"
     FILE = "file"
+
+
+_DECLARED_OUTPUT_CHILDREN_JSON_SCHEMA = {
+    "type": "array",
+    "items": {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "name": {"type": "string"},
+            "type": {
+                "type": "string",
+                "enum": [item.value for item in DeclaredOutputType],
+            },
+            "description": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+            "required": {"type": "boolean"},
+            "file": {"type": "object", "additionalProperties": True},
+            "array_item": {
+                "type": "object",
+                "additionalProperties": True,
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [item.value for item in DeclaredOutputType],
+                    },
+                    "description": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                    "children": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+                },
+            },
+            "children": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+        },
+        "required": ["name", "type"],
+    },
+}
+
+DeclaredOutputChildren = Annotated[
+    list["DeclaredOutputChildConfig"],
+    WithJsonSchema(_DECLARED_OUTPUT_CHILDREN_JSON_SCHEMA),
+]
 
 
 class AgentCliToolAuthorizationStatus(StrEnum):
@@ -510,7 +548,7 @@ class DeclaredArrayItem(BaseModel):
 
     type: DeclaredOutputType
     description: str | None = None
-    children: list[DeclaredOutputChildConfig] = Field(default_factory=list)
+    children: DeclaredOutputChildren = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _reject_nested_array(self) -> DeclaredArrayItem:
@@ -536,7 +574,7 @@ class DeclaredOutputChildConfig(BaseModel):
     required: bool = True
     file: DeclaredOutputFileConfig | None = None
     array_item: DeclaredArrayItem | None = None
-    children: list[DeclaredOutputChildConfig] = Field(default_factory=list)
+    children: DeclaredOutputChildren = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _validate_shape(self) -> DeclaredOutputChildConfig:
@@ -639,7 +677,7 @@ class DeclaredOutputConfig(BaseModel):
     required: bool = True
     file: DeclaredOutputFileConfig | None = None
     array_item: DeclaredArrayItem | None = None
-    children: list[DeclaredOutputChildConfig] = Field(default_factory=list)
+    children: DeclaredOutputChildren = Field(default_factory=list)
     check: DeclaredOutputCheckConfig | None = None
     failure_strategy: DeclaredOutputFailureStrategy = Field(default_factory=DeclaredOutputFailureStrategy)
 
