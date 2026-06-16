@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
-from services.auth.firecrawl.firecrawl import FirecrawlAuth
+from services.auth.firecrawl.firecrawl import FirecrawlAuth, _CREDENTIAL_VALIDATION_TIMEOUT
 
 
 class TestFirecrawlAuth:
@@ -86,6 +86,7 @@ class TestFirecrawlAuth:
             "https://api.firecrawl.dev/v1/crawl",
             headers={"Content-Type": "application/json", "Authorization": "Bearer test_api_key_123"},
             json=expected_data,
+            timeout=_CREDENTIAL_VALIDATION_TIMEOUT,
         )
 
     @pytest.mark.parametrize(
@@ -195,3 +196,19 @@ class TestFirecrawlAuth:
 
         # Verify the timeout exception is raised with original message
         assert "timed out" in str(exc_info.value)
+
+    @patch("services.auth.firecrawl.firecrawl.httpx.post", autospec=True)
+    def test_should_pass_bounded_timeout_to_credential_validation(self, mock_post, auth_instance):
+        """Credential validation must not use the default unbounded timeout."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_post.return_value = mock_response
+
+        auth_instance.validate_credentials()
+
+        call_kwargs = mock_post.call_args
+        assert "timeout" in call_kwargs.kwargs, "timeout keyword is missing from _post_request"
+        timeout = call_kwargs.kwargs["timeout"]
+        assert isinstance(timeout, httpx.Timeout)
+        assert timeout.connect == _CREDENTIAL_VALIDATION_TIMEOUT.connect
+        assert timeout.read == _CREDENTIAL_VALIDATION_TIMEOUT.read
