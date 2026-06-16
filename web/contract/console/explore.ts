@@ -1,5 +1,6 @@
+import type { Subject } from '@dify/contracts/enterprise/types.gen'
 import type { ChatConfig } from '@/app/components/base/chat/types'
-import type { AccessMode, Subject } from '@/models/access-control'
+import type { AccessMode } from '@/models/access-control'
 import type { Banner } from '@/models/app'
 import type { App, AppCategory, InstalledApp } from '@/models/explore'
 import type { AppMeta } from '@/models/share'

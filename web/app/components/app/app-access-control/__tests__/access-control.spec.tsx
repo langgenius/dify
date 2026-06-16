@@ -1,5 +1,6 @@
 import type { AccessControlAccount, AccessControlGroup, Subject } from '@/models/access-control'
 import type { App } from '@/types/app'
+import { SubjectType as EnterpriseSubjectType } from '@dify/contracts/enterprise/types.gen'
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -374,8 +375,8 @@ describe('AccessControl', () => {
             appId: app.id,
             accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
             subjects: [
-              { subjectId: baseGroup.id, subjectType: SubjectType.GROUP },
-              { subjectId: baseMember.id, subjectType: SubjectType.ACCOUNT },
+              { subjectId: baseGroup.id, subjectType: EnterpriseSubjectType.SUBJECT_TYPE_GROUP },
+              { subjectId: baseMember.id, subjectType: EnterpriseSubjectType.SUBJECT_TYPE_ACCOUNT },
             ],
           },
         },

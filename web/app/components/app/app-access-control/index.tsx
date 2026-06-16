@@ -1,11 +1,12 @@
 'use client'
-import type { Subject } from '@/models/access-control'
+import type { Subject as EnterpriseSubject } from '@dify/contracts/enterprise/types.gen'
 import type { App } from '@/types/app'
+import { SubjectType as EnterpriseSubjectType } from '@dify/contracts/enterprise/types.gen'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { AccessMode, SubjectType } from '@/models/access-control'
+import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control'
 import { consoleQuery } from '@/service/client'
 import { AccessControlDialog } from './access-control-dialog'
@@ -88,17 +89,17 @@ function AccessControlForm({
     const submitData: {
       appId: string
       accessMode: AccessMode
-      subjects?: Pick<Subject, 'subjectId' | 'subjectType'>[]
+      subjects?: Pick<EnterpriseSubject, 'subjectId' | 'subjectType'>[]
     } = { appId: app.id, accessMode: currentMenu }
     if (currentMenu === AccessMode.SPECIFIC_GROUPS_MEMBERS) {
-      const subjects: Pick<Subject, 'subjectId' | 'subjectType'>[] = []
+      const subjects: Pick<EnterpriseSubject, 'subjectId' | 'subjectType'>[] = []
       specificGroups.forEach((group) => {
-        subjects.push({ subjectId: group.id, subjectType: SubjectType.GROUP })
+        subjects.push({ subjectId: group.id, subjectType: EnterpriseSubjectType.SUBJECT_TYPE_GROUP })
       })
       specificMembers.forEach((member) => {
         subjects.push({
           subjectId: member.id,
-          subjectType: SubjectType.ACCOUNT,
+          subjectType: EnterpriseSubjectType.SUBJECT_TYPE_ACCOUNT,
         })
       })
       submitData.subjects = subjects
