@@ -392,6 +392,58 @@ Check if activation token is valid
 | 400 | Invalid request parameters |  |
 | 403 | Insufficient permissions |  |
 
+### [GET] /agent/{agent_id}/chat-messages
+Get Agent App chat messages for a conversation with pagination
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+| conversation_id | query | Conversation ID | Yes | string |
+| first_id | query | First message ID for pagination | No | string |
+| limit | query | Number of messages to return (1-100) | No | integer, <br>**Default:** 20 |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MessageInfiniteScrollPaginationResponse](#messageinfinitescrollpaginationresponse)<br> |
+| 404 | Agent or conversation not found |  |
+
+### [GET] /agent/{agent_id}/chat-messages/{message_id}/suggested-questions
+Get suggested questions for an Agent App message
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+| message_id | path | Message ID | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Suggested questions retrieved successfully | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
+| 404 | Agent, message, or conversation not found |  |
+
+### [POST] /agent/{agent_id}/chat-messages/{task_id}/stop
+Stop a running Agent App chat message generation
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+| task_id | path | Task ID to stop | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+
 ### [GET] /agent/{agent_id}/composer
 #### Parameters
 
@@ -527,6 +579,28 @@ Update an Agent App's presentation features (opener, follow-up, citations, ...)
 | 400 | Invalid configuration |  |
 | 404 | Agent not found |  |
 
+### [POST] /agent/{agent_id}/feedbacks
+Create or update Agent App message feedback
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [MessageFeedbackPayload](#messagefeedbackpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Feedback updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 404 | Agent or message not found |  |
+
 ### [DELETE] /agent/{agent_id}/files
 Delete one Agent App drive file by key
 
@@ -563,6 +637,23 @@ Commit an uploaded file into the Agent App drive under files/<name>
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File committed into the agent drive | **application/json**: [AgentDriveFileCommitResponse](#agentdrivefilecommitresponse)<br> |
+
+### [GET] /agent/{agent_id}/messages/{message_id}
+Get Agent App message details by ID
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+| message_id | path | Message ID | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Message retrieved successfully | **application/json**: [MessageDetailResponse](#messagedetailresponse)<br> |
+| 404 | Agent or message not found |  |
 
 ### [GET] /agent/{agent_id}/referencing-workflows
 List workflow apps that reference this Agent App's bound Agent (read-only)
