@@ -9,6 +9,7 @@ import { defaultAgentSoulConfigFormState } from './form-state'
 
 export const agentComposerOriginalConfigAtom = atom<AgentSoulConfig | undefined>(undefined)
 export const agentComposerOriginalDraftAtom = atom<AgentSoulConfigFormState | undefined>(defaultAgentSoulConfigFormState)
+export const agentComposerPublishedDraftAtom = atom<AgentSoulConfigFormState | undefined>(defaultAgentSoulConfigFormState)
 export const agentComposerDraftAtom = atom<AgentSoulConfigFormState>(defaultAgentSoulConfigFormState)
 
 export const isAgentComposerDirtyAtom = atom((get) => {
@@ -16,6 +17,13 @@ export const isAgentComposerDirtyAtom = atom((get) => {
   const draft = get(agentComposerDraftAtom)
 
   return !isEqual(draft, originalDraft ?? defaultAgentSoulConfigFormState)
+})
+
+export const hasAgentComposerUnpublishedChangesAtom = atom((get) => {
+  const publishedDraft = get(agentComposerPublishedDraftAtom)
+  const draft = get(agentComposerDraftAtom)
+
+  return !isEqual(draft, publishedDraft ?? defaultAgentSoulConfigFormState)
 })
 
 export function useHydrate({
@@ -32,6 +40,7 @@ export function useHydrate({
   waitForDraft?: boolean
 }) {
   const setOriginalDraft = useSetAtom(agentComposerOriginalDraftAtom)
+  const setPublishedDraft = useSetAtom(agentComposerPublishedDraftAtom)
   const setOriginalConfig = useSetAtom(agentComposerOriginalConfigAtom)
   const setDraft = useSetAtom(agentComposerDraftAtom)
   const resetKeyRef = useRef<string | undefined>(undefined)
@@ -43,6 +52,7 @@ export function useHydrate({
       hydratedKeyRef.current = undefined
       setOriginalConfig(undefined)
       setOriginalDraft(defaultDraft)
+      setPublishedDraft(defaultDraft)
       setDraft(defaultDraft)
     }
 
@@ -55,8 +65,9 @@ export function useHydrate({
     hydratedKeyRef.current = instanceKey
     setOriginalConfig(originalConfig)
     setOriginalDraft(draft ?? defaultDraft)
+    setPublishedDraft(draft ?? defaultDraft)
     setDraft(draft ?? defaultDraft)
-  }, [defaultDraft, draft, instanceKey, originalConfig, setDraft, setOriginalConfig, setOriginalDraft, waitForDraft])
+  }, [defaultDraft, draft, instanceKey, originalConfig, setDraft, setOriginalConfig, setOriginalDraft, setPublishedDraft, waitForDraft])
 }
 
 export function useHydrateAgentSoulConfigFormState({

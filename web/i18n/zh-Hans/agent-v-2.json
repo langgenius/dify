@@ -145,6 +145,7 @@
   "agentDetail.configure.publishBar.publishedAt": "{{time}}发布",
   "agentDetail.configure.publishBar.publishing": "发布中…",
   "agentDetail.configure.publishBar.saved": "5 分钟前已保存",
+  "agentDetail.configure.publishBar.savedAt": "{{time}}已保存",
   "agentDetail.configure.publishBar.unpublishedChanges": "有未发布的更改",
   "agentDetail.configure.publishBar.upToDate": "已是最新",
   "agentDetail.configure.publishBar.versionHistory": "打开版本历史",

@@ -4,7 +4,7 @@ import type { Mock } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
-import { agentComposerDraftAtom, agentComposerOriginalDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { agentComposerDraftAtom, agentComposerOriginalDraftAtom, agentComposerPublishedDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentConfigurePromptAtom } from '../../../atoms'
 import { AgentConfigurePublishBar } from '../publish-bar'
 
@@ -123,6 +123,7 @@ const publishedReferences: AgentPublishedReferenceResponse[] = [
 
 function renderPublishBar({
   activeConfigSnapshot,
+  draftSavedAt,
   isPublishing,
   onPublish = vi.fn<PublishHandler>(),
   prompt = '',
@@ -131,6 +132,7 @@ function renderPublishBar({
   setupStore,
 }: {
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
+  draftSavedAt?: number
   isPublishing?: boolean
   onPublish?: PublishMock
   prompt?: string
@@ -147,6 +149,7 @@ function renderPublishBar({
       <AgentConfigurePublishBar
         agentId="agent-1"
         activeConfigSnapshot={activeConfigSnapshot}
+        draftSavedAt={draftSavedAt}
         agentName="Iris"
         isPublishing={isPublishing}
         publishedReferenceCount={publishedReferenceCount}
@@ -186,6 +189,13 @@ describe('AgentConfigurePublishBar', () => {
     expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
       expect.objectContaining({ enabled: true, ignoreInputs: true }),
     )
+  })
+
+  it('should render saved time from the latest draft save timestamp', () => {
+    renderPublishBar({ draftSavedAt: 1710000100000 })
+
+    expect(screen.getByText(/agentV2\.agentDetail\.configure\.publishBar\.savedAt/)).toBeInTheDocument()
+    expect(mockFormatTimeFromNow).toHaveBeenCalledWith(1710000100000)
   })
 
   it('should render published state from the active snapshot and disable publish logic', () => {
@@ -229,6 +239,7 @@ describe('AgentConfigurePublishBar', () => {
     renderPublishBar({
       activeConfigSnapshot,
       setupStore: (store) => {
+        store.set(agentComposerPublishedDraftAtom, originalDraftWithFile)
         store.set(agentComposerOriginalDraftAtom, originalDraftWithFile)
         store.set(agentComposerDraftAtom, {
           ...originalDraftWithFile,
@@ -238,6 +249,29 @@ describe('AgentConfigurePublishBar', () => {
     })
 
     expect(screen.getByText('agentV2.agentDetail.configure.publishBar.unpublishedChanges')).toBeInTheDocument()
+  })
+
+  it('should keep unpublished state after draft autosave updates the saved draft baseline', () => {
+    const publishedDraft = {
+      ...defaultAgentSoulConfigFormState,
+      prompt: 'Published prompt',
+    }
+    const savedDraft = {
+      ...defaultAgentSoulConfigFormState,
+      prompt: 'Autosaved draft prompt',
+    }
+
+    renderPublishBar({
+      activeConfigSnapshot,
+      setupStore: (store) => {
+        store.set(agentComposerPublishedDraftAtom, publishedDraft)
+        store.set(agentComposerOriginalDraftAtom, savedDraft)
+        store.set(agentComposerDraftAtom, savedDraft)
+      },
+    })
+
+    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.unpublishedChanges')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ })).toBeInTheDocument()
   })
 
   it('should render publishing as a single disabled action state', () => {
