@@ -68,6 +68,7 @@ const MainNav = ({
   const { langGeniusVersionInfo, isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceEditor } = useAppContext()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const showEnvTag = langGeniusVersionInfo.current_env === 'TESTING' || langGeniusVersionInfo.current_env === 'DEVELOPMENT'
+  const canUseAppDeploy = isCurrentWorkspaceEditor && systemFeatures.enable_app_deploy
   const showAppDetailNavigation = !isCurrentWorkspaceDatasetOperator && pathname.startsWith('/app/')
   const showDatasetDetailNavigation = isDatasetDetailPathname(pathname)
   const showDetailNavigation = showAppDetailNavigation || showDatasetDetailNavigation
@@ -204,7 +205,16 @@ const MainNav = ({
       icon: 'i-custom-vender-main-nav-marketplace',
       activeIcon: 'i-custom-vender-main-nav-marketplace-active',
     },
-  ], [isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceEditor, t])
+    ...(canUseAppDeploy
+      ? [{
+          href: '/deployments',
+          label: t('menus.deployments', { ns: 'common' }),
+          active: (path: string) => path.startsWith('/deployments'),
+          icon: 'i-ri-rocket-line',
+          activeIcon: 'i-ri-rocket-fill',
+        }]
+      : []),
+  ], [canUseAppDeploy, isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceEditor, t])
 
   const renderLogo = () => (
     <Link

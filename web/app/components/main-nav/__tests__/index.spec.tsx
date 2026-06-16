@@ -240,8 +240,10 @@ const appContextValue: AppContextValue = {
   isValidatingCurrentWorkspace: false,
 }
 
+type MainNavSystemFeatures = NonNullable<Parameters<typeof renderWithSystemFeatures>[1]>['systemFeatures']
+
 const renderMainNav = (
-  systemFeatures = { branding: { enabled: false } },
+  systemFeatures: MainNavSystemFeatures = { branding: { enabled: false } },
   options: { store?: ReturnType<typeof createStore>, extra?: ReactNode } = {},
 ) => {
   const queryClient = createTestQueryClient()
@@ -323,6 +325,22 @@ describe('MainNav', () => {
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')
     expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute('href', '/integrations/model-provider')
     expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute('href', '/marketplace')
+  })
+
+  it('renders deployments in primary navigation when app deploy is enabled', () => {
+    renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })
+
+    const marketplaceLink = screen.getByRole('link', { name: /common.mainNav.marketplace/ })
+    const deploymentsLink = screen.getByRole('link', { name: /common.menus.deployments/ })
+
+    expect(deploymentsLink).toHaveAttribute('href', '/deployments')
+    expect(marketplaceLink.compareDocumentPosition(deploymentsLink)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  })
+
+  it('hides deployments in primary navigation when app deploy is disabled', () => {
+    renderMainNav({ branding: { enabled: false }, enable_app_deploy: false })
+
+    expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
   })
 
   it('aligns the global navigation spacing with the main sidebar design', () => {
@@ -452,12 +470,13 @@ describe('MainNav', () => {
       isCurrentWorkspaceOwner: false,
     })
 
-    renderMainNav()
+    renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })
 
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.menus.datasets/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toBeInTheDocument()
   })
 

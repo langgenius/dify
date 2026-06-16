@@ -8,6 +8,7 @@ import { useAtomValue } from 'jotai'
 import { debounce, useQueryState } from 'nuqs'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { StudioListHeader } from '@/app/components/apps/studio-list-header'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { DeploymentEmptyState, DeploymentStateMessage } from '../../components/empty-state'
 import {
@@ -132,8 +133,16 @@ function DeploymentsSearchInput({ className }: {
 }
 
 function DeploymentsListControls() {
+  const { t } = useTranslation()
+
   return (
-    <div className="sticky top-0 z-10 flex flex-col gap-3 bg-background-body px-4 pt-5 pb-4 sm:px-6 lg:px-12 lg:pt-7 lg:pb-5">
+    <StudioListHeader
+      title={(
+        <div className="flex items-center">
+          <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">{t('menus.deployments', { ns: 'common' })}</h1>
+        </div>
+      )}
+    >
       <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
         <div className="flex min-w-0 items-center justify-between gap-2 sm:justify-start">
           <EnvironmentFilter className="min-w-0" />
@@ -142,7 +151,7 @@ function DeploymentsListControls() {
         <DeploymentsSearchInput className="w-full sm:w-50 sm:shrink-0" />
         <CreateDeploymentButton className="hidden shrink-0 sm:ml-auto sm:inline-flex" />
       </div>
-    </div>
+    </StudioListHeader>
   )
 }
 
@@ -189,7 +198,7 @@ export function DeploymentsListShell() {
     <div ref={containerRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
       <DeploymentsListControls />
       <div className={cn(
-        'relative grid grow grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] content-start gap-4 px-4 pt-2 sm:px-6 lg:px-12',
+        'relative grid grow grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] content-start gap-4 px-8 pt-2',
         showEmptyState && 'overflow-hidden',
       )}
       >
