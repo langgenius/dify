@@ -256,6 +256,25 @@ describe('agent/panel', () => {
     expect(screen.getByText('workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
   })
 
+  it('renders a pending inline agent state while the binding is being created', () => {
+    const { container } = render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          _isTempNode: true,
+          agent_binding: {
+            binding_type: 'inline_agent',
+          },
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(screen.queryByText(/^workflow\.errorMsg\.fieldRequired/)).not.toBeInTheDocument()
+    expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'workflow.nodes.agent.roster.change' })).toBeDisabled()
+  })
+
   it('renders inline agent detail from workflow composer state', () => {
     render(
       <AgentV2Panel

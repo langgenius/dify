@@ -283,6 +283,17 @@ describe('CandidateNodeMain', () => {
     expect(mockCreateInlineAgentBinding).toHaveBeenCalledWith('candidate-inline-agent-v2', expect.objectContaining({
       onSuccess: expect.any(Function),
     }))
+    expect(mockSetNodes.mock.calls[0]?.[0]).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'candidate-inline-agent-v2',
+        data: expect.objectContaining({
+          agent_binding: {
+            binding_type: 'inline_agent',
+          },
+          _isTempNode: true,
+        }),
+      }),
+    ]))
     expect(mockSetNodes).toHaveBeenLastCalledWith(expect.arrayContaining([
       expect.objectContaining({
         id: 'candidate-inline-agent-v2',
@@ -295,6 +306,9 @@ describe('CandidateNodeMain', () => {
         }),
       }),
     ]))
+    const finalNodes = mockSetNodes.mock.calls.at(-1)?.[0]
+    const finalAgentNode = finalNodes.find((node: { id: string }) => node.id === 'candidate-inline-agent-v2')
+    expect(finalAgentNode.data._isTempNode).toBeUndefined()
     expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true, true)
   })
 

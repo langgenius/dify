@@ -24,6 +24,7 @@ export function AgentV2Panel({
   const declaredOutputs = getAgentV2DeclaredOutputs(inputs)
   const rosterAgentId = inputs.agent_binding?.binding_type === 'roster_agent' ? inputs.agent_binding.agent_id : undefined
   const inlineAgentId = inputs.agent_binding?.binding_type === 'inline_agent' ? inputs.agent_binding.agent_id : undefined
+  const isInlineAgentPending = inputs.agent_binding?.binding_type === 'inline_agent' && inputs._isTempNode
   const rosterAgentQuery = useAgentRosterDetail(rosterAgentId)
   const inlineAgentQuery = useWorkflowInlineAgentDetail(id, inlineAgentId)
   const inlineAgent = inlineAgentQuery.data?.agent
@@ -86,6 +87,7 @@ export function AgentV2Panel({
           agent={displayedAgent}
           agentId={rosterAgentId ?? inlineAgentId ?? undefined}
           canOpenPanel={!inlineAgentId}
+          isPending={isInlineAgentPending}
           portalContainerRef={drawerPortalContainerRef}
           onChange={handleRosterChange}
         />

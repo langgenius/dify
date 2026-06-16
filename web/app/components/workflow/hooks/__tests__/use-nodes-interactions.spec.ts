@@ -529,12 +529,18 @@ describe('useNodesInteractions', () => {
     })
 
     const agentNode = rfState.nodes.find(node => node.data.type === BlockEnum.AgentV2)
+    const firstSetNodesPayload = rfState.setNodes.mock.calls[0]?.[0]
+    const pendingAgentNode = firstSetNodesPayload.find((node: Node) => node.data.type === BlockEnum.AgentV2)
+    const finalSetNodesPayload = rfState.setNodes.mock.calls.at(-1)?.[0]
+    const finalAgentNode = finalSetNodesPayload.find((node: Node) => node.data.type === BlockEnum.AgentV2)
 
+    expect(pendingAgentNode?.data._isTempNode).toBe(true)
     expect(agentNode?.data.agent_binding).toEqual({
       binding_type: 'inline_agent',
       agent_id: 'inline-agent-1',
       current_snapshot_id: 'inline-snapshot-1',
     })
+    expect(finalAgentNode?.data._isTempNode).toBeUndefined()
     expect(mockCreateInlineAgentBinding).toHaveBeenCalledWith(agentNode?.id, expect.objectContaining({
       onSuccess: expect.any(Function),
     }))

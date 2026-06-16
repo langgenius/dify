@@ -175,12 +175,14 @@ export function AgentRosterField({
   agent,
   agentId,
   canOpenPanel = true,
+  isPending = false,
   portalContainerRef,
   onChange,
 }: {
   agent?: AgentRosterDisplayData
   agentId?: string
   canOpenPanel?: boolean
+  isPending?: boolean
   portalContainerRef: RefObject<HTMLDivElement | null>
   onChange: (agent: AgentRosterNodeData) => void
 }) {
@@ -213,12 +215,19 @@ export function AgentRosterField({
         <FieldLabel className="min-w-0 flex-1 py-1 system-sm-semibold-uppercase! text-text-secondary">
           {t('nodes.agent.roster.label', { ns: 'workflow' })}
         </FieldLabel>
-        <Popover open={isSelectorOpen} onOpenChange={setIsSelectorOpen}>
+        <Popover
+          open={isPending ? false : isSelectorOpen}
+          onOpenChange={(open) => {
+            if (!isPending)
+              setIsSelectorOpen(open)
+          }}
+        >
           <PopoverTrigger
             render={(
               <button
                 type="button"
-                className="flex h-6 shrink-0 cursor-pointer items-center justify-center rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                disabled={isPending}
+                className={cn('flex h-6 shrink-0 cursor-pointer items-center justify-center rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden', isPending && 'cursor-not-allowed opacity-50 hover:bg-transparent hover:text-text-tertiary')}
               >
                 {t(`${i18nPrefix}.roster.change`, { ns: 'workflow' })}
               </button>
@@ -273,9 +282,9 @@ export function AgentRosterField({
                   </div>
                 )
           )
-        : agentId
+        : isPending || agentId
           ? (
-              <div className="flex h-13 w-full min-w-0 items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3">
+              <div aria-busy="true" className="flex h-13 w-full min-w-0 items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3">
                 <span aria-hidden className="size-8 shrink-0 rounded-lg bg-text-quaternary/20" />
                 <span aria-hidden className="flex min-w-0 flex-1 flex-col gap-1.5">
                   <span className="h-2.5 w-24 rounded-xs bg-text-quaternary/20" />

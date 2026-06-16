@@ -87,6 +87,16 @@ const ENTRY_NODE_WRAPPER_OFFSET = {
   y: 21, // Adjusted based on visual testing feedback
 } as const
 
+function needsPendingInlineAgentBinding(defaultValue?: BlockDefaultValue) {
+  if (!defaultValue || !('agent_binding' in defaultValue))
+    return false
+
+  const binding = defaultValue.agent_binding
+
+  return binding.binding_type === 'inline_agent'
+    && (!binding.agent_id || !binding.current_snapshot_id)
+}
+
 const pruneClipboardNodesWithFilteredAncestors = (
   sourceNodes: Node[],
   candidateNodes: Node[],
@@ -185,8 +195,11 @@ export const useNodesInteractions = () => {
         const { nodes, setNodes } = collaborativeWorkflow.getState()
         setNodes(produce(nodes, (draft) => {
           const node = draft.find(node => node.id === nodeId)
-          if (node && isAgentV2NodeData(node.data) && needsInlineAgentBindingCreation(node.data))
-            node.data.agent_binding = binding
+          if (node) {
+            if (isAgentV2NodeData(node.data) && needsInlineAgentBindingCreation(node.data))
+              node.data.agent_binding = binding
+            delete node.data._isTempNode
+          }
         }))
         handleSyncWorkflowDraft(true, true)
       },
@@ -904,6 +917,7 @@ export const useNodesInteractions = () => {
         return
       const { defaultValue } = nodeMetaData
       const nodesWithSameType = getNodesWithSameDefaultDataType(nodes, nodeType, defaultValue)
+      const shouldCreateInlineAgentBinding = nodeType === BlockEnum.AgentV2 && needsPendingInlineAgentBinding(pluginDefaultValue)
       const { newNode, newIterationStartNode, newLoopStartNode }
         = generateNewNode({
           type: getNodeCustomTypeByNodeDataType(nodeType),
@@ -915,6 +929,7 @@ export const useNodesInteractions = () => {
                 : defaultValue.title,
             ...pluginDefaultValue,
             selected: true,
+            ...(shouldCreateInlineAgentBinding ? { _isTempNode: true } : {}),
             _showAddVariablePopup:
               (nodeType === BlockEnum.VariableAssigner
                 || nodeType === BlockEnum.VariableAggregator)
@@ -1476,6 +1491,7 @@ export const useNodesInteractions = () => {
         return
       const { defaultValue } = nodeMetaData
       const nodesWithSameType = getNodesWithSameDefaultDataType(nodes, nodeType, defaultValue)
+      const shouldCreateInlineAgentBinding = nodeType === BlockEnum.AgentV2 && needsPendingInlineAgentBinding(pluginDefaultValue)
       const {
         newNode: newCurrentNode,
         newIterationStartNode,
@@ -1489,6 +1505,7 @@ export const useNodesInteractions = () => {
               ? `${defaultValue.title} ${nodesWithSameType.length + 1}`
               : defaultValue.title,
           ...pluginDefaultValue,
+          ...(shouldCreateInlineAgentBinding ? { _isTempNode: true } : {}),
           _connectedSourceHandleIds: [],
           _connectedTargetHandleIds: [],
           selected: currentNode.data.selected,

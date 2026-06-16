@@ -51,12 +51,14 @@ const CandidateNodeMain: FC<Props> = ({
     const { screenToFlowPosition } = reactflow
     const { nodes, setNodes } = collaborativeWorkflow.getState()
     const { x, y } = screenToFlowPosition({ x: mousePosition.pageX, y: mousePosition.pageY })
+    const shouldCreateInlineAgentBinding = isAgentV2NodeData(candidateNode.data) && needsInlineAgentBindingCreation(candidateNode.data)
     const newNodes = produce(nodes, (draft) => {
       draft.push({
         ...candidateNode,
         data: {
           ...candidateNode.data,
           _isCandidate: false,
+          _isTempNode: shouldCreateInlineAgentBinding ? true : candidateNode.data._isTempNode,
         },
         position: {
           x,
@@ -86,14 +88,17 @@ const CandidateNodeMain: FC<Props> = ({
       })
     }
 
-    if (isAgentV2NodeData(candidateNode.data) && needsInlineAgentBindingCreation(candidateNode.data)) {
+    if (shouldCreateInlineAgentBinding) {
       createInlineAgentBinding(candidateNode.id, {
         onSuccess: (binding) => {
           const { nodes, setNodes } = collaborativeWorkflow.getState()
           setNodes(produce(nodes, (draft) => {
             const node = draft.find(node => node.id === candidateNode.id)
-            if (node && isAgentV2NodeData(node.data) && needsInlineAgentBindingCreation(node.data))
-              node.data.agent_binding = binding
+            if (node) {
+              if (isAgentV2NodeData(node.data) && needsInlineAgentBindingCreation(node.data))
+                node.data.agent_binding = binding
+              delete node.data._isTempNode
+            }
           }))
           handleSyncWorkflowDraft(true, true)
         },
