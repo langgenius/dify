@@ -92,6 +92,13 @@ describe('chat/chat/utils.ts', () => {
       expect(result.files2[0]).toHaveProperty('processed', true)
     })
 
+    it('handles an empty multiFiles array without throwing', () => {
+      const inputs = { files1: [] }
+      const inputsForm = [{ variable: 'files1', type: InputVarType.multiFiles as string }]
+      const result = getProcessedInputs(inputs, inputsForm as InputForm[])
+      expect(result.files1).toEqual([])
+    })
+
     it('processes jsonObject parsing correct json', () => {
       const inputs = {
         json1: '{"key": "value"}',
