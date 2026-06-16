@@ -15,12 +15,10 @@ from sqlalchemy import select
 
 from configs import dify_config
 from core.entities.knowledge_entities import PreviewDetail
-from core.helper import ssrf_proxy
-from core.rag.data_post_processor.data_post_processor import RerankingModelDict
+from core.file import remote_fetcher
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.models.document import AttachmentDocument, Document
-from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.rag.splitter.fixed_text_splitter import (
     EnhanceRecursiveCharacterTextSplitter,
     FixedRecursiveCharacterTextSplitter,
@@ -97,18 +95,6 @@ class BaseIndexProcessor(ABC):
 
     @abstractmethod
     def format_preview(self, chunks: Any) -> Mapping[str, Any]:
-        raise NotImplementedError
-
-    @abstractmethod
-    def retrieve(
-        self,
-        retrieval_method: RetrievalMethod,
-        query: str,
-        dataset: Dataset,
-        top_k: int,
-        score_threshold: float,
-        reranking_model: RerankingModelDict,
-    ) -> list[Document]:
         raise NotImplementedError
 
     def _get_splitter(
@@ -243,7 +229,7 @@ class BaseIndexProcessor(ABC):
 
         try:
             # Download with timeout
-            response = ssrf_proxy.get(image_url, timeout=DOWNLOAD_TIMEOUT)
+            response = remote_fetcher.make_request("GET", image_url, timeout=DOWNLOAD_TIMEOUT)
             response.raise_for_status()
 
             # Check Content-Length header if available

@@ -162,7 +162,7 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
             type="button"
             onClick={handleTrigger}
             className={cn(
-              'flex h-6 w-6 items-center justify-center rounded-md p-0.5 hover:bg-state-accent-hover',
+              'flex size-6 items-center justify-center rounded-md p-0.5 hover:bg-state-accent-hover',
               open && 'bg-state-accent-active',
             )}
           >

@@ -7,11 +7,11 @@ import {
 } from '@remixicon/react'
 import * as React from 'react'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   text: string
   onClick: () => void
-}
+}>
 
 const AddButton: FC<Props> = ({
   className,
@@ -25,7 +25,7 @@ const AddButton: FC<Props> = ({
       size="medium"
       onClick={onClick}
     >
-      <RiAddLine className="mr-1 h-3.5 w-3.5" />
+      <RiAddLine className="mr-1 size-3.5" />
       <div>{text}</div>
     </Button>
   )

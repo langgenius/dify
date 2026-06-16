@@ -17,7 +17,7 @@ const HasNotSetAPI: FC<IHasNotSetAPIProps> = ({
       <div className="flex w-full max-w-[400px] flex-col gap-2 px-4 py-4">
         <div className="flex h-10 w-10 items-center justify-center rounded-[10px]">
           <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg p-1 shadow-lg backdrop-blur-[5px]">
-            <span className="i-ri-brain-2-line h-5 w-5 text-text-tertiary" />
+            <span className="i-ri-brain-2-line size-5 text-text-tertiary" />
           </div>
         </div>
         <div className="flex flex-col gap-1">
@@ -30,7 +30,7 @@ const HasNotSetAPI: FC<IHasNotSetAPIProps> = ({
           onClick={onSetting}
         >
           <span className="system-sm-medium text-components-button-secondary-accent-text">{t('manageModels', { ns: 'appDebug' })}</span>
-          <span className="i-ri-arrow-right-line h-4 w-4 text-components-button-secondary-accent-text" />
+          <span className="i-ri-arrow-right-line size-4 text-components-button-secondary-accent-text" />
         </button>
       </div>
     </div>

@@ -31,7 +31,7 @@ const normalizeProviderIcon = (icon?: ToolWithProvider['icon']) => {
   return icon
 }
 
-type Props = {
+type Props = Readonly<{
   className?: string
   payload: ToolWithProvider
   previewCardHandle: ToolActionPreviewCardHandle
@@ -42,7 +42,7 @@ type Props = {
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
   isShowLetterIndex?: boolean
-}
+}>
 
 const Tool: FC<Props> = ({
   className,
@@ -229,7 +229,7 @@ const Tool: FC<Props> = ({
             {!isShowCanNotChooseMCPTip && !canNotSelectMultiple && (notShowProvider ? notShowProviderSelectInfo : selectedInfo)}
             {isShowCanNotChooseMCPTip && <McpToolNotSupportTooltip />}
             {hasAction && (
-              <FoldIcon className={cn('h-4 w-4 shrink-0 text-text-tertiary group-hover/item:text-text-tertiary', isFold && 'text-text-quaternary')} />
+              <FoldIcon className={cn('size-4 shrink-0 text-text-tertiary group-hover/item:text-text-tertiary', isFold && 'text-text-quaternary')} />
             )}
           </div>
         </div>

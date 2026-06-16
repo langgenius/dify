@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { HumanInputNodeType } from './types'
+import type { FormInputItem, HumanInputNodeType } from './types'
 import type { NodePanelProps, Var } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -34,6 +34,16 @@ import { UserActionButtonType } from './types'
 
 const i18nPrefix = 'nodes.humanInput'
 
+const getOutputVarType = (input: FormInputItem): VarType => {
+  if (input.type === 'file')
+    return VarType.file
+
+  if (input.type === 'file-list')
+    return VarType.arrayFile
+
+  return VarType.string
+}
+
 const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
   id,
   data,
@@ -59,7 +69,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+      return [VarType.string, VarType.number, VarType.secret, VarType.arrayString].includes(varPayload.type)
     },
   })
 
@@ -137,7 +147,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
                     toast.success(t('actionMsg.copySuccessfully', { ns: 'common' }))
                   }}
                 >
-                  <RiClipboardLine className="h-4 w-4 text-text-secondary" aria-hidden />
+                  <RiClipboardLine className="size-4 text-text-secondary" aria-hidden />
                 </button>
                 <button
                   type="button"
@@ -145,7 +155,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
                   className={cn('flex size-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-text-secondary hover:bg-components-button-ghost-bg-hover', isExpandFormContent && 'bg-state-accent-active text-text-accent')}
                   onClick={toggleExpandFormContent}
                 >
-                  {isExpandFormContent ? <RiCollapseDiagonalLine className="h-4 w-4" aria-hidden /> : <RiExpandDiagonalLine className="h-4 w-4" aria-hidden />}
+                  {isExpandFormContent ? <RiCollapseDiagonalLine className="size-4" aria-hidden /> : <RiExpandDiagonalLine className="size-4" aria-hidden />}
                 </button>
               </div>
             </div>
@@ -180,7 +190,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
               <ActionButton
                 onClick={onAddUseAction}
               >
-                <RiAddLine className="h-4 w-4" />
+                <RiAddLine className="size-4" />
               </ActionButton>
             </div>
           )}
@@ -226,7 +236,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
             <VarItem
               key={input.output_variable_name}
               name={input.output_variable_name}
-              type={VarType.string}
+              type={getOutputVarType(input)}
               description="Form input value"
             />
           ))

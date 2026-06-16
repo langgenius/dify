@@ -7,10 +7,9 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { WorkspaceProvider } from '@/context/workspace-context-provider'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Link from '@/next/link'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { Plan } from '../billing/type'
 import AccountDropdown from './account-dropdown'
 import AppNav from './app-nav'
@@ -44,21 +43,23 @@ const Header = () => {
       setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
   }, [isFreePlan, setShowAccountSettingModal, setShowPricingModal])
 
+  const logoLabel = isBrandingEnabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'
   const renderLogo = () => (
-    <h1>
-      <Link href="/apps" className="flex h-8 shrink-0 items-center justify-center overflow-hidden px-0.5 indent-[-9999px] whitespace-nowrap">
-        {isBrandingEnabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'}
-        {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
-          ? (
-              <img
-                src={systemFeatures.branding.workspace_logo}
-                className="block h-[22px] w-auto object-contain"
-                alt="logo"
-              />
-            )
-          : <DifyLogo />}
-      </Link>
-    </h1>
+    <Link
+      href="/apps"
+      className="flex h-8 shrink-0 items-center justify-center overflow-hidden rounded-sm px-0.5 hover:opacity-80 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+      aria-label={logoLabel}
+    >
+      {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
+        ? (
+            <img
+              src={systemFeatures.branding.workspace_logo}
+              className="block h-[22px] w-auto object-contain"
+              alt=""
+            />
+          )
+        : <DifyLogo alt="" />}
+    </Link>
   )
 
   if (isMobile) {
@@ -68,9 +69,7 @@ const Header = () => {
           <div className="flex items-center">
             {renderLogo()}
             <div className="mx-1.5 shrink-0 font-light text-divider-deep">/</div>
-            <WorkspaceProvider>
-              <WorkplaceSelector />
-            </WorkspaceProvider>
+            <WorkplaceSelector />
             {enableBilling ? <PlanBadge allowHover sandboxAsUpgrade plan={plan.type} onClick={handlePlanClick} /> : <LicenseNav />}
           </div>
           <div className="flex items-center">
@@ -95,9 +94,7 @@ const Header = () => {
       <div className="flex min-w-0 flex-1 items-center pr-2 pl-3 min-[1280px]:pr-3">
         {renderLogo()}
         <div className="mx-1.5 shrink-0 font-light text-divider-deep">/</div>
-        <WorkspaceProvider>
-          <WorkplaceSelector />
-        </WorkspaceProvider>
+        <WorkplaceSelector />
         {enableBilling ? <PlanBadge allowHover sandboxAsUpgrade plan={plan.type} onClick={handlePlanClick} /> : <LicenseNav />}
       </div>
       <div className="flex items-center space-x-2">

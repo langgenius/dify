@@ -15,9 +15,9 @@ import Input from '@/app/components/base/input'
 import { importSchemaFromURL } from '@/service/tools'
 import examples from './examples'
 
-type Props = {
+type Props = Readonly<{
   onChange: (value: string) => void
-}
+}>
 
 const GetSchema: FC<Props> = ({
   onChange,

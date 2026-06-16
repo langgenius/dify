@@ -55,7 +55,7 @@ const RetryOnNode = ({
           {
             isRunning && (
               <>
-                <RiLoader2Line className="mr-1 h-3.5 w-3.5 animate-spin" />
+                <RiLoader2Line className="mr-1 size-3.5 animate-spin" />
                 {t('nodes.common.retry.retrying', { ns: 'workflow' })}
               </>
             )
@@ -63,7 +63,7 @@ const RetryOnNode = ({
           {
             isSuccessful && (
               <>
-                <RiCheckboxCircleFill className="mr-1 h-3.5 w-3.5" />
+                <RiCheckboxCircleFill className="mr-1 size-3.5" />
                 {t('nodes.common.retry.retrySuccessful', { ns: 'workflow' })}
               </>
             )
@@ -71,7 +71,7 @@ const RetryOnNode = ({
           {
             (isFailed || isException) && (
               <>
-                <RiAlertFill className="mr-1 h-3.5 w-3.5" />
+                <RiAlertFill className="mr-1 size-3.5" />
                 {t('nodes.common.retry.retryFailed', { ns: 'workflow' })}
               </>
             )

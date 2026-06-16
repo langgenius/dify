@@ -212,6 +212,19 @@ describe('InstallFromMarketplace', () => {
       expect(screen.getByTestId('bundle-plugins-count')).toHaveTextContent('2')
     })
 
+    it('should constrain bundle dialog height so dependency lists can scroll', () => {
+      const dependencies = createMockDependencies()
+      render(
+        <InstallFromMarketplace
+          {...defaultProps}
+          isBundle={true}
+          dependencies={dependencies}
+        />,
+      )
+
+      expect(screen.getByRole('dialog')).toHaveClass('max-h-[calc(100dvh-48px)]')
+    })
+
     it('should pass isFromMarketPlace as true to bundle component', () => {
       const dependencies = createMockDependencies()
       render(
@@ -270,7 +283,7 @@ describe('InstallFromMarketplace', () => {
       fireEvent.click(screen.getByTestId('bundle-change-to-installed'))
 
       await waitFor(() => {
-        expect(screen.getByText('plugin.installModal.installComplete')).toBeInTheDocument()
+        expect(screen.getByText('plugin.installModal.installedSuccessfully')).toBeInTheDocument()
       })
     })
 
@@ -339,7 +352,7 @@ describe('InstallFromMarketplace', () => {
       fireEvent.click(screen.getByTestId('bundle-change-to-installed'))
 
       await waitFor(() => {
-        expect(screen.getByText('plugin.installModal.installComplete')).toBeInTheDocument()
+        expect(screen.getByText('plugin.installModal.installedSuccessfully')).toBeInTheDocument()
       })
     })
   })
@@ -671,7 +684,7 @@ describe('InstallFromMarketplace', () => {
       fireEvent.click(screen.getByTestId('bundle-change-to-installed'))
 
       await waitFor(() => {
-        expect(screen.getByText('plugin.installModal.installComplete')).toBeInTheDocument()
+        expect(screen.getByText('plugin.installModal.installedSuccessfully')).toBeInTheDocument()
       })
     })
 
@@ -911,7 +924,7 @@ describe('InstallFromMarketplace', () => {
       fireEvent.click(screen.getByTestId('bundle-change-to-installed'))
 
       await waitFor(() => {
-        expect(screen.getByText('plugin.installModal.installComplete')).toBeInTheDocument()
+        expect(screen.getByText('plugin.installModal.installedSuccessfully')).toBeInTheDocument()
       })
     })
 

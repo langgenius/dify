@@ -24,6 +24,7 @@ import {
   zGetAppFeedbacksResponse,
   zGetAppsAnnotationReplyByActionStatusByJobIdPath,
   zGetAppsAnnotationReplyByActionStatusByJobIdResponse,
+  zGetAppsAnnotationsQuery,
   zGetAppsAnnotationsResponse,
   zGetConversationsByCIdVariablesPath,
   zGetConversationsByCIdVariablesQuery,
@@ -35,6 +36,7 @@ import {
   zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadPath,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdPath,
+  zGetDatasetsByDatasetIdDocumentsByDocumentIdQuery,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdResponse,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksQuery,
@@ -45,6 +47,7 @@ import {
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse,
   zGetDatasetsByDatasetIdDocumentsPath,
+  zGetDatasetsByDatasetIdDocumentsQuery,
   zGetDatasetsByDatasetIdDocumentsResponse,
   zGetDatasetsByDatasetIdMetadataBuiltInPath,
   zGetDatasetsByDatasetIdMetadataBuiltInResponse,
@@ -57,6 +60,7 @@ import {
   zGetDatasetsByDatasetIdResponse,
   zGetDatasetsByDatasetIdTagsPath,
   zGetDatasetsByDatasetIdTagsResponse,
+  zGetDatasetsQuery,
   zGetDatasetsResponse,
   zGetDatasetsTagsResponse,
   zGetEndUsersByEndUserIdPath,
@@ -85,11 +89,13 @@ import {
   zGetWorkspacesCurrentModelsModelTypesByModelTypePath,
   zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse,
   zPatchDatasetsByDatasetIdBody,
+  zPatchDatasetsByDatasetIdDocumentsByDocumentIdBody,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdPath,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdResponse,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdBody,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse,
+  zPatchDatasetsByDatasetIdDocumentsStatusByActionBody,
   zPatchDatasetsByDatasetIdDocumentsStatusByActionPath,
   zPatchDatasetsByDatasetIdDocumentsStatusByActionResponse,
   zPatchDatasetsByDatasetIdMetadataByMetadataIdBody,
@@ -117,8 +123,10 @@ import {
   zPostConversationsByCIdNamePath,
   zPostConversationsByCIdNameResponse,
   zPostDatasetsBody,
+  zPostDatasetsByDatasetIdDocumentCreateByFile2Body,
   zPostDatasetsByDatasetIdDocumentCreateByFile2Path,
   zPostDatasetsByDatasetIdDocumentCreateByFile2Response,
+  zPostDatasetsByDatasetIdDocumentCreateByFileBody,
   zPostDatasetsByDatasetIdDocumentCreateByFilePath,
   zPostDatasetsByDatasetIdDocumentCreateByFileResponse,
   zPostDatasetsByDatasetIdDocumentCreateByText2Body,
@@ -136,8 +144,10 @@ import {
   zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse,
   zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath,
   zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Body,
   zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Path,
   zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileBody,
   zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFilePath,
   zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponse,
   zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Body,
@@ -160,8 +170,10 @@ import {
   zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse,
   zPostDatasetsByDatasetIdMetadataPath,
   zPostDatasetsByDatasetIdMetadataResponse,
+  zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunBody,
   zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunPath,
   zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse,
+  zPostDatasetsByDatasetIdPipelineRunBody,
   zPostDatasetsByDatasetIdPipelineRunPath,
   zPostDatasetsByDatasetIdPipelineRunResponse,
   zPostDatasetsByDatasetIdRetrieveBody,
@@ -361,6 +373,7 @@ export const get4 = oc
     summary: 'List annotations for the application',
     tags: ['service_api'],
   })
+  .input(z.object({ query: zGetAppsAnnotationsQuery.optional() }))
   .output(zGetAppsAnnotationsResponse)
 
 /**
@@ -703,11 +716,11 @@ export const binding = {
 }
 
 /**
- * Unbind a tag from a dataset
+ * Unbind tags from a dataset
  */
 export const post11 = oc
   .route({
-    description: 'Unbind a tag from a dataset',
+    description: 'Unbind tags from a dataset',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsTagsUnbinding',
@@ -812,7 +825,12 @@ export const post13 = oc
     path: '/datasets/{dataset_id}/document/create-by-file',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zPostDatasetsByDatasetIdDocumentCreateByFilePath }))
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentCreateByFileBody,
+      params: zPostDatasetsByDatasetIdDocumentCreateByFilePath,
+    }),
+  )
   .output(zPostDatasetsByDatasetIdDocumentCreateByFileResponse)
 
 /**
@@ -827,7 +845,12 @@ export const post14 = oc
     path: '/datasets/{dataset_id}/document/create_by_file',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zPostDatasetsByDatasetIdDocumentCreateByFile2Path }))
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentCreateByFile2Body,
+      params: zPostDatasetsByDatasetIdDocumentCreateByFile2Path,
+    }),
+  )
   .output(zPostDatasetsByDatasetIdDocumentCreateByFile2Response)
 
 export const createByFile = {
@@ -967,7 +990,12 @@ export const patch2 = oc
     summary: 'Batch update document status',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zPatchDatasetsByDatasetIdDocumentsStatusByActionPath }))
+  .input(
+    z.object({
+      body: zPatchDatasetsByDatasetIdDocumentsStatusByActionBody,
+      params: zPatchDatasetsByDatasetIdDocumentsStatusByActionPath,
+    }),
+  )
   .output(zPatchDatasetsByDatasetIdDocumentsStatusByActionResponse)
 
 export const byAction2 = {
@@ -1242,7 +1270,12 @@ export const post22 = oc
     path: '/datasets/{dataset_id}/documents/{document_id}/update-by-file',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFilePath }))
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileBody.optional(),
+      params: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFilePath,
+    }),
+  )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponse)
 
 /**
@@ -1261,7 +1294,12 @@ export const post23 = oc
     path: '/datasets/{dataset_id}/documents/{document_id}/update_by_file',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Path }))
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Body.optional(),
+      params: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Path,
+    }),
+  )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response)
 
 export const updateByFile = {
@@ -1347,7 +1385,12 @@ export const get13 = oc
     path: '/datasets/{dataset_id}/documents/{document_id}',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdPath }))
+  .input(
+    z.object({
+      params: zGetDatasetsByDatasetIdDocumentsByDocumentIdPath,
+      query: zGetDatasetsByDatasetIdDocumentsByDocumentIdQuery.optional(),
+    }),
+  )
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdResponse)
 
 /**
@@ -1362,7 +1405,12 @@ export const patch4 = oc
     path: '/datasets/{dataset_id}/documents/{document_id}',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdPath }))
+  .input(
+    z.object({
+      body: zPatchDatasetsByDatasetIdDocumentsByDocumentIdBody.optional(),
+      params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdPath,
+    }),
+  )
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdResponse)
 
 export const byDocumentId = {
@@ -1387,7 +1435,12 @@ export const get14 = oc
     path: '/datasets/{dataset_id}/documents',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsPath }))
+  .input(
+    z.object({
+      params: zGetDatasetsByDatasetIdDocumentsPath,
+      query: zGetDatasetsByDatasetIdDocumentsQuery.optional(),
+    }),
+  )
   .output(zGetDatasetsByDatasetIdDocumentsResponse)
 
 export const documents = {
@@ -1611,7 +1664,12 @@ export const post29 = oc
     summary: 'Resource for getting datasource plugins',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunPath }))
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunBody,
+      params: zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunPath,
+    }),
+  )
   .output(zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse)
 
 export const run = {
@@ -1645,7 +1703,12 @@ export const post30 = oc
     summary: 'Resource for running a rag pipeline',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zPostDatasetsByDatasetIdPipelineRunPath }))
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdPipelineRunBody,
+      params: zPostDatasetsByDatasetIdPipelineRunPath,
+    }),
+  )
   .output(zPostDatasetsByDatasetIdPipelineRunResponse)
 
 export const run2 = {
@@ -1798,6 +1861,7 @@ export const get20 = oc
     summary: 'Resource for getting datasets',
     tags: ['service_api'],
   })
+  .input(z.object({ query: zGetDatasetsQuery.optional() }))
   .output(zGetDatasetsResponse)
 
 /**
@@ -2178,10 +2242,7 @@ export const get30 = oc
     tags: ['service_api'],
   })
   .input(
-    z.object({
-      params: zGetWorkflowByTaskIdEventsPath,
-      query: zGetWorkflowByTaskIdEventsQuery.optional(),
-    }),
+    z.object({ params: zGetWorkflowByTaskIdEventsPath, query: zGetWorkflowByTaskIdEventsQuery }),
   )
   .output(zGetWorkflowByTaskIdEventsResponse)
 

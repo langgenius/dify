@@ -137,36 +137,40 @@ vi.mock('../hooks/use-child-segment-data', () => ({
   },
 }))
 
-vi.mock('../components/menu-bar', () => ({
-  default: ({ totalText, onInputChange, inputValue, isLoading, onSelectedAll, onChangeStatus }: {
-    totalText: string
-    onInputChange: (value: string) => void
-    inputValue: string
-    isLoading: boolean
-    onSelectedAll?: () => void
-    onChangeStatus?: (item: { value: string | number, name: string }) => void
-  }) => (
-    <div data-testid="menu-bar">
-      <span data-testid="total-text">{totalText}</span>
-      <input
-        data-testid="search-input"
-        value={inputValue}
-        onChange={e => onInputChange(e.target.value)}
-        disabled={isLoading}
-      />
-      {onSelectedAll && (
-        <button data-testid="select-all-button" onClick={onSelectedAll}>Select All</button>
-      )}
-      {onChangeStatus && (
-        <>
-          <button data-testid="status-enabled" onClick={() => onChangeStatus({ value: 1, name: 'Enabled' })}>Enabled</button>
-          <button data-testid="status-disabled" onClick={() => onChangeStatus({ value: 0, name: 'Disabled' })}>Disabled</button>
-          <button data-testid="status-all" onClick={() => onChangeStatus({ value: 'all', name: 'All' })}>All</button>
-        </>
-      )}
-    </div>
-  ),
-}))
+vi.mock('../components/menu-bar', async () => {
+  const { Checkbox } = await import('@langgenius/dify-ui/checkbox')
+
+  return {
+    default: ({ hasSelectableSegments, totalText, onInputChange, inputValue, isLoading, onChangeStatus }: {
+      hasSelectableSegments: boolean
+      totalText: string
+      onInputChange: (value: string) => void
+      inputValue: string
+      isLoading: boolean
+      onChangeStatus?: (item: { value: string | number, name: string }) => void
+    }) => (
+      <div data-testid="menu-bar">
+        <span data-testid="total-text">{totalText}</span>
+        <input
+          data-testid="search-input"
+          value={inputValue}
+          onChange={e => onInputChange(e.target.value)}
+          disabled={isLoading}
+        />
+        {hasSelectableSegments
+          ? <Checkbox parent data-testid="select-all-button" aria-label="Select All" disabled={isLoading} />
+          : <span data-testid="select-all-spacer" aria-hidden />}
+        {onChangeStatus && (
+          <>
+            <button data-testid="status-enabled" onClick={() => onChangeStatus({ value: 1, name: 'Enabled' })}>Enabled</button>
+            <button data-testid="status-disabled" onClick={() => onChangeStatus({ value: 0, name: 'Disabled' })}>Disabled</button>
+            <button data-testid="status-all" onClick={() => onChangeStatus({ value: 'all', name: 'All' })}>All</button>
+          </>
+        )}
+      </div>
+    ),
+  }
+})
 
 vi.mock('../components/drawer-group', () => ({
   DrawerGroup: () => <div data-testid="drawer-group" />,
@@ -199,18 +203,22 @@ vi.mock('@/app/components/base/divider', () => ({
   default: () => <hr data-testid="divider" />,
 }))
 
-vi.mock('@/app/components/base/pagination', () => ({
-  default: ({ current, total, onChange, onLimitChange }: {
-    current: number
-    total: number
-    onChange: (page: number) => void
-    onLimitChange: (limit: number) => void
+vi.mock('@langgenius/dify-ui/pagination', () => ({
+  Pagination: ({ page, totalPages, onPageChange, pageSize }: {
+    page: number
+    totalPages: number
+    onPageChange: (page: number) => void
+    pageSize?: {
+      onValueChange: (limit: number) => void
+    }
   }) => (
     <div data-testid="pagination">
-      <span data-testid="current-page">{current}</span>
-      <span data-testid="total-items">{total}</span>
-      <button data-testid="next-page" onClick={() => onChange(current + 1)}>Next</button>
-      <button data-testid="change-limit" onClick={() => onLimitChange(20)}>Change Limit</button>
+      <span data-testid="current-page">{page - 1}</span>
+      <span data-testid="total-pages">{totalPages}</span>
+      <button data-testid="next-page" onClick={() => onPageChange(page + 1)}>Next</button>
+      {pageSize && (
+        <button data-testid="change-limit" onClick={() => pageSize.onValueChange(20)}>Change Limit</button>
+      )}
     </div>
   ),
 }))
@@ -751,6 +759,17 @@ describe('Batch Action Callbacks', () => {
     })
   })
 
+  it('should not render select all when there are no current page segments', () => {
+    mockSegmentListData.data = []
+    mockSegmentListData.total = 0
+
+    render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
+
+    expect(screen.queryByTestId('select-all-button')).not.toBeInTheDocument()
+    expect(screen.getByTestId('select-all-spacer')).toBeInTheDocument()
+    expect(screen.queryByTestId('batch-action')).not.toBeInTheDocument()
+  })
+
   it('should call onChangeSwitch with true when batch enable is clicked', async () => {
     render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
@@ -1165,15 +1184,14 @@ describe('Inline callback and hook initialization coverage', () => {
     })
   })
 
-  // Covers paginationTotal in full-doc mode
-  it('should compute pagination total from child chunk data in full-doc mode', () => {
+  it('should compute pagination pages from child chunk data in full-doc mode', () => {
     mockDocForm.current = ChunkingModeEnum.parentChild
     mockParentMode.current = 'full-doc'
     mockChildSegmentListData.total = 42
 
     render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-    expect(screen.getByTestId('total-items'))!.toHaveTextContent('42')
+    expect(screen.getByTestId('total-pages'))!.toHaveTextContent('5')
   })
 
   // Covers search input change

@@ -15,6 +15,7 @@ import type {
 import type { ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Emoji } from '@/app/components/tools/types'
 import type { DataSet } from '@/models/datasets'
+import type { FlowType } from '@/types/common'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueries, useQueryClient } from '@tanstack/react-query'
@@ -53,6 +54,7 @@ import {
   useGetToolIcon,
   useNodesMetaData,
 } from '../hooks'
+import { useHooksStore } from '../hooks-store/store'
 import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
 import { IndexMethodEnum } from '../nodes/knowledge-base/types'
 import { getLLMModelIssue, isLLMModelProviderInstalled, LLMModelIssueCode } from '../nodes/llm/utils'
@@ -84,6 +86,18 @@ export type ChecklistItem = {
   pluginUniqueIdentifier?: string
 }
 
+type CheckValidExtraData = Record<string, unknown> | undefined
+
+const withFlowType = (moreDataForCheckValid: CheckValidExtraData, flowType?: FlowType) => {
+  if (!flowType)
+    return moreDataForCheckValid
+
+  return {
+    ...(moreDataForCheckValid ?? {}),
+    flowType,
+  }
+}
+
 const START_NODE_TYPES: BlockEnum[] = [
   BlockEnum.Start,
   BlockEnum.TriggerSchedule,
@@ -91,7 +105,44 @@ const START_NODE_TYPES: BlockEnum[] = [
   BlockEnum.TriggerPlugin,
 ]
 
-export const useChecklist = (nodes: Node[], edges: Edge[]) => {
+const getDuplicateEndOutputMessages = (
+  nodes: Node[],
+  t: ReturnType<typeof useTranslation>['t'],
+) => {
+  const variableOccurrences = new Map<string, string[]>()
+
+  nodes.forEach((node) => {
+    if (node.type !== CUSTOM_NODE || node.data.type !== BlockEnum.End)
+      return
+
+    const outputs = ((node.data as { outputs?: Array<{ variable?: string }> }).outputs) || []
+    outputs.forEach((output) => {
+      const variable = output.variable?.trim()
+      if (!variable)
+        return
+
+      const occurrences = variableOccurrences.get(variable) || []
+      occurrences.push(node.id)
+      variableOccurrences.set(variable, occurrences)
+    })
+  })
+
+  const nodeMessages = new Map<string, string[]>()
+  variableOccurrences.forEach((nodeIds, variable) => {
+    if (nodeIds.length <= 1)
+      return
+
+    Array.from(new Set(nodeIds)).forEach((nodeId) => {
+      const messages = nodeMessages.get(nodeId) || []
+      messages.push(t('errorMsg.duplicateOutputVariable', { ns: 'workflow', variable }))
+      nodeMessages.set(nodeId, messages)
+    })
+  })
+
+  return nodeMessages
+}
+
+export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?: FlowType }) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
   const { nodesMap: nodesExtraData } = useNodesMetaData()
@@ -179,12 +230,13 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const needWarningNodes = useMemo<ChecklistItem[]>(() => {
     const list: ChecklistItem[] = []
     const filteredNodes = nodes.filter(node => node.type === CUSTOM_NODE)
+    const duplicateEndOutputMessages = getDuplicateEndOutputMessages(filteredNodes, t)
     const { validNodes } = getValidTreeNodes(filteredNodes, edges)
     const installedPluginIds = new Set(modelProviders.map(p => extractPluginId(p.provider)))
 
     for (let i = 0; i < filteredNodes.length; i++) {
       const node = filteredNodes[i]
-      let moreDataForCheckValid
+      let moreDataForCheckValid: CheckValidExtraData
       let usedVars: ValueSelector[] = []
 
       if (node!.data.type === BlockEnum.Tool)
@@ -235,7 +287,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
           }
 
           if (validator) {
-            const validationError = validator(checkData, t, moreDataForCheckValid).errorMessage
+            const validationError = validator(checkData, t, withFlowType(moreDataForCheckValid, options?.flowType)).errorMessage
             if (validationError)
               errorMessages.push(validationError)
           }
@@ -253,10 +305,13 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
           }
           if (hasInvalidVar)
             errorMessages.push(t('errorMsg.invalidVariable', { ns: 'workflow' }))
+
+          errorMessages.push(...(duplicateEndOutputMessages.get(node!.id) || []))
         }
 
         const isStartNodeMeta = nodesExtraData?.[node!.data.type as BlockEnum]?.metaData.isStart ?? false
-        const canSkipConnectionCheck = shouldCheckStartNode ? isStartNodeMeta : true
+        const isStartPlaceholderNode = node!.data.type === BlockEnum.StartPlaceholder
+        const canSkipConnectionCheck = shouldCheckStartNode ? isStartNodeMeta || isStartPlaceholderNode : true
 
         const isUnconnected = !validNodes.some(n => n.id === node!.id)
         const shouldShowError = errorMessages.length > 0 || (isUnconnected && !canSkipConnectionCheck)
@@ -283,7 +338,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     // Check for start nodes (including triggers)
     if (shouldCheckStartNode) {
       const startNodesFiltered = nodes.filter(node => START_NODE_TYPES.includes(node.data.type as BlockEnum))
-      if (startNodesFiltered.length === 0) {
+      const hasStartPlaceholderNode = nodes.some(node => node.data.type === BlockEnum.StartPlaceholder)
+      if (startNodesFiltered.length === 0 && !hasStartPlaceholderNode) {
         list.push({
           id: 'start-node-required',
           type: BlockEnum.Start,
@@ -309,7 +365,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     })
 
     return list
-  }, [nodes, edges, shouldCheckStartNode, nodesExtraData, buildInTools, customTools, workflowTools, mcpTools, language, dataSourceList, triggerPlugins, getToolIcon, strategyProviders, getCheckData, t, map, modelProviders])
+  }, [nodes, edges, shouldCheckStartNode, nodesExtraData, buildInTools, customTools, workflowTools, mcpTools, language, dataSourceList, triggerPlugins, getToolIcon, strategyProviders, getCheckData, t, map, modelProviders, options?.flowType])
 
   useEffect(() => {
     const currentChecklistItems = workflowStore.getState().checklistItems
@@ -339,6 +395,7 @@ export const useChecklistBeforePublish = () => {
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
+  const flowType = useHooksStore(s => s.configsMap?.flowType)
   const appMode = useAppStore.getState().appDetail?.mode
   const shouldCheckStartNode = appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
 
@@ -386,6 +443,7 @@ export const useChecklistBeforePublish = () => {
     } = workflowStore.getState()
     const nodes = getNodes()
     const filteredNodes = nodes.filter(node => node.type === CUSTOM_NODE)
+    const duplicateEndOutputMessages = getDuplicateEndOutputMessages(filteredNodes, t)
     const { validNodes, maxDepth } = getValidTreeNodes(filteredNodes, edges)
 
     if (maxDepth > MAX_TREE_DEPTH) {
@@ -456,7 +514,7 @@ export const useChecklistBeforePublish = () => {
     const map = getNodesAvailableVarList(nodes)
     for (let i = 0; i < filteredNodes.length; i++) {
       const node = filteredNodes[i]
-      let moreDataForCheckValid
+      let moreDataForCheckValid: CheckValidExtraData
       let usedVars: ValueSelector[] = []
       if (node!.data.type === BlockEnum.Tool)
         moreDataForCheckValid = getToolCheckParams(node!.data as ToolNodeType, buildInTools || [], customTools || [], workflowTools || [], language)
@@ -493,10 +551,16 @@ export const useChecklistBeforePublish = () => {
       }
 
       const checkData = getCheckData(node!.data, datasets, embeddingProviderModelMap)
-      const { errorMessage } = nodesExtraData![node!.data.type as BlockEnum].checkValid(checkData, t, moreDataForCheckValid)
+      const { errorMessage } = nodesExtraData![node!.data.type as BlockEnum].checkValid(checkData, t, withFlowType(moreDataForCheckValid, flowType))
 
       if (errorMessage) {
         toast.error(`[${node!.data.title}] ${errorMessage}`)
+        return false
+      }
+
+      const duplicateOutputMessages = duplicateEndOutputMessages.get(node!.id) || []
+      if (duplicateOutputMessages.length > 0) {
+        toast.error(`[${node!.data.title}] ${duplicateOutputMessages[0]}`)
         return false
       }
 
@@ -550,7 +614,7 @@ export const useChecklistBeforePublish = () => {
     }
 
     return true
-  }, [store, workflowStore, getNodesAvailableVarList, shouldCheckStartNode, nodesExtraData, t, updateDatasetsDetail, buildInTools, customTools, workflowTools, language, getCheckData, queryClient, strategyProviders, modelProviders])
+  }, [store, workflowStore, getNodesAvailableVarList, shouldCheckStartNode, nodesExtraData, t, updateDatasetsDetail, buildInTools, customTools, workflowTools, language, getCheckData, queryClient, strategyProviders, modelProviders, flowType])
 
   return {
     handleCheckBeforePublish,
@@ -561,7 +625,8 @@ export const useWorkflowRunValidation = () => {
   const { t } = useTranslation()
   const nodes = useNodes()
   const edges = useEdges<CommonEdgeType>()
-  const needWarningNodes = useChecklist(nodes, edges)
+  const flowType = useHooksStore(s => s.configsMap?.flowType)
+  const needWarningNodes = useChecklist(nodes, edges, { flowType })
 
   const validateBeforeRun = useCallback(() => {
     if (needWarningNodes.length > 0) {

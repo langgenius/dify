@@ -18,6 +18,7 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
@@ -25,7 +26,6 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import Loading from '@/app/components/base/loading'
-import Pagination from '@/app/components/base/pagination'
 import docStyle from '@/app/components/datasets/documents/detail/completed/style.module.css'
 import DatasetDetailContext from '@/context/dataset-detail'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -44,9 +44,9 @@ import ModifyRetrievalModal from './modify-retrieval-modal'
 
 const limit = 10
 
-type Props = {
+type Props = Readonly<{
   datasetId: string
-}
+}>
 
 const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   const { t } = useTranslation()
@@ -63,6 +63,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   const { data: recordsRes, refetch: recordsRefetch, isLoading: isRecordsLoading } = useDatasetTestingRecords(datasetId, { limit, page: currPage + 1 })
 
   const total = recordsRes?.total || 0
+  const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1
 
   const { dataset: currentDataset } = useContext(DatasetDetailContext)
   const isExternal = currentDataset?.provider === 'external'
@@ -104,7 +105,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
 
   const renderEmptyState = () => (
     <div className="flex h-full flex-col items-center justify-center rounded-tl-2xl bg-background-body px-4 py-3">
-      <div className={cn(docStyle.commonIcon, docStyle.targetIcon, 'h-14! w-14! bg-text-quaternary!')} />
+      <div className={cn(docStyle.commonIcon, docStyle.targetIcon, 'size-14! bg-text-quaternary!')} />
       <div className="mt-3 text-[13px] text-text-quaternary">
         {t('hit.emptyTip', { ns: 'datasetHitTesting' })}
       </div>
@@ -121,7 +122,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   }, [isMobile, setShowRightPanel])
 
   return (
-    <div className="relative flex h-full w-full gap-x-6 overflow-y-auto pl-6">
+    <div className="relative flex size-full gap-x-6 overflow-y-auto pl-6">
       <div className="flex min-w-0 flex-1 flex-col py-3">
         <div className="mb-4 flex flex-col justify-center">
           <h1 className="text-base font-semibold text-text-primary">{t('title', { ns: 'datasetHitTesting' })}</h1>
@@ -151,7 +152,19 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
           <>
             <Records records={recordsRes?.data} onClickRecord={handleClickRecord} />
             {(total && total > limit)
-              ? <Pagination current={currPage} onChange={setCurrPage} total={total} limit={limit} />
+              ? (
+                  <Pagination
+                    page={currPage + 1}
+                    totalPages={totalPages}
+                    onPageChange={page => setCurrPage(page - 1)}
+                    labels={{
+                      previous: t('pagination.previous', { ns: 'common' }),
+                      next: t('pagination.next', { ns: 'common' }),
+                      editPageNumber: (page, totalPages) => t('pagination.editPageNumber', { ns: 'common', page, totalPages }),
+                      pageNumberInput: t('pagination.pageNumber', { ns: 'common' }),
+                    }}
+                  />
+                )
               : null}
           </>
         )}

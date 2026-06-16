@@ -18,7 +18,7 @@ import TextToSpeech from '@/app/components/base/features/new-feature-panel/text-
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
-type Props = {
+type Props = Readonly<{
   show: boolean
   isChatMode: boolean
   disabled: boolean
@@ -29,7 +29,7 @@ type Props = {
   promptVariables?: PromptVariable[]
   workflowVariables?: InputVar[]
   onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
-}
+}>
 
 const NewFeaturePanel = ({
   show,
@@ -62,7 +62,7 @@ const NewFeaturePanel = ({
           </div>
           <DrawerCloseButton
             aria-label={t('operation.close', { ns: 'common' })}
-            className="h-8 w-8 p-2"
+            className="size-8 p-2"
           />
         </div>
         {/* list */}

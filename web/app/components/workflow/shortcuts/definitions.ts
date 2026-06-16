@@ -1,18 +1,16 @@
 import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
 
-export type WorkflowShortcutId
+export type WorkflowCanvasShortcutId
   = | 'workflow.delete'
     | 'workflow.copy'
     | 'workflow.paste'
     | 'workflow.duplicate'
-    | 'workflow.open-test-run-menu'
     | 'workflow.undo'
     | 'workflow.redo'
     | 'workflow.pointer-mode'
     | 'workflow.hand-mode'
     | 'workflow.comment-mode'
     | 'workflow.organize'
-    | 'workflow.toggle-maximize'
     | 'workflow.zoom-to-fit'
     | 'workflow.zoom-to-100'
     | 'workflow.zoom-to-50'
@@ -20,25 +18,23 @@ export type WorkflowShortcutId
     | 'workflow.zoom-in'
     | 'workflow.download-import-log'
     | 'workflow.dim-other-nodes'
-    | 'workflow.json-schema-confirm'
-    | 'workflow.version-history'
 
-export type WorkflowHotkeyMeta = {
-  id: WorkflowShortcutId
-  scope: 'workflow'
+export type WorkflowCanvasHotkeyMeta = {
+  id: WorkflowCanvasShortcutId
+  scope: 'workflow-canvas'
   name: string
   description: string
 }
 
-export type WorkflowShortcutDefinition = {
-  id: WorkflowShortcutId
+export type WorkflowCanvasShortcutDefinition = {
+  id: WorkflowCanvasShortcutId
   hotkeys: readonly RegisterableHotkey[]
   displayHotkey?: RegisterableHotkey | (string & {})
   name: string
   description: string
 }
 
-export const WORKFLOW_SHORTCUTS: Record<WorkflowShortcutId, WorkflowShortcutDefinition> = {
+export const WORKFLOW_CANVAS_SHORTCUTS: Record<WorkflowCanvasShortcutId, WorkflowCanvasShortcutDefinition> = {
   'workflow.delete': {
     id: 'workflow.delete',
     hotkeys: ['Delete', 'Backspace'],
@@ -63,12 +59,6 @@ export const WORKFLOW_SHORTCUTS: Record<WorkflowShortcutId, WorkflowShortcutDefi
     hotkeys: ['Mod+D'],
     name: 'Duplicate',
     description: 'Duplicate selected workflow nodes',
-  },
-  'workflow.open-test-run-menu': {
-    id: 'workflow.open-test-run-menu',
-    hotkeys: ['Alt+R'],
-    name: 'Open test run menu',
-    description: 'Open the workflow test run menu',
   },
   'workflow.undo': {
     id: 'workflow.undo',
@@ -106,12 +96,6 @@ export const WORKFLOW_SHORTCUTS: Record<WorkflowShortcutId, WorkflowShortcutDefi
     hotkeys: ['Mod+O'],
     name: 'Organize blocks',
     description: 'Automatically organize workflow blocks',
-  },
-  'workflow.toggle-maximize': {
-    id: 'workflow.toggle-maximize',
-    hotkeys: ['F'],
-    name: 'Toggle maximize',
-    description: 'Maximize or minimize the workflow canvas',
   },
   'workflow.zoom-to-fit': {
     id: 'workflow.zoom-to-fit',
@@ -157,21 +141,9 @@ export const WORKFLOW_SHORTCUTS: Record<WorkflowShortcutId, WorkflowShortcutDefi
     name: 'Dim other nodes',
     description: 'Dim nodes outside the current workflow selection',
   },
-  'workflow.json-schema-confirm': {
-    id: 'workflow.json-schema-confirm',
-    hotkeys: ['Mod+Enter'],
-    name: 'Confirm JSON schema edit',
-    description: 'Confirm the current JSON schema edit',
-  },
-  'workflow.version-history': {
-    id: 'workflow.version-history',
-    hotkeys: ['Mod+Shift+H'],
-    name: 'Version history',
-    description: 'Open workflow version history',
-  },
 }
 
-export const getWorkflowShortcutDisplayHotkey = (id: WorkflowShortcutId): RegisterableHotkey | (string & {}) => {
-  const shortcut = WORKFLOW_SHORTCUTS[id]
+export const getWorkflowCanvasShortcutDisplayHotkey = (id: WorkflowCanvasShortcutId): RegisterableHotkey | (string & {}) => {
+  const shortcut = WORKFLOW_CANVAS_SHORTCUTS[id]
   return shortcut.displayHotkey ?? shortcut.hotkeys[0]!
 }

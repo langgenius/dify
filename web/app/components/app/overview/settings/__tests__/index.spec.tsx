@@ -53,9 +53,16 @@ const mockSetShowPricingModal = vi.fn()
 const mockSetShowAccountSettingModal = vi.fn()
 const mockUseProviderContext = vi.fn<() => ProviderContextState>()
 
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: true,
+  }
+})
+
 const buildModalContext = (): ModalContextState => ({
   setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  setShowApiBasedExtensionModal: vi.fn(),
   setShowModerationSettingModal: vi.fn(),
   setShowExternalDataToolModal: vi.fn(),
   setShowPricingModal: mockSetShowPricingModal,

@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react'
-import type { Props as PaginationProps } from '@/app/components/base/pagination'
 import type { SimpleDocumentDetail } from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen } from '@testing-library/react'
@@ -8,6 +7,14 @@ import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import DocumentList from '../../list'
 
 const mockPush = vi.fn()
+
+type PaginationProps = {
+  current: number
+  onChange: (page: number) => void
+  total: number
+  limit?: number
+  onLimitChange?: (limit: number) => void
+}
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -189,11 +196,9 @@ describe('DocumentList', () => {
       }
       render(<DocumentList {...props} />, { wrapper: createWrapper() })
 
-      // When checked, checkbox should have a check icon (svg) inside
-      props.selectedIds.forEach((id) => {
-        const checkIcon = screen.getByTestId(`check-icon-doc-row-${id}`)
-        expect(checkIcon)!.toBeInTheDocument()
-      })
+      expect(screen.getByRole('checkbox', { name: 'Document 1.txt' })).toHaveAttribute('aria-checked', 'true')
+      expect(screen.getByRole('checkbox', { name: 'Document 2.txt' })).toHaveAttribute('aria-checked', 'true')
+      expect(screen.getByRole('checkbox', { name: 'Document 3.txt' })).toHaveAttribute('aria-checked', 'true')
     })
 
     it('should show indeterminate state when some are selected', () => {

@@ -73,7 +73,7 @@
   "title": "Logs",
   "triggerBy.appRun": "WebApp",
   "triggerBy.debugging": "Debugging",
-  "triggerBy.plugin": "Plugin",
+  "triggerBy.plugin": "Integratie",
   "triggerBy.ragPipelineDebugging": "RAG Debugging",
   "triggerBy.ragPipelineRun": "RAG Pipeline",
   "triggerBy.schedule": "Schedule",

@@ -1,13 +1,13 @@
 'use client'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Textarea from '@/app/components/base/textarea'
 
-type Props = {
+type Props = Readonly<{
   data?: any
   value: string
   onChange: (value: string) => void
-}
+}>
 
 const MCPServerParamItem = ({
   data,
@@ -25,12 +25,12 @@ const MCPServerParamItem = ({
         <div className="max-w-full min-w-0 system-xs-medium wrap-break-word text-text-tertiary">{data.type}</div>
       </div>
       <Textarea
+        aria-label={data.label}
         className="h-8 resize-none"
         value={value}
         placeholder={t('mcp.server.modal.parametersPlaceholder', { ns: 'tools' })}
-        onChange={e => onChange(e.target.value)}
-      >
-      </Textarea>
+        onValueChange={value => onChange(value)}
+      />
     </div>
   )
 }

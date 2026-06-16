@@ -2,6 +2,7 @@ import logging
 import os
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import override
 
 from langfuse import Langfuse
 from langfuse.api import (
@@ -13,6 +14,8 @@ from langfuse.api import (
     TraceBody,
 )
 from langfuse.api.commons.types.usage import Usage
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
 from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
@@ -52,12 +55,39 @@ class LangFuseDataTrace(BaseTraceInstance):
         langfuse_config: LangfuseConfig,
     ):
         super().__init__(langfuse_config)
+        # Isolated TracerProvider prevents the langfuse v3 SDK from attaching its
+        # SpanProcessor to the global OpenTelemetry TracerProvider, which would
+        # otherwise siphon every Flask/Celery/SQLAlchemy span in the process into
+        # this tenant's Langfuse project. See langfuse upgrade guide v2 -> v3.
+        self._tracer_provider: TracerProvider | None = TracerProvider(
+            resource=Resource.create({"service.name": "dify-langfuse-app-trace"}),
+        )
         self.langfuse_client = Langfuse(
             public_key=langfuse_config.public_key,
             secret_key=langfuse_config.secret_key,
             host=langfuse_config.host,
+            tracer_provider=self._tracer_provider,
         )
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
+
+    def close(self) -> None:
+        """Flush and shut down the isolated TracerProvider.
+
+        Called explicitly when the trace instance is evicted from the cache, or
+        implicitly via ``__del__`` on garbage collection. Idempotent.
+        """
+        provider = getattr(self, "_tracer_provider", None)
+        if provider is None:
+            return
+        try:
+            provider.shutdown()
+        except Exception:
+            logger.debug("Failed to shut down Langfuse TracerProvider", exc_info=True)
+        finally:
+            self._tracer_provider = None
+
+    def __del__(self) -> None:
+        self.close()
 
     @staticmethod
     def _get_completion_start_time(
@@ -77,21 +107,25 @@ class LangFuseDataTrace(BaseTraceInstance):
 
         return start_time + timedelta(seconds=ttft_seconds)
 
+    @override
     def trace(self, trace_info: BaseTraceInfo):
-        if isinstance(trace_info, WorkflowTraceInfo):
-            self.workflow_trace(trace_info)
-        if isinstance(trace_info, MessageTraceInfo):
-            self.message_trace(trace_info)
-        if isinstance(trace_info, ModerationTraceInfo):
-            self.moderation_trace(trace_info)
-        if isinstance(trace_info, SuggestedQuestionTraceInfo):
-            self.suggested_question_trace(trace_info)
-        if isinstance(trace_info, DatasetRetrievalTraceInfo):
-            self.dataset_retrieval_trace(trace_info)
-        if isinstance(trace_info, ToolTraceInfo):
-            self.tool_trace(trace_info)
-        if isinstance(trace_info, GenerateNameTraceInfo):
-            self.generate_name_trace(trace_info)
+        match trace_info:
+            case WorkflowTraceInfo():
+                self.workflow_trace(trace_info)
+            case MessageTraceInfo():
+                self.message_trace(trace_info)
+            case ModerationTraceInfo():
+                self.moderation_trace(trace_info)
+            case SuggestedQuestionTraceInfo():
+                self.suggested_question_trace(trace_info)
+            case DatasetRetrievalTraceInfo():
+                self.dataset_retrieval_trace(trace_info)
+            case ToolTraceInfo():
+                self.tool_trace(trace_info)
+            case GenerateNameTraceInfo():
+                self.generate_name_trace(trace_info)
+            case _:
+                pass
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
         trace_id = trace_info.trace_id or trace_info.workflow_run_id

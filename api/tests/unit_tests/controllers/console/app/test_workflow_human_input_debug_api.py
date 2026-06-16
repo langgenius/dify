@@ -39,12 +39,11 @@ def _patch_console_guards(monkeypatch: pytest.MonkeyPatch, account: Account, app
     monkeypatch.setattr(login_lib, "check_csrf_token", lambda *_, **__: None)
     monkeypatch.setattr(console_wraps, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
     monkeypatch.setattr(app_wraps, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
-    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
     monkeypatch.setattr(console_wraps.dify_config, "EDITION", "CLOUD")
     monkeypatch.delenv("INIT_PASSWORD", raising=False)
 
     # Avoid hitting the database when resolving the app model
-    monkeypatch.setattr(app_wraps, "_load_app_model", lambda _app_id: app_model)
+    monkeypatch.setattr(app_wraps, "_load_app_model_from_scoped_session", lambda _app_id: app_model)
 
 
 @dataclass

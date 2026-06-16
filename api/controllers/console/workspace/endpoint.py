@@ -12,12 +12,18 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    is_admin_or_owner_required,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user_id,
+)
 from core.plugin.impl.exc import PluginPermissionDeniedError
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
 from services.plugin.endpoint_service import EndpointService
 
 
@@ -55,11 +61,15 @@ class EndpointCreateResponse(BaseModel):
 
 
 class EndpointListResponse(BaseModel):
-    endpoints: list[dict[str, Any]] = Field(description="Endpoint information")
+    endpoints: list[dict[str, Any]] = Field(
+        description="Endpoint information",
+    )
 
 
 class PluginEndpointListResponse(BaseModel):
-    endpoints: list[dict[str, Any]] = Field(description="Endpoint information")
+    endpoints: list[dict[str, Any]] = Field(
+        description="Endpoint information",
+    )
 
 
 class EndpointDeleteResponse(BaseModel):
@@ -96,17 +106,15 @@ register_schema_models(
 )
 
 
-def _create_endpoint() -> dict[str, bool]:
-    """Create a plugin endpoint for the current workspace."""
-    user, tenant_id = current_account_with_tenant()
-
+def _create_endpoint(tenant_id: str, user_id: str) -> dict[str, bool]:
+    """Create a plugin endpoint for the injected workspace and user."""
     args = EndpointCreatePayload.model_validate(console_ns.payload)
 
     try:
         return {
             "success": EndpointService.create_endpoint(
                 tenant_id=tenant_id,
-                user_id=user.id,
+                user_id=user_id,
                 plugin_unique_identifier=args.plugin_unique_identifier,
                 name=args.name,
                 settings=args.settings,
@@ -116,16 +124,14 @@ def _create_endpoint() -> dict[str, bool]:
         raise ValueError(e.description) from e
 
 
-def _update_endpoint(endpoint_id: str) -> dict[str, bool]:
+def _update_endpoint(tenant_id: str, user_id: str, endpoint_id: str) -> dict[str, bool]:
     """Update a plugin endpoint identified by the canonical path parameter."""
-    user, tenant_id = current_account_with_tenant()
-
     args = EndpointUpdatePayload.model_validate(console_ns.payload)
 
     return {
         "success": EndpointService.update_endpoint(
             tenant_id=tenant_id,
-            user_id=user.id,
+            user_id=user_id,
             endpoint_id=endpoint_id,
             name=args.name,
             settings=args.settings,
@@ -133,14 +139,12 @@ def _update_endpoint(endpoint_id: str) -> dict[str, bool]:
     }
 
 
-def _delete_endpoint(endpoint_id: str) -> dict[str, bool]:
+def _delete_endpoint(tenant_id: str, user_id: str, endpoint_id: str) -> dict[str, bool]:
     """Delete a plugin endpoint identified by the canonical path parameter."""
-    user, tenant_id = current_account_with_tenant()
-
     return {
         "success": EndpointService.delete_endpoint(
             tenant_id=tenant_id,
-            user_id=user.id,
+            user_id=user_id,
             endpoint_id=endpoint_id,
         )
     }
@@ -163,8 +167,10 @@ class EndpointCollectionApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
-        return _create_endpoint()
+    @with_current_user_id
+    @with_current_tenant_id
+    def post(self, tenant_id: str, user_id: str):
+        return _create_endpoint(tenant_id=tenant_id, user_id=user_id)
 
 
 @console_ns.route("/workspaces/current/endpoints/create")
@@ -189,15 +195,17 @@ class DeprecatedEndpointCreateApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
-        return _create_endpoint()
+    @with_current_user_id
+    @with_current_tenant_id
+    def post(self, tenant_id: str, user_id: str):
+        return _create_endpoint(tenant_id=tenant_id, user_id=user_id)
 
 
 @console_ns.route("/workspaces/current/endpoints/list")
 class EndpointListApi(Resource):
     @console_ns.doc("list_endpoints")
     @console_ns.doc(description="List plugin endpoints with pagination")
-    @console_ns.expect(console_ns.models[EndpointListQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(EndpointListQuery))
     @console_ns.response(
         200,
         "Success",
@@ -206,9 +214,9 @@ class EndpointListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        user, tenant_id = current_account_with_tenant()
-
+    @with_current_user_id
+    @with_current_tenant_id
+    def get(self, tenant_id: str, user_id: str):
         args = EndpointListQuery.model_validate(request.args.to_dict(flat=True))
 
         page = args.page
@@ -218,7 +226,7 @@ class EndpointListApi(Resource):
             {
                 "endpoints": EndpointService.list_endpoints(
                     tenant_id=tenant_id,
-                    user_id=user.id,
+                    user_id=user_id,
                     page=page,
                     page_size=page_size,
                 )
@@ -230,7 +238,7 @@ class EndpointListApi(Resource):
 class EndpointListForSinglePluginApi(Resource):
     @console_ns.doc("list_plugin_endpoints")
     @console_ns.doc(description="List endpoints for a specific plugin")
-    @console_ns.expect(console_ns.models[EndpointListForPluginQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(EndpointListForPluginQuery))
     @console_ns.response(
         200,
         "Success",
@@ -239,9 +247,9 @@ class EndpointListForSinglePluginApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        user, tenant_id = current_account_with_tenant()
-
+    @with_current_user_id
+    @with_current_tenant_id
+    def get(self, tenant_id: str, user_id: str):
         args = EndpointListForPluginQuery.model_validate(request.args.to_dict(flat=True))
 
         page = args.page
@@ -252,7 +260,7 @@ class EndpointListForSinglePluginApi(Resource):
             {
                 "endpoints": EndpointService.list_endpoints_for_single_plugin(
                     tenant_id=tenant_id,
-                    user_id=user.id,
+                    user_id=user_id,
                     plugin_id=plugin_id,
                     page=page,
                     page_size=page_size,
@@ -278,8 +286,10 @@ class EndpointItemApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def delete(self, id: str):
-        return _delete_endpoint(endpoint_id=id)
+    @with_current_user_id
+    @with_current_tenant_id
+    def delete(self, tenant_id: str, user_id: str, id: str):
+        return _delete_endpoint(tenant_id=tenant_id, user_id=user_id, endpoint_id=id)
 
     @console_ns.doc("update_endpoint")
     @console_ns.doc(description="Update a plugin endpoint")
@@ -295,8 +305,10 @@ class EndpointItemApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def patch(self, id: str):
-        return _update_endpoint(endpoint_id=id)
+    @with_current_user_id
+    @with_current_tenant_id
+    def patch(self, tenant_id: str, user_id: str, id: str):
+        return _update_endpoint(tenant_id=tenant_id, user_id=user_id, endpoint_id=id)
 
 
 @console_ns.route("/workspaces/current/endpoints/delete")
@@ -322,9 +334,11 @@ class DeprecatedEndpointDeleteApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
+    @with_current_user_id
+    @with_current_tenant_id
+    def post(self, tenant_id: str, user_id: str):
         args = EndpointIdPayload.model_validate(console_ns.payload)
-        return _delete_endpoint(endpoint_id=args.endpoint_id)
+        return _delete_endpoint(tenant_id=tenant_id, user_id=user_id, endpoint_id=args.endpoint_id)
 
 
 @console_ns.route("/workspaces/current/endpoints/update")
@@ -350,9 +364,11 @@ class DeprecatedEndpointUpdateApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
+    @with_current_user_id
+    @with_current_tenant_id
+    def post(self, tenant_id: str, user_id: str):
         args = LegacyEndpointUpdatePayload.model_validate(console_ns.payload)
-        return _update_endpoint(endpoint_id=args.endpoint_id)
+        return _update_endpoint(tenant_id=tenant_id, user_id=user_id, endpoint_id=args.endpoint_id)
 
 
 @console_ns.route("/workspaces/current/endpoints/enable")
@@ -370,14 +386,14 @@ class EndpointEnableApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
-        user, tenant_id = current_account_with_tenant()
-
+    @with_current_user_id
+    @with_current_tenant_id
+    def post(self, tenant_id: str, user_id: str):
         args = EndpointIdPayload.model_validate(console_ns.payload)
 
         return {
             "success": EndpointService.enable_endpoint(
-                tenant_id=tenant_id, user_id=user.id, endpoint_id=args.endpoint_id
+                tenant_id=tenant_id, user_id=user_id, endpoint_id=args.endpoint_id
             )
         }
 
@@ -397,13 +413,13 @@ class EndpointDisableApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self):
-        user, tenant_id = current_account_with_tenant()
-
+    @with_current_user_id
+    @with_current_tenant_id
+    def post(self, tenant_id: str, user_id: str):
         args = EndpointIdPayload.model_validate(console_ns.payload)
 
         return {
             "success": EndpointService.disable_endpoint(
-                tenant_id=tenant_id, user_id=user.id, endpoint_id=args.endpoint_id
+                tenant_id=tenant_id, user_id=user_id, endpoint_id=args.endpoint_id
             )
         }

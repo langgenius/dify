@@ -14,38 +14,26 @@ export type InstructionGeneratePayload = {
   node_id?: string
 }
 
+export type GeneratorResponse = unknown
+
 export type InstructionTemplatePayload = {
   type: string
 }
 
-export type ModelConfig = {
-  agent_mode_dict?: JsonValue
-  annotation_reply_dict?: JsonValue
-  chat_prompt_config_dict?: JsonValue
-  completion_prompt_config_dict?: JsonValue
-  created_at?: number | null
-  created_by?: string | null
-  dataset_configs_dict?: JsonValue
-  dataset_query_variable?: string | null
-  external_data_tools_list?: JsonValue
-  file_upload_dict?: JsonValue
-  model_dict?: JsonValue
-  more_like_this_dict?: JsonValue
-  opening_statement?: string | null
-  pre_prompt?: string | null
-  prompt_type?: string | null
-  retriever_resource_dict?: JsonValue
-  sensitive_word_avoidance_dict?: JsonValue
-  speech_to_text_dict?: JsonValue
-  suggested_questions_after_answer_dict?: JsonValue
-  suggested_questions_list?: JsonValue
-  text_to_speech_dict?: JsonValue
-  updated_at?: number | null
-  updated_by?: string | null
-  user_input_form_list?: JsonValue
+export type SimpleDataResponse = {
+  data: string
 }
 
-export type JsonValue = unknown
+export type ModelConfig = {
+  completion_params?: {
+    [key: string]: unknown
+  }
+  mode: LlmMode
+  name: string
+  provider: string
+}
+
+export type LlmMode = 'chat' | 'completion'
 
 export type PostInstructionGenerateData = {
   body: InstructionGeneratePayload
@@ -55,21 +43,12 @@ export type PostInstructionGenerateData = {
 }
 
 export type PostInstructionGenerateErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  402: {
-    [key: string]: unknown
-  }
+  400: unknown
+  402: unknown
 }
 
-export type PostInstructionGenerateError
-  = PostInstructionGenerateErrors[keyof PostInstructionGenerateErrors]
-
 export type PostInstructionGenerateResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratorResponse
 }
 
 export type PostInstructionGenerateResponse
@@ -83,18 +62,11 @@ export type PostInstructionGenerateTemplateData = {
 }
 
 export type PostInstructionGenerateTemplateErrors = {
-  400: {
-    [key: string]: unknown
-  }
+  400: unknown
 }
 
-export type PostInstructionGenerateTemplateError
-  = PostInstructionGenerateTemplateErrors[keyof PostInstructionGenerateTemplateErrors]
-
 export type PostInstructionGenerateTemplateResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleDataResponse
 }
 
 export type PostInstructionGenerateTemplateResponse

@@ -1,6 +1,8 @@
+from inspect import unwrap
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import InternalServerError
 
 import controllers.console.explore.completion as completion_module
@@ -14,15 +16,11 @@ from models.model import AppMode
 from services.errors.llm import InvokeRateLimitError
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
-
-
 @pytest.fixture
 def user():
-    return MagicMock(spec=Account)
+    account = Account(name="User", email="user.com")
+    account.id = "uid"
+    return account
 
 
 @pytest.fixture
@@ -51,14 +49,13 @@ def payload_patch(payload_data):
 
 
 class TestCompletionApi:
-    def test_post_success(self, app, completion_app, user, payload_patch):
+    def test_post_success(self, app: Flask, completion_app, user, payload_patch):
         api = completion_module.CompletionApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={}),
             payload_patch,
-            patch.object(completion_module, "current_user", user),
             patch.object(
                 completion_module.AppGenerateService,
                 "generate",
@@ -70,27 +67,26 @@ class TestCompletionApi:
                 return_value=("ok", 200),
             ),
         ):
-            result = method(completion_app)
+            result = method(api, user, completion_app)
 
         assert result == ("ok", 200)
 
-    def test_post_wrong_app_mode(self):
+    def test_post_wrong_app_mode(self, user):
         api = completion_module.CompletionApi()
         method = unwrap(api.post)
 
         installed_app = MagicMock(app=MagicMock(mode=AppMode.CHAT))
 
         with pytest.raises(NotCompletionAppError):
-            method(installed_app)
+            method(api, user, installed_app)
 
-    def test_conversation_completed(self, app, completion_app, user, payload_patch):
+    def test_conversation_completed(self, app: Flask, completion_app, user, payload_patch):
         api = completion_module.CompletionApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={}),
             payload_patch,
-            patch.object(completion_module, "current_user", user),
             patch.object(
                 completion_module.AppGenerateService,
                 "generate",
@@ -98,16 +94,15 @@ class TestCompletionApi:
             ),
         ):
             with pytest.raises(ConversationCompletedError):
-                method(completion_app)
+                method(api, user, completion_app)
 
-    def test_internal_error(self, app, completion_app, user, payload_patch):
+    def test_internal_error(self, app: Flask, completion_app, user, payload_patch):
         api = completion_module.CompletionApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={}),
             payload_patch,
-            patch.object(completion_module, "current_user", user),
             patch.object(
                 completion_module.AppGenerateService,
                 "generate",
@@ -115,16 +110,15 @@ class TestCompletionApi:
             ),
         ):
             with pytest.raises(InternalServerError):
-                method(completion_app)
+                method(api, user, completion_app)
 
-    def test_conversation_not_exists(self, app, completion_app, user, payload_patch):
+    def test_conversation_not_exists(self, app: Flask, completion_app, user, payload_patch):
         api = completion_module.CompletionApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={}),
             payload_patch,
-            patch.object(completion_module, "current_user", user),
             patch.object(
                 completion_module.AppGenerateService,
                 "generate",
@@ -132,16 +126,15 @@ class TestCompletionApi:
             ),
         ):
             with pytest.raises(completion_module.NotFound):
-                method(completion_app)
+                method(api, user, completion_app)
 
-    def test_app_unavailable(self, app, completion_app, user, payload_patch):
+    def test_app_unavailable(self, app: Flask, completion_app, user, payload_patch):
         api = completion_module.CompletionApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={}),
             payload_patch,
-            patch.object(completion_module, "current_user", user),
             patch.object(
                 completion_module.AppGenerateService,
                 "generate",
@@ -149,16 +142,15 @@ class TestCompletionApi:
             ),
         ):
             with pytest.raises(completion_module.AppUnavailableError):
-                method(completion_app)
+                method(api, user, completion_app)
 
-    def test_provider_not_initialized(self, app, completion_app, user, payload_patch):
+    def test_provider_not_initialized(self, app: Flask, completion_app, user, payload_patch):
         api = completion_module.CompletionApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={}),
             payload_patch,
-            patch.object(completion_module, "current_user", user),
             patch.object(
                 completion_module.AppGenerateService,
                 "generate",
@@ -166,16 +158,15 @@ class TestCompletionApi:
             ),
         ):
             with pytest.raises(completion_module.ProviderNotInitializeError):
-                method(completion_app)
+                method(api, user, completion_app)
 
-    def test_quota_exceeded(self, app, completion_app, user, payload_patch):
+    def test_quota_exceeded(self, app: Flask, completion_app, user, payload_patch):
         api = completion_module.CompletionApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={}),
             payload_patch,
-            patch.object(completion_module, "current_user", user),
             patch.object(
                 completion_module.AppGenerateService,
                 "generate",
@@ -183,16 +174,15 @@ class TestCompletionApi:
             ),
         ):
             with pytest.raises(completion_module.ProviderQuotaExceededError):
-                method(completion_app)
+                method(api, user, completion_app)
 
-    def test_model_not_supported(self, app, completion_app, user, payload_patch):
+    def test_model_not_supported(self, app: Flask, completion_app, user, payload_patch):
         api = completion_module.CompletionApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={}),
             payload_patch,
-            patch.object(completion_module, "current_user", user),
             patch.object(
                 completion_module.AppGenerateService,
                 "generate",
@@ -200,16 +190,15 @@ class TestCompletionApi:
             ),
         ):
             with pytest.raises(completion_module.ProviderModelCurrentlyNotSupportError):
-                method(completion_app)
+                method(api, user, completion_app)
 
-    def test_invoke_error(self, app, completion_app, user, payload_patch):
+    def test_invoke_error(self, app: Flask, completion_app, user, payload_patch):
         api = completion_module.CompletionApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={}),
             payload_patch,
-            patch.object(completion_module, "current_user", user),
             patch.object(
                 completion_module.AppGenerateService,
                 "generate",
@@ -217,21 +206,16 @@ class TestCompletionApi:
             ),
         ):
             with pytest.raises(completion_module.CompletionRequestError):
-                method(completion_app)
+                method(api, user, completion_app)
 
 
 class TestCompletionStopApi:
-    def test_stop_success(self, completion_app, user):
+    def test_stop_success(self, completion_app):
         api = completion_module.CompletionStopApi()
         method = unwrap(api.post)
 
-        user.id = "u1"
-
-        with (
-            patch.object(completion_module, "current_user", user),
-            patch.object(completion_module.AppTaskService, "stop_task"),
-        ):
-            resp, status = method(completion_app, "task-1")
+        with patch.object(completion_module.AppTaskService, "stop_task"):
+            resp, status = method(api, "u1", completion_app, "task-1")
 
         assert status == 200
         assert resp == {"result": "success"}
@@ -243,18 +227,17 @@ class TestCompletionStopApi:
         installed_app = MagicMock(app=MagicMock(mode=AppMode.CHAT))
 
         with pytest.raises(NotCompletionAppError):
-            method(installed_app, "task")
+            method(api, "u1", installed_app, "task")
 
 
 class TestChatApi:
-    def test_post_success(self, app, chat_app, user, payload_patch):
+    def test_post_success(self, app: Flask, chat_app, user, payload_patch):
         api = completion_module.ChatApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={}),
             payload_patch,
-            patch.object(completion_module, "current_user", user),
             patch.object(
                 completion_module.AppGenerateService,
                 "generate",
@@ -266,27 +249,26 @@ class TestChatApi:
                 return_value=("ok", 200),
             ),
         ):
-            result = method(chat_app)
+            result = method(api, user, chat_app)
 
         assert result == ("ok", 200)
 
-    def test_post_not_chat_app(self):
+    def test_post_not_chat_app(self, user):
         api = completion_module.ChatApi()
         method = unwrap(api.post)
 
         installed_app = MagicMock(app=MagicMock(mode=AppMode.COMPLETION))
 
         with pytest.raises(NotChatAppError):
-            method(installed_app)
+            method(api, user, installed_app)
 
-    def test_rate_limit_error(self, app, chat_app, user, payload_patch):
+    def test_rate_limit_error(self, app: Flask, chat_app, user, payload_patch):
         api = completion_module.ChatApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={}),
             payload_patch,
-            patch.object(completion_module, "current_user", user),
             patch.object(
                 completion_module.AppGenerateService,
                 "generate",
@@ -294,16 +276,15 @@ class TestChatApi:
             ),
         ):
             with pytest.raises(InvokeRateLimitHttpError):
-                method(chat_app)
+                method(api, user, chat_app)
 
-    def test_conversation_completed_chat(self, app, chat_app, user, payload_patch):
+    def test_conversation_completed_chat(self, app: Flask, chat_app, user, payload_patch):
         api = completion_module.ChatApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={}),
             payload_patch,
-            patch.object(completion_module, "current_user", user),
             patch.object(
                 completion_module.AppGenerateService,
                 "generate",
@@ -311,16 +292,15 @@ class TestChatApi:
             ),
         ):
             with pytest.raises(ConversationCompletedError):
-                method(chat_app)
+                method(api, user, chat_app)
 
-    def test_conversation_not_exists_chat(self, app, chat_app, user, payload_patch):
+    def test_conversation_not_exists_chat(self, app: Flask, chat_app, user, payload_patch):
         api = completion_module.ChatApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={}),
             payload_patch,
-            patch.object(completion_module, "current_user", user),
             patch.object(
                 completion_module.AppGenerateService,
                 "generate",
@@ -328,16 +308,15 @@ class TestChatApi:
             ),
         ):
             with pytest.raises(completion_module.NotFound):
-                method(chat_app)
+                method(api, user, chat_app)
 
-    def test_app_unavailable_chat(self, app, chat_app, user, payload_patch):
+    def test_app_unavailable_chat(self, app: Flask, chat_app, user, payload_patch):
         api = completion_module.ChatApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={}),
             payload_patch,
-            patch.object(completion_module, "current_user", user),
             patch.object(
                 completion_module.AppGenerateService,
                 "generate",
@@ -345,16 +324,15 @@ class TestChatApi:
             ),
         ):
             with pytest.raises(completion_module.AppUnavailableError):
-                method(chat_app)
+                method(api, user, chat_app)
 
-    def test_provider_not_initialized_chat(self, app, chat_app, user, payload_patch):
+    def test_provider_not_initialized_chat(self, app: Flask, chat_app, user, payload_patch):
         api = completion_module.ChatApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={}),
             payload_patch,
-            patch.object(completion_module, "current_user", user),
             patch.object(
                 completion_module.AppGenerateService,
                 "generate",
@@ -362,16 +340,15 @@ class TestChatApi:
             ),
         ):
             with pytest.raises(completion_module.ProviderNotInitializeError):
-                method(chat_app)
+                method(api, user, chat_app)
 
-    def test_quota_exceeded_chat(self, app, chat_app, user, payload_patch):
+    def test_quota_exceeded_chat(self, app: Flask, chat_app, user, payload_patch):
         api = completion_module.ChatApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={}),
             payload_patch,
-            patch.object(completion_module, "current_user", user),
             patch.object(
                 completion_module.AppGenerateService,
                 "generate",
@@ -379,16 +356,15 @@ class TestChatApi:
             ),
         ):
             with pytest.raises(completion_module.ProviderQuotaExceededError):
-                method(chat_app)
+                method(api, user, chat_app)
 
-    def test_model_not_supported_chat(self, app, chat_app, user, payload_patch):
+    def test_model_not_supported_chat(self, app: Flask, chat_app, user, payload_patch):
         api = completion_module.ChatApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={}),
             payload_patch,
-            patch.object(completion_module, "current_user", user),
             patch.object(
                 completion_module.AppGenerateService,
                 "generate",
@@ -396,16 +372,15 @@ class TestChatApi:
             ),
         ):
             with pytest.raises(completion_module.ProviderModelCurrentlyNotSupportError):
-                method(chat_app)
+                method(api, user, chat_app)
 
-    def test_invoke_error_chat(self, app, chat_app, user, payload_patch):
+    def test_invoke_error_chat(self, app: Flask, chat_app, user, payload_patch):
         api = completion_module.ChatApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={}),
             payload_patch,
-            patch.object(completion_module, "current_user", user),
             patch.object(
                 completion_module.AppGenerateService,
                 "generate",
@@ -413,16 +388,15 @@ class TestChatApi:
             ),
         ):
             with pytest.raises(completion_module.CompletionRequestError):
-                method(chat_app)
+                method(api, user, chat_app)
 
-    def test_internal_error_chat(self, app, chat_app, user, payload_patch):
+    def test_internal_error_chat(self, app: Flask, chat_app, user, payload_patch):
         api = completion_module.ChatApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={}),
             payload_patch,
-            patch.object(completion_module, "current_user", user),
             patch.object(
                 completion_module.AppGenerateService,
                 "generate",
@@ -430,21 +404,15 @@ class TestChatApi:
             ),
         ):
             with pytest.raises(InternalServerError):
-                method(chat_app)
+                method(api, user, chat_app)
 
 
 class TestChatStopApi:
-    def test_stop_success(self, chat_app, user):
+    def test_stop_success(self, chat_app):
         api = completion_module.ChatStopApi()
         method = unwrap(api.post)
-
-        user.id = "u1"
-
-        with (
-            patch.object(completion_module, "current_user", user),
-            patch.object(completion_module.AppTaskService, "stop_task"),
-        ):
-            resp, status = method(chat_app, "task-1")
+        with patch.object(completion_module.AppTaskService, "stop_task"):
+            resp, status = method(api, "u1", chat_app, "task-1")
 
         assert status == 200
         assert resp == {"result": "success"}
@@ -456,4 +424,4 @@ class TestChatStopApi:
         installed_app = MagicMock(app=MagicMock(mode=AppMode.COMPLETION))
 
         with pytest.raises(NotChatAppError):
-            method(installed_app, "task")
+            method(api, "u1", installed_app, "task")

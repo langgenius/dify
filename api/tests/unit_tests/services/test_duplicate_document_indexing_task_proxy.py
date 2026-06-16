@@ -12,7 +12,7 @@ class DuplicateDocumentIndexingTaskProxyTestDataFactory:
     """Factory class for creating test data and mock objects for DuplicateDocumentIndexingTaskProxy tests."""
 
     @staticmethod
-    def create_mock_features(billing_enabled: bool = False, plan: CloudPlan = CloudPlan.SANDBOX) -> Mock:
+    def create_mock_features(billing_enabled: bool = False, plan: CloudPlan | str | None = CloudPlan.SANDBOX) -> Mock:
         """Create mock features with billing configuration."""
         features = Mock()
         features.billing = Mock()
@@ -94,7 +94,7 @@ class TestDuplicateDocumentIndexingTaskProxy:
         assert features1 == mock_features
         assert features2 == mock_features
         assert features1 is features2  # Should be the same instance due to caching
-        mock_feature_service.get_features.assert_called_once_with("tenant-123")
+        mock_feature_service.get_features.assert_called_once_with("tenant-123", exclude_vector_space=True)
 
     @patch(
         "services.document_indexing_proxy.duplicate_document_indexing_task_proxy.normal_duplicate_document_indexing_task"

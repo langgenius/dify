@@ -305,6 +305,7 @@ export type TextChunkResponse = {
   event: string
   data: {
     text: string
+    from_variable_selector?: string[]
   }
 }
 
@@ -331,7 +332,7 @@ export type HumanInputFormData = {
   inputs: FormInputItem[]
   actions: UserAction[]
   form_token: string
-  resolved_default_values: Record<string, string>
+  resolved_default_values: Record<string, HumanInputResolvedValue>
   display_in_ui: boolean
   expiration_time: number
 }
@@ -343,12 +344,19 @@ export type HumanInputRequiredResponse = {
   data: HumanInputFormData
 }
 
+export type HumanInputFormValue = string | FileResponse | FileResponse[]
+
+export type HumanInputResolvedValue = string | FileResponse | FileResponse[]
+
 export type HumanInputFilledFormData = {
   node_id: string
   node_title: string
   rendered_content: string
   action_id: string
   action_text: string
+  form_content?: string
+  inputs?: FormInputItem[]
+  submitted_data?: Record<string, HumanInputFormValue>
 }
 
 export type HumanInputFormFilledResponse = {
@@ -426,6 +434,8 @@ export type PublishWorkflowParams = {
   title: string
   releaseNotes: string
 }
+
+export type WorkflowKind = 'standard'
 
 export type UpdateWorkflowParams = {
   url: string

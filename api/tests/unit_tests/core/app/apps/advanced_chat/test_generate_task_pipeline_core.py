@@ -51,7 +51,7 @@ from core.base.tts.app_generator_tts_publisher import AudioTrunk
 from core.workflow.system_variables import build_system_variables
 from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import BuiltinNodeTypes
-from graphon.nodes.human_input.entities import UserAction
+from graphon.nodes.human_input.entities import UserActionConfig
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.enums import MessageStatus
@@ -150,7 +150,7 @@ class TestAdvancedChatGenerateTaskPipeline:
                     node_title="Approval",
                     form_content="Need approval",
                     inputs=[],
-                    actions=[UserAction(id="approve", title="Approve")],
+                    actions=[UserActionConfig(id="approve", title="Approve")],
                     display_in_ui=True,
                     form_token="token-1",
                     resolved_default_values={},
@@ -234,9 +234,19 @@ class TestAdvancedChatGenerateTaskPipeline:
         )
         pipeline._workflow_response_converter.workflow_start_to_stream_response = lambda **kwargs: "started"
 
+        # Track database operations for verification
+        executed_statements = []
+
         @contextmanager
         def _fake_session():
-            yield SimpleNamespace()
+            sess = SimpleNamespace()
+
+            def _execute(stmt):
+                executed_statements.append(stmt)
+                return SimpleNamespace()
+
+            sess.execute = _execute
+            yield sess
 
         monkeypatch.setattr(pipeline, "_database_session", _fake_session)
         monkeypatch.setattr(pipeline, "_get_message", lambda **kwargs: SimpleNamespace())
@@ -245,6 +255,14 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         assert pipeline._workflow_run_id == "run-id"
         assert responses == ["started"]
+
+        # Verify database operation was executed
+        assert len(executed_statements) == 1
+        # Verify the UPDATE statement targets the correct message and sets workflow_run_id
+        update_stmt = executed_statements[0]
+        stmt_str = str(update_stmt)
+        assert "UPDATE messages" in stmt_str
+        assert "WHERE messages.id" in stmt_str
 
     def test_message_end_to_stream_response_strips_annotation_reply(self):
         pipeline = _make_pipeline()
@@ -544,7 +562,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert list(pipeline._handle_human_input_form_timeout_event(timeout_event)) == ["timeout"]
         assert persisted == ["saved"]
 
-    def test_save_message_strips_markdown_and_sets_usage(self):
+    def test_save_message_preserves_full_answer_and_sets_usage(self):
         pipeline = _make_pipeline()
         pipeline._recorded_files = [
             {
@@ -554,7 +572,8 @@ class TestAdvancedChatGenerateTaskPipeline:
                 "related_id": "file-id",
             }
         ]
-        pipeline._task_state.answer = "![img](url) hello"
+        # The answer is stored verbatim; markdown image links are never stripped.
+        pipeline._task_state.answer = "![img](http://example.com/file.png) hello ![inline](http://llm.com/img.jpg)"
         pipeline._task_state.is_streaming_response = True
         pipeline._task_state.first_token_time = pipeline._base_task_pipeline.start_at + 0.1
         pipeline._task_state.last_token_time = pipeline._base_task_pipeline.start_at + 0.2
@@ -596,7 +615,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         pipeline._save_message(session=_Session(), graph_runtime_state=graph_runtime_state)
 
         assert message.status == MessageStatus.NORMAL
-        assert message.answer == "hello"
+        assert message.answer == "![img](http://example.com/file.png) hello ![inline](http://llm.com/img.jpg)"
         assert message.message_metadata
 
     def test_handle_stop_event_saves_message_for_moderation(self, monkeypatch: pytest.MonkeyPatch):

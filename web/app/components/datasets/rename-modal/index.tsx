@@ -5,12 +5,12 @@ import type { DataSet } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import { updateDatasetSetting } from '@/service/datasets'
 import AppIcon from '../../base/app-icon'
 import AppIconPicker from '../../base/app-icon-picker'
@@ -32,20 +32,11 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
     ? { type: 'image' as const, url: dataset.icon_info?.icon_url || '', fileId: dataset.icon_info?.icon || '' }
     : { type: 'emoji' as const, icon: dataset.icon_info?.icon || '', background: dataset.icon_info?.icon_background || '' })
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
-  const previousAppIcon = useRef<AppIconSelection>(dataset.icon_info?.icon_type === 'image'
-    ? { type: 'image' as const, url: dataset.icon_info?.icon_url || '', fileId: dataset.icon_info?.icon || '' }
-    : { type: 'emoji' as const, icon: dataset.icon_info?.icon || '', background: dataset.icon_info?.icon_background || '' })
   const handleOpenAppIconPicker = useCallback(() => {
     setShowAppIconPicker(true)
-    previousAppIcon.current = appIcon
-  }, [appIcon])
+  }, [])
   const handleSelectAppIcon = useCallback((icon: AppIconSelection) => {
     setAppIcon(icon)
-    setShowAppIconPicker(false)
-  }, [])
-  const handleCloseAppIconPicker = useCallback(() => {
-    setAppIcon(previousAppIcon.current)
-    setShowAppIconPicker(false)
   }, [])
   const onConfirm: MouseEventHandler = useCallback(async () => {
     if (!name.trim()) {
@@ -99,7 +90,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
             aria-label={t('operation.close', { ns: 'common' })}
             onClick={onClose}
           >
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+            <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
           </button>
         </div>
         <div>
@@ -117,7 +108,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
               {t('form.desc', { ns: 'datasetSettings' })}
             </div>
             <div className="w-full">
-              <Textarea value={description} onChange={e => setDescription(e.target.value)} className="resize-none" placeholder={t('form.descPlaceholder', { ns: 'datasetSettings' }) || ''} />
+              <Textarea aria-label={t('form.desc', { ns: 'datasetSettings' })} value={description} onValueChange={value => setDescription(value)} className="resize-none" placeholder={t('form.descPlaceholder', { ns: 'datasetSettings' }) || ''} />
             </div>
           </div>
         </div>
@@ -125,7 +116,16 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
           <Button className="mr-2" onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
           <Button disabled={loading} variant="primary" onClick={onConfirm}>{t('operation.save', { ns: 'common' })}</Button>
         </div>
-        {showAppIconPicker && (<AppIconPicker onSelect={handleSelectAppIcon} onClose={handleCloseAppIconPicker} />)}
+        {showAppIconPicker && (
+          <AppIconPicker
+            open={showAppIconPicker}
+            initialEmoji={appIcon.type === 'emoji'
+              ? { icon: appIcon.icon, background: appIcon.background }
+              : undefined}
+            onOpenChange={setShowAppIconPicker}
+            onSelect={handleSelectAppIcon}
+          />
+        )}
       </DialogContent>
     </Dialog>
   )

@@ -9,13 +9,13 @@ import { useFeatures } from '@/app/components/base/features/hooks'
 import VoiceSettings from '@/app/components/base/features/new-feature-panel/text-to-speech/voice-settings'
 import { Citations, ContentModeration, FolderUpload, LoveMessage, MessageFast, Microphone01, TextToAudio, VirtualAssistant } from '@/app/components/base/icons/src/vender/features'
 
-type Props = {
+type Props = Readonly<{
   isChatMode?: boolean
   showFileUpload?: boolean
   disabled?: boolean
   onFeatureBarClick?: (state: boolean) => void
   hideEditEntrance?: boolean
-}
+}>
 
 const FeatureBar = ({
   isChatMode = true,
@@ -42,9 +42,9 @@ const FeatureBar = ({
     <div className="m-1 mt-0 -translate-y-2 rounded-b-[10px] border-r border-b border-l border-components-panel-border-subtle bg-util-colors-indigo-indigo-50 px-2.5 py-2 pt-4">
       {noFeatureEnabled && (
         <div className="flex cursor-pointer items-end gap-1" onClick={() => onFeatureBarClick?.(true)}>
-          <RiApps2AddLine className="h-3.5 w-3.5 text-text-accent" />
+          <RiApps2AddLine className="size-3.5 text-text-accent" />
           <div className="body-xs-medium text-text-accent">{t('feature.bar.empty', { ns: 'appDebug' })}</div>
-          <RiArrowRightLine className="h-3.5 w-3.5 text-text-accent" />
+          <RiArrowRightLine className="size-3.5 text-text-accent" />
         </div>
       )}
       {!noFeatureEnabled && (
@@ -55,7 +55,7 @@ const FeatureBar = ({
                 <TooltipTrigger
                   render={(
                     <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs">
-                      <RiSparklingFill className="h-3.5 w-3.5 text-text-primary-on-surface" />
+                      <RiSparklingFill className="size-3.5 text-text-primary-on-surface" />
                     </div>
                   )}
                 />
@@ -69,7 +69,7 @@ const FeatureBar = ({
                 <TooltipTrigger
                   render={(
                     <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs">
-                      <LoveMessage className="h-3.5 w-3.5 text-text-primary-on-surface" />
+                      <LoveMessage className="size-3.5 text-text-primary-on-surface" />
                     </div>
                   )}
                 />
@@ -83,7 +83,7 @@ const FeatureBar = ({
                 <TooltipTrigger
                   render={(
                     <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-text-success p-1 shadow-xs">
-                      <ContentModeration className="h-3.5 w-3.5 text-text-primary-on-surface" />
+                      <ContentModeration className="size-3.5 text-text-primary-on-surface" />
                     </div>
                   )}
                 />
@@ -97,7 +97,7 @@ const FeatureBar = ({
                 <TooltipTrigger
                   render={(
                     <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-violet-violet-600 p-1 shadow-xs">
-                      <Microphone01 className="h-3.5 w-3.5 text-text-primary-on-surface" />
+                      <Microphone01 className="size-3.5 text-text-primary-on-surface" />
                     </div>
                   )}
                 />
@@ -112,7 +112,7 @@ const FeatureBar = ({
                   <TooltipTrigger
                     render={(
                       <div className={cn('shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-violet-violet-600 p-1 shadow-xs', !disabled && 'cursor-pointer')}>
-                        <TextToAudio className="h-3.5 w-3.5 text-text-primary-on-surface" />
+                        <TextToAudio className="size-3.5 text-text-primary-on-surface" />
                       </div>
                     )}
                   />
@@ -127,7 +127,7 @@ const FeatureBar = ({
                 <TooltipTrigger
                   render={(
                     <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-blue-600 p-1 shadow-xs">
-                      <FolderUpload className="h-3.5 w-3.5 text-text-primary-on-surface" />
+                      <FolderUpload className="size-3.5 text-text-primary-on-surface" />
                     </div>
                   )}
                 />
@@ -141,7 +141,7 @@ const FeatureBar = ({
                 <TooltipTrigger
                   render={(
                     <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs">
-                      <VirtualAssistant className="h-3.5 w-3.5 text-text-primary-on-surface" />
+                      <VirtualAssistant className="size-3.5 text-text-primary-on-surface" />
                     </div>
                   )}
                 />
@@ -155,7 +155,7 @@ const FeatureBar = ({
                 <TooltipTrigger
                   render={(
                     <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-warning-warning-500 p-1 shadow-xs">
-                      <Citations className="h-4 w-4 text-text-primary-on-surface" />
+                      <Citations className="size-4 text-text-primary-on-surface" />
                     </div>
                   )}
                 />
@@ -169,7 +169,7 @@ const FeatureBar = ({
                 <TooltipTrigger
                   render={(
                     <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-600 p-1 shadow-xs">
-                      <MessageFast className="h-3.5 w-3.5 text-text-primary-on-surface" />
+                      <MessageFast className="size-3.5 text-text-primary-on-surface" />
                     </div>
                   )}
                 />
@@ -184,7 +184,7 @@ const FeatureBar = ({
             !hideEditEntrance && (
               <Button className="shrink-0" variant="ghost-accent" size="small" onClick={() => onFeatureBarClick?.(true)}>
                 <div className="mx-1">{t('feature.bar.manage', { ns: 'appDebug' })}</div>
-                <RiArrowRightLine className="h-3.5 w-3.5 text-text-accent" />
+                <RiArrowRightLine className="size-3.5 text-text-accent" />
               </Button>
             )
           }

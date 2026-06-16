@@ -2,6 +2,7 @@ import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { expectLoadingButton } from '@/test/button'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../create/step-two'
 import Form from '../index'
@@ -130,14 +131,6 @@ vi.mock('@/service/use-common', () => ({
         { id: 'user-2', name: 'User 2', email: 'user2@example.com', role: 'admin', avatar: '', avatar_url: '', last_login_at: '', created_at: '', status: 'active' },
       ],
     },
-  }),
-  useCurrentWorkspace: () => ({
-    data: {
-      trial_credits: 1000,
-      trial_credits_used: 100,
-      next_credit_reset_date: undefined,
-    },
-    isPending: false,
   }),
 }))
 
@@ -389,9 +382,8 @@ describe('Form', () => {
       const saveButton = screen.getByRole('button', { name: /form\.save/i })
       fireEvent.click(saveButton)
 
-      // Button should be disabled during loading
       await waitFor(() => {
-        expect(saveButton).toBeDisabled()
+        expectLoadingButton(saveButton)
       })
     })
 

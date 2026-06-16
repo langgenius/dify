@@ -112,7 +112,7 @@ def clean_unused_datasets_task():
                             features_cache_key = f"features:{dataset.tenant_id}"
                             plan_cache = redis_client.get(features_cache_key)
                             if plan_cache is None:
-                                features = FeatureService.get_features(dataset.tenant_id)
+                                features = FeatureService.get_features(dataset.tenant_id, exclude_vector_space=True)
                                 redis_client.setex(features_cache_key, 600, features.billing.subscription.plan)
                                 plan = features.billing.subscription.plan
                             else:

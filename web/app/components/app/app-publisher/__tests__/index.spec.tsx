@@ -28,8 +28,8 @@ const sectionProps = vi.hoisted(() => ({
   access: null as null | Record<string, any>,
   actions: null as null | Record<string, any>,
 }))
-const ahooksMocks = vi.hoisted(() => ({
-  keyPressHandlers: [] as Array<(event: { preventDefault: () => void }) => void>,
+const hotkeyMocks = vi.hoisted(() => ({
+  handlers: [] as Array<(event: { preventDefault: () => void }) => void>,
 }))
 
 let mockAppDetail: Record<string, any> | null = null
@@ -41,13 +41,11 @@ vi.mock('react-i18next', () => ({
   Trans: ({ i18nKey }: { i18nKey?: string }) => i18nKey ?? null,
 }))
 
-vi.mock('ahooks', async () => {
-  return {
-    useKeyPress: (_keys: unknown, handler: (event: { preventDefault: () => void }) => void) => {
-      ahooksMocks.keyPressHandlers.push(handler)
-    },
-  }
-})
+vi.mock('@tanstack/react-hotkeys', () => ({
+  useHotkey: (_hotkey: string, handler: (event: { preventDefault: () => void }) => void) => {
+    hotkeyMocks.handlers.push(handler)
+  },
+}))
 
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: { appDetail: Record<string, any> | null, setAppDetail: typeof mockSetAppDetail }) => unknown) => selector({
@@ -184,7 +182,7 @@ vi.mock('../sections', () => ({
 describe('AppPublisher', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    ahooksMocks.keyPressHandlers.length = 0
+    hotkeyMocks.handlers.length = 0
     sectionProps.summary = null
     sectionProps.access = null
     sectionProps.actions = null
@@ -206,7 +204,7 @@ describe('AppPublisher', () => {
       access_mode: AccessMode.PUBLIC,
     })
     mockOpenAsyncWindow.mockImplementation(async (resolver: () => Promise<string>) => {
-      await resolver()
+      return resolver()
     })
     Object.defineProperty(window, 'open', {
       writable: true,
@@ -399,6 +397,11 @@ describe('AppPublisher', () => {
   })
 
   it('should open the installed explore page through the async window helper', async () => {
+    let openedUrl = ''
+    mockOpenAsyncWindow.mockImplementation(async (resolver: () => Promise<string>) => {
+      openedUrl = await resolver()
+    })
+
     render(
       <AppPublisher
         publishedAt={Date.now()}
@@ -411,6 +414,7 @@ describe('AppPublisher', () => {
     await waitFor(() => {
       expect(mockOpenAsyncWindow).toHaveBeenCalledTimes(1)
       expect(mockFetchInstalledAppList).toHaveBeenCalledWith('app-1')
+      expect(openedUrl).toBe('/installed/installed-1')
       expect(sectionProps.actions?.appURL).toBe(`https://example.com${basePath}/chat/token-1`)
     })
   })
@@ -443,7 +447,7 @@ describe('AppPublisher', () => {
       />,
     )
 
-    ahooksMocks.keyPressHandlers[0]!({ preventDefault })
+    hotkeyMocks.handlers[0]!({ preventDefault })
 
     await waitFor(() => {
       expect(preventDefault).toHaveBeenCalled()
@@ -472,7 +476,7 @@ describe('AppPublisher', () => {
       />,
     )
 
-    ahooksMocks.keyPressHandlers[0]!({ preventDefault })
+    hotkeyMocks.handlers[0]!({ preventDefault })
 
     await waitFor(() => {
       expect(preventDefault).toHaveBeenCalled()

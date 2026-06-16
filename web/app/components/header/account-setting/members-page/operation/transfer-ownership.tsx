@@ -13,12 +13,12 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useWorkspacePermissions } from '@/service/use-workspace'
 
-type Props = {
+type Props = Readonly<{
   onOperate: () => void
-}
+}>
 
 const TransferOwnership = ({ onOperate }: Props) => {
   const { t } = useTranslation()
@@ -38,12 +38,12 @@ const TransferOwnership = ({ onOperate }: Props) => {
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger
         className={cn(
-          'group flex h-full w-full cursor-pointer items-center justify-between px-3 system-sm-regular text-text-secondary outline-hidden',
+          'group flex size-full cursor-pointer items-center justify-between px-3 system-sm-regular text-text-secondary outline-hidden',
           'hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover data-popup-open:bg-state-base-hover',
         )}
       >
         {t('members.owner', { ns: 'common' })}
-        <RiArrowDownSLine className="hidden h-4 w-4 group-hover:block group-data-popup-open:block" />
+        <RiArrowDownSLine className="hidden size-4 group-hover:block group-data-popup-open:block" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-end"

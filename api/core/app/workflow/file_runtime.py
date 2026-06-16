@@ -7,12 +7,12 @@ import os
 import time
 import urllib.parse
 from collections.abc import Generator
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, override
 
 from configs import dify_config
 from core.app.file_access import DatabaseFileAccessController, FileAccessControllerProtocol
 from core.db.session_factory import session_factory
-from core.helper.ssrf_proxy import graphon_ssrf_proxy
+from core.file import remote_fetcher
 from core.tools.signature import sign_tool_file
 from core.workflow.file_reference import parse_file_reference
 from extensions.ext_storage import storage
@@ -40,15 +40,19 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
         self._file_access_controller = file_access_controller
 
     @property
+    @override
     def multimodal_send_format(self) -> str:
         return dify_config.MULTIMODAL_SEND_FORMAT
 
+    @override
     def http_get(self, url: str, *, follow_redirects: bool = True) -> HttpResponseProtocol:
-        return graphon_ssrf_proxy.get(url, follow_redirects=follow_redirects)
+        return remote_fetcher.graphon_remote_file_fetcher.get(url, follow_redirects=follow_redirects)
 
+    @override
     def storage_load(self, path: str, *, stream: bool = False) -> bytes | Generator:
         return storage.load(path, stream=stream)
 
+    @override
     def load_file_bytes(self, *, file: File) -> bytes:
         storage_key = self._resolve_storage_key(file=file)
         data = storage.load(storage_key, stream=False)
@@ -56,6 +60,7 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
             raise ValueError(f"file {storage_key} is not a bytes object")
         return data
 
+    @override
     def resolve_file_url(self, *, file: File, for_external: bool = True) -> str | None:
         if file.transfer_method == FileTransferMethod.REMOTE_URL:
             return file.remote_url
@@ -86,6 +91,7 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
             )
         return None
 
+    @override
     def resolve_upload_file_url(
         self,
         *,
@@ -101,10 +107,12 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
             query["as_attachment"] = "true"
         return f"{url}?{urllib.parse.urlencode(query)}"
 
+    @override
     def resolve_tool_file_url(self, *, tool_file_id: str, extension: str, for_external: bool = True) -> str:
         self._assert_tool_file_access(tool_file_id=tool_file_id)
         return sign_tool_file(tool_file_id=tool_file_id, extension=extension, for_external=for_external)
 
+    @override
     def verify_preview_signature(
         self,
         *,

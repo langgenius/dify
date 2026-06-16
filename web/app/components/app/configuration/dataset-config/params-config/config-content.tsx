@@ -27,7 +27,7 @@ import { RerankingModeEnum } from '@/models/datasets'
 import { RETRIEVE_TYPE } from '@/types/app'
 import WeightedScore from './weighted-score'
 
-type Props = {
+type Props = Readonly<{
   datasetConfigs: DatasetConfigs
   onChange: (configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void
   selectedDatasets?: DataSet[]
@@ -35,7 +35,7 @@ type Props = {
   singleRetrievalModelConfig?: ModelConfig
   onSingleRetrievalModelChange?: ModelParameterModalProps['setModel']
   onSingleRetrievalModelParamsChange?: ModelParameterModalProps['onCompletionParamsChange']
-}
+}>
 
 const noopModelChange: ModelParameterModalProps['setModel'] = () => {}
 const noopParamsChange: ModelParameterModalProps['onCompletionParamsChange'] = () => {}
@@ -246,7 +246,7 @@ const ConfigContent: FC<Props> = ({
                       <div className="truncate">{option.label}</div>
                       <Infotip
                         aria-label={option.tips}
-                        className="ml-0.5 h-3.5 w-3.5"
+                        className="ml-0.5 size-3.5"
                         iconClassName="h-3.5 w-3.5"
                         popupClassName="w-[200px]"
                       >

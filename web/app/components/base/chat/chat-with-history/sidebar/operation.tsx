@@ -13,7 +13,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 
-type Props = {
+type Props = Readonly<{
   isActive?: boolean
   isItemHovering?: boolean
   isPinned: boolean
@@ -22,7 +22,7 @@ type Props = {
   isShowDelete: boolean
   togglePin: () => void
   onDelete: () => void
-}
+}>
 
 const Operation: FC<Props> = ({
   isActive,
@@ -65,7 +65,7 @@ const Operation: FC<Props> = ({
                   : ActionButtonState.Default
             }
           >
-            <span aria-hidden className="i-ri-more-fill h-4 w-4" />
+            <span aria-hidden className="i-ri-more-fill size-4" />
           </ActionButton>
         )}
         onClick={e => e.stopPropagation()}
@@ -87,8 +87,8 @@ const Operation: FC<Props> = ({
             togglePin()
           }}
         >
-          {isPinned && <span aria-hidden className="i-ri-unpin-line h-4 w-4 shrink-0 text-text-tertiary" />}
-          {!isPinned && <span aria-hidden className="i-ri-pushpin-line h-4 w-4 shrink-0 text-text-tertiary" />}
+          {isPinned && <span aria-hidden className="i-ri-unpin-line size-4 shrink-0 text-text-tertiary" />}
+          {!isPinned && <span aria-hidden className="i-ri-pushpin-line size-4 shrink-0 text-text-tertiary" />}
           <span className="grow">{isPinned ? t('sidebar.action.unpin', { ns: 'explore' }) : t('sidebar.action.pin', { ns: 'explore' })}</span>
         </DropdownMenuItem>
         {isShowRenameConversation && (
@@ -99,7 +99,7 @@ const Operation: FC<Props> = ({
               handleDeferredAction(onRenameConversation)
             }}
           >
-            <span aria-hidden className="i-ri-edit-line h-4 w-4 shrink-0 text-text-tertiary" />
+            <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
             <span className="grow">{t('sidebar.action.rename', { ns: 'explore' })}</span>
           </DropdownMenuItem>
         )}
@@ -112,7 +112,7 @@ const Operation: FC<Props> = ({
               handleDeferredAction(onDelete)
             }}
           >
-            <span aria-hidden className="i-ri-delete-bin-line h-4 w-4 shrink-0" />
+            <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
             <span className="grow">{t('sidebar.action.delete', { ns: 'explore' })}</span>
           </DropdownMenuItem>
         )}

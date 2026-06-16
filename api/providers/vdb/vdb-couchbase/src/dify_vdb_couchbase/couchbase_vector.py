@@ -3,7 +3,7 @@ import logging
 import time
 import uuid
 from datetime import timedelta
-from typing import Any
+from typing import Any, override
 
 from couchbase import search  # type: ignore
 from couchbase.auth import PasswordAuthenticator  # type: ignore
@@ -59,7 +59,7 @@ class CouchbaseVector(BaseVector):
 
         auth = PasswordAuthenticator(config.user, config.password)
         options = ClusterOptions(auth)
-        self._cluster = Cluster(config.connection_string, options)  # pyright: ignore[reportArgumentType]
+        self._cluster = Cluster(config.connection_string, options)
         self._bucket = self._cluster.bucket(config.bucket_name)
         self._scope = self._bucket.scope(config.scope_name)
         self._bucket_name = config.bucket_name
@@ -68,6 +68,7 @@ class CouchbaseVector(BaseVector):
         # Wait until the cluster is ready for use.
         self._cluster.wait_until_ready(timedelta(seconds=5))
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         index_id = str(uuid.uuid4()).replace("-", "")
         self._create_collection(uuid=index_id, vector_length=len(embeddings[0]))
@@ -200,9 +201,11 @@ class CouchbaseVector(BaseVector):
         # Check if the collection exists in the scope
         return self._collection_name in scope_collection_map[self._scope_name]
 
+    @override
     def get_type(self) -> str:
         return VectorType.COUCHBASE
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         uuids = self._get_uuids(documents)
         texts = [d.page_content for d in documents]
@@ -221,6 +224,7 @@ class CouchbaseVector(BaseVector):
 
         return doc_ids
 
+    @override
     def text_exists(self, id: str) -> bool:
         # Use a parameterized query for safety and correctness
         query = f"""
@@ -234,6 +238,7 @@ class CouchbaseVector(BaseVector):
             return bool(row["count"] > 0)
         return False  # Return False if no rows are returned
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         query = f"""
             DELETE FROM `{self._bucket_name}`.{self._client_config.scope_name}.{self._collection_name}
@@ -261,6 +266,7 @@ class CouchbaseVector(BaseVector):
     #     result = self._cluster.query(query, named_parameters={'value':value})
     #     return [row['id'] for row in result.rows()]
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         query = f"""
             DELETE FROM `{self._client_config.bucket_name}`.{self._client_config.scope_name}.{self._collection_name}
@@ -268,6 +274,7 @@ class CouchbaseVector(BaseVector):
             """
         self._cluster.query(query, named_parameters={"value": value}).execute()
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 5)
         score_threshold = kwargs.get("score_threshold") or 0.0
@@ -303,10 +310,11 @@ class CouchbaseVector(BaseVector):
 
         return docs
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 4)
         try:
-            CBrequest = search.SearchRequest.create(search.QueryStringQuery("text:" + query))  # pyright: ignore[reportCallIssue]
+            CBrequest = search.SearchRequest.create(search.QueryStringQuery("text:" + query))  # pyrefly: ignore[bad-argument-count]
             search_iter = self._scope.search(
                 self._collection_name + "_search", CBrequest, SearchOptions(limit=top_k, fields=["*"])
             )
@@ -325,6 +333,7 @@ class CouchbaseVector(BaseVector):
 
         return docs
 
+    @override
     def delete(self):
         manager = self._bucket.collections()
         scopes = manager.get_all_scopes()
@@ -356,6 +365,7 @@ class CouchbaseVector(BaseVector):
 
 
 class CouchbaseVectorFactory(AbstractVectorFactory):
+    @override
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> CouchbaseVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]

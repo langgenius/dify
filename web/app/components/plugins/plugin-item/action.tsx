@@ -26,7 +26,7 @@ import { PluginSource } from '../types'
 
 const i18nPrefix = 'action'
 
-type Props = {
+type Props = Readonly<{
   author: string
   installationId: string
   pluginUniqueIdentifier: string
@@ -38,7 +38,7 @@ type Props = {
   isShowDelete: boolean
   onDelete: () => void
   meta?: MetaData
-}
+}>
 const Action: FC<Props> = ({
   author,
   installationId,
@@ -104,6 +104,7 @@ const Action: FC<Props> = ({
       const res = await uninstallPlugin(installationId)
       if (res.success) {
         hideDeleteConfirm()
+        invalidateInstalledPluginList()
         onDelete()
       }
     }
@@ -113,7 +114,7 @@ const Action: FC<Props> = ({
     finally {
       hideDeleting()
     }
-  }, [hideDeleteConfirm, hideDeleting, installationId, onDelete, showDeleting])
+  }, [hideDeleteConfirm, hideDeleting, installationId, invalidateInstalledPluginList, onDelete, showDeleting])
   return (
     <div className="flex space-x-1">
       {/* Only plugin installed from GitHub need to check if it's the new version  */}
@@ -123,7 +124,7 @@ const Action: FC<Props> = ({
             <TooltipTrigger
               render={(
                 <ActionButton onClick={handleFetchNewVersion}>
-                  <span className="i-ri-loop-left-line h-4 w-4 text-text-tertiary" />
+                  <span className="i-ri-loop-left-line size-4 text-text-tertiary" />
                 </ActionButton>
               )}
             />
@@ -139,7 +140,7 @@ const Action: FC<Props> = ({
             <TooltipTrigger
               render={(
                 <ActionButton onClick={showPluginInfo}>
-                  <span className="i-ri-information-2-line h-4 w-4 text-text-tertiary" />
+                  <span className="i-ri-information-2-line size-4 text-text-tertiary" />
                 </ActionButton>
               )}
             />
@@ -159,7 +160,7 @@ const Action: FC<Props> = ({
                   className="text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
                   onClick={showDeleteConfirm}
                 >
-                  <span className="i-ri-delete-bin-line h-4 w-4" />
+                  <span className="i-ri-delete-bin-line size-4" />
                 </ActionButton>
               )}
             />
@@ -179,7 +180,7 @@ const Action: FC<Props> = ({
         />
       )}
       <AlertDialog open={isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
-        <AlertDialogContent>
+        <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
               {t(`${i18nPrefix}.delete`, { ns: 'plugin' })}

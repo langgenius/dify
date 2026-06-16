@@ -7,9 +7,9 @@ import RadioCard from '@/app/components/base/radio-card'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { retrievalIcon } from '../../create/icons'
 
-type Props = {
+type Props = Readonly<{
   value: RetrievalConfig
-}
+}>
 
 export const getIcon = (type: RETRIEVE_METHOD) => {
   return ({

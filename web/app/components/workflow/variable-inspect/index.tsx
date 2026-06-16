@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { debounce } from 'es-toolkit/compat'
+import { useSetLocalStorage } from 'foxact/use-local-storage'
 import {
   useCallback,
   useMemo,
@@ -21,10 +22,12 @@ const VariableInspectPanel: FC = () => {
     return workflowCanvasHeight - 60
   }, [workflowCanvasHeight])
 
+  const setPanelHeightStorage = useSetLocalStorage<string>('workflow-variable-inpsect-panel-height', { raw: true })
+
   const handleResize = useCallback((width: number, height: number) => {
-    localStorage.setItem('workflow-variable-inpsect-panel-height', `${height}`)
+    setPanelHeightStorage(`${height}`)
     setVariableInspectPanelHeight(height)
-  }, [setVariableInspectPanelHeight])
+  }, [setVariableInspectPanelHeight, setPanelHeightStorage])
 
   const {
     triggerRef,

@@ -2,9 +2,9 @@
 import type { InputProps } from '../input'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useClipboard } from 'foxact/use-clipboard'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useClipboard } from '@/hooks/use-clipboard'
 import ActionButton from '../action-button'
 
 type InputWithCopyProps = {
@@ -73,8 +73,8 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>((
                   className="hover:bg-components-button-ghost-bg-hover"
                 >
                   {copied
-                    ? (<span className="i-ri-clipboard-fill h-3.5 w-3.5 text-text-tertiary" aria-hidden="true" />)
-                    : (<span className="i-ri-clipboard-line h-3.5 w-3.5 text-text-tertiary" aria-hidden="true" />)}
+                    ? (<span className="i-ri-clipboard-fill size-3.5 text-text-tertiary" aria-hidden="true" />)
+                    : (<span className="i-ri-clipboard-line size-3.5 text-text-tertiary" aria-hidden="true" />)}
                 </ActionButton>
               )}
             />

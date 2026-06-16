@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import type { PeriodParamsWithTimeRange, TimeRange } from '@/app/components/app/overview/app-chart'
 import type { I18nKeysByPrefix } from '@/types/i18n'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { RiArrowDownSLine } from '@remixicon/react'
 import dayjs from 'dayjs'
@@ -18,11 +17,11 @@ type TimePeriodOption = {
   name: string
 }
 
-type Props = {
+type Props = Readonly<{
   isCustomRange: boolean
   ranges: { value: number, name: TimePeriodName }[]
   onSelect: (payload: PeriodParamsWithTimeRange) => void
-}
+}>
 
 const RangeSelector: FC<Props> = ({
   isCustomRange,
@@ -74,9 +73,9 @@ const RangeSelector: FC<Props> = ({
       <SelectTrigger
         className="h-auto w-fit max-w-none border-0 bg-transparent p-0 hover:bg-transparent focus-visible:bg-transparent [&>*:last-child]:hidden"
       >
-        <div className={cn('flex h-8 cursor-pointer items-center space-x-1.5 rounded-lg bg-components-input-bg-normal pr-2 pl-3', open && 'bg-state-base-hover-alt')}>
+        <div className="flex h-8 cursor-pointer items-center space-x-1.5 rounded-lg bg-components-input-bg-normal pr-2 pl-3 group-data-popup-open:bg-state-base-hover-alt">
           <div className="system-sm-regular text-components-input-text-filled">{isCustomRange ? t('filter.period.custom', { ns: 'appLog' }) : selectedItem?.name}</div>
-          <RiArrowDownSLine className={cn('size-4 text-text-quaternary', open && 'text-text-secondary')} />
+          <RiArrowDownSLine className="size-4 text-text-quaternary group-data-popup-open:text-text-secondary" />
         </div>
       </SelectTrigger>
       <SelectContent className="translate-x-[-24px]" popupClassName="w-[200px]" listClassName="p-1">

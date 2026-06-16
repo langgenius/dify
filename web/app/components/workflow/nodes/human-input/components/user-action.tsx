@@ -101,7 +101,7 @@ const UserActionItem: FC<UserActionItemProps> = ({
           variant="tertiary"
           onClick={() => onDelete(data.id)}
         >
-          <RiDeleteBinLine className="h-4 w-4" />
+          <RiDeleteBinLine className="size-4" />
         </Button>
       )}
     </div>

@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { AssignerNodeOperation } from '../../types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { RiDeleteBinLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
@@ -10,7 +11,6 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import ListNoDataPlaceholder from '@/app/components/workflow/nodes/_base/components/list-no-data-placeholder'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
@@ -20,7 +20,7 @@ import { VarType } from '@/app/components/workflow/types'
 import { AssignerNodeInputType, WriteMode } from '../../types'
 import OperationSelector from '../operation-selector'
 
-type Props = {
+type Props = Readonly<{
   readonly: boolean
   nodeId: string
   list: AssignerNodeOperation[]
@@ -33,7 +33,7 @@ type Props = {
   writeModeTypes?: WriteMode[]
   writeModeTypesArr?: WriteMode[]
   writeModeTypesNum?: WriteMode[]
-}
+}>
 
 const VarList: FC<Props> = ({
   readonly,
@@ -190,8 +190,9 @@ const VarList: FC<Props> = ({
                   )}
                   {assignedVarType === 'string' && (
                     <Textarea
+                      aria-label={item.variable_selector?.join('.') || t('nodes.assigner.setParameter', { ns: 'workflow' })}
                       value={item.value as string}
-                      onChange={e => handleToAssignedVarChange(index)(e.target.value)}
+                      onValueChange={value => handleToAssignedVarChange(index)(value)}
                       className="w-full"
                     />
                   )}
@@ -228,7 +229,7 @@ const VarList: FC<Props> = ({
               className="group shrink-0 hover:bg-state-destructive-hover!"
               onClick={handleVarRemove(index)}
             >
-              <RiDeleteBinLine className="h-4 w-4 text-text-tertiary group-hover:text-text-destructive" />
+              <RiDeleteBinLine className="size-4 text-text-tertiary group-hover:text-text-destructive" />
             </ActionButton>
           </div>
         )

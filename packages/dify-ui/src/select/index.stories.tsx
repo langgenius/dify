@@ -1,9 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { useState } from 'react'
+import * as React from 'react'
+import { expect, waitFor, within } from 'storybook/test'
 import {
   Select,
   SelectContent,
   SelectGroup,
+  SelectGroupLabel,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
@@ -15,8 +17,15 @@ import {
 
 const triggerWidth = 'w-64'
 
+const cityItems = [
+  { label: 'Seattle', value: 'seattle' },
+  { label: 'New York', value: 'new-york' },
+  { label: 'Tokyo', value: 'tokyo' },
+  { label: 'Paris', value: 'paris' },
+]
+
 const meta = {
-  title: 'Base/UI/Select',
+  title: 'Base/Form/Select',
   component: Select,
   parameters: {
     layout: 'centered',
@@ -35,11 +44,11 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {
   render: () => (
     <div className={triggerWidth}>
-      <Select defaultValue="seattle">
+      <Select items={cityItems} defaultValue="seattle">
         <SelectTrigger aria-label="City">
           <SelectValue placeholder="Select a city" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent listProps={{ 'aria-label': 'City options' }}>
           <SelectItem value="seattle">
             <SelectItemText>Seattle</SelectItemText>
             <SelectItemIndicator />
@@ -54,6 +63,50 @@ export const Default: Story = {
           </SelectItem>
           <SelectItem value="paris">
             <SelectItemText>Paris</SelectItemText>
+            <SelectItemIndicator />
+          </SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  ),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const trigger = canvas.getByRole('combobox', { name: 'City' })
+    const body = within(canvasElement.ownerDocument.body)
+
+    await expect(trigger).toHaveTextContent('Seattle')
+
+    trigger.focus()
+    await userEvent.keyboard('{ArrowDown}')
+
+    await waitFor(async () => {
+      await expect(body.getByRole('option', { name: 'Tokyo' })).toBeVisible()
+    })
+
+    await userEvent.keyboard('{ArrowDown}{ArrowDown}{Enter}')
+    await expect(trigger).toHaveTextContent('Tokyo')
+
+    await userEvent.keyboard('{Escape}')
+    await waitFor(async () => {
+      await expect(body.queryByRole('listbox', { name: 'City options' })).not.toBeInTheDocument()
+    })
+  },
+}
+
+export const WithVisibleLabel: Story = {
+  render: () => (
+    <div className={triggerWidth}>
+      <Select defaultValue="seattle">
+        <SelectLabel>City</SelectLabel>
+        <SelectTrigger>
+          <SelectValue placeholder="Select a city" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="seattle">
+            <SelectItemText>Seattle</SelectItemText>
+            <SelectItemIndicator />
+          </SelectItem>
+          <SelectItem value="new-york">
+            <SelectItemText>New York</SelectItemText>
             <SelectItemIndicator />
           </SelectItem>
         </SelectContent>
@@ -123,7 +176,7 @@ export const WithGroupsAndSeparator: Story = {
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
-            <SelectLabel>OpenAI</SelectLabel>
+            <SelectGroupLabel>OpenAI</SelectGroupLabel>
             <SelectItem value="gpt-5">
               <SelectItemText>GPT-5</SelectItemText>
               <SelectItemIndicator />
@@ -135,7 +188,7 @@ export const WithGroupsAndSeparator: Story = {
           </SelectGroup>
           <SelectSeparator />
           <SelectGroup>
-            <SelectLabel>Anthropic</SelectLabel>
+            <SelectGroupLabel>Anthropic</SelectGroupLabel>
             <SelectItem value="claude-opus">
               <SelectItemText>Claude Opus</SelectItemText>
               <SelectItemIndicator />
@@ -147,7 +200,7 @@ export const WithGroupsAndSeparator: Story = {
           </SelectGroup>
           <SelectSeparator />
           <SelectGroup>
-            <SelectLabel>Google</SelectLabel>
+            <SelectGroupLabel>Google</SelectGroupLabel>
             <SelectItem value="gemini-25">
               <SelectItemText>Gemini 2.5</SelectItemText>
               <SelectItemIndicator />
@@ -214,7 +267,7 @@ export const Disabled: Story = {
 export const ReadOnly: Story = {
   render: () => (
     <div className={triggerWidth}>
-      <Select defaultValue="seattle" readOnly>
+      <Select defaultValue="seattle" items={cityItems} readOnly>
         <SelectTrigger aria-label="City">
           <SelectValue />
         </SelectTrigger>
@@ -234,7 +287,7 @@ export const ReadOnly: Story = {
 }
 
 const ControlledDemo = () => {
-  const [value, setValue] = useState<string | null>('balanced')
+  const [value, setValue] = React.useState<string | null>('balanced')
 
   return (
     <div className="flex flex-col items-start gap-3">

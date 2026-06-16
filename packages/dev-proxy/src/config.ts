@@ -1,7 +1,7 @@
-import type { DotenvOptions } from 'c12'
+import type { DotenvOptions, LoadConfigOptions, WatchConfigOptions } from 'c12'
 import type { DevProxyCliOptions, DevProxyConfig, DevProxyConfigLoadOptions, DevProxyServerConfig, ResolvedDevProxyServerOptions } from './types'
 import path from 'node:path'
-import { loadConfig } from 'c12'
+import { loadConfig, watchConfig } from 'c12'
 
 const DEFAULT_CONFIG_FILE = 'dev-proxy.config.ts'
 const DEFAULT_PROXY_HOST = '127.0.0.1'
@@ -37,6 +37,16 @@ export const parseDevProxyCliArgs = (argv: readonly string[]): DevProxyCliOption
 
     if (arg === '--help' || arg === '-h') {
       options.help = true
+      continue
+    }
+
+    if (arg === '--watch') {
+      options.watch = true
+      continue
+    }
+
+    if (arg === '--no-watch') {
+      options.watch = false
       continue
     }
 
@@ -105,14 +115,15 @@ const resolveDotenvOptions = (
   }
 }
 
-export const loadDevProxyConfig = async (
+const createC12ConfigOptions = (
   configPath = DEFAULT_CONFIG_FILE,
   cwd = process.cwd(),
   options: DevProxyConfigLoadOptions = {},
-): Promise<DevProxyConfig> => {
+): LoadConfigOptions<DevProxyConfig> => {
   const resolvedConfigPath = path.resolve(cwd, configPath)
   const parsedPath = path.parse(resolvedConfigPath)
-  const { config: loadedConfig } = await loadConfig({
+
+  return {
     configFile: parsedPath.name,
     cwd: parsedPath.dir,
     dotenv: resolveDotenvOptions(options.envFile, cwd),
@@ -120,10 +131,34 @@ export const loadDevProxyConfig = async (
     globalRc: false,
     packageJson: false,
     rcFile: false,
+  }
+}
+
+export const loadDevProxyConfig = async (
+  configPath = DEFAULT_CONFIG_FILE,
+  cwd = process.cwd(),
+  options: DevProxyConfigLoadOptions = {},
+): Promise<DevProxyConfig> => {
+  const { config: loadedConfig } = await loadConfig({
+    ...createC12ConfigOptions(configPath, cwd, options),
   })
 
   assertDevProxyConfig(loadedConfig)
   return loadedConfig
+}
+
+export const watchDevProxyConfig = async (
+  configPath = DEFAULT_CONFIG_FILE,
+  cwd = process.cwd(),
+  options: DevProxyConfigLoadOptions & Pick<WatchConfigOptions<DevProxyConfig>, 'onUpdate'> = {},
+) => {
+  const watcher = await watchConfig<DevProxyConfig>({
+    ...createC12ConfigOptions(configPath, cwd, options),
+    onUpdate: options.onUpdate,
+  })
+
+  assertDevProxyConfig(watcher.config)
+  return watcher
 }
 
 export const defineDevProxyConfig = (config: DevProxyConfig) => config

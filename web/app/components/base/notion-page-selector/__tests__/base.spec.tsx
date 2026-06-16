@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
-import { useModalContextSelector } from '@/context/modal-context'
+import { useModalContext, useModalContextSelector } from '@/context/modal-context'
 import { useInvalidPreImportNotionPages, usePreImportNotionPages } from '@/service/knowledge/use-import'
 import NotionPageSelector from '../base'
 
@@ -17,6 +17,7 @@ vi.mock('@/service/knowledge/use-import', () => ({
 }))
 
 vi.mock('@/context/modal-context', () => ({
+  useModalContext: vi.fn(),
   useModalContextSelector: vi.fn(),
 }))
 
@@ -83,6 +84,9 @@ describe('NotionPageSelector Base', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(useModalContext).mockReturnValue({
+      setShowAccountSettingModal: mockSetShowAccountSettingModal,
+    } as unknown as ReturnType<typeof useModalContext>)
     vi.mocked(useModalContextSelector).mockImplementation((selector) => {
       // Execute the selector to get branch/func coverage for the inline function
       selector({ setShowAccountSettingModal: mockSetShowAccountSettingModal } as unknown as Parameters<Parameters<typeof useModalContextSelector>[0]>[0])
@@ -120,7 +124,7 @@ describe('NotionPageSelector Base', () => {
 
     expect(screen.getByTestId('notion-page-selector-base')).toBeInTheDocument()
     expect(screen.getByTestId('notion-page-name-root-1')).toBeInTheDocument()
-    const checkbox = screen.getByTestId('checkbox-notion-page-checkbox-root-1')
+    const checkbox = screen.getByRole('checkbox', { name: 'Root 1' })
     await user.click(checkbox)
 
     expect(handleSelect).toHaveBeenCalled()
@@ -137,8 +141,8 @@ describe('NotionPageSelector Base', () => {
     const user = userEvent.setup()
     render(<NotionPageSelector credentialList={mockCredentialList} onSelect={handleSelect} />)
 
-    const boundCheckbox = screen.getByTestId('checkbox-notion-page-checkbox-bound-1')
-    expect(screen.getByTestId('check-icon-notion-page-checkbox-bound-1')).toBeInTheDocument()
+    const boundCheckbox = screen.getByRole('checkbox', { name: 'Bound 1' })
+    expect(boundCheckbox).toHaveAttribute('aria-checked', 'true')
     await user.click(boundCheckbox)
     expect(handleSelect).not.toHaveBeenCalled()
   })
@@ -263,10 +267,10 @@ describe('NotionPageSelector Base', () => {
     const { rerender } = render(
       <NotionPageSelector credentialList={mockCredentialList} onSelect={vi.fn()} value={['root-1']} />,
     )
-    expect(screen.getByTestId('check-icon-notion-page-checkbox-root-1')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Root 1' })).toHaveAttribute('aria-checked', 'true')
 
     rerender(<NotionPageSelector credentialList={mockCredentialList} onSelect={vi.fn()} value={[]} />)
-    expect(screen.queryByTestId('check-icon-notion-page-checkbox-root-1')).not.toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Root 1' })).toHaveAttribute('aria-checked', 'false')
   })
 
   it('should hide preview actions when canPreview is false', () => {

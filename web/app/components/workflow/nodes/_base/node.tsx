@@ -79,7 +79,7 @@ const BaseNode: FC<BaseNodeProps> = ({
   const appId = useStore(s => s.appId)
   const { nodePanelPresence } = useCollaboration(appId as string)
   const controlMode = useStore(s => s.controlMode)
-  const isContextMenuTarget = useStore(s => s.nodeMenu?.nodeId === id)
+  const isContextMenuTarget = useStore(s => s.contextMenuTarget?.type === 'node' && s.contextMenuTarget.nodeId === id)
 
   const currentUserPresence = useMemo(() => {
     const userId = userProfile?.id || ''
@@ -195,7 +195,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           'rounded-[15px] border border-transparent',
           (controlMode === ControlMode.Comment) && 'hover:cursor-none',
           !isContainerNode(data.type) && 'w-[240px] bg-workflow-block-bg',
-          isContainerNode(data.type) && 'flex h-full w-full flex-col border-workflow-block-border bg-workflow-block-bg-transparent',
+          isContainerNode(data.type) && 'flex size-full flex-col border-workflow-block-border bg-workflow-block-bg-transparent',
           !data._runningStatus && 'hover:shadow-lg',
           showRunningBorder && 'border-state-accent-solid!',
           showSuccessBorder && 'border-state-success-solid!',
@@ -229,7 +229,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           )
         }
         {
-          !data._isCandidate && (
+          data.type !== BlockEnum.StartPlaceholder && !data._isCandidate && (
             <NodeTargetHandle
               id={id}
               data={data}
@@ -239,7 +239,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           )
         }
         {
-          data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && data.type !== BlockEnum.HumanInput && !data._isCandidate && (
+          data.type !== BlockEnum.StartPlaceholder && data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && data.type !== BlockEnum.HumanInput && !data._isCandidate && (
             <NodeSourceHandle
               id={id}
               data={data}
@@ -324,7 +324,7 @@ const BaseNode: FC<BaseNodeProps> = ({
     </div>
   )
 
-  const isStartNode = data.type === BlockEnum.Start
+  const isStartNode = data.type === BlockEnum.Start || data.type === BlockEnum.StartPlaceholder
   const isEntryNode = isEntryWorkflowNode(data.type)
 
   return isEntryNode

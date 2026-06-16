@@ -9,6 +9,7 @@ from core.entities.execution_extra_content import ExecutionExtraContentDomainMod
 from fields.base import ResponseModel
 from fields.conversation_fields import AgentThought, JSONValue, MessageFile
 from graphon.file import File
+from libs.helper import to_timestamp
 
 type JSONValueType = JSONValue
 
@@ -39,9 +40,7 @@ class RetrieverResource(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        if isinstance(value, datetime):
-            return to_timestamp(value)
-        return value
+        return to_timestamp(value)
 
 
 class MessageListItem(ResponseModel):
@@ -68,13 +67,14 @@ class MessageListItem(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        if isinstance(value, datetime):
-            return to_timestamp(value)
-        return value
+        return to_timestamp(value)
 
 
 class WebMessageListItem(MessageListItem):
-    metadata: JSONValueType | None = Field(default=None, validation_alias="message_metadata_dict")
+    metadata: JSONValueType | None = Field(
+        default=None,
+        validation_alias="message_metadata_dict",
+    )
 
 
 class MessageInfiniteScrollPagination(ResponseModel):
@@ -106,9 +106,7 @@ class SavedMessageItem(ResponseModel):
     @field_validator("created_at", mode="before")
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
-        if isinstance(value, datetime):
-            return to_timestamp(value)
-        return value
+        return to_timestamp(value)
 
 
 class SavedMessageInfiniteScrollPagination(ResponseModel):
@@ -119,12 +117,6 @@ class SavedMessageInfiniteScrollPagination(ResponseModel):
 
 class SuggestedQuestionsResponse(ResponseModel):
     data: list[str]
-
-
-def to_timestamp(value: datetime | None) -> int | None:
-    if value is None:
-        return None
-    return int(value.timestamp())
 
 
 def format_files_contained(value: JSONValueType) -> JSONValueType:

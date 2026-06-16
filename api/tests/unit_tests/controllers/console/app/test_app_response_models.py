@@ -6,9 +6,10 @@ from datetime import datetime
 from importlib import util
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
-from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
+from flask import Flask
 from flask.views import MethodView
 from pydantic import ValidationError
 from werkzeug.datastructures import MultiDict
@@ -16,6 +17,22 @@ from werkzeug.datastructures import MultiDict
 # kombu references MethodView as a global when importing celery/kombu pools.
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
+
+
+class _ConsoleModule(ModuleType):
+    console_ns: object
+    api: object | None
+    bp: object | None
+    app: ModuleType
+
+
+def _unwrap(func):
+    bound_self = getattr(func, "__self__", None)
+    while hasattr(func, "__wrapped__"):
+        func = func.__wrapped__
+    if bound_self is not None:
+        return func.__get__(bound_self, bound_self.__class__)
+    return func
 
 
 @pytest.fixture(scope="module")
@@ -26,7 +43,7 @@ def app_module():
 
     class _StubNamespace:
         def __init__(self):
-            self.models: dict[str, Any] = {}
+            self.models: dict[str, object] = {}
             self.payload = None
 
         def schema_model(self, name, schema):
@@ -67,7 +84,7 @@ def app_module():
     }
     stubbed_modules: list[tuple[str, ModuleType | None]] = []
 
-    console_module = ModuleType("controllers.console")
+    console_module = _ConsoleModule("controllers.console")
     console_module.__path__ = [str(root / "controllers" / "console")]
     console_module.console_ns = stub_namespace
     console_module.api = None
@@ -79,7 +96,7 @@ def app_module():
     sys.modules["controllers.console.app"] = app_package
     console_module.app = app_package
 
-    def _stub_module(name: str, attrs: dict[str, Any]):
+    def _stub_module(name: str, attrs: dict[str, object]) -> None:
         original = sys.modules.get(name)
         module = ModuleType(name)
         for key, value in attrs.items():
@@ -89,7 +106,7 @@ def app_module():
 
     class _OpsTraceManager:
         @staticmethod
-        def get_app_tracing_config(app_id: str) -> dict[str, Any]:
+        def get_app_tracing_config(app_id: str) -> dict[str, object]:
             return {}
 
         @staticmethod
@@ -106,6 +123,7 @@ def app_module():
     )
 
     spec = util.spec_from_file_location(module_name, module_path)
+    assert spec is not None
     module = util.module_from_spec(spec)
     sys.modules[module_name] = module
 
@@ -137,7 +155,7 @@ def app_models(app_module):
 
 
 @pytest.fixture(autouse=True)
-def patch_signed_url(monkeypatch, app_module):
+def patch_signed_url(monkeypatch: pytest.MonkeyPatch, app_module: ModuleType) -> None:
     """Ensure icon URL generation uses a deterministic helper for tests."""
 
     def _fake_build_icon_url(_icon_type, key: str | None) -> str | None:
@@ -194,6 +212,24 @@ def test_app_list_query_normalizes_orpc_bracket_tag_ids(app_module):
     assert query.tag_ids == [first_tag_id, second_tag_id]
 
 
+def test_app_list_query_normalizes_orpc_bracket_creator_ids(app_module):
+    first_creator_id = "9e8959cf-a67b-4d34-9906-1d687517b248"
+    second_creator_id = "1886f96a-5bf0-42bf-961d-8d2129049076"
+    query_args = MultiDict(
+        [
+            ("page", "1"),
+            ("limit", "30"),
+            ("creator_ids[1]", second_creator_id),
+            ("creator_ids[0]", first_creator_id),
+        ]
+    )
+
+    normalized = app_module._normalize_app_list_query_args(query_args)
+    query = app_module.AppListQuery.model_validate(normalized)
+
+    assert query.creator_ids == [first_creator_id, second_creator_id]
+
+
 def test_app_list_query_preserves_regular_query_params(app_module):
     query_args = MultiDict(
         [
@@ -245,6 +281,13 @@ def test_app_list_query_rejects_invalid_bracket_tag_id(app_module):
         app_module.AppListQuery.model_validate(normalized)
 
 
+def test_app_list_query_rejects_invalid_bracket_creator_id(app_module):
+    normalized = app_module._normalize_app_list_query_args(MultiDict([("creator_ids[0]", "not-a-uuid")]))
+
+    with pytest.raises(ValidationError):
+        app_module.AppListQuery.model_validate(normalized)
+
+
 def test_app_list_query_sorts_bracket_tag_ids_by_index(app_module):
     first_tag_id = "8c4ef3d1-58a1-4d94-8a1c-1c171d889e08"
     second_tag_id = "3c39395b-6d1f-4030-8b17-eaa7cc85221c"
@@ -269,6 +312,21 @@ def test_app_list_query_rejects_flat_tag_ids(app_module):
 
     with pytest.raises(ValidationError):
         app_module.AppListQuery.model_validate(normalized)
+
+
+def test_create_app_endpoint_rejects_agent_mode(app_module, monkeypatch: pytest.MonkeyPatch):
+    payload = {"name": "Iris", "mode": "agent", "description": "Agent app"}
+    app_service = MagicMock()
+    monkeypatch.setattr(app_module, "AppService", lambda: app_service)
+
+    app_module.console_ns.payload = payload
+    try:
+        with pytest.raises(ValidationError):
+            _unwrap(app_module.AppListApi().post)("tenant-1", SimpleNamespace(id="account-1"))
+    finally:
+        app_module.console_ns.payload = None
+
+    app_service.create_app.assert_not_called()
 
 
 def test_app_partial_serialization_uses_aliases(app_models):
@@ -346,6 +404,7 @@ def test_app_detail_with_site_includes_nested_serialization(app_models):
         max_active_requests=5,
         deleted_tools=[{"type": "api", "tool_name": "search", "provider_id": "prov"}],
         site=site,
+        bound_agent_id="agent-1",
     )
 
     serialized = AppDetailWithSite.model_validate(app_obj, from_attributes=True).model_dump(mode="json")
@@ -355,6 +414,7 @@ def test_app_detail_with_site_includes_nested_serialization(app_models):
     assert serialized["deleted_tools"][0]["tool_name"] == "search"
     assert serialized["site"]["icon_url"] == "signed:site-icon"
     assert serialized["site"]["created_at"] == int(timestamp.timestamp())
+    assert serialized["bound_agent_id"] == "agent-1"
 
 
 def test_app_pagination_aliases_per_page_and_has_next(app_models):
@@ -395,3 +455,46 @@ def test_app_pagination_aliases_per_page_and_has_next(app_models):
     assert len(serialized["data"]) == 2
     assert serialized["data"][0]["icon_url"] == "signed:first-icon"
     assert serialized["data"][1]["icon_url"] is None
+
+
+def test_app_list_uses_injected_session_for_draft_workflows(
+    app: Flask, app_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    api = app_module.AppListApi()
+    method = _unwrap(api.get)
+    app_item = SimpleNamespace(
+        id="app-1",
+        name="Workflow App",
+        desc_or_prompt="Summary",
+        mode="workflow",
+        mode_compatible_with_agent="workflow",
+    )
+    app_pagination = SimpleNamespace(page=1, per_page=20, total=1, has_next=False, items=[app_item])
+    workflow = SimpleNamespace(
+        id="workflow-1",
+        app_id="app-1",
+        walk_nodes=lambda: iter([("trigger-1", {"type": "trigger-webhook"})]),
+    )
+    session = MagicMock()
+    session.execute.return_value.scalars.return_value.all.return_value = [workflow]
+    scoped_session = SimpleNamespace(execute=MagicMock(side_effect=AssertionError("db.session should not be used")))
+
+    monkeypatch.setattr(
+        app_module,
+        "AppService",
+        lambda: SimpleNamespace(get_paginate_apps=lambda *_args, **_kwargs: app_pagination),
+    )
+    monkeypatch.setattr(
+        app_module,
+        "FeatureService",
+        SimpleNamespace(get_system_features=lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False))),
+    )
+    monkeypatch.setattr(app_module, "db", SimpleNamespace(session=scoped_session))
+
+    with app.test_request_context("/console/api/apps?page=1&limit=20", method="GET"):
+        response, status = method("tenant-1", "user-1", session)
+
+    assert status == 200
+    assert response["data"][0]["has_draft_trigger"] is True
+    session.execute.assert_called_once()
+    scoped_session.execute.assert_not_called()

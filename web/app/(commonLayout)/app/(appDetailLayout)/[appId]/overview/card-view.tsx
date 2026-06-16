@@ -6,6 +6,7 @@ import type { UpdateAppSiteCodeResponse } from '@/models/app'
 import type { App } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSetLocalStorage } from 'foxact/use-local-storage'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -74,6 +75,8 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const disableMcpTooltip = disableAppCards
     ? buildTriggerModeMessage(t('mcp.server.title', { ns: 'tools' }))
     : null
+
+  const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
 
   const updateAppDetail = useCallback(async () => {
     try {
@@ -155,7 +158,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
       }) as Promise<App>,
     )
     if (!err)
-      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+      setNeedRefresh('1')
 
     handleCallbackResult(err)
   }

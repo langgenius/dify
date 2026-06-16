@@ -3,7 +3,8 @@ import logging
 from werkzeug.exceptions import InternalServerError
 
 from controllers.common.controller_schemas import WorkflowRunPayload
-from controllers.common.schema import register_schema_model
+from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_model
 from controllers.console.app.error import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
@@ -12,6 +13,7 @@ from controllers.console.app.error import (
 )
 from controllers.console.explore.error import NotWorkflowAppError
 from controllers.console.explore.wraps import InstalledAppResource
+from controllers.console.wraps import with_current_user
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -24,7 +26,7 @@ from extensions.ext_redis import redis_client
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
-from libs.login import current_account_with_tenant
+from models import Account
 from models.model import AppMode, InstalledApp
 from services.app_generate_service import AppGenerateService
 from services.errors.llm import InvokeRateLimitError
@@ -34,16 +36,18 @@ from .. import console_ns
 logger = logging.getLogger(__name__)
 
 register_schema_model(console_ns, WorkflowRunPayload)
+register_response_schema_models(console_ns, GeneratedAppResponse, SimpleResultResponse)
 
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/run")
 class InstalledAppWorkflowRunApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[WorkflowRunPayload.__name__])
-    def post(self, installed_app: InstalledApp):
+    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
+    @with_current_user
+    def post(self, current_user: Account, installed_app: InstalledApp):
         """
         Run workflow
         """
-        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
         if not app_model:
             raise NotWorkflowAppError()
@@ -78,6 +82,7 @@ class InstalledAppWorkflowRunApi(InstalledAppResource):
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop")
 class InstalledAppWorkflowTaskStopApi(InstalledAppResource):
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     def post(self, installed_app: InstalledApp, task_id: str):
         """
         Stop workflow task

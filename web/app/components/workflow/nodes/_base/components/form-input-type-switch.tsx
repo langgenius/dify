@@ -5,10 +5,10 @@ import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { VarType } from '@/app/components/workflow/nodes/tool/types'
 
-type Props = {
+type Props = Readonly<{
   value: VarType
   onChange: (value: VarType) => void
-}
+}>
 
 const FormInputTypeSwitch: FC<Props> = ({
   value,
@@ -28,7 +28,7 @@ const FormInputTypeSwitch: FC<Props> = ({
               className="cursor-pointer rounded-lg bg-components-segmented-control-item-active-bg px-2.5 py-1.5 text-text-secondary shadow-xs hover:bg-components-segmented-control-item-active-bg"
               onClick={() => onChange(VarType.variable)}
             >
-              <Variable02 className="h-4 w-4" />
+              <Variable02 className="size-4" />
             </button>
           )
         : (
@@ -41,7 +41,7 @@ const FormInputTypeSwitch: FC<Props> = ({
                     className="cursor-pointer rounded-lg px-2.5 py-1.5 text-text-tertiary hover:bg-state-base-hover"
                     onClick={() => onChange(VarType.variable)}
                   >
-                    <Variable02 className="h-4 w-4" />
+                    <Variable02 className="size-4" />
                   </button>
                 )}
               />
@@ -56,7 +56,7 @@ const FormInputTypeSwitch: FC<Props> = ({
               className="cursor-pointer rounded-lg bg-components-segmented-control-item-active-bg px-2.5 py-1.5 text-text-secondary shadow-xs hover:bg-components-segmented-control-item-active-bg"
               onClick={() => onChange(VarType.constant)}
             >
-              <span aria-hidden className="i-ri-edit-line h-4 w-4" />
+              <span aria-hidden className="i-ri-edit-line size-4" />
             </button>
           )
         : (
@@ -69,7 +69,7 @@ const FormInputTypeSwitch: FC<Props> = ({
                     className="cursor-pointer rounded-lg px-2.5 py-1.5 text-text-tertiary hover:bg-state-base-hover"
                     onClick={() => onChange(VarType.constant)}
                   >
-                    <span aria-hidden className="i-ri-edit-line h-4 w-4" />
+                    <span aria-hidden className="i-ri-edit-line size-4" />
                   </button>
                 )}
               />

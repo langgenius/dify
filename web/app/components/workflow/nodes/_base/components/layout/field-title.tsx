@@ -45,7 +45,7 @@ export const FieldTitle = memo(({
         <div className="flex items-center system-sm-semibold-uppercase text-text-secondary">
           <span className="relative">
             {warningDot && (
-              <span className="absolute top-1/2 -left-[9px] size-[5px] -translate-y-1/2 rounded-full bg-text-warning-secondary" />
+              <span className="absolute top-1/2 left-[-9px] size-[5px] -translate-y-1/2 rounded-full bg-text-warning-secondary" />
             )}
             {title}
           </span>
@@ -54,7 +54,7 @@ export const FieldTitle = memo(({
               <span
                 aria-hidden
                 className={cn(
-                  'i-custom-vender-solid-general-arrow-down-round-fill h-4 w-4 cursor-pointer text-text-quaternary group-hover/collapse:text-text-secondary',
+                  'i-custom-vender-solid-general-arrow-down-round-fill size-4 cursor-pointer text-text-quaternary group-hover/collapse:text-text-secondary',
                   collapsedMerged && 'rotate-270',
                 )}
               />

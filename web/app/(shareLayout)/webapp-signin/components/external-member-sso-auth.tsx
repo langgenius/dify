@@ -5,10 +5,10 @@ import * as React from 'react'
 import { useCallback, useEffect } from 'react'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { SSOProtocol } from '@/features/system-features/constants'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { fetchWebOAuth2SSOUrl, fetchWebOIDCSSOUrl, fetchWebSAMLSSOUrl } from '@/service/share'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
-import { SSOProtocol } from '@/types/feature'
 
 const ExternalMemberSSOAuth = () => {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())

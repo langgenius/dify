@@ -6,6 +6,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
@@ -14,7 +15,6 @@ import { useTranslation } from 'react-i18next'
 import Field from '@/app/components/app/configuration/config-var/config-modal/field'
 import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import { ChangeType } from '@/app/components/workflow/types'
 import { checkKeys } from '@/utils/var'
 import { ParamType } from '../../types'
@@ -29,12 +29,12 @@ const DEFAULT_PARAM: Param = {
   required: false,
 }
 
-type Props = {
+type Props = Readonly<{
   type: 'add' | 'edit'
   payload?: Param
   onSave: (payload: Param, moreInfo?: MoreInfo) => void
   onCancel?: () => void
-}
+}>
 
 const TYPES = [ParamType.string, ParamType.number, ParamType.bool, ParamType.arrayString, ParamType.arrayNumber, ParamType.arrayObject, ParamType.arrayBool]
 
@@ -125,7 +125,7 @@ const AddExtractParameter: FC<Props> = ({
           className="mx-1 cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           onClick={showAddModal}
         >
-          <span className="i-ri-add-line h-4 w-4 text-text-tertiary" aria-hidden="true" />
+          <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
         </button>
       )}
       {isShowModal && (
@@ -175,8 +175,9 @@ const AddExtractParameter: FC<Props> = ({
                 )}
                 <Field title={t(`${i18nPrefix}.addExtractParameterContent.description`, { ns: 'workflow' })}>
                   <Textarea
+                    aria-label={t(`${i18nPrefix}.addExtractParameterContent.description`, { ns: 'workflow' })}
                     value={param.description}
-                    onChange={e => handleParamChange('description')(e.target.value)}
+                    onValueChange={value => handleParamChange('description')(value)}
                     placeholder={t(`${i18nPrefix}.addExtractParameterContent.descriptionPlaceholder`, { ns: 'workflow' })!}
                   />
                 </Field>

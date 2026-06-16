@@ -1,4 +1,5 @@
 import type { CrawlResultItem as CrawlResultItemType } from '@/models/datasets'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import CrawledResultItem from '../crawled-result-item'
@@ -6,18 +7,6 @@ import CrawledResultItem from '../crawled-result-item'
 vi.mock('@langgenius/dify-ui/button', () => ({
   Button: ({ children, onClick }: { children: React.ReactNode, onClick: () => void }) => (
     <button data-testid="preview-button" onClick={onClick}>{children}</button>
-  ),
-}))
-
-vi.mock('@/app/components/base/checkbox', () => ({
-  default: ({ checked, onCheck }: { checked: boolean, onCheck: () => void }) => (
-    <input type="checkbox" data-testid="checkbox" checked={checked} onChange={onCheck} />
-  ),
-}))
-
-vi.mock('@/app/components/base/radio/ui', () => ({
-  default: ({ isChecked, onCheck }: { isChecked: boolean, onCheck: () => void }) => (
-    <input type="radio" data-testid="radio" checked={isChecked} onChange={onCheck} />
   ),
 }))
 
@@ -49,12 +38,17 @@ describe('CrawledResultItem', () => {
 
   it('should render checkbox in multiple choice mode', () => {
     render(<CrawledResultItem {...defaultProps} />)
-    expect(screen.getByTestId('checkbox')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: /Test Page/ })).toBeInTheDocument()
   })
 
   it('should render radio in single choice mode', () => {
-    render(<CrawledResultItem {...defaultProps} isMultipleChoice={false} />)
-    expect(screen.getByTestId('radio')).toBeInTheDocument()
+    render(
+      <RadioGroup aria-label="Crawled pages" value={defaultProps.payload.source_url}>
+        <CrawledResultItem {...defaultProps} isMultipleChoice={false} />
+      </RadioGroup>,
+    )
+
+    expect(screen.getByRole('radio', { name: /Test Page/ })).toBeInTheDocument()
   })
 
   it('should show preview button when showPreview is true', () => {

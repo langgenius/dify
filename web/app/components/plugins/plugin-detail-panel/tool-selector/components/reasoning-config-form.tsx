@@ -45,14 +45,14 @@ import SchemaModal from './schema-modal'
 
 export type ReasoningConfigValue = ReasoningConfigValueShape
 
-type Props = {
+type Props = Readonly<{
   value: ReasoningConfigValue
   onChange: (val: ReasoningConfigValue) => void
   schemas: ToolFormSchema[]
   nodeOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
   nodeId: string
-}
+}>
 
 const ReasoningConfigForm: React.FC<Props> = ({
   value,
@@ -131,7 +131,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
     const tooltipContent = tooltipText && (
       <Infotip
         aria-label={tooltipText}
-        className="ml-0.5 h-4 w-4"
+        className="ml-0.5 size-4"
         popupClassName="w-[200px]"
       >
         {tooltipText}
@@ -164,7 +164,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
       <div key={variable} className="space-y-0.5">
         <div className="flex items-center justify-between py-2 system-sm-semibold text-text-secondary">
           <div className="flex items-center">
-            <span className={cn('max-w-[140px] truncate code-sm-semibold text-text-secondary')} title={fieldTitle}>{fieldTitle}</span>
+            <span className={cn('max-w-[140px] truncate code-sm-semibold text-text-secondary')}>{fieldTitle}</span>
             {required && (
               <span className="ml-1 text-red-500">*</span>
             )}
@@ -300,7 +300,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
             className="inline-flex items-center text-xs text-text-accent"
           >
             {t('howToGet', { ns: 'tools' })}
-            <RiArrowRightUpLine className="ml-1 h-3 w-3" />
+            <RiArrowRightUpLine className="ml-1 size-3" />
           </a>
         )}
       </div>

@@ -66,20 +66,21 @@ class Tool(ABC):
             message_id=message_id,
         )
 
-        if isinstance(result, ToolInvokeMessage):
+        match result:
+            case ToolInvokeMessage():
 
-            def single_generator() -> Generator[ToolInvokeMessage, None, None]:
-                yield result
+                def single_generator() -> Generator[ToolInvokeMessage, None, None]:
+                    yield result
 
-            return single_generator()
-        elif isinstance(result, list):
+                return single_generator()
+            case list():
 
-            def generator() -> Generator[ToolInvokeMessage, None, None]:
-                yield from result
+                def generator() -> Generator[ToolInvokeMessage, None, None]:
+                    yield from result
 
-            return generator()
-        else:
-            return result
+                return generator()
+            case _:
+                return result
 
     def _transform_tool_parameters_type(self, tool_parameters: dict[str, Any]) -> dict[str, Any]:
         """
@@ -126,33 +127,88 @@ class Tool(ABC):
         message_id: str | None = None,
     ) -> list[ToolParameter]:
         """
-        get merged runtime parameters
+        Get the effective parameter declarations for this tool.
+
+        Runtime parameters override declared parameters by name and append new
+        parameters, but the returned list is always detached from the tool's
+        cached declarations so callers can safely mutate it while building
+        downstream schemas.
 
         :return: merged runtime parameters
         """
-        parameters = self.entity.parameters
-        parameters = parameters.copy()
-        user_parameters = self.get_runtime_parameters() or []
-        user_parameters = user_parameters.copy()
+        parameters = [deepcopy(parameter) for parameter in self.entity.parameters or []]
+        user_parameters = [
+            deepcopy(parameter)
+            for parameter in self.get_runtime_parameters(
+                conversation_id=conversation_id,
+                app_id=app_id,
+                message_id=message_id,
+            )
+            or []
+        ]
 
-        # override parameters
+        parameter_indexes = {parameter.name: index for index, parameter in enumerate(parameters)}
+
         for parameter in user_parameters:
-            # check if parameter in tool parameters
-            for tool_parameter in parameters:
-                if tool_parameter.name == parameter.name:
-                    # override parameter
-                    tool_parameter.type = parameter.type
-                    tool_parameter.form = parameter.form
-                    tool_parameter.required = parameter.required
-                    tool_parameter.default = parameter.default
-                    tool_parameter.options = parameter.options
-                    tool_parameter.llm_description = parameter.llm_description
-                    break
-            else:
-                # add new parameter
+            existing_index = parameter_indexes.get(parameter.name)
+            if existing_index is None:
+                parameter_indexes[parameter.name] = len(parameters)
                 parameters.append(parameter)
+                continue
+            parameters[existing_index] = parameter
 
         return parameters
+
+    def get_llm_parameters_json_schema(
+        self,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Build the model-visible JSON schema from effective tool parameters.
+
+        Hidden/manual parameters stay available for invocation preparation on the
+        API side, but are intentionally omitted from the LLM-facing schema.
+        """
+        schema: dict[str, Any] = {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        }
+
+        for parameter in self.get_merged_runtime_parameters(
+            conversation_id=conversation_id,
+            app_id=app_id,
+            message_id=message_id,
+        ):
+            if parameter.form != ToolParameter.ToolParameterForm.LLM:
+                continue
+
+            if parameter.type in {
+                ToolParameter.ToolParameterType.SYSTEM_FILES,
+                ToolParameter.ToolParameterType.FILE,
+                ToolParameter.ToolParameterType.FILES,
+            }:
+                continue
+
+            parameter_schema: dict[str, Any] = (
+                {
+                    "type": parameter.type.as_normal_type(),
+                    "description": parameter.llm_description or "",
+                }
+                if parameter.input_schema is None
+                else deepcopy(parameter.input_schema)
+            )
+            parameter_schema.setdefault("description", parameter.llm_description or "")
+
+            if parameter.type == ToolParameter.ToolParameterType.SELECT and parameter.options:
+                parameter_schema["enum"] = [option.value for option in parameter.options]
+
+            schema["properties"][parameter.name] = parameter_schema
+            if parameter.required:
+                schema["required"].append(parameter.name)
+
+        return schema
 
     def create_image_message(
         self,

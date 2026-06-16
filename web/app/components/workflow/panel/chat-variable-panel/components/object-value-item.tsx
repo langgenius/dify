@@ -9,11 +9,11 @@ import ActionButton from '@/app/components/base/action-button'
 import VariableTypeSelector from '@/app/components/workflow/panel/chat-variable-panel/components/variable-type-select'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 
-type Props = {
+type Props = Readonly<{
   index: number
   list: any[]
   onChange: (list: any[]) => void
-}
+}>
 
 const typeList = [
   ChatVarType.String,
@@ -131,7 +131,7 @@ const ObjectValueItem: FC<Props> = ({
               className="group hover:bg-state-destructive-hover!"
               onClick={handleItemRemove(index)}
             >
-              <span className="i-ri-delete-bin-line h-4 w-4 text-text-tertiary group-hover:text-text-destructive" />
+              <span className="i-ri-delete-bin-line size-4 text-text-tertiary group-hover:text-text-destructive" />
             </ActionButton>
           </div>
         )}

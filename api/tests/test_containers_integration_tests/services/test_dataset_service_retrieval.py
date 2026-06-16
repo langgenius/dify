@@ -289,14 +289,24 @@ class TestDatasetServiceGetDatasets:
         tag_2 = DatasetRetrievalTestDataFactory.create_tag_binding(
             db_session_with_containers, tenant.id, account.id, dataset_2.id
         )
+        db_session_with_containers.add(
+            TagBinding(
+                tenant_id=tenant.id,
+                tag_id=tag_2.id,
+                target_id=dataset_1.id,
+                created_by=account.id,
+            )
+        )
+        db_session_with_containers.commit()
         tag_ids = [tag_1.id, tag_2.id]
 
         # Act
         datasets, total = DatasetService.get_datasets(page, per_page, tenant_id=tenant.id, tag_ids=tag_ids)
 
         # Assert
-        assert len(datasets) == 2
-        assert total == 2
+        assert len(datasets) == 1
+        assert total == 1
+        assert datasets[0].id == dataset_1.id
 
     def test_get_datasets_with_empty_tag_ids(self, db_session_with_containers: Session):
         """Test get_datasets with empty tag_ids skips tag filtering and returns all matching datasets."""

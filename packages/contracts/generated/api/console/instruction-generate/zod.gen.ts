@@ -3,42 +3,39 @@
 import * as z from 'zod'
 
 /**
+ * GeneratorResponse
+ */
+export const zGeneratorResponse = z.unknown()
+
+/**
  * InstructionTemplatePayload
  */
 export const zInstructionTemplatePayload = z.object({
   type: z.string(),
 })
 
-export const zJsonValue = z.unknown()
+/**
+ * SimpleDataResponse
+ */
+export const zSimpleDataResponse = z.object({
+  data: z.string(),
+})
+
+/**
+ * LLMMode
+ *
+ * Enum class for large language model mode.
+ */
+export const zLlmMode = z.enum(['chat', 'completion'])
 
 /**
  * ModelConfig
  */
 export const zModelConfig = z.object({
-  agent_mode_dict: zJsonValue.optional(),
-  annotation_reply_dict: zJsonValue.optional(),
-  chat_prompt_config_dict: zJsonValue.optional(),
-  completion_prompt_config_dict: zJsonValue.optional(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  dataset_configs_dict: zJsonValue.optional(),
-  dataset_query_variable: z.string().nullish(),
-  external_data_tools_list: zJsonValue.optional(),
-  file_upload_dict: zJsonValue.optional(),
-  model_dict: zJsonValue.optional(),
-  more_like_this_dict: zJsonValue.optional(),
-  opening_statement: z.string().nullish(),
-  pre_prompt: z.string().nullish(),
-  prompt_type: z.string().nullish(),
-  retriever_resource_dict: zJsonValue.optional(),
-  sensitive_word_avoidance_dict: zJsonValue.optional(),
-  speech_to_text_dict: zJsonValue.optional(),
-  suggested_questions_after_answer_dict: zJsonValue.optional(),
-  suggested_questions_list: zJsonValue.optional(),
-  text_to_speech_dict: zJsonValue.optional(),
-  updated_at: z.int().nullish(),
-  updated_by: z.string().nullish(),
-  user_input_form_list: zJsonValue.optional(),
+  completion_params: z.record(z.string(), z.unknown()).optional(),
+  mode: zLlmMode,
+  name: z.string(),
+  provider: z.string(),
 })
 
 /**
@@ -59,11 +56,11 @@ export const zPostInstructionGenerateBody = zInstructionGeneratePayload
 /**
  * Instruction generated successfully
  */
-export const zPostInstructionGenerateResponse = z.record(z.string(), z.unknown())
+export const zPostInstructionGenerateResponse = zGeneratorResponse
 
 export const zPostInstructionGenerateTemplateBody = zInstructionTemplatePayload
 
 /**
  * Template retrieved successfully
  */
-export const zPostInstructionGenerateTemplateResponse = z.record(z.string(), z.unknown())
+export const zPostInstructionGenerateTemplateResponse = zSimpleDataResponse

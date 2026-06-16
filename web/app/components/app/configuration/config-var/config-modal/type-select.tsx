@@ -20,7 +20,7 @@ export type Item = {
   name: string
 }
 
-type Props = {
+type Props = Readonly<{
   value: string | number
   onSelect: (value: Item) => void
   items: Item[]
@@ -28,7 +28,7 @@ type Props = {
   popupInnerClassName?: string
   readonly?: boolean
   hideChecked?: boolean
-}
+}>
 const TypeSelector: FC<Props> = ({
   value,
   onSelect,
@@ -59,9 +59,10 @@ const TypeSelector: FC<Props> = ({
           <div className="flex items-center">
             <InputVarTypeIcon type={selectedItem?.value as InputVarType} className="size-4 shrink-0 text-text-secondary" />
             <span
-              className={`
-              ml-1.5 text-components-input-text-filled ${!selectedItem?.name && 'text-components-input-text-placeholder'}
-            `}
+              className={cn(
+                'ml-1.5 truncate text-components-input-text-filled',
+                !selectedItem?.name && 'text-components-input-text-placeholder',
+              )}
             >
               {selectedItem?.name}
             </span>
@@ -73,7 +74,7 @@ const TypeSelector: FC<Props> = ({
       </SelectTrigger>
       <SelectContent
         sideOffset={4}
-        popupClassName={cn('w-[432px] rounded-md px-1 py-1 text-base sm:text-sm', popupInnerClassName)}
+        popupClassName={cn('w-(--anchor-width) rounded-md px-1 py-1 text-base sm:text-sm', popupInnerClassName)}
         listClassName="max-h-80 p-0"
       >
         {items.map((item: Item) => (

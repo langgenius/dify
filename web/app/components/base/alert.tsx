@@ -5,12 +5,12 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 
-type Props = {
+type Props = Readonly<{
   type?: 'info'
   message: string
   onHide: () => void
   className?: string
-}
+}>
 const bgVariants = cva(
   '',
   {
@@ -36,7 +36,7 @@ const Alert: React.FC<Props> = ({
       >
         <div className={cn('pointer-events-none absolute inset-0 bg-linear-to-r opacity-[0.4]', bgVariants({ type }))} data-testid="alert-gradient">
         </div>
-        <div className="flex h-6 w-6 items-center justify-center">
+        <div className="flex size-6 items-center justify-center">
           <span className="i-ri-information-2-fill text-text-accent" data-testid="info-icon" />
         </div>
         <div className="p-1">
@@ -47,10 +47,10 @@ const Alert: React.FC<Props> = ({
         <button
           type="button"
           aria-label={t('operation.close', { ns: 'common' })}
-          className="pointer-events-auto flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-components-button-secondary-accent-border"
+          className="pointer-events-auto flex size-6 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-components-button-secondary-accent-border"
           onClick={onHide}
         >
-          <span className="i-ri-close-line h-4 w-4 text-text-tertiary" aria-hidden="true" />
+          <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
         </button>
       </div>
     </div>

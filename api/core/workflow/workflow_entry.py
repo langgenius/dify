@@ -30,6 +30,7 @@ from graphon.entities import GraphInitParams
 from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.errors import WorkflowNodeRunFailedError
 from graphon.file import File
+from graphon.filters import GraphEventFilterContext, ResponseStreamFilter, filter_graph_events
 from graphon.graph import Graph
 from graphon.graph_engine import GraphEngine, GraphEngineConfig
 from graphon.graph_engine.command_channels import CommandChannel, InMemoryChannel
@@ -43,6 +44,21 @@ from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
+
+
+def iter_dify_graph_engine_events(engine: GraphEngine) -> Generator[GraphEngineEvent, None, None]:
+    """
+    Apply Dify's response streaming compatibility filter to GraphEngine events.
+
+    Graphon v0.5.0 emits raw variable stream chunks and requires callers to opt
+    into the legacy response-ordered stream behavior that Dify exposes to its
+    workflow runners and tests.
+    """
+    yield from filter_graph_events(
+        engine.run(),
+        context=GraphEventFilterContext.from_engine(engine),
+        filters=[ResponseStreamFilter()],
+    )
 
 
 class _WorkflowChildEngineBuilder:
@@ -223,8 +239,8 @@ class WorkflowEntry:
         graph_engine = self.graph_engine
 
         try:
-            # run workflow
-            generator = graph_engine.run()
+            # Preserve Dify's response-stream semantics on top of Graphon 0.5.0.
+            generator = iter_dify_graph_engine_events(graph_engine)
             yield from generator
         except GenerateTaskStoppedError:
             pass

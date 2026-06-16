@@ -9,13 +9,13 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { CopyCheck } from '../../base/icons/src/vender/line/files'
 
-type Props = {
+type Props = Readonly<{
   label: string
   labelWidthClassName?: string
   value: string
   maskedValue?: string
   valueMaxWidthClassName?: string
-}
+}>
 
 const KeyValueItem: FC<Props> = ({
   label,
@@ -56,8 +56,8 @@ const KeyValueItem: FC<Props> = ({
             render={(
               <ActionButton aria-label={copyLabel} onClick={handleCopy}>
                 {isCopied
-                  ? <CopyCheck aria-hidden className="h-3.5 w-3.5 shrink-0 text-text-tertiary" />
-                  : <span aria-hidden className="i-ri-clipboard-line h-3.5 w-3.5 shrink-0 text-text-tertiary" />}
+                  ? <CopyCheck aria-hidden className="size-3.5 shrink-0 text-text-tertiary" />
+                  : <span aria-hidden className="i-ri-clipboard-line size-3.5 shrink-0 text-text-tertiary" />}
               </ActionButton>
             )}
           />

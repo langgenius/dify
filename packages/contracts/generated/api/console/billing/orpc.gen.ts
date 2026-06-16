@@ -5,6 +5,7 @@ import * as z from 'zod'
 
 import {
   zGetBillingInvoicesResponse,
+  zGetBillingSubscriptionQuery,
   zGetBillingSubscriptionResponse,
   zPutBillingPartnersByPartnerKeyTenantsBody,
   zPutBillingPartnersByPartnerKeyTenantsPath,
@@ -65,6 +66,7 @@ export const get2 = oc
     path: '/billing/subscription',
     tags: ['console'],
   })
+  .input(z.object({ query: zGetBillingSubscriptionQuery }))
   .output(zGetBillingSubscriptionResponse)
 
 export const subscription = {

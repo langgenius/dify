@@ -13,7 +13,6 @@ import type {
 } from '@/models/app'
 import type {
   AccountIntegrate,
-  ApiBasedExtension,
   CodeBasedExtension,
   CommonResponse,
   DataSourceNotion,
@@ -21,7 +20,6 @@ import type {
   ICurrentWorkspace,
   InitValidateStatusResponse,
   InvitationResponse,
-  IWorkspace,
   LangGeniusVersionResponse,
   Member,
   ModerateResponse,
@@ -140,14 +138,6 @@ export const fetchCurrentWorkspace = ({ url, params }: { url: string, params: Re
 
 export const updateCurrentWorkspace = ({ url, body }: { url: string, body: Record<string, any> }): Promise<ICurrentWorkspace> => {
   return post<ICurrentWorkspace>(url, { body })
-}
-
-export const fetchWorkspaces = ({ url, params }: { url: string, params: Record<string, any> }): Promise<{ workspaces: IWorkspace[] }> => {
-  return get<{ workspaces: IWorkspace[] }>(url, { params })
-}
-
-export const switchWorkspace = ({ url, body }: { url: string, body: Record<string, any> }): Promise<CommonResponse & { new_tenant: IWorkspace }> => {
-  return post<CommonResponse & { new_tenant: IWorkspace }>(url, { body })
 }
 
 export const updateWorkspaceInfo = ({ url, body }: { url: string, body: Record<string, any> }): Promise<ICurrentWorkspace> => {
@@ -278,26 +268,6 @@ export const fetchDataSourceNotionBinding = (url: string): Promise<{ result: str
   return get<{ result: string }>(url)
 }
 
-export const fetchApiBasedExtensionList = (url: string): Promise<ApiBasedExtension[]> => {
-  return get<ApiBasedExtension[]>(url)
-}
-
-export const fetchApiBasedExtensionDetail = (url: string): Promise<ApiBasedExtension> => {
-  return get<ApiBasedExtension>(url)
-}
-
-export const addApiBasedExtension = ({ url, body }: { url: string, body: ApiBasedExtension }): Promise<ApiBasedExtension> => {
-  return post<ApiBasedExtension>(url, { body })
-}
-
-export const updateApiBasedExtension = ({ url, body }: { url: string, body: ApiBasedExtension }): Promise<ApiBasedExtension> => {
-  return post<ApiBasedExtension>(url, { body })
-}
-
-export const deleteApiBasedExtension = (url: string): Promise<{ result: string }> => {
-  return del<{ result: string }>(url)
-}
-
 export const fetchCodeBasedExtensionList = (url: string): Promise<CodeBasedExtension> => {
   return get<CodeBasedExtension>(url)
 }
@@ -346,7 +316,13 @@ export const uploadRemoteFileInfo = (url: string, isPublic?: boolean, silent?: b
 export const sendEMailLoginCode = (email: string, language = 'en-US'): Promise<CommonResponse & { data: string }> =>
   post<CommonResponse & { data: string }>('/email-code-login', { body: { email, language } })
 
-export const emailLoginWithCode = (data: { email: string, code: string, token: string, language: string }): Promise<LoginResponse> =>
+export const emailLoginWithCode = (data: {
+  email: string
+  code: string
+  token: string
+  language: string
+  timezone?: string
+}): Promise<LoginResponse> =>
   post<LoginResponse>('/email-code-login/validity', { body: data })
 
 export const sendResetPasswordCode = (email: string, language = 'en-US'): Promise<CommonResponse & { data: string, message?: string, code?: string }> =>
@@ -393,5 +369,5 @@ export const checkEmailExisted = (body: { email: string }): Promise<CommonRespon
 
 export const getAvatar = async ({ avatar }: { avatar: string }): Promise<{ avatar_url: string }> => {
   const { consoleClient } = await import('./client')
-  return consoleClient.account.avatar({ query: { avatar } })
+  return consoleClient.account.avatar.get({ query: { avatar } })
 }

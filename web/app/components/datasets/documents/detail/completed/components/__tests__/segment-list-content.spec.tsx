@@ -84,8 +84,6 @@ describe('GeneralModeContent', () => {
     embeddingAvailable: true,
     isLoadingSegmentList: false,
     segments: [{ id: 'seg-1' }, { id: 'seg-2' }] as SegmentDetailModel[],
-    selectedSegmentIds: [],
-    onSelected: vi.fn(),
     onChangeSwitch: vi.fn(),
     onDelete: vi.fn(),
     onClickCard: vi.fn(),

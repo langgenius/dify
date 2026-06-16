@@ -3,27 +3,42 @@ import type { ActionItem } from './actions/types'
 import { Command } from 'cmdk'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { usePathname } from '@/next/navigation'
 import { slashCommandRegistry } from './actions/commands/registry'
 
-type Props = {
+type Props = Readonly<{
   actions: Record<string, ActionItem>
   onCommandSelect: (commandKey: string) => void
   searchFilter?: string
   commandValue?: string
   onCommandValueChange?: (value: string) => void
   originalQuery?: string
-}
+}>
+
+const slashCommandDescriptionKeys = {
+  '/create': 'gotoAnything.actions.createCategoryDesc',
+  '/refine': 'gotoAnything.actions.refineCategoryDesc',
+  '/theme': 'gotoAnything.actions.themeCategoryDesc',
+  '/language': 'gotoAnything.actions.languageChangeDesc',
+  '/account': 'gotoAnything.actions.accountDesc',
+  '/feedback': 'gotoAnything.actions.feedbackDesc',
+  '/docs': 'gotoAnything.actions.docDesc',
+  '/community': 'gotoAnything.actions.communityDesc',
+} as const
+
+const actionDescriptionKeys = {
+  '@app': 'gotoAnything.actions.searchApplicationsDesc',
+  '@plugin': 'gotoAnything.actions.searchPluginsDesc',
+  '@knowledge': 'gotoAnything.actions.searchKnowledgeBasesDesc',
+  '@node': 'gotoAnything.actions.searchWorkflowNodesDesc',
+} as const
 
 const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, commandValue, onCommandValueChange, originalQuery }) => {
   const { t } = useTranslation()
-  const pathname = usePathname()
 
   // Check if we're in slash command mode
   const isSlashMode = originalQuery?.trim().startsWith('/') || false
 
   // Get slash commands from registry
-  // Note: pathname is included in deps because some commands (like /zen) check isAvailable based on current route
   const slashCommands = useMemo(() => {
     if (!isSlashMode)
       return []
@@ -41,7 +56,7 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
       title: cmd.name,
       description: cmd.description,
     }))
-  }, [isSlashMode, searchFilter, pathname])
+  }, [isSlashMode, searchFilter])
 
   const filteredActions = useMemo(() => {
     if (isSlashMode)
@@ -66,7 +81,7 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
       if (!currentValueExists)
         onCommandValueChange(allItems[0]!.shortcut)
     }
-  }, [searchFilter, allItems.length])
+  }, [allItems, commandValue, onCommandValueChange])
 
   if (allItems.length === 0) {
     return (
@@ -106,31 +121,8 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
             </span>
             <span className="ml-3 text-sm text-text-secondary">
               {isSlashMode
-                ? (
-                    (() => {
-                      const slashKeyMap = {
-                        '/theme': 'gotoAnything.actions.themeCategoryDesc',
-                        '/language': 'gotoAnything.actions.languageChangeDesc',
-                        '/account': 'gotoAnything.actions.accountDesc',
-                        '/feedback': 'gotoAnything.actions.feedbackDesc',
-                        '/docs': 'gotoAnything.actions.docDesc',
-                        '/community': 'gotoAnything.actions.communityDesc',
-                        '/zen': 'gotoAnything.actions.zenDesc',
-                      } as const
-                      return t(slashKeyMap[item.key as keyof typeof slashKeyMap] || item.description, { ns: 'app' })
-                    })()
-                  )
-                : (
-                    (() => {
-                      const keyMap = {
-                        '@app': 'gotoAnything.actions.searchApplicationsDesc',
-                        '@plugin': 'gotoAnything.actions.searchPluginsDesc',
-                        '@knowledge': 'gotoAnything.actions.searchKnowledgeBasesDesc',
-                        '@node': 'gotoAnything.actions.searchWorkflowNodesDesc',
-                      } as const
-                      return t(keyMap[item.key as keyof typeof keyMap], { ns: 'app' })
-                    })()
-                  )}
+                ? t(slashCommandDescriptionKeys[item.key as keyof typeof slashCommandDescriptionKeys] || item.description, { ns: 'app' })
+                : t(actionDescriptionKeys[item.key as keyof typeof actionDescriptionKeys], { ns: 'app' })}
             </span>
           </Command.Item>
         ))}

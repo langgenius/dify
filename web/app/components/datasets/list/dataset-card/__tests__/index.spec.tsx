@@ -244,6 +244,15 @@ describe('DatasetCard Component', () => {
     expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/documents')
   })
 
+  it('should use the hover background treatment', () => {
+    const dataset = createMockDataset()
+    render(<DatasetCard dataset={dataset} />)
+    const card = screen.getByText('Test Dataset').closest('[data-disable-nprogress]')
+
+    expect(card).toHaveClass('bg-components-card-bg')
+    expect(card).toHaveClass('hover:bg-components-card-bg-alt')
+  })
+
   it('should navigate to hitTesting for external provider', () => {
     const dataset = createMockDataset({ provider: 'external' })
     render(<DatasetCard dataset={dataset} />)

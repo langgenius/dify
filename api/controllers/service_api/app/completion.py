@@ -8,7 +8,8 @@ from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
     AppUnavailableError,
@@ -27,7 +28,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from core.helper.trace_id_helper import get_external_trace_id
+from core.helper.trace_id_helper import get_external_trace_id, get_trace_session_id, omit_trace_session_id_from_payload
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import UUIDStrOrEmpty
@@ -40,23 +41,34 @@ from services.errors.llm import InvokeRateLimitError
 logger = logging.getLogger(__name__)
 
 
+def _resolve_agent_app_streaming(*, app_mode: AppMode, response_mode: str | None) -> bool:
+    """Agent App runtime is SSE-only until backend blocking runs are supported."""
+    if app_mode != AppMode.AGENT:
+        return response_mode == "streaming"
+    if response_mode == "blocking":
+        raise BadRequest("Agent App only supports streaming response mode.")
+    return True
+
+
 class CompletionRequestPayload(BaseModel):
     inputs: dict[str, Any]
     query: str = Field(default="")
-    files: list[dict[str, Any]] | None = None
+    files: list[dict[str, Any]] | None = Field(default=None)
     response_mode: Literal["blocking", "streaming"] | None = None
     retriever_from: str = Field(default="dev")
+    trace_session_id: str | None = Field(default=None, description="Trace session ID for observability grouping")
 
 
 class ChatRequestPayload(BaseModel):
     inputs: dict[str, Any]
     query: str
-    files: list[dict[str, Any]] | None = None
+    files: list[dict[str, Any]] | None = Field(default=None)
     response_mode: Literal["blocking", "streaming"] | None = None
     conversation_id: UUIDStrOrEmpty | None = Field(default=None, description="Conversation UUID")
     retriever_from: str = Field(default="dev")
     auto_generate_name: bool = Field(default=True, description="Auto generate conversation name")
     workflow_id: str | None = Field(default=None, description="Workflow ID for advanced chat")
+    trace_session_id: str | None = Field(default=None, description="Trace session ID for observability grouping")
 
     @field_validator("conversation_id", mode="before")
     @classmethod
@@ -75,6 +87,7 @@ class ChatRequestPayload(BaseModel):
 
 
 register_schema_models(service_api_ns, CompletionRequestPayload, ChatRequestPayload)
+register_response_schema_models(service_api_ns, GeneratedAppResponse, SimpleResultResponse)
 
 
 @service_api_ns.route("/completion-messages")
@@ -91,6 +104,11 @@ class CompletionApi(Resource):
             500: "Internal server error",
         }
     )
+    @service_api_ns.response(
+        200,
+        "Completion created successfully",
+        service_api_ns.models[GeneratedAppResponse.__name__],
+    )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser):
         """Create a completion for the given prompt.
@@ -101,9 +119,14 @@ class CompletionApi(Resource):
         if app_model.mode != AppMode.COMPLETION:
             raise AppUnavailableError()
 
-        payload = CompletionRequestPayload.model_validate(service_api_ns.payload or {})
+        payload = CompletionRequestPayload.model_validate(
+            omit_trace_session_id_from_payload(service_api_ns.payload) or {}
+        )
         external_trace_id = get_external_trace_id(request)
         args = payload.model_dump(exclude_none=True)
+        trace_session_id = get_trace_session_id(request)
+        if trace_session_id:
+            args["trace_session_id"] = trace_session_id
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
 
@@ -155,6 +178,7 @@ class CompletionStopApi(Resource):
             404: "Task not found",
         }
     )
+    @service_api_ns.response(200, "Task stopped successfully", service_api_ns.models[SimpleResultResponse.__name__])
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser, task_id: str):
         """Stop a running completion task."""
@@ -186,6 +210,11 @@ class ChatApi(Resource):
             500: "Internal server error",
         }
     )
+    @service_api_ns.response(
+        200,
+        "Message sent successfully",
+        service_api_ns.models[GeneratedAppResponse.__name__],
+    )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser):
         """Send a message in a chat conversation.
@@ -194,17 +223,20 @@ class ChatApi(Resource):
         Supports conversation management and both blocking and streaming response modes.
         """
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
-        payload = ChatRequestPayload.model_validate(service_api_ns.payload or {})
+        payload = ChatRequestPayload.model_validate(omit_trace_session_id_from_payload(service_api_ns.payload) or {})
 
         external_trace_id = get_external_trace_id(request)
         args = payload.model_dump(exclude_none=True)
+        trace_session_id = get_trace_session_id(request)
+        if trace_session_id:
+            args["trace_session_id"] = trace_session_id
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
 
-        streaming = payload.response_mode == "streaming"
+        streaming = _resolve_agent_app_streaming(app_mode=app_mode, response_mode=payload.response_mode)
 
         try:
             response = AppGenerateService.generate(
@@ -254,11 +286,12 @@ class ChatStopApi(Resource):
             404: "Task not found",
         }
     )
+    @service_api_ns.response(200, "Task stopped successfully", service_api_ns.models[SimpleResultResponse.__name__])
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser, task_id: str):
         """Stop a running chat message generation."""
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         AppTaskService.stop_task(

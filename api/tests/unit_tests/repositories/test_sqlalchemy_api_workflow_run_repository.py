@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
-from graphon.nodes.human_input.entities import FormDefinition, FormInput, UserAction
+from graphon.nodes.human_input.entities import FormDefinition, ParagraphInputConfig, UserActionConfig
 from graphon.nodes.human_input.enums import FormInputType
 from models.human_input import RecipientType
 from repositories.sqlalchemy_api_workflow_run_repository import _build_human_input_required_reason
@@ -13,8 +13,8 @@ def _build_form_model() -> SimpleNamespace:
     expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
     definition = FormDefinition(
         form_content="content",
-        inputs=[FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="name")],
-        user_actions=[UserAction(id="approve", title="Approve")],
+        inputs=[ParagraphInputConfig(type=FormInputType.PARAGRAPH, output_variable_name="name")],
+        user_actions=[UserActionConfig(id="approve", title="Approve")],
         rendered_content="rendered",
         expiration_time=expiration_time,
         default_values={"name": "Alice"},

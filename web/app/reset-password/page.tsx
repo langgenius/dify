@@ -57,8 +57,8 @@ export default function CheckCode() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg">
-        <RiLockPasswordLine className="h-6 w-6 text-2xl text-text-accent-light-mode-only" />
+      <div className="inline-flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg">
+        <RiLockPasswordLine className="size-6 text-2xl text-text-accent-light-mode-only" />
       </div>
       <div className="pt-2 pb-4">
         <h2 className="title-4xl-semi-bold text-text-primary">{t('resetPassword', { ns: 'login' })}</h2>

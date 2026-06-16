@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, override
 
 import httpx
 
@@ -13,9 +13,13 @@ logger = logging.getLogger(__name__)
 
 class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
     """
-    Retrieval recommended app from dify official
+    Retrieval recommended app from dify official.
+
+    The remote `/apps` payload is already curated for display, including category order.
+    Keep the response order intact so Explore matches the template service.
     """
 
+    @override
     def get_recommend_app_detail(self, app_id: str):
         try:
             result = self.fetch_recommended_app_detail_from_dify_official(app_id)
@@ -24,6 +28,7 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
             result = BuildInRecommendAppRetrieval.fetch_recommended_app_detail_from_builtin(app_id)
         return result
 
+    @override
     def get_recommended_apps_and_categories(self, language: str):
         try:
             result = self.fetch_recommended_apps_from_dify_official(language)
@@ -32,6 +37,7 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
             result = BuildInRecommendAppRetrieval.fetch_recommended_apps_from_builtin(language)
         return result
 
+    @override
     def get_type(self) -> str:
         return RecommendAppType.REMOTE
 
@@ -64,8 +70,4 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
             raise ValueError(f"fetch recommended apps failed, status code: {response.status_code}")
 
         result: dict[str, Any] = response.json()
-
-        if "categories" in result:
-            result["categories"] = sorted(result["categories"])
-
         return result

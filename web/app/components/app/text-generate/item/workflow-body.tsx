@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { SiteInfo } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -17,7 +18,7 @@ type WorkflowBodyProps = {
   depth: number
   hideProcessDetail?: boolean
   isError: boolean
-  onSubmitHumanInputForm: (formToken: string, formData: { inputs: Record<string, string>, action: string }) => Promise<void>
+  onSubmitHumanInputForm: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
   onSwitchTab: (tab: string) => void
   showResultTabs: boolean
   siteInfo: SiteInfo | null
@@ -53,7 +54,7 @@ const WorkflowBody: FC<WorkflowBodyProps> = ({
       >
         {taskId && (
           <div className={cn('mb-2 flex items-center system-2xs-medium-uppercase text-text-accent-secondary', isError && 'text-text-destructive')}>
-            <RiPlayList2Line className="mr-1 h-3 w-3" />
+            <RiPlayList2Line className="mr-1 size-3" />
             <span>{t('generation.execution', { ns: 'share' })}</span>
             <span className="px-1">·</span>
             <span>{getGenerationTaskLabel(taskId, depth)}</span>

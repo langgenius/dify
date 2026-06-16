@@ -4,48 +4,83 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type EmailRegisterResetPayload = {
+  language?: string | null
+  new_password: string
+  password_confirm: string
+  timezone?: string | null
+  token: string
+}
+
+export type EmailRegisterResetResponse = {
+  data: EmailRegisterTokenPairResponse
+  result: string
+}
+
+export type EmailRegisterSendPayload = {
+  email: string
+  language?: string | null
+}
+
+export type SimpleResultDataResponse = {
+  data: string
+  result: string
+}
+
+export type EmailRegisterValidityPayload = {
+  code: string
+  email: string
+  token: string
+}
+
+export type VerificationTokenResponse = {
+  email: string
+  is_valid: boolean
+  token: string
+}
+
+export type EmailRegisterTokenPairResponse = {
+  access_token: string
+  csrf_token: string
+  refresh_token: string
+}
+
 export type PostEmailRegisterData = {
-  body?: never
+  body: EmailRegisterResetPayload
   path?: never
   query?: never
   url: '/email-register'
 }
 
 export type PostEmailRegisterResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: EmailRegisterResetResponse
 }
 
 export type PostEmailRegisterResponse = PostEmailRegisterResponses[keyof PostEmailRegisterResponses]
 
 export type PostEmailRegisterSendEmailData = {
-  body?: never
+  body: EmailRegisterSendPayload
   path?: never
   query?: never
   url: '/email-register/send-email'
 }
 
 export type PostEmailRegisterSendEmailResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultDataResponse
 }
 
 export type PostEmailRegisterSendEmailResponse
   = PostEmailRegisterSendEmailResponses[keyof PostEmailRegisterSendEmailResponses]
 
 export type PostEmailRegisterValidityData = {
-  body?: never
+  body: EmailRegisterValidityPayload
   path?: never
   query?: never
   url: '/email-register/validity'
 }
 
 export type PostEmailRegisterValidityResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: VerificationTokenResponse
 }
 
 export type PostEmailRegisterValidityResponse

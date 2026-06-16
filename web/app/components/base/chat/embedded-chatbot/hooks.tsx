@@ -4,8 +4,8 @@ import type { InputValueTypes } from '@/app/components/share/text-generation/typ
 import type { Locale } from '@/i18n-config'
 import type { AppData, ConversationItem } from '@/models/share'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useLocalStorageState } from 'ahooks'
 import { noop } from 'es-toolkit/function'
+import { useLocalStorage } from 'foxact/use-local-storage'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -102,9 +102,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     }
     setLanguageFromParams()
   }, [appInfo])
-  const [conversationIdInfo, setConversationIdInfo] = useLocalStorageState<Record<string, Record<string, string>>>(CONVERSATION_ID_INFO, {
-    defaultValue: {},
-  })
+  const [conversationIdInfo, setConversationIdInfo] = useLocalStorage<Record<string, Record<string, string>>>(CONVERSATION_ID_INFO, {})
   const removeConversationIdInfo = useCallback((appId: string) => {
     setConversationIdInfo((prev) => {
       const newInfo = { ...prev }

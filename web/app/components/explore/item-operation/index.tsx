@@ -1,5 +1,4 @@
 'use client'
-import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -7,20 +6,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import {
-  RiDeleteBinLine,
-  RiEditLine,
-} from '@remixicon/react'
-import { useBoolean } from 'ahooks'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pin02 } from '../../base/icons/src/vender/line/general'
 import s from './style.module.css'
 
 type IItemOperationProps = {
   className?: string
-  isItemHovering?: boolean
   isPinned: boolean
   isShowRenameConversation?: boolean
   onRenameConversation?: () => void
@@ -29,47 +21,37 @@ type IItemOperationProps = {
   onDelete: () => void
 }
 
-const ItemOperation: FC<IItemOperationProps> = ({
+function ItemOperation({
   className,
-  isItemHovering,
   isPinned,
   togglePin,
   isShowRenameConversation,
   onRenameConversation,
   isShowDelete,
   onDelete,
-}) => {
+}: IItemOperationProps) {
   const { t } = useTranslation('explore')
   const { t: tCommon } = useTranslation('common')
-  const [open, setOpen] = useState(false)
-  const [isHovering, { setTrue: setIsHovering, setFalse: setNotHovering }] = useBoolean(false)
-  useEffect(() => {
-    if (!isItemHovering && !isHovering)
-      setOpen(false)
-  }, [isItemHovering, isHovering])
+
   return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={setOpen}
-    >
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger
         data-testid="item-operation-trigger"
-        className={cn(className, s.btn, 'h-6 w-6 rounded-md border-none py-1', (isItemHovering || open) && `${s.open} bg-components-actionbar-bg! shadow-none!`)}
+        className={cn(
+          'group/operation flex size-6 items-center justify-center rounded-md border-none p-0 text-text-tertiary transition-colors group-focus-within:bg-components-actionbar-bg! group-hover:bg-components-actionbar-bg! hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-components-actionbar-bg! data-popup-open:shadow-none!',
+          className,
+        )}
         onClick={(e) => {
           e.stopPropagation()
         }}
       >
         <span className="sr-only">{tCommon('operation.more')}</span>
+        <span aria-hidden className="i-ri-more-fill size-4 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 group-focus-visible/operation:opacity-100 group-data-popup-open/operation:opacity-100" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-end"
         sideOffset={4}
         popupClassName="min-w-[120px]"
-        popupProps={{
-          onMouseEnter: setIsHovering,
-          onMouseLeave: setNotHovering,
-          onClick: e => e.stopPropagation(),
-        }}
       >
         <DropdownMenuItem
           className={cn(s.actionItem, 'gap-2 px-3')}
@@ -78,7 +60,7 @@ const ItemOperation: FC<IItemOperationProps> = ({
             togglePin()
           }}
         >
-          <Pin02 className="h-4 w-4 shrink-0 text-text-secondary" />
+          <Pin02 className="size-4 shrink-0 text-text-secondary" />
           <span className={s.actionName}>{isPinned ? t('sidebar.action.unpin') : t('sidebar.action.pin')}</span>
         </DropdownMenuItem>
         {isShowRenameConversation && (
@@ -89,7 +71,7 @@ const ItemOperation: FC<IItemOperationProps> = ({
               onRenameConversation?.()
             }}
           >
-            <RiEditLine className="h-4 w-4 shrink-0 text-text-secondary" />
+            <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-secondary" />
             <span className={s.actionName}>{t('sidebar.action.rename')}</span>
           </DropdownMenuItem>
         )}
@@ -101,7 +83,7 @@ const ItemOperation: FC<IItemOperationProps> = ({
               onDelete()
             }}
           >
-            <RiDeleteBinLine className={cn(s.deleteActionItemChild, 'h-4 w-4 shrink-0 stroke-current stroke-2 text-inherit')} />
+            <span aria-hidden className={cn(s.deleteActionItemChild, 'i-ri-delete-bin-line size-4 shrink-0 text-inherit')} />
             <span className={cn(s.actionName, s.deleteActionItemChild, 'text-inherit')}>{t('sidebar.action.delete')}</span>
           </DropdownMenuItem>
         )}

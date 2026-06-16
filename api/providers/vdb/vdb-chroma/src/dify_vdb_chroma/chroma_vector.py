@@ -1,8 +1,8 @@
 import json
-from typing import Any, TypedDict
+from typing import Any, TypedDict, override
 
 import chromadb
-from chromadb import QueryResult, Settings  # pyright: ignore[reportPrivateImportUsage]
+from chromadb import QueryResult, Settings
 from pydantic import BaseModel
 
 from configs import dify_config
@@ -55,9 +55,11 @@ class ChromaVector(BaseVector):
         self._client_config = config
         self._client = chromadb.HttpClient(**self._client_config.to_chroma_params())
 
+    @override
     def get_type(self) -> str:
         return VectorType.CHROMA
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         if texts:
             # create collection
@@ -74,6 +76,7 @@ class ChromaVector(BaseVector):
             self._client.get_or_create_collection(collection_name)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs) -> list[str]:
         uuids = self._get_uuids(documents)
         texts = [d.page_content for d in documents]
@@ -84,25 +87,30 @@ class ChromaVector(BaseVector):
         collection.upsert(ids=uuids, documents=texts, embeddings=embeddings, metadatas=metadatas)  # type: ignore
         return uuids
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         collection = self._client.get_or_create_collection(self._collection_name)
         # FIXME: fix the type error later
         collection.delete(where={key: {"$eq": value}})  # type: ignore
 
+    @override
     def delete(self):
         self._client.delete_collection(self._collection_name)
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         if not ids:
             return
         collection = self._client.get_or_create_collection(self._collection_name)
         collection.delete(ids=ids)
 
+    @override
     def text_exists(self, id: str) -> bool:
         collection = self._client.get_or_create_collection(self._collection_name)
         response = collection.get(ids=[id])
         return len(response) > 0
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         collection = self._client.get_or_create_collection(self._collection_name)
         document_ids_filter = kwargs.get("document_ids_filter")
@@ -142,12 +150,14 @@ class ChromaVector(BaseVector):
         docs = sorted(docs, key=lambda x: x.metadata["score"] if x.metadata is not None else 0, reverse=True)
         return docs
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         # chroma does not support BM25 full text searching
         return []
 
 
 class ChromaVectorFactory(AbstractVectorFactory):
+    @override
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> BaseVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
@@ -166,8 +176,8 @@ class ChromaVectorFactory(AbstractVectorFactory):
             config=ChromaConfig(
                 host=dify_config.CHROMA_HOST or "",
                 port=dify_config.CHROMA_PORT,
-                tenant=dify_config.CHROMA_TENANT or chromadb.DEFAULT_TENANT,  # pyright: ignore[reportPrivateImportUsage]
-                database=dify_config.CHROMA_DATABASE or chromadb.DEFAULT_DATABASE,  # pyright: ignore[reportPrivateImportUsage]
+                tenant=dify_config.CHROMA_TENANT or chromadb.DEFAULT_TENANT,
+                database=dify_config.CHROMA_DATABASE or chromadb.DEFAULT_DATABASE,
                 auth_provider=dify_config.CHROMA_AUTH_PROVIDER,
                 auth_credentials=dify_config.CHROMA_AUTH_CREDENTIALS,
             ),

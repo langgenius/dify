@@ -41,6 +41,7 @@ describe('@langgenius/dify-ui/toast', () => {
     await expect.element(screen.getByRole('region', { name: 'Notifications' })).toHaveAttribute('aria-live', 'polite')
     await expect.element(screen.getByRole('region', { name: 'Notifications' })).toHaveClass('z-60')
     expect(screen.getByRole('region', { name: 'Notifications' }).element().firstElementChild).toHaveClass('top-4')
+    expect(screen.getByText('Saved').element().closest('[class*="transition-opacity"]')).toHaveClass('motion-reduce:transition-none')
     expect(screen.getByRole('dialog').element()).not.toHaveClass('outline-hidden')
     expect(document.body.querySelector('[aria-hidden="true"].i-ri-checkbox-circle-fill')).toBeInTheDocument()
     expect(document.body.querySelector('button[aria-label="Close notification"][aria-hidden="true"]')).toBeInTheDocument()
@@ -66,6 +67,28 @@ describe('@langgenius/dify-ui/toast', () => {
       expect(document.body.querySelector('button[aria-label="Close notification"][aria-hidden="true"]')).not.toBeInTheDocument()
     })
     dispatchToastMouseOut(viewport)
+  })
+
+  it('should clamp varying-height toasts to the frontmost stack height when collapsed', async () => {
+    const screen = await render(<ToastHost />)
+
+    toast.info('Long background toast', {
+      description: 'This longer toast intentionally spans multiple lines so it would overflow the collapsed stack without matching the frontmost toast height.',
+    })
+    toast.success('Short front toast', {
+      description: 'Short message.',
+    })
+
+    await expect.element(screen.getByText('Short front toast')).toBeInTheDocument()
+    await expect.element(screen.getByText('Long background toast')).toBeInTheDocument()
+    await expect.element(screen.getByRole('region', { name: 'Notifications' })).toHaveAttribute('aria-live', 'polite')
+    await expect.element(screen.getByRole('dialog', { name: 'Short front toast' })).toBeInTheDocument()
+    await expect.element(screen.getByRole('dialog', { name: 'Long background toast' })).toBeInTheDocument()
+
+    const longToastContent = screen.getByText('Long background toast').element().closest('[class*="transition-opacity"]')
+    expect(longToastContent).toHaveAttribute('data-behind')
+    expect(longToastContent).toHaveClass('h-full')
+    expect(longToastContent?.parentElement).toHaveClass('h-full')
   })
 
   it('should render a neutral toast when called directly', async () => {

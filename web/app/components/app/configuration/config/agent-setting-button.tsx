@@ -8,12 +8,12 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AgentSetting from './agent/agent-setting'
 
-type Props = {
+type Props = Readonly<{
   isFunctionCall: boolean
   isChatModel: boolean
   agentConfig?: AgentConfig
   onAgentSettingChange: (payload: AgentConfig) => void
-}
+}>
 
 const AgentSettingButton: FC<Props> = ({
   onAgentSettingChange,
@@ -27,7 +27,7 @@ const AgentSettingButton: FC<Props> = ({
   return (
     <>
       <Button onClick={() => setIsShowAgentSetting(true)} className="mr-2 shrink-0">
-        <RiSettings2Line className="mr-1 h-4 w-4 text-text-tertiary" />
+        <RiSettings2Line className="mr-1 size-4 text-text-tertiary" />
         {t('agent.setting.name', { ns: 'appDebug' })}
       </Button>
       {isShowAgentSetting && (

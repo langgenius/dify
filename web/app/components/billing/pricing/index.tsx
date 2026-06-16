@@ -61,13 +61,13 @@ const Pricing: FC<PricingProps> = ({
       }}
     >
       <DialogContent
-        className="inset-0 h-full max-h-none w-full max-w-none translate-x-0 translate-y-0 overflow-hidden rounded-none border-none bg-saas-background p-0 shadow-none"
+        className="inset-0 size-full max-h-none max-w-none translate-0 overflow-hidden rounded-none border-none bg-saas-background p-0 shadow-none"
       >
         <ScrollAreaRoot className={pricingScrollAreaClassNames.root}>
           <ScrollAreaViewport className={pricingScrollAreaClassNames.viewport}>
             <ScrollAreaContent className={pricingScrollAreaClassNames.content}>
               <div className="relative grid min-h-full grid-rows-[1fr_auto_auto_1fr] overflow-hidden">
-                <div className="absolute -top-12 right-0 left-0 -z-10">
+                <div className="absolute inset-x-0 -top-12 -z-10">
                   <NoiseTop />
                 </div>
                 <Header onClose={onCancel} />
@@ -84,7 +84,7 @@ const Pricing: FC<PricingProps> = ({
                   canPay={canPay}
                 />
                 <Footer pricingPageURL={pricingPageURL} currentCategory={currentCategory} />
-                <div className="absolute right-0 -bottom-12 left-0 -z-10">
+                <div className="absolute inset-x-0 -bottom-12 -z-10">
                   <NoiseBottom />
                 </div>
               </div>

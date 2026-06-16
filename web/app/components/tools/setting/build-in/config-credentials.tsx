@@ -26,14 +26,14 @@ import Form from '@/app/components/header/account-setting/model-provider-page/mo
 import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/service/tools'
 import { addDefaultValue, toolCredentialToFormSchemas } from '../../utils/to-form-schema'
 
-type Props = {
+type Props = Readonly<{
   collection: Collection
   onCancel: () => void
   onSaved: (value: Record<string, any>) => void
   isHideRemoveBtn?: boolean
   onRemove?: () => void
   isSaving?: boolean
-}
+}>
 
 const ConfigCredential: FC<Props> = ({
   collection,
@@ -99,7 +99,7 @@ const ConfigCredential: FC<Props> = ({
                   </DrawerTitle>
                   <DrawerCloseButton
                     aria-label={t('operation.close', { ns: 'common' })}
-                    className="h-6 w-6 rounded-md"
+                    className="size-6 rounded-md"
                   />
                 </div>
                 <DrawerDescription className="pr-10 pl-6 system-xs-regular text-text-tertiary">
@@ -130,7 +130,7 @@ const ConfigCredential: FC<Props> = ({
                                   className="inline-flex items-center text-xs text-text-accent"
                                 >
                                   {t('howToGet', { ns: 'tools' })}
-                                  <LinkExternal02 className="ml-1 h-3 w-3" />
+                                  <LinkExternal02 className="ml-1 size-3" />
                                 </a>
                               )
                             : null}

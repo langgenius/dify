@@ -15,14 +15,14 @@ import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useLocale } from '@/context/i18n'
 
-type Props = {
+type Props = Readonly<{
   toolCall: ToolCall
   isLLM: boolean
   isFinal?: boolean
   tokens?: number
   observation?: any
   finalAnswer?: any
-}
+}>
 
 const ToolCallItem: FC<Props> = ({ toolCall, isLLM = false, isFinal, tokens, observation, finalAnswer }) => {
   const [collapseState, setCollapseState] = useState<boolean>(true)
@@ -58,7 +58,7 @@ const ToolCallItem: FC<Props> = ({ toolCall, isLLM = false, isFinal, tokens, obs
         >
           <ChevronRight
             className={cn(
-              'mr-1 h-3 w-3 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
+              'mr-1 size-3 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
               !collapseState && 'rotate-90',
             )}
           />

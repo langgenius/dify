@@ -1,11 +1,11 @@
 import type { FC } from 'react'
 import * as React from 'react'
 
-type Props = {
+type Props = Readonly<{
   loading?: boolean
   className?: string
   children?: React.ReactNode | string
-}
+}>
 
 const Spinner: FC<Props> = ({ loading = false, children, className }) => {
   return (
@@ -14,7 +14,7 @@ const Spinner: FC<Props> = ({ loading = false, children, className }) => {
       role="status"
     >
       <span
-        className="absolute! -m-px! h-px! w-px! overflow-hidden! border-0! p-0! whitespace-nowrap! [clip:rect(0,0,0,0)]!"
+        className="absolute! -m-px! size-px! overflow-hidden! border-0! p-0! whitespace-nowrap! [clip:rect(0,0,0,0)]!"
       >
         Loading...
       </span>

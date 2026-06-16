@@ -5,7 +5,6 @@ import AppDetailNav from '..'
 
 let mockAppSidebarExpand = 'expand'
 const mockSetAppSidebarExpand = vi.fn()
-let mockPathname = '/app/123/overview'
 
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
@@ -19,16 +18,15 @@ vi.mock('zustand/react/shallow', () => ({
   useShallow: (fn: unknown) => fn,
 }))
 
-vi.mock('@/next/navigation', () => ({
-  usePathname: () => mockPathname,
-}))
-
 let mockIsHovering = true
 let mockKeyPressCallback: ((e: { preventDefault: () => void }) => void) | null = null
 
 vi.mock('ahooks', () => ({
   useHover: () => mockIsHovering,
-  useKeyPress: (_key: string, cb: (e: { preventDefault: () => void }) => void) => {
+}))
+
+vi.mock('@tanstack/react-hotkeys', () => ({
+  useHotkey: (_hotkey: string, cb: (e: { preventDefault: () => void }) => void) => {
     mockKeyPressCallback = cb
   },
 }))
@@ -38,22 +36,8 @@ vi.mock('@/hooks/use-breakpoints', () => ({
   MediaType: { mobile: 'mobile', desktop: 'desktop' },
 }))
 
-let mockSubscriptionCallback: ((v: unknown) => void) | null = null
-
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({
-    eventEmitter: {
-      useSubscription: (cb: (v: unknown) => void) => { mockSubscriptionCallback = cb },
-    },
-  }),
-}))
-
 vi.mock('../../base/divider', () => ({
   default: ({ className }: { className?: string }) => <hr data-testid="divider" className={className} />,
-}))
-
-vi.mock('@/app/components/workflow/utils', () => ({
-  getKeyboardKeyCodeBySystem: () => 'ctrl',
 }))
 
 vi.mock('../app-info', () => ({
@@ -65,21 +49,9 @@ vi.mock('../app-info', () => ({
   ),
 }))
 
-vi.mock('../app-sidebar-dropdown', () => ({
-  default: ({ navigation }: { navigation: unknown[] }) => (
-    <div data-testid="app-sidebar-dropdown" data-nav-count={navigation.length} />
-  ),
-}))
-
 vi.mock('../dataset-info', () => ({
   default: ({ expand }: { expand: boolean }) => (
     <div data-testid="dataset-info" data-expand={expand} />
-  ),
-}))
-
-vi.mock('../dataset-sidebar-dropdown', () => ({
-  default: ({ navigation }: { navigation: unknown[] }) => (
-    <div data-testid="dataset-sidebar-dropdown" data-nav-count={navigation.length} />
   ),
 }))
 
@@ -108,8 +80,8 @@ describe('AppDetailNav', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockAppSidebarExpand = 'expand'
-    mockPathname = '/app/123/overview'
     mockIsHovering = true
+    mockKeyPressCallback = null
   })
 
   describe('Normal sidebar mode', () => {
@@ -168,39 +140,20 @@ describe('AppDetailNav', () => {
       )
       expect(screen.queryByTestId('extra-info')).not.toBeInTheDocument()
     })
-  })
 
-  describe('Workflow canvas mode', () => {
-    it('should render AppSidebarDropdown when in workflow canvas with hidden header', () => {
-      mockPathname = '/app/123/workflow'
-      localStorage.setItem('workflow-canvas-maximize', 'true')
+    it('should render custom header and navigation when provided', () => {
+      render(
+        <AppDetailNav
+          navigation={navigation}
+          renderHeader={mode => <div data-testid="custom-header" data-mode={mode} />}
+          renderNavigation={mode => <div data-testid="custom-navigation" data-mode={mode} />}
+        />,
+      )
 
-      render(<AppDetailNav navigation={navigation} />)
-
-      expect(screen.getByTestId('app-sidebar-dropdown')).toBeInTheDocument()
+      expect(screen.getByTestId('custom-header')).toHaveAttribute('data-mode', 'expand')
+      expect(screen.getByTestId('custom-navigation')).toHaveAttribute('data-mode', 'expand')
       expect(screen.queryByTestId('app-info')).not.toBeInTheDocument()
-    })
-
-    it('should render normal sidebar when workflow canvas is not maximized', () => {
-      mockPathname = '/app/123/workflow'
-      localStorage.setItem('workflow-canvas-maximize', 'false')
-
-      render(<AppDetailNav navigation={navigation} />)
-
-      expect(screen.queryByTestId('app-sidebar-dropdown')).not.toBeInTheDocument()
-      expect(screen.getByTestId('app-info')).toBeInTheDocument()
-    })
-  })
-
-  describe('Pipeline canvas mode', () => {
-    it('should render DatasetSidebarDropdown when in pipeline canvas with hidden header', () => {
-      mockPathname = '/dataset/123/pipeline'
-      localStorage.setItem('workflow-canvas-maximize', 'true')
-
-      render(<AppDetailNav navigation={navigation} />)
-
-      expect(screen.getByTestId('dataset-sidebar-dropdown')).toBeInTheDocument()
-      expect(screen.queryByTestId('app-info')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('nav-link-Overview')).not.toBeInTheDocument()
     })
   })
 
@@ -256,30 +209,8 @@ describe('AppDetailNav', () => {
     })
   })
 
-  describe('Event emitter subscription', () => {
-    it('should handle workflow-canvas-maximize event', () => {
-      mockPathname = '/app/123/workflow'
-      render(<AppDetailNav navigation={navigation} />)
-
-      const cb = mockSubscriptionCallback
-      expect(cb).not.toBeNull()
-      act(() => {
-        cb!({ type: 'workflow-canvas-maximize', payload: true })
-      })
-    })
-
-    it('should ignore non-maximize events', () => {
-      render(<AppDetailNav navigation={navigation} />)
-
-      const cb = mockSubscriptionCallback
-      act(() => {
-        cb!({ type: 'other-event' })
-      })
-    })
-  })
-
   describe('Keyboard shortcut', () => {
-    it('should toggle sidebar on ctrl+b', () => {
+    it('should toggle sidebar on Mod+B', () => {
       render(<AppDetailNav navigation={navigation} />)
 
       const cb = mockKeyPressCallback

@@ -8,7 +8,6 @@ from datetime import UTC, datetime
 from typing import Any, cast
 from uuid import uuid4
 
-from flask_login import current_user
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -54,6 +53,7 @@ from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_htt
 from graphon.runtime import VariablePool
 from graphon.variables.variables import Variable, VariableBase
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
+from libs.login import resolve_account_fallback, resolve_tenant_id_fallback
 from models import Account
 from models.dataset import (  # type: ignore
     Dataset,
@@ -104,11 +104,16 @@ class RagPipelineService:
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
     @classmethod
-    def get_pipeline_templates(cls, type: str = "built-in", language: str = "en-US") -> dict[str, Any]:
+    def get_pipeline_templates(
+        cls,
+        type: str = "built-in",
+        language: str = "en-US",
+        current_tenant_id: str | None = None,
+    ) -> dict[str, Any]:
         if type == "built-in":
             mode = dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE
             retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
-            result = retrieval_instance.get_pipeline_templates(language)
+            result = retrieval_instance.get_pipeline_templates(language, current_tenant_id)
             if not result.get("pipeline_templates") and language != "en-US":
                 template_retrieval = PipelineTemplateRetrievalFactory.get_built_in_pipeline_template_retrieval()
                 result = template_retrieval.fetch_pipeline_templates_from_builtin("en-US")
@@ -116,7 +121,7 @@ class RagPipelineService:
         else:
             mode = "customized"
             retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
-            result = retrieval_instance.get_pipeline_templates(language)
+            result = retrieval_instance.get_pipeline_templates(language, current_tenant_id)
             return result
 
     @classmethod
@@ -146,17 +151,24 @@ class RagPipelineService:
             return customized_result
 
     @classmethod
-    def update_customized_pipeline_template(cls, template_id: str, template_info: PipelineTemplateInfoEntity):
+    def update_customized_pipeline_template(
+        cls,
+        template_id: str,
+        template_info: PipelineTemplateInfoEntity,
+        current_user: Account | None = None,
+        current_tenant_id: str | None = None,
+    ):
         """
         Update pipeline template.
         :param template_id: template id
         :param template_info: template info
         """
+        current_user, current_tenant_id = resolve_account_fallback(current_user, current_tenant_id)
         customized_template: PipelineCustomizedTemplate | None = db.session.scalar(
             select(PipelineCustomizedTemplate)
             .where(
                 PipelineCustomizedTemplate.id == template_id,
-                PipelineCustomizedTemplate.tenant_id == current_user.current_tenant_id,
+                PipelineCustomizedTemplate.tenant_id == current_tenant_id,
             )
             .limit(1)
         )
@@ -169,7 +181,7 @@ class RagPipelineService:
                 select(PipelineCustomizedTemplate)
                 .where(
                     PipelineCustomizedTemplate.name == template_name,
-                    PipelineCustomizedTemplate.tenant_id == current_user.current_tenant_id,
+                    PipelineCustomizedTemplate.tenant_id == current_tenant_id,
                     PipelineCustomizedTemplate.id != template_id,
                 )
                 .limit(1)
@@ -184,15 +196,16 @@ class RagPipelineService:
         return customized_template
 
     @classmethod
-    def delete_customized_pipeline_template(cls, template_id: str):
+    def delete_customized_pipeline_template(cls, template_id: str, current_tenant_id: str | None = None):
         """
         Delete customized pipeline template.
         """
+        current_tenant_id = resolve_tenant_id_fallback(current_tenant_id)
         customized_template: PipelineCustomizedTemplate | None = db.session.scalar(
             select(PipelineCustomizedTemplate)
             .where(
                 PipelineCustomizedTemplate.id == template_id,
-                PipelineCustomizedTemplate.tenant_id == current_user.current_tenant_id,
+                PipelineCustomizedTemplate.tenant_id == current_tenant_id,
             )
             .limit(1)
         )
@@ -618,26 +631,27 @@ class RagPipelineService:
             for key, value in datasource_parameters.items():
                 param_value = value.get("value")
 
-                if not param_value:
-                    variables_map[key] = param_value
-                elif isinstance(param_value, str):
-                    # handle string type parameter value, check if it contains variable reference pattern
-                    pattern = r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
-                    match = re.match(pattern, param_value)
-                    if match:
-                        # extract variable path and try to get value from user inputs
-                        full_path = match.group(1)
-                        last_part = full_path.split(".")[-1]
-                        variables_map[key] = user_inputs.get(last_part, param_value)
-                    else:
+                match param_value:
+                    case None | "" | [] | {}:
                         variables_map[key] = param_value
-                elif isinstance(param_value, list) and param_value:
-                    # handle list type parameter value, check if the last element is in user inputs
-                    last_part = param_value[-1]
-                    variables_map[key] = user_inputs.get(last_part, param_value)
-                else:
-                    # other type directly use original value
-                    variables_map[key] = param_value
+                    case str():
+                        # handle string type parameter value, check if it contains variable reference pattern
+                        pattern = r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
+                        match_result = re.match(pattern, param_value)
+                        if match_result:
+                            # extract variable path and try to get value from user inputs
+                            full_path = match_result.group(1)
+                            last_part = full_path.split(".")[-1]
+                            variables_map[key] = user_inputs.get(last_part, param_value)
+                        else:
+                            variables_map[key] = param_value
+                    case list() if param_value:
+                        # handle list type parameter value, check if the last element is in user inputs
+                        last_part = param_value[-1]
+                        variables_map[key] = user_inputs.get(last_part, param_value)
+                    case _:
+                        # other type directly use original value
+                        variables_map[key] = param_value
 
             from core.datasource.datasource_manager import DatasourceManager
 
@@ -1173,10 +1187,17 @@ class RagPipelineService:
         return list(node_executions)
 
     @classmethod
-    def publish_customized_pipeline_template(cls, pipeline_id: str, args: dict[str, Any]):
+    def publish_customized_pipeline_template(
+        cls,
+        pipeline_id: str,
+        args: dict[str, Any],
+        current_user: Account | None = None,
+        current_tenant_id: str | None = None,
+    ):
         """
         Publish customized pipeline template
         """
+        current_user, _ = resolve_account_fallback(current_user, current_tenant_id)
         pipeline = db.session.get(Pipeline, pipeline_id)
         if not pipeline:
             raise ValueError("Pipeline not found")
@@ -1350,7 +1371,13 @@ class RagPipelineService:
         )
         return workflow_node_execution_db_model
 
-    def get_recommended_plugins(self, type: str) -> dict[str, Any]:
+    def _fetch_recommended_plugin_manifests(self, plugin_ids: list[str]) -> list[Any]:
+        if not dify_config.MARKETPLACE_ENABLED:
+            logger.info("Marketplace disabled; recommended-plugins list empty")
+            return []
+        return marketplace.batch_fetch_plugin_by_ids(plugin_ids)
+
+    def get_recommended_plugins(self, type: str, current_user: Account, current_tenant_id: str) -> dict[str, Any]:
         # Query active recommended plugins
         stmt = select(PipelineRecommendedPlugin).where(PipelineRecommendedPlugin.active == True)
         if type and type != "all":
@@ -1368,11 +1395,11 @@ class RagPipelineService:
         plugin_ids = [plugin.plugin_id for plugin in pipeline_recommended_plugins]
         providers = BuiltinToolManageService.list_builtin_tools(
             user_id=current_user.id,
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=current_tenant_id,
         )
         providers_map = {provider.plugin_id: provider.to_dict() for provider in providers}
 
-        plugin_manifests = marketplace.batch_fetch_plugin_by_ids(plugin_ids)
+        plugin_manifests = self._fetch_recommended_plugin_manifests(plugin_ids)
         plugin_manifests_map = {manifest["plugin_id"]: manifest for manifest in plugin_manifests}
 
         installed_plugin_list = []

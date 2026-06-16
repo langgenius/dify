@@ -4,6 +4,7 @@ import type { ConfigParams } from './settings'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
@@ -12,14 +13,13 @@ import { useTranslation } from 'react-i18next'
 import AppBasic from '@/app/components/app-sidebar/basic'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-button'
-import Indicator from '@/app/components/header/indicator'
 import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useAppWhiteListSubjects } from '@/service/access-control'
 import { fetchAppDetailDirect } from '@/service/apps'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import { asyncRunSafe } from '@/utils'
@@ -296,7 +296,7 @@ function AppCard({
               }
             />
             <div className="flex shrink-0 items-center gap-1">
-              <Indicator color={cardState.runningStatus ? 'green' : 'yellow'} />
+              <StatusDot status={cardState.runningStatus ? 'success' : 'warning'} />
               <div className={`${cardState.runningStatus ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase`}>
                 {cardState.runningStatus
                   ? t('overview.status.running', { ns: 'appOverview' })

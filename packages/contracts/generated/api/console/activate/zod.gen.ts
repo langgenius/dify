@@ -22,10 +22,19 @@ export const zActivationResponse = z.object({
 })
 
 /**
+ * ActivationCheckData
+ */
+export const zActivationCheckData = z.object({
+  email: z.string().nullable(),
+  workspace_id: z.string().nullable(),
+  workspace_name: z.string().nullable(),
+})
+
+/**
  * ActivationCheckResponse
  */
 export const zActivationCheckResponse = z.object({
-  data: z.record(z.string(), z.unknown()).nullish(),
+  data: zActivationCheckData.nullish(),
   is_valid: z.boolean(),
 })
 
@@ -37,9 +46,9 @@ export const zPostActivateBody = zActivatePayload
 export const zPostActivateResponse = zActivationResponse
 
 export const zGetActivateCheckQuery = z.object({
-  email: z.string().nullish(),
+  email: z.string().optional(),
   token: z.string(),
-  workspace_id: z.string().nullish(),
+  workspace_id: z.string().optional(),
 })
 
 /**

@@ -1,4 +1,5 @@
 import type { NoteNodeType } from '../note-node/types'
+import { useLocalStorage } from 'foxact/use-local-storage'
 import { useCallback } from 'react'
 import { useAppContext } from '@/context/app-context'
 import {
@@ -12,6 +13,7 @@ import { generateNewNode } from '../utils'
 export const useOperator = () => {
   const workflowStore = useWorkflowStore()
   const { userProfile } = useAppContext()
+  const [showAuthorStorage] = useLocalStorage<string>(NOTE_SHOW_AUTHOR_STORAGE_KEY, 'true', { raw: true })
 
   const handleAddNote = useCallback(() => {
     const { newNode } = generateNewNode({
@@ -23,7 +25,7 @@ export const useOperator = () => {
         text: '',
         theme: NoteTheme.blue,
         author: userProfile?.name || '',
-        showAuthor: localStorage.getItem(NOTE_SHOW_AUTHOR_STORAGE_KEY) !== 'false',
+        showAuthor: showAuthorStorage !== 'false',
         width: 240,
         height: 88,
         _isCandidate: true,
@@ -36,7 +38,7 @@ export const useOperator = () => {
     workflowStore.setState({
       candidateNode: newNode,
     })
-  }, [workflowStore, userProfile])
+  }, [workflowStore, userProfile, showAuthorStorage])
 
   return {
     handleAddNote,

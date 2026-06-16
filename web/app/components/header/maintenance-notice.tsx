@@ -1,3 +1,4 @@
+import { useLocalStorage } from 'foxact/use-local-storage'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { X } from '@/app/components/base/icons/src/vender/line/general'
@@ -8,14 +9,17 @@ const MaintenanceNotice = () => {
   const { t } = useTranslation()
   const locale = useLanguage()
 
-  const [showNotice, setShowNotice] = useState(() => localStorage.getItem('hide-maintenance-notice') !== '1')
+  const [hiddenNoticeValue, setHiddenNoticeValue] = useLocalStorage<string>('hide-maintenance-notice', '0', { raw: true })
+  const hiddenNotice = hiddenNoticeValue === '1'
+  const [closedInSession, setClosedInSession] = useState(false)
+  const showNotice = !hiddenNotice && !closedInSession
   const handleJumpNotice = () => {
     window.open(NOTICE_I18N.href, '_blank')
   }
 
   const handleCloseNotice = () => {
-    localStorage.setItem('hide-maintenance-notice', '1')
-    setShowNotice(false)
+    setHiddenNoticeValue('1')
+    setClosedInSession(true)
   }
 
   const titleByLocale: { [key: string]: string } = NOTICE_I18N.title
@@ -43,10 +47,10 @@ const MaintenanceNotice = () => {
       <button
         type="button"
         aria-label={t('operation.close', { ns: 'common' })}
-        className="h-4 w-4 shrink-0 cursor-pointer border-none bg-transparent p-0 text-gray-500"
+        className="size-4 shrink-0 cursor-pointer border-none bg-transparent p-0 text-gray-500"
         onClick={handleCloseNotice}
       >
-        <X className="h-4 w-4" aria-hidden="true" />
+        <X className="size-4" aria-hidden="true" />
       </button>
     </div>
   )

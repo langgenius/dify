@@ -1,16 +1,24 @@
-import s from './downloading-icon.module.css'
+import { cn } from '@langgenius/dify-ui/cn'
 
-const DownloadingIcon = () => {
+type DownloadingIconProps = {
+  active?: boolean
+  className?: string
+}
+
+const DownloadingIcon = ({
+  active = true,
+  className,
+}: DownloadingIconProps) => {
   return (
-    <div className="inline-flex text-components-button-secondary-text">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="install-icon">
+    <span className={cn('inline-flex size-4 shrink-0 text-components-button-secondary-text', className)}>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className="install-icon size-4">
         <g id="install-line">
-          <path d="M8 2V4H5L4.999 14H18.999L19 4H16V2H20C20.5523 2 21 2.44772 21 3V21C21 21.5523 20.5523 22 20 22H4C3.44772 22 3 21.5523 3 21V3C3 2.44772 3.44772 2 4 2H8ZM18.999 16H4.999L5 20H19L18.999 16Z" fill="currentColor" />
-          <path id={s.downloadingIconLight} d="M17 19V17H15V19H17Z" />
-          <path id={s.downloadingIconArrow} d="M13 2V7H16L12 11L8 7H11V2H13Z" fill="currentColor" />
+          <path d="M5.33333 1.33333V2.66666H3.33333L3.33267 9.33333H12.666L12.6667 2.66666H10.6667V1.33333H13.3333C13.7015 1.33333 14 1.63181 14 1.99999V14C14 14.3682 13.7015 14.6667 13.3333 14.6667H2.66667C2.29848 14.6667 2 14.3682 2 14V1.99999C2 1.63181 2.29848 1.33333 2.66667 1.33333H5.33333ZM12.666 10.6667H3.33267L3.33333 13.3333H12.6667L12.666 10.6667Z" fill="currentColor" />
+          <path d="M11.3333 12.6667V11.3333H10V12.6667H11.3333Z" fill={active ? '#17B26A' : 'currentColor'} />
+          <path d="M8.66666 1.33333V4.66666H10.6667L8 7.33333L5.33333 4.66666H7.33333V1.33333H8.66666Z" fill="currentColor" />
         </g>
       </svg>
-    </div>
+    </span>
   )
 }
 

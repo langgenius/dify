@@ -17,11 +17,11 @@ import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/t
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/service/tools'
 
-type Props = {
+type Props = Readonly<{
   collection: Collection
   onCancel: () => void
   onSaved: (value: Record<string, unknown>) => void
-}
+}>
 
 const ToolCredentialForm: FC<Props> = ({
   collection,
@@ -85,7 +85,7 @@ const ToolCredentialForm: FC<Props> = ({
                           className="inline-flex items-center text-xs text-text-accent"
                         >
                           {t('howToGet', { ns: 'tools' })}
-                          <RiArrowRightUpLine className="ml-1 h-3 w-3" />
+                          <RiArrowRightUpLine className="ml-1 size-3" />
                         </a>
                       )
                     : null}

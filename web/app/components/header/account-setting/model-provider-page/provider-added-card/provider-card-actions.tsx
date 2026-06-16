@@ -15,10 +15,10 @@ import { useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { getMarketplaceUrl } from '@/utils/var'
 
-type Props = {
+type Props = Readonly<{
   detail: PluginDetail
   onUpdate?: () => void
-}
+}>
 
 const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
   const { t } = useTranslation()
@@ -94,7 +94,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
               text={(
                 <>
                   <span>{version}</span>
-                  {isFromMarketplace && <span className="ml-1 i-ri-arrow-left-right-line h-3 w-3" />}
+                  {isFromMarketplace && <span className="ml-1 i-ri-arrow-left-right-line size-3" />}
                 </>
               )}
               hasRedCornerMark={hasNewVersion}
@@ -131,6 +131,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
         onRemove={modalStates.showDeleteConfirm}
         detailUrl={detailUrl}
         placement="bottom-start"
+        destructiveRemove
       />
 
       <HeaderModals

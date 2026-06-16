@@ -8,11 +8,11 @@ import { useTranslation } from 'react-i18next'
 
 const i18nPrefix = 'singleRun'
 
-type Props = {
+type Props = Readonly<{
   nodeName: string
   onHide: () => void
   children: React.ReactNode
-}
+}>
 
 const PanelWrap: FC<Props> = ({
   nodeName,
@@ -35,7 +35,7 @@ const PanelWrap: FC<Props> = ({
               onHide()
             }}
           >
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+            <RiCloseLine className="size-4 text-text-tertiary" />
           </div>
         </div>
         {children}

@@ -6,11 +6,11 @@ import Link from '@/next/link'
 
 type EncryptedKey = I18nKeysWithPrefix<'common', 'provider.encrypted.'>
 
-type Props = {
+type Props = Readonly<{
   className?: string
   frontTextKey?: EncryptedKey
   backTextKey?: EncryptedKey
-}
+}>
 
 const DEFAULT_FRONT_KEY: EncryptedKey = 'provider.encrypted.front'
 const DEFAULT_BACK_KEY: EncryptedKey = 'provider.encrypted.back'
@@ -21,7 +21,7 @@ export const EncryptedBottom = (props: Props) => {
 
   return (
     <div className={cn('flex items-center justify-center rounded-b-2xl border-t-[0.5px] border-divider-subtle bg-background-soft px-2 py-3 system-xs-regular text-text-tertiary', className)}>
-      <RiLock2Fill className="mx-1 h-3 w-3 text-text-quaternary" />
+      <RiLock2Fill className="mx-1 size-3 text-text-quaternary" />
       {t(frontTextKey, { ns: 'common' })}
       <Link
         className="mx-1 text-text-accent"

@@ -100,23 +100,23 @@ export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
       <DrawerPortal>
         <DrawerBackdrop className="bg-transparent" />
         <DrawerViewport>
-          <DrawerPopup className={cn('justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-[420px] data-[swipe-direction=right]:max-w-[420px] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border')}>
+          <DrawerPopup className={cn('justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-[400px] data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border')}>
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
               <div className="relative border-b border-divider-subtle p-4 pb-3">
                 <div className="absolute top-3 right-3">
                   <ActionButton onClick={onClose}>
-                    <RiCloseLine className="h-4 w-4" />
+                    <RiCloseLine className="size-4" />
                   </ActionButton>
                 </div>
                 <div
                   className="mb-2 flex cursor-pointer items-center gap-1 system-xs-semibold-uppercase text-text-accent-secondary"
                   onClick={onClose}
                 >
-                  <RiArrowLeftLine className="h-4 w-4" />
+                  <RiArrowLeftLine className="size-4" />
                   {t('detailPanel.operation.back', { ns: 'plugin' })}
                 </div>
                 <div className="flex items-center gap-1">
-                  <Icon size="tiny" className="h-6 w-6" src={providerInfo.icon!} />
+                  <Icon size="tiny" className="size-6" src={providerInfo.icon!} />
                   <OrgInfo
                     packageNameClassName="w-auto"
                     orgName={providerInfo.author}

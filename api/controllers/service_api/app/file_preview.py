@@ -1,13 +1,15 @@
 import logging
 from urllib.parse import quote
+from uuid import UUID
 
 from flask import Response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
+from controllers.common.fields import BinaryFileResponse
 from controllers.common.file_response import enforce_download_for_html
-from controllers.common.schema import register_schema_model
+from controllers.common.schema import query_params_from_model, register_response_schema_model, register_schema_model
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
     FileAccessDeniedError,
@@ -26,6 +28,7 @@ class FilePreviewQuery(BaseModel):
 
 
 register_schema_model(service_api_ns, FilePreviewQuery)
+register_response_schema_model(service_api_ns, BinaryFileResponse)
 
 
 @service_api_ns.route("/files/<uuid:file_id>/preview")
@@ -37,7 +40,7 @@ class FilePreviewApi(Resource):
     Files can only be accessed if they belong to messages within the requesting app's context.
     """
 
-    @service_api_ns.expect(service_api_ns.models[FilePreviewQuery.__name__])
+    @service_api_ns.doc(params=query_params_from_model(FilePreviewQuery))
     @service_api_ns.doc("preview_file")
     @service_api_ns.doc(description="Preview or download a file uploaded via Service API")
     @service_api_ns.doc(params={"file_id": "UUID of the file to preview"})
@@ -49,21 +52,26 @@ class FilePreviewApi(Resource):
             404: "File not found",
         }
     )
+    @service_api_ns.response(
+        200,
+        "File retrieved successfully",
+        service_api_ns.models[BinaryFileResponse.__name__],
+    )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
-    def get(self, app_model: App, end_user: EndUser, file_id: str):
+    def get(self, app_model: App, end_user: EndUser, file_id: UUID):
         """
         Preview/Download a file that was uploaded via Service API.
 
         Provides secure file preview/download functionality.
         Files can only be accessed if they belong to messages within the requesting app's context.
         """
-        file_id = str(file_id)
+        file_id_str = str(file_id)
 
         # Parse query parameters
         args = FilePreviewQuery.model_validate(request.args.to_dict())
 
         # Validate file ownership and get file objects
-        _, upload_file = self._validate_file_ownership(file_id, app_model.id)
+        _, upload_file = self._validate_file_ownership(file_id_str, app_model.id)
 
         # Get file content generator
         try:

@@ -4,7 +4,7 @@
 # Owners can be @username, @org/team-name, or email addresses.
 # For more information, see: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
-* @crazywoola @laipz8200 @Yeuoly
+* @crazywoola @laipz8200
 
 # ESLint suppression file is maintained by autofix.ci pruning.
 /eslint-suppressions.json
@@ -15,8 +15,16 @@
 # Agents
 /.agents/skills/ @hyoban
 
+# Packages
+/packages/ @lyzno1
+/packages/contracts/ @crazywoola @laipz8200
+
 # Docs
 /docs/ @crazywoola
+
+# CLI
+/cli/ @GareArc
+/.github/workflows/cli-tests.yml @GareArc
 
 # Backend (default owner, more specific rules below will override)
 /api/ @QuantumGhost
@@ -85,39 +93,39 @@
 /api/tasks/deal_dataset_vector_index_task.py @JohnJyong
 
 # Backend - Plugins
-/api/core/plugin/ @Mairuis @Yeuoly @Stream29
-/api/services/plugin/ @Mairuis @Yeuoly @Stream29
-/api/controllers/console/workspace/plugin.py @Mairuis @Yeuoly @Stream29
-/api/controllers/inner_api/plugin/ @Mairuis @Yeuoly @Stream29
-/api/tasks/process_tenant_plugin_autoupgrade_check_task.py @Mairuis @Yeuoly @Stream29
+/api/core/plugin/ @WH-2099
+/api/services/plugin/ @WH-2099
+/api/controllers/console/workspace/plugin.py @WH-2099
+/api/controllers/inner_api/plugin/ @WH-2099
+/api/tasks/process_tenant_plugin_autoupgrade_check_task.py @WH-2099
 
 # Backend - Trigger/Schedule/Webhook
-/api/controllers/trigger/ @Mairuis @Yeuoly
-/api/controllers/console/app/workflow_trigger.py @Mairuis @Yeuoly
-/api/controllers/console/workspace/trigger_providers.py @Mairuis @Yeuoly
-/api/core/trigger/ @Mairuis @Yeuoly
-/api/core/app/layers/trigger_post_layer.py @Mairuis @Yeuoly
-/api/services/trigger/ @Mairuis @Yeuoly
-/api/models/trigger.py @Mairuis @Yeuoly
-/api/fields/workflow_trigger_fields.py @Mairuis @Yeuoly
-/api/repositories/workflow_trigger_log_repository.py @Mairuis @Yeuoly
-/api/repositories/sqlalchemy_workflow_trigger_log_repository.py @Mairuis @Yeuoly
-/api/libs/schedule_utils.py @Mairuis @Yeuoly
-/api/services/workflow/scheduler.py @Mairuis @Yeuoly
-/api/schedule/trigger_provider_refresh_task.py @Mairuis @Yeuoly
-/api/schedule/workflow_schedule_task.py @Mairuis @Yeuoly
-/api/tasks/trigger_processing_tasks.py @Mairuis @Yeuoly
-/api/tasks/trigger_subscription_refresh_tasks.py @Mairuis @Yeuoly
-/api/tasks/workflow_schedule_tasks.py @Mairuis @Yeuoly
-/api/tasks/workflow_cfs_scheduler/ @Mairuis @Yeuoly
-/api/events/event_handlers/sync_plugin_trigger_when_app_created.py @Mairuis @Yeuoly
-/api/events/event_handlers/update_app_triggers_when_app_published_workflow_updated.py @Mairuis @Yeuoly
-/api/events/event_handlers/sync_workflow_schedule_when_app_published.py @Mairuis @Yeuoly
-/api/events/event_handlers/sync_webhook_when_app_created.py @Mairuis @Yeuoly
+/api/controllers/trigger/ @CourTeous33
+/api/controllers/console/app/workflow_trigger.py @CourTeous33
+/api/controllers/console/workspace/trigger_providers.py @CourTeous33
+/api/core/trigger/ @CourTeous33
+/api/core/app/layers/trigger_post_layer.py @CourTeous33
+/api/services/trigger/ @CourTeous33
+/api/models/trigger.py @CourTeous33
+/api/fields/workflow_trigger_fields.py @CourTeous33
+/api/repositories/workflow_trigger_log_repository.py @CourTeous33
+/api/repositories/sqlalchemy_workflow_trigger_log_repository.py @CourTeous33
+/api/libs/schedule_utils.py @CourTeous33
+/api/services/workflow/scheduler.py @CourTeous33
+/api/schedule/trigger_provider_refresh_task.py @CourTeous33
+/api/schedule/workflow_schedule_task.py @CourTeous33
+/api/tasks/trigger_processing_tasks.py @CourTeous33
+/api/tasks/trigger_subscription_refresh_tasks.py @CourTeous33
+/api/tasks/workflow_schedule_tasks.py @CourTeous33
+/api/tasks/workflow_cfs_scheduler/ @CourTeous33
+/api/events/event_handlers/sync_plugin_trigger_when_app_created.py @CourTeous33
+/api/events/event_handlers/update_app_triggers_when_app_published_workflow_updated.py @CourTeous33
+/api/events/event_handlers/sync_workflow_schedule_when_app_published.py @CourTeous33
+/api/events/event_handlers/sync_webhook_when_app_created.py @CourTeous33
 
 # Backend - Async Workflow
-/api/services/async_workflow_service.py @Mairuis @Yeuoly
-/api/tasks/async_workflow_tasks.py @Mairuis @Yeuoly
+/api/services/async_workflow_service.py @Mairuis
+/api/tasks/async_workflow_tasks.py @Mairuis
 
 # Backend - Billing
 /api/services/billing_service.py @hj24 @zyssyz123
@@ -138,6 +146,14 @@
 
 # Frontend
 /web/ @iamjoel
+
+# Frontend - Platform and Features
+/web/config/ @lyzno1
+/web/contract/ @lyzno1
+/web/env.ts @lyzno1
+/web/features/ @lyzno1
+/web/hooks/ @lyzno1
+/web/scripts/gen-icons.mjs @lyzno1
 
 # Frontend - Web Tests
 /.github/workflows/web-tests.yml @iamjoel
@@ -162,6 +178,7 @@
 
 # Frontend - App - API Documentation
 /web/app/components/develop/ @JzoNgKVO @iamjoel
+/web/app/components/develop/template/*.mdx @JzoNgKVO @iamjoel @RiskeyL
 
 # Frontend - App - Logs and Annotations
 /web/app/components/app/workflow-log/ @JzoNgKVO @iamjoel
@@ -248,7 +265,6 @@
 /web/utils/time.ts @iamjoel @zxhlyh
 /web/utils/format.ts @iamjoel @zxhlyh
 /web/utils/clipboard.ts @iamjoel @zxhlyh
-/web/hooks/use-document-title.ts @iamjoel @zxhlyh
 
 # Frontend - Billing and Education
 /web/app/components/billing/ @iamjoel @zxhlyh

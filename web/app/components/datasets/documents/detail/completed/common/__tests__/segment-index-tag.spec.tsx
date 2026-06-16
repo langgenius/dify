@@ -13,7 +13,7 @@ describe('SegmentIndexTag', () => {
     it('should render the Chunk icon', () => {
       const { container } = render(<SegmentIndexTag positionId={1} />)
 
-      const icon = container.querySelector('.h-3.w-3')
+      const icon = container.querySelector('.size-3')
       expect(icon).toBeInTheDocument()
     })
 

@@ -53,7 +53,7 @@ vi.mock('@/app/components/header/account-setting/constants', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/api-based-extension-page/selector', () => ({
-  default: ({ onChange }: { value: string, onChange: (v: string) => void }) => (
+  ApiBasedExtensionSelector: ({ onChange }: { value: string, onChange: (v: string) => void }) => (
     <div data-testid="api-selector">
       <button data-testid="select-api" onClick={() => onChange('api-ext-1')}>Select API</button>
     </div>
@@ -702,9 +702,7 @@ describe('ModerationSettingModal', () => {
 
     expect(mockSetShowAccountSettingModal).toHaveBeenCalled()
 
-    const modalCall = mockSetShowAccountSettingModal.mock.calls[0]![0]
-    modalCall.onCancelCallback()
-    expect(mockModelProvidersData.refetch).toHaveBeenCalled()
+    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'provider' })
   })
 
   it('should not save when OpenAI type is selected but not configured', async () => {

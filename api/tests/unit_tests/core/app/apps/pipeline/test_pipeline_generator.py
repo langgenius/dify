@@ -717,3 +717,129 @@ def test_get_files_in_folder_recurses_and_collects(generator):
     )
 
     assert {f["id"] for f in all_files} == {"f1", "f2"}
+
+
+def test_get_files_in_folder_handles_empty_folder(generator):
+    """An empty folder must return an empty file list without recursion errors."""
+
+    class FilesPage:
+        def __init__(self, files, is_truncated=False, next_page_parameters=None):
+            self.files = files
+            self.is_truncated = is_truncated
+            self.next_page_parameters = next_page_parameters
+
+    class Result:
+        def __init__(self, result):
+            self.result = result
+
+    class Runtime:
+        def datasource_provider_type(self):
+            return DatasourceProviderType.ONLINE_DRIVE
+
+        def online_drive_browse_files(self, user_id, request, provider_type):
+            # Empty folder: returns a page with no files, not truncated
+            return iter([Result([FilesPage([], False, None)])])
+
+    runtime = Runtime()
+    all_files: list = []
+
+    generator._get_files_in_folder(
+        datasource_runtime=runtime,
+        prefix="empty-folder",
+        bucket="b",
+        user_id="user",
+        all_files=all_files,
+        datasource_info={},
+    )
+
+    assert all_files == []
+
+
+def test_get_files_in_folder_handles_empty_folder_with_false_truncation(generator):
+    """An empty folder that incorrectly reports is_truncated=True must not recurse forever."""
+
+    call_count = 0
+
+    class FilesPage:
+        def __init__(self, files, is_truncated=False, next_page_parameters=None):
+            self.files = files
+            self.is_truncated = is_truncated
+            self.next_page_parameters = next_page_parameters
+
+    class Result:
+        def __init__(self, result):
+            self.result = result
+
+    class Runtime:
+        def datasource_provider_type(self):
+            return DatasourceProviderType.ONLINE_DRIVE
+
+        def online_drive_browse_files(self, user_id, request, provider_type):
+            nonlocal call_count
+            call_count += 1
+            # Empty folder that incorrectly claims truncation
+            return iter([Result([FilesPage([], True, {"page": 2})])])
+
+    runtime = Runtime()
+    all_files: list = []
+
+    generator._get_files_in_folder(
+        datasource_runtime=runtime,
+        prefix="buggy-folder",
+        bucket="b",
+        user_id="user",
+        all_files=all_files,
+        datasource_info={},
+    )
+
+    assert all_files == []
+    # Should only be called once -- the empty-page guard prevents further recursion
+    assert call_count == 1
+
+
+def test_get_files_in_folder_handles_self_referencing_folder(generator):
+    """A folder that lists itself as a child must not recurse infinitely."""
+
+    class File:
+        def __init__(self, id, name, type):
+            self.id = id
+            self.name = name
+            self.type = type
+
+    class FilesPage:
+        def __init__(self, files, is_truncated=False, next_page_parameters=None):
+            self.files = files
+            self.is_truncated = is_truncated
+            self.next_page_parameters = next_page_parameters
+
+    class Result:
+        def __init__(self, result):
+            self.result = result
+
+    call_count = 0
+
+    class Runtime:
+        def datasource_provider_type(self):
+            return DatasourceProviderType.ONLINE_DRIVE
+
+        def online_drive_browse_files(self, user_id, request, provider_type):
+            nonlocal call_count
+            call_count += 1
+            # The folder returns itself as a child (self-reference)
+            return iter([Result([FilesPage([File("self-ref", "myfolder", "folder")], False, None)])])
+
+    runtime = Runtime()
+    all_files: list = []
+
+    generator._get_files_in_folder(
+        datasource_runtime=runtime,
+        prefix="self-ref",
+        bucket="b",
+        user_id="user",
+        all_files=all_files,
+        datasource_info={},
+    )
+
+    assert all_files == []
+    # Should only be called once -- the visited-set guard prevents re-entry
+    assert call_count == 1

@@ -10,12 +10,12 @@ import OptionCard from '@/app/components/workflow/nodes/_base/components/option-
 import { usePluginStore } from '../../store'
 import { ClientTypeEnum, useOAuthClientState as useOAuthClientSettings } from './hooks/use-oauth-client-state'
 
-type Props = {
+type Props = Readonly<{
   open: boolean
   oauthConfig?: TriggerOAuthConfig
   onOpenChange: (open: boolean) => void
   showOAuthCreateModal: (builder: TriggerSubscriptionBuilder) => void
-}
+}>
 
 const CLIENT_TYPE_OPTIONS = [ClientTypeEnum.Default, ClientTypeEnum.Custom] as const
 
@@ -68,7 +68,7 @@ export const OAuthClientSettingsModal = ({ open, oauthConfig, onOpenChange, show
             <DialogTitle data-testid="modal-title" className="title-2xl-semi-bold text-text-primary">
               {title}
             </DialogTitle>
-            <DialogCloseButton className="top-5 right-5 h-8 w-8 rounded-lg" />
+            <DialogCloseButton className="top-5 right-5 size-8 rounded-lg" />
           </div>
           <div data-testid="modal-content" className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
             <div className="mb-2 system-sm-medium text-text-secondary">
@@ -92,7 +92,7 @@ export const OAuthClientSettingsModal = ({ open, oauthConfig, onOpenChange, show
             {showRedirectInfo && (
               <div className="mb-4 flex items-start gap-3 rounded-xl bg-background-section-burn p-4">
                 <div className="rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg p-2 shadow-xs shadow-shadow-shadow-3">
-                  <span aria-hidden="true" className="i-ri-information-2-fill h-5 w-5 shrink-0 text-text-accent" />
+                  <span aria-hidden="true" className="i-ri-information-2-fill size-5 shrink-0 text-text-accent" />
                 </div>
                 <div className="min-w-0 flex-1 text-text-secondary">
                   <div className="system-sm-regular leading-4 whitespace-pre-wrap">

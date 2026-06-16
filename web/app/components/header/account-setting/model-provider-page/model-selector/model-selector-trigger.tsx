@@ -17,6 +17,7 @@ type ModelSelectorTriggerProps = {
   className?: string
   deprecatedClassName?: string
   showDeprecatedWarnIcon?: boolean
+  showModelMeta?: boolean
 }
 
 function ModelSelectorTrigger({
@@ -28,6 +29,7 @@ function ModelSelectorTrigger({
   className,
   deprecatedClassName,
   showDeprecatedWarnIcon = true,
+  showModelMeta = true,
 }: ModelSelectorTriggerProps) {
   const { t } = useTranslation()
   const { modelProviders } = useProviderContext()
@@ -59,7 +61,7 @@ function ModelSelectorTrigger({
   const statusLabel = statusI18nKey ? t(statusI18nKey, { ns: 'common' }) : null
   const tooltipLabel = tooltipI18nKey ? t(tooltipI18nKey, { ns: 'common' }) : null
   const isCreditsExhausted = status === 'credits-exhausted'
-  const shouldShowModelMeta = status === 'active'
+  const shouldShowModelMeta = showModelMeta && status === 'active'
   const deprecatedStatusLabel = statusLabel || t('modelProvider.selector.incompatible', { ns: 'common' })
   const deprecatedTooltipLabel = tooltipLabel || t('modelProvider.selector.incompatibleTip', { ns: 'common' })
 
@@ -77,9 +79,9 @@ function ModelSelectorTrigger({
     >
       {isEmpty
         ? (
-            <div className="flex h-6 w-6 items-center justify-center">
+            <div className="flex size-6 items-center justify-center">
               <div className="flex h-5 w-5 items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle">
-                <span className="i-ri-brain-2-line h-3.5 w-3.5 text-text-quaternary" />
+                <span className="i-ri-brain-2-line size-3.5 text-text-quaternary" />
               </div>
             </div>
           )
@@ -96,17 +98,18 @@ function ModelSelectorTrigger({
           <ModelName
             className="grow"
             modelItem={currentModel}
+            nameClassName={currentModel?.deprecated ? 'line-through' : undefined}
             showMode={shouldShowModelMeta}
             showFeatures={shouldShowModelMeta}
           />
         )}
         {isDeprecated && (
-          <div className="grow truncate system-sm-regular text-components-input-text-filled">
+          <div className="grow truncate system-sm-regular text-components-input-text-filled line-through">
             {defaultModel.model}
           </div>
         )}
         {isEmpty && (
-          <div className="grow truncate text-[13px] text-text-quaternary">
+          <div className="grow truncate text-[13px] text-components-input-text-placeholder">
             {t('detailPanel.configureModel', { ns: 'plugin' })}
           </div>
         )}
@@ -122,7 +125,7 @@ function ModelSelectorTrigger({
                     isCreditsExhausted && 'min-w-5 justify-center bg-components-badge-bg-dimm',
                   )}
                 >
-                  <span className="i-ri-alert-fill h-3 w-3 text-text-warning" />
+                  <span className="i-ri-alert-fill size-3 text-text-warning" />
                   <span className="system-xs-medium whitespace-nowrap text-text-warning">
                     {statusLabel}
                   </span>
@@ -142,7 +145,7 @@ function ModelSelectorTrigger({
             <TooltipTrigger
               render={(
                 <div className="flex shrink-0 items-center gap-0.75 rounded-md border border-text-warning bg-components-badge-bg-dimm px-1.25 py-0.5">
-                  <span className="i-ri-alert-fill h-3 w-3 text-text-warning" />
+                  <span className="i-ri-alert-fill size-3 text-text-warning" />
                   <span className="system-xs-medium whitespace-nowrap text-text-warning">
                     {deprecatedStatusLabel}
                   </span>
@@ -156,7 +159,7 @@ function ModelSelectorTrigger({
         )}
 
         {!readonly && (isActive || isEmpty) && (
-          <span className="i-ri-arrow-down-s-line h-3.5 w-3.5 shrink-0 text-text-tertiary" />
+          <span className="i-ri-arrow-down-s-line size-3.5 shrink-0 text-text-tertiary" />
         )}
       </div>
     </div>

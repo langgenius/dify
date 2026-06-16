@@ -8,10 +8,10 @@ import { useFeatures, useFeaturesStore } from '@/app/components/base/features/ho
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import { FeatureEnum } from '@/app/components/base/features/types'
 
-type Props = {
+type Props = Readonly<{
   disabled?: boolean
   onChange?: OnFeaturesChange
-}
+}>
 
 const MoreLikeThis = ({
   disabled,
@@ -42,7 +42,7 @@ const MoreLikeThis = ({
     <FeatureCard
       icon={(
         <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs">
-          <RiSparklingFill className="h-4 w-4 text-text-primary-on-surface" />
+          <RiSparklingFill className="size-4 text-text-primary-on-surface" />
         </div>
       )}
       title={t('feature.moreLikeThis.title', { ns: 'appDebug' })}

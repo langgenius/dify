@@ -14,9 +14,9 @@ import { ApiConnection } from '@/app/components/base/icons/src/vender/solid/deve
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
 import { InputVarType } from '@/app/components/workflow/types'
 
-type Props = {
+type Props = Readonly<{
   onChange: (value: string) => void
-}
+}>
 
 type ItemProps = {
   text: string
@@ -33,7 +33,7 @@ const SelectItem: FC<ItemProps> = ({ text, type, value, Icon, onClick }) => {
       className="h-8 rounded-lg px-3 text-text-primary"
       onClick={() => onClick(value)}
     >
-      {Icon ? <Icon className="h-4 w-4 text-text-secondary" /> : <InputVarTypeIcon type={type!} className="h-4 w-4 text-text-secondary" />}
+      {Icon ? <Icon className="size-4 text-text-secondary" /> : <InputVarTypeIcon type={type!} className="size-4 text-text-secondary" />}
       <div className="ml-2 truncate text-xs text-text-primary">{text}</div>
     </DropdownMenuItem>
   )

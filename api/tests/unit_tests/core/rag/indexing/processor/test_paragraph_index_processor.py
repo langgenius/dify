@@ -234,20 +234,6 @@ class TestParagraphIndexProcessor:
 
         mock_keyword_cls.return_value.delete_by_ids.assert_called_once_with(["node-2"])
 
-    def test_retrieve_filters_by_threshold(self, processor: ParagraphIndexProcessor, dataset: Mock) -> None:
-        accepted = SimpleNamespace(page_content="keep", metadata={"source": "a"}, score=0.9)
-        rejected = SimpleNamespace(page_content="drop", metadata={"source": "b"}, score=0.1)
-
-        with patch(
-            "core.rag.index_processor.processor.paragraph_index_processor.RetrievalService.retrieve"
-        ) as mock_retrieve:
-            mock_retrieve.return_value = [accepted, rejected]
-            reranking_model = {"reranking_provider_name": "", "reranking_model_name": ""}
-            docs = processor.retrieve("semantic_search", "query", dataset, 5, 0.5, reranking_model)
-
-        assert len(docs) == 1
-        assert docs[0].metadata["score"] == 0.9
-
     def test_index_list_chunks_high_quality(
         self, processor: ParagraphIndexProcessor, dataset: Mock, dataset_document: Mock
     ) -> None:
@@ -542,21 +528,24 @@ class TestParagraphIndexProcessor:
         session.scalars.return_value = scalars_result
 
         with (
-            patch("core.rag.index_processor.processor.paragraph_index_processor.db.session", session),
             patch(
                 "core.rag.index_processor.processor.paragraph_index_processor.build_from_mapping",
                 return_value=SimpleNamespace(id="file-1"),
             ) as mock_builder,
             patch("core.rag.index_processor.processor.paragraph_index_processor.logger") as mock_logger,
         ):
-            files = ParagraphIndexProcessor._extract_images_from_text("tenant-1", text)
+            files = ParagraphIndexProcessor._extract_images_from_text("tenant-1", text, session)
 
         assert len(files) == 1
         assert mock_builder.call_count == 1
         mock_logger.warning.assert_not_called()
 
     def test_extract_images_from_text_returns_empty_when_no_matches(self) -> None:
-        assert ParagraphIndexProcessor._extract_images_from_text("tenant-1", "no images here") == []
+        scalars_result = Mock()
+        scalars_result.all.return_value = []
+        session = Mock()
+        session.scalars.return_value = scalars_result
+        assert ParagraphIndexProcessor._extract_images_from_text("tenant-1", "no images here", session) == []
 
     def test_extract_images_from_text_logs_when_build_fails(self) -> None:
         text = "![img](/files/11111111-1111-1111-1111-111111111111/image-preview)"
@@ -576,14 +565,13 @@ class TestParagraphIndexProcessor:
         session.scalars.return_value = scalars_result
 
         with (
-            patch("core.rag.index_processor.processor.paragraph_index_processor.db.session", session),
             patch(
                 "core.rag.index_processor.processor.paragraph_index_processor.build_from_mapping",
                 side_effect=RuntimeError("build failed"),
             ),
             patch("core.rag.index_processor.processor.paragraph_index_processor.logger") as mock_logger,
         ):
-            files = ParagraphIndexProcessor._extract_images_from_text("tenant-1", text)
+            files = ParagraphIndexProcessor._extract_images_from_text("tenant-1", text, session)
 
         assert files == []
         mock_logger.warning.assert_called_once()
@@ -622,10 +610,9 @@ class TestParagraphIndexProcessor:
         session.execute.return_value = execute_result
 
         with (
-            patch("core.rag.index_processor.processor.paragraph_index_processor.db.session", session),
             patch("core.rag.index_processor.processor.paragraph_index_processor.logger") as mock_logger,
         ):
-            files = ParagraphIndexProcessor._extract_images_from_segment_attachments("tenant-1", "seg-1")
+            files = ParagraphIndexProcessor._extract_images_from_segment_attachments("tenant-1", "seg-1", session)
 
         assert len(files) == 1
         mock_logger.warning.assert_called_once()
@@ -636,7 +623,6 @@ class TestParagraphIndexProcessor:
         session = Mock()
         session.execute.return_value = execute_result
 
-        with patch("core.rag.index_processor.processor.paragraph_index_processor.db.session", session):
-            empty_files = ParagraphIndexProcessor._extract_images_from_segment_attachments("tenant-1", "seg-1")
+        empty_files = ParagraphIndexProcessor._extract_images_from_segment_attachments("tenant-1", "seg-1", session)
 
         assert empty_files == []

@@ -6,10 +6,10 @@ import * as React from 'react'
 import { ChevronSelectorVertical } from '@/app/components/base/icons/src/vender/line/arrows'
 import { PromptRole } from '@/models/debug'
 
-type Props = {
+type Props = Readonly<{
   value: PromptRole
   onChange: (value: PromptRole) => void
-}
+}>
 
 const allTypes = [PromptRole.system, PromptRole.user, PromptRole.assistant]
 const MessageTypeSelector: FC<Props> = ({
@@ -28,7 +28,7 @@ const MessageTypeSelector: FC<Props> = ({
         className={cn(showOption && 'bg-indigo-100', 'flex h-7 cursor-pointer items-center space-x-0.5 rounded-lg pr-1 pl-1.5 text-indigo-800')}
       >
         <div className="text-sm font-semibold uppercase">{value}</div>
-        <ChevronSelectorVertical className="h-3 w-3" />
+        <ChevronSelectorVertical className="size-3" />
       </div>
       {showOption && (
         <div className="absolute top-[30px] z-10 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg">

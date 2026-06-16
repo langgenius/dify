@@ -13,13 +13,13 @@ import { FeatureEnum } from '@/app/components/base/features/types'
 import { LoveMessage } from '@/app/components/base/icons/src/vender/features'
 import { useModalContext } from '@/context/modal-context'
 
-type Props = {
+type Props = Readonly<{
   disabled?: boolean
   onChange?: OnFeaturesChange
   promptVariables?: PromptVariable[]
   workflowVariables?: InputVar[]
   onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
-}
+}>
 
 const ConversationOpener = ({
   disabled,
@@ -84,7 +84,7 @@ const ConversationOpener = ({
     <FeatureCard
       icon={(
         <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs">
-          <LoveMessage className="h-4 w-4 text-text-primary-on-surface" />
+          <LoveMessage className="size-4 text-text-primary-on-surface" />
         </div>
       )}
       title={t('feature.conversationOpener.title', { ns: 'appDebug' })}
@@ -107,7 +107,7 @@ const ConversationOpener = ({
             )}
             {isHovering && (
               <Button className="w-full" onClick={handleOpenOpeningModal} disabled={disabled}>
-                <RiEditLine className="mr-1 h-4 w-4" />
+                <RiEditLine className="mr-1 size-4" />
                 {t('openingStatement.writeOpener', { ns: 'appDebug' })}
               </Button>
             )}

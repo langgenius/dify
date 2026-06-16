@@ -27,13 +27,13 @@ import FeatureIcon from '@/app/components/header/account-setting/model-provider-
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useKnowledge } from '@/hooks/use-knowledge'
 
-type Props = {
+type Props = Readonly<{
   payload: DataSet
   onRemove: () => void
   onChange: (dataSet: DataSet) => void
   readonly?: boolean
   editable?: boolean
-}
+}>
 
 const DatasetItem: FC<Props> = ({
   payload,
@@ -99,7 +99,7 @@ const DatasetItem: FC<Props> = ({
                   showSettingsModal()
                 }}
               >
-                <RiEditLine className="h-4 w-4 shrink-0 text-text-tertiary" />
+                <RiEditLine className="size-4 shrink-0 text-text-tertiary" />
               </ActionButton>
             )
           }
@@ -110,7 +110,7 @@ const DatasetItem: FC<Props> = ({
             onMouseEnter={() => setIsDeleteHovered(true)}
             onMouseLeave={() => setIsDeleteHovered(false)}
           >
-            <RiDeleteBinLine className={`h-4 w-4 shrink-0 ${isDeleteHovered ? 'text-text-destructive' : 'text-text-tertiary'}`} />
+            <RiDeleteBinLine className={`size-4 shrink-0 ${isDeleteHovered ? 'text-text-destructive' : 'text-text-tertiary'}`} />
           </ActionButton>
         </div>
       )}

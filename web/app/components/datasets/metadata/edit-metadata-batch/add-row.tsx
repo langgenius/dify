@@ -7,12 +7,12 @@ import * as React from 'react'
 import InputCombined from './input-combined'
 import Label from './label'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   payload: MetadataItemWithEdit
   onChange: (value: MetadataItemWithEdit) => void
   onRemove: () => void
-}
+}>
 
 const AddRow: FC<Props> = ({
   className,
@@ -24,6 +24,7 @@ const AddRow: FC<Props> = ({
     <div className={cn('flex h-6 items-center space-x-0.5', className)}>
       <Label text={payload.name} />
       <InputCombined
+        label={payload.name}
         type={payload.type}
         value={payload.value}
         onChange={value => onChange({ ...payload, value })}

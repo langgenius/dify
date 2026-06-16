@@ -41,7 +41,7 @@ class AppQueueManager(ABC):
         self._invoke_from = invoke_from
         self.invoke_from = invoke_from  # Public accessor for invoke_from
 
-        user_prefix = "account" if self._invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER} else "end-user"
+        user_prefix = "account" if self._invoke_from.runs_as_account() else "end-user"
         self._task_belong_cache_key = AppQueueManager._generate_task_belong_cache_key(self._task_id)
         redis_client.setex(self._task_belong_cache_key, 1800, f"{user_prefix}-{self._user_id}")
 
@@ -134,6 +134,10 @@ class AppQueueManager(ABC):
         self._check_for_sqlalchemy_models(event.model_dump())
         self._publish(event, pub_from)
 
+    def is_stopped(self) -> bool:
+        """Return whether the current task has been manually stopped."""
+        return self._is_stopped()
+
     @abstractmethod
     def _publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
         """
@@ -209,14 +213,16 @@ class AppQueueManager(ABC):
 
     def _check_for_sqlalchemy_models(self, data: Any):
         # from entity to dict or list
-        if isinstance(data, dict):
-            for value in data.values():
-                self._check_for_sqlalchemy_models(value)
-        elif isinstance(data, list):
-            for item in data:
-                self._check_for_sqlalchemy_models(item)
-        else:
-            if isinstance(data, DeclarativeMeta) or hasattr(data, "_sa_instance_state"):
-                raise TypeError(
-                    "Critical Error: Passing SQLAlchemy Model instances that cause thread safety issues is not allowed."
-                )
+        match data:
+            case dict():
+                for value in data.values():
+                    self._check_for_sqlalchemy_models(value)
+            case list():
+                for item in data:
+                    self._check_for_sqlalchemy_models(item)
+            case _:
+                if isinstance(data, DeclarativeMeta) or hasattr(data, "_sa_instance_state"):
+                    raise TypeError(
+                        "Critical Error: Passing SQLAlchemy Model instances that"
+                        " cause thread safety issues is not allowed."
+                    )

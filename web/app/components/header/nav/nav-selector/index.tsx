@@ -71,7 +71,7 @@ const AppCreateMenu = ({
           className="h-9 gap-2 px-3 py-[6px]"
         >
           <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-background-default">
-            <span className="i-ri-add-line h-4 w-4 text-text-primary" />
+            <span className="i-ri-add-line size-4 text-text-primary" />
           </div>
           <span className="grow text-left text-[14px] font-normal text-text-secondary">{createText}</span>
         </DropdownMenuSubTrigger>
@@ -86,14 +86,14 @@ const AppCreateMenu = ({
             className="h-9 px-3 py-[6px] font-normal text-text-secondary"
             onClick={() => handleCreate('blank')}
           >
-            <FilePlus01 className="mr-2 h-4 w-4 shrink-0 text-text-secondary" />
+            <FilePlus01 className="mr-2 size-4 shrink-0 text-text-secondary" />
             {startFromBlankText}
           </DropdownMenuItem>
           <DropdownMenuItem
             className="h-9 px-3 py-[6px] font-normal text-text-secondary"
             onClick={() => handleCreate('template')}
           >
-            <FilePlus02 className="mr-2 h-4 w-4 shrink-0 text-text-secondary" />
+            <FilePlus02 className="mr-2 size-4 shrink-0 text-text-secondary" />
             {startFromTemplateText}
           </DropdownMenuItem>
         </div>
@@ -102,7 +102,7 @@ const AppCreateMenu = ({
             className="h-9 px-3 py-[6px] font-normal text-text-secondary"
             onClick={() => handleCreate('dsl')}
           >
-            <FileArrow01 className="mr-2 h-4 w-4 shrink-0 text-text-secondary" />
+            <FileArrow01 className="mr-2 size-4 shrink-0 text-text-secondary" />
             {importDSLText}
           </DropdownMenuItem>
         </div>
@@ -136,7 +136,7 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
       >
         <div className="max-w-[157px] truncate" title={curNav?.name}>{curNav?.name}</div>
         <RiArrowDownSLine
-          className="ml-1 h-3 w-3 shrink-0 opacity-50 group-hover:opacity-100 group-data-popup-open:opacity-100"
+          className="ml-1 size-3 shrink-0 opacity-50 group-hover:opacity-100 group-data-popup-open:opacity-100"
           aria-hidden="true"
         />
       </DropdownMenuTrigger>
@@ -159,7 +159,7 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
                 }}
                 title={nav.name}
               >
-                <div className="relative mr-2 h-6 w-6 shrink-0 rounded-md">
+                <div className="relative mr-2 size-6 shrink-0 rounded-md">
                   <AppIcon
                     size="tiny"
                     iconType={nav.icon_type}
@@ -168,7 +168,7 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
                     imageUrl={nav.icon_url}
                   />
                   {!!nav.mode && (
-                    <AppTypeIcon type={nav.mode} wrapperClassName="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 shadow-sm" className="h-2.5 w-2.5" />
+                    <AppTypeIcon type={nav.mode} wrapperClassName="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 shadow-sm" className="size-2.5" />
                   )}
                 </div>
                 <div className="min-w-0 truncate">
@@ -190,7 +190,7 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
               onClick={() => onCreate('')}
             >
               <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-background-default">
-                <RiAddLine className="h-4 w-4 text-text-primary" />
+                <RiAddLine className="size-4 text-text-primary" />
               </div>
               <div className="grow text-left text-[14px] font-normal text-text-secondary">{createText}</div>
             </DropdownMenuItem>

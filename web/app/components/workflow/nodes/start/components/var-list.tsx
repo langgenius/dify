@@ -13,11 +13,11 @@ import { ChangeType } from '@/app/components/workflow/types'
 import { hasDuplicateStr } from '@/utils/var'
 import VarItem from './var-item'
 
-type Props = {
+type Props = Readonly<{
   readonly: boolean
   list: InputVar[]
   onChange: (list: InputVar[], moreInfo?: { index: number, payload: MoreInfo }) => void
-}
+}>
 
 const VarList: FC<Props> = ({
   readonly,
@@ -109,7 +109,7 @@ const VarList: FC<Props> = ({
           />
           {canDrag && (
             <RiDraggable className={cn(
-              'handle absolute top-2.5 left-3 hidden h-3 w-3 cursor-pointer text-text-tertiary',
+              'handle absolute top-2.5 left-3 hidden size-3 cursor-pointer text-text-tertiary',
               'group-hover:block',
             )}
             />

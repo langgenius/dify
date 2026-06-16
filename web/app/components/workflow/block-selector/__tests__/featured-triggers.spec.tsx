@@ -29,7 +29,7 @@ vi.mock('@/utils/var', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/utils/var')>()
   return {
     ...actual,
-    getMarketplaceUrl: () => 'https://marketplace.test/triggers',
+    getMarketplaceUrl: (path = '') => `https://marketplace.test${path}`,
   }
 })
 
@@ -165,7 +165,7 @@ describe('FeaturedTriggers', () => {
         />,
       )
 
-      expect(screen.getByRole('link', { name: 'workflow.tabs.noFeaturedTriggers' })).toHaveAttribute('href', 'https://marketplace.test/triggers')
+      expect(screen.getByRole('link', { name: 'workflow.tabs.noFeaturedTriggers' })).toHaveAttribute('href', 'https://marketplace.test/plugins/trigger')
     })
 
     it('should select an installed trigger event from the featured list', async () => {
@@ -192,6 +192,38 @@ describe('FeaturedTriggers', () => {
         event_name: 'created',
         event_label: 'Created',
       }))
+    })
+
+    it('should align featured item icons with the trigger list column', () => {
+      const provider = createTriggerProvider()
+
+      render(
+        <FeaturedTriggers
+          plugins={[
+            createPlugin({ plugin_id: 'plugin-1', latest_package_identifier: 'plugin-1@1.0.0' }),
+            createPlugin({
+              name: 'plugin-two',
+              plugin_id: 'plugin-2',
+              latest_package_identifier: 'plugin-2@1.0.0',
+              label: { en_US: 'Plugin Two', zh_Hans: '插件二' },
+            }),
+          ]}
+          providerMap={new Map([
+            ['plugin-1', provider],
+            ['plugin-1@1.0.0', provider],
+          ])}
+          onSelect={vi.fn()}
+        />,
+      )
+
+      const installedRow = screen.getByText('Provider One').closest('.select-none')
+      expect(installedRow).toHaveClass('h-8', 'pr-2', 'pl-3')
+      expect(installedRow?.parentElement?.parentElement?.parentElement).toHaveClass('p-1')
+
+      const uninstalledRow = screen.getByText('Plugin Two').closest('.group')
+      expect(uninstalledRow).toHaveClass('h-8', 'pr-2', 'pl-3')
+      expect(uninstalledRow?.parentElement).toHaveClass('mb-1', 'last-of-type:mb-0')
+      expect(uninstalledRow?.parentElement?.parentElement).toHaveClass('p-1')
     })
   })
 })

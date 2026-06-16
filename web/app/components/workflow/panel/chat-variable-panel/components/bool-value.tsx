@@ -4,10 +4,10 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import OptionCard from '../../../nodes/_base/components/option-card'
 
-type Props = {
+type Props = Readonly<{
   value: boolean
   onChange: (value: boolean) => void
-}
+}>
 
 const BoolValue: FC<Props> = ({
   value,

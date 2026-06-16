@@ -1,3 +1,5 @@
+from typing import override
+
 import chromadb
 from dify_vdb_chroma.chroma_vector import ChromaConfig, ChromaVector
 
@@ -13,7 +15,7 @@ class ChromaVectorTest(AbstractVectorTest):
         self.vector = ChromaVector(
             collection_name=self.collection_name,
             config=ChromaConfig(
-                host="localhost",
+                host="127.0.0.1",
                 port=8000,
                 tenant=chromadb.DEFAULT_TENANT,
                 database=chromadb.DEFAULT_DATABASE,
@@ -22,6 +24,7 @@ class ChromaVectorTest(AbstractVectorTest):
             ),
         )
 
+    @override
     def search_by_full_text(self):
         # chroma dos not support full text searching
         hits_by_full_text = self.vector.search_by_full_text(query=get_example_text())

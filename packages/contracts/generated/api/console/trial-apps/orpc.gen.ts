@@ -5,6 +5,7 @@ import * as z from 'zod'
 
 import {
   zGetTrialAppsByAppIdDatasetsPath,
+  zGetTrialAppsByAppIdDatasetsQuery,
   zGetTrialAppsByAppIdDatasetsResponse,
   zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath,
   zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse,
@@ -97,7 +98,12 @@ export const get = oc
     path: '/trial-apps/{app_id}/datasets',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetTrialAppsByAppIdDatasetsPath }))
+  .input(
+    z.object({
+      params: zGetTrialAppsByAppIdDatasetsPath,
+      query: zGetTrialAppsByAppIdDatasetsQuery.optional(),
+    }),
+  )
   .output(zGetTrialAppsByAppIdDatasetsResponse)
 
 export const datasets = {

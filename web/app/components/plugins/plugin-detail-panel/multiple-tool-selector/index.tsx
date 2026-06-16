@@ -15,7 +15,7 @@ import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-sele
 import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
 import { useAllMCPTools } from '@/service/use-tools'
 
-type Props = {
+type Props = Readonly<{
   disabled?: boolean
   value: ToolValue[]
   label: string
@@ -27,7 +27,7 @@ type Props = {
   nodeOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
   nodeId?: string
-}
+}>
 
 const MultipleToolSelector = ({
   disabled,
@@ -114,7 +114,7 @@ const MultipleToolSelector = ({
             ? (
                 <Infotip
                   aria-label={typeof tooltip === 'string' ? tooltip : label}
-                  className="h-3.5 w-3.5"
+                  className="size-3.5"
                 >
                   {tooltip}
                 </Infotip>
@@ -123,7 +123,7 @@ const MultipleToolSelector = ({
           {supportCollapse && (
             <ArrowDownRoundFill
               className={cn(
-                'h-4 w-4 cursor-pointer text-text-quaternary group-hover/collapse:text-text-secondary',
+                'size-4 cursor-pointer text-text-quaternary group-hover/collapse:text-text-secondary',
                 collapse && 'rotate-270',
               )}
             />
@@ -147,7 +147,7 @@ const MultipleToolSelector = ({
               setPanelShowState(true)
             }}
           >
-            <RiAddLine className="h-4 w-4" />
+            <RiAddLine className="size-4" />
           </ActionButton>
         )}
       </div>

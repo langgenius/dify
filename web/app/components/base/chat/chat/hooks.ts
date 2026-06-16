@@ -26,10 +26,12 @@ import {
 import { useTranslation } from 'react-i18next'
 import { v4 as uuidV4 } from 'uuid'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
+import { enrichSubmittedHumanInputFormData } from '@/app/components/base/chat/chat/answer/human-input-content/submitted-utils'
 import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
+import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
@@ -217,7 +219,7 @@ export const useChat = (
       ttsIsPublic = true
     }
     else if (params.appId) {
-      if (pathname.search('explore/installed') > -1)
+      if (isInstalledAppPath(pathname))
         ttsUrl = `/installed-apps/${params.appId}/text-to-audio`
       else
         ttsUrl = `/apps/${params.appId}/text-to-audio`
@@ -538,16 +540,20 @@ export const useChat = (
       },
       onHumanInputFormFilled: ({ data: humanInputFilledFormData }) => {
         updateChatTreeNode(messageId, (responseItem) => {
+          let requiredFormData: NonNullable<ChatItem['humanInputFormDataList']>[number] | undefined
           if (responseItem.humanInputFormDataList?.length) {
             const currentFormIndex = responseItem.humanInputFormDataList.findIndex(item => item.node_id === humanInputFilledFormData.node_id)
-            if (currentFormIndex > -1)
+            if (currentFormIndex > -1) {
+              requiredFormData = responseItem.humanInputFormDataList[currentFormIndex]
               responseItem.humanInputFormDataList.splice(currentFormIndex, 1)
+            }
           }
+          const enrichedHumanInputFilledFormData = enrichSubmittedHumanInputFormData(humanInputFilledFormData, requiredFormData)
           if (!responseItem.humanInputFilledFormDataList) {
-            responseItem.humanInputFilledFormDataList = [humanInputFilledFormData]
+            responseItem.humanInputFilledFormDataList = [enrichedHumanInputFilledFormData]
           }
           else {
-            responseItem.humanInputFilledFormDataList.push(humanInputFilledFormData)
+            responseItem.humanInputFilledFormDataList.push(enrichedHumanInputFilledFormData)
           }
         })
       },
@@ -1108,15 +1114,20 @@ export const useChat = (
         }
       },
       onHumanInputFormFilled: ({ data: humanInputFilledFormData }) => {
+        let requiredFormData: NonNullable<ChatItem['humanInputFormDataList']>[number] | undefined
         if (responseItem.humanInputFormDataList?.length) {
           const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(item => item.node_id === humanInputFilledFormData.node_id)
-          responseItem.humanInputFormDataList.splice(currentFormIndex, 1)
+          if (currentFormIndex > -1) {
+            requiredFormData = responseItem.humanInputFormDataList[currentFormIndex]
+            responseItem.humanInputFormDataList.splice(currentFormIndex, 1)
+          }
         }
+        const enrichedHumanInputFilledFormData = enrichSubmittedHumanInputFormData(humanInputFilledFormData, requiredFormData)
         if (!responseItem.humanInputFilledFormDataList) {
-          responseItem.humanInputFilledFormDataList = [humanInputFilledFormData]
+          responseItem.humanInputFilledFormDataList = [enrichedHumanInputFilledFormData]
         }
         else {
-          responseItem.humanInputFilledFormDataList.push(humanInputFilledFormData)
+          responseItem.humanInputFilledFormDataList.push(enrichedHumanInputFilledFormData)
         }
         updateCurrentQAOnTree({
           placeholderQuestionId,

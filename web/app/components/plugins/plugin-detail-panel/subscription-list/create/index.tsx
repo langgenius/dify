@@ -19,11 +19,11 @@ import { CommonCreateModal } from './common-modal'
 import { OAuthClientSettingsModal } from './oauth-client'
 import { CreateButtonType, DEFAULT_METHOD } from './types'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   buttonType?: CreateButtonType
   shape?: 'square' | 'circle'
-}
+}>
 
 const MAX_COUNT = 10
 
@@ -105,7 +105,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
                   aria-label={t('subscription.addType.options.oauth.clientSettings', { ns: 'pluginTrigger' })}
                   onClick={onClickClientSettings}
                 >
-                  <span aria-hidden className="i-ri-equalizer-2-line h-4 w-4 text-text-tertiary" />
+                  <span aria-hidden className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
                 </ActionButton>
               )}
             />
@@ -127,7 +127,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
         extra: (
           <Infotip
             aria-label={t('subscription.addType.options.manual.tip', { ns: 'pluginTrigger' })}
-            className="h-3.5 w-3.5"
+            className="size-3.5"
             iconClassName="h-full w-full"
           >
             {t('subscription.addType.options.manual.tip', { ns: 'pluginTrigger' })}

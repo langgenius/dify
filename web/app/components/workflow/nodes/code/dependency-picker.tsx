@@ -14,11 +14,11 @@ import { useCallback, useState } from 'react'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import Input from '@/app/components/base/input'
 
-type Props = {
+type Props = Readonly<{
   value: CodeDependency
   available_dependencies: CodeDependency[]
   onChange: (dependency: CodeDependency) => void
-}
+}>
 
 const DependencyPicker: FC<Props> = ({
   available_dependencies,
@@ -42,7 +42,7 @@ const DependencyPicker: FC<Props> = ({
           <div className="grow cursor-pointer">
             <div className="flex h-8 items-center justify-between rounded-lg border-0 bg-gray-100 px-2.5 text-[13px] text-gray-900">
               <div className="w-0 grow truncate" title={value.name}>{value.name}</div>
-              <RiArrowDownSLine className="h-3.5 w-3.5 shrink-0 text-gray-700" />
+              <RiArrowDownSLine className="size-3.5 shrink-0 text-gray-700" />
             </div>
           </div>
         )}
@@ -81,7 +81,7 @@ const DependencyPicker: FC<Props> = ({
                 onClick={handleChange(dependency)}
               >
                 <div className="w-0 grow truncate">{dependency.name}</div>
-                {dependency.name === value.name && <Check className="h-4 w-4 shrink-0 text-primary-600" />}
+                {dependency.name === value.name && <Check className="size-4 shrink-0 text-primary-600" />}
               </div>
             ))}
           </div>

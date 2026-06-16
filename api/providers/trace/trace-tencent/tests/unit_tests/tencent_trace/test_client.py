@@ -94,29 +94,29 @@ class PatchedCoreComponents(TypedDict):
 def _add_stub_modules(monkeypatch: pytest.MonkeyPatch) -> None:
     """Drop fake metric modules into sys.modules so the client imports resolve."""
 
-    metrics_module = types.ModuleType("opentelemetry.sdk.metrics")
+    metrics_module = cast(Any, types.ModuleType("opentelemetry.sdk.metrics"))
     metrics_module.Histogram = DummyHistogram
     metrics_module.MeterProvider = DummyMeterProvider
     monkeypatch.setitem(sys.modules, "opentelemetry.sdk.metrics", metrics_module)
 
-    metrics_export_module = types.ModuleType("opentelemetry.sdk.metrics.export")
+    metrics_export_module = cast(Any, types.ModuleType("opentelemetry.sdk.metrics.export"))
     metrics_export_module.AggregationTemporality = AggregationTemporality
     metrics_export_module.PeriodicExportingMetricReader = DummyMetricReader
     monkeypatch.setitem(sys.modules, "opentelemetry.sdk.metrics.export", metrics_export_module)
 
-    grpc_module = types.ModuleType("opentelemetry.exporter.otlp.proto.grpc.metric_exporter")
+    grpc_module = cast(Any, types.ModuleType("opentelemetry.exporter.otlp.proto.grpc.metric_exporter"))
     grpc_module.OTLPMetricExporter = DummyGrpcMetricExporter
     monkeypatch.setitem(sys.modules, "opentelemetry.exporter.otlp.proto.grpc.metric_exporter", grpc_module)
 
-    http_module = types.ModuleType("opentelemetry.exporter.otlp.proto.http.metric_exporter")
+    http_module = cast(Any, types.ModuleType("opentelemetry.exporter.otlp.proto.http.metric_exporter"))
     http_module.OTLPMetricExporter = DummyHttpMetricExporter
     monkeypatch.setitem(sys.modules, "opentelemetry.exporter.otlp.proto.http.metric_exporter", http_module)
 
-    http_json_module = types.ModuleType("opentelemetry.exporter.otlp.http.json.metric_exporter")
+    http_json_module = cast(Any, types.ModuleType("opentelemetry.exporter.otlp.http.json.metric_exporter"))
     http_json_module.OTLPMetricExporter = DummyJsonMetricExporter
     monkeypatch.setitem(sys.modules, "opentelemetry.exporter.otlp.http.json.metric_exporter", http_json_module)
 
-    legacy_json_module = types.ModuleType("opentelemetry.exporter.otlp.json.metric_exporter")
+    legacy_json_module = cast(Any, types.ModuleType("opentelemetry.exporter.otlp.json.metric_exporter"))
     legacy_json_module.OTLPMetricExporter = DummyJsonMetricExporter
     monkeypatch.setitem(sys.modules, "opentelemetry.exporter.otlp.json.metric_exporter", legacy_json_module)
 

@@ -4,13 +4,13 @@ import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import { isEqual } from 'es-toolkit/predicate'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import IndexMethod from '@/app/components/datasets/settings/index-method'
@@ -20,9 +20,9 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
-import { useModalContext } from '@/context/modal-context'
 import { DatasetPermission } from '@/models/datasets'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useMembers } from '@/service/use-common'
@@ -53,7 +53,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const docLink = useDocLink()
   const ref = useRef(null)
   const isExternal = currentDataset.provider === 'external'
-  const { setShowAccountSettingModal } = useModalContext()
+  const openIntegrationsSetting = useIntegrationsSetting()
   const [loading, setLoading] = useState(false)
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
   const [localeCurrentDataset, setLocaleCurrentDataset] = useState({ ...currentDataset })
@@ -199,9 +199,9 @@ const SettingsModal: FC<SettingsModalProps> = ({
         <div className="flex items-center">
           <div
             onClick={onCancel}
-            className="flex h-6 w-6 cursor-pointer items-center justify-center"
+            className="flex size-6 cursor-pointer items-center justify-center"
           >
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+            <RiCloseLine className="size-4 text-text-tertiary" />
           </div>
         </div>
       </div>
@@ -224,8 +224,9 @@ const SettingsModal: FC<SettingsModalProps> = ({
           </div>
           <div className="w-full">
             <Textarea
+              aria-label={t('form.desc', { ns: 'datasetSettings' })}
               value={localeCurrentDataset.description || ''}
-              onChange={e => handleValueChange('description', e.target.value)}
+              onValueChange={value => handleValueChange('description', value)}
               className="resize-none"
               placeholder={t('form.descPlaceholder', { ns: 'datasetSettings' }) || ''}
             />
@@ -279,12 +280,12 @@ const SettingsModal: FC<SettingsModalProps> = ({
                   modelList={embeddingModelList}
                 />
               </div>
-              <div className="mt-2 w-full text-xs leading-6 text-text-tertiary">
+              <div className="mt-2 w-full text-xs/6 text-text-tertiary">
                 {t('form.embeddingModelTip', { ns: 'datasetSettings' })}
                 <button
                   type="button"
                   className="cursor-pointer border-none bg-transparent p-0 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-                  onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
+                  onClick={() => openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
                 >
                   {t('form.embeddingModelTipLink', { ns: 'datasetSettings' })}
                 </button>

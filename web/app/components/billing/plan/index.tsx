@@ -8,6 +8,7 @@ import {
   RiGroupLine,
 } from '@remixicon/react'
 import { useUnmountedRef } from 'ahooks'
+import { useSetLocalStorage } from 'foxact/use-local-storage'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,6 +16,7 @@ import { ApiAggregate, TriggerAll } from '@/app/components/base/icons/src/vender
 import UsageInfo from '@/app/components/billing/usage-info'
 import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
 import VerifyStateModal from '@/app/education-apply/verify-state-modal'
+import { IS_CLOUD_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -30,9 +32,9 @@ import AppsInfo from '../usage-info/apps-info'
 import VectorSpaceInfo from '../usage-info/vector-space-info'
 import { Enterprise, Professional, Sandbox, Team } from './assets'
 
-type Props = {
+type Props = Readonly<{
   loc: string
-}
+}>
 
 const PlanComp: FC<Props> = ({
   loc,
@@ -70,12 +72,13 @@ const PlanComp: FC<Props> = ({
   const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
   const { mutateAsync, isPending } = useEducationVerify()
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
+  const setEducationVerifying = useSetLocalStorage<string>(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, { raw: true })
   const unmountedRef = useUnmountedRef()
   const handleVerify = () => {
     if (isPending)
       return
     mutateAsync().then((res) => {
-      localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+      setEducationVerifying(null)
       if (unmountedRef.current)
         return
       router.push(`/education-apply?token=${res.token}`)
@@ -111,21 +114,21 @@ const PlanComp: FC<Props> = ({
             <div className="system-xs-regular text-util-colors-gray-gray-600">{t(`plans.${type}.for`, { ns: 'billing' })}</div>
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            {enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (
+            {IS_CLOUD_EDITION && enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (
               <Button variant="ghost" onClick={handleVerify} disabled={isPending}>
-                <RiGraduationCapLine className="mr-1 h-4 w-4" />
+                <RiGraduationCapLine className="mr-1 size-4" />
                 {t('toVerified', { ns: 'education' })}
                 {isPending && <Loading className="ml-1 animate-spin-slow" />}
               </Button>
             )}
-            {enableEducationPlan && isEducationAccount && type === Plan.sandbox && isCurrentWorkspaceManager && (
+            {IS_CLOUD_EDITION && enableEducationPlan && isEducationAccount && type === Plan.sandbox && isCurrentWorkspaceManager && (
               <Button variant="ghost" onClick={handleEducationDiscount} disabled={isEducationDiscountLoading}>
-                <RiGraduationCapLine className="mr-1 h-4 w-4" />
+                <RiGraduationCapLine className="mr-1 size-4" />
                 {t('useEducationDiscount', { ns: 'education' })}
                 {isEducationDiscountLoading && <Loading className="ml-1 animate-spin-slow" />}
               </Button>
             )}
-            {!isEnterprisePlan && (
+            {IS_CLOUD_EDITION && !isEnterprisePlan && (
               <UpgradeBtn
                 className="shrink-0"
                 isPlain={type === Plan.team}

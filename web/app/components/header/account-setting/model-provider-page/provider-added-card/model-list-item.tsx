@@ -76,6 +76,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
       <ModelName
         className="grow system-md-regular text-text-secondary"
         modelItem={model}
+        nameClassName={model.deprecated ? 'line-through' : undefined}
         showModelType
         showMode
         showContextSize
@@ -86,7 +87,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
       <div className="flex shrink-0 items-center">
         {modelLoadBalancingEnabled && !model.deprecated && model.load_balancing_enabled && !model.has_invalid_load_balancing_configs && (
           <Badge className="mr-1 h-[18px] w-[18px] items-center justify-center border-text-accent-secondary p-0">
-            <Balance className="h-3 w-3 text-text-accent-secondary" />
+            <Balance className="size-3 text-text-accent-secondary" />
           </Badge>
         )}
         {

@@ -100,7 +100,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
         <div className="flex items-center">
           {fullScreen && (
             <>
-              <AddAnother className="mr-3" isChecked={addAnother} onCheck={() => setAddAnother(!addAnother)} />
+              <AddAnother className="mr-3" checked={addAnother} onCheckedChange={setAddAnother} />
               <ActionButtons
                 handleCancel={handleCancel.bind(null, 'esc')}
                 handleSave={handleSave}
@@ -114,18 +114,18 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
           <button
             type="button"
             aria-label={t('operation.zoomIn', { ns: 'common' })}
-            className="mr-1 flex h-8 w-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5"
+            className="mr-1 flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5"
             onClick={toggleFullScreen}
           >
-            <RiExpandDiagonalLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+            <RiExpandDiagonalLine className="size-4 text-text-tertiary" aria-hidden="true" />
           </button>
           <button
             type="button"
             aria-label={t('operation.close', { ns: 'common' })}
-            className="flex h-8 w-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5"
+            className="flex size-8 cursor-pointer items-center justify-center border-none bg-transparent p-1.5"
             onClick={handleCancel.bind(null, 'esc')}
           >
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+            <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -141,7 +141,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
       </div>
       {!fullScreen && (
         <div className="flex items-center justify-between border-t border-t-divider-subtle p-4 pt-3">
-          <AddAnother isChecked={addAnother} onCheck={() => setAddAnother(!addAnother)} />
+          <AddAnother checked={addAnother} onCheckedChange={setAddAnother} />
           <ActionButtons
             handleCancel={handleCancel.bind(null, 'esc')}
             handleSave={handleSave}

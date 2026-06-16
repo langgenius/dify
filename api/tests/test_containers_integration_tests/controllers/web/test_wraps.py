@@ -277,7 +277,7 @@ class TestDecodeJwtToken:
         mock_extract: MagicMock,
         mock_passport_cls: MagicMock,
         mock_features: MagicMock,
-        app,
+        app: Flask,
     ) -> None:
         non_existent_id = str(uuid4())
         mock_extract.return_value = "jwt-token"

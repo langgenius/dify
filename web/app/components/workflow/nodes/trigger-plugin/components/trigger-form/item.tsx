@@ -15,7 +15,7 @@ import { useLanguage } from '@/app/components/header/account-setting/model-provi
 import { SchemaModal } from '@/app/components/plugins/plugin-detail-panel/tool-selector/components'
 import FormInputItem from '@/app/components/workflow/nodes/_base/components/form-input-item'
 
-type Props = {
+type Props = Readonly<{
   readOnly: boolean
   nodeId: string
   schema: CredentialFormSchema
@@ -26,7 +26,7 @@ type Props = {
   currentProvider?: TriggerWithProvider
   extraParams?: Record<string, any>
   disableVariableInsertion?: boolean
-}
+}>
 
 const TriggerFormItem: FC<Props> = ({
   readOnly,
@@ -59,7 +59,7 @@ const TriggerFormItem: FC<Props> = ({
           {!showDescription && tooltip && (
             <Infotip
               aria-label={tooltip[language] || tooltip.en_US}
-              className="ml-1 h-4 w-4"
+              className="ml-1 size-4"
               popupClassName="w-[200px]"
             >
               {tooltip[language] || tooltip.en_US}

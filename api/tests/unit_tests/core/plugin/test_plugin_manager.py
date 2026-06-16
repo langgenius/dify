@@ -33,6 +33,7 @@ from core.plugin.entities.plugin_daemon import (
     PluginInstallTaskStartResponse,
     PluginInstallTaskStatus,
     PluginListResponse,
+    PluginListWithoutTotalResponse,
     PluginReadmeResponse,
     PluginVerification,
 )
@@ -122,6 +123,26 @@ class TestPluginDiscovery:
             assert call_args[1]["params"]["page"] == 1
             assert call_args[1]["params"]["page_size"] == 5
             assert result.total == 10
+
+    def test_list_plugins_by_category(self, plugin_installer, mock_plugin_entity):
+        """Test category plugin listing without total."""
+        mock_response = PluginListWithoutTotalResponse(list=[mock_plugin_entity], has_more=True)
+
+        with patch.object(
+            plugin_installer, "_request_with_plugin_daemon_response", return_value=mock_response
+        ) as mock_request:
+            result = plugin_installer.list_plugins_by_category(
+                "test-tenant", category=PluginCategory.Tool, page=2, page_size=10
+            )
+
+            mock_request.assert_called_once()
+            call_args = mock_request.call_args
+            assert call_args.args[1] == "plugin/test-tenant/management/tool/list"
+            assert call_args.args[2] is PluginListWithoutTotalResponse
+            assert call_args.kwargs["params"]["page"] == 2
+            assert call_args.kwargs["params"]["page_size"] == 10
+            assert result.list == [mock_plugin_entity]
+            assert result.has_more is True
 
     def test_list_plugins_empty_result(self, plugin_installer):
         """Test plugin listing when no plugins are installed."""

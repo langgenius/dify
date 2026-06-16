@@ -3,15 +3,15 @@ import type { Dispatch, SetStateAction } from 'react'
 import type { ViewType } from '@/app/components/workflow/block-selector/view-type-select'
 import type { OnSelectBlock } from '@/app/components/workflow/types'
 import { RiMoreLine } from '@remixicon/react'
+import { useLocalStorage } from 'foxact/use-local-storage'
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/arrows'
 import Loading from '@/app/components/base/loading'
 import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
 import Link from '@/next/link'
 import { useRAGRecommendedPlugins } from '@/service/use-tools'
-import { isServer } from '@/utils/client'
 import { getMarketplaceUrl } from '@/utils/var'
 import List from './list'
 
@@ -29,26 +29,7 @@ const RAGToolRecommendations = ({
   onTagsChange,
 }: RAGToolRecommendationsProps) => {
   const { t } = useTranslation()
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
-    if (isServer)
-      return false
-    const stored = window.localStorage.getItem(STORAGE_KEY)
-    return stored === 'true'
-  })
-
-  useEffect(() => {
-    if (isServer)
-      return
-    const stored = window.localStorage.getItem(STORAGE_KEY)
-    if (stored !== null)
-      setIsCollapsed(stored === 'true')
-  }, [])
-
-  useEffect(() => {
-    if (isServer)
-      return
-    window.localStorage.setItem(STORAGE_KEY, String(isCollapsed))
-  }, [isCollapsed])
+  const [isCollapsed, setIsCollapsed] = useLocalStorage<boolean>(STORAGE_KEY, false)
 
   const {
     data: ragRecommendedPlugins,
@@ -84,7 +65,7 @@ const RAGToolRecommendations = ({
         onClick={() => setIsCollapsed(prev => !prev)}
       >
         <span className="system-xs-medium text-text-tertiary">{t('ragToolSuggestions.title', { ns: 'pipeline' })}</span>
-        <ArrowDownRoundFill className={`ml-1 h-4 w-4 text-text-tertiary transition-transform ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} />
+        <ArrowDownRoundFill className={`ml-1 size-4 text-text-tertiary transition-transform ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} />
       </button>
       {!isCollapsed && (
         <>

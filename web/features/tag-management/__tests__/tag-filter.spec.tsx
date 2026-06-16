@@ -29,7 +29,7 @@ const i18n = {
   placeholder: 'common.tag.placeholder',
   selectorPlaceholder: 'common.tag.selectorPlaceholder',
   operationClear: 'common.operation.clear',
-  noTag: 'common.tag.noTag',
+  noTag: /common\.tag\.noTag/,
   manageTags: 'common.tag.manageTags',
 }
 
@@ -79,6 +79,11 @@ describe('TagFilter', () => {
   })
 
   describe('Props', () => {
+    it('should hide the leading tag icon when disabled', () => {
+      const { container } = render(<TagFilter {...defaultProps} showLeadingIcon={false} />)
+      expect(container.querySelector('svg')).not.toBeInTheDocument()
+    })
+
     it('should filter tags by type prop', async () => {
       const user = userEvent.setup()
       render(<TagFilter {...defaultProps} type="knowledge" />)
@@ -228,6 +233,20 @@ describe('TagFilter', () => {
       await user.type(searchInput, 'NonExistentTag')
 
       expect(screen.getByText(i18n.noTag)).toBeInTheDocument()
+    })
+
+    it('should keep search input focused when search has no results', async () => {
+      const user = userEvent.setup()
+
+      render(<TagFilter {...defaultProps} />)
+
+      await user.click(screen.getByText(i18n.placeholder))
+
+      const searchInput = screen.getByRole('combobox', { name: i18n.selectorPlaceholder })
+      await user.type(searchInput, 'NonExistentTag')
+
+      expect(screen.getByText(i18n.noTag)).toBeInTheDocument()
+      expect(searchInput).toHaveFocus()
     })
 
     it('should clear search and show all tags when clear icon is clicked', async () => {

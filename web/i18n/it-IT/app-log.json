@@ -73,7 +73,7 @@
   "title": "Registri",
   "triggerBy.appRun": "WebApp",
   "triggerBy.debugging": "Debugging",
-  "triggerBy.plugin": "Plugin",
+  "triggerBy.plugin": "Integrazione",
   "triggerBy.ragPipelineDebugging": "Debugging RAG",
   "triggerBy.ragPipelineRun": "Pipeline RAG",
   "triggerBy.schedule": "Programma",

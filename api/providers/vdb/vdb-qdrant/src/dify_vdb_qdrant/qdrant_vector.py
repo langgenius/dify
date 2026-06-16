@@ -3,7 +3,7 @@ import os
 import uuid
 from collections.abc import Generator, Iterable, Sequence
 from itertools import islice
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, cast, override
 
 import qdrant_client
 from flask import current_app
@@ -90,6 +90,7 @@ class QdrantVector(BaseVector):
         self._distance_func = distance_func.upper()
         self._group_id = group_id
 
+    @override
     def get_type(self) -> str:
         return VectorType.QDRANT
 
@@ -100,6 +101,7 @@ class QdrantVector(BaseVector):
         }
         return result
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         if texts:
             # get embedding vector size
@@ -169,6 +171,7 @@ class QdrantVector(BaseVector):
                 self._client.create_payload_index(collection_name, Field.CONTENT_KEY, field_schema=text_index_params)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         uuids = self._get_uuids(documents)
         texts = [d.page_content for d in documents]
@@ -251,6 +254,7 @@ class QdrantVector(BaseVector):
 
         return payloads
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         from qdrant_client.http import models
         from qdrant_client.http.exceptions import UnexpectedResponse
@@ -279,6 +283,7 @@ class QdrantVector(BaseVector):
             else:
                 raise e
 
+    @override
     def delete(self):
         from qdrant_client.http import models
         from qdrant_client.http.exceptions import UnexpectedResponse
@@ -304,6 +309,7 @@ class QdrantVector(BaseVector):
             else:
                 raise e
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         from qdrant_client.http import models
         from qdrant_client.http.exceptions import UnexpectedResponse
@@ -329,6 +335,7 @@ class QdrantVector(BaseVector):
             else:
                 raise e
 
+    @override
     def text_exists(self, id: str) -> bool:
         all_collection_name = []
         collections_response = self._client.get_collections()
@@ -341,6 +348,7 @@ class QdrantVector(BaseVector):
 
         return len(response) > 0
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         from qdrant_client.http import models
 
@@ -393,6 +401,7 @@ class QdrantVector(BaseVector):
         docs = sorted(docs, key=lambda x: x.metadata["score"] if x.metadata is not None else 0, reverse=True)
         return docs
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         """Return docs most similar by full-text search.
 
@@ -471,7 +480,7 @@ class QdrantVector(BaseVector):
 
     def _reload_if_needed(self):
         if isinstance(self._client, QdrantLocal):
-            self._client._load()  # pyright: ignore[reportPrivateUsage]
+            self._client._load()
 
     @classmethod
     def _document_from_scored_point(
@@ -488,6 +497,7 @@ class QdrantVector(BaseVector):
 
 
 class QdrantVectorFactory(AbstractVectorFactory):
+    @override
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> QdrantVector:
         if dataset.collection_binding_id:
             stmt = select(DatasetCollectionBinding).where(DatasetCollectionBinding.id == dataset.collection_binding_id)

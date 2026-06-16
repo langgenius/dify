@@ -2,27 +2,27 @@
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { RiDeleteBinLine, RiEditFill, RiEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Robot, User } from '@/app/components/base/icons/src/public/avatar'
-import Textarea from '@/app/components/base/textarea'
 
 export enum EditItemType {
   Query = 'query',
   Answer = 'answer',
 }
-type Props = {
+type Props = Readonly<{
   type: EditItemType
   content: string
   readonly?: boolean
   onSave: (content: string) => Promise<void>
-}
+}>
 
 export const EditTitle: FC<{ className?: string, title: string }> = ({ className, title }) => (
   <div className={cn(className, 'flex h-[18px] items-center system-xs-medium text-text-tertiary')}>
-    <RiEditFill className="mr-1 h-3.5 w-3.5" />
+    <RiEditFill className="mr-1 size-3.5" />
     <div>{title}</div>
     <div
       className="ml-2 h-px grow"
@@ -42,7 +42,7 @@ const EditItem: FC<Props> = ({
   const { t } = useTranslation()
   const [newContent, setNewContent] = useState('')
   const showNewContent = newContent && newContent !== content
-  const avatar = type === EditItemType.Query ? <User className="h-6 w-6" /> : <Robot className="h-6 w-6" />
+  const avatar = type === EditItemType.Query ? <User className="size-6" /> : <Robot className="size-6" />
   const name = type === EditItemType.Query ? t('editModal.queryName', { ns: 'appAnnotation' }) : t('editModal.answerName', { ns: 'appAnnotation' })
   const editTitle = type === EditItemType.Query ? t('editModal.yourQuery', { ns: 'appAnnotation' }) : t('editModal.yourAnswer', { ns: 'appAnnotation' })
   const placeholder = type === EditItemType.Query ? t('editModal.queryPlaceholder', { ns: 'appAnnotation' }) : t('editModal.answerPlaceholder', { ns: 'appAnnotation' })
@@ -94,7 +94,7 @@ const EditItem: FC<Props> = ({
                         setIsEdit(true)
                       }}
                     >
-                      <RiEditLine className="mr-1 h-3.5 w-3.5" />
+                      <RiEditLine className="mr-1 size-3.5" />
                       <div>{t('operation.edit', { ns: 'common' })}</div>
                     </div>
                   )}
@@ -116,8 +116,8 @@ const EditItem: FC<Props> = ({
                           }
                         }}
                       >
-                        <div className="h-3.5 w-3.5">
-                          <RiDeleteBinLine className="h-3.5 w-3.5" />
+                        <div className="size-3.5">
+                          <RiDeleteBinLine className="size-3.5" />
                         </div>
                         <div>{t('operation.delete', { ns: 'common' })}</div>
                       </div>
@@ -130,8 +130,9 @@ const EditItem: FC<Props> = ({
               <div className="mt-3">
                 <EditTitle title={editTitle} />
                 <Textarea
+                  aria-label={editTitle}
                   value={newContent}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewContent(e.target.value)}
+                  onValueChange={value => setNewContent(value)}
                   placeholder={placeholder}
                   autoFocus
                 />

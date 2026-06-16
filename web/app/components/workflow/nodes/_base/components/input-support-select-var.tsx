@@ -16,7 +16,7 @@ import PromptEditor from '@/app/components/base/prompt-editor'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 
-type Props = {
+type Props = Readonly<{
   instanceId?: string
   className?: string
   placeholder?: string
@@ -30,7 +30,7 @@ type Props = {
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
   insertVarTipToLeft?: boolean
-}
+}>
 
 const Editor: FC<Props> = ({
   instanceId,
@@ -123,7 +123,7 @@ const Editor: FC<Props> = ({
               <TooltipTrigger
                 render={(
                   <div className="cursor-pointer rounded-[5px] border-[0.5px] border-divider-regular bg-components-badge-white-to-dark p-0.5 shadow-lg">
-                    <Variable02 className="h-3.5 w-3.5 text-components-button-secondary-accent-text" />
+                    <Variable02 className="size-3.5 text-components-button-secondary-accent-text" />
                   </div>
                 )}
               />

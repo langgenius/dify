@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, override
 
 from extensions.redis_names import serialize_redis_name
 from libs.broadcast_channel.channel import Producer, Subscriber, Subscription
@@ -20,18 +20,28 @@ class ShardedRedisBroadcastChannel:
     def __init__(
         self,
         redis_client: Redis | RedisCluster,
+        *,
+        join_timeout_ms: int = 2000,
     ):
         self._client = redis_client
+        self._join_timeout_ms = max(int(join_timeout_ms or 0), 0)
 
     def topic(self, topic: str) -> ShardedTopic:
-        return ShardedTopic(self._client, topic)
+        return ShardedTopic(self._client, topic, join_timeout_ms=self._join_timeout_ms)
 
 
 class ShardedTopic:
-    def __init__(self, redis_client: Redis | RedisCluster, topic: str):
+    def __init__(
+        self,
+        redis_client: Redis | RedisCluster,
+        topic: str,
+        *,
+        join_timeout_ms: int = 2000,
+    ):
         self._client = redis_client
         self._topic = topic
         self._redis_topic = serialize_redis_name(topic)
+        self._join_timeout_ms = max(int(join_timeout_ms or 0), 0)
 
     def as_producer(self) -> Producer:
         return self
@@ -47,23 +57,28 @@ class ShardedTopic:
             client=self._client,
             pubsub=self._client.pubsub(),
             topic=self._redis_topic,
+            join_timeout_ms=self._join_timeout_ms,
         )
 
 
 class _RedisShardedSubscription(RedisSubscriptionBase):
     """Redis 7.0+ sharded pub/sub subscription implementation."""
 
+    @override
     def _get_subscription_type(self) -> str:
         return "sharded"
 
+    @override
     def _subscribe(self) -> None:
         assert self._pubsub is not None
         self._pubsub.ssubscribe(self._topic)  # type: ignore[attr-defined]
 
+    @override
     def _unsubscribe(self) -> None:
         assert self._pubsub is not None
         self._pubsub.sunsubscribe(self._topic)  # type: ignore[attr-defined]
 
+    @override
     def _get_message(self) -> dict[str, Any] | None:
         assert self._pubsub is not None
         # NOTE(QuantumGhost): this is an issue in
@@ -90,5 +105,6 @@ class _RedisShardedSubscription(RedisSubscriptionBase):
         else:
             raise AssertionError("client should be either Redis or RedisCluster.")
 
+    @override
     def _get_message_type(self) -> str:
         return "smessage"

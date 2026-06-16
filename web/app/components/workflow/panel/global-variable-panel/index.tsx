@@ -70,10 +70,10 @@ const Panel = () => {
         {t('globalVar.title', { ns: 'workflow' })}
         <div className="flex items-center">
           <div
-            className="flex h-6 w-6 cursor-pointer items-center justify-center"
+            className="flex size-6 cursor-pointer items-center justify-center"
             onClick={() => setShowPanel(false)}
           >
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+            <RiCloseLine className="size-4 text-text-tertiary" />
           </div>
         </div>
       </div>

@@ -1264,6 +1264,36 @@ describe('hooks', () => {
       expect(result.current.plugins).toEqual(searchPlugins)
       expect(result.current.plugins?.some(p => p.plugin_id === 'collection-only')).toBe(false)
     })
+
+    it('should skip marketplace queries when disabled', () => {
+      const queryPlugins = vi.fn()
+      const queryPluginsWithDebounced = vi.fn()
+      const cancelQueryPluginsWithDebounced = vi.fn()
+      const resetPlugins = vi.fn()
+
+      ; (useMarketplacePluginsByCollectionId as Mock).mockReturnValue({
+        plugins: [{ plugin_id: 'collection-only', type: 'plugin' }],
+        isLoading: true,
+      })
+      ; (useMarketplacePlugins as Mock).mockReturnValue({
+        plugins: [{ plugin_id: 'search-result', type: 'plugin' }],
+        queryPlugins,
+        queryPluginsWithDebounced,
+        cancelQueryPluginsWithDebounced,
+        resetPlugins,
+        isLoading: true,
+      })
+
+      const { result } = renderHook(() => useMarketplaceAllPlugins([], '', false))
+
+      expect(useMarketplacePluginsByCollectionId).toHaveBeenCalledWith(undefined)
+      expect(queryPlugins).not.toHaveBeenCalled()
+      expect(queryPluginsWithDebounced).not.toHaveBeenCalled()
+      expect(cancelQueryPluginsWithDebounced).toHaveBeenCalled()
+      expect(resetPlugins).toHaveBeenCalled()
+      expect(result.current.plugins).toEqual([])
+      expect(result.current.isLoading).toBe(false)
+    })
   })
 
   describe('useRefreshModel', () => {

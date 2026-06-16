@@ -73,7 +73,7 @@
   "title": "Journaux",
   "triggerBy.appRun": "Application Web",
   "triggerBy.debugging": "Débogage",
-  "triggerBy.plugin": "Plugin",
+  "triggerBy.plugin": "Intégration",
   "triggerBy.ragPipelineDebugging": "Débogage RAG",
   "triggerBy.ragPipelineRun": "Pipeline RAG",
   "triggerBy.schedule": "Programme",

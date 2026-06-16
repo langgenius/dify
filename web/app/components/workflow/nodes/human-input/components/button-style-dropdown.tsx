@@ -16,12 +16,12 @@ import { UserActionButtonType } from '../types'
 
 const i18nPrefix = 'nodes.humanInput'
 
-type Props = {
+type Props = Readonly<{
   text: string
   data: UserActionButtonType
   onChange: (state: UserActionButtonType) => void
   readonly?: boolean
-}
+}>
 
 const ButtonStyleDropdown: FC<Props> = ({
   text = 'Button Text',
@@ -55,9 +55,9 @@ const ButtonStyleDropdown: FC<Props> = ({
     >
       <PopoverTrigger
         render={(
-          <div className={cn('flex items-center justify-center rounded-lg bg-components-button-tertiary-bg p-1', !readonly && 'cursor-pointer hover:bg-components-button-tertiary-bg-hover', open && 'bg-components-button-tertiary-bg-hover')}>
+          <div className={cn('flex items-center justify-center rounded-lg bg-components-button-tertiary-bg p-1 data-popup-open:bg-components-button-tertiary-bg-hover', !readonly && 'cursor-pointer hover:bg-components-button-tertiary-bg-hover')}>
             <Button size="small" className="pointer-events-none px-1" variant={currentStyle}>
-              <RiFontSize className="h-4 w-4" />
+              <RiFontSize className="size-4" />
             </Button>
           </div>
         )}

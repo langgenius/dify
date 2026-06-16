@@ -60,7 +60,7 @@ class TestMailInviteMemberTask:
         with (
             patch("tasks.mail_invite_member_task.mail", autospec=True) as mock_mail,
             patch("tasks.mail_invite_member_task.get_email_i18n_service", autospec=True) as mock_email_service,
-            patch("tasks.mail_invite_member_task.dify_config", autospec=True) as mock_config,
+            patch("tasks.mail_invite_member_task.dify_config") as mock_config,
         ):
             # Setup mail service mock
             mock_mail.is_inited.return_value = True
