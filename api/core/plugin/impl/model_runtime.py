@@ -443,8 +443,6 @@ class PluginModelRuntime(ModelRuntime):
         tools: Sequence[PromptMessageTool] | None,
         stop: Sequence[str] | None,
         json_schema: dict[str, Any] | None,
-        workflow_run_id: str,
-        node_id: str,
     ) -> LLMPollingResult:
         """Start a plugin-side polling job for long-running LLM invocations."""
         plugin_id, provider_name = self._split_provider(provider)
@@ -460,8 +458,6 @@ class PluginModelRuntime(ModelRuntime):
             tools=list(tools) if tools else None,
             stop=list(stop) if stop else None,
             json_schema=json_schema,
-            workflow_run_id=workflow_run_id,
-            node_id=node_id,
         )
 
     def check_llm_polling(
@@ -471,8 +467,6 @@ class PluginModelRuntime(ModelRuntime):
         model: str,
         credentials: dict[str, Any],
         plugin_state: dict[str, JsonValue],
-        workflow_run_id: str,
-        node_id: str,
     ) -> LLMPollingResult:
         """Check the latest plugin-side polling state for an LLM invocation."""
         plugin_id, provider_name = self._split_provider(provider)
@@ -484,8 +478,6 @@ class PluginModelRuntime(ModelRuntime):
             model=model,
             credentials=credentials,
             plugin_state=plugin_state,
-            workflow_run_id=workflow_run_id,
-            node_id=node_id,
         )
 
     @override

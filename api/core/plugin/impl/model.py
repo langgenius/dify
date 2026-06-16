@@ -214,8 +214,6 @@ class PluginModelClient(BasePluginClient):
         tools: list[PromptMessageTool] | None = None,
         stop: list[str] | None = None,
         json_schema: dict[str, Any] | None = None,
-        workflow_run_id: str = "",
-        node_id: str = "",
     ) -> LLMPollingResult:
         """Start an LLM polling request for plugin-backed long-running jobs."""
         try:
@@ -237,8 +235,11 @@ class PluginModelClient(BasePluginClient):
                             "stop": stop,
                             "stream": False,
                             "json_schema": json_schema,
-                            "workflow_run_id": workflow_run_id,
-                            "node_id": node_id,
+                            # The current plugin SDK still requires these fields even
+                            # though graphon no longer exposes them on its polling
+                            # protocol.
+                            "workflow_run_id": "",
+                            "node_id": "",
                         },
                     )
                 ),
@@ -260,8 +261,6 @@ class PluginModelClient(BasePluginClient):
         model: str,
         credentials: dict[str, Any],
         plugin_state: dict[str, Any],
-        workflow_run_id: str,
-        node_id: str,
     ) -> LLMPollingResult:
         """Check the latest state for a plugin-backed LLM polling job."""
         try:
@@ -278,8 +277,9 @@ class PluginModelClient(BasePluginClient):
                             "model": model,
                             "credentials": credentials,
                             "plugin_state": plugin_state,
-                            "workflow_run_id": workflow_run_id,
-                            "node_id": node_id,
+                            # Keep the legacy required fields for SDK compatibility.
+                            "workflow_run_id": "",
+                            "node_id": "",
                         },
                     )
                 ),

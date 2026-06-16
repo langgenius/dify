@@ -283,7 +283,7 @@ class DifyPreparedLLM(LLMProtocol):
 
 
 class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
-    """Prepared workflow LLM adapter that forwards plugin polling APIs to graphon."""
+    """Prepared workflow LLM adapter that exposes Graphon's polling protocol."""
 
     def __init__(self, model_instance: ModelInstance) -> None:
         from core.plugin.impl.model_runtime import PluginModelRuntime
@@ -308,8 +308,6 @@ class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
         tools: Sequence[PromptMessageTool] | None,
         stop: Sequence[str] | None,
         json_schema: Mapping[str, Any] | None,
-        workflow_run_id: str,
-        node_id: str,
     ) -> LLMPollingResult:
         return self._plugin_model_runtime.start_llm_polling(
             provider=self.provider,
@@ -320,8 +318,6 @@ class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
             tools=tools,
             stop=stop,
             json_schema=dict(json_schema) if json_schema is not None else None,
-            workflow_run_id=workflow_run_id,
-            node_id=node_id,
         )
 
     @override
@@ -329,16 +325,12 @@ class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
         self,
         *,
         plugin_state: Mapping[str, JsonValue],
-        workflow_run_id: str,
-        node_id: str,
     ) -> LLMPollingResult:
         return self._plugin_model_runtime.check_llm_polling(
             provider=self.provider,
             model=self.model_name,
             credentials=self._model_instance.credentials,
             plugin_state=dict(plugin_state),
-            workflow_run_id=workflow_run_id,
-            node_id=node_id,
         )
 
 

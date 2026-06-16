@@ -272,16 +272,12 @@ def test_dify_prepared_polling_llm_delegates_to_plugin_runtime() -> None:
             tools=[],
             stop=("END",),
             json_schema={"type": "object"},
-            workflow_run_id="workflow-run-1",
-            node_id="llm-node-1",
         )
         == polling_result
     )
     assert (
         prepared.check_llm_polling(
             plugin_state={"task_id": "poll-1"},
-            workflow_run_id="workflow-run-1",
-            node_id="llm-node-1",
         )
         == polling_result
     )
@@ -294,16 +290,12 @@ def test_dify_prepared_polling_llm_delegates_to_plugin_runtime() -> None:
         tools=[],
         stop=("END",),
         json_schema={"type": "object"},
-        workflow_run_id="workflow-run-1",
-        node_id="llm-node-1",
     )
     plugin_runtime.check_llm_polling.assert_called_once_with(
         provider="langgenius/openai/openai",
         model="gpt-4o-mini",
         credentials={"api_key": "secret"},
         plugin_state={"task_id": "poll-1"},
-        workflow_run_id="workflow-run-1",
-        node_id="llm-node-1",
     )
 
 
@@ -330,14 +322,12 @@ def test_dify_prepared_polling_llm_raise_exception_when_polling_is_unsupported()
     prepared = DifyPreparedPollingLLM(model_instance)
 
     with pytest.raises(PluginLLMPollingUnsupportedError):
-        polling_result = prepared.start_llm_polling(
+        prepared.start_llm_polling(
             prompt_messages=[],
             model_parameters={"temperature": 0.1},
             tools=None,
             stop=None,
             json_schema=None,
-            workflow_run_id="workflow-run-1",
-            node_id="llm-node-1",
         )
 
 

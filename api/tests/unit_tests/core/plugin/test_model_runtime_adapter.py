@@ -307,8 +307,6 @@ class TestPluginModelRuntime:
             tools=None,
             stop=("END",),
             json_schema={"type": "object"},
-            workflow_run_id="workflow-run-1",
-            node_id="llm-node-1",
         )
 
         assert result == polling_result
@@ -324,8 +322,6 @@ class TestPluginModelRuntime:
             tools=None,
             stop=["END"],
             json_schema={"type": "object"},
-            workflow_run_id="workflow-run-1",
-            node_id="llm-node-1",
         )
 
     def test_check_llm_polling_resolves_plugin_fields(self) -> None:
@@ -347,8 +343,6 @@ class TestPluginModelRuntime:
             model="gpt-4o-mini",
             credentials={"api_key": "secret"},
             plugin_state={"task_id": "poll-1"},
-            workflow_run_id="workflow-run-1",
-            node_id="llm-node-1",
         )
 
         assert result == polling_result
@@ -360,8 +354,6 @@ class TestPluginModelRuntime:
             model="gpt-4o-mini",
             credentials={"api_key": "secret"},
             plugin_state={"task_id": "poll-1"},
-            workflow_run_id="workflow-run-1",
-            node_id="llm-node-1",
         )
 
     def test_invoke_llm_rejects_per_call_user_override(self) -> None:
