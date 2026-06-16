@@ -314,37 +314,19 @@ def test_app_list_query_rejects_flat_tag_ids(app_module):
         app_module.AppListQuery.model_validate(normalized)
 
 
-def test_create_agent_app_response_includes_bound_agent_id(app_module, monkeypatch: pytest.MonkeyPatch):
+def test_create_app_endpoint_rejects_agent_mode(app_module, monkeypatch: pytest.MonkeyPatch):
     payload = {"name": "Iris", "mode": "agent", "description": "Agent app"}
-    app_obj = SimpleNamespace(
-        id="app-1",
-        name="Iris",
-        description="Agent app",
-        mode_compatible_with_agent="agent",
-        icon_type="emoji",
-        icon="robot",
-        icon_background="#fff",
-        enable_site=False,
-        enable_api=False,
-        created_at=_ts(),
-        updated_at=_ts(),
-        bound_agent_id="agent-1",
-    )
     app_service = MagicMock()
-    app_service.create_app.return_value = app_obj
     monkeypatch.setattr(app_module, "AppService", lambda: app_service)
 
     app_module.console_ns.payload = payload
     try:
-        response, status = _unwrap(app_module.AppListApi().post)("tenant-1", SimpleNamespace(id="account-1"))
+        with pytest.raises(ValidationError):
+            _unwrap(app_module.AppListApi().post)("tenant-1", SimpleNamespace(id="account-1"))
     finally:
         app_module.console_ns.payload = None
 
-    assert status == 201
-    assert response["id"] == "app-1"
-    assert response["bound_agent_id"] == "agent-1"
-    created_params = app_service.create_app.call_args.args[1]
-    assert created_params.mode == "agent"
+    app_service.create_app.assert_not_called()
 
 
 def test_app_partial_serialization_uses_aliases(app_models):
