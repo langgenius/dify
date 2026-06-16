@@ -14,7 +14,16 @@ from unittest.mock import MagicMock, patch
 
 from flask import Flask
 
-from controllers.console.app.agent import AgentSkillStandardizeApi, AgentSkillUploadApi
+from controllers.console.app.agent import (
+    AgentDriveFilesByAgentApi,
+    AgentSkillByAgentApi,
+    AgentSkillInferToolsByAgentApi,
+    AgentSkillStandardizeApi,
+    AgentSkillStandardizeByAgentApi,
+    AgentSkillUploadApi,
+    AgentSkillUploadByAgentApi,
+)
+from models.model import AppMode
 from services.agent.skill_package_service import SkillPackageError
 from services.agent_drive_service import AgentDriveError
 
@@ -32,7 +41,8 @@ def _file_ctx(*, files: dict[str, bytes] | None = None):
 
 
 _USER = SimpleNamespace(id="user-1")
-_APP = SimpleNamespace(id="app-1", tenant_id="tenant-1", bound_agent_id="agent-1")
+_APP = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT, bound_agent_id="agent-1")
+_WORKFLOW_APP = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW, bound_agent_id=None)
 
 
 def test_upload_validates_and_returns_skill_ref():
@@ -54,6 +64,28 @@ def test_upload_validates_and_returns_skill_ref():
     assert status == 201
     assert body["skill"] == {"name": "S", "file_id": "uf-1"}
     manifest.to_skill_ref.assert_called_once_with(file_id="uf-1")
+
+
+def test_upload_by_agent_resolves_app_and_returns_skill_ref():
+    raw = _raw(AgentSkillUploadByAgentApi.post)
+    manifest = MagicMock()
+    manifest.to_skill_ref.return_value.model_dump.return_value = {"name": "S", "file_id": "uf-1"}
+    manifest.model_dump.return_value = {"name": "S"}
+
+    with _file_ctx(files={"file": b"zip-bytes"}):
+        with (
+            patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP) as resolve_app,
+            patch(f"{_MOD}.SkillPackageService") as pkg,
+            patch(f"{_MOD}.FileService") as fs,
+            patch(f"{_MOD}.db"),
+        ):
+            pkg.return_value.validate_and_extract.return_value = manifest
+            fs.return_value.upload_file.return_value = SimpleNamespace(id="uf-1")
+            body, status = raw(AgentSkillUploadByAgentApi(), "tenant-1", _USER, "agent-1")
+
+    assert status == 201
+    assert body["skill"] == {"name": "S", "file_id": "uf-1"}
+    resolve_app.assert_called_once_with(tenant_id="tenant-1", agent_id="agent-1")
 
 
 def test_upload_no_file_is_400():
@@ -87,9 +119,25 @@ def test_standardize_returns_result():
     assert svc.return_value.standardize.call_args.kwargs["agent_id"] == "agent-1"
 
 
+def test_standardize_by_agent_resolves_app():
+    raw = _raw(AgentSkillStandardizeByAgentApi.post)
+    with _file_ctx(files={"file": b"zip"}):
+        with (
+            patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP) as resolve_app,
+            patch(f"{_MOD}.SkillStandardizeService") as svc,
+        ):
+            svc.return_value.standardize.return_value = {"skill": {"path": "s"}, "manifest": {}}
+            body, status = raw(AgentSkillStandardizeByAgentApi(), "tenant-1", _USER, "agent-1")
+
+    assert status == 201
+    assert body["skill"] == {"path": "s"}
+    resolve_app.assert_called_once_with(tenant_id="tenant-1", agent_id="agent-1")
+    assert svc.return_value.standardize.call_args.kwargs["agent_id"] == "agent-1"
+
+
 def test_standardize_no_bound_agent_is_400():
     raw = _raw(AgentSkillStandardizeApi.post)
-    app_without_agent = SimpleNamespace(id="app-1", tenant_id="tenant-1", bound_agent_id=None)
+    app_without_agent = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT, bound_agent_id=None)
     with _file_ctx(files={"file": b"zip"}):
         body, status = raw(AgentSkillStandardizeApi(), _USER, app_without_agent)
     assert status == 400
@@ -98,7 +146,6 @@ def test_standardize_no_bound_agent_is_400():
 
 def test_standardize_resolves_workflow_node_agent():
     raw = _raw(AgentSkillStandardizeApi.post)
-    workflow_app = SimpleNamespace(id="app-1", tenant_id="tenant-1", bound_agent_id=None)
     with app.test_request_context(
         "/?node_id=agent-node-1", method="POST", data={"file": (io.BytesIO(b"zip"), "skill.zip")}
     ):
@@ -108,7 +155,7 @@ def test_standardize_resolves_workflow_node_agent():
         ):
             composer.resolve_workflow_node_agent_id.return_value = "wf-agent-1"
             svc.return_value.standardize.return_value = {"skill": {"path": "s"}, "manifest": {}}
-            body, status = raw(AgentSkillStandardizeApi(), _USER, workflow_app)
+            body, status = raw(AgentSkillStandardizeApi(), _USER, _WORKFLOW_APP)
 
     assert status == 201
     assert body["skill"] == {"path": "s"}
@@ -165,6 +212,31 @@ def test_files_commit_validates_upload_and_returns_drive_ref():
     assert composer.add_drive_file_ref.call_args.kwargs["app_id"] == "app-1"
 
 
+def test_files_by_agent_commit_uses_agent_route_and_ignores_node_id():
+    raw = _raw(AgentDriveFilesByAgentApi.post)
+    upload = SimpleNamespace(id="uf-1", name="sample.pdf")
+    with _json_ctx({"upload_file_id": "0fa6f9bc-3416-4476-8857-a13129704dd9"}, query_string="node_id=ignored"):
+        with (
+            patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP) as resolve_app,
+            patch(f"{_MOD}.console_ns") as ns,
+            patch(f"{_MOD}.db") as db_mock,
+            patch(f"{_MOD}.AgentDriveService") as drive,
+            patch(f"{_MOD}.AgentComposerService") as composer,
+        ):
+            ns.payload = {"upload_file_id": "0fa6f9bc-3416-4476-8857-a13129704dd9"}
+            db_mock.session.scalar.return_value = upload
+            drive.return_value.commit.return_value = [
+                {"key": "files/sample.pdf", "size": 5, "mime_type": "application/pdf"}
+            ]
+            composer.add_drive_file_ref.return_value = "ver-2"
+            body, status = raw(AgentDriveFilesByAgentApi(), "tenant-1", _USER, "agent-1")
+
+    assert status == 201
+    assert body["config_version_id"] == "ver-2"
+    resolve_app.assert_called_once_with(tenant_id="tenant-1", agent_id="agent-1")
+    assert composer.add_drive_file_ref.call_args.kwargs["node_id"] is None
+
+
 def test_files_commit_404_when_upload_not_in_tenant():
     from controllers.console.app.agent import AgentDriveFilesApi
 
@@ -186,7 +258,6 @@ def test_files_commit_resolves_workflow_node_agent():
 
     raw = _raw(AgentDriveFilesApi.post)
     upload = SimpleNamespace(id="uf-1", name="sample.pdf")
-    workflow_app = SimpleNamespace(id="app-1", tenant_id="tenant-1", bound_agent_id=None)
     with _json_ctx({"upload_file_id": "0fa6f9bc-3416-4476-8857-a13129704dd9"}, query_string="node_id=agent-node-1"):
         with (
             patch(f"{_MOD}.console_ns") as ns,
@@ -201,7 +272,7 @@ def test_files_commit_resolves_workflow_node_agent():
                 {"key": "files/sample.pdf", "size": 5, "mime_type": "application/pdf"}
             ]
             composer.add_drive_file_ref.return_value = "ver-2"
-            body, status = raw(AgentDriveFilesApi(), _USER, workflow_app)
+            body, status = raw(AgentDriveFilesApi(), _USER, _WORKFLOW_APP)
 
     assert status == 201
     assert body["config_version_id"] == "ver-2"
@@ -229,11 +300,27 @@ def test_files_delete_updates_soul_then_drive():
     assert composer.remove_drive_refs.call_args.kwargs["app_id"] == "app-1"
 
 
+def test_files_by_agent_delete_uses_agent_route_and_ignores_node_id():
+    raw = _raw(AgentDriveFilesByAgentApi.delete)
+    with _json_ctx(method="DELETE", query_string="key=files/sample.pdf&node_id=ignored"):
+        with (
+            patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP) as resolve_app,
+            patch(f"{_MOD}.AgentComposerService") as composer,
+            patch(f"{_MOD}.AgentDriveService") as drive,
+        ):
+            composer.remove_drive_refs.return_value = "ver-2"
+            drive.return_value.delete.return_value = ["files/sample.pdf"]
+            body = raw(AgentDriveFilesByAgentApi(), "tenant-1", _USER, "agent-1")
+
+    assert body["config_version_id"] == "ver-2"
+    resolve_app.assert_called_once_with(tenant_id="tenant-1", agent_id="agent-1")
+    assert composer.remove_drive_refs.call_args.kwargs["node_id"] is None
+
+
 def test_files_delete_resolves_workflow_node_agent():
     from controllers.console.app.agent import AgentDriveFilesApi
 
     raw = _raw(AgentDriveFilesApi.delete)
-    workflow_app = SimpleNamespace(id="app-1", tenant_id="tenant-1", bound_agent_id=None)
     with _json_ctx(method="DELETE", query_string="key=files/sample.pdf&node_id=agent-node-1"):
         with (
             patch(f"{_MOD}.AgentComposerService") as composer,
@@ -242,7 +329,7 @@ def test_files_delete_resolves_workflow_node_agent():
             composer.resolve_workflow_node_agent_id.return_value = "wf-agent-1"
             composer.remove_drive_refs.return_value = "ver-2"
             drive.return_value.delete.return_value = ["files/sample.pdf"]
-            body = raw(AgentDriveFilesApi(), _USER, workflow_app)
+            body = raw(AgentDriveFilesApi(), _USER, _WORKFLOW_APP)
 
     assert body["config_version_id"] == "ver-2"
     assert drive.return_value.delete.call_args.kwargs["agent_id"] == "wf-agent-1"
@@ -284,6 +371,23 @@ def test_skill_delete_uses_slug_prefix_and_is_idempotent():
     assert composer.remove_drive_refs.call_args.kwargs["app_id"] == "app-1"
 
 
+def test_skill_delete_by_agent_uses_agent_route():
+    raw = _raw(AgentSkillByAgentApi.delete)
+    with _json_ctx(method="DELETE", query_string="node_id=ignored"):
+        with (
+            patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP) as resolve_app,
+            patch(f"{_MOD}.AgentComposerService") as composer,
+            patch(f"{_MOD}.AgentDriveService") as drive,
+        ):
+            composer.remove_drive_refs.return_value = "ver-2"
+            drive.return_value.delete.return_value = ["tender-analyzer/SKILL.md"]
+            body = raw(AgentSkillByAgentApi(), "tenant-1", _USER, "agent-1", "tender-analyzer")
+
+    assert body["config_version_id"] == "ver-2"
+    resolve_app.assert_called_once_with(tenant_id="tenant-1", agent_id="agent-1")
+    assert composer.remove_drive_refs.call_args.kwargs["node_id"] is None
+
+
 def test_skill_delete_rejects_path_like_slug():
     from controllers.console.app.agent import AgentSkillApi
 
@@ -314,11 +418,25 @@ def test_infer_tools_returns_draft_suggestions():
     assert svc.return_value.infer.call_args.kwargs["slug"] == "audio-transcribe"
 
 
+def test_infer_tools_by_agent_uses_agent_route():
+    raw = _raw(AgentSkillInferToolsByAgentApi.post)
+    with _json_ctx(query_string="node_id=ignored"):
+        with (
+            patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP) as resolve_app,
+            patch(f"{_MOD}.SkillToolInferenceService") as svc,
+        ):
+            svc.return_value.infer.return_value = {"inferable": True, "cli_tools": [], "reason": None}
+            body = raw(AgentSkillInferToolsByAgentApi(), "tenant-1", "agent-1", "audio-transcribe")
+
+    assert body["inferable"] is True
+    resolve_app.assert_called_once_with(tenant_id="tenant-1", agent_id="agent-1")
+    assert svc.return_value.infer.call_args.kwargs["agent_id"] == "agent-1"
+
+
 def test_infer_tools_resolves_workflow_node_agent():
     from controllers.console.app.agent import AgentSkillInferToolsApi
 
     raw = _raw(AgentSkillInferToolsApi.post)
-    workflow_app = SimpleNamespace(id="app-1", tenant_id="tenant-1", bound_agent_id=None)
     with _json_ctx(query_string="node_id=agent-node-1"):
         with (
             patch(f"{_MOD}.AgentComposerService") as composer,
@@ -326,7 +444,7 @@ def test_infer_tools_resolves_workflow_node_agent():
         ):
             composer.resolve_workflow_node_agent_id.return_value = "wf-agent-1"
             svc.return_value.infer.return_value = {"inferable": False, "cli_tools": [], "reason": "none"}
-            body = raw(AgentSkillInferToolsApi(), workflow_app, "audio-transcribe")
+            body = raw(AgentSkillInferToolsApi(), _WORKFLOW_APP, "audio-transcribe")
 
     assert body["inferable"] is False
     assert svc.return_value.infer.call_args.kwargs["agent_id"] == "wf-agent-1"
@@ -355,7 +473,7 @@ def test_infer_tools_rejects_path_like_slug_and_unbound_app():
         body, status = raw(AgentSkillInferToolsApi(), _APP, "a/b")
     assert (status, body["code"]) == (400, "drive_key_invalid")
 
-    app_without_agent = SimpleNamespace(id="app-1", tenant_id="tenant-1", bound_agent_id=None)
+    app_without_agent = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT, bound_agent_id=None)
     with _json_ctx():
         body, status = raw(AgentSkillInferToolsApi(), app_without_agent, "x")
     assert (status, body["code"]) == (400, "agent_not_bound")

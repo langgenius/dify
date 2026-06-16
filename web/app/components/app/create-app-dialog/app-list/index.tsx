@@ -22,6 +22,7 @@ import { DSLImportMode } from '@/models/app'
 import { useRouter } from '@/next/navigation'
 import { importDSL } from '@/service/apps'
 import { fetchAppDetail } from '@/service/explore'
+import { useInvalidateAppList } from '@/service/use-apps'
 import { useExploreAppList } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
@@ -48,6 +49,7 @@ const Apps = ({
   const { workspacePermissionKeys } = useAppContext()
   const canCreateAppFromTemplate = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const { push } = useRouter()
+  const invalidateAppList = useInvalidateAppList()
   const allCategoriesEn = AppCategories.RECOMMENDED
 
   const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
@@ -141,6 +143,7 @@ const Apps = ({
       if (app.app_id)
         await handleCheckPluginDependencies(app.app_id)
       setNeedRefresh('1')
+      invalidateAppList()
       if (app.app_id)
         getRedirection({ id: app.app_id, mode: app.app_mode, permission_keys: app.permission_keys }, push)
     }

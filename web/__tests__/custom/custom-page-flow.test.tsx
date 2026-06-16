@@ -8,6 +8,14 @@ import useWebAppBrand from '@/app/components/custom/custom-web-app-brand/hooks/u
 
 const mockSetShowPricingModal = vi.fn()
 
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: true,
+  }
+})
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,

@@ -293,22 +293,42 @@ Check if activation token is valid
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ActivationCheckResponse](#activationcheckresponse)<br> |
 
-### [GET] /agents
+### [GET] /agent
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| keyword | query |  | No | string |
-| limit | query |  | No | integer, <br>**Default:** 20 |
-| page | query |  | No | integer, <br>**Default:** 1 |
+| creator_ids | query | Filter by creator account IDs | No | [ string ] |
+| is_created_by_me | query | Filter by creator | No | boolean |
+| limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
+| mode | query | App mode filter | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all |
+| name | query | Filter by app name | No | string |
+| page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
+| sort_by | query | Sort apps by last modified, recently created, or earliest created | No | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified |
+| tag_ids | query | Filter by tag IDs | No | [ string ] |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent roster list | **application/json**: [AgentRosterListResponse](#agentrosterlistresponse)<br> |
+| 200 | Agent app list | **application/json**: [AppPagination](#apppagination)<br> |
 
-### [GET] /agents/invite-options
+### [POST] /agent
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentAppCreatePayload](#agentappcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Agent app created successfully | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
+| 400 | Invalid request parameters |  |
+| 403 | Insufficient permissions |  |
+
+### [GET] /agent/invite-options
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -324,7 +344,21 @@ Check if activation token is valid
 | ---- | ----------- | ------ |
 | 200 | Agent invite options | **application/json**: [AgentInviteOptionsResponse](#agentinviteoptionsresponse)<br> |
 
-### [GET] /agents/{agent_id}
+### [DELETE] /agent/{agent_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 204 | Agent app deleted successfully |
+| 403 | Insufficient permissions |
+
+### [GET] /agent/{agent_id}
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -335,9 +369,337 @@ Check if activation token is valid
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent detail | **application/json**: [AgentRosterResponse](#agentrosterresponse)<br> |
+| 200 | Agent app detail | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
 
-### [GET] /agents/{agent_id}/versions
+### [PUT] /agent/{agent_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [UpdateAppPayload](#updateapppayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent app updated successfully | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
+| 400 | Invalid request parameters |  |
+| 403 | Insufficient permissions |  |
+
+### [GET] /agent/{agent_id}/composer
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent app composer state | **application/json**: [AgentAppComposerResponse](#agentappcomposerresponse)<br> |
+
+### [PUT] /agent/{agent_id}/composer
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ComposerSavePayload](#composersavepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent app composer saved | **application/json**: [AgentAppComposerResponse](#agentappcomposerresponse)<br> |
+
+### [GET] /agent/{agent_id}/composer/candidates
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent app composer candidates | **application/json**: [AgentComposerCandidatesResponse](#agentcomposercandidatesresponse)<br> |
+
+### [POST] /agent/{agent_id}/composer/validate
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ComposerSavePayload](#composersavepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent app composer validation result | **application/json**: [AgentComposerValidateResponse](#agentcomposervalidateresponse)<br> |
+
+### [GET] /agent/{agent_id}/drive/files
+List agent drive entries for an Agent App
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+| prefix | query | Key prefix filter: '<slug>/' for one skill, 'files/' for files | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Drive entries | **application/json**: [AgentDriveListResponse](#agentdrivelistresponse)<br> |
+
+### [GET] /agent/{agent_id}/drive/files/download
+Time-limited external signed URL for one Agent App drive value
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+| key | query | Drive key, e.g. tender-analyzer/SKILL.md | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Signed URL | **application/json**: [AgentDriveDownloadResponse](#agentdrivedownloadresponse)<br> |
+
+### [GET] /agent/{agent_id}/drive/files/preview
+Truncated text preview of one Agent App drive value
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+| key | query | Drive key, e.g. tender-analyzer/SKILL.md | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Preview | **application/json**: [AgentDrivePreviewResponse](#agentdrivepreviewresponse)<br> |
+
+### [POST] /agent/{agent_id}/features
+Update an Agent App's presentation features (opener, follow-up, citations, ...)
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentAppFeaturesPayload](#agentappfeaturespayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Features updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 400 | Invalid configuration |  |
+| 404 | Agent not found |  |
+
+### [DELETE] /agent/{agent_id}/files
+Delete one Agent App drive file by key
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+| key | query | Drive key, e.g. files/sample.pdf | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | File removed | **application/json**: [AgentDriveDeleteResponse](#agentdrivedeleteresponse)<br> |
+
+### [POST] /agent/{agent_id}/files
+Commit an uploaded file into the Agent App drive under files/<name>
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentDriveFilePayload](#agentdrivefilepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | File committed into the agent drive | **application/json**: [AgentDriveFileCommitResponse](#agentdrivefilecommitresponse)<br> |
+
+### [GET] /agent/{agent_id}/referencing-workflows
+List workflow apps that reference this Agent App's bound Agent (read-only)
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Referencing workflows listed successfully | **application/json**: [AgentReferencingWorkflowsResponse](#agentreferencingworkflowsresponse)<br> |
+| 404 | Agent not found |  |
+
+### [GET] /agent/{agent_id}/sandbox/files
+List a directory in an Agent App conversation sandbox
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+| conversation_id | query | Agent App conversation ID | Yes | string |
+| path | query | Directory path relative to the sandbox workspace | No | string, <br>**Default:** . |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Listing returned | **application/json**: [SandboxListResponse](#sandboxlistresponse)<br> |
+
+### [GET] /agent/{agent_id}/sandbox/files/read
+Read a text/binary preview file in an Agent App conversation sandbox
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+| conversation_id | query | Agent App conversation ID | Yes | string |
+| path | query | File path relative to the sandbox workspace | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Preview returned | **application/json**: [SandboxReadResponse](#sandboxreadresponse)<br> |
+
+### [POST] /agent/{agent_id}/sandbox/files/upload
+Upload one Agent App sandbox file as a Dify ToolFile mapping
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentSandboxUploadPayload](#agentsandboxuploadpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Uploaded | **application/json**: [SandboxUploadResponse](#sandboxuploadresponse)<br> |
+
+### [POST] /agent/{agent_id}/skills/standardize
+Validate + standardize a Skill into an Agent App drive
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Skill standardized into drive | **application/json**: [AgentSkillStandardizeResponse](#agentskillstandardizeresponse)<br> |
+| 400 | Invalid skill package or no bound agent |  |
+
+### [POST] /agent/{agent_id}/skills/upload
+Upload + validate a Skill package for an Agent App
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Skill validated | **application/json**: [AgentSkillUploadResponse](#agentskilluploadresponse)<br> |
+| 400 | Invalid skill package |  |
+
+### [DELETE] /agent/{agent_id}/skills/{slug}
+Delete a standardized skill from an Agent App drive
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+| slug | path | Skill slug (single path segment) | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill removed | **application/json**: [AgentDriveDeleteResponse](#agentdrivedeleteresponse)<br> |
+
+### [POST] /agent/{agent_id}/skills/{slug}/infer-tools
+Infer CLI tool + ENV suggestions from a standardized Agent App skill
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+| slug | path | Skill slug (single path segment) | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Inference result (draft suggestions, nothing persisted) | **application/json**: [SkillToolInferenceResult](#skilltoolinferenceresult)<br> |
+
+### [GET] /agent/{agent_id}/versions
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -350,7 +712,7 @@ Check if activation token is valid
 | ---- | ----------- | ------ |
 | 200 | Agent versions | **application/json**: [AgentConfigSnapshotListResponse](#agentconfigsnapshotlistresponse)<br> |
 
-### [GET] /agents/{agent_id}/versions/{version_id}
+### [GET] /agent/{agent_id}/versions/{version_id}
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -531,6 +893,7 @@ Get list of applications with pagination and filtering
 | mode | query | App mode filter | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all |
 | name | query | Filter by app name | No | string |
 | page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
+| sort_by | query | Sort apps by last modified, recently created, or earliest created | No | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified |
 | tag_ids | query | Filter by tag IDs | No | [ string ] |
 
 #### Responses
@@ -599,6 +962,28 @@ Create a new application
 | ---- | ----------- | ------ |
 | 200 | Import confirmed | **application/json**: [Import](#import)<br> |
 | 400 | Import failed | **application/json**: [Import](#import)<br> |
+
+### [GET] /apps/starred
+Get applications starred by the current account
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| creator_ids | query | Filter by creator account IDs | No | [ string ] |
+| is_created_by_me | query | Filter by creator | No | boolean |
+| limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
+| mode | query | App mode filter | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all |
+| name | query | Filter by app name | No | string |
+| page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
+| sort_by | query | Sort apps by last modified, recently created, or earliest created | No | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified |
+| tag_ids | query | Filter by tag IDs | No | [ string ] |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AppPagination](#apppagination)<br> |
 
 ### [POST] /apps/workflows/online-users
 Get workflow online users
@@ -838,164 +1223,6 @@ Run draft workflow for advanced chat application
 | 200 | Workflow run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 400 | Invalid request parameters |  |
 | 403 | Permission denied |  |
-
-### [GET] /apps/{app_id}/agent-composer
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Agent app composer state | **application/json**: [AgentAppComposerResponse](#agentappcomposerresponse)<br> |
-
-### [PUT] /apps/{app_id}/agent-composer
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [ComposerSavePayload](#composersavepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Agent app composer saved | **application/json**: [AgentAppComposerResponse](#agentappcomposerresponse)<br> |
-
-### [GET] /apps/{app_id}/agent-composer/candidates
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Agent app composer candidates | **application/json**: [AgentComposerCandidatesResponse](#agentcomposercandidatesresponse)<br> |
-
-### [POST] /apps/{app_id}/agent-composer/validate
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [ComposerSavePayload](#composersavepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Agent app composer validation result | **application/json**: [AgentComposerValidateResponse](#agentcomposervalidateresponse)<br> |
-
-### [POST] /apps/{app_id}/agent-features
-Update an Agent App's presentation features (opener, follow-up, citations, ...)
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [AgentAppFeaturesPayload](#agentappfeaturespayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Features updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Invalid configuration |  |
-| 404 | App not found |  |
-
-### [GET] /apps/{app_id}/agent-referencing-workflows
-List workflow apps that reference this Agent App's bound Agent (read-only)
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Referencing workflows listed successfully | **application/json**: [AgentReferencingWorkflowsResponse](#agentreferencingworkflowsresponse)<br> |
-| 404 | App not found |  |
-
-### [GET] /apps/{app_id}/agent-sandbox/files
-List a directory in an Agent App conversation sandbox
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-| conversation_id | query | Agent App conversation ID | Yes | string |
-| path | query | Directory path relative to the sandbox workspace | No | string, <br>**Default:** . |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Listing returned | **application/json**: [SandboxListResponse](#sandboxlistresponse)<br> |
-
-### [GET] /apps/{app_id}/agent-sandbox/files/read
-Read a text/binary preview file in an Agent App conversation sandbox
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-| conversation_id | query | Agent App conversation ID | Yes | string |
-| path | query | File path relative to the sandbox workspace | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Preview returned | **application/json**: [SandboxReadResponse](#sandboxreadresponse)<br> |
-
-### [POST] /apps/{app_id}/agent-sandbox/files/upload
-Upload one Agent App sandbox file as a Dify ToolFile mapping
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [AgentSandboxUploadPayload](#agentsandboxuploadpayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Uploaded | **application/json**: [SandboxUploadResponse](#sandboxuploadresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/drive/files
 List agent drive entries (read-only inspector; one endpoint for both tabs)
@@ -2044,6 +2271,38 @@ Reset access token for application site
 | 200 | Access token reset successfully | **application/json**: [AppSiteResponse](#appsiteresponse)<br> |
 | 403 | Insufficient permissions (admin/owner required) |  |
 | 404 | App or site not found |  |
+
+### [DELETE] /apps/{app_id}/star
+Remove the current account's star from an application
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 404 | App not found |  |
+
+### [POST] /apps/{app_id}/star
+Star an application for the current account
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 404 | App not found |  |
 
 ### [GET] /apps/{app_id}/statistics/average-response-time
 Get average response time statistics for an application
@@ -5572,6 +5831,19 @@ Check if dataset is in use
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RecommendedAppListResponse](#recommendedapplistresponse)<br> |
+
+### [GET] /explore/apps/learn-dify
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Language code for recommended app localization | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [LearnDifyAppListResponse](#learndifyapplistresponse)<br> |
 
 ### [GET] /explore/apps/{app_id}
 #### Parameters
@@ -9391,6 +9663,45 @@ Returns permission flags that control workspace features like member invitations
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
 
+### [POST] /workspaces/current/plugin/auto-upgrade/change
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserAutoUpgradeChange](#parserautoupgradechange)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginAutoUpgradeChangeResponse](#pluginautoupgradechangeresponse)<br> |
+
+### [POST] /workspaces/current/plugin/auto-upgrade/exclude
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserExcludePlugin](#parserexcludeplugin)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SuccessResponse](#successresponse)<br> |
+
+### [GET] /workspaces/current/plugin/auto-upgrade/fetch
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| category | query |  | Yes | string, <br>**Available values:** "agent-strategy", "datasource", "extension", "model", "tool", "trigger" |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginAutoUpgradeFetchResponse](#pluginautoupgradefetchresponse)<br> |
+
 ### [GET] /workspaces/current/plugin/debugging-key
 #### Responses
 
@@ -9570,39 +9881,6 @@ Returns permission flags that control workspace features like member invitations
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginPermissionResponse](#pluginpermissionresponse)<br> |
 
-### [POST] /workspaces/current/plugin/preferences/autoupgrade/exclude
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [ParserExcludePlugin](#parserexcludeplugin)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [PluginOperationSuccessResponse](#pluginoperationsuccessresponse)<br> |
-
-### [POST] /workspaces/current/plugin/preferences/change
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [ParserPreferencesChange](#parserpreferenceschange)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [PluginOperationSuccessResponse](#pluginoperationsuccessresponse)<br> |
-
-### [GET] /workspaces/current/plugin/preferences/fetch
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [PluginPreferencesResponse](#pluginpreferencesresponse)<br> |
-
 ### [GET] /workspaces/current/plugin/readme
 #### Parameters
 
@@ -9743,6 +10021,21 @@ Returns permission flags that control workspace features like member invitations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginDaemonOperationResponse](#plugindaemonoperationresponse)<br> |
+
+### [GET] /workspaces/current/plugin/{category}/list
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| page | query | Page number | No | integer, <br>**Default:** 1 |
+| page_size | query | Page size (1-256) | No | integer, <br>**Default:** 256 |
+| category | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginCategoryListResponse](#plugincategorylistresponse)<br> |
 
 ### [GET] /workspaces/current/tool-labels
 #### Responses
@@ -11127,7 +11420,7 @@ Default namespace
 | deprecated | boolean |  | No |
 | features | [ [ModelFeature](#modelfeature) ] |  | No |
 | fetch_from | [FetchFrom](#fetchfrom) |  | Yes |
-| label | [I18nObject](#i18nobject) |  | Yes |
+| label | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | Yes |
 | model | string |  | Yes |
 | model_properties | object |  | Yes |
 | model_type | [ModelType](#modeltype) |  | Yes |
@@ -11379,6 +11672,16 @@ Default namespace
 | save_options | [ [ComposerSaveStrategy](#composersavestrategy) ] |  | Yes |
 | validation | [ComposerValidationFindingsResponse](#composervalidationfindingsresponse) |  | No |
 | variant | string |  | Yes |
+
+#### AgentAppCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string | Agent description (max 400 chars) | No |
+| icon | string | Icon | No |
+| icon_background | string | Icon background color | No |
+| icon_type | [IconType](#icontype) | Icon type | No |
+| name | string | Agent name | Yes |
 
 #### AgentAppFeaturesPayload
 
@@ -11636,6 +11939,12 @@ Audit operation recorded for Agent Soul version/revision changes.
 | summary | string |  | No |
 | version | integer |  | Yes |
 | version_note | string |  | No |
+
+#### AgentDriveDeleteFileByAgentQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| key | string | Drive key, e.g. files/sample.pdf | Yes |
 
 #### AgentDriveDeleteResponse
 
@@ -12581,7 +12890,6 @@ Enum class for api provider schema type.
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
 | api_base_url | string |  | No |
-| app_model_config | [ModelConfig](#modelconfig) |  | No |
 | bound_agent_id | string |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
@@ -12592,9 +12900,11 @@ Enum class for api provider schema type.
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
+| icon_url | string |  | Yes |
 | id | string |  | Yes |
 | max_active_requests | integer |  | No |
-| mode_compatible_with_agent | string |  | Yes |
+| mode | string |  | Yes |
+| model_config | [ModelConfig](#modelconfig) |  | No |
 | name | string |  | Yes |
 | permission_keys | [ string ] |  | No |
 | site | [Site](#site) |  | No |
@@ -12656,6 +12966,7 @@ Enum class for api provider schema type.
 | mode | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all | App mode filter<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
 | name | string | Filter by app name | No |
 | page | integer, <br>**Default:** 1 | Page number (1-99999) | No |
+| sort_by | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified | Sort apps by last modified, recently created, or earliest created<br>*Enum:* `"earliest_created"`, `"last_modified"`, `"recently_created"` | No |
 | tag_ids | [ string ] | Filter by tag IDs | No |
 
 #### AppMCPServerResponse
@@ -12689,10 +13000,10 @@ AppMCPServer Status Enum
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| has_next | boolean |  | Yes |
-| items | [ [AppPartial](#apppartial) ] |  | Yes |
+| data | [ [AppPartial](#apppartial) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
 | page | integer |  | Yes |
-| per_page | integer |  | Yes |
 | total | integer |  | Yes |
 
 #### AppPartial
@@ -12700,19 +13011,22 @@ AppMCPServer Status Enum
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
-| app_model_config | [ModelConfigPartial](#modelconfigpartial) |  | No |
 | author_name | string |  | No |
+| bound_agent_id | string |  | No |
 | create_user_name | string |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
-| desc_or_prompt | string |  | No |
+| description | string |  | No |
 | has_draft_trigger | boolean |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
+| icon_url | string |  | Yes |
 | id | string |  | Yes |
+| is_starred | boolean |  | No |
 | max_active_requests | integer |  | No |
-| mode_compatible_with_agent | string |  | Yes |
+| mode | string |  | Yes |
+| model_config | [ModelConfigPartial](#modelconfigpartial) |  | No |
 | name | string |  | Yes |
 | permission_keys | [ string ] |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
@@ -13508,7 +13822,7 @@ Enum class for configurate method of provider model.
 | icon | string | Icon | No |
 | icon_background | string | Icon background color | No |
 | icon_type | [IconType](#icontype) | Icon type | No |
-| mode | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "chat", "completion", "workflow" | App mode<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"chat"`, `"completion"`, `"workflow"` | Yes |
+| mode | string, <br>**Available values:** "advanced-chat", "agent-chat", "chat", "completion", "workflow" | App mode<br>*Enum:* `"advanced-chat"`, `"agent-chat"`, `"chat"`, `"completion"`, `"workflow"` | Yes |
 | name | string | App name | Yes |
 
 #### CreateSnippetPayload
@@ -13540,10 +13854,10 @@ Model class for credential form schema.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | default | string |  | No |
-| label | [I18nObject](#i18nobject) |  | Yes |
+| label | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | Yes |
 | max_length | integer |  | No |
 | options | [ [FormOption](#formoption) ] |  | No |
-| placeholder | [I18nObject](#i18nobject) |  | No |
+| placeholder | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | No |
 | required | boolean, <br>**Default:** true |  | No |
 | show_on | [ [FormShowOnObject](#formshowonobject) ], <br>**Default:**  |  | No |
 | type | [FormType](#formtype) |  | Yes |
@@ -14967,8 +15281,8 @@ Enum class for fetch from.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| label | [I18nObject](#i18nobject) |  | Yes |
-| placeholder | [I18nObject](#i18nobject) |  | No |
+| label | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | Yes |
+| placeholder | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | No |
 
 #### FileInfo
 
@@ -15099,7 +15413,7 @@ Model class for form option.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| label | [I18nObject](#i18nobject) |  | Yes |
+| label | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | Yes |
 | show_on | [ [FormShowOnObject](#formshowonobject) ], <br>**Default:**  |  | No |
 | value | string |  | Yes |
 
@@ -15331,6 +15645,8 @@ Model class for i18n object.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | en_US | string |  | Yes |
+| ja_JP | string |  | No |
+| pt_BR | string |  | No |
 | zh_Hans | string |  | No |
 
 #### IconInfo
@@ -15592,6 +15908,12 @@ Enum class for large language model mode.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | LLMMode | string | Enum class for large language model mode. |  |
+
+#### LearnDifyAppListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| recommended_apps | [ [RecommendedAppResponse](#recommendedappresponse) ] |  | Yes |
 
 #### LegacyEndpointUpdatePayload
 
@@ -15958,7 +16280,7 @@ Metadata operation data
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
 | created_by | string |  | No |
-| model_dict | [JSONValue](#jsonvalue) |  | No |
+| model | [JSONValue](#jsonvalue) |  | No |
 | pre_prompt | string |  | No |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
@@ -16428,8 +16750,8 @@ Model class for parameter rule.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | default |  |  | No |
-| help | [I18nObject](#i18nobject) |  | No |
-| label | [I18nObject](#i18nobject) |  | Yes |
+| help | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | No |
+| label | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | Yes |
 | max | number |  | No |
 | min | number |  | No |
 | name | string |  | Yes |
@@ -16478,6 +16800,19 @@ Enum class for parameter type.
 | ---- | ---- | ----------- | -------- |
 | file_name | string |  | Yes |
 | plugin_unique_identifier | string |  | Yes |
+
+#### ParserAutoUpgradeChange
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| auto_upgrade | [PluginAutoUpgradeSettingsPayload](#pluginautoupgradesettingspayload) |  | Yes |
+| category | [PluginCategory](#plugincategory) |  | Yes |
+
+#### ParserAutoUpgradeFetch
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| category | [PluginCategory](#plugincategory) |  | Yes |
 
 #### ParserCreateCredential
 
@@ -16575,6 +16910,7 @@ Enum class for parameter type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| category | [PluginCategory](#plugincategory) |  | Yes |
 | plugin_id | string |  | Yes |
 
 #### ParserGetCredentials
@@ -16662,8 +16998,8 @@ Enum class for parameter type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| debug_permission | [DebugPermission](#debugpermission) |  | Yes |
-| install_permission | [InstallPermission](#installpermission) |  | Yes |
+| debug_permission | [DebugPermission](#debugpermission) |  | No |
+| install_permission | [InstallPermission](#installpermission) |  | No |
 
 #### ParserPluginIdentifierQuery
 
@@ -16692,13 +17028,6 @@ Enum class for parameter type.
 | load_balancing | [LoadBalancingPayload](#loadbalancingpayload) |  | No |
 | model | string |  | Yes |
 | model_type | [ModelType](#modeltype) |  | Yes |
-
-#### ParserPreferencesChange
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| auto_upgrade | [PluginAutoUpgradeSettingsPayload](#pluginautoupgradesettingspayload) |  | Yes |
-| permission | [PluginPermissionSettingsPayload](#pluginpermissionsettingspayload) |  | Yes |
 
 #### ParserPreferredProviderType
 
@@ -16844,6 +17173,20 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | unit | string |  | No |
 | variable | string |  | Yes |
 
+#### PluginAutoUpgradeChangeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| message | string |  | No |
+| success | boolean |  | Yes |
+
+#### PluginAutoUpgradeFetchResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| auto_upgrade | [PluginAutoUpgradeSettingsResponseModel](#pluginautoupgradesettingsresponsemodel) |  | Yes |
+| category | [PluginCategory](#plugincategory) |  | Yes |
+
 #### PluginAutoUpgradeSettingsPayload
 
 | Name | Type | Description | Required |
@@ -16853,6 +17196,90 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | strategy_setting | [StrategySetting](#strategysetting) |  | No |
 | upgrade_mode | [UpgradeMode](#upgrademode) |  | No |
 | upgrade_time_of_day | integer |  | No |
+
+#### PluginAutoUpgradeSettingsResponseModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| exclude_plugins | [ string ] |  | Yes |
+| include_plugins | [ string ] |  | Yes |
+| strategy_setting | [StrategySetting](#strategysetting) |  | Yes |
+| upgrade_mode | [UpgradeMode](#upgrademode) |  | Yes |
+| upgrade_time_of_day | integer |  | Yes |
+
+#### PluginCategory
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PluginCategory | string |  |  |
+
+#### PluginCategoryBuiltinToolProviderResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allow_delete | boolean |  | Yes |
+| author | string |  | Yes |
+| description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | Yes |
+| icon | string<br>object |  | Yes |
+| icon_dark | string<br>object |  | Yes |
+| id | string |  | Yes |
+| is_team_authorization | boolean |  | Yes |
+| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | Yes |
+| labels | [ string ] |  | Yes |
+| name | string |  | Yes |
+| plugin_id | string |  | Yes |
+| plugin_unique_identifier | string |  | Yes |
+| team_credentials | object |  | Yes |
+| tools | [ [PluginCategoryBuiltinToolResponse](#plugincategorybuiltintoolresponse) ] |  | Yes |
+| type | [ToolProviderType](#toolprovidertype) |  | Yes |
+
+#### PluginCategoryBuiltinToolResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author | string |  | Yes |
+| description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | Yes |
+| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | Yes |
+| labels | [ string ] |  | Yes |
+| name | string |  | Yes |
+| output_schema | object |  | Yes |
+| parameters | [ object ] |  | No |
+
+#### PluginCategoryInstalledPluginResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| checksum | string |  | Yes |
+| created_at | dateTime |  | Yes |
+| declaration | [PluginDeclarationResponse](#plugindeclarationresponse) |  | Yes |
+| endpoints_active | integer |  | Yes |
+| endpoints_setups | integer |  | Yes |
+| id | string |  | Yes |
+| installation_id | string |  | Yes |
+| meta | object |  | Yes |
+| name | string |  | Yes |
+| plugin_id | string |  | Yes |
+| plugin_unique_identifier | string |  | Yes |
+| runtime_type | string |  | Yes |
+| source | [PluginInstallationSource](#plugininstallationsource) |  | Yes |
+| tenant_id | string |  | Yes |
+| updated_at | dateTime |  | Yes |
+| version | string |  | Yes |
+
+#### PluginCategoryListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| page | integer, <br>**Default:** 1 | Page number | No |
+| page_size | integer, <br>**Default:** 256 | Page size (1-256) | No |
+
+#### PluginCategoryListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| builtin_tools | [ [PluginCategoryBuiltinToolProviderResponse](#plugincategorybuiltintoolproviderresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| plugins | [ [PluginCategoryInstalledPluginResponse](#plugincategoryinstalledpluginresponse) ] |  | Yes |
 
 #### PluginDaemonOperationResponse
 
@@ -16867,6 +17294,32 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | host | string |  | Yes |
 | key | string |  | Yes |
 | port | integer |  | Yes |
+
+#### PluginDeclarationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_strategy | object |  | No |
+| author | string |  | Yes |
+| category | [PluginCategory](#plugincategory) |  | Yes |
+| created_at | dateTime |  | Yes |
+| datasource | object |  | No |
+| description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | Yes |
+| endpoint | object |  | No |
+| icon | string |  | Yes |
+| icon_dark | string |  | No |
+| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | Yes |
+| meta | object |  | Yes |
+| model | [ProviderEntityResponse](#providerentityresponse) |  | No |
+| name | string |  | Yes |
+| plugins | object |  | Yes |
+| repo | string |  | No |
+| resource | object |  | Yes |
+| tags | [ string ] |  | No |
+| tool | object |  | No |
+| trigger | object |  | No |
+| verified | boolean |  | No |
+| version | string |  | Yes |
 
 #### PluginDependency
 
@@ -16900,6 +17353,12 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | PluginInstallationScope | string |  |  |
+
+#### PluginInstallationSource
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PluginInstallationSource | string |  |  |
 
 #### PluginInstallationsResponse
 
@@ -16952,13 +17411,6 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | ---- | ---- | ----------- | -------- |
 | debug_permission | [DebugPermission](#debugpermission) |  | No |
 | install_permission | [InstallPermission](#installpermission) |  | No |
-
-#### PluginPreferencesResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| auto_upgrade | [PluginAutoUpgradeSettingsPayload](#pluginautoupgradesettingspayload) |  | Yes |
-| permission | [PluginPermissionSettingsPayload](#pluginpermissionsettingspayload) |  | Yes |
 
 #### PluginReadmeResponse
 
@@ -17046,14 +17498,35 @@ Model class for provider credential schema.
 | error | string |  | No |
 | result | string, <br>**Available values:** "error", "success" | *Enum:* `"error"`, `"success"` | Yes |
 
+#### ProviderEntityResponse
+
+Runtime provider response with codegen-safe model pricing schemas.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| background | string |  | No |
+| configurate_methods | [ [ConfigurateMethod](#configuratemethod) ] |  | Yes |
+| description | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | No |
+| help | [ProviderHelpEntity](#providerhelpentity) |  | No |
+| icon_small | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | No |
+| icon_small_dark | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | No |
+| label | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | Yes |
+| model_credential_schema | [ModelCredentialSchema](#modelcredentialschema) |  | No |
+| models | [ [AIModelEntityResponse](#aimodelentityresponse) ], <br>**Default:**  |  | No |
+| position | object |  | No |
+| provider | string |  | Yes |
+| provider_credential_schema | [ProviderCredentialSchema](#providercredentialschema) |  | No |
+| provider_name | string |  | No |
+| supported_model_types | [ [ModelType](#modeltype) ] |  | Yes |
+
 #### ProviderHelpEntity
 
 Model class for provider help.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| title | [I18nObject](#i18nobject) |  | Yes |
-| url | [I18nObject](#i18nobject) |  | Yes |
+| title | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | Yes |
+| url | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | Yes |
 
 #### ProviderModelWithStatusEntity
 
@@ -17969,6 +18442,19 @@ Query parameters for listing snippet published workflows.
 | updated_by | [SimpleAccount](#simpleaccount) |  | No |
 | version | string |  | Yes |
 
+#### StarredAppListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| creator_ids | [ string ] | Filter by creator account IDs | No |
+| is_created_by_me | boolean | Filter by creator | No |
+| limit | integer, <br>**Default:** 20 | Page size (1-100) | No |
+| mode | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all | App mode filter<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
+| name | string | Filter by app name | No |
+| page | integer, <br>**Default:** 1 | Page number (1-99999) | No |
+| sort_by | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified | Sort apps by last modified, recently created, or earliest created<br>*Enum:* `"earliest_created"`, `"last_modified"`, `"recently_created"` | No |
+| tag_ids | [ string ] | Filter by tag IDs | No |
+
 #### StatisticTimeRangeQuery
 
 | Name | Type | Description | Required |
@@ -18313,6 +18799,14 @@ Tag type
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ToolProviderOpaqueResponse |  |  |  |
+
+#### ToolProviderType
+
+Enum class for tool provider
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ToolProviderType | string | Enum class for tool provider |  |
 
 #### TraceAppConfigResponse
 
@@ -19733,6 +20227,26 @@ Workflow tool configuration
 | updated_by | string |  | No |
 | use_count | integer |  | No |
 | version | integer |  | No |
+
+#### core__tools__entities__common_entities__I18nObject
+
+Model class for i18n object.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| en_US | string |  | Yes |
+| ja_JP | string |  | No |
+| pt_BR | string |  | No |
+| zh_Hans | string |  | No |
+
+#### graphon__model_runtime__entities__common_entities__I18nObject
+
+Model class for i18n object.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| en_US | string |  | Yes |
+| zh_Hans | string |  | No |
 
 ## FastOpenAPI Preview (OpenAPI 3.1)
 

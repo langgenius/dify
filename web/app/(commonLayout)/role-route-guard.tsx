@@ -1,51 +1,29 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import Loading from '@/app/components/base/loading'
-import { useAppContext } from '@/context/app-context'
-import { usePathname, useRouter } from '@/next/navigation'
-import { hasPermission } from '@/utils/permission'
+import { redirect, usePathname } from '@/next/navigation'
+import { consoleQuery } from '@/service/client'
 
-type PageRoutePermissionGuard = {
-  route: string
-  permissionKey: string | string[]
-}
-
-const pageRoutePermissionGuards: PageRoutePermissionGuard[] = [
-  { route: '/explore', permissionKey: 'app_library.access' },
-  { route: '/tools', permissionKey: ['tool.manage', 'mcp.manage'] },
-]
+const datasetOperatorRedirectRoutes = ['/', '/apps', '/app', '/snippets', '/explore', '/tools', '/integrations'] as const
 
 const isPathUnderRoute = (pathname: string, route: string) => pathname === route || pathname.startsWith(`${route}/`)
 
-const getPageRoutePermissionGuard = (pathname: string) => {
-  return pageRoutePermissionGuards.find(({ route }) => isPathUnderRoute(pathname, route))
-}
-
 export default function RoleRouteGuard({ children }: { children: ReactNode }) {
-  const { isLoadingWorkspacePermissionKeys, workspacePermissionKeys } = useAppContext()
+  const currentWorkspaceRoleQuery = useQuery(consoleQuery.workspaces.current.post.queryOptions({
+    select: workspace => workspace.role,
+  }))
   const pathname = usePathname()
-  const router = useRouter()
-  const routePermissionGuard = getPageRoutePermissionGuard(pathname)
-  const shouldGuardRoute = !!routePermissionGuard
-  const isLoadingAccess = !!isLoadingWorkspacePermissionKeys
-  const canAccessRoute = routePermissionGuard
-    ? hasPermission(workspacePermissionKeys, routePermissionGuard.permissionKey)
-    : true
-  const shouldRedirect = shouldGuardRoute && !isLoadingAccess && !canAccessRoute
-
-  useEffect(() => {
-    if (shouldRedirect)
-      router.replace('/apps')
-  }, [shouldRedirect, router])
+  const shouldGuardRoute = datasetOperatorRedirectRoutes.some(route => isPathUnderRoute(pathname, route))
+  const shouldRedirect = shouldGuardRoute && !currentWorkspaceRoleQuery.isPending && currentWorkspaceRoleQuery.data === 'dataset_operator'
 
   // Block rendering only for guarded routes to avoid permission flicker.
-  if (shouldGuardRoute && isLoadingAccess)
+  if (shouldGuardRoute && currentWorkspaceRoleQuery.isPending)
     return <Loading type="app" />
 
   if (shouldRedirect)
-    return null
+    redirect('/datasets')
 
   return <>{children}</>
 }

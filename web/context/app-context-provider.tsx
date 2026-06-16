@@ -21,7 +21,6 @@ import {
 import { env } from '@/env'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { useWorkspacePermissionKeys } from '@/service/access-control/use-permission-keys'
 import { consoleQuery } from '@/service/client'
 import {
   useLangGeniusVersion,
@@ -69,14 +68,16 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   const queryClient = useQueryClient()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
-  const { data: currentWorkspaceResp, isPending: isLoadingCurrentWorkspace, isFetching: isValidatingCurrentWorkspace } = useQuery(consoleQuery.workspaces.current.post.queryOptions())
+  const currentWorkspaceQuery = useQuery(consoleQuery.workspaces.current.post.queryOptions({
+    select: normalizeCurrentWorkspace,
+  }))
   const langGeniusVersionQuery = useLangGeniusVersion(
     userProfileResp?.meta.currentVersion,
     !systemFeatures.branding.enabled,
   )
 
   const userProfile = useMemo<GetAccountProfileResponse>(() => userProfileResp?.profile || userProfilePlaceholder, [userProfileResp?.profile])
-  const currentWorkspace = useMemo<ICurrentWorkspace>(() => normalizeCurrentWorkspace(currentWorkspaceResp), [currentWorkspaceResp])
+  const currentWorkspace = currentWorkspaceQuery.data ?? initialWorkspaceInfo
   const langGeniusVersionInfo = useMemo<LangGeniusVersionResponse>(() => {
     if (!userProfileResp?.meta?.currentVersion || !langGeniusVersionQuery.data)
       return initialLangGeniusVersionInfo
@@ -96,11 +97,6 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   const isCurrentWorkspaceOwner = useMemo(() => currentWorkspace.role === 'owner', [currentWorkspace.role])
   const isCurrentWorkspaceEditor = useMemo(() => ['owner', 'admin', 'editor'].includes(currentWorkspace.role), [currentWorkspace.role])
   const isCurrentWorkspaceDatasetOperator = useMemo(() => currentWorkspace.role === 'dataset_operator', [currentWorkspace.role])
-
-  const { data: workspacePermissionKeysResponse, isPending: isLoadingWorkspacePermissionKeys } = useWorkspacePermissionKeys()
-  const workspacePermissionKeys = useMemo(() => {
-    return workspacePermissionKeysResponse?.workspace.permission_keys || []
-  }, [workspacePermissionKeysResponse])
 
   const mutateUserProfile = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: userProfileQueryOptions().queryKey })
@@ -187,15 +183,13 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       isCurrentWorkspaceEditor,
       isCurrentWorkspaceDatasetOperator,
       mutateCurrentWorkspace,
-      isLoadingCurrentWorkspace,
-      isLoadingWorkspacePermissionKeys,
-      isValidatingCurrentWorkspace,
-      workspacePermissionKeys,
+      isLoadingCurrentWorkspace: currentWorkspaceQuery.isPending,
+      isValidatingCurrentWorkspace: currentWorkspaceQuery.isFetching,
     }}
     >
-      <div className="flex h-full flex-col overflow-y-auto">
+      <div className="flex h-full flex-col overflow-hidden">
         {env.NEXT_PUBLIC_MAINTENANCE_NOTICE && <MaintenanceNotice />}
-        <div className="relative flex grow flex-col overflow-x-hidden overflow-y-auto bg-background-body">
+        <div className="relative flex h-0 min-h-0 grow flex-col overflow-hidden bg-background-body">
           {children}
         </div>
       </div>

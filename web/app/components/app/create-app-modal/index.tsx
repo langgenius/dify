@@ -7,6 +7,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
+import { RiArrowRightLine, RiArrowRightSLine, RiExchange2Fill } from '@remixicon/react'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useDebounceFn } from 'ahooks'
 import { useSetLocalStorage } from 'foxact/use-local-storage'
@@ -18,10 +19,12 @@ import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/bas
 import Input from '@/app/components/base/input'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import useTheme from '@/hooks/use-theme'
 import { useRouter } from '@/next/navigation'
 import { createApp } from '@/service/apps'
+import { useInvalidateAppList } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
@@ -53,6 +56,8 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
 
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
+  const { isCurrentWorkspaceEditor } = useAppContext()
+  const invalidateAppList = useInvalidateAppList()
 
   const isCreatingRef = useRef(false)
 
@@ -86,13 +91,14 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
       onSuccess()
       onClose()
       setNeedRefresh('1')
-      getRedirection(app, push)
+      invalidateAppList()
+      getRedirection(isCurrentWorkspaceEditor, app, push)
     }
     catch (error) {
       toast.error(error instanceof Error ? error.message : t('newApp.appCreateFailed', { ns: 'app' }))
     }
     isCreatingRef.current = false
-  }, [appMode, name, t, description, appIcon, onSuccess, onClose, setNeedRefresh, push])
+  }, [name, t, appMode, appIcon, description, onSuccess, onClose, push, isCurrentWorkspaceEditor, setNeedRefresh, invalidateAppList])
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
   useHotkey('Mod+Enter', () => {
@@ -123,7 +129,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                     description={t('newApp.workflowShortDescription', { ns: 'app' })}
                     icon={(
                       <div className="flex size-6 items-center justify-center rounded-md bg-components-icon-bg-indigo-solid">
-                        <span className="i-ri-exchange-2-fill size-4 text-components-avatar-shape-fill-stop-100" />
+                        <RiExchange2Fill className="size-4 text-components-avatar-shape-fill-stop-100" />
                       </div>
                     )}
                     onClick={() => {
@@ -153,7 +159,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
                     onClick={() => setIsAppTypeExpanded(!isAppTypeExpanded)}
                   >
                     <span className="system-2xs-medium-uppercase text-text-tertiary">{t('newApp.forBeginners', { ns: 'app' })}</span>
-                    <span className={`i-ri-arrow-right-s-line ${`ml-1 size-4 text-text-tertiary transition-transform ${isAppTypeExpanded ? 'rotate-90' : ''}`}`} aria-hidden="true" />
+                    <RiArrowRightSLine className={`ml-1 size-4 text-text-tertiary transition-transform ${isAppTypeExpanded ? 'rotate-90' : ''}`} aria-hidden="true" />
                   </button>
                 </div>
                 {isAppTypeExpanded && (
@@ -261,7 +267,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
               >
                 <span>{t('newApp.noIdeaTip', { ns: 'app' })}</span>
                 <div className="p-px">
-                  <span className="i-ri-arrow-right-line size-3.5" aria-hidden="true" />
+                  <RiArrowRightLine className="size-3.5" aria-hidden="true" />
                 </div>
               </button>
               <div className="flex gap-2">

@@ -6,6 +6,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Publisher from '../index'
 import Popup from '../popup'
 
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: true,
+  }
+})
+
 const hotkeyHandlers = vi.hoisted(() => new Map<string, (event: KeyboardEvent) => void>())
 
 vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {

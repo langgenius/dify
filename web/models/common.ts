@@ -23,7 +23,7 @@ export type InitValidateStatusResponse = {
 export type UserProfileOriginResponse = {
   json: () => Promise<GetAccountProfileResponse>
   bodyUsed: boolean
-  headers: any
+  headers: Headers
 }
 
 export type LangGeniusVersionResponse = {
@@ -46,17 +46,18 @@ export type Member = Pick<GetAccountProfileResponse, 'id' | 'name' | 'email' | '
   roles: Role[]
 }
 
-enum ProviderName {
-  OPENAI = 'openai',
-  AZURE_OPENAI = 'azure_openai',
-  ANTHROPIC = 'anthropic',
-  Replicate = 'replicate',
-  HuggingfaceHub = 'huggingface_hub',
-  MiniMax = 'minimax',
-  Spark = 'spark',
-  Tongyi = 'tongyi',
-  ChatGLM = 'chatglm',
-}
+const ProviderName = {
+  OPENAI: 'openai',
+  AZURE_OPENAI: 'azure_openai',
+  ANTHROPIC: 'anthropic',
+  Replicate: 'replicate',
+  HuggingfaceHub: 'huggingface_hub',
+  MiniMax: 'minimax',
+  Spark: 'spark',
+  Tongyi: 'tongyi',
+  ChatGLM: 'chatglm',
+} as const
+type ProviderName = typeof ProviderName[keyof typeof ProviderName]
 export type ProviderAzureToken = {
   openai_api_base?: string
   openai_api_key?: string
@@ -89,6 +90,7 @@ export type IWorkspace = {
   plan: string
   status: string
   created_at: number
+  last_opened_at?: number | null
   current: boolean
 }
 
@@ -139,11 +141,12 @@ export type DataSourceNotion = {
   source_info: DataSourceNotionWorkspace
 }
 
-export enum DataSourceProvider {
-  fireCrawl = 'firecrawl',
-  jinaReader = 'jinareader',
-  waterCrawl = 'watercrawl',
-}
+export const DataSourceProvider = {
+  fireCrawl: 'firecrawl',
+  jinaReader: 'jinareader',
+  waterCrawl: 'watercrawl',
+} as const
+export type DataSourceProvider = typeof DataSourceProvider[keyof typeof DataSourceProvider]
 
 export type FileUploadConfigResponse = {
   batch_count_limit: number
@@ -185,7 +188,7 @@ export type CodeBasedExtensionForm = {
 
 export type CodeBasedExtensionItem = {
   name: string
-  label: any
+  label: I18nText
   form_schema: CodeBasedExtensionForm[]
 }
 export type CodeBasedExtension = {
@@ -202,7 +205,7 @@ export type ExternalDataTool = {
   enabled?: boolean
   config?: {
     api_based_extension_id?: string
-  } & Partial<Record<string, any>>
+  } & Partial<Record<string, string | undefined>>
 }
 
 export type ModerateResponse = {

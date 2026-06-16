@@ -144,13 +144,13 @@ describe('Installed App Flow', () => {
       [AppModeEnum.CHAT, 'chat-with-history'],
       [AppModeEnum.ADVANCED_CHAT, 'chat-with-history'],
       [AppModeEnum.AGENT_CHAT, 'chat-with-history'],
-    ])('should render ChatWithHistory for %s mode', (mode, testId) => {
+    ])('should render ChatWithHistory for %s mode', async (mode, testId) => {
       const app = createInstalledApp(mode)
       setupDefaultMocks(app)
 
       render(<InstalledApp id="installed-app-1" />)
 
-      expect(screen.getByTestId(testId)).toBeInTheDocument()
+      expect(await screen.findByTestId(testId)).toBeInTheDocument()
       expect(screen.getByText(/Integration Test App/)).toBeInTheDocument()
     })
 

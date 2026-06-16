@@ -32,7 +32,7 @@ const parseConsoleErrorPayload = async (error: Response): Promise<ConsoleErrorPa
 
 const getCurrentPath = async () => {
   const requestHeaders = await headers()
-  const pathname = requestHeaders.get(CURRENT_PATHNAME_HEADER) || `${basePath}/apps`
+  const pathname = requestHeaders.get(CURRENT_PATHNAME_HEADER) || `${basePath}/`
   const search = requestHeaders.get(CURRENT_SEARCH_HEADER) || ''
   return `${pathname}${search}`
 }

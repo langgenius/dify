@@ -1,15 +1,14 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 
 import CreateAppCard from '../new-app-card'
 
 const mockReplace = vi.fn()
-let mockSearchParams = new URLSearchParams()
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     replace: mockReplace,
   }),
-  useSearchParams: () => mockSearchParams,
+  useSearchParams: () => new URLSearchParams(),
 }))
 
 const mockOnPlanInfoChanged = vi.fn()
@@ -59,13 +58,12 @@ describe('CreateAppCard', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockSearchParams = new URLSearchParams()
   })
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<CreateAppCard ref={defaultRef} />)
-      expect(screen.getByText('app.createApp')).toBeInTheDocument()
+      expect(screen.getByText('app.newApp.startFromBlank')).toBeInTheDocument()
     })
 
     it('should render three create buttons', () => {
@@ -98,24 +96,7 @@ describe('CreateAppCard', () => {
 
     it('should render with selectedAppType prop', () => {
       render(<CreateAppCard ref={defaultRef} selectedAppType="chat" />)
-      expect(screen.getByText('app.createApp')).toBeInTheDocument()
-    })
-
-    it('should disable create actions when disabled', () => {
-      render(<CreateAppCard ref={defaultRef} disabled />)
-
-      const buttons = screen.getAllByRole('button')
-      buttons.forEach((button) => {
-        expect(button).toBeDisabled()
-      })
-
-      fireEvent.click(screen.getByText('app.newApp.startFromBlank'))
-      fireEvent.click(screen.getByText('app.newApp.startFromTemplate'))
-      fireEvent.click(screen.getByText('app.importDSL'))
-
-      expect(screen.queryByTestId('create-app-modal')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('create-template-dialog')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('create-dsl-modal')).not.toBeInTheDocument()
+      expect(screen.getByText('app.newApp.startFromBlank')).toBeInTheDocument()
     })
   })
 
@@ -206,32 +187,6 @@ describe('CreateAppCard', () => {
   })
 
   describe('User Interactions - DSL Import Modal', () => {
-    it('should keep remote DSL modal closed when create actions load into disabled state', () => {
-      mockSearchParams = new URLSearchParams('remoteInstallUrl=https://example.com/app.yml')
-
-      const { rerender } = render(<CreateAppCard ref={defaultRef} isLoading />)
-
-      expect(screen.queryByTestId('create-dsl-modal')).not.toBeInTheDocument()
-
-      rerender(<CreateAppCard ref={defaultRef} disabled />)
-
-      expect(screen.queryByTestId('create-dsl-modal')).not.toBeInTheDocument()
-    })
-
-    it('should open remote DSL modal after create actions become available', async () => {
-      mockSearchParams = new URLSearchParams('remoteInstallUrl=https://example.com/app.yml')
-
-      const { rerender } = render(<CreateAppCard ref={defaultRef} isLoading />)
-
-      expect(screen.queryByTestId('create-dsl-modal')).not.toBeInTheDocument()
-
-      rerender(<CreateAppCard ref={defaultRef} />)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
-      })
-    })
-
     it('should open DSL modal when clicking Import DSL', () => {
       render(<CreateAppCard ref={defaultRef} />)
 
@@ -267,7 +222,7 @@ describe('CreateAppCard', () => {
       const { container } = render(<CreateAppCard ref={defaultRef} />)
       const card = container.firstChild as HTMLElement
 
-      expect(card).toHaveClass('h-40', 'rounded-xl')
+      expect(card).toHaveClass('h-41.5', 'rounded-xl', 'bg-background-default-dimmed')
     })
 
     it('should have proper button styling', () => {

@@ -11,35 +11,25 @@ import {
 import { useTranslation } from 'react-i18next'
 import Operator from './operator'
 
-type RenamePayload = {
-  credential_id: string
-  name: string
-}
-
 type ItemProps = {
   credentialItem: DataSourceCredential
-  onAction: (action: string, credentialItem: DataSourceCredential, renamePayload?: RenamePayload) => void
-  canUseCredential?: boolean
-  canManageCredential?: boolean
+  onAction: (action: string, credentialItem: DataSourceCredential, renamePayload?: { credential_id: string, name: string }) => void
 }
 const Item = ({
   credentialItem,
   onAction,
-  canUseCredential = false,
-  canManageCredential = false,
 }: ItemProps) => {
   const { t } = useTranslation()
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState(credentialItem.name)
 
   return (
-    <div className="flex h-10 items-center rounded-lg bg-components-panel-on-panel-item-bg pr-1 pl-3">
-      {/* <div className='mr-2 h-5 w-5 shrink-0'></div> */}
+    <div className="flex h-10 items-center gap-3 overflow-hidden rounded-lg bg-components-panel-on-panel-item-bg py-1 pr-1 pl-3 shadow-xs">
       {
         renaming && (
           <div className="flex w-full items-center space-x-1">
             <Input
-              className="h-6 grow rounded-md"
+              className="h-6 min-w-0 grow"
               value={renameValue}
               onChange={e => setRenameValue(e.target.value)}
               placeholder={t('placeholder.input', { ns: 'common' })}
@@ -48,12 +38,8 @@ const Item = ({
             <Button
               size="small"
               variant="primary"
-              disabled={!canManageCredential}
               onClick={(e) => {
                 e.stopPropagation()
-                if (!canManageCredential)
-                  return
-
                 onAction?.(
                   'rename',
                   credentialItem,
@@ -81,27 +67,40 @@ const Item = ({
       }
       {
         !renaming && (
-          <div className="grow system-sm-medium text-text-secondary">
-            {credentialItem.name}
-          </div>
+          <>
+            <div className="min-w-0 grow truncate system-sm-medium text-text-secondary">
+              {credentialItem.name}
+            </div>
+            {
+              credentialItem.is_default && (
+                <div className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 system-2xs-medium-uppercase text-text-tertiary">
+                  {t('auth.default', { ns: 'plugin' })}
+                </div>
+              )
+            }
+          </>
         )
       }
-      <div className="flex shrink-0 items-center">
-        <div className="mr-1 flex size-3 items-center justify-center">
-          <StatusDot status="success" />
-        </div>
-        <div className="system-xs-semibold-uppercase text-util-colors-green-green-600">
-          connected
-        </div>
-      </div>
-      <div className="mr-2 ml-3 h-3 w-px bg-divider-regular"></div>
-      <Operator
-        credentialItem={credentialItem}
-        onAction={onAction}
-        onRename={() => setRenaming(true)}
-        canUseCredential={canUseCredential}
-        canManageCredential={canManageCredential}
-      />
+      {
+        !renaming && (
+          <>
+            <div className="ml-auto flex shrink-0 items-center">
+              <div className="mr-1 flex h-3 w-3 items-center justify-center">
+                <StatusDot status="success" />
+              </div>
+              <div className="system-xs-semibold-uppercase text-util-colors-green-green-600">
+                {t('dataSource.notion.connected', { ns: 'common' })}
+              </div>
+            </div>
+            <div className="mr-1 ml-2 h-3 w-px bg-divider-regular"></div>
+            <Operator
+              credentialItem={credentialItem}
+              onAction={onAction}
+              onRename={() => setRenaming(true)}
+            />
+          </>
+        )
+      }
     </div>
   )
 }

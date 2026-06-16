@@ -1,4 +1,5 @@
 {
+  "addSwaggerAPIAsTool": "Add Swagger API as Tool",
   "addToolModal.added": "supplémentaire",
   "addToolModal.agent.tip": "",
   "addToolModal.agent.title": "Aucune stratégie d'agent disponible",
@@ -27,6 +28,7 @@
   "contribute.viewGuide": "Voir le guide",
   "copyToolName": "Copier le nom",
   "createCustomTool": "Créer un Outil Personnalisé",
+  "createSwaggerAPIAsTool": "Create a Swagger API as Tool",
   "createTool.authHeaderPrefix.title": "Type d'Authentification",
   "createTool.authHeaderPrefix.types.basic": "Basique",
   "createTool.authHeaderPrefix.types.bearer": "Porteur",
@@ -134,7 +136,7 @@
   "mcp.modal.name": "Nom & Icône",
   "mcp.modal.namePlaceholder": "Nommez votre serveur MCP",
   "mcp.modal.noHeaders": "Aucun en-tête personnalisé configuré",
-  "mcp.modal.redirectUrlWarning": "Veuillez configurer votre URL de redirection OAuth sur :",
+  "mcp.modal.redirectUrlWarning": "Veuillez configurer votre URL de redirection OAuth sur :",
   "mcp.modal.save": "Enregistrer",
   "mcp.modal.serverIdentifier": "Identifiant du Serveur",
   "mcp.modal.serverIdentifierPlaceholder": "Identifiant unique, par ex. mon-serveur-mcp",
@@ -196,6 +198,7 @@
   "setBuiltInTools.setting": "Paramètres",
   "setBuiltInTools.string": "chaîne",
   "setBuiltInTools.toolDescription": "Description de l'outil",
+  "swaggerAPIAsToolTip": "Learn more about Swagger API as Tool",
   "test.parameters": "Paramètres",
   "test.parametersValue": "Paramètres & Valeur",
   "test.testResult": "Résultats du Test",
@@ -211,5 +214,12 @@
   "toolRemoved": "Outil supprimé",
   "type.builtIn": "Intégré",
   "type.custom": "Personnalisé",
-  "type.workflow": "Flux de travail"
+  "type.workflow": "Flux de travail",
+  "workflowToolEmpty.description": "Pour utiliser un workflow comme outil, publiez-le d’abord depuis Studio. Il apparaîtra ensuite ici et pourra être ajouté à n’importe quelle app.",
+  "workflowToolEmpty.goToStudio": "Aller dans Studio",
+  "workflowToolEmpty.learnMore": "Besoin d’aide ? Découvrez comment publier un workflow comme outil →",
+  "workflowToolEmpty.step1": "Créez un workflow dans Studio",
+  "workflowToolEmpty.step2": "Cliquez sur « Workflow as Tool » dans le menu de publication pour le rendre disponible comme outil",
+  "workflowToolEmpty.step3": "Revenez ici pour le gérer et le réutiliser",
+  "workflowToolEmpty.title": "Aucun workflow publié comme outil pour le moment"
 }

@@ -1,37 +1,14 @@
 'use client'
-import type { RemixiconComponentType } from '@remixicon/react'
 import type { FC } from 'react'
-import type { EventEmitterValue } from '@/context/event-emitter'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiEqualizer2Fill,
-  RiEqualizer2Line,
-  RiFileTextFill,
-  RiFileTextLine,
-  RiFocus2Fill,
-  RiFocus2Line,
-  RiUserSettingsFill,
-  RiUserSettingsLine,
-} from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { useLocalStorage } from 'foxact/use-local-storage'
 import * as React from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppSideBar from '@/app/components/app-sidebar'
-import { useStore } from '@/app/components/app/store'
-import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/vender/pipeline'
 import Loading from '@/app/components/base/loading'
-import ExtraInfo from '@/app/components/datasets/extra-info'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import DatasetDetailContext from '@/context/dataset-detail'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { usePathname, useRouter } from '@/next/navigation'
-import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
-import { getDatasetACLCapabilities } from '@/utils/permission'
+import { useRouter } from '@/next/navigation'
+import { useDatasetDetail } from '@/service/knowledge/use-dataset'
 
 type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -58,159 +35,16 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   } = props
   const { t } = useTranslation()
   const router = useRouter()
-  const pathname = usePathname()
-  const hideSideBar = pathname.endsWith('documents/create') || pathname.endsWith('documents/create-from-pipeline')
-  const isPipelineCanvas = pathname.endsWith('/pipeline')
-  const [storedHideHeader] = useLocalStorage<boolean>('workflow-canvas-maximize', false)
-  const [storedAppSidebarMode] = useLocalStorage<string>('app-detail-collapse-or-expand', 'expand', { raw: true })
-  const [eventHideHeader, setEventHideHeader] = useState<boolean | null>(null)
-  const hideHeader = eventHideHeader ?? storedHideHeader
-  const { eventEmitter } = useEventEmitterContextContext()
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-
-  eventEmitter?.useSubscription((value: EventEmitterValue) => {
-    if (typeof value === 'object' && value.type === 'workflow-canvas-maximize' && typeof value.payload === 'boolean')
-      setEventHideHeader(value.payload)
-  })
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
 
   const { data: datasetRes, error, refetch: mutateDatasetRes } = useDatasetDetail(datasetId)
   const shouldRedirect = shouldRedirectToDatasetList(error)
-  const datasetCreatorPermissionOptions = useMemo(
-    () => ({
-      currentUserId,
-      resourceCreatedBy: datasetRes?.created_by,
-      workspacePermissionKeys,
-    }),
-    [datasetRes?.created_by, currentUserId, workspacePermissionKeys],
-  )
-  const datasetACLCapabilities = useMemo(
-    () => getDatasetACLCapabilities(datasetRes?.permission_keys, datasetCreatorPermissionOptions),
-    [datasetCreatorPermissionOptions, datasetRes?.permission_keys],
-  )
-  const canAccessConfig = systemFeatures.rbac_enabled && datasetACLCapabilities.canAccessConfig
-
-  const { data: relatedApps } = useDatasetRelatedApps(datasetId, { enabled: !!datasetRes && !shouldRedirect })
-
-  const isButtonDisabledWithPipeline = useMemo(() => {
-    if (!datasetRes)
-      return true
-    if (datasetRes.provider === 'external')
-      return false
-    if (datasetRes.runtime_mode === 'general')
-      return false
-    return !datasetRes.is_published
-  }, [datasetRes])
-
-  const navigation = useMemo(() => {
-    const baseNavigation = [
-      {
-        name: t('datasetMenus.hitTesting', { ns: 'common' }),
-        href: `/datasets/${datasetId}/hitTesting`,
-        icon: RiFocus2Line,
-        selectedIcon: RiFocus2Fill,
-        disabled: isButtonDisabledWithPipeline,
-        visible: datasetACLCapabilities.canRetrievalRecall,
-      },
-      {
-        name: t('datasetMenus.settings', { ns: 'common' }),
-        href: `/datasets/${datasetId}/settings`,
-        icon: RiEqualizer2Line,
-        selectedIcon: RiEqualizer2Fill,
-        disabled: false,
-        visible: datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit,
-      },
-      {
-        name: t('settings.resourceAccess', { ns: 'common' }),
-        href: `/datasets/${datasetId}/access-config`,
-        icon: RiUserSettingsLine,
-        selectedIcon: RiUserSettingsFill,
-        disabled: false,
-        visible: canAccessConfig,
-      },
-    ]
-
-    if (datasetRes?.provider !== 'external') {
-      baseNavigation.unshift({
-        name: t('datasetMenus.pipeline', { ns: 'common' }),
-        href: `/datasets/${datasetId}/pipeline`,
-        icon: PipelineLine as RemixiconComponentType,
-        selectedIcon: PipelineFill as RemixiconComponentType,
-        disabled: false,
-        visible: datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit,
-      })
-      baseNavigation.unshift({
-        name: t('datasetMenus.documents', { ns: 'common' }),
-        href: `/datasets/${datasetId}/documents`,
-        icon: RiFileTextLine,
-        selectedIcon: RiFileTextFill,
-        disabled: isButtonDisabledWithPipeline,
-        visible: datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit || datasetACLCapabilities.canUse,
-      })
-    }
-
-    return baseNavigation.filter(item => item.visible).map(({ visible, ...item }) => item)
-  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider, datasetACLCapabilities, canAccessConfig])
-
-  const fallbackPath = useMemo(() => {
-    if (datasetRes?.provider !== 'external' && (datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit || datasetACLCapabilities.canUse))
-      return `/datasets/${datasetId}/documents`
-    if (datasetACLCapabilities.canRetrievalRecall)
-      return `/datasets/${datasetId}/hitTesting`
-    if (datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit)
-      return `/datasets/${datasetId}/settings`
-    if (canAccessConfig)
-      return `/datasets/${datasetId}/access-config`
-    return '/datasets'
-  }, [datasetACLCapabilities, canAccessConfig, datasetId, datasetRes?.provider])
 
   useDocumentTitle(datasetRes?.name || t('menus.datasets', { ns: 'common' }))
-
-  const setAppSidebarExpand = useStore(state => state.setAppSidebarExpand)
-
-  useEffect(() => {
-    const mode = isMobile ? 'collapse' : 'expand'
-    setAppSidebarExpand(isMobile ? mode : storedAppSidebarMode)
-  }, [isMobile, setAppSidebarExpand, storedAppSidebarMode])
 
   useEffect(() => {
     if (shouldRedirect)
       router.replace('/datasets')
   }, [router, shouldRedirect])
-
-  useEffect(() => {
-    if (!datasetRes || shouldRedirect)
-      return
-
-    const isDocumentSettingsPath = /\/documents\/[^/]+\/settings$/.test(pathname)
-    const isDatasetSettingsPath = pathname.endsWith('/settings') && !isDocumentSettingsPath
-
-    if (!datasetACLCapabilities.canRetrievalRecall && pathname.endsWith('/hitTesting')) {
-      router.replace(fallbackPath)
-      return
-    }
-    if (isDocumentSettingsPath && !datasetACLCapabilities.canEdit) {
-      router.replace(fallbackPath)
-      return
-    }
-    if (isDatasetSettingsPath && !(datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit)) {
-      router.replace(fallbackPath)
-      return
-    }
-    if (!(datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit) && pathname.endsWith('/pipeline')) {
-      router.replace(fallbackPath)
-      return
-    }
-    if (!datasetACLCapabilities.canUse && (pathname.endsWith('/documents/create') || pathname.endsWith('/documents/create-from-pipeline'))) {
-      router.replace(fallbackPath)
-      return
-    }
-    if (!canAccessConfig && pathname.endsWith('/access-config'))
-      router.replace(fallbackPath)
-  }, [datasetACLCapabilities, canAccessConfig, datasetRes, fallbackPath, pathname, router, shouldRedirect])
 
   if (!datasetRes && !error)
     return <Loading type="app" />
@@ -222,7 +56,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     <div
       className={cn(
         'flex grow overflow-hidden',
-        hideHeader && isPipelineCanvas ? '' : 'rounded-t-2xl',
+        'rounded-t-2xl',
       )}
     >
       <DatasetDetailContext.Provider value={{
@@ -231,17 +65,6 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         mutateDatasetRes,
       }}
       >
-        {!hideSideBar && (
-          <AppSideBar
-            navigation={navigation}
-            extraInfo={
-              datasetACLCapabilities.canEdit
-                ? mode => <ExtraInfo relatedApps={relatedApps} expand={mode === 'expand'} documentCount={datasetRes?.document_count} />
-                : undefined
-            }
-            iconType="dataset"
-          />
-        )}
         <div className="grow overflow-hidden bg-background-default-subtle">{children}</div>
       </DatasetDetailContext.Provider>
     </div>

@@ -13,13 +13,9 @@ vi.mock('@/i18n-config/language', () => ({
 }))
 
 const mockIsCurrentWorkspaceManager = vi.fn(() => true)
-let mockWorkspacePermissionKeys: string[] = ['tool.manage', 'credential.manage']
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
-  }),
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -165,8 +161,6 @@ describe('ProviderDetail', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCurrentWorkspaceManager.mockReturnValue(true)
-    mockWorkspacePermissionKeys = ['tool.manage', 'credential.manage']
     mockFetchBuiltInToolList.mockResolvedValue([
       { name: 'tool-1', label: { en_US: 'Tool 1' }, description: { en_US: 'desc' }, parameters: [], labels: [], author: '', output_schema: {} },
       { name: 'tool-2', label: { en_US: 'Tool 2' }, description: { en_US: 'desc' }, parameters: [], labels: [], author: '', output_schema: {} },
@@ -180,6 +174,32 @@ describe('ProviderDetail', () => {
   })
 
   describe('Rendering', () => {
+    it('uses the full-height right drawer layout from the design', () => {
+      render(
+        <ProviderDetail
+          collection={createMockCollection()}
+          onHide={mockOnHide}
+          onRefreshData={mockOnRefreshData}
+        />,
+      )
+
+      const dialog = screen.getByRole('dialog')
+
+      expect(dialog).toHaveClass(
+        'data-[swipe-direction=right]:top-2',
+        'data-[swipe-direction=right]:right-2',
+        'data-[swipe-direction=right]:bottom-2',
+        'data-[swipe-direction=right]:h-[calc(100dvh-16px)]',
+        'data-[swipe-direction=right]:w-[400px]',
+        'data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]',
+      )
+      expect(dialog).not.toHaveClass(
+        'data-[swipe-direction=right]:top-16',
+        'data-[swipe-direction=right]:w-[420px]',
+        'data-[swipe-direction=right]:max-w-[420px]',
+      )
+    })
+
     it('renders title, org info and description for a builtIn collection', async () => {
       render(
         <ProviderDetail
@@ -278,8 +298,7 @@ describe('ProviderDetail', () => {
       })
     })
 
-    it('hides custom edit button when user lacks tool.manage', async () => {
-      mockWorkspacePermissionKeys = []
+    it('shows custom API author copy below the title', async () => {
       mockFetchCustomCollection.mockResolvedValue({
         credentials: { auth_type: 'none' },
       })
@@ -290,10 +309,26 @@ describe('ProviderDetail', () => {
           onRefreshData={mockOnRefreshData}
         />,
       )
-      await waitFor(() => {
-        expect(mockFetchCustomCollection).toHaveBeenCalledWith('test-collection')
+
+      expect(await screen.findByText('tools.author Test Author')).toBeInTheDocument()
+      expect(screen.queryByTestId('org-info')).not.toBeInTheDocument()
+    })
+
+    it('uses the equalizer icon for custom API configure action', async () => {
+      mockFetchCustomCollection.mockResolvedValue({
+        credentials: { auth_type: 'none' },
       })
-      expect(screen.queryByText('tools.createTool.editAction')).not.toBeInTheDocument()
+      render(
+        <ProviderDetail
+          collection={createMockCollection({ type: CollectionType.custom })}
+          onHide={mockOnHide}
+          onRefreshData={mockOnRefreshData}
+        />,
+      )
+
+      const configureButton = (await screen.findByText('tools.createTool.editAction')).closest('button')!
+
+      expect(configureButton.querySelector('.i-ri-equalizer-2-line')).toBeInTheDocument()
     })
   })
 
@@ -315,8 +350,7 @@ describe('ProviderDetail', () => {
       })
     })
 
-    it('hides workflow edit button when user lacks tool.manage', async () => {
-      mockWorkspacePermissionKeys = []
+    it('shows workflow author copy below the title', async () => {
       render(
         <ProviderDetail
           collection={createMockCollection({ type: CollectionType.workflow })}
@@ -324,11 +358,42 @@ describe('ProviderDetail', () => {
           onRefreshData={mockOnRefreshData}
         />,
       )
-      await waitFor(() => {
-        expect(mockFetchWorkflowToolDetail).toHaveBeenCalledWith('test-id')
-      })
-      expect(screen.getByText('tools.openInStudio'))!.toBeInTheDocument()
-      expect(screen.queryByText('tools.createTool.editAction')).not.toBeInTheDocument()
+
+      expect(await screen.findByText('tools.author Test Author')).toBeInTheDocument()
+      expect(screen.queryByTestId('org-info')).not.toBeInTheDocument()
+    })
+
+    it('uses the designed workflow action button styles', async () => {
+      render(
+        <ProviderDetail
+          collection={createMockCollection({ type: CollectionType.workflow })}
+          onHide={mockOnHide}
+          onRefreshData={mockOnRefreshData}
+        />,
+      )
+
+      const openInStudio = (await screen.findByText('tools.openInStudio')).closest('a')!
+      const configureButton = (await screen.findByText('tools.createTool.editAction')).closest('button')!
+
+      expect(openInStudio).toHaveAttribute('href', '/app/wf-123/workflow')
+      expect(openInStudio).toHaveClass('h-8', 'min-w-0', 'flex-1', 'rounded-lg', 'px-3', 'py-2')
+      expect(openInStudio.querySelector('.i-ri-arrow-right-up-line')).toBeInTheDocument()
+      expect(configureButton).toHaveClass('h-8', 'min-w-0', 'flex-1', 'rounded-lg', 'px-3', 'py-2')
+      expect(configureButton.querySelector('.i-ri-equalizer-2-line')).toBeInTheDocument()
+    })
+
+    it('uses a full-width divider below workflow actions', async () => {
+      render(
+        <ProviderDetail
+          collection={createMockCollection({ type: CollectionType.workflow })}
+          onHide={mockOnHide}
+          onRefreshData={mockOnRefreshData}
+        />,
+      )
+
+      const actions = (await screen.findByText('tools.openInStudio')).closest('.border-b-\\[0\\.5px\\]')!
+
+      expect(actions).toHaveClass('-mx-4', 'px-4', 'border-b-[0.5px]', 'border-divider-subtle')
     })
   })
 
@@ -414,36 +479,6 @@ describe('ProviderDetail', () => {
   })
 
   describe('BuiltIn Auth Flow', () => {
-    it('opens ConfigCredential when user has credential.manage but is not workspace manager', async () => {
-      mockIsCurrentWorkspaceManager.mockReturnValue(false)
-      mockWorkspacePermissionKeys = ['credential.manage']
-      render(
-        <ProviderDetail
-          collection={createMockCollection({ allow_delete: true, is_team_authorization: false })}
-          onHide={mockOnHide}
-          onRefreshData={mockOnRefreshData}
-        />,
-      )
-      await waitFor(() => {
-        expect(screen.getByText('tools.auth.unauthorized'))!.toBeInTheDocument()
-      })
-      fireEvent.click(screen.getByText('tools.auth.unauthorized'))
-      expect(screen.getByTestId('config-credential'))!.toBeInTheDocument()
-    })
-
-    it('keeps credential setup disabled when user lacks credential.manage', async () => {
-      mockWorkspacePermissionKeys = ['tool.manage']
-      render(
-        <ProviderDetail
-          collection={createMockCollection({ allow_delete: true, is_team_authorization: false })}
-          onHide={mockOnHide}
-          onRefreshData={mockOnRefreshData}
-        />,
-      )
-      const setupButton = await screen.findByRole('button', { name: 'tools.auth.unauthorized' })
-      expect(setupButton).toBeDisabled()
-    })
-
     it('opens ConfigCredential when clicking auth button for builtIn type', async () => {
       render(
         <ProviderDetail
@@ -502,23 +537,6 @@ describe('ProviderDetail', () => {
     })
 
     it('opens auth modal from Authorized button for builtIn type', async () => {
-      render(
-        <ProviderDetail
-          collection={createMockCollection({ allow_delete: true, is_team_authorization: true })}
-          onHide={mockOnHide}
-          onRefreshData={mockOnRefreshData}
-        />,
-      )
-      await waitFor(() => {
-        expect(screen.getByText('tools.auth.authorized'))!.toBeInTheDocument()
-      })
-      fireEvent.click(screen.getByText('tools.auth.authorized'))
-      expect(screen.getByTestId('config-credential'))!.toBeInTheDocument()
-    })
-
-    it('opens auth modal from Authorized button when user has credential.manage but is not workspace manager', async () => {
-      mockIsCurrentWorkspaceManager.mockReturnValue(false)
-      mockWorkspacePermissionKeys = ['credential.manage']
       render(
         <ProviderDetail
           collection={createMockCollection({ allow_delete: true, is_team_authorization: true })}

@@ -5,6 +5,7 @@ def init_app(app: DifyApp):
     from commands import (
         add_qdrant_index,
         archive_workflow_runs,
+        backfill_plugin_auto_upgrade,
         clean_expired_messages,
         clean_workflow_runs,
         cleanup_orphaned_draft_variables,
@@ -55,6 +56,7 @@ def init_app(app: DifyApp):
         fix_app_site_missing,
         migrate_data_for_plugin,
         migrate_member_roles_to_rbac,
+        backfill_plugin_auto_upgrade,
         extract_plugins,
         extract_unique_plugins,
         install_plugins,

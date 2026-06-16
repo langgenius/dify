@@ -73,7 +73,7 @@
   "title": "로그",
   "triggerBy.appRun": "웹앱",
   "triggerBy.debugging": "디버깅",
-  "triggerBy.plugin": "플러그인",
+  "triggerBy.plugin": "통합",
   "triggerBy.ragPipelineDebugging": "RAG 디버깅",
   "triggerBy.ragPipelineRun": "RAG 파이프라인",
   "triggerBy.schedule": "일정",

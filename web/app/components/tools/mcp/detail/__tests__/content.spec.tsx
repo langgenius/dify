@@ -107,11 +107,14 @@ vi.mock('../tool-item', () => ({
   ),
 }))
 
-let mockWorkspacePermissionKeys: string[] = ['mcp.manage']
+// Mutable workspace manager state
+let mockIsCurrentWorkspaceManager = true
 
+// Mock the app context
 vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  useAppContext: () => ({
+    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager,
+    isCurrentWorkspaceEditor: true,
   }),
 }))
 
@@ -193,7 +196,7 @@ describe('MCPDetailContent', () => {
     mockIsFetching = false
     mockIsUpdating = false
     mockIsAuthorizing = false
-    mockWorkspacePermissionKeys = ['mcp.manage']
+    mockIsCurrentWorkspaceManager = true
   })
 
   describe('Rendering', () => {
@@ -226,15 +229,16 @@ describe('MCPDetailContent', () => {
 
     it('should render operation dropdown', () => {
       render(<MCPDetailContent {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByTestId('operation-dropdown'))!.toBeInTheDocument()
+      expect(screen.getByTestId('operation-dropdown')).toBeInTheDocument()
     })
 
-    it('should render nothing when user lacks mcp.manage', () => {
-      mockWorkspacePermissionKeys = []
+    it('should not render operation dropdown for non-workspace managers', () => {
+      mockIsCurrentWorkspaceManager = false
 
-      const { container } = render(<MCPDetailContent {...defaultProps} />, { wrapper: createWrapper() })
+      render(<MCPDetailContent {...defaultProps} />, { wrapper: createWrapper() })
 
-      expect(container.firstChild).toBeNull()
+      expect(screen.queryByTestId('operation-dropdown')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
     })
   })
 
@@ -462,15 +466,16 @@ describe('MCPDetailContent', () => {
       })
     })
 
-    it('should render nothing when user lacks mcp.manage', () => {
-      mockWorkspacePermissionKeys = []
+    it('should disable authorize button when not workspace manager', () => {
+      mockIsCurrentWorkspaceManager = false
       const detail = createMockDetail({ is_team_authorization: false })
-      const { container } = render(
+      render(
         <MCPDetailContent {...defaultProps} detail={detail} />,
         { wrapper: createWrapper() },
       )
 
-      expect(container.firstChild).toBeNull()
+      const authorizeBtn = screen.getByText('tools.mcp.authorize')
+      expect(authorizeBtn.closest('button'))!.toBeDisabled()
     })
   })
 
@@ -752,19 +757,21 @@ describe('MCPDetailContent', () => {
       })
     })
 
-    it('should render nothing without mcp.manage', async () => {
-      mockWorkspacePermissionKeys = []
+    it('should not call handleUpdateTools if not workspace manager', async () => {
+      mockIsCurrentWorkspaceManager = false
       mockAuthorizeMcp.mockResolvedValue({ authorization_url: 'https://oauth.example.com' })
       const detail = createMockDetail({ is_team_authorization: false })
 
-      const { container } = render(
+      // OAuth callback should not trigger update for non-manager
+      // The button is disabled, so we simulate a scenario where OAuth was already started
+      render(
         <MCPDetailContent {...defaultProps} detail={detail} />,
         { wrapper: createWrapper() },
       )
 
-      expect(container.firstChild).toBeNull()
-      expect(mockAuthorizeMcp).not.toHaveBeenCalled()
-      expect(mockUpdateTools).not.toHaveBeenCalled()
+      // Button should be disabled
+      const authorizeBtn = screen.getByText('tools.mcp.authorize')
+      expect(authorizeBtn.closest('button'))!.toBeDisabled()
     })
   })
 
@@ -795,15 +802,16 @@ describe('MCPDetailContent', () => {
       })
     })
 
-    it('should render nothing without mcp.manage', () => {
-      mockWorkspacePermissionKeys = []
+    it('should disable authorized button when not workspace manager', () => {
+      mockIsCurrentWorkspaceManager = false
       const detail = createMockDetail({ is_team_authorization: true })
-      const { container } = render(
+      render(
         <MCPDetailContent {...defaultProps} detail={detail} />,
         { wrapper: createWrapper() },
       )
 
-      expect(container.firstChild).toBeNull()
+      const authorizedBtn = screen.getByText('tools.auth.authorized')
+      expect(authorizedBtn.closest('button'))!.toBeDisabled()
     })
   })
 
