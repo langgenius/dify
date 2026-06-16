@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
+import { expect } from 'storybook/test'
 import {
   Slider,
   SliderControl,
@@ -74,6 +75,15 @@ export const Default: Story = {
     min: 0,
     max: 100,
     step: 1,
+  },
+  play: async ({ canvas, userEvent }) => {
+    const slider = canvas.getByRole('slider', { name: 'Demo slider' })
+
+    slider.focus()
+    await userEvent.keyboard('{ArrowRight}')
+
+    await expect(slider).toHaveAttribute('aria-valuenow', '51')
+    await expect(canvas.getByText('51')).toBeVisible()
   },
 }
 

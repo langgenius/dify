@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
+import { expect, waitFor, within } from 'storybook/test'
 import {
   Select,
   SelectContent,
@@ -19,6 +20,8 @@ const triggerWidth = 'w-64'
 const cityItems = [
   { label: 'Seattle', value: 'seattle' },
   { label: 'New York', value: 'new-york' },
+  { label: 'Tokyo', value: 'tokyo' },
+  { label: 'Paris', value: 'paris' },
 ]
 
 const meta = {
@@ -41,11 +44,11 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {
   render: () => (
     <div className={triggerWidth}>
-      <Select defaultValue="seattle">
+      <Select items={cityItems} defaultValue="seattle">
         <SelectTrigger aria-label="City">
           <SelectValue placeholder="Select a city" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent listProps={{ 'aria-label': 'City options' }}>
           <SelectItem value="seattle">
             <SelectItemText>Seattle</SelectItemText>
             <SelectItemIndicator />
@@ -66,6 +69,27 @@ export const Default: Story = {
       </Select>
     </div>
   ),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const trigger = canvas.getByRole('combobox', { name: 'City' })
+    const body = within(canvasElement.ownerDocument.body)
+
+    await expect(trigger).toHaveTextContent('Seattle')
+
+    trigger.focus()
+    await userEvent.keyboard('{ArrowDown}')
+
+    await waitFor(async () => {
+      await expect(body.getByRole('option', { name: 'Tokyo' })).toBeVisible()
+    })
+
+    await userEvent.keyboard('{ArrowDown}{ArrowDown}{Enter}')
+    await expect(trigger).toHaveTextContent('Tokyo')
+
+    await userEvent.keyboard('{Escape}')
+    await waitFor(async () => {
+      await expect(body.queryByRole('listbox', { name: 'City options' })).not.toBeInTheDocument()
+    })
+  },
 }
 
 export const WithVisibleLabel: Story = {
