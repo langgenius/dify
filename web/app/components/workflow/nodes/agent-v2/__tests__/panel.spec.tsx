@@ -191,10 +191,15 @@ describe('agent/panel', () => {
     expect(screen.getByRole('button', { name: 'workflow.nodes.agent.task.tooltip' })).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'workflow.nodes.agent.task.label' })).toHaveValue('')
     expect(screen.getByRole('button', { name: 'workflow.nodes.agent.advancedSetting' })).toBeInTheDocument()
-    expect(screen.getByText('text:String:workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
-    expect(screen.queryByText('usage:object:workflow.nodes.agent.outputVars.usage')).not.toBeInTheDocument()
-    expect(screen.getByText('files:Array[File]:workflow.nodes.agent.outputVars.files.title')).toBeInTheDocument()
-    expect(screen.getByText('json:Object:workflow.nodes.agent.outputVars.json')).toBeInTheDocument()
+    expect(screen.getByText('text')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
+    expect(screen.queryByText('usage')).not.toBeInTheDocument()
+    expect(screen.getByText('files')).toBeInTheDocument()
+    expect(screen.getByText('array[file]')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.agent.outputVars.files.title')).toBeInTheDocument()
+    expect(screen.getByText('json')).toBeInTheDocument()
+    expect(screen.getByText('object')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' })).toBeInTheDocument()
   })
 
   it('opens and closes the roster agent layered panel', () => {
@@ -231,7 +236,8 @@ describe('agent/panel', () => {
     expect(screen.getByText('workflow.nodes.agent.roster.label')).toBeInTheDocument()
     expect(screen.getByText(/^workflow\.errorMsg\.fieldRequired/)).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.agent.task.label')).toBeInTheDocument()
-    expect(screen.getByText('text:String:workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
+    expect(screen.getByText('text')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
   })
 
   it('updates roster agent binding from the selector', () => {
@@ -362,8 +368,70 @@ describe('agent/panel', () => {
       />,
     )
 
-    expect(screen.getByText('summary:String:Short summary')).toBeInTheDocument()
-    expect(screen.getByText('attachments:Array[File]:Generated files')).toBeInTheDocument()
-    expect(screen.queryByText('text:String:workflow.nodes.agent.outputVars.text')).not.toBeInTheDocument()
+    expect(screen.getByText('summary')).toBeInTheDocument()
+    expect(screen.getByText('string')).toBeInTheDocument()
+    expect(screen.getByText('Short summary')).toBeInTheDocument()
+    expect(screen.getByText('attachments')).toBeInTheDocument()
+    expect(screen.getByText('array[file]')).toBeInTheDocument()
+    expect(screen.getByText('Generated files')).toBeInTheDocument()
+    expect(screen.queryByText('workflow.nodes.agent.outputVars.text')).not.toBeInTheDocument()
+  })
+
+  it('adds a declared output to workflow draft node data', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData()}
+        panelProps={panelProps}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' }), {
+      target: {
+        value: 'summary',
+      },
+    })
+    fireEvent.change(screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.descriptionLabel' }), {
+      target: {
+        value: 'Short summary',
+      },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.confirm' }))
+
+    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
+      {
+        id: 'agent-node',
+        data: expect.objectContaining({
+          agent_declared_outputs: expect.arrayContaining([
+            expect.objectContaining({
+              name: 'summary',
+              type: 'string',
+              required: false,
+              description: 'Short summary',
+            }),
+          ]),
+        }),
+      },
+      expect.objectContaining({
+        sync: true,
+        notRefreshWhenSyncError: true,
+      }),
+    )
+  })
+
+  it('does not show name validation error before the user enters a name', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData()}
+        panelProps={panelProps}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }))
+
+    expect(screen.queryByText('workflow.nodes.agent.outputVars.nameInvalid')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.confirm' })).toBeDisabled()
   })
 })

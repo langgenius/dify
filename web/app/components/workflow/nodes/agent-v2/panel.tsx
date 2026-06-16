@@ -3,39 +3,19 @@ import type { NodePanelProps } from '../../types'
 import type { AgentV2NodeType } from './types'
 import { produce } from 'immer'
 import { useCallback, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
-import OutputVars, { VarItem } from '../_base/components/output-vars'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import { AgentAdvancedSettings } from './components/agent-advanced-settings'
+import { AgentOutputVariables } from './components/agent-output-variables'
 import { AgentRosterField } from './components/agent-roster-field'
 import { AgentTaskField } from './components/agent-task-field'
 import { useAgentRosterDetail } from './hooks'
-import { getAgentV2DeclaredOutputs, getDeclaredOutputTypeLabel } from './output-variables'
-
-const i18nPrefix = 'nodes.agent'
-
-function getOutputDescription(
-  output: ReturnType<typeof getAgentV2DeclaredOutputs>[number],
-  t: ReturnType<typeof useTranslation>['t'],
-) {
-  if (output.name === 'text')
-    return t(`${i18nPrefix}.outputVars.text`, { ns: 'workflow' })
-
-  if (output.name === 'files')
-    return t(`${i18nPrefix}.outputVars.files.title`, { ns: 'workflow' })
-
-  if (output.name === 'json')
-    return t(`${i18nPrefix}.outputVars.json`, { ns: 'workflow' })
-
-  return output.description || ''
-}
+import { getAgentV2DeclaredOutputs } from './output-variables'
 
 export function AgentV2Panel({
   id,
   data,
 }: NodePanelProps<AgentV2NodeType>) {
-  const { t } = useTranslation()
   const { inputs, setInputs } = useNodeCrud<AgentV2NodeType>(id, data)
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
   const drawerPortalContainerRef = useRef<HTMLDivElement>(null)
@@ -70,6 +50,22 @@ export function AgentV2Panel({
     )
   }, [handleNodeDataUpdateWithSyncDraft, id, inputs])
 
+  const handleDeclaredOutputsChange = useCallback((outputs: ReturnType<typeof getAgentV2DeclaredOutputs>) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.agent_declared_outputs = outputs
+    })
+    handleNodeDataUpdateWithSyncDraft(
+      {
+        id,
+        data: newInputs,
+      },
+      {
+        sync: true,
+        notRefreshWhenSyncError: true,
+      },
+    )
+  }, [handleNodeDataUpdateWithSyncDraft, id, inputs])
+
   return (
     <div ref={drawerPortalContainerRef} className="pt-2">
       <div className="border-b border-divider-subtle">
@@ -89,16 +85,10 @@ export function AgentV2Panel({
       </div>
       <AgentAdvancedSettings />
       <div>
-        <OutputVars>
-          {declaredOutputs.map(output => (
-            <VarItem
-              key={output.name}
-              name={output.name}
-              type={getDeclaredOutputTypeLabel(output)}
-              description={getOutputDescription(output, t)}
-            />
-          ))}
-        </OutputVars>
+        <AgentOutputVariables
+          outputs={declaredOutputs}
+          onChange={handleDeclaredOutputsChange}
+        />
       </div>
     </div>
   )
