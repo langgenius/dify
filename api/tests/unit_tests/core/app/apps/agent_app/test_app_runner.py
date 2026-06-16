@@ -293,3 +293,8 @@ def test_submitted_form_resumes_turn_with_deferred_tool_results(monkeypatch):
     assert client.request is not None
     assert client.request.deferred_tool_results is not None
     assert set(client.request.deferred_tool_results.calls) == {"call-1"}
+    # ENG-638: the resume composition must keep the user-prompt layer so it
+    # matches the suspended snapshot's layer names (the agent backend rejects a
+    # mismatch). A resume therefore re-sends a non-blank query, never blank.
+    layer_names = [layer.name for layer in client.request.composition.layers]
+    assert "agent_app_user_prompt" in layer_names

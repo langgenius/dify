@@ -188,15 +188,30 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         model_conf = ModelConfigConverter.convert(app_config)
         trace_manager = TraceQueueManager(app_model.id, user.id if isinstance(user, Account) else user.session_id)
 
+        # ENG-638: the agent backend requires the resume composition's layer
+        # names to match the suspended snapshot, which includes the per-turn
+        # user-prompt layer. So re-send the original user message (the paused
+        # turn's query); the continuation is driven by deferred_tool_results and
+        # the restored snapshot, not by re-processing this prompt. A blank prompt
+        # would drop the user-prompt layer and fail the snapshot match.
+        paused_message = db.session.scalar(
+            select(Message)
+            .where(Message.conversation_id == conversation.id, Message.query != "")
+            .order_by(Message.created_at.desc())
+            .limit(1)
+        )
+        resume_query = paused_message.query if paused_message and paused_message.query else "(resumed)"
+
         application_generate_entity = AgentAppGenerateEntity(
             task_id=str(uuid.uuid4()),
             app_config=app_config,
             model_conf=model_conf,
             conversation_id=conversation.id,
-            # A resume carries no new user inputs/query; the human's answer is the
+            # A resume carries no new user inputs; the human's answer is the
             # submitted form, threaded in by the runner as deferred_tool_results.
+            # The query re-sends the paused turn's message (see above).
             inputs={},
-            query="",
+            query=resume_query,
             files=[],
             parent_message_id=UUID_NIL,
             user_id=user.id,
