@@ -94,6 +94,7 @@ function AgentChatFeaturesPanelContent({
       disabled={!!disabled}
       inWorkflow={false}
       showModeration={false}
+      showAnnotationReply={false}
       drawerClassName="bg-components-panel-bg! data-[swipe-direction=right]:top-1! data-[swipe-direction=right]:right-0! data-[swipe-direction=right]:bottom-1! data-[swipe-direction=right]:rounded-r-none!"
       title={t('agentDetail.configure.chatFeatures.title')}
       description={t('agentDetail.configure.chatFeatures.description')}

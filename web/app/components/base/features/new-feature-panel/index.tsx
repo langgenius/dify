@@ -28,6 +28,7 @@ type Props = Readonly<{
   inWorkflow?: boolean
   showFileUpload?: boolean
   showModeration?: boolean
+  showAnnotationReply?: boolean
   promptVariables?: PromptVariable[]
   workflowVariables?: InputVar[]
   onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
@@ -45,6 +46,7 @@ const NewFeaturePanel = ({
   inWorkflow = true,
   showFileUpload = true,
   showModeration = true,
+  showAnnotationReply = true,
   promptVariables,
   workflowVariables,
   onAutoAddPromptVariable,
@@ -104,7 +106,7 @@ const NewFeaturePanel = ({
             <Citation disabled={disabled} onChange={onChange} />
           )}
           {showModeration && (isChatMode || !inWorkflow) && <Moderation disabled={disabled} onChange={onChange} />}
-          {!inWorkflow && isChatMode && (
+          {showAnnotationReply && !inWorkflow && isChatMode && (
             <AnnotationReply disabled={disabled} onChange={onChange} />
           )}
         </div>

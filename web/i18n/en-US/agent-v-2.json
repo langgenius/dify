@@ -47,6 +47,7 @@
   "agentDetail.configure.advancedSettings.description": "For power users. Env vars, sandbox & memory.",
   "agentDetail.configure.advancedSettings.envEditor.add": "Add environment variable",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "Delete {{key}}",
+  "agentDetail.configure.advancedSettings.envEditor.hideValue": "Hide {{key}} value",
   "agentDetail.configure.advancedSettings.envEditor.importEnv": "Import .env",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.mac": "To show hidden .env files, press Command + Shift + . in the file picker.",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.other": "If your .env file is hidden, enable hidden files in your system file picker.",
