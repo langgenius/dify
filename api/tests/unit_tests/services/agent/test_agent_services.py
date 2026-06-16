@@ -29,6 +29,7 @@ from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import InvalidComposerConfigError
 from services.agent.roster_service import AgentRosterService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
+from services.app_service import AppListParams, AppService
 from services.entities.agent_entities import AgentSoulConfig, ComposerSavePayload, ComposerSaveStrategy, ComposerVariant
 
 
@@ -769,7 +770,7 @@ def test_roster_update_archive_versions_and_detail(monkeypatch):
         created_by="account-1",
         created_at=revision_created_at,
     )
-    fake_session = FakeSession(scalars=[[listed_version], [revision]])
+    fake_session = FakeSession(scalar=["visible-revision"], scalars=[[listed_version], [revision]])
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -825,6 +826,7 @@ def test_roster_create_detail_and_lookup_helpers(monkeypatch):
     payload = roster_service.RosterAgentCreatePayload(
         name="Analyst",
         description="desc",
+        role="Research assistant",
         icon_type="emoji",
         icon="A",
         icon_background="#fff",
@@ -838,6 +840,7 @@ def test_roster_create_detail_and_lookup_helpers(monkeypatch):
         account_id="account-1",
         app_id="app-1",
         name="Backing Agent",
+        role="Support agent",
     )
     found_agent = service._get_agent(tenant_id="tenant-1", agent_id="agent-1")
     with pytest.raises(roster_service.AgentNotFoundError):
@@ -849,14 +852,40 @@ def test_roster_create_detail_and_lookup_helpers(monkeypatch):
     assert service._load_versions_by_id([]) == {}
 
     assert created.name == "Analyst"
+    assert created.role == "Research assistant"
     assert created.source == AgentSource.ROSTER
     assert created.active_config_snapshot_id is not None
     assert created.active_config_has_model is False
+    assert backing_agent.role == "Support agent"
     assert backing_agent.active_config_snapshot_id is not None
     assert backing_agent.active_config_has_model is False
     assert found_agent.id == "agent-1"
     assert found_version.id == "version-1"
     assert loaded_versions["version-1"].agent_id == "agent-1"
+
+
+def test_agent_app_visible_versions_exclude_draft_saves():
+    agent_app = Agent(source=AgentSource.AGENT_APP)
+    roster_agent = Agent(source=AgentSource.ROSTER)
+
+    agent_app_operations = AgentRosterService._visible_version_operations(agent_app)
+    roster_operations = AgentRosterService._visible_version_operations(roster_agent)
+
+    assert agent_app_operations == {AgentConfigRevisionOperation.SAVE_NEW_VERSION}
+    assert AgentConfigRevisionOperation.SAVE_CURRENT_VERSION not in agent_app_operations
+    assert AgentConfigRevisionOperation.CREATE_VERSION in roster_operations
+    assert AgentConfigRevisionOperation.SAVE_CURRENT_VERSION not in roster_operations
+
+
+def test_app_list_all_excludes_agent_apps_by_default():
+    filters = AppService._build_app_list_filters(
+        "account-1",
+        "tenant-1",
+        AppListParams(mode="all"),
+    )
+    sql = " ".join(str(filter_) for filter_ in filters)
+
+    assert "apps.mode != :mode_1" in sql
 
 
 def test_validator_dict_helpers_wrap_validation_errors():

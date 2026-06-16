@@ -2,7 +2,7 @@ import json
 import logging
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any, Literal, TypedDict, cast, override
+from typing import Any, Literal, NotRequired, TypedDict, cast, override
 
 import sqlalchemy as sa
 from flask_sqlalchemy.pagination import Pagination
@@ -63,6 +63,7 @@ class CreateAppParams(BaseModel):
     name: str = Field(min_length=1)
     description: str | None = None
     mode: Literal["chat", "agent-chat", "agent", "advanced-chat", "workflow", "completion"]
+    agent_role: str = Field(default="", max_length=255)
     icon_type: str | None = None
     icon: str | None = None
     icon_background: str | None = None
@@ -90,6 +91,8 @@ class AppService:
             filters.append(App.mode == AppMode.AGENT_CHAT)
         elif params.mode == "agent":
             filters.append(App.mode == AppMode.AGENT)
+        elif params.mode == "all":
+            filters.append(App.mode != AppMode.AGENT)
 
         if isinstance(params, AppListParams):
             if params.status:
@@ -412,6 +415,7 @@ class AppService:
                 app_id=app.id,
                 name=params.name,
                 description=params.description or "",
+                role=params.agent_role,
                 icon_type=icon_type,
                 icon=params.icon,
                 icon_background=params.icon_background,
@@ -507,6 +511,7 @@ class AppService:
         icon_background: str
         use_icon_as_answer_icon: bool
         max_active_requests: int
+        role: NotRequired[str | None]
 
     @staticmethod
     def _get_backing_agent_for_update(app: App) -> Agent | None:
@@ -538,6 +543,7 @@ class AppService:
         icon_type: IconType | str | None = None,
         icon: str | None = None,
         icon_background: str | None = None,
+        role: str | None = None,
         account_id: str | None = None,
         updated_at: datetime | None = None,
     ) -> None:
@@ -560,6 +566,8 @@ class AppService:
             agent.icon = icon
         if icon_background is not None:
             agent.icon_background = icon_background
+        if role is not None:
+            agent.role = role
         agent.updated_by = account_id
         if updated_at is not None:
             agent.updated_at = updated_at
@@ -594,6 +602,7 @@ class AppService:
             icon_type=app.icon_type,
             icon=app.icon,
             icon_background=app.icon_background,
+            role=args.get("role"),
             account_id=current_user.id,
             updated_at=app.updated_at,
         )
