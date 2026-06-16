@@ -332,6 +332,52 @@ describe('E2E / error message standards (spec 5.3)', () => {
     expect(envelope.error.server?.code).toBe('invalid_param')
   })
 
+  // ── 5.70i / 5.70j  PR #37285 boundary contract ───────────────────────────
+
+  it('[P1] 5.70i unknown /openapi/v1 route returns canonical 404 ErrorBody without route suggestions', async () => {
+    // PR #37285: ExternalApi._help_on_404 suppresses flask-restx route enumeration.
+    // Previously, an unknown path under /openapi/v1/ returned flask-restx's default
+    // 404 with a "Did you mean /openapi/v1/apps?" suggestion, leaking the route table.
+    // After the fix it must return a canonical ErrorBody and contain no suggestions.
+    const res = await fetch(`${E.host.replace(/\/$/, '')}/openapi/v1/this-path-does-not-exist-e2e`, {
+      headers: { Authorization: `Bearer ${E.token}` },
+      signal: AbortSignal.timeout(8_000),
+    })
+    expect(res.status).toBe(404)
+    const body = await res.json() as Record<string, unknown>
+    // canonical ErrorBody fields must be present
+    expect(typeof body.code, '404 body must have a string code field').toBe('string')
+    expect(body.status, '404 body must have status: 404').toBe(404)
+    // no flask-restx route enumeration in the response
+    const raw = JSON.stringify(body)
+    expect(raw).not.toMatch(/did you mean/i)
+    expect(raw).not.toMatch(/you might want/i)
+  })
+
+  it('[P1] 5.70j device-flow 4xx uses RFC 8628 format, not ErrorBody — zErrorBody parse fails gracefully', async () => {
+    // PR #37285 explicitly excludes RFC 8628 device-flow endpoints from the
+    // ErrorBody contract. This test pins that contract:
+    //   - The device/token endpoint returns RFC 8628 {error: string} on failure,
+    //     not the canonical {code, status, message} shape.
+    //   - When the CLI's classifyResponse encounters this, zErrorBody.safeParse
+    //     returns failure → serverError = undefined → generic status-based message,
+    //     no error.server field, no crash.
+    const res = await fetch(`${E.host.replace(/\/$/, '')}/openapi/v1/oauth/device/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ device_code: 'fake-invalid-device-code-e2e-test', client_id: 'difyctl' }),
+      signal: AbortSignal.timeout(8_000),
+    })
+    // device flow errors are 4xx (400 bad_request or 401 expired_token etc.)
+    expect(res.status).toBeGreaterThanOrEqual(400)
+    expect(res.status).toBeLessThan(500)
+    const body = await res.json() as Record<string, unknown>
+    // RFC 8628 shape: has 'error' string, must NOT have ErrorBody 'code'/'status' pair
+    expect(typeof body.error, 'RFC 8628 body must have a string error field').toBe('string')
+    expect(body).not.toHaveProperty('status')
+    // zErrorBody.safeParse would fail → CLI sets serverError = undefined → generic message
+  })
+
   // ── 5.76  Failed command + -o yaml → stderr is still JSON envelope ────────
 
   it('[P1] 5.76 failed command with -o yaml still outputs a JSON error envelope on stderr', async () => {
