@@ -14,9 +14,12 @@ import json
 import logging
 from typing import Any
 
+from dify_agent.layers.ask_human import AskHumanToolArgs
+from dify_agent.protocol import DeferredToolResultsPayload
 from pydantic import JsonValue
 
 from clients.agent_backend import (
+    AgentBackendDeferredToolCallInternalEvent,
     AgentBackendError,
     AgentBackendInternalEventType,
     AgentBackendRunClient,
@@ -27,13 +30,21 @@ from clients.agent_backend import (
 )
 from core.app.apps.agent_app.runtime_request_builder import (
     AgentAppRuntimeBuildContext,
+    AgentAppRuntimeRequest,
     AgentAppRuntimeRequestBuilder,
 )
-from core.app.apps.agent_app.session_store import AgentAppRuntimeSessionStore, AgentAppSessionScope
+from core.app.apps.agent_app.session_store import (
+    AgentAppRuntimeSessionStore,
+    AgentAppSessionScope,
+    StoredAgentAppSession,
+)
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import DifyRunContext
 from core.app.entities.queue_entities import QueueLLMChunkEvent, QueueMessageEndEvent
+from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
+from core.workflow.nodes.agent_v2.ask_human_hitl import AskHumanFormBuildError, create_ask_human_form
+from core.workflow.nodes.agent_v2.ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from models.agent_config_entities import AgentSoulConfig
@@ -104,7 +115,13 @@ class AgentAppRunner:
             agent_id=agent_id,
             agent_config_snapshot_id=agent_config_snapshot_id,
         )
-        session_snapshot = self._session_store.load_active_snapshot(scope)
+        # ENG-638: if a prior turn paused on ask_human and the form is now answered,
+        # resume by threading the human's reply into this run as deferred_tool_results.
+        stored = self._session_store.load_active_session(scope)
+        session_snapshot = stored.session_snapshot if stored is not None else None
+        deferred_tool_results = self._resolve_pending_ask_human(
+            stored=stored, dify_context=dify_context, message_id=message_id
+        )
 
         runtime = self._request_builder.build(
             AgentAppRuntimeBuildContext(
@@ -116,11 +133,28 @@ class AgentAppRunner:
                 user_query=query,
                 idempotency_key=message_id,
                 session_snapshot=session_snapshot,
+                deferred_tool_results=deferred_tool_results,
             )
         )
 
         create_response = self._agent_backend_client.create_run(runtime.request)
         terminal = self._consume_stream(create_response.run_id, queue_manager=queue_manager)
+
+        if isinstance(terminal, AgentBackendDeferredToolCallInternalEvent):
+            # ENG-635: the agent asked a human. End this turn with the question and
+            # a conversation-owned HITL form; a form submission resumes the run.
+            self._pause_for_ask_human(
+                terminal=terminal,
+                scope=scope,
+                dify_context=dify_context,
+                agent_soul=agent_soul,
+                conversation_id=conversation_id,
+                message_id=message_id,
+                model_name=model_name,
+                runtime=runtime,
+                queue_manager=queue_manager,
+            )
+            return
 
         if not isinstance(terminal, AgentBackendRunSucceededInternalEvent):
             error = getattr(terminal, "error", None) or "Agent backend run did not complete successfully."
@@ -134,6 +168,93 @@ class AgentAppRunner:
             snapshot=terminal.session_snapshot,
             runtime_layer_specs=extract_runtime_layer_specs(runtime.request.composition),
         )
+
+    def _pause_for_ask_human(
+        self,
+        *,
+        terminal: AgentBackendDeferredToolCallInternalEvent,
+        scope: AgentAppSessionScope,
+        dify_context: DifyRunContext,
+        agent_soul: AgentSoulConfig,
+        conversation_id: str,
+        message_id: str,
+        model_name: str,
+        runtime: AgentAppRuntimeRequest,
+        queue_manager: AppQueueManager,
+    ) -> None:
+        """End the chat turn on a dify.ask_human call: create a conversation-owned
+        HITL form, persist the pause correlation, and surface the question."""
+        try:
+            created = create_ask_human_form(
+                deferred_tool_call=terminal.deferred_tool_call,
+                # Chat forms have no workflow node; key by the turn's message id.
+                node_id=message_id,
+                default_node_title="Agent",
+                contacts=agent_soul.human.contacts,
+                repository=self._build_form_repository(dify_context),
+                conversation_id=conversation_id,
+            )
+        except AskHumanFormBuildError as error:
+            raise AgentBackendError(f"Failed to build ask_human form for Agent App chat: {error}") from error
+
+        # Persist the snapshot + correlation so a form submission can start the
+        # second run with the human's answer (ENG-637/638 columns, conversation owner).
+        self._save_session(
+            scope=scope,
+            backend_run_id=terminal.run_id,
+            snapshot=terminal.session_snapshot,
+            runtime_layer_specs=extract_runtime_layer_specs(runtime.request.composition),
+            pending_form_id=created.form_id,
+            pending_tool_call_id=terminal.deferred_tool_call.tool_call_id,
+        )
+
+        # The structured form is delivered via the HITL surface(s); the chat turn
+        # ends by echoing the agent's question so the conversation reflects the ask.
+        self._publish_answer(
+            queue_manager=queue_manager,
+            model_name=model_name,
+            answer=self._ask_human_message(created.args),
+        )
+
+    def _resolve_pending_ask_human(
+        self,
+        *,
+        stored: StoredAgentAppSession | None,
+        dify_context: DifyRunContext,
+        message_id: str,
+    ) -> DeferredToolResultsPayload | None:
+        """Build deferred_tool_results when a pending ask_human form is answered."""
+        if stored is None or stored.pending_form_id is None or stored.pending_tool_call_id is None:
+            return None
+        outcome = resolve_ask_human_form(
+            form_id=stored.pending_form_id,
+            tenant_id=dify_context.tenant_id,
+            node_id=message_id,
+        )
+        if outcome is None or outcome.deferred_result is None:
+            # Form missing or still waiting — run a normal turn, no resume.
+            return None
+        return build_deferred_tool_results(
+            tool_call_id=stored.pending_tool_call_id,
+            result=outcome.deferred_result,
+        )
+
+    def _build_form_repository(self, dify_context: DifyRunContext) -> HumanInputFormRepository:
+        invoke_source = dify_context.invoke_from.value
+        return HumanInputFormRepositoryImpl(
+            tenant_id=dify_context.tenant_id,
+            app_id=dify_context.app_id,
+            workflow_execution_id=None,
+            invoke_source=invoke_source,
+            submission_actor_id=dify_context.user_id if invoke_source in {"debugger", "explore"} else None,
+        )
+
+    @staticmethod
+    def _ask_human_message(args: AskHumanToolArgs) -> str:
+        parts = [args.question]
+        if args.markdown:
+            parts.append(args.markdown)
+        return "\n\n".join(parts)
 
     def _consume_stream(self, run_id: str, *, queue_manager: AppQueueManager):
         terminal = None
@@ -178,6 +299,8 @@ class AgentAppRunner:
         backend_run_id: str,
         snapshot: Any,
         runtime_layer_specs: Any,
+        pending_form_id: str | None = None,
+        pending_tool_call_id: str | None = None,
     ) -> None:
         try:
             self._session_store.save_active_snapshot(
@@ -185,6 +308,8 @@ class AgentAppRunner:
                 backend_run_id=backend_run_id,
                 snapshot=snapshot,
                 runtime_layer_specs=runtime_layer_specs,
+                pending_form_id=pending_form_id,
+                pending_tool_call_id=pending_tool_call_id,
             )
         except Exception:
             logger.warning(

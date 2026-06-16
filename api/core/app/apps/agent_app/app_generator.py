@@ -158,6 +158,108 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         )
         return AgentAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
 
+    def resume_after_form_submission(
+        self,
+        *,
+        app_model: App,
+        user: Account | EndUser,
+        conversation_id: str,
+        invoke_from: InvokeFrom,
+    ) -> None:
+        """Resume an Agent App conversation after a submitted ask_human HITL form.
+
+        ENG-635: triggered by a background task (not an HTTP request). Runs one
+        blocking turn with no user query; the runner threads the human's reply
+        into the agent run as deferred_tool_results and the assistant answer is
+        persisted to the conversation. Live streaming to a reconnected client is
+        out of scope here — the message is persisted and can be re-fetched.
+        """
+        agent, snapshot, agent_soul = self._resolve_agent(app_model)
+        conversation = ConversationService.get_conversation(
+            app_model=app_model, conversation_id=conversation_id, user=user
+        )
+
+        app_config = AgentAppConfigManager.get_app_config(
+            app_model=app_model,
+            agent_soul=agent_soul,
+            app_model_config=app_model.app_model_config,
+            conversation=conversation,
+        )
+        model_conf = ModelConfigConverter.convert(app_config)
+        trace_manager = TraceQueueManager(app_model.id, user.id if isinstance(user, Account) else user.session_id)
+
+        # ENG-638: the agent backend requires the resume composition's layer
+        # names to match the suspended snapshot, which includes the per-turn
+        # user-prompt layer. So re-send the original user message (the paused
+        # turn's query); the continuation is driven by deferred_tool_results and
+        # the restored snapshot, not by re-processing this prompt. A blank prompt
+        # would drop the user-prompt layer and fail the snapshot match.
+        paused_message = db.session.scalar(
+            select(Message)
+            .where(Message.conversation_id == conversation.id, Message.query != "")
+            .order_by(Message.created_at.desc())
+            .limit(1)
+        )
+        resume_query = paused_message.query if paused_message and paused_message.query else "(resumed)"
+
+        application_generate_entity = AgentAppGenerateEntity(
+            task_id=str(uuid.uuid4()),
+            app_config=app_config,
+            model_conf=model_conf,
+            conversation_id=conversation.id,
+            # A resume carries no new user inputs; the human's answer is the
+            # submitted form, threaded in by the runner as deferred_tool_results.
+            # The query re-sends the paused turn's message (see above).
+            inputs={},
+            query=resume_query,
+            files=[],
+            parent_message_id=UUID_NIL,
+            user_id=user.id,
+            stream=False,
+            invoke_from=invoke_from,
+            extras={"auto_generate_conversation_name": False},
+            call_depth=0,
+            trace_manager=trace_manager,
+            agent_id=agent.id,
+            agent_config_snapshot_id=snapshot.id,
+        )
+
+        conversation, message = self._init_generate_records(application_generate_entity, conversation)
+
+        queue_manager = MessageBasedAppQueueManager(
+            task_id=application_generate_entity.task_id,
+            user_id=application_generate_entity.user_id,
+            invoke_from=application_generate_entity.invoke_from,
+            conversation_id=conversation.id,
+            app_mode=conversation.mode,
+            message_id=message.id,
+        )
+
+        context = contextvars.copy_context()
+        worker_thread = threading.Thread(
+            target=self._generate_worker,
+            kwargs={
+                "flask_app": current_app._get_current_object(),  # type: ignore
+                "context": context,
+                "application_generate_entity": application_generate_entity,
+                "queue_manager": queue_manager,
+                "conversation_id": conversation.id,
+                "message_id": message.id,
+                "user_from": UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER,
+            },
+        )
+        worker_thread.start()
+
+        # Blocking: drive the chat task pipeline to persist the assistant answer.
+        self._handle_response(
+            application_generate_entity=application_generate_entity,
+            queue_manager=queue_manager,
+            conversation=conversation,
+            message=message,
+            user=user,
+            stream=False,
+        )
+
     def _generate_worker(
         self,
         *,
