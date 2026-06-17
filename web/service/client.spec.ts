@@ -1,6 +1,6 @@
-import type { AppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { MutationFunctionContext } from '@tanstack/react-query'
+import type { consoleQuery as ConsoleQuery } from './client'
 import type { Tag } from '@/contract/console/tags'
 import { QueryClient } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -44,8 +44,11 @@ const createApiBasedExtension = (overrides: Partial<ApiBasedExtensionResponse> =
   ...overrides,
 })
 
-const createAgent = (overrides: Partial<AppDetailWithSite> = {}): AppDetailWithSite => ({
+type AgentMutationResponse = Parameters<NonNullable<ReturnType<typeof ConsoleQuery.agent.post.mutationOptions>['onSuccess']>>[0]
+
+const createAgent = (overrides: Partial<AgentMutationResponse> = {}): AgentMutationResponse => ({
   ...overrides,
+  active_config_is_published: overrides.active_config_is_published ?? false,
   enable_api: overrides.enable_api ?? true,
   enable_site: overrides.enable_site ?? true,
   description: overrides.description ?? 'Agent description',
