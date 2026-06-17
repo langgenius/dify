@@ -249,6 +249,10 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               datasetId={datasetId}
               onUpdate={handleOperate}
               className="w-[200px]!"
+              canEdit={canEditDocument}
+              canDownload={datasetACLCapabilities.canDocumentDownload}
+              canDelete={datasetACLCapabilities.canDeleteFile}
+              canViewSettings={canEditDocument}
             />
             <button
               type="button"

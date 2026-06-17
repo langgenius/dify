@@ -78,7 +78,7 @@ const DocumentTableRow = React.memo(({
     router.push(`/datasets/${datasetId}/documents/${doc.id}${queryString ? `?${queryString}` : ''}`)
   }, [router, datasetId, doc.id, queryString])
 
-  const handleCheckboxClick = useCallback((e: React.MouseEvent) => {
+  const stopPropagation = useCallback((e: React.SyntheticEvent) => {
     e.stopPropagation()
   }, [])
 
@@ -93,7 +93,7 @@ const DocumentTableRow = React.memo(({
       onClick={handleRowClick}
     >
       <td className="text-left align-middle text-xs text-text-tertiary">
-        <div className="flex items-center" onClick={handleCheckboxClick}>
+        <div className="flex items-center" role="presentation" onClick={stopPropagation} onKeyDown={stopPropagation}>
           <Checkbox
             className="mr-2 shrink-0"
             value={doc.id}
@@ -127,12 +127,13 @@ const DocumentTableRow = React.memo(({
               <Tooltip>
                 <TooltipTrigger
                   render={(
-                    <div
-                      className="cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
+                    <button
+                      type="button"
+                      className="cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover"
                       onClick={handleRenameClick}
                     >
                       <span className="i-ri-edit-line size-4 text-text-tertiary" />
-                    </div>
+                    </button>
                   )}
                 />
                 <TooltipContent>
@@ -165,6 +166,10 @@ const DocumentTableRow = React.memo(({
           datasetId={datasetId}
           detail={pick(doc, ['name', 'enabled', 'archived', 'id', 'data_source_type', 'doc_form', 'display_status'])}
           onUpdate={onUpdate}
+          canEdit={datasetACLCapabilities.canEdit}
+          canDownload={datasetACLCapabilities.canDocumentDownload}
+          canDelete={datasetACLCapabilities.canDeleteFile}
+          canViewSettings={datasetACLCapabilities.canEdit}
         />
       </td>
     </tr>
