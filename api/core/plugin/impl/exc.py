@@ -5,7 +5,7 @@ from pydantic import TypeAdapter
 
 from extensions.ext_logging import get_request_id
 
-# NOTE: Avoid renaming exception clasess in this file, since
+# NOTE: Avoid renaming exception classes in this file, since
 # the `_handle_plugin_daemon_error` in api/core/plugin/impl/base.py
 # build exception instances based on the class name.
 #
