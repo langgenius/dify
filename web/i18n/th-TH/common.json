@@ -311,6 +311,7 @@
   "menus.apps": "สตูดิโอ",
   "menus.datasets": "ความรู้",
   "menus.datasetsTips": "เร็ว ๆ นี้: นําเข้าข้อมูลข้อความของคุณเองหรือเขียนข้อมูลแบบเรียลไทม์ผ่าน Webhook เพื่อปรับปรุงบริบท LLM",
+  "menus.deployments": "การปรับใช้",
   "menus.explore": "สํารวจ",
   "menus.exploreMarketplace": "สํารวจ Marketplace",
   "menus.newApp": "แอพใหม่",

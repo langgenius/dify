@@ -311,6 +311,7 @@
   "menus.apps": "استودیو",
   "menus.datasets": "دانش",
   "menus.datasetsTips": "به زودی: داده‌های متنی خود را وارد کنید یا از طریق Webhook داده‌ها را در زمان واقعی برای بهبود زمینه LLM بنویسید.",
+  "menus.deployments": "استقرارها",
   "menus.explore": "کاوش",
   "menus.exploreMarketplace": "بازار را کاوش کنید",
   "menus.newApp": "برنامه جدید",

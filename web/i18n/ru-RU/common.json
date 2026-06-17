@@ -311,6 +311,7 @@
   "menus.apps": "Студия",
   "menus.datasets": "Знания",
   "menus.datasetsTips": "СКОРО: Импортируйте свои собственные текстовые данные или записывайте данные в режиме реального времени через Webhook для улучшения контекста LLM.",
+  "menus.deployments": "Развертывания",
   "menus.explore": "Исследовать",
   "menus.exploreMarketplace": "Подробнее о Marketplace",
   "menus.newApp": "Новое приложение",

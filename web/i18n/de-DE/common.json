@@ -311,6 +311,7 @@
   "menus.apps": "Studio",
   "menus.datasets": "Wissen",
   "menus.datasetsTips": "BALD VERFÜGBAR: Importieren Sie Ihre eigenen Textdaten oder schreiben Sie Daten in Echtzeit über Webhook, um den LLM-Kontext zu verbessern.",
+  "menus.deployments": "Bereitstellungen",
   "menus.explore": "Erkunden",
   "menus.exploreMarketplace": "Marketplace erkunden",
   "menus.newApp": "Neue App",

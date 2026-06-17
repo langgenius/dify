@@ -311,6 +311,7 @@
   "menus.apps": "Studio",
   "menus.datasets": "Bilgi",
   "menus.datasetsTips": "YAKINDA: Kendi metin verilerinizi içe aktarın veya LLM bağlamını geliştirmek için Webhook aracılığıyla gerçek zamanlı veri yazın.",
+  "menus.deployments": "Dağıtımlar",
   "menus.explore": "Keşfet",
   "menus.exploreMarketplace": "Pazar Yeri'ni Keşfedin",
   "menus.newApp": "Yeni Uygulama",

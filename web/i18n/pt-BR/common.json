@@ -311,6 +311,7 @@
   "menus.apps": "Estúdio",
   "menus.datasets": "Conhecimento",
   "menus.datasetsTips": "EM BREVE: Importe seus próprios dados de texto ou escreva dados em tempo real via Webhook para aprimoramento do contexto LLM.",
+  "menus.deployments": "Implantações",
   "menus.explore": "Explorar",
   "menus.exploreMarketplace": "Explorar Mercado",
   "menus.newApp": "Novo App",
