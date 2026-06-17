@@ -50,7 +50,7 @@ const useActionMenu = (props: ActionMenuProps) => {
         name: t('versionHistory.copyId', { ns: 'workflow' }),
       },
     ]
-  }, [canImportExportDSL, isNamedVersion, pipelineId, shouldShowUpgrade, t])
+  }, [canImportExportDSL, isNamedVersion, pipelineId, shouldShowUpgrade, shouldShowUpgrade, t])
 
   return {
     deleteOperation,

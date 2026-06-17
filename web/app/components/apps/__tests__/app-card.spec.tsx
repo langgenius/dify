@@ -8,8 +8,8 @@ import * as appsService from '@/service/apps'
 import * as exploreService from '@/service/explore'
 import * as workflowService from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
-import { AppACLPermission } from '@/utils/permission'
-import { AppCard } from '../app-card'
+import { { AppACLPermission } from '@/utils/permission'
+import { AppCard } } from '../app-card'
 import { StarredAppCard } from '../starred-app-card'
 
 let mockWebappAuthEnabled = false
