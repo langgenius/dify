@@ -1712,6 +1712,7 @@ export type GetAppsAnnotationReplyByActionStatusByJobIdData = {
 }
 
 export type GetAppsAnnotationReplyByActionStatusByJobIdErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -1867,6 +1868,7 @@ export type PostChatMessagesByTaskIdStopData = {
 }
 
 export type PostChatMessagesByTaskIdStopErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -1891,6 +1893,7 @@ export type PostCompletionMessagesErrors = {
   401: unknown
   403: unknown
   404: unknown
+  429: unknown
   500: unknown
 }
 
@@ -1911,6 +1914,7 @@ export type PostCompletionMessagesByTaskIdStopData = {
 }
 
 export type PostCompletionMessagesByTaskIdStopErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -1936,6 +1940,7 @@ export type GetConversationsData = {
 }
 
 export type GetConversationsErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -1957,6 +1962,7 @@ export type DeleteConversationsByCIdData = {
 }
 
 export type DeleteConversationsByCIdErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -1979,6 +1985,7 @@ export type PostConversationsByCIdNameData = {
 }
 
 export type PostConversationsByCIdNameErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -2006,6 +2013,7 @@ export type GetConversationsByCIdVariablesData = {
 }
 
 export type GetConversationsByCIdVariablesErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -2077,6 +2085,7 @@ export type PostDatasetsErrors = {
   400: unknown
   401: unknown
   403: unknown
+  409: unknown
 }
 
 export type PostDatasetsResponses = {
@@ -2513,6 +2522,7 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdData = {
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -2538,6 +2548,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -2763,6 +2774,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChild
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -2790,6 +2802,7 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChi
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors
   = {
+    400: unknown
     401: unknown
     403: unknown
     404: unknown
@@ -2818,6 +2831,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors
   = {
+    400: unknown
     401: unknown
     403: unknown
     404: unknown
@@ -2845,6 +2859,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -2868,6 +2883,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -2894,6 +2910,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Errors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -2939,9 +2956,11 @@ export type PostDatasetsByDatasetIdHitTestingData = {
 }
 
 export type PostDatasetsByDatasetIdHitTestingErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
+  500: unknown
 }
 
 export type PostDatasetsByDatasetIdHitTestingResponses = {
@@ -3099,6 +3118,7 @@ export type GetDatasetsByDatasetIdPipelineDatasourcePluginsData = {
 export type GetDatasetsByDatasetIdPipelineDatasourcePluginsErrors = {
   401: unknown
   403: unknown
+  404: unknown
 }
 
 export type GetDatasetsByDatasetIdPipelineDatasourcePluginsResponses = {
@@ -3121,6 +3141,7 @@ export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunData = {
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunErrors = {
   401: unknown
   403: unknown
+  404: unknown
 }
 
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponses = {
@@ -3142,6 +3163,8 @@ export type PostDatasetsByDatasetIdPipelineRunData = {
 export type PostDatasetsByDatasetIdPipelineRunErrors = {
   401: unknown
   403: unknown
+  404: unknown
+  500: unknown
 }
 
 export type PostDatasetsByDatasetIdPipelineRunResponses = {
@@ -3161,9 +3184,11 @@ export type PostDatasetsByDatasetIdRetrieveData = {
 }
 
 export type PostDatasetsByDatasetIdRetrieveErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
+  500: unknown
 }
 
 export type PostDatasetsByDatasetIdRetrieveResponses = {
@@ -3347,6 +3372,7 @@ export type GetMessagesData = {
 }
 
 export type GetMessagesErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -3433,6 +3459,7 @@ export type GetParametersData = {
 }
 
 export type GetParametersErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -3498,6 +3525,7 @@ export type GetWorkflowByTaskIdEventsData = {
 }
 
 export type GetWorkflowByTaskIdEventsErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -3569,6 +3597,7 @@ export type GetWorkflowsRunByWorkflowRunIdData = {
 }
 
 export type GetWorkflowsRunByWorkflowRunIdErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -3591,6 +3620,7 @@ export type PostWorkflowsTasksByTaskIdStopData = {
 }
 
 export type PostWorkflowsTasksByTaskIdStopErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
