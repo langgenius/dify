@@ -81,7 +81,7 @@ const AppDetailSection = ({
     })
 
     return [
-      ...(isCurrentWorkspaceEditor
+      ...(appACLCapabilities.canAccessLayout
         ? [{
             name: t('appMenus.promptEng', { ns: 'common' }),
             href: `/app/${appId}/${isWorkflowApp ? 'workflow' : 'configuration'}`,

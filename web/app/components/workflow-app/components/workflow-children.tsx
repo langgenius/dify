@@ -74,6 +74,7 @@ const WorkflowChildren = () => {
   const setShowImportDSLModal = useStore(s => s.setShowImportDSLModal)
   const showOnboarding = useStore(s => s.showOnboarding)
   const canImportExportDSL = useHooksStore(s => s.accessControl.canImportExportDSL)
+  const canEdit = useHooksStore(s => s.accessControl.canEdit)
   const setShowOnboarding = useStore(s => s.setShowOnboarding)
   const setHasSelectedStartNode = useStore(s => s.setHasSelectedStartNode)
   const setShouldAutoOpenStartNodeSelector = useStore(s => s.setShouldAutoOpenStartNodeSelector)
@@ -101,6 +102,9 @@ const WorkflowChildren = () => {
   }, [handleOnboardingClose])
 
   const handleSelectStartNode = useCallback((nodeType: BlockEnum, toolConfig?: PluginDefaultValue) => {
+    if (!canEdit)
+      return
+
     const nodeDefault = availableNodesMetaData.nodesMap?.[nodeType]
     if (!nodeDefault?.defaultValue)
       return
@@ -154,7 +158,7 @@ const WorkflowChildren = () => {
         console.error('Failed to save node to draft')
       },
     })
-  }, [availableNodesMetaData, setShowOnboarding, setHasSelectedStartNode, reactFlowStore, handleSyncWorkflowDraft])
+  }, [availableNodesMetaData, autoGenerateWebhookUrl, canEdit, handleSyncWorkflowDraft, reactFlowStore, setHasSelectedStartNode, setShouldAutoOpenStartNodeSelector, setShowOnboarding])
 
   return (
     <>
@@ -163,7 +167,7 @@ const WorkflowChildren = () => {
         showFeaturesPanel && <Features />
       }
       {
-        showOnboarding && (
+        canEdit && showOnboarding && (
           <WorkflowOnboardingModal
             isShow={showOnboarding}
             onClose={handleCloseOnboarding}

@@ -4,6 +4,7 @@ import { useStore } from '@/app/components/app/store'
 import { usePathname, useRouter } from '@/next/navigation'
 import { fetchAppDetailDirect } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
+import { AppACLPermission } from '@/utils/permission'
 import AppDetailLayout from '../layout-main'
 
 const mockReplace = vi.fn()
@@ -24,6 +25,8 @@ vi.mock('@/context/app-context', () => ({
     currentWorkspace: { id: 'workspace-1' },
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
     isLoadingCurrentWorkspace: false,
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [],
   }),
 }))
 
@@ -39,6 +42,7 @@ const createAppDetail = (overrides: Partial<App> = {}) => ({
   id: 'app-1',
   name: 'Demo App',
   mode: AppModeEnum.WORKFLOW,
+  permission_keys: [AppACLPermission.ViewLayout],
   ...overrides,
 }) as App
 
@@ -101,6 +105,40 @@ describe('AppDetailLayout', () => {
   it('should redirect restricted app pages before exposing app detail content', async () => {
     mockIsCurrentWorkspaceEditor = false
     mockPathname = '/app/app-1/logs'
+
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/app/app-1/overview')
+    })
+    expect(screen.queryByText('App page content')).not.toBeInTheDocument()
+    expect(useStore.getState().appDetail).toBeUndefined()
+  })
+
+  it('should allow non-editor users with layout access to open workflow pages directly', async () => {
+    mockIsCurrentWorkspaceEditor = false
+    mockPathname = '/app/app-1/workflow'
+
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    await waitForAppContent()
+
+    expect(mockReplace).not.toHaveBeenCalledWith('/app/app-1/overview')
+    expect(useStore.getState().appDetail?.id).toBe('app-1')
+  })
+
+  it('should redirect workflow pages when layout access is missing', async () => {
+    mockIsCurrentWorkspaceEditor = false
+    mockPathname = '/app/app-1/workflow'
+    mockFetchAppDetailDirect.mockResolvedValue(createAppDetail({ permission_keys: [] }))
 
     render(
       <AppDetailLayout appId="app-1">

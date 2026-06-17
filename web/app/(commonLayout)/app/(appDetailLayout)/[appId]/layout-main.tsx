@@ -13,6 +13,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
 import { fetchAppDetailDirect } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
+import { getAppACLCapabilities } from '@/utils/permission'
 import s from './style.module.css'
 
 type IAppDetailLayoutProps = {
@@ -35,7 +36,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const { t } = useTranslation()
   const router = useRouter()
   const pathname = usePathname()
-  const { isCurrentWorkspaceEditor, isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
+  const { isCurrentWorkspaceEditor, isLoadingCurrentWorkspace, currentWorkspace, userProfile, workspacePermissionKeys } = useAppContext()
   const { appDetail, setAppDetail } = useStore(useShallow(state => ({
     appDetail: state.appDetail,
     setAppDetail: state.setAppDetail,
@@ -90,9 +91,14 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     if (routeAppDetail.id !== appId)
       return
 
-    // redirection
-    const canIEditApp = isCurrentWorkspaceEditor
-    if (!canIEditApp && (pathname.endsWith('configuration') || pathname.endsWith('workflow') || pathname.endsWith('logs') || pathname.endsWith('annotations'))) {
+    const appACLCapabilities = getAppACLCapabilities(routeAppDetail.permission_keys, {
+      currentUserId: userProfile?.id,
+      resourceMaintainer: routeAppDetail.maintainer,
+      workspacePermissionKeys,
+    })
+    const isLayoutPath = pathname.endsWith('configuration') || pathname.endsWith('workflow')
+    const isWorkspaceEditorOnlyPath = pathname.endsWith('logs') || pathname.endsWith('annotations')
+    if ((isLayoutPath && !appACLCapabilities.canAccessLayout) || (isWorkspaceEditorOnlyPath && !isCurrentWorkspaceEditor)) {
       router.replace(`/app/${appId}/overview`)
       return
     }
@@ -106,7 +112,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
     if (appDetailRes && appDetail?.id !== appDetailRes.id)
       setAppDetail({ ...appDetailRes, enable_sso: false })
-  }, [appDetail?.id, appDetailRes, appId, currentWorkspace.id, isCurrentWorkspaceEditor, isLoadingAppDetail, isLoadingCurrentWorkspace, pathname, routeAppDetail, router, setAppDetail])
+  }, [appDetail?.id, appDetailRes, appId, currentWorkspace.id, isCurrentWorkspaceEditor, isLoadingAppDetail, isLoadingCurrentWorkspace, pathname, routeAppDetail, router, setAppDetail, userProfile?.id, workspacePermissionKeys])
 
   if (!appDetail) {
     return (

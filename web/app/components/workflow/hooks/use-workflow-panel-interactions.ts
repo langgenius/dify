@@ -46,6 +46,7 @@ export const useWorkflowMoveMode = () => {
     || historyWorkflowData
     || isRestoring
   )
+  const canUseCommentMode = !!(canComment && !isCommentModeOperationBlocked && isCommentModeAvailable)
 
   const handleModePointer = useCallback(() => {
     if (getNodesReadOnly())
@@ -63,17 +64,18 @@ export const useWorkflowMoveMode = () => {
   }, [getNodesReadOnly, handleSelectionCancel, setControlMode])
 
   const handleModeComment = useCallback(() => {
-    if (!canComment || isCommentModeOperationBlocked || !isCommentModeAvailable)
+    if (!canUseCommentMode)
       return
 
     setControlMode(ControlMode.Comment)
     handleSelectionCancel()
-  }, [canComment, handleSelectionCancel, isCommentModeAvailable, isCommentModeOperationBlocked, setControlMode])
+  }, [canUseCommentMode, handleSelectionCancel, setControlMode])
 
   return {
     handleModePointer,
     handleModeHand,
     handleModeComment,
     isCommentModeAvailable,
+    canUseCommentMode,
   }
 }

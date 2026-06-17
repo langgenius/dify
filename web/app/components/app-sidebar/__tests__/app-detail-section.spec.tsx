@@ -135,6 +135,28 @@ describe('AppDetailSection', () => {
       expect(screen.queryByRole('link', { name: 'common.appMenus.annotations' })).not.toBeInTheDocument()
     })
 
+    it('should render the layout navigation for non-editor users with view layout permission', () => {
+      // Arrange
+      mockIsCurrentWorkspaceEditor = false
+      mockAppPermissionKeys = [AppACLPermission.ViewLayout]
+
+      // Act
+      render(<AppDetailSection />)
+
+      // Assert
+      expect(screen.getByRole('link', { name: 'common.appMenus.promptEng' })).toHaveAttribute('href', '/app/app-1/configuration')
+      expect(screen.queryByRole('link', { name: 'common.appMenus.logs' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'common.appMenus.annotations' })).not.toBeInTheDocument()
+    })
+
+    it('should hide the layout navigation when layout access is missing', () => {
+      // Act
+      render(<AppDetailSection />)
+
+      // Assert
+      expect(screen.queryByRole('link', { name: 'common.appMenus.promptEng' })).not.toBeInTheDocument()
+    })
+
     it('should render resource access navigation when app access config permission is granted', () => {
       // Arrange
       mockAppPermissionKeys = [AppACLPermission.AccessConfig]
