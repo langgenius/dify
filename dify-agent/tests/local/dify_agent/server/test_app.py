@@ -13,10 +13,12 @@ from shell_session_manager.shellctl.client import ShellctlClient
 import dify_agent.server.app as app_module
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
+from dify_agent.layers.knowledge.configs import DifyKnowledgeBaseLayerConfig
+from dify_agent.layers.knowledge.layer import DifyKnowledgeBaseLayer
 from dify_agent.layers.shell import DifyShellLayerConfig
 from dify_agent.layers.shell.layer import DifyShellLayer
 from dify_agent.runtime.compositor_factory import DifyAgentLayerProvider
-from dify_agent.server.app import create_app, create_plugin_daemon_http_client
+from dify_agent.server.app import create_app, create_dify_api_inner_http_client, create_plugin_daemon_http_client
 from dify_agent.server.settings import ServerSettings
 from dify_agent.storage.redis_run_store import RedisRunStore
 
@@ -67,6 +69,7 @@ class FakeRunScheduler:
     shutdown_grace_seconds: float
     layer_providers: tuple[DifyAgentLayerProvider, ...]
     plugin_daemon_http_client: FakePluginDaemonHttpClient
+    dify_api_http_client: FakePluginDaemonHttpClient
     shutdown_called: bool
 
     def __init__(
@@ -74,6 +77,7 @@ class FakeRunScheduler:
         *,
         store: object,
         plugin_daemon_http_client: FakePluginDaemonHttpClient,
+        dify_api_http_client: FakePluginDaemonHttpClient,
         shutdown_grace_seconds: float,
         layer_providers: tuple[DifyAgentLayerProvider, ...],
     ) -> None:
@@ -81,6 +85,7 @@ class FakeRunScheduler:
         self.shutdown_grace_seconds = shutdown_grace_seconds
         self.layer_providers = layer_providers
         self.plugin_daemon_http_client = plugin_daemon_http_client
+        self.dify_api_http_client = dify_api_http_client
         self.shutdown_called = False
         self.created.append(self)
 
@@ -160,7 +165,22 @@ class FakeHttpxModule:
 
 
 def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pytest.MonkeyPatch) -> None:
-    fake_redis, fake_http_client = _patch_app_lifecycle(monkeypatch)
+    fake_redis = FakeRedis()
+    fake_http_client = FakePluginDaemonHttpClient()
+    fake_dify_api_http_client = FakePluginDaemonHttpClient()
+    FakeRunScheduler.created.clear()
+    FakeRedisModule.fake_redis = fake_redis
+    monkeypatch.setattr(app_module, "Redis", FakeRedisModule)
+    monkeypatch.setattr(app_module, "RunScheduler", FakeRunScheduler)
+
+    def fake_create_plugin_daemon_http_client(_settings: ServerSettings) -> FakePluginDaemonHttpClient:
+        return fake_http_client
+
+    def fake_create_dify_api_inner_http_client(_settings: ServerSettings) -> FakePluginDaemonHttpClient:
+        return fake_dify_api_http_client
+
+    monkeypatch.setattr(app_module, "create_plugin_daemon_http_client", fake_create_plugin_daemon_http_client)
+    monkeypatch.setattr(app_module, "create_dify_api_inner_http_client", fake_create_dify_api_inner_http_client)
 
     settings = ServerSettings(
         redis_url="redis://example.invalid/0",
@@ -169,19 +189,20 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         run_retention_seconds=7,
         plugin_daemon_url="http://plugin-daemon",
         plugin_daemon_api_key="daemon-secret",
+        dify_api_inner_url="http://dify-api",
         shellctl_entrypoint="http://shellctl",
         shellctl_auth_token="shell-secret",
         agent_stub_url="https://agent.example.com/agent-stub",
         server_secret_key=_base64url_secret(b"1" * 32),
         dify_api_base_url="https://api.example.com",
         dify_api_inner_api_key="inner-secret",
-        plugin_daemon_connect_timeout=1,
-        plugin_daemon_read_timeout=2,
-        plugin_daemon_write_timeout=3,
-        plugin_daemon_pool_timeout=4,
-        plugin_daemon_max_connections=5,
-        plugin_daemon_max_keepalive_connections=3,
-        plugin_daemon_keepalive_expiry=6,
+        outbound_http_connect_timeout=1,
+        outbound_http_read_timeout=2,
+        outbound_http_write_timeout=3,
+        outbound_http_pool_timeout=4,
+        outbound_http_max_connections=5,
+        outbound_http_max_keepalive_connections=3,
+        outbound_http_keepalive_expiry=6,
     )
 
     with TestClient(create_app(settings)):
@@ -207,6 +228,18 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         assert isinstance(shell_layer, DifyShellLayer)
         assert execution_context_layer.daemon_url == "http://plugin-daemon"
         assert execution_context_layer.daemon_api_key == "daemon-secret"
+        knowledge_provider = next(provider for provider in layer_providers if provider.type_id == "dify.knowledge_base")
+        knowledge_layer = knowledge_provider.create_layer(
+            DifyKnowledgeBaseLayerConfig.model_validate(
+                {
+                    "dataset_ids": ["dataset-1"],
+                    "retrieval": {"mode": "multiple", "top_k": 2},
+                }
+            )
+        )
+        assert isinstance(knowledge_layer, DifyKnowledgeBaseLayer)
+        assert knowledge_layer.dify_api_inner_url == "http://dify-api"
+        assert knowledge_layer.dify_api_inner_api_key == "inner-secret"
         assert shell_layer.shellctl_entrypoint == "http://shellctl"
         assert shell_layer.agent_stub_url == "https://agent.example.com/agent-stub"
         shellctl_client = shell_layer.shellctl_client_factory("http://shellctl")
@@ -216,6 +249,8 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         http_client = scheduler.plugin_daemon_http_client
         assert http_client is fake_http_client
         assert http_client.is_closed is False
+        assert scheduler.dify_api_http_client is fake_dify_api_http_client
+        assert scheduler.dify_api_http_client.is_closed is False
         store = scheduler.store
         assert isinstance(store, RedisRunStore)
         assert store.run_retention_seconds == 7
@@ -229,6 +264,7 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         )
 
     assert FakeRunScheduler.created[0].shutdown_called is True
+    assert FakeRunScheduler.created[0].dify_api_http_client.is_closed is True
     assert FakeRunScheduler.created[0].plugin_daemon_http_client.is_closed is True
     assert fake_redis.closed is True
 
@@ -326,21 +362,75 @@ def test_create_app_starts_and_stops_agent_stub_grpc_server_for_grpc_url(monkeyp
     assert fake_redis.closed is True
 
 
-def test_create_plugin_daemon_http_client_uses_configured_httpx_construction_args(
+def test_create_plugin_daemon_http_client_uses_generic_outbound_httpx_construction_args(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(app_module, "httpx", FakeHttpxModule)
 
-    client = create_plugin_daemon_http_client(ServerSettings())
+    client = create_plugin_daemon_http_client(
+        ServerSettings(
+            outbound_http_connect_timeout=1,
+            outbound_http_read_timeout=2,
+            outbound_http_write_timeout=3,
+            outbound_http_pool_timeout=4,
+            outbound_http_max_connections=5,
+            outbound_http_max_keepalive_connections=3,
+            outbound_http_keepalive_expiry=6,
+        )
+    )
 
     assert isinstance(client, FakePluginDaemonHttpClient)
     assert isinstance(client.timeout, FakeTimeout)
-    assert client.timeout.connect == 10
-    assert client.timeout.read == 600
-    assert client.timeout.write == 30
-    assert client.timeout.pool == 10
+    assert client.timeout.connect == 1
+    assert client.timeout.read == 2
+    assert client.timeout.write == 3
+    assert client.timeout.pool == 4
     assert isinstance(client.limits, FakeLimits)
-    assert client.limits.max_connections == 100
-    assert client.limits.max_keepalive_connections == 20
-    assert client.limits.keepalive_expiry == 30
+    assert client.limits.max_connections == 5
+    assert client.limits.max_keepalive_connections == 3
+    assert client.limits.keepalive_expiry == 6
     assert client.trust_env is False
+
+
+def test_create_dify_api_inner_http_client_uses_generic_outbound_httpx_construction_args(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(app_module, "httpx", FakeHttpxModule)
+
+    client = create_dify_api_inner_http_client(
+        ServerSettings(
+            outbound_http_connect_timeout=1,
+            outbound_http_read_timeout=2,
+            outbound_http_write_timeout=3,
+            outbound_http_pool_timeout=4,
+            outbound_http_max_connections=5,
+            outbound_http_max_keepalive_connections=3,
+            outbound_http_keepalive_expiry=6,
+        )
+    )
+
+    assert isinstance(client, FakePluginDaemonHttpClient)
+    assert isinstance(client.timeout, FakeTimeout)
+    assert client.timeout.connect == 1
+    assert client.timeout.read == 2
+    assert client.timeout.write == 3
+    assert client.timeout.pool == 4
+    assert isinstance(client.limits, FakeLimits)
+    assert client.limits.max_connections == 5
+    assert client.limits.max_keepalive_connections == 3
+    assert client.limits.keepalive_expiry == 6
+    assert client.trust_env is False
+
+
+def test_server_settings_use_generic_outbound_http_args_for_shared_clients() -> None:
+    model_fields = ServerSettings.model_fields
+
+    assert "dify_api_inner_url" in model_fields
+    assert "dify_api_inner_api_key" in model_fields
+    assert "outbound_http_connect_timeout" in model_fields
+    assert "outbound_http_read_timeout" in model_fields
+    assert "outbound_http_write_timeout" in model_fields
+    assert "outbound_http_pool_timeout" in model_fields
+    assert "outbound_http_max_connections" in model_fields
+    assert "outbound_http_max_keepalive_connections" in model_fields
+    assert "outbound_http_keepalive_expiry" in model_fields
