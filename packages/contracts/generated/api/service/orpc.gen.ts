@@ -420,12 +420,12 @@ export const apps = {
 /**
  * Convert Audio to Text
  *
- * Convert audio file to text. Supported formats: `mp3`, `mp4`, `mpeg`, `mpga`, `m4a`, `wav`, `webm`. File size limit is `30 MB`.
+ * Convert audio file to text. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, `audio/wav`, and `audio/amr`. File size limit is `30 MB`.
  */
 export const post3 = oc
   .route({
     description:
-      'Convert audio file to text. Supported formats: `mp3`, `mp4`, `mpeg`, `mpga`, `m4a`, `wav`, `webm`. File size limit is `30 MB`.',
+      'Convert audio file to text. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, `audio/wav`, and `audio/amr`. File size limit is `30 MB`.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAudioToText',
@@ -1169,12 +1169,11 @@ export const get10 = oc
 /**
  * Create Child Chunk
  *
- * Create a child chunk under a parent chunk. Only available for documents using the `hierarchical_model` chunking mode.
+ * Create a child chunk under the specified segment.
  */
 export const post19 = oc
   .route({
-    description:
-      'Create a child chunk under a parent chunk. Only available for documents using the `hierarchical_model` chunking mode.',
+    description: 'Create a child chunk under the specified segment.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunks',

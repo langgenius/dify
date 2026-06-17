@@ -335,7 +335,7 @@ Updates the question and answer of an existing annotation.
 ### [POST] /audio-to-text
 **Convert Audio to Text**
 
-Convert audio file to text. Supported formats: `mp3`, `mp4`, `mpeg`, `mpga`, `m4a`, `wav`, `webm`. File size limit is `30 MB`.
+Convert audio file to text. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, `audio/wav`, and `audio/amr`. File size limit is `30 MB`.
 
 #### Request Body
 
@@ -348,7 +348,7 @@ Convert audio file to text. Supported formats: `mp3`, `mp4`, `mpeg`, `mpga`, `m4
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully converted audio to text. | **application/json**: [AudioTranscriptResponse](#audiotranscriptresponse)<br> |
-| 400 | - `app_unavailable` : App unavailable or misconfigured. - `no_audio_uploaded` : No audio file was uploaded. - `provider_not_support_speech_to_text` : Model provider does not support speech-to-text. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model does not support this operation. - `completion_request_error` : Speech recognition request failed. |  |
+| 400 | - `app_unavailable` : App unavailable or misconfigured. - `provider_not_support_speech_to_text` : Model provider does not support speech-to-text. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model does not support this operation. - `completion_request_error` : Speech recognition request failed. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 413 | `audio_too_large` : Audio file size exceeded the limit. |  |
@@ -370,7 +370,7 @@ Convert text to speech.
 
 | Code | Description |
 | ---- | ----------- |
-| 200 | Returns the generated audio file. The `Content-Type` header is set to the audio MIME type (e.g., `audio/wav`, `audio/mp3`). If `streaming` is `true`, the audio is streamed as chunked transfer encoding. |
+| 200 | Returns the generated audio. Generator responses are streamed by the service as `audio/mpeg`; otherwise the provider output is returned directly. |
 | 400 | - `app_unavailable` : App unavailable or misconfigured. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model does not support this operation. - `completion_request_error` : Text-to-speech request failed. |
 | 401 | Unauthorized - invalid API token |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |
@@ -1893,7 +1893,7 @@ Returns a paginated list of child chunks under a specific parent chunk.
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
 **Create Child Chunk**
 
-Create a child chunk under a parent chunk. Only available for documents using the `hierarchical_model` chunking mode.
+Create a child chunk under the specified segment.
 
 #### Parameters
 
@@ -4075,7 +4075,7 @@ Accepts either the legacy tag_id payload or the normalized tag_ids payload.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | message_id | string | Message ID | No |
-| streaming | boolean | Enable streaming response | No |
+| streaming | boolean | Reserved for compatibility; TTS response streaming is determined by the provider output. | No |
 | text | string | Text to convert to audio | No |
 | voice | string | Voice to use for TTS | No |
 
@@ -4084,7 +4084,7 @@ Accepts either the legacy tag_id payload or the normalized tag_ids payload.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | message_id | string | Message ID | No |
-| streaming | boolean | Enable streaming response | No |
+| streaming | boolean | Reserved for compatibility; TTS response streaming is determined by the provider output. | No |
 | text | string | Text to convert to audio | No |
 | user | string | End user identifier | No |
 | voice | string | Voice to use for TTS | No |

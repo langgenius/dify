@@ -43,15 +43,14 @@ class AudioApi(Resource):
     @service_api_ns.doc(
         summary="Convert Audio to Text",
         description=(
-            "Convert audio file to text. Supported formats: `mp3`, `mp4`, `mpeg`, `mpga`, `m4a`, `wav`, "
-            "`webm`. File size limit is `30 MB`."
+            "Convert audio file to text. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, "
+            "`audio/wav`, and `audio/amr`. File size limit is `30 MB`."
         ),
         tags=["TTS"],
         responses={
             200: "Successfully converted audio to text.",
             400: (
                 "- `app_unavailable` : App unavailable or misconfigured.\n"
-                "- `no_audio_uploaded` : No audio file was uploaded.\n"
                 "- `provider_not_support_speech_to_text` : Model provider does not support speech-to-text.\n"
                 "- `provider_not_initialize` : No valid model provider credentials found.\n"
                 "- `provider_quota_exceeded` : Model provider quota exhausted.\n"
@@ -130,9 +129,8 @@ class TextApi(Resource):
         tags=["TTS"],
         responses={
             200: (
-                "Returns the generated audio file. The `Content-Type` header is set to the audio MIME type "
-                "(e.g., `audio/wav`, `audio/mp3`). If `streaming` is `true`, the audio is streamed as "
-                "chunked transfer encoding."
+                "Returns the generated audio. Generator responses are streamed by the service as `audio/mpeg`; "
+                "otherwise the provider output is returned directly."
             ),
             400: (
                 "- `app_unavailable` : App unavailable or misconfigured.\n"

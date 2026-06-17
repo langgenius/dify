@@ -491,10 +491,7 @@ class ChildChunkApi(DatasetApiResource):
 
     @service_api_ns.doc(
         summary="Create Child Chunk",
-        description=(
-            "Create a child chunk under a parent chunk. Only available for documents using the "
-            "`hierarchical_model` chunking mode."
-        ),
+        description="Create a child chunk under the specified segment.",
         tags=["Chunks"],
         responses={
             200: "Child chunk created successfully.",

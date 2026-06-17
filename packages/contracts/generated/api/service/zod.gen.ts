@@ -3092,7 +3092,7 @@ export const zGetSiteResponse = zSite
 export const zPostTextToAudioBody = zTextToAudioPayloadWithUser
 
 /**
- * Returns the generated audio file. The `Content-Type` header is set to the audio MIME type (e.g., `audio/wav`, `audio/mp3`). If `streaming` is `true`, the audio is streamed as chunked transfer encoding.
+ * Returns the generated audio. Generator responses are streamed by the service as `audio/mpeg`; otherwise the provider output is returned directly.
  */
 export const zPostTextToAudioResponse = z.custom<Blob | File>()
 
