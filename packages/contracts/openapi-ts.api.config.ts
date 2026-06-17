@@ -183,7 +183,14 @@ const addOperationIds = (document: SwaggerDocument) => {
 }
 
 const hasSuccessResponse = (operation: SwaggerOperation) => {
-  return Object.keys(operation.responses ?? {}).some(status => /^2\d\d$/.test(status))
+  return Object.entries(operation.responses ?? {}).some(([status, response]) => {
+    if (!/^2\d\d$/.test(status))
+      return false
+    if (!isObject(response))
+      return false
+    const content = (response as JsonObject).content
+    return isObject(content) && Object.keys(content).length > 0
+  })
 }
 
 const filterContractOperations = (document: SwaggerDocument) => {
