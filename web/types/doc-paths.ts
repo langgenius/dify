@@ -2,10 +2,107 @@
 // DON NOT EDIT IT MANUALLY
 //
 // Generated from: https://raw.githubusercontent.com/langgenius/dify-docs/feat/audience-products/docs.json
-// Generated at: 2026-06-17T03:36:53.584Z
+// Generated at: 2026-06-17T04:25:20.766Z
 
 // Language prefixes
 export type DocLanguage = 'en' | 'zh' | 'ja'
+export type DocsProduct = 'cloud' | 'self-host'
+
+// Cloud paths
+type CloudPath =
+  | '/cloud/use-dify/build/additional-features'
+  | '/cloud/use-dify/build/agent'
+  | '/cloud/use-dify/build/chatbot'
+  | '/cloud/use-dify/build/mcp'
+  | '/cloud/use-dify/build/orchestrate-node'
+  | '/cloud/use-dify/build/predefined-error-handling-logic'
+  | '/cloud/use-dify/build/shortcut-key'
+  | '/cloud/use-dify/build/text-generator'
+  | '/cloud/use-dify/build/version-control'
+  | '/cloud/use-dify/build/workflow-chatflow'
+  | '/cloud/use-dify/build/workflow-collaboration'
+  | '/cloud/use-dify/debug/error-type'
+  | '/cloud/use-dify/debug/history-and-logs'
+  | '/cloud/use-dify/debug/step-run'
+  | '/cloud/use-dify/debug/variable-inspect'
+  | '/cloud/use-dify/getting-started/introduction'
+  | '/cloud/use-dify/knowledge/connect-external-knowledge-base'
+  | '/cloud/use-dify/knowledge/create-knowledge/chunking-and-cleaning-text'
+  | '/cloud/use-dify/knowledge/create-knowledge/import-text-data/readme'
+  | '/cloud/use-dify/knowledge/create-knowledge/import-text-data/sync-from-notion'
+  | '/cloud/use-dify/knowledge/create-knowledge/import-text-data/sync-from-website'
+  | '/cloud/use-dify/knowledge/create-knowledge/introduction'
+  | '/cloud/use-dify/knowledge/create-knowledge/setting-indexing-methods'
+  | '/cloud/use-dify/knowledge/external-knowledge-api'
+  | '/cloud/use-dify/knowledge/integrate-knowledge-within-application'
+  | '/cloud/use-dify/knowledge/knowledge-pipeline/authorize-data-source'
+  | '/cloud/use-dify/knowledge/knowledge-pipeline/create-knowledge-pipeline'
+  | '/cloud/use-dify/knowledge/knowledge-pipeline/knowledge-pipeline-orchestration'
+  | '/cloud/use-dify/knowledge/knowledge-pipeline/manage-knowledge-base'
+  | '/cloud/use-dify/knowledge/knowledge-pipeline/publish-knowledge-pipeline'
+  | '/cloud/use-dify/knowledge/knowledge-pipeline/readme'
+  | '/cloud/use-dify/knowledge/knowledge-pipeline/upload-files'
+  | '/cloud/use-dify/knowledge/knowledge-request-rate-limit'
+  | '/cloud/use-dify/knowledge/manage-knowledge/introduction'
+  | '/cloud/use-dify/knowledge/manage-knowledge/maintain-dataset-via-api'
+  | '/cloud/use-dify/knowledge/manage-knowledge/maintain-knowledge-documents'
+  | '/cloud/use-dify/knowledge/metadata'
+  | '/cloud/use-dify/knowledge/readme'
+  | '/cloud/use-dify/knowledge/test-retrieval'
+  | '/cloud/use-dify/monitor/analysis'
+  | '/cloud/use-dify/monitor/annotation-reply'
+  | '/cloud/use-dify/monitor/integrations/integrate-aliyun'
+  | '/cloud/use-dify/monitor/integrations/integrate-arize'
+  | '/cloud/use-dify/monitor/integrations/integrate-langfuse'
+  | '/cloud/use-dify/monitor/integrations/integrate-langsmith'
+  | '/cloud/use-dify/monitor/integrations/integrate-opik'
+  | '/cloud/use-dify/monitor/integrations/integrate-phoenix'
+  | '/cloud/use-dify/monitor/integrations/integrate-weave'
+  | '/cloud/use-dify/monitor/logs'
+  | '/cloud/use-dify/nodes/agent'
+  | '/cloud/use-dify/nodes/answer'
+  | '/cloud/use-dify/nodes/code'
+  | '/cloud/use-dify/nodes/doc-extractor'
+  | '/cloud/use-dify/nodes/http-request'
+  | '/cloud/use-dify/nodes/human-input'
+  | '/cloud/use-dify/nodes/ifelse'
+  | '/cloud/use-dify/nodes/iteration'
+  | '/cloud/use-dify/nodes/knowledge-retrieval'
+  | '/cloud/use-dify/nodes/list-operator'
+  | '/cloud/use-dify/nodes/llm'
+  | '/cloud/use-dify/nodes/loop'
+  | '/cloud/use-dify/nodes/output'
+  | '/cloud/use-dify/nodes/parameter-extractor'
+  | '/cloud/use-dify/nodes/question-classifier'
+  | '/cloud/use-dify/nodes/template'
+  | '/cloud/use-dify/nodes/tools'
+  | '/cloud/use-dify/nodes/trigger/overview'
+  | '/cloud/use-dify/nodes/trigger/plugin-trigger'
+  | '/cloud/use-dify/nodes/trigger/schedule-trigger'
+  | '/cloud/use-dify/nodes/trigger/webhook-trigger'
+  | '/cloud/use-dify/nodes/user-input'
+  | '/cloud/use-dify/nodes/variable-aggregator'
+  | '/cloud/use-dify/nodes/variable-assigner'
+  | '/cloud/use-dify/publish/README'
+  | '/cloud/use-dify/publish/developing-with-apis'
+  | '/cloud/use-dify/publish/publish-mcp'
+  | '/cloud/use-dify/publish/publish-to-marketplace'
+  | '/cloud/use-dify/publish/webapp/chatflow-webapp'
+  | '/cloud/use-dify/publish/webapp/embedding-in-websites'
+  | '/cloud/use-dify/publish/webapp/web-app-settings'
+  | '/cloud/use-dify/publish/webapp/workflow-webapp'
+  | '/cloud/use-dify/workspace/api-extension/api-extension'
+  | '/cloud/use-dify/workspace/api-extension/cloudflare-worker'
+  | '/cloud/use-dify/workspace/api-extension/external-data-tool-api-extension'
+  | '/cloud/use-dify/workspace/api-extension/moderation-api-extension'
+  | '/cloud/use-dify/workspace/app-management'
+  | '/cloud/use-dify/workspace/model-providers'
+  | '/cloud/use-dify/workspace/personal-account-management'
+  | '/cloud/use-dify/workspace/plugins'
+  | '/cloud/use-dify/workspace/readme'
+  | '/cloud/use-dify/workspace/subscription-management'
+  | '/cloud/use-dify/workspace/team-members-management'
+  | '/cloud/use-dify/workspace/tools'
 
 // UseDify paths
 type UseDifyPath =
@@ -196,6 +293,113 @@ type SelfHostPath =
   | '/self-host/deploy/troubleshooting/integrations'
   | '/self-host/deploy/troubleshooting/storage-and-migration'
   | '/self-host/deploy/troubleshooting/weaviate-v4-migration'
+  | '/self-host/use-dify/build/additional-features'
+  | '/self-host/use-dify/build/agent'
+  | '/self-host/use-dify/build/chatbot'
+  | '/self-host/use-dify/build/mcp'
+  | '/self-host/use-dify/build/orchestrate-node'
+  | '/self-host/use-dify/build/predefined-error-handling-logic'
+  | '/self-host/use-dify/build/shortcut-key'
+  | '/self-host/use-dify/build/text-generator'
+  | '/self-host/use-dify/build/version-control'
+  | '/self-host/use-dify/build/workflow-chatflow'
+  | '/self-host/use-dify/build/workflow-collaboration'
+  | '/self-host/use-dify/debug/error-type'
+  | '/self-host/use-dify/debug/history-and-logs'
+  | '/self-host/use-dify/debug/step-run'
+  | '/self-host/use-dify/debug/variable-inspect'
+  | '/self-host/use-dify/getting-started/introduction'
+  | '/self-host/use-dify/knowledge/connect-external-knowledge-base'
+  | '/self-host/use-dify/knowledge/create-knowledge/chunking-and-cleaning-text'
+  | '/self-host/use-dify/knowledge/create-knowledge/import-text-data/readme'
+  | '/self-host/use-dify/knowledge/create-knowledge/import-text-data/sync-from-notion'
+  | '/self-host/use-dify/knowledge/create-knowledge/import-text-data/sync-from-website'
+  | '/self-host/use-dify/knowledge/create-knowledge/introduction'
+  | '/self-host/use-dify/knowledge/create-knowledge/setting-indexing-methods'
+  | '/self-host/use-dify/knowledge/external-knowledge-api'
+  | '/self-host/use-dify/knowledge/integrate-knowledge-within-application'
+  | '/self-host/use-dify/knowledge/knowledge-pipeline/authorize-data-source'
+  | '/self-host/use-dify/knowledge/knowledge-pipeline/create-knowledge-pipeline'
+  | '/self-host/use-dify/knowledge/knowledge-pipeline/knowledge-pipeline-orchestration'
+  | '/self-host/use-dify/knowledge/knowledge-pipeline/manage-knowledge-base'
+  | '/self-host/use-dify/knowledge/knowledge-pipeline/publish-knowledge-pipeline'
+  | '/self-host/use-dify/knowledge/knowledge-pipeline/readme'
+  | '/self-host/use-dify/knowledge/knowledge-pipeline/upload-files'
+  | '/self-host/use-dify/knowledge/manage-knowledge/introduction'
+  | '/self-host/use-dify/knowledge/manage-knowledge/maintain-dataset-via-api'
+  | '/self-host/use-dify/knowledge/manage-knowledge/maintain-knowledge-documents'
+  | '/self-host/use-dify/knowledge/metadata'
+  | '/self-host/use-dify/knowledge/readme'
+  | '/self-host/use-dify/knowledge/test-retrieval'
+  | '/self-host/use-dify/monitor/analysis'
+  | '/self-host/use-dify/monitor/annotation-reply'
+  | '/self-host/use-dify/monitor/integrations/integrate-aliyun'
+  | '/self-host/use-dify/monitor/integrations/integrate-arize'
+  | '/self-host/use-dify/monitor/integrations/integrate-langfuse'
+  | '/self-host/use-dify/monitor/integrations/integrate-langsmith'
+  | '/self-host/use-dify/monitor/integrations/integrate-opik'
+  | '/self-host/use-dify/monitor/integrations/integrate-phoenix'
+  | '/self-host/use-dify/monitor/integrations/integrate-weave'
+  | '/self-host/use-dify/monitor/logs'
+  | '/self-host/use-dify/nodes/agent'
+  | '/self-host/use-dify/nodes/answer'
+  | '/self-host/use-dify/nodes/code'
+  | '/self-host/use-dify/nodes/doc-extractor'
+  | '/self-host/use-dify/nodes/http-request'
+  | '/self-host/use-dify/nodes/human-input'
+  | '/self-host/use-dify/nodes/ifelse'
+  | '/self-host/use-dify/nodes/iteration'
+  | '/self-host/use-dify/nodes/knowledge-retrieval'
+  | '/self-host/use-dify/nodes/list-operator'
+  | '/self-host/use-dify/nodes/llm'
+  | '/self-host/use-dify/nodes/loop'
+  | '/self-host/use-dify/nodes/output'
+  | '/self-host/use-dify/nodes/parameter-extractor'
+  | '/self-host/use-dify/nodes/question-classifier'
+  | '/self-host/use-dify/nodes/template'
+  | '/self-host/use-dify/nodes/tools'
+  | '/self-host/use-dify/nodes/trigger/overview'
+  | '/self-host/use-dify/nodes/trigger/plugin-trigger'
+  | '/self-host/use-dify/nodes/trigger/schedule-trigger'
+  | '/self-host/use-dify/nodes/trigger/webhook-trigger'
+  | '/self-host/use-dify/nodes/user-input'
+  | '/self-host/use-dify/nodes/variable-aggregator'
+  | '/self-host/use-dify/nodes/variable-assigner'
+  | '/self-host/use-dify/publish/README'
+  | '/self-host/use-dify/publish/developing-with-apis'
+  | '/self-host/use-dify/publish/publish-mcp'
+  | '/self-host/use-dify/publish/publish-to-marketplace'
+  | '/self-host/use-dify/publish/webapp/chatflow-webapp'
+  | '/self-host/use-dify/publish/webapp/embedding-in-websites'
+  | '/self-host/use-dify/publish/webapp/web-app-settings'
+  | '/self-host/use-dify/publish/webapp/workflow-webapp'
+  | '/self-host/use-dify/workspace/api-extension/api-extension'
+  | '/self-host/use-dify/workspace/api-extension/cloudflare-worker'
+  | '/self-host/use-dify/workspace/api-extension/external-data-tool-api-extension'
+  | '/self-host/use-dify/workspace/api-extension/moderation-api-extension'
+  | '/self-host/use-dify/workspace/app-management'
+  | '/self-host/use-dify/workspace/model-providers'
+  | '/self-host/use-dify/workspace/personal-account-management'
+  | '/self-host/use-dify/workspace/plugins'
+  | '/self-host/use-dify/workspace/readme'
+  | '/self-host/use-dify/workspace/team-members-management'
+  | '/self-host/use-dify/workspace/tools'
+
+// Deploy paths
+type DeployPath =
+  | '/deploy/advanced-deployments/local-source-code'
+  | '/deploy/advanced-deployments/start-the-frontend-docker-container'
+  | '/deploy/configuration/environments'
+  | '/deploy/overview'
+  | '/deploy/platform-guides/bt-panel'
+  | '/deploy/platform-guides/dify-premium'
+  | '/deploy/quick-start/docker-compose'
+  | '/deploy/quick-start/faqs'
+  | '/deploy/troubleshooting/common-issues'
+  | '/deploy/troubleshooting/docker-issues'
+  | '/deploy/troubleshooting/integrations'
+  | '/deploy/troubleshooting/storage-and-migration'
+  | '/deploy/troubleshooting/weaviate-v4-migration'
 
 // API Reference paths (English, use apiReferencePathTranslations for other languages)
 type ApiReferencePath =
@@ -289,6 +493,7 @@ type ApiReferencePath =
 
 // Base path without language prefix
 type DocPathWithoutLangBase =
+  | CloudPath
   | UseDifyPath
   | HomePath
   | LearnPath
@@ -296,6 +501,7 @@ type DocPathWithoutLangBase =
   | CliPath
   | DevelopPluginPath
   | SelfHostPath
+  | DeployPath
   | ApiReferencePath
 
 // Combined path without language prefix (supports optional #anchor)
@@ -305,6 +511,116 @@ export type DocPathWithoutLang =
 
 // Full documentation path with language prefix
 export type DifyDocPath = `${DocLanguage}/${DocPathWithoutLang}`
+
+// Product availability for productless docs paths
+export const docPathProductAvailability: Record<string, readonly DocsProduct[]> = {
+  '/deploy/advanced-deployments/local-source-code': ['self-host'],
+  '/deploy/advanced-deployments/start-the-frontend-docker-container': ['self-host'],
+  '/deploy/configuration/environments': ['self-host'],
+  '/deploy/overview': ['self-host'],
+  '/deploy/platform-guides/bt-panel': ['self-host'],
+  '/deploy/platform-guides/dify-premium': ['self-host'],
+  '/deploy/quick-start/docker-compose': ['self-host'],
+  '/deploy/quick-start/faqs': ['self-host'],
+  '/deploy/troubleshooting/common-issues': ['self-host'],
+  '/deploy/troubleshooting/docker-issues': ['self-host'],
+  '/deploy/troubleshooting/integrations': ['self-host'],
+  '/deploy/troubleshooting/storage-and-migration': ['self-host'],
+  '/deploy/troubleshooting/weaviate-v4-migration': ['self-host'],
+  '/use-dify/build/additional-features': ['cloud', 'self-host'],
+  '/use-dify/build/agent': ['cloud', 'self-host'],
+  '/use-dify/build/chatbot': ['cloud', 'self-host'],
+  '/use-dify/build/mcp': ['cloud', 'self-host'],
+  '/use-dify/build/orchestrate-node': ['cloud', 'self-host'],
+  '/use-dify/build/predefined-error-handling-logic': ['cloud', 'self-host'],
+  '/use-dify/build/shortcut-key': ['cloud', 'self-host'],
+  '/use-dify/build/text-generator': ['cloud', 'self-host'],
+  '/use-dify/build/version-control': ['cloud', 'self-host'],
+  '/use-dify/build/workflow-chatflow': ['cloud', 'self-host'],
+  '/use-dify/build/workflow-collaboration': ['cloud', 'self-host'],
+  '/use-dify/debug/error-type': ['cloud', 'self-host'],
+  '/use-dify/debug/history-and-logs': ['cloud', 'self-host'],
+  '/use-dify/debug/step-run': ['cloud', 'self-host'],
+  '/use-dify/debug/variable-inspect': ['cloud', 'self-host'],
+  '/use-dify/getting-started/introduction': ['cloud', 'self-host'],
+  '/use-dify/knowledge/connect-external-knowledge-base': ['cloud', 'self-host'],
+  '/use-dify/knowledge/create-knowledge/chunking-and-cleaning-text': ['cloud', 'self-host'],
+  '/use-dify/knowledge/create-knowledge/import-text-data/readme': ['cloud', 'self-host'],
+  '/use-dify/knowledge/create-knowledge/import-text-data/sync-from-notion': ['cloud', 'self-host'],
+  '/use-dify/knowledge/create-knowledge/import-text-data/sync-from-website': ['cloud', 'self-host'],
+  '/use-dify/knowledge/create-knowledge/introduction': ['cloud', 'self-host'],
+  '/use-dify/knowledge/create-knowledge/setting-indexing-methods': ['cloud', 'self-host'],
+  '/use-dify/knowledge/external-knowledge-api': ['cloud', 'self-host'],
+  '/use-dify/knowledge/integrate-knowledge-within-application': ['cloud', 'self-host'],
+  '/use-dify/knowledge/knowledge-pipeline/authorize-data-source': ['cloud', 'self-host'],
+  '/use-dify/knowledge/knowledge-pipeline/create-knowledge-pipeline': ['cloud', 'self-host'],
+  '/use-dify/knowledge/knowledge-pipeline/knowledge-pipeline-orchestration': ['cloud', 'self-host'],
+  '/use-dify/knowledge/knowledge-pipeline/manage-knowledge-base': ['cloud', 'self-host'],
+  '/use-dify/knowledge/knowledge-pipeline/publish-knowledge-pipeline': ['cloud', 'self-host'],
+  '/use-dify/knowledge/knowledge-pipeline/readme': ['cloud', 'self-host'],
+  '/use-dify/knowledge/knowledge-pipeline/upload-files': ['cloud', 'self-host'],
+  '/use-dify/knowledge/knowledge-request-rate-limit': ['cloud'],
+  '/use-dify/knowledge/manage-knowledge/introduction': ['cloud', 'self-host'],
+  '/use-dify/knowledge/manage-knowledge/maintain-dataset-via-api': ['cloud', 'self-host'],
+  '/use-dify/knowledge/manage-knowledge/maintain-knowledge-documents': ['cloud', 'self-host'],
+  '/use-dify/knowledge/metadata': ['cloud', 'self-host'],
+  '/use-dify/knowledge/readme': ['cloud', 'self-host'],
+  '/use-dify/knowledge/test-retrieval': ['cloud', 'self-host'],
+  '/use-dify/monitor/analysis': ['cloud', 'self-host'],
+  '/use-dify/monitor/annotation-reply': ['cloud', 'self-host'],
+  '/use-dify/monitor/integrations/integrate-aliyun': ['cloud', 'self-host'],
+  '/use-dify/monitor/integrations/integrate-arize': ['cloud', 'self-host'],
+  '/use-dify/monitor/integrations/integrate-langfuse': ['cloud', 'self-host'],
+  '/use-dify/monitor/integrations/integrate-langsmith': ['cloud', 'self-host'],
+  '/use-dify/monitor/integrations/integrate-opik': ['cloud', 'self-host'],
+  '/use-dify/monitor/integrations/integrate-phoenix': ['cloud', 'self-host'],
+  '/use-dify/monitor/integrations/integrate-weave': ['cloud', 'self-host'],
+  '/use-dify/monitor/logs': ['cloud', 'self-host'],
+  '/use-dify/nodes/agent': ['cloud', 'self-host'],
+  '/use-dify/nodes/answer': ['cloud', 'self-host'],
+  '/use-dify/nodes/code': ['cloud', 'self-host'],
+  '/use-dify/nodes/doc-extractor': ['cloud', 'self-host'],
+  '/use-dify/nodes/http-request': ['cloud', 'self-host'],
+  '/use-dify/nodes/human-input': ['cloud', 'self-host'],
+  '/use-dify/nodes/ifelse': ['cloud', 'self-host'],
+  '/use-dify/nodes/iteration': ['cloud', 'self-host'],
+  '/use-dify/nodes/knowledge-retrieval': ['cloud', 'self-host'],
+  '/use-dify/nodes/list-operator': ['cloud', 'self-host'],
+  '/use-dify/nodes/llm': ['cloud', 'self-host'],
+  '/use-dify/nodes/loop': ['cloud', 'self-host'],
+  '/use-dify/nodes/output': ['cloud', 'self-host'],
+  '/use-dify/nodes/parameter-extractor': ['cloud', 'self-host'],
+  '/use-dify/nodes/question-classifier': ['cloud', 'self-host'],
+  '/use-dify/nodes/template': ['cloud', 'self-host'],
+  '/use-dify/nodes/tools': ['cloud', 'self-host'],
+  '/use-dify/nodes/trigger/overview': ['cloud', 'self-host'],
+  '/use-dify/nodes/trigger/plugin-trigger': ['cloud', 'self-host'],
+  '/use-dify/nodes/trigger/schedule-trigger': ['cloud', 'self-host'],
+  '/use-dify/nodes/trigger/webhook-trigger': ['cloud', 'self-host'],
+  '/use-dify/nodes/user-input': ['cloud', 'self-host'],
+  '/use-dify/nodes/variable-aggregator': ['cloud', 'self-host'],
+  '/use-dify/nodes/variable-assigner': ['cloud', 'self-host'],
+  '/use-dify/publish/README': ['cloud', 'self-host'],
+  '/use-dify/publish/developing-with-apis': ['cloud', 'self-host'],
+  '/use-dify/publish/publish-mcp': ['cloud', 'self-host'],
+  '/use-dify/publish/publish-to-marketplace': ['cloud', 'self-host'],
+  '/use-dify/publish/webapp/chatflow-webapp': ['cloud', 'self-host'],
+  '/use-dify/publish/webapp/embedding-in-websites': ['cloud', 'self-host'],
+  '/use-dify/publish/webapp/web-app-settings': ['cloud', 'self-host'],
+  '/use-dify/publish/webapp/workflow-webapp': ['cloud', 'self-host'],
+  '/use-dify/workspace/api-extension/api-extension': ['cloud', 'self-host'],
+  '/use-dify/workspace/api-extension/cloudflare-worker': ['cloud', 'self-host'],
+  '/use-dify/workspace/api-extension/external-data-tool-api-extension': ['cloud', 'self-host'],
+  '/use-dify/workspace/api-extension/moderation-api-extension': ['cloud', 'self-host'],
+  '/use-dify/workspace/app-management': ['cloud', 'self-host'],
+  '/use-dify/workspace/model-providers': ['cloud', 'self-host'],
+  '/use-dify/workspace/personal-account-management': ['cloud', 'self-host'],
+  '/use-dify/workspace/plugins': ['cloud', 'self-host'],
+  '/use-dify/workspace/readme': ['cloud', 'self-host'],
+  '/use-dify/workspace/subscription-management': ['cloud'],
+  '/use-dify/workspace/team-members-management': ['cloud', 'self-host'],
+  '/use-dify/workspace/tools': ['cloud', 'self-host'],
+}
 
 // API Reference path translations (English -> other languages)
 export const apiReferencePathTranslations: Record<string, { zh?: string; ja?: string }> = {

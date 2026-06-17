@@ -63,6 +63,14 @@ type DocsJson = {
 }
 
 const OPENAPI_BASE_URL = (process.env.DOCS_OPENAPI_BASE_URL || new URL('.', DOCS_JSON_URL).toString()).replace(/\/?$/, '/')
+const DOCS_PRODUCTS = ['cloud', 'self-host'] as const
+
+type DocsProduct = typeof DOCS_PRODUCTS[number]
+type ProductAvailability = Record<string, Set<DocsProduct>>
+
+function isDocsProduct(segment: string): segment is DocsProduct {
+  return DOCS_PRODUCTS.includes(segment as DocsProduct)
+}
 
 /**
  * Convert summary to URL slug
@@ -229,15 +237,41 @@ function extractPaths(item: NavItem | undefined, paths: Set<string> = new Set())
   return paths
 }
 
+function addPathToGroup(groups: Record<string, Set<string>>, pathWithoutLang: string): void {
+  const parts = pathWithoutLang.split('/')
+  const section = parts[0]
+  if (!section)
+    return
+
+  if (!groups[section])
+    groups[section] = new Set()
+
+  groups[section]!.add(pathWithoutLang)
+}
+
+function getProductPathInfo(pathWithoutLang: string): { product: DocsProduct, pathWithoutProduct: string } | undefined {
+  const parts = pathWithoutLang.split('/')
+  const [product, ...rest] = parts
+
+  if (!product || !isDocsProduct(product) || rest.length === 0)
+    return undefined
+
+  return {
+    product,
+    pathWithoutProduct: rest.join('/'),
+  }
+}
+
 /**
  * Group paths by their prefix structure
  */
-function groupPathsBySection(paths: Set<string>): Record<string, Set<string>> {
+function groupPathsBySection(paths: Set<string>): { groups: Record<string, Set<string>>, productAvailability: ProductAvailability } {
   const groups: Record<string, Set<string>> = {}
+  const productAvailability: ProductAvailability = {}
 
   for (const fullPath of paths) {
     // Remove language prefix (en/, zh/, ja/)
-    let withoutLang = fullPath.replace(/^(en|zh|ja)\//, '')
+    const withoutLang = fullPath.replace(/^(en|zh|ja)\//, '')
     if (!withoutLang || withoutLang === fullPath)
       continue
 
@@ -245,20 +279,26 @@ function groupPathsBySection(paths: Set<string>): Record<string, Set<string>> {
     if (withoutLang.endsWith('.json') || withoutLang === 'None')
       continue
 
-    // Product-specific use-dify docs are selected by useDocLink at runtime.
-    withoutLang = withoutLang.replace(/^(cloud|self-host)\/(?=use-dify(?:\/|$))/, '')
+    addPathToGroup(groups, withoutLang)
 
-    // Get section (first part of path)
-    const parts = withoutLang.split('/')
-    const section = parts[0]
+    const productPathInfo = getProductPathInfo(withoutLang)
+    if (productPathInfo) {
+      const productlessPath = productPathInfo.pathWithoutProduct
+      const normalizedPath = `/${productlessPath}`
 
-    if (!groups[section!])
-      groups[section!] = new Set()
+      addPathToGroup(groups, productlessPath)
 
-    groups[section!]!.add(withoutLang)
+      if (!productAvailability[normalizedPath])
+        productAvailability[normalizedPath] = new Set()
+
+      productAvailability[normalizedPath]!.add(productPathInfo.product)
+    }
   }
 
-  return groups
+  return {
+    groups,
+    productAvailability,
+  }
 }
 
 /**
@@ -276,6 +316,7 @@ function sectionToTypeName(section: string): string {
  */
 function generateTypeDefinitions(
   groups: Record<string, Set<string>>,
+  productAvailability: ProductAvailability,
   apiReferencePaths: string[],
   apiPathTranslations: Record<string, { zh?: string, ja?: string }>,
 ): string {
@@ -288,6 +329,7 @@ function generateTypeDefinitions(
     '',
     '// Language prefixes',
     'export type DocLanguage = \'en\' | \'zh\' | \'ja\'',
+    'export type DocsProduct = \'cloud\' | \'self-host\'',
     '',
   ]
 
@@ -350,6 +392,16 @@ function generateTypeDefinitions(
   lines.push('// Full documentation path with language prefix')
   // eslint-disable-next-line no-template-curly-in-string
   lines.push('export type DifyDocPath = `${DocLanguage}/${DocPathWithoutLang}`')
+  lines.push('')
+
+  // Generate product availability map for productless runtime links.
+  lines.push('// Product availability for productless docs paths')
+  lines.push('export const docPathProductAvailability: Record<string, readonly DocsProduct[]> = {')
+  for (const path of Object.keys(productAvailability).sort()) {
+    const products = [...productAvailability[path]!].sort((a, b) => DOCS_PRODUCTS.indexOf(a) - DOCS_PRODUCTS.indexOf(b))
+    lines.push(`  '${path}': [${products.map(product => `'${product}'`).join(', ')}],`)
+  }
+  lines.push('}')
   lines.push('')
 
   // Generate API reference path translations map
@@ -448,12 +500,13 @@ async function main(): Promise<void> {
   console.log(`Generated ${Object.keys(apiPathTranslations).length} API path translations`)
 
   // Group by section
-  const groups = groupPathsBySection(allPaths)
+  const { groups, productAvailability } = groupPathsBySection(allPaths)
 
   console.log(`Grouped into ${Object.keys(groups).length} sections:`, Object.keys(groups))
+  console.log(`Found ${Object.keys(productAvailability).length} product-aware paths`)
 
   // Generate TypeScript
-  const tsContent = generateTypeDefinitions(groups, uniqueEnApiPaths, apiPathTranslations)
+  const tsContent = generateTypeDefinitions(groups, productAvailability, uniqueEnApiPaths, apiPathTranslations)
 
   // Write to file
   await writeFile(OUTPUT_PATH, tsContent, 'utf-8')

@@ -154,7 +154,7 @@ describe('useDocLink', () => {
   })
 
   describe('Product prefix handling', () => {
-    it('should add cloud product prefix for use-dify paths in cloud edition', () => {
+    it('should add cloud product prefix for product docs available in both editions', () => {
       mockConfig.IS_CLOUD_EDITION = true
 
       const { result } = renderHook(() => useDocLink())
@@ -162,12 +162,36 @@ describe('useDocLink', () => {
       expect(url).toBe(`${defaultDocBaseUrl}/en/cloud/use-dify/build/mcp`)
     })
 
-    it('should add self-host product prefix for use-dify paths outside cloud edition', () => {
+    it('should add self-host product prefix for product docs available in both editions outside cloud edition', () => {
       mockConfig.IS_CLOUD_EDITION = false
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/use-dify/build/mcp')
       expect(url).toBe(`${defaultDocBaseUrl}/en/self-host/use-dify/build/mcp`)
+    })
+
+    it('should use the existing cloud docs path for cloud-only product docs outside cloud edition', () => {
+      mockConfig.IS_CLOUD_EDITION = false
+
+      const { result } = renderHook(() => useDocLink())
+      const url = result.current('/use-dify/workspace/subscription-management#dify-for-education')
+      expect(url).toBe(`${defaultDocBaseUrl}/en/cloud/use-dify/workspace/subscription-management#dify-for-education`)
+    })
+
+    it('should use the existing self-host docs path for self-host-only product docs in cloud edition', () => {
+      mockConfig.IS_CLOUD_EDITION = true
+
+      const { result } = renderHook(() => useDocLink())
+      const url = result.current('/deploy/overview')
+      expect(url).toBe(`${defaultDocBaseUrl}/en/self-host/deploy/overview`)
+    })
+
+    it('should not add a product prefix for unknown productless paths', () => {
+      mockConfig.IS_CLOUD_EDITION = false
+
+      const { result } = renderHook(() => useDocLink())
+      const url = result.current('/use-dify/unknown-page' as DocPathWithoutLang)
+      expect(url).toBe(`${defaultDocBaseUrl}/en/use-dify/unknown-page`)
     })
 
     it('should open shared docs home when no path is provided outside cloud edition', () => {
