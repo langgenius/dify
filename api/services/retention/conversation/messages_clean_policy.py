@@ -25,12 +25,6 @@ class MessagesCleanPolicy(Protocol):
     A policy determines which messages from a batch should be deleted.
     """
 
-    def supports_tenant_prefilter(self) -> bool:
-        """
-        Return whether the cleanup service can prefilter apps by eligible tenants before scanning messages.
-        """
-        ...
-
     def filter_message_ids(
         self,
         messages: Sequence[SimpleMessage],
@@ -48,14 +42,6 @@ class MessagesCleanPolicy(Protocol):
         """
         ...
 
-    def filter_eligible_tenant_ids(self, tenant_ids: Sequence[str]) -> set[str] | None:
-        """
-        Return tenant IDs eligible for cleanup before scanning messages.
-
-        Returns None when a policy intentionally does not support SQL prefiltering.
-        """
-        ...
-
 
 class BillingDisabledPolicy(MessagesCleanPolicy):
     """
@@ -65,20 +51,12 @@ class BillingDisabledPolicy(MessagesCleanPolicy):
     """
 
     @override
-    def supports_tenant_prefilter(self) -> bool:
-        return False
-
-    @override
     def filter_message_ids(
         self,
         messages: Sequence[SimpleMessage],
         app_to_tenant: dict[str, str],
     ) -> Sequence[str]:
         return [msg.id for msg in messages]
-
-    @override
-    def filter_eligible_tenant_ids(self, tenant_ids: Sequence[str]) -> set[str] | None:
-        return None
 
 
 class BillingSandboxPolicy(MessagesCleanPolicy):
@@ -102,10 +80,6 @@ class BillingSandboxPolicy(MessagesCleanPolicy):
     _current_timestamp: int | None
     _tenant_plan_cache: dict[str, SubscriptionPlan]
     _missing_plan_tenant_cache: set[str]
-
-    @override
-    def supports_tenant_prefilter(self) -> bool:
-        return True
 
     def __init__(
         self,
@@ -152,28 +126,6 @@ class BillingSandboxPolicy(MessagesCleanPolicy):
             app_to_tenant=app_to_tenant,
             tenant_plans=tenant_plans,
         )
-
-    @override
-    def filter_eligible_tenant_ids(self, tenant_ids: Sequence[str]) -> set[str] | None:
-        """
-        Filter tenants eligible for message cleanup before scanning message rows.
-
-        Missing billing plans remain non-eligible for the current cleanup job, matching
-        the per-message safe default while avoiding repeated billing lookups.
-        """
-        tenant_id_set = set(tenant_ids)
-        if not tenant_id_set:
-            return set()
-
-        tenant_plans = self._get_tenant_plans(list(tenant_id_set))
-        if not tenant_plans:
-            return set()
-
-        return {
-            tenant_id
-            for tenant_id in tenant_id_set
-            if self._is_expired_sandbox_tenant(tenant_id, tenant_plans.get(tenant_id))
-        }
 
     def _get_tenant_plans(self, tenant_ids: Sequence[str]) -> dict[str, SubscriptionPlan]:
         tenant_id_set = set(tenant_ids)

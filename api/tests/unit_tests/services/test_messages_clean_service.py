@@ -12,8 +12,7 @@ from services.retention.conversation.messages_clean_policy import (
     create_message_clean_policy,
 )
 from services.retention.conversation.messages_clean_service import (
-    _SQL_IN_CHUNK_SIZE,
-    MessageScanScope,
+    _DELETE_CHUNK_SIZE,
     MessagesCleanService,
 )
 
@@ -697,9 +696,10 @@ class TestMessagesCleanServiceSleep:
             policy=BillingDisabledPolicy(),
             start_from=datetime.datetime(2024, 1, 1),
             end_before=datetime.datetime(2024, 1, 2),
-            batch_size=1000,
+            batch_size=10000,
             dry_run=False,
         )
+        expected_sleep_cap_ms = 1000 * (3 / _DELETE_CHUNK_SIZE)
 
         with patch(
             "services.retention.conversation.messages_clean_service.random.uniform", return_value=1.5
@@ -707,7 +707,7 @@ class TestMessagesCleanServiceSleep:
             sleep_ms = service._calculate_batch_sleep_ms(deleted_messages=3, max_batch_interval_ms=1000)
 
         assert sleep_ms == 1.5
-        random_uniform.assert_called_once_with(0, 3.0)
+        random_uniform.assert_called_once_with(0, expected_sleep_cap_ms)
 
     def test_calculate_batch_sleep_skips_when_no_rows_deleted(self):
         service = MessagesCleanService(
@@ -723,53 +723,3 @@ class TestMessagesCleanServiceSleep:
 
         assert sleep_ms == 0
         random_uniform.assert_not_called()
-
-
-class TestMessagesCleanServiceAppScopes:
-    def test_message_app_id_scopes_preserves_global_scan_for_billing_disabled(self):
-        service = MessagesCleanService(
-            policy=BillingDisabledPolicy(),
-            start_from=datetime.datetime(2024, 1, 1),
-            end_before=datetime.datetime(2024, 1, 2),
-            batch_size=1000,
-            dry_run=False,
-        )
-
-        assert service._message_app_id_scopes(None) == [MessageScanScope()]
-
-    def test_message_app_id_scopes_chunks_eligible_app_ids(self):
-        service = MessagesCleanService(
-            policy=BillingDisabledPolicy(),
-            start_from=datetime.datetime(2024, 1, 1),
-            end_before=datetime.datetime(2024, 1, 2),
-            batch_size=1000,
-            dry_run=False,
-        )
-        app_ids = {f"app-{index}" for index in range((_SQL_IN_CHUNK_SIZE * 2) + 1)}
-
-        scopes = service._message_app_id_scopes(app_ids)
-
-        scoped_app_ids: set[str] = set()
-        for scope in scopes:
-            assert scope.app_ids is not None
-            assert scope.excluded_tenant_ids is None
-            scoped_app_ids.update(scope.app_ids)
-
-        assert [len(scope.app_ids or []) for scope in scopes] == [
-            _SQL_IN_CHUNK_SIZE,
-            _SQL_IN_CHUNK_SIZE,
-            1,
-        ]
-        assert scoped_app_ids == app_ids
-
-    def test_tenant_denylist_preferred_for_high_eligible_tenant_ratio(self):
-        assert MessagesCleanService._should_use_tenant_denylist(
-            total_tenant_count=100,
-            excluded_tenant_count=10,
-        )
-
-    def test_tenant_denylist_skipped_for_low_eligible_tenant_ratio(self):
-        assert not MessagesCleanService._should_use_tenant_denylist(
-            total_tenant_count=100,
-            excluded_tenant_count=30,
-        )

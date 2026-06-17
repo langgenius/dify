@@ -113,7 +113,7 @@ class TestBillingSandboxPolicy:
 
         assert result == ["m1"]
 
-    def test_filter_eligible_tenant_ids_uses_job_plan_cache(self):
+    def test_filter_message_ids_uses_job_plan_cache(self):
         provider = MagicMock(
             return_value={
                 "t_sandbox": {"plan": "sandbox", "expiration_date": -1},
@@ -125,12 +125,14 @@ class TestBillingSandboxPolicy:
             graceful_period_days=21,
             current_timestamp=1_000_000_000,
         )
+        msgs = [_msg("m1", "app_sandbox"), _msg("m2", "app_pro")]
+        app_map = {"app_sandbox": "t_sandbox", "app_pro": "t_pro"}
 
-        first_result = policy.filter_eligible_tenant_ids(["t_sandbox", "t_pro"])
-        second_result = policy.filter_eligible_tenant_ids(["t_sandbox", "t_pro"])
+        first_result = policy.filter_message_ids(msgs, app_map)
+        second_result = policy.filter_message_ids(msgs, app_map)
 
-        assert first_result == {"t_sandbox"}
-        assert second_result == {"t_sandbox"}
+        assert first_result == ["m1"]
+        assert second_result == ["m1"]
         provider.assert_called_once()
 
 

@@ -6,7 +6,6 @@ from unittest.mock import MagicMock
 import pytest
 from sqlalchemy import delete, func, select
 
-import services.retention.conversation.messages_clean_service as messages_clean_service_module
 from core.db.session_factory import session_factory
 from enums.cloud_plan import CloudPlan
 from models import Tenant
@@ -407,8 +406,8 @@ class TestMessagesCleanServiceIntegration:
                 == 0
             )
 
-    def test_billing_sandbox_prefilters_eligible_apps_before_message_scan(self, mixed_plan_messages):
-        """Billing-enabled cleanup should only scan messages from prequalified eligible apps."""
+    def test_billing_sandbox_filters_global_cursor_batch(self, mixed_plan_messages):
+        """Billing-enabled cleanup scans the global cursor batch and deletes only eligible sandbox messages."""
         data = mixed_plan_messages
         plan_provider = MagicMock(
             return_value={
@@ -427,40 +426,11 @@ class TestMessagesCleanServiceIntegration:
 
         stats = svc.run()
 
-        assert stats["total_messages"] == 1
+        assert stats["total_messages"] == 2
         assert stats["filtered_messages"] == 1
         assert stats["total_deleted"] == 0
         assert data["sandbox_app_id"] in svc._app_to_tenant_cache
-        assert data["paid_app_id"] not in svc._app_to_tenant_cache
-        plan_provider.assert_called_once()
-
-    def test_billing_sandbox_can_use_tenant_denylist_before_message_scan(self, mixed_plan_messages, monkeypatch):
-        """When the excluded tenant set is small, cleanup can filter paid tenants with a SQL denylist join."""
-        data = mixed_plan_messages
-        monkeypatch.setattr(messages_clean_service_module, "_TENANT_DENYLIST_MIN_ELIGIBLE_RATIO", 0.5)
-        plan_provider = MagicMock(
-            return_value={
-                data["sandbox_tenant_id"]: {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
-                data["paid_tenant_id"]: {"plan": CloudPlan.TEAM, "expiration_date": -1},
-            }
-        )
-        policy = BillingSandboxPolicy(plan_provider=plan_provider, current_timestamp=int(_NOW.timestamp()))
-        svc = MessagesCleanService.from_time_range(
-            policy=policy,
-            start_from=_WINDOW_START,
-            end_before=_WINDOW_END,
-            batch_size=_DEFAULT_BATCH_SIZE,
-            dry_run=True,
-        )
-        svc._message_app_id_scopes = MagicMock(side_effect=AssertionError("unexpected app allowlist scan"))  # type: ignore[method-assign]
-
-        stats = svc.run()
-
-        assert stats["total_messages"] == 1
-        assert stats["filtered_messages"] == 1
-        assert stats["total_deleted"] == 0
-        assert data["sandbox_app_id"] in svc._app_to_tenant_cache
-        assert data["paid_app_id"] not in svc._app_to_tenant_cache
+        assert data["paid_app_id"] in svc._app_to_tenant_cache
         plan_provider.assert_called_once()
 
     def test_factory_from_time_range_validation(self):

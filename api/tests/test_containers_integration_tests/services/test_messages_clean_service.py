@@ -10,7 +10,6 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-import services.retention.conversation.messages_clean_service as messages_clean_service_module
 from enums.cloud_plan import CloudPlan
 from extensions.ext_redis import redis_client
 from graphon.file import FileType
@@ -42,7 +41,7 @@ from services.retention.conversation.messages_clean_policy import (
     BillingSandboxPolicy,
     create_message_clean_policy,
 )
-from services.retention.conversation.messages_clean_service import MessagesCleanService
+from services.retention.conversation.messages_clean_service import _DELETE_CHUNK_SIZE, MessagesCleanService
 
 
 class TestMessagesCleanServiceIntegration:
@@ -400,8 +399,8 @@ class TestMessagesCleanServiceIntegration:
             )
             stats = service.run()
 
-        # Assert - no eligible apps, so the job skips the message scan entirely
-        assert stats["batches"] == 0
+        # Assert - global cursor scans once and finds no rows
+        assert stats["batches"] == 1
         assert stats["total_messages"] == 0
         assert stats["filtered_messages"] == 0
         assert stats["total_deleted"] == 0
@@ -478,7 +477,7 @@ class TestMessagesCleanServiceIntegration:
             stats = service.run()
 
         # Assert
-        assert stats["total_messages"] == 6  # Only eligible sandbox app messages are scanned
+        assert stats["total_messages"] == 10  # Global cursor scans both sandbox and paid messages
         assert stats["filtered_messages"] == 6  # 2 sandbox tenants * 3 messages
         assert stats["total_deleted"] == 6
 
@@ -500,65 +499,6 @@ class TestMessagesCleanServiceIntegration:
             .count()
             == 0
         )
-
-    def test_tenant_denylist_scope_skips_paid_tenant_before_message_scan(
-        self, db_session_with_containers: Session, monkeypatch
-    ):
-        """Test the high-eligible-ratio path that filters non-eligible tenants with a SQL denylist join."""
-        monkeypatch.setattr(messages_clean_service_module, "_TENANT_DENYLIST_MIN_ELIGIBLE_RATIO", 0.5)
-
-        sandbox_account, sandbox_tenant = self._create_account_and_tenant(
-            db_session_with_containers, plan=CloudPlan.SANDBOX
-        )
-        sandbox_app = self._create_app(db_session_with_containers, sandbox_tenant, sandbox_account)
-        sandbox_conv = self._create_conversation(db_session_with_containers, sandbox_app)
-        sandbox_msg = self._create_message(
-            db_session_with_containers,
-            sandbox_app,
-            sandbox_conv,
-            created_at=datetime.datetime.now() - datetime.timedelta(days=35),
-            with_relations=False,
-        )
-
-        paid_account, paid_tenant = self._create_account_and_tenant(
-            db_session_with_containers, plan=CloudPlan.PROFESSIONAL
-        )
-        paid_app = self._create_app(db_session_with_containers, paid_tenant, paid_account)
-        paid_conv = self._create_conversation(db_session_with_containers, paid_app)
-        paid_msg = self._create_message(
-            db_session_with_containers,
-            paid_app,
-            paid_conv,
-            created_at=datetime.datetime.now() - datetime.timedelta(days=35),
-            with_relations=False,
-        )
-
-        plan_provider = MagicMock(
-            return_value={
-                sandbox_tenant.id: {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
-                paid_tenant.id: {"plan": CloudPlan.PROFESSIONAL, "expiration_date": -1},
-            }
-        )
-        policy = BillingSandboxPolicy(plan_provider=plan_provider)
-        service = MessagesCleanService.from_time_range(
-            policy=policy,
-            start_from=datetime.datetime.now() - datetime.timedelta(days=60),
-            end_before=datetime.datetime.now() - datetime.timedelta(days=30),
-            batch_size=100,
-            dry_run=True,
-        )
-        service._message_app_id_scopes = MagicMock(side_effect=AssertionError("unexpected app allowlist scan"))  # type: ignore[method-assign]
-
-        stats = service.run()
-
-        assert stats["total_messages"] == 1
-        assert stats["filtered_messages"] == 1
-        assert stats["total_deleted"] == 0
-        assert db_session_with_containers.query(Message).where(Message.id == sandbox_msg.id).count() == 1
-        assert db_session_with_containers.query(Message).where(Message.id == paid_msg.id).count() == 1
-        assert sandbox_app.id in service._app_to_tenant_cache
-        assert paid_app.id not in service._app_to_tenant_cache
-        plan_provider.assert_called_once()
 
     def test_cursor_pagination_multiple_batches(
         self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist
@@ -608,6 +548,54 @@ class TestMessagesCleanServiceIntegration:
         assert stats["total_deleted"] == 10
 
         # All messages should be deleted
+        assert db_session_with_containers.query(Message).where(Message.id.in_(message_ids)).count() == 0
+
+    def test_delete_chunks_are_bounded_when_scan_batch_is_large(self, db_session_with_containers: Session):
+        """Test scan batch size can exceed delete chunk size without leaving selected messages behind."""
+        account, tenant = self._create_account_and_tenant(db_session_with_containers, plan=CloudPlan.SANDBOX)
+        app = self._create_app(db_session_with_containers, tenant, account)
+        conv = self._create_conversation(db_session_with_containers, app)
+
+        messages: list[Message] = []
+        base_date = datetime.datetime.now() - datetime.timedelta(days=35)
+        for index in range(_DELETE_CHUNK_SIZE + 5):
+            msg = Message(
+                app_id=app.id,
+                conversation_id=conv.id,
+                model_provider="openai",
+                model_id="gpt-3.5-turbo",
+                inputs={},
+                query="Test query",
+                answer="Test answer",
+                message=[{"role": "user", "text": "Test message"}],
+                message_tokens=10,
+                message_unit_price=Decimal("0.001"),
+                answer_tokens=20,
+                answer_unit_price=Decimal("0.002"),
+                total_price=Decimal("0.003"),
+                currency="USD",
+                from_source=ConversationFromSource.API,
+                from_account_id=conv.from_end_user_id,
+                created_at=base_date + datetime.timedelta(seconds=index),
+            )
+            db_session_with_containers.add(msg)
+            messages.append(msg)
+        db_session_with_containers.flush()
+        message_ids = [msg.id for msg in messages]
+        db_session_with_containers.commit()
+
+        service = MessagesCleanService.from_time_range(
+            policy=BillingDisabledPolicy(),
+            start_from=datetime.datetime.now() - datetime.timedelta(days=60),
+            end_before=datetime.datetime.now() - datetime.timedelta(days=30),
+            batch_size=_DELETE_CHUNK_SIZE + 5,
+        )
+
+        stats = service.run()
+
+        assert stats["total_messages"] == _DELETE_CHUNK_SIZE + 5
+        assert stats["filtered_messages"] == _DELETE_CHUNK_SIZE + 5
+        assert stats["total_deleted"] == _DELETE_CHUNK_SIZE + 5
         assert db_session_with_containers.query(Message).where(Message.id.in_(message_ids)).count() == 0
 
     def test_dry_run_does_not_delete(self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist):
@@ -711,7 +699,7 @@ class TestMessagesCleanServiceIntegration:
             stats = service.run()
 
         # Assert - Only tenant[0]'s message should be deleted
-        assert stats["total_messages"] == 1  # Only the eligible sandbox app message is scanned
+        assert stats["total_messages"] == 3  # Global cursor scans sandbox, professional, and unknown tenants
         assert stats["filtered_messages"] == 1
         assert stats["total_deleted"] == 1
 
@@ -758,7 +746,7 @@ class TestMessagesCleanServiceIntegration:
             stats = service.run()
 
         # Assert - No messages should be deleted when plan is unknown
-        assert stats["total_messages"] == 0
+        assert stats["total_messages"] == 1
         assert stats["filtered_messages"] == 0  # Cannot determine sandbox messages
         assert stats["total_deleted"] == 0
 
@@ -963,7 +951,7 @@ class TestMessagesCleanServiceIntegration:
             stats = service.run()
 
         # Assert - Only messages from scenario 2 and 3 should be deleted
-        assert stats["total_messages"] == 2  # Only eligible sandbox app messages are scanned
+        assert stats["total_messages"] == 5  # Global cursor scans all plan/grace-period scenarios
         assert stats["filtered_messages"] == 2
         assert stats["total_deleted"] == 2
 
@@ -1036,7 +1024,7 @@ class TestMessagesCleanServiceIntegration:
             stats = service.run()
 
         # Assert - Only tenant2's message should be deleted (not whitelisted)
-        assert stats["total_messages"] == 1  # Only the non-whitelisted eligible app message is scanned
+        assert stats["total_messages"] == 3  # Global cursor scans whitelisted and non-whitelisted tenants
         assert stats["filtered_messages"] == 1
         assert stats["total_deleted"] == 1
 
@@ -1172,7 +1160,7 @@ class TestMessagesCleanServiceIntegration:
         # Assert - No messages should be deleted
         # tenant1: whitelisted (protected even though beyond grace period)
         # tenant2: within grace period (not eligible for deletion)
-        assert stats["total_messages"] == 0
+        assert stats["total_messages"] == 2
         assert stats["filtered_messages"] == 0
         assert stats["total_deleted"] == 0
 
