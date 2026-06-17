@@ -1,11 +1,12 @@
 from uuid import UUID
 
-from flask import request
+from flask import abort, request
 from flask_restx import Resource
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
+from controllers.console.agent.app_helpers import resolve_agent_app_model
 from controllers.console.app.app import (
     AppDetailWithSite,
     AppListQuery,
@@ -27,14 +28,22 @@ from fields.agent_fields import (
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
     AgentInviteOptionsResponse,
+    AgentLogListResponse,
     AgentPublishedReferenceResponse,
     AgentRosterListResponse,
+    AgentStatisticSummaryEnvelopeResponse,
 )
+from libs.datetime_utils import parse_time_range
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
 from models.model import IconType
 from services.agent.errors import AgentNotFoundError
+from services.agent.observability_service import (
+    AgentLogQueryParams,
+    AgentObservabilityService,
+    AgentStatisticsQueryParams,
+)
 from services.agent.roster_service import AgentRosterService
 from services.app_service import AppListParams, AppService, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
@@ -63,11 +72,49 @@ class AgentAppUpdatePayload(UpdateAppPayload):
     role: str | None = Field(default=None, description="Agent role", max_length=255)
 
 
+class AgentLogsQuery(BaseModel):
+    page: int = Field(default=1, ge=1, description="Page number")
+    limit: int = Field(default=20, ge=1, le=100, description="Page size")
+    keyword: str | None = Field(default=None, description="Search query, answer, or conversation name")
+    status: str | None = Field(default=None, description="Filter by success, failed, or paused")
+    source: str | None = Field(
+        default=None,
+        description="Filter by all, console/explore, api/service-api, web-app, debugger, openapi, or trigger",
+    )
+    start: str | None = Field(default=None, description="Start date (YYYY-MM-DD HH:MM)")
+    end: str | None = Field(default=None, description="End date (YYYY-MM-DD HH:MM)")
+
+    @field_validator("keyword", "status", "source", "start", "end", mode="before")
+    @classmethod
+    def empty_string_to_none(cls, value: str | None) -> str | None:
+        if value == "":
+            return None
+        return value
+
+
+class AgentStatisticsQuery(BaseModel):
+    source: str | None = Field(
+        default=None,
+        description="Filter by all, console/explore, api/service-api, web-app, debugger, openapi, or trigger",
+    )
+    start: str | None = Field(default=None, description="Start date (YYYY-MM-DD HH:MM)")
+    end: str | None = Field(default=None, description="End date (YYYY-MM-DD HH:MM)")
+
+    @field_validator("source", "start", "end", mode="before")
+    @classmethod
+    def empty_string_to_none(cls, value: str | None) -> str | None:
+        if value == "":
+            return None
+        return value
+
+
 register_schema_models(
     console_ns,
     AgentAppCreatePayload,
     AgentAppUpdatePayload,
     AgentInviteOptionsQuery,
+    AgentLogsQuery,
+    AgentStatisticsQuery,
     AgentIdPath,
     AppListQuery,
     UpdateAppPayload,
@@ -80,8 +127,10 @@ register_response_schema_models(
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
     AgentInviteOptionsResponse,
+    AgentLogListResponse,
     AgentPublishedReferenceResponse,
     AgentRosterListResponse,
+    AgentStatisticSummaryEnvelopeResponse,
 )
 
 
@@ -136,7 +185,19 @@ def _serialize_agent_app_pagination(app_pagination, *, tenant_id: str) -> dict:
 
 
 def _resolve_agent_app_model(*, tenant_id: str, agent_id: UUID):
-    return _agent_roster_service().get_agent_app_model(tenant_id=tenant_id, agent_id=str(agent_id))
+    return resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+
+
+def _agent_observability_service() -> AgentObservabilityService:
+    return AgentObservabilityService(db.session)
+
+
+def _parse_observability_time_range(start: str | None, end: str | None, account: Account):
+    timezone = account.timezone or "UTC"
+    try:
+        return parse_time_range(start, end, timezone)
+    except ValueError as exc:
+        abort(400, description=str(exc))
 
 
 @console_ns.route("/agent")
@@ -265,6 +326,65 @@ class AgentInviteOptionsApi(Resource):
                 app_id=query.app_id,
             ),
         )
+
+
+@console_ns.route("/agent/<uuid:agent_id>/logs")
+class AgentLogsApi(Resource):
+    @console_ns.doc(params=query_params_from_model(AgentLogsQuery))
+    @console_ns.response(200, "Agent logs", console_ns.models[AgentLogListResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, current_user: Account, agent_id: UUID):
+        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        query = AgentLogsQuery.model_validate(request.args.to_dict(flat=True))
+        start, end = _parse_observability_time_range(query.start, query.end, current_user)
+        try:
+            payload = _agent_observability_service().list_logs(
+                app=app_model,
+                params=AgentLogQueryParams(
+                    page=query.page,
+                    limit=query.limit,
+                    keyword=query.keyword,
+                    status=query.status,
+                    source=query.source,
+                    start=start,
+                    end=end,
+                ),
+            )
+        except ValueError as exc:
+            abort(400, description=str(exc))
+        return dump_response(AgentLogListResponse, payload)
+
+
+@console_ns.route("/agent/<uuid:agent_id>/statistics/summary")
+class AgentStatisticsSummaryApi(Resource):
+    @console_ns.doc(params=query_params_from_model(AgentStatisticsQuery))
+    @console_ns.response(
+        200,
+        "Agent monitoring summary and chart data",
+        console_ns.models[AgentStatisticSummaryEnvelopeResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, current_user: Account, agent_id: UUID):
+        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        query = AgentStatisticsQuery.model_validate(request.args.to_dict(flat=True))
+        timezone = current_user.timezone or "UTC"
+        start, end = _parse_observability_time_range(query.start, query.end, current_user)
+        try:
+            payload = _agent_observability_service().get_statistics_summary(
+                app=app_model,
+                params=AgentStatisticsQueryParams(source=query.source, start=start, end=end, timezone=timezone),
+            )
+        except ValueError as exc:
+            abort(400, description=str(exc))
+        return dump_response(AgentStatisticSummaryEnvelopeResponse, payload)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/versions")

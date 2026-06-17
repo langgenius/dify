@@ -169,6 +169,14 @@ export type AgentDriveFileCommitResponse = {
   file: AgentDriveFileResponse
 }
 
+export type AgentLogListResponse = {
+  data: Array<AgentLogItemResponse>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
+}
+
 export type MessageDetailResponse = {
   agent_thoughts?: Array<AgentThought>
   annotation?: ConversationAnnotation | null
@@ -240,6 +248,12 @@ export type SkillToolInferenceResult = {
   cli_tools?: Array<CliToolSuggestion>
   inferable: boolean
   reason?: string | null
+}
+
+export type AgentStatisticSummaryEnvelopeResponse = {
+  charts: AgentStatisticChartsResponse
+  source: string
+  summary: AgentStatisticSummaryResponse
 }
 
 export type AgentConfigSnapshotListResponse = {
@@ -530,6 +544,29 @@ export type AgentDriveFileResponse = {
   size?: number | null
 }
 
+export type AgentLogItemResponse = {
+  answer: string
+  answer_tokens: number
+  conversation_id: string
+  conversation_name?: string | null
+  created_at?: number | null
+  currency: string
+  error?: string | null
+  from_account_id?: string | null
+  from_end_user_id?: string | null
+  from_source?: string | null
+  id: string
+  latency: number
+  message_id: string
+  message_tokens: number
+  query: string
+  source?: string | null
+  status: string
+  total_price: string
+  total_tokens: number
+  updated_at?: number | null
+}
+
 export type AgentThought = {
   chain_id?: string | null
   created_at?: number | null
@@ -642,6 +679,30 @@ export type CliToolSuggestion = {
   inferred_from?: string
   install_commands?: Array<string>
   name: string
+}
+
+export type AgentStatisticChartsResponse = {
+  average_response_time?: Array<AgentAverageResponseTimeStatisticResponse>
+  average_session_interactions?: Array<AgentAverageSessionInteractionStatisticResponse>
+  daily_conversations?: Array<AgentDailyConversationStatisticResponse>
+  daily_end_users?: Array<AgentDailyEndUserStatisticResponse>
+  daily_messages?: Array<AgentDailyMessageStatisticResponse>
+  token_usage?: Array<AgentTokenUsageStatisticResponse>
+  tokens_per_second?: Array<AgentTokensPerSecondStatisticResponse>
+  user_satisfaction_rate?: Array<AgentUserSatisfactionRateStatisticResponse>
+}
+
+export type AgentStatisticSummaryResponse = {
+  average_response_time: number
+  average_session_interactions: number
+  currency: string
+  tokens_per_second: number
+  total_conversations: number
+  total_end_users: number
+  total_messages: number
+  total_price: string
+  total_tokens: number
+  user_satisfaction_rate: number
 }
 
 export type AgentConfigRevisionResponse = {
@@ -951,6 +1012,48 @@ export type EnvSuggestion = {
   key: string
   reason?: string
   secret_likely?: boolean
+}
+
+export type AgentAverageResponseTimeStatisticResponse = {
+  date: string
+  latency: number
+}
+
+export type AgentAverageSessionInteractionStatisticResponse = {
+  date: string
+  interactions: number
+}
+
+export type AgentDailyConversationStatisticResponse = {
+  conversation_count: number
+  date: string
+}
+
+export type AgentDailyEndUserStatisticResponse = {
+  date: string
+  terminal_count: number
+}
+
+export type AgentDailyMessageStatisticResponse = {
+  date: string
+  message_count: number
+}
+
+export type AgentTokenUsageStatisticResponse = {
+  currency: string
+  date: string
+  token_count: number
+  total_price: string
+}
+
+export type AgentTokensPerSecondStatisticResponse = {
+  date: string
+  tps: number
+}
+
+export type AgentUserSatisfactionRateStatisticResponse = {
+  date: string
+  rate: number
 }
 
 export type AgentConfigRevisionOperation
@@ -1717,6 +1820,30 @@ export type PostAgentByAgentIdFilesResponses = {
 export type PostAgentByAgentIdFilesResponse
   = PostAgentByAgentIdFilesResponses[keyof PostAgentByAgentIdFilesResponses]
 
+export type GetAgentByAgentIdLogsData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: {
+    end?: string
+    keyword?: string
+    limit?: number
+    page?: number
+    source?: string
+    start?: string
+    status?: string
+  }
+  url: '/agent/{agent_id}/logs'
+}
+
+export type GetAgentByAgentIdLogsResponses = {
+  200: AgentLogListResponse
+}
+
+export type GetAgentByAgentIdLogsResponse
+  = GetAgentByAgentIdLogsResponses[keyof GetAgentByAgentIdLogsResponses]
+
 export type GetAgentByAgentIdMessagesByMessageIdData = {
   body?: never
   path: {
@@ -1885,6 +2012,26 @@ export type PostAgentByAgentIdSkillsBySlugInferToolsResponses = {
 
 export type PostAgentByAgentIdSkillsBySlugInferToolsResponse
   = PostAgentByAgentIdSkillsBySlugInferToolsResponses[keyof PostAgentByAgentIdSkillsBySlugInferToolsResponses]
+
+export type GetAgentByAgentIdStatisticsSummaryData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: {
+    end?: string
+    source?: string
+    start?: string
+  }
+  url: '/agent/{agent_id}/statistics/summary'
+}
+
+export type GetAgentByAgentIdStatisticsSummaryResponses = {
+  200: AgentStatisticSummaryEnvelopeResponse
+}
+
+export type GetAgentByAgentIdStatisticsSummaryResponse
+  = GetAgentByAgentIdStatisticsSummaryResponses[keyof GetAgentByAgentIdStatisticsSummaryResponses]
 
 export type GetAgentByAgentIdVersionsData = {
   body?: never

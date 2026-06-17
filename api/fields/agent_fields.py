@@ -1,8 +1,10 @@
+from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from fields.base import ResponseModel
+from libs.helper import to_timestamp
 from models.agent import (
     AgentConfigRevisionOperation,
     AgentIconType,
@@ -103,6 +105,114 @@ class AgentInviteOptionsResponse(ResponseModel):
     limit: int
     total: int
     has_more: bool
+
+
+class AgentLogItemResponse(ResponseModel):
+    id: str
+    message_id: str
+    conversation_id: str
+    conversation_name: str | None = None
+    query: str
+    answer: str
+    status: str
+    error: str | None = None
+    source: str | None = None
+    from_source: str | None = None
+    from_end_user_id: str | None = None
+    from_account_id: str | None = None
+    message_tokens: int
+    answer_tokens: int
+    total_tokens: int
+    total_price: str
+    currency: str
+    latency: float
+    created_at: int | None = None
+    updated_at: int | None = None
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class AgentLogListResponse(ResponseModel):
+    data: list[AgentLogItemResponse]
+    page: int
+    limit: int
+    total: int
+    has_more: bool
+
+
+class AgentStatisticSummaryResponse(ResponseModel):
+    total_messages: int
+    total_conversations: int
+    total_end_users: int
+    total_tokens: int
+    total_price: str
+    currency: str
+    average_session_interactions: float
+    average_response_time: float
+    tokens_per_second: float
+    user_satisfaction_rate: float
+
+
+class AgentDailyMessageStatisticResponse(ResponseModel):
+    date: str
+    message_count: int
+
+
+class AgentDailyConversationStatisticResponse(ResponseModel):
+    date: str
+    conversation_count: int
+
+
+class AgentDailyEndUserStatisticResponse(ResponseModel):
+    date: str
+    terminal_count: int
+
+
+class AgentTokenUsageStatisticResponse(ResponseModel):
+    date: str
+    token_count: int
+    total_price: str
+    currency: str
+
+
+class AgentAverageSessionInteractionStatisticResponse(ResponseModel):
+    date: str
+    interactions: float
+
+
+class AgentAverageResponseTimeStatisticResponse(ResponseModel):
+    date: str
+    latency: float
+
+
+class AgentTokensPerSecondStatisticResponse(ResponseModel):
+    date: str
+    tps: float
+
+
+class AgentUserSatisfactionRateStatisticResponse(ResponseModel):
+    date: str
+    rate: float
+
+
+class AgentStatisticChartsResponse(ResponseModel):
+    daily_messages: list[AgentDailyMessageStatisticResponse] = Field(default_factory=list)
+    daily_conversations: list[AgentDailyConversationStatisticResponse] = Field(default_factory=list)
+    daily_end_users: list[AgentDailyEndUserStatisticResponse] = Field(default_factory=list)
+    token_usage: list[AgentTokenUsageStatisticResponse] = Field(default_factory=list)
+    average_session_interactions: list[AgentAverageSessionInteractionStatisticResponse] = Field(default_factory=list)
+    average_response_time: list[AgentAverageResponseTimeStatisticResponse] = Field(default_factory=list)
+    tokens_per_second: list[AgentTokensPerSecondStatisticResponse] = Field(default_factory=list)
+    user_satisfaction_rate: list[AgentUserSatisfactionRateStatisticResponse] = Field(default_factory=list)
+
+
+class AgentStatisticSummaryEnvelopeResponse(ResponseModel):
+    source: str
+    summary: AgentStatisticSummaryResponse
+    charts: AgentStatisticChartsResponse
 
 
 class AgentConfigRevisionResponse(ResponseModel):
