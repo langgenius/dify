@@ -192,7 +192,7 @@ def install_swagger_compatibility() -> None:
             return None
 
         path_params, path_request_body = original_parameters_and_request_body_for(self, doc)
-        path = {"parameters": path_params or None}
+        path: dict[str, object] = {"parameters": path_params or None}
         methods = [method.lower() for method in resource.methods or []]
         requested_methods = [method.lower() for method in kwargs.get("methods", [])]
         for method in methods:
