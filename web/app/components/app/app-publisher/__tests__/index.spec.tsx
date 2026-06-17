@@ -98,12 +98,6 @@ vi.mock('@/service/use-tools', () => ({
   useInvalidateWorkflowToolDetailByAppID: () => vi.fn(),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
-    workspacePermissionKeys: ['tool.manage'],
-  }),
-}))
-
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),

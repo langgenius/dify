@@ -132,7 +132,6 @@ const createDefaultConfigureButtonProps = (overrides = {}) => ({
   published: false,
   isLoading: false,
   outdated: false,
-  canManageWorkflowTool: true,
   onConfigure: vi.fn(),
   ...overrides,
 })
@@ -266,17 +265,6 @@ describe('WorkflowToolConfigureButton', () => {
       })
     })
 
-    it('should render different UI without workflow tool manage permission', () => {
-      // Arrange
-      const props = createDefaultConfigureButtonProps({ canManageWorkflowTool: false })
-
-      // Act
-      render(<WorkflowToolConfigureButton {...props} />)
-
-      // Assert
-      const textElement = screen.getByText('workflow.common.workflowAsTool')
-      expect(textElement)!.toHaveClass('text-text-tertiary')
-    })
   })
 
   // Props Testing (REQUIRED)
@@ -443,9 +431,9 @@ describe('WorkflowToolConfigureButton', () => {
       })
     })
 
-    it('should disable configure button without workflow tool manage permission', async () => {
+    it('should disable configure button when workflow tool is disabled', async () => {
       // Arrange
-      const props = createDefaultConfigureButtonProps({ published: true, canManageWorkflowTool: false })
+      const props = createDefaultConfigureButtonProps({ published: true, disabled: true })
 
       // Act
       render(<WorkflowToolConfigureButton {...props} />)

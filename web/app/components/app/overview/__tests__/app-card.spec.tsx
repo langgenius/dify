@@ -99,7 +99,7 @@ describe('AppCard', () => {
     icon: 'app-icon',
     icon_background: '#fff',
     api_base_url: 'https://api.example.com',
-    permission_keys: [AppACLPermission.Edit],
+    permission_keys: [AppACLPermission.Edit, AppACLPermission.ReleaseAndVersion],
     site: {
       app_base_url: 'https://example.com',
       access_token: 'access-token',
@@ -325,6 +325,21 @@ describe('AppCard', () => {
     )
 
     expect(screen.getByText('publishApp.notSet')).toBeInTheDocument()
+  })
+
+  it('should hide the access-control section when release permission is missing', () => {
+    render(
+      <AppCard
+        appInfo={{
+          ...appInfo,
+          permission_keys: [AppACLPermission.Edit],
+        }}
+        onChangeStatus={mockOnChangeStatus}
+      />,
+    )
+
+    expect(screen.queryByText('publishApp.title')).not.toBeInTheDocument()
+    expect(screen.queryByText('publishApp.notSet')).not.toBeInTheDocument()
   })
 
   it('should hide the address and operation sections for unpublished workflows', () => {

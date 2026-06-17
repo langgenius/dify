@@ -78,6 +78,7 @@ function AppCard({
     workspacePermissionKeys,
   }), [appInfo.maintainer, appInfo.permission_keys, currentUserId, workspacePermissionKeys])
   const canEditApp = appACLCapabilities.canEdit
+  const canManageWebAppAccessControl = appACLCapabilities.canReleaseAndVersion
   const shouldFetchWorkflow = appInfo.mode === AppModeEnum.WORKFLOW || appInfo.mode === AppModeEnum.ADVANCED_CHAT
   const { data: currentWorkflow } = useAppWorkflow(shouldFetchWorkflow ? appInfo.id : '')
   const docLink = useDocLink()
@@ -94,7 +95,7 @@ function AppCard({
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: appAccessSubjects } = useAppWhiteListSubjects(
     appDetail?.id,
-    systemFeatures.webapp_auth.enabled && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS,
+    systemFeatures.webapp_auth.enabled && canManageWebAppAccessControl && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS,
   )
 
   const cardState = getAppCardDisplayState({
@@ -145,11 +146,11 @@ function AppCard({
   }
 
   const handleClickAccessControl = useCallback(() => {
-    if (!appDetail)
+    if (!appDetail || !canManageWebAppAccessControl)
       return
 
     setShowAccessControl(true)
-  }, [appDetail])
+  }, [appDetail, canManageWebAppAccessControl])
 
   const handleAccessControlUpdate = useCallback(async () => {
     if (!appDetail)
@@ -352,7 +353,7 @@ function AppCard({
               onHideRegenerateConfirm={() => setShowConfirmDelete(false)}
             />
           )}
-          {!cardState.isMinimalState && isApp && systemFeatures.webapp_auth.enabled && appDetail && (
+          {!cardState.isMinimalState && isApp && systemFeatures.webapp_auth.enabled && canManageWebAppAccessControl && appDetail && (
             <AppCardAccessControlSection
               t={t}
               appDetail={appDetail}

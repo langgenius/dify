@@ -4,13 +4,6 @@ import { act, renderHook } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
 import { isParametersOutdated, useConfigureButton } from '../use-configure-button'
 
-let mockWorkspacePermissionKeys: string[] = ['tool.manage']
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
-}))
-
 const mockCreateWorkflowToolProvider = vi.fn()
 const mockSaveWorkflowToolProvider = vi.fn()
 vi.mock('@/service/tools', () => ({
@@ -197,7 +190,6 @@ describe('isParametersOutdated', () => {
 describe('useConfigureButton', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockWorkspacePermissionKeys = ['tool.manage']
     mockUseWorkflowToolDetailByAppID.mockImplementation((_appId: string, enabled: boolean) => ({
       data: enabled ? createMockDetail() : undefined,
       isLoading: false,
@@ -212,12 +204,6 @@ describe('useConfigureButton', () => {
     it('should return workflow tool state without owning drawer visibility', () => {
       const { result } = renderHook(() => useConfigureButton(createDefaultOptions()))
       expect(result.current.payload).toMatchObject({ workflow_app_id: 'app-123' })
-    })
-
-    it('should expose workflow tool manage capability from tool.manage', () => {
-      mockWorkspacePermissionKeys = []
-      const { result } = renderHook(() => useConfigureButton(createDefaultOptions()))
-      expect(result.current.canManageWorkflowTool).toBe(false)
     })
 
     it('should forward isLoading from query hook', () => {
@@ -379,17 +365,6 @@ describe('useConfigureButton', () => {
 
       expect(mockToastNotify).toHaveBeenCalledWith({ type: 'error', message: 'Create failed' })
     })
-
-    it('should not create provider when user lacks tool.manage', async () => {
-      mockWorkspacePermissionKeys = []
-      const { result } = renderHook(() => useConfigureButton(createDefaultOptions()))
-
-      await act(async () => {
-        await result.current.handleCreate(createMockRequest({ workflow_app_id: 'app-123' }) as WorkflowToolProviderRequest & { workflow_app_id: string })
-      })
-
-      expect(mockCreateWorkflowToolProvider).not.toHaveBeenCalled()
-    })
   })
 
   describe('handleUpdate', () => {
@@ -440,22 +415,6 @@ describe('useConfigureButton', () => {
       })
 
       expect(mockToastNotify).toHaveBeenCalledWith({ type: 'error', message: 'Save failed' })
-    })
-
-    it('should not update provider when user lacks tool.manage', async () => {
-      mockWorkspacePermissionKeys = []
-      const handlePublish = vi.fn().mockResolvedValue(undefined)
-      const { result } = renderHook(() => useConfigureButton(createDefaultOptions({
-        published: true,
-        handlePublish,
-      })))
-
-      await act(async () => {
-        await result.current.handleUpdate(createMockRequest() as WorkflowToolProviderRequest & Partial<{ workflow_app_id: string, workflow_tool_id: string }>)
-      })
-
-      expect(handlePublish).not.toHaveBeenCalled()
-      expect(mockSaveWorkflowToolProvider).not.toHaveBeenCalled()
     })
   })
 
