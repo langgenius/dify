@@ -4,7 +4,10 @@ import type { AgentV2NodeType } from './types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { extractAgentOutputNames } from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
+import {
+  extractAgentOutputNames,
+  replaceAgentOutputName,
+} from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
 import { useStore } from '@/app/components/workflow/store'
 import useNodeCrud from '../_base/hooks/use-node-crud'
@@ -119,14 +122,32 @@ export function AgentV2Panel({
   }, [id, isInlineAgentReady, setOpenInlineAgentPanelNodeId])
 
   const handleDeclaredOutputsChange = useCallback((outputs: ReturnType<typeof getAgentV2DeclaredOutputs>, agentTask?: string) => {
+    const previousOutputs = getAgentV2DeclaredOutputs(inputsRef.current)
+    let nextAgentTask = agentTask
+    if (nextAgentTask === undefined && previousOutputs.length === outputs.length) {
+      const renamedOutputs = previousOutputs
+        .map((previousOutput, index) => ({
+          oldName: previousOutput.name,
+          nextName: outputs[index]?.name,
+        }))
+        .filter(({ oldName, nextName }) => nextName && oldName !== nextName)
+
+      if (renamedOutputs.length === 1) {
+        const { oldName, nextName } = renamedOutputs[0]!
+        const currentAgentTask = inputsRef.current.agent_task || ''
+        if (extractAgentOutputNames(currentAgentTask).has(oldName))
+          nextAgentTask = replaceAgentOutputName(currentAgentTask, oldName, nextName!)
+      }
+    }
+
     const newInputs = produce(inputsRef.current, (draft) => {
       draft.agent_declared_outputs = outputs
-      if (agentTask !== undefined)
-        draft.agent_task = agentTask
+      if (nextAgentTask !== undefined)
+        draft.agent_task = nextAgentTask
     })
     inputsRef.current = newInputs
-    if (agentTask !== undefined)
-      promptOutputNamesRef.current = extractAgentOutputNames(agentTask)
+    if (nextAgentTask !== undefined)
+      promptOutputNamesRef.current = extractAgentOutputNames(nextAgentTask)
     handleNodeDataUpdateWithSyncDraft(
       {
         id,

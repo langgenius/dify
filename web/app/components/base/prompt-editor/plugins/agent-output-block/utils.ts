@@ -84,6 +84,19 @@ export function extractAgentOutputNames(text: string) {
   return names
 }
 
+export function replaceAgentOutputName(text: string, oldName: string, nextName: string) {
+  const replaceTokenName = (match: string, name: string, mirrorName: string) => {
+    if (name !== oldName)
+      return match
+
+    return match.replace(`${name}:${mirrorName}`, `${nextName}:${nextName}`)
+  }
+
+  return text
+    .replace(new RegExp(AGENT_OUTPUT_TOKEN_REGEX.source, 'g'), replaceTokenName)
+    .replace(new RegExp(LEGACY_AGENT_OUTPUT_TOKEN_REGEX.source, 'g'), replaceTokenName)
+}
+
 export const AGENT_OUTPUT_TYPE_OPTIONS: AgentOutputTypeOption[] = [
   { value: 'string', label: 'string', type: 'string' },
   { value: 'number', label: 'number', type: 'number' },

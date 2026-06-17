@@ -14,6 +14,7 @@ import {
   getAgentOutputToken,
   inferAgentOutputType,
   parseAgentOutputToken,
+  replaceAgentOutputName,
 } from '../utils'
 
 describe('AgentOutputBlockNode', () => {
@@ -80,6 +81,14 @@ describe('AgentOutputBlockNode', () => {
       'summary',
       'qna_report.pdf',
     ])
+  })
+
+  it('should replace only matching output token names', () => {
+    expect(replaceAgentOutputName(
+      'Use [§output:summary:summary§] and §output:other:other§',
+      'summary',
+      'final_summary',
+    )).toBe('Use [§output:final_summary:final_summary§] and §output:other:other§')
   })
 
   it('should create node with helper and support type guard checks', () => {

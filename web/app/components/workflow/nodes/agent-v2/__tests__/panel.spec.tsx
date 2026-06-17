@@ -62,6 +62,8 @@ vi.mock('@/app/components/base/prompt-editor', () => ({
           placeholder={typeof props.placeholder === 'string' ? props.placeholder : undefined}
           value={props.value}
           onChange={event => props.onChange?.(event.currentTarget.value)}
+          onBlur={props.onBlur}
+          onFocus={props.onFocus}
         />
         {props.children}
       </>
@@ -547,12 +549,15 @@ describe('agent/panel', () => {
     })
     expect(mockPromptEditorProps[0]?.contextBlock).toBeUndefined()
 
+    expect(screen.queryByRole('button', { name: 'workflow.nodes.agent.task.insert' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'workflow.nodes.agent.task.mention' })).not.toBeInTheDocument()
+
+    fireEvent.focus(editor)
+
     fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.task.insert' }))
     expect(mockEditorFocus).toHaveBeenCalled()
     expect(mockInsertNodes.mock.calls[0]?.[0]?.[0]?.getTextContent()).toBe('/')
-
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.task.mention' }))
-    expect(mockInsertNodes.mock.calls[1]?.[0]?.[0]?.getTextContent()).toBe('{')
+    expect(screen.queryByRole('button', { name: 'workflow.nodes.agent.task.mention' })).not.toBeInTheDocument()
   })
 
   it('syncs declared outputs created from the agent task editor', () => {
@@ -723,6 +728,64 @@ describe('agent/panel', () => {
         data: expect.objectContaining({
           agent_task: 'Use [§output:summary:summary§]',
           agent_declared_outputs: [],
+        }),
+      },
+      expect.objectContaining({
+        sync: true,
+        notRefreshWhenSyncError: true,
+      }),
+    )
+  })
+
+  it('renames prompt output tokens when a referenced declared output is renamed from the output list', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          agent_task: 'Use [§output:summary:summary§] and §output:other:other§',
+          agent_declared_outputs: [
+            {
+              name: 'summary',
+              type: 'string',
+              required: false,
+            },
+            {
+              name: 'other',
+              type: 'string',
+              required: false,
+            },
+          ],
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    mockPromptEditorProps[0]?.agentOutputBlock?.onChange?.([
+      {
+        name: 'final_summary',
+        type: 'string',
+        required: false,
+      },
+      {
+        name: 'other',
+        type: 'string',
+        required: false,
+      },
+    ])
+
+    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
+      {
+        id: 'agent-node',
+        data: expect.objectContaining({
+          agent_task: 'Use [§output:final_summary:final_summary§] and §output:other:other§',
+          agent_declared_outputs: [
+            expect.objectContaining({
+              name: 'final_summary',
+            }),
+            expect.objectContaining({
+              name: 'other',
+            }),
+          ],
         }),
       },
       expect.objectContaining({
