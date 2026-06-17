@@ -247,9 +247,15 @@ def test_agent_app_list_and_create_use_agent_route(
     assert listed["data"][0]["role"] == "List role"
     assert listed["data"][0]["active_config_is_published"] is False
     assert listed["data"][0]["published_reference_count"] == 1
-    assert listed["data"][0]["published_node_reference_count"] == 2
-    assert listed["data"][0]["published_references"][0]["app_id"] == "workflow-app-id"
-    assert listed["data"][0]["published_references"][0]["node_ids"] == ["node-1", "node-2"]
+    assert listed["data"][0]["published_references"] == [
+        {
+            "app_id": "workflow-app-id",
+            "app_name": "RFP Review Flow",
+            "app_icon_type": "emoji",
+            "app_icon": "A",
+            "app_icon_background": "#fff",
+        }
+    ]
     assert "bound_agent_id" not in listed["data"][0]
     list_call = cast(dict[str, object], captured["list"])
     list_params = cast(Any, list_call["params"])

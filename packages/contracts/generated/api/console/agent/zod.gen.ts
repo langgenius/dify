@@ -471,19 +471,14 @@ export const zModelConfigPartial = z.object({
 })
 
 /**
- * AgentPublishedReferenceResponse
+ * AgentAppPublishedReferenceResponse
  */
-export const zAgentPublishedReferenceResponse = z.object({
+export const zAgentAppPublishedReferenceResponse = z.object({
   app_icon: z.string().nullish(),
   app_icon_background: z.string().nullish(),
   app_icon_type: z.string().nullish(),
   app_id: z.string(),
-  app_mode: z.string(),
   app_name: z.string(),
-  app_updated_at: z.int().nullish(),
-  node_ids: z.array(z.string()).optional(),
-  workflow_id: z.string(),
-  workflow_version: z.string(),
 })
 
 /**
@@ -510,9 +505,8 @@ export const zAgentAppPartial = z.object({
   mode: z.string(),
   model_config: zModelConfigPartial.nullish(),
   name: z.string(),
-  published_node_reference_count: z.int().optional().default(0),
   published_reference_count: z.int().optional().default(0),
-  published_references: z.array(zAgentPublishedReferenceResponse).optional(),
+  published_references: z.array(zAgentAppPublishedReferenceResponse).optional(),
   role: z.string().nullish(),
   tags: z.array(zTag).optional(),
   updated_at: z.int().nullish(),
@@ -599,6 +593,22 @@ export const zAgentKind = z.enum(['dify_agent'])
  * Supported icon storage formats for Agent roster entries.
  */
 export const zAgentIconType = z.enum(['emoji', 'image', 'link'])
+
+/**
+ * AgentPublishedReferenceResponse
+ */
+export const zAgentPublishedReferenceResponse = z.object({
+  app_icon: z.string().nullish(),
+  app_icon_background: z.string().nullish(),
+  app_icon_type: z.string().nullish(),
+  app_id: z.string(),
+  app_mode: z.string(),
+  app_name: z.string(),
+  app_updated_at: z.int().nullish(),
+  node_ids: z.array(z.string()).optional(),
+  workflow_id: z.string(),
+  workflow_version: z.string(),
+})
 
 /**
  * AgentScope
@@ -1798,9 +1808,8 @@ export const zAgentAppPartialWritable = z.object({
   mode: z.string(),
   model_config: zModelConfigPartial.nullish(),
   name: z.string(),
-  published_node_reference_count: z.int().optional().default(0),
   published_reference_count: z.int().optional().default(0),
-  published_references: z.array(zAgentPublishedReferenceResponse).optional(),
+  published_references: z.array(zAgentAppPublishedReferenceResponse).optional(),
   role: z.string().nullish(),
   tags: z.array(zTag).optional(),
   updated_at: z.int().nullish(),

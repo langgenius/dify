@@ -64,10 +64,17 @@ class AgentAppUpdatePayload(UpdateAppPayload):
     role: str | None = Field(default=None, description="Agent role", max_length=255)
 
 
+class AgentAppPublishedReferenceResponse(BaseModel):
+    app_id: str
+    app_name: str
+    app_icon_type: str | None = None
+    app_icon: str | None = None
+    app_icon_background: str | None = None
+
+
 class AgentAppPartial(AppPartial):
     published_reference_count: int = 0
-    published_node_reference_count: int = 0
-    published_references: list[AgentPublishedReferenceResponse] = Field(default_factory=list)
+    published_references: list[AgentAppPublishedReferenceResponse] = Field(default_factory=list)
 
 
 class AgentAppPagination(AppPagination):
@@ -88,6 +95,7 @@ register_response_schema_models(
     console_ns,
     AppDetailWithSite,
     AgentAppPagination,
+    AgentAppPublishedReferenceResponse,
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
     AgentInviteOptionsResponse,
@@ -149,10 +157,16 @@ def _serialize_agent_app_pagination(app_pagination, *, tenant_id: str) -> dict:
             item["active_config_is_published"] = active_config_is_published_by_agent_id.get(agent.id, False)
             published_references = published_references_by_agent_id.get(agent.id, [])
             item["published_reference_count"] = len(published_references)
-            item["published_node_reference_count"] = sum(
-                len(reference["node_ids"]) for reference in published_references
-            )
-            item["published_references"] = published_references
+            item["published_references"] = [
+                {
+                    "app_id": reference["app_id"],
+                    "app_name": reference["app_name"],
+                    "app_icon_type": reference["app_icon_type"],
+                    "app_icon": reference["app_icon"],
+                    "app_icon_background": reference["app_icon_background"],
+                }
+                for reference in published_references
+            ]
     return AgentAppPagination.model_validate(payload).model_dump(
         mode="json",
         exclude={"data": {"__all__": {"bound_agent_id"}}},

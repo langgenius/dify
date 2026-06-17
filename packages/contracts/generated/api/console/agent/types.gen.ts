@@ -279,9 +279,8 @@ export type AgentAppPartial = {
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
-  published_node_reference_count?: number
   published_reference_count?: number
-  published_references?: Array<AgentPublishedReferenceResponse>
+  published_references?: Array<AgentAppPublishedReferenceResponse>
   role?: string | null
   tags?: Array<Tag>
   updated_at?: number | null
@@ -668,6 +667,20 @@ export type ModelConfigPartial = {
   updated_by?: string | null
 }
 
+export type AgentAppPublishedReferenceResponse = {
+  app_icon?: string | null
+  app_icon_background?: string | null
+  app_icon_type?: string | null
+  app_id: string
+  app_name: string
+}
+
+export type LlmMode = 'chat' | 'completion'
+
+export type AgentKind = 'dify_agent'
+
+export type AgentIconType = 'emoji' | 'image' | 'link'
+
 export type AgentPublishedReferenceResponse = {
   app_icon?: string | null
   app_icon_background?: string | null
@@ -680,12 +693,6 @@ export type AgentPublishedReferenceResponse = {
   workflow_id: string
   workflow_version: string
 }
-
-export type LlmMode = 'chat' | 'completion'
-
-export type AgentKind = 'dify_agent'
-
-export type AgentIconType = 'emoji' | 'image' | 'link'
 
 export type AgentScope = 'roster' | 'workflow_only'
 
@@ -1319,9 +1326,8 @@ export type AgentAppPartialWritable = {
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
-  published_node_reference_count?: number
   published_reference_count?: number
-  published_references?: Array<AgentPublishedReferenceResponse>
+  published_references?: Array<AgentAppPublishedReferenceResponse>
   role?: string | null
   tags?: Array<Tag>
   updated_at?: number | null
