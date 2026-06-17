@@ -45,7 +45,7 @@
   "access.channels.disabledHint": "Enable access channels to expose WebApp and CLI entry points.",
   "access.channels.followPermission": "Follows permissions",
   "access.channels.title": "Access channels",
-  "access.cli.description": "Use the unified domain when accessing this deployment from the CLI.",
+  "access.cli.description": "Invoke from the terminal with difyctl, suitable for scripts, automated workflows, or Agent integrations.",
   "access.cli.docs": "Usage guide",
   "access.cli.domain": "Domain",
   "access.cli.empty": "CLI endpoint not configured.",

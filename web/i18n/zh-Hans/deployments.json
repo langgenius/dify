@@ -45,7 +45,7 @@
   "access.channels.disabledHint": "开启接入渠道后即可开放 WebApp 和 CLI 入口。",
   "access.channels.followPermission": "随权限开放",
   "access.channels.title": "接入渠道",
-  "access.cli.description": "通过 CLI 访问此部署时使用统一域名。",
+  "access.cli.description": "通过 difyctl 在终端中调用，适合脚本、自动化流程或 Agent 集成",
   "access.cli.docs": "使用说明",
   "access.cli.domain": "域名",
   "access.cli.empty": "尚未配置 CLI 接入地址。",

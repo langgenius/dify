@@ -2,11 +2,12 @@
 
 import type { ReleaseDeployment } from './release-deployments'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useTranslation } from 'react-i18next'
 import { isRuntimeDeploymentInProgress } from '../../shared/domain/runtime-status'
 import {
-  deploymentStatusToneClassNames,
+  deploymentStatusDotStatus,
+  deploymentStatusDotTextClassName,
 } from '../../shared/ui/deployment-status-style'
 
 export function DeployedToBadge({ item }: {
@@ -15,34 +16,26 @@ export function DeployedToBadge({ item }: {
   const { t } = useTranslation('deployments')
   const status = item.status
   const statusLabel = t(`versions.deployedStatus.${status}`)
-  const toneClassNames = deploymentStatusToneClassNames(status)
+  const dotStatus = deploymentStatusDotStatus(status)
   const isInProgress = isRuntimeDeploymentInProgress(status)
+  const textClassName = deploymentStatusDotTextClassName(status)
 
   return (
-    <Tooltip>
-      <TooltipTrigger
-        render={(
-          <span
-            className={cn(
-              'inline-flex h-5 max-w-full cursor-default items-center gap-1 rounded-md border px-1.5 system-xs-medium',
-              toneClassNames.badge,
-            )}
-          >
-            <span
-              aria-hidden
-              className={cn('size-1.5 shrink-0 rounded-full', toneClassNames.dot, isInProgress && 'animate-pulse')}
-            />
-            <span className="truncate">{item.environmentName}</span>
-            <span className="shrink-0 opacity-70">·</span>
-            <span className="shrink-0 system-2xs-medium-uppercase">{statusLabel}</span>
-          </span>
-        )}
+    <span
+      className={cn(
+        'inline-flex max-w-full cursor-default items-center system-xs-medium',
+        textClassName,
+      )}
+    >
+      <StatusDot
+        status={dotStatus}
+        className={cn('mr-2 shrink-0', isInProgress && 'animate-pulse')}
       />
-      <TooltipContent>
-        {statusLabel}
-        {' · '}
+      <span className="truncate">
         {item.environmentName}
-      </TooltipContent>
-    </Tooltip>
+        {' · '}
+        {statusLabel}
+      </span>
+    </span>
   )
 }

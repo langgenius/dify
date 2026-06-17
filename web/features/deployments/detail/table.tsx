@@ -9,11 +9,11 @@ export function DetailTable({ className, containerClassName, ...props }: DetailT
   return (
     <div
       data-slot="deployment-detail-table-container"
-      className={cn('relative w-full pc:overflow-x-auto', containerClassName)}
+      className={cn('relative w-full min-w-0 pc:overflow-x-auto', containerClassName)}
     >
       <table
         data-slot="deployment-detail-table"
-        className={cn('w-full max-w-full min-w-0 caption-bottom border-collapse border-0 pc:min-w-[720px]', className)}
+        className={cn('w-full max-w-full min-w-[700px] border-collapse border-0 text-sm', className)}
         {...props}
       />
     </div>
@@ -24,7 +24,7 @@ export function DetailTableHeader({ className, ...props }: ComponentProps<'thead
   return (
     <thead
       data-slot="deployment-detail-table-header"
-      className={cn('system-xs-medium-uppercase text-text-tertiary [&_tr]:border-b-0 [&_tr]:hover:bg-transparent', className)}
+      className={cn('h-8 border-b border-divider-subtle system-xs-medium-uppercase text-text-tertiary [&_tr]:border-b-0 [&_tr]:hover:bg-transparent', className)}
       {...props}
     />
   )
@@ -44,7 +44,7 @@ export function DetailTableRow({ className, ...props }: ComponentProps<'tr'>) {
   return (
     <tr
       data-slot="deployment-detail-table-row"
-      className={cn('border-b border-divider-subtle transition-colors hover:bg-background-default-hover', className)}
+      className={cn('h-8 border-b border-divider-subtle transition-colors hover:bg-background-default-hover', className)}
       {...props}
     />
   )
@@ -54,7 +54,7 @@ export function DetailTableHead({ className, ...props }: ComponentProps<'th'>) {
   return (
     <th
       data-slot="deployment-detail-table-head"
-      className={cn('bg-background-section-burn py-1.5 pr-2 pl-3 text-left align-middle font-medium whitespace-nowrap first:rounded-l-lg last:rounded-r-lg', className)}
+      className={cn(className, 'box-border max-w-[200px] px-2.5 py-0 text-left align-middle font-medium whitespace-nowrap first:pl-3')}
       {...props}
     />
   )
@@ -64,7 +64,7 @@ export function DetailTableCell({ className, ...props }: ComponentProps<'td'>) {
   return (
     <td
       data-slot="deployment-detail-table-cell"
-      className={cn('p-3 pr-2 align-middle', className)}
+      className={cn(className, 'box-border max-w-[200px] px-2.5 py-[5px] align-middle first:pl-3')}
       {...props}
     />
   )

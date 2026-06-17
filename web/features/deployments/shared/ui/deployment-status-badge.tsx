@@ -6,9 +6,12 @@ import type {
 } from '@dify/contracts/enterprise/types.gen'
 import type { ComponentPropsWithRef } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useTranslation } from 'react-i18next'
 import { isRuntimeDeploymentInProgress } from '../domain/runtime-status'
 import {
+  deploymentStatusDotStatus,
+  deploymentStatusDotTextClassName,
   deploymentStatusLabelKey,
   deploymentStatusToneClassNames,
 } from './deployment-status-style'
@@ -16,17 +19,44 @@ import {
 type DeploymentStatusBadgeProps = Omit<ComponentPropsWithRef<'span'>, 'children'> & {
   status: RuntimeInstanceStatusValue
   label: string
+  variant?: 'badge' | 'status-dot'
 }
 
 export function DeploymentStatusBadge({
   status,
   label,
   className,
+  variant = 'badge',
   ref,
   ...props
 }: DeploymentStatusBadgeProps) {
-  const toneClassNames = deploymentStatusToneClassNames(status)
   const isInProgress = isRuntimeDeploymentInProgress(status)
+
+  if (variant === 'status-dot') {
+    const dotStatus = deploymentStatusDotStatus(status)
+
+    return (
+      <span
+        ref={ref}
+        className={cn(
+          'inline-flex max-w-full cursor-default items-center system-2xs-medium-uppercase',
+          className,
+        )}
+        {...props}
+      >
+        <StatusDot
+          status={dotStatus}
+          className={cn('mr-2', isInProgress && 'animate-pulse')}
+        />
+        <span className={cn('truncate', deploymentStatusDotTextClassName(status))}>
+          {label}
+        </span>
+      </span>
+    )
+  }
+
+  const toneClassNames = deploymentStatusToneClassNames(status)
+  const dotStatus = deploymentStatusDotStatus(status)
 
   return (
     <span
@@ -38,9 +68,9 @@ export function DeploymentStatusBadge({
       )}
       {...props}
     >
-      <span
-        aria-hidden
-        className={cn('size-1.5 shrink-0 rounded-full', toneClassNames.dot, isInProgress && 'animate-pulse')}
+      <StatusDot
+        status={dotStatus}
+        className={cn('shrink-0', isInProgress && 'animate-pulse')}
       />
       <span className="truncate">{label}</span>
     </span>
@@ -66,6 +96,7 @@ export function EnvironmentDeploymentBadge({
   const name = row.environment.displayName
   const status = row.status
   const toneClassNames = deploymentStatusToneClassNames(status)
+  const dotStatus = deploymentStatusDotStatus(status)
   const isInProgress = isRuntimeDeploymentInProgress(status)
   const statusLabel = t(deploymentStatusLabelKey(status))
   const label = summaryLabel ?? `${name} · ${statusLabel}`
@@ -82,7 +113,10 @@ export function EnvironmentDeploymentBadge({
       )}
       {...props}
     >
-      <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full', toneClassNames.dot, isInProgress && 'animate-pulse')} />
+      <StatusDot
+        status={dotStatus}
+        className={cn('shrink-0', isInProgress && 'animate-pulse')}
+      />
       <span className="truncate">{visibleLabel}</span>
     </span>
   )
