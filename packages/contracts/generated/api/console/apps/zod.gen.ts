@@ -462,7 +462,7 @@ export const zAppSiteStatusPayload = z.object({
 export const zTextToSpeechPayload = z.object({
   message_id: z.string().nullish(),
   streaming: z.boolean().nullish(),
-  text: z.string().optional().default(''),
+  text: z.string(),
   voice: z.string().nullish(),
 })
 
