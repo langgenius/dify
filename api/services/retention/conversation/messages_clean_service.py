@@ -775,8 +775,7 @@ class MessagesCleanService:
             stats["filtered_messages"] += batch_filtered_messages
             revalidated_dropped = batch_scanned_messages - batch_filtered_messages
             logger.info(
-                "clean_messages (batch %s, eligible_apps): revalidated %s/%s messages in %sms "
-                "(dropped=%s)",
+                "clean_messages (batch %s, eligible_apps): revalidated %s/%s messages in %sms (dropped=%s)",
                 stats["batches"],
                 batch_filtered_messages,
                 batch_scanned_messages,
@@ -800,8 +799,7 @@ class MessagesCleanService:
             )
 
         logger.info(
-            "clean_messages completed: total batches: %s, total messages: %s, filtered messages: %s, "
-            "total deleted: %s",
+            "clean_messages completed: total batches: %s, total messages: %s, filtered messages: %s, total deleted: %s",
             stats["batches"],
             stats["total_messages"],
             stats["filtered_messages"],
