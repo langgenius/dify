@@ -11,7 +11,7 @@ from services.retention.conversation.messages_clean_policy import (
     SimpleMessage,
     create_message_clean_policy,
 )
-from services.retention.conversation.messages_clean_service import MessagesCleanService
+from services.retention.conversation.messages_clean_service import _SQL_IN_CHUNK_SIZE, MessagesCleanService
 
 
 def make_simple_message(msg_id: str, app_id: str) -> SimpleMessage:
@@ -719,3 +719,40 @@ class TestMessagesCleanServiceSleep:
 
         assert sleep_ms == 0
         random_uniform.assert_not_called()
+
+
+class TestMessagesCleanServiceAppScopes:
+    def test_message_app_id_scopes_preserves_global_scan_for_billing_disabled(self):
+        service = MessagesCleanService(
+            policy=BillingDisabledPolicy(),
+            start_from=datetime.datetime(2024, 1, 1),
+            end_before=datetime.datetime(2024, 1, 2),
+            batch_size=1000,
+            dry_run=False,
+        )
+
+        assert service._message_app_id_scopes(None) == [None]
+
+    def test_message_app_id_scopes_chunks_eligible_app_ids(self):
+        service = MessagesCleanService(
+            policy=BillingDisabledPolicy(),
+            start_from=datetime.datetime(2024, 1, 1),
+            end_before=datetime.datetime(2024, 1, 2),
+            batch_size=1000,
+            dry_run=False,
+        )
+        app_ids = {f"app-{index}" for index in range((_SQL_IN_CHUNK_SIZE * 2) + 1)}
+
+        scopes = service._message_app_id_scopes(app_ids)
+
+        scoped_app_ids: set[str] = set()
+        non_empty_scopes = [scope for scope in scopes if scope is not None]
+        for scope in non_empty_scopes:
+            scoped_app_ids.update(scope)
+
+        assert [len(scope) for scope in non_empty_scopes] == [
+            _SQL_IN_CHUNK_SIZE,
+            _SQL_IN_CHUNK_SIZE,
+            1,
+        ]
+        assert scoped_app_ids == app_ids

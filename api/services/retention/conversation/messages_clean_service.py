@@ -345,7 +345,7 @@ class MessagesCleanService:
 
         Steps:
         1. Resolve eligible apps up front when the policy supports tenant prefiltering
-        2. Iterate messages using cursor pagination (by created_at, id)
+        2. Iterate messages using cursor pagination (by created_at, id) within each app-id scope
         3. Query or reuse app_id -> tenant_id mapping
         4. Delegate to policy to determine which messages to delete
         5. Batch delete messages and their relations
@@ -359,10 +359,6 @@ class MessagesCleanService:
             "filtered_messages": 0,
             "total_deleted": 0,
         }
-
-        # Cursor-based pagination using (created_at, id) to avoid infinite loops
-        # and ensure proper ordering with time-based filtering
-        _cursor: tuple[datetime.datetime, str] | None = None
 
         logger.info(
             "clean_messages: start cleaning messages (dry_run=%s), start_from=%s, end_before=%s",
@@ -380,179 +376,189 @@ class MessagesCleanService:
 
             logger.info("clean_messages: prefiltered %s eligible apps", len(eligible_app_ids))
 
-        while True:
-            stats["batches"] += 1
-            batch_start = time.monotonic()
-            batch_scanned_messages = 0
-            batch_filtered_messages = 0
-            batch_deleted_messages = 0
-            app_to_tenant: dict[str, str] = {}
+        app_id_scopes = self._message_app_id_scopes(eligible_app_ids)
+        for app_id_scope in app_id_scopes:
+            # Cursor-based pagination using (created_at, id) to avoid infinite loops
+            # and ensure proper ordering with time-based filtering.
+            cursor: tuple[datetime.datetime, str] | None = None
 
-            # Step 1: Fetch a batch of messages using cursor
-            with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
-                fetch_messages_start = time.monotonic()
-                msg_stmt = (
-                    select(Message.id, Message.app_id, Message.created_at)
-                    .where(Message.created_at < self._end_before)
-                    .order_by(Message.created_at, Message.id)
-                    .limit(self._batch_size)
-                )
+            while True:
+                stats["batches"] += 1
+                batch_start = time.monotonic()
+                batch_scanned_messages = 0
+                batch_filtered_messages = 0
+                batch_deleted_messages = 0
+                app_to_tenant: dict[str, str] = {}
 
-                if eligible_app_ids is not None:
-                    msg_stmt = msg_stmt.where(Message.app_id.in_(eligible_app_ids))
-
-                if self._start_from:
-                    msg_stmt = msg_stmt.where(Message.created_at >= self._start_from)
-
-                # Apply cursor condition: (created_at, id) > (last_created_at, last_message_id)
-                if _cursor:
-                    msg_stmt = msg_stmt.where(
-                        tuple_(Message.created_at, Message.id)
-                        > tuple_(
-                            sa.literal(_cursor[0], type_=sa.DateTime()),
-                            sa.literal(_cursor[1], type_=Message.id.type),
-                        )
+                # Step 1: Fetch a batch of messages using cursor
+                with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
+                    fetch_messages_start = time.monotonic()
+                    msg_stmt = (
+                        select(Message.id, Message.app_id, Message.created_at)
+                        .where(Message.created_at < self._end_before)
+                        .order_by(Message.created_at, Message.id)
+                        .limit(self._batch_size)
                     )
 
-                raw_messages = list(session.execute(msg_stmt).all())
-                messages = [
-                    SimpleMessage(id=msg_id, app_id=app_id, created_at=msg_created_at)
-                    for msg_id, app_id, msg_created_at in raw_messages
-                ]
-                logger.info(
-                    "clean_messages (batch %s): fetched %s messages in %sms",
-                    stats["batches"],
-                    len(messages),
-                    int((time.monotonic() - fetch_messages_start) * 1000),
-                )
+                    if app_id_scope is not None:
+                        msg_stmt = msg_stmt.where(Message.app_id.in_(app_id_scope))
 
-                # Track total messages fetched across all batches
-                stats["total_messages"] += len(messages)
-                batch_scanned_messages = len(messages)
+                    if self._start_from:
+                        msg_stmt = msg_stmt.where(Message.created_at >= self._start_from)
 
-                if not messages:
-                    logger.info("clean_messages (batch %s): no more messages to process", stats["batches"])
+                    # Apply cursor condition: (created_at, id) > (last_created_at, last_message_id)
+                    if cursor:
+                        msg_stmt = msg_stmt.where(
+                            tuple_(Message.created_at, Message.id)
+                            > tuple_(
+                                sa.literal(cursor[0], type_=sa.DateTime()),
+                                sa.literal(cursor[1], type_=Message.id.type),
+                            )
+                        )
+
+                    raw_messages = list(session.execute(msg_stmt).all())
+                    messages = [
+                        SimpleMessage(id=msg_id, app_id=app_id, created_at=msg_created_at)
+                        for msg_id, app_id, msg_created_at in raw_messages
+                    ]
+                    logger.info(
+                        "clean_messages (batch %s): fetched %s messages in %sms",
+                        stats["batches"],
+                        len(messages),
+                        int((time.monotonic() - fetch_messages_start) * 1000),
+                    )
+
+                    # Track total messages fetched across all batches
+                    stats["total_messages"] += len(messages)
+                    batch_scanned_messages = len(messages)
+
+                    if not messages:
+                        logger.info("clean_messages (batch %s): no more messages to process", stats["batches"])
+                        self._metrics.record_batch(
+                            scanned_messages=batch_scanned_messages,
+                            filtered_messages=batch_filtered_messages,
+                            deleted_messages=batch_deleted_messages,
+                            batch_duration_seconds=time.monotonic() - batch_start,
+                        )
+                        break
+
+                    # Update cursor to the last message's (created_at, id)
+                    cursor = (messages[-1].created_at, messages[-1].id)
+
+                    # Step 2: Extract app_ids and query tenant_ids
+                    app_ids = list({msg.app_id for msg in messages})
+
+                    if not app_ids:
+                        logger.info("clean_messages (batch %s): no app_ids found, skip", stats["batches"])
+                        continue
+
+                    fetch_apps_start = time.monotonic()
+                    app_to_tenant = self._get_app_to_tenant(session, app_ids)
+                    logger.info(
+                        "clean_messages (batch %s): resolved %s apps for %s app_ids in %sms",
+                        stats["batches"],
+                        len(app_to_tenant),
+                        len(app_ids),
+                        int((time.monotonic() - fetch_apps_start) * 1000),
+                    )
+
+                if not app_to_tenant:
+                    logger.info("clean_messages (batch %s): no apps found, skip", stats["batches"])
                     self._metrics.record_batch(
                         scanned_messages=batch_scanned_messages,
                         filtered_messages=batch_filtered_messages,
                         deleted_messages=batch_deleted_messages,
                         batch_duration_seconds=time.monotonic() - batch_start,
                     )
-                    break
-
-                # Update cursor to the last message's (created_at, id)
-                _cursor = (messages[-1].created_at, messages[-1].id)
-
-                # Step 2: Extract app_ids and query tenant_ids
-                app_ids = list({msg.app_id for msg in messages})
-
-                if not app_ids:
-                    logger.info("clean_messages (batch %s): no app_ids found, skip", stats["batches"])
                     continue
 
-                fetch_apps_start = time.monotonic()
-                app_to_tenant = self._get_app_to_tenant(session, app_ids)
+                # Step 3: Delegate to policy to determine which messages to delete
+                policy_start = time.monotonic()
+                message_ids_to_delete = self._policy.filter_message_ids(messages, app_to_tenant)
                 logger.info(
-                    "clean_messages (batch %s): resolved %s apps for %s app_ids in %sms",
-                    stats["batches"],
-                    len(app_to_tenant),
-                    len(app_ids),
-                    int((time.monotonic() - fetch_apps_start) * 1000),
-                )
-
-            if not app_to_tenant:
-                logger.info("clean_messages (batch %s): no apps found, skip", stats["batches"])
-                self._metrics.record_batch(
-                    scanned_messages=batch_scanned_messages,
-                    filtered_messages=batch_filtered_messages,
-                    deleted_messages=batch_deleted_messages,
-                    batch_duration_seconds=time.monotonic() - batch_start,
-                )
-                continue
-
-            # Step 3: Delegate to policy to determine which messages to delete
-            policy_start = time.monotonic()
-            message_ids_to_delete = self._policy.filter_message_ids(messages, app_to_tenant)
-            logger.info(
-                "clean_messages (batch %s): policy selected %s/%s messages in %sms",
-                stats["batches"],
-                len(message_ids_to_delete),
-                len(messages),
-                int((time.monotonic() - policy_start) * 1000),
-            )
-
-            if not message_ids_to_delete:
-                logger.info("clean_messages (batch %s): no messages to delete, skip", stats["batches"])
-                self._metrics.record_batch(
-                    scanned_messages=batch_scanned_messages,
-                    filtered_messages=batch_filtered_messages,
-                    deleted_messages=batch_deleted_messages,
-                    batch_duration_seconds=time.monotonic() - batch_start,
-                )
-                continue
-
-            stats["filtered_messages"] += len(message_ids_to_delete)
-            batch_filtered_messages = len(message_ids_to_delete)
-
-            # Step 4: Batch delete messages and their relations
-            if not self._dry_run:
-                with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
-                    delete_relations_start = time.monotonic()
-                    # Delete related records first
-                    self._batch_delete_message_relations(session, message_ids_to_delete)
-                    delete_relations_ms = int((time.monotonic() - delete_relations_start) * 1000)
-
-                    # Delete messages
-                    delete_messages_start = time.monotonic()
-                    delete_stmt = delete(Message).where(Message.id.in_(message_ids_to_delete))
-                    delete_result = cast(CursorResult, session.execute(delete_stmt))
-                    messages_deleted = delete_result.rowcount
-                    delete_messages_ms = int((time.monotonic() - delete_messages_start) * 1000)
-                    commit_ms = 0
-
-                    stats["total_deleted"] += messages_deleted
-                    batch_deleted_messages = messages_deleted
-
-                    logger.info(
-                        "clean_messages (batch %s): processed %s messages, deleted %s messages",
-                        stats["batches"],
-                        len(messages),
-                        messages_deleted,
-                    )
-                    logger.info(
-                        "clean_messages (batch %s): relations %sms,  messages %sms, commit %sms, batch total %sms",
-                        stats["batches"],
-                        delete_relations_ms,
-                        delete_messages_ms,
-                        commit_ms,
-                        int((time.monotonic() - batch_start) * 1000),
-                    )
-
-                self._sleep_after_delete_batch(
-                    batch_index=stats["batches"],
-                    deleted_messages=batch_deleted_messages,
-                    max_batch_interval_ms=max_batch_interval_ms,
-                )
-            else:
-                # Log random sample of message IDs that would be deleted (up to 10)
-                sample_size = min(10, len(message_ids_to_delete))
-                sampled_ids = random.sample(list(message_ids_to_delete), sample_size)
-
-                logger.info(
-                    "clean_messages (batch %s, dry_run): would delete %s messages, sampling %s ids:",
+                    "clean_messages (batch %s): policy selected %s/%s messages in %sms",
                     stats["batches"],
                     len(message_ids_to_delete),
-                    sample_size,
+                    len(messages),
+                    int((time.monotonic() - policy_start) * 1000),
                 )
-                for msg_id in sampled_ids:
-                    logger.info("clean_messages (batch %s, dry_run) sample: message_id=%s", stats["batches"], msg_id)
 
-            self._metrics.record_batch(
-                scanned_messages=batch_scanned_messages,
-                filtered_messages=batch_filtered_messages,
-                deleted_messages=batch_deleted_messages,
-                batch_duration_seconds=time.monotonic() - batch_start,
-            )
+                if not message_ids_to_delete:
+                    logger.info("clean_messages (batch %s): no messages to delete, skip", stats["batches"])
+                    self._metrics.record_batch(
+                        scanned_messages=batch_scanned_messages,
+                        filtered_messages=batch_filtered_messages,
+                        deleted_messages=batch_deleted_messages,
+                        batch_duration_seconds=time.monotonic() - batch_start,
+                    )
+                    continue
+
+                stats["filtered_messages"] += len(message_ids_to_delete)
+                batch_filtered_messages = len(message_ids_to_delete)
+
+                # Step 4: Batch delete messages and their relations
+                if not self._dry_run:
+                    with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
+                        delete_relations_start = time.monotonic()
+                        # Delete related records first
+                        self._batch_delete_message_relations(session, message_ids_to_delete)
+                        delete_relations_ms = int((time.monotonic() - delete_relations_start) * 1000)
+
+                        # Delete messages
+                        delete_messages_start = time.monotonic()
+                        delete_stmt = delete(Message).where(Message.id.in_(message_ids_to_delete))
+                        delete_result = cast(CursorResult, session.execute(delete_stmt))
+                        messages_deleted = delete_result.rowcount
+                        delete_messages_ms = int((time.monotonic() - delete_messages_start) * 1000)
+                        commit_ms = 0
+
+                        stats["total_deleted"] += messages_deleted
+                        batch_deleted_messages = messages_deleted
+
+                        logger.info(
+                            "clean_messages (batch %s): processed %s messages, deleted %s messages",
+                            stats["batches"],
+                            len(messages),
+                            messages_deleted,
+                        )
+                        logger.info(
+                            "clean_messages (batch %s): relations %sms,  messages %sms, commit %sms, batch total %sms",
+                            stats["batches"],
+                            delete_relations_ms,
+                            delete_messages_ms,
+                            commit_ms,
+                            int((time.monotonic() - batch_start) * 1000),
+                        )
+
+                    self._sleep_after_delete_batch(
+                        batch_index=stats["batches"],
+                        deleted_messages=batch_deleted_messages,
+                        max_batch_interval_ms=max_batch_interval_ms,
+                    )
+                else:
+                    # Log random sample of message IDs that would be deleted (up to 10)
+                    sample_size = min(10, len(message_ids_to_delete))
+                    sampled_ids = random.sample(list(message_ids_to_delete), sample_size)
+
+                    logger.info(
+                        "clean_messages (batch %s, dry_run): would delete %s messages, sampling %s ids:",
+                        stats["batches"],
+                        len(message_ids_to_delete),
+                        sample_size,
+                    )
+                    for msg_id in sampled_ids:
+                        logger.info(
+                            "clean_messages (batch %s, dry_run) sample: message_id=%s",
+                            stats["batches"],
+                            msg_id,
+                        )
+
+                self._metrics.record_batch(
+                    scanned_messages=batch_scanned_messages,
+                    filtered_messages=batch_filtered_messages,
+                    deleted_messages=batch_deleted_messages,
+                    batch_duration_seconds=time.monotonic() - batch_start,
+                )
 
         logger.info(
             "clean_messages completed: total batches: %s, total messages: %s, filtered messages: %s, total deleted: %s",
@@ -606,6 +612,18 @@ class MessagesCleanService:
             int((time.monotonic() - resolve_start) * 1000),
         )
         return eligible_app_ids
+
+    def _message_app_id_scopes(self, eligible_app_ids: set[str] | None) -> list[set[str] | None]:
+        """
+        Build bounded app-id scopes for message scans.
+
+        None preserves the billing-disabled global scan, while prefiltered app IDs are chunked
+        so each message query keeps its SQL IN list small.
+        """
+        if eligible_app_ids is None:
+            return [None]
+
+        return [set(app_id_chunk) for app_id_chunk in self._chunked(sorted(eligible_app_ids), _SQL_IN_CHUNK_SIZE)]
 
     def _get_app_to_tenant(self, session: Session, app_ids: Sequence[str]) -> dict[str, str]:
         missing_app_ids = [app_id for app_id in app_ids if app_id not in self._app_to_tenant_cache]
