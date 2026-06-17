@@ -180,7 +180,7 @@ export function EditAgentDialog({
             onFormSubmit={handleSubmit}
           >
             <div className="space-y-5 px-6 py-3">
-              <div className="flex items-end gap-4">
+              <div className="flex items-end gap-4 pb-2">
                 <button
                   type="button"
                   aria-label={t('roster.editAgent', { name: agent.name })}
@@ -200,7 +200,7 @@ export function EditAgentDialog({
                 <div className="flex min-w-0 flex-1 gap-3 pb-1">
                   <FieldRoot
                     name="name"
-                    className="min-w-0 flex-1"
+                    className="relative min-w-0 flex-1"
                     validate={(value) => {
                       if (typeof value === 'string' && value.length > 0 && !value.trim())
                         return t('roster.createForm.nameRequired')
@@ -221,12 +221,14 @@ export function EditAgentDialog({
                       required
                       value={name}
                     />
-                    <FieldError match="valueMissing">{t('roster.createForm.nameRequired')}</FieldError>
-                    <FieldError match="customError" />
+                    <div className="absolute top-full left-0 mt-1">
+                      <FieldError match="valueMissing">{t('roster.createForm.nameRequired')}</FieldError>
+                      <FieldError match="customError" />
+                    </div>
                   </FieldRoot>
                   <FieldRoot
                     name="role"
-                    className="min-w-0 flex-1"
+                    className="relative min-w-0 flex-1"
                     validate={(value) => {
                       if (typeof value === 'string' && value.length > 0 && !value.trim())
                         return t('roster.createForm.roleRequired')
@@ -245,8 +247,10 @@ export function EditAgentDialog({
                       required
                       value={role}
                     />
-                    <FieldError match="valueMissing">{t('roster.createForm.roleRequired')}</FieldError>
-                    <FieldError match="customError" />
+                    <div className="absolute top-full left-0 mt-1">
+                      <FieldError match="valueMissing">{t('roster.createForm.roleRequired')}</FieldError>
+                      <FieldError match="customError" />
+                    </div>
                   </FieldRoot>
                 </div>
               </div>
