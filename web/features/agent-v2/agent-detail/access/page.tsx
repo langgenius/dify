@@ -11,7 +11,7 @@ import { useClipboard } from 'foxact/use-clipboard'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
-import { workflowAccessRows } from './mock-data'
+import { WorkflowReferencesTable } from './components/workflow-references-table'
 
 type AgentAccessPageProps = {
   agentId: string
@@ -155,65 +155,7 @@ export function AgentAccessPage({
               </p>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1212px] table-fixed border-collapse">
-                <colgroup>
-                  <col className="w-[628px]" />
-                  <col className="w-60" />
-                  <col className="w-[200px]" />
-                  <col className="w-36" />
-                </colgroup>
-                <thead>
-                  <tr className="h-7 rounded-lg bg-background-section-burn text-left system-xs-semibold-uppercase text-text-tertiary">
-                    <th scope="col" className="rounded-l-lg px-3 font-semibold">
-                      {t('agentDetail.access.workflow.table.name')}
-                    </th>
-                    <th scope="col" className="px-3 font-semibold">
-                      {t('agentDetail.access.workflow.table.createdBy')}
-                    </th>
-                    <th scope="col" className="px-3 font-semibold">
-                      {t('agentDetail.access.workflow.table.lastUsed')}
-                    </th>
-                    <th scope="col" className="rounded-r-lg px-3 font-semibold">
-                      {t('agentDetail.access.workflow.table.actions')}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="system-sm-regular text-text-secondary">
-                  {workflowAccessRows.map(row => (
-                    <tr key={row.id} className="h-10 border-b border-divider-subtle hover:bg-background-default-hover">
-                      <td className="px-3">
-                        <div className="flex min-w-0 items-center gap-2.5">
-                          <span className={cn('flex size-6 shrink-0 items-center justify-center rounded-md border border-divider-subtle', row.iconClassName)}>
-                            <span aria-hidden className={cn(row.icon, 'size-3.5')} />
-                          </span>
-                          <span className="truncate">
-                            {row.name}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="truncate px-3">
-                        {row.createdBy}
-                      </td>
-                      <td className="px-3 tabular-nums" translate="no">
-                        {row.lastUsed}
-                      </td>
-                      <td className="px-3">
-                        <a
-                          href={row.href}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-0.5 rounded-sm text-text-secondary hover:text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                        >
-                          {t('agentDetail.access.workflow.openInStudio')}
-                          <span aria-hidden className="i-ri-external-link-line size-4" />
-                        </a>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <WorkflowReferencesTable agentId={agentId} />
           </section>
         </div>
       </ScrollArea>
