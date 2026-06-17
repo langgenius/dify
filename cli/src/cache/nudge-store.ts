@@ -23,7 +23,7 @@ export async function loadNudgeStore(opts: NudgeStoreOptions = {}): Promise<Nudg
   const store = opts.store ?? getCache(CACHE_NUDGE)
   const intervalMs = opts.intervalMs ?? WARN_INTERVAL_MS
   const clock = opts.now ?? (() => new Date())
-  const memory = readWarned(store)
+  const memory = await readWarned(store)
 
   return {
     canWarn: (host, now) => {
@@ -39,18 +39,18 @@ export async function loadNudgeStore(opts: NudgeStoreOptions = {}): Promise<Nudg
       // Re-read disk inside the write cycle so concurrent processes touching
       // different hosts don't clobber each other's stamps. Same-host writers
       // converge on a near-identical timestamp, so order doesn't matter.
-      const onDisk = readWarned(store)
+      const onDisk = await readWarned(store)
       onDisk.set(host, stamp)
-      writeWarned(store, onDisk)
+      await writeWarned(store, onDisk)
     },
   }
 }
 
-function readWarned(store: Store): Map<string, number> {
+async function readWarned(store: Store): Promise<Map<string, number>> {
   const out = new Map<string, number>()
   let raw: Record<string, string>
   try {
-    raw = store.get(WARNED_KEY)
+    raw = await store.get(WARNED_KEY)
   }
   catch {
     return out
@@ -63,9 +63,9 @@ function readWarned(store: Store): Map<string, number> {
   return out
 }
 
-function writeWarned(store: Store, state: Map<string, number>): void {
+async function writeWarned(store: Store, state: Map<string, number>): Promise<void> {
   const warned: Record<string, string> = {}
   for (const [host, t] of state)
     warned[host] = new Date(t).toISOString()
-  store.set(WARNED_KEY, warned)
+  await store.set(WARNED_KEY, warned)
 }

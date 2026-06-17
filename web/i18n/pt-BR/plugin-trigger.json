@@ -1,6 +1,6 @@
 {
   "events.actionNum": "{{num}} {{event}} INCLUÍDO",
-  "events.description": "Eventos aos quais este plugin de gatilho pode se inscrever",
+  "events.description": "Eventos aos quais este integração de gatilho pode se inscrever",
   "events.empty": "Nenhum evento disponível",
   "events.event": "Evento",
   "events.events": "Eventos",

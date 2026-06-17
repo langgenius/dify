@@ -3,7 +3,6 @@ import { act, screen, waitFor } from '@testing-library/react'
 import { FlowType } from '@/types/common'
 import { createNode } from '../../__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
-import { TabsEnum } from '../../block-selector/types'
 import { BlockEnum } from '../../types'
 import AddBlock from '../add-block'
 
@@ -21,7 +20,7 @@ type BlockSelectorMockProps = {
   popupClassName: string
   availableBlocksTypes: BlockEnum[]
   showStartTab: boolean
-  defaultActiveTab?: TabsEnum
+  defaultActiveTab?: unknown
 }
 
 const {
@@ -129,10 +128,10 @@ describe('AddBlock', () => {
         disabled: false,
         availableBlocksTypes: mockAvailableNextBlocks,
         showStartTab: true,
-        defaultActiveTab: TabsEnum.Start,
         placement: 'right-start',
         popupClassName: 'min-w-[256px]!',
       })
+      expect(latestBlockSelectorProps?.defaultActiveTab).toBeUndefined()
       expect(latestBlockSelectorProps?.offset).toEqual({
         mainAxis: 4,
         crossAxis: -8,

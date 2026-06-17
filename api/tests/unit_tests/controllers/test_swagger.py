@@ -1,5 +1,8 @@
 """OpenAPI JSON rendering tests for Flask-RESTX API blueprints."""
 
+import json
+from collections.abc import Iterator
+
 import pytest
 from flask import Flask
 
@@ -29,6 +32,17 @@ def _parameters_by_name(operation: dict[str, object]) -> dict[str, dict[str, obj
         if isinstance(name, str):
             result[name] = parameter
     return result
+
+
+def _get_operations(payload: dict[str, object]) -> Iterator[tuple[str, dict[str, object]]]:
+    paths = payload["paths"]
+    assert isinstance(paths, dict)
+    for path, path_item in paths.items():
+        if not isinstance(path, str) or not isinstance(path_item, dict):
+            continue
+        operation = path_item.get("get")
+        if isinstance(operation, dict):
+            yield path, operation
 
 
 def _multipart_form_schema(operation: dict[str, object]) -> dict[str, object]:
@@ -93,6 +107,8 @@ def test_openapi_json_endpoints_render(monkeypatch: pytest.MonkeyPatch):
         assert isinstance(payload["components"]["schemas"], dict)
         missing_refs = _schema_refs(payload) - set(payload["components"]["schemas"])
         assert not missing_refs
+        get_request_body_paths = [path for path, operation in _get_operations(payload) if "requestBody" in operation]
+        assert not get_request_body_paths
 
     assert app.config["RESTX_INCLUDE_ALL_MODELS"] is True
 
@@ -172,3 +188,39 @@ def test_console_account_avatar_query_param_renders_as_query(monkeypatch: pytest
     assert "payload" not in params
     assert params["avatar"]["in"] == "query"
     assert params["avatar"]["required"] is True
+
+
+def test_console_plugin_category_list_exported_schema_uses_typed_items(tmp_path):
+    from dev.generate_swagger_specs import generate_specs
+
+    written_paths = generate_specs(tmp_path)
+    console_openapi_path = next(path for path in written_paths if path.name == "console-openapi.json")
+    payload = json.loads(console_openapi_path.read_text(encoding="utf-8"))
+    operation = payload["paths"]["/workspaces/current/plugin/{category}/list"]["get"]
+    response_ref = operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].removeprefix(
+        "#/components/schemas/"
+    )
+    schemas = payload["components"]["schemas"]
+    response_schema = schemas[response_ref]
+
+    assert response_schema["properties"]["plugins"]["items"]["$ref"] == (
+        "#/components/schemas/PluginCategoryInstalledPluginResponse"
+    )
+    assert response_schema["properties"]["builtin_tools"]["items"]["$ref"] == (
+        "#/components/schemas/PluginCategoryBuiltinToolProviderResponse"
+    )
+
+    installed_plugin_schema = schemas["PluginCategoryInstalledPluginResponse"]
+    for field in (
+        "plugin_unique_identifier",
+        "source",
+        "version",
+        "declaration",
+        "endpoints_active",
+        "endpoints_setups",
+    ):
+        assert field in installed_plugin_schema["properties"]
+
+    builtin_tool_schema = schemas["PluginCategoryBuiltinToolProviderResponse"]
+    for field in ("plugin_unique_identifier", "team_credentials", "type", "tools"):
+        assert field in builtin_tool_schema["properties"]

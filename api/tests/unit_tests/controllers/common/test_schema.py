@@ -1,4 +1,5 @@
 import sys
+from datetime import datetime
 from enum import StrEnum
 from typing import Literal
 from unittest.mock import MagicMock, patch
@@ -43,6 +44,8 @@ class QueryModel(BaseModel):
     page: int = Field(default=1, ge=1, le=100, description="Page number")
     keyword: str | None = Field(default=None, min_length=1, max_length=50, description="Search keyword")
     status: Literal["active", "inactive"] | None = Field(default=None, description="Status filter")
+    enum_status: StatusEnum | None = Field(default=None, description="Enum status filter")
+    created_at: datetime | None = Field(default=None, description="Creation time")
     app_id: str = Field(..., alias="appId", description="Application ID")
     tag_ids: list[str] = Field(default_factory=list, min_length=1, max_length=3, description="Tag IDs")
     ambiguous: int | str | None = Field(default=None, description="Ambiguous query parameter")
@@ -302,6 +305,20 @@ def test_query_params_from_model_builds_flask_restx_doc_params():
         "description": "Status filter",
         "type": "string",
         "enum": ["active", "inactive"],
+    }
+    assert params["enum_status"] == {
+        "in": "query",
+        "required": False,
+        "description": "Enum status filter",
+        "type": "string",
+        "enum": ["active", "inactive"],
+    }
+    assert params["created_at"] == {
+        "in": "query",
+        "required": False,
+        "description": "Creation time",
+        "type": "string",
+        "format": "date-time",
     }
     assert params["appId"] == {
         "in": "query",

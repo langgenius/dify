@@ -540,6 +540,58 @@ def test_draft_workflow_get_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
         handler(api, app_model=SimpleNamespace(id="app"))
 
 
+def test_draft_workflow_get_projects_agent_node_job_to_graph(monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow = _make_workflow(
+        graph_dict={
+            "nodes": [
+                {
+                    "id": "agent-node",
+                    "data": {
+                        "type": "agent",
+                        "version": "2",
+                    },
+                }
+            ],
+            "edges": [],
+        }
+    )
+    projected_graph = {
+        "nodes": [
+            {
+                "id": "agent-node",
+                "data": {
+                    "type": "agent",
+                    "version": "2",
+                    "agent_task": "Summarize it.",
+                    "agent_declared_outputs": [{"name": "summary", "type": "string"}],
+                },
+            }
+        ],
+        "edges": [],
+    }
+
+    monkeypatch.setattr(
+        workflow_module,
+        "WorkflowService",
+        lambda: SimpleNamespace(get_draft_workflow=lambda **_k: workflow),
+    )
+
+    from services.agent.workflow_publish_service import WorkflowAgentPublishService
+
+    monkeypatch.setattr(
+        WorkflowAgentPublishService,
+        "project_draft_bindings_to_graph",
+        lambda **_k: projected_graph,
+    )
+
+    api = workflow_module.DraftWorkflowApi()
+    handler = inspect.unwrap(api.get)
+
+    response = handler(api, app_model=SimpleNamespace(id="app"))
+
+    assert response["graph"] == projected_graph
+
+
 def test_advanced_chat_run_conversation_not_exists(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         workflow_module.AppGenerateService,

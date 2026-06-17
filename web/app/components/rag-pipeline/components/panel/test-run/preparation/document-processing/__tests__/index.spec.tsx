@@ -8,6 +8,7 @@ import * as React from 'react'
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { PipelineInputVarType } from '@/models/pipeline'
+import { expectLoadingButton } from '@/test/button'
 import Actions from '../actions'
 import DocumentProcessing from '../index'
 import Options from '../options'
@@ -566,7 +567,7 @@ describe('Actions', () => {
       )
 
       const processButton = screen.getByText('datasetPipeline.operations.process').closest('button')
-      expect(processButton).toBeDisabled()
+      expectLoadingButton(processButton)
     })
 
     it('should disable process button when canSubmit is false', () => {
@@ -597,7 +598,7 @@ describe('Actions', () => {
       )
 
       const processButton = screen.getByText('datasetPipeline.operations.process').closest('button')
-      expect(processButton).toBeDisabled()
+      expectLoadingButton(processButton)
     })
 
     it('should enable process button when all conditions are met', () => {
@@ -650,39 +651,6 @@ describe('Actions', () => {
       fireEvent.click(screen.getByText('datasetPipeline.operations.process'))
 
       expect(mockSubmit).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('Loading State', () => {
-    it('should show loading state when isSubmitting', () => {
-      const mockFormParams = createMockFormParams({ isSubmitting: true })
-
-      render(
-        <Actions
-          formParams={mockFormParams}
-          onBack={vi.fn()}
-        />,
-      )
-
-      const processButton = screen.getByText('datasetPipeline.operations.process').closest('button')
-      expect(processButton).toBeDisabled()
-    })
-
-    it('should show loading state when workflow is running', () => {
-      mockWorkflowRunningData = {
-        result: { status: WorkflowRunningStatus.Running },
-      }
-      const mockFormParams = createMockFormParams()
-
-      render(
-        <Actions
-          formParams={mockFormParams}
-          onBack={vi.fn()}
-        />,
-      )
-
-      const processButton = screen.getByText('datasetPipeline.operations.process').closest('button')
-      expect(processButton).toBeDisabled()
     })
   })
 
@@ -1297,7 +1265,7 @@ describe('DocumentProcessing Integration', () => {
       )
 
       const processButton = screen.getByText('datasetPipeline.operations.process').closest('button')
-      expect(processButton).toBeDisabled()
+      expectLoadingButton(processButton)
     })
 
     it('should update when fetching params status changes', () => {

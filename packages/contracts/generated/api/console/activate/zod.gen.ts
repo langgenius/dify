@@ -46,9 +46,9 @@ export const zPostActivateBody = zActivatePayload
 export const zPostActivateResponse = zActivationResponse
 
 export const zGetActivateCheckQuery = z.object({
-  email: z.string().nullish(),
+  email: z.string().optional(),
   token: z.string(),
-  workspace_id: z.string().nullish(),
+  workspace_id: z.string().optional(),
 })
 
 /**

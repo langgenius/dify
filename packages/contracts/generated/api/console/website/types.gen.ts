@@ -12,6 +12,10 @@ export type WebsiteCrawlPayload = {
   url: string
 }
 
+export type WebsiteCrawlResponse = {
+  [key: string]: unknown
+}
+
 export type PostWebsiteCrawlData = {
   body: WebsiteCrawlPayload
   path?: never
@@ -20,17 +24,11 @@ export type PostWebsiteCrawlData = {
 }
 
 export type PostWebsiteCrawlErrors = {
-  400: {
-    [key: string]: unknown
-  }
+  400: unknown
 }
 
-export type PostWebsiteCrawlError = PostWebsiteCrawlErrors[keyof PostWebsiteCrawlErrors]
-
 export type PostWebsiteCrawlResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WebsiteCrawlResponse
 }
 
 export type PostWebsiteCrawlResponse = PostWebsiteCrawlResponses[keyof PostWebsiteCrawlResponses]
@@ -40,28 +38,19 @@ export type GetWebsiteCrawlStatusByJobIdData = {
   path: {
     job_id: string
   }
-  query?: {
-    provider?: string
+  query: {
+    provider: 'firecrawl' | 'jinareader' | 'watercrawl'
   }
   url: '/website/crawl/status/{job_id}'
 }
 
 export type GetWebsiteCrawlStatusByJobIdErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  404: unknown
 }
 
-export type GetWebsiteCrawlStatusByJobIdError
-  = GetWebsiteCrawlStatusByJobIdErrors[keyof GetWebsiteCrawlStatusByJobIdErrors]
-
 export type GetWebsiteCrawlStatusByJobIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WebsiteCrawlResponse
 }
 
 export type GetWebsiteCrawlStatusByJobIdResponse

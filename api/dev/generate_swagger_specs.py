@@ -330,99 +330,6 @@ def _replace_legacy_refs(value: object) -> object:
 HTTP_METHODS = {"delete", "get", "head", "options", "patch", "post", "put", "trace"}
 
 
-def _resolve_component_schema(payload: dict[str, object], schema: object) -> dict[str, object] | None:
-    if not isinstance(schema, dict):
-        return None
-
-    ref = schema.get("$ref")
-    if isinstance(ref, str) and ref.startswith("#/components/schemas/"):
-        name = ref.removeprefix("#/components/schemas/")
-        components = payload.get("components")
-        if not isinstance(components, dict):
-            return None
-        schemas = components.get("schemas")
-        if not isinstance(schemas, dict):
-            return None
-        resolved = schemas.get(name)
-        return resolved if isinstance(resolved, dict) else None
-
-    return schema
-
-
-def _request_body_schema(request_body: object) -> object | None:
-    if not isinstance(request_body, dict):
-        return None
-    content = request_body.get("content")
-    if not isinstance(content, dict):
-        return None
-    media_type = content.get("application/json")
-    if not isinstance(media_type, dict):
-        return None
-    return media_type.get("schema")
-
-
-def _query_parameters_from_schema(schema: dict[str, object]) -> list[dict[str, object]]:
-    properties = schema.get("properties")
-    if not isinstance(properties, dict):
-        return []
-
-    required = schema.get("required")
-    required_names = set(required) if isinstance(required, list) else set()
-    parameters: list[dict[str, object]] = []
-
-    for name, property_schema in sorted(properties.items()):
-        if not isinstance(name, str) or not isinstance(property_schema, dict):
-            continue
-        schema_copy = dict(property_schema)
-        description = schema_copy.get("description")
-        parameter: dict[str, object] = {
-            "name": name,
-            "in": "query",
-            "required": name in required_names,
-            "schema": schema_copy,
-        }
-        if isinstance(description, str):
-            parameter["description"] = description
-        parameters.append(parameter)
-
-    return parameters
-
-
-def _move_get_request_bodies_to_query_parameters(payload: dict[str, object]) -> dict[str, object]:
-    """Represent GET request bodies as query parameters in exported specs."""
-
-    paths = payload.get("paths")
-    if not isinstance(paths, dict):
-        return payload
-
-    for path_item in paths.values():
-        if not isinstance(path_item, dict):
-            continue
-        operation = path_item.get("get")
-        if not isinstance(operation, dict) or "requestBody" not in operation:
-            continue
-
-        schema = _resolve_component_schema(payload, _request_body_schema(operation.get("requestBody")))
-        existing_parameters = operation.get("parameters")
-        parameters = list(existing_parameters) if isinstance(existing_parameters, list) else []
-        existing_query_names = {
-            parameter.get("name")
-            for parameter in parameters
-            if isinstance(parameter, dict) and parameter.get("in") == "query"
-        }
-
-        if schema is not None:
-            for parameter in _query_parameters_from_schema(schema):
-                if parameter["name"] not in existing_query_names:
-                    parameters.append(parameter)
-
-        if parameters:
-            operation["parameters"] = parameters
-        operation.pop("requestBody", None)
-
-    return payload
-
-
 def _deduplicate_operation_ids(payload: dict[str, object]) -> dict[str, object]:
     """Make operationId values unique while preserving already-unique IDs."""
 
@@ -497,7 +404,6 @@ def generate_specs(output_dir: Path) -> list[Path]:
         if not isinstance(payload, dict):
             raise RuntimeError(f"unexpected response payload for {target.route}")
         payload = _merge_registered_schemas(payload, target.namespace)
-        payload = _move_get_request_bodies_to_query_parameters(payload)
         payload = _deduplicate_operation_ids(payload)
         payload = drop_null_values(payload)
         payload = sort_openapi_arrays(payload)

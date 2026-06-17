@@ -3,6 +3,28 @@
 import * as z from 'zod'
 
 /**
+ * RecommendedAppDetailResponse
+ */
+export const zRecommendedAppDetailResponse = z.record(z.string(), z.unknown())
+
+/**
+ * BannerResponse
+ */
+export const zBannerResponse = z.object({
+  content: z.unknown(),
+  created_at: z.string().nullish(),
+  id: z.string(),
+  link: z.string().nullish(),
+  sort: z.int(),
+  status: z.string(),
+})
+
+/**
+ * BannerListResponse
+ */
+export const zBannerListResponse = z.array(zBannerResponse)
+
+/**
  * RecommendedAppInfoResponse
  */
 export const zRecommendedAppInfoResponse = z.object({
@@ -38,6 +60,13 @@ export const zRecommendedAppListResponse = z.object({
   recommended_apps: z.array(zRecommendedAppResponse),
 })
 
+/**
+ * LearnDifyAppListResponse
+ */
+export const zLearnDifyAppListResponse = z.object({
+  recommended_apps: z.array(zRecommendedAppResponse),
+})
+
 export const zGetExploreAppsQuery = z.object({
   language: z.string().optional(),
 })
@@ -47,6 +76,15 @@ export const zGetExploreAppsQuery = z.object({
  */
 export const zGetExploreAppsResponse = zRecommendedAppListResponse
 
+export const zGetExploreAppsLearnDifyQuery = z.object({
+  language: z.string().optional(),
+})
+
+/**
+ * Success
+ */
+export const zGetExploreAppsLearnDifyResponse = zLearnDifyAppListResponse
+
 export const zGetExploreAppsByAppIdPath = z.object({
   app_id: z.string(),
 })
@@ -54,9 +92,13 @@ export const zGetExploreAppsByAppIdPath = z.object({
 /**
  * Success
  */
-export const zGetExploreAppsByAppIdResponse = z.record(z.string(), z.unknown())
+export const zGetExploreAppsByAppIdResponse = zRecommendedAppDetailResponse
+
+export const zGetExploreBannersQuery = z.object({
+  language: z.string().optional().default('en-US'),
+})
 
 /**
  * Success
  */
-export const zGetExploreBannersResponse = z.record(z.string(), z.unknown())
+export const zGetExploreBannersResponse = zBannerListResponse

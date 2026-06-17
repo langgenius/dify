@@ -327,3 +327,49 @@ def test_agent_app_request_builder_adds_shell_layer_when_include_shell():
     assert layers[DIFY_SHELL_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
     shell_config = cast(DifyShellLayerConfig, layers[DIFY_SHELL_LAYER_ID].config)
     assert shell_config.env[0].name == "APP_ENV"
+
+
+# ── ENG-635 / ENG-638: ask_human layer injection + deferred_tool_results ─────
+
+
+def test_ask_human_layer_injected_when_configured():
+
+    from dify_agent.layers.ask_human import DIFY_ASK_HUMAN_LAYER_TYPE_ID, DifyAskHumanLayerConfig
+
+    from clients.agent_backend.request_builder import DIFY_ASK_HUMAN_LAYER_ID
+
+    run_input = _run_input().model_copy(update={"ask_human_config": DifyAskHumanLayerConfig()})
+    request = AgentBackendRunRequestBuilder().build_for_workflow_node(run_input)
+
+    layers = {layer.name: layer for layer in request.composition.layers}
+    assert DIFY_ASK_HUMAN_LAYER_ID in layers
+    assert layers[DIFY_ASK_HUMAN_LAYER_ID].type == DIFY_ASK_HUMAN_LAYER_TYPE_ID
+    # the deferred tool needs the history layer to resume, so history must precede it
+    names = [layer.name for layer in request.composition.layers]
+    assert names.index(DIFY_AGENT_HISTORY_LAYER_ID) < names.index(DIFY_ASK_HUMAN_LAYER_ID)
+
+
+def test_no_ask_human_layer_when_unconfigured():
+    from clients.agent_backend.request_builder import DIFY_ASK_HUMAN_LAYER_ID
+
+    request = AgentBackendRunRequestBuilder().build_for_workflow_node(_run_input())
+    assert all(layer.name != DIFY_ASK_HUMAN_LAYER_ID for layer in request.composition.layers)
+
+
+def test_deferred_tool_results_threaded_into_request():
+    from dify_agent.protocol import DeferredToolResultsPayload
+
+    payload = DeferredToolResultsPayload(
+        calls={
+            "tool-call-1": {
+                "status": "submitted",
+                "action": {"id": "submit", "label": "Submit"},
+                "values": {"x": "y"},
+            }
+        }
+    )
+    run_input = _run_input().model_copy(update={"deferred_tool_results": payload})
+    request = AgentBackendRunRequestBuilder().build_for_workflow_node(run_input)
+
+    assert request.deferred_tool_results is not None
+    assert "tool-call-1" in request.deferred_tool_results.calls

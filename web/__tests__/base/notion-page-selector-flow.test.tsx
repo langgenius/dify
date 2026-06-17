@@ -28,6 +28,9 @@ vi.mock('@/service/knowledge/use-import', () => ({
 }))
 
 vi.mock('@/context/modal-context', () => ({
+  useModalContext: () => ({
+    setShowAccountSettingModal: mockSetShowAccountSettingModal,
+  }),
   useModalContextSelector: (selector: (state: { setShowAccountSettingModal: typeof mockSetShowAccountSettingModal }) => unknown) =>
     selector({ setShowAccountSettingModal: mockSetShowAccountSettingModal }),
 }))
