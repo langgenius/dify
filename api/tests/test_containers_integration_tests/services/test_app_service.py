@@ -295,7 +295,7 @@ class TestAppService:
         db_session_with_containers.commit()
 
         last_modified_apps = app_service.get_paginate_apps(
-            account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat")
+            account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat"),db_session_with_containers
         )
         assert last_modified_apps is not None
         assert [app.name for app in last_modified_apps.items] == [
@@ -476,6 +476,7 @@ class TestAppService:
             account.id,
             tenant.id,
             StarredAppListParams(page=1, limit=10, mode="chat", sort_by="earliest_created"),
+            db_session_with_containers
         )
         assert earliest_created_apps is not None
         assert [app.name for app in earliest_created_apps.items] == [
@@ -529,20 +530,20 @@ class TestAppService:
         completion_app = app_service.create_app(tenant.id, completion_app_params, account)
 
         # Test filter by mode
-        chat_apps = app_service.get_paginate_apps(account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat"))
+        chat_apps = app_service.get_paginate_apps(account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat"), db_session_with_containers)
         assert len(chat_apps.items) == 1
         assert chat_apps.items[0].mode == "chat"
 
         # Test filter by name
         filtered_apps = app_service.get_paginate_apps(
-            account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat", name="Chat")
+            account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat", name="Chat"), db_session_with_containers
         )
         assert len(filtered_apps.items) == 1
         assert "Chat" in filtered_apps.items[0].name
 
         # Test filter by created_by_me
         my_apps = app_service.get_paginate_apps(
-            account.id, tenant.id, AppListParams(page=1, limit=10, mode="completion", is_created_by_me=True)
+            account.id, tenant.id, AppListParams(page=1, limit=10, mode="completion", is_created_by_me=True), db_session_with_containers
         )
         assert len(my_apps.items) == 1
 
@@ -595,6 +596,7 @@ class TestAppService:
             first_account.id,
             tenant.id,
             AppListParams(page=1, limit=10, mode="chat", creator_ids=[second_account.id]),
+            db_session_with_containers
         )
 
         assert filtered_apps is not None
@@ -642,7 +644,7 @@ class TestAppService:
             # Test with tag filter
             params = AppListParams(page=1, limit=10, mode="chat", tag_ids=["tag1", "tag2"])
 
-            paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, params)
+            paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, params,db_session_with_containers)
 
             # Verify tag service was called
             mock_tag_service.assert_called_once_with("app", tenant.id, ["tag1", "tag2"], match_all=True)
@@ -1474,7 +1476,7 @@ class TestAppService:
 
         # Test 1: Search with % character
         paginated_apps = app_service.get_paginate_apps(
-            account.id, tenant.id, AppListParams(name="50%", mode="chat", page=1, limit=10)
+            account.id, tenant.id, AppListParams(name="50%", mode="chat", page=1, limit=10), db_session_with_containers
         )
         assert paginated_apps is not None
         assert paginated_apps.total == 1
@@ -1483,7 +1485,7 @@ class TestAppService:
 
         # Test 2: Search with _ character
         paginated_apps = app_service.get_paginate_apps(
-            account.id, tenant.id, AppListParams(name="test_data", mode="chat", page=1, limit=10)
+            account.id, tenant.id, AppListParams(name="test_data", mode="chat", page=1, limit=10), db_session_with_containers
         )
         assert paginated_apps is not None
         assert paginated_apps.total == 1
@@ -1492,7 +1494,7 @@ class TestAppService:
 
         # Test 3: Search with \ character
         paginated_apps = app_service.get_paginate_apps(
-            account.id, tenant.id, AppListParams(name="path\\to\\app", mode="chat", page=1, limit=10)
+            account.id, tenant.id, AppListParams(name="path\\to\\app", mode="chat", page=1, limit=10), db_session_with_containers
         )
         assert paginated_apps is not None
         assert paginated_apps.total == 1
@@ -1501,7 +1503,7 @@ class TestAppService:
 
         # Test 4: Search with % should NOT match 100% (verifies escaping works)
         paginated_apps = app_service.get_paginate_apps(
-            account.id, tenant.id, AppListParams(name="50%", mode="chat", page=1, limit=10)
+            account.id, tenant.id, AppListParams(name="50%", mode="chat", page=1, limit=10), db_session_with_containers
         )
         assert paginated_apps is not None
         assert paginated_apps.total == 1

@@ -17,11 +17,11 @@ def current_user(mocker: MockerFixture):
 
 @pytest.fixture
 def db_session(mocker: MockerFixture):
-    mock_db = mocker.patch("services.tag_service.db")
+    mock_db = mocker.Mock()
     return mock_db.session
 
 
-def test_save_tag_binding_only_creates_bindings_for_valid_snippet_tags(mocker, current_user, db_session):
+def test_save_tag_binding_only_creates_bindings_for_valid_snippet_tags(mocker: MockerFixture, current_user, db_session):
     mocker.patch("services.tag_service.TagService.check_target_exists")
     db_session.scalars.return_value.all.return_value = ["tag-1"]
     db_session.scalar.return_value = None
@@ -44,7 +44,7 @@ def test_save_tag_binding_only_creates_bindings_for_valid_snippet_tags(mocker, c
     db_session.commit.assert_called_once()
 
 
-def test_delete_tag_binding_limits_deletion_to_valid_snippet_tags(mocker, current_user, db_session):
+def test_delete_tag_binding_limits_deletion_to_valid_snippet_tags(mocker: MockerFixture, current_user, db_session):
     mocker.patch("services.tag_service.TagService.check_target_exists")
     db_session.execute.return_value = SimpleNamespace(rowcount=1)
 
@@ -61,7 +61,7 @@ def test_delete_tag_binding_limits_deletion_to_valid_snippet_tags(mocker, curren
     db_session.commit.assert_called_once()
 
 
-def test_delete_tag_binding_does_not_commit_when_no_rows_deleted(mocker, current_user, db_session):
+def test_delete_tag_binding_does_not_commit_when_no_rows_deleted(mocker: MockerFixture, current_user, db_session):
     mocker.patch("services.tag_service.TagService.check_target_exists")
     db_session.execute.return_value = SimpleNamespace(rowcount=0)
 

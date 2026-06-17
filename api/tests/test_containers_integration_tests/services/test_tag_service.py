@@ -954,7 +954,7 @@ class TestTagService:
         non_existent_tag_id = str(uuid.uuid4())
 
         # Act: Execute the method under test
-        result = TagService.get_tag_binding_count(non_existent_tag_id)
+        result = TagService.get_tag_binding_count(non_existent_tag_id, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         assert result == 0
