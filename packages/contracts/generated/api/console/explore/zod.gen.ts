@@ -86,7 +86,7 @@ export const zGetExploreAppsLearnDifyQuery = z.object({
 export const zGetExploreAppsLearnDifyResponse = zLearnDifyAppListResponse
 
 export const zGetExploreAppsByAppIdPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**

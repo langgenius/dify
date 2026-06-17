@@ -8,10 +8,11 @@ spec export fail or succeed in the same way.
 
 import hashlib
 import json
-from typing import TypeGuard
+from typing import TypeGuard, cast
 
 from flask import current_app
 from flask_restx import fields
+from flask_restx import swagger as restx_swagger
 from flask_restx.model import Model, OrderedModel, instance
 from flask_restx.swagger import Swagger
 
@@ -98,20 +99,25 @@ def _inline_model_name(nested_fields: dict[object, object]) -> str:
     return f"_AnonymousInlineModel_{digest}"
 
 
-def patch_swagger_for_inline_nested_dicts() -> None:
-    """Allow OpenAPI generation to handle legacy inline Flask-RESTX field dicts.
+def install_swagger_compatibility() -> None:
+    """Install Dify's Flask-RESTX OpenAPI compatibility hooks.
 
     Some existing controllers use raw field mappings in `fields.Nested({...})`
     or directly in `@namespace.response(...)`. Runtime marshalling accepts that,
     but Flask-RESTX registration expects a named model. Convert those
     anonymous mappings into temporary named models during docs generation.
+
+    Flask-RESTX also drops parameter descriptions from generated schemas and
+    does not expose the Werkzeug `uuid` route converter as `format: uuid`.
     """
 
-    if getattr(Swagger, "_dify_inline_nested_dict_patch", False):
+    if getattr(Swagger, "_dify_swagger_compatibility_installed", False):
         return
 
     original_register_model = Swagger.register_model
     original_register_field = Swagger.register_field
+    original_extract_path_params = restx_swagger.extract_path_params
+    original_schema_from_parameter = Swagger.schema_from_parameter
     original_as_dict = Swagger.as_dict
 
     def get_or_create_inline_model(self: Swagger, nested_fields: dict[object, object]) -> object:
@@ -134,6 +140,20 @@ def patch_swagger_for_inline_nested_dicts() -> None:
 
         original_register_field(self, field)
 
+    def schema_from_parameter_with_description(self: Swagger, param: dict[str, object]) -> dict[str, object]:
+        schema = cast(dict[str, object], original_schema_from_parameter(self, param))
+        description = param.get("description")
+        if isinstance(description, str):
+            schema["description"] = description
+        return schema
+
+    def extract_path_params_with_uuid_format(path: str):
+        params = original_extract_path_params(path)
+        for converter, _arguments, variable in restx_swagger.parse_rule(path):
+            if converter == "uuid" and variable in params:
+                params[variable]["format"] = "uuid"
+        return params
+
     def as_dict_with_inline_dict_support(self: Swagger):
         # Temporary set RESTX_INCLUDE_ALL_MODELS = false to prevent "length changed while iterating" error
         include_all_models = current_app.config.get("RESTX_INCLUDE_ALL_MODELS", False)
@@ -145,5 +165,7 @@ def patch_swagger_for_inline_nested_dicts() -> None:
 
     Swagger.register_model = register_model_with_inline_dict_support
     Swagger.register_field = register_field_with_inline_dict_support
+    restx_swagger.extract_path_params = extract_path_params_with_uuid_format
+    Swagger.schema_from_parameter = schema_from_parameter_with_description
     Swagger.as_dict = as_dict_with_inline_dict_support
-    Swagger._dify_inline_nested_dict_patch = True
+    Swagger._dify_swagger_compatibility_installed = True

@@ -6,6 +6,7 @@ import * as z from 'zod'
 import {
   zDeleteAppsAnnotationsByAnnotationIdPath,
   zDeleteAppsAnnotationsByAnnotationIdResponse,
+  zDeleteConversationsByCIdBody,
   zDeleteConversationsByCIdPath,
   zDeleteConversationsByCIdResponse,
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath,
@@ -72,6 +73,7 @@ import {
   zGetFormHumanInputByFormTokenResponse,
   zGetInfoResponse,
   zGetMessagesByMessageIdSuggestedPath,
+  zGetMessagesByMessageIdSuggestedQuery,
   zGetMessagesByMessageIdSuggestedResponse,
   zGetMessagesQuery,
   zGetMessagesResponse,
@@ -110,12 +112,15 @@ import {
   zPostAppsAnnotationReplyByActionResponse,
   zPostAppsAnnotationsBody,
   zPostAppsAnnotationsResponse,
+  zPostAudioToTextBody,
   zPostAudioToTextResponse,
   zPostChatMessagesBody,
+  zPostChatMessagesByTaskIdStopBody,
   zPostChatMessagesByTaskIdStopPath,
   zPostChatMessagesByTaskIdStopResponse,
   zPostChatMessagesResponse,
   zPostCompletionMessagesBody,
+  zPostCompletionMessagesByTaskIdStopBody,
   zPostCompletionMessagesByTaskIdStopPath,
   zPostCompletionMessagesByTaskIdStopResponse,
   zPostCompletionMessagesResponse,
@@ -179,6 +184,7 @@ import {
   zPostDatasetsByDatasetIdRetrieveBody,
   zPostDatasetsByDatasetIdRetrievePath,
   zPostDatasetsByDatasetIdRetrieveResponse,
+  zPostDatasetsPipelineFileUploadBody,
   zPostDatasetsPipelineFileUploadResponse,
   zPostDatasetsResponse,
   zPostDatasetsTagsBindingBody,
@@ -187,6 +193,7 @@ import {
   zPostDatasetsTagsResponse,
   zPostDatasetsTagsUnbindingBody,
   zPostDatasetsTagsUnbindingResponse,
+  zPostFilesUploadBody,
   zPostFilesUploadResponse,
   zPostFormHumanInputByFormTokenBody,
   zPostFormHumanInputByFormTokenPath,
@@ -201,6 +208,7 @@ import {
   zPostWorkflowsByWorkflowIdRunResponse,
   zPostWorkflowsRunBody,
   zPostWorkflowsRunResponse,
+  zPostWorkflowsTasksByTaskIdStopBody,
   zPostWorkflowsTasksByTaskIdStopPath,
   zPostWorkflowsTasksByTaskIdStopResponse,
   zPutAppsAnnotationsByAnnotationIdBody,
@@ -423,6 +431,7 @@ export const post3 = oc
     summary: 'Convert audio to text using speech-to-text',
     tags: ['service_api'],
   })
+  .input(z.object({ body: zPostAudioToTextBody }))
   .output(zPostAudioToTextResponse)
 
 export const audioToText = {
@@ -444,7 +453,12 @@ export const post4 = oc
     summary: 'Stop a running chat message generation',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zPostChatMessagesByTaskIdStopPath }))
+  .input(
+    z.object({
+      body: zPostChatMessagesByTaskIdStopBody,
+      params: zPostChatMessagesByTaskIdStopPath,
+    }),
+  )
   .output(zPostChatMessagesByTaskIdStopResponse)
 
 export const stop = {
@@ -496,7 +510,12 @@ export const post6 = oc
     summary: 'Stop a running completion task',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zPostCompletionMessagesByTaskIdStopPath }))
+  .input(
+    z.object({
+      body: zPostCompletionMessagesByTaskIdStopBody,
+      params: zPostCompletionMessagesByTaskIdStopPath,
+    }),
+  )
   .output(zPostCompletionMessagesByTaskIdStopResponse)
 
 export const stop2 = {
@@ -633,7 +652,7 @@ export const delete2 = oc
     summary: 'Delete a specific conversation',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zDeleteConversationsByCIdPath }))
+  .input(z.object({ body: zDeleteConversationsByCIdBody, params: zDeleteConversationsByCIdPath }))
   .output(zDeleteConversationsByCIdResponse)
 
 export const byCId = {
@@ -685,6 +704,7 @@ export const post9 = oc
     summary: 'Upload a file for use in conversations',
     tags: ['service_api'],
   })
+  .input(z.object({ body: zPostDatasetsPipelineFileUploadBody }))
   .output(zPostDatasetsPipelineFileUploadResponse)
 
 export const fileUpload = {
@@ -835,9 +855,12 @@ export const post13 = oc
 
 /**
  * Create a new document by uploading a file
+ *
+ * @deprecated
  */
 export const post14 = oc
   .route({
+    deprecated: true,
     description: 'Create a new document by uploading a file',
     inputStructure: 'detailed',
     method: 'POST',
@@ -1937,6 +1960,7 @@ export const post33 = oc
     summary: 'Upload a file for use in conversations',
     tags: ['service_api'],
   })
+  .input(z.object({ body: zPostFilesUploadBody }))
   .output(zPostFilesUploadResponse)
 
 export const upload = {
@@ -2099,7 +2123,12 @@ export const get25 = oc
     summary: 'Get suggested follow-up questions for a message',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zGetMessagesByMessageIdSuggestedPath }))
+  .input(
+    z.object({
+      params: zGetMessagesByMessageIdSuggestedPath,
+      query: zGetMessagesByMessageIdSuggestedQuery,
+    }),
+  )
   .output(zGetMessagesByMessageIdSuggestedResponse)
 
 export const suggested = {
@@ -2347,7 +2376,12 @@ export const post38 = oc
     summary: 'Stop a running workflow task',
     tags: ['service_api'],
   })
-  .input(z.object({ params: zPostWorkflowsTasksByTaskIdStopPath }))
+  .input(
+    z.object({
+      body: zPostWorkflowsTasksByTaskIdStopBody,
+      params: zPostWorkflowsTasksByTaskIdStopPath,
+    }),
+  )
   .output(zPostWorkflowsTasksByTaskIdStopResponse)
 
 export const stop3 = {

@@ -18,6 +18,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.service_api import service_api_ns
+from controllers.service_api.schema import expect_with_user
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from extensions.ext_database import db
@@ -101,7 +102,7 @@ class WorkflowHumanInputFormApi(Resource):
         inputs = service.resolve_form_inputs(form)
         return _jsonify_form_definition(form, inputs=inputs)
 
-    @service_api_ns.expect(service_api_ns.models[HumanInputFormSubmitPayload.__name__])
+    @expect_with_user(service_api_ns, HumanInputFormSubmitPayload)
     @service_api_ns.doc("submit_human_input_form")
     @service_api_ns.doc(description="Submit a paused human input form by token")
     @service_api_ns.doc(params={"form_token": "Human input form token"})
