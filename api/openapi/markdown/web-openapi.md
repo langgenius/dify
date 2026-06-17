@@ -4,10 +4,9 @@ Public APIs for web applications including file uploads, chat interactions, and 
 ## Version: 1.0
 
 ### Available authorizations
-#### Bearer (API Key Authentication)
-Type: Bearer {your-api-key}  
-**Name:** Authorization  
-**In:** header  
+#### Bearer (HTTP, bearer)
+Use the Service API key as a Bearer token in the Authorization header.
+Bearer format: API_KEY
 
 ---
 ## web
@@ -140,7 +139,7 @@ Delete a specific conversation.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path | Conversation UUID | Yes | string |
+| c_id | path | Conversation UUID | Yes | string (uuid) |
 
 #### Responses
 
@@ -160,7 +159,7 @@ Rename a specific conversation with a custom name or auto-generate one.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path | Conversation UUID | Yes | string |
+| c_id | path | Conversation UUID | Yes | string (uuid) |
 | auto_generate | query | Auto-generate conversation name | No | boolean |
 | name | query | New conversation name | No | string |
 
@@ -188,7 +187,7 @@ Pin a specific conversation to keep it at the top of the list.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path | Conversation UUID | Yes | string |
+| c_id | path | Conversation UUID | Yes | string (uuid) |
 
 #### Responses
 
@@ -208,7 +207,7 @@ Unpin a specific conversation to remove it from the top of the list.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path | Conversation UUID | Yes | string |
+| c_id | path | Conversation UUID | Yes | string (uuid) |
 
 #### Responses
 
@@ -494,7 +493,7 @@ Submit feedback (like/dislike) for a specific message.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| message_id | path | Message UUID | Yes | string |
+| message_id | path | Message UUID | Yes | string (uuid) |
 | content | query | Feedback content | No | string |
 | rating | query | Feedback rating | No | string, <br>**Available values:** "dislike", "like" |
 
@@ -523,7 +522,7 @@ Generate a new completion similar to an existing message (completion apps only).
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | response_mode | query | Response mode | Yes | string, <br>**Available values:** "blocking", "streaming" |
-| message_id | path |  | Yes | string |
+| message_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -543,7 +542,7 @@ Get suggested follow-up questions after a message (chat apps only).
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| message_id | path | Message UUID | Yes | string |
+| message_id | path | Message UUID | Yes | string (uuid) |
 
 #### Responses
 
@@ -731,7 +730,7 @@ Remove a message from saved messages.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| message_id | path | Message UUID to delete | Yes | string |
+| message_id | path | Message UUID to delete | Yes | string (uuid) |
 
 #### Responses
 

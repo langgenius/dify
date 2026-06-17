@@ -32,7 +32,7 @@ export type AgentProviderListResponse = Array<{
 }>
 
 export type SnippetPagination = {
-  data?: Array<AnonymousInlineModelEfd591151Ea9>
+  data?: Array<AnonymousInlineModel744Ff9Cc03E6>
   has_more?: boolean
   limit?: number
   page?: number
@@ -769,7 +769,7 @@ export type WorkspaceCustomConfigResponse = {
   replace_webapp_logo?: string | null
 }
 
-export type AnonymousInlineModelEfd591151Ea9 = {
+export type AnonymousInlineModel744Ff9Cc03E6 = {
   author_name?: string
   created_at?: number
   created_by?: string

@@ -266,6 +266,7 @@ def test_patch_union_schema_markdown_ignores_unrenderable_shapes(tmp_path):
     assert module._schema_ref_name(None) is None
     assert module._schema_markdown_type(None) == ""
     assert module._schema_markdown_type({"anyOf": [{"type": "null"}]}) == ""
+    assert module._strip_trailing_line_whitespace("line  \ncell\t \n") == "line\ncell\n"
     assert module._replace_schema_table_type("unchanged", "Definition", "field", "") == "unchanged"
     assert (
         module._replace_schema_table_type(
@@ -319,7 +320,10 @@ def test_convert_spec_to_markdown_patches_generated_union_tables(tmp_path, monke
         assert kwargs["check"] is False
         markdown_path = Path(args[args.index("-o") + 1])
         markdown_path.write_text(
-            """#### FormInputConfig
+            "Intro line"
+            + "  \n"
+            + """
+#### FormInputConfig
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -340,5 +344,7 @@ def test_convert_spec_to_markdown_patches_generated_union_tables(tmp_path, monke
     module._convert_spec_to_markdown(spec_path, output_path)
 
     converted = output_path.read_text(encoding="utf-8")
+    assert "Intro line  \n" not in converted
+    assert "Intro line\n" in converted
     assert "| FormInputConfig | [ParagraphInputConfig](#paragraphinputconfig) |  |  |" in converted
     assert "| default | [StringSource](#stringsource) |  | No |" in converted

@@ -21,6 +21,11 @@ from controllers.service_api.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from controllers.service_api.schema import (
+    expect_user_json,
+    expect_with_user,
+    json_or_event_stream_response,
+)
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -249,7 +254,8 @@ class WorkflowRunDetailApi(Resource):
 
 @service_api_ns.route("/workflows/run")
 class WorkflowRunApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[WorkflowRunPayload.__name__])
+    @expect_with_user(service_api_ns, WorkflowRunPayload)
+    @json_or_event_stream_response(service_api_ns)
     @service_api_ns.doc("run_workflow")
     @service_api_ns.doc(description="Execute a workflow")
     @service_api_ns.doc(
@@ -313,7 +319,8 @@ class WorkflowRunApi(Resource):
 
 @service_api_ns.route("/workflows/<string:workflow_id>/run")
 class WorkflowRunByIdApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[WorkflowRunPayload.__name__])
+    @expect_with_user(service_api_ns, WorkflowRunPayload)
+    @json_or_event_stream_response(service_api_ns)
     @service_api_ns.doc("run_workflow_by_id")
     @service_api_ns.doc(description="Execute a specific workflow by ID")
     @service_api_ns.doc(params={"workflow_id": "Workflow ID to execute"})
@@ -387,6 +394,7 @@ class WorkflowRunByIdApi(Resource):
 
 @service_api_ns.route("/workflows/tasks/<string:task_id>/stop")
 class WorkflowTaskStopApi(Resource):
+    @expect_user_json(service_api_ns)
     @service_api_ns.doc("stop_workflow_task")
     @service_api_ns.doc(description="Stop a running workflow task")
     @service_api_ns.doc(params={"task_id": "Task ID to stop"})

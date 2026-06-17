@@ -20,6 +20,7 @@ from controllers.service_api.app.error import (
     ProviderQuotaExceededError,
     UnsupportedAudioTypeError,
 )
+from controllers.service_api.schema import binary_response, expect_with_user, multipart_file_params
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
@@ -41,6 +42,7 @@ register_response_schema_models(service_api_ns, AudioBinaryResponse, AudioTransc
 class AudioApi(Resource):
     @service_api_ns.doc("audio_to_text")
     @service_api_ns.doc(description="Convert audio to text using speech-to-text")
+    @service_api_ns.doc(consumes=["multipart/form-data"], params=multipart_file_params(include_user=True))
     @service_api_ns.doc(
         responses={
             200: "Audio successfully transcribed",
@@ -99,7 +101,8 @@ register_schema_model(service_api_ns, TextToAudioPayload)
 
 @service_api_ns.route("/text-to-audio")
 class TextApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[TextToAudioPayload.__name__])
+    @expect_with_user(service_api_ns, TextToAudioPayload)
+    @binary_response(service_api_ns, "audio/mpeg")
     @service_api_ns.doc("text_to_audio")
     @service_api_ns.doc(description="Convert text to audio using text-to-speech")
     @service_api_ns.doc(
@@ -110,11 +113,7 @@ class TextApi(Resource):
             500: "Internal server error",
         }
     )
-    @service_api_ns.response(
-        200,
-        "Text successfully converted to audio",
-        service_api_ns.models[AudioBinaryResponse.__name__],
-    )
+    @service_api_ns.response(200, "Text successfully converted to audio")
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
     def post(self, app_model: App, end_user: EndUser):
         """Convert text to audio using text-to-speech.

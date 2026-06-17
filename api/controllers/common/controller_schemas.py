@@ -1,7 +1,8 @@
-from typing import Any, Literal
+from copy import deepcopy
+from typing import Any, Literal, override
 from uuid import UUID
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, GetJsonSchemaHandler, model_validator
 
 from libs.helper import UUIDStrOrEmpty
 
@@ -11,6 +12,45 @@ from libs.helper import UUIDStrOrEmpty
 class ConversationRenamePayload(BaseModel):
     name: str | None = None
     auto_generate: bool = False
+
+    @classmethod
+    @override
+    def __get_pydantic_json_schema__(cls, core_schema: Any, handler: GetJsonSchemaHandler) -> dict[str, Any]:
+        schema = handler.resolve_ref_schema(handler(core_schema))
+        properties = schema.get("properties")
+        if not isinstance(properties, dict):
+            return schema
+
+        auto_generate_schema = deepcopy(properties.get("auto_generate", {"type": "boolean"}))
+        name_schema = deepcopy(properties.get("name", {"type": "string"}))
+        non_blank_name_schema: dict[str, Any] = {"pattern": r".*\S.*", "type": "string"}
+        if isinstance(name_schema, dict) and isinstance(name_schema.get("title"), str):
+            non_blank_name_schema["title"] = name_schema["title"]
+
+        auto_generate_true_schema = {**auto_generate_schema, "enum": [True]}
+        auto_generate_true_schema.pop("default", None)
+
+        return {
+            **schema,
+            "anyOf": [
+                {
+                    "properties": {
+                        "auto_generate": auto_generate_true_schema,
+                        "name": name_schema,
+                    },
+                    "required": ["auto_generate"],
+                    "type": "object",
+                },
+                {
+                    "properties": {
+                        "auto_generate": {**auto_generate_schema, "enum": [False]},
+                        "name": non_blank_name_schema,
+                    },
+                    "required": ["name"],
+                    "type": "object",
+                },
+            ],
+        }
 
     @model_validator(mode="after")
     def validate_name_requirement(self):
