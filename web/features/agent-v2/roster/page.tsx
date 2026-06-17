@@ -21,18 +21,18 @@ import { ROSTER_FILTER_VALUES } from './components/roster-filter'
 import { RosterToolbar } from './components/roster-toolbar'
 
 const ROSTER_PAGE_SIZE = 30
-const isAgentInUse = (agent: AgentRosterListItem) => (agent.published_reference_count ?? 0) > 0
+const isAgentPublished = (agent: AgentRosterListItem) => agent.active_config_is_published === true
 const rosterTabClassName = 'pt-0 pb-2 system-xl-semibold data-active:border-util-colors-blue-brand-blue-brand-500 data-disabled:opacity-100'
 
 const getFilteredRosterItems = (
   agents: AgentRosterListItem[],
   filter: RosterFilterValue,
 ) => {
-  if (filter === 'in-use')
-    return agents.filter(isAgentInUse)
+  if (filter === 'published')
+    return agents.filter(isAgentPublished)
 
   if (filter === 'drafts')
-    return agents.filter(agent => !isAgentInUse(agent))
+    return agents.filter(agent => !isAgentPublished(agent))
 
   return agents
 }
@@ -77,8 +77,8 @@ export default function RosterPage() {
   })
 
   const rosterItems: AgentRosterListItem[] = rosterPages?.pages.flatMap(page => page.data) ?? []
-  const inUseAgents = rosterItems.filter(isAgentInUse).length
-  const draftAgents = Math.max(rosterItems.length - inUseAgents, 0)
+  const publishedAgents = rosterItems.filter(isAgentPublished).length
+  const draftAgents = Math.max(rosterItems.length - publishedAgents, 0)
   const filteredRosterItems = getFilteredRosterItems(rosterItems, rosterFilter)
 
   useDocumentTitle(tCommon('menus.roster'))
@@ -110,7 +110,6 @@ export default function RosterPage() {
             <RosterToolbar
               draftAgents={draftAgents}
               filter={rosterFilter}
-              inUseAgents={inUseAgents}
               keyword={keyword}
               onFilterChange={(value) => {
                 void setRosterFilter(value)
@@ -118,6 +117,7 @@ export default function RosterPage() {
               onKeywordChange={(value) => {
                 void setKeyword(value)
               }}
+              publishedAgents={publishedAgents}
             />
           </div>
         </div>

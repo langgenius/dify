@@ -12,6 +12,7 @@ vi.mock('@/hooks/use-timestamp', () => ({
 }))
 
 const createAgent = (overrides: Partial<AgentRosterListItem> = {}): AgentRosterListItem => ({
+  active_config_is_published: false,
   description: 'Find and summarize market materials.',
   id: 'agent-1',
   icon_url: null,
@@ -67,11 +68,12 @@ describe('AgentRosterList', () => {
     expect(screen.getByText('agentV2.roster.usageStatus.draft')).toHaveClass('system-2xs-medium-uppercase')
   })
 
-  it('derives the card badge from published reference count', () => {
+  it('only renders the draft badge for unpublished agents', () => {
     renderList([
       createAgent({
-        id: 'agent-in-use',
-        name: 'Research Agent',
+        active_config_is_published: true,
+        id: 'agent-published',
+        name: 'Published Agent',
         published_reference_count: 1,
       }),
       createAgent({
@@ -81,8 +83,9 @@ describe('AgentRosterList', () => {
       }),
     ])
 
-    expect(screen.getByText('agentV2.roster.usageStatus.inUse')).toBeInTheDocument()
     expect(screen.getByText('agentV2.roster.usageStatus.draft')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Published Agent' })).toBeInTheDocument()
+    expect(screen.queryByText('agentV2.roster.usageStatus.inUse')).not.toBeInTheDocument()
     expect(screen.queryByText('agentV2.roster.status.active')).not.toBeInTheDocument()
   })
 

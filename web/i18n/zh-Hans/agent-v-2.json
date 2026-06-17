@@ -345,8 +345,8 @@
   "roster.emptySearchDescription": "请尝试其他智能体名称。",
   "roster.filters.all": "全部",
   "roster.filters.drafts": "草稿",
-  "roster.filters.inUse": "使用中",
   "roster.filters.label": "智能体筛选",
+  "roster.filters.published": "已发布",
   "roster.learnMore": "了解 Agent Roster",
   "roster.listLabel": "智能体 Roster 列表",
   "roster.loadMore": "加载更多",
@@ -372,6 +372,5 @@
   "roster.tabsLabel": "Roster 类型",
   "roster.updateFailed": "智能体更新失败。请检查字段后重试。",
   "roster.updateSuccess": "智能体已更新。",
-  "roster.usageStatus.draft": "草稿",
-  "roster.usageStatus.inUse": "使用中"
+  "roster.usageStatus.draft": "草稿"
 }

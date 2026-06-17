@@ -345,8 +345,8 @@
   "roster.emptySearchDescription": "Try another agent name.",
   "roster.filters.all": "All",
   "roster.filters.drafts": "Drafts",
-  "roster.filters.inUse": "In use",
   "roster.filters.label": "Agent filters",
+  "roster.filters.published": "Published",
   "roster.learnMore": "Learn more about Agent Roster",
   "roster.listLabel": "Agent roster list",
   "roster.loadMore": "Load more",
@@ -372,6 +372,5 @@
   "roster.tabsLabel": "Roster type",
   "roster.updateFailed": "Failed to update agent. Check the fields and try again.",
   "roster.updateSuccess": "Agent updated.",
-  "roster.usageStatus.draft": "Draft",
-  "roster.usageStatus.inUse": "In use"
+  "roster.usageStatus.draft": "Draft"
 }

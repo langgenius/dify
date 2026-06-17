@@ -9,10 +9,10 @@ import { CreateAgentDialog } from './create-agent-dialog'
 type RosterToolbarProps = {
   draftAgents: number
   filter: RosterFilterValue
-  inUseAgents: number
   keyword: string
   onFilterChange: (value: RosterFilterValue) => void
   onKeywordChange: (value: string) => void
+  publishedAgents: number
 }
 
 type RosterFilterItemProps = {
@@ -46,10 +46,10 @@ function RosterFilterItem({
 export function RosterToolbar({
   draftAgents,
   filter,
-  inUseAgents,
   keyword,
   onFilterChange,
   onKeywordChange,
+  publishedAgents,
 }: RosterToolbarProps) {
   const { t } = useTranslation('agentV2')
 
@@ -70,9 +70,9 @@ export function RosterToolbar({
           label={t('roster.filters.all')}
         />
         <RosterFilterItem
-          value="in-use"
-          label={t('roster.filters.inUse')}
-          count={inUseAgents}
+          value="published"
+          label={t('roster.filters.published')}
+          count={publishedAgents}
         />
         <RosterFilterItem
           value="drafts"

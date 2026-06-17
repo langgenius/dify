@@ -108,7 +108,7 @@ function AgentRosterItem({
   const referenceCount = agent.published_reference_count ?? 0
   const publishedReferences = agent.published_references ?? []
   const hasPublishedReferences = publishedReferences.length > 0
-  const usageStatus = referenceCount > 0 ? 'inUse' : 'draft'
+  const isDraft = agent.active_config_is_published !== true
   const imageUrl = (agent.icon_type === 'image' || agent.icon_type === 'link') ? agent.icon : undefined
   const iconType = (imageUrl ? 'image' : agent.icon_type) as AgentIconType | null | undefined
 
@@ -172,12 +172,14 @@ function AgentRosterItem({
           </div>
         </div>
       </div>
-      <div className="absolute top-0 right-0 flex h-5 items-start overflow-hidden">
-        <div className="h-5 w-3 bg-background-section-burn [clip-path:polygon(0_0,100%_0,100%_100%)]" />
-        <div className="flex h-5 items-center bg-background-section-burn pr-2 pl-0.5 system-2xs-medium-uppercase text-text-tertiary">
-          {t(`roster.usageStatus.${usageStatus}`)}
+      {isDraft && (
+        <div className="absolute top-0 right-0 flex h-5 items-start overflow-hidden">
+          <div className="h-5 w-3 bg-background-section-burn [clip-path:polygon(0_0,100%_0,100%_100%)]" />
+          <div className="flex h-5 items-center bg-background-section-burn pr-2 pl-0.5 system-2xs-medium-uppercase text-text-tertiary">
+            {t('roster.usageStatus.draft')}
+          </div>
         </div>
-      </div>
+      )}
       <div
         className="pointer-events-none absolute top-2 right-2 z-20 flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 opacity-0 shadow-lg backdrop-blur-xs transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 has-data-popup-open:pointer-events-auto has-data-popup-open:opacity-100"
       >
