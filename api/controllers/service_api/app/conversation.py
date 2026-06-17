@@ -146,6 +146,16 @@ register_response_schema_models(
 
 @service_api_ns.route("/conversations")
 class ConversationApi(Resource):
+    @service_api_ns.doc(
+        summary="List Conversations",
+        description="Retrieve the conversation list for the current user, ordered by most recently active.",
+        tags=["Conversations"],
+        responses={
+            200: "Successfully retrieved conversations list.",
+            400: "`not_chat_app` : App mode does not match the API route.",
+            404: "`not_found` : Last conversation does not exist (invalid `last_id`).",
+        },
+    )
     @service_api_ns.doc(params=query_params_from_model(ConversationListQuery))
     @service_api_ns.doc("list_conversations")
     @service_api_ns.doc(description="List all conversations for the current user")
@@ -198,6 +208,16 @@ class ConversationApi(Resource):
 
 @service_api_ns.route("/conversations/<uuid:c_id>")
 class ConversationDetailApi(Resource):
+    @service_api_ns.doc(
+        summary="Delete Conversation",
+        description="Delete a conversation.",
+        tags=["Conversations"],
+        responses={
+            204: "Conversation deleted successfully.",
+            400: "`not_chat_app` : App mode does not match the API route.",
+            404: "`not_found` : Conversation does not exist.",
+        },
+    )
     @expect_user_json(service_api_ns)
     @service_api_ns.doc("delete_conversation")
     @service_api_ns.doc(description="Delete a specific conversation")
@@ -227,6 +247,19 @@ class ConversationDetailApi(Resource):
 
 @service_api_ns.route("/conversations/<uuid:c_id>/name")
 class ConversationRenameApi(Resource):
+    @service_api_ns.doc(
+        summary="Rename Conversation",
+        description=(
+            "Rename a conversation or auto-generate a name. The conversation name is used for display on "
+            "clients that support multiple conversations."
+        ),
+        tags=["Conversations"],
+        responses={
+            200: "Conversation renamed successfully.",
+            400: "`not_chat_app` : App mode does not match the API route.",
+            404: "`not_found` : Conversation does not exist.",
+        },
+    )
     @expect_with_user(service_api_ns, ConversationRenamePayload)
     @service_api_ns.doc("rename_conversation")
     @service_api_ns.doc(description="Rename a conversation or auto-generate a name")
@@ -269,6 +302,16 @@ class ConversationRenameApi(Resource):
 
 @service_api_ns.route("/conversations/<uuid:c_id>/variables")
 class ConversationVariablesApi(Resource):
+    @service_api_ns.doc(
+        summary="List Conversation Variables",
+        description="Retrieve variables from a specific conversation.",
+        tags=["Conversations"],
+        responses={
+            200: "Successfully retrieved conversation variables.",
+            400: "`not_chat_app` : App mode does not match the API route.",
+            404: "`not_found` : Conversation does not exist.",
+        },
+    )
     @service_api_ns.doc(params=query_params_from_model(ConversationVariablesQuery))
     @service_api_ns.doc("list_conversation_variables")
     @service_api_ns.doc(description="List all variables for a conversation")
@@ -314,6 +357,21 @@ class ConversationVariablesApi(Resource):
 
 @service_api_ns.route("/conversations/<uuid:c_id>/variables/<uuid:variable_id>")
 class ConversationVariableDetailApi(Resource):
+    @service_api_ns.doc(
+        summary="Update Conversation Variable",
+        description="Update the value of a specific conversation variable. The value must match the expected type.",
+        tags=["Conversations"],
+        responses={
+            200: "Variable updated successfully.",
+            400: (
+                "- `not_chat_app` : App mode does not match the API route.\n"
+                "- `bad_request` : Variable value type mismatch."
+            ),
+            404: (
+                "- `not_found` : Conversation does not exist.\n- `not_found` : Conversation variable does not exist."
+            ),
+        },
+    )
     @expect_with_user(service_api_ns, ConversationVariableUpdatePayload)
     @service_api_ns.doc("update_conversation_variable")
     @service_api_ns.doc(description="Update a conversation variable's value")

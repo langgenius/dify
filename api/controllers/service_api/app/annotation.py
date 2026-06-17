@@ -65,6 +65,18 @@ register_response_schema_models(service_api_ns, AnnotationJobStatusResponse)
 
 @service_api_ns.route("/apps/annotation-reply/<string:action>")
 class AnnotationReplyActionApi(Resource):
+    @service_api_ns.doc(
+        summary="Configure Annotation Reply",
+        description=(
+            "Enables or disables the annotation reply feature. Requires embedding model configuration "
+            "when enabling. Executes asynchronously — use [Get Annotation Reply Job "
+            "Status](/api-reference/annotations/get-annotation-reply-job-status) to track progress."
+        ),
+        tags=["Annotations"],
+        responses={
+            200: "Annotation reply settings task initiated.",
+        },
+    )
     @service_api_ns.expect(service_api_ns.models[AnnotationReplyActionPayload.__name__])
     @service_api_ns.doc("annotation_reply_action")
     @service_api_ns.doc(description="Enable or disable annotation reply feature")
@@ -99,6 +111,18 @@ class AnnotationReplyActionApi(Resource):
 
 @service_api_ns.route("/apps/annotation-reply/<string:action>/status/<uuid:job_id>")
 class AnnotationReplyActionStatusApi(Resource):
+    @service_api_ns.doc(
+        summary="Get Annotation Reply Job Status",
+        description=(
+            "Retrieves the status of an asynchronous annotation reply configuration job started by "
+            "[Configure Annotation Reply](/api-reference/annotations/configure-annotation-reply)."
+        ),
+        tags=["Annotations"],
+        responses={
+            200: "Successfully retrieved task status.",
+            400: "`invalid_param` : The specified job does not exist.",
+        },
+    )
     @service_api_ns.doc("get_annotation_reply_action_status")
     @service_api_ns.doc(description="Get the status of an annotation reply action job")
     @service_api_ns.doc(params={"action": "Action type", "job_id": "Job ID"})
@@ -134,6 +158,14 @@ class AnnotationReplyActionStatusApi(Resource):
 
 @service_api_ns.route("/apps/annotations")
 class AnnotationListApi(Resource):
+    @service_api_ns.doc(
+        summary="List Annotations",
+        description="Retrieves a paginated list of annotations for the application. Supports keyword search filtering.",
+        tags=["Annotations"],
+        responses={
+            200: "Successfully retrieved annotation list.",
+        },
+    )
     @service_api_ns.doc("list_annotations")
     @service_api_ns.doc(description="List annotations for the application")
     @service_api_ns.doc(params=query_params_from_model(AnnotationListQuery))
@@ -166,6 +198,17 @@ class AnnotationListApi(Resource):
         )
         return response.model_dump(mode="json")
 
+    @service_api_ns.doc(
+        summary="Create Annotation",
+        description=(
+            "Creates a new annotation. Annotations provide predefined question-answer pairs that the app "
+            "can match and return directly instead of generating a response."
+        ),
+        tags=["Annotations"],
+        responses={
+            201: "Annotation created successfully.",
+        },
+    )
     @service_api_ns.expect(service_api_ns.models[AnnotationCreatePayload.__name__])
     @service_api_ns.doc("create_annotation")
     @service_api_ns.doc(description="Create a new annotation")
@@ -192,6 +235,16 @@ class AnnotationListApi(Resource):
 
 @service_api_ns.route("/apps/annotations/<uuid:annotation_id>")
 class AnnotationUpdateDeleteApi(Resource):
+    @service_api_ns.doc(
+        summary="Update Annotation",
+        description="Updates the question and answer of an existing annotation.",
+        tags=["Annotations"],
+        responses={
+            200: "Annotation updated successfully.",
+            403: "`forbidden` : Insufficient permissions to edit annotations.",
+            404: "`not_found` : Annotation does not exist.",
+        },
+    )
     @service_api_ns.expect(service_api_ns.models[AnnotationCreatePayload.__name__])
     @service_api_ns.doc("update_annotation")
     @service_api_ns.doc(description="Update an existing annotation")
@@ -219,6 +272,16 @@ class AnnotationUpdateDeleteApi(Resource):
         response = Annotation.model_validate(annotation, from_attributes=True)
         return response.model_dump(mode="json")
 
+    @service_api_ns.doc(
+        summary="Delete Annotation",
+        description="Deletes an annotation and its associated hit history.",
+        tags=["Annotations"],
+        responses={
+            204: "Annotation deleted successfully.",
+            403: "`forbidden` : Insufficient permissions to edit annotations.",
+            404: "`not_found` : Annotation does not exist.",
+        },
+    )
     @service_api_ns.doc("delete_annotation")
     @service_api_ns.doc(description="Delete an annotation")
     @service_api_ns.doc(params={"annotation_id": "Annotation ID"})

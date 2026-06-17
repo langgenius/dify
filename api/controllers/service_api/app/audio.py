@@ -40,6 +40,29 @@ register_response_schema_models(service_api_ns, AudioBinaryResponse, AudioTransc
 
 @service_api_ns.route("/audio-to-text")
 class AudioApi(Resource):
+    @service_api_ns.doc(
+        summary="Convert Audio to Text",
+        description=(
+            "Convert audio file to text. Supported formats: `mp3`, `mp4`, `mpeg`, `mpga`, `m4a`, `wav`, "
+            "`webm`. File size limit is `30 MB`."
+        ),
+        tags=["TTS"],
+        responses={
+            200: "Successfully converted audio to text.",
+            400: (
+                "- `app_unavailable` : App unavailable or misconfigured.\n"
+                "- `no_audio_uploaded` : No audio file was uploaded.\n"
+                "- `provider_not_support_speech_to_text` : Model provider does not support speech-to-text.\n"
+                "- `provider_not_initialize` : No valid model provider credentials found.\n"
+                "- `provider_quota_exceeded` : Model provider quota exhausted.\n"
+                "- `model_currently_not_support` : Current model does not support this operation.\n"
+                "- `completion_request_error` : Speech recognition request failed."
+            ),
+            413: "`audio_too_large` : Audio file size exceeded the limit.",
+            415: "`unsupported_audio_type` : Audio type is not allowed.",
+            500: "`internal_server_error` : Internal server error.",
+        },
+    )
     @service_api_ns.doc("audio_to_text")
     @service_api_ns.doc(description="Convert audio to text using speech-to-text")
     @service_api_ns.doc(consumes=["multipart/form-data"], params=multipart_file_params(include_user=True))
@@ -101,6 +124,26 @@ register_schema_model(service_api_ns, TextToAudioPayload)
 
 @service_api_ns.route("/text-to-audio")
 class TextApi(Resource):
+    @service_api_ns.doc(
+        summary="Convert Text to Audio",
+        description="Convert text to speech.",
+        tags=["TTS"],
+        responses={
+            200: (
+                "Returns the generated audio file. The `Content-Type` header is set to the audio MIME type "
+                "(e.g., `audio/wav`, `audio/mp3`). If `streaming` is `true`, the audio is streamed as "
+                "chunked transfer encoding."
+            ),
+            400: (
+                "- `app_unavailable` : App unavailable or misconfigured.\n"
+                "- `provider_not_initialize` : No valid model provider credentials found.\n"
+                "- `provider_quota_exceeded` : Model provider quota exhausted.\n"
+                "- `model_currently_not_support` : Current model does not support this operation.\n"
+                "- `completion_request_error` : Text-to-speech request failed."
+            ),
+            500: "`internal_server_error` : Internal server error.",
+        },
+    )
     @expect_with_user(service_api_ns, TextToAudioPayload)
     @binary_response(service_api_ns, "audio/mpeg")
     @service_api_ns.doc("text_to_audio")
