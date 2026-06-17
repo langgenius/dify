@@ -821,7 +821,7 @@ class TestTagService:
         update_args = UpdateTagPayload(name="updated_name")
 
         # Act: Execute the method under test
-        result = TagService.update_tags(update_args, tag.id)
+        result = TagService.update_tags(update_args, tag.id, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -862,7 +862,7 @@ class TestTagService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(NotFound) as exc_info:
-            TagService.update_tags(update_args, non_existent_tag_id)
+            TagService.update_tags(update_args, non_existent_tag_id,db_session_with_containers)
         assert "Tag not found" in str(exc_info.value)
 
     def test_update_tags_duplicate_name_error(
@@ -893,7 +893,7 @@ class TestTagService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(ValueError) as exc_info:
-            TagService.update_tags(update_args, tag2.id)
+            TagService.update_tags(update_args, tag2.id, db_session_with_containers)
         assert "Tag name already exists" in str(exc_info.value)
 
     def test_get_tag_binding_count_success(
@@ -925,8 +925,8 @@ class TestTagService:
         )
 
         # Act: Execute the method under test
-        result_tag_with_bindings = TagService.get_tag_binding_count(tags[0].id)
-        result_tag_without_bindings = TagService.get_tag_binding_count(tags[1].id)
+        result_tag_with_bindings = TagService.get_tag_binding_count(tags[0].id, db_session_with_containers)
+        result_tag_without_bindings = TagService.get_tag_binding_count(tags[1].id, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         assert result_tag_with_bindings == 1
@@ -994,7 +994,7 @@ class TestTagService:
         assert binding_before is not None
 
         # Act: Execute the method under test
-        TagService.delete_tag(tag.id)
+        TagService.delete_tag(tag.id, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         # Verify tag was deleted
@@ -1026,7 +1026,7 @@ class TestTagService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(NotFound) as exc_info:
-            TagService.delete_tag(non_existent_tag_id)
+            TagService.delete_tag(non_existent_tag_id, db_session_with_containers)
         assert "Tag not found" in str(exc_info.value)
 
     def test_save_tag_binding_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
@@ -1248,7 +1248,7 @@ class TestTagService:
         dataset = self._create_test_dataset(db_session_with_containers, mock_external_service_dependencies, tenant.id)
 
         # Act: Execute the method under test
-        TagService.check_target_exists("knowledge", dataset.id)
+        TagService.check_target_exists("knowledge", dataset.id, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         # No exception should be raised for existing dataset
@@ -1276,7 +1276,7 @@ class TestTagService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(NotFound) as exc_info:
-            TagService.check_target_exists("knowledge", non_existent_dataset_id)
+            TagService.check_target_exists("knowledge", non_existent_dataset_id, db_session_with_containers)
         assert "Dataset not found" in str(exc_info.value)
 
     def test_check_target_exists_app_success(
@@ -1300,7 +1300,7 @@ class TestTagService:
         app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, tenant.id)
 
         # Act: Execute the method under test
-        TagService.check_target_exists("app", app.id)
+        TagService.check_target_exists("app", app.id, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         # No exception should be raised for existing app
@@ -1328,7 +1328,7 @@ class TestTagService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(NotFound) as exc_info:
-            TagService.check_target_exists("app", non_existent_app_id)
+            TagService.check_target_exists("app", non_existent_app_id, db_session_with_containers)
         assert "App not found" in str(exc_info.value)
 
     def test_check_target_exists_invalid_type(
@@ -1354,5 +1354,5 @@ class TestTagService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(NotFound) as exc_info:
-            TagService.check_target_exists("invalid_type", non_existent_target_id)
+            TagService.check_target_exists("invalid_type", non_existent_target_id, db_session_with_containers)
         assert "Invalid binding type" in str(exc_info.value)

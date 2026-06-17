@@ -102,7 +102,7 @@ def test_get_snippets_returns_empty_when_tag_filter_has_no_targets(monkeypatch: 
     result = service.get_snippets(tenant_id="tenant-1", session=session, tag_ids=["tag-1"])
 
     assert result == ([], 0, False)
-    get_target_ids.assert_called_once_with("snippet", "tenant-1", ["tag-1"], match_all=True)
+    get_target_ids.assert_called_once_with("snippet", "tenant-1", ["tag-1"], session, match_all=True)
 
 
 def test_get_snippets_applies_filters_and_paginates(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -137,7 +137,7 @@ def test_get_snippets_applies_filters_and_paginates(monkeypatch: pytest.MonkeyPa
     assert result == snippets[:2]
     assert total == 3
     assert has_more is True
-    get_target_ids.assert_called_once_with("snippet", "tenant-1", ["tag-1"], match_all=True)
+    get_target_ids.assert_called_once_with("snippet", "tenant-1", ["tag-1"], session, match_all=True)
     session.scalar.assert_called_once()
     session.scalars.assert_called_once()
 
