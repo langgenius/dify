@@ -1712,37 +1712,37 @@ export const byApiKeyId2 = {
 }
 
 /**
- * Get all API keys for a dataset
+ * Get all API keys that can access a dataset
  *
- * Get all API keys for a dataset
+ * Get all API keys that can access a dataset
  */
 export const get35 = oc
   .route({
-    description: 'Get all API keys for a dataset',
+    description: 'Get all API keys that can access a dataset',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByResourceIdApiKeys',
     path: '/datasets/{resource_id}/api-keys',
-    summary: 'Get all API keys for a dataset',
+    summary: 'Get all API keys that can access a dataset',
     tags: ['console'],
   })
   .input(z.object({ params: zGetDatasetsByResourceIdApiKeysPath }))
   .output(zGetDatasetsByResourceIdApiKeysResponse)
 
 /**
- * Create a new API key for a dataset
+ * Create a new API key bound to a single dataset
  *
- * Create a new API key for a dataset
+ * Create a new API key bound to a single dataset
  */
 export const post22 = oc
   .route({
-    description: 'Create a new API key for a dataset',
+    description: 'Create a new API key bound to a single dataset',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByResourceIdApiKeys',
     path: '/datasets/{resource_id}/api-keys',
     successStatus: 201,
-    summary: 'Create a new API key for a dataset',
+    summary: 'Create a new API key bound to a single dataset',
     tags: ['console'],
   })
   .input(z.object({ params: zPostDatasetsByResourceIdApiKeysPath }))
