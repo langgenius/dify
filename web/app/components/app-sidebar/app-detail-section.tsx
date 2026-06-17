@@ -1,5 +1,6 @@
 'use client'
 
+import type { ComponentProps } from 'react'
 import type { NavIcon } from './nav-link'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -30,6 +31,15 @@ type AppDetailNavItem = {
   icon: NavIcon
   selectedIcon: NavIcon
 }
+
+const AnnotationNavIcon = ({ className, ...props }: ComponentProps<typeof Annotations>) => (
+  <Annotations
+    {...props}
+    className={cn(className, 'size-4')}
+  />
+)
+
+AnnotationNavIcon.displayName = 'Annotations'
 
 const isLogsNavItem = (item: AppDetailNavItem) => item.href.endsWith('/logs')
 const isAnnotationsNavItem = (item: AppDetailNavItem) => item.href.endsWith('/annotations')
@@ -98,8 +108,8 @@ const AppDetailSection = ({
             ? [{
                 name: t('appMenus.annotations', { ns: 'common' }),
                 href: `/app/${appId}/annotations`,
-                icon: Annotations,
-                selectedIcon: Annotations,
+                icon: AnnotationNavIcon,
+                selectedIcon: AnnotationNavIcon,
               }]
             : [])]
         : []

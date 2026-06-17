@@ -42,6 +42,7 @@
   "filter.period.today": "Astăzi",
   "filter.period.yearToDate": "Anul curent",
   "filter.sortBy": "Sortează după:",
+  "monitoring.description": "Monitorizarea înregistrează starea de funcționare a aplicației, inclusiv performanța, activitatea utilizatorilor și costurile.",
   "promptLog": "Jurnal prompt",
   "runDetail.fileListDetail": "Amănunt",
   "runDetail.fileListLabel": "Detalii fișier",

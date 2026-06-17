@@ -247,7 +247,7 @@ const Panel: FC = () => {
         >
           <div
             className={cn(
-              'flex cursor-pointer items-center rounded-xl border-t border-l-[0.5px] border-effects-highlight bg-background-default-dodge p-2 shadow-xs select-none hover:border-effects-highlight-lightmode-off hover:bg-background-default-lighter',
+              'flex cursor-pointer items-center rounded-xl border-[0.5px] border-components-panel-border bg-background-default-dodge p-2 shadow-xs select-none hover:bg-background-default-lighter',
             )}
           >
             <TracingIcon size="md" />
@@ -286,7 +286,7 @@ const Panel: FC = () => {
         >
           <div
             className={cn(
-              'flex cursor-pointer items-center rounded-xl border-t border-l-[0.5px] border-effects-highlight bg-background-default-dodge p-2 shadow-xs select-none hover:border-effects-highlight-lightmode-off hover:bg-background-default-lighter',
+              'flex cursor-pointer items-center rounded-xl border-[0.5px] border-components-panel-border bg-background-default-dodge p-2 shadow-xs select-none hover:bg-background-default-lighter',
             )}
           >
             <div className="mr-1 ml-4 flex items-center">

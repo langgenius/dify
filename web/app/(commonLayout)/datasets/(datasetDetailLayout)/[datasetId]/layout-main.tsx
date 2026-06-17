@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import DatasetDetailContext from '@/context/dataset-detail'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { useRouter } from '@/next/navigation'
+import { usePathname, useRouter } from '@/next/navigation'
 import { useDatasetDetail } from '@/service/knowledge/use-dataset'
 
 type IAppDetailLayoutProps = {
@@ -35,6 +35,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   } = props
   const { t } = useTranslation()
   const router = useRouter()
+  const pathname = usePathname()
 
   const { data: datasetRes, error, refetch: mutateDatasetRes } = useDatasetDetail(datasetId)
   const shouldRedirect = shouldRedirectToDatasetList(error)
@@ -52,11 +53,13 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   if (shouldRedirect)
     return <Loading type="app" />
 
+  const isPipelinePage = pathname.endsWith('/pipeline') || pathname.includes('/create-from-pipeline')
+
   return (
     <div
       className={cn(
-        'flex grow overflow-hidden',
-        'rounded-t-2xl',
+        'relative flex h-0 grow overflow-hidden',
+        !isPipelinePage && 'pt-1 pr-1 pb-1',
       )}
     >
       <DatasetDetailContext.Provider value={{
@@ -65,7 +68,13 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         mutateDatasetRes,
       }}
       >
-        <div className="grow overflow-hidden bg-background-default-subtle">{children}</div>
+        <div className={cn(
+          'grow overflow-hidden bg-components-panel-bg',
+          !isPipelinePage && 'rounded-lg shadow-xs shadow-shadow-shadow-3',
+        )}
+        >
+          {children}
+        </div>
       </DatasetDetailContext.Provider>
     </div>
   )

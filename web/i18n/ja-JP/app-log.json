@@ -42,6 +42,7 @@
   "filter.period.today": "今日",
   "filter.period.yearToDate": "年初から今日まで",
   "filter.sortBy": "並べ替え",
+  "monitoring.description": "モニタリングは、パフォーマンス、ユーザー活動、コストを含むアプリケーションの実行状況を記録します。",
   "promptLog": "プロンプトログ",
   "runDetail.fileListDetail": "詳細",
   "runDetail.fileListLabel": "ファイルの詳細",
