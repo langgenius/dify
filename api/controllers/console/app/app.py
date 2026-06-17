@@ -403,6 +403,7 @@ class AppPartial(ResponseModel):
     # For Agent App responses exposed through /agent.
     app_id: str | None = None
     role: str | None = None
+    active_config_is_published: bool = False
     is_starred: bool = False
 
     @computed_field(return_type=str | None)  # type: ignore
@@ -457,6 +458,7 @@ class AppDetailWithSite(AppDetail):
     # For Agent App responses exposed through /agent.
     app_id: str | None = None
     role: str | None = None
+    active_config_is_published: bool = False
 
     @computed_field(return_type=str | None)  # type: ignore
     @property
