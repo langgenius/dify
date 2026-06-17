@@ -2347,7 +2347,7 @@ export const zPostAgentByAgentIdFilesPath = z.object({
 export const zPostAgentByAgentIdFilesResponse = zAgentDriveFileCommitResponse
 
 export const zGetAgentByAgentIdLogSourcesPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
 })
 
 /**
@@ -2375,8 +2375,8 @@ export const zGetAgentByAgentIdLogsQuery = z.object({
 export const zGetAgentByAgentIdLogsResponse = zAgentLogListResponse
 
 export const zGetAgentByAgentIdLogsByConversationIdMessagesPath = z.object({
-  agent_id: z.string(),
-  conversation_id: z.string(),
+  agent_id: z.uuid(),
+  conversation_id: z.uuid(),
 })
 
 export const zGetAgentByAgentIdLogsByConversationIdMessagesQuery = z.object({
