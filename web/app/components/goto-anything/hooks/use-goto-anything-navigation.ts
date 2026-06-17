@@ -7,7 +7,7 @@ import { useCallback, useState } from 'react'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
 import { useRouter } from '@/next/navigation'
 import { slashCommandRegistry } from '../actions/commands/registry'
-import { addRecentItem } from '../actions/recent-store'
+import { useRecentItems } from './use-recent-items'
 
 type UseGotoAnythingNavigationReturn = {
   handleCommandSelect: (commandKey: string) => void
@@ -36,6 +36,7 @@ export const useGotoAnythingNavigation = (
   } = options
 
   const router = useRouter()
+  const { addRecentItem } = useRecentItems()
   const [activePlugin, setActivePlugin] = useState<Plugin>()
 
   const handleCommandSelect = useCallback((commandKey: string) => {
@@ -101,7 +102,7 @@ export const useGotoAnythingNavigation = (
         if (result.path)
           router.push(result.path)
     }
-  }, [router, Actions, onClose, setSearchQuery])
+  }, [router, Actions, onClose, setSearchQuery, addRecentItem])
 
   return {
     handleCommandSelect,

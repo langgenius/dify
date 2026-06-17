@@ -29,15 +29,18 @@ vi.mock('@/context/i18n', () => ({
 
 const mockMatchAction = vi.fn()
 const mockSearchAnything = vi.fn()
-const mockGetRecentItems = vi.fn(() => [] as Array<Record<string, unknown>>)
+const mockRecentItems: Array<Record<string, unknown>> = []
 
 vi.mock('../../actions', () => ({
   matchAction: (...args: unknown[]) => mockMatchAction(...args),
   searchAnything: (...args: unknown[]) => mockSearchAnything(...args),
 }))
 
-vi.mock('../../actions/recent-store', () => ({
-  getRecentItems: () => mockGetRecentItems(),
+vi.mock('../use-recent-items', () => ({
+  useRecentItems: () => ({
+    recentItems: mockRecentItems,
+    addRecentItem: vi.fn(),
+  }),
 }))
 
 const createMockActionItem = (key: '@app' | '@knowledge' | '@plugin' | '@node' | '/') => ({
@@ -66,7 +69,7 @@ describe('useGotoAnythingResults', () => {
     capturedQueryFn = null
     mockMatchAction.mockReset()
     mockSearchAnything.mockReset()
-    mockGetRecentItems.mockReturnValue([])
+    mockRecentItems.length = 0
   })
 
   describe('initialization', () => {
@@ -305,10 +308,10 @@ describe('useGotoAnythingResults', () => {
 
   describe('recent results', () => {
     it('surfaces recent items when the search query is empty', () => {
-      mockGetRecentItems.mockReturnValue([
+      mockRecentItems.push(
         { id: 'app-1', title: 'My App', description: 'Desc', path: '/app/app-1', originalType: 'app' },
         { id: 'kb-1', title: 'My KB', path: '/datasets/kb-1', originalType: 'knowledge' },
-      ])
+      )
 
       const { result } = renderHook(() => useGotoAnythingResults(createMockOptions({
         searchQueryDebouncedValue: '',
@@ -326,9 +329,9 @@ describe('useGotoAnythingResults', () => {
     })
 
     it('does not surface recent items when a query is active', () => {
-      mockGetRecentItems.mockReturnValue([
+      mockRecentItems.push(
         { id: 'app-1', title: 'My App', path: '/app/app-1', originalType: 'app' },
-      ])
+      )
       mockQueryResult = {
         data: [{ id: 's1', type: 'app', title: 'Searched' }],
         isLoading: false,
@@ -344,9 +347,9 @@ describe('useGotoAnythingResults', () => {
     })
 
     it('does not surface recent items in commands mode', () => {
-      mockGetRecentItems.mockReturnValue([
+      mockRecentItems.push(
         { id: 'app-1', title: 'My App', path: '/app/app-1', originalType: 'app' },
-      ])
+      )
 
       const { result } = renderHook(() => useGotoAnythingResults(createMockOptions({
         isCommandsMode: true,
