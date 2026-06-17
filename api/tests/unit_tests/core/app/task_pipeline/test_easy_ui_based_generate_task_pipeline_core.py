@@ -412,6 +412,51 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert isinstance(responses[-1], MessageEndStreamResponse)
         assert pipeline._task_state.llm_result.message.content == "done"
 
+    def test_process_stream_response_carries_saved_prompt_from_message_end(self, monkeypatch: pytest.MonkeyPatch):
+        pipeline, _ = _make_pipeline()
+        saved_prompt = [{"role": "user", "text": "serialized by graphon"}]
+        llm_result = LLMResult(
+            model="mock",
+            prompt_messages=[],
+            message=AssistantPromptMessage(content="done"),
+            usage=LLMUsage.empty_usage(),
+        )
+        _set_queue_events(
+            pipeline,
+            [_queue_message(QueueMessageEndEvent(llm_result=llm_result, saved_prompt=saved_prompt))],
+        )
+        _set_method(pipeline, "handle_output_moderation_when_task_finished", lambda completion: None)
+        _set_method(
+            pipeline,
+            "_message_end_to_stream_response",
+            lambda: MessageEndStreamResponse(task_id="task", id="msg"),
+        )
+
+        def _save_message(**kwargs):
+            assert pipeline._task_state.saved_prompt == saved_prompt
+
+        _set_method(pipeline, "_save_message", _save_message)
+
+        class _Session:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+        monkeypatch.setattr(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.sessionmaker",
+            lambda **kwargs: type("_SessionFactory", (), {"begin": lambda self: _Session()})(),
+        )
+        monkeypatch.setattr(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db",
+            _FakeDb(),
+        )
+
+        responses = list(pipeline._process_stream_response(publisher=None))
+
+        assert isinstance(responses[-1], MessageEndStreamResponse)
+
     def test_handle_output_moderation_chunk_directs_output(self):
         conversation = _make_conversation(AppMode.CHAT)
         message = _make_message()
@@ -1206,6 +1251,33 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert trace_task.message_id == "msg"
         assert trace_task.kwargs["trace_session_id"] == "session-1"
         assert len(sent_payloads) == 1
+
+    def test_save_message_uses_saved_prompt_override(self, monkeypatch: pytest.MonkeyPatch):
+        pipeline, _ = _make_pipeline()
+        _set_method(pipeline, "_model_config", _ModelConfigMode(mode="chat"))
+        pipeline._task_state.saved_prompt = [{"role": "user", "text": "serialized by graphon"}]
+        pipeline._task_state.llm_result.message = AssistantPromptMessage(content="answer")
+        pipeline._task_state.llm_result.usage = LLMUsage.empty_usage()
+
+        message_obj = _make_message()
+        conversation_obj = _make_conversation(AppMode.CHAT)
+        session = Mock()
+        session.scalar.side_effect = [message_obj, conversation_obj]
+
+        serialize_mock = Mock(side_effect=AssertionError("saved prompt override should be used"))
+        monkeypatch.setattr(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.PromptMessageUtil.prompt_messages_to_prompt_for_saving",
+            serialize_mock,
+        )
+        monkeypatch.setattr(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.message_was_created.send",
+            lambda *args, **kwargs: None,
+        )
+
+        pipeline._save_message(session=session)
+
+        assert message_obj.message == [{"role": "user", "text": "serialized by graphon"}]
+        serialize_mock.assert_not_called()
 
     def test_save_message_raises_when_message_not_found(self):
         conversation = _make_conversation(AppMode.CHAT)

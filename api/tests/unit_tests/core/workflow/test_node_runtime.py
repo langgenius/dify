@@ -137,7 +137,8 @@ def test_dify_prepared_llm_wraps_model_instance_calls() -> None:
         get_llm_num_tokens=Mock(return_value=32),
         invoke_llm=Mock(return_value=sentinel.result),
     )
-    prepared = DifyPreparedLLM(model_instance)
+    before_invoke = Mock()
+    prepared = DifyPreparedLLM(model_instance, before_invoke=before_invoke)
 
     assert prepared.provider == "langgenius/openai/openai"
     assert prepared.model_name == "gpt-4o-mini"
@@ -157,6 +158,7 @@ def test_dify_prepared_llm_wraps_model_instance_calls() -> None:
     )
 
     model_type_instance.get_model_schema.assert_called_once_with("gpt-4o-mini", {"api_key": "secret"})
+    before_invoke.assert_called_once_with([])
     model_instance.invoke_llm.assert_called_once_with(
         prompt_messages=[],
         model_parameters={"temperature": 0.1},
@@ -185,7 +187,8 @@ def test_dify_prepared_llm_delegates_structured_output_helper(monkeypatch: pytes
         credentials={"api_key": "secret"},
         model_type_instance=SimpleNamespace(get_model_schema=Mock(return_value=_build_model_schema())),
     )
-    prepared = DifyPreparedLLM(model_instance)
+    before_invoke = Mock()
+    prepared = DifyPreparedLLM(model_instance, before_invoke=before_invoke)
     invoke_structured = MagicMock(return_value=sentinel.structured)
     monkeypatch.setattr(node_runtime, "invoke_llm_with_structured_output", invoke_structured)
 
@@ -198,6 +201,7 @@ def test_dify_prepared_llm_delegates_structured_output_helper(monkeypatch: pytes
     )
 
     assert result is sentinel.structured
+    before_invoke.assert_called_once_with([])
     invoke_structured.assert_called_once_with(
         provider="langgenius/openai/openai",
         model_schema=prepared.get_model_schema(),

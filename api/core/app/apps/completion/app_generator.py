@@ -14,8 +14,8 @@ from core.app.app_config.easy_ui_based_app.model_config.converter import ModelCo
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.completion.app_config_manager import CompletionAppConfigManager
-from core.app.apps.completion.app_runner import CompletionAppRunner
 from core.app.apps.completion.generate_response_converter import CompletionAppGenerateResponseConverter
+from core.app.apps.completion.workflow_runner import CompletionWorkflowRunner
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
@@ -218,7 +218,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
                 message = self._get_message(message_id)
 
                 # chatbot app
-                runner = CompletionAppRunner()
+                runner = CompletionWorkflowRunner()
                 runner.run(
                     application_generate_entity=application_generate_entity,
                     queue_manager=queue_manager,

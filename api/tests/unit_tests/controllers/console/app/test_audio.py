@@ -103,6 +103,26 @@ def test_console_text_api_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -
     assert response == {"audio": "ok"}
 
 
+def test_console_text_api_accepts_message_id_without_text(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = {}
+    monkeypatch.setattr(AudioService, "transcript_tts", lambda **kwargs: calls.update(kwargs) or {"audio": "ok"})
+
+    api = ChatMessageTextApi()
+    handler = unwrap(api.post)
+    app_model = SimpleNamespace(id="a1")
+
+    with app.test_request_context(
+        "/console/api/apps/app/text-to-audio",
+        method="POST",
+        json={"message_id": "0f67f8c5-8f7c-4ebd-b549-7ac8e972d37e", "streaming": True},
+    ):
+        response = handler(api, app_model=app_model)
+
+    assert response == {"audio": "ok"}
+    assert calls["text"] == ""
+    assert calls["message_id"] == "0f67f8c5-8f7c-4ebd-b549-7ac8e972d37e"
+
+
 def test_console_text_api_error_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(AudioService, "transcript_tts", lambda **_kwargs: (_ for _ in ()).throw(QuotaExceededError()))
 
