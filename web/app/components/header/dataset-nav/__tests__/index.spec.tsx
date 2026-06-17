@@ -10,7 +10,7 @@ import {
   useDatasetDetail,
   useDatasetList,
 } from '@/service/knowledge/use-dataset'
-import DatasetNav from '../index'
+import { DatasetNav } from '../index'
 
 vi.mock('@/next/navigation', () => ({
   useParams: vi.fn(),
@@ -174,30 +174,34 @@ describe('DatasetNav', () => {
       expect(within(menu).getByText('Null Icon Dataset')).toBeInTheDocument()
     })
 
-    it('should navigate to correct link when an item is clicked', () => {
-      render(<DatasetNav />)
+    it('should navigate to correct links for navigation items', () => {
+      const { unmount } = render(<DatasetNav />)
       const selector = screen.getByRole('button', { name: /Test Dataset/i })
       fireEvent.click(selector)
 
       const menu = screen.getByRole('menu')
       const pipelineItem = within(menu).getByText('Pipeline Dataset')
-      fireEvent.click(pipelineItem)
 
       // dataset-2 is rag_pipeline and not published -> /datasets/dataset-2/pipeline
+      fireEvent.click(pipelineItem)
       expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-2/pipeline')
 
-      fireEvent.click(selector)
-      const menu2 = screen.getByRole('menu')
-      const externalItem = within(menu2).getByText('External Dataset')
-      fireEvent.click(externalItem)
+      unmount()
+      mockPush.mockClear()
+      render(<DatasetNav />)
+      fireEvent.click(screen.getByRole('button', { name: /Test Dataset/i }))
+
+      const externalItem = within(screen.getByRole('menu')).getByText('External Dataset')
       // dataset-3 is provider external -> /datasets/dataset-3/hitTesting
+      fireEvent.click(externalItem)
       expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-3/hitTesting')
 
-      fireEvent.click(selector)
-      const menu3 = screen.getByRole('menu')
-      const publishedItem = within(menu3).getByText('Published Pipeline')
-      fireEvent.click(publishedItem)
+      mockPush.mockClear()
+      fireEvent.click(screen.getByRole('button', { name: /Test Dataset/i }))
+
+      const publishedItem = within(screen.getByRole('menu')).getByText('Published Pipeline')
       // dataset-4 is rag_pipeline and published -> /datasets/dataset-4/documents
+      fireEvent.click(publishedItem)
       expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-4/documents')
     })
   })

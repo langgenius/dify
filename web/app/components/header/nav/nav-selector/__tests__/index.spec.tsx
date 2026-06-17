@@ -5,13 +5,15 @@ import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
-import { useRouter } from '@/next/navigation'
 import { AppModeEnum } from '@/types/app'
-import NavSelector from '../index'
+import { NavSelector } from '../index'
 
-// Mock next/navigation
+const mockPush = vi.fn()
+
 vi.mock('@/next/navigation', () => ({
-  useRouter: vi.fn(),
+  useRouter: () => ({
+    push: mockPush,
+  }),
 }))
 
 // Mock app store
@@ -28,7 +30,6 @@ describe('NavSelector Component', () => {
   const mockSetAppDetail = vi.fn()
   const mockOnCreate = vi.fn()
   const mockOnLoadMore = vi.fn()
-  const mockPush = vi.fn()
 
   const navigationItems: NavItem[] = [
     {
@@ -70,9 +71,6 @@ describe('NavSelector Component', () => {
     vi.mocked(useAppContext).mockReturnValue({
       isCurrentWorkspaceEditor: true,
     } as unknown as AppContextValue)
-    vi.mocked(useRouter).mockReturnValue({
-      push: mockPush,
-    } as unknown as ReturnType<typeof useRouter>)
   })
 
   describe('Rendering', () => {
@@ -101,7 +99,7 @@ describe('NavSelector Component', () => {
       expect(screen.getByText('Item 2'))!.toBeInTheDocument()
     })
 
-    it('should navigate and call setAppDetail when an item is clicked', async () => {
+    it('should call setAppDetail and navigate when an item is clicked', async () => {
       render(<NavSelector {...defaultProps} />)
       const button = screen.getByRole('button')
       await act(async () => {
@@ -115,7 +113,7 @@ describe('NavSelector Component', () => {
       expect(mockPush).toHaveBeenCalledWith('/item2')
     })
 
-    it('should not navigate if current item is clicked', async () => {
+    it('should render current item without a route link', async () => {
       render(<NavSelector {...defaultProps} />)
       const button = screen.getByRole('button')
       await act(async () => {
@@ -128,7 +126,8 @@ describe('NavSelector Component', () => {
           fireEvent.click(listItem)
         })
       }
-      expect(mockPush).not.toHaveBeenCalled()
+      expect(listItem?.closest('a')).toBeNull()
+      expect(mockSetAppDetail).not.toHaveBeenCalled()
     })
 
     it('should call onCreate when create button is clicked (non-app mode)', async () => {

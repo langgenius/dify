@@ -168,6 +168,9 @@ catalogs:
     '@tanstack/eslint-plugin-query':
       specifier: 5.101.0
       version: 5.101.0
+    '@tanstack/query-core':
+      specifier: 5.101.0
+      version: 5.101.0
     '@tanstack/react-form':
       specifier: 1.33.0
       version: 1.33.0
@@ -393,6 +396,12 @@ catalogs:
     jotai:
       specifier: 2.20.1
       version: 2.20.1
+    jotai-scope:
+      specifier: 0.11.0
+      version: 0.11.0
+    jotai-tanstack-query:
+      specifier: 0.11.0
+      version: 0.11.0
     js-audio-recorder:
       specifier: 1.0.7
       version: 1.0.7
@@ -1096,6 +1105,9 @@ importers:
       '@tailwindcss/typography':
         specifier: 'catalog:'
         version: 0.5.20(tailwindcss@4.3.1)
+      '@tanstack/query-core':
+        specifier: 'catalog:'
+        version: 5.101.0
       '@tanstack/react-form':
         specifier: 'catalog:'
         version: 1.33.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -1189,6 +1201,12 @@ importers:
       jotai:
         specifier: 'catalog:'
         version: 2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.17)(react@19.2.7)
+      jotai-scope:
+        specifier: 'catalog:'
+        version: 0.11.0(jotai@2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)
+      jotai-tanstack-query:
+        specifier: 'catalog:'
+        version: 0.11.0(@tanstack/query-core@5.101.0)(@tanstack/react-query@5.101.0(react@19.2.7))(jotai@2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)
       js-audio-recorder:
         specifier: 'catalog:'
         version: 1.0.7
@@ -7197,6 +7215,26 @@ packages:
   jiti@2.7.0:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
+
+  jotai-scope@0.11.0:
+    resolution: {integrity: sha512-ofiW0Z0i3lTw509Gx0+T6fqsDPMDxMn+AHmNs9iF9OA8CmK1/0xRprPxuZ89UZdBzt6jcrTYdunNZSF2255zJQ==}
+    engines: {node: '>=14.0.0'}
+    peerDependencies:
+      jotai: '>=2.20.0'
+      react: '>=16.0.0'
+
+  jotai-tanstack-query@0.11.0:
+    resolution: {integrity: sha512-Ys0u0IuuS6/okUJOulFTdCVfVaeKbm1+lKVSN9zHhIxtrAXl9FM4yu7fNvxM6fSz/NCE9tZOKR0MQ3hvplaH8A==}
+    peerDependencies:
+      '@tanstack/query-core': '*'
+      '@tanstack/react-query': '*'
+      jotai: '>=2.0.0'
+      react: ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      '@tanstack/react-query':
+        optional: true
+      react:
+        optional: true
 
   jotai@2.20.1:
     resolution: {integrity: sha512-dnuKfU/GLi8B28RRMjQ3AfoN7kfzP8o41+AX2FmITZqEMY8PHnjABq+VkEooomLwYaGjda+pgy0yFSjaHX/ZPg==}
@@ -16182,6 +16220,19 @@ snapshots:
 
   jiti@2.7.0: {}
 
+  jotai-scope@0.11.0(jotai@2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.17)(react@19.2.7))(react@19.2.7):
+    dependencies:
+      jotai: 2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.17)(react@19.2.7)
+      react: 19.2.7
+
+  jotai-tanstack-query@0.11.0(@tanstack/query-core@5.101.0)(@tanstack/react-query@5.101.0(react@19.2.7))(jotai@2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.17)(react@19.2.7))(react@19.2.7):
+    dependencies:
+      '@tanstack/query-core': 5.101.0
+      jotai: 2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.17)(react@19.2.7)
+    optionalDependencies:
+      '@tanstack/react-query': 5.101.0(react@19.2.7)
+      react: 19.2.7
+
   jotai@2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.17)(react@19.2.7):
     optionalDependencies:
       '@babel/core': 7.29.7
@@ -19321,6 +19372,7 @@ time:
   '@tailwindcss/typography@0.5.20': '2026-06-08T10:34:41.124Z'
   '@tailwindcss/vite@4.3.1': '2026-06-12T17:59:45.667Z'
   '@tanstack/eslint-plugin-query@5.101.0': '2026-06-02T19:24:31.866Z'
+  '@tanstack/query-core@5.101.0': '2026-06-02T19:24:32.202Z'
   '@tanstack/react-form@1.33.0': '2026-05-28T17:05:42.660Z'
   '@tanstack/react-hotkeys@0.10.0': '2026-04-25T12:28:06.989Z'
   '@tanstack/react-query@5.101.0': '2026-06-02T19:24:39.383Z'
@@ -19397,6 +19449,8 @@ time:
   i18next@26.3.1: '2026-06-03T14:14:17.016Z'
   iconify-import-svg@0.2.0: '2026-04-20T06:18:25.132Z'
   immer@11.1.8: '2026-05-08T15:09:33.021Z'
+  jotai-scope@0.11.0: '2026-05-13T18:43:15.331Z'
+  jotai-tanstack-query@0.11.0: '2025-08-01T02:55:49.826Z'
   jotai@2.20.1: '2026-06-11T06:30:45.782Z'
   js-audio-recorder@1.0.7: '2021-01-09T10:20:49.923Z'
   js-cookie@3.0.8: '2026-05-29T10:51:39.065Z'
