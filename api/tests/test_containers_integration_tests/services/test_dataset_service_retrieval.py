@@ -408,7 +408,7 @@ class TestDatasetServiceGetDatasets:
         )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page=1, per_page=20, db_session_with_containers,tenant_id=tenant.id, user=user)
+        datasets, total = DatasetService.get_datasets(page=1, per_page=20, session=db_session_with_containers,tenant_id=tenant.id, user=user)
 
         # Assert
         assert len(datasets) == 1
