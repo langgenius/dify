@@ -26,7 +26,7 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
   const maintainerId = useDatasetDetailContextWithSelector(state => state.dataset?.maintainer)
   const { data: datasetAccessRulesResponse, isLoading: isLoadingDatasetAccessRules } = useDatasetAccessRules(datasetId, language)
-  const { data: datasetUserAccessSettingsResponse, isLoading: isLoadingDatasetUserAccessSettings } = useDatasetUserAccessSettings(datasetId)
+  const { data: datasetUserAccessSettingsResponse, isLoading: isLoadingDatasetUserAccessSettings } = useDatasetUserAccessSettings(datasetId, language)
   const { mutate: updateDatasetOpenScope, isPending: isUpdatingDatasetOpenScope } = useUpdateDatasetOpenScope(datasetId)
   const { mutate: updateDatasetUserAccessSettings } = useUpdateDatasetUserAccessSettings(datasetId)
   const { mutate: removeDatasetAccessPolicyMemberBindings } = useRemoveDatasetAccessPolicyMemberBindings(datasetId)

@@ -26,7 +26,7 @@ const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
   const maintainerId = useStore(state => state.appDetail?.maintainer)
   const { data: appAccessRulesResponse, isLoading: isLoadingAppAccessRules } = useAppAccessRules(appId, language)
-  const { data: appUserAccessSettingsResponse, isLoading: isLoadingAppUserAccessSettings } = useAppUserAccessSettings(appId)
+  const { data: appUserAccessSettingsResponse, isLoading: isLoadingAppUserAccessSettings } = useAppUserAccessSettings(appId, language)
   const { mutate: updateAppOpenScope, isPending: isUpdatingAppOpenScope } = useUpdateAppOpenScope(appId)
   const { mutate: updateAppUserAccessSettings } = useUpdateAppUserAccessSettings(appId)
   const { mutate: removeAppAccessPolicyMemberBindings } = useRemoveAppAccessPolicyMemberBindings(appId)

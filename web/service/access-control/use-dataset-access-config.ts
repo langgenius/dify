@@ -22,11 +22,14 @@ export const useDatasetAccessRules = (datasetId: string, language: AccessControl
   }))
 }
 
-export const useDatasetUserAccessSettings = (datasetId: string) => {
+export const useDatasetUserAccessSettings = (datasetId: string, language: AccessControlTemplateLanguage) => {
   return useQuery(consoleQuery.rbacAccessConfig.datasets.userAccessSettings.queryOptions({
     input: {
       params: {
         datasetId,
+      },
+      query: {
+        language,
       },
     },
   }))
@@ -49,13 +52,7 @@ export const useUpdateDatasetUserAccessSettings = (datasetId: string) => {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: consoleQuery.rbacAccessConfig.datasets.userAccessSettings.queryKey({
-            input: {
-              params: {
-                datasetId,
-              },
-            },
-          }),
+          queryKey: consoleQuery.rbacAccessConfig.datasets.userAccessSettings.key(),
         }),
         queryClient.invalidateQueries({
           queryKey: consoleQuery.rbacAccessConfig.datasets.accessRules.key(),
@@ -82,13 +79,7 @@ export const useRemoveDatasetAccessPolicyMemberBindings = (datasetId: string) =>
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: consoleQuery.rbacAccessConfig.datasets.userAccessSettings.queryKey({
-            input: {
-              params: {
-                datasetId,
-              },
-            },
-          }),
+          queryKey: consoleQuery.rbacAccessConfig.datasets.userAccessSettings.key(),
         }),
         queryClient.invalidateQueries({
           queryKey: consoleQuery.rbacAccessConfig.datasets.accessRules.key(),
@@ -114,13 +105,7 @@ export const useUpdateDatasetOpenScope = (datasetId: string) => {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: consoleQuery.rbacAccessConfig.datasets.userAccessSettings.queryKey({
-            input: {
-              params: {
-                datasetId,
-              },
-            },
-          }),
+          queryKey: consoleQuery.rbacAccessConfig.datasets.userAccessSettings.key(),
         }),
       ])
     },

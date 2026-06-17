@@ -22,11 +22,14 @@ export const useAppAccessRules = (appId: string, language: AccessControlTemplate
   }))
 }
 
-export const useAppUserAccessSettings = (appId: string) => {
+export const useAppUserAccessSettings = (appId: string, language: AccessControlTemplateLanguage) => {
   return useQuery(consoleQuery.rbacAccessConfig.apps.userAccessSettings.queryOptions({
     input: {
       params: {
         appId,
+      },
+      query: {
+        language,
       },
     },
   }))
@@ -49,13 +52,7 @@ export const useUpdateAppUserAccessSettings = (appId: string) => {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: consoleQuery.rbacAccessConfig.apps.userAccessSettings.queryKey({
-            input: {
-              params: {
-                appId,
-              },
-            },
-          }),
+          queryKey: consoleQuery.rbacAccessConfig.apps.userAccessSettings.key(),
         }),
         queryClient.invalidateQueries({
           queryKey: consoleQuery.rbacAccessConfig.apps.accessRules.key(),
@@ -82,13 +79,7 @@ export const useRemoveAppAccessPolicyMemberBindings = (appId: string) => {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: consoleQuery.rbacAccessConfig.apps.userAccessSettings.queryKey({
-            input: {
-              params: {
-                appId,
-              },
-            },
-          }),
+          queryKey: consoleQuery.rbacAccessConfig.apps.userAccessSettings.key(),
         }),
         queryClient.invalidateQueries({
           queryKey: consoleQuery.rbacAccessConfig.apps.accessRules.key(),
@@ -114,13 +105,7 @@ export const useUpdateAppOpenScope = (appId: string) => {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: consoleQuery.rbacAccessConfig.apps.userAccessSettings.queryKey({
-            input: {
-              params: {
-                appId,
-              },
-            },
-          }),
+          queryKey: consoleQuery.rbacAccessConfig.apps.userAccessSettings.key(),
         }),
       ])
     },

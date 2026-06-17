@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
     queryKey: ['rbac-access-config', 'apps', 'user-access-settings'],
     queryFn: vi.fn().mockResolvedValue({ data: [], scope: 'specific' }),
   })),
+  userAccessSettingsKey: vi.fn(() => ['rbac-access-config', 'apps', 'user-access-settings']),
   userAccessSettingsQueryKey: vi.fn(() => ['rbac-access-config', 'apps', 'user-access-settings', 'app-1']),
   updateOpenScope: vi.fn().mockResolvedValue({}),
   updateUserAccessSettings: vi.fn().mockResolvedValue({}),
@@ -43,6 +44,7 @@ vi.mock('@/service/client', () => ({
           queryOptions: mocks.accessRulesQueryOptions,
         },
         userAccessSettings: {
+          key: mocks.userAccessSettingsKey,
           queryKey: mocks.userAccessSettingsQueryKey,
           queryOptions: mocks.userAccessSettingsQueryOptions,
         },
@@ -90,12 +92,15 @@ describe('use-app-access-config', () => {
   // User access settings configure which access policies apply to app users.
   describe('User Access Settings', () => {
     it('should fetch user access settings for an app id', () => {
-      renderHook(() => useAppUserAccessSettings('app-1'), { wrapper: createWrapper() })
+      renderHook(() => useAppUserAccessSettings('app-1', 'en'), { wrapper: createWrapper() })
 
       expect(mocks.userAccessSettingsQueryOptions).toHaveBeenCalledWith({
         input: {
           params: {
             appId: 'app-1',
+          },
+          query: {
+            language: 'en',
           },
         },
       })
@@ -117,13 +122,7 @@ describe('use-app-access-config', () => {
           access_policy_ids: ['policy-1', 'policy-2'],
         },
       })
-      expect(mocks.userAccessSettingsQueryKey).toHaveBeenCalledWith({
-        input: {
-          params: {
-            appId: 'app-1',
-          },
-        },
-      })
+      expect(mocks.userAccessSettingsKey).toHaveBeenCalled()
       expect(mocks.accessRulesKey).toHaveBeenCalled()
     })
 
@@ -143,13 +142,7 @@ describe('use-app-access-config', () => {
           account_ids: ['account-1'],
         },
       })
-      expect(mocks.userAccessSettingsQueryKey).toHaveBeenCalledWith({
-        input: {
-          params: {
-            appId: 'app-1',
-          },
-        },
-      })
+      expect(mocks.userAccessSettingsKey).toHaveBeenCalled()
       expect(mocks.accessRulesKey).toHaveBeenCalled()
     })
 
@@ -168,13 +161,7 @@ describe('use-app-access-config', () => {
           scope: 'all',
         },
       })
-      expect(mocks.userAccessSettingsQueryKey).toHaveBeenCalledWith({
-        input: {
-          params: {
-            appId: 'app-1',
-          },
-        },
-      })
+      expect(mocks.userAccessSettingsKey).toHaveBeenCalled()
     })
   })
 })

@@ -34,6 +34,9 @@ const appUserAccessSettingsContract = base
     params: {
       appId: string
     }
+    query: {
+      language: AccessControlTemplateLanguage
+    }
   }>())
   .output(type<GetAppUserAccessSettingsResponse>())
 
@@ -107,6 +110,9 @@ const datasetUserAccessSettingsContract = base
   .input(type<{
     params: {
       datasetId: string
+    }
+    query: {
+      language: AccessControlTemplateLanguage
     }
   }>())
   .output(type<GetDatasetUserAccessSettingsResponse>())

@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
     queryKey: ['rbac-access-config', 'datasets', 'user-access-settings'],
     queryFn: vi.fn().mockResolvedValue({ data: [], scope: 'specific' }),
   })),
+  userAccessSettingsKey: vi.fn(() => ['rbac-access-config', 'datasets', 'user-access-settings']),
   userAccessSettingsQueryKey: vi.fn(() => ['rbac-access-config', 'datasets', 'user-access-settings', 'dataset-1']),
   updateOpenScope: vi.fn().mockResolvedValue({}),
   updateUserAccessSettings: vi.fn().mockResolvedValue({}),
@@ -43,6 +44,7 @@ vi.mock('@/service/client', () => ({
           queryOptions: mocks.accessRulesQueryOptions,
         },
         userAccessSettings: {
+          key: mocks.userAccessSettingsKey,
           queryKey: mocks.userAccessSettingsQueryKey,
           queryOptions: mocks.userAccessSettingsQueryOptions,
         },
@@ -90,12 +92,15 @@ describe('use-dataset-access-config', () => {
   // User access settings mirror the app access-config API shape for datasets.
   describe('User Access Settings', () => {
     it('should fetch user access settings for a dataset id', () => {
-      renderHook(() => useDatasetUserAccessSettings('dataset-1'), { wrapper: createWrapper() })
+      renderHook(() => useDatasetUserAccessSettings('dataset-1', 'zh'), { wrapper: createWrapper() })
 
       expect(mocks.userAccessSettingsQueryOptions).toHaveBeenCalledWith({
         input: {
           params: {
             datasetId: 'dataset-1',
+          },
+          query: {
+            language: 'zh',
           },
         },
       })
@@ -117,13 +122,7 @@ describe('use-dataset-access-config', () => {
           access_policy_ids: ['policy-1', 'policy-2'],
         },
       })
-      expect(mocks.userAccessSettingsQueryKey).toHaveBeenCalledWith({
-        input: {
-          params: {
-            datasetId: 'dataset-1',
-          },
-        },
-      })
+      expect(mocks.userAccessSettingsKey).toHaveBeenCalled()
       expect(mocks.accessRulesKey).toHaveBeenCalled()
     })
 
@@ -143,13 +142,7 @@ describe('use-dataset-access-config', () => {
           account_ids: ['account-1'],
         },
       })
-      expect(mocks.userAccessSettingsQueryKey).toHaveBeenCalledWith({
-        input: {
-          params: {
-            datasetId: 'dataset-1',
-          },
-        },
-      })
+      expect(mocks.userAccessSettingsKey).toHaveBeenCalled()
       expect(mocks.accessRulesKey).toHaveBeenCalled()
     })
 
@@ -168,13 +161,7 @@ describe('use-dataset-access-config', () => {
           scope: 'specific',
         },
       })
-      expect(mocks.userAccessSettingsQueryKey).toHaveBeenCalledWith({
-        input: {
-          params: {
-            datasetId: 'dataset-1',
-          },
-        },
-      })
+      expect(mocks.userAccessSettingsKey).toHaveBeenCalled()
     })
   })
 })
