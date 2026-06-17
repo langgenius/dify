@@ -1,6 +1,6 @@
 from typing import Any, TypedDict
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 
 from libs.datetime_utils import naive_utc_now
@@ -56,6 +56,7 @@ class AgentRosterService:
         agent: Agent,
         active_version: AgentConfigSnapshot | None = None,
         published_references: list[AgentReferencingWorkflow] | None = None,
+        active_config_is_published: bool = False,
     ) -> dict[str, Any]:
         published_references = published_references or []
         return {
@@ -74,6 +75,7 @@ class AgentRosterService:
             "workflow_node_id": agent.workflow_node_id,
             "active_config_snapshot_id": agent.active_config_snapshot_id,
             "active_config_snapshot": AgentRosterService.serialize_version(active_version) if active_version else None,
+            "active_config_is_published": active_config_is_published,
             "status": agent.status.value,
             "created_by": agent.created_by,
             "updated_by": agent.updated_by,
@@ -128,6 +130,10 @@ class AgentRosterService:
             tenant_id=tenant_id,
             agent_ids=[agent.id for agent in agents],
         )
+        active_config_is_published_by_agent_id = self.load_active_config_is_published_by_agent_id(
+            tenant_id=tenant_id,
+            agents=agents,
+        )
 
         data = []
         for agent in agents:
@@ -139,6 +145,7 @@ class AgentRosterService:
                     agent,
                     active_version,
                     published_references_by_agent_id.get(agent.id, []),
+                    active_config_is_published_by_agent_id.get(agent.id, False),
                 )
             )
 
@@ -165,11 +172,16 @@ class AgentRosterService:
             tenant_id=tenant_id,
             agent_ids=[agent.id for agent in agents],
         )
+        active_config_is_published_by_agent_id = self.load_active_config_is_published_by_agent_id(
+            tenant_id=tenant_id,
+            agents=agents,
+        )
         data = [
             self.serialize_agent(
                 agent,
                 versions_by_id.get(agent.active_config_snapshot_id) if agent.active_config_snapshot_id else None,
                 published_references_by_agent_id.get(agent.id, []),
+                active_config_is_published_by_agent_id.get(agent.id, False),
             )
             for agent in agents
         ]
@@ -429,7 +441,16 @@ class AgentRosterService:
             tenant_id=tenant_id,
             agent_ids=[agent.id],
         )
-        return self.serialize_agent(agent, active_version, published_references_by_agent_id.get(agent.id, []))
+        active_config_is_published_by_agent_id = self.load_active_config_is_published_by_agent_id(
+            tenant_id=tenant_id,
+            agents=[agent],
+        )
+        return self.serialize_agent(
+            agent,
+            active_version,
+            published_references_by_agent_id.get(agent.id, []),
+            active_config_is_published_by_agent_id.get(agent.id, False),
+        )
 
     def update_roster_agent(
         self, *, tenant_id: str, agent_id: str, account_id: str, payload: RosterAgentUpdatePayload
@@ -470,6 +491,18 @@ class AgentRosterService:
             AgentConfigRevisionOperation.SAVE_NEW_AGENT,
             AgentConfigRevisionOperation.SAVE_TO_ROSTER,
         }
+
+    def active_config_is_published(self, *, tenant_id: str, agent: Agent) -> bool:
+        """Return whether the Agent's current active snapshot is a visible published version."""
+        return self.load_active_config_is_published_by_agent_id(tenant_id=tenant_id, agents=[agent]).get(
+            agent.id,
+            False,
+        )
+
+    def load_active_config_is_published_by_agent_id(self, *, tenant_id: str, agents: list[Agent]) -> dict[str, bool]:
+        """Return publish-state flags for the active config snapshots of the given Agents."""
+        published_agent_ids = self._load_published_active_snapshot_agent_ids(tenant_id=tenant_id, agents=agents)
+        return {agent.id: agent.id in published_agent_ids for agent in agents}
 
     def list_agent_versions(self, *, tenant_id: str, agent_id: str) -> list[dict[str, Any]]:
         agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
@@ -567,6 +600,29 @@ class AgentRosterService:
         if not version:
             raise AgentVersionNotFoundError()
         return version
+
+    def _load_published_active_snapshot_agent_ids(self, *, tenant_id: str, agents: list[Agent]) -> set[str]:
+        predicates = [
+            and_(
+                AgentConfigRevision.agent_id == agent.id,
+                AgentConfigRevision.current_snapshot_id == agent.active_config_snapshot_id,
+                AgentConfigRevision.operation.in_(self._visible_version_operations(agent)),
+            )
+            for agent in agents
+            if agent.active_config_snapshot_id
+        ]
+        if not predicates:
+            return set()
+
+        agent_ids = self._session.scalars(
+            select(AgentConfigRevision.agent_id)
+            .where(
+                AgentConfigRevision.tenant_id == tenant_id,
+                or_(*predicates),
+            )
+            .distinct()
+        ).all()
+        return set(agent_ids)
 
     def _load_published_references_by_agent_id(
         self, *, tenant_id: str, agent_ids: list[str]
