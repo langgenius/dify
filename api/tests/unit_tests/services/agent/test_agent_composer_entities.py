@@ -51,6 +51,19 @@ def test_locked_workflow_soul_rejects_soul_changes():
         ComposerConfigValidator.validate_save_payload(payload)
 
 
+def test_locked_workflow_node_job_only_allows_inline_soul_payload():
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": ComposerVariant.WORKFLOW,
+            "save_strategy": ComposerSaveStrategy.NODE_JOB_ONLY,
+            "soul_lock": {"locked": True},
+            "agent_soul": {"prompt": {"system_prompt": "changed"}},
+        }
+    )
+
+    ComposerConfigValidator.validate_save_payload(payload)
+
+
 def test_agent_app_soul_allows_app_features_and_variables():
     payload = ComposerSavePayload.model_validate(
         {
