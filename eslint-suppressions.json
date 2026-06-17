@@ -4019,11 +4019,6 @@
       "count": 1
     }
   },
-  "web/app/components/main-nav/components/web-apps-section.tsx": {
-    "jsx-a11y/no-autofocus": {
-      "count": 1
-    }
-  },
   "web/app/components/main-nav/components/workspace-switcher.tsx": {
     "jsx-a11y/no-autofocus": {
       "count": 1
@@ -7643,26 +7638,6 @@
   "web/i18n-config/lib.client.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 1
-    }
-  },
-  "web/i18n/en-US/common.json": {
-    "jsonc/sort-keys": {
-      "count": 2
-    }
-  },
-  "web/i18n/ja-JP/common.json": {
-    "jsonc/sort-keys": {
-      "count": 2
-    }
-  },
-  "web/i18n/zh-Hans/common.json": {
-    "jsonc/sort-keys": {
-      "count": 2
-    }
-  },
-  "web/i18n/zh-Hant/common.json": {
-    "jsonc/sort-keys": {
-      "count": 2
     }
   },
   "web/models/app.ts": {

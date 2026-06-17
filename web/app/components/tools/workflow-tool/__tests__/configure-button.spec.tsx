@@ -264,7 +264,6 @@ describe('WorkflowToolConfigureButton', () => {
         expect(screen.getByText('workflow.common.manageInTools'))!.toBeInTheDocument()
       })
     })
-
   })
 
   // Props Testing (REQUIRED)
