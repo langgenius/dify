@@ -1,13 +1,11 @@
 'use client'
 
-import type { AgentIconType, AgentPublishedReferenceResponse, AppPartial } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentAppPartial, AgentIconType } from '@dify/contracts/api/console/agent/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLinkItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
@@ -17,6 +15,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
+import { AgentWorkflowReferencesDropdown } from './agent-workflow-references-dropdown'
 import { DeleteAgentDialog } from './delete-agent-dialog'
 import { EditAgentDialog } from './edit-agent-dialog'
 
@@ -32,25 +31,10 @@ type AgentRosterListProps = {
   onLoadMore: () => void
 }
 
-export type AgentRosterListItem = AppPartial & {
-  published_reference_count?: number
-  published_references?: AgentPublishedReferenceResponse[]
-}
+export type AgentRosterListItem = AgentAppPartial
 
 const skeletonRows = ['primary', 'secondary', 'tertiary'] as const
 const emptyPlaceholderCardIds = Array.from({ length: 16 }, (_, index) => `agent-roster-placeholder-card-${index}`)
-const workflowReferenceAvatarClassNames = [
-  'bg-components-icon-bg-green-soft text-components-icon-bg-green-solid',
-  'bg-components-icon-bg-orange-dark-soft text-components-icon-bg-orange-dark-solid',
-  'bg-components-icon-bg-pink-soft text-components-icon-bg-pink-solid',
-  'bg-components-icon-bg-blue-soft text-components-icon-bg-blue-solid',
-] as const
-
-const getWorkflowReferenceHref = (reference: AgentPublishedReferenceResponse) => `/app/${reference.app_id}/workflow`
-
-const getWorkflowReferenceInitial = (name: string) => {
-  return name.trim().charAt(0).toUpperCase() || '?'
-}
 
 function AgentRosterSkeleton() {
   return (
@@ -167,39 +151,11 @@ function AgentRosterItem({
           <div className="flex min-w-0 flex-1 items-center gap-1.5">
             {hasPublishedReferences
               ? (
-                  <DropdownMenu modal={false}>
-                    <DropdownMenuTrigger
-                      aria-label={t('roster.references.trigger', { name: agent.name, count: referenceCount })}
-                      className="-ml-1 flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-1 py-0.5 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
-                    >
-                      <span aria-hidden className="i-custom-vender-agent-v2-plan size-3 shrink-0 text-text-tertiary" />
-                      <span className="system-xs-regular text-text-tertiary">{referenceCount}</span>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent placement="bottom-start" sideOffset={4} popupClassName="w-[264px] p-1">
-                      <div className="px-2 pt-1 pb-1.5 system-xs-medium text-text-tertiary">
-                        {t('roster.references.label', { name: agent.name })}
-                      </div>
-                      {publishedReferences.map((reference, index) => (
-                        <DropdownMenuLinkItem
-                          key={`${reference.app_id}-${reference.workflow_id}`}
-                          render={<Link href={getWorkflowReferenceHref(reference)} />}
-                          className="mx-0 h-8 gap-2 px-2 py-1 pr-2.5 system-md-regular text-text-secondary"
-                        >
-                          <span
-                            aria-hidden
-                            className={cn(
-                              'flex size-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-regular system-xs-medium',
-                              workflowReferenceAvatarClassNames[index % workflowReferenceAvatarClassNames.length],
-                            )}
-                          >
-                            {getWorkflowReferenceInitial(reference.app_name)}
-                          </span>
-                          <span className="min-w-0 flex-1 truncate">{reference.app_name}</span>
-                          <span aria-hidden className="i-ri-external-link-line size-3 shrink-0 text-text-tertiary" />
-                        </DropdownMenuLinkItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <AgentWorkflowReferencesDropdown
+                    agentName={agent.name}
+                    publishedReferences={publishedReferences}
+                    referenceCount={referenceCount}
+                  />
                 )
               : (
                   <div className="flex shrink-0 items-center gap-1">

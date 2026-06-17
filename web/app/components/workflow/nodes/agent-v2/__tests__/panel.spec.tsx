@@ -356,6 +356,7 @@ describe('agent/panel', () => {
       open: true,
     })
     expect(screen.queryByText('workflow.nodes.agent.roster.editInConsole')).not.toBeInTheDocument()
+    expect(screen.queryByText('workflow.nodes.agent.roster.makeCopy')).not.toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.agent.task.label')).toBeInTheDocument()
   })
 

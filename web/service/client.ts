@@ -1,4 +1,4 @@
-import type { AppPagination } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentAppPagination } from '@dify/contracts/api/console/agent/types.gen'
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
@@ -114,7 +114,7 @@ export const consoleQuery = createTanstackQueryUtils(consoleClient, {
                 {
                   queryKey: consoleQuery.agent.get.key({ type: 'query' }),
                 },
-                (oldList: AppPagination | undefined) => {
+                (oldList: AgentAppPagination | undefined) => {
                   if (!oldList?.data.some(item => item.id === updatedAgent.id))
                     return oldList
 
@@ -128,7 +128,7 @@ export const consoleQuery = createTanstackQueryUtils(consoleClient, {
                 {
                   queryKey: consoleQuery.agent.get.key({ type: 'infinite' }),
                 },
-                (oldList: InfiniteData<AppPagination, unknown> | undefined) => {
+                (oldList: InfiniteData<AgentAppPagination, unknown> | undefined) => {
                   if (!oldList?.pages.some(page => page.data.some(item => item.id === updatedAgent.id)))
                     return oldList
 
@@ -164,7 +164,7 @@ export const consoleQuery = createTanstackQueryUtils(consoleClient, {
                 {
                   queryKey: consoleQuery.agent.get.key({ type: 'query' }),
                 },
-                (oldList: AppPagination | undefined) => {
+                (oldList: AgentAppPagination | undefined) => {
                   if (!oldList?.data.some(item => item.id === variables.params.agent_id))
                     return oldList
 
@@ -179,7 +179,7 @@ export const consoleQuery = createTanstackQueryUtils(consoleClient, {
                 {
                   queryKey: consoleQuery.agent.get.key({ type: 'infinite' }),
                 },
-                (oldList: InfiniteData<AppPagination, unknown> | undefined) => {
+                (oldList: InfiniteData<AgentAppPagination, unknown> | undefined) => {
                   if (!oldList?.pages.some(page => page.data.some(item => item.id === variables.params.agent_id)))
                     return oldList
 

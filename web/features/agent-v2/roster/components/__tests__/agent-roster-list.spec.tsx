@@ -110,11 +110,10 @@ describe('AgentRosterList', () => {
         published_references: [
           {
             app_id: 'workflow-app-id',
-            app_mode: 'workflow',
+            app_icon: '🐍',
+            app_icon_background: '#E9F8D8',
+            app_icon_type: 'emoji',
             app_name: 'RFP Review Flow',
-            node_ids: ['agent-node-a'],
-            workflow_id: 'published-workflow-id',
-            workflow_version: '2026-06-12 10:00:00',
           },
         ],
       }),

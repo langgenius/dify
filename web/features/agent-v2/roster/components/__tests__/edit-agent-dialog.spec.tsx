@@ -1,4 +1,4 @@
-import type { AppPartial } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { EditAgentDialog } from '../edit-agent-dialog'
@@ -47,7 +47,7 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-const createAgent = (overrides: Partial<AppPartial> = {}): AppPartial => ({
+const createAgent = (overrides: Partial<AgentAppPartial> = {}): AgentAppPartial => ({
   description: 'Find and summarize market materials.',
   icon: '🧸',
   icon_background: '#F5F3FF',
