@@ -19,7 +19,7 @@ from werkzeug.exceptions import NotFound, UnprocessableEntity
 
 from controllers.common.fields import EventStreamResponse
 from controllers.common.schema import query_params_from_model
-from controllers.common.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
+from controllers.common.wraps import RBACPermission, RBACResourceScope, openapi_rbac_permission_required
 from controllers.openapi import openapi_ns
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData
@@ -48,7 +48,7 @@ class OpenApiWorkflowEventsApi(Resource):
     @openapi_ns.doc(params=query_params_from_model(WorkflowEventsQuery))
     @openapi_ns.response(200, "SSE event stream", openapi_ns.models[EventStreamResponse.__name__])
     @auth_router.guard(scope=Scope.APPS_RUN)
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @openapi_rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     def get(self, app_id: str, task_id: str, *, auth_data: AuthData):
         app_model, caller, caller_kind = auth_data.require_app_context()
         app_mode = AppMode.value_of(app_model.mode)
