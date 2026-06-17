@@ -40,7 +40,7 @@ class AppTaskService:
         # Legacy mechanism: Set stop flag in Redis
         AppQueueManager.set_stop_flag(task_id, invoke_from, user_id)
 
-        # New mechanism: Send stop command via GraphEngine for workflow-based apps
-        # This ensures proper workflow status recording in the persistence layer
-        if app_mode in (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW):
+        # New mechanism: send stop command via GraphEngine for graph-backed apps.
+        # Completion uses WorkflowEntry at runtime but keeps legacy message persistence.
+        if app_mode in (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW, AppMode.COMPLETION):
             GraphEngineManager(redis_client).send_stop_command(task_id)

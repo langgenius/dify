@@ -122,6 +122,8 @@ if TYPE_CHECKING:
     from graphon.nodes.tool.entities import ToolNodeData
 
 
+DIFY_BEFORE_LLM_INVOKE_KEY = "_dify_before_llm_invoke"
+BeforeLLMInvoke = Callable[[Sequence[PromptMessage]], None]
 _file_access_controller = DatabaseFileAccessController()
 
 
@@ -178,9 +180,15 @@ class DifyFileReferenceFactory(FileReferenceFactoryProtocol):
 class DifyPreparedLLM(LLMProtocol):
     """Workflow-layer adapter that hides the full `ModelInstance` API from `graphon` nodes."""
 
-    def __init__(self, model_instance: ModelInstance, request_metadata: Mapping[str, object] | None = None) -> None:
+    def __init__(
+        self,
+        model_instance: ModelInstance,
+        request_metadata: Mapping[str, object] | None = None,
+        before_invoke: BeforeLLMInvoke | None = None,
+    ) -> None:
         self._model_instance = model_instance
         self._request_metadata = request_metadata
+        self._before_invoke = before_invoke
 
     @property
     @override
@@ -221,6 +229,10 @@ class DifyPreparedLLM(LLMProtocol):
     def get_llm_num_tokens(self, prompt_messages: Sequence[PromptMessage]) -> int:
         return self._model_instance.get_llm_num_tokens(prompt_messages)
 
+    def _run_before_invoke(self, prompt_messages: Sequence[PromptMessage]) -> None:
+        if self._before_invoke is not None:
+            self._before_invoke(prompt_messages)
+
     @overload
     def invoke_llm(
         self,
@@ -253,6 +265,7 @@ class DifyPreparedLLM(LLMProtocol):
         stop: Sequence[str] | None,
         stream: bool,
     ) -> LLMResult | Generator[LLMResultChunk, None, None]:
+        self._run_before_invoke(prompt_messages)
         return self._model_instance.invoke_llm(
             prompt_messages=list(prompt_messages),
             model_parameters=dict(model_parameters),
@@ -294,6 +307,7 @@ class DifyPreparedLLM(LLMProtocol):
         stop: Sequence[str] | None,
         stream: bool,
     ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]:
+        self._run_before_invoke(prompt_messages)
         return invoke_llm_with_structured_output(
             provider=self.provider,
             model_schema=self.get_model_schema(),
@@ -316,8 +330,13 @@ class DifyPreparedLLM(LLMProtocol):
 class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
     """Prepared workflow LLM adapter that exposes Graphon's polling protocol."""
 
-    def __init__(self, model_instance: ModelInstance, request_metadata: Mapping[str, object] | None = None) -> None:
-        super().__init__(model_instance, request_metadata=request_metadata)
+    def __init__(
+        self,
+        model_instance: ModelInstance,
+        request_metadata: Mapping[str, object] | None = None,
+        before_invoke: BeforeLLMInvoke | None = None,
+    ) -> None:
+        super().__init__(model_instance, request_metadata=request_metadata, before_invoke=before_invoke)
         model_type_instance = cast(LargeLanguageModel, model_instance.model_type_instance)
         self._polling_runtime = cast(PollingLLMRuntimeProtocol, model_type_instance.model_runtime)
         self._polling_quota_reservation = None
@@ -360,6 +379,7 @@ class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
         json_schema: Mapping[str, Any] | None,
     ) -> LLMPollingResult:
         self.finalize_llm_polling()
+        self._run_before_invoke(prompt_messages)
 
         if isinstance(self._model_instance, QuotaManagedModelInstance):
             self._polling_quota_reservation = self._model_instance.reserve_quota()
