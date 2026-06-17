@@ -189,7 +189,8 @@ def _create_tag_bindings(current_user: Account) -> tuple[dict[str, str], int]:
             tag_ids=payload.tag_ids,
             target_id=payload.target_id,
             type=payload.type,
-        ), db.session
+        ),
+        db.session,
     )
     return {"result": "success"}, 200
 
@@ -203,7 +204,8 @@ def _remove_tag_bindings(current_user: Account) -> tuple[dict[str, str], int]:
             tag_ids=payload.tag_ids,
             target_id=payload.target_id,
             type=payload.type,
-        ), db.session
+        ),
+        db.session,
     )
     return {"result": "success"}, 200
 

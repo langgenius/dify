@@ -1,4 +1,3 @@
-from sqlalchemy.orm import scoped_session
 import json
 import logging
 from collections.abc import Iterator, Mapping, Sequence
@@ -7,7 +6,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import delete, func, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from core.db import session_factory
 from core.workflow.node_factory import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING

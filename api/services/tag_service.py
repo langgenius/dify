@@ -1,4 +1,3 @@
-from sqlalchemy.orm import scoped_session
 import uuid
 from typing import cast
 
@@ -7,10 +6,9 @@ from flask_login import current_user
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 from sqlalchemy.engine import CursorResult
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session
 from werkzeug.exceptions import NotFound
 
-from extensions.ext_database import db
 from models.dataset import Dataset
 from models.enums import TagType
 from models.model import App, Tag, TagBinding

@@ -197,7 +197,9 @@ class AppService:
             ).scalars()
         )
 
-    def get_paginate_apps(self, user_id: str, tenant_id: str, params: AppListParams, session: scoped_session) -> Pagination | None:
+    def get_paginate_apps(
+        self, user_id: str, tenant_id: str, params: AppListParams, session: scoped_session
+    ) -> Pagination | None:
         """
         Get app list with pagination, filters, and explicit sort order.
         :param user_id: user id
