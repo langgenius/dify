@@ -108,7 +108,7 @@ export function AgentConfigurePublishBar({
     handlePublish()
   }, {
     enabled: canPublish,
-    ignoreInputs: true,
+    ignoreInputs: false,
   })
 
   const publishedMeta = activeConfigSnapshot?.created_at

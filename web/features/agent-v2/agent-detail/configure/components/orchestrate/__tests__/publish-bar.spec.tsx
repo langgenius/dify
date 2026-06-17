@@ -187,7 +187,7 @@ describe('AgentConfigurePublishBar', () => {
     expect(screen.getByText('display:P')).toBeInTheDocument()
     expect(mockFormatForDisplay).toHaveBeenCalledWith('Mod')
     expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
-      expect.objectContaining({ enabled: true, ignoreInputs: true }),
+      expect.objectContaining({ enabled: true, ignoreInputs: false }),
     )
   })
 
@@ -207,7 +207,7 @@ describe('AgentConfigurePublishBar', () => {
     expect(screen.queryByText('display:Mod')).not.toBeInTheDocument()
     expect(mockFormatTimeFromNow).toHaveBeenCalledWith(1710000000 * 1000)
     expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
-      expect.objectContaining({ enabled: false, ignoreInputs: true }),
+      expect.objectContaining({ enabled: false, ignoreInputs: false }),
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' }))
@@ -281,7 +281,7 @@ describe('AgentConfigurePublishBar', () => {
     expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.publishing' })).toHaveAttribute('aria-disabled', 'true')
     expect(screen.queryByText('display:Mod')).not.toBeInTheDocument()
     expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
-      expect.objectContaining({ enabled: false, ignoreInputs: true }),
+      expect.objectContaining({ enabled: false, ignoreInputs: false }),
     )
   })
 
