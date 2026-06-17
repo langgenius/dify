@@ -29,7 +29,7 @@
   "dataset.acl.preview": "預覽知識庫",
   "dataset.acl.readonly": "知識庫唯讀",
   "dataset.acl.retrieval_recall": "知識庫檢索召回",
-  "dataset.acl.use": "知識庫使用",
+  "dataset.acl.use": "向知識庫新增檔案",
   "dataset.api_key.manage": "管理知識庫 API Key",
   "dataset.create_and_management": "建立與管理自己建立的知識庫",
   "dataset.external.connect": "連接外部知識庫",

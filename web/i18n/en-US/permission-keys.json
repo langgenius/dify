@@ -29,7 +29,7 @@
   "dataset.acl.preview": "Preview knowledge base",
   "dataset.acl.readonly": "Read-only knowledge base",
   "dataset.acl.retrieval_recall": "Knowledge base retrieval",
-  "dataset.acl.use": "Use knowledge base",
+  "dataset.acl.use": "Add documents to knowledge base",
   "dataset.api_key.manage": "Manage knowledge base API keys",
   "dataset.create_and_management": "Create knowledge bases and manage knowledge bases you created",
   "dataset.external.connect": "Connect external knowledge bases",
