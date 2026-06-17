@@ -724,6 +724,8 @@ export const zEnvironmentAppInstance = z.object({
   currentRelease: zRelease.optional(),
   status: zRuntimeInstanceStatus.optional(),
   lastError: zError.optional(),
+  workspaceId: z.string().optional(),
+  workspaceName: z.string().optional(),
 })
 
 export const zEnvironmentDeployment = z.object({
@@ -765,6 +767,8 @@ export const zEnvironmentDeploymentHistoryItem = z.object({
   deployment: zDeployment.optional(),
   appInstanceId: z.string().optional(),
   appInstanceName: z.string().optional(),
+  workspaceId: z.string().optional(),
+  workspaceName: z.string().optional(),
 })
 
 export const zGetAppInstanceOverviewResponse = z.object({
@@ -2075,6 +2079,7 @@ export const zInfoConfigReply = z.object({
   Branding: zBrandingInfo.optional(),
   WebAppAuth: zWebAppAuthInfo.optional(),
   PluginInstallationPermission: zPluginInstallationPermissionInfo.optional(),
+  EnableAppDeploy: z.boolean().optional(),
 })
 
 export const zWebOAuth2LoginReply = z.object({

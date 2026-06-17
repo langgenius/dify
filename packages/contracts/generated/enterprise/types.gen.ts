@@ -618,6 +618,8 @@ export type EnvironmentAppInstance = {
   currentRelease?: Release
   status?: RuntimeInstanceStatus
   lastError?: Error
+  workspaceId?: string
+  workspaceName?: string
 }
 
 export type EnvironmentDeployment = {
@@ -636,6 +638,8 @@ export type EnvironmentDeploymentHistoryItem = {
   deployment?: Deployment
   appInstanceId?: string
   appInstanceName?: string
+  workspaceId?: string
+  workspaceName?: string
 }
 
 export type EnvironmentDeploymentRecord = {
@@ -1353,6 +1357,7 @@ export type InfoConfigReply = {
   Branding?: BrandingInfo
   WebAppAuth?: WebAppAuthInfo
   PluginInstallationPermission?: PluginInstallationPermissionInfo
+  EnableAppDeploy?: boolean
 }
 
 export type InnerAdmission = {
