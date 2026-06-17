@@ -164,6 +164,8 @@
   "upgrade.uploadMultipleFiles.title": "Tingkatkan untuk membuka unggahan dokumen batch",
   "upgrade.uploadMultiplePages.description": "Anda telah mencapai batas unggah — hanya satu dokumen yang dapat dipilih dan diunggah sekaligus dengan paket Anda saat ini.",
   "upgrade.uploadMultiplePages.title": "Tingkatkan untuk mengunggah beberapa dokumen sekaligus",
+  "upgrade.workflowRestore.description": "Pemulihan versi workflow tidak tersedia di paket Anda saat ini.",
+  "upgrade.workflowRestore.title": "Tingkatkan untuk memulihkan versi workflow",
   "upgradeBtn.encourage": "Tingkatkan Sekarang",
   "upgradeBtn.encourageShort": "Upgrade",
   "upgradeBtn.plain": "Lihat Paket",

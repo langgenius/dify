@@ -164,6 +164,8 @@
   "upgrade.uploadMultipleFiles.title": "Actualiza para desbloquear la carga de documentos en lote",
   "upgrade.uploadMultiplePages.description": "Has alcanzado el límite de carga: solo se puede seleccionar y subir un documento a la vez en tu plan actual.",
   "upgrade.uploadMultiplePages.title": "Actualiza para subir varios documentos a la vez",
+  "upgrade.workflowRestore.description": "La restauración de versiones del flujo de trabajo no está disponible en tu plan actual.",
+  "upgrade.workflowRestore.title": "Actualiza para restaurar versiones del flujo de trabajo",
   "upgradeBtn.encourage": "Actualizar Ahora",
   "upgradeBtn.encourageShort": "Actualizar",
   "upgradeBtn.plain": "Actualizar Plan",

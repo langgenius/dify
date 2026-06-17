@@ -1,7 +1,9 @@
 import type { ActionMenuProps } from './index'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Plan } from '@/app/components/billing/type'
 import { useStore } from '@/app/components/workflow/store'
+import { useProviderContext } from '@/context/provider-context'
 import { VersionHistoryContextMenuOptions } from '../../../types'
 
 const useActionMenu = (props: ActionMenuProps) => {
@@ -10,6 +12,8 @@ const useActionMenu = (props: ActionMenuProps) => {
   } = props
   const { t } = useTranslation()
   const pipelineId = useStore(s => s.pipelineId)
+  const { plan, enableBilling } = useProviderContext()
+  const shouldShowUpgrade = enableBilling && plan.type === Plan.sandbox
 
   const deleteOperation = {
     key: VersionHistoryContextMenuOptions.delete,
@@ -21,6 +25,7 @@ const useActionMenu = (props: ActionMenuProps) => {
       {
         key: VersionHistoryContextMenuOptions.restore,
         name: t('common.restore', { ns: 'workflow' }),
+        ...(shouldShowUpgrade ? { showUpgrade: true } : {}),
       },
       isNamedVersion
         ? {
@@ -36,6 +41,7 @@ const useActionMenu = (props: ActionMenuProps) => {
         ? [{
             key: VersionHistoryContextMenuOptions.exportDSL,
             name: t('export', { ns: 'app' }),
+            ...(shouldShowUpgrade ? { showUpgrade: true } : {}),
           }]
         : []),
       {
@@ -43,7 +49,7 @@ const useActionMenu = (props: ActionMenuProps) => {
         name: t('versionHistory.copyId', { ns: 'workflow' }),
       },
     ]
-  }, [isNamedVersion, pipelineId, t])
+  }, [isNamedVersion, pipelineId, shouldShowUpgrade, t])
 
   return {
     deleteOperation,

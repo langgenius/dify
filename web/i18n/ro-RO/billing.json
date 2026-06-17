@@ -164,6 +164,8 @@
   "upgrade.uploadMultipleFiles.title": "Fă upgrade pentru a debloca încărcarea documentelor în masă",
   "upgrade.uploadMultiplePages.description": "Ați atins limita de încărcare — poate fi selectat și încărcat doar un singur document odată în planul dvs. actual.",
   "upgrade.uploadMultiplePages.title": "Actualizează pentru a încărca mai multe documente odată",
+  "upgrade.workflowRestore.description": "Restaurarea versiunilor fluxului de lucru nu este disponibilă în planul tău actual.",
+  "upgrade.workflowRestore.title": "Fă upgrade pentru a restaura versiunile fluxului de lucru",
   "upgradeBtn.encourage": "Actualizează acum",
   "upgradeBtn.encourageShort": "Actualizează",
   "upgradeBtn.plain": "Actualizează planul",
