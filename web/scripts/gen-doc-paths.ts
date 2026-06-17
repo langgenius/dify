@@ -11,7 +11,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const DOCS_JSON_URL = 'https://raw.githubusercontent.com/langgenius/dify-docs/refs/heads/main/docs.json'
+const DEFAULT_DOCS_JSON_URL = 'https://raw.githubusercontent.com/langgenius/dify-docs/refs/heads/main/docs.json'
+const DOCS_JSON_URL = process.env.DOCS_JSON_URL || DEFAULT_DOCS_JSON_URL
 const OUTPUT_PATH = path.resolve(__dirname, '../types/doc-paths.ts')
 
 type NavItem = string | NavObject | NavItem[]
@@ -21,6 +22,9 @@ type NavObject = {
   groups?: NavItem[]
   dropdowns?: NavItem[]
   languages?: NavItem[]
+  products?: NavItem[]
+  tabs?: NavItem[]
+  menu?: NavItem[]
   versions?: NavItem[]
   openapi?: string
   [key: string]: unknown
@@ -58,7 +62,7 @@ type DocsJson = {
   [key: string]: unknown
 }
 
-const OPENAPI_BASE_URL = 'https://raw.githubusercontent.com/langgenius/dify-docs/refs/heads/main/'
+const OPENAPI_BASE_URL = (process.env.DOCS_OPENAPI_BASE_URL || new URL('.', DOCS_JSON_URL).toString()).replace(/\/?$/, '/')
 
 /**
  * Convert summary to URL slug
@@ -111,6 +115,15 @@ function extractOpenAPIPaths(item: NavItem | undefined, paths: Set<string> = new
 
     if (item.languages)
       extractOpenAPIPaths(item.languages, paths)
+
+    if (item.products)
+      extractOpenAPIPaths(item.products, paths)
+
+    if (item.tabs)
+      extractOpenAPIPaths(item.tabs, paths)
+
+    if (item.menu)
+      extractOpenAPIPaths(item.menu, paths)
 
     if (item.versions)
       extractOpenAPIPaths(item.versions, paths)
@@ -199,6 +212,15 @@ function extractPaths(item: NavItem | undefined, paths: Set<string> = new Set())
     if (item.languages)
       extractPaths(item.languages, paths)
 
+    if (item.products)
+      extractPaths(item.products, paths)
+
+    if (item.tabs)
+      extractPaths(item.tabs, paths)
+
+    if (item.menu)
+      extractPaths(item.menu, paths)
+
     // Handle versions in navigation
     if (item.versions)
       extractPaths(item.versions, paths)
@@ -214,14 +236,17 @@ function groupPathsBySection(paths: Set<string>): Record<string, Set<string>> {
   const groups: Record<string, Set<string>> = {}
 
   for (const fullPath of paths) {
-    // Skip non-doc paths (like .json files for OpenAPI)
-    if (fullPath.endsWith('.json'))
-      continue
-
     // Remove language prefix (en/, zh/, ja/)
-    const withoutLang = fullPath.replace(/^(en|zh|ja)\//, '')
+    let withoutLang = fullPath.replace(/^(en|zh|ja)\//, '')
     if (!withoutLang || withoutLang === fullPath)
       continue
+
+    // Skip non-doc paths (like .json files for OpenAPI)
+    if (withoutLang.endsWith('.json') || withoutLang === 'None')
+      continue
+
+    // Product-specific use-dify docs are selected by useDocLink at runtime.
+    withoutLang = withoutLang.replace(/^(cloud|self-host)\/(?=use-dify(?:\/|$))/, '')
 
     // Get section (first part of path)
     const parts = withoutLang.split('/')
@@ -258,7 +283,7 @@ function generateTypeDefinitions(
     '// GENERATE BY script',
     '// DON NOT EDIT IT MANUALLY',
     '//',
-    '// Generated from: https://raw.githubusercontent.com/langgenius/dify-docs/refs/heads/main/docs.json',
+    `// Generated from: ${DOCS_JSON_URL}`,
     `// Generated at: ${new Date().toISOString()}`,
     '',
     '// Language prefixes',

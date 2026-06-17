@@ -1,8 +1,8 @@
 // GENERATE BY script
 // DON NOT EDIT IT MANUALLY
 //
-// Generated from: https://raw.githubusercontent.com/langgenius/dify-docs/refs/heads/main/docs.json
-// Generated at: 2026-03-25T03:18:49.626Z
+// Generated from: https://raw.githubusercontent.com/langgenius/dify-docs/feat/audience-products/docs.json
+// Generated at: 2026-06-17T03:36:53.584Z
 
 // Language prefixes
 export type DocLanguage = 'en' | 'zh' | 'ja'
@@ -10,19 +10,21 @@ export type DocLanguage = 'en' | 'zh' | 'ja'
 // UseDify paths
 type UseDifyPath =
   | '/use-dify/build/additional-features'
-  | '/use-dify/build/goto-anything'
+  | '/use-dify/build/agent'
+  | '/use-dify/build/chatbot'
   | '/use-dify/build/mcp'
   | '/use-dify/build/orchestrate-node'
   | '/use-dify/build/predefined-error-handling-logic'
   | '/use-dify/build/shortcut-key'
+  | '/use-dify/build/text-generator'
   | '/use-dify/build/version-control'
+  | '/use-dify/build/workflow-chatflow'
+  | '/use-dify/build/workflow-collaboration'
   | '/use-dify/debug/error-type'
   | '/use-dify/debug/history-and-logs'
   | '/use-dify/debug/step-run'
   | '/use-dify/debug/variable-inspect'
   | '/use-dify/getting-started/introduction'
-  | '/use-dify/getting-started/key-concepts'
-  | '/use-dify/getting-started/quick-start'
   | '/use-dify/knowledge/connect-external-knowledge-base'
   | '/use-dify/knowledge/create-knowledge/chunking-and-cleaning-text'
   | '/use-dify/knowledge/create-knowledge/import-text-data/readme'
@@ -86,24 +88,8 @@ type UseDifyPath =
   | '/use-dify/publish/publish-to-marketplace'
   | '/use-dify/publish/webapp/chatflow-webapp'
   | '/use-dify/publish/webapp/embedding-in-websites'
-  | '/use-dify/publish/webapp/web-app-access'
   | '/use-dify/publish/webapp/web-app-settings'
   | '/use-dify/publish/webapp/workflow-webapp'
-  | '/use-dify/tutorials/article-reader'
-  | '/use-dify/tutorials/build-ai-image-generation-app'
-  | '/use-dify/tutorials/customer-service-bot'
-  | '/use-dify/tutorials/simple-chatbot'
-  | '/use-dify/tutorials/twitter-chatflow'
-  | '/use-dify/tutorials/workflow-101/lesson-01'
-  | '/use-dify/tutorials/workflow-101/lesson-02'
-  | '/use-dify/tutorials/workflow-101/lesson-03'
-  | '/use-dify/tutorials/workflow-101/lesson-04'
-  | '/use-dify/tutorials/workflow-101/lesson-05'
-  | '/use-dify/tutorials/workflow-101/lesson-06'
-  | '/use-dify/tutorials/workflow-101/lesson-07'
-  | '/use-dify/tutorials/workflow-101/lesson-08'
-  | '/use-dify/tutorials/workflow-101/lesson-09'
-  | '/use-dify/tutorials/workflow-101/lesson-10'
   | '/use-dify/workspace/api-extension/api-extension'
   | '/use-dify/workspace/api-extension/cloudflare-worker'
   | '/use-dify/workspace/api-extension/external-data-tool-api-extension'
@@ -115,25 +101,42 @@ type UseDifyPath =
   | '/use-dify/workspace/readme'
   | '/use-dify/workspace/subscription-management'
   | '/use-dify/workspace/team-members-management'
+  | '/use-dify/workspace/tools'
 
 // UseDify node paths (without prefix)
 type ExtractNodesPath<T> = T extends `/use-dify/nodes/${infer Path}` ? Path : never
 export type UseDifyNodesPath = ExtractNodesPath<UseDifyPath>
 
-// SelfHost paths
-type SelfHostPath =
-  | '/self-host/advanced-deployments/local-source-code'
-  | '/self-host/advanced-deployments/start-the-frontend-docker-container'
-  | '/self-host/configuration/environments'
-  | '/self-host/platform-guides/bt-panel'
-  | '/self-host/platform-guides/dify-premium'
-  | '/self-host/quick-start/docker-compose'
-  | '/self-host/quick-start/faqs'
-  | '/self-host/troubleshooting/common-issues'
-  | '/self-host/troubleshooting/docker-issues'
-  | '/self-host/troubleshooting/integrations'
-  | '/self-host/troubleshooting/storage-and-migration'
-  | '/self-host/troubleshooting/weaviate-v4-migration'
+// Home paths
+type HomePath =
+  | '/home'
+
+// Learn paths
+type LearnPath =
+  | '/learn/key-concepts'
+  | '/learn/tutorials/article-reader'
+  | '/learn/tutorials/build-ai-image-generation-app'
+  | '/learn/tutorials/customer-service-bot'
+  | '/learn/tutorials/simple-chatbot'
+  | '/learn/tutorials/twitter-chatflow'
+  | '/learn/tutorials/workflow-101/lesson-01'
+  | '/learn/tutorials/workflow-101/lesson-02'
+  | '/learn/tutorials/workflow-101/lesson-03'
+  | '/learn/tutorials/workflow-101/lesson-04'
+  | '/learn/tutorials/workflow-101/lesson-05'
+  | '/learn/tutorials/workflow-101/lesson-06'
+  | '/learn/tutorials/workflow-101/lesson-07'
+  | '/learn/tutorials/workflow-101/lesson-08'
+  | '/learn/tutorials/workflow-101/lesson-09'
+  | '/learn/tutorials/workflow-101/lesson-10'
+
+// QuickStart paths
+type QuickStartPath =
+  | '/quick-start'
+
+// Cli paths
+type CliPath =
+  | '/cli/coming-soon'
 
 // DevelopPlugin paths
 type DevelopPluginPath =
@@ -165,6 +168,7 @@ type DevelopPluginPath =
   | '/develop-plugin/features-and-specs/plugin-types/plugin-logging'
   | '/develop-plugin/features-and-specs/plugin-types/remote-debug-a-plugin'
   | '/develop-plugin/features-and-specs/plugin-types/tool'
+  | '/develop-plugin/getting-started/choose-plugin-type'
   | '/develop-plugin/getting-started/cli'
   | '/develop-plugin/getting-started/getting-started-dify-plugin'
   | '/develop-plugin/publishing/faq/faq'
@@ -176,6 +180,22 @@ type DevelopPluginPath =
   | '/develop-plugin/publishing/standards/contributor-covenant-code-of-conduct'
   | '/develop-plugin/publishing/standards/privacy-protection-guidelines'
   | '/develop-plugin/publishing/standards/third-party-signature-verification'
+
+// SelfHost paths
+type SelfHostPath =
+  | '/self-host/deploy/advanced-deployments/local-source-code'
+  | '/self-host/deploy/advanced-deployments/start-the-frontend-docker-container'
+  | '/self-host/deploy/configuration/environments'
+  | '/self-host/deploy/overview'
+  | '/self-host/deploy/platform-guides/bt-panel'
+  | '/self-host/deploy/platform-guides/dify-premium'
+  | '/self-host/deploy/quick-start/docker-compose'
+  | '/self-host/deploy/quick-start/faqs'
+  | '/self-host/deploy/troubleshooting/common-issues'
+  | '/self-host/deploy/troubleshooting/docker-issues'
+  | '/self-host/deploy/troubleshooting/integrations'
+  | '/self-host/deploy/troubleshooting/storage-and-migration'
+  | '/self-host/deploy/troubleshooting/weaviate-v4-migration'
 
 // API Reference paths (English, use apiReferencePathTranslations for other languages)
 type ApiReferencePath =
@@ -189,6 +209,12 @@ type ApiReferencePath =
   | '/api-reference/applications/get-app-meta'
   | '/api-reference/applications/get-app-parameters'
   | '/api-reference/applications/get-app-webapp-settings'
+  | '/api-reference/chatflows/get-next-suggested-questions'
+  | '/api-reference/chatflows/get-workflow-run-detail'
+  | '/api-reference/chatflows/list-workflow-logs'
+  | '/api-reference/chatflows/send-chat-message'
+  | '/api-reference/chatflows/stop-chat-message-generation'
+  | '/api-reference/chatflows/stream-workflow-events'
   | '/api-reference/chats/get-next-suggested-questions'
   | '/api-reference/chats/send-chat-message'
   | '/api-reference/chats/stop-chat-message-generation'
@@ -225,6 +251,8 @@ type ApiReferencePath =
   | '/api-reference/feedback/submit-message-feedback'
   | '/api-reference/files/download-file'
   | '/api-reference/files/upload-file'
+  | '/api-reference/human-input/get-human-input-form'
+  | '/api-reference/human-input/submit-human-input-form'
   | '/api-reference/knowledge-bases/create-an-empty-knowledge-base'
   | '/api-reference/knowledge-bases/delete-knowledge-base'
   | '/api-reference/knowledge-bases/get-knowledge-base'
@@ -252,25 +280,31 @@ type ApiReferencePath =
   | '/api-reference/tags/update-knowledge-tag'
   | '/api-reference/tts/convert-audio-to-text'
   | '/api-reference/tts/convert-text-to-audio'
-  | '/api-reference/workflow-runs/get-workflow-run-detail'
-  | '/api-reference/workflow-runs/list-workflow-logs'
   | '/api-reference/workflows/get-workflow-run-detail'
   | '/api-reference/workflows/list-workflow-logs'
   | '/api-reference/workflows/run-workflow'
   | '/api-reference/workflows/run-workflow-by-id'
   | '/api-reference/workflows/stop-workflow-task'
+  | '/api-reference/workflows/stream-workflow-events'
 
 // Base path without language prefix
 type DocPathWithoutLangBase =
   | UseDifyPath
-  | SelfHostPath
+  | HomePath
+  | LearnPath
+  | QuickStartPath
+  | CliPath
   | DevelopPluginPath
+  | SelfHostPath
   | ApiReferencePath
 
 // Combined path without language prefix (supports optional #anchor)
 export type DocPathWithoutLang =
   | DocPathWithoutLangBase
   | `${DocPathWithoutLangBase}#${string}`
+
+// Full documentation path with language prefix
+export type DifyDocPath = `${DocLanguage}/${DocPathWithoutLang}`
 
 // API Reference path translations (English -> other languages)
 export const apiReferencePathTranslations: Record<string, { zh?: string; ja?: string }> = {
@@ -284,6 +318,12 @@ export const apiReferencePathTranslations: Record<string, { zh?: string; ja?: st
   '/api-reference/applications/get-app-meta': { zh: '/api-reference/应用配置/获取应用元数据', ja: '/api-reference/アプリケーション設定/アプリケーションのメタ情報を取得' },
   '/api-reference/applications/get-app-parameters': { zh: '/api-reference/应用配置/获取应用参数', ja: '/api-reference/アプリケーション設定/アプリケーションのパラメータ情報を取得' },
   '/api-reference/applications/get-app-webapp-settings': { zh: '/api-reference/应用配置/获取应用-webapp-设置', ja: '/api-reference/アプリケーション設定/アプリの-webapp-設定を取得' },
+  '/api-reference/chatflows/get-next-suggested-questions': { zh: '/api-reference/对话流/获取下一轮建议问题列表', ja: '/api-reference/チャットフロー/次の推奨質問を取得' },
+  '/api-reference/chatflows/get-workflow-run-detail': { zh: '/api-reference/对话流/获取工作流执行情况', ja: '/api-reference/チャットフロー/ワークフロー実行詳細を取得' },
+  '/api-reference/chatflows/list-workflow-logs': { zh: '/api-reference/对话流/获取工作流日志', ja: '/api-reference/チャットフロー/ワークフローログ一覧を取得' },
+  '/api-reference/chatflows/send-chat-message': { zh: '/api-reference/对话流/发送对话消息', ja: '/api-reference/チャットフロー/チャットメッセージを送信' },
+  '/api-reference/chatflows/stop-chat-message-generation': { zh: '/api-reference/对话流/停止响应', ja: '/api-reference/チャットフロー/生成を停止' },
+  '/api-reference/chatflows/stream-workflow-events': { zh: '/api-reference/对话流/流式获取工作流事件', ja: '/api-reference/チャットフロー/ワークフローイベントをストリーム' },
   '/api-reference/chats/get-next-suggested-questions': { zh: '/api-reference/对话消息/获取下一轮建议问题列表', ja: '/api-reference/チャットメッセージ/次の推奨質問を取得' },
   '/api-reference/chats/send-chat-message': { zh: '/api-reference/对话消息/发送对话消息', ja: '/api-reference/チャットメッセージ/チャットメッセージを送信' },
   '/api-reference/chats/stop-chat-message-generation': { zh: '/api-reference/对话消息/停止响应', ja: '/api-reference/チャットメッセージ/生成を停止' },
@@ -320,6 +360,8 @@ export const apiReferencePathTranslations: Record<string, { zh?: string; ja?: st
   '/api-reference/feedback/submit-message-feedback': { zh: '/api-reference/消息反馈/提交消息反馈', ja: '/api-reference/メッセージフィードバック/メッセージフィードバックを送信' },
   '/api-reference/files/download-file': { zh: '/api-reference/文件操作/下载文件', ja: '/api-reference/ファイル操作/ファイルをダウンロード' },
   '/api-reference/files/upload-file': { zh: '/api-reference/文件操作/上传文件', ja: '/api-reference/ファイル操作/ファイルをアップロード' },
+  '/api-reference/human-input/get-human-input-form': { zh: '/api-reference/人工介入/获取人工介入表单', ja: '/api-reference/人間の入力/人間の入力フォームを取得' },
+  '/api-reference/human-input/submit-human-input-form': { zh: '/api-reference/人工介入/提交人工介入表单', ja: '/api-reference/人間の入力/人間の入力フォームを送信' },
   '/api-reference/knowledge-bases/create-an-empty-knowledge-base': { zh: '/api-reference/知识库/创建空知识库', ja: '/api-reference/データセット/空のナレッジベースを作成' },
   '/api-reference/knowledge-bases/delete-knowledge-base': { zh: '/api-reference/知识库/删除知识库', ja: '/api-reference/データセット/ナレッジベースを削除' },
   '/api-reference/knowledge-bases/get-knowledge-base': { zh: '/api-reference/知识库/获取知识库详情', ja: '/api-reference/データセット/ナレッジベース詳細を取得' },
@@ -347,11 +389,10 @@ export const apiReferencePathTranslations: Record<string, { zh?: string; ja?: st
   '/api-reference/tags/update-knowledge-tag': { zh: '/api-reference/标签/修改知识库标签', ja: '/api-reference/タグ管理/ナレッジベースタグを変更' },
   '/api-reference/tts/convert-audio-to-text': { zh: '/api-reference/语音与文字转换/语音转文字', ja: '/api-reference/音声・テキスト変換/音声をテキストに変換' },
   '/api-reference/tts/convert-text-to-audio': { zh: '/api-reference/语音与文字转换/文字转语音', ja: '/api-reference/音声・テキスト変換/テキストを音声に変換' },
-  '/api-reference/workflow-runs/get-workflow-run-detail': { zh: '/api-reference/工作流执行/获取工作流执行情况', ja: '/api-reference/ワークフロー実行/ワークフロー実行詳細を取得' },
-  '/api-reference/workflow-runs/list-workflow-logs': { zh: '/api-reference/工作流执行/获取工作流日志', ja: '/api-reference/ワークフロー実行/ワークフローログ一覧を取得' },
   '/api-reference/workflows/get-workflow-run-detail': { zh: '/api-reference/工作流/获取工作流执行情况', ja: '/api-reference/ワークフロー/ワークフロー実行詳細を取得' },
   '/api-reference/workflows/list-workflow-logs': { zh: '/api-reference/工作流/获取工作流日志', ja: '/api-reference/ワークフロー/ワークフローログ一覧を取得' },
   '/api-reference/workflows/run-workflow': { zh: '/api-reference/工作流/执行工作流', ja: '/api-reference/ワークフロー/ワークフローを実行' },
   '/api-reference/workflows/run-workflow-by-id': { zh: '/api-reference/工作流/按-id-执行工作流', ja: '/api-reference/ワークフロー/id-でワークフローを実行' },
   '/api-reference/workflows/stop-workflow-task': { zh: '/api-reference/工作流/停止工作流任务', ja: '/api-reference/ワークフロー/ワークフロータスクを停止' },
+  '/api-reference/workflows/stream-workflow-events': { zh: '/api-reference/工作流/流式获取工作流事件', ja: '/api-reference/ワークフロー/ワークフローイベントをストリーム' },
 }
