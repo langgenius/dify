@@ -3587,7 +3587,7 @@ Model class for provider with models response.
 | ---- | ---- | ----------- | -------- |
 | chunk_overlap | integer |  | No |
 | max_tokens | integer |  | Yes |
-| separator | string, <br>**Default:** 
+| separator | string, <br>**Default:**
  |  | No |
 
 #### SelectInputConfig

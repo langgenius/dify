@@ -17996,7 +17996,7 @@ Model class for provider quota configuration.
 | ---- | ---- | ----------- | -------- |
 | chunk_overlap | integer |  | No |
 | max_tokens | integer |  | Yes |
-| separator | string, <br>**Default:** 
+| separator | string, <br>**Default:**
  |  | No |
 
 #### SelectInputConfig
