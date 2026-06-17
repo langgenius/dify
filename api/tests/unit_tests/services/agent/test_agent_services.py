@@ -17,6 +17,8 @@ from models.agent import (
 )
 from models.agent_config_entities import (
     AgentFileRefConfig,
+    DeclaredArrayItem,
+    DeclaredOutputChildConfig,
     DeclaredOutputConfig,
     DeclaredOutputType,
     WorkflowNodeJobConfig,
@@ -112,7 +114,7 @@ def test_load_workflow_composer_returns_empty_state(monkeypatch):
     effective = result["effective_declared_outputs"]
     assert [o["name"] for o in effective] == ["text", "files", "json"]
     files_output = next(o for o in effective if o["name"] == "files")
-    assert files_output["array_item"] == {"type": "file", "description": None}
+    assert files_output["array_item"] == {"type": "file", "description": None, "children": []}
 
 
 def test_load_workflow_composer_serializes_existing_binding(monkeypatch):
@@ -649,6 +651,7 @@ def test_roster_list_and_invite_options(monkeypatch):
         lambda version_ids: {"version-1": version, "version-2": unconfigured_version},
     )
     monkeypatch.setattr(service, "_load_published_references_by_agent_id", lambda **kwargs: {})
+    monkeypatch.setattr(service, "_load_published_active_snapshot_agent_ids", lambda **kwargs: {"agent-1"})
 
     listed = service.list_roster_agents(tenant_id="tenant-1", page=1, limit=20)
     invited = service.list_invite_options(tenant_id="tenant-1", page=1, limit=20, app_id="app-1")
@@ -661,6 +664,8 @@ def test_roster_list_and_invite_options(monkeypatch):
     assert listed["data"][0]["created_at"] == int(created_at.timestamp())
     assert listed["data"][0]["updated_at"] == int(updated_at.timestamp())
     assert listed["data"][0]["active_config_snapshot"]["created_at"] == int(version_created_at.timestamp())
+    assert listed["data"][0]["active_config_is_published"] is True
+    assert listed["data"][1]["active_config_is_published"] is False
     assert invited["data"][0]["is_in_current_workflow"] is True
     assert invited["data"][0]["existing_node_ids"] == ["node-1"]
 
@@ -690,12 +695,48 @@ def test_invite_options_uses_db_filtered_pagination(monkeypatch):
         },
     )
     monkeypatch.setattr(service, "_load_published_references_by_agent_id", lambda **kwargs: {})
+    monkeypatch.setattr(service, "_load_published_active_snapshot_agent_ids", lambda **kwargs: set())
 
     result = service.list_invite_options(tenant_id="tenant-1", page=1, limit=1)
 
     assert result["total"] == 1
     assert result["has_more"] is False
     assert [item["id"] for item in result["data"]] == ["agent-2"]
+
+
+def test_active_config_is_published_flags_handle_matching_and_empty_snapshots():
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Published",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="version-1",
+    )
+    draft_agent = Agent(
+        id="agent-2",
+        tenant_id="tenant-1",
+        name="Draft",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id=None,
+    )
+    service = AgentRosterService(FakeSession(scalars=[["agent-1"], ["agent-1"]]))
+
+    flags = service.load_active_config_is_published_by_agent_id(tenant_id="tenant-1", agents=[agent, draft_agent])
+
+    assert flags == {"agent-1": True, "agent-2": False}
+    assert service.active_config_is_published(tenant_id="tenant-1", agent=agent) is True
+    assert AgentRosterService(FakeSession()).load_active_config_is_published_by_agent_id(
+        tenant_id="tenant-1",
+        agents=[draft_agent],
+    ) == {"agent-2": False}
 
 
 def test_published_references_include_app_display_fields_and_sort_by_updated_at():
@@ -1042,7 +1083,7 @@ def test_composer_validator_accepts_valid_shell_env_and_cli():
         {
             "env": {
                 "variables": [{"name": "MY_VAR", "value": "v"}],
-                "secret_refs": [{"name": "API_TOKEN", "id": "credential-1"}],
+                "secret_refs": [{"name": "API_TOKEN", "value": "credential-1"}],
             },
             "tools": {
                 "cli_tools": [
@@ -1051,7 +1092,7 @@ def test_composer_validator_accepts_valid_shell_env_and_cli():
                         "command": "apt-get install -y jq",
                         "env": {
                             "variables": [{"name": "JQ_COLOR", "value": "1"}],
-                            "secret_refs": [{"name": "JQ_TOKEN", "id": "credential-2"}],
+                            "secret_refs": [{"name": "JQ_TOKEN", "value": "credential-2"}],
                         },
                     },
                     {
@@ -1067,8 +1108,10 @@ def test_composer_validator_accepts_valid_shell_env_and_cli():
     )
     assert {variable.name for variable in config.env.variables} == {"MY_VAR"}
     assert {secret.name for secret in config.env.secret_refs} == {"API_TOKEN"}
+    assert config.env.secret_refs[0].value == "credential-1"
     assert config.tools.cli_tools[0].env.variables[0].name == "JQ_COLOR"
     assert config.tools.cli_tools[0].env.secret_refs[0].name == "JQ_TOKEN"
+    assert config.tools.cli_tools[0].env.secret_refs[0].value == "credential-2"
 
 
 class TestAgentAppBackingAgent:
@@ -1263,7 +1306,22 @@ class TestWorkflowAgentDraftBindingSync:
             node_job_config=WorkflowNodeJobConfig(
                 workflow_prompt="Summarize the upstream result.",
                 declared_outputs=[
-                    DeclaredOutputConfig(name="summary", type=DeclaredOutputType.STRING, description="Short summary")
+                    DeclaredOutputConfig(name="summary", type=DeclaredOutputType.STRING, description="Short summary"),
+                    DeclaredOutputConfig(
+                        name="profile",
+                        type=DeclaredOutputType.OBJECT,
+                        children=[
+                            DeclaredOutputChildConfig(name="email", type=DeclaredOutputType.STRING),
+                            DeclaredOutputChildConfig(
+                                name="addresses",
+                                type=DeclaredOutputType.ARRAY,
+                                array_item=DeclaredArrayItem(
+                                    type=DeclaredOutputType.OBJECT,
+                                    children=[DeclaredOutputChildConfig(name="city", type=DeclaredOutputType.STRING)],
+                                ),
+                            ),
+                        ],
+                    ),
                 ],
             ),
         )
@@ -1279,6 +1337,9 @@ class TestWorkflowAgentDraftBindingSync:
         assert node_data["agent_declared_outputs"][0]["name"] == "summary"
         assert node_data["agent_declared_outputs"][0]["type"] == "string"
         assert node_data["agent_declared_outputs"][0]["description"] == "Short summary"
+        profile_output = node_data["agent_declared_outputs"][1]
+        assert profile_output["children"][0]["name"] == "email"
+        assert profile_output["children"][1]["array_item"]["children"][0]["name"] == "city"
         assert "agent_declared_outputs" not in workflow.graph_dict["nodes"][0]["data"]
 
     def test_creates_roster_binding_from_agent_node_graph(self):

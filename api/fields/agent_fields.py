@@ -70,6 +70,7 @@ class AgentRosterResponse(ResponseModel):
     workflow_node_id: str | None = None
     active_config_snapshot_id: str | None = None
     active_config_snapshot: AgentConfigSnapshotSummaryResponse | None = None
+    active_config_is_published: bool = False
     status: AgentStatus
     created_by: str | None = None
     updated_by: str | None = None
