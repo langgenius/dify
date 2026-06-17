@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
+import { expect, waitFor, within } from 'storybook/test'
 import {
   Dialog,
   DialogCloseButton,
@@ -66,6 +67,22 @@ export const Default: Story = {
       </DialogContent>
     </Dialog>
   ),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const body = within(canvasElement.ownerDocument.body)
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Open dialog' }))
+
+    const dialog = body.getByRole('dialog', { name: 'Invite collaborators' })
+    await waitFor(async () => {
+      await expect(dialog).toBeVisible()
+    })
+    await expect(body.getByRole('textbox', { name: 'Email address' })).toBeVisible()
+
+    await userEvent.click(body.getByRole('button', { name: 'Close' }))
+    await waitFor(async () => {
+      await expect(body.queryByRole('dialog', { name: 'Invite collaborators' })).not.toBeInTheDocument()
+    })
+  },
 }
 
 export const WithoutCloseButton: Story = {

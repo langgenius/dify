@@ -382,7 +382,7 @@ Check if activation token is valid
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [UpdateAppPayload](#updateapppayload)<br> |
+|  Yes | **application/json**: [AgentAppUpdatePayload](#agentappupdatepayload)<br> |
 
 #### Responses
 
@@ -638,6 +638,26 @@ Commit an uploaded file into the Agent App drive under files/<name>
 | ---- | ----------- | ------ |
 | 201 | File committed into the agent drive | **application/json**: [AgentDriveFileCommitResponse](#agentdrivefilecommitresponse)<br> |
 
+### [GET] /agent/{agent_id}/logs
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| end | query | End date (YYYY-MM-DD HH:MM) | No | string |
+| keyword | query | Search query, answer, or conversation name | No | string |
+| limit | query | Page size | No | integer, <br>**Default:** 20 |
+| page | query | Page number | No | integer, <br>**Default:** 1 |
+| source | query | Filter by all, console/explore, api/service-api, web-app, debugger, openapi, or trigger | No | string |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
+| status | query | Filter by success, failed, or paused | No | string |
+| agent_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent logs | **application/json**: [AgentLogListResponse](#agentloglistresponse)<br> |
+
 ### [GET] /agent/{agent_id}/messages/{message_id}
 Get Agent App message details by ID
 
@@ -789,6 +809,22 @@ Infer CLI tool + ENV suggestions from a standardized Agent App skill
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Inference result (draft suggestions, nothing persisted) | **application/json**: [SkillToolInferenceResult](#skilltoolinferenceresult)<br> |
+
+### [GET] /agent/{agent_id}/statistics/summary
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| end | query | End date (YYYY-MM-DD HH:MM) | No | string |
+| source | query | Filter by all, console/explore, api/service-api, web-app, debugger, openapi, or trigger | No | string |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
+| agent_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent monitoring summary and chart data | **application/json**: [AgentStatisticSummaryEnvelopeResponse](#agentstatisticsummaryenveloperesponse)<br> |
 
 ### [GET] /agent/{agent_id}/versions
 #### Parameters
@@ -11286,6 +11322,7 @@ Default namespace
 | icon_background | string | Icon background color | No |
 | icon_type | [IconType](#icontype) | Icon type | No |
 | name | string | Agent name | Yes |
+| role | string | Agent role | No |
 
 #### AgentAppFeaturesPayload
 
@@ -11303,6 +11340,33 @@ default (the config form sends the full desired feature state on save).
 | suggested_questions | [ string ] | Preset questions shown alongside the opener | No |
 | suggested_questions_after_answer | [AgentSuggestedQuestionsAfterAnswerFeatureConfig](#agentsuggestedquestionsafteranswerfeatureconfig) | Follow-up suggestions config, e.g. {'enabled': true} | No |
 | text_to_speech | [AgentTextToSpeechFeatureConfig](#agenttexttospeechfeatureconfig) | Text-to-speech config | No |
+
+#### AgentAppUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string | App description (max 400 chars) | No |
+| icon | string | Icon | No |
+| icon_background | string | Icon background color | No |
+| icon_type | [IconType](#icontype) | Icon type | No |
+| max_active_requests | integer | Maximum active requests | No |
+| name | string | App name | Yes |
+| role | string | Agent role | No |
+| use_icon_as_answer_icon | boolean | Use icon as answer icon | No |
+
+#### AgentAverageResponseTimeStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| latency | number |  | Yes |
+
+#### AgentAverageSessionInteractionStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| interactions | number |  | Yes |
 
 #### AgentCliToolAuthorizationStatus
 
@@ -11544,6 +11608,27 @@ Audit operation recorded for Agent Soul version/revision changes.
 | version | integer |  | Yes |
 | version_note | string |  | No |
 
+#### AgentDailyConversationStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_count | integer |  | Yes |
+| date | string |  | Yes |
+
+#### AgentDailyEndUserStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| terminal_count | integer |  | Yes |
+
+#### AgentDailyMessageStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| message_count | integer |  | Yes |
+
 #### AgentDriveDeleteFileByAgentQuery
 
 | Name | Type | Description | Required |
@@ -11689,6 +11774,7 @@ Supported icon storage formats for Agent roster entries.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| active_config_is_published | boolean |  | No |
 | active_config_snapshot | [AgentConfigSnapshotSummaryResponse](#agentconfigsnapshotsummaryresponse) |  | No |
 | active_config_snapshot_id | string |  | No |
 | agent_kind | [AgentKind](#agentkind) |  | Yes |
@@ -11782,6 +11868,41 @@ the current roster/workflow APIs scoped to Dify Agent.
 | ---- | ---- | ----------- | -------- |
 | AgentKnowledgeQueryMode | string |  |  |
 
+#### AgentLogItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | Yes |
+| answer_tokens | integer |  | Yes |
+| conversation_id | string |  | Yes |
+| conversation_name | string |  | No |
+| created_at | integer |  | No |
+| currency | string |  | Yes |
+| error | string |  | No |
+| from_account_id | string |  | No |
+| from_end_user_id | string |  | No |
+| from_source | string |  | No |
+| id | string |  | Yes |
+| latency | number |  | Yes |
+| message_id | string |  | Yes |
+| message_tokens | integer |  | Yes |
+| query | string |  | Yes |
+| source | string |  | No |
+| status | string |  | Yes |
+| total_price | string |  | Yes |
+| total_tokens | integer |  | Yes |
+| updated_at | integer |  | No |
+
+#### AgentLogListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AgentLogItemResponse](#agentlogitemresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
 #### AgentLogMetaResponse
 
 | Name | Type | Description | Required |
@@ -11808,6 +11929,18 @@ the current roster/workflow APIs scoped to Dify Agent.
 | files | [  ] |  | No |
 | iterations | [ [AgentIterationLogResponse](#agentiterationlogresponse) ] |  | Yes |
 | meta | [AgentLogMetaResponse](#agentlogmetaresponse) |  | Yes |
+
+#### AgentLogsQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| end | string | End date (YYYY-MM-DD HH:MM) | No |
+| keyword | string | Search query, answer, or conversation name | No |
+| limit | integer, <br>**Default:** 20 | Page size | No |
+| page | integer, <br>**Default:** 1 | Page number | No |
+| source | string | Filter by all, console/explore, api/service-api, web-app, debugger, openapi, or trigger | No |
+| start | string | Start date (YYYY-MM-DD HH:MM) | No |
+| status | string | Filter by success, failed, or paused | No |
 
 #### AgentMemoryArtifactConfig
 
@@ -11910,6 +12043,7 @@ the current roster/workflow APIs scoped to Dify Agent.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| active_config_is_published | boolean |  | No |
 | active_config_snapshot | [AgentConfigSnapshotSummaryResponse](#agentconfigsnapshotsummaryresponse) |  | No |
 | active_config_snapshot_id | string |  | No |
 | agent_kind | [AgentKind](#agentkind) |  | Yes |
@@ -11975,6 +12109,7 @@ Visibility and lifecycle scope of an Agent record.
 | provider_credential_id | string |  | No |
 | ref | string |  | No |
 | type | string |  | No |
+| value | string |  | No |
 | variable | string |  | No |
 
 #### AgentSensitiveWordAvoidanceFeatureConfig
@@ -12180,6 +12315,50 @@ Origin that created or imported the Agent.
 | ---- | ---- | ----------- | -------- |
 | AgentSource | string | Origin that created or imported the Agent. |  |
 
+#### AgentStatisticChartsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| average_response_time | [ [AgentAverageResponseTimeStatisticResponse](#agentaverageresponsetimestatisticresponse) ] |  | No |
+| average_session_interactions | [ [AgentAverageSessionInteractionStatisticResponse](#agentaveragesessioninteractionstatisticresponse) ] |  | No |
+| daily_conversations | [ [AgentDailyConversationStatisticResponse](#agentdailyconversationstatisticresponse) ] |  | No |
+| daily_end_users | [ [AgentDailyEndUserStatisticResponse](#agentdailyenduserstatisticresponse) ] |  | No |
+| daily_messages | [ [AgentDailyMessageStatisticResponse](#agentdailymessagestatisticresponse) ] |  | No |
+| token_usage | [ [AgentTokenUsageStatisticResponse](#agenttokenusagestatisticresponse) ] |  | No |
+| tokens_per_second | [ [AgentTokensPerSecondStatisticResponse](#agenttokenspersecondstatisticresponse) ] |  | No |
+| user_satisfaction_rate | [ [AgentUserSatisfactionRateStatisticResponse](#agentusersatisfactionratestatisticresponse) ] |  | No |
+
+#### AgentStatisticSummaryEnvelopeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| charts | [AgentStatisticChartsResponse](#agentstatisticchartsresponse) |  | Yes |
+| source | string |  | Yes |
+| summary | [AgentStatisticSummaryResponse](#agentstatisticsummaryresponse) |  | Yes |
+
+#### AgentStatisticSummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| average_response_time | number |  | Yes |
+| average_session_interactions | number |  | Yes |
+| currency | string |  | Yes |
+| tokens_per_second | number |  | Yes |
+| total_conversations | integer |  | Yes |
+| total_end_users | integer |  | Yes |
+| total_messages | integer |  | Yes |
+| total_price | string |  | Yes |
+| total_tokens | integer |  | Yes |
+| user_satisfaction_rate | number |  | Yes |
+
+#### AgentStatisticsQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| end | string | End date (YYYY-MM-DD HH:MM) | No |
+| source | string | Filter by all, console/explore, api/service-api, web-app, debugger, openapi, or trigger | No |
+| start | string | Start date (YYYY-MM-DD HH:MM) | No |
+
 #### AgentStatus
 
 Soft lifecycle state for Agent records.
@@ -12222,6 +12401,22 @@ Soft lifecycle state for Agent records.
 | tool_input | string |  | No |
 | tool_labels | [JSONValue](#jsonvalue) |  | Yes |
 
+#### AgentTokenUsageStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| currency | string |  | Yes |
+| date | string |  | Yes |
+| token_count | integer |  | Yes |
+| total_price | string |  | Yes |
+
+#### AgentTokensPerSecondStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| tps | number |  | Yes |
+
 #### AgentToolCallResponse
 
 | Name | Type | Description | Required |
@@ -12235,6 +12430,13 @@ Soft lifecycle state for Agent records.
 | tool_name | string |  | Yes |
 | tool_output | object |  | Yes |
 | tool_parameters | object |  | Yes |
+
+#### AgentUserSatisfactionRateStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| rate | number |  | Yes |
 
 #### AllowedExtensionsResponse
 
@@ -12501,7 +12703,9 @@ Enum class for api provider schema type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
+| active_config_is_published | boolean |  | No |
 | api_base_url | string |  | No |
+| app_id | string |  | No |
 | bound_agent_id | string |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
@@ -12518,6 +12722,7 @@ Enum class for api provider schema type.
 | mode | string |  | Yes |
 | model_config | [ModelConfig](#modelconfig) |  | No |
 | name | string |  | Yes |
+| role | string |  | No |
 | site | [Site](#site) |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | tracing | [JSONValue](#jsonvalue) |  | No |
@@ -12622,6 +12827,8 @@ AppMCPServer Status Enum
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
+| active_config_is_published | boolean |  | No |
+| app_id | string |  | No |
 | author_name | string |  | No |
 | bound_agent_id | string |  | No |
 | create_user_name | string |  | No |
@@ -12639,6 +12846,7 @@ AppMCPServer Status Enum
 | mode | string |  | Yes |
 | model_config | [ModelConfigPartial](#modelconfigpartial) |  | No |
 | name | string |  | Yes |
+| role | string |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
@@ -14183,6 +14391,7 @@ about. Stage 4 §4.2.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| children | [ { **"array_item"**: { **"children"**: [ object ], **"description"**: , **"type"**: string, <br>**Available values:** "array", "boolean", "file", "number", "object", "string" }, **"children"**: [ object ], **"description"**: , **"file"**: object, **"name"**: string, **"required"**: boolean, **"type"**: string, <br>**Available values:** "array", "boolean", "file", "number", "object", "string" } ] |  | No |
 | description | string |  | No |
 | type | [DeclaredOutputType](#declaredoutputtype) |  | Yes |
 
@@ -14211,6 +14420,7 @@ code can call ``output.failure_strategy.on_failure`` without None-guards.
 | ---- | ---- | ----------- | -------- |
 | array_item | [DeclaredArrayItem](#declaredarrayitem) |  | No |
 | check | [DeclaredOutputCheckConfig](#declaredoutputcheckconfig) |  | No |
+| children | [ { **"array_item"**: { **"children"**: [ object ], **"description"**: , **"type"**: string, <br>**Available values:** "array", "boolean", "file", "number", "object", "string" }, **"children"**: [ object ], **"description"**: , **"file"**: object, **"name"**: string, **"required"**: boolean, **"type"**: string, <br>**Available values:** "array", "boolean", "file", "number", "object", "string" } ] |  | No |
 | description | string |  | No |
 | failure_strategy | [DeclaredOutputFailureStrategy](#declaredoutputfailurestrategy) |  | No |
 | file | [DeclaredOutputFileConfig](#declaredoutputfileconfig) |  | No |

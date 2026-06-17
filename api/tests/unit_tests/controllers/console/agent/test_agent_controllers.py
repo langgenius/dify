@@ -23,8 +23,10 @@ from controllers.console.agent.roster import (
     AgentAppApi,
     AgentAppListApi,
     AgentInviteOptionsApi,
+    AgentLogsApi,
     AgentRosterVersionDetailApi,
     AgentRosterVersionsApi,
+    AgentStatisticsSummaryApi,
 )
 from controllers.console.app import completion as completion_controller
 from controllers.console.app import message as message_controller
@@ -113,6 +115,7 @@ def _app_detail_obj(**overrides):
         "deleted_tools": [],
         "site": None,
         "bound_agent_id": "00000000-0000-0000-0000-000000000001",
+        "tenant_id": "tenant-1",
     }
     data.update(overrides)
     return SimpleNamespace(**data)
@@ -147,6 +150,8 @@ def test_agent_v2_console_routes_are_agent_id_first() -> None:
         "/agent/<uuid:agent_id>/feedbacks",
         "/agent/<uuid:agent_id>/chat-messages/<uuid:message_id>/suggested-questions",
         "/agent/<uuid:agent_id>/messages/<uuid:message_id>",
+        "/agent/<uuid:agent_id>/logs",
+        "/agent/<uuid:agent_id>/statistics/summary",
         "/agent/invite-options",
     ):
         assert route in paths
@@ -196,6 +201,20 @@ def test_agent_app_list_and_create_use_agent_route(
 
     monkeypatch.setattr(roster_controller, "AppService", FakeAppService)
     monkeypatch.setattr(
+        roster_controller.AgentRosterService,
+        "load_app_backing_agents_by_app_id",
+        lambda _self, **kwargs: {
+            "app-list": SimpleNamespace(id="agent-list", role="List role", active_config_snapshot_id=None)
+        },
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentRosterService,
+        "get_app_backing_agent",
+        lambda _self, **kwargs: SimpleNamespace(
+            id="agent-created", role="Created role", active_config_snapshot_id=None
+        ),
+    )
+    monkeypatch.setattr(
         roster_controller.FeatureService,
         "get_system_features",
         lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
@@ -208,6 +227,9 @@ def test_agent_app_list_and_create_use_agent_route(
     assert listed["limit"] == 10
     assert listed["total"] == 1
     assert listed["data"][0]["id"] == "agent-list"
+    assert listed["data"][0]["app_id"] == "app-list"
+    assert listed["data"][0]["role"] == "List role"
+    assert listed["data"][0]["active_config_is_published"] is False
     assert "bound_agent_id" not in listed["data"][0]
     list_call = cast(dict[str, object], captured["list"])
     list_params = cast(Any, list_call["params"])
@@ -222,6 +244,9 @@ def test_agent_app_list_and_create_use_agent_route(
 
     assert status == 201
     assert created["id"] == "agent-created"
+    assert created["app_id"] == "app-created"
+    assert created["role"] == "Created role"
+    assert created["active_config_is_published"] is False
     assert "bound_agent_id" not in created
     create_call = cast(dict[str, object], captured["create"])
     create_params = cast(Any, create_call["params"])
@@ -239,6 +264,11 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
         roster_controller.AgentRosterService,
         "get_agent_app_model",
         lambda _self, **kwargs: app_model,
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentRosterService,
+        "get_app_backing_agent",
+        lambda _self, **kwargs: SimpleNamespace(id=agent_id, role="Resolved role", active_config_snapshot_id=None),
     )
     monkeypatch.setattr(
         roster_controller.FeatureService,
@@ -262,6 +292,9 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
 
     detail = unwrap(AgentAppApi.get)(AgentAppApi(), "tenant-1", agent_id)
     assert detail["id"] == agent_id
+    assert detail["app_id"] == "app-1"
+    assert detail["role"] == "Resolved role"
+    assert detail["active_config_is_published"] is False
     assert "bound_agent_id" not in detail
 
     with app.test_request_context(
@@ -272,6 +305,9 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
 
     assert updated["name"] == "Renamed"
     assert updated["id"] == agent_id
+    assert updated["app_id"] == "app-1"
+    assert updated["role"] == "Resolved role"
+    assert updated["active_config_is_published"] is False
     assert "bound_agent_id" not in updated
     update_call = cast(dict[str, object], captured["update"])
     assert update_call["app"] is app_model
@@ -337,6 +373,108 @@ def test_agent_versions_call_services(app: Flask, monkeypatch: pytest.MonkeyPatc
     )
     assert version_detail["id"] == version_id
     assert version_detail["agent_id"] == agent_id
+
+
+def test_agent_observability_routes_resolve_app_from_agent_id(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+) -> None:
+    agent_id = "00000000-0000-0000-0000-000000000001"
+    app_model = SimpleNamespace(id="app-1")
+    captured: dict[str, object] = {}
+
+    class FakeObservabilityService:
+        def list_logs(self, *, app, params):
+            captured["logs"] = {"app": app, "params": params}
+            return {
+                "data": [
+                    {
+                        "id": "message-1",
+                        "message_id": "message-1",
+                        "conversation_id": "conversation-1",
+                        "conversation_name": "Debug",
+                        "query": "hello",
+                        "answer": "hi",
+                        "status": "success",
+                        "error": None,
+                        "source": "explore",
+                        "from_source": "console",
+                        "from_end_user_id": None,
+                        "from_account_id": account_id,
+                        "message_tokens": 1,
+                        "answer_tokens": 2,
+                        "total_tokens": 3,
+                        "total_price": "0",
+                        "currency": "USD",
+                        "latency": 1.2,
+                        "created_at": 1,
+                        "updated_at": 2,
+                    }
+                ],
+                "page": 2,
+                "limit": 5,
+                "total": 6,
+                "has_more": False,
+            }
+
+        def get_statistics_summary(self, *, app, params):
+            captured["statistics"] = {"app": app, "params": params}
+            return {
+                "source": "all",
+                "summary": {
+                    "total_messages": 1,
+                    "total_conversations": 1,
+                    "total_end_users": 1,
+                    "total_tokens": 3,
+                    "total_price": "0",
+                    "currency": "USD",
+                    "average_session_interactions": 1,
+                    "average_response_time": 1200,
+                    "tokens_per_second": 2,
+                    "user_satisfaction_rate": 100,
+                },
+                "charts": {
+                    "daily_messages": [{"date": "2026-06-17", "message_count": 1}],
+                    "daily_conversations": [{"date": "2026-06-17", "conversation_count": 1}],
+                    "daily_end_users": [{"date": "2026-06-17", "terminal_count": 1}],
+                    "token_usage": [{"date": "2026-06-17", "token_count": 3, "total_price": "0", "currency": "USD"}],
+                    "average_session_interactions": [{"date": "2026-06-17", "interactions": 1}],
+                    "average_response_time": [{"date": "2026-06-17", "latency": 1200}],
+                    "tokens_per_second": [{"date": "2026-06-17", "tps": 2}],
+                    "user_satisfaction_rate": [{"date": "2026-06-17", "rate": 100}],
+                },
+            }
+
+    monkeypatch.setattr(roster_controller, "_resolve_agent_app_model", lambda **kwargs: app_model)
+    monkeypatch.setattr(roster_controller, "_agent_observability_service", lambda: FakeObservabilityService())
+
+    account = SimpleNamespace(id=account_id, timezone="UTC")
+    with app.test_request_context(
+        "/console/api/agent/00000000-0000-0000-0000-000000000001/logs"
+        "?page=2&limit=5&keyword=hello&status=success&source=console"
+    ):
+        logs = unwrap(AgentLogsApi.get)(AgentLogsApi(), "tenant-1", account, agent_id)
+
+    assert logs["data"][0]["id"] == "message-1"
+    logs_call = cast(dict[str, object], captured["logs"])
+    assert logs_call["app"] is app_model
+    logs_params = cast(Any, logs_call["params"])
+    assert logs_params.page == 2
+    assert logs_params.limit == 5
+    assert logs_params.keyword == "hello"
+    assert logs_params.status == "success"
+    assert logs_params.source == "console"
+
+    with app.test_request_context(
+        "/console/api/agent/00000000-0000-0000-0000-000000000001/statistics/summary?source=api"
+    ):
+        statistics = unwrap(AgentStatisticsSummaryApi.get)(AgentStatisticsSummaryApi(), "tenant-1", account, agent_id)
+
+    assert statistics["summary"]["total_messages"] == 1
+    stats_call = cast(dict[str, object], captured["statistics"])
+    assert stats_call["app"] is app_model
+    stats_params = cast(Any, stats_call["params"])
+    assert stats_params.source == "api"
+    assert stats_params.timezone == "UTC"
 
 
 def test_workflow_composer_get_put_validate_candidates_impact_and_save(

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
+import { expect } from 'storybook/test'
 import {
   Pagination,
   PaginationSkeleton,
@@ -77,6 +78,15 @@ type Story = StoryObj<typeof meta>
 
 export const Playground: Story = {
   render: () => <PaginationDemo />,
+  play: async ({ canvas, userEvent }) => {
+    await expect(canvas.getByRole('button', { name: 'Edit page number, current page 2 of 200' })).toBeVisible()
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Next page' }))
+    await expect(canvas.getByRole('button', { name: 'Edit page number, current page 3 of 200' })).toBeVisible()
+
+    await userEvent.click(canvas.getByRole('button', { name: '50' }))
+    await expect(canvas.getByRole('button', { name: '50' })).toHaveAttribute('aria-pressed', 'true')
+  },
   parameters: {
     a11y: {
       test: 'todo',
