@@ -1,8 +1,9 @@
-import type { AccessPolicy, Environment } from '@dify/contracts/enterprise/types.gen'
+import type { AccessPolicy, Environment, EnvironmentAccessPolicy } from '@dify/contracts/enterprise/types.gen'
 import { AccessMode, SubjectType } from '@dify/contracts/enterprise/types.gen'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { EnvironmentPermissionRow } from '../permissions'
+import { AccessPermissionsSection } from '../permissions-section'
 
 const mockMutate = vi.fn()
 const mockUseMutation = vi.hoisted(() => vi.fn())
@@ -15,10 +16,11 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-function createEnvironment(): Environment {
+function createEnvironment(overrides: Partial<Environment> = {}): Environment {
   return {
     id: 'environment-1',
     displayName: 'Production',
+    ...overrides,
   } as Environment
 }
 
@@ -51,6 +53,14 @@ function createSpecificAccessPolicy(): AccessPolicy {
   }
 }
 
+function createEnvironmentAccessPolicy(): EnvironmentAccessPolicy {
+  return {
+    environment: createEnvironment(),
+    policy: createAccessPolicy(),
+    resolvedSubjects: [],
+  }
+}
+
 describe('EnvironmentPermissionRow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -65,15 +75,11 @@ describe('EnvironmentPermissionRow', () => {
 
   it('should keep the previous permission visible when updating the policy fails', () => {
     render(
-      <table>
-        <tbody>
-          <EnvironmentPermissionRow
-            appInstanceId="app-instance-1"
-            environment={createEnvironment()}
-            summaryPolicy={createAccessPolicy()}
-          />
-        </tbody>
-      </table>,
+      <EnvironmentPermissionRow
+        appInstanceId="app-instance-1"
+        environment={createEnvironment()}
+        summaryPolicy={createAccessPolicy()}
+      />,
     )
 
     fireEvent.click(screen.getByRole('button', { name: /deployments\.access\.permissions\.editAriaLabel/ }))
@@ -86,15 +92,11 @@ describe('EnvironmentPermissionRow', () => {
 
   it('should show specific subject counts in the access summary', () => {
     render(
-      <table>
-        <tbody>
-          <EnvironmentPermissionRow
-            appInstanceId="app-instance-1"
-            environment={createEnvironment()}
-            summaryPolicy={createSpecificAccessPolicy()}
-          />
-        </tbody>
-      </table>,
+      <EnvironmentPermissionRow
+        appInstanceId="app-instance-1"
+        environment={createEnvironment()}
+        summaryPolicy={createSpecificAccessPolicy()}
+      />,
     )
 
     const editButton = screen.getByRole('button', { name: /deployments\.access\.permissions\.editAriaLabel/ })
@@ -102,5 +104,31 @@ describe('EnvironmentPermissionRow', () => {
     expect(editButton).toHaveTextContent('deployments.access.permission.specific')
     expect(editButton).toHaveTextContent('deployments.access.members.groupCount:{"count":1}')
     expect(editButton).toHaveTextContent('deployments.access.members.memberCount:{"count":1}')
+  })
+})
+
+// Access permissions render as simple environment rows without a table header.
+describe('AccessPermissionsSection', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUseMutation.mockReturnValue({
+      isPending: false,
+      mutate: mockMutate,
+    })
+  })
+
+  it('should render permission rows without column headers', () => {
+    render(
+      <AccessPermissionsSection
+        appInstanceId="app-instance-1"
+        environmentPolicies={[createEnvironmentAccessPolicy()]}
+        isLoading={false}
+        isError={false}
+      />,
+    )
+
+    expect(screen.getByText('Production')).toBeInTheDocument()
+    expect(screen.queryByText('deployments.access.permissions.col.environment')).not.toBeInTheDocument()
+    expect(screen.queryByText('deployments.access.permissions.col.permission')).not.toBeInTheDocument()
   })
 })

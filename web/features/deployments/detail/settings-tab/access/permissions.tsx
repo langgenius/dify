@@ -16,10 +16,6 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import {
-  DetailTableCell,
-  DetailTableRow,
-} from '../../table'
-import {
   accessControlSelectionFromSubjects,
   accessModeToPermissionKey,
   normalizeResolvedSubject,
@@ -133,32 +129,22 @@ export function EnvironmentPermissionRow({
   }
 
   return (
-    <DetailTableRow className="block h-auto pc:table-row">
-      <DetailTableCell className="block h-auto max-w-none px-4 pt-3 pb-1 align-top pc:table-cell pc:p-3 pc:pr-2">
-        <div className="system-2xs-medium-uppercase text-text-tertiary pc:hidden">
-          {t('access.permissions.col.environment')}
-        </div>
-        <div className="mt-1 flex min-h-8 min-w-0 items-center pc:mt-0">
-          <span className="min-w-0 truncate text-text-primary">
-            {envName}
-          </span>
-        </div>
-      </DetailTableCell>
-      <DetailTableCell className="block h-auto max-w-none px-4 pt-1 pb-3 align-top pc:table-cell pc:p-3 pc:pr-2">
-        <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary pc:hidden">
-          {t('access.permissions.col.permission')}
-        </div>
-        <EnvironmentPermissionEditor
-          permissionKind={permissionKind}
-          subjectSelection={subjectSelection}
-          subjects={subjects}
-          disabled={controlsDisabled}
-          environmentLabel={envName}
-          saving={isSaving}
-          onSubmit={handlePermissionSubmit}
-        />
-      </DetailTableCell>
-    </DetailTableRow>
+    <div className="flex min-w-0 flex-col gap-2 border-b border-divider-subtle py-4 first:pt-0 last:border-b-0 last:pb-0">
+      <div className="flex min-w-0 items-center">
+        <span className="min-w-0 truncate system-sm-regular text-text-primary">
+          {envName}
+        </span>
+      </div>
+      <EnvironmentPermissionEditor
+        permissionKind={permissionKind}
+        subjectSelection={subjectSelection}
+        subjects={subjects}
+        disabled={controlsDisabled}
+        environmentLabel={envName}
+        saving={isSaving}
+        onSubmit={handlePermissionSubmit}
+      />
+    </div>
   )
 }
 

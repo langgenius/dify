@@ -5,45 +5,20 @@ import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { DeploymentEmptyState, DeploymentStateMessage } from '../../../components/empty-state'
 import { Section } from '../../common'
-import {
-  DetailTable,
-  DetailTableBody,
-  DetailTableCell,
-  DetailTableHead,
-  DetailTableHeader,
-  DetailTableRow,
-} from '../../table'
-import {
-  ACCESS_PERMISSION_DETAIL_TABLE_COLUMN_CLASS_NAMES,
-} from '../../table-styles'
 import { EnvironmentPermissionRow } from './permissions'
 
 const ACCESS_PERMISSIONS_SKELETON_KEYS = ['production', 'staging', 'development']
 
 function AccessPermissionsSkeleton() {
-  const { t } = useTranslation('deployments')
-
   return (
-    <DetailTable className="block pc:table">
-      <DetailTableHeader className="hidden pc:table-header-group">
-        <DetailTableRow>
-          <DetailTableHead className={ACCESS_PERMISSION_DETAIL_TABLE_COLUMN_CLASS_NAMES.environment}>{t('access.permissions.col.environment')}</DetailTableHead>
-          <DetailTableHead className={ACCESS_PERMISSION_DETAIL_TABLE_COLUMN_CLASS_NAMES.permission}>{t('access.permissions.col.permission')}</DetailTableHead>
-        </DetailTableRow>
-      </DetailTableHeader>
-      <DetailTableBody className="block pc:table-row-group">
-        {ACCESS_PERMISSIONS_SKELETON_KEYS.map(key => (
-          <DetailTableRow key={key} className="block h-auto pc:table-row">
-            <DetailTableCell className="block h-auto max-w-none px-4 pt-3 pb-1 pc:table-cell pc:p-3 pc:pr-2">
-              <SkeletonRectangle className="h-4 w-32 animate-pulse" />
-            </DetailTableCell>
-            <DetailTableCell className="block h-auto max-w-none px-4 py-1 pc:table-cell pc:p-3 pc:pr-2">
-              <SkeletonRectangle className="my-0 h-8 w-full animate-pulse rounded-lg" />
-            </DetailTableCell>
-          </DetailTableRow>
-        ))}
-      </DetailTableBody>
-    </DetailTable>
+    <div className="flex min-w-0 flex-col">
+      {ACCESS_PERMISSIONS_SKELETON_KEYS.map(key => (
+        <div key={key} className="flex min-w-0 flex-col gap-2 border-b border-divider-subtle py-4 first:pt-0 last:border-b-0 last:pb-0">
+          <SkeletonRectangle className="h-4 w-32 animate-pulse" />
+          <SkeletonRectangle className="my-0 h-8 w-full animate-pulse rounded-lg" />
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -80,28 +55,20 @@ export function AccessPermissionsSection({
                 />
               )
             : (
-                <DetailTable className="block pc:table">
-                  <DetailTableHeader className="hidden pc:table-header-group">
-                    <DetailTableRow>
-                      <DetailTableHead className={ACCESS_PERMISSION_DETAIL_TABLE_COLUMN_CLASS_NAMES.environment}>{t('access.permissions.col.environment')}</DetailTableHead>
-                      <DetailTableHead className={ACCESS_PERMISSION_DETAIL_TABLE_COLUMN_CLASS_NAMES.permission}>{t('access.permissions.col.permission')}</DetailTableHead>
-                    </DetailTableRow>
-                  </DetailTableHeader>
-                  <DetailTableBody className="block pc:table-row-group">
-                    {policyRows.map((environmentPolicy) => {
-                      const environment = environmentPolicy.environment
-                      return (
-                        <EnvironmentPermissionRow
-                          key={environment.id}
-                          appInstanceId={appInstanceId}
-                          environment={environment}
-                          summaryPolicy={environmentPolicy.policy}
-                          resolvedSubjects={environmentPolicy.resolvedSubjects}
-                        />
-                      )
-                    })}
-                  </DetailTableBody>
-                </DetailTable>
+                <div className="flex min-w-0 flex-col">
+                  {policyRows.map((environmentPolicy) => {
+                    const environment = environmentPolicy.environment
+                    return (
+                      <EnvironmentPermissionRow
+                        key={environment.id}
+                        appInstanceId={appInstanceId}
+                        environment={environment}
+                        summaryPolicy={environmentPolicy.policy}
+                        resolvedSubjects={environmentPolicy.resolvedSubjects}
+                      />
+                    )
+                  })}
+                </div>
               )}
     </Section>
   )
