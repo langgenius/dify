@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { AgentPreviewChat } from '../chat'
 
 const handleSendMock = vi.hoisted(() => vi.fn())
@@ -129,11 +129,17 @@ describe('AgentPreviewChat', () => {
     stopCallbackRef.current = undefined
   })
 
-  it('should send preview chat through the agent chat endpoints', async () => {
-    renderPreviewChat()
+  it('should save draft before sending preview chat through the agent chat endpoints', async () => {
+    const saveDraftBeforeRun = vi.fn().mockResolvedValue(undefined)
+    renderPreviewChat({
+      onSaveDraftBeforeRun: saveDraftBeforeRun,
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'send' }))
 
+    await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
+    expect(saveDraftBeforeRun).toHaveBeenCalledTimes(1)
+    expect(saveDraftBeforeRun.mock.invocationCallOrder[0]).toBeLessThan(handleSendMock.mock.invocationCallOrder[0]!)
     expect(handleSendMock).toHaveBeenCalledWith(
       'agent/agent-1/chat-messages',
       expect.not.objectContaining({
@@ -175,5 +181,17 @@ describe('AgentPreviewChat', () => {
         task_id: 'task-1',
       },
     })
+  })
+
+  it('should not send preview chat when draft save fails', async () => {
+    const saveDraftBeforeRun = vi.fn().mockRejectedValue(new Error('save failed'))
+    renderPreviewChat({
+      onSaveDraftBeforeRun: saveDraftBeforeRun,
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+
+    await waitFor(() => expect(saveDraftBeforeRun).toHaveBeenCalledTimes(1))
+    expect(handleSendMock).not.toHaveBeenCalled()
   })
 })

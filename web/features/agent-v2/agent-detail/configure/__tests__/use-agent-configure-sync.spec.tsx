@@ -130,6 +130,39 @@ describe('useAgentConfigureSync', () => {
     expect(result.current.draftSavedAt).toBe(1710000105000)
   })
 
+  it('should save the latest draft immediately when requested', async () => {
+    vi.setSystemTime(1710000200000)
+    const { result, store } = renderUseAgentConfigureSync()
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Run prompt',
+      })
+    })
+
+    await act(async () => {
+      await result.current.saveDraft()
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
+    expect(composerPutMutationFn).toHaveBeenCalledWith(expect.objectContaining({
+      params: {
+        agent_id: 'agent-1',
+      },
+      body: expect.objectContaining({
+        variant: 'agent_app',
+        save_strategy: 'save_to_current_version',
+        agent_soul: expect.objectContaining({
+          prompt: expect.objectContaining({
+            system_prompt: 'Run prompt',
+          }),
+        }),
+      }),
+    }))
+    expect(result.current.draftSavedAt).toBe(1710000200000)
+  })
+
   it('should publish only when publishDraft is called explicitly', async () => {
     const { queryClient, result } = renderUseAgentConfigureSync()
 

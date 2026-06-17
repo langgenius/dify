@@ -107,6 +107,14 @@ export function useAgentConfigureSync({
     latestDraftSaveRef.current()
   }, DRAFT_AUTOSAVE_WAIT), [])
 
+  const saveDraft = useCallback(async () => {
+    if (!enabledRef.current)
+      return
+
+    debouncedSaveDraft.cancel?.()
+    await saveComposer('save_to_current_version', getAgentSoulDraft())
+  }, [debouncedSaveDraft, getAgentSoulDraft, saveComposer])
+
   useEffect(() => {
     return store.sub(agentComposerDraftAtom, () => {
       const agentSoulDraft = getAgentSoulDraft()
@@ -148,5 +156,6 @@ export function useAgentConfigureSync({
     draftSavedAt,
     isPublishing,
     publishDraft,
+    saveDraft,
   }
 }

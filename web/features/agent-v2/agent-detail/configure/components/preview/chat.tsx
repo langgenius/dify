@@ -302,6 +302,7 @@ export function AgentPreviewChat({
   agentSoulConfig,
   clearChatList,
   onClearChatListChange,
+  onSaveDraftBeforeRun,
 }: {
   agentId: string
   agentIcon?: string | null
@@ -311,6 +312,7 @@ export function AgentPreviewChat({
   agentSoulConfig?: AgentSoulConfig
   clearChatList: boolean
   onClearChatListChange: (clearChatList: boolean) => void
+  onSaveDraftBeforeRun?: () => Promise<void>
 }) {
   const { userProfile } = useAppContext()
   const [prompt] = usePrompt()
@@ -354,7 +356,14 @@ export function AgentPreviewChat({
     onClearChatListChange,
   )
 
-  const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
+  const doSend: OnSend = useCallback(async (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
+    try {
+      await onSaveDraftBeforeRun?.()
+    }
+    catch {
+      return
+    }
+
     const currentProvider = textGenerationModelList.find(item => item.provider === config.model.provider)
     const selectedModel = currentProvider?.models.find(model => model.model === config.model.name)
     const supportVision = selectedModel?.features?.includes(ModelFeatureEnum.vision)
@@ -375,7 +384,7 @@ export function AgentPreviewChat({
         onGetSuggestedQuestions: responseItemId => fetchAgentSuggestedQuestions(agentId, responseItemId),
       },
     )
-  }, [agentId, chatList, config.model.name, config.model.provider, handleSend, inputs, textGenerationModelList])
+  }, [agentId, chatList, config.model.name, config.model.provider, handleSend, inputs, onSaveDraftBeforeRun, textGenerationModelList])
 
   const doRegenerate = useCallback((chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => {
     const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)

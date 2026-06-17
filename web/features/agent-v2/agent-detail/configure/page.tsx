@@ -99,6 +99,7 @@ function AgentConfigurePageLoadedContent({
     draftSavedAt,
     isPublishing,
     publishDraft,
+    saveDraft,
   } = useAgentConfigureSync({
     agentId,
     baseConfig: agentSoulConfig,
@@ -145,6 +146,7 @@ function AgentConfigurePageLoadedContent({
               agentSoulConfig={agentSoulConfig}
               clearChatList={clearPreviewChat}
               onClearChatListChange={setClearPreviewChat}
+              onSaveDraftBeforeRun={saveDraft}
             />
           </div>
         </div>
