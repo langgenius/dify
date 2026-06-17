@@ -30,7 +30,12 @@ vi.mock('../dataset-info', () => ({
 }))
 
 vi.mock('../nav-link', () => ({
-  default: ({ name, href }: { name: string, href: string }) => <a href={href}>{name}</a>,
+  default: ({ name, href, disabled }: { name: string, href: string, disabled?: boolean }) => {
+    if (disabled)
+      return <button disabled>{name}</button>
+
+    return <a href={href}>{name}</a>
+  },
 }))
 
 vi.mock('../../datasets/extra-info', () => ({
@@ -105,5 +110,22 @@ describe('DatasetDetailSection', () => {
     render(<DatasetDetailSection expand />)
 
     expect(screen.queryByRole('link', { name: 'common.settings.resourceAccess' })).not.toBeInTheDocument()
+  })
+
+  it('should render hit testing navigation as a link when retrieval recall permission is granted', () => {
+    mockDataset = createDataset({
+      permission_keys: [DatasetACLPermission.RetrievalRecall],
+    })
+
+    render(<DatasetDetailSection expand />)
+
+    expect(screen.getByRole('link', { name: 'common.datasetMenus.hitTesting' })).toHaveAttribute('href', '/datasets/dataset-1/hitTesting')
+  })
+
+  it('should disable hit testing navigation when retrieval recall permission is missing', () => {
+    render(<DatasetDetailSection expand />)
+
+    expect(screen.getByRole('button', { name: 'common.datasetMenus.hitTesting' })).toBeDisabled()
+    expect(screen.queryByRole('link', { name: 'common.datasetMenus.hitTesting' })).not.toBeInTheDocument()
   })
 })

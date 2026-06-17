@@ -291,11 +291,25 @@ describe('DatasetCard Component', () => {
   })
 
   it('should navigate to hitTesting for external provider', () => {
-    const dataset = createMockDataset({ provider: 'external' })
+    const dataset = createMockDataset({
+      provider: 'external',
+      permission_keys: ['dataset.acl.retrieval_recall'],
+    })
     render(<DatasetCard dataset={dataset} />)
 
     fireEvent.click(screen.getByText('Test Dataset'))
     expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/hitTesting')
+  })
+
+  it('should navigate to settings for external provider when retrieval recall permission is missing', () => {
+    const dataset = createMockDataset({
+      provider: 'external',
+      permission_keys: [],
+    })
+    render(<DatasetCard dataset={dataset} />)
+
+    fireEvent.click(screen.getByText('Test Dataset'))
+    expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/settings')
   })
 
   it('should navigate to pipeline for unpublished pipeline', () => {

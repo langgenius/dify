@@ -9,30 +9,40 @@ import { consoleClient, consoleQuery } from '@/service/client'
 
 const NAME_SPACE = 'dataset-access-config'
 
-export const useDatasetAccessRules = (datasetId: string, language: AccessControlTemplateLanguage) => {
-  return useQuery(consoleQuery.rbacAccessConfig.datasets.accessRules.queryOptions({
-    input: {
-      params: {
-        datasetId,
-      },
-      query: {
-        language,
-      },
-    },
-  }))
+type DatasetAccessConfigQueryOptions = {
+  enabled?: boolean
 }
 
-export const useDatasetUserAccessSettings = (datasetId: string, language: AccessControlTemplateLanguage) => {
-  return useQuery(consoleQuery.rbacAccessConfig.datasets.userAccessSettings.queryOptions({
-    input: {
-      params: {
-        datasetId,
+export const useDatasetAccessRules = (datasetId: string, language: AccessControlTemplateLanguage, options?: DatasetAccessConfigQueryOptions) => {
+  return useQuery({
+    ...consoleQuery.rbacAccessConfig.datasets.accessRules.queryOptions({
+      input: {
+        params: {
+          datasetId,
+        },
+        query: {
+          language,
+        },
       },
-      query: {
-        language,
+    }),
+    enabled: options?.enabled ?? true,
+  })
+}
+
+export const useDatasetUserAccessSettings = (datasetId: string, language: AccessControlTemplateLanguage, options?: DatasetAccessConfigQueryOptions) => {
+  return useQuery({
+    ...consoleQuery.rbacAccessConfig.datasets.userAccessSettings.queryOptions({
+      input: {
+        params: {
+          datasetId,
+        },
+        query: {
+          language,
+        },
       },
-    },
-  }))
+    }),
+    enabled: options?.enabled ?? true,
+  })
 }
 
 export const useUpdateDatasetUserAccessSettings = (datasetId: string) => {

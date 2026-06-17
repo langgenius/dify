@@ -69,7 +69,7 @@ const DatasetDetailSection = ({
         href: `/datasets/${datasetId}/hitTesting`,
         icon: RiFocus2Line,
         selectedIcon: RiFocus2Fill,
-        disabled: isButtonDisabledWithPipeline,
+        disabled: isButtonDisabledWithPipeline || !datasetACLCapabilities.canRetrievalRecall,
       },
       {
         name: t('datasetMenus.settings', { ns: 'common' }),

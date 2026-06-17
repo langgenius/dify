@@ -55,12 +55,17 @@ const DatasetCard = ({
 
   const handleCardClick = (e: React.MouseEvent) => {
     e.preventDefault()
-    if (isExternalProvider)
-      push(`/datasets/${dataset.id}/hitTesting`)
-    else if (isPipelineUnpublished)
+    if (isExternalProvider) {
+      push(datasetACLCapabilities.canRetrievalRecall
+        ? `/datasets/${dataset.id}/hitTesting`
+        : `/datasets/${dataset.id}/settings`)
+    }
+    else if (isPipelineUnpublished) {
       push(`/datasets/${dataset.id}/pipeline`)
-    else
+    }
+    else {
       push(`/datasets/${dataset.id}/documents`)
+    }
   }
 
   const handleTagAreaClick = (e: React.MouseEvent) => {

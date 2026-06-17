@@ -1,5 +1,10 @@
 import type { AccessRulesEditorProps } from '@/app/components/access-rules-editor'
 import { render, screen } from '@testing-library/react'
+import {
+  useDatasetAccessRules,
+  useDatasetUserAccessSettings,
+} from '@/service/access-control/use-dataset-access-config'
+import { DatasetACLPermission } from '@/utils/permission'
 import DatasetAccessConfigPage from '../index'
 
 const mockDatasetAccessRules = vi.hoisted(() => ({
@@ -14,7 +19,12 @@ const mockDatasetUserAccessSettings = vi.hoisted(() => ({
 }))
 
 const mockDatasetDetail = vi.hoisted(() => ({
-  dataset: undefined as { maintainer?: string | null } | undefined,
+  dataset: undefined as { maintainer?: string | null, permission_keys?: string[] } | undefined,
+}))
+
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: { id: 'user-1' },
+  workspacePermissionKeys: [] as string[],
 }))
 
 const mockAccessRulesEditor = vi.hoisted(() => ({
@@ -51,9 +61,13 @@ vi.mock('@/service/access-control/use-dataset-access-config', () => ({
 }))
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: vi.fn((selector: (state: { dataset?: { maintainer?: string | null } }) => unknown) => {
+  useDatasetDetailContextWithSelector: vi.fn((selector: (state: { dataset?: { maintainer?: string | null, permission_keys?: string[] } }) => unknown) => {
     return selector({ dataset: mockDatasetDetail.dataset })
   }),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: vi.fn((selector: (state: typeof mockAppContextState) => unknown) => selector(mockAppContextState)),
 }))
 
 vi.mock('@/app/components/access-rules-editor', () => ({
@@ -73,7 +87,12 @@ describe('DatasetAccessConfigPage', () => {
     mockDatasetUserAccessSettings.data = []
     mockDatasetUserAccessSettings.scope = 'specific'
     mockDatasetUserAccessSettings.isLoading = false
-    mockDatasetDetail.dataset = undefined
+    mockDatasetDetail.dataset = {
+      maintainer: 'maintainer-1',
+      permission_keys: [DatasetACLPermission.AccessConfig],
+    }
+    mockAppContextState.userProfile = { id: 'user-1' }
+    mockAppContextState.workspacePermissionKeys = []
     mockAccessRulesEditor.props = null
   })
 
@@ -120,11 +139,27 @@ describe('DatasetAccessConfigPage', () => {
     })
 
     it('should pass the dataset maintainer id from dataset detail to the editor', () => {
-      mockDatasetDetail.dataset = { maintainer: 'account-1' }
+      mockDatasetDetail.dataset = {
+        maintainer: 'account-1',
+        permission_keys: [DatasetACLPermission.AccessConfig],
+      }
 
       render(<DatasetAccessConfigPage datasetId="dataset-1" />)
 
       expect(mockAccessRulesEditor.props?.maintainerId).toBe('account-1')
+    })
+
+    it('should disable access config queries and hide the editor when access config permission is missing', () => {
+      mockDatasetDetail.dataset = {
+        maintainer: 'account-1',
+        permission_keys: [],
+      }
+
+      render(<DatasetAccessConfigPage datasetId="dataset-1" />)
+
+      expect(screen.queryByTestId('access-rules-editor')).not.toBeInTheDocument()
+      expect(vi.mocked(useDatasetAccessRules)).toHaveBeenCalledWith('dataset-1', expect.any(String), { enabled: false })
+      expect(vi.mocked(useDatasetUserAccessSettings)).toHaveBeenCalledWith('dataset-1', expect.any(String), { enabled: false })
     })
 
     it('should wire open scope and user policy updates', () => {
