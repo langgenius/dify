@@ -19,6 +19,7 @@ from controllers.console.wraps import (
     cloud_edition_billing_resource_check,
     cloud_utm_record,
     enterprise_license_required,
+    is_admin_or_owner_required,
     model_validate,
     only_edition_cloud,
     only_edition_enterprise,
@@ -303,6 +304,29 @@ class TestRbacPermissionRequired:
             request.view_args = {"app_id": "view-app"}
 
             assert _extract_resource_id("app") == "view-app"
+
+    def test_extract_resource_id_supports_legacy_route_aliases(self):
+        app = Flask(__name__)
+
+        with app.test_request_context("/apps/app-1/api-keys"):
+            request.view_args = {"resource_id": "app-1"}
+            assert _extract_resource_id(RBACResourceScope.APP) == "app-1"
+
+        with app.test_request_context("/agent/agent-1/features"):
+            request.view_args = {"agent_id": "agent-1"}
+            assert _extract_resource_id(RBACResourceScope.APP) == "agent-1"
+
+        with app.test_request_context("/datasets/dataset-1/api-keys"):
+            request.view_args = {"resource_id": "dataset-1"}
+            assert _extract_resource_id(RBACResourceScope.DATASET) == "dataset-1"
+
+    def test_legacy_admin_decorator_noops_when_rbac_enabled(self):
+        @is_admin_or_owner_required
+        def protected_view():
+            return "ok"
+
+        with patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True):
+            assert protected_view() == "ok"
 
 
 class TestModelValidationInjection:

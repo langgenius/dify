@@ -1003,6 +1003,9 @@ class DatasetApiKeyApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(
+        RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, resource_required=False
+    )
     @account_initialization_required
     @with_current_tenant_id
     def post(self, current_tenant_id: str):
@@ -1043,6 +1046,9 @@ class DatasetApiDeleteApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(
+        RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, resource_required=False
+    )
     @account_initialization_required
     @with_current_tenant_id
     def delete(self, current_tenant_id: str, api_key_id: UUID):
@@ -1147,7 +1153,7 @@ class DatasetErrorDocs(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
     def get(self, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -1174,7 +1180,7 @@ class DatasetPermissionUserListApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
     def get(self, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -1204,7 +1210,7 @@ class DatasetAutoDisableLogApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
     def get(self, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)

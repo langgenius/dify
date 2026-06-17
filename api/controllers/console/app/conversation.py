@@ -102,7 +102,7 @@ class CompletionConversationApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=AppMode.COMPLETION)
     def get(self, current_user: Account, app_model: App):
         args = CompletionConversationQuery.model_validate(request.args.to_dict(flat=True))
@@ -175,7 +175,7 @@ class CompletionConversationDetailApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=AppMode.COMPLETION)
     def get(self, current_user: Account, app_model: App, conversation_id: UUID):
         conversation_id_str = str(conversation_id)
@@ -193,6 +193,7 @@ class CompletionConversationDetailApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
     @get_app_model(mode=AppMode.COMPLETION)
     def delete(self, current_user: Account, app_model: App, conversation_id: UUID):
@@ -219,7 +220,7 @@ class ChatConversationApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def get(self, current_user: Account, app_model: App):
         args = ChatConversationQuery.model_validate(request.args.to_dict(flat=True))
@@ -331,7 +332,7 @@ class ChatConversationDetailApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def get(self, current_user: Account, app_model: App, conversation_id: UUID):
         conversation_id_str = str(conversation_id)
@@ -349,6 +350,7 @@ class ChatConversationDetailApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def delete(self, current_user: Account, app_model: App, conversation_id: UUID):

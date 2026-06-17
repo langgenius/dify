@@ -86,7 +86,7 @@ class AppMCPServerController(Resource):
     @login_required
     @account_initialization_required
     @setup_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model
     def get(self, app_model: App):
         server = db.session.scalar(select(AppMCPServer).where(AppMCPServer.app_id == app_model.id).limit(1))
@@ -106,6 +106,7 @@ class AppMCPServerController(Resource):
     @login_required
     @setup_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_tenant_id
     @get_app_model
     def post(self, current_tenant_id: str, app_model: App):
@@ -141,6 +142,7 @@ class AppMCPServerController(Resource):
     @setup_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @get_app_model
     def put(self, app_model: App):
         payload = MCPServerUpdatePayload.model_validate(console_ns.payload or {})
@@ -178,6 +180,7 @@ class AppMCPServerRefreshController(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @with_current_tenant_id
     def get(self, current_tenant_id: str, server_id: UUID):
         server = db.session.scalar(

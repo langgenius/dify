@@ -210,6 +210,7 @@ class AgentChatMessageApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @with_current_user
     @with_current_tenant_id
     def post(self, current_tenant_id: str, current_user: Account, agent_id: UUID):

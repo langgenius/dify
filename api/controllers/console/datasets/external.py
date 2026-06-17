@@ -323,6 +323,7 @@ class ExternalDatasetCreateApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EXTERNAL_CONNECT)
     @with_current_user
     @with_current_tenant_id
     def post(self, current_tenant_id: str, current_user: Account):

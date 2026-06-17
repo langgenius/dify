@@ -364,9 +364,10 @@ def is_admin_or_owner_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
 
         from libs.login import current_user
 
-        user = current_user._get_current_object()
-        if not isinstance(user, Account) or not user.is_admin_or_owner:
-            raise Forbidden()
+        if not dify_config.RBAC_ENABLED:
+            user = current_user._get_current_object()
+            if not isinstance(user, Account) or not user.is_admin_or_owner:
+                raise Forbidden()
         return f(*args, **kwargs)
 
     return decorated_function

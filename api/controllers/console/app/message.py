@@ -186,7 +186,7 @@ class ChatMessageListApi(Resource):
     @account_initialization_required
     @setup_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def get(self, app_model: App):
         return _list_chat_messages(app_model=app_model)
@@ -204,6 +204,7 @@ class AgentChatMessageListApi(Resource):
     @account_initialization_required
     @setup_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @with_current_tenant_id
     def get(self, current_tenant_id: str, agent_id: UUID):
         app_model = resolve_agent_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
@@ -259,7 +260,7 @@ class MessageAnnotationCountApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model
     def get(self, app_model: App):
         count = db.session.scalar(
@@ -284,7 +285,7 @@ class MessageSuggestedQuestionApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def get(self, current_user: Account, app_model: App, message_id: UUID):
         return _get_message_suggested_questions(current_user=current_user, app_model=app_model, message_id=message_id)
@@ -327,7 +328,7 @@ class MessageFeedbackExportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model
     def get(self, app_model: App):
         args = FeedbackExportQuery.model_validate(request.args.to_dict())
@@ -366,7 +367,7 @@ class MessageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model
     def get(self, app_model: App, message_id: UUID):
         return _get_message_detail(app_model=app_model, message_id=message_id)

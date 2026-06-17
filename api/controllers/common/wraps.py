@@ -115,9 +115,11 @@ def _is_resource_owned_by_current_user(
 def _extract_resource_id(resource_type: RBACResourceScope, path_args: dict[str, object] | None = None) -> str:
     """Extract the resource ID from matched path arguments.
 
-    For dataset endpoints behind a rag-pipeline route the URL contains
-    ``pipeline_id`` instead of ``dataset_id``.  In that case we look up the
-    associated ``Dataset`` row via ``Dataset.pipeline_id``.
+    Some legacy route classes use neutral names such as ``resource_id`` for
+    app/dataset resources, and Agent App routes use ``agent_id`` as the app id.
+    Dataset endpoints behind a rag-pipeline route contain ``pipeline_id``
+    instead of ``dataset_id``. In that case we look up the associated
+    ``Dataset`` row via ``Dataset.pipeline_id``.
     """
     from flask import request
 
@@ -125,13 +127,13 @@ def _extract_resource_id(resource_type: RBACResourceScope, path_args: dict[str, 
     matched_args = {**view_args, **(path_args or {})}
 
     if resource_type == RBACResourceScope.APP:
-        app_id = matched_args.get("app_id")
+        app_id = matched_args.get("app_id") or matched_args.get("agent_id") or matched_args.get("resource_id")
         if not app_id:
             raise ValueError("Missing app_id in request path")
         return str(app_id)
 
     if resource_type == RBACResourceScope.DATASET:
-        dataset_id = matched_args.get("dataset_id")
+        dataset_id = matched_args.get("dataset_id") or matched_args.get("resource_id")
         if dataset_id:
             return str(dataset_id)
 

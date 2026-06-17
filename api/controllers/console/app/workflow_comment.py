@@ -239,6 +239,7 @@ class WorkflowCommentListApi(Resource):
     @setup_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
     @with_current_tenant_id
     @get_app_model()
@@ -290,6 +291,7 @@ class WorkflowCommentDetailApi(Resource):
     @setup_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
     @with_current_tenant_id
     @get_app_model()
@@ -318,6 +320,7 @@ class WorkflowCommentDetailApi(Resource):
     @setup_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
     @with_current_tenant_id
     @get_app_model()
@@ -345,6 +348,7 @@ class WorkflowCommentResolveApi(Resource):
     @setup_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
     @with_current_tenant_id
     @get_app_model()
@@ -373,6 +377,7 @@ class WorkflowCommentReplyApi(Resource):
     @setup_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
     @with_current_tenant_id
     @get_app_model()
@@ -408,6 +413,7 @@ class WorkflowCommentReplyDetailApi(Resource):
     @setup_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
     @with_current_tenant_id
     @get_app_model()
@@ -440,6 +446,7 @@ class WorkflowCommentReplyDetailApi(Resource):
     @setup_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
     @with_current_tenant_id
     @get_app_model()

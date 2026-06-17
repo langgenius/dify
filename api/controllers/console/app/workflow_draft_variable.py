@@ -286,6 +286,7 @@ def _api_prerequisite[T, **P, R](
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @with_current_user
     @wraps(f)
@@ -606,6 +607,7 @@ class ConversationVariableCollectionApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
     @get_app_model(mode=AppMode.ADVANCED_CHAT)
     def post(self, current_user: Account, app_model: App):
@@ -697,6 +699,7 @@ class EnvironmentVariableCollectionApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def post(self, current_user: Account, app_model: App):

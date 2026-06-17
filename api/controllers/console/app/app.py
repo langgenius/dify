@@ -817,6 +817,7 @@ class AppApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @get_app_model(mode=None)
     def put(self, app_model: App):
         """Update app"""
@@ -868,6 +869,7 @@ class AppCopyApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @with_current_user
     @with_current_tenant_id
     @get_app_model(mode=None)
@@ -966,6 +968,7 @@ class AppPublishToCreatorsPlatformApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL)
     @with_current_user_id
     @get_app_model(mode=None)
     def post(self, current_user_id: str, app_model: App):
@@ -995,6 +998,7 @@ class AppNameApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @get_app_model(mode=None)
     def post(self, app_model: App):
         args = AppNamePayload.model_validate(console_ns.payload)
@@ -1017,6 +1021,7 @@ class AppIconApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @get_app_model(mode=None)
     def post(self, app_model: App):
         args = AppIconPayload.model_validate(console_ns.payload or {})
@@ -1114,6 +1119,7 @@ class AppTraceApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
     def post(self, app_model: App):
         # add app trace

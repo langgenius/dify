@@ -158,6 +158,7 @@ class AnnotationReplyActionApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     def post(self, app_id: UUID, action: Literal["enable", "disable"]):
         args = AnnotationReplyPayload.model_validate(console_ns.payload)
         match action:
@@ -206,6 +207,7 @@ class AppAnnotationSettingUpdateApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     def post(self, app_id: UUID, annotation_setting_id: UUID):
         annotation_setting_id_str = str(annotation_setting_id)
 
@@ -292,6 +294,7 @@ class AnnotationApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     def post(self, app_id: UUID):
         args = CreateAnnotationPayload.model_validate(console_ns.payload)
         upsert_args: UpsertAnnotationArgs = {}
@@ -310,6 +313,7 @@ class AnnotationApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @console_ns.response(204, "Annotations deleted successfully")
     def delete(self, app_id: UUID):
 
@@ -376,6 +380,7 @@ class AnnotationUpdateDeleteApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     def post(self, app_id: UUID, annotation_id: UUID):
         args = UpdateAnnotationPayload.model_validate(console_ns.payload)
         update_args: UpdateAnnotationArgs = {}
@@ -390,6 +395,7 @@ class AnnotationUpdateDeleteApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @console_ns.response(204, "Annotation deleted successfully")
     def delete(self, app_id: UUID, annotation_id: UUID):
         AppAnnotationService.delete_app_annotation(str(app_id), str(annotation_id))
@@ -417,6 +423,7 @@ class AnnotationBatchImportApi(Resource):
     @annotation_import_rate_limit
     @annotation_import_concurrency_limit
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     def post(self, app_id: UUID):
         from configs import dify_config
 
