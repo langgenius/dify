@@ -229,7 +229,7 @@ export function AgentDetailSection({
               {agent?.name ?? t('agentDetail.title')}
             </div>
             <div className="truncate system-2xs-medium-uppercase text-text-tertiary">
-              {agent?.mode ?? t('agentDetail.type')}
+              {agent?.role ?? t('agentDetail.type')}
             </div>
           </div>
         </div>
