@@ -11,6 +11,7 @@ const {
   mockEditorUpdate,
   mockHandleNodeDataUpdate,
   mockHandleNodeDataUpdateWithSyncDraft,
+  mockIsAgentV2Enabled,
   mockInsertNodes,
   mockOrchestrateDrawerPanelProps,
   mockPromptEditorProps,
@@ -24,6 +25,7 @@ const {
   mockEditorUpdate: vi.fn((callback: () => void) => callback()),
   mockHandleNodeDataUpdate: vi.fn(),
   mockHandleNodeDataUpdateWithSyncDraft: vi.fn((_payload, options) => options?.callback?.onSuccess?.()),
+  mockIsAgentV2Enabled: vi.fn(() => true),
   mockInsertNodes: vi.fn(),
   mockOrchestrateDrawerPanelProps: [] as Array<{
     agentId: string
@@ -41,6 +43,10 @@ const {
   mockUseAgentRosterDetail: vi.fn(),
   mockUseWorkflowInlineAgentDetail: vi.fn(),
   mockUseNodeCrud: vi.fn(),
+}))
+
+vi.mock('@/utils/features', () => ({
+  isAgentV2Enabled: () => mockIsAgentV2Enabled(),
 }))
 
 vi.mock('../../_base/components/output-vars', () => ({
@@ -195,6 +201,7 @@ const panelProps = {} as NodePanelProps<AgentV2NodeType>['panelProps']
 describe('agent/panel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockIsAgentV2Enabled.mockReturnValue(true)
     mockPromptEditorProps.length = 0
     mockOrchestrateDrawerPanelProps.length = 0
     mockStoreState.openInlineAgentPanelNodeId = undefined
@@ -490,6 +497,27 @@ describe('agent/panel', () => {
         notRefreshWhenSyncError: true,
       }),
     )
+  })
+
+  it('keeps existing Agent v2 panel readable while hiding new roster actions when the feature is disabled', () => {
+    mockIsAgentV2Enabled.mockReturnValue(false)
+
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData()}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(screen.getByText('Nadia')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'workflow.nodes.agent.roster.change' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ }))
+
+    const panel = screen.getByRole('dialog', { name: 'Nadia' })
+    expect(panel).toBeInTheDocument()
+    expect(within(panel).queryByRole('link', { name: 'workflow.nodes.agent.roster.editInConsole' })).not.toBeInTheDocument()
   })
 
   it('does not fall back to the roster agent description when role is empty', () => {

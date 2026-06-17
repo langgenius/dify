@@ -21,6 +21,7 @@ import { AgentDetailSection, AgentDetailTop } from '@/features/agent-v2/agent-de
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
+import { isAgentV2Enabled } from '@/utils/features'
 import AccountSection from './components/account-section'
 import HelpMenu from './components/help-menu'
 import MainNavLink from './components/nav-link'
@@ -80,10 +81,11 @@ const MainNav = ({
   const pathname = usePathname()
   const { langGeniusVersionInfo, isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceEditor } = useAppContext()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const agentV2Enabled = isAgentV2Enabled()
   const showEnvTag = langGeniusVersionInfo.current_env === 'TESTING' || langGeniusVersionInfo.current_env === 'DEVELOPMENT'
   const showAppDetailNavigation = !isCurrentWorkspaceDatasetOperator && pathname.startsWith('/app/')
   const showDatasetDetailNavigation = isDatasetDetailPathname(pathname)
-  const showAgentDetailNavigation = !isCurrentWorkspaceDatasetOperator && isAgentDetailPathname(pathname)
+  const showAgentDetailNavigation = agentV2Enabled && !isCurrentWorkspaceDatasetOperator && isAgentDetailPathname(pathname)
   const showSnippetDetailBottomNavigation = isSnippetDetailPathname(pathname)
   const showDetailNavigation = showAppDetailNavigation || showDatasetDetailNavigation || showAgentDetailNavigation
   const { hasAppDetail, appSidebarExpand, setAppDetail, setAppSidebarExpand } = useAppStore(useShallow(state => ({
@@ -190,13 +192,15 @@ const MainNav = ({
             icon: 'i-custom-vender-main-nav-studio',
             activeIcon: 'i-custom-vender-main-nav-studio-active',
           },
-          {
-            href: '/roster',
-            label: t('menus.roster', { ns: 'common' }),
-            active: (path: string) => path.startsWith('/roster'),
-            icon: 'i-custom-vender-main-nav-roster',
-            activeIcon: 'i-custom-vender-main-nav-roster-active',
-          },
+          ...(agentV2Enabled
+            ? [{
+                href: '/roster',
+                label: t('menus.roster', { ns: 'common' }),
+                active: (path: string) => path.startsWith('/roster'),
+                icon: 'i-custom-vender-main-nav-roster',
+                activeIcon: 'i-custom-vender-main-nav-roster-active',
+              }]
+            : []),
         ]
       : []),
     ...((isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator)
@@ -228,7 +232,7 @@ const MainNav = ({
       icon: 'i-custom-vender-main-nav-marketplace',
       activeIcon: 'i-custom-vender-main-nav-marketplace-active',
     },
-  ], [isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceEditor, t])
+  ], [agentV2Enabled, isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceEditor, t])
 
   const renderLogo = () => {
     const appTitle = systemFeatures.branding.enabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'

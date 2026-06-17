@@ -15,6 +15,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import Badge from '@/app/components/base/badge'
+import { isAgentV2Enabled } from '@/utils/features'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import { AgentBlockItem } from './agent-selector'
@@ -40,6 +41,7 @@ const Blocks = ({
   const { t } = useTranslation()
   const store = useStoreApi()
   const blocksFromHooks = useBlocks()
+  const agentV2Enabled = isAgentV2Enabled()
   const previewCardHandle = useMemo(() => createPreviewCardHandle<BlockPreviewPayload>(), [])
 
   // Use external blocks if provided, otherwise fallback to hook-based blocks
@@ -68,6 +70,9 @@ const Blocks = ({
           return false
         }
 
+        if (block.metaData.type === BlockEnum.AgentV2 && !agentV2Enabled)
+          return false
+
         return block.metaData.title.toLowerCase().includes(searchText.toLowerCase()) && availableBlocksTypes.includes(block.metaData.type)
       })
 
@@ -76,7 +81,7 @@ const Blocks = ({
         [classification]: list,
       }
     }, {} as Record<string, typeof blocks>)
-  }, [blocks, availableBlocksTypes, searchText])
+  }, [agentV2Enabled, blocks, availableBlocksTypes, searchText])
   const isEmpty = Object.values(groups).every(list => !list.length)
 
   const renderGroup = useCallback((classification: BlockClassificationEnum) => {

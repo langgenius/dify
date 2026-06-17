@@ -74,6 +74,7 @@ function AgentRosterDrawer({
   mode = 'detail',
   open,
   portalContainerRef,
+  showConsoleLink = true,
   showDetailActions = true,
   onClose,
 }: {
@@ -82,6 +83,7 @@ function AgentRosterDrawer({
   mode?: AgentRosterDrawerMode
   open: boolean
   portalContainerRef: RefObject<HTMLDivElement | null>
+  showConsoleLink?: boolean
   showDetailActions?: boolean
   onClose: () => void
 }) {
@@ -157,15 +159,17 @@ function AgentRosterDrawer({
                 </div>
                 {!isSetup && showDetailActions && (
                   <div className="flex h-8 gap-2 pl-1">
-                    <Link
-                      href={getAgentDetailPath(agent.id, 'configure')}
-                      className="inline-flex h-8 min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 text-[13px] leading-4 font-medium whitespace-nowrap text-components-button-secondary-text shadow-xs outline-hidden backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                    >
-                      <span aria-hidden className="i-ri-external-link-line size-4 shrink-0" />
-                      <span className="truncate">
-                        {t(`${i18nPrefix}.roster.editInConsole`, { ns: 'workflow' })}
-                      </span>
-                    </Link>
+                    {showConsoleLink && (
+                      <Link
+                        href={getAgentDetailPath(agent.id, 'configure')}
+                        className="inline-flex h-8 min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 text-[13px] leading-4 font-medium whitespace-nowrap text-components-button-secondary-text shadow-xs outline-hidden backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                      >
+                        <span aria-hidden className="i-ri-external-link-line size-4 shrink-0" />
+                        <span className="truncate">
+                          {t(`${i18nPrefix}.roster.editInConsole`, { ns: 'workflow' })}
+                        </span>
+                      </Link>
+                    )}
                     <Button
                       variant="secondary"
                       size="medium"
@@ -203,6 +207,8 @@ export function AgentRosterField({
   isLoading = false,
   panelBody,
   panelMode = 'detail',
+  showChangeAction = true,
+  showConsoleLink = true,
   showPanelDetailActions = true,
   portalContainerRef,
   onChange,
@@ -216,6 +222,8 @@ export function AgentRosterField({
   isPending?: boolean
   panelBody?: ReactNode
   panelMode?: AgentRosterDrawerMode
+  showChangeAction?: boolean
+  showConsoleLink?: boolean
   showPanelDetailActions?: boolean
   portalContainerRef: RefObject<HTMLDivElement | null>
   onChange: (agent: AgentRosterNodeData) => void
@@ -261,42 +269,44 @@ export function AgentRosterField({
         <FieldLabel className="min-w-0 flex-1 py-1 system-sm-semibold-uppercase! text-text-secondary">
           {t('nodes.agent.roster.label', { ns: 'workflow' })}
         </FieldLabel>
-        <Popover
-          open={isPending ? false : isSelectorOpen}
-          onOpenChange={(open) => {
-            if (!isPending)
-              setIsSelectorOpen(open)
-          }}
-        >
-          <PopoverTrigger
-            render={(
-              <button
-                type="button"
-                disabled={isPending}
-                className={cn('flex h-6 shrink-0 cursor-pointer items-center justify-center rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden', isPending && 'cursor-not-allowed opacity-50 hover:bg-transparent hover:text-text-tertiary')}
-              >
-                {t(`${i18nPrefix}.roster.change`, { ns: 'workflow' })}
-              </button>
-            )}
-          />
-          <PopoverContent
-            placement="bottom-end"
-            sideOffset={4}
-            popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+        {showChangeAction && (
+          <Popover
+            open={isPending ? false : isSelectorOpen}
+            onOpenChange={(open) => {
+              if (!isPending)
+                setIsSelectorOpen(open)
+            }}
           >
-            <PopoverTitle className="sr-only">
-              {t('roster.nodeSelector.dialogLabel', { ns: 'agentV2' })}
-            </PopoverTitle>
-            <AgentSelectorContent
-              open={isSelectorOpen}
-              onOpenChange={setIsSelectorOpen}
-              onSelect={(nextAgent) => {
-                setIsSelectorOpen(false)
-                onChange(nextAgent)
-              }}
+            <PopoverTrigger
+              render={(
+                <button
+                  type="button"
+                  disabled={isPending}
+                  className={cn('flex h-6 shrink-0 cursor-pointer items-center justify-center rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden', isPending && 'cursor-not-allowed opacity-50 hover:bg-transparent hover:text-text-tertiary')}
+                >
+                  {t(`${i18nPrefix}.roster.change`, { ns: 'workflow' })}
+                </button>
+              )}
             />
-          </PopoverContent>
-        </Popover>
+            <PopoverContent
+              placement="bottom-end"
+              sideOffset={4}
+              popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+            >
+              <PopoverTitle className="sr-only">
+                {t('roster.nodeSelector.dialogLabel', { ns: 'agentV2' })}
+              </PopoverTitle>
+              <AgentSelectorContent
+                open={isSelectorOpen}
+                onOpenChange={setIsSelectorOpen}
+                onSelect={(nextAgent) => {
+                  setIsSelectorOpen(false)
+                  onChange(nextAgent)
+                }}
+              />
+            </PopoverContent>
+          </Popover>
+        )}
       </div>
       {agent
         ? (
@@ -320,6 +330,7 @@ export function AgentRosterField({
                       mode={panelMode}
                       open={panelOpen}
                       portalContainerRef={portalContainerRef}
+                      showConsoleLink={showConsoleLink}
                       showDetailActions={showPanelDetailActions}
                       onClose={() => setPanelOpen(false)}
                     >

@@ -17,8 +17,13 @@ const runtimeState = vi.hoisted(() => ({
 
 const queryMocks = vi.hoisted(() => ({
   inviteOptionsQueryFn: vi.fn(),
+  isAgentV2Enabled: vi.fn(() => true),
   versionDetailGet: vi.fn(),
   toastError: vi.fn(),
+}))
+
+vi.mock('@/utils/features', () => ({
+  isAgentV2Enabled: () => queryMocks.isAgentV2Enabled(),
 }))
 
 vi.mock('reactflow', () => ({
@@ -102,6 +107,7 @@ function createDeferred<T>() {
 describe('Blocks', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    queryMocks.isAgentV2Enabled.mockReturnValue(true)
     runtimeState.appType = 'workflow'
     runtimeState.nodes = []
   })
@@ -145,6 +151,22 @@ describe('Blocks', () => {
       />,
     )
 
+    expect(screen.getByText('workflow.tabs.noResult')).toBeInTheDocument()
+  })
+
+  it('does not render Agent v2 blocks when the feature is disabled', () => {
+    queryMocks.isAgentV2Enabled.mockReturnValue(false)
+
+    render(
+      <Blocks
+        searchText=""
+        onSelect={vi.fn()}
+        availableBlocksTypes={[BlockEnum.AgentV2]}
+        blocks={[createBlock(BlockEnum.AgentV2, 'Agent')]}
+      />,
+    )
+
+    expect(screen.queryByRole('button', { name: 'Agent' })).not.toBeInTheDocument()
     expect(screen.getByText('workflow.tabs.noResult')).toBeInTheDocument()
   })
 
@@ -538,5 +560,40 @@ describe('Blocks', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' })).not.toBeInTheDocument()
     })
+  })
+
+  it('does not query roster agents or show the console link when Agent v2 is disabled', async () => {
+    queryMocks.isAgentV2Enabled.mockReturnValue(false)
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    })
+    const hooksStore = createHooksStore({
+      configsMap: {
+        flowId: 'app-1',
+        flowType: FlowType.appFlow,
+        fileSettings: {} as never,
+      },
+    })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <HooksStoreContext value={hooksStore}>
+          <AgentSelectorContent
+            open
+            onOpenChange={vi.fn()}
+            onSelect={vi.fn()}
+          />
+        </HooksStoreContext>
+      </QueryClientProvider>,
+    )
+
+    await waitFor(() => {
+      expect(queryMocks.inviteOptionsQueryFn).not.toHaveBeenCalled()
+    })
+    expect(screen.queryByRole('link', { name: 'agentV2.roster.nodeSelector.manageInAgentConsole' })).not.toBeInTheDocument()
   })
 })

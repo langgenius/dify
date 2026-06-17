@@ -24,13 +24,18 @@ import MainNav from '../index'
 
 const activeEdgeClassName = 'before:pointer-events-none'
 
-const { mockSwitchWorkspace, mockToastSuccess, hotkeyRegistrations } = vi.hoisted(() => ({
+const { mockIsAgentV2Enabled, mockSwitchWorkspace, mockToastSuccess, hotkeyRegistrations } = vi.hoisted(() => ({
   mockSwitchWorkspace: vi.fn(),
   mockToastSuccess: vi.fn(),
+  mockIsAgentV2Enabled: vi.fn(() => true),
   hotkeyRegistrations: new Map<string, {
     handler: (event: { preventDefault: () => void }) => void
     options?: { ignoreInputs?: boolean }
   }>(),
+}))
+
+vi.mock('@/utils/features', () => ({
+  isAgentV2Enabled: () => mockIsAgentV2Enabled(),
 }))
 
 vi.mock('@/context/app-context', () => ({
@@ -283,6 +288,7 @@ describe('MainNav', () => {
       { id: 'workspace-1', name: 'Solar Studio', plan: Plan.team, status: 'normal', created_at: 0, current: true },
       { id: 'workspace-2', name: 'Evan Workspace', plan: Plan.sandbox, status: 'normal', created_at: 0, current: false },
     ]
+    mockIsAgentV2Enabled.mockReturnValue(true)
 
     ;(usePathname as Mock).mockImplementation(() => mockPathname)
     ;(useRouter as Mock).mockReturnValue({
@@ -333,6 +339,14 @@ describe('MainNav', () => {
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')
     expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute('href', '/integrations/model-provider')
     expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute('href', '/marketplace')
+  })
+
+  it('hides the roster entry when Agent v2 is disabled', () => {
+    mockIsAgentV2Enabled.mockReturnValue(false)
+
+    renderMainNav()
+
+    expect(screen.queryByRole('link', { name: /common.menus.roster/ })).not.toBeInTheDocument()
   })
 
   it('aligns the global navigation spacing with the main sidebar design', () => {
@@ -649,6 +663,17 @@ describe('MainNav', () => {
     expect(screen.getByRole('complementary')).toHaveClass('p-1')
     expect(screen.getByRole('complementary')).toHaveClass('bg-background-body')
     expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /common.menus.roster/ })).not.toBeInTheDocument()
+  })
+
+  it('keeps roster detail navigation hidden when Agent v2 is disabled', () => {
+    mockIsAgentV2Enabled.mockReturnValue(false)
+    mockPathname = '/roster/agent/agent-1/configure'
+
+    renderMainNav()
+
+    expect(screen.queryByTestId('agent-detail-top')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('agent-detail-section')).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.menus.roster/ })).not.toBeInTheDocument()
   })
 

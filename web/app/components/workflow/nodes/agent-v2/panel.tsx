@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
 import { useStore } from '@/app/components/workflow/store'
+import { isAgentV2Enabled } from '@/utils/features'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import { AgentAdvancedSettings } from './components/agent-advanced-settings'
 import { AgentOrchestrateDrawerPanel } from './components/agent-orchestrate-drawer-panel'
@@ -29,6 +30,7 @@ export function AgentV2Panel({
   const setOpenInlineAgentPanelNodeId = useStore(state => state.setOpenInlineAgentPanelNodeId)
   const drawerPortalContainerRef = useRef<HTMLDivElement>(null)
   const declaredOutputs = getAgentV2DeclaredOutputs(inputs)
+  const agentV2Enabled = isAgentV2Enabled()
   const rosterAgentId = inputs.agent_binding?.binding_type === 'roster_agent' ? inputs.agent_binding.agent_id : undefined
   const inlineAgentId = inputs.agent_binding?.binding_type === 'inline_agent' ? inputs.agent_binding.agent_id : undefined
   const isInlineAgentReady = hasValidInlineAgentBinding(inputs)
@@ -140,6 +142,8 @@ export function AgentV2Panel({
             : undefined}
           panelMode={isInlineAgentReady && !isInlineAgentPanelOpenedFromTrigger ? 'setup' : 'detail'}
           portalContainerRef={drawerPortalContainerRef}
+          showChangeAction={agentV2Enabled}
+          showConsoleLink={agentV2Enabled}
           showPanelDetailActions={!isInlineAgentReady}
           onChange={handleRosterChange}
           onPanelOpenChange={handleAgentPanelOpenChange}

@@ -5,6 +5,12 @@ import { BlockEnum } from '../../types'
 import NodeSelectorWrapper from '../index'
 import { BlockClassificationEnum } from '../types'
 
+const mockIsAgentV2Enabled = vi.hoisted(() => vi.fn(() => true))
+
+vi.mock('@/utils/features', () => ({
+  isAgentV2Enabled: () => mockIsAgentV2Enabled(),
+}))
+
 vi.mock('reactflow', async () =>
   (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock())
 
@@ -53,6 +59,11 @@ const dataSource: ToolWithProvider = {
 }
 
 describe('NodeSelectorWrapper', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockIsAgentV2Enabled.mockReturnValue(true)
+  })
+
   it('filters hidden block types from hooks store and forwards data sources', async () => {
     renderWorkflowComponent(
       <NodeSelectorWrapper
@@ -82,5 +93,30 @@ describe('NodeSelectorWrapper', () => {
     expect(screen.queryByText('Start')).not.toBeInTheDocument()
     expect(screen.queryByText('Start Placeholder')).not.toBeInTheDocument()
     expect(screen.queryByText('Tool')).not.toBeInTheDocument()
+  })
+
+  it('filters Agent v2 from hooks store when the feature is disabled', async () => {
+    mockIsAgentV2Enabled.mockReturnValue(false)
+
+    renderWorkflowComponent(
+      <NodeSelectorWrapper
+        open
+        onSelect={vi.fn()}
+        availableBlocksTypes={[BlockEnum.AgentV2, BlockEnum.Code]}
+      />,
+      {
+        hooksStoreProps: {
+          availableNodesMetaData: {
+            nodes: [
+              createBlock(BlockEnum.AgentV2, 'Agent'),
+              createBlock(BlockEnum.Code, 'Code'),
+            ],
+          },
+        },
+      },
+    )
+
+    expect(await screen.findByText('Code')).toBeInTheDocument()
+    expect(screen.queryByText('Agent')).not.toBeInTheDocument()
   })
 })

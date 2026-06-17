@@ -28,6 +28,7 @@ import { useTranslation } from 'react-i18next'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
+import { isAgentV2Enabled } from '@/utils/features'
 import BlockIcon from '../block-icon'
 
 const AGENT_SELECTOR_PAGE_SIZE = 8
@@ -46,6 +47,7 @@ export function AgentSelectorContent({
   const { t } = useTranslation(['agentV2', 'common', 'workflow'])
   const queryClient = useQueryClient()
   const appId = useHooksStore(s => s.configsMap?.flowId)
+  const agentV2Enabled = isAgentV2Enabled()
   const [searchText, setSearchText] = useState('')
   const [validatingAgentId, setValidatingAgentId] = useState<string>()
   const debouncedSearchText = useDebounce(searchText.trim(), { wait: 300 })
@@ -60,6 +62,7 @@ export function AgentSelectorContent({
         },
       },
     }),
+    enabled: agentV2Enabled,
   })
   const agents = agentsQuery.data?.data ?? []
   const handleInputValueChange = (nextSearchText: string, details: ComboboxRootChangeEventDetails) => {
@@ -104,7 +107,7 @@ export function AgentSelectorContent({
     if (!nextOpen)
       onOpenChange(false)
   }
-  const isLoading = agentsQuery.isPending
+  const isLoading = agentV2Enabled && agentsQuery.isPending
 
   return (
     <div className="w-60 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
@@ -168,15 +171,17 @@ export function AgentSelectorContent({
             </span>
           </button>
         )}
-        <Link
-          href="/roster"
-          className="flex min-h-7 w-full items-center gap-2 rounded-md px-2 py-1.5 system-sm-regular text-text-secondary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-        >
-          <span aria-hidden className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary" />
-          <span className="min-w-0 flex-1 truncate">
-            {t('roster.nodeSelector.manageInAgentConsole', { ns: 'agentV2' })}
-          </span>
-        </Link>
+        {agentV2Enabled && (
+          <Link
+            href="/roster"
+            className="flex min-h-7 w-full items-center gap-2 rounded-md px-2 py-1.5 system-sm-regular text-text-secondary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          >
+            <span aria-hidden className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary" />
+            <span className="min-w-0 flex-1 truncate">
+              {t('roster.nodeSelector.manageInAgentConsole', { ns: 'agentV2' })}
+            </span>
+          </Link>
+        )}
       </div>
     </div>
   )
@@ -297,11 +302,15 @@ export function AgentBlockItem({
   onStartFromScratch: () => void
 }) {
   const { t } = useTranslation('agentV2')
+  const agentV2Enabled = isAgentV2Enabled()
   const [open, setOpen] = useState(false)
   const handleSelect = (agent: AgentRosterNodeData) => {
     setOpen(false)
     onSelect(agent)
   }
+
+  if (!agentV2Enabled)
+    return null
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
