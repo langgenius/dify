@@ -24,7 +24,9 @@ from controllers.console.agent.roster import (
     AgentAppCopyApi,
     AgentAppListApi,
     AgentInviteOptionsApi,
+    AgentLogMessagesApi,
     AgentLogsApi,
+    AgentLogSourcesApi,
     AgentRosterVersionDetailApi,
     AgentRosterVersionsApi,
     AgentStatisticsSummaryApi,
@@ -153,6 +155,8 @@ def test_agent_v2_console_routes_are_agent_id_first() -> None:
         "/agent/<uuid:agent_id>/chat-messages/<uuid:message_id>/suggested-questions",
         "/agent/<uuid:agent_id>/messages/<uuid:message_id>",
         "/agent/<uuid:agent_id>/logs",
+        "/agent/<uuid:agent_id>/logs/<uuid:conversation_id>/messages",
+        "/agent/<uuid:agent_id>/log-sources",
         "/agent/<uuid:agent_id>/statistics/summary",
         "/agent/invite-options",
     ):
@@ -461,21 +465,59 @@ def test_agent_observability_routes_resolve_app_from_agent_id(
     captured: dict[str, object] = {}
 
     class FakeObservabilityService:
-        def list_logs(self, *, app, params):
-            captured["logs"] = {"app": app, "params": params}
+        def list_logs(self, *, app, agent_id, params):
+            captured["logs"] = {"app": app, "agent_id": agent_id, "params": params}
+            return {
+                "data": [
+                    {
+                        "conversation_id": "conversation-1",
+                        "id": "conversation-1",
+                        "title": "Debug",
+                        "end_user_id": "end-user-1",
+                        "message_count": 2,
+                        "user_rate": None,
+                        "operation_rate": None,
+                        "unread": True,
+                        "source": {
+                            "id": "webapp:app-1",
+                            "type": "webapp",
+                            "app_id": "app-1",
+                            "app_name": "Iris",
+                            "app_icon_type": "emoji",
+                            "app_icon": "robot",
+                            "app_icon_background": "#fff",
+                            "workflow_id": None,
+                            "workflow_version": None,
+                            "node_id": None,
+                        },
+                        "status": "success",
+                        "created_at": 1,
+                        "updated_at": 2,
+                    }
+                ],
+                "page": 2,
+                "limit": 5,
+                "total": 6,
+                "has_more": False,
+            }
+
+        def list_log_messages(self, *, app, agent_id, conversation_id, params):
+            captured["messages"] = {
+                "app": app,
+                "agent_id": agent_id,
+                "conversation_id": conversation_id,
+                "params": params,
+            }
             return {
                 "data": [
                     {
                         "id": "message-1",
                         "message_id": "message-1",
                         "conversation_id": "conversation-1",
-                        "conversation_name": "Debug",
                         "query": "hello",
                         "answer": "hi",
                         "status": "success",
                         "error": None,
-                        "source": "explore",
-                        "from_source": "console",
                         "from_end_user_id": None,
                         "from_account_id": account_id,
                         "message_tokens": 1,
@@ -488,14 +530,34 @@ def test_agent_observability_routes_resolve_app_from_agent_id(
                         "updated_at": 2,
                     }
                 ],
-                "page": 2,
-                "limit": 5,
-                "total": 6,
+                "page": 1,
+                "limit": 20,
+                "total": 1,
                 "has_more": False,
             }
 
-        def get_statistics_summary(self, *, app, params):
-            captured["statistics"] = {"app": app, "params": params}
+        def list_log_sources(self, *, app, agent_id):
+            captured["sources"] = {"app": app, "agent_id": agent_id}
+            return {
+                "data": [
+                    {
+                        "id": "webapp:app-1",
+                        "type": "webapp",
+                        "app_id": "app-1",
+                        "app_name": "Iris",
+                        "app_icon_type": "emoji",
+                        "app_icon": "robot",
+                        "app_icon_background": "#fff",
+                        "workflow_id": None,
+                        "workflow_version": None,
+                        "node_id": None,
+                    }
+                ],
+                "groups": [{"type": "webapp", "label": "WEBAPP", "sources": []}],
+            }
+
+        def get_statistics_summary(self, *, app, agent_id, params):
+            captured["statistics"] = {"app": app, "agent_id": agent_id, "params": params}
             return {
                 "source": "all",
                 "summary": {
@@ -532,15 +594,42 @@ def test_agent_observability_routes_resolve_app_from_agent_id(
     ):
         logs = unwrap(AgentLogsApi.get)(AgentLogsApi(), "tenant-1", account, agent_id)
 
-    assert logs["data"][0]["id"] == "message-1"
+    assert logs["data"][0]["id"] == "conversation-1"
+    assert logs["data"][0]["source"]["id"] == "webapp:app-1"
     logs_call = cast(dict[str, object], captured["logs"])
     assert logs_call["app"] is app_model
+    assert logs_call["agent_id"] == agent_id
     logs_params = cast(Any, logs_call["params"])
     assert logs_params.page == 2
     assert logs_params.limit == 5
     assert logs_params.keyword == "hello"
     assert logs_params.status == "success"
     assert logs_params.source == "console"
+
+    with app.test_request_context(
+        "/console/api/agent/00000000-0000-0000-0000-000000000001/logs/00000000-0000-0000-0000-000000000002/messages"
+    ):
+        messages = unwrap(AgentLogMessagesApi.get)(
+            AgentLogMessagesApi(),
+            "tenant-1",
+            account,
+            agent_id,
+            "00000000-0000-0000-0000-000000000002",
+        )
+
+    assert messages["data"][0]["id"] == "message-1"
+    messages_call = cast(dict[str, object], captured["messages"])
+    assert messages_call["app"] is app_model
+    assert messages_call["agent_id"] == agent_id
+    assert messages_call["conversation_id"] == "00000000-0000-0000-0000-000000000002"
+
+    with app.test_request_context("/console/api/agent/00000000-0000-0000-0000-000000000001/log-sources"):
+        sources = unwrap(AgentLogSourcesApi.get)(AgentLogSourcesApi(), "tenant-1", account, agent_id)
+
+    assert sources["data"][0]["id"] == "webapp:app-1"
+    sources_call = cast(dict[str, object], captured["sources"])
+    assert sources_call["app"] is app_model
+    assert sources_call["agent_id"] == agent_id
 
     with app.test_request_context(
         "/console/api/agent/00000000-0000-0000-0000-000000000001/statistics/summary?source=api"
@@ -550,6 +639,7 @@ def test_agent_observability_routes_resolve_app_from_agent_id(
     assert statistics["summary"]["total_messages"] == 1
     stats_call = cast(dict[str, object], captured["statistics"])
     assert stats_call["app"] is app_model
+    assert stats_call["agent_id"] == agent_id
     stats_params = cast(Any, stats_call["params"])
     assert stats_params.source == "api"
     assert stats_params.timezone == "UTC"
