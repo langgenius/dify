@@ -30,7 +30,8 @@ class Pagination(_RBACModel):
     total_pages: int = 0
 
 
-class Paginated(_RBACModel, Generic[T]):  # noqa: UP046
+
+class Paginated[T](_RBACModel):
     data: list[T] = Field(default_factory=list)
     pagination: Pagination | None = None
 
@@ -92,6 +93,8 @@ class RBACRole(_RBACModel):
 class RBACRoleAccount(_RBACModel):
     account_id: str
     account_name: str = ""
+    email: str = ""
+    avatar: str = ""
 
 
 class MemberRoleSummary(_RBACModel):

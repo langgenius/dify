@@ -123,6 +123,8 @@ def _hydrate_resource_user_account_names(items: list[svc.ResourceUserAccessPolic
         account_id = item.account.account_id
         if account_id and not item.account.account_name:
             item.account.account_name = account_names.get(account_id, {}).get("name", "")
+            item.account.avatar = account_names.get(account_id, {}).get("avatar", "")
+            item.account.email = account_names.get(account_id, {}).get("email", "")
 
 
 class _PaginationQuery(BaseModel):
