@@ -611,7 +611,8 @@ class MessagesCleanService:
         missing_app_ids = [app_id for app_id in app_ids if app_id not in self._app_to_tenant_cache]
         for app_id_chunk in self._chunked(missing_app_ids, _SQL_IN_CHUNK_SIZE):
             app_stmt = select(App.id, App.tenant_id).where(App.id.in_(app_id_chunk))
-            self._app_to_tenant_cache.update(dict(session.execute(app_stmt).all()))
+            for app_id, tenant_id in session.execute(app_stmt).all():
+                self._app_to_tenant_cache[app_id] = tenant_id
 
         return {app_id: self._app_to_tenant_cache[app_id] for app_id in app_ids if app_id in self._app_to_tenant_cache}
 
