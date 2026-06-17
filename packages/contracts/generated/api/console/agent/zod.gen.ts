@@ -2087,7 +2087,7 @@ export const zGetAgentInviteOptionsQuery = z.object({
 export const zGetAgentInviteOptionsResponse = zAgentInviteOptionsResponse
 
 export const zDeleteAgentByAgentIdPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
 })
 
 /**
@@ -2096,7 +2096,7 @@ export const zDeleteAgentByAgentIdPath = z.object({
 export const zDeleteAgentByAgentIdResponse = z.void()
 
 export const zGetAgentByAgentIdPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
 })
 
 /**
@@ -2107,7 +2107,7 @@ export const zGetAgentByAgentIdResponse = zAppDetailWithSite
 export const zPutAgentByAgentIdBody = zAgentAppUpdatePayload
 
 export const zPutAgentByAgentIdPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
 })
 
 /**
@@ -2116,7 +2116,7 @@ export const zPutAgentByAgentIdPath = z.object({
 export const zPutAgentByAgentIdResponse = zAppDetailWithSite
 
 export const zGetAgentByAgentIdChatMessagesPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
 })
 
 export const zGetAgentByAgentIdChatMessagesQuery = z.object({
@@ -2131,8 +2131,8 @@ export const zGetAgentByAgentIdChatMessagesQuery = z.object({
 export const zGetAgentByAgentIdChatMessagesResponse = zMessageInfiniteScrollPaginationResponse
 
 export const zGetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsPath = z.object({
-  agent_id: z.string(),
-  message_id: z.string(),
+  agent_id: z.uuid(),
+  message_id: z.uuid(),
 })
 
 /**
@@ -2142,7 +2142,7 @@ export const zGetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsResponse
   = zSuggestedQuestionsResponse
 
 export const zPostAgentByAgentIdChatMessagesByTaskIdStopPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
   task_id: z.string(),
 })
 
@@ -2152,7 +2152,7 @@ export const zPostAgentByAgentIdChatMessagesByTaskIdStopPath = z.object({
 export const zPostAgentByAgentIdChatMessagesByTaskIdStopResponse = zSimpleResultResponse
 
 export const zGetAgentByAgentIdComposerPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
 })
 
 /**
@@ -2163,7 +2163,7 @@ export const zGetAgentByAgentIdComposerResponse = zAgentAppComposerResponse
 export const zPutAgentByAgentIdComposerBody = zComposerSavePayload
 
 export const zPutAgentByAgentIdComposerPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
 })
 
 /**
@@ -2172,7 +2172,7 @@ export const zPutAgentByAgentIdComposerPath = z.object({
 export const zPutAgentByAgentIdComposerResponse = zAgentAppComposerResponse
 
 export const zGetAgentByAgentIdComposerCandidatesPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
 })
 
 /**
@@ -2183,7 +2183,7 @@ export const zGetAgentByAgentIdComposerCandidatesResponse = zAgentComposerCandid
 export const zPostAgentByAgentIdComposerValidateBody = zComposerSavePayload
 
 export const zPostAgentByAgentIdComposerValidatePath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
 })
 
 /**
@@ -2194,7 +2194,7 @@ export const zPostAgentByAgentIdComposerValidateResponse = zAgentComposerValidat
 export const zPostAgentByAgentIdCopyBody = zCopyAppPayload
 
 export const zPostAgentByAgentIdCopyPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
 })
 
 /**
@@ -2203,7 +2203,7 @@ export const zPostAgentByAgentIdCopyPath = z.object({
 export const zPostAgentByAgentIdCopyResponse = zAppDetailWithSite
 
 export const zGetAgentByAgentIdDriveFilesPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
 })
 
 export const zGetAgentByAgentIdDriveFilesQuery = z.object({
@@ -2216,7 +2216,7 @@ export const zGetAgentByAgentIdDriveFilesQuery = z.object({
 export const zGetAgentByAgentIdDriveFilesResponse = zAgentDriveListResponse
 
 export const zGetAgentByAgentIdDriveFilesDownloadPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
 })
 
 export const zGetAgentByAgentIdDriveFilesDownloadQuery = z.object({
@@ -2229,7 +2229,7 @@ export const zGetAgentByAgentIdDriveFilesDownloadQuery = z.object({
 export const zGetAgentByAgentIdDriveFilesDownloadResponse = zAgentDriveDownloadResponse
 
 export const zGetAgentByAgentIdDriveFilesPreviewPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
 })
 
 export const zGetAgentByAgentIdDriveFilesPreviewQuery = z.object({
@@ -2244,7 +2244,7 @@ export const zGetAgentByAgentIdDriveFilesPreviewResponse = zAgentDrivePreviewRes
 export const zPostAgentByAgentIdFeaturesBody = zAgentAppFeaturesPayload
 
 export const zPostAgentByAgentIdFeaturesPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
 })
 
 /**
@@ -2255,7 +2255,7 @@ export const zPostAgentByAgentIdFeaturesResponse = zSimpleResultResponse
 export const zPostAgentByAgentIdFeedbacksBody = zMessageFeedbackPayload
 
 export const zPostAgentByAgentIdFeedbacksPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
 })
 
 /**
@@ -2264,7 +2264,7 @@ export const zPostAgentByAgentIdFeedbacksPath = z.object({
 export const zPostAgentByAgentIdFeedbacksResponse = zSimpleResultResponse
 
 export const zDeleteAgentByAgentIdFilesPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
 })
 
 export const zDeleteAgentByAgentIdFilesQuery = z.object({
@@ -2279,7 +2279,7 @@ export const zDeleteAgentByAgentIdFilesResponse = zAgentDriveDeleteResponse
 export const zPostAgentByAgentIdFilesBody = zAgentDriveFilePayload
 
 export const zPostAgentByAgentIdFilesPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
 })
 
 /**
@@ -2288,7 +2288,7 @@ export const zPostAgentByAgentIdFilesPath = z.object({
 export const zPostAgentByAgentIdFilesResponse = zAgentDriveFileCommitResponse
 
 export const zGetAgentByAgentIdLogsPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
 })
 
 export const zGetAgentByAgentIdLogsQuery = z.object({
@@ -2307,8 +2307,8 @@ export const zGetAgentByAgentIdLogsQuery = z.object({
 export const zGetAgentByAgentIdLogsResponse = zAgentLogListResponse
 
 export const zGetAgentByAgentIdMessagesByMessageIdPath = z.object({
-  agent_id: z.string(),
-  message_id: z.string(),
+  agent_id: z.uuid(),
+  message_id: z.uuid(),
 })
 
 /**
@@ -2317,7 +2317,7 @@ export const zGetAgentByAgentIdMessagesByMessageIdPath = z.object({
 export const zGetAgentByAgentIdMessagesByMessageIdResponse = zMessageDetailResponse
 
 export const zGetAgentByAgentIdReferencingWorkflowsPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
 })
 
 /**
@@ -2326,7 +2326,7 @@ export const zGetAgentByAgentIdReferencingWorkflowsPath = z.object({
 export const zGetAgentByAgentIdReferencingWorkflowsResponse = zAgentReferencingWorkflowsResponse
 
 export const zGetAgentByAgentIdSandboxFilesPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
 })
 
 export const zGetAgentByAgentIdSandboxFilesQuery = z.object({
@@ -2340,7 +2340,7 @@ export const zGetAgentByAgentIdSandboxFilesQuery = z.object({
 export const zGetAgentByAgentIdSandboxFilesResponse = zSandboxListResponse
 
 export const zGetAgentByAgentIdSandboxFilesReadPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
 })
 
 export const zGetAgentByAgentIdSandboxFilesReadQuery = z.object({
@@ -2356,7 +2356,7 @@ export const zGetAgentByAgentIdSandboxFilesReadResponse = zSandboxReadResponse
 export const zPostAgentByAgentIdSandboxFilesUploadBody = zAgentSandboxUploadPayload
 
 export const zPostAgentByAgentIdSandboxFilesUploadPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
 })
 
 /**
@@ -2365,7 +2365,7 @@ export const zPostAgentByAgentIdSandboxFilesUploadPath = z.object({
 export const zPostAgentByAgentIdSandboxFilesUploadResponse = zSandboxUploadResponse
 
 export const zPostAgentByAgentIdSkillsStandardizePath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
 })
 
 /**
@@ -2374,7 +2374,7 @@ export const zPostAgentByAgentIdSkillsStandardizePath = z.object({
 export const zPostAgentByAgentIdSkillsStandardizeResponse = zAgentSkillStandardizeResponse
 
 export const zPostAgentByAgentIdSkillsUploadPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
 })
 
 /**
@@ -2383,7 +2383,7 @@ export const zPostAgentByAgentIdSkillsUploadPath = z.object({
 export const zPostAgentByAgentIdSkillsUploadResponse = zAgentSkillUploadResponse
 
 export const zDeleteAgentByAgentIdSkillsBySlugPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
   slug: z.string(),
 })
 
@@ -2393,7 +2393,7 @@ export const zDeleteAgentByAgentIdSkillsBySlugPath = z.object({
 export const zDeleteAgentByAgentIdSkillsBySlugResponse = zAgentDriveDeleteResponse
 
 export const zPostAgentByAgentIdSkillsBySlugInferToolsPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
   slug: z.string(),
 })
 
@@ -2403,7 +2403,7 @@ export const zPostAgentByAgentIdSkillsBySlugInferToolsPath = z.object({
 export const zPostAgentByAgentIdSkillsBySlugInferToolsResponse = zSkillToolInferenceResult
 
 export const zGetAgentByAgentIdStatisticsSummaryPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
 })
 
 export const zGetAgentByAgentIdStatisticsSummaryQuery = z.object({
@@ -2418,7 +2418,7 @@ export const zGetAgentByAgentIdStatisticsSummaryQuery = z.object({
 export const zGetAgentByAgentIdStatisticsSummaryResponse = zAgentStatisticSummaryEnvelopeResponse
 
 export const zGetAgentByAgentIdVersionsPath = z.object({
-  agent_id: z.string(),
+  agent_id: z.uuid(),
 })
 
 /**
@@ -2427,8 +2427,8 @@ export const zGetAgentByAgentIdVersionsPath = z.object({
 export const zGetAgentByAgentIdVersionsResponse = zAgentConfigSnapshotListResponse
 
 export const zGetAgentByAgentIdVersionsByVersionIdPath = z.object({
-  agent_id: z.string(),
-  version_id: z.string(),
+  agent_id: z.uuid(),
+  version_id: z.uuid(),
 })
 
 /**

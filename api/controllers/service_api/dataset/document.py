@@ -8,11 +8,12 @@ deprecated in generated API docs so clients migrate toward the canonical paths.
 import json
 from collections.abc import Mapping
 from contextlib import ExitStack
-from typing import Any, Literal, Self
+from copy import deepcopy
+from typing import Any, Literal, Self, override
 from uuid import UUID
 
 from flask import request, send_file
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, GetJsonSchemaHandler, field_validator, model_validator
 from sqlalchemy import desc, func, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -39,6 +40,7 @@ from controllers.service_api.dataset.error import (
     DocumentIndexingError,
     InvalidMetadataError,
 )
+from controllers.service_api.schema import binary_response
 from controllers.service_api.wraps import (
     DatasetApiResource,
     cloud_edition_billing_rate_limit_check,
@@ -104,11 +106,59 @@ class DocumentTextUpdate(BaseModel):
             raise ValueError("Invalid doc_form.")
         return value
 
+    @classmethod
+    @override
+    def __get_pydantic_json_schema__(cls, core_schema: Any, handler: GetJsonSchemaHandler) -> dict[str, Any]:
+        schema = handler.resolve_ref_schema(handler(core_schema))
+        properties = schema.get("properties")
+        if not isinstance(properties, dict):
+            return schema
+
+        text_branch_properties = deepcopy(properties)
+        text_branch_properties["text"] = _non_null_property_schema(properties.get("text"))
+        text_branch_properties["name"] = _non_null_property_schema(properties.get("name"))
+
+        no_text_branch_properties = deepcopy(properties)
+        no_text_branch_properties["text"] = {"type": "null"}
+
+        return {
+            **schema,
+            "anyOf": [
+                {
+                    "properties": text_branch_properties,
+                    "required": ["name", "text"],
+                    "type": "object",
+                },
+                {
+                    "properties": no_text_branch_properties,
+                    "type": "object",
+                },
+            ],
+        }
+
     @model_validator(mode="after")
     def check_text_and_name(self) -> Self:
         if self.text is not None and self.name is None:
             raise ValueError("name is required when text is provided")
         return self
+
+
+def _non_null_property_schema(property_schema: object) -> dict[str, Any]:
+    if not isinstance(property_schema, dict):
+        return {}
+
+    any_of = property_schema.get("anyOf")
+    if isinstance(any_of, list):
+        non_null_candidates = [
+            candidate for candidate in any_of if isinstance(candidate, dict) and candidate.get("type") != "null"
+        ]
+        if len(non_null_candidates) == 1:
+            return {
+                **{key: value for key, value in property_schema.items() if key != "anyOf"},
+                **deepcopy(non_null_candidates[0]),
+            }
+
+    return deepcopy(property_schema)
 
 
 class DocumentListQuery(BaseModel):
@@ -463,8 +513,17 @@ class DeprecatedDocumentUpdateByTextApi(DatasetApiResource):
 
 @service_api_ns.route(
     "/datasets/<uuid:dataset_id>/document/create_by_file",
-    "/datasets/<uuid:dataset_id>/document/create-by-file",
+    doc={
+        "post": {
+            "deprecated": True,
+            "description": (
+                "Deprecated legacy alias for creating a new document by uploading a file. "
+                "Use /datasets/{dataset_id}/document/create-by-file instead."
+            ),
+        }
+    },
 )
+@service_api_ns.route("/datasets/<uuid:dataset_id>/document/create-by-file")
 class DocumentAddByFileApi(DatasetApiResource):
     """Resource for documents."""
 
@@ -746,6 +805,7 @@ class DocumentListApi(DatasetApiResource):
 class DocumentBatchDownloadZipApi(DatasetApiResource):
     """Download multiple uploaded-file documents as a single ZIP archive."""
 
+    @binary_response(service_api_ns, "application/zip")
     @service_api_ns.expect(service_api_ns.models[DocumentBatchDownloadZipPayload.__name__])
     @service_api_ns.doc("download_documents_as_zip")
     @service_api_ns.doc(description="Download selected uploaded documents as a single ZIP archive")
@@ -758,11 +818,7 @@ class DocumentBatchDownloadZipApi(DatasetApiResource):
             404: "Document or dataset not found",
         }
     )
-    @service_api_ns.response(
-        200,
-        "ZIP archive generated successfully",
-        service_api_ns.models[BinaryFileResponse.__name__],
-    )
+    @service_api_ns.response(200, "ZIP archive generated successfully")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id: UUID):
         payload = DocumentBatchDownloadZipPayload.model_validate(service_api_ns.payload or {})
