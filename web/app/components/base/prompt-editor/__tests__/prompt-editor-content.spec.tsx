@@ -270,6 +270,53 @@ describe('PromptEditorContent', () => {
       })
     })
 
+    it('should update rendered output block type when declared output config changes', async () => {
+      const captures: Captures = { editor: null, eventEmitter: null }
+      const outputBlock = {
+        show: true,
+        outputs: [
+          { name: 'summary', type: 'string' as const },
+        ],
+      }
+
+      const { rerender } = render(
+        <PromptEditorContentHarness
+          captures={captures}
+          initialText="[§output:summary:summary§]"
+          shortcutPopups={[]}
+          floatingAnchorElem={document.createElement('div')}
+          onEditorChange={vi.fn()}
+          agentOutputBlock={outputBlock}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText('summary')).toBeInTheDocument()
+        expect(screen.getByText('string')).toBeInTheDocument()
+      })
+
+      rerender(
+        <PromptEditorContentHarness
+          captures={captures}
+          initialText="[§output:summary:summary§]"
+          shortcutPopups={[]}
+          floatingAnchorElem={document.createElement('div')}
+          onEditorChange={vi.fn()}
+          agentOutputBlock={{
+            show: true,
+            outputs: [
+              { name: 'summary', type: 'file' },
+            ],
+          }}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText('file')).toBeInTheDocument()
+      })
+      expect(screen.queryByText('string')).not.toBeInTheDocument()
+    })
+
     it('should render optional blocks and open shortcut popups with the real editor runtime', async () => {
       const captures: Captures = { editor: null, eventEmitter: null }
       const onEditorChange = vi.fn()

@@ -1,4 +1,4 @@
-import type { TextNode } from 'lexical'
+import type { ElementNode, TextNode } from 'lexical'
 import type { AgentOutputBlockType } from '../../types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
@@ -6,6 +6,7 @@ import {
   $applyNodeReplacement,
   $getRoot,
   $insertNodes,
+  $isElementNode,
   COMMAND_PRIORITY_EDITOR,
 } from 'lexical'
 import { memo, useCallback, useEffect } from 'react'
@@ -20,6 +21,12 @@ import {
   inferAgentOutputType,
   parseAgentOutputToken,
 } from './utils'
+
+function getAgentOutputBlockNodeType(name: string, outputs: NonNullable<AgentOutputBlockType['outputs']>) {
+  const output = outputs.find(item => item.name === name)
+
+  return inferAgentOutputType(name, output ? getAgentOutputTypeOptionValue(output) : 'string')
+}
 
 const AgentOutputBlock = memo(({
   outputs = [],
@@ -69,8 +76,7 @@ const AgentOutputBlockReplacementBlock = memo(({
   const createAgentOutputBlockNode = useCallback((textNode: TextNode): AgentOutputBlockNode => {
     const match = parseAgentOutputToken(textNode.getTextContent())
     const name = match?.name || ''
-    const output = outputs.find(item => item.name === name)
-    const outputType = inferAgentOutputType(name, output ? getAgentOutputTypeOptionValue(output) : 'string')
+    const outputType = getAgentOutputBlockNodeType(name, outputs)
 
     return $applyNodeReplacement($createAgentOutputBlockNode(name, outputType, false, outputs, onChange))
   }, [onChange, outputs])
@@ -98,6 +104,32 @@ const AgentOutputBlockReplacementBlock = memo(({
       editor.registerNodeTransform(CustomTextNode, transformListener),
     )
   }, [editor, transformListener])
+
+  useEffect(() => {
+    editor.update(() => {
+      const visitNode = (node: ElementNode) => {
+        node.getChildren().forEach((child) => {
+          if (child instanceof AgentOutputBlockNode) {
+            const name = child.getName()
+            const outputType = getAgentOutputBlockNodeType(name, outputs)
+            if (
+              child.getOutputType() !== outputType
+              || child.getOutputs() !== outputs
+              || child.getOnChange() !== onChange
+            ) {
+              child.replace($createAgentOutputBlockNode(name, outputType, child.isEditing(), outputs, onChange))
+            }
+            return
+          }
+
+          if ($isElementNode(child))
+            visitNode(child)
+        })
+      }
+
+      visitNode($getRoot())
+    })
+  }, [editor, onChange, outputs])
 
   return null
 })
