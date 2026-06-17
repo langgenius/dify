@@ -1,7 +1,7 @@
-from pytest_mock import MockerFixture
 from types import SimpleNamespace
 
 import pytest
+from pytest_mock import MockerFixture
 from werkzeug.exceptions import NotFound
 
 from models.enums import TagType
@@ -31,8 +31,8 @@ def test_save_tag_binding_only_creates_bindings_for_valid_snippet_tags(mocker, c
             tag_ids=["tag-1", "tag-from-other-tenant"],
             target_id="snippet-1",
             type=TagType.SNIPPET,
-        ),db_session
-
+        ),
+        db_session,
     )
 
     db_session.add.assert_called_once()
@@ -53,7 +53,8 @@ def test_delete_tag_binding_limits_deletion_to_valid_snippet_tags(mocker, curren
             tag_ids=["tag-1", "tag-from-other-tenant"],
             target_id="snippet-1",
             type=TagType.SNIPPET,
-        ),db_session
+        ),
+        db_session,
     )
 
     db_session.execute.assert_called_once()
@@ -69,7 +70,8 @@ def test_delete_tag_binding_does_not_commit_when_no_rows_deleted(mocker, current
             tag_ids=["tag-1"],
             target_id="snippet-1",
             type=TagType.SNIPPET,
-        ),db_session
+        ),
+        db_session,
     )
 
     db_session.execute.assert_called_once()

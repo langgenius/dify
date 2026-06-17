@@ -257,7 +257,9 @@ class TestDatasetServiceGetDatasets:
         )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page, per_page, db_session_with_containers, tenant_id=tenant.id, search=search)
+        datasets, total = DatasetService.get_datasets(
+            page, per_page, db_session_with_containers, tenant_id=tenant.id, search=search
+        )
 
         # Assert
         assert len(datasets) == 1
@@ -301,7 +303,9 @@ class TestDatasetServiceGetDatasets:
         tag_ids = [tag_1.id, tag_2.id]
 
         # Act
-        datasets, total = DatasetService.get_datasets(page, per_page, db_session_with_containers, tenant_id=tenant.id, tag_ids=tag_ids)
+        datasets, total = DatasetService.get_datasets(
+            page, per_page, db_session_with_containers, tenant_id=tenant.id, tag_ids=tag_ids
+        )
 
         # Assert
         assert len(datasets) == 1
@@ -326,7 +330,9 @@ class TestDatasetServiceGetDatasets:
             )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page, per_page, db_session_with_containers, tenant_id=tenant.id, tag_ids=tag_ids)
+        datasets, total = DatasetService.get_datasets(
+            page, per_page, db_session_with_containers, tenant_id=tenant.id, tag_ids=tag_ids
+        )
 
         # Assert
         # When tag_ids is empty, tag filtering is skipped, so normal query results are returned
@@ -356,7 +362,9 @@ class TestDatasetServiceGetDatasets:
         )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page, per_page, db_session_with_containers, tenant_id=tenant.id, user=None)
+        datasets, total = DatasetService.get_datasets(
+            page, per_page, db_session_with_containers, tenant_id=tenant.id, user=None
+        )
 
         # Assert
         assert len(datasets) == 1
@@ -408,7 +416,9 @@ class TestDatasetServiceGetDatasets:
         )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page=1, per_page=20, session=db_session_with_containers,tenant_id=tenant.id, user=user)
+        datasets, total = DatasetService.get_datasets(
+            page=1, per_page=20, session=db_session_with_containers, tenant_id=tenant.id, user=user
+        )
 
         # Assert
         assert len(datasets) == 1
@@ -432,7 +442,9 @@ class TestDatasetServiceGetDatasets:
         )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page=1, per_page=20, session=db_session_with_containers,tenant_id=tenant.id, user=user)
+        datasets, total = DatasetService.get_datasets(
+            page=1, per_page=20, session=db_session_with_containers, tenant_id=tenant.id, user=user
+        )
 
         # Assert
         assert len(datasets) == 1
@@ -459,7 +471,9 @@ class TestDatasetServiceGetDatasets:
         )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page=1, per_page=20, session=db_session_with_containers,tenant_id=tenant.id, user=user)
+        datasets, total = DatasetService.get_datasets(
+            page=1, per_page=20, session=db_session_with_containers, tenant_id=tenant.id, user=user
+        )
 
         # Assert
         assert len(datasets) == 1
@@ -486,7 +500,9 @@ class TestDatasetServiceGetDatasets:
         )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page=1, per_page=20, session=db_session_with_containers,tenant_id=tenant.id, user=operator)
+        datasets, total = DatasetService.get_datasets(
+            page=1, per_page=20, session=db_session_with_containers, tenant_id=tenant.id, user=operator
+        )
 
         # Assert
         assert len(datasets) == 1
@@ -509,7 +525,9 @@ class TestDatasetServiceGetDatasets:
         )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page=1, per_page=20, session=db_session_with_containers,tenant_id=tenant.id, user=operator)
+        datasets, total = DatasetService.get_datasets(
+            page=1, per_page=20, session=db_session_with_containers, tenant_id=tenant.id, user=operator
+        )
 
         # Assert
         assert datasets == []
