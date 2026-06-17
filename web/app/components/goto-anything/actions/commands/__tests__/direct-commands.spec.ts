@@ -22,7 +22,7 @@ vi.mock('react-i18next', () => ({
 
 vi.mock('@/context/i18n', () => ({
   defaultDocBaseUrl: 'https://docs.dify.ai',
-  getDocHomePath: () => '/self-host/deploy/overview',
+  getDocHomePath: () => '/home',
 }))
 
 vi.mock('@/i18n-config/language', () => ({
@@ -46,7 +46,7 @@ describe('docsCommand', () => {
     docsCommand.execute?.()
 
     expect(openSpy).toHaveBeenCalledWith(
-      'https://docs.dify.ai/en/self-host/deploy/overview',
+      'https://docs.dify.ai/en/home',
       '_blank',
       'noopener,noreferrer',
     )
@@ -87,7 +87,7 @@ describe('docsCommand', () => {
     await handlers['navigation.doc']!()
 
     expect(openSpy).toHaveBeenCalledWith(
-      'https://docs.dify.ai/en/self-host/deploy/overview',
+      'https://docs.dify.ai/en/home',
       '_blank',
       'noopener,noreferrer',
     )

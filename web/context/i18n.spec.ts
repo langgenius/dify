@@ -170,12 +170,12 @@ describe('useDocLink', () => {
       expect(url).toBe(`${defaultDocBaseUrl}/en/self-host/use-dify/build/mcp`)
     })
 
-    it('should open self-host docs overview when no path is provided outside cloud edition', () => {
+    it('should open shared docs home when no path is provided outside cloud edition', () => {
       mockConfig.IS_CLOUD_EDITION = false
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current()
-      expect(url).toBe(`${defaultDocBaseUrl}/en/self-host/deploy/overview`)
+      expect(url).toBe(`${defaultDocBaseUrl}/en/home`)
     })
 
     it('should keep self-host deploy paths without adding use-dify product prefix', () => {

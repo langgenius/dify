@@ -25,7 +25,7 @@ export const useGetPricingPageLanguage = () => {
 export const defaultDocBaseUrl = 'https://docs.dify.ai'
 export type DocPathMap = Partial<Record<Locale, DocPathWithoutLang>>
 
-export const getDocHomePath = () => IS_CLOUD_EDITION ? '/home' : '/self-host/deploy/overview'
+export const getDocHomePath = () => '/home'
 
 export const useDocLink = (baseUrl?: string): ((path?: DocPathWithoutLang, pathMap?: DocPathMap) => string) => {
   let baseDocUrl = baseUrl || defaultDocBaseUrl
