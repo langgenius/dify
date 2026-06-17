@@ -776,7 +776,7 @@ export const zSnippet = z.object({
   version: z.int().optional(),
 })
 
-export const zAnonymousInlineModelEfd591151Ea9 = z.object({
+export const zAnonymousInlineModel744Ff9Cc03E6 = z.object({
   author_name: z.string().optional(),
   created_at: z.coerce
     .bigint()
@@ -810,7 +810,7 @@ export const zAnonymousInlineModelEfd591151Ea9 = z.object({
 })
 
 export const zSnippetPagination = z.object({
-  data: z.array(zAnonymousInlineModelEfd591151Ea9).optional(),
+  data: z.array(zAnonymousInlineModel744Ff9Cc03E6).optional(),
   has_more: z.boolean().optional(),
   limit: z.int().optional(),
   page: z.int().optional(),
@@ -1927,7 +1927,7 @@ export const zPostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmRes
   = zSnippetImportResponse
 
 export const zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdPath = z.object({
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
 })
 
 /**
@@ -1936,7 +1936,7 @@ export const zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdPath = z.objec
 export const zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse = z.void()
 
 export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdPath = z.object({
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
 })
 
 /**
@@ -1947,7 +1947,7 @@ export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse = zSnipp
 export const zPatchWorkspacesCurrentCustomizedSnippetsBySnippetIdBody = zUpdateSnippetPayload
 
 export const zPatchWorkspacesCurrentCustomizedSnippetsBySnippetIdPath = z.object({
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
 })
 
 /**
@@ -1956,7 +1956,7 @@ export const zPatchWorkspacesCurrentCustomizedSnippetsBySnippetIdPath = z.object
 export const zPatchWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse = zSnippet
 
 export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesPath = z.object({
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
 })
 
 /**
@@ -1966,7 +1966,7 @@ export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependencies
   = zSnippetDependencyCheckResponse
 
 export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportPath = z.object({
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
 })
 
 export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportQuery = z.object({
@@ -1979,7 +1979,7 @@ export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportQuery = z.o
 export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportResponse = zTextFileResponse
 
 export const zPostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementPath = z.object({
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
 })
 
 /**
@@ -2121,7 +2121,7 @@ export const zPostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailResponse
   = zSimpleResultDataResponse
 
 export const zDeleteWorkspacesCurrentMembersByMemberIdPath = z.object({
-  member_id: z.string(),
+  member_id: z.uuid(),
 })
 
 /**
@@ -2132,7 +2132,7 @@ export const zDeleteWorkspacesCurrentMembersByMemberIdResponse = zMemberActionTe
 export const zPostWorkspacesCurrentMembersByMemberIdOwnerTransferBody = zOwnerTransferPayload
 
 export const zPostWorkspacesCurrentMembersByMemberIdOwnerTransferPath = z.object({
-  member_id: z.string(),
+  member_id: z.uuid(),
 })
 
 /**
@@ -2143,7 +2143,7 @@ export const zPostWorkspacesCurrentMembersByMemberIdOwnerTransferResponse = zSim
 export const zPutWorkspacesCurrentMembersByMemberIdUpdateRoleBody = zMemberRoleUpdatePayload
 
 export const zPutWorkspacesCurrentMembersByMemberIdUpdateRolePath = z.object({
-  member_id: z.string(),
+  member_id: z.uuid(),
 })
 
 /**

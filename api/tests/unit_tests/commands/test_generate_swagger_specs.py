@@ -106,6 +106,23 @@ def test_generate_specs_writes_get_operations_without_request_bodies(tmp_path):
         assert all("requestBody" not in operation for operation in _get_operations(payload))
 
 
+def test_standalone_inline_model_name_includes_list_constraints():
+    module = _load_generate_swagger_specs_module()
+
+    from flask_restx import fields
+
+    cases = (
+        ({"min_items": 1}, {"min_items": 2}),
+        ({"max_items": 1}, {"max_items": 2}),
+        ({"unique": True}, {"unique": False}),
+    )
+    for first_kwargs, second_kwargs in cases:
+        first_inline_model = {"items": fields.List(fields.String, **first_kwargs)}
+        second_inline_model = {"items": fields.List(fields.String, **second_kwargs)}
+
+        assert module._inline_model_name(first_inline_model) != module._inline_model_name(second_inline_model)
+
+
 def test_generate_specs_is_idempotent(tmp_path):
     module = _load_generate_swagger_specs_module()
 

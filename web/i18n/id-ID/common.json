@@ -311,6 +311,7 @@
   "menus.apps": "Aplikasi",
   "menus.datasets": "Pengetahuan",
   "menus.datasetsTips": "SEGERA HADIR: Impor data teks Anda sendiri atau tulis data secara real-time melalui Webhook untuk peningkatan konteks LLM.",
+  "menus.deployments": "Penerapan",
   "menus.explore": "Menjelajahi",
   "menus.exploreMarketplace": "Jelajahi Marketplace",
   "menus.newApp": "Aplikasi Baru",

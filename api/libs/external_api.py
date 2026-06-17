@@ -9,7 +9,7 @@ from werkzeug.http import HTTP_STATUS_CODES
 
 from configs import dify_config
 from core.errors.error import AppInvokeQuotaExceededError
-from libs.flask_restx_compat import patch_swagger_for_inline_nested_dicts
+from libs.flask_restx_compat import install_swagger_compatibility
 from libs.token import build_force_logout_cookie_headers
 
 
@@ -127,16 +127,22 @@ def register_external_error_handlers(api: Api, body_formatter: ErrorBodyFormatte
 class ExternalApi(Api):
     _authorizations = {
         "Bearer": {
-            "type": "apiKey",
-            "in": "header",
-            "name": "Authorization",
-            "description": "Type: Bearer {your-api-key}",
+            "bearerFormat": "API_KEY",
+            "description": "Use the Service API key as a Bearer token in the Authorization header.",
+            "scheme": "bearer",
+            "type": "http",
         }
     }
 
-    def __init__(self, app: Blueprint | Flask, *args, error_body_formatter: ErrorBodyFormatter | None = None, **kwargs):
+    def __init__(
+        self,
+        app: Blueprint | Flask,
+        *args,
+        error_body_formatter: ErrorBodyFormatter | None = None,
+        **kwargs,
+    ):
         self._error_body_formatter = error_body_formatter
-        patch_swagger_for_inline_nested_dicts()
+        install_swagger_compatibility()
         kwargs.setdefault("authorizations", self._authorizations)
         kwargs.setdefault("security", "Bearer")
         kwargs["add_specs"] = dify_config.SWAGGER_UI_ENABLED

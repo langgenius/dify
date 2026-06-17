@@ -311,6 +311,7 @@
   "menus.apps": "スタジオ",
   "menus.datasets": "ナレッジ",
   "menus.datasetsTips": "近日公開：独自のテキストデータをインポートするか、Webhook を介してリアルタイムにデータを記述して LLM コンテキストを強化します。",
+  "menus.deployments": "デプロイ",
   "menus.explore": "探索",
   "menus.exploreMarketplace": "マーケットプレイスを探索する",
   "menus.newApp": "新しいアプリ",

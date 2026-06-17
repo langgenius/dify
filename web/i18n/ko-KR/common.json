@@ -311,6 +311,7 @@
   "menus.apps": "스튜디오",
   "menus.datasets": "지식",
   "menus.datasetsTips": "곧 출시될 예정: 고유한 텍스트 데이터를 가져오거나 웹훅을 통해 실시간으로 데이터를 기록하여 LLM 컨텍스트를 강화합니다.",
+  "menus.deployments": "배포",
   "menus.explore": "탐색",
   "menus.exploreMarketplace": "Marketplace 둘러보기",
   "menus.newApp": "새로운 앱",
