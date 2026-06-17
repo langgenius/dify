@@ -45,10 +45,10 @@ class WorkflowEventsQuery(BaseModel):
 
 @openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>/events")
 class OpenApiWorkflowEventsApi(Resource):
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @openapi_ns.doc(params=query_params_from_model(WorkflowEventsQuery))
     @openapi_ns.response(200, "SSE event stream", openapi_ns.models[EventStreamResponse.__name__])
     @auth_router.guard(scope=Scope.APPS_RUN)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     def get(self, app_id: str, task_id: str, *, auth_data: AuthData):
         app_model, caller, caller_kind = auth_data.require_app_context()
         app_mode = AppMode.value_of(app_model.mode)

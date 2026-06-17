@@ -137,8 +137,8 @@ _DISPATCH: dict[AppMode, Callable[[App, Any, AppRunRequest], Any]] = {
 
 @openapi_ns.route("/apps/<string:app_id>/run")
 class AppRunApi(Resource):
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @auth_router.guard(scope=Scope.APPS_RUN)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @openapi_ns.response(200, "Run result (SSE stream)", openapi_ns.models[EventStreamResponse.__name__])
     @accepts(body=AppRunRequest)
     def post(self, app_id: str, *, auth_data: AuthData, body: AppRunRequest):
@@ -169,8 +169,8 @@ class AppRunApi(Resource):
 
 @openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>/stop")
 class AppRunTaskStopApi(Resource):
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @auth_router.guard(scope=Scope.APPS_RUN)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @returns(200, TaskStopResponse, description="Task stopped")
     def post(self, app_id: str, task_id: str, *, auth_data: AuthData):
         app_model, caller, caller_kind = auth_data.require_app_context()

@@ -87,8 +87,8 @@ def parameters_payload(app: App) -> dict:
 
 @openapi_ns.route("/apps/<string:app_id>/describe")
 class AppDescribeApi(AppReadResource):
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @auth_router.guard(scope=Scope.APPS_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @returns(200, AppDescribeResponse, description="App description")
     @accepts(query=AppDescribeQuery)
     def get(self, app_id: str, *, auth_data: AuthData, query: AppDescribeQuery):
@@ -138,8 +138,8 @@ class AppDescribeApi(AppReadResource):
 
 @openapi_ns.route("/apps")
 class AppListApi(Resource):
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT, resource_required=False)
     @auth_router.guard_workspace(scope=Scope.APPS_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT, resource_required=False)
     @returns(200, AppListResponse, description="App list")
     @accepts(query=AppListQuery)
     def get(self, *, auth_data: AuthData, query: AppListQuery):

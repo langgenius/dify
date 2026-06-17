@@ -34,12 +34,12 @@ class AppDslImportApi(Resource):
     Returns 400 when the import failed due to invalid DSL or a business error.
     """
 
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL, resource_required=False)
     @auth_router.guard_workspace(
         scope=Scope.WORKSPACE_WRITE,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
     )
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL, resource_required=False)
     @returns(200, Import, "Import completed")
     @returns(202, Import, "Import pending confirmation")
     @returns(400, Import, "Import failed")
@@ -123,12 +123,12 @@ class AppDslExportApi(Resource):
     receive a 403; enable the API in the console first if needed.
     """
 
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL)
     @auth_router.guard(
         scope=Scope.APPS_READ,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
     )
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL)
     @accepts(query=AppDslExportQuery)
     @returns(200, AppDslExportResponse, "Export successful")
     def get(self, app_id: str, *, auth_data: AuthData, query: AppDslExportQuery):
@@ -154,12 +154,12 @@ class AppDslCheckDependenciesApi(Resource):
     dependencies are satisfied.
     """
 
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL)
     @auth_router.guard(
         scope=Scope.APPS_READ,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
     )
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL)
     @returns(200, CheckDependenciesResult, "Dependencies checked")
     def get(self, app_id: str, *, auth_data: AuthData):
         app = cast(App, auth_data.app)
