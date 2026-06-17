@@ -10,7 +10,6 @@ import { useLocale } from '@/context/i18n'
 import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import {
   useAppAccessRules,
-  useAppOpenScope,
   useAppUserAccessSettings,
   useRemoveAppAccessPolicyMemberBindings,
   useUpdateAppOpenScope,
@@ -28,7 +27,6 @@ const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
   const maintainerId = useStore(state => state.appDetail?.maintainer)
   const { data: appAccessRulesResponse, isLoading: isLoadingAppAccessRules } = useAppAccessRules(appId, language)
   const { data: appUserAccessSettingsResponse, isLoading: isLoadingAppUserAccessSettings } = useAppUserAccessSettings(appId)
-  const { data: appOpenScopeResponse, isLoading: isLoadingAppOpenScope } = useAppOpenScope(appId)
   const { mutate: updateAppOpenScope, isPending: isUpdatingAppOpenScope } = useUpdateAppOpenScope(appId)
   const { mutate: updateAppUserAccessSettings } = useUpdateAppUserAccessSettings(appId)
   const { mutate: removeAppAccessPolicyMemberBindings } = useRemoveAppAccessPolicyMemberBindings(appId)
@@ -37,7 +35,7 @@ const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
 
   const appAccessRules = appAccessRulesResponse?.items || []
   const appUserAccessSettings = appUserAccessSettingsResponse?.data || []
-  const openScope = optimisticOpenScope || appOpenScopeResponse?.scope
+  const openScope = optimisticOpenScope || appUserAccessSettingsResponse?.scope
 
   const handleOpenScopeChange = useCallback((nextOpenScope: ResourceOpenScope) => {
     if (nextOpenScope === openScope)
@@ -85,7 +83,7 @@ const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
           isLoadingRules={isLoadingAppAccessRules}
           isLoadingUserAccessSettings={isLoadingAppUserAccessSettings}
           openScope={openScope}
-          isUpdatingOpenScope={isLoadingAppOpenScope || isUpdatingAppOpenScope}
+          isUpdatingOpenScope={isLoadingAppUserAccessSettings || isUpdatingAppOpenScope}
           updatingAccountId={updatingAccountId}
           maintainerId={maintainerId}
           onOpenScopeChange={handleOpenScopeChange}

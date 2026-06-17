@@ -10,7 +10,6 @@ import { useLocale } from '@/context/i18n'
 import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import {
   useDatasetAccessRules,
-  useDatasetOpenScope,
   useDatasetUserAccessSettings,
   useRemoveDatasetAccessPolicyMemberBindings,
   useUpdateDatasetOpenScope,
@@ -28,7 +27,6 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
   const maintainerId = useDatasetDetailContextWithSelector(state => state.dataset?.maintainer)
   const { data: datasetAccessRulesResponse, isLoading: isLoadingDatasetAccessRules } = useDatasetAccessRules(datasetId, language)
   const { data: datasetUserAccessSettingsResponse, isLoading: isLoadingDatasetUserAccessSettings } = useDatasetUserAccessSettings(datasetId)
-  const { data: datasetOpenScopeResponse, isLoading: isLoadingDatasetOpenScope } = useDatasetOpenScope(datasetId)
   const { mutate: updateDatasetOpenScope, isPending: isUpdatingDatasetOpenScope } = useUpdateDatasetOpenScope(datasetId)
   const { mutate: updateDatasetUserAccessSettings } = useUpdateDatasetUserAccessSettings(datasetId)
   const { mutate: removeDatasetAccessPolicyMemberBindings } = useRemoveDatasetAccessPolicyMemberBindings(datasetId)
@@ -37,7 +35,7 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
 
   const datasetAccessRules = datasetAccessRulesResponse?.items || []
   const datasetUserAccessSettings = datasetUserAccessSettingsResponse?.data || []
-  const openScope = optimisticOpenScope || datasetOpenScopeResponse?.scope
+  const openScope = optimisticOpenScope || datasetUserAccessSettingsResponse?.scope
 
   const handleOpenScopeChange = useCallback((nextOpenScope: ResourceOpenScope) => {
     if (nextOpenScope === openScope)
@@ -85,7 +83,7 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
           isLoadingRules={isLoadingDatasetAccessRules}
           isLoadingUserAccessSettings={isLoadingDatasetUserAccessSettings}
           openScope={openScope}
-          isUpdatingOpenScope={isLoadingDatasetOpenScope || isUpdatingDatasetOpenScope}
+          isUpdatingOpenScope={isLoadingDatasetUserAccessSettings || isUpdatingDatasetOpenScope}
           updatingAccountId={updatingAccountId}
           maintainerId={maintainerId}
           onOpenScopeChange={handleOpenScopeChange}

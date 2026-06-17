@@ -39,9 +39,6 @@ function AddAccessSubjectPopover({
     const normalizedSearchValue = searchValue.trim().toLowerCase()
 
     return (membersData?.accounts ?? []).filter((member) => {
-      if (existingAccountIds.has(member.id))
-        return false
-
       if (!normalizedSearchValue)
         return true
 
@@ -50,7 +47,7 @@ function AddAccessSubjectPopover({
       return name.toLowerCase().includes(normalizedSearchValue)
         || email.toLowerCase().includes(normalizedSearchValue)
     })
-  }, [existingAccountIds, membersData?.accounts, searchValue])
+  }, [membersData?.accounts, searchValue])
 
   const handleAddMember = useCallback((member: Member) => {
     onAddAccessSubject(member.id, [DEFAULT_ACCESS_POLICY_ID])
@@ -64,6 +61,7 @@ function AddAccessSubjectPopover({
   }, [])
 
   const addLabel = t('operation.add', { ns: 'common' })
+  const addedLabel = t('operation.added', { ns: 'common' })
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
@@ -117,21 +115,25 @@ function AddAccessSubjectPopover({
             : (
                 <ul className="max-h-80 overflow-y-auto p-1">
                   {availableMembers.map((member) => {
+                    const isAdded = existingAccountIds.has(member.id)
                     const isUpdating = updatingAccountId === member.id
                     const memberName = member.name || member.email
 
                     return (
                       <li
                         key={member.id}
-                        className="flex min-h-10 items-center gap-2 rounded-lg py-1 pr-3 pl-2 hover:bg-state-base-hover"
+                        className={cn(
+                          'flex min-h-10 items-center gap-2 rounded-lg py-1 pr-3 pl-2',
+                          !isAdded && 'hover:bg-state-base-hover',
+                        )}
                       >
                         <Avatar
                           avatar={member.avatar_url ?? member.avatar ?? null}
                           name={memberName}
                           size="sm"
-                          className="bg-components-icon-bg-blue-solid"
+                          className={cn('bg-components-icon-bg-blue-solid', isAdded && 'opacity-50')}
                         />
-                        <div className="min-w-0 flex-1">
+                        <div className={cn('min-w-0 flex-1', isAdded && 'opacity-50')}>
                           <div className="truncate system-sm-medium text-text-secondary">
                             {memberName}
                           </div>
@@ -139,21 +141,33 @@ function AddAccessSubjectPopover({
                             {member.email}
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          disabled={isUpdating}
-                          aria-label={t('accessRule.addMemberAria', { ns: 'permission', name: memberName })}
-                          className={cn(
-                            'flex h-6 shrink-0 items-center rounded-md px-1 system-xs-medium text-text-accent outline-hidden',
-                            'hover:bg-state-accent-hover focus-visible:bg-state-accent-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-                            'disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent',
-                          )}
-                          onClick={() => handleAddMember(member)}
-                        >
-                          {isUpdating
-                            ? <span className="i-ri-loader-2-line size-3.5 animate-spin" aria-hidden />
-                            : `+ ${addLabel}`}
-                        </button>
+                        {isAdded
+                          ? (
+                              <button
+                                type="button"
+                                disabled
+                                className="shrink-0 cursor-not-allowed border-0 bg-transparent p-0 system-xs-regular text-text-tertiary disabled:opacity-100"
+                              >
+                                {addedLabel}
+                              </button>
+                            )
+                          : (
+                              <button
+                                type="button"
+                                disabled={isUpdating}
+                                aria-label={t('accessRule.addMemberAria', { ns: 'permission', name: memberName })}
+                                className={cn(
+                                  'flex h-6 shrink-0 items-center rounded-md px-1 system-xs-medium text-text-accent outline-hidden',
+                                  'hover:bg-state-accent-hover focus-visible:bg-state-accent-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+                                  'disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent',
+                                )}
+                                onClick={() => handleAddMember(member)}
+                              >
+                                {isUpdating
+                                  ? <span className="i-ri-loader-2-line size-3.5 animate-spin" aria-hidden />
+                                  : `+ ${addLabel}`}
+                              </button>
+                            )}
                       </li>
                     )
                   })}

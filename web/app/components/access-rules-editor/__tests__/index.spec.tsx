@@ -276,7 +276,9 @@ describe('AccessRulesEditor', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
 
     const dialog = screen.getByRole('dialog', { name: 'permission.accessRule.addMembersTitle' })
-    expect(within(dialog).queryByText('Evan')).not.toBeInTheDocument()
+    expect(within(dialog).getByText('Evan')).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'common.operation.added' })).toBeDisabled()
+    expect(within(dialog).queryByRole('button', { name: 'permission.accessRule.addMemberAria:{"name":"Evan"}' })).not.toBeInTheDocument()
     expect(within(dialog).getByText('Mia')).toBeInTheDocument()
     expect(within(dialog).queryByRole('tablist')).not.toBeInTheDocument()
 

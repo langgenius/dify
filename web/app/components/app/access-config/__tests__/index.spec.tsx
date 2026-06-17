@@ -10,11 +10,7 @@ const mockAppAccessRules = vi.hoisted(() => ({
 
 const mockAppUserAccessSettings = vi.hoisted(() => ({
   data: [] as NonNullable<AccessRulesEditorProps['userAccessSettings']>,
-  isLoading: false,
-}))
-
-const mockAppOpenScope = vi.hoisted(() => ({
-  scope: 'specific' as AccessRulesEditorProps['openScope'] | undefined,
+  scope: 'specific' as AccessRulesEditorProps['openScope'],
   isLoading: false,
 }))
 
@@ -34,12 +30,10 @@ vi.mock('@/service/access-control/use-app-access-config', () => ({
     isLoading: mockAppAccessRules.isLoading,
   })),
   useAppUserAccessSettings: vi.fn(() => ({
-    data: { data: mockAppUserAccessSettings.data },
+    data: mockAppUserAccessSettings.scope
+      ? { data: mockAppUserAccessSettings.data, scope: mockAppUserAccessSettings.scope }
+      : undefined,
     isLoading: mockAppUserAccessSettings.isLoading,
-  })),
-  useAppOpenScope: vi.fn(() => ({
-    data: mockAppOpenScope.scope ? { scope: mockAppOpenScope.scope } : undefined,
-    isLoading: mockAppOpenScope.isLoading,
   })),
   useUpdateAppOpenScope: vi.fn(() => ({
     mutate: mockMutations.updateOpenScope,
@@ -68,9 +62,8 @@ describe('AppAccessConfigPage', () => {
     mockAppAccessRules.items = []
     mockAppAccessRules.isLoading = false
     mockAppUserAccessSettings.data = []
+    mockAppUserAccessSettings.scope = 'specific'
     mockAppUserAccessSettings.isLoading = false
-    mockAppOpenScope.scope = 'specific'
-    mockAppOpenScope.isLoading = false
     mockAccessRulesEditor.props = null
     useStore.setState({ appDetail: undefined })
   })
@@ -89,17 +82,17 @@ describe('AppAccessConfigPage', () => {
       expect(mockAccessRulesEditor.props?.openScope).toBe('specific')
     })
 
-    it('should not pass open scope before the scope request finishes', () => {
-      mockAppOpenScope.scope = undefined
-      mockAppOpenScope.isLoading = true
+    it('should not pass open scope before user access settings finish loading', () => {
+      mockAppUserAccessSettings.scope = undefined
+      mockAppUserAccessSettings.isLoading = true
 
       render(<AppAccessConfigPage appId="app-1" />)
 
       expect(mockAccessRulesEditor.props?.openScope).toBeUndefined()
     })
 
-    it('should pass the fetched open scope to the editor', () => {
-      mockAppOpenScope.scope = 'all'
+    it('should pass the user access settings open scope to the editor', () => {
+      mockAppUserAccessSettings.scope = 'all'
 
       render(<AppAccessConfigPage appId="app-1" />)
 
@@ -109,7 +102,6 @@ describe('AppAccessConfigPage', () => {
     it('should pass access rule loading state to the editor', () => {
       mockAppAccessRules.isLoading = true
       mockAppUserAccessSettings.isLoading = true
-      mockAppOpenScope.isLoading = true
 
       render(<AppAccessConfigPage appId="app-1" />)
 

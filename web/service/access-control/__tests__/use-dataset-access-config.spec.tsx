@@ -3,7 +3,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import {
   useDatasetAccessRules,
-  useDatasetOpenScope,
   useDatasetUserAccessSettings,
   useRemoveDatasetAccessPolicyMemberBindings,
   useUpdateDatasetOpenScope,
@@ -18,14 +17,9 @@ const mocks = vi.hoisted(() => ({
   accessRulesKey: vi.fn(() => ['rbac-access-config', 'datasets', 'access-rules']),
   userAccessSettingsQueryOptions: vi.fn(() => ({
     queryKey: ['rbac-access-config', 'datasets', 'user-access-settings'],
-    queryFn: vi.fn().mockResolvedValue({ data: [] }),
+    queryFn: vi.fn().mockResolvedValue({ data: [], scope: 'specific' }),
   })),
   userAccessSettingsQueryKey: vi.fn(() => ['rbac-access-config', 'datasets', 'user-access-settings', 'dataset-1']),
-  openScopeQueryOptions: vi.fn(() => ({
-    queryKey: ['rbac-access-config', 'datasets', 'open-scope'],
-    queryFn: vi.fn().mockResolvedValue({ scope: 'specific' }),
-  })),
-  openScopeQueryKey: vi.fn(() => ['rbac-access-config', 'datasets', 'open-scope', 'dataset-1']),
   updateOpenScope: vi.fn().mockResolvedValue({}),
   updateUserAccessSettings: vi.fn().mockResolvedValue({}),
   removeMemberBindings: vi.fn().mockResolvedValue({}),
@@ -51,10 +45,6 @@ vi.mock('@/service/client', () => ({
         userAccessSettings: {
           queryKey: mocks.userAccessSettingsQueryKey,
           queryOptions: mocks.userAccessSettingsQueryOptions,
-        },
-        openScope: {
-          queryKey: mocks.openScopeQueryKey,
-          queryOptions: mocks.openScopeQueryOptions,
         },
       },
     },
@@ -99,18 +89,6 @@ describe('use-dataset-access-config', () => {
 
   // User access settings mirror the app access-config API shape for datasets.
   describe('User Access Settings', () => {
-    it('should fetch open scope for a dataset id', () => {
-      renderHook(() => useDatasetOpenScope('dataset-1'), { wrapper: createWrapper() })
-
-      expect(mocks.openScopeQueryOptions).toHaveBeenCalledWith({
-        input: {
-          params: {
-            datasetId: 'dataset-1',
-          },
-        },
-      })
-    })
-
     it('should fetch user access settings for a dataset id', () => {
       renderHook(() => useDatasetUserAccessSettings('dataset-1'), { wrapper: createWrapper() })
 
@@ -191,13 +169,6 @@ describe('use-dataset-access-config', () => {
         },
       })
       expect(mocks.userAccessSettingsQueryKey).toHaveBeenCalledWith({
-        input: {
-          params: {
-            datasetId: 'dataset-1',
-          },
-        },
-      })
-      expect(mocks.openScopeQueryKey).toHaveBeenCalledWith({
         input: {
           params: {
             datasetId: 'dataset-1',

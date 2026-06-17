@@ -9,11 +9,7 @@ const mockDatasetAccessRules = vi.hoisted(() => ({
 
 const mockDatasetUserAccessSettings = vi.hoisted(() => ({
   data: [] as NonNullable<AccessRulesEditorProps['userAccessSettings']>,
-  isLoading: false,
-}))
-
-const mockDatasetOpenScope = vi.hoisted(() => ({
-  scope: 'specific' as AccessRulesEditorProps['openScope'] | undefined,
+  scope: 'specific' as AccessRulesEditorProps['openScope'],
   isLoading: false,
 }))
 
@@ -37,12 +33,10 @@ vi.mock('@/service/access-control/use-dataset-access-config', () => ({
     isLoading: mockDatasetAccessRules.isLoading,
   })),
   useDatasetUserAccessSettings: vi.fn(() => ({
-    data: { data: mockDatasetUserAccessSettings.data },
+    data: mockDatasetUserAccessSettings.scope
+      ? { data: mockDatasetUserAccessSettings.data, scope: mockDatasetUserAccessSettings.scope }
+      : undefined,
     isLoading: mockDatasetUserAccessSettings.isLoading,
-  })),
-  useDatasetOpenScope: vi.fn(() => ({
-    data: mockDatasetOpenScope.scope ? { scope: mockDatasetOpenScope.scope } : undefined,
-    isLoading: mockDatasetOpenScope.isLoading,
   })),
   useUpdateDatasetOpenScope: vi.fn(() => ({
     mutate: mockMutations.updateOpenScope,
@@ -77,9 +71,8 @@ describe('DatasetAccessConfigPage', () => {
     mockDatasetAccessRules.items = []
     mockDatasetAccessRules.isLoading = false
     mockDatasetUserAccessSettings.data = []
+    mockDatasetUserAccessSettings.scope = 'specific'
     mockDatasetUserAccessSettings.isLoading = false
-    mockDatasetOpenScope.scope = 'specific'
-    mockDatasetOpenScope.isLoading = false
     mockDatasetDetail.dataset = undefined
     mockAccessRulesEditor.props = null
   })
@@ -98,17 +91,17 @@ describe('DatasetAccessConfigPage', () => {
       expect(mockAccessRulesEditor.props?.openScope).toBe('specific')
     })
 
-    it('should not pass open scope before the scope request finishes', () => {
-      mockDatasetOpenScope.scope = undefined
-      mockDatasetOpenScope.isLoading = true
+    it('should not pass open scope before user access settings finish loading', () => {
+      mockDatasetUserAccessSettings.scope = undefined
+      mockDatasetUserAccessSettings.isLoading = true
 
       render(<DatasetAccessConfigPage datasetId="dataset-1" />)
 
       expect(mockAccessRulesEditor.props?.openScope).toBeUndefined()
     })
 
-    it('should pass the fetched open scope to the editor', () => {
-      mockDatasetOpenScope.scope = 'all'
+    it('should pass the user access settings open scope to the editor', () => {
+      mockDatasetUserAccessSettings.scope = 'all'
 
       render(<DatasetAccessConfigPage datasetId="dataset-1" />)
 
@@ -118,7 +111,6 @@ describe('DatasetAccessConfigPage', () => {
     it('should pass access rule loading state to the editor', () => {
       mockDatasetAccessRules.isLoading = true
       mockDatasetUserAccessSettings.isLoading = true
-      mockDatasetOpenScope.isLoading = true
 
       render(<DatasetAccessConfigPage datasetId="dataset-1" />)
 

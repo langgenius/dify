@@ -233,6 +233,7 @@ export type ResourceUserAccessSetting = {
 
 type ResourceUserAccessSettingsResponse = {
   data: ResourceUserAccessSetting[]
+  scope: ResourceOpenScope
 }
 
 export type GetMembersOfRoleResponse = {
@@ -267,7 +268,3 @@ export type GetAccessPolicyDetailResponse = {
 }
 
 export type ResourceOpenScope = 'all' | 'specific'
-
-export type ResourceOpenScopeResponse = {
-  scope: ResourceOpenScope
-}
