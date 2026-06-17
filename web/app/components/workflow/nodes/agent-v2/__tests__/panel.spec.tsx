@@ -325,7 +325,7 @@ describe('agent/panel', () => {
 
   it('renders inline agent detail from workflow composer state and opens the inline panel', () => {
     mockStoreState.openInlineAgentPanelNodeId = 'agent-node'
-    render(
+    const { container } = render(
       <AgentV2Panel
         id="agent-node"
         data={createData({
@@ -342,8 +342,11 @@ describe('agent/panel', () => {
 
     expect(mockUseAgentRosterDetail).toHaveBeenCalledWith(undefined)
     expect(mockUseWorkflowInlineAgentDetail).toHaveBeenCalledWith('agent-node', 'inline-agent-1')
-    expect(screen.getByText('Workflow Agent 1')).toBeInTheDocument()
+    expect(screen.queryByText('Workflow Agent 1')).not.toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.name')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.type')).toBeInTheDocument()
+    expect(container.querySelector('.i-custom-vender-agent-v2-robot-3')).toHaveClass('size-5')
+    expect(container.querySelector('.i-custom-vender-agent-v2-robot-3')?.parentElement).toHaveClass('size-8', 'rounded-full', 'bg-background-default-burn')
     expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.title')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.description')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ })).toBeInTheDocument()

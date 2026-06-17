@@ -124,6 +124,7 @@ export function AgentV2Panel({
           agent={displayedAgent}
           agentId={rosterAgentId ?? inlineAgentId ?? undefined}
           canOpenPanel={!isInlineAgentPending}
+          isInlineSetup={isInlineAgentReady}
           isLoading={isInlineAgentLoading}
           isPanelOpen={isAgentPanelOpen}
           isPending={isInlineAgentPending}

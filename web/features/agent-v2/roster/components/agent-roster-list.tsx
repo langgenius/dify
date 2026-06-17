@@ -137,7 +137,7 @@ function AgentRosterItem({
                 {agent.name}
               </h2>
               <p className="truncate system-xs-regular text-text-tertiary">
-                {agent.mode}
+                {agent.role}
               </p>
             </div>
           </div>

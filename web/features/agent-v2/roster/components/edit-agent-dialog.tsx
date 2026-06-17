@@ -4,7 +4,7 @@ import type { AgentAppPartial, AgentAppUpdatePayload } from '@dify/contracts/api
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { FieldControl, FieldError, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -110,7 +110,20 @@ export function EditAgentDialog({
       || trimmedRole !== (agent.role?.trim() ?? '')
       || hasIconChanges
 
-    if (!trimmedName || !hasFormChanges || updateAgentMutation.isPending)
+    if (updateAgentMutation.isPending)
+      return
+
+    if (!trimmedName) {
+      toast.error(t('roster.createForm.nameRequired'))
+      return
+    }
+
+    if (!trimmedRole) {
+      toast.error(t('roster.createForm.roleRequired'))
+      return
+    }
+
+    if (!hasFormChanges)
       return
 
     const body: AgentAppUpdatePayload = {
@@ -119,8 +132,7 @@ export function EditAgentDialog({
       role: trimmedRole,
     }
 
-    if (hasIconChanges)
-      applyIconPayload(body, agentIcon)
+    applyIconPayload(body, agentIcon)
 
     updateAgentMutation.mutate({
       params: {
@@ -207,12 +219,8 @@ export function EditAgentDialog({
                       maxLength={255}
                       onValueChange={setName}
                       placeholder={t('roster.createForm.namePlaceholder')}
-                      required
                       value={name}
                     />
-                    <FieldError match="valueMissing">
-                      {t('roster.createForm.nameRequired')}
-                    </FieldError>
                   </FieldRoot>
                   <FieldRoot name="role" className="min-w-0 flex-1">
                     <FieldLabel>
@@ -252,7 +260,7 @@ export function EditAgentDialog({
                 type="submit"
                 variant="primary"
                 className="min-w-18"
-                disabled={!trimmedName || !hasChanges}
+                disabled={!hasChanges}
                 loading={updateAgentMutation.isPending}
               >
                 {tCommon('operation.save')}

@@ -19,6 +19,7 @@ const createAgent = (overrides: Partial<AgentRosterListItem> = {}): AgentRosterL
   name: 'Research Agent',
   published_reference_count: 0,
   published_references: [],
+  role: 'Research Assistant',
   ...overrides,
 })
 
@@ -51,18 +52,18 @@ describe('AgentRosterList', () => {
     vi.clearAllMocks()
   })
 
-  it('renders mode under the card title instead of the agent source', () => {
+  it('renders role under the card title instead of the agent mode', () => {
     renderList([createAgent()])
 
-    expect(screen.getByText('agent')).toBeInTheDocument()
-    expect(screen.queryByText('agentV2.roster.sources.agent_app')).not.toBeInTheDocument()
+    expect(screen.getByText('Research Assistant')).toBeInTheDocument()
+    expect(screen.queryByText('agent')).not.toBeInTheDocument()
   })
 
-  it('uses the Figma-aligned card title and mode typography', () => {
+  it('uses the Figma-aligned card title and role typography', () => {
     renderList([createAgent()])
 
     expect(screen.getByRole('heading', { name: 'Research Agent' })).toHaveClass('system-md-semibold')
-    expect(screen.getByText('agent')).toHaveClass('system-xs-regular')
+    expect(screen.getByText('Research Assistant')).toHaveClass('system-xs-regular')
     expect(screen.getByText('agentV2.roster.usageStatus.draft')).toHaveClass('system-2xs-medium-uppercase')
   })
 

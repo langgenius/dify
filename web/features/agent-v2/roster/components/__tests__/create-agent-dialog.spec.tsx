@@ -7,11 +7,20 @@ const mutationMock = vi.hoisted(() => ({
   mutate: vi.fn(),
 }))
 
+const toastMock = vi.hoisted(() => ({
+  error: vi.fn(),
+  success: vi.fn(),
+}))
+
 vi.mock('@tanstack/react-query', () => ({
   useMutation: () => ({
     isPending: mutationMock.isPending,
     mutate: mutationMock.mutate,
   }),
+}))
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: toastMock,
 }))
 
 vi.mock('@/service/client', () => ({
@@ -55,5 +64,35 @@ describe('CreateAgentDialog', () => {
       onError: expect.any(Function),
       onSuccess: expect.any(Function),
     }))
+  })
+
+  it('shows a toast error when creating with an empty name', async () => {
+    const user = userEvent.setup()
+    render(<CreateAgentDialog />)
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.createAgent/ }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.createDialog.title' })
+    await user.type(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.roleLabel' }), 'Research Assistant')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
+
+    expect(toastMock.error).toHaveBeenCalledWith('agentV2.roster.createForm.nameRequired')
+    expect(mutationMock.mutate).not.toHaveBeenCalled()
+    expect(within(dialog).queryByText('agentV2.roster.createForm.nameRequired')).not.toBeInTheDocument()
+  })
+
+  it('shows a toast error when creating with an empty role', async () => {
+    const user = userEvent.setup()
+    render(<CreateAgentDialog />)
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.createAgent/ }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.createDialog.title' })
+    await user.type(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }), 'Research Agent')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
+
+    expect(toastMock.error).toHaveBeenCalledWith('agentV2.roster.createForm.roleRequired')
+    expect(mutationMock.mutate).not.toHaveBeenCalled()
+    expect(within(dialog).queryByText('agentV2.roster.createForm.roleRequired')).not.toBeInTheDocument()
   })
 })

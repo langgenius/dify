@@ -8,11 +8,20 @@ const mutationMock = vi.hoisted(() => ({
   mutate: vi.fn(),
 }))
 
+const toastMock = vi.hoisted(() => ({
+  error: vi.fn(),
+  success: vi.fn(),
+}))
+
 vi.mock('@tanstack/react-query', () => ({
   useMutation: () => ({
     isPending: mutationMock.isPending,
     mutate: mutationMock.mutate,
   }),
+}))
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: toastMock,
 }))
 
 vi.mock('@/app/components/base/app-icon-picker', () => ({
@@ -80,7 +89,7 @@ describe('EditAgentDialog', () => {
     mutationMock.isPending = false
   })
 
-  it('submits changed app fields without resending unchanged icon fields', async () => {
+  it('submits the full agent payload when only the name changes', async () => {
     const user = userEvent.setup()
     renderDialog()
 
@@ -97,6 +106,9 @@ describe('EditAgentDialog', () => {
         name: 'Market Agent',
         description: 'Find and summarize market materials.',
         role: 'Research Assistant',
+        icon_type: 'emoji',
+        icon: '🧸',
+        icon_background: '#F5F3FF',
       },
     }, expect.objectContaining({
       onError: expect.any(Function),
@@ -104,7 +116,7 @@ describe('EditAgentDialog', () => {
     }))
   })
 
-  it('submits changed role when editing an agent', async () => {
+  it('submits the full agent payload when only the role changes', async () => {
     const user = userEvent.setup()
     renderDialog()
 
@@ -121,6 +133,9 @@ describe('EditAgentDialog', () => {
         name: 'Research Agent',
         description: 'Find and summarize market materials.',
         role: 'Market Analyst',
+        icon_type: 'emoji',
+        icon: '🧸',
+        icon_background: '#F5F3FF',
       },
     }, expect.objectContaining({
       onError: expect.any(Function),
@@ -153,5 +168,35 @@ describe('EditAgentDialog', () => {
       onError: expect.any(Function),
       onSuccess: expect.any(Function),
     }))
+  })
+
+  it('shows a toast error when saving with an empty name', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+
+    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
+    await user.clear(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }))
+
+    const saveButton = within(dialog).getByRole('button', { name: 'common.operation.save' })
+    expect(saveButton).not.toBeDisabled()
+    await user.click(saveButton)
+
+    expect(toastMock.error).toHaveBeenCalledWith('agentV2.roster.createForm.nameRequired')
+    expect(mutationMock.mutate).not.toHaveBeenCalled()
+  })
+
+  it('shows a toast error when saving with an empty role', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+
+    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
+    await user.clear(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.roleLabel' }))
+
+    const saveButton = within(dialog).getByRole('button', { name: 'common.operation.save' })
+    expect(saveButton).not.toBeDisabled()
+    await user.click(saveButton)
+
+    expect(toastMock.error).toHaveBeenCalledWith('agentV2.roster.createForm.roleRequired')
+    expect(mutationMock.mutate).not.toHaveBeenCalled()
   })
 })

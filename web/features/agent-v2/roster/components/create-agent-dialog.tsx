@@ -4,7 +4,7 @@ import type { AgentAppCreatePayload } from '@dify/contracts/api/console/agent/ty
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@langgenius/dify-ui/dialog'
-import { FieldControl, FieldError, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -50,13 +50,24 @@ export function CreateAgentDialog() {
 
   const handleSubmit = (formValues: AgentFormValues) => {
     const trimmedName = formValues.name?.trim() ?? ''
-    if (!trimmedName || createAgentMutation.isPending)
+    const trimmedRole = formValues.role?.trim() ?? ''
+    if (createAgentMutation.isPending)
       return
+
+    if (!trimmedName) {
+      toast.error(t('roster.createForm.nameRequired'))
+      return
+    }
+
+    if (!trimmedRole) {
+      toast.error(t('roster.createForm.roleRequired'))
+      return
+    }
 
     const body = {
       name: trimmedName,
       description: formValues.description?.trim() ?? '',
-      role: formValues.role?.trim() ?? '',
+      role: trimmedRole,
       icon_type: agentIcon.type,
       icon: agentIcon.type === 'image' ? agentIcon.fileId : agentIcon.icon,
       icon_background: agentIcon.type === 'emoji' ? agentIcon.background : undefined,
@@ -133,11 +144,7 @@ export function CreateAgentDialog() {
                       autoFocus
                       maxLength={255}
                       placeholder={t('roster.createForm.namePlaceholder')}
-                      required
                     />
-                    <FieldError match="valueMissing">
-                      {t('roster.createForm.nameRequired')}
-                    </FieldError>
                   </FieldRoot>
                   <FieldRoot name="role" className="min-w-0 flex-1">
                     <FieldLabel>
