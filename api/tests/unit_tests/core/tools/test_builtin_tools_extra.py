@@ -4,6 +4,7 @@ import calendar
 import math
 from datetime import date
 from types import SimpleNamespace
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -66,6 +67,20 @@ def test_localtime_to_timestamp_tool():
     ts_value = float(ts_message.strip())
     assert math.isfinite(ts_value)
     assert ts_value >= 0
+    assert (
+        LocaltimeToTimestampTool.localtime_to_timestamp(
+            "2024-01-01 10:00:00",
+            "%Y-%m-%d %H:%M:%S",
+            ZoneInfo("UTC"),
+        )
+        == 1704103200
+    )
+    with pytest.raises(ToolInvokeError, match="local_tz must be"):
+        LocaltimeToTimestampTool.localtime_to_timestamp(
+            "2024-01-01 10:00:00",
+            "%Y-%m-%d %H:%M:%S",
+            object(),  # type: ignore[arg-type]
+        )
     with pytest.raises(ToolInvokeError):
         LocaltimeToTimestampTool.localtime_to_timestamp("bad", "%Y-%m-%d %H:%M:%S", "UTC")
 

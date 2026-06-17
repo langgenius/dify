@@ -882,7 +882,7 @@ class WorkflowResponseConverter:
         return files
 
     @classmethod
-    def _get_file_var_from_value(cls, value: Union[dict, list]) -> Mapping[str, Any] | None:
+    def _get_file_var_from_value(cls, value: object) -> Mapping[str, Any] | None:
         """
         Get file var from value
         :param value: variable value
