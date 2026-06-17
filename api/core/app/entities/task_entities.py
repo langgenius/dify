@@ -5,6 +5,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 from core.app.entities.agent_strategy import AgentStrategyInfo
+from core.prompt.utils.prompt_message_util import SavedPrompt
 from core.rag.entities import RetrievalSourceMetadata
 from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
@@ -46,6 +47,7 @@ class EasyUITaskState(TaskState):
     """
 
     llm_result: LLMResult
+    saved_prompt: list[SavedPrompt] | None = None
 
 
 class WorkflowTaskState(TaskState):
