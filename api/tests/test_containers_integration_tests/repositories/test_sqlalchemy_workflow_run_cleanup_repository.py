@@ -87,7 +87,7 @@ def _add_app_log(session: Session, scope: _TestScope, workflow_run: WorkflowRun)
     session.commit()
 
 
-def _add_pause_with_reason(session: Session, scope: _TestScope, workflow_run: WorkflowRun) -> WorkflowPause:
+def _add_pause_with_reason(session: Session, _scope: _TestScope, workflow_run: WorkflowRun) -> WorkflowPause:
     pause = WorkflowPause(
         workflow_id=workflow_run.workflow_id,
         workflow_run_id=workflow_run.id,
