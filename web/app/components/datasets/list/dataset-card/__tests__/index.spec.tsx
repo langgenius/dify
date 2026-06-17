@@ -26,8 +26,13 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }))
 
+let mockAppContextState = {
+  isCurrentWorkspaceDatasetOperator: false,
+  userProfile: { id: 'user-1' },
+  workspacePermissionKeys: [] as string[],
+}
 vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { isCurrentWorkspaceDatasetOperator: boolean }) => boolean) => selector({ isCurrentWorkspaceDatasetOperator: false }),
+  useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector(mockAppContextState),
 }))
 
 vi.mock('../hooks/use-dataset-card-state', () => ({
@@ -61,8 +66,18 @@ vi.mock('../components/dataset-card-modals', () => ({
   ),
 }))
 vi.mock('@/features/tag-management/components/dataset-card-tags', () => ({
-  DatasetCardTags: ({ onClick }: { onClick: (e: React.MouseEvent) => void }) => (
-    <div data-testid="tag-area" onClick={onClick} />
+  DatasetCardTags: ({
+    onClick,
+    canBindOrUnbindTags,
+  }: {
+    onClick: (e: React.MouseEvent) => void
+    canBindOrUnbindTags?: boolean
+  }) => (
+    <div
+      data-testid="tag-area"
+      data-can-bind-or-unbind-tags={String(Boolean(canBindOrUnbindTags))}
+      onClick={onClick}
+    />
   ),
 }))
 vi.mock('../components/operations-dropdown', () => ({
@@ -99,6 +114,11 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
 describe('DatasetCard Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockAppContextState = {
+      isCurrentWorkspaceDatasetOperator: false,
+      userProfile: { id: 'user-1' },
+      workspacePermissionKeys: [],
+    }
   })
 
   // Integration tests for Description component
@@ -294,5 +314,21 @@ describe('DatasetCard Component', () => {
     fireEvent.click(tagArea)
     // Tag area click should not trigger card navigation
     expect(mockPush).not.toHaveBeenCalled()
+  })
+
+  it('should allow tag binding when dataset has edit ACL', () => {
+    const dataset = createMockDataset({ permission_keys: ['dataset.acl.edit'] })
+
+    render(<DatasetCard dataset={dataset} />)
+
+    expect(screen.getByTestId('tag-area')).toHaveAttribute('data-can-bind-or-unbind-tags', 'true')
+  })
+
+  it('should not allow tag binding when dataset lacks edit ACL', () => {
+    const dataset = createMockDataset({ permission_keys: ['dataset.acl.readonly'] })
+
+    render(<DatasetCard dataset={dataset} />)
+
+    expect(screen.getByTestId('tag-area')).toHaveAttribute('data-can-bind-or-unbind-tags', 'false')
   })
 })

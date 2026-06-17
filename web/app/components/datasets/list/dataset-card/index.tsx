@@ -1,8 +1,10 @@
 'use client'
 import type { DataSet } from '@/models/datasets'
 import { useMemo } from 'react'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { DatasetCardTags } from '@/features/tag-management/components/dataset-card-tags'
 import { useRouter } from '@/next/navigation'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import CornerLabels from './components/corner-labels'
 import DatasetCardFooter from './components/dataset-card-footer'
 import DatasetCardHeader from './components/dataset-card-header'
@@ -25,6 +27,8 @@ const DatasetCard = ({
   onOpenTagManagement = () => {},
 }: DatasetCardProps) => {
   const { push } = useRouter()
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
 
   const datasetCard = useDatasetCardController({ dataset, onSuccess })
   const {
@@ -43,6 +47,11 @@ const DatasetCard = ({
   const isPipelineUnpublished = useMemo(() => {
     return dataset.runtime_mode === 'rag_pipeline' && !dataset.is_published
   }, [dataset.runtime_mode, dataset.is_published])
+  const datasetACLCapabilities = useMemo(() => getDatasetACLCapabilities(dataset.permission_keys, {
+    currentUserId,
+    resourceMaintainer: dataset.maintainer,
+    workspacePermissionKeys,
+  }), [dataset.maintainer, dataset.permission_keys, currentUserId, workspacePermissionKeys])
 
   const handleCardClick = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -76,6 +85,7 @@ const DatasetCard = ({
           onClick={handleTagAreaClick}
           onOpenTagManagement={onOpenTagManagement}
           onTagsChange={onSuccess}
+          canBindOrUnbindTags={datasetACLCapabilities.canEdit}
         />
         <DatasetCardFooter dataset={dataset} />
         <OperationsDropdown

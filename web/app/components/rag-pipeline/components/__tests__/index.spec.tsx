@@ -219,6 +219,24 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
   useInvalidDatasetList: () => vi.fn(),
 }))
 
+let mockDatasetDetailState = {
+  dataset: {
+    permission_keys: ['dataset.acl.edit'],
+    maintainer: 'maintainer-id',
+  },
+}
+vi.mock('@/context/dataset-detail', () => ({
+  useDatasetDetailContextWithSelector: (selector: (state: typeof mockDatasetDetailState) => unknown) => selector(mockDatasetDetailState),
+}))
+
+let mockAppContextState = {
+  userProfile: { id: 'user-1' },
+  workspacePermissionKeys: [] as string[],
+}
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector(mockAppContextState),
+}))
+
 vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: vi.fn().mockResolvedValue({
     graph: { nodes: [], edges: [], viewport: {} },
@@ -385,6 +403,16 @@ function getAppIcon() {
 describe('Conversion', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockDatasetDetailState = {
+      dataset: {
+        permission_keys: ['dataset.acl.edit'],
+        maintainer: 'maintainer-id',
+      },
+    }
+    mockAppContextState = {
+      userProfile: { id: 'user-1' },
+      workspacePermissionKeys: [],
+    }
   })
 
   describe('Rendering', () => {

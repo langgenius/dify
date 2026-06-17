@@ -40,7 +40,7 @@ const Metadata: FC<MetadataProps> = ({ docDetail, loading, onUpdate, canEdit = f
     cancelEdit,
     saveMetadata,
     updateMetadataField,
-  } = useMetadataState({ docDetail, onUpdate })
+  } = useMetadataState({ docDetail, onUpdate, canEdit })
 
   if (loading) {
     return (
@@ -64,7 +64,7 @@ const Metadata: FC<MetadataProps> = ({ docDetail, loading, onUpdate, canEdit = f
                 </Button>
               )
             )
-          : !showDocTypes && (
+          : canEdit && !showDocTypes && (
               <div className={s.opBtnWrapper}>
                 <Button onClick={cancelEdit} className={`${s.opBtn} ${s.opCancelBtn}`}>
                   {t('operation.cancel', { ns: 'common' })}
@@ -84,7 +84,7 @@ const Metadata: FC<MetadataProps> = ({ docDetail, loading, onUpdate, canEdit = f
           : (
               <DocumentTypeDisplay
                 displayType={metadataParams.documentType || ''}
-                showChangeLink={editStatus}
+                showChangeLink={canEdit && editStatus}
                 onChangeClick={() => setShowDocTypes(true)}
               />
             )}
@@ -93,7 +93,7 @@ const Metadata: FC<MetadataProps> = ({ docDetail, loading, onUpdate, canEdit = f
       {(!docType && showDocTypes) ? null : <Divider />}
 
       {/* Doc type selector or editable metadata fields */}
-      {showDocTypes
+      {canEdit && showDocTypes
         ? (
             <DocTypeSelector
               docType={docType}
@@ -107,7 +107,7 @@ const Metadata: FC<MetadataProps> = ({ docDetail, loading, onUpdate, canEdit = f
         : (
             <MetadataFieldList
               mainField={metadataParams.documentType || ''}
-              canEdit={editStatus}
+              canEdit={canEdit && editStatus}
               metadata={metadataParams.metadata}
               docDetail={docDetail}
               onFieldUpdate={updateMetadataField}

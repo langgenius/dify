@@ -349,6 +349,17 @@ describe('Metadata', () => {
       expect(screen.getByText(/metadata\.docTypeSelectTitle/i))!.toBeInTheDocument()
     })
 
+    it('should keep doc type selection read-only when canEdit is false', () => {
+      const docDetail = createMockDocDetail({ doc_type: '' })
+
+      render(<Metadata {...defaultProps} docDetail={docDetail} canEdit={false} />)
+
+      expect(screen.queryByText(/metadata\.docTypeSelectTitle/i)).not.toBeInTheDocument()
+      expect(screen.queryByText(/metadata\.firstMetaAction/i)).not.toBeInTheDocument()
+      expect(screen.queryByText(/operation\.save/i)).not.toBeInTheDocument()
+      expect(mockModifyDocMetadata).not.toHaveBeenCalled()
+    })
+
     it('should show description when no doc_type exists', () => {
       const docDetail = createMockDocDetail({ doc_type: '' })
 
