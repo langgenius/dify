@@ -3,6 +3,7 @@
 import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse, AgentPublishedReferenceResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentConfigurePublishPayload } from './publish-bar'
 import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { AgentOrchestrateAddActionsProvider } from './add-actions'
 import { AgentAdvancedSettings } from './advanced'
@@ -26,6 +27,9 @@ type AgentOrchestratePanelProps = {
   isPublishing?: boolean
   publishedReferenceCount?: number
   publishedReferences?: AgentPublishedReferenceResponse[]
+  className?: string
+  readOnly?: boolean
+  showPublishBar?: boolean
   onSelectModel: (model: DefaultModel) => void
   onPublish: (payload: AgentConfigurePublishPayload) => void | Promise<void>
   onOpenVersions: () => void
@@ -42,6 +46,9 @@ export function AgentOrchestratePanel({
   isPublishing,
   publishedReferenceCount,
   publishedReferences,
+  className,
+  readOnly = false,
+  showPublishBar = true,
   onSelectModel,
   onPublish,
   onOpenVersions,
@@ -49,45 +56,53 @@ export function AgentOrchestratePanel({
   const orchestrateHeadingId = 'agent-configure-orchestrate-heading'
 
   return (
-    <div className="flex max-w-140 min-w-90 flex-[0_0_min(41.08280255%,560px)] flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg">
+    <div className={cn('flex max-w-140 min-w-90 flex-[0_0_min(41.08280255%,560px)] flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg', className)}>
       <AgentOrchestrateHeader headingId={orchestrateHeadingId} />
 
-      <ScrollArea
-        className="min-h-0 flex-1 overflow-hidden"
-        labelledBy={orchestrateHeadingId}
-        slotClassNames={{
-          viewport: 'overscroll-contain',
-          content: 'min-h-full px-4 py-3',
-        }}
+      <div
+        aria-disabled={readOnly}
+        inert={readOnly ? true : undefined}
+        className="min-h-0 flex-1"
       >
-        <AgentOrchestrateAddActionsProvider>
-          <AgentModelField
-            currentModel={currentModel}
-            textGenerationModelList={textGenerationModelList}
-            onSelect={onSelectModel}
-          />
-          <AgentPromptEditor />
-          <AgentSkills agentId={agentId} />
-          <AgentFiles />
-          <AgentTools />
-          <AgentKnowledgeRetrieval />
-          <AgentAdvancedSettings />
-        </AgentOrchestrateAddActionsProvider>
-      </ScrollArea>
+        <ScrollArea
+          className="min-h-0 flex-1 overflow-hidden"
+          labelledBy={orchestrateHeadingId}
+          slotClassNames={{
+            viewport: 'overscroll-contain',
+            content: 'min-h-full px-4 py-3',
+          }}
+        >
+          <AgentOrchestrateAddActionsProvider>
+            <AgentModelField
+              currentModel={currentModel}
+              textGenerationModelList={textGenerationModelList}
+              onSelect={onSelectModel}
+            />
+            <AgentPromptEditor />
+            <AgentSkills agentId={agentId} />
+            <AgentFiles />
+            <AgentTools />
+            <AgentKnowledgeRetrieval />
+            <AgentAdvancedSettings />
+          </AgentOrchestrateAddActionsProvider>
+        </ScrollArea>
+      </div>
 
-      <AgentConfigurePublishBar
-        agentId={agentId}
-        activeConfigSnapshot={activeConfigSnapshot}
-        agentSoulConfig={agentSoulConfig}
-        agentName={agentName}
-        currentModel={currentModel}
-        draftSavedAt={draftSavedAt}
-        isPublishing={isPublishing}
-        publishedReferenceCount={publishedReferenceCount}
-        publishedReferences={publishedReferences}
-        onPublish={onPublish}
-        onOpenVersions={onOpenVersions}
-      />
+      {showPublishBar && (
+        <AgentConfigurePublishBar
+          agentId={agentId}
+          activeConfigSnapshot={activeConfigSnapshot}
+          agentSoulConfig={agentSoulConfig}
+          agentName={agentName}
+          currentModel={currentModel}
+          draftSavedAt={draftSavedAt}
+          isPublishing={isPublishing}
+          publishedReferenceCount={publishedReferenceCount}
+          publishedReferences={publishedReferences}
+          onPublish={onPublish}
+          onOpenVersions={onOpenVersions}
+        />
+      )}
     </div>
   )
 }

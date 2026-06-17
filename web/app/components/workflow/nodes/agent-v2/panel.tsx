@@ -2,12 +2,13 @@ import type { AgentRosterNodeData } from '../../block-selector/types'
 import type { NodePanelProps } from '../../types'
 import type { AgentV2NodeType } from './types'
 import { produce } from 'immer'
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
 import { useStore } from '@/app/components/workflow/store'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import { AgentAdvancedSettings } from './components/agent-advanced-settings'
+import { AgentOrchestrateDrawerPanel } from './components/agent-orchestrate-drawer-panel'
 import { AgentOutputVariables } from './components/agent-output-variables'
 import { AgentRosterField } from './components/agent-roster-field'
 import { AgentTaskField } from './components/agent-task-field'
@@ -20,6 +21,7 @@ export function AgentV2Panel({
 }: NodePanelProps<AgentV2NodeType>) {
   const { t } = useTranslation()
   const { inputs, setInputs } = useNodeCrud<AgentV2NodeType>(id, data)
+  const [isRosterAgentPanelOpen, setIsRosterAgentPanelOpen] = useState(false)
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
   const openInlineAgentPanelNodeId = useStore(state => state.openInlineAgentPanelNodeId)
   const setOpenInlineAgentPanelNodeId = useStore(state => state.setOpenInlineAgentPanelNodeId)
@@ -33,6 +35,7 @@ export function AgentV2Panel({
   const rosterAgentQuery = useAgentRosterDetail(rosterAgentId)
   const inlineAgentQuery = useWorkflowInlineAgentDetail(id, inlineAgentId)
   const inlineAgent = inlineAgentQuery.data?.agent
+  const isAgentPanelOpen = isInlineAgentReady ? isInlineAgentPanelOpen : isRosterAgentPanelOpen
   const displayedAgent = rosterAgentQuery.data ?? (inlineAgent
     ? {
         id: inlineAgent.id,
@@ -71,8 +74,12 @@ export function AgentV2Panel({
   }, [handleNodeDataUpdateWithSyncDraft, id, inputs, setOpenInlineAgentPanelNodeId])
 
   const handleAgentPanelOpenChange = useCallback((open: boolean) => {
-    if (isInlineAgentReady)
+    if (isInlineAgentReady) {
       setOpenInlineAgentPanelNodeId(open ? id : undefined)
+      return
+    }
+
+    setIsRosterAgentPanelOpen(open)
   }, [id, isInlineAgentReady, setOpenInlineAgentPanelNodeId])
 
   const handleDeclaredOutputsChange = useCallback((outputs: ReturnType<typeof getAgentV2DeclaredOutputs>) => {
@@ -98,12 +105,23 @@ export function AgentV2Panel({
           agent={displayedAgent}
           agentId={rosterAgentId ?? inlineAgentId ?? undefined}
           canOpenPanel={!isInlineAgentPending}
-          isPanelOpen={isInlineAgentReady ? isInlineAgentPanelOpen : undefined}
+          isPanelOpen={isAgentPanelOpen}
           isPending={isInlineAgentPending}
+          panelBody={isAgentPanelOpen && displayedAgent
+            ? (
+                <AgentOrchestrateDrawerPanel
+                  agentId={displayedAgent.id}
+                  inlineComposerState={inlineAgentQuery.data}
+                  isInline={isInlineAgentReady}
+                  nodeId={id}
+                  open={isAgentPanelOpen}
+                />
+              )
+            : undefined}
           panelKind={isInlineAgentReady ? 'inline' : 'roster'}
           portalContainerRef={drawerPortalContainerRef}
           onChange={handleRosterChange}
-          onPanelOpenChange={isInlineAgentReady ? handleAgentPanelOpenChange : undefined}
+          onPanelOpenChange={handleAgentPanelOpenChange}
         />
       </div>
       <div

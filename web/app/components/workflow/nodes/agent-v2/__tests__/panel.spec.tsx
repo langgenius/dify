@@ -11,6 +11,7 @@ const {
   mockEditorUpdate,
   mockHandleNodeDataUpdateWithSyncDraft,
   mockInsertNodes,
+  mockOrchestrateDrawerPanelProps,
   mockPromptEditorProps,
   mockSetInputs,
   mockStoreState,
@@ -22,6 +23,13 @@ const {
   mockEditorUpdate: vi.fn((callback: () => void) => callback()),
   mockHandleNodeDataUpdateWithSyncDraft: vi.fn((_payload, options) => options?.callback?.onSuccess?.()),
   mockInsertNodes: vi.fn(),
+  mockOrchestrateDrawerPanelProps: [] as Array<{
+    agentId: string
+    inlineComposerState?: unknown
+    isInline: boolean
+    nodeId: string
+    open: boolean
+  }>,
   mockPromptEditorProps: [] as PromptEditorProps[],
   mockSetInputs: vi.fn(),
   mockStoreState: {
@@ -121,6 +129,22 @@ vi.mock('../hooks', () => ({
   useWorkflowInlineAgentDetail: (nodeId?: string, agentId?: string | null) => mockUseWorkflowInlineAgentDetail(nodeId, agentId),
 }))
 
+vi.mock('../components/agent-orchestrate-drawer-panel', () => ({
+  AgentOrchestrateDrawerPanel: (props: {
+    agentId: string
+    inlineComposerState?: unknown
+    isInline: boolean
+    nodeId: string
+    open: boolean
+  }) => {
+    mockOrchestrateDrawerPanelProps.push(props)
+
+    return (
+      <div role="region" aria-label={props.isInline ? 'inline-orchestrate-panel' : 'readonly-roster-orchestrate-panel'} />
+    )
+  },
+}))
+
 vi.mock('../../_base/hooks/use-available-var-list', () => ({
   default: () => ({
     availableVars: [{
@@ -169,6 +193,7 @@ describe('agent/panel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPromptEditorProps.length = 0
+    mockOrchestrateDrawerPanelProps.length = 0
     mockStoreState.openInlineAgentPanelNodeId = undefined
     mockUseNodeCrud.mockImplementation((_id: string, data: AgentV2NodeType) => ({
       inputs: data,
@@ -244,6 +269,13 @@ describe('agent/panel', () => {
     expect(within(panel).getByText('Researcher')).toBeInTheDocument()
     expect(within(panel).getByRole('link', { name: 'workflow.nodes.agent.roster.editInConsole' })).toHaveAttribute('href', '/roster/agent/agent-1/configure')
     expect(within(panel).getByRole('button', { name: 'workflow.nodes.agent.roster.makeCopy' })).toBeInTheDocument()
+    expect(within(panel).getByRole('region', { name: 'readonly-roster-orchestrate-panel' })).toBeInTheDocument()
+    expect(mockOrchestrateDrawerPanelProps.at(-1)).toMatchObject({
+      agentId: 'agent-1',
+      isInline: false,
+      nodeId: 'agent-node',
+      open: true,
+    })
 
     fireEvent.keyDown(panel, { key: 'Escape' })
 
@@ -310,6 +342,13 @@ describe('agent/panel', () => {
     expect(screen.getAllByText('workflow.nodes.agent.roster.inlineSetup.type')).toHaveLength(2)
     expect(screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ })).toBeInTheDocument()
     expect(screen.getByRole('dialog', { name: 'Workflow Agent 1' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'inline-orchestrate-panel' })).toBeInTheDocument()
+    expect(mockOrchestrateDrawerPanelProps.at(-1)).toMatchObject({
+      agentId: 'inline-agent-1',
+      isInline: true,
+      nodeId: 'agent-node',
+      open: true,
+    })
     expect(screen.queryByText('workflow.nodes.agent.roster.editInConsole')).not.toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.agent.task.label')).toBeInTheDocument()
   })
