@@ -57,6 +57,32 @@ class TestWaterCrawlExceptions:
         assert "exceeding your WaterCrawl API limits" in str(permission)
         assert "API key is invalid or expired" in str(authentication)
 
+    def test_bad_request_error_with_non_json_response(self):
+        """Verify that non-JSON error bodies don't raise JSONDecodeError."""
+        response = MagicMock()
+        response.status_code = 401
+        response.json.side_effect = ValueError("Expecting value")
+        response.text = "<html>Unauthorized</html>"
+
+        err = WaterCrawlAuthenticationError(response)
+
+        assert err.status_code == 401
+        assert err.message == "<html>Unauthorized</html>"
+        assert err.errors == {}
+
+    def test_bad_request_error_with_empty_non_json_response(self):
+        """Verify fallback message when response.text is also empty."""
+        response = MagicMock()
+        response.status_code = 403
+        response.json.side_effect = ValueError("Expecting value")
+        response.text = ""
+
+        err = WaterCrawlPermissionError(response)
+
+        assert err.status_code == 403
+        assert err.message == "Unknown error occurred"
+        assert err.errors == {}
+
 
 class TestBaseAPIClient:
     def test_init_session_builds_expected_headers(self, monkeypatch: pytest.MonkeyPatch):

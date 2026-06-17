@@ -10,8 +10,11 @@ class WaterCrawlBadRequestError(WaterCrawlError):
     def __init__(self, response):
         self.status_code = response.status_code
         self.response = response
-        data = response.json()
-        self.message = data.get("message", "Unknown error occurred")
+        try:
+            data = response.json()
+        except ValueError:
+            data = {}
+        self.message = data.get("message", response.text or "Unknown error occurred")
         self.errors = data.get("errors", {})
         super().__init__(self.message)
 
