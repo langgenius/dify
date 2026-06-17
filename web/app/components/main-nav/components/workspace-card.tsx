@@ -118,6 +118,7 @@ function WorkspaceCardTrigger({
         title={name}
         className={cn(
           'flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5 text-left transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset',
+          showCloudBilling ? 'rounded-t-xl' : 'rounded-xl',
           open && 'bg-linear-to-b from-background-section-burn to-background-section',
         )}
       >

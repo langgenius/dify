@@ -5,10 +5,10 @@ export type ClientOptions = {
 }
 
 export type AppPagination = {
-  data: Array<AppPartial>
-  has_more: boolean
-  limit: number
+  has_next: boolean
+  items: Array<AppPartial>
   page: number
+  per_page: number
   total: number
 }
 
@@ -38,12 +38,10 @@ export type AppDetailWithSite = {
   icon_type?: string | null
   readonly icon_url: string | null
   id: string
-  maintainer?: string | null
   max_active_requests?: number | null
   mode: string
   model_config?: ModelConfig | null
   name: string
-  permission_keys?: Array<string>
   role?: string | null
   site?: Site | null
   tags?: Array<Tag>
@@ -73,7 +71,6 @@ export type Import = {
   error?: string
   id: string
   imported_dsl_version?: string
-  permission_keys?: Array<string>
   status: ImportStatus
 }
 
@@ -322,10 +319,8 @@ export type AppDetail = {
   icon?: string | null
   icon_background?: string | null
   id: string
-  maintainer?: string | null
   mode_compatible_with_agent: string
   name: string
-  permission_keys?: Array<string>
   tags?: Array<Tag>
   tracing?: JsonValue | null
   updated_at?: number | null
@@ -425,7 +420,6 @@ export type ConvertToWorkflowPayload = {
 
 export type NewAppResponse = {
   new_app_id: string
-  permission_keys?: Array<string>
 }
 
 export type CopyAppPayload = {
@@ -1164,25 +1158,22 @@ export type AppPartial = {
   access_mode?: string | null
   active_config_is_published?: boolean
   app_id?: string | null
+  app_model_config?: ModelConfigPartial | null
   author_name?: string | null
   bound_agent_id?: string | null
   create_user_name?: string | null
   created_at?: number | null
   created_by?: string | null
-  description?: string | null
+  desc_or_prompt?: string | null
   has_draft_trigger?: boolean | null
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
-  readonly icon_url: string | null
   id: string
   is_starred?: boolean
-  maintainer?: string | null
   max_active_requests?: number | null
-  mode: string
-  model_config?: ModelConfigPartial | null
+  mode_compatible_with_agent: string
   name: string
-  permission_keys?: Array<string>
   role?: string | null
   tags?: Array<Tag>
   updated_at?: number | null
@@ -1633,9 +1624,6 @@ export type AccountWithRole = {
   last_login_at?: number | null
   name: string
   role: string
-  roles?: Array<{
-    [key: string]: string
-  }>
   status: string
 }
 
@@ -2587,14 +2575,6 @@ export type AgentModerationIoConfig = {
 
 export type ValueSourceType = 'constant' | 'variable'
 
-export type AppPaginationWritable = {
-  data: Array<AppPartialWritable>
-  has_more: boolean
-  limit: number
-  page: number
-  total: number
-}
-
 export type AppDetailWithSiteWritable = {
   access_mode?: string | null
   active_config_is_published?: boolean
@@ -2611,12 +2591,10 @@ export type AppDetailWithSiteWritable = {
   icon_background?: string | null
   icon_type?: string | null
   id: string
-  maintainer?: string | null
   max_active_requests?: number | null
   mode: string
   model_config?: ModelConfig | null
   name: string
-  permission_keys?: Array<string>
   role?: string | null
   site?: SiteWritable | null
   tags?: Array<Tag>
@@ -2648,36 +2626,6 @@ export type WorkflowCommentDetailWritable = {
   resolved_by?: string | null
   resolved_by_account?: WorkflowCommentAccountWritable | null
   updated_at?: number | null
-}
-
-export type AppPartialWritable = {
-  access_mode?: string | null
-  active_config_is_published?: boolean
-  app_id?: string | null
-  author_name?: string | null
-  bound_agent_id?: string | null
-  create_user_name?: string | null
-  created_at?: number | null
-  created_by?: string | null
-  description?: string | null
-  has_draft_trigger?: boolean | null
-  icon?: string | null
-  icon_background?: string | null
-  icon_type?: string | null
-  id: string
-  is_starred?: boolean
-  maintainer?: string | null
-  max_active_requests?: number | null
-  mode: string
-  model_config?: ModelConfigPartial | null
-  name: string
-  permission_keys?: Array<string>
-  role?: string | null
-  tags?: Array<Tag>
-  updated_at?: number | null
-  updated_by?: string | null
-  use_icon_as_answer_icon?: boolean | null
-  workflow?: WorkflowPartial | null
 }
 
 export type SiteWritable = {

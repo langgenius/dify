@@ -110,6 +110,17 @@ export const zAgentAppUpdatePayload = z.object({
 })
 
 /**
+ * CopyAppPayload
+ */
+export const zCopyAppPayload = z.object({
+  description: z.string().max(400).nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: zIconType.nullish(),
+  name: z.string().nullish(),
+})
+
+/**
  * DeletedTool
  */
 export const zDeletedTool = z.object({
@@ -524,9 +535,20 @@ export const zModelConfigPartial = z.object({
 })
 
 /**
- * AppPartial
+ * AgentAppPublishedReferenceResponse
  */
-export const zAppPartial = z.object({
+export const zAgentAppPublishedReferenceResponse = z.object({
+  app_icon: z.string().nullish(),
+  app_icon_background: z.string().nullish(),
+  app_icon_type: z.string().nullish(),
+  app_id: z.string(),
+  app_name: z.string(),
+})
+
+/**
+ * AgentAppPartial
+ */
+export const zAgentAppPartial = z.object({
   access_mode: z.string().nullish(),
   active_config_is_published: z.boolean().optional().default(false),
   app_id: z.string().nullish(),
@@ -548,6 +570,8 @@ export const zAppPartial = z.object({
   mode: z.string(),
   model_config: zModelConfigPartial.nullish(),
   name: z.string(),
+  published_reference_count: z.int().optional().default(0),
+  published_references: z.array(zAgentAppPublishedReferenceResponse).optional(),
   permission_keys: z.array(z.string()).optional(),
   role: z.string().nullish(),
   tags: z.array(zTag).optional(),
@@ -558,10 +582,10 @@ export const zAppPartial = z.object({
 })
 
 /**
- * AppPagination
+ * AgentAppPagination
  */
-export const zAppPagination = z.object({
-  data: z.array(zAppPartial),
+export const zAgentAppPagination = z.object({
+  data: z.array(zAgentAppPartial),
   has_more: z.boolean(),
   limit: z.int(),
   page: z.int(),
@@ -1921,9 +1945,9 @@ export const zMessageInfiniteScrollPaginationResponse = z.object({
 })
 
 /**
- * AppPartial
+ * AgentAppPartial
  */
-export const zAppPartialWritable = z.object({
+export const zAgentAppPartialWritable = z.object({
   access_mode: z.string().nullish(),
   active_config_is_published: z.boolean().optional().default(false),
   app_id: z.string().nullish(),
@@ -1944,6 +1968,8 @@ export const zAppPartialWritable = z.object({
   mode: z.string(),
   model_config: zModelConfigPartial.nullish(),
   name: z.string(),
+  published_reference_count: z.int().optional().default(0),
+  published_references: z.array(zAgentAppPublishedReferenceResponse).optional(),
   permission_keys: z.array(z.string()).optional(),
   role: z.string().nullish(),
   tags: z.array(zTag).optional(),
@@ -1954,10 +1980,10 @@ export const zAppPartialWritable = z.object({
 })
 
 /**
- * AppPagination
+ * AgentAppPagination
  */
-export const zAppPaginationWritable = z.object({
-  data: z.array(zAppPartialWritable),
+export const zAgentAppPaginationWritable = z.object({
+  data: z.array(zAgentAppPartialWritable),
   has_more: z.boolean(),
   limit: z.int(),
   page: z.int(),
@@ -2047,7 +2073,7 @@ export const zGetAgentQuery = z.object({
 /**
  * Agent app list
  */
-export const zGetAgentResponse = zAppPagination
+export const zGetAgentResponse = zAgentAppPagination
 
 export const zPostAgentBody = zAgentAppCreatePayload
 
@@ -2172,6 +2198,17 @@ export const zPostAgentByAgentIdComposerValidatePath = z.object({
  * Agent app composer validation result
  */
 export const zPostAgentByAgentIdComposerValidateResponse = zAgentComposerValidateResponse
+
+export const zPostAgentByAgentIdCopyBody = zCopyAppPayload
+
+export const zPostAgentByAgentIdCopyPath = z.object({
+  agent_id: z.string(),
+})
+
+/**
+ * Agent app copied successfully
+ */
+export const zPostAgentByAgentIdCopyResponse = zAppDetailWithSite
 
 export const zGetAgentByAgentIdDriveFilesPath = z.object({
   agent_id: z.string(),

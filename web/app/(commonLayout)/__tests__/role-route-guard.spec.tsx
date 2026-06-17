@@ -1,33 +1,23 @@
+import type { ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import RoleRouteGuard from '../role-route-guard'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { RoleRouteGuard } from '../role-route-guard'
 
 const mocks = vi.hoisted(() => ({
   redirect: vi.fn((url: string) => {
     throw new Error(`NEXT_REDIRECT:${url}`)
   }),
-  replace: vi.fn(),
   currentWorkspaceQueryOptions: vi.fn(() => ({ queryKey: ['console', 'workspaces', 'current', 'post'] })),
+  systemFeaturesQueryKey: vi.fn(() => ['console', 'systemFeatures', 'get']),
 }))
 
 let mockPathname = '/apps'
-let mockIsLoadingWorkspacePermissionKeys = false
-let mockWorkspacePermissionKeys: string[] = ['app_library.access', 'tool.manage']
 
 vi.mock('@/next/navigation', () => ({
   redirect: (url: string) => mocks.redirect(url),
   usePathname: () => mockPathname,
-  useRouter: () => ({
-    replace: mocks.replace,
-  }),
-}))
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }),
 }))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -40,6 +30,11 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    systemFeatures: {
+      get: {
+        queryKey: mocks.systemFeaturesQueryKey,
+      },
+    },
     workspaces: {
       current: {
         post: {
@@ -52,6 +47,19 @@ vi.mock('@/service/client', () => ({
 
 const mockUseQuery = vi.mocked(useQuery)
 
+function renderGuard(children: ReactNode) {
+  return renderWithSystemFeatures(
+    <RoleRouteGuard>
+      {children}
+    </RoleRouteGuard>,
+    {
+      systemFeatures: {
+        enable_app_deploy: true,
+      },
+    },
+  )
+}
+
 const setCurrentWorkspaceQuery = (overrides: { role?: string, isPending?: boolean } = {}) => {
   mockUseQuery.mockReturnValue({
     data: overrides.role,
@@ -63,64 +71,57 @@ describe('RoleRouteGuard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPathname = '/apps'
-    mockIsLoadingWorkspacePermissionKeys = false
-    mockWorkspacePermissionKeys = ['app_library.access', 'tool.manage']
     setCurrentWorkspaceQuery()
   })
 
   it('should render loading while workspace is loading', () => {
-    mockPathname = '/explore'
-    mockIsLoadingWorkspacePermissionKeys = true
+    setCurrentWorkspaceQuery({ isPending: true })
 
-    render((
-      <RoleRouteGuard>
-        <div>content</div>
-      </RoleRouteGuard>
-    ))
+    renderGuard(<div>content</div>)
 
+    expect(screen.getByRole('status')).toBeInTheDocument()
     expect(screen.queryByText('content')).not.toBeInTheDocument()
-    expect(mocks.replace).not.toHaveBeenCalled()
+    expect(mocks.redirect).not.toHaveBeenCalled()
+    expect(mocks.currentWorkspaceQueryOptions).toHaveBeenCalledWith({
+      select: expect.any(Function),
+    })
   })
 
-  it('should redirect users without route permission on guarded routes', () => {
-    mockPathname = '/explore'
-    mockWorkspacePermissionKeys = []
+  it('should redirect dataset operator on guarded routes', () => {
+    setCurrentWorkspaceQuery({ role: 'dataset_operator' })
 
-    render((
-      <RoleRouteGuard>
-        <div>content</div>
-      </RoleRouteGuard>
-    ))
+    expect(() => renderGuard(<div>content</div>)).toThrow('NEXT_REDIRECT:/datasets')
 
-    expect(screen.queryByText('content')).not.toBeInTheDocument()
-    expect(mocks.replace).toHaveBeenCalledWith('/apps')
+    expect(mocks.redirect).toHaveBeenCalledWith('/datasets')
   })
 
-  it('should allow users on non-guarded routes', () => {
+  it('should redirect dataset operator on deployments routes', () => {
+    mockPathname = '/deployments/create'
+    setCurrentWorkspaceQuery({ role: 'dataset_operator' })
+
+    expect(() => renderGuard(<div>content</div>)).toThrow('NEXT_REDIRECT:/datasets')
+
+    expect(mocks.redirect).toHaveBeenCalledWith('/datasets')
+  })
+
+  it('should allow dataset operator on non-guarded routes', () => {
     mockPathname = '/plugins'
-    mockWorkspacePermissionKeys = []
+    setCurrentWorkspaceQuery({ role: 'dataset_operator' })
 
-    render((
-      <RoleRouteGuard>
-        <div>content</div>
-      </RoleRouteGuard>
-    ))
+    renderGuard(<div>content</div>)
 
     expect(screen.getByText('content')).toBeInTheDocument()
-    expect(mocks.replace).not.toHaveBeenCalled()
+    expect(mocks.redirect).not.toHaveBeenCalled()
   })
 
   it('should not block non-guarded routes while workspace is loading', () => {
     mockPathname = '/plugins'
-    mockIsLoadingWorkspacePermissionKeys = true
+    setCurrentWorkspaceQuery({ isPending: true })
 
-    render((
-      <RoleRouteGuard>
-        <div>content</div>
-      </RoleRouteGuard>
-    ))
+    renderGuard(<div>content</div>)
 
     expect(screen.getByText('content')).toBeInTheDocument()
-    expect(mocks.replace).not.toHaveBeenCalled()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(mocks.redirect).not.toHaveBeenCalled()
   })
 })

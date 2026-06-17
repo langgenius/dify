@@ -9,7 +9,7 @@ import * as exploreService from '@/service/explore'
 import * as workflowService from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
-import AppCard from '../app-card'
+import { AppCard } from '../app-card'
 import { StarredAppCard } from '../starred-app-card'
 
 let mockWebappAuthEnabled = false
@@ -1891,7 +1891,7 @@ describe('AppCard', () => {
       vi.resetModules()
       vi.doMock('@langgenius/dify-ui/alert-dialog', createMockAlertDialogModule)
 
-      const { default: IsolatedAppCard } = await import('../app-card')
+      const { AppCard: IsolatedAppCard } = await import('../app-card')
       render(<IsolatedAppCard app={mockApp} />)
 
       fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
@@ -1913,7 +1913,7 @@ describe('AppCard', () => {
       vi.resetModules()
       vi.doMock('@langgenius/dify-ui/alert-dialog', createMockAlertDialogModule)
 
-      const { default: IsolatedAppCard } = await import('../app-card')
+      const { AppCard: IsolatedAppCard } = await import('../app-card')
       render(<IsolatedAppCard app={mockApp} />)
 
       fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
@@ -1933,7 +1933,7 @@ describe('AppCard', () => {
       mockDeleteMutationPending = true
       vi.doMock('@langgenius/dify-ui/alert-dialog', createMockAlertDialogModule)
 
-      const { default: IsolatedAppCard } = await import('../app-card')
+      const { AppCard: IsolatedAppCard } = await import('../app-card')
       render(<IsolatedAppCard app={mockApp} />)
 
       fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))

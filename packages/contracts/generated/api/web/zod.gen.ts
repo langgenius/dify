@@ -824,6 +824,7 @@ export const zSystemFeatureModel = z.object({
     login_page_logo: '',
     workspace_logo: '',
   }),
+  enable_app_deploy: z.boolean().default(false),
   enable_change_email: z.boolean().default(true),
   enable_collaboration_mode: z.boolean().default(true),
   enable_creators_platform: z.boolean().default(false),

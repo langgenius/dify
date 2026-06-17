@@ -3,6 +3,7 @@ import { env } from '@/env'
 import { InstallationScope, LicenseStatus } from './constants'
 
 export const defaultSystemFeatures = {
+  enable_app_deploy: false,
   sso_enforced_for_signin: false,
   sso_enforced_for_signin_protocol: '',
   enable_marketplace: false,

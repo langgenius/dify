@@ -276,6 +276,9 @@ vi.mock('@/next/dynamic', () => ({
 }))
 
 vi.mock('../app-card', () => ({
+  AppCard: ({ app }: { app: { id: string, name: string } }) => {
+    return React.createElement('div', { 'data-testid': `app-card-${app.id}`, 'role': 'article' }, app.name)
+  },
   AppCardActionBar: ({ app, onRefresh }: { app: { id: string }, onRefresh?: () => void }) => {
     return React.createElement('button', {
       'data-testid': `app-card-action-bar-${app.id}`,
