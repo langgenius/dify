@@ -15,6 +15,7 @@ from controllers.service_api.app.error import (
     FileAccessDeniedError,
     FileNotFoundError,
 )
+from controllers.service_api.schema import binary_response
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -41,6 +42,7 @@ class FilePreviewApi(Resource):
     """
 
     @service_api_ns.doc(params=query_params_from_model(FilePreviewQuery))
+    @binary_response(service_api_ns, "application/octet-stream")
     @service_api_ns.doc("preview_file")
     @service_api_ns.doc(description="Preview or download a file uploaded via Service API")
     @service_api_ns.doc(params={"file_id": "UUID of the file to preview"})
@@ -52,11 +54,7 @@ class FilePreviewApi(Resource):
             404: "File not found",
         }
     )
-    @service_api_ns.response(
-        200,
-        "File retrieved successfully",
-        service_api_ns.models[BinaryFileResponse.__name__],
-    )
+    @service_api_ns.response(200, "File retrieved successfully")
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
     def get(self, app_model: App, end_user: EndUser, file_id: UUID):
         """

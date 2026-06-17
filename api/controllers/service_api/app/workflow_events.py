@@ -15,6 +15,7 @@ from controllers.common.fields import EventStreamResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_model, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotWorkflowAppError
+from controllers.service_api.schema import event_stream_response
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.base_app_generator import BaseAppGenerator
@@ -44,6 +45,7 @@ register_response_schema_model(service_api_ns, EventStreamResponse)
 class WorkflowEventsApi(Resource):
     """Service API for getting workflow execution events after resume."""
 
+    @event_stream_response(service_api_ns)
     @service_api_ns.doc("get_workflow_events")
     @service_api_ns.doc(description="Get workflow execution events stream after resume")
     @service_api_ns.doc(params={"task_id": "Workflow run ID"})

@@ -954,7 +954,7 @@ export const zGetConversationsQuery = z.object({
 export const zGetConversationsResponse = zConversationInfiniteScrollPagination
 
 export const zDeleteConversationsByCIdPath = z.object({
-  c_id: z.string(),
+  c_id: z.uuid(),
 })
 
 /**
@@ -965,7 +965,7 @@ export const zDeleteConversationsByCIdResponse = z.void()
 export const zPostConversationsByCIdNameBody = zConversationRenamePayload
 
 export const zPostConversationsByCIdNamePath = z.object({
-  c_id: z.string(),
+  c_id: z.uuid(),
 })
 
 export const zPostConversationsByCIdNameQuery = z.object({
@@ -979,7 +979,7 @@ export const zPostConversationsByCIdNameQuery = z.object({
 export const zPostConversationsByCIdNameResponse = zSimpleConversation
 
 export const zPatchConversationsByCIdPinPath = z.object({
-  c_id: z.string(),
+  c_id: z.uuid(),
 })
 
 /**
@@ -988,7 +988,7 @@ export const zPatchConversationsByCIdPinPath = z.object({
 export const zPatchConversationsByCIdPinResponse = zResultResponse
 
 export const zPatchConversationsByCIdUnpinPath = z.object({
-  c_id: z.string(),
+  c_id: z.uuid(),
 })
 
 /**
@@ -1106,7 +1106,7 @@ export const zGetMessagesResponse = zWebMessageInfiniteScrollPagination
 export const zPostMessagesByMessageIdFeedbacksBody = zMessageFeedbackPayload
 
 export const zPostMessagesByMessageIdFeedbacksPath = z.object({
-  message_id: z.string(),
+  message_id: z.uuid(),
 })
 
 export const zPostMessagesByMessageIdFeedbacksQuery = z.object({
@@ -1120,7 +1120,7 @@ export const zPostMessagesByMessageIdFeedbacksQuery = z.object({
 export const zPostMessagesByMessageIdFeedbacksResponse = zResultResponse
 
 export const zGetMessagesByMessageIdMoreLikeThisPath = z.object({
-  message_id: z.string(),
+  message_id: z.uuid(),
 })
 
 export const zGetMessagesByMessageIdMoreLikeThisQuery = z.object({
@@ -1133,7 +1133,7 @@ export const zGetMessagesByMessageIdMoreLikeThisQuery = z.object({
 export const zGetMessagesByMessageIdMoreLikeThisResponse = zGeneratedAppResponse
 
 export const zGetMessagesByMessageIdSuggestedQuestionsPath = z.object({
-  message_id: z.string(),
+  message_id: z.uuid(),
 })
 
 /**
@@ -1198,7 +1198,7 @@ export const zPostSavedMessagesQuery = z.object({
 export const zPostSavedMessagesResponse = zResultResponse
 
 export const zDeleteSavedMessagesByMessageIdPath = z.object({
-  message_id: z.string(),
+  message_id: z.uuid(),
 })
 
 /**

@@ -39,6 +39,7 @@ from controllers.service_api.dataset.error import (
     DocumentIndexingError,
     InvalidMetadataError,
 )
+from controllers.service_api.schema import binary_response
 from controllers.service_api.wraps import (
     DatasetApiResource,
     cloud_edition_billing_rate_limit_check,
@@ -463,8 +464,17 @@ class DeprecatedDocumentUpdateByTextApi(DatasetApiResource):
 
 @service_api_ns.route(
     "/datasets/<uuid:dataset_id>/document/create_by_file",
-    "/datasets/<uuid:dataset_id>/document/create-by-file",
+    doc={
+        "post": {
+            "deprecated": True,
+            "description": (
+                "Deprecated legacy alias for creating a new document by uploading a file. "
+                "Use /datasets/{dataset_id}/document/create-by-file instead."
+            ),
+        }
+    },
 )
+@service_api_ns.route("/datasets/<uuid:dataset_id>/document/create-by-file")
 class DocumentAddByFileApi(DatasetApiResource):
     """Resource for documents."""
 
@@ -746,6 +756,7 @@ class DocumentListApi(DatasetApiResource):
 class DocumentBatchDownloadZipApi(DatasetApiResource):
     """Download multiple uploaded-file documents as a single ZIP archive."""
 
+    @binary_response(service_api_ns, "application/zip")
     @service_api_ns.expect(service_api_ns.models[DocumentBatchDownloadZipPayload.__name__])
     @service_api_ns.doc("download_documents_as_zip")
     @service_api_ns.doc(description="Download selected uploaded documents as a single ZIP archive")
@@ -758,11 +769,7 @@ class DocumentBatchDownloadZipApi(DatasetApiResource):
             404: "Document or dataset not found",
         }
     )
-    @service_api_ns.response(
-        200,
-        "ZIP archive generated successfully",
-        service_api_ns.models[BinaryFileResponse.__name__],
-    )
+    @service_api_ns.response(200, "ZIP archive generated successfully")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id: UUID):
         payload = DocumentBatchDownloadZipPayload.model_validate(service_api_ns.payload or {})

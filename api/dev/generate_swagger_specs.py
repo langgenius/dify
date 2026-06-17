@@ -154,9 +154,9 @@ def create_spec_app() -> Flask:
 
     apply_runtime_defaults()
 
-    from libs.flask_restx_compat import patch_swagger_for_inline_nested_dicts
+    from libs.flask_restx_compat import install_swagger_compatibility
 
-    patch_swagger_for_inline_nested_dicts()
+    install_swagger_compatibility()
 
     app = Flask(__name__)
 

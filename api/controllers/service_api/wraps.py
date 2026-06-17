@@ -9,11 +9,18 @@ from typing import cast, overload
 from flask import current_app, request
 from flask_login import user_logged_in
 from flask_restx import Resource
+from flask_restx.utils import merge
 from pydantic import BaseModel
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from configs import dify_config
+from controllers.service_api.schema import (
+    USER_FETCH_FROM_ATTR,
+    USER_FORM_PARAM,
+    USER_QUERY_PARAM,
+    USER_REQUIRED_ATTR,
+)
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -41,6 +48,32 @@ class WhereisUserArg(StrEnum):
 class FetchUserArg(BaseModel):
     fetch_from: WhereisUserArg
     required: bool = False
+
+
+APP_TOKEN_FORBIDDEN_RESPONSE = {
+    403: "Forbidden - token scope, app, dataset, or workspace access denied",
+}
+
+DATASET_TOKEN_AUTH_RESPONSES = {
+    401: "Unauthorized - invalid API token",
+    403: "Forbidden - dataset API access or workspace access denied",
+}
+
+
+def _document_app_token_contract(view_func: Callable[..., object], fetch_user_arg: FetchUserArg | None) -> None:
+    doc: dict[str, object] = {"responses": APP_TOKEN_FORBIDDEN_RESPONSE}
+    if fetch_user_arg is not None:
+        setattr(view_func, USER_FETCH_FROM_ATTR, fetch_user_arg.fetch_from.name)
+        setattr(view_func, USER_REQUIRED_ATTR, fetch_user_arg.required)
+        match fetch_user_arg.fetch_from:
+            case WhereisUserArg.QUERY:
+                doc["params"] = {"user": {**USER_QUERY_PARAM, "required": fetch_user_arg.required}}
+            case WhereisUserArg.FORM:
+                doc["params"] = {"user": {**USER_FORM_PARAM, "required": fetch_user_arg.required}}
+            case WhereisUserArg.JSON:
+                pass
+
+    view_func.__apidoc__ = merge(getattr(view_func, "__apidoc__", {}), doc)
 
 
 @overload
@@ -126,6 +159,7 @@ def validate_app_token[**P, R](
 
             return view_func(*args, **kwargs)
 
+        _document_app_token_contract(decorated_view, fetch_user_arg)
         return decorated_view
 
     if view is None:
@@ -343,6 +377,8 @@ def validate_and_get_api_token(scope: str | None = None):
 
 
 class DatasetApiResource(Resource):
+    __apidoc__ = {"responses": DATASET_TOKEN_AUTH_RESPONSES}
+
     method_decorators = [validate_dataset_token]
 
     def get_dataset(self, dataset_id: str, tenant_id: str) -> Dataset:
