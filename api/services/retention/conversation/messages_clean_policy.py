@@ -70,6 +70,13 @@ class BillingSandboxPolicy(MessagesCleanPolicy):
     - Safe default: if tenant mapping or plan is missing, do NOT delete
     """
 
+    _graceful_period_days: int
+    _tenant_whitelist: Sequence[str]
+    _tenant_whitelist_set: set[str]
+    _plan_provider: Callable[[Sequence[str]], dict[str, SubscriptionPlan]]
+    _current_timestamp: int | None
+    _plan_cache: dict[str, SubscriptionPlan | None]
+
     def __init__(
         self,
         plan_provider: Callable[[Sequence[str]], dict[str, SubscriptionPlan]],
@@ -79,8 +86,10 @@ class BillingSandboxPolicy(MessagesCleanPolicy):
     ) -> None:
         self._graceful_period_days = graceful_period_days
         self._tenant_whitelist: Sequence[str] = tenant_whitelist or []
+        self._tenant_whitelist_set = set(self._tenant_whitelist)
         self._plan_provider = plan_provider
         self._current_timestamp = current_timestamp
+        self._plan_cache = {}
 
     @override
     def filter_message_ids(
@@ -101,9 +110,12 @@ class BillingSandboxPolicy(MessagesCleanPolicy):
         if not messages or not app_to_tenant:
             return []
 
-        # Get unique tenant_ids and fetch subscription plans
-        tenant_ids = list(set(app_to_tenant.values()))
-        tenant_plans = self._plan_provider(tenant_ids)
+        # Get unique tenant_ids and fetch subscription plans. Plans are cached for the whole
+        # policy lifetime because message cleanup evaluates many adjacent batches from the same apps.
+        tenant_ids = sorted(
+            {tenant_id for tenant_id in app_to_tenant.values() if tenant_id not in self._tenant_whitelist_set}
+        )
+        tenant_plans = self._get_tenant_plans(tenant_ids)
 
         if not tenant_plans:
             return []
@@ -114,6 +126,28 @@ class BillingSandboxPolicy(MessagesCleanPolicy):
             app_to_tenant=app_to_tenant,
             tenant_plans=tenant_plans,
         )
+
+    def _get_tenant_plans(self, tenant_ids: Sequence[str]) -> dict[str, SubscriptionPlan]:
+        """
+        Return cached subscription plans for tenant ids.
+
+        Missing billing responses are cached as None and remain a safe non-delete decision.
+        Provider exceptions still propagate so transient billing failures do not silently change cleanup behavior.
+        """
+        unique_tenant_ids = sorted(set(tenant_ids))
+        missing_tenant_ids = [tenant_id for tenant_id in unique_tenant_ids if tenant_id not in self._plan_cache]
+
+        if missing_tenant_ids:
+            fetched_plans = self._plan_provider(missing_tenant_ids)
+            for tenant_id in missing_tenant_ids:
+                self._plan_cache[tenant_id] = fetched_plans.get(tenant_id)
+
+        plans: dict[str, SubscriptionPlan] = {}
+        for tenant_id in unique_tenant_ids:
+            plan = self._plan_cache.get(tenant_id)
+            if plan is not None:
+                plans[tenant_id] = plan
+        return plans
 
     def _filter_expired_sandbox_messages(
         self,

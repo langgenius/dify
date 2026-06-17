@@ -1,8 +1,9 @@
 import datetime
 import logging
+import math
 import random
 import time
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from typing import TYPE_CHECKING, TypedDict, cast
 
 import sqlalchemy as sa
@@ -35,6 +36,10 @@ logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from opentelemetry.metrics import Counter, Histogram
+
+
+_MIN_ELIGIBLE_HIT_RATE = 0.005
+_HIT_RATE_EMA_ALPHA = 0.3
 
 
 class MessagesCleanupMetrics:
@@ -165,12 +170,24 @@ class MessagesCleanStatsDict(TypedDict):
     total_deleted: int
 
 
+class MessageDeleteResultDict(TypedDict):
+    messages_deleted: int
+    chunks: int
+    relations_ms: int
+    messages_ms: int
+
+
 class MessagesCleanService:
     """
     Service for cleaning expired messages based on retention policies.
 
     Compatible with non cloud edition (billing disabled): all messages in the time range will be deleted.
     If billing is enabled: only sandbox plan tenant messages are deleted (with whitelist and grace period support).
+
+    The scan cursor advances by candidate messages, not messages selected by the policy. This keeps cleanup moving
+    through windows dominated by paid, unknown, or grace-period tenants without asking SQL to find enough eligible rows.
+    Candidate scan batches can grow independently from delete batches, while deletes stay chunked into
+    small transactions.
     """
 
     def __init__(
@@ -179,6 +196,8 @@ class MessagesCleanService:
         end_before: datetime.datetime,
         start_from: datetime.datetime | None = None,
         batch_size: int = 1000,
+        max_candidate_batch_size: int | None = None,
+        delete_batch_size: int | None = None,
         dry_run: bool = False,
         task_label: str = "custom",
     ) -> None:
@@ -189,14 +208,28 @@ class MessagesCleanService:
             policy: The policy that determines which messages to delete
             end_before: End time (exclusive) of the range
             start_from: Optional start time (inclusive) of the range
-            batch_size: Number of messages to process per batch
+            batch_size: Initial number of candidate messages to scan per batch
+            max_candidate_batch_size: Maximum number of candidate messages to scan per batch
+            delete_batch_size: Maximum number of messages to delete per transaction
             dry_run: Whether to perform a dry run (no actual deletion)
             task_label: Optional task label for retention metrics
         """
+        if batch_size <= 0:
+            raise ValueError(f"batch_size ({batch_size}) must be greater than 0")
+
+        if max_candidate_batch_size is not None and max_candidate_batch_size <= 0:
+            raise ValueError(f"max_candidate_batch_size ({max_candidate_batch_size}) must be greater than 0")
+
+        if delete_batch_size is not None and delete_batch_size <= 0:
+            raise ValueError(f"delete_batch_size ({delete_batch_size}) must be greater than 0")
+
         self._policy = policy
         self._end_before = end_before
         self._start_from = start_from
         self._batch_size = batch_size
+        self._candidate_batch_size = batch_size
+        self._delete_batch_size = delete_batch_size or batch_size
+        self._max_candidate_batch_size = max(max_candidate_batch_size or batch_size, self._candidate_batch_size)
         self._dry_run = dry_run
         self._metrics = MessagesCleanupMetrics(
             dry_run=dry_run,
@@ -211,6 +244,8 @@ class MessagesCleanService:
         start_from: datetime.datetime,
         end_before: datetime.datetime,
         batch_size: int = 1000,
+        max_candidate_batch_size: int | None = None,
+        delete_batch_size: int | None = None,
         dry_run: bool = False,
         task_label: str = "custom",
     ) -> "MessagesCleanService":
@@ -223,7 +258,9 @@ class MessagesCleanService:
             policy: The policy that determines which messages to delete
             start_from: Start time (inclusive) of the range
             end_before: End time (exclusive) of the range
-            batch_size: Number of messages to process per batch
+            batch_size: Initial number of candidate messages to scan per batch
+            max_candidate_batch_size: Maximum number of candidate messages to scan per batch
+            delete_batch_size: Maximum number of messages to delete per transaction
             dry_run: Whether to perform a dry run (no actual deletion)
             task_label: Optional task label for retention metrics
 
@@ -239,11 +276,20 @@ class MessagesCleanService:
         if batch_size <= 0:
             raise ValueError(f"batch_size ({batch_size}) must be greater than 0")
 
+        if max_candidate_batch_size is not None and max_candidate_batch_size <= 0:
+            raise ValueError(f"max_candidate_batch_size ({max_candidate_batch_size}) must be greater than 0")
+
+        if delete_batch_size is not None and delete_batch_size <= 0:
+            raise ValueError(f"delete_batch_size ({delete_batch_size}) must be greater than 0")
+
         logger.info(
-            "clean_messages: start_from=%s, end_before=%s, batch_size=%s, policy=%s",
+            "clean_messages: start_from=%s, end_before=%s, batch_size=%s, "
+            "max_candidate_batch_size=%s, delete_batch_size=%s, policy=%s",
             start_from,
             end_before,
             batch_size,
+            max_candidate_batch_size,
+            delete_batch_size,
             policy.__class__.__name__,
         )
 
@@ -252,6 +298,8 @@ class MessagesCleanService:
             end_before=end_before,
             start_from=start_from,
             batch_size=batch_size,
+            max_candidate_batch_size=max_candidate_batch_size,
+            delete_batch_size=delete_batch_size,
             dry_run=dry_run,
             task_label=task_label,
         )
@@ -262,6 +310,8 @@ class MessagesCleanService:
         policy: MessagesCleanPolicy,
         days: int = 30,
         batch_size: int = 1000,
+        max_candidate_batch_size: int | None = None,
+        delete_batch_size: int | None = None,
         dry_run: bool = False,
         task_label: str = "custom",
     ) -> "MessagesCleanService":
@@ -271,7 +321,9 @@ class MessagesCleanService:
         Args:
             policy: The policy that determines which messages to delete
             days: Number of days to look back from now
-            batch_size: Number of messages to process per batch
+            batch_size: Initial number of candidate messages to scan per batch
+            max_candidate_batch_size: Maximum number of candidate messages to scan per batch
+            delete_batch_size: Maximum number of messages to delete per transaction
             dry_run: Whether to perform a dry run (no actual deletion)
             task_label: Optional task label for retention metrics
 
@@ -287,13 +339,22 @@ class MessagesCleanService:
         if batch_size <= 0:
             raise ValueError(f"batch_size ({batch_size}) must be greater than 0")
 
+        if max_candidate_batch_size is not None and max_candidate_batch_size <= 0:
+            raise ValueError(f"max_candidate_batch_size ({max_candidate_batch_size}) must be greater than 0")
+
+        if delete_batch_size is not None and delete_batch_size <= 0:
+            raise ValueError(f"delete_batch_size ({delete_batch_size}) must be greater than 0")
+
         end_before = naive_utc_now() - datetime.timedelta(days=days)
 
         logger.info(
-            "clean_messages: days=%s, end_before=%s, batch_size=%s, policy=%s",
+            "clean_messages: days=%s, end_before=%s, batch_size=%s, "
+            "max_candidate_batch_size=%s, delete_batch_size=%s, policy=%s",
             days,
             end_before,
             batch_size,
+            max_candidate_batch_size,
+            delete_batch_size,
             policy.__class__.__name__,
         )
 
@@ -302,6 +363,8 @@ class MessagesCleanService:
             end_before=end_before,
             start_from=None,
             batch_size=batch_size,
+            max_candidate_batch_size=max_candidate_batch_size,
+            delete_batch_size=delete_batch_size,
             dry_run=dry_run,
             task_label=task_label,
         )
@@ -333,10 +396,10 @@ class MessagesCleanService:
         Time range is [start_from, end_before)
 
         Steps:
-        1. Iterate messages using cursor pagination (by created_at, id)
-        2. Query app_id -> tenant_id mapping
+        1. Iterate candidate messages using cursor pagination (by created_at, id)
+        2. Resolve app_id -> tenant_id mapping with a job-level cache
         3. Delegate to policy to determine which messages to delete
-        4. Batch delete messages and their relations
+        4. Delete messages and their relations in small chunks
 
         Returns:
             Dict with statistics: batches, filtered_messages, total_deleted
@@ -348,18 +411,22 @@ class MessagesCleanService:
             "total_deleted": 0,
         }
 
-        # Cursor-based pagination using (created_at, id) to avoid infinite loops
-        # and ensure proper ordering with time-based filtering
-        _cursor: tuple[datetime.datetime, str] | None = None
+        cursor: tuple[datetime.datetime, str] | None = None
+        app_to_tenant_cache: dict[str, str | None] = {}
+        current_candidate_batch_size = self._candidate_batch_size
+        smoothed_hit_rate: float | None = None
+        session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
 
         logger.info(
-            "clean_messages: start cleaning messages (dry_run=%s), start_from=%s, end_before=%s",
+            "clean_messages: start cleaning messages (dry_run=%s), start_from=%s, end_before=%s, "
+            "candidate_batch_size=%s, max_candidate_batch_size=%s, delete_batch_size=%s",
             self._dry_run,
             self._start_from,
             self._end_before,
+            self._candidate_batch_size,
+            self._max_candidate_batch_size,
+            self._delete_batch_size,
         )
-
-        max_batch_interval_ms = dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_MAX_INTERVAL
 
         while True:
             stats["batches"] += 1
@@ -369,25 +436,25 @@ class MessagesCleanService:
             batch_deleted_messages = 0
 
             # Step 1: Fetch a batch of messages using cursor
-            with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
+            with session_factory.begin() as session:
                 fetch_messages_start = time.monotonic()
                 msg_stmt = (
                     select(Message.id, Message.app_id, Message.created_at)
                     .where(Message.created_at < self._end_before)
                     .order_by(Message.created_at, Message.id)
-                    .limit(self._batch_size)
+                    .limit(current_candidate_batch_size)
                 )
 
                 if self._start_from:
                     msg_stmt = msg_stmt.where(Message.created_at >= self._start_from)
 
                 # Apply cursor condition: (created_at, id) > (last_created_at, last_message_id)
-                if _cursor:
+                if cursor:
                     msg_stmt = msg_stmt.where(
                         tuple_(Message.created_at, Message.id)
                         > tuple_(
-                            sa.literal(_cursor[0], type_=sa.DateTime()),
-                            sa.literal(_cursor[1], type_=Message.id.type),
+                            sa.literal(cursor[0], type_=sa.DateTime()),
+                            sa.literal(cursor[1], type_=Message.id.type),
                         )
                     )
 
@@ -397,13 +464,13 @@ class MessagesCleanService:
                     for msg_id, app_id, msg_created_at in raw_messages
                 ]
                 logger.info(
-                    "clean_messages (batch %s): fetched %s messages in %sms",
+                    "clean_messages (batch %s): fetched %s candidate messages with limit %s in %sms",
                     stats["batches"],
                     len(messages),
+                    current_candidate_batch_size,
                     int((time.monotonic() - fetch_messages_start) * 1000),
                 )
 
-                # Track total messages fetched across all batches
                 stats["total_messages"] += len(messages)
                 batch_scanned_messages = len(messages)
 
@@ -417,29 +484,50 @@ class MessagesCleanService:
                     )
                     break
 
-                # Update cursor to the last message's (created_at, id)
-                _cursor = (messages[-1].created_at, messages[-1].id)
+                # Advance by candidate rows before policy filtering. This avoids retrying the same paid/unknown slice.
+                cursor = (messages[-1].created_at, messages[-1].id)
 
                 # Step 2: Extract app_ids and query tenant_ids
                 app_ids = list({msg.app_id for msg in messages})
 
                 if not app_ids:
                     logger.info("clean_messages (batch %s): no app_ids found, skip", stats["batches"])
+                    smoothed_hit_rate, current_candidate_batch_size = self._adjust_candidate_batch_size(
+                        smoothed_hit_rate=smoothed_hit_rate,
+                        candidate_count=batch_scanned_messages,
+                        eligible_count=0,
+                    )
+                    self._metrics.record_batch(
+                        scanned_messages=batch_scanned_messages,
+                        filtered_messages=batch_filtered_messages,
+                        deleted_messages=batch_deleted_messages,
+                        batch_duration_seconds=time.monotonic() - batch_start,
+                    )
                     continue
 
                 fetch_apps_start = time.monotonic()
-                app_stmt = select(App.id, App.tenant_id).where(App.id.in_(app_ids))
-                apps = list(session.execute(app_stmt).all())
+                app_to_tenant, app_cache_misses, apps_found = self._load_app_to_tenant_mapping(
+                    session=session,
+                    app_ids=app_ids,
+                    app_to_tenant_cache=app_to_tenant_cache,
+                )
                 logger.info(
-                    "clean_messages (batch %s): fetched %s apps for %s app_ids in %sms",
+                    "clean_messages (batch %s): resolved %s apps for %s app_ids (cache_misses=%s, found=%s) in %sms",
                     stats["batches"],
-                    len(apps),
+                    len(app_to_tenant),
                     len(app_ids),
+                    app_cache_misses,
+                    apps_found,
                     int((time.monotonic() - fetch_apps_start) * 1000),
                 )
 
-            if not apps:
+            if not app_to_tenant:
                 logger.info("clean_messages (batch %s): no apps found, skip", stats["batches"])
+                smoothed_hit_rate, current_candidate_batch_size = self._adjust_candidate_batch_size(
+                    smoothed_hit_rate=smoothed_hit_rate,
+                    candidate_count=batch_scanned_messages,
+                    eligible_count=0,
+                )
                 self._metrics.record_batch(
                     scanned_messages=batch_scanned_messages,
                     filtered_messages=batch_filtered_messages,
@@ -448,19 +536,27 @@ class MessagesCleanService:
                 )
                 continue
 
-            # Build app_id -> tenant_id mapping
-            app_to_tenant: dict[str, str] = {app.id: app.tenant_id for app in apps}
-
             # Step 3: Delegate to policy to determine which messages to delete
             policy_start = time.monotonic()
-            message_ids_to_delete = self._policy.filter_message_ids(messages, app_to_tenant)
+            message_ids_to_delete = list(self._policy.filter_message_ids(messages, app_to_tenant))
+            batch_filtered_messages = len(message_ids_to_delete)
+            stats["filtered_messages"] += batch_filtered_messages
+            smoothed_hit_rate, next_candidate_batch_size = self._adjust_candidate_batch_size(
+                smoothed_hit_rate=smoothed_hit_rate,
+                candidate_count=batch_scanned_messages,
+                eligible_count=batch_filtered_messages,
+            )
             logger.info(
-                "clean_messages (batch %s): policy selected %s/%s messages in %sms",
+                "clean_messages (batch %s): policy selected %s/%s messages in %sms "
+                "(smoothed_hit_rate=%.4f, next_candidate_batch_size=%s)",
                 stats["batches"],
-                len(message_ids_to_delete),
+                batch_filtered_messages,
                 len(messages),
                 int((time.monotonic() - policy_start) * 1000),
+                smoothed_hit_rate,
+                next_candidate_batch_size,
             )
+            current_candidate_batch_size = next_candidate_batch_size
 
             if not message_ids_to_delete:
                 logger.info("clean_messages (batch %s): no messages to delete, skip", stats["batches"])
@@ -472,47 +568,32 @@ class MessagesCleanService:
                 )
                 continue
 
-            stats["filtered_messages"] += len(message_ids_to_delete)
-            batch_filtered_messages = len(message_ids_to_delete)
-
             # Step 4: Batch delete messages and their relations
             if not self._dry_run:
-                with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
-                    delete_relations_start = time.monotonic()
-                    # Delete related records first
-                    self._batch_delete_message_relations(session, message_ids_to_delete)
-                    delete_relations_ms = int((time.monotonic() - delete_relations_start) * 1000)
+                delete_result = self._delete_messages_in_chunks(
+                    session_factory=session_factory,
+                    message_ids=message_ids_to_delete,
+                )
 
-                    # Delete messages
-                    delete_messages_start = time.monotonic()
-                    delete_stmt = delete(Message).where(Message.id.in_(message_ids_to_delete))
-                    delete_result = cast(CursorResult, session.execute(delete_stmt))
-                    messages_deleted = delete_result.rowcount
-                    delete_messages_ms = int((time.monotonic() - delete_messages_start) * 1000)
-                    commit_ms = 0
+                stats["total_deleted"] += delete_result["messages_deleted"]
+                batch_deleted_messages = delete_result["messages_deleted"]
 
-                    stats["total_deleted"] += messages_deleted
-                    batch_deleted_messages = messages_deleted
+                logger.info(
+                    "clean_messages (batch %s): processed %s candidate messages, deleted %s messages in %s chunks",
+                    stats["batches"],
+                    len(messages),
+                    delete_result["messages_deleted"],
+                    delete_result["chunks"],
+                )
+                logger.info(
+                    "clean_messages (batch %s): relations %sms, messages %sms, batch total %sms",
+                    stats["batches"],
+                    delete_result["relations_ms"],
+                    delete_result["messages_ms"],
+                    int((time.monotonic() - batch_start) * 1000),
+                )
 
-                    logger.info(
-                        "clean_messages (batch %s): processed %s messages, deleted %s messages",
-                        stats["batches"],
-                        len(messages),
-                        messages_deleted,
-                    )
-                    logger.info(
-                        "clean_messages (batch %s): relations %sms,  messages %sms, commit %sms, batch total %sms",
-                        stats["batches"],
-                        delete_relations_ms,
-                        delete_messages_ms,
-                        commit_ms,
-                        int((time.monotonic() - batch_start) * 1000),
-                    )
-
-                # Random sleep between batches to avoid overwhelming the database
-                sleep_ms = random.uniform(0, max_batch_interval_ms)  # noqa: S311
-                logger.info("clean_messages (batch %s): sleeping for %.2fms", stats["batches"], sleep_ms)
-                time.sleep(sleep_ms / 1000)
+                self._sleep_after_batch(stats["batches"], batch_deleted_messages)
             else:
                 # Log random sample of message IDs that would be deleted (up to 10)
                 sample_size = min(10, len(message_ids_to_delete))
@@ -543,6 +624,105 @@ class MessagesCleanService:
         )
 
         return stats
+
+    @staticmethod
+    def _load_app_to_tenant_mapping(
+        *,
+        session: Session,
+        app_ids: Sequence[str],
+        app_to_tenant_cache: dict[str, str | None],
+    ) -> tuple[dict[str, str], int, int]:
+        unique_app_ids = sorted(set(app_ids))
+        missing_app_ids = [app_id for app_id in unique_app_ids if app_id not in app_to_tenant_cache]
+        found_apps = 0
+
+        if missing_app_ids:
+            app_stmt = select(App.id, App.tenant_id).where(App.id.in_(missing_app_ids))
+            apps = list(session.execute(app_stmt).all())
+            found_app_ids: set[str] = set()
+            for app_id, tenant_id in apps:
+                app_to_tenant_cache[app_id] = tenant_id
+                found_app_ids.add(app_id)
+            found_apps = len(found_app_ids)
+
+            for app_id in set(missing_app_ids) - found_app_ids:
+                app_to_tenant_cache[app_id] = None
+
+        app_to_tenant: dict[str, str] = {}
+        for app_id in unique_app_ids:
+            tenant_id = app_to_tenant_cache.get(app_id)
+            if tenant_id is not None:
+                app_to_tenant[app_id] = tenant_id
+
+        return app_to_tenant, len(missing_app_ids), found_apps
+
+    def _adjust_candidate_batch_size(
+        self,
+        *,
+        smoothed_hit_rate: float | None,
+        candidate_count: int,
+        eligible_count: int,
+    ) -> tuple[float, int]:
+        if candidate_count <= 0:
+            next_smoothed_hit_rate = smoothed_hit_rate or 0.0
+            return next_smoothed_hit_rate, self._candidate_batch_size_for_hit_rate(next_smoothed_hit_rate)
+
+        hit_rate = eligible_count / candidate_count
+        if smoothed_hit_rate is None:
+            next_smoothed_hit_rate = hit_rate
+        else:
+            next_smoothed_hit_rate = (_HIT_RATE_EMA_ALPHA * hit_rate) + ((1 - _HIT_RATE_EMA_ALPHA) * smoothed_hit_rate)
+
+        return next_smoothed_hit_rate, self._candidate_batch_size_for_hit_rate(next_smoothed_hit_rate)
+
+    def _candidate_batch_size_for_hit_rate(self, hit_rate: float) -> int:
+        effective_hit_rate = max(hit_rate, _MIN_ELIGIBLE_HIT_RATE)
+        desired_batch_size = math.ceil(self._delete_batch_size / effective_hit_rate)
+        lower_bound = min(self._delete_batch_size, self._max_candidate_batch_size)
+        return min(max(desired_batch_size, lower_bound), self._max_candidate_batch_size)
+
+    def _delete_messages_in_chunks(
+        self,
+        *,
+        session_factory: sessionmaker[Session],
+        message_ids: Sequence[str],
+    ) -> MessageDeleteResultDict:
+        result: MessageDeleteResultDict = {
+            "messages_deleted": 0,
+            "chunks": 0,
+            "relations_ms": 0,
+            "messages_ms": 0,
+        }
+
+        for message_id_chunk in self._iter_message_id_chunks(message_ids, self._delete_batch_size):
+            result["chunks"] += 1
+            with session_factory.begin() as session:
+                delete_relations_start = time.monotonic()
+                self._batch_delete_message_relations(session, message_id_chunk)
+                result["relations_ms"] += int((time.monotonic() - delete_relations_start) * 1000)
+
+                delete_messages_start = time.monotonic()
+                delete_stmt = delete(Message).where(Message.id.in_(message_id_chunk))
+                delete_result = cast(CursorResult, session.execute(delete_stmt))
+                result["messages_deleted"] += delete_result.rowcount
+                result["messages_ms"] += int((time.monotonic() - delete_messages_start) * 1000)
+
+        return result
+
+    @staticmethod
+    def _iter_message_id_chunks(message_ids: Sequence[str], chunk_size: int) -> Iterator[Sequence[str]]:
+        for start_index in range(0, len(message_ids), chunk_size):
+            yield message_ids[start_index : start_index + chunk_size]
+
+    def _sleep_after_batch(self, batch_index: int, deleted_messages: int) -> None:
+        if deleted_messages <= 0:
+            return
+
+        max_batch_interval_ms = dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_MAX_INTERVAL
+        sleep_ratio = min(1.0, deleted_messages / self._delete_batch_size)
+        sleep_ms = random.uniform(0, max_batch_interval_ms * sleep_ratio)  # noqa: S311
+        logger.info("clean_messages (batch %s): sleeping for %.2fms", batch_index, sleep_ms)
+        time.sleep(sleep_ms / 1000)
 
     @staticmethod
     def _batch_delete_message_relations(session: Session, message_ids: Sequence[str]) -> None:

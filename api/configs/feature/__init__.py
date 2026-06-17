@@ -1460,6 +1460,18 @@ class SandboxExpiredRecordsCleanConfig(BaseSettings):
         description="Maximum number of records to process in each batch",
         default=1000,
     )
+    SANDBOX_EXPIRED_RECORDS_CLEAN_CANDIDATE_BATCH_SIZE: PositiveInt = Field(
+        description="Initial number of message candidates to scan in each expired records cleanup batch",
+        default=10000,
+    )
+    SANDBOX_EXPIRED_RECORDS_CLEAN_CANDIDATE_BATCH_MAX_SIZE: PositiveInt = Field(
+        description="Maximum number of message candidates to scan in each expired records cleanup batch",
+        default=50000,
+    )
+    SANDBOX_EXPIRED_RECORDS_CLEAN_DELETE_BATCH_SIZE: PositiveInt = Field(
+        description="Maximum number of records to delete in each expired records cleanup transaction",
+        default=1000,
+    )
     SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_MAX_INTERVAL: PositiveInt = Field(
         description="Maximum interval in milliseconds between batches",
         default=200,
