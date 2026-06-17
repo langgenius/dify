@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -114,7 +115,7 @@ class TestTriggerPostLayer:
         repo.update.assert_called_once_with(trigger_log)
         session.commit.assert_called_once()
 
-    def test_on_event_handles_missing_trigger_log(self):
+    def test_on_event_handles_missing_trigger_log(self, caplog):
         runtime_state = SimpleNamespace(
             outputs={},
             variable_pool=VariablePool.from_bootstrap(
@@ -126,7 +127,6 @@ class TestTriggerPostLayer:
         with (
             patch("core.app.layers.trigger_post_layer.session_factory") as mock_session_factory,
             patch("core.app.layers.trigger_post_layer.SQLAlchemyWorkflowTriggerLogRepository") as mock_repo_cls,
-            patch("core.app.layers.trigger_post_layer.logger") as mock_logger,
         ):
             session = Mock()
             mock_session_factory.create_session.return_value.__enter__.return_value = session
@@ -142,9 +142,10 @@ class TestTriggerPostLayer:
             )
             layer.initialize(runtime_state, Mock())
 
-            layer.on_event(GraphRunFailedEvent(error="boom"))
+            with caplog.at_level(logging.ERROR, logger="core.app.layers.trigger_post_layer"):
+                layer.on_event(GraphRunFailedEvent(error="boom"))
 
-        mock_logger.exception.assert_called_once()
+        assert any(record.levelno == logging.ERROR for record in caplog.records)
         session.commit.assert_not_called()
 
     def test_on_event_ignores_non_status_events(self):
