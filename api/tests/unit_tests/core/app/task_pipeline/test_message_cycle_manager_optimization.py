@@ -1,9 +1,9 @@
 """Unit tests for the message cycle manager optimization."""
 
+import logging
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-import logging
 import pytest
 from flask import Flask, current_app
 
