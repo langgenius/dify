@@ -106,6 +106,14 @@ describe('AgentRosterList', () => {
     expect(screen.queryByText('agentV2.roster.emptySearchDescription')).not.toBeInTheDocument()
   })
 
+  it('uses the same overlay treatment for loading errors', () => {
+    const { container } = renderList([], { isError: true })
+
+    expect(screen.getByRole('heading', { name: 'agentV2.roster.loadingError' })).toHaveClass('system-sm-regular', 'text-text-tertiary')
+    expect(container.querySelectorAll('.bg-background-default-lighter')).toHaveLength(16)
+    expect(container.querySelector('.bg-linear-to-b')).toBeInTheDocument()
+  })
+
   it('opens published workflow references from the card reference trigger', async () => {
     const user = userEvent.setup()
     renderList([
