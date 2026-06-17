@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -259,9 +258,8 @@ class TestEndUserServiceGetOrCreateEndUserByType:
 
         assert len(matching_logs) == 1
 
-    @patch("services.end_user_service.logger")
     def test_get_existing_end_user_matching_type(
-        self, mock_logger, db_session_with_containers: Session, factory: TestEndUserServiceFactory
+        self, db_session_with_containers: Session, factory: TestEndUserServiceFactory, caplog
     ):
         """Test retrieving existing end user with matching type."""
         # Arrange
@@ -279,17 +277,19 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         )
 
         # Act - Request with same type
-        result = EndUserService.get_or_create_end_user_by_type(
-            type=InvokeFrom.SERVICE_API,
-            tenant_id=tenant_id,
-            app_id=app_id,
-            user_id=user_id,
-        )
+        with caplog.at_level(logging.INFO, logger="services.end_user_service"):
+            result = EndUserService.get_or_create_end_user_by_type(
+                type=InvokeFrom.SERVICE_API,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                user_id=user_id,
+            )
 
         # Assert
         assert result.id == existing_user.id
         assert result.type == InvokeFrom.SERVICE_API
-        mock_logger.info.assert_not_called()
+        # No legacy-upgrade log should be emitted when the existing user's type already matches.
+        assert [record for record in caplog.records if record.levelno == logging.INFO] == []
 
     def test_create_anonymous_user_with_default_session(
         self, db_session_with_containers: Session, factory: TestEndUserServiceFactory

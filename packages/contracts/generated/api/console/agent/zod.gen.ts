@@ -322,6 +322,43 @@ export const zAgentDriveFileCommitResponse = z.object({
 })
 
 /**
+ * AgentLogItemResponse
+ */
+export const zAgentLogItemResponse = z.object({
+  answer: z.string(),
+  answer_tokens: z.int(),
+  conversation_id: z.string(),
+  conversation_name: z.string().nullish(),
+  created_at: z.int().nullish(),
+  currency: z.string(),
+  error: z.string().nullish(),
+  from_account_id: z.string().nullish(),
+  from_end_user_id: z.string().nullish(),
+  from_source: z.string().nullish(),
+  id: z.string(),
+  latency: z.number(),
+  message_id: z.string(),
+  message_tokens: z.int(),
+  query: z.string(),
+  source: z.string().nullish(),
+  status: z.string(),
+  total_price: z.string(),
+  total_tokens: z.int(),
+  updated_at: z.int().nullish(),
+})
+
+/**
+ * AgentLogListResponse
+ */
+export const zAgentLogListResponse = z.object({
+  data: z.array(zAgentLogItemResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
  * AgentThought
  */
 export const zAgentThought = z.object({
@@ -456,6 +493,22 @@ export const zAgentSkillStandardizeResponse = z.object({
 export const zAgentSkillUploadResponse = z.object({
   manifest: zSkillManifest,
   skill: zAgentSkillRefConfig,
+})
+
+/**
+ * AgentStatisticSummaryResponse
+ */
+export const zAgentStatisticSummaryResponse = z.object({
+  average_response_time: z.number(),
+  average_session_interactions: z.number(),
+  currency: z.string(),
+  tokens_per_second: z.number(),
+  total_conversations: z.int(),
+  total_end_users: z.int(),
+  total_messages: z.int(),
+  total_price: z.string(),
+  total_tokens: z.int(),
+  user_satisfaction_rate: z.number(),
 })
 
 /**
@@ -883,6 +936,97 @@ export const zSkillToolInferenceResult = z.object({
   cli_tools: z.array(zCliToolSuggestion).optional(),
   inferable: z.boolean(),
   reason: z.string().nullish(),
+})
+
+/**
+ * AgentAverageResponseTimeStatisticResponse
+ */
+export const zAgentAverageResponseTimeStatisticResponse = z.object({
+  date: z.string(),
+  latency: z.number(),
+})
+
+/**
+ * AgentAverageSessionInteractionStatisticResponse
+ */
+export const zAgentAverageSessionInteractionStatisticResponse = z.object({
+  date: z.string(),
+  interactions: z.number(),
+})
+
+/**
+ * AgentDailyConversationStatisticResponse
+ */
+export const zAgentDailyConversationStatisticResponse = z.object({
+  conversation_count: z.int(),
+  date: z.string(),
+})
+
+/**
+ * AgentDailyEndUserStatisticResponse
+ */
+export const zAgentDailyEndUserStatisticResponse = z.object({
+  date: z.string(),
+  terminal_count: z.int(),
+})
+
+/**
+ * AgentDailyMessageStatisticResponse
+ */
+export const zAgentDailyMessageStatisticResponse = z.object({
+  date: z.string(),
+  message_count: z.int(),
+})
+
+/**
+ * AgentTokenUsageStatisticResponse
+ */
+export const zAgentTokenUsageStatisticResponse = z.object({
+  currency: z.string(),
+  date: z.string(),
+  token_count: z.int(),
+  total_price: z.string(),
+})
+
+/**
+ * AgentTokensPerSecondStatisticResponse
+ */
+export const zAgentTokensPerSecondStatisticResponse = z.object({
+  date: z.string(),
+  tps: z.number(),
+})
+
+/**
+ * AgentUserSatisfactionRateStatisticResponse
+ */
+export const zAgentUserSatisfactionRateStatisticResponse = z.object({
+  date: z.string(),
+  rate: z.number(),
+})
+
+/**
+ * AgentStatisticChartsResponse
+ */
+export const zAgentStatisticChartsResponse = z.object({
+  average_response_time: z.array(zAgentAverageResponseTimeStatisticResponse).optional(),
+  average_session_interactions: z
+    .array(zAgentAverageSessionInteractionStatisticResponse)
+    .optional(),
+  daily_conversations: z.array(zAgentDailyConversationStatisticResponse).optional(),
+  daily_end_users: z.array(zAgentDailyEndUserStatisticResponse).optional(),
+  daily_messages: z.array(zAgentDailyMessageStatisticResponse).optional(),
+  token_usage: z.array(zAgentTokenUsageStatisticResponse).optional(),
+  tokens_per_second: z.array(zAgentTokensPerSecondStatisticResponse).optional(),
+  user_satisfaction_rate: z.array(zAgentUserSatisfactionRateStatisticResponse).optional(),
+})
+
+/**
+ * AgentStatisticSummaryEnvelopeResponse
+ */
+export const zAgentStatisticSummaryEnvelopeResponse = z.object({
+  charts: zAgentStatisticChartsResponse,
+  source: z.string(),
+  summary: zAgentStatisticSummaryResponse,
 })
 
 /**
@@ -2106,6 +2250,25 @@ export const zPostAgentByAgentIdFilesPath = z.object({
  */
 export const zPostAgentByAgentIdFilesResponse = zAgentDriveFileCommitResponse
 
+export const zGetAgentByAgentIdLogsPath = z.object({
+  agent_id: z.string(),
+})
+
+export const zGetAgentByAgentIdLogsQuery = z.object({
+  end: z.string().optional(),
+  keyword: z.string().optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
+  source: z.string().optional(),
+  start: z.string().optional(),
+  status: z.string().optional(),
+})
+
+/**
+ * Agent logs
+ */
+export const zGetAgentByAgentIdLogsResponse = zAgentLogListResponse
+
 export const zGetAgentByAgentIdMessagesByMessageIdPath = z.object({
   agent_id: z.string(),
   message_id: z.string(),
@@ -2201,6 +2364,21 @@ export const zPostAgentByAgentIdSkillsBySlugInferToolsPath = z.object({
  * Inference result (draft suggestions, nothing persisted)
  */
 export const zPostAgentByAgentIdSkillsBySlugInferToolsResponse = zSkillToolInferenceResult
+
+export const zGetAgentByAgentIdStatisticsSummaryPath = z.object({
+  agent_id: z.string(),
+})
+
+export const zGetAgentByAgentIdStatisticsSummaryQuery = z.object({
+  end: z.string().optional(),
+  source: z.string().optional(),
+  start: z.string().optional(),
+})
+
+/**
+ * Agent monitoring summary and chart data
+ */
+export const zGetAgentByAgentIdStatisticsSummaryResponse = zAgentStatisticSummaryEnvelopeResponse
 
 export const zGetAgentByAgentIdVersionsPath = z.object({
   agent_id: z.string(),
