@@ -508,6 +508,27 @@ Stop a running Agent App chat message generation
 | ---- | ----------- | ------ |
 | 200 | Agent app composer validation result | **application/json**: [AgentComposerValidateResponse](#agentcomposervalidateresponse)<br> |
 
+### [POST] /agent/{agent_id}/copy
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [CopyAppPayload](#copyapppayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Agent app copied successfully | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
+| 400 | Invalid request parameters |  |
+| 403 | Insufficient permissions |  |
+
 ### [GET] /agent/{agent_id}/drive/files
 List agent drive entries for an Agent App
 
