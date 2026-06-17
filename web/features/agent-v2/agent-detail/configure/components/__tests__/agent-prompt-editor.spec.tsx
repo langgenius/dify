@@ -274,6 +274,20 @@ describe('AgentPromptEditor', () => {
       })
     })
 
+    it('should insert slash from the focused footer insert action', () => {
+      const { store } = renderAgentPromptEditor('Review these tenders')
+
+      fireEvent.focus(screen.getByRole('textbox'))
+      const insertButton = screen.getByRole('button', { name: /agentDetail\.configure\.prompt\.insert\.label/i })
+      fireEvent.pointerDown(insertButton)
+      fireEvent.click(insertButton)
+      fireEvent.pointerUp(insertButton)
+
+      expect(store.get(agentComposerPromptAtom)).toBe('Review these tenders/')
+      expect(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /agentDetail\.configure\.prompt\.mention\.label/i })).not.toBeInTheDocument()
+    })
+
     it('should insert references after prompt add actions create skills, files, CLI tools, or knowledge retrievals', () => {
       const onSelect = vi.fn()
       const categories = [
@@ -380,7 +394,7 @@ describe('AgentPromptEditor', () => {
       rerenderWithValue('Research/')
       fireEvent.keyDown(screen.getByRole('textbox'), { key: '/' })
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.tools\.label/i }))
-      fireEvent.click(screen.getByRole('button', { name: /DuckDuckGo.*workflow\.tabs\.plugin/i }))
+      fireEvent.click(screen.getByRole('button', { name: /DuckDuckGo.*agentDetail\.configure\.tools\.toolTabs\.plugins/i }))
 
       expect(store.get(agentComposerPromptAtom)).toBe('Research [§tool:duckduckgo/*:DuckDuckGo§]')
       expect(store.get(agentComposerDraftAtom).tools).toEqual([

@@ -1,6 +1,6 @@
 'use client'
 
-import type { KeyboardEvent, MouseEvent } from 'react'
+import type { KeyboardEvent, MouseEvent, PointerEvent } from 'react'
 import type { AgentTool } from '../tools/types'
 import type { SlashMenuCategory, SlashMenuView } from './slash'
 import type { RosterReferenceToken } from '@/app/components/base/prompt-editor/plugins/roster-reference-block/utils'
@@ -217,7 +217,15 @@ export function AgentPromptEditor() {
     window.requestAnimationFrame(syncSlashMenuWithSelection)
   }
 
-  const handleEditorPointerUp = () => {
+  const handleEditorPointerUp = (event: PointerEvent<HTMLDivElement>) => {
+    const target = event.target
+    if (
+      target instanceof Element
+      && target.closest('[data-agent-prompt-toolbar]')
+    ) {
+      return
+    }
+
     window.requestAnimationFrame(syncSlashMenuWithSelection)
   }
 
@@ -229,8 +237,15 @@ export function AgentPromptEditor() {
     if (editorRef.current?.contains(target))
       return
 
-    if (target instanceof Element && target.closest('[data-agent-prompt-slash-menu]'))
+    if (
+      target instanceof Element
+      && (
+        target.closest('[data-agent-prompt-slash-menu]')
+        || target.closest('[data-agent-prompt-toolbar]')
+      )
+    ) {
       return
+    }
 
     closeSlashMenu()
   }
@@ -362,19 +377,23 @@ export function AgentPromptEditor() {
             />
           </div>
           {!readOnly && (
-            <div className="flex h-8 items-center border-t border-divider-subtle px-2 opacity-0 transition-opacity group-focus-within:opacity-100">
-              <button
-                type="button"
-                className="flex h-6 shrink-0 items-center gap-0.5 rounded-md px-1.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                onClick={handleInsertSlash}
-              >
-                <Kbd className="text-text-placeholder">
-                  /
-                </Kbd>
-                <span className="system-xs-medium">
+            <div
+              data-agent-prompt-toolbar
+              className="flex h-8 shrink-0 items-center justify-between px-3 text-text-tertiary opacity-0 transition-opacity group-focus-within:opacity-100"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <button
+                  type="button"
+                  className="flex items-center gap-1 system-xs-medium hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                  onClick={handleInsertSlash}
+                >
+                  <span aria-hidden className="i-ri-slash-commands-2 size-3.5" />
                   {t('agentDetail.configure.prompt.insert.label')}
-                </span>
-              </button>
+                </button>
+              </div>
+              <div className="rounded-sm border border-divider-regular bg-background-default px-1 system-2xs-regular text-text-tertiary">
+                {value.length}
+              </div>
             </div>
           )}
         </div>
