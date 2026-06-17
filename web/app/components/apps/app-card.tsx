@@ -138,6 +138,7 @@ type AppCardOperationsMenuProps = {
   shouldShowSwitchOption: boolean
   shouldShowOpenInExploreOption: boolean
   shouldShowAccessControlOption: boolean
+  shouldShowAccessConfigOption: boolean
   shouldShowDeleteOption: boolean
   onEdit: () => void
   onDuplicate: () => void
@@ -145,6 +146,7 @@ type AppCardOperationsMenuProps = {
   onSwitch: () => void
   onDelete: () => void
   onAccessControl: () => void
+  onAccessConfig: () => void
 }
 
 const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
@@ -155,6 +157,7 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
   shouldShowSwitchOption,
   shouldShowOpenInExploreOption,
   shouldShowAccessControlOption,
+  shouldShowAccessConfigOption,
   shouldShowDeleteOption,
   onEdit,
   onDuplicate,
@@ -162,13 +165,14 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
   onSwitch,
   onDelete,
   onAccessControl,
+  onAccessConfig,
 }) => {
   const { t } = useTranslation()
   const openAsyncWindow = useAsyncWindowOpen()
   const hasEditGroup = shouldShowEditOption
   const hasCreateExportGroup = shouldShowDuplicateOption || shouldShowExportOption
   const hasSwitchOrExploreGroup = shouldShowSwitchOption || shouldShowOpenInExploreOption
-  const hasAccessDeleteGroup = shouldShowAccessControlOption || shouldShowDeleteOption
+  const hasAccessDeleteGroup = shouldShowAccessControlOption || shouldShowAccessConfigOption || shouldShowDeleteOption
 
   const handleMenuAction = useCallback((e: React.MouseEvent<HTMLElement>, action: () => void) => {
     e.stopPropagation()
@@ -238,7 +242,12 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
           <span className="text-sm/5 text-text-secondary">{t('accessControl', { ns: 'app' })}</span>
         </DropdownMenuItem>
       )}
-      {shouldShowAccessControlOption && shouldShowDeleteOption && (
+      {shouldShowAccessConfigOption && (
+        <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onAccessConfig)}>
+          <span className="text-sm/5 text-text-secondary">{t('settings.resourceAccess', { ns: 'common' })}</span>
+        </DropdownMenuItem>
+      )}
+      {(shouldShowAccessControlOption || shouldShowAccessConfigOption) && shouldShowDeleteOption && (
         <DropdownMenuSeparator />
       )}
       {shouldShowDeleteOption && (
@@ -380,6 +389,11 @@ export const AppCardActionBar: React.FC<AppCardActionBarProps> = ({ app, onRefre
     })
   }, [])
 
+  const handleOpenAccessConfig = useCallback(() => {
+    setIsOperationsMenuOpen(false)
+    push(`/app/${app.id}/access-config`)
+  }, [app.id, push])
+
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
     icon_type,
@@ -502,9 +516,10 @@ export const AppCardActionBar: React.FC<AppCardActionBarProps> = ({ app, onRefre
   const shouldShowDuplicateOption = canCreateApp && appACLCapabilities.canImportExportDSL
   const shouldShowExportOption = appACLCapabilities.canImportExportDSL
   const shouldShowSwitchOption = canCreateApp && appACLCapabilities.canEdit && (app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT)
-  const shouldShowAccessControlOption = systemFeatures.webapp_auth.enabled && appACLCapabilities.canAccessConfig
+  const shouldShowAccessControlOption = systemFeatures.webapp_auth.enabled && appACLCapabilities.canReleaseAndVersion
+  const shouldShowAccessConfigOption = appACLCapabilities.canAccessConfig
   const shouldShowDeleteOption = appACLCapabilities.canDelete
-  const shouldShowOperationsMenu = shouldShowEditOption || shouldShowDuplicateOption || shouldShowExportOption || shouldShowSwitchOption || shouldShowAccessControlOption || shouldShowDeleteOption
+  const shouldShowOperationsMenu = shouldShowEditOption || shouldShowDuplicateOption || shouldShowExportOption || shouldShowSwitchOption || shouldShowAccessControlOption || shouldShowAccessConfigOption || shouldShowDeleteOption
   const operationsMenuWidthClassName = shouldShowSwitchOption ? 'w-[256px]' : 'w-[216px]'
   const starActionLabel = app.is_starred
     ? t('studio.unstarApp', { ns: 'app' })
@@ -572,6 +587,7 @@ export const AppCardActionBar: React.FC<AppCardActionBarProps> = ({ app, onRefre
                       shouldShowExportOption={shouldShowExportOption}
                       shouldShowSwitchOption={shouldShowSwitchOption}
                       shouldShowAccessControlOption={shouldShowAccessControlOption}
+                      shouldShowAccessConfigOption={shouldShowAccessConfigOption}
                       shouldShowDeleteOption={shouldShowDeleteOption}
                       onEdit={handleShowEditModal}
                       onDuplicate={handleShowDuplicateModal}
@@ -579,6 +595,7 @@ export const AppCardActionBar: React.FC<AppCardActionBarProps> = ({ app, onRefre
                       onSwitch={handleShowSwitchModal}
                       onDelete={handleShowDeleteConfirm}
                       onAccessControl={handleShowAccessControl}
+                      onAccessConfig={handleOpenAccessConfig}
                     />
                   )
                 : (
@@ -590,6 +607,7 @@ export const AppCardActionBar: React.FC<AppCardActionBarProps> = ({ app, onRefre
                       shouldShowSwitchOption={shouldShowSwitchOption}
                       shouldShowOpenInExploreOption={!app.has_draft_trigger}
                       shouldShowAccessControlOption={shouldShowAccessControlOption}
+                      shouldShowAccessConfigOption={shouldShowAccessConfigOption}
                       shouldShowDeleteOption={shouldShowDeleteOption}
                       onEdit={handleShowEditModal}
                       onDuplicate={handleShowDuplicateModal}
@@ -597,6 +615,7 @@ export const AppCardActionBar: React.FC<AppCardActionBarProps> = ({ app, onRefre
                       onSwitch={handleShowSwitchModal}
                       onDelete={handleShowDeleteConfirm}
                       onAccessControl={handleShowAccessControl}
+                      onAccessConfig={handleOpenAccessConfig}
                     />
                   )}
             </DropdownMenuContent>
@@ -798,6 +817,11 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
     })
   }, [])
 
+  const handleOpenAccessConfig = useCallback(() => {
+    setIsOperationsMenuOpen(false)
+    push(`/app/${app.id}/access-config`)
+  }, [app.id, push])
+
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
     icon_type,
@@ -925,8 +949,9 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
   const shouldShowExportOption = appACLCapabilities.canImportExportDSL
   const shouldShowSwitchOption = appACLCapabilities.canEdit && (app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT)
   const shouldShowAccessControlOption = systemFeatures.webapp_auth.enabled && appACLCapabilities.canReleaseAndVersion
+  const shouldShowAccessConfigOption = appACLCapabilities.canAccessConfig
   const shouldShowDeleteOption = appACLCapabilities.canDelete
-  const shouldShowOperationsMenu = shouldShowEditOption || shouldShowDuplicateOption || shouldShowExportOption || shouldShowSwitchOption || shouldShowAccessControlOption || shouldShowDeleteOption
+  const shouldShowOperationsMenu = shouldShowEditOption || shouldShowDuplicateOption || shouldShowExportOption || shouldShowSwitchOption || shouldShowAccessControlOption || shouldShowAccessConfigOption || shouldShowDeleteOption
   const operationsMenuWidthClassName = shouldShowSwitchOption ? 'w-[256px]' : 'w-[216px]'
 
   const editTimeText = useMemo(() => {
@@ -1102,6 +1127,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
                         shouldShowExportOption={shouldShowExportOption}
                         shouldShowSwitchOption={shouldShowSwitchOption}
                         shouldShowAccessControlOption={shouldShowAccessControlOption}
+                        shouldShowAccessConfigOption={shouldShowAccessConfigOption}
                         shouldShowDeleteOption={shouldShowDeleteOption}
                         onEdit={handleShowEditModal}
                         onDuplicate={handleShowDuplicateModal}
@@ -1109,6 +1135,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
                         onSwitch={handleShowSwitchModal}
                         onDelete={handleShowDeleteConfirm}
                         onAccessControl={handleShowAccessControl}
+                        onAccessConfig={handleOpenAccessConfig}
                       />
                     )
                   : (
@@ -1120,6 +1147,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
                         shouldShowSwitchOption={shouldShowSwitchOption}
                         shouldShowOpenInExploreOption={!app.has_draft_trigger}
                         shouldShowAccessControlOption={shouldShowAccessControlOption}
+                        shouldShowAccessConfigOption={shouldShowAccessConfigOption}
                         shouldShowDeleteOption={shouldShowDeleteOption}
                         onEdit={handleShowEditModal}
                         onDuplicate={handleShowDuplicateModal}
@@ -1127,6 +1155,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
                         onSwitch={handleShowSwitchModal}
                         onDelete={handleShowDeleteConfirm}
                         onAccessControl={handleShowAccessControl}
+                        onAccessConfig={handleOpenAccessConfig}
                       />
                     )}
               </DropdownMenuContent>

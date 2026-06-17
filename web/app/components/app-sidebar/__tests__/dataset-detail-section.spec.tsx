@@ -1,5 +1,6 @@
 import type { DataSet, RelatedAppResponse } from '@/models/datasets'
 import { render, screen } from '@testing-library/react'
+import { DatasetACLPermission } from '@/utils/permission'
 import DatasetDetailSection from '../dataset-detail-section'
 
 let mockPathname = '/datasets/dataset-1/documents'
@@ -14,6 +15,8 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceDatasetOperator: mockIsDatasetOperator,
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [],
   }),
 }))
 
@@ -86,5 +89,21 @@ describe('DatasetDetailSection', () => {
     expect(extraInfo).toHaveAttribute('data-expand', 'true')
     expect(extraInfo).toHaveAttribute('data-document-count', '120')
     expect(extraInfo.parentElement).toHaveClass('mt-auto', 'shrink-0')
+  })
+
+  it('should render resource access navigation when dataset access config permission is granted', () => {
+    mockDataset = createDataset({
+      permission_keys: [DatasetACLPermission.AccessConfig],
+    })
+
+    render(<DatasetDetailSection expand />)
+
+    expect(screen.getByRole('link', { name: 'common.settings.resourceAccess' })).toHaveAttribute('href', '/datasets/dataset-1/access-config')
+  })
+
+  it('should hide resource access navigation when dataset access config permission is missing', () => {
+    render(<DatasetDetailSection expand />)
+
+    expect(screen.queryByRole('link', { name: 'common.settings.resourceAccess' })).not.toBeInTheDocument()
   })
 })

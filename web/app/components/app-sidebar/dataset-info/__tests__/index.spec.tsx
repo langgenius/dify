@@ -15,6 +15,7 @@ import Menu from '../menu'
 import MenuItem from '../menu-item'
 
 let mockDataset: DataSet
+const mockPush = vi.fn()
 const mockReplace = vi.fn()
 const mockInvalidDatasetList = vi.fn()
 const mockInvalidDatasetDetail = vi.fn()
@@ -97,6 +98,7 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
+    push: mockPush,
     replace: mockReplace,
   }),
 }))
@@ -272,6 +274,21 @@ describe('Menu', () => {
       expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
     })
 
+    it('should show resource access option when enabled', () => {
+      render(
+        <Menu
+          showDelete={false}
+          showAccessConfig
+          openRenameModal={vi.fn()}
+          handleExportPipeline={vi.fn()}
+          detectIsUsedByApp={vi.fn()}
+          openAccessConfig={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByText('common.settings.resourceAccess')).toBeInTheDocument()
+    })
+
     it('should hide export and delete options when not rag pipeline and not deletable', () => {
       // Arrange
       mockDataset = createDataset({ runtime_mode: 'general' })
@@ -330,6 +347,26 @@ describe('Menu', () => {
       expect(handleExportPipeline).toHaveBeenCalledTimes(1)
       expect(detectIsUsedByApp).toHaveBeenCalledTimes(1)
     })
+
+    it('should invoke access config callback from its menu item', async () => {
+      const user = userEvent.setup()
+      const openAccessConfig = vi.fn()
+
+      render(
+        <Menu
+          showDelete={false}
+          showAccessConfig
+          openRenameModal={vi.fn()}
+          handleExportPipeline={vi.fn()}
+          detectIsUsedByApp={vi.fn()}
+          openAccessConfig={openAccessConfig}
+        />,
+      )
+
+      await user.click(screen.getByText('common.settings.resourceAccess'))
+
+      expect(openAccessConfig).toHaveBeenCalledTimes(1)
+    })
   })
 })
 
@@ -373,6 +410,24 @@ describe('Dropdown', () => {
       await openMenu(user)
 
       // Assert
+      expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
+    })
+
+    it('should show resource access option when dataset only has access config ACL permission', async () => {
+      const user = userEvent.setup()
+      // Arrange
+      mockDataset = createDataset({
+        runtime_mode: 'general',
+        permission_keys: [DatasetACLPermission.AccessConfig],
+      })
+      render(<Dropdown expand />)
+
+      // Act
+      await openMenu(user)
+
+      // Assert
+      expect(screen.getByText('common.settings.resourceAccess')).toBeInTheDocument()
+      expect(screen.queryByText('common.operation.edit')).not.toBeInTheDocument()
       expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
     })
   })
@@ -445,6 +500,23 @@ describe('Dropdown', () => {
       })
       expect(mockInvalidDatasetList).toHaveBeenCalledTimes(1)
       expect(mockReplace).toHaveBeenCalledWith('/datasets')
+    })
+
+    it('should navigate to dataset access config when resource access is clicked', async () => {
+      const user = userEvent.setup()
+      // Arrange
+      mockDataset = createDataset({
+        runtime_mode: 'general',
+        permission_keys: [DatasetACLPermission.AccessConfig],
+      })
+      render(<Dropdown expand />)
+
+      // Act
+      await openMenu(user)
+      await user.click(screen.getByText('common.settings.resourceAccess'))
+
+      // Assert
+      expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/access-config')
     })
   })
 })

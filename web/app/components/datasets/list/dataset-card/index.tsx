@@ -1,7 +1,6 @@
 'use client'
 import type { DataSet } from '@/models/datasets'
 import { useMemo } from 'react'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { DatasetCardTags } from '@/features/tag-management/components/dataset-card-tags'
 import { useRouter } from '@/next/navigation'
 import CornerLabels from './components/corner-labels'
@@ -27,14 +26,14 @@ const DatasetCard = ({
 }: DatasetCardProps) => {
   const { push } = useRouter()
 
-  const isCurrentWorkspaceDatasetOperator = useAppContextWithSelector(state => state.isCurrentWorkspaceDatasetOperator)
-
   const datasetCard = useDatasetCardController({ dataset, onSuccess })
   const {
     modalState,
     openRenameModal,
     closeRenameModal,
     closeConfirmDelete,
+    openAccessConfig,
+    closeAccessConfig,
     handleExportPipeline,
     detectIsUsedByApp,
     onConfirmDelete,
@@ -81,10 +80,10 @@ const DatasetCard = ({
         <DatasetCardFooter dataset={dataset} />
         <OperationsDropdown
           dataset={dataset}
-          isCurrentWorkspaceDatasetOperator={isCurrentWorkspaceDatasetOperator}
           openRenameModal={openRenameModal}
           handleExportPipeline={handleExportPipeline}
           detectIsUsedByApp={detectIsUsedByApp}
+          openAccessConfig={openAccessConfig}
         />
       </div>
       <DatasetCardModals
@@ -92,6 +91,7 @@ const DatasetCard = ({
         modalState={modalState}
         onCloseRename={closeRenameModal}
         onCloseConfirm={closeConfirmDelete}
+        onCloseAccessConfig={closeAccessConfig}
         onConfirmDelete={onConfirmDelete}
         onSuccess={onSuccess}
       />

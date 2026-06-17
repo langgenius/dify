@@ -1686,7 +1686,7 @@ describe('AppCard', () => {
       })
     })
 
-    it('should not show access control option when user only has app access config permission', async () => {
+    it('should show resource access option when user only has app access config permission', async () => {
       const appWithAccessConfigPermission = createMockApp({
         created_by: 'another-user',
         permission_keys: [AppACLPermission.AccessConfig, AppACLPermission.Delete],
@@ -1699,6 +1699,22 @@ describe('AppCard', () => {
         expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
       })
       expect(screen.queryByText('app.accessControl')).not.toBeInTheDocument()
+      expect(screen.getByText('common.settings.resourceAccess')).toBeInTheDocument()
+    })
+
+    it('should navigate to app access config when resource access is clicked', async () => {
+      const appWithAccessConfigPermission = createMockApp({
+        created_by: 'another-user',
+        permission_keys: [AppACLPermission.AccessConfig],
+      })
+      render(<AppCard app={appWithAccessConfigPermission} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('common.settings.resourceAccess'))
+      })
+
+      expect(mockPush).toHaveBeenCalledWith('/app/test-app-id/access-config')
     })
 
     it('should click access control button', async () => {

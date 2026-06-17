@@ -19,6 +19,8 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 }))
 
 const mockPush = vi.fn()
+const mockOpenAccessConfig = vi.fn()
+const mockCloseAccessConfig = vi.fn()
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
@@ -33,11 +35,14 @@ vi.mock('../hooks/use-dataset-card-state', () => ({
     modalState: {
       showRenameModal: false,
       showConfirmDelete: false,
+      showAccessConfig: false,
       confirmMessage: '',
     },
     openRenameModal: vi.fn(),
     closeRenameModal: vi.fn(),
     closeConfirmDelete: vi.fn(),
+    openAccessConfig: mockOpenAccessConfig,
+    closeAccessConfig: mockCloseAccessConfig,
     handleExportPipeline: vi.fn(),
     detectIsUsedByApp: vi.fn(),
     onConfirmDelete: vi.fn(),
@@ -51,7 +56,9 @@ vi.mock('../components/dataset-card-header', () => ({
   default: ({ dataset }: { dataset: DataSet }) => <div data-testid="card-header">{dataset.name}</div>,
 }))
 vi.mock('../components/dataset-card-modals', () => ({
-  default: () => <div data-testid="card-modals" />,
+  default: ({ onCloseAccessConfig }: { onCloseAccessConfig?: () => void }) => (
+    <div data-testid="card-modals" data-has-close-access-config={typeof onCloseAccessConfig === 'function'} />
+  ),
 }))
 vi.mock('@/features/tag-management/components/dataset-card-tags', () => ({
   DatasetCardTags: ({ onClick }: { onClick: (e: React.MouseEvent) => void }) => (
@@ -59,7 +66,9 @@ vi.mock('@/features/tag-management/components/dataset-card-tags', () => ({
   ),
 }))
 vi.mock('../components/operations-dropdown', () => ({
-  default: () => <div data-testid="operations-dropdown" />,
+  default: ({ openAccessConfig }: { openAccessConfig?: () => void }) => (
+    <div data-testid="operations-dropdown" data-has-open-access-config={typeof openAccessConfig === 'function'} />
+  ),
 }))
 
 // Factory function for DataSet mock data
@@ -251,6 +260,14 @@ describe('DatasetCard Component', () => {
 
     expect(card).toHaveClass('bg-components-card-bg')
     expect(card).toHaveClass('hover:bg-components-card-bg-alt')
+  })
+
+  it('should pass access config handlers to operations and modals', () => {
+    const dataset = createMockDataset()
+    render(<DatasetCard dataset={dataset} />)
+
+    expect(screen.getByTestId('operations-dropdown')).toHaveAttribute('data-has-open-access-config', 'true')
+    expect(screen.getByTestId('card-modals')).toHaveAttribute('data-has-close-access-config', 'true')
   })
 
   it('should navigate to hitTesting for external provider', () => {

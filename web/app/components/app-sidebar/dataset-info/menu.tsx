@@ -1,4 +1,9 @@
-import { RiDeleteBinLine, RiEditLine, RiFileDownloadLine } from '@remixicon/react'
+import {
+  RiDeleteBinLine,
+  RiEditLine,
+  RiFileDownloadLine,
+  RiLock2Line,
+} from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
@@ -9,18 +14,22 @@ type MenuProps = {
   showEdit?: boolean
   showDelete: boolean
   showExportPipeline?: boolean
+  showAccessConfig?: boolean
   openRenameModal: () => void
   handleExportPipeline: () => void
   detectIsUsedByApp: () => void
+  openAccessConfig?: () => void
 }
 
 const Menu = ({
   showEdit = true,
   showDelete,
   showExportPipeline = true,
+  showAccessConfig = false,
   openRenameModal,
   handleExportPipeline,
   detectIsUsedByApp,
+  openAccessConfig,
 }: MenuProps) => {
   const { t } = useTranslation()
   const runtimeMode = useDatasetDetailContextWithSelector(state => state.dataset?.runtime_mode)
@@ -40,6 +49,13 @@ const Menu = ({
             Icon={RiFileDownloadLine}
             name={t('operations.exportPipeline', { ns: 'datasetPipeline' })}
             handleClick={handleExportPipeline}
+          />
+        )}
+        {showAccessConfig && (
+          <MenuItem
+            Icon={RiLock2Line}
+            name={t('settings.resourceAccess', { ns: 'common' })}
+            handleClick={openAccessConfig}
           />
         )}
       </div>

@@ -60,7 +60,7 @@ const DropDown = ({
   triggerClassName,
 }: DropDownProps) => {
   const { t } = useTranslation()
-  const { replace } = useRouter()
+  const { push, replace } = useRouter()
   const [open, setOpen] = useState(false)
   const [showRenameModal, setShowRenameModal] = useState(false)
   const [confirmMessage, setConfirmMessage] = useState<string>('')
@@ -76,6 +76,7 @@ const DropDown = ({
   }), [dataset?.created_by, dataset?.permission_keys, currentUserId, workspacePermissionKeys])
   const canShowOperations = datasetACLCapabilities.canEdit
     || datasetACLCapabilities.canImportExportDSL
+    || datasetACLCapabilities.canAccessConfig
     || datasetACLCapabilities.canDelete
 
   const invalidDatasetList = useInvalidDatasetList()
@@ -125,6 +126,11 @@ const DropDown = ({
     }
   }, [dataset.id, t])
 
+  const openAccessConfig = useCallback(() => {
+    setOpen(false)
+    push(`/datasets/${dataset.id}/access-config`)
+  }, [dataset.id, push])
+
   const onConfirmDelete = useCallback(async () => {
     try {
       await deleteDataset(dataset.id)
@@ -165,9 +171,11 @@ const DropDown = ({
           showEdit={datasetACLCapabilities.canEdit}
           showDelete={datasetACLCapabilities.canDelete}
           showExportPipeline={datasetACLCapabilities.canImportExportDSL}
+          showAccessConfig={datasetACLCapabilities.canAccessConfig}
           openRenameModal={openRenameModal}
           handleExportPipeline={handleExportPipeline}
           detectIsUsedByApp={detectIsUsedByApp}
+          openAccessConfig={openAccessConfig}
         />
       </DropdownMenuContent>
       {showRenameModal && (

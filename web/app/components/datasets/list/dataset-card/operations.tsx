@@ -66,7 +66,7 @@ const Operations = ({
       )}
       {showAccessConfig && (
         <DropdownMenuItem onClick={handleAccessConfig}>
-          <span aria-hidden className="mr-1 i-ri-user-settings-line size-4 text-text-tertiary" />
+          <span aria-hidden className="mr-1 i-ri-lock-line size-4 text-text-tertiary" />
           {t('settings.resourceAccess', { ns: 'common' })}
         </DropdownMenuItem>
       )}

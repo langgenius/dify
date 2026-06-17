@@ -7,6 +7,8 @@ import {
   RiDashboard2Line,
   RiFileList3Fill,
   RiFileList3Line,
+  RiLock2Fill,
+  RiLock2Line,
   RiTerminalBoxFill,
   RiTerminalBoxLine,
   RiTerminalWindowFill,
@@ -20,6 +22,7 @@ import Annotations from '@/app/components/base/icons/src/vender/Annotations'
 import { useAppContext } from '@/context/app-context'
 import { usePathname } from '@/next/navigation'
 import { AppModeEnum } from '@/types/app'
+import { getAppACLCapabilities } from '@/utils/permission'
 import { AppInfoView } from './app-info'
 import { useAppInfoActions } from './app-info/use-app-info-actions'
 import NavLink from './nav-link'
@@ -58,7 +61,7 @@ const AppDetailSection = ({
 }: AppDetailSectionProps) => {
   const { t } = useTranslation()
   const pathname = usePathname()
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { isCurrentWorkspaceEditor, userProfile, workspacePermissionKeys } = useAppContext()
   const appDetail = useStore(state => state.appDetail)
   const appInfoActions = useAppInfoActions({
     resetKey: appDetail?.id,
@@ -71,6 +74,11 @@ const AppDetailSection = ({
     const appId = appDetail.id
     const isWorkflowApp = appDetail.mode === AppModeEnum.WORKFLOW || appDetail.mode === AppModeEnum.ADVANCED_CHAT
     const supportsAnnotations = appDetail.mode !== AppModeEnum.WORKFLOW && appDetail.mode !== AppModeEnum.COMPLETION
+    const appACLCapabilities = getAppACLCapabilities(appDetail.permission_keys, {
+      currentUserId: userProfile?.id,
+      resourceCreatedBy: appDetail.created_by || appDetail.workflow?.created_by,
+      workspacePermissionKeys,
+    })
 
     return [
       ...(isCurrentWorkspaceEditor
@@ -110,8 +118,17 @@ const AppDetailSection = ({
         icon: RiDashboard2Line,
         selectedIcon: RiDashboard2Fill,
       },
+      ...(appACLCapabilities.canAccessConfig
+        ? [{
+            name: t('settings.resourceAccess', { ns: 'common' }),
+            href: `/app/${appId}/access-config`,
+            icon: RiLock2Line,
+            selectedIcon: RiLock2Fill,
+          }]
+        : []
+      ),
     ]
-  }, [appDetail, isCurrentWorkspaceEditor, t])
+  }, [appDetail, isCurrentWorkspaceEditor, t, userProfile?.id, workspacePermissionKeys])
 
   if (!appDetail)
     return null

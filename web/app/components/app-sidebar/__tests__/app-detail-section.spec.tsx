@@ -1,10 +1,12 @@
 import { render, screen } from '@testing-library/react'
+import { AppACLPermission } from '@/utils/permission'
 import AppDetailSection from '../app-detail-section'
 import { useAppInfoActions } from '../app-info/use-app-info-actions'
 
 let mockAppMode = 'chat'
 let mockIsCurrentWorkspaceEditor = true
 let mockPathname = '/app/app-1/logs'
+let mockAppPermissionKeys: string[] = []
 
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
@@ -15,6 +17,7 @@ vi.mock('@/app/components/app/store', () => ({
       icon: '🤖',
       icon_type: 'emoji',
       icon_background: '#fff',
+      permission_keys: mockAppPermissionKeys,
     },
   }),
 }))
@@ -22,6 +25,8 @@ vi.mock('@/app/components/app/store', () => ({
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [],
   }),
 }))
 
@@ -53,6 +58,7 @@ describe('AppDetailSection', () => {
     mockAppMode = 'chat'
     mockIsCurrentWorkspaceEditor = true
     mockPathname = '/app/app-1/logs'
+    mockAppPermissionKeys = []
   })
 
   // Rendering behavior for app detail navigation entries.
@@ -127,6 +133,25 @@ describe('AppDetailSection', () => {
       expect(screen.queryAllByRole('separator')).toHaveLength(0)
       expect(screen.queryByRole('link', { name: 'common.appMenus.logs' })).not.toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'common.appMenus.annotations' })).not.toBeInTheDocument()
+    })
+
+    it('should render resource access navigation when app access config permission is granted', () => {
+      // Arrange
+      mockAppPermissionKeys = [AppACLPermission.AccessConfig]
+
+      // Act
+      render(<AppDetailSection />)
+
+      // Assert
+      expect(screen.getByRole('link', { name: 'common.settings.resourceAccess' })).toHaveAttribute('href', '/app/app-1/access-config')
+    })
+
+    it('should hide resource access navigation when app access config permission is missing', () => {
+      // Act
+      render(<AppDetailSection />)
+
+      // Assert
+      expect(screen.queryByRole('link', { name: 'common.settings.resourceAccess' })).not.toBeInTheDocument()
     })
 
     it('should pass collapsed mode to app info and navigation links when collapsed', () => {
