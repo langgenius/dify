@@ -3,6 +3,8 @@ import json
 import logging
 import re
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any, TypedDict, override
 
 import jieba.posseg as pseg  # type: ignore
@@ -122,7 +124,7 @@ CREATE TABLE IF NOT EXISTS {table_name} (
 )
 """
 SQL_CREATE_INDEX = """
-CREATE INDEX IF NOT EXISTS idx_docs_{table_name} ON {table_name}(text)
+CREATE INDEX IF NOT EXISTS {index_name} ON {table_name}(text)
 INDEXTYPE IS CTXSYS.CONTEXT PARAMETERS
 ('FILTER CTXSYS.NULL_FILTER SECTION GROUP CTXSYS.HTML_SECTION_GROUP LEXER world_lexer')
 """
@@ -140,15 +142,23 @@ def validate_json_key(value: str) -> str:
     return value
 
 
+def text_index_name_for_table(table_name: str) -> str:
+    return validate_identifier(f"idx_docs_{table_name}", "text_index_name")
+
+
 def validate_top_k(value: Any, default: int) -> int:
+    if value is None:
+        return default
     if isinstance(value, bool):
-        return default
-    try:
+        raise ValueError(f"top_k must be an integer between 1 and {MAX_TOP_K}.")
+    if isinstance(value, int):
+        top_k = value
+    elif isinstance(value, str) and re.fullmatch(r"\d+", value.strip()):
         top_k = int(value)
-    except (TypeError, ValueError):
-        return default
+    else:
+        raise ValueError(f"top_k must be an integer between 1 and {MAX_TOP_K}.")
     if top_k <= 0 or top_k > MAX_TOP_K:
-        return default
+        raise ValueError(f"top_k must be an integer between 1 and {MAX_TOP_K}.")
     return top_k
 
 
@@ -237,6 +247,13 @@ def parse_metadata_json(value: Any) -> dict[str, Any]:
     return {}
 
 
+def metadata_with_primary_key(metadata: dict[str, Any] | None) -> tuple[str, dict[str, Any]]:
+    normalized_metadata = dict(metadata or {})
+    doc_id = str(normalized_metadata.get("doc_id") or uuid.uuid4())
+    normalized_metadata["doc_id"] = doc_id
+    return doc_id, normalized_metadata
+
+
 def extract_english_text_tokens(query: str) -> list[str]:
     try:
         import nltk  # type: ignore
@@ -260,6 +277,7 @@ class OracleVector(BaseVector):
     def __init__(self, collection_name: str, config: OracleVectorConfig):
         super().__init__(collection_name)
         self.table_name = validate_identifier(f"embedding_{collection_name}", "table_name")
+        self.text_index_name = text_index_name_for_table(self.table_name)
         self.config = config
         self.pool = self._create_connection_pool(config)
 
@@ -300,8 +318,19 @@ class OracleVector(BaseVector):
                 outconverter=self.numpy_converter_out,
             )
 
-    def _get_connection(self) -> Connection:
-        return self.pool.acquire()
+    @contextmanager
+    def _get_connection(self) -> Iterator[Connection]:
+        conn = self.pool.acquire()
+        try:
+            yield conn
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                logger.exception("Failed to roll back Oracle pooled connection before release")
+            raise
+        finally:
+            self.pool.release(conn)
 
     def _create_connection_pool(self, config: OracleVectorConfig):
         pool_params = _OraclePoolParams(
@@ -333,18 +362,17 @@ class OracleVector(BaseVector):
         values = []
         pks = []
         for i, doc in enumerate(documents):
-            if doc.metadata is not None:
-                doc_id = doc.metadata.get("doc_id", str(uuid.uuid4()))
-                pks.append(doc_id)
-                values.append(
-                    (
-                        doc_id,
-                        json.dumps(doc.metadata),
-                        # array.array("f", embeddings[i]),
-                        numpy.array(embeddings[i]),
-                        doc.page_content,
-                    )
+            doc_id, metadata = metadata_with_primary_key(doc.metadata)
+            pks.append(doc_id)
+            values.append(
+                (
+                    doc_id,
+                    json.dumps(metadata),
+                    # array.array("f", embeddings[i]),
+                    numpy.array(embeddings[i]),
+                    doc.page_content,
                 )
+            )
         if not values:
             return pks
 
@@ -546,7 +574,7 @@ class OracleVector(BaseVector):
                 with conn.cursor() as cur:
                     cur.execute(SQL_CREATE_TABLE.format(table_name=self.table_name))
                 with conn.cursor() as cur:
-                    cur.execute(SQL_CREATE_INDEX.format(table_name=self.table_name))
+                    cur.execute(SQL_CREATE_INDEX.format(table_name=self.table_name, index_name=self.text_index_name))
                 conn.commit()
                 redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
