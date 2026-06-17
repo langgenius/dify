@@ -356,7 +356,9 @@ def _resolve_zip_entry_destination(target_dir: Path, entry_name: str) -> Path:
     try:
         destination.relative_to(target_dir)
     except ValueError as exc:
-        raise AgentStubValidationError(f"skill archive entry resolves outside the skill directory: {entry_name}") from exc
+        raise AgentStubValidationError(
+            f"skill archive entry resolves outside the skill directory: {entry_name}"
+        ) from exc
     return destination
 
 
