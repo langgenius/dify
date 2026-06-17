@@ -15,14 +15,14 @@ def _resolve_builtin_role_id(tenant_id: str, operator_account_id: str, legacy_ro
     RBAC member-role binding API. Builtin RBAC roles are tenant-scoped and
     identified by runtime ids, so the command must look them up per tenant.
     """
-    expected_builtin_name = {
-        TenantAccountRole.OWNER.value: "所有者",
-        TenantAccountRole.ADMIN.value: "管理者",
-        TenantAccountRole.EDITOR.value: "编辑者",
-        TenantAccountRole.NORMAL.value: "普通用户",
-        TenantAccountRole.DATASET_OPERATOR.value: "知识库操作员",
+    expected_builtin_tag = {
+        TenantAccountRole.OWNER.value: "owner",
+        TenantAccountRole.ADMIN.value: "admin",
+        TenantAccountRole.EDITOR.value: "editor",
+        TenantAccountRole.NORMAL.value: "normal",
+        TenantAccountRole.DATASET_OPERATOR.value: "dataset_operator",
     }.get(legacy_role)
-    if not expected_builtin_name:
+    if not expected_builtin_tag:
         raise ValueError(f"Unsupported legacy workspace role: {legacy_role}")
 
     roles = RBACService.Roles.list(
@@ -31,7 +31,7 @@ def _resolve_builtin_role_id(tenant_id: str, operator_account_id: str, legacy_ro
         options=ListOption(page_number=1, results_per_page=100),
     ).data
     for role in roles:
-        if role.is_builtin and role.category == "global_system_default" and role.name == expected_builtin_name:
+        if role.is_builtin and role.category == "global_system_default" and role.role_tag == expected_builtin_tag:
             return str(role.id)
 
     raise ValueError(f"Builtin RBAC role not found for tenant={tenant_id}, legacy_role={legacy_role}")
