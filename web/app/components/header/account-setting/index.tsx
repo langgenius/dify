@@ -78,6 +78,7 @@ export default function AccountSetting({
     {
       key: ACCOUNT_SETTING_TAB.ACCESS_RULES,
       name: t('settings.resourceAccess', { ns: 'common' }),
+      description: t('settings.resourceAccessDescription', { ns: 'common' }),
       icon: <span className={cn('i-ri-lock-2-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-lock-2-fill', iconClassName)} />,
     },
@@ -236,10 +237,10 @@ export default function AccountSetting({
             }}
           >
             <div className="sticky top-0 z-20 mx-8 flex min-h-[60px] items-end bg-components-panel-bg pt-8 pb-2">
-              <div className="shrink-0 title-2xl-semi-bold text-text-primary">
+              <div className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
                 {activeItem?.title ?? activeItem?.name}
                 {activeItem?.description && (
-                  <div className="mt-1 system-sm-regular text-text-tertiary">{activeItem?.description}</div>
+                  <div className="mt-1 system-sm-regular wrap-break-word whitespace-normal text-text-tertiary">{activeItem?.description}</div>
                 )}
               </div>
             </div>

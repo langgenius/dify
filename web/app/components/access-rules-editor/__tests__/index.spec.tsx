@@ -166,7 +166,7 @@ describe('AccessRulesEditor', () => {
       />,
     )
 
-    expect(screen.getByText('default')).toBeInTheDocument()
+    expect(screen.getByText('permission.accessRule.defaultPermission')).toBeInTheDocument()
   })
 
   it('should keep open scope unchanged when the confirmation is cancelled', () => {

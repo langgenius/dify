@@ -490,6 +490,7 @@ describe('AccountSetting', () => {
 
       // Resource Access
       fireEvent.click(screen.getByRole('button', { name: 'common.settings.resourceAccess' }))
+      expect(screen.getByText('common.settings.resourceAccessDescription')).toBeInTheDocument()
       expect(screen.getByTestId('access-rules-page')).toBeInTheDocument()
 
       // Language

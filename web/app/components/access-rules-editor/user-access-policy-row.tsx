@@ -39,6 +39,7 @@ function UserAccessPolicyRow({
   const { t } = useTranslation()
   const accountId = setting.account.account_id
   const selectedPolicyId = setting.access_policies[0]?.id ?? DEFAULT_ACCESS_POLICY_ID
+  const defaultAccessPolicyName = t('accessRule.defaultPermission', { ns: 'permission' })
   const roleNames = useMemo(() => {
     return setting.roles.map(role => role.name).filter(Boolean)
   }, [setting.roles])
@@ -48,7 +49,7 @@ function UserAccessPolicyRow({
     if (!nextPolicyId || nextPolicyId === selectedPolicyId)
       return
 
-    onChange?.(accountId, nextPolicyId === DEFAULT_ACCESS_POLICY_ID ? [] : [nextPolicyId])
+    onChange?.(accountId, [nextPolicyId])
   }, [accountId, onChange, selectedPolicyId])
 
   const handleRemove = useCallback(() => {
@@ -92,13 +93,13 @@ function UserAccessPolicyRow({
         >
           <SelectValue>
             {selectedPolicyId === DEFAULT_ACCESS_POLICY_ID
-              ? DEFAULT_ACCESS_POLICY_ID
+              ? defaultAccessPolicyName
               : setting.access_policies[0]?.name}
           </SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={DEFAULT_ACCESS_POLICY_ID}>
-            <SelectItemText>{DEFAULT_ACCESS_POLICY_ID}</SelectItemText>
+            <SelectItemText>{defaultAccessPolicyName}</SelectItemText>
             <SelectItemIndicator />
           </SelectItem>
           {policyOptions.map(policy => (
