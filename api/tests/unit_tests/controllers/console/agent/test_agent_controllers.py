@@ -21,6 +21,7 @@ from controllers.console.agent.composer import (
 )
 from controllers.console.agent.roster import (
     AgentAppApi,
+    AgentAppCopyApi,
     AgentAppListApi,
     AgentInviteOptionsApi,
     AgentLogsApi,
@@ -140,6 +141,7 @@ def test_agent_v2_console_routes_are_agent_id_first() -> None:
         "/agent/<uuid:agent_id>/composer/validate",
         "/agent/<uuid:agent_id>/composer/candidates",
         "/agent/<uuid:agent_id>/features",
+        "/agent/<uuid:agent_id>/copy",
         "/agent/<uuid:agent_id>/referencing-workflows",
         "/agent/<uuid:agent_id>/drive/files",
         "/agent/<uuid:agent_id>/sandbox/files",
@@ -345,6 +347,52 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
     deleted, status = unwrap(AgentAppApi.delete)(AgentAppApi(), "tenant-1", agent_id)
     assert (deleted, status) == ("", 204)
     assert captured["delete"] is app_model
+
+
+def test_agent_app_copy_uses_agent_id_and_returns_agent_detail(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+) -> None:
+    agent_id = "00000000-0000-0000-0000-000000000001"
+    current_user = SimpleNamespace(id=account_id)
+    copied_app = _app_detail_obj(id="copied-app", bound_agent_id="copied-agent")
+    captured: dict[str, object] = {}
+
+    class FakeRosterService:
+        def duplicate_agent_app(self, **kwargs: object) -> object:
+            captured.update(kwargs)
+            return copied_app
+
+    monkeypatch.setattr(roster_controller, "_agent_roster_service", lambda: FakeRosterService())
+    monkeypatch.setattr(
+        roster_controller,
+        "_serialize_agent_app_detail",
+        lambda app_model: {"id": "copied-agent", "app_id": app_model.id, "name": app_model.name},
+    )
+
+    with app.test_request_context(
+        "/console/api/agent/00000000-0000-0000-0000-000000000001/copy",
+        json={
+            "name": "Iris copy",
+            "description": "Copied",
+            "icon_type": "emoji",
+            "icon": "sparkles",
+            "icon_background": "#fff",
+        },
+    ):
+        copied, status = unwrap(AgentAppCopyApi.post)(AgentAppCopyApi(), "tenant-1", current_user, agent_id)
+
+    assert status == 201
+    assert copied == {"id": "copied-agent", "app_id": "copied-app", "name": "Iris"}
+    assert captured == {
+        "tenant_id": "tenant-1",
+        "agent_id": agent_id,
+        "account": current_user,
+        "name": "Iris copy",
+        "description": "Copied",
+        "icon_type": "emoji",
+        "icon": "sparkles",
+        "icon_background": "#fff",
+    }
 
 
 def test_invite_options_get_parses_app_id(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
