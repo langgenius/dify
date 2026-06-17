@@ -20,7 +20,7 @@ import {
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -44,10 +44,8 @@ export function AgentSelectorContent({
   onStartFromScratch?: () => void
 }) {
   const { t } = useTranslation(['agentV2', 'common', 'workflow'])
-  const queryClient = useQueryClient()
   const appId = useHooksStore(s => s.configsMap?.flowId)
   const [searchText, setSearchText] = useState('')
-  const [validatingAgentId, setValidatingAgentId] = useState<string>()
   const debouncedSearchText = useDebounce(searchText.trim(), { wait: 300 })
   const agentsQuery = useQuery({
     ...consoleQuery.agent.inviteOptions.get.queryOptions({
@@ -66,8 +64,8 @@ export function AgentSelectorContent({
     if (details.reason !== 'item-press')
       setSearchText(nextSearchText)
   }
-  const handleValueChange = async (agent: AgentInviteOptionResponse | null) => {
-    if (!agent || validatingAgentId)
+  const handleValueChange = (agent: AgentInviteOptionResponse | null) => {
+    if (!agent)
       return
 
     if (!agent.active_config_snapshot_id) {
@@ -75,30 +73,7 @@ export function AgentSelectorContent({
       return
     }
 
-    setValidatingAgentId(agent.id)
-    try {
-      const activeConfigSnapshot = await queryClient.fetchQuery(consoleQuery.agent.byAgentId.versions.byVersionId.get.queryOptions({
-        input: {
-          params: {
-            agent_id: agent.id,
-            version_id: agent.active_config_snapshot_id,
-          },
-        },
-      }))
-
-      if (!activeConfigSnapshot.config_snapshot.model) {
-        toast.error(t('nodes.agent.modelNotSelected', { ns: 'workflow' }))
-        return
-      }
-
-      onSelect(toAgentRosterNodeData(agent))
-    }
-    catch {
-      toast.error(t('roster.loadingError', { ns: 'agentV2' }))
-    }
-    finally {
-      setValidatingAgentId(undefined)
-    }
+    onSelect(toAgentRosterNodeData(agent))
   }
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen)

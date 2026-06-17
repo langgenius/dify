@@ -6,7 +6,6 @@ import { FlowType } from '@/types/common'
 import { HooksStoreContext } from '../../hooks-store/provider'
 import { createHooksStore } from '../../hooks-store/store'
 import { BlockEnum } from '../../types'
-import { AgentSelectorContent } from '../agent-selector'
 import Blocks from '../blocks'
 import { BlockClassificationEnum } from '../types'
 
@@ -17,7 +16,6 @@ const runtimeState = vi.hoisted(() => ({
 
 const queryMocks = vi.hoisted(() => ({
   inviteOptionsQueryFn: vi.fn(),
-  versionDetailGet: vi.fn(),
   toastError: vi.fn(),
 }))
 
@@ -40,18 +38,6 @@ vi.mock('@/app/components/app/store', () => ({
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     agent: {
-      byAgentId: {
-        versions: {
-          byVersionId: {
-            get: {
-              queryOptions: ({ input }: { input: unknown }) => ({
-                queryKey: ['agent-version-detail', input],
-                queryFn: () => queryMocks.versionDetailGet(input),
-              }),
-            },
-          },
-        },
-      },
       inviteOptions: {
         get: {
           queryOptions: (options: unknown) => ({
@@ -87,17 +73,6 @@ const createBlock = (
   defaultValue: {},
   checkValid: () => ({ isValid: true }),
 })
-
-function createDeferred<T>() {
-  let resolve!: (value: T) => void
-  let reject!: (reason?: unknown) => void
-  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
-    resolve = resolvePromise
-    reject = rejectPromise
-  })
-
-  return { promise, reject, resolve }
-}
 
 describe('Blocks', () => {
   beforeEach(() => {
@@ -215,14 +190,6 @@ describe('Blocks', () => {
       page: 1,
       total: 1,
     })
-    queryMocks.versionDetailGet.mockResolvedValue({
-      config_snapshot: {
-        model: {
-          model: 'gpt-4o',
-          model_provider: 'openai',
-        },
-      },
-    })
 
     const queryClient = new QueryClient({
       defaultOptions: {
@@ -268,12 +235,6 @@ describe('Blocks', () => {
 
     await user.click(screen.getByRole('option', { name: 'Nadia Researcher' }))
 
-    await waitFor(() => expect(queryMocks.versionDetailGet).toHaveBeenCalledWith({
-      params: {
-        agent_id: 'agent-1',
-        version_id: 'version-1',
-      },
-    }))
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.AgentV2, {
       agent_binding: {
         binding_type: 'roster_agent',
@@ -293,25 +254,16 @@ describe('Blocks', () => {
     })
   })
 
-  it('keeps the agent list visible while validating a selected agent', async () => {
+  it('does not select an Agent v2 roster agent without active config snapshot', async () => {
     const user = userEvent.setup()
     const onSelect = vi.fn()
-    const versionDetail = createDeferred<{
-      config_snapshot: {
-        model: {
-          model: string
-          model_provider: string
-        }
-      }
-    }>()
-
     queryMocks.inviteOptionsQueryFn.mockResolvedValue({
       data: [
         {
           id: 'agent-1',
           name: 'Nadia',
           description: 'Clarification Drafter',
-          active_config_snapshot_id: 'version-1',
+          active_config_snapshot_id: null,
           role: 'Researcher',
           agent_kind: 'dify_agent',
           icon: 'A',
@@ -326,82 +278,6 @@ describe('Blocks', () => {
       limit: 8,
       page: 1,
       total: 1,
-    })
-    queryMocks.versionDetailGet.mockReturnValue(versionDetail.promise)
-
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    })
-    const hooksStore = createHooksStore({
-      configsMap: {
-        flowId: 'app-1',
-        flowType: FlowType.appFlow,
-        fileSettings: {} as never,
-      },
-    })
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <HooksStoreContext value={hooksStore}>
-          <AgentSelectorContent
-            open
-            onOpenChange={vi.fn()}
-            onSelect={onSelect}
-          />
-        </HooksStoreContext>
-      </QueryClientProvider>,
-    )
-
-    expect(await screen.findByText('Nadia')).toBeInTheDocument()
-
-    await user.click(screen.getByRole('option', { name: 'Nadia Researcher' }))
-
-    await waitFor(() => expect(queryMocks.versionDetailGet).toHaveBeenCalled())
-    expect(screen.getByText('Nadia')).toBeInTheDocument()
-    expect(screen.queryByText('common.loading')).not.toBeInTheDocument()
-
-    versionDetail.resolve({
-      config_snapshot: {
-        model: {
-          model: 'gpt-4o',
-          model_provider: 'openai',
-        },
-      },
-    })
-    await waitFor(() => expect(onSelect).toHaveBeenCalled())
-  })
-
-  it('does not select an Agent v2 roster agent without model config', async () => {
-    const user = userEvent.setup()
-    const onSelect = vi.fn()
-    queryMocks.inviteOptionsQueryFn.mockResolvedValue({
-      data: [
-        {
-          id: 'agent-1',
-          name: 'Nadia',
-          description: 'Clarification Drafter',
-          active_config_snapshot_id: 'version-1',
-          role: 'Researcher',
-          agent_kind: 'dify_agent',
-          icon: 'A',
-          icon_background: '#E9D7FE',
-          icon_type: 'emoji',
-          scope: 'roster',
-          source: 'workflow',
-          status: 'active',
-        },
-      ],
-      has_more: false,
-      limit: 8,
-      page: 1,
-      total: 1,
-    })
-    queryMocks.versionDetailGet.mockResolvedValue({
-      config_snapshot: {},
     })
 
     const queryClient = new QueryClient({
