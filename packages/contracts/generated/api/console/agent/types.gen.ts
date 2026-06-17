@@ -177,8 +177,21 @@ export type AgentDriveFileCommitResponse = {
   file: AgentDriveFileResponse
 }
 
+export type AgentLogSourceListResponse = {
+  data: Array<AgentLogSourceResponse>
+  groups: Array<AgentLogSourceGroupResponse>
+}
+
 export type AgentLogListResponse = {
-  data: Array<AgentLogItemResponse>
+  data: Array<AgentLogConversationItemResponse>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
+}
+
+export type AgentLogMessageListResponse = {
+  data: Array<AgentLogMessageItemResponse>
   has_more: boolean
   limit: number
   page: number
@@ -554,23 +567,54 @@ export type AgentDriveFileResponse = {
   size?: number | null
 }
 
-export type AgentLogItemResponse = {
+export type AgentLogSourceResponse = {
+  app_icon?: string | null
+  app_icon_background?: string | null
+  app_icon_type?: string | null
+  app_id: string
+  app_name: string
+  id: string
+  node_id?: string | null
+  type: 'webapp' | 'workflow'
+  workflow_id?: string | null
+  workflow_version?: string | null
+}
+
+export type AgentLogSourceGroupResponse = {
+  label: string
+  sources?: Array<AgentLogSourceResponse>
+  type: 'webapp' | 'workflow'
+}
+
+export type AgentLogConversationItemResponse = {
+  conversation_id: string
+  created_at?: number | null
+  end_user_id?: string | null
+  id: string
+  message_count: number
+  operation_rate?: number | null
+  source?: AgentLogSourceResponse | null
+  status: 'failed' | 'paused' | 'success'
+  title?: string | null
+  unread: boolean
+  updated_at?: number | null
+  user_rate?: number | null
+}
+
+export type AgentLogMessageItemResponse = {
   answer: string
   answer_tokens: number
   conversation_id: string
-  conversation_name?: string | null
   created_at?: number | null
   currency: string
   error?: string | null
   from_account_id?: string | null
   from_end_user_id?: string | null
-  from_source?: string | null
   id: string
   latency: number
   message_id: string
   message_tokens: number
   query: string
-  source?: string | null
   status: string
   total_price: string
   total_tokens: number
@@ -1861,6 +1905,22 @@ export type PostAgentByAgentIdFilesResponses = {
 export type PostAgentByAgentIdFilesResponse
   = PostAgentByAgentIdFilesResponses[keyof PostAgentByAgentIdFilesResponses]
 
+export type GetAgentByAgentIdLogSourcesData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/log-sources'
+}
+
+export type GetAgentByAgentIdLogSourcesResponses = {
+  200: AgentLogSourceListResponse
+}
+
+export type GetAgentByAgentIdLogSourcesResponse
+  = GetAgentByAgentIdLogSourcesResponses[keyof GetAgentByAgentIdLogSourcesResponses]
+
 export type GetAgentByAgentIdLogsData = {
   body?: never
   path: {
@@ -1884,6 +1944,31 @@ export type GetAgentByAgentIdLogsResponses = {
 
 export type GetAgentByAgentIdLogsResponse
   = GetAgentByAgentIdLogsResponses[keyof GetAgentByAgentIdLogsResponses]
+
+export type GetAgentByAgentIdLogsByConversationIdMessagesData = {
+  body?: never
+  path: {
+    agent_id: string
+    conversation_id: string
+  }
+  query?: {
+    end?: string
+    keyword?: string
+    limit?: number
+    page?: number
+    source?: string
+    start?: string
+    status?: string
+  }
+  url: '/agent/{agent_id}/logs/{conversation_id}/messages'
+}
+
+export type GetAgentByAgentIdLogsByConversationIdMessagesResponses = {
+  200: AgentLogMessageListResponse
+}
+
+export type GetAgentByAgentIdLogsByConversationIdMessagesResponse
+  = GetAgentByAgentIdLogsByConversationIdMessagesResponses[keyof GetAgentByAgentIdLogsByConversationIdMessagesResponses]
 
 export type GetAgentByAgentIdMessagesByMessageIdData = {
   body?: never

@@ -31,6 +31,8 @@ from fields.agent_fields import (
     AgentConfigSnapshotListResponse,
     AgentInviteOptionsResponse,
     AgentLogListResponse,
+    AgentLogMessageListResponse,
+    AgentLogSourceListResponse,
     AgentPublishedReferenceResponse,
     AgentRosterListResponse,
     AgentStatisticSummaryEnvelopeResponse,
@@ -153,6 +155,8 @@ register_response_schema_models(
     AgentConfigSnapshotListResponse,
     AgentInviteOptionsResponse,
     AgentLogListResponse,
+    AgentLogMessageListResponse,
+    AgentLogSourceListResponse,
     AgentPublishedReferenceResponse,
     AgentRosterListResponse,
     AgentStatisticSummaryEnvelopeResponse,
@@ -416,6 +420,7 @@ class AgentLogsApi(Resource):
         try:
             payload = _agent_observability_service().list_logs(
                 app=app_model,
+                agent_id=str(agent_id),
                 params=AgentLogQueryParams(
                     page=query.page,
                     limit=query.limit,
@@ -429,6 +434,53 @@ class AgentLogsApi(Resource):
         except ValueError as exc:
             abort(400, description=str(exc))
         return dump_response(AgentLogListResponse, payload)
+
+
+@console_ns.route("/agent/<uuid:agent_id>/logs/<uuid:conversation_id>/messages")
+class AgentLogMessagesApi(Resource):
+    @console_ns.doc(params=query_params_from_model(AgentLogsQuery))
+    @console_ns.response(200, "Agent log messages", console_ns.models[AgentLogMessageListResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, current_user: Account, agent_id: UUID, conversation_id: UUID):
+        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        query = AgentLogsQuery.model_validate(request.args.to_dict(flat=True))
+        start, end = _parse_observability_time_range(query.start, query.end, current_user)
+        try:
+            payload = _agent_observability_service().list_log_messages(
+                app=app_model,
+                agent_id=str(agent_id),
+                conversation_id=str(conversation_id),
+                params=AgentLogQueryParams(
+                    page=query.page,
+                    limit=query.limit,
+                    keyword=query.keyword,
+                    status=query.status,
+                    source=query.source,
+                    start=start,
+                    end=end,
+                ),
+            )
+        except ValueError as exc:
+            abort(400, description=str(exc))
+        return dump_response(AgentLogMessageListResponse, payload)
+
+
+@console_ns.route("/agent/<uuid:agent_id>/log-sources")
+class AgentLogSourcesApi(Resource):
+    @console_ns.response(200, "Agent log sources", console_ns.models[AgentLogSourceListResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, current_user: Account, agent_id: UUID):
+        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        payload = _agent_observability_service().list_log_sources(app=app_model, agent_id=str(agent_id))
+        return dump_response(AgentLogSourceListResponse, payload)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/statistics/summary")
@@ -452,6 +504,7 @@ class AgentStatisticsSummaryApi(Resource):
         try:
             payload = _agent_observability_service().get_statistics_summary(
                 app=app_model,
+                agent_id=str(agent_id),
                 params=AgentStatisticsQueryParams(source=query.source, start=start, end=end, timezone=timezone),
             )
         except ValueError as exc:

@@ -20,6 +20,60 @@ def test_resolve_source_accepts_frontend_aliases() -> None:
         AgentObservabilityService.resolve_source("unknown")
 
 
+def test_resolve_source_filter_accepts_structured_sources() -> None:
+    assert AgentObservabilityService.resolve_source_filter(None).kind == "all"
+    assert AgentObservabilityService.resolve_source_filter("webapp").kind == "webapp"
+    assert AgentObservabilityService.resolve_source_filter("webapp:app-1").app_id == "app-1"
+
+    workflow_filter = AgentObservabilityService.resolve_source_filter("workflow:app-2:workflow-1:v1:node-1")
+    assert workflow_filter.kind == "workflow"
+    assert workflow_filter.app_id == "app-2"
+    assert workflow_filter.workflow_id == "workflow-1"
+    assert workflow_filter.workflow_version == "v1"
+    assert workflow_filter.node_id == "node-1"
+
+    legacy_filter = AgentObservabilityService.resolve_source_filter("console")
+    assert legacy_filter.kind == "webapp"
+    assert legacy_filter.invoke_from == InvokeFrom.EXPLORE
+
+    with pytest.raises(ValueError, match="Unsupported source"):
+        AgentObservabilityService.resolve_source_filter("workflow:broken")
+
+
+def test_source_serializers_return_structured_frontend_shape() -> None:
+    app = SimpleNamespace(
+        id="app-1",
+        name="Iris",
+        icon_type=SimpleNamespace(value="emoji"),
+        icon="robot",
+        icon_background="#fff",
+    )
+
+    webapp_source = AgentObservabilityService._serialize_webapp_source(app)  # type: ignore[arg-type]
+    workflow_source = AgentObservabilityService._serialize_workflow_source(
+        app=app,  # type: ignore[arg-type]
+        workflow_id="workflow-1",
+        workflow_version="v1",
+        node_id="node-1",
+    )
+
+    assert webapp_source == {
+        "id": "webapp:app-1",
+        "type": "webapp",
+        "app_id": "app-1",
+        "app_name": "Iris",
+        "app_icon_type": "emoji",
+        "app_icon": "robot",
+        "app_icon_background": "#fff",
+        "workflow_id": None,
+        "workflow_version": None,
+        "node_id": None,
+    }
+    assert workflow_source["id"] == "workflow:app-1:workflow-1:v1:node-1"
+    assert workflow_source["type"] == "workflow"
+    assert workflow_source["workflow_id"] == "workflow-1"
+
+
 def test_serialize_log_message_returns_frontend_log_shape() -> None:
     created_at = datetime(2026, 6, 17, 1, 2, 3, tzinfo=UTC)
     updated_at = datetime(2026, 6, 17, 1, 3, 3, tzinfo=UTC)
