@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentAppPartial, AgentIconType } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentAppPartial, AgentIconType, AgentPublishedReferenceResponse } from '@dify/contracts/api/console/agent/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   DropdownMenu,
@@ -31,7 +31,10 @@ type AgentRosterListProps = {
   onLoadMore: () => void
 }
 
-export type AgentRosterListItem = AgentAppPartial
+export type AgentRosterListItem = AgentAppPartial & {
+  published_reference_count?: number
+  published_references?: AgentPublishedReferenceResponse[]
+}
 
 const skeletonRows = ['primary', 'secondary', 'tertiary'] as const
 const emptyPlaceholderCardIds = Array.from({ length: 16 }, (_, index) => `agent-roster-placeholder-card-${index}`)

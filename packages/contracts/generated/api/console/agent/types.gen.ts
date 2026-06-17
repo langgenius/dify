@@ -21,7 +21,7 @@ export type AgentAppCreatePayload = {
   role?: string
 }
 
-export type AppDetailWithSite = {
+export type AgentAppDetailWithSite = {
   access_mode?: string | null
   active_config_is_published?: boolean
   api_base_url?: string | null
@@ -1382,7 +1382,7 @@ export type AgentAppPaginationWritable = {
   total: number
 }
 
-export type AppDetailWithSiteWritable = {
+export type AgentAppDetailWithSiteWritable = {
   access_mode?: string | null
   active_config_is_published?: boolean
   api_base_url?: string | null
@@ -1501,7 +1501,7 @@ export type PostAgentErrors = {
 }
 
 export type PostAgentResponses = {
-  201: AppDetailWithSite
+  201: AgentAppDetailWithSite
 }
 
 export type PostAgentResponse = PostAgentResponses[keyof PostAgentResponses]
@@ -1555,7 +1555,7 @@ export type GetAgentByAgentIdData = {
 }
 
 export type GetAgentByAgentIdResponses = {
-  200: AppDetailWithSite
+  200: AgentAppDetailWithSite
 }
 
 export type GetAgentByAgentIdResponse = GetAgentByAgentIdResponses[keyof GetAgentByAgentIdResponses]
@@ -1575,7 +1575,7 @@ export type PutAgentByAgentIdErrors = {
 }
 
 export type PutAgentByAgentIdResponses = {
-  200: AppDetailWithSite
+  200: AgentAppDetailWithSite
 }
 
 export type PutAgentByAgentIdResponse = PutAgentByAgentIdResponses[keyof PutAgentByAgentIdResponses]
@@ -1721,7 +1721,7 @@ export type PostAgentByAgentIdCopyErrors = {
 }
 
 export type PostAgentByAgentIdCopyResponses = {
-  201: AppDetailWithSite
+  201: AgentAppDetailWithSite
 }
 
 export type PostAgentByAgentIdCopyResponse

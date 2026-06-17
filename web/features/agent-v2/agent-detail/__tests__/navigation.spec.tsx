@@ -1,10 +1,10 @@
-import type { AppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import { render, screen } from '@testing-library/react'
 import { AgentDetailSection } from '../navigation'
 
 const mocks = vi.hoisted(() => ({
   pathname: '/roster/agent/agent-1/configure',
-  queryData: undefined as AppDetailWithSite | undefined,
+  queryData: undefined as AgentAppDetailWithSite | undefined,
 }))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -34,7 +34,7 @@ vi.mock('@/app/components/base/divider', () => ({
   default: () => <div data-testid="divider" />,
 }))
 
-const createAgent = (overrides: Partial<AppDetailWithSite> = {}): AppDetailWithSite => ({
+const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppDetailWithSite => ({
   description: 'Find and summarize market materials.',
   enable_api: true,
   enable_site: true,

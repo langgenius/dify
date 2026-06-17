@@ -119,6 +119,8 @@ export function EditAgentDialog({
     const body: AgentAppUpdatePayload = {
       name: trimmedName,
       description: trimmedDescription,
+      // Keep sending the trimmed role even when empty: omitting the field
+      // preserves the current backing-agent role, while "" intentionally clears it.
       role: trimmedRole,
     }
 

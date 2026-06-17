@@ -600,9 +600,9 @@ export const zModelConfig = z.object({
 })
 
 /**
- * AppDetailWithSite
+ * AgentAppDetailWithSite
  */
-export const zAppDetailWithSite = z.object({
+export const zAgentAppDetailWithSite = z.object({
   access_mode: z.string().nullish(),
   active_config_is_published: z.boolean().optional().default(false),
   api_base_url: z.string().nullish(),
@@ -1996,9 +1996,9 @@ export const zSiteWritable = z.object({
 })
 
 /**
- * AppDetailWithSite
+ * AgentAppDetailWithSite
  */
-export const zAppDetailWithSiteWritable = z.object({
+export const zAgentAppDetailWithSiteWritable = z.object({
   access_mode: z.string().nullish(),
   active_config_is_published: z.boolean().optional().default(false),
   api_base_url: z.string().nullish(),
@@ -2064,7 +2064,7 @@ export const zPostAgentBody = zAgentAppCreatePayload
 /**
  * Agent app created successfully
  */
-export const zPostAgentResponse = zAppDetailWithSite
+export const zPostAgentResponse = zAgentAppDetailWithSite
 
 export const zGetAgentInviteOptionsQuery = z.object({
   app_id: z.string().optional(),
@@ -2094,7 +2094,7 @@ export const zGetAgentByAgentIdPath = z.object({
 /**
  * Agent app detail
  */
-export const zGetAgentByAgentIdResponse = zAppDetailWithSite
+export const zGetAgentByAgentIdResponse = zAgentAppDetailWithSite
 
 export const zPutAgentByAgentIdBody = zAgentAppUpdatePayload
 
@@ -2105,7 +2105,7 @@ export const zPutAgentByAgentIdPath = z.object({
 /**
  * Agent app updated successfully
  */
-export const zPutAgentByAgentIdResponse = zAppDetailWithSite
+export const zPutAgentByAgentIdResponse = zAgentAppDetailWithSite
 
 export const zGetAgentByAgentIdChatMessagesPath = z.object({
   agent_id: z.string(),
@@ -2192,7 +2192,7 @@ export const zPostAgentByAgentIdCopyPath = z.object({
 /**
  * Agent app copied successfully
  */
-export const zPostAgentByAgentIdCopyResponse = zAppDetailWithSite
+export const zPostAgentByAgentIdCopyResponse = zAgentAppDetailWithSite
 
 export const zGetAgentByAgentIdDriveFilesPath = z.object({
   agent_id: z.string(),

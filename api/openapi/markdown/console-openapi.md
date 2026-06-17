@@ -324,7 +324,7 @@ Check if activation token is valid
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Agent app created successfully | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
+| 201 | Agent app created successfully | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
 | 400 | Invalid request parameters |  |
 | 403 | Insufficient permissions |  |
 
@@ -369,7 +369,7 @@ Check if activation token is valid
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent app detail | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
+| 200 | Agent app detail | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
 
 ### [PUT] /agent/{agent_id}
 #### Parameters
@@ -388,7 +388,7 @@ Check if activation token is valid
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent app updated successfully | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
+| 200 | Agent app updated successfully | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
 | 400 | Invalid request parameters |  |
 | 403 | Insufficient permissions |  |
 
@@ -11321,6 +11321,38 @@ Default namespace
 | name | string | Agent name | Yes |
 | role | string | Agent role | No |
 
+#### AgentAppDetailWithSite
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_mode | string |  | No |
+| api_base_url | string |  | No |
+| app_id | string |  | No |
+| bound_agent_id | string |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| deleted_tools | [ [DeletedTool](#deletedtool) ] |  | No |
+| description | string |  | No |
+| enable_api | boolean |  | Yes |
+| enable_site | boolean |  | Yes |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| icon_url | string |  | Yes |
+| id | string |  | Yes |
+| max_active_requests | integer |  | No |
+| mode | string |  | Yes |
+| model_config | [ModelConfig](#modelconfig) |  | No |
+| name | string |  | Yes |
+| role | string |  | No |
+| site | [Site](#site) |  | No |
+| tags | [ [Tag](#tag) ] |  | No |
+| tracing | [JSONValue](#jsonvalue) |  | No |
+| updated_at | integer |  | No |
+| updated_by | string |  | No |
+| use_icon_as_answer_icon | boolean |  | No |
+| workflow | [WorkflowPartial](#workflowpartial) |  | No |
+
 #### AgentAppFeaturesPayload
 
 Presentation features configurable on an Agent App.
@@ -11353,7 +11385,10 @@ default (the config form sends the full desired feature state on save).
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
+<<<<<<< HEAD
 | active_config_is_published | boolean |  | No |
+=======
+>>>>>>> 2c426cd50f (fix(agent): isolate roster app contracts)
 | app_id | string |  | No |
 | author_name | string |  | No |
 | bound_agent_id | string |  | No |
@@ -11372,8 +11407,11 @@ default (the config form sends the full desired feature state on save).
 | mode | string |  | Yes |
 | model_config | [ModelConfigPartial](#modelconfigpartial) |  | No |
 | name | string |  | Yes |
+<<<<<<< HEAD
 | published_reference_count | integer |  | No |
 | published_references | [ [AgentAppPublishedReferenceResponse](#agentapppublishedreferenceresponse) ] |  | No |
+=======
+>>>>>>> 2c426cd50f (fix(agent): isolate roster app contracts)
 | role | string |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | updated_at | integer |  | No |
@@ -11381,6 +11419,7 @@ default (the config form sends the full desired feature state on save).
 | use_icon_as_answer_icon | boolean |  | No |
 | workflow | [WorkflowPartial](#workflowpartial) |  | No |
 
+<<<<<<< HEAD
 #### AgentAppPublishedReferenceResponse
 
 | Name | Type | Description | Required |
@@ -11391,6 +11430,8 @@ default (the config form sends the full desired feature state on save).
 | app_id | string |  | Yes |
 | app_name | string |  | Yes |
 
+=======
+>>>>>>> 2c426cd50f (fix(agent): isolate roster app contracts)
 #### AgentAppUpdatePayload
 
 | Name | Type | Description | Required |
@@ -12765,7 +12806,6 @@ Enum class for api provider schema type.
 | mode | string |  | Yes |
 | model_config | [ModelConfig](#modelconfig) |  | No |
 | name | string |  | Yes |
-| role | string |  | No |
 | site | [Site](#site) |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | tracing | [JSONValue](#jsonvalue) |  | No |
@@ -12888,7 +12928,6 @@ AppMCPServer Status Enum
 | max_active_requests | integer |  | No |
 | mode_compatible_with_agent | string |  | Yes |
 | name | string |  | Yes |
-| role | string |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |

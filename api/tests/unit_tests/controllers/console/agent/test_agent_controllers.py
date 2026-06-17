@@ -93,6 +93,7 @@ def _agent_app_composer_response() -> dict:
 def _app_detail_obj(**overrides):
     data = {
         "id": "app-1",
+        "tenant_id": "tenant-1",
         "name": "Iris",
         "description": "Agent app",
         "mode_compatible_with_agent": "agent",
@@ -116,7 +117,6 @@ def _app_detail_obj(**overrides):
         "deleted_tools": [],
         "site": None,
         "bound_agent_id": "00000000-0000-0000-0000-000000000001",
-        "tenant_id": "tenant-1",
     }
     data.update(overrides)
     return SimpleNamespace(**data)
@@ -283,6 +283,7 @@ def test_agent_app_list_and_create_use_agent_route(
     create_call = cast(dict[str, object], captured["create"])
     create_params = cast(Any, create_call["params"])
     assert create_params.mode == "agent"
+    assert create_params.agent_role == ""
 
 
 def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
@@ -343,6 +344,7 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
     assert "bound_agent_id" not in updated
     update_call = cast(dict[str, object], captured["update"])
     assert update_call["app"] is app_model
+    assert cast(dict[str, object], update_call["args"])["role"] is None
 
     deleted, status = unwrap(AgentAppApi.delete)(AgentAppApi(), "tenant-1", agent_id)
     assert (deleted, status) == ("", 204)
@@ -393,6 +395,51 @@ def test_agent_app_copy_uses_agent_id_and_returns_agent_detail(
         "icon": "sparkles",
         "icon_background": "#fff",
     }
+
+
+def test_agent_app_update_forwards_empty_role_to_clear_backing_role(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    agent_id = "00000000-0000-0000-0000-000000000001"
+    app_model = _app_detail_obj(id="app-1", bound_agent_id=agent_id)
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        roster_controller.AgentRosterService,
+        "get_agent_app_model",
+        lambda _self, **kwargs: app_model,
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentRosterService,
+        "get_app_backing_agent",
+        lambda _self, **kwargs: SimpleNamespace(id=agent_id, role="", active_config_snapshot_id=None),
+    )
+    monkeypatch.setattr(
+        roster_controller.FeatureService,
+        "get_system_features",
+        lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+    )
+
+    class FakeAppService:
+        def get_app(self, app_obj: object) -> object:
+            return app_obj
+
+        def update_app(self, app_obj: object, args: dict[str, object]) -> object:
+            captured["update"] = {"app": app_obj, "args": args}
+            return _app_detail_obj(id="app-1", name=args["name"], bound_agent_id=agent_id)
+
+    monkeypatch.setattr(roster_controller, "AppService", FakeAppService)
+
+    with app.test_request_context(
+        "/console/api/agent/00000000-0000-0000-0000-000000000001",
+        json={"name": "Renamed", "description": "", "role": "", "icon_type": "emoji", "icon": "R"},
+    ):
+        updated = unwrap(AgentAppApi.put)(AgentAppApi(), "tenant-1", agent_id)
+
+    assert updated["role"] == ""
+    update_call = cast(dict[str, object], captured["update"])
+    assert update_call["app"] is app_model
+    assert cast(dict[str, object], update_call["args"])["role"] == ""
 
 
 def test_invite_options_get_parses_app_id(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
