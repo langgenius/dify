@@ -1,6 +1,7 @@
 """Primarily used for testing merged cell scenarios"""
 
 import io
+import logging
 import os
 import tempfile
 from collections import UserDict
@@ -548,7 +549,7 @@ def test_parse_docx_reads_real_paragraph_table_order(monkeypatch: pytest.MonkeyP
             os.remove(tmp_path)
 
 
-def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(monkeypatch: pytest.MonkeyPatch):
+def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(monkeypatch: pytest.MonkeyPatch, caplog):
     extractor = object.__new__(WordExtractor)
 
     ext_image_id = "ext-image"
@@ -709,10 +710,9 @@ def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(monke
     monkeypatch.setattr(we, "Run", FakeRun)
     monkeypatch.setattr(extractor, "_extract_images_from_docx", lambda doc: image_map)
     monkeypatch.setattr(extractor, "_table_to_markdown", lambda table, image_map: "TABLE-MARKDOWN")
-    logger_exception = MagicMock()
-    monkeypatch.setattr(we.logger, "exception", logger_exception)
 
-    content = extractor.parse_docx("dummy.docx")
+    with caplog.at_level(logging.ERROR, logger="core.rag.extractor.word_extractor"):
+        content = extractor.parse_docx("dummy.docx")
 
     assert "[EXT]" in content
     assert "[INT]" in content
@@ -720,7 +720,7 @@ def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(monke
     assert "[LinkText](https://example.com)" in content
     assert "BrokenLink" in content
     assert "TABLE-MARKDOWN" in content
-    logger_exception.assert_called_once()
+    assert any(record.levelno == logging.ERROR for record in caplog.records)
 
 
 def test_parse_cell_paragraph_hyperlink_in_table_cell_http():
