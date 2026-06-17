@@ -17,6 +17,7 @@ import {
   createAgentOutputConfig,
   getAgentOutputTypeOptionValue,
   getUniqueAgentOutputName,
+  inferAgentOutputType,
   parseAgentOutputToken,
 } from './utils'
 
@@ -69,7 +70,7 @@ const AgentOutputBlockReplacementBlock = memo(({
     const match = parseAgentOutputToken(textNode.getTextContent())
     const name = match?.name || ''
     const output = outputs.find(item => item.name === name)
-    const outputType = output ? getAgentOutputTypeOptionValue(output) : 'string'
+    const outputType = inferAgentOutputType(name, output ? getAgentOutputTypeOptionValue(output) : 'string')
 
     return $applyNodeReplacement($createAgentOutputBlockNode(name, outputType, false, outputs, onChange))
   }, [onChange, outputs])

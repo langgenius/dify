@@ -658,6 +658,80 @@ describe('agent/panel', () => {
     }))
   })
 
+  it('removes declared outputs when their prompt output token is deleted', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          agent_task: 'Use [§output:summary:summary§] and [§output:manual:manual§]',
+          agent_declared_outputs: [
+            {
+              name: 'summary',
+              type: 'string',
+              required: false,
+            },
+            {
+              name: 'manual',
+              type: 'string',
+              required: false,
+            },
+          ],
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'workflow.nodes.agent.task.label' }), {
+      target: {
+        value: 'Use [§output:manual:manual§]',
+      },
+    })
+
+    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
+      agent_task: 'Use [§output:manual:manual§]',
+      agent_declared_outputs: [
+        expect.objectContaining({
+          name: 'manual',
+        }),
+      ],
+    }))
+  })
+
+  it('does not remove prompt output tokens when declared outputs are changed from the output list', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          agent_task: 'Use [§output:summary:summary§]',
+          agent_declared_outputs: [
+            {
+              name: 'summary',
+              type: 'string',
+              required: false,
+            },
+          ],
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    mockPromptEditorProps[0]?.agentOutputBlock?.onChange?.([])
+
+    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
+      {
+        id: 'agent-node',
+        data: expect.objectContaining({
+          agent_task: 'Use [§output:summary:summary§]',
+          agent_declared_outputs: [],
+        }),
+      },
+      expect.objectContaining({
+        sync: true,
+        notRefreshWhenSyncError: true,
+      }),
+    )
+  })
+
   it('renders declared outputs from workflow draft graph data', () => {
     render(
       <AgentV2Panel

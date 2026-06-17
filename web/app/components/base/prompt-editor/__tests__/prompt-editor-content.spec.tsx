@@ -245,6 +245,31 @@ describe('PromptEditorContent', () => {
       })
     })
 
+    it('should infer file type when rendering a file-name output token', async () => {
+      const captures: Captures = { editor: null, eventEmitter: null }
+
+      render(
+        <PromptEditorContentHarness
+          captures={captures}
+          initialText="[§output:qna_report.pdf:qna_report.pdf§]"
+          shortcutPopups={[]}
+          floatingAnchorElem={document.createElement('div')}
+          onEditorChange={vi.fn()}
+          agentOutputBlock={{
+            show: true,
+            outputs: [
+              { name: 'qna_report.pdf', type: 'string' },
+            ],
+          }}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText('qna_report.pdf')).toBeInTheDocument()
+        expect(screen.getByText('file')).toBeInTheDocument()
+      })
+    })
+
     it('should render optional blocks and open shortcut popups with the real editor runtime', async () => {
       const captures: Captures = { editor: null, eventEmitter: null }
       const onEditorChange = vi.fn()

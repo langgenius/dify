@@ -4,6 +4,7 @@ import type { AgentV2NodeType } from './types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { extractAgentOutputNames } from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
 import { useStore } from '@/app/components/workflow/store'
 import useNodeCrud from '../_base/hooks/use-node-crud'
@@ -23,6 +24,7 @@ export function AgentV2Panel({
   const { t } = useTranslation()
   const { inputs, setInputs } = useNodeCrud<AgentV2NodeType>(id, data)
   const inputsRef = useRef(inputs)
+  const promptOutputNamesRef = useRef(extractAgentOutputNames(inputs.agent_task || ''))
   const [isRosterAgentPanelOpen, setIsRosterAgentPanelOpen] = useState(false)
   const [isInlineAgentPanelOpenedFromTrigger, setIsInlineAgentPanelOpenedFromTrigger] = useState(false)
   const { handleNodeDataUpdate, handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
@@ -51,6 +53,7 @@ export function AgentV2Panel({
 
   useEffect(() => {
     inputsRef.current = inputs
+    promptOutputNamesRef.current = extractAgentOutputNames(inputs.agent_task || '')
   }, [inputs])
 
   useEffect(() => {
@@ -67,10 +70,18 @@ export function AgentV2Panel({
   }, [handleNodeDataUpdate, id, inputs._openInlineAgentPanel, isInlineAgentReady, setOpenInlineAgentPanelNodeId])
 
   const handleTaskChange = useCallback((value: string) => {
+    const currentPromptOutputNames = extractAgentOutputNames(value)
+    const removedPromptOutputNames = [...promptOutputNamesRef.current].filter(name => !currentPromptOutputNames.has(name))
     const newInputs = produce(inputsRef.current, (draft) => {
       draft.agent_task = value
+      if (removedPromptOutputNames.length) {
+        const removedNameSet = new Set(removedPromptOutputNames)
+        draft.agent_declared_outputs = getAgentV2DeclaredOutputs(draft)
+          .filter(output => !removedNameSet.has(output.name))
+      }
     })
     inputsRef.current = newInputs
+    promptOutputNamesRef.current = currentPromptOutputNames
     setInputs(newInputs)
   }, [setInputs])
 
@@ -114,6 +125,8 @@ export function AgentV2Panel({
         draft.agent_task = agentTask
     })
     inputsRef.current = newInputs
+    if (agentTask !== undefined)
+      promptOutputNamesRef.current = extractAgentOutputNames(agentTask)
     handleNodeDataUpdateWithSyncDraft(
       {
         id,
