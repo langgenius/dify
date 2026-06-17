@@ -2215,7 +2215,7 @@ export const zGetAppFeedbacksQuery = z.object({
 })
 
 /**
- * Feedbacks retrieved successfully
+ * A list of application feedbacks.
  */
 export const zGetAppFeedbacksResponse = zAppFeedbackListResponse
 
@@ -2226,7 +2226,7 @@ export const zPostAppsAnnotationReplyByActionPath = z.object({
 })
 
 /**
- * Action completed successfully
+ * Annotation reply settings task initiated.
  */
 export const zPostAppsAnnotationReplyByActionResponse = zAnnotationJobStatusResponse
 
@@ -2236,7 +2236,7 @@ export const zGetAppsAnnotationReplyByActionStatusByJobIdPath = z.object({
 })
 
 /**
- * Job status retrieved successfully
+ * Successfully retrieved task status.
  */
 export const zGetAppsAnnotationReplyByActionStatusByJobIdResponse = zAnnotationJobStatusResponse
 
@@ -2247,14 +2247,14 @@ export const zGetAppsAnnotationsQuery = z.object({
 })
 
 /**
- * Annotations retrieved successfully
+ * Successfully retrieved annotation list.
  */
 export const zGetAppsAnnotationsResponse = zAnnotationList
 
 export const zPostAppsAnnotationsBody = zAnnotationCreatePayload
 
 /**
- * Annotation created successfully
+ * Annotation created successfully.
  */
 export const zPostAppsAnnotationsResponse = zAnnotation
 
@@ -2263,7 +2263,7 @@ export const zDeleteAppsAnnotationsByAnnotationIdPath = z.object({
 })
 
 /**
- * Annotation deleted successfully
+ * Annotation deleted successfully.
  */
 export const zDeleteAppsAnnotationsByAnnotationIdResponse = z.void()
 
@@ -2274,7 +2274,7 @@ export const zPutAppsAnnotationsByAnnotationIdPath = z.object({
 })
 
 /**
- * Annotation updated successfully
+ * Annotation updated successfully.
  */
 export const zPutAppsAnnotationsByAnnotationIdResponse = zAnnotation
 
@@ -2284,14 +2284,17 @@ export const zPostAudioToTextBody = z.object({
 })
 
 /**
- * Audio successfully transcribed
+ * Successfully converted audio to text.
  */
 export const zPostAudioToTextResponse = zAudioTranscriptResponse
 
 export const zPostChatMessagesBody = zChatRequestPayloadWithUser
 
 /**
- * Message sent successfully
+ * Successful response. The content type and structure depend on the `response_mode` parameter in the request.
+ *
+ * - If `response_mode` is `blocking`, returns `application/json` with a `ChatCompletionResponse` object.
+ * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of Server-Sent Events.
  */
 export const zPostChatMessagesResponse = zGeneratedAppResponse
 
@@ -2309,7 +2312,10 @@ export const zPostChatMessagesByTaskIdStopResponse = zSimpleResultResponse
 export const zPostCompletionMessagesBody = zCompletionRequestPayloadWithUser
 
 /**
- * Completion created successfully
+ * Successful response. The content type and structure depend on the `response_mode` parameter in the request.
+ *
+ * - If `response_mode` is `blocking`, returns `application/json` with a `CompletionResponse` object.
+ * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkCompletionEvent` objects.
  */
 export const zPostCompletionMessagesResponse = zGeneratedAppResponse
 
@@ -2335,7 +2341,7 @@ export const zGetConversationsQuery = z.object({
 })
 
 /**
- * Conversations retrieved successfully
+ * Successfully retrieved conversations list.
  */
 export const zGetConversationsResponse = zConversationInfiniteScrollPagination
 
@@ -2346,7 +2352,7 @@ export const zDeleteConversationsByCIdPath = z.object({
 })
 
 /**
- * Conversation deleted successfully
+ * Conversation deleted successfully.
  */
 export const zDeleteConversationsByCIdResponse = z.void()
 
@@ -2357,7 +2363,7 @@ export const zPostConversationsByCIdNamePath = z.object({
 })
 
 /**
- * Conversation renamed successfully
+ * Conversation renamed successfully.
  */
 export const zPostConversationsByCIdNameResponse = zSimpleConversation
 
@@ -2373,7 +2379,7 @@ export const zGetConversationsByCIdVariablesQuery = z.object({
 })
 
 /**
- * Variables retrieved successfully
+ * Successfully retrieved conversation variables.
  */
 export const zGetConversationsByCIdVariablesResponse
   = zConversationVariableInfiniteScrollPaginationResponse
@@ -2387,7 +2393,7 @@ export const zPutConversationsByCIdVariablesByVariableIdPath = z.object({
 })
 
 /**
- * Variable updated successfully
+ * Variable updated successfully.
  */
 export const zPutConversationsByCIdVariablesByVariableIdResponse = zConversationVariableResponse
 
@@ -2400,14 +2406,14 @@ export const zGetDatasetsQuery = z.object({
 })
 
 /**
- * Datasets retrieved successfully
+ * List of knowledge bases.
  */
 export const zGetDatasetsResponse = zDatasetListResponse
 
 export const zPostDatasetsBody = zDatasetCreatePayload
 
 /**
- * Dataset created successfully
+ * Knowledge base created successfully.
  */
 export const zPostDatasetsResponse = zDatasetDetailResponse
 
@@ -2416,47 +2422,47 @@ export const zPostDatasetsPipelineFileUploadBody = z.object({
 })
 
 /**
- * File uploaded successfully
+ * File uploaded successfully.
  */
 export const zPostDatasetsPipelineFileUploadResponse = zPipelineUploadFileResponse
 
 export const zDeleteDatasetsTagsBody = zTagDeletePayload
 
 /**
- * Tag deleted successfully
+ * Success.
  */
 export const zDeleteDatasetsTagsResponse = z.void()
 
 /**
- * Tags retrieved successfully
+ * List of tags.
  */
 export const zGetDatasetsTagsResponse = zKnowledgeTagListResponse
 
 export const zPatchDatasetsTagsBody = zTagUpdatePayload
 
 /**
- * Tag updated successfully
+ * Tag updated successfully.
  */
 export const zPatchDatasetsTagsResponse = zKnowledgeTagResponse
 
 export const zPostDatasetsTagsBody = zTagCreatePayload
 
 /**
- * Tag created successfully
+ * Tag created successfully.
  */
 export const zPostDatasetsTagsResponse = zKnowledgeTagResponse
 
 export const zPostDatasetsTagsBindingBody = zTagBindingPayload
 
 /**
- * Tags bound successfully
+ * Success.
  */
 export const zPostDatasetsTagsBindingResponse = z.void()
 
 export const zPostDatasetsTagsUnbindingBody = zTagUnbindingPayload
 
 /**
- * Tags unbound successfully
+ * Success.
  */
 export const zPostDatasetsTagsUnbindingResponse = z.void()
 
@@ -2465,7 +2471,7 @@ export const zDeleteDatasetsByDatasetIdPath = z.object({
 })
 
 /**
- * Dataset deleted successfully
+ * Success.
  */
 export const zDeleteDatasetsByDatasetIdResponse = z.void()
 
@@ -2474,7 +2480,7 @@ export const zGetDatasetsByDatasetIdPath = z.object({
 })
 
 /**
- * Dataset retrieved successfully
+ * Knowledge base details.
  */
 export const zGetDatasetsByDatasetIdResponse = zDatasetDetailWithPartialMembersResponse
 
@@ -2485,7 +2491,7 @@ export const zPatchDatasetsByDatasetIdPath = z.object({
 })
 
 /**
- * Dataset updated successfully
+ * Knowledge base updated successfully.
  */
 export const zPatchDatasetsByDatasetIdResponse = zDatasetDetailWithPartialMembersResponse
 
@@ -2499,7 +2505,7 @@ export const zPostDatasetsByDatasetIdDocumentCreateByFilePath = z.object({
 })
 
 /**
- * Document created successfully
+ * Document created successfully.
  */
 export const zPostDatasetsByDatasetIdDocumentCreateByFileResponse = zDocumentAndBatchResponse
 
@@ -2510,7 +2516,7 @@ export const zPostDatasetsByDatasetIdDocumentCreateByTextPath = z.object({
 })
 
 /**
- * Document created successfully
+ * Document created successfully.
  */
 export const zPostDatasetsByDatasetIdDocumentCreateByTextResponse = zDocumentAndBatchResponse
 
@@ -2524,7 +2530,7 @@ export const zPostDatasetsByDatasetIdDocumentCreateByFile2Path = z.object({
 })
 
 /**
- * Document created successfully
+ * Document created successfully.
  */
 export const zPostDatasetsByDatasetIdDocumentCreateByFile2Response = zDocumentAndBatchResponse
 
@@ -2551,7 +2557,7 @@ export const zGetDatasetsByDatasetIdDocumentsQuery = z.object({
 })
 
 /**
- * Documents retrieved successfully
+ * List of documents.
  */
 export const zGetDatasetsByDatasetIdDocumentsResponse = zDocumentListResponse
 
@@ -2562,7 +2568,7 @@ export const zPostDatasetsByDatasetIdDocumentsDownloadZipPath = z.object({
 })
 
 /**
- * ZIP archive generated successfully
+ * ZIP archive containing the requested documents.
  */
 export const zPostDatasetsByDatasetIdDocumentsDownloadZipResponse = z.custom<Blob | File>()
 
@@ -2573,7 +2579,7 @@ export const zPostDatasetsByDatasetIdDocumentsMetadataPath = z.object({
 })
 
 /**
- * Documents metadata updated successfully
+ * Document metadata updated successfully.
  */
 export const zPostDatasetsByDatasetIdDocumentsMetadataResponse = zDatasetMetadataActionResponse
 
@@ -2595,7 +2601,7 @@ export const zGetDatasetsByDatasetIdDocumentsByBatchIndexingStatusPath = z.objec
 })
 
 /**
- * Indexing status retrieved successfully
+ * Indexing status for documents in the batch.
  */
 export const zGetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponse
   = zDocumentStatusListResponse
@@ -2606,7 +2612,7 @@ export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath = z.object({
 })
 
 /**
- * Document deleted successfully
+ * Success.
  */
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse = z.void()
 
@@ -2620,7 +2626,7 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdQuery = z.object({
 })
 
 /**
- * Document retrieved successfully
+ * Document details. The response shape varies based on the `metadata` query parameter. When `metadata` is `only`, only `id`, `doc_type`, and `doc_metadata` are returned. When `metadata` is `without`, `doc_type` and `doc_metadata` are omitted.
  */
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdResponse = zDocumentDetailResponse
 
@@ -2645,7 +2651,7 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadPath = z.object
 })
 
 /**
- * Download URL generated successfully
+ * Download URL generated successfully.
  */
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse = zUrlResponse
 
@@ -2662,7 +2668,7 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery = z.objec
 })
 
 /**
- * Segments retrieved successfully
+ * List of chunks.
  */
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse = zSegmentListResponse
 
@@ -2674,7 +2680,7 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath = z.objec
 })
 
 /**
- * Segments created successfully
+ * Chunks created successfully.
  */
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse
   = zSegmentCreateListResponse
@@ -2686,7 +2692,7 @@ export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdP
 })
 
 /**
- * Segment deleted successfully
+ * Success.
  */
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse = z.void()
 
@@ -2697,7 +2703,7 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath
 })
 
 /**
- * Segment retrieved successfully
+ * Chunk details.
  */
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
   = zSegmentDetailResponse
@@ -2712,7 +2718,7 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPat
 })
 
 /**
- * Segment updated successfully
+ * Chunk updated successfully.
  */
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
   = zSegmentDetailResponse
@@ -2732,7 +2738,7 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
   })
 
 /**
- * Child chunks retrieved successfully
+ * List of child chunks.
  */
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
   = zChildChunkListResponse
@@ -2748,7 +2754,7 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChi
   })
 
 /**
- * Child chunk created successfully
+ * Child chunk created successfully.
  */
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
   = zChildChunkDetailResponse
@@ -2762,7 +2768,7 @@ export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdC
   })
 
 /**
- * Child chunk deleted successfully
+ * Success.
  */
 export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
   = z.void()
@@ -2779,7 +2785,7 @@ export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdCh
   })
 
 /**
- * Child chunk updated successfully
+ * Child chunk updated successfully.
  */
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
   = zChildChunkDetailResponse
@@ -2795,7 +2801,7 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFilePath = z.o
 })
 
 /**
- * Document updated successfully
+ * Document updated successfully.
  */
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponse
   = zDocumentAndBatchResponse
@@ -2808,7 +2814,7 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextPath = z.o
 })
 
 /**
- * Document updated successfully
+ * Document updated successfully.
  */
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse
   = zDocumentAndBatchResponse
@@ -2824,7 +2830,7 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Path = z.
 })
 
 /**
- * Document updated successfully
+ * Document updated successfully.
  */
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response
   = zDocumentAndBatchResponse
@@ -2849,7 +2855,7 @@ export const zPostDatasetsByDatasetIdHitTestingPath = z.object({
 })
 
 /**
- * Hit testing results
+ * Retrieval results.
  */
 export const zPostDatasetsByDatasetIdHitTestingResponse = zHitTestingResponse
 
@@ -2858,7 +2864,7 @@ export const zGetDatasetsByDatasetIdMetadataPath = z.object({
 })
 
 /**
- * Metadata retrieved successfully
+ * Metadata fields for the knowledge base.
  */
 export const zGetDatasetsByDatasetIdMetadataResponse = zDatasetMetadataListResponse
 
@@ -2869,7 +2875,7 @@ export const zPostDatasetsByDatasetIdMetadataPath = z.object({
 })
 
 /**
- * Metadata created successfully
+ * Metadata field created successfully.
  */
 export const zPostDatasetsByDatasetIdMetadataResponse = zDatasetMetadataResponse
 
@@ -2878,7 +2884,7 @@ export const zGetDatasetsByDatasetIdMetadataBuiltInPath = z.object({
 })
 
 /**
- * Built-in fields retrieved successfully
+ * Built-in metadata fields.
  */
 export const zGetDatasetsByDatasetIdMetadataBuiltInResponse = zDatasetMetadataBuiltInFieldsResponse
 
@@ -2888,7 +2894,7 @@ export const zPostDatasetsByDatasetIdMetadataBuiltInByActionPath = z.object({
 })
 
 /**
- * Action completed successfully
+ * Built-in metadata field toggled successfully.
  */
 export const zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse
   = zDatasetMetadataActionResponse
@@ -2899,7 +2905,7 @@ export const zDeleteDatasetsByDatasetIdMetadataByMetadataIdPath = z.object({
 })
 
 /**
- * Metadata deleted successfully
+ * Success.
  */
 export const zDeleteDatasetsByDatasetIdMetadataByMetadataIdResponse = z.void()
 
@@ -2911,7 +2917,7 @@ export const zPatchDatasetsByDatasetIdMetadataByMetadataIdPath = z.object({
 })
 
 /**
- * Metadata updated successfully
+ * Metadata field updated successfully.
  */
 export const zPatchDatasetsByDatasetIdMetadataByMetadataIdResponse = zDatasetMetadataResponse
 
@@ -2924,7 +2930,7 @@ export const zGetDatasetsByDatasetIdPipelineDatasourcePluginsQuery = z.object({
 })
 
 /**
- * Datasource plugins retrieved successfully
+ * List of datasource nodes configured in the pipeline.
  */
 export const zGetDatasetsByDatasetIdPipelineDatasourcePluginsResponse
   = zDatasourcePluginListResponse
@@ -2938,7 +2944,7 @@ export const zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunPath = z.
 })
 
 /**
- * Datasource node run successfully
+ * Streaming response with node execution events.
  */
 export const zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse
   = zGeneratedAppResponse
@@ -2950,7 +2956,7 @@ export const zPostDatasetsByDatasetIdPipelineRunPath = z.object({
 })
 
 /**
- * Pipeline run successfully
+ * Pipeline execution result. Format depends on `response_mode`: streaming returns a `text/event-stream`, blocking returns a JSON object.
  */
 export const zPostDatasetsByDatasetIdPipelineRunResponse = zGeneratedAppResponse
 
@@ -2961,7 +2967,7 @@ export const zPostDatasetsByDatasetIdRetrievePath = z.object({
 })
 
 /**
- * Hit testing results
+ * Retrieval results.
  */
 export const zPostDatasetsByDatasetIdRetrieveResponse = zHitTestingResponse
 
@@ -2970,7 +2976,7 @@ export const zGetDatasetsByDatasetIdTagsPath = z.object({
 })
 
 /**
- * Tags retrieved successfully
+ * Tags bound to the knowledge base.
  */
 export const zGetDatasetsByDatasetIdTagsResponse = zDatasetBoundTagListResponse
 
@@ -2979,7 +2985,7 @@ export const zGetEndUsersByEndUserIdPath = z.object({
 })
 
 /**
- * End user retrieved successfully
+ * End user retrieved successfully.
  */
 export const zGetEndUsersByEndUserIdResponse = zEndUserDetail
 
@@ -2989,7 +2995,7 @@ export const zPostFilesUploadBody = z.object({
 })
 
 /**
- * File uploaded successfully
+ * File uploaded successfully.
  */
 export const zPostFilesUploadResponse = zFileResponse
 
@@ -3003,7 +3009,7 @@ export const zGetFilesByFileIdPreviewQuery = z.object({
 })
 
 /**
- * File retrieved successfully
+ * Returns the raw file content. The `Content-Type` header is set to the file's MIME type. If `as_attachment` is `true`, the file is returned as a download with `Content-Disposition: attachment`.
  */
 export const zGetFilesByFileIdPreviewResponse = z.custom<Blob | File>()
 
@@ -3012,7 +3018,7 @@ export const zGetFormHumanInputByFormTokenPath = z.object({
 })
 
 /**
- * Form retrieved successfully
+ * Form contents retrieved successfully.
  */
 export const zGetFormHumanInputByFormTokenResponse = zHumanInputFormDefinitionResponse
 
@@ -3023,12 +3029,12 @@ export const zPostFormHumanInputByFormTokenPath = z.object({
 })
 
 /**
- * Form submitted successfully
+ * Form submitted successfully. The response body is an empty object.
  */
 export const zPostFormHumanInputByFormTokenResponse = zHumanInputFormSubmitResponse
 
 /**
- * Application info retrieved successfully
+ * Basic information of the application.
  */
 export const zGetInfoResponse = zAppInfoResponse
 
@@ -3040,7 +3046,7 @@ export const zGetMessagesQuery = z.object({
 })
 
 /**
- * Messages retrieved successfully
+ * Successfully retrieved conversation history.
  */
 export const zGetMessagesResponse = zMessageInfiniteScrollPagination
 
@@ -3069,24 +3075,24 @@ export const zGetMessagesByMessageIdSuggestedQuery = z.object({
 export const zGetMessagesByMessageIdSuggestedResponse = zSimpleResultStringListResponse
 
 /**
- * Metadata retrieved successfully
+ * Successfully retrieved application meta information.
  */
 export const zGetMetaResponse = zAppMetaResponse
 
 /**
- * Parameters retrieved successfully
+ * Application parameters information.
  */
 export const zGetParametersResponse = zParameters
 
 /**
- * Site configuration retrieved successfully
+ * WebApp settings of the application.
  */
 export const zGetSiteResponse = zSite
 
 export const zPostTextToAudioBody = zTextToAudioPayloadWithUser
 
 /**
- * Text successfully converted to audio
+ * Returns the generated audio. Generator responses are streamed by the service as `audio/mpeg`; otherwise the provider output is returned directly.
  */
 export const zPostTextToAudioResponse = z.custom<Blob | File>()
 
@@ -3101,7 +3107,7 @@ export const zGetWorkflowByTaskIdEventsQuery = z.object({
 })
 
 /**
- * SSE event stream
+ * Server-Sent Events stream. Each event is delivered as `data: {JSON}\n\n`. Event payloads follow the same schemas as the original streaming response.
  */
 export const zGetWorkflowByTaskIdEventsResponse = zEventStreamResponse
 
@@ -3117,14 +3123,17 @@ export const zGetWorkflowsLogsQuery = z.object({
 })
 
 /**
- * Logs retrieved successfully
+ * Successfully retrieved workflow logs.
  */
 export const zGetWorkflowsLogsResponse = zWorkflowAppLogPaginationResponse
 
 export const zPostWorkflowsRunBody = zWorkflowRunPayloadWithUser
 
 /**
- * Workflow executed successfully
+ * Successful response. The content type and structure depend on the `response_mode` parameter in the request.
+ *
+ * - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object.
+ * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects.
  */
 export const zPostWorkflowsRunResponse = zGeneratedAppResponse
 
@@ -3133,7 +3142,7 @@ export const zGetWorkflowsRunByWorkflowRunIdPath = z.object({
 })
 
 /**
- * Workflow run details retrieved successfully
+ * Successfully retrieved workflow run details.
  */
 export const zGetWorkflowsRunByWorkflowRunIdResponse = zWorkflowRunResponse
 
@@ -3155,7 +3164,10 @@ export const zPostWorkflowsByWorkflowIdRunPath = z.object({
 })
 
 /**
- * Workflow executed successfully
+ * Successful response. The content type and structure depend on the `response_mode` parameter in the request.
+ *
+ * - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object.
+ * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects.
  */
 export const zPostWorkflowsByWorkflowIdRunResponse = zGeneratedAppResponse
 
@@ -3164,7 +3176,7 @@ export const zGetWorkspacesCurrentModelsModelTypesByModelTypePath = z.object({
 })
 
 /**
- * Models retrieved successfully
+ * Available models for the specified type.
  */
 export const zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse
   = zProviderWithModelsListResponse

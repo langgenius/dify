@@ -65,6 +65,19 @@ register_response_schema_models(
 
 @service_api_ns.route("/messages")
 class MessageListApi(Resource):
+    @service_api_ns.doc(
+        summary="List Conversation Messages",
+        description=(
+            "Returns historical chat records in a scrolling load format, with the first page returning "
+            "the latest `limit` messages, i.e., in reverse order."
+        ),
+        tags=["Conversations"],
+        responses={
+            200: "Successfully retrieved conversation history.",
+            400: "`not_chat_app` : App mode does not match the API route.",
+            404: ("- `not_found` : Conversation does not exist.\n- `not_found` : First message does not exist."),
+        },
+    )
     @service_api_ns.doc(params=query_params_from_model(MessageListQuery))
     @service_api_ns.doc("list_messages")
     @service_api_ns.doc(description="List messages in a conversation")
@@ -113,6 +126,18 @@ class MessageListApi(Resource):
 
 @service_api_ns.route("/messages/<uuid:message_id>/feedbacks")
 class MessageFeedbackApi(Resource):
+    @service_api_ns.doc(
+        summary="Submit Message Feedback",
+        description=(
+            "Submit feedback for a message. End users can rate messages as `like` or `dislike`, and "
+            "optionally provide text feedback. Pass `null` for `rating` to revoke previously submitted "
+            "feedback."
+        ),
+        tags=["Feedback"],
+        responses={
+            404: "`not_found` : Message does not exist.",
+        },
+    )
     @expect_with_user(service_api_ns, MessageFeedbackPayload)
     @service_api_ns.response(200, "Feedback submitted successfully", service_api_ns.models[ResultResponse.__name__])
     @service_api_ns.doc("create_message_feedback")
@@ -151,6 +176,17 @@ class MessageFeedbackApi(Resource):
 
 @service_api_ns.route("/app/feedbacks")
 class AppGetFeedbacksApi(Resource):
+    @service_api_ns.doc(
+        summary="List App Feedbacks",
+        description=(
+            "Retrieve a paginated list of all feedback submitted for messages in this application, "
+            "including both end-user and admin feedback."
+        ),
+        tags=["Feedback"],
+        responses={
+            200: "A list of application feedbacks.",
+        },
+    )
     @service_api_ns.doc(params=query_params_from_model(FeedbackListQuery))
     @service_api_ns.doc("get_app_feedbacks")
     @service_api_ns.doc(description="Get all feedbacks for the application")
@@ -178,6 +214,20 @@ class AppGetFeedbacksApi(Resource):
 
 @service_api_ns.route("/messages/<uuid:message_id>/suggested")
 class MessageSuggestedApi(Resource):
+    @service_api_ns.doc(
+        summary="Get Next Suggested Questions",
+        description="Get next questions suggestions for the current message.",
+        tags=["Chats", "Chatflows"],
+        responses={
+            200: "Successfully retrieved suggested questions.",
+            400: (
+                "- `not_chat_app` : App mode does not match the API route.\n"
+                "- `bad_request` : Suggested questions feature is disabled."
+            ),
+            404: "`not_found` : Message does not exist.",
+            500: "`internal_server_error` : Internal server error.",
+        },
+    )
     @service_api_ns.response(
         200,
         "Suggested questions retrieved successfully",
