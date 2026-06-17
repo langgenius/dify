@@ -131,6 +131,7 @@ describe('AccessRulesEditor', () => {
     )
 
     expect(screen.getByText('permission.accessRule.resourceOpenScope')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'permission.accessRule.resourceOpenScopeDescription' })).toBeInTheDocument()
 
     const allMembersButton = screen.getByRole('button', { name: /permission\.accessRule\.allPermittedMembers/ })
     const specificMembersButton = screen.getByRole('button', { name: /permission\.accessRule\.specificMembersOnly/ })

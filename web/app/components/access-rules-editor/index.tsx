@@ -7,13 +7,13 @@ import type {
 } from '@/models/access-control'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import AddAccessSubjectPopover from './add-access-subject-popover'
 import { ACCESS_RULE_TABLE_GRID } from './constants'
 import ResourceOpenScopeSection from './open-scope-section'
+import TitleTooltip from './title-tooltip'
 import UserAccessPolicyRow from './user-access-policy-row'
 
 export type AccessRulesEditorProps = {
@@ -69,22 +69,7 @@ export default function AccessRulesEditor({
           <h2 className="system-sm-semibold text-text-secondary">
             {t('accessRule.individualPermissionSettings', { ns: 'permission' })}
           </h2>
-          <Tooltip>
-            <TooltipTrigger
-              render={(
-                <button
-                  type="button"
-                  aria-label={individualPermissionSettingsTip}
-                  className="flex size-4 shrink-0 items-center justify-center rounded-sm text-text-quaternary outline-hidden hover:text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                >
-                  <span className="i-ri-question-line size-3.5" aria-hidden />
-                </button>
-              )}
-            />
-            <TooltipContent className="max-w-64 system-xs-regular text-text-secondary">
-              {individualPermissionSettingsTip}
-            </TooltipContent>
-          </Tooltip>
+          <TitleTooltip content={individualPermissionSettingsTip} />
         </div>
         {onAddAccessSubject
           ? (

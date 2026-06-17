@@ -5,6 +5,7 @@ import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import OpenScopeConfirmDialog from './open-scope-confirm-dialog'
 import OpenScopeOption from './open-scope-option'
+import TitleTooltip from './title-tooltip'
 
 type ResourceOpenScopeSectionProps = {
   value?: ResourceOpenScope
@@ -19,6 +20,7 @@ function ResourceOpenScopeSection({
 }: ResourceOpenScopeSectionProps) {
   const { t } = useTranslation()
   const [pendingOpenScope, setPendingOpenScope] = useState<ResourceOpenScope | null>(null)
+  const resourceOpenScopeDescription = t('accessRule.resourceOpenScopeDescription', { ns: 'permission' })
 
   const handleRequestChange = useCallback((nextOpenScope: ResourceOpenScope) => {
     if (nextOpenScope === value)
@@ -40,14 +42,14 @@ function ResourceOpenScopeSection({
   }, [onChange, pendingOpenScope])
 
   return (
-    <section className="flex flex-col gap-1">
-      <h2 className="system-sm-semibold text-text-secondary">
-        {t('accessRule.resourceOpenScope', { ns: 'permission' })}
-      </h2>
-      <p className="system-xs-regular text-text-tertiary">
-        {t('accessRule.resourceOpenScopeDescription', { ns: 'permission' })}
-      </p>
-      <div className="mt-1 grid grid-cols-1 gap-2 sm:grid-cols-2">
+    <section className="flex flex-col gap-2">
+      <div className="flex min-w-0 items-center gap-1">
+        <h2 className="system-sm-semibold text-text-secondary">
+          {t('accessRule.resourceOpenScope', { ns: 'permission' })}
+        </h2>
+        <TitleTooltip content={resourceOpenScopeDescription} />
+      </div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <OpenScopeOption
           value="all"
           selected={value === 'all'}
