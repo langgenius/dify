@@ -101,7 +101,7 @@ describe('agent/default', () => {
   it('identifies version 2 agent data as Agent v2', () => {
     expect(isAgentV2NodeData(createPayload({ type: BlockEnum.Agent }))).toBe(true)
     expect(isAgentV2NodeData({
-      title: 'Old Agent',
+      title: 'Agent',
       desc: '',
       type: BlockEnum.Agent,
       version: '2',

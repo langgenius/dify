@@ -299,7 +299,7 @@ describe('AddBlock', () => {
       })
     })
 
-    it('should count Agent v2 nodes by the final default data type without counting Old Agent nodes', async () => {
+    it('should count Agent v2 nodes by the final default data type without counting legacy Agent nodes', async () => {
       mockNodesMetaDataMap[BlockEnum.AgentV2] = {
         defaultValue: {
           title: 'Agent',
