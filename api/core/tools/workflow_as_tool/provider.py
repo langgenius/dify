@@ -241,7 +241,8 @@ class WorkflowToolProviderController(ToolProviderController):
 
         return self.tools
 
-    def get_tool(self, tool_name: str) -> WorkflowTool | None:  # type: ignore
+    @override
+    def get_tool(self, tool_name: str) -> WorkflowTool:
         """
         get tool by name
 
@@ -249,10 +250,10 @@ class WorkflowToolProviderController(ToolProviderController):
         :return: the tool
         """
         if self.tools is None:
-            return None
+            raise ValueError(f"Tool with name {tool_name} not found")
 
         for tool in self.tools:
             if tool.entity.identity.name == tool_name:
                 return tool
 
-        return None
+        raise ValueError(f"Tool with name {tool_name} not found")

@@ -51,7 +51,7 @@ class MCPToolProviderController(ToolProviderController):
         return ToolProviderType.MCP
 
     @classmethod
-    def from_db(cls, db_provider: MCPToolProvider) -> Self:
+    def from_db(cls, db_provider: MCPToolProvider) -> "MCPToolProviderController":
         """
         from db provider
         """
@@ -60,7 +60,7 @@ class MCPToolProviderController(ToolProviderController):
         return cls.from_entity(provider_entity)
 
     @classmethod
-    def from_entity(cls, entity: MCPProviderEntity) -> Self:
+    def from_entity(cls, entity: MCPProviderEntity) -> "MCPToolProviderController":
         """
         create a MCPToolProviderController from a MCPProviderEntity
         """
@@ -89,7 +89,7 @@ class MCPToolProviderController(ToolProviderController):
         ]
         if not entity.icon:
             raise ValueError("Database provider icon is required")
-        return cls(
+        return MCPToolProviderController(
             entity=ToolProviderEntityWithPlugin(
                 identity=ToolProviderIdentity(
                     author="Anonymous",  # Provider level author is not stored in entity
@@ -111,7 +111,7 @@ class MCPToolProviderController(ToolProviderController):
             identity_mode=entity.identity_mode,
         )
 
-    def _validate_credentials(self, user_id: str, credentials: dict[str, Any]):
+    def _validate_credentials(self, user_id: str, credentials: dict[str, Any]) -> None:
         """
         validate the credentials of the provider
         """
