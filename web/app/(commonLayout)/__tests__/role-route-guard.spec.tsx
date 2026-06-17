@@ -1,13 +1,16 @@
+import type { ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import RoleRouteGuard from '../role-route-guard'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { RoleRouteGuard } from '../role-route-guard'
 
 const mocks = vi.hoisted(() => ({
   redirect: vi.fn((url: string) => {
     throw new Error(`NEXT_REDIRECT:${url}`)
   }),
   currentWorkspaceQueryOptions: vi.fn(() => ({ queryKey: ['console', 'workspaces', 'current', 'post'] })),
+  systemFeaturesQueryKey: vi.fn(() => ['console', 'systemFeatures', 'get']),
 }))
 
 let mockPathname = '/apps'
@@ -27,6 +30,11 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    systemFeatures: {
+      get: {
+        queryKey: mocks.systemFeaturesQueryKey,
+      },
+    },
     workspaces: {
       current: {
         post: {
@@ -38,6 +46,19 @@ vi.mock('@/service/client', () => ({
 }))
 
 const mockUseQuery = vi.mocked(useQuery)
+
+function renderGuard(children: ReactNode) {
+  return renderWithSystemFeatures(
+    <RoleRouteGuard>
+      {children}
+    </RoleRouteGuard>,
+    {
+      systemFeatures: {
+        enable_app_deploy: true,
+      },
+    },
+  )
+}
 
 const setCurrentWorkspaceQuery = (overrides: { role?: string, isPending?: boolean } = {}) => {
   mockUseQuery.mockReturnValue({
@@ -56,11 +77,7 @@ describe('RoleRouteGuard', () => {
   it('should render loading while workspace is loading', () => {
     setCurrentWorkspaceQuery({ isPending: true })
 
-    render((
-      <RoleRouteGuard>
-        <div>content</div>
-      </RoleRouteGuard>
-    ))
+    renderGuard(<div>content</div>)
 
     expect(screen.getByRole('status')).toBeInTheDocument()
     expect(screen.queryByText('content')).not.toBeInTheDocument()
@@ -73,11 +90,16 @@ describe('RoleRouteGuard', () => {
   it('should redirect dataset operator on guarded routes', () => {
     setCurrentWorkspaceQuery({ role: 'dataset_operator' })
 
-    expect(() => render((
-      <RoleRouteGuard>
-        <div>content</div>
-      </RoleRouteGuard>
-    ))).toThrow('NEXT_REDIRECT:/datasets')
+    expect(() => renderGuard(<div>content</div>)).toThrow('NEXT_REDIRECT:/datasets')
+
+    expect(mocks.redirect).toHaveBeenCalledWith('/datasets')
+  })
+
+  it('should redirect dataset operator on deployments routes', () => {
+    mockPathname = '/deployments/create'
+    setCurrentWorkspaceQuery({ role: 'dataset_operator' })
+
+    expect(() => renderGuard(<div>content</div>)).toThrow('NEXT_REDIRECT:/datasets')
 
     expect(mocks.redirect).toHaveBeenCalledWith('/datasets')
   })
@@ -86,11 +108,7 @@ describe('RoleRouteGuard', () => {
     mockPathname = '/plugins'
     setCurrentWorkspaceQuery({ role: 'dataset_operator' })
 
-    render((
-      <RoleRouteGuard>
-        <div>content</div>
-      </RoleRouteGuard>
-    ))
+    renderGuard(<div>content</div>)
 
     expect(screen.getByText('content')).toBeInTheDocument()
     expect(mocks.redirect).not.toHaveBeenCalled()
@@ -100,11 +118,7 @@ describe('RoleRouteGuard', () => {
     mockPathname = '/plugins'
     setCurrentWorkspaceQuery({ isPending: true })
 
-    render((
-      <RoleRouteGuard>
-        <div>content</div>
-      </RoleRouteGuard>
-    ))
+    renderGuard(<div>content</div>)
 
     expect(screen.getByText('content')).toBeInTheDocument()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
