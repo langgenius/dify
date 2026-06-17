@@ -2,7 +2,7 @@ from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
-from pydantic import AliasChoices, BaseModel, Field
+from pydantic import BaseModel, Field
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -77,8 +77,12 @@ class AgentAppPartial(AppPartial):
     published_references: list[AgentAppPublishedReferenceResponse] = Field(default_factory=list)
 
 
-class AgentAppPagination(AppPagination):
-    data: list[AgentAppPartial] = Field(validation_alias=AliasChoices("items", "data"))
+class AgentAppPagination(BaseModel):
+    page: int
+    limit: int
+    total: int
+    has_more: bool
+    data: list[AgentAppPartial]
 
 
 register_schema_models(
