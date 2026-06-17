@@ -392,6 +392,7 @@ class TestDatasetServiceGetDatasets:
         datasets, total = DatasetService.get_datasets(
             page=1,
             per_page=20,
+            session=db_session_with_containers,
             tenant_id=tenant.id,
             user=owner,
             include_all=True,

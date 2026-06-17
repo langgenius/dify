@@ -652,7 +652,9 @@ class TestAppService:
             paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, params, db_session_with_containers)
 
             # Verify tag service was called
-            mock_tag_service.assert_called_once_with("app", tenant.id, ["tag1", "tag2"], match_all=True)
+            mock_tag_service.assert_called_once_with(
+                "app", tenant.id, ["tag1", "tag2"], db_session_with_containers, match_all=True
+            )
 
             # Verify results
             assert paginated_apps is not None
@@ -665,7 +667,7 @@ class TestAppService:
 
             params = AppListParams(page=1, limit=10, mode="chat", tag_ids=["nonexistent_tag"])
 
-            paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, params)
+            paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, params, db_session_with_containers)
 
             # Should return None when no apps match tag filter
             assert paginated_apps is None
