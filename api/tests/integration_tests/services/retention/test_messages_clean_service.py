@@ -354,6 +354,7 @@ class TestMessagesCleanServiceIntegration:
                     batch_size=2,
                     max_candidate_batch_size=2,
                     delete_batch_size=1,
+                    scan_strategy="global",
                 )
                 stats = svc.run()
 

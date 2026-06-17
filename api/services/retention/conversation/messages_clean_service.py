@@ -4,7 +4,7 @@ import math
 import random
 import time
 from collections.abc import Iterator, Sequence
-from typing import TYPE_CHECKING, TypedDict, cast
+from typing import TYPE_CHECKING, Literal, TypedDict, cast
 
 import sqlalchemy as sa
 from sqlalchemy import delete, select, tuple_
@@ -26,7 +26,9 @@ from models.model import (
     MessageFile,
 )
 from models.web import SavedMessage
+from services.retention.conversation.messages_clean_app_scan import EligibleAppRoundRobinScanner
 from services.retention.conversation.messages_clean_policy import (
+    EligibleAppMessagesCleanPolicy,
     MessagesCleanPolicy,
     SimpleMessage,
 )
@@ -40,6 +42,7 @@ if TYPE_CHECKING:
 
 _MIN_ELIGIBLE_HIT_RATE = 0.005
 _HIT_RATE_EMA_ALPHA = 0.3
+MessagesCleanScanStrategy = Literal["auto", "global", "eligible_apps"]
 
 
 class MessagesCleanupMetrics:
@@ -184,10 +187,10 @@ class MessagesCleanService:
     Compatible with non cloud edition (billing disabled): all messages in the time range will be deleted.
     If billing is enabled: only sandbox plan tenant messages are deleted (with whitelist and grace period support).
 
-    The scan cursor advances by candidate messages, not messages selected by the policy. This keeps cleanup moving
-    through windows dominated by paid, unknown, or grace-period tenants without asking SQL to find enough eligible rows.
-    Candidate scan batches can grow independently from delete batches, while deletes stay chunked into
-    small transactions.
+    Billing-disabled cleanup uses the global message cursor because every message in the time range is eligible.
+    Billing-enabled cleanup can use an eligible-app round-robin strategy: discover apps whose tenants are sandbox
+    and past grace, scan messages through per-app cursors, then revalidate tenant plans immediately before deletion.
+    The global cursor remains available as a rollback strategy and for non-billing policies.
     """
 
     def __init__(
@@ -198,6 +201,9 @@ class MessagesCleanService:
         batch_size: int = 1000,
         max_candidate_batch_size: int | None = None,
         delete_batch_size: int | None = None,
+        per_app_batch_size: int | None = None,
+        app_page_size: int = 500,
+        scan_strategy: MessagesCleanScanStrategy = "auto",
         dry_run: bool = False,
         task_label: str = "custom",
     ) -> None:
@@ -211,6 +217,9 @@ class MessagesCleanService:
             batch_size: Initial number of candidate messages to scan per batch
             max_candidate_batch_size: Maximum number of candidate messages to scan per batch
             delete_batch_size: Maximum number of messages to delete per transaction
+            per_app_batch_size: Maximum number of messages to fetch per eligible app turn
+            app_page_size: Number of apps to inspect per eligibility discovery query
+            scan_strategy: "auto", "global", or "eligible_apps"
             dry_run: Whether to perform a dry run (no actual deletion)
             task_label: Optional task label for retention metrics
         """
@@ -223,6 +232,15 @@ class MessagesCleanService:
         if delete_batch_size is not None and delete_batch_size <= 0:
             raise ValueError(f"delete_batch_size ({delete_batch_size}) must be greater than 0")
 
+        if per_app_batch_size is not None and per_app_batch_size <= 0:
+            raise ValueError(f"per_app_batch_size ({per_app_batch_size}) must be greater than 0")
+
+        if app_page_size <= 0:
+            raise ValueError(f"app_page_size ({app_page_size}) must be greater than 0")
+
+        if scan_strategy not in ("auto", "global", "eligible_apps"):
+            raise ValueError(f"scan_strategy ({scan_strategy}) must be one of: auto, global, eligible_apps")
+
         self._policy = policy
         self._end_before = end_before
         self._start_from = start_from
@@ -230,6 +248,9 @@ class MessagesCleanService:
         self._candidate_batch_size = batch_size
         self._delete_batch_size = delete_batch_size or batch_size
         self._max_candidate_batch_size = max(max_candidate_batch_size or batch_size, self._candidate_batch_size)
+        self._per_app_batch_size = per_app_batch_size or batch_size
+        self._app_page_size = app_page_size
+        self._scan_strategy = scan_strategy
         self._dry_run = dry_run
         self._metrics = MessagesCleanupMetrics(
             dry_run=dry_run,
@@ -246,6 +267,9 @@ class MessagesCleanService:
         batch_size: int = 1000,
         max_candidate_batch_size: int | None = None,
         delete_batch_size: int | None = None,
+        per_app_batch_size: int | None = None,
+        app_page_size: int = 500,
+        scan_strategy: MessagesCleanScanStrategy = "auto",
         dry_run: bool = False,
         task_label: str = "custom",
     ) -> "MessagesCleanService":
@@ -261,6 +285,9 @@ class MessagesCleanService:
             batch_size: Initial number of candidate messages to scan per batch
             max_candidate_batch_size: Maximum number of candidate messages to scan per batch
             delete_batch_size: Maximum number of messages to delete per transaction
+            per_app_batch_size: Maximum number of messages to fetch per eligible app turn
+            app_page_size: Number of apps to inspect per eligibility discovery query
+            scan_strategy: "auto", "global", or "eligible_apps"
             dry_run: Whether to perform a dry run (no actual deletion)
             task_label: Optional task label for retention metrics
 
@@ -282,14 +309,24 @@ class MessagesCleanService:
         if delete_batch_size is not None and delete_batch_size <= 0:
             raise ValueError(f"delete_batch_size ({delete_batch_size}) must be greater than 0")
 
+        if per_app_batch_size is not None and per_app_batch_size <= 0:
+            raise ValueError(f"per_app_batch_size ({per_app_batch_size}) must be greater than 0")
+
+        if app_page_size <= 0:
+            raise ValueError(f"app_page_size ({app_page_size}) must be greater than 0")
+
         logger.info(
             "clean_messages: start_from=%s, end_before=%s, batch_size=%s, "
-            "max_candidate_batch_size=%s, delete_batch_size=%s, policy=%s",
+            "max_candidate_batch_size=%s, delete_batch_size=%s, per_app_batch_size=%s, "
+            "app_page_size=%s, scan_strategy=%s, policy=%s",
             start_from,
             end_before,
             batch_size,
             max_candidate_batch_size,
             delete_batch_size,
+            per_app_batch_size,
+            app_page_size,
+            scan_strategy,
             policy.__class__.__name__,
         )
 
@@ -300,6 +337,9 @@ class MessagesCleanService:
             batch_size=batch_size,
             max_candidate_batch_size=max_candidate_batch_size,
             delete_batch_size=delete_batch_size,
+            per_app_batch_size=per_app_batch_size,
+            app_page_size=app_page_size,
+            scan_strategy=scan_strategy,
             dry_run=dry_run,
             task_label=task_label,
         )
@@ -312,6 +352,9 @@ class MessagesCleanService:
         batch_size: int = 1000,
         max_candidate_batch_size: int | None = None,
         delete_batch_size: int | None = None,
+        per_app_batch_size: int | None = None,
+        app_page_size: int = 500,
+        scan_strategy: MessagesCleanScanStrategy = "auto",
         dry_run: bool = False,
         task_label: str = "custom",
     ) -> "MessagesCleanService":
@@ -324,6 +367,9 @@ class MessagesCleanService:
             batch_size: Initial number of candidate messages to scan per batch
             max_candidate_batch_size: Maximum number of candidate messages to scan per batch
             delete_batch_size: Maximum number of messages to delete per transaction
+            per_app_batch_size: Maximum number of messages to fetch per eligible app turn
+            app_page_size: Number of apps to inspect per eligibility discovery query
+            scan_strategy: "auto", "global", or "eligible_apps"
             dry_run: Whether to perform a dry run (no actual deletion)
             task_label: Optional task label for retention metrics
 
@@ -345,16 +391,26 @@ class MessagesCleanService:
         if delete_batch_size is not None and delete_batch_size <= 0:
             raise ValueError(f"delete_batch_size ({delete_batch_size}) must be greater than 0")
 
+        if per_app_batch_size is not None and per_app_batch_size <= 0:
+            raise ValueError(f"per_app_batch_size ({per_app_batch_size}) must be greater than 0")
+
+        if app_page_size <= 0:
+            raise ValueError(f"app_page_size ({app_page_size}) must be greater than 0")
+
         end_before = naive_utc_now() - datetime.timedelta(days=days)
 
         logger.info(
             "clean_messages: days=%s, end_before=%s, batch_size=%s, "
-            "max_candidate_batch_size=%s, delete_batch_size=%s, policy=%s",
+            "max_candidate_batch_size=%s, delete_batch_size=%s, per_app_batch_size=%s, "
+            "app_page_size=%s, scan_strategy=%s, policy=%s",
             days,
             end_before,
             batch_size,
             max_candidate_batch_size,
             delete_batch_size,
+            per_app_batch_size,
+            app_page_size,
+            scan_strategy,
             policy.__class__.__name__,
         )
 
@@ -365,6 +421,9 @@ class MessagesCleanService:
             batch_size=batch_size,
             max_candidate_batch_size=max_candidate_batch_size,
             delete_batch_size=delete_batch_size,
+            per_app_batch_size=per_app_batch_size,
+            app_page_size=app_page_size,
+            scan_strategy=scan_strategy,
             dry_run=dry_run,
             task_label=task_label,
         )
@@ -379,6 +438,8 @@ class MessagesCleanService:
         status = "success"
         run_start = time.monotonic()
         try:
+            if self._should_use_eligible_app_strategy():
+                return self._clean_messages_by_eligible_apps()
             return self._clean_messages_by_time_range()
         except Exception:
             status = "failed"
@@ -388,6 +449,18 @@ class MessagesCleanService:
                 status=status,
                 job_duration_seconds=time.monotonic() - run_start,
             )
+
+    def _should_use_eligible_app_strategy(self) -> bool:
+        if self._scan_strategy == "global":
+            return False
+
+        if isinstance(self._policy, EligibleAppMessagesCleanPolicy):
+            return True
+
+        if self._scan_strategy == "eligible_apps":
+            raise ValueError("scan_strategy=eligible_apps requires an eligible-app cleanup policy")
+
+        return False
 
     def _clean_messages_by_time_range(self) -> MessagesCleanStatsDict:
         """
@@ -624,6 +697,171 @@ class MessagesCleanService:
         )
 
         return stats
+
+    def _clean_messages_by_eligible_apps(self) -> MessagesCleanStatsDict:
+        """
+        Clean messages by first discovering eligible apps, then scanning messages with per-app cursors.
+
+        The policy may cache plans during app discovery. Before each delete chunk, the policy must revalidate
+        the selected message ids against fresh tenant plans.
+        """
+        if not isinstance(self._policy, EligibleAppMessagesCleanPolicy):
+            raise ValueError("eligible app cleanup requires an eligible-app cleanup policy")
+
+        stats: MessagesCleanStatsDict = {
+            "batches": 0,
+            "total_messages": 0,
+            "filtered_messages": 0,
+            "total_deleted": 0,
+        }
+        session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
+        scanner = EligibleAppRoundRobinScanner(
+            policy=self._policy,
+            start_from=self._start_from,
+            end_before=self._end_before,
+            app_page_size=self._app_page_size,
+            per_app_batch_size=self._per_app_batch_size,
+        )
+
+        logger.info(
+            "clean_messages: start eligible-app cleanup (dry_run=%s), start_from=%s, end_before=%s, "
+            "app_page_size=%s, per_app_batch_size=%s, delete_batch_size=%s",
+            self._dry_run,
+            self._start_from,
+            self._end_before,
+            self._app_page_size,
+            self._per_app_batch_size,
+            self._delete_batch_size,
+        )
+
+        while True:
+            stats["batches"] += 1
+            batch_start = time.monotonic()
+
+            with session_factory.begin() as session:
+                fetch_start = time.monotonic()
+                scan_batch = scanner.fetch_batch(session, target_message_count=self._delete_batch_size)
+
+            batch_scanned_messages = len(scan_batch.messages)
+            stats["total_messages"] += batch_scanned_messages
+            logger.info(
+                "clean_messages (batch %s, eligible_apps): fetched %s messages from %s app turns in %sms "
+                "(apps_scanned=%s, eligible_apps=%s, empty_apps=%s, exhausted_apps=%s)",
+                stats["batches"],
+                batch_scanned_messages,
+                scan_batch.app_fetches,
+                int((time.monotonic() - fetch_start) * 1000),
+                scanner.scanned_apps,
+                scanner.eligible_apps,
+                scanner.empty_apps,
+                scan_batch.exhausted_apps,
+            )
+
+            if not scan_batch.messages:
+                logger.info("clean_messages (batch %s, eligible_apps): no more messages to process", stats["batches"])
+                self._metrics.record_batch(
+                    scanned_messages=batch_scanned_messages,
+                    filtered_messages=0,
+                    deleted_messages=0,
+                    batch_duration_seconds=time.monotonic() - batch_start,
+                )
+                break
+
+            revalidate_start = time.monotonic()
+            message_ids_to_delete = list(
+                self._policy.revalidate_message_ids(scan_batch.messages, scan_batch.app_to_tenant)
+            )
+            batch_filtered_messages = len(message_ids_to_delete)
+            stats["filtered_messages"] += batch_filtered_messages
+            revalidated_dropped = batch_scanned_messages - batch_filtered_messages
+            logger.info(
+                "clean_messages (batch %s, eligible_apps): revalidated %s/%s messages in %sms "
+                "(dropped=%s)",
+                stats["batches"],
+                batch_filtered_messages,
+                batch_scanned_messages,
+                int((time.monotonic() - revalidate_start) * 1000),
+                revalidated_dropped,
+            )
+
+            batch_deleted_messages = self._handle_delete_candidates(
+                session_factory=session_factory,
+                message_ids_to_delete=message_ids_to_delete,
+                batch_index=stats["batches"],
+                scanned_messages=batch_scanned_messages,
+            )
+            stats["total_deleted"] += batch_deleted_messages
+
+            self._metrics.record_batch(
+                scanned_messages=batch_scanned_messages,
+                filtered_messages=batch_filtered_messages,
+                deleted_messages=batch_deleted_messages,
+                batch_duration_seconds=time.monotonic() - batch_start,
+            )
+
+        logger.info(
+            "clean_messages completed: total batches: %s, total messages: %s, filtered messages: %s, "
+            "total deleted: %s",
+            stats["batches"],
+            stats["total_messages"],
+            stats["filtered_messages"],
+            stats["total_deleted"],
+        )
+        logger.info(
+            "clean_messages eligible-app discovery completed: apps_scanned=%s, eligible_apps=%s, empty_apps=%s",
+            scanner.scanned_apps,
+            scanner.eligible_apps,
+            scanner.empty_apps,
+        )
+
+        return stats
+
+    def _handle_delete_candidates(
+        self,
+        *,
+        session_factory: sessionmaker[Session],
+        message_ids_to_delete: Sequence[str],
+        batch_index: int,
+        scanned_messages: int,
+    ) -> int:
+        if not message_ids_to_delete:
+            logger.info("clean_messages (batch %s): no messages to delete, skip", batch_index)
+            return 0
+
+        if self._dry_run:
+            sample_size = min(10, len(message_ids_to_delete))
+            sampled_ids = random.sample(list(message_ids_to_delete), sample_size)
+
+            logger.info(
+                "clean_messages (batch %s, dry_run): would delete %s messages, sampling %s ids:",
+                batch_index,
+                len(message_ids_to_delete),
+                sample_size,
+            )
+            for msg_id in sampled_ids:
+                logger.info("clean_messages (batch %s, dry_run) sample: message_id=%s", batch_index, msg_id)
+            return 0
+
+        delete_result = self._delete_messages_in_chunks(
+            session_factory=session_factory,
+            message_ids=message_ids_to_delete,
+        )
+
+        logger.info(
+            "clean_messages (batch %s): processed %s candidate messages, deleted %s messages in %s chunks",
+            batch_index,
+            scanned_messages,
+            delete_result["messages_deleted"],
+            delete_result["chunks"],
+        )
+        logger.info(
+            "clean_messages (batch %s): relations %sms, messages %sms",
+            batch_index,
+            delete_result["relations_ms"],
+            delete_result["messages_ms"],
+        )
+        self._sleep_after_batch(batch_index, delete_result["messages_deleted"])
+        return delete_result["messages_deleted"]
 
     @staticmethod
     def _load_app_to_tenant_mapping(
