@@ -215,6 +215,26 @@ def test_agent_app_list_and_create_use_agent_route(
         ),
     )
     monkeypatch.setattr(
+        roster_controller.AgentRosterService,
+        "load_published_references_by_agent_id",
+        lambda _self, **kwargs: {
+            "agent-list": [
+                {
+                    "app_id": "workflow-app-id",
+                    "app_name": "RFP Review Flow",
+                    "app_icon_type": "emoji",
+                    "app_icon": "A",
+                    "app_icon_background": "#fff",
+                    "app_mode": "workflow",
+                    "app_updated_at": 1781660000,
+                    "workflow_id": "workflow-1",
+                    "workflow_version": "v1",
+                    "node_ids": ["node-1", "node-2"],
+                }
+            ]
+        },
+    )
+    monkeypatch.setattr(
         roster_controller.FeatureService,
         "get_system_features",
         lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
@@ -230,6 +250,16 @@ def test_agent_app_list_and_create_use_agent_route(
     assert listed["data"][0]["app_id"] == "app-list"
     assert listed["data"][0]["role"] == "List role"
     assert listed["data"][0]["active_config_is_published"] is False
+    assert listed["data"][0]["published_reference_count"] == 1
+    assert listed["data"][0]["published_references"] == [
+        {
+            "app_id": "workflow-app-id",
+            "app_name": "RFP Review Flow",
+            "app_icon_type": "emoji",
+            "app_icon": "A",
+            "app_icon_background": "#fff",
+        }
+    ]
     assert "bound_agent_id" not in listed["data"][0]
     list_call = cast(dict[str, object], captured["list"])
     list_params = cast(Any, list_call["params"])
