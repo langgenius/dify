@@ -862,7 +862,7 @@ class TestTagService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(NotFound) as exc_info:
-            TagService.update_tags(update_args, non_existent_tag_id,db_session_with_containers)
+            TagService.update_tags(update_args, non_existent_tag_id, db_session_with_containers)
         assert "Tag not found" in str(exc_info.value)
 
     def test_update_tags_duplicate_name_error(
