@@ -10,13 +10,14 @@ describe('app-redirection', () => {
   /**
    * Tests getRedirectionPath which determines the correct path based on:
    * - App ACL layout access permissions
+   * - App ACL monitor and access config permissions
    * - App mode (workflow, advanced-chat, chat, completion, agent-chat)
    */
   describe('getRedirectionPath', () => {
-    it('returns overview path when app ACL cannot access layout', () => {
+    it('returns develop path when app ACL cannot access guarded pages', () => {
       const app = { id: 'app-123', mode: AppModeEnum.CHAT, permission_keys: [] }
       const result = getRedirectionPath(app)
-      expect(result).toBe('/app/app-123/overview')
+      expect(result).toBe('/app/app-123/develop')
     })
 
     it('returns workflow path for workflow mode when app ACL can access layout', () => {
@@ -53,7 +54,7 @@ describe('app-redirection', () => {
       const app1 = { id: 'abc-123', mode: AppModeEnum.CHAT, permission_keys: [] }
       const app2 = { id: 'xyz-789', mode: AppModeEnum.WORKFLOW, permission_keys: [AppACLPermission.ViewLayout] }
 
-      expect(getRedirectionPath(app1)).toBe('/app/abc-123/overview')
+      expect(getRedirectionPath(app1)).toBe('/app/abc-123/develop')
       expect(getRedirectionPath(app2)).toBe('/app/xyz-789/workflow')
     })
 
@@ -72,6 +73,12 @@ describe('app-redirection', () => {
 
       expect(getRedirectionPath(app)).toBe('/app/app-123/access-config')
     })
+
+    it('returns overview path when app ACL can only monitor the app', () => {
+      const app = { id: 'app-123', mode: AppModeEnum.CHAT, permission_keys: [AppACLPermission.Monitor] }
+
+      expect(getRedirectionPath(app)).toBe('/app/app-123/overview')
+    })
   })
 
   /**
@@ -81,13 +88,13 @@ describe('app-redirection', () => {
     /**
      * Tests that the redirection function is called with the correct path
      */
-    it('calls redirection function with overview path when app ACL cannot access layout', () => {
+    it('calls redirection function with develop path when app ACL cannot access guarded pages', () => {
       const app = { id: 'app-123', mode: AppModeEnum.CHAT, permission_keys: [] }
       const mockRedirect = vi.fn()
 
       getRedirection(app, mockRedirect)
 
-      expect(mockRedirect).toHaveBeenCalledWith('/app/app-123/overview')
+      expect(mockRedirect).toHaveBeenCalledWith('/app/app-123/develop')
       expect(mockRedirect).toHaveBeenCalledTimes(1)
     })
 

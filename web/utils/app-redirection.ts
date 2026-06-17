@@ -27,7 +27,7 @@ export const getRedirectionPath = (
   if (appACLCapabilities.canAccessConfig)
     return `/app/${app.id}/access-config`
 
-  return `/app/${app.id}/overview`
+  return `/app/${app.id}/develop`
 }
 
 export const getRedirection = (

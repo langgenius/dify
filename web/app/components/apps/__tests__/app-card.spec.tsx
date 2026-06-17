@@ -319,8 +319,21 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', () => {
 
 // AppCardTags has tag API dependencies - mock for isolated testing
 vi.mock('@/features/tag-management/components/app-card-tags', () => ({
-  AppCardTags: ({ tags }: { tags?: { id: string, name: string }[] }) => {
-    return React.createElement('div', { 'aria-label': 'tag-selector' }, tags?.map((tag: { id: string, name: string }) => React.createElement('span', { key: tag.id }, tag.name)))
+  AppCardTags: ({
+    tags,
+    canBindOrUnbindTags,
+  }: {
+    tags?: { id: string, name: string }[]
+    canBindOrUnbindTags?: boolean
+  }) => {
+    return React.createElement(
+      'div',
+      {
+        'aria-label': 'tag-selector',
+        'data-can-bind-or-unbind-tags': String(Boolean(canBindOrUnbindTags)),
+      },
+      tags?.map((tag: { id: string, name: string }) => React.createElement('span', { key: tag.id }, tag.name)),
+    )
   },
 }))
 
@@ -443,6 +456,36 @@ describe('AppCard', () => {
 
       expect(screen.getByText('New Tag')).toBeInTheDocument()
       expect(screen.queryByText('Old Tag')).not.toBeInTheDocument()
+    })
+
+    it('should allow app edit permission to bind tags without workspace tag management permission', () => {
+      mockAppContext.isCurrentWorkspaceEditor = false
+      mockAppContext.workspacePermissionKeys = []
+      mockAppContext.userProfile = { id: 'user-2' }
+      const editableApp = createMockApp({
+        maintainer: 'user-1',
+        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: 0 }],
+        permission_keys: [AppACLPermission.Edit],
+      })
+
+      render(<AppCard app={editableApp} />)
+
+      expect(screen.getByLabelText('tag-selector')).toHaveAttribute('data-can-bind-or-unbind-tags', 'true')
+    })
+
+    it('should not render tag selector without app edit or workspace tag management permission', () => {
+      mockAppContext.isCurrentWorkspaceEditor = false
+      mockAppContext.workspacePermissionKeys = []
+      mockAppContext.userProfile = { id: 'user-2' }
+      const readonlyApp = createMockApp({
+        maintainer: 'user-1',
+        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: 0 }],
+        permission_keys: [AppACLPermission.ViewLayout],
+      })
+
+      render(<AppCard app={readonlyApp} />)
+
+      expect(screen.queryByLabelText('tag-selector')).not.toBeInTheDocument()
     })
 
     it('should render with onRefresh callback', () => {

@@ -723,7 +723,6 @@ export const AppCardActionBar: React.FC<AppCardActionBarProps> = ({ app, onRefre
 const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () => { } }: AppCardProps) => {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const isCurrentWorkspaceEditor = useAppContextSelector(state => state.isCurrentWorkspaceEditor)
   const currentUserId = useAppContextSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
   const { onPlanInfoChanged } = useProviderContext()
@@ -748,6 +747,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
   }), [currentUserId, resourceMaintainer, workspacePermissionKeys])
   const appACLCapabilities = useMemo(() => getAppACLCapabilities(app.permission_keys, maintainerPermissionOptions), [app.permission_keys, maintainerPermissionOptions])
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
+  const canManageAppTags = hasPermission(workspacePermissionKeys, 'app.tag.manage')
 
   const onConfirmDelete = useCallback(async () => {
     try {
@@ -952,6 +952,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
   const shouldShowAccessConfigOption = appACLCapabilities.canAccessConfig
   const shouldShowDeleteOption = appACLCapabilities.canDelete
   const shouldShowOperationsMenu = shouldShowEditOption || shouldShowDuplicateOption || shouldShowExportOption || shouldShowSwitchOption || shouldShowAccessControlOption || shouldShowAccessConfigOption || shouldShowDeleteOption
+  const shouldShowAppTags = appACLCapabilities.canEdit || canManageAppTags
   const operationsMenuWidthClassName = shouldShowSwitchOption ? 'w-[256px]' : 'w-[216px]'
 
   const editTimeText = useMemo(() => {
@@ -1050,7 +1051,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
             </div>
           </div>
         </Link>
-        {isCurrentWorkspaceEditor && (
+        {shouldShowAppTags && (
           <div
             className="absolute top-[104px] right-3 left-3 flex h-[26px] min-w-0 items-start"
             onClick={(e) => {
@@ -1061,6 +1062,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
             <AppCardTags
               appId={app.id}
               tags={app.tags}
+              canBindOrUnbindTags={appACLCapabilities.canEdit}
               onOpenTagManagement={onOpenTagManagement}
               onTagsChange={onRefresh}
             />
