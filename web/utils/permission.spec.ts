@@ -132,12 +132,12 @@ describe('permission', () => {
     })
   })
 
-  describe('app creator capabilities', () => {
+  describe('app maintainer capabilities', () => {
     it('grants all app ACL capabilities without injecting app ACL permission keys', () => {
       const permissionKeys: string[] = []
       const capabilities = getAppACLCapabilities(permissionKeys, {
         currentUserId: 'user-1',
-        resourceCreatedBy: 'user-1',
+        resourceMaintainer: 'user-1',
         workspacePermissionKeys: ['app.create_and_management'],
       })
 
@@ -152,10 +152,10 @@ describe('permission', () => {
       expect(permissionKeys).toEqual([])
     })
 
-    it('keeps app ACL capabilities unchanged when the creator lacks app.create_and_management permission', () => {
+    it('keeps app ACL capabilities unchanged when the maintainer lacks app.create_and_management permission', () => {
       const capabilities = getAppACLCapabilities([AppACLPermission.ViewLayout], {
         currentUserId: 'user-1',
-        resourceCreatedBy: 'user-1',
+        resourceMaintainer: 'user-1',
         workspacePermissionKeys: [],
       })
 
@@ -165,12 +165,12 @@ describe('permission', () => {
     })
   })
 
-  describe('dataset creator capabilities', () => {
+  describe('dataset maintainer capabilities', () => {
     it('grants all dataset ACL capabilities without injecting dataset ACL permission keys', () => {
       const permissionKeys: string[] = []
       const capabilities = getDatasetACLCapabilities(permissionKeys, {
         currentUserId: 'user-1',
-        resourceCreatedBy: 'user-1',
+        resourceMaintainer: 'user-1',
         workspacePermissionKeys: ['dataset.create_and_management'],
       })
 
@@ -188,10 +188,10 @@ describe('permission', () => {
       expect(permissionKeys).toEqual([])
     })
 
-    it('keeps dataset ACL capabilities unchanged when the current user is not the creator', () => {
+    it('keeps dataset ACL capabilities unchanged when the current user is not the maintainer', () => {
       const capabilities = getDatasetACLCapabilities([DatasetACLPermission.Readonly], {
         currentUserId: 'user-1',
-        resourceCreatedBy: 'user-2',
+        resourceMaintainer: 'user-2',
         workspacePermissionKeys: ['dataset.create_and_management'],
       })
 

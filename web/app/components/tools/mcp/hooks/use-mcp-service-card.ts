@@ -42,10 +42,10 @@ export const useMCPServiceCardState = (
   const canManageMCP = useMemo(
     () => getAppACLCapabilities(appInfo.permission_keys, {
       currentUserId,
-      resourceCreatedBy: appInfo.created_by || appInfo.workflow?.created_by,
+      resourceMaintainer: appInfo.maintainer,
       workspacePermissionKeys,
     }).canEdit,
-    [appInfo.created_by, appInfo.permission_keys, appInfo.workflow?.created_by, currentUserId, workspacePermissionKeys],
+    [appInfo.maintainer, appInfo.permission_keys, currentUserId, workspacePermissionKeys],
   )
 
   // UI state

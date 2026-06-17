@@ -44,9 +44,9 @@ const Panel: FC = () => {
   const appDetail = useAppStore(s => s.appDetail)
   const appACLCapabilities = React.useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
     currentUserId,
-    resourceCreatedBy: appDetail?.created_by || appDetail?.workflow?.created_by,
+    resourceMaintainer: appDetail?.maintainer,
     workspacePermissionKeys,
-  }), [appDetail?.created_by, appDetail?.permission_keys, appDetail?.workflow?.created_by, currentUserId, workspacePermissionKeys])
+  }), [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys])
   const canConfigTracing = appACLCapabilities.canMonitor
   const readOnly = !canConfigTracing
 

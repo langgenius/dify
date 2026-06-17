@@ -59,6 +59,7 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   data_source_type: DataSourceType.FILE,
   indexing_technique: 'high_quality' as DataSet['indexing_technique'],
   created_by: 'user-1',
+  maintainer: 'user-1',
   updated_by: 'user-1',
   updated_at: 1690000000,
   app_count: 0,
@@ -438,7 +439,7 @@ describe('knowledge-retrieval path', () => {
       expect(within(datasetItem).queryByRole('button', { name: 'common.operation.edit' })).not.toBeInTheDocument()
       expect(getDatasetACLCapabilities).toHaveBeenCalledWith(dataset.permission_keys, expect.objectContaining({
         currentUserId: 'user-1',
-        resourceCreatedBy: dataset.created_by,
+        resourceMaintainer: dataset.maintainer,
       }))
     })
   })

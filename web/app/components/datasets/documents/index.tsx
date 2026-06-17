@@ -36,7 +36,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const embeddingAvailable = !!dataset?.embedding_available
   const datasetACLCapabilities = getDatasetACLCapabilities(dataset?.permission_keys, {
     currentUserId,
-    resourceCreatedBy: dataset?.created_by,
+    resourceMaintainer: dataset?.maintainer,
     workspacePermissionKeys,
   })
 

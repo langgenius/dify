@@ -1,5 +1,6 @@
 import type { AccessControlTemplateLanguage } from '@/i18n-config/language'
 import type {
+  RemoveDatasetAccessPolicyMemberBindingsRequest,
   ResourceOpenScope,
   UpdateDatasetUserAccessSettingsRequest,
 } from '@/models/access-control'
@@ -53,6 +54,39 @@ export const useUpdateDatasetUserAccessSettings = (datasetId: string) => {
       },
       body: {
         access_policy_ids: payload.accessPolicyIds,
+      },
+    }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.rbacAccessConfig.datasets.userAccessSettings.queryKey({
+            input: {
+              params: {
+                datasetId,
+              },
+            },
+          }),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.rbacAccessConfig.datasets.accessRules.key(),
+        }),
+      ])
+    },
+  })
+}
+
+export const useRemoveDatasetAccessPolicyMemberBindings = (datasetId: string) => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'remove-dataset-access-policy-member-bindings', datasetId],
+    mutationFn: (payload: RemoveDatasetAccessPolicyMemberBindingsRequest) => consoleClient.rbacAccessConfig.datasets.removeMemberBindings({
+      params: {
+        datasetId,
+        policyId: payload.accessPolicyId,
+      },
+      body: {
+        account_ids: payload.accountIds,
       },
     }),
     onSuccess: async () => {

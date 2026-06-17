@@ -76,7 +76,7 @@ const AppDetailSection = ({
     const supportsAnnotations = appDetail.mode !== AppModeEnum.WORKFLOW && appDetail.mode !== AppModeEnum.COMPLETION
     const appACLCapabilities = getAppACLCapabilities(appDetail.permission_keys, {
       currentUserId: userProfile?.id,
-      resourceCreatedBy: appDetail.created_by || appDetail.workflow?.created_by,
+      resourceMaintainer: appDetail.maintainer,
       workspacePermissionKeys,
     })
 

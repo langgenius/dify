@@ -74,9 +74,9 @@ function AppCard({
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const appACLCapabilities = useMemo(() => getAppACLCapabilities(appInfo.permission_keys, {
     currentUserId,
-    resourceCreatedBy: appInfo.created_by || appInfo.workflow?.created_by,
+    resourceMaintainer: appInfo.maintainer,
     workspacePermissionKeys,
-  }), [appInfo.created_by, appInfo.permission_keys, appInfo.workflow?.created_by, currentUserId, workspacePermissionKeys])
+  }), [appInfo.maintainer, appInfo.permission_keys, currentUserId, workspacePermissionKeys])
   const canEditApp = appACLCapabilities.canEdit
   const shouldFetchWorkflow = appInfo.mode === AppModeEnum.WORKFLOW || appInfo.mode === AppModeEnum.ADVANCED_CHAT
   const { data: currentWorkflow } = useAppWorkflow(shouldFetchWorkflow ? appInfo.id : '')

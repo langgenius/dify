@@ -83,9 +83,9 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const canEditApp = React.useMemo(() => getAppACLCapabilities(appInfo.permission_keys, {
     currentUserId,
-    resourceCreatedBy: appInfo.created_by || appInfo.workflow?.created_by,
+    resourceMaintainer: appInfo.maintainer,
     workspacePermissionKeys,
-  }).canEdit, [appInfo.created_by, appInfo.permission_keys, appInfo.workflow?.created_by, currentUserId, workspacePermissionKeys])
+  }).canEdit, [appInfo.maintainer, appInfo.permission_keys, currentUserId, workspacePermissionKeys])
   const { data: triggersResponse, isLoading } = useAppTriggers(appId)
   const { mutateAsync: updateTriggerStatus } = useUpdateTriggerStatus()
   const invalidateAppTriggers = useInvalidateAppTriggers()

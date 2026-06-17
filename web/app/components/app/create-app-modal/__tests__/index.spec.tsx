@@ -149,7 +149,7 @@ describe('CreateAppModal', () => {
   })
 
   it('creates an app, notifies success, and fires callbacks', async () => {
-    const mockApp: Partial<App> = { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT }
+    const mockApp: Partial<App> = { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT, maintainer: 'user-1' }
     mockCreateApp.mockResolvedValue(mockApp as App)
     const { onClose, onSuccess } = renderModal()
 
@@ -175,7 +175,7 @@ describe('CreateAppModal', () => {
     await waitFor(() =>
       expect(mockGetRedirection).toHaveBeenCalledWith(mockApp, mockPush, {
         currentUserId: 'user-1',
-        resourceCreatedBy: undefined,
+        resourceMaintainer: 'user-1',
         workspacePermissionKeys: ['app.create_and_management'],
       }),
     )

@@ -253,6 +253,7 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => {
     indexing_technique: 'high_quality' as any,
     author_name: 'Test Author',
     created_by: 'user-123',
+    maintainer: 'user-123',
     updated_by: 'user-123',
     updated_at: Date.now(),
     app_count: 0,
@@ -499,7 +500,7 @@ describe('DatasetConfig', () => {
       expect(screen.queryByText('Edit')).not.toBeInTheDocument()
       expect(getDatasetACLCapabilities).toHaveBeenCalledWith(dataset.permission_keys, expect.objectContaining({
         currentUserId: 'user-123',
-        resourceCreatedBy: dataset.created_by,
+        resourceMaintainer: dataset.maintainer,
       }))
     })
   })

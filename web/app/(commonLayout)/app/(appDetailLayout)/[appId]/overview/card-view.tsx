@@ -45,9 +45,9 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const canEditApp = useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
     currentUserId,
-    resourceCreatedBy: appDetail?.created_by || appDetail?.workflow?.created_by,
+    resourceMaintainer: appDetail?.maintainer,
     workspacePermissionKeys,
-  }).canEdit, [appDetail?.created_by, appDetail?.permission_keys, appDetail?.workflow?.created_by, currentUserId, workspacePermissionKeys])
+  }).canEdit, [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys])
 
   const isWorkflowApp = appDetail?.mode === AppModeEnum.WORKFLOW
   const showMCPCard = isInPanel

@@ -5,6 +5,7 @@ import {
   useDatasetAccessRules,
   useDatasetOpenScope,
   useDatasetUserAccessSettings,
+  useRemoveDatasetAccessPolicyMemberBindings,
   useUpdateDatasetOpenScope,
   useUpdateDatasetUserAccessSettings,
 } from '../use-dataset-access-config'
@@ -27,6 +28,7 @@ const mocks = vi.hoisted(() => ({
   openScopeQueryKey: vi.fn(() => ['rbac-access-config', 'datasets', 'open-scope', 'dataset-1']),
   updateOpenScope: vi.fn().mockResolvedValue({}),
   updateUserAccessSettings: vi.fn().mockResolvedValue({}),
+  removeMemberBindings: vi.fn().mockResolvedValue({}),
 }))
 
 vi.mock('@/service/client', () => ({
@@ -35,6 +37,7 @@ vi.mock('@/service/client', () => ({
       datasets: {
         updateOpenScope: mocks.updateOpenScope,
         updateUserAccessSettings: mocks.updateUserAccessSettings,
+        removeMemberBindings: mocks.removeMemberBindings,
       },
     },
   },
@@ -134,6 +137,32 @@ describe('use-dataset-access-config', () => {
         },
         body: {
           access_policy_ids: ['policy-1', 'policy-2'],
+        },
+      })
+      expect(mocks.userAccessSettingsQueryKey).toHaveBeenCalledWith({
+        input: {
+          params: {
+            datasetId: 'dataset-1',
+          },
+        },
+      })
+      expect(mocks.accessRulesKey).toHaveBeenCalled()
+    })
+
+    it('should remove dataset access policy member bindings for account ids', async () => {
+      const { result } = renderHook(() => useRemoveDatasetAccessPolicyMemberBindings('dataset-1'), { wrapper: createWrapper() })
+
+      await act(async () => {
+        await result.current.mutateAsync({ accessPolicyId: 'policy-1', accountIds: ['account-1'] })
+      })
+
+      expect(mocks.removeMemberBindings).toHaveBeenCalledWith({
+        params: {
+          datasetId: 'dataset-1',
+          policyId: 'policy-1',
+        },
+        body: {
+          account_ids: ['account-1'],
         },
       })
       expect(mocks.userAccessSettingsQueryKey).toHaveBeenCalledWith({

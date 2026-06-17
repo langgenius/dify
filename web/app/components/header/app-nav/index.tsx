@@ -96,7 +96,7 @@ const AppNav = () => {
       mode: app.mode,
       link: getAppLink(getAppACLCapabilities(app.permission_keys, {
         currentUserId,
-        resourceCreatedBy: app.created_by || app.workflow?.created_by,
+        resourceMaintainer: app.maintainer,
         workspacePermissionKeys,
       }).canAccessLayout, app.id, app.mode),
     }))

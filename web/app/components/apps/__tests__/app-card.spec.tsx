@@ -339,6 +339,7 @@ const createMockApp = (overrides: Partial<App> = {}): App => ({
   icon_url: null,
   author_name: 'Test Author',
   created_by: 'user-1',
+  maintainer: 'user-1',
   created_at: 1704067200,
   updated_at: 1704153600,
   tags: [],
@@ -577,6 +578,7 @@ describe('AppCard', () => {
     it('should show duplicate option when user can create apps without app import export permission', async () => {
       const appWithoutImportExportPermission = createMockApp({
         created_by: 'another-user',
+        maintainer: 'another-user',
         permission_keys: [AppACLPermission.ViewLayout],
       })
       render(<AppCard app={appWithoutImportExportPermission} />)
@@ -624,6 +626,7 @@ describe('AppCard', () => {
       mockAppContext.workspacePermissionKeys = []
       const editableChatApp = createMockApp({
         created_by: 'another-user',
+        maintainer: 'another-user',
         mode: AppModeEnum.CHAT,
         permission_keys: [AppACLPermission.Edit],
       })
@@ -1675,6 +1678,7 @@ describe('AppCard', () => {
     it('should show access control option when user has app release and version permission', async () => {
       const appWithReleasePermission = createMockApp({
         created_by: 'another-user',
+        maintainer: 'another-user',
         permission_keys: [AppACLPermission.ReleaseAndVersion],
       })
       render(<AppCard app={appWithReleasePermission} />)
@@ -1689,6 +1693,7 @@ describe('AppCard', () => {
     it('should show resource access option when user only has app access config permission', async () => {
       const appWithAccessConfigPermission = createMockApp({
         created_by: 'another-user',
+        maintainer: 'another-user',
         permission_keys: [AppACLPermission.AccessConfig, AppACLPermission.Delete],
       })
       render(<AppCard app={appWithAccessConfigPermission} />)
@@ -1705,6 +1710,7 @@ describe('AppCard', () => {
     it('should navigate to app access config when resource access is clicked', async () => {
       const appWithAccessConfigPermission = createMockApp({
         created_by: 'another-user',
+        maintainer: 'another-user',
         permission_keys: [AppACLPermission.AccessConfig],
       })
       render(<AppCard app={appWithAccessConfigPermission} />)

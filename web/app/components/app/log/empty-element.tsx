@@ -52,7 +52,7 @@ const EmptyElement: FC<{ appDetail: App }> = ({ appDetail }) => {
                 <Link
                   href={getRedirectionPath(appDetail, {
                     currentUserId,
-                    resourceCreatedBy: appDetail.created_by || appDetail.workflow?.created_by,
+                    resourceMaintainer: appDetail.maintainer,
                     workspacePermissionKeys,
                   })}
                   className="text-util-colors-blue-blue-600"

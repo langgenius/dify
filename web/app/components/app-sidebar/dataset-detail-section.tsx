@@ -60,7 +60,7 @@ const DatasetDetailSection = ({
 
     const datasetACLCapabilities = getDatasetACLCapabilities(datasetRes?.permission_keys, {
       currentUserId: userProfile?.id,
-      resourceCreatedBy: datasetRes?.created_by,
+      resourceMaintainer: datasetRes?.maintainer,
       workspacePermissionKeys,
     })
     const baseNavigation = [
@@ -108,7 +108,7 @@ const DatasetDetailSection = ({
     }
 
     return baseNavigation
-  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider, datasetRes?.permission_keys, datasetRes?.created_by, userProfile?.id, workspacePermissionKeys])
+  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider, datasetRes?.permission_keys, datasetRes?.maintainer, userProfile?.id, workspacePermissionKeys])
 
   if (!datasetRes)
     return null

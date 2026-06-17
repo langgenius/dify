@@ -35,10 +35,10 @@ export const useFormState = () => {
   const datasetACLCapabilities = useMemo(
     () => getDatasetACLCapabilities(currentDataset?.permission_keys, {
       currentUserId,
-      resourceCreatedBy: currentDataset?.created_by,
+      resourceMaintainer: currentDataset?.maintainer,
       workspacePermissionKeys,
     }),
-    [currentDataset?.created_by, currentDataset?.permission_keys, currentUserId, workspacePermissionKeys],
+    [currentDataset?.maintainer, currentDataset?.permission_keys, currentUserId, workspacePermissionKeys],
   )
   const canEditSettings = datasetACLCapabilities.canEdit
 

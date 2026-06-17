@@ -1,5 +1,6 @@
 import type { AccessControlTemplateLanguage } from '@/i18n-config/language'
 import type {
+  RemoveAppAccessPolicyMemberBindingsRequest,
   ResourceOpenScope,
   UpdateAppUserAccessSettingsRequest,
 } from '@/models/access-control'
@@ -53,6 +54,39 @@ export const useUpdateAppUserAccessSettings = (appId: string) => {
       },
       body: {
         access_policy_ids: payload.accessPolicyIds,
+      },
+    }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.rbacAccessConfig.apps.userAccessSettings.queryKey({
+            input: {
+              params: {
+                appId,
+              },
+            },
+          }),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.rbacAccessConfig.apps.accessRules.key(),
+        }),
+      ])
+    },
+  })
+}
+
+export const useRemoveAppAccessPolicyMemberBindings = (appId: string) => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'remove-app-access-policy-member-bindings', appId],
+    mutationFn: (payload: RemoveAppAccessPolicyMemberBindingsRequest) => consoleClient.rbacAccessConfig.apps.removeMemberBindings({
+      params: {
+        appId,
+        policyId: payload.accessPolicyId,
+      },
+      body: {
+        account_ids: payload.accountIds,
       },
     }),
     onSuccess: async () => {

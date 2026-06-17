@@ -24,7 +24,7 @@ const ContinueWorkItem = ({
   const updatedAt = (app.updated_at || app.created_at) * 1000
   const href = getRedirectionPath(app, {
     currentUserId,
-    resourceCreatedBy: app.created_by || app.workflow?.created_by,
+    resourceMaintainer: app.maintainer,
     workspacePermissionKeys,
   })
 

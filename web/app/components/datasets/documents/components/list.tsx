@@ -65,9 +65,9 @@ const DocumentList = ({
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const datasetACLCapabilities = useMemo(() => getDatasetACLCapabilities(datasetConfig?.permission_keys, {
     currentUserId,
-    resourceCreatedBy: datasetConfig?.created_by,
+    resourceMaintainer: datasetConfig?.maintainer,
     workspacePermissionKeys,
-  }), [datasetConfig?.created_by, datasetConfig?.permission_keys, currentUserId, workspacePermissionKeys])
+  }), [datasetConfig?.maintainer, datasetConfig?.permission_keys, currentUserId, workspacePermissionKeys])
   const chunkingMode = datasetConfig?.doc_form
   const isGeneralMode = chunkingMode !== ChunkingMode.parentChild
   const isQAMode = chunkingMode === ChunkingMode.qa

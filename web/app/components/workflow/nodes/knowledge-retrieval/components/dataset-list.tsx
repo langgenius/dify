@@ -46,7 +46,7 @@ const DatasetList: FC<Props> = ({
     return list.map((item) => {
       const datasetACLCapabilities = getDatasetACLCapabilities(item.permission_keys, {
         currentUserId,
-        resourceCreatedBy: item.created_by,
+        resourceMaintainer: item.maintainer,
         workspacePermissionKeys,
       })
       return {

@@ -34,7 +34,7 @@ export function StarredAppCard({ app, onRefresh }: StarredAppCardProps) {
   }, [app.created_at, app.updated_at, t])
   const href = getRedirectionPath(app, {
     currentUserId,
-    resourceCreatedBy: app.created_by || app.workflow?.created_by,
+    resourceMaintainer: app.maintainer,
     workspacePermissionKeys,
   })
 

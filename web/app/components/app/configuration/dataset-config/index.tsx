@@ -158,7 +158,7 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
     return dataSet.map((item) => {
       const datasetACLCapabilities = getDatasetACLCapabilities(item.permission_keys, {
         currentUserId,
-        resourceCreatedBy: item.created_by,
+        resourceMaintainer: item.maintainer,
         workspacePermissionKeys,
       })
       return {

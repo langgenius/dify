@@ -35,10 +35,10 @@ const RagPipelineMain = ({
   const datasetACLCapabilities = useMemo(
     () => getDatasetACLCapabilities(dataset?.permission_keys, {
       currentUserId,
-      resourceCreatedBy: dataset?.created_by,
+      resourceMaintainer: dataset?.maintainer,
       workspacePermissionKeys,
     }),
-    [dataset?.created_by, dataset?.permission_keys, currentUserId, workspacePermissionKeys],
+    [dataset?.maintainer, dataset?.permission_keys, currentUserId, workspacePermissionKeys],
   )
 
   const handleWorkflowDataUpdate = useCallback((payload: any) => {

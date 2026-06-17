@@ -42,9 +42,9 @@ const AppInfoDetailPanel = ({
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const appACLCapabilities = useMemo(() => getAppACLCapabilities(appDetail.permission_keys, {
     currentUserId,
-    resourceCreatedBy: appDetail.created_by || appDetail.workflow?.created_by,
+    resourceMaintainer: appDetail.maintainer,
     workspacePermissionKeys,
-  }), [appDetail.created_by, appDetail.permission_keys, appDetail.workflow?.created_by, currentUserId, workspacePermissionKeys])
+  }), [appDetail.maintainer, appDetail.permission_keys, currentUserId, workspacePermissionKeys])
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
 
   const primaryOperations = useMemo<Operation[]>(() => [

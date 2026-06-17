@@ -12,6 +12,7 @@ import {
   useAppAccessRules,
   useAppOpenScope,
   useAppUserAccessSettings,
+  useRemoveAppAccessPolicyMemberBindings,
   useUpdateAppOpenScope,
   useUpdateAppUserAccessSettings,
 } from '@/service/access-control/use-app-access-config'
@@ -30,6 +31,7 @@ const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
   const { data: appOpenScopeResponse, isLoading: isLoadingAppOpenScope } = useAppOpenScope(appId)
   const { mutate: updateAppOpenScope, isPending: isUpdatingAppOpenScope } = useUpdateAppOpenScope(appId)
   const { mutate: updateAppUserAccessSettings } = useUpdateAppUserAccessSettings(appId)
+  const { mutate: removeAppAccessPolicyMemberBindings } = useRemoveAppAccessPolicyMemberBindings(appId)
   const [optimisticOpenScope, setOptimisticOpenScope] = useState<ResourceOpenScope | null>(null)
   const [updatingAccountId, setUpdatingAccountId] = useState<string | null>(null)
 
@@ -56,6 +58,14 @@ const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
     )
   }, [updateAppUserAccessSettings])
 
+  const handleRemoveAccessPolicyMemberBinding = useCallback((accountId: string, accessPolicyId: string) => {
+    setUpdatingAccountId(accountId)
+    removeAppAccessPolicyMemberBindings(
+      { accessPolicyId, accountIds: [accountId] },
+      { onSettled: () => setUpdatingAccountId(null) },
+    )
+  }, [removeAppAccessPolicyMemberBindings])
+
   return (
     <ScrollArea
       className="h-full bg-background-default-subtle"
@@ -80,6 +90,7 @@ const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
           maintainerId={maintainerId}
           onOpenScopeChange={handleOpenScopeChange}
           onUserAccessPoliciesChange={handleUserAccessPoliciesChange}
+          onRemoveAccessPolicyMemberBinding={handleRemoveAccessPolicyMemberBinding}
           onAddAccessSubject={handleUserAccessPoliciesChange}
         />
       </main>

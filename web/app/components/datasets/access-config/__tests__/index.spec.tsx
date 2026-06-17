@@ -28,6 +28,7 @@ const mockAccessRulesEditor = vi.hoisted(() => ({
 const mockMutations = vi.hoisted(() => ({
   updateOpenScope: vi.fn(),
   updateUserAccessSettings: vi.fn(),
+  removeMemberBindings: vi.fn(),
 }))
 
 vi.mock('@/service/access-control/use-dataset-access-config', () => ({
@@ -49,6 +50,9 @@ vi.mock('@/service/access-control/use-dataset-access-config', () => ({
   })),
   useUpdateDatasetUserAccessSettings: vi.fn(() => ({
     mutate: mockMutations.updateUserAccessSettings,
+  })),
+  useRemoveDatasetAccessPolicyMemberBindings: vi.fn(() => ({
+    mutate: mockMutations.removeMemberBindings,
   })),
 }))
 
@@ -151,6 +155,14 @@ describe('DatasetAccessConfigPage', () => {
       expect(mockMutations.updateUserAccessSettings).toHaveBeenCalledWith({
         accountId: 'account-2',
         accessPolicyIds: ['default'],
+      }, expect.objectContaining({
+        onSettled: expect.any(Function),
+      }))
+
+      mockAccessRulesEditor.props?.onRemoveAccessPolicyMemberBinding?.('account-3', 'policy-3')
+      expect(mockMutations.removeMemberBindings).toHaveBeenCalledWith({
+        accessPolicyId: 'policy-3',
+        accountIds: ['account-3'],
       }, expect.objectContaining({
         onSettled: expect.any(Function),
       }))

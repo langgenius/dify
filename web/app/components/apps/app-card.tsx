@@ -102,7 +102,7 @@ type AppAccessModeIconProps = {
   accessMode?: AccessMode | null
 }
 
-const getAppResourceCreatedBy = (app: App) => app.created_by || app.workflow?.created_by
+const getAppResourceMaintainer = (app: App) => app.maintainer
 
 function AppAccessModeIcon({ accessMode }: AppAccessModeIconProps) {
   const { t } = useTranslation()
@@ -312,13 +312,13 @@ export const AppCardActionBar: React.FC<AppCardActionBarProps> = ({ app, onRefre
   const { mutateAsync: mutateDeleteApp, isPending: isDeleting } = useDeleteAppMutation()
   const { mutateAsync: mutateToggleAppStar, isPending: isTogglingStar } = useToggleAppStarMutation()
   const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
-  const resourceCreatedBy = getAppResourceCreatedBy(app)
-  const creatorPermissionOptions = useMemo(() => ({
+  const resourceMaintainer = getAppResourceMaintainer(app)
+  const maintainerPermissionOptions = useMemo(() => ({
     currentUserId,
-    resourceCreatedBy,
+    resourceMaintainer,
     workspacePermissionKeys,
-  }), [currentUserId, resourceCreatedBy, workspacePermissionKeys])
-  const appACLCapabilities = useMemo(() => getAppACLCapabilities(app.permission_keys, creatorPermissionOptions), [app.permission_keys, creatorPermissionOptions])
+  }), [currentUserId, resourceMaintainer, workspacePermissionKeys])
+  const appACLCapabilities = useMemo(() => getAppACLCapabilities(app.permission_keys, maintainerPermissionOptions), [app.permission_keys, maintainerPermissionOptions])
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
 
   const onConfirmDelete = useCallback(async () => {
@@ -440,7 +440,7 @@ export const AppCardActionBar: React.FC<AppCardActionBarProps> = ({ app, onRefre
       onPlanInfoChanged()
       getRedirection(newApp, push, {
         currentUserId,
-        resourceCreatedBy: getAppResourceCreatedBy(newApp),
+        resourceMaintainer: getAppResourceMaintainer(newApp),
         workspacePermissionKeys,
       })
     }
@@ -740,13 +740,13 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
   const { mutateAsync: mutateDeleteApp, isPending: isDeleting } = useDeleteAppMutation()
   const { mutateAsync: mutateToggleAppStar, isPending: isTogglingStar } = useToggleAppStarMutation()
   const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
-  const resourceCreatedBy = getAppResourceCreatedBy(app)
-  const creatorPermissionOptions = useMemo(() => ({
+  const resourceMaintainer = getAppResourceMaintainer(app)
+  const maintainerPermissionOptions = useMemo(() => ({
     currentUserId,
-    resourceCreatedBy,
+    resourceMaintainer,
     workspacePermissionKeys,
-  }), [currentUserId, resourceCreatedBy, workspacePermissionKeys])
-  const appACLCapabilities = useMemo(() => getAppACLCapabilities(app.permission_keys, creatorPermissionOptions), [app.permission_keys, creatorPermissionOptions])
+  }), [currentUserId, resourceMaintainer, workspacePermissionKeys])
+  const appACLCapabilities = useMemo(() => getAppACLCapabilities(app.permission_keys, maintainerPermissionOptions), [app.permission_keys, maintainerPermissionOptions])
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
 
   const onConfirmDelete = useCallback(async () => {
@@ -870,7 +870,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
       onPlanInfoChanged()
       getRedirection(newApp, push, {
         currentUserId,
-        resourceCreatedBy: getAppResourceCreatedBy(newApp),
+        resourceMaintainer: getAppResourceMaintainer(newApp),
         workspacePermissionKeys,
       })
     }
@@ -994,7 +994,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
   }, [app.id, onlineUsers])
   const appNameId = useId()
   const appDescriptionId = useId()
-  const appHref = getRedirectionPath(app, creatorPermissionOptions)
+  const appHref = getRedirectionPath(app, maintainerPermissionOptions)
   const starActionLabel = app.is_starred
     ? t('studio.unstarApp', { ns: 'app' })
     : t('studio.starApp', { ns: 'app' })

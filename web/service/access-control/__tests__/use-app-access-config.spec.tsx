@@ -5,6 +5,7 @@ import {
   useAppAccessRules,
   useAppOpenScope,
   useAppUserAccessSettings,
+  useRemoveAppAccessPolicyMemberBindings,
   useUpdateAppOpenScope,
   useUpdateAppUserAccessSettings,
 } from '../use-app-access-config'
@@ -27,6 +28,7 @@ const mocks = vi.hoisted(() => ({
   openScopeQueryKey: vi.fn(() => ['rbac-access-config', 'apps', 'open-scope', 'app-1']),
   updateOpenScope: vi.fn().mockResolvedValue({}),
   updateUserAccessSettings: vi.fn().mockResolvedValue({}),
+  removeMemberBindings: vi.fn().mockResolvedValue({}),
 }))
 
 vi.mock('@/service/client', () => ({
@@ -35,6 +37,7 @@ vi.mock('@/service/client', () => ({
       apps: {
         updateOpenScope: mocks.updateOpenScope,
         updateUserAccessSettings: mocks.updateUserAccessSettings,
+        removeMemberBindings: mocks.removeMemberBindings,
       },
     },
   },
@@ -134,6 +137,32 @@ describe('use-app-access-config', () => {
         },
         body: {
           access_policy_ids: ['policy-1', 'policy-2'],
+        },
+      })
+      expect(mocks.userAccessSettingsQueryKey).toHaveBeenCalledWith({
+        input: {
+          params: {
+            appId: 'app-1',
+          },
+        },
+      })
+      expect(mocks.accessRulesKey).toHaveBeenCalled()
+    })
+
+    it('should remove app access policy member bindings for account ids', async () => {
+      const { result } = renderHook(() => useRemoveAppAccessPolicyMemberBindings('app-1'), { wrapper: createWrapper() })
+
+      await act(async () => {
+        await result.current.mutateAsync({ accessPolicyId: 'policy-1', accountIds: ['account-1'] })
+      })
+
+      expect(mocks.removeMemberBindings).toHaveBeenCalledWith({
+        params: {
+          appId: 'app-1',
+          policyId: 'policy-1',
+        },
+        body: {
+          account_ids: ['account-1'],
         },
       })
       expect(mocks.userAccessSettingsQueryKey).toHaveBeenCalledWith({

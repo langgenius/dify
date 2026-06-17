@@ -1,4 +1,4 @@
-import type { CreatorPermissionOptions } from '@/utils/permission'
+import type { ResourceMaintainerPermissionOptions } from '@/utils/permission'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 
@@ -10,9 +10,9 @@ type AppRedirectionTarget = {
 
 export const getRedirectionPath = (
   app: AppRedirectionTarget,
-  creatorPermissionOptions?: CreatorPermissionOptions,
+  maintainerPermissionOptions?: ResourceMaintainerPermissionOptions,
 ) => {
-  const appACLCapabilities = getAppACLCapabilities(app.permission_keys, creatorPermissionOptions)
+  const appACLCapabilities = getAppACLCapabilities(app.permission_keys, maintainerPermissionOptions)
 
   if (appACLCapabilities.canAccessLayout) {
     if (app.mode === AppModeEnum.WORKFLOW || app.mode === AppModeEnum.ADVANCED_CHAT)
@@ -33,8 +33,8 @@ export const getRedirectionPath = (
 export const getRedirection = (
   app: AppRedirectionTarget,
   redirectionFunc: (href: string) => void,
-  creatorPermissionOptions?: CreatorPermissionOptions,
+  maintainerPermissionOptions?: ResourceMaintainerPermissionOptions,
 ) => {
-  const redirectionPath = getRedirectionPath(app, creatorPermissionOptions)
+  const redirectionPath = getRedirectionPath(app, maintainerPermissionOptions)
   redirectionFunc(redirectionPath)
 }

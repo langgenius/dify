@@ -12,6 +12,7 @@ import {
   useDatasetAccessRules,
   useDatasetOpenScope,
   useDatasetUserAccessSettings,
+  useRemoveDatasetAccessPolicyMemberBindings,
   useUpdateDatasetOpenScope,
   useUpdateDatasetUserAccessSettings,
 } from '@/service/access-control/use-dataset-access-config'
@@ -30,6 +31,7 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
   const { data: datasetOpenScopeResponse, isLoading: isLoadingDatasetOpenScope } = useDatasetOpenScope(datasetId)
   const { mutate: updateDatasetOpenScope, isPending: isUpdatingDatasetOpenScope } = useUpdateDatasetOpenScope(datasetId)
   const { mutate: updateDatasetUserAccessSettings } = useUpdateDatasetUserAccessSettings(datasetId)
+  const { mutate: removeDatasetAccessPolicyMemberBindings } = useRemoveDatasetAccessPolicyMemberBindings(datasetId)
   const [optimisticOpenScope, setOptimisticOpenScope] = useState<ResourceOpenScope | null>(null)
   const [updatingAccountId, setUpdatingAccountId] = useState<string | null>(null)
 
@@ -56,6 +58,14 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
     )
   }, [updateDatasetUserAccessSettings])
 
+  const handleRemoveAccessPolicyMemberBinding = useCallback((accountId: string, accessPolicyId: string) => {
+    setUpdatingAccountId(accountId)
+    removeDatasetAccessPolicyMemberBindings(
+      { accessPolicyId, accountIds: [accountId] },
+      { onSettled: () => setUpdatingAccountId(null) },
+    )
+  }, [removeDatasetAccessPolicyMemberBindings])
+
   return (
     <ScrollArea
       className="h-full bg-background-default-subtle"
@@ -80,6 +90,7 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
           maintainerId={maintainerId}
           onOpenScopeChange={handleOpenScopeChange}
           onUserAccessPoliciesChange={handleUserAccessPoliciesChange}
+          onRemoveAccessPolicyMemberBinding={handleRemoveAccessPolicyMemberBinding}
           onAddAccessSubject={handleUserAccessPoliciesChange}
         />
       </main>

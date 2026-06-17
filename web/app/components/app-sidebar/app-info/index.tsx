@@ -91,7 +91,7 @@ export const AppInfoView = ({
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const appACLCapabilities = getAppACLCapabilities(appDetail?.permission_keys, {
     currentUserId,
-    resourceCreatedBy: appDetail?.created_by || appDetail?.workflow?.created_by,
+    resourceMaintainer: appDetail?.maintainer,
     workspacePermissionKeys,
   })
 

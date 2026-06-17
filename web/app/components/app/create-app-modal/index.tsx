@@ -99,7 +99,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
       invalidateAppList()
       getRedirection(app, push, {
         currentUserId: userProfile?.id,
-        resourceCreatedBy: app.created_by || app.workflow?.created_by,
+        resourceMaintainer: app.maintainer,
         workspacePermissionKeys,
       })
     }

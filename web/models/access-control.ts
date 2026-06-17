@@ -253,6 +253,15 @@ export type UpdateAppUserAccessSettingsRequest = UpdateResourceUserAccessSetting
 
 export type UpdateDatasetUserAccessSettingsRequest = UpdateResourceUserAccessSettingsRequest
 
+type RemoveResourceAccessPolicyMemberBindingsRequest = {
+  accessPolicyId: string
+  accountIds: string[]
+}
+
+export type RemoveAppAccessPolicyMemberBindingsRequest = RemoveResourceAccessPolicyMemberBindingsRequest
+
+export type RemoveDatasetAccessPolicyMemberBindingsRequest = RemoveResourceAccessPolicyMemberBindingsRequest
+
 export type GetAccessPolicyDetailResponse = {
   access_policies: Pick<AccessPolicy, 'id' | 'name' | 'resource_type' | 'policy_key' | 'permission_keys'>[]
 }

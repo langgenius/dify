@@ -28,6 +28,7 @@ export type AccessRulesEditorProps = {
   className?: string
   onOpenScopeChange?: (openScope: ResourceOpenScope) => void
   onUserAccessPoliciesChange?: (accountId: string, accessPolicyIds: string[]) => void
+  onRemoveAccessPolicyMemberBinding?: (accountId: string, accessPolicyId: string) => void
   onAddAccessSubject?: (accountId: string, accessPolicyIds: string[]) => void
 }
 
@@ -43,6 +44,7 @@ export default function AccessRulesEditor({
   className,
   onOpenScopeChange,
   onUserAccessPoliciesChange,
+  onRemoveAccessPolicyMemberBinding,
   onAddAccessSubject,
 }: AccessRulesEditorProps) {
   const { t } = useTranslation()
@@ -128,10 +130,11 @@ export default function AccessRulesEditor({
                       key={setting.account.account_id}
                       setting={setting}
                       policyOptions={policyOptions}
-                      disabled={!onUserAccessPoliciesChange || updatingAccountId === setting.account.account_id}
+                      disabled={updatingAccountId === setting.account.account_id}
                       isMaintainer={maintainerId === setting.account.account_id}
                       className={cn(index > 0 && 'border-t border-divider-subtle')}
                       onChange={onUserAccessPoliciesChange}
+                      onRemove={onRemoveAccessPolicyMemberBinding}
                     />
                   ))}
                 </div>

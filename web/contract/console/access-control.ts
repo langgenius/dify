@@ -66,6 +66,22 @@ const updateAppUserAccessSettingsContract = base
   }>())
   .output(type<GetAccessPolicyDetailResponse>())
 
+const removeAppAccessPolicyMemberBindingsContract = base
+  .route({
+    path: '/workspaces/current/rbac/apps/{appId}/access-policies/{policyId}/member-bindings',
+    method: 'DELETE',
+  })
+  .input(type<{
+    params: {
+      appId: string
+      policyId: string
+    }
+    body: {
+      account_ids: string[]
+    }
+  }>())
+  .output(type<unknown>())
+
 const updateAppOpenScopeContract = base
   .route({
     path: '/workspaces/current/rbac/apps/{appId}/whitelist',
@@ -136,6 +152,22 @@ const updateDatasetUserAccessSettingsContract = base
   }>())
   .output(type<GetAccessPolicyDetailResponse>())
 
+const removeDatasetAccessPolicyMemberBindingsContract = base
+  .route({
+    path: '/workspaces/current/rbac/datasets/{datasetId}/access-policies/{policyId}/member-bindings',
+    method: 'DELETE',
+  })
+  .input(type<{
+    params: {
+      datasetId: string
+      policyId: string
+    }
+    body: {
+      account_ids: string[]
+    }
+  }>())
+  .output(type<unknown>())
+
 const updateDatasetOpenScopeContract = base
   .route({
     path: '/workspaces/current/rbac/datasets/{datasetId}/whitelist',
@@ -157,6 +189,7 @@ export const rbacAccessConfigContract = {
     userAccessSettings: appUserAccessSettingsContract,
     openScope: appOpenScopeContract,
     updateUserAccessSettings: updateAppUserAccessSettingsContract,
+    removeMemberBindings: removeAppAccessPolicyMemberBindingsContract,
     updateOpenScope: updateAppOpenScopeContract,
   },
   datasets: {
@@ -164,6 +197,7 @@ export const rbacAccessConfigContract = {
     userAccessSettings: datasetUserAccessSettingsContract,
     openScope: datasetOpenScopeContract,
     updateUserAccessSettings: updateDatasetUserAccessSettingsContract,
+    removeMemberBindings: removeDatasetAccessPolicyMemberBindingsContract,
     updateOpenScope: updateDatasetOpenScopeContract,
   },
 }

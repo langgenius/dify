@@ -28,6 +28,7 @@ type UserAccessPolicyRowProps = {
   isMaintainer?: boolean
   className?: string
   onChange?: (accountId: string, accessPolicyIds: string[]) => void
+  onRemove?: (accountId: string, accessPolicyId: string) => void
 }
 
 function UserAccessPolicyRow({
@@ -37,27 +38,31 @@ function UserAccessPolicyRow({
   isMaintainer = false,
   className,
   onChange,
+  onRemove,
 }: UserAccessPolicyRowProps) {
   const { t } = useTranslation()
   const accountId = setting.account.account_id
-  const selectedPolicyId = setting.access_policies[0]?.id ?? DEFAULT_ACCESS_POLICY_ID
-  const isRowDisabled = disabled || isMaintainer
+  const selectedPolicy = setting.access_policies[0]
+  const selectedAccessPolicyId = selectedPolicy?.id
+  const selectedPolicyId = selectedAccessPolicyId ?? DEFAULT_ACCESS_POLICY_ID
+  const isPolicySelectDisabled = disabled || isMaintainer || !onChange
+  const isRemoveDisabled = disabled || isMaintainer || !onRemove || !selectedAccessPolicyId
   const defaultAccessPolicyName = t('accessRule.defaultPermission', { ns: 'permission' })
   const accountEmail = setting.account.email || setting.account.account_name
 
   const handlePolicyChange = useCallback((nextPolicyId: string | null) => {
-    if (isRowDisabled || !nextPolicyId || nextPolicyId === selectedPolicyId)
+    if (isPolicySelectDisabled || !nextPolicyId || nextPolicyId === selectedPolicyId)
       return
 
     onChange?.(accountId, [nextPolicyId])
-  }, [accountId, isRowDisabled, onChange, selectedPolicyId])
+  }, [accountId, isPolicySelectDisabled, onChange, selectedPolicyId])
 
   const handleRemove = useCallback(() => {
-    if (isRowDisabled)
+    if (isRemoveDisabled || !selectedAccessPolicyId)
       return
 
-    onChange?.(accountId, [])
-  }, [accountId, isRowDisabled, onChange])
+    onRemove?.(accountId, selectedAccessPolicyId)
+  }, [accountId, isRemoveDisabled, onRemove, selectedAccessPolicyId])
 
   return (
     <div className={cn('grid min-h-19 items-center gap-4 px-6 py-4', ACCESS_RULE_TABLE_GRID, className)}>
@@ -91,7 +96,7 @@ function UserAccessPolicyRow({
         <SelectTrigger
           aria-label={t('accessRule.exceptionPermissionFor', { ns: 'permission', name: setting.account.account_name })}
           size="small"
-          disabled={isRowDisabled}
+          disabled={isPolicySelectDisabled}
           className="w-fit max-w-full min-w-30.25"
         >
           <SelectValue>
@@ -115,7 +120,7 @@ function UserAccessPolicyRow({
       </Select>
       <button
         type="button"
-        disabled={isRowDisabled}
+        disabled={isRemoveDisabled}
         className="w-fit rounded-md border-none bg-transparent p-0 text-left system-xs-medium text-text-destructive outline-hidden hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:no-underline"
         onClick={handleRemove}
       >

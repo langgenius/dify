@@ -143,6 +143,7 @@ describe('AccessRulesEditor', () => {
   it('should render resource access controls and update account exceptions', () => {
     const onOpenScopeChange = vi.fn()
     const onUserAccessPoliciesChange = vi.fn()
+    const onRemoveAccessPolicyMemberBinding = vi.fn()
 
     render(
       <AccessRulesEditor
@@ -155,6 +156,7 @@ describe('AccessRulesEditor', () => {
         updatingAccountId={null}
         onOpenScopeChange={onOpenScopeChange}
         onUserAccessPoliciesChange={onUserAccessPoliciesChange}
+        onRemoveAccessPolicyMemberBinding={onRemoveAccessPolicyMemberBinding}
       />,
     )
 
@@ -175,7 +177,7 @@ describe('AccessRulesEditor', () => {
     expect(onOpenScopeChange).toHaveBeenCalledWith('all')
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.remove' }))
-    expect(onUserAccessPoliciesChange).toHaveBeenCalledWith('account-1', [])
+    expect(onRemoveAccessPolicyMemberBinding).toHaveBeenCalledWith('account-1', 'app-policy-id')
   })
 
   it('should render the fixed default option when an account has no exception policy', () => {
@@ -196,6 +198,7 @@ describe('AccessRulesEditor', () => {
 
   it('should mark maintainer rows and prevent editing them', () => {
     const onUserAccessPoliciesChange = vi.fn()
+    const onRemoveAccessPolicyMemberBinding = vi.fn()
 
     render(
       <AccessRulesEditor
@@ -208,6 +211,7 @@ describe('AccessRulesEditor', () => {
         updatingAccountId={null}
         maintainerId="account-1"
         onUserAccessPoliciesChange={onUserAccessPoliciesChange}
+        onRemoveAccessPolicyMemberBinding={onRemoveAccessPolicyMemberBinding}
       />,
     )
 
@@ -219,6 +223,7 @@ describe('AccessRulesEditor', () => {
 
     fireEvent.click(removeButton)
     expect(onUserAccessPoliciesChange).not.toHaveBeenCalled()
+    expect(onRemoveAccessPolicyMemberBinding).not.toHaveBeenCalled()
   })
 
   it('should keep open scope unchanged when the confirmation is cancelled', () => {
