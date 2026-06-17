@@ -2032,14 +2032,7 @@ class DocumentService:
                         website_info = knowledge_config.data_source.info_list.website_info_list
                         assert website_info
                         count = len(website_info.urls)
-                    batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
-
-                    if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
-                        raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
-                    if count > batch_upload_limit:
-                        raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
-
-                    DocumentService.check_documents_upload_quota(count, features)
+                    DocumentService.check_document_creation_limits(count, features)
 
         # if dataset is empty, update dataset data_source_type
         if not dataset.data_source_type and knowledge_config.data_source:
@@ -2604,6 +2597,21 @@ class DocumentService:
             )
 
     @staticmethod
+    def check_document_creation_limits(count: int, features: FeatureModel):
+        """Validate billing-backed document creation limits before document rows are created."""
+        if not features.billing.enabled:
+            return
+
+        if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
+            raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
+
+        batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
+        if count > batch_upload_limit:
+            raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
+
+        DocumentService.check_documents_upload_quota(count, features)
+
+    @staticmethod
     def build_document(
         dataset: Dataset,
         process_rule_id: str | None,
@@ -2824,13 +2832,7 @@ class DocumentService:
                 website_info = knowledge_config.data_source.info_list.website_info_list
                 if website_info:
                     count = len(website_info.urls)
-            if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
-                raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
-            batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
-            if count > batch_upload_limit:
-                raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
-
-            DocumentService.check_documents_upload_quota(count, features)
+            DocumentService.check_document_creation_limits(count, features)
 
         dataset_collection_binding_id = None
         retrieval_model = None
