@@ -79,7 +79,7 @@ def test_delete_tag_binding_does_not_commit_when_no_rows_deleted(mocker, current
 
 
 def test_get_target_ids_by_tag_ids_returns_empty_without_query_for_empty_input(db_session):
-    result = TagService.get_target_ids_by_tag_ids(TagType.SNIPPET, "tenant-1", [])
+    result = TagService.get_target_ids_by_tag_ids(TagType.SNIPPET, "tenant-1", [], db_session)
 
     assert result == []
     db_session.scalars.assert_not_called()
