@@ -4,8 +4,8 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
-export type AppPagination = {
-  data: Array<AppPartial>
+export type AgentAppPagination = {
+  data: Array<AgentAppPartial>
   has_more: boolean
   limit: number
   page: number
@@ -272,7 +272,7 @@ export type AgentConfigSnapshotDetailResponse = {
   version_note?: string | null
 }
 
-export type AppPartial = {
+export type AgentAppPartial = {
   access_mode?: string | null
   active_config_is_published?: boolean
   app_id?: string | null
@@ -293,6 +293,8 @@ export type AppPartial = {
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
+  published_reference_count?: number
+  published_references?: Array<AgentAppPublishedReferenceResponse>
   role?: string | null
   tags?: Array<Tag>
   updated_at?: number | null
@@ -724,6 +726,14 @@ export type ModelConfigPartial = {
   pre_prompt?: string | null
   updated_at?: number | null
   updated_by?: string | null
+}
+
+export type AgentAppPublishedReferenceResponse = {
+  app_icon?: string | null
+  app_icon_background?: string | null
+  app_icon_type?: string | null
+  app_id: string
+  app_name: string
 }
 
 export type LlmMode = 'chat' | 'completion'
@@ -1361,8 +1371,8 @@ export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url'
 
 export type ValueSourceType = 'constant' | 'variable'
 
-export type AppPaginationWritable = {
-  data: Array<AppPartialWritable>
+export type AgentAppPaginationWritable = {
+  data: Array<AgentAppPartialWritable>
   has_more: boolean
   limit: number
   page: number
@@ -1399,7 +1409,7 @@ export type AppDetailWithSiteWritable = {
   workflow?: WorkflowPartial | null
 }
 
-export type AppPartialWritable = {
+export type AgentAppPartialWritable = {
   access_mode?: string | null
   active_config_is_published?: boolean
   app_id?: string | null
@@ -1419,6 +1429,8 @@ export type AppPartialWritable = {
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
+  published_reference_count?: number
+  published_references?: Array<AgentAppPublishedReferenceResponse>
   role?: string | null
   tags?: Array<Tag>
   updated_at?: number | null
@@ -1468,7 +1480,7 @@ export type GetAgentData = {
 }
 
 export type GetAgentResponses = {
-  200: AppPagination
+  200: AgentAppPagination
 }
 
 export type GetAgentResponse = GetAgentResponses[keyof GetAgentResponses]

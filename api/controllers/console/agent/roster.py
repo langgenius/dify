@@ -11,6 +11,7 @@ from controllers.console.app.app import (
     AppDetailWithSite,
     AppListQuery,
     AppPagination,
+    AppPartial,
     UpdateAppPayload,
     _normalize_app_list_query_args,
 )
@@ -72,6 +73,27 @@ class AgentAppUpdatePayload(UpdateAppPayload):
     role: str | None = Field(default=None, description="Agent role", max_length=255)
 
 
+class AgentAppPublishedReferenceResponse(BaseModel):
+    app_id: str
+    app_name: str
+    app_icon_type: str | None = None
+    app_icon: str | None = None
+    app_icon_background: str | None = None
+
+
+class AgentAppPartial(AppPartial):
+    published_reference_count: int = 0
+    published_references: list[AgentAppPublishedReferenceResponse] = Field(default_factory=list)
+
+
+class AgentAppPagination(BaseModel):
+    page: int
+    limit: int
+    total: int
+    has_more: bool
+    data: list[AgentAppPartial]
+
+
 class AgentLogsQuery(BaseModel):
     page: int = Field(default=1, ge=1, description="Page number")
     limit: int = Field(default=20, ge=1, le=100, description="Page size")
@@ -123,7 +145,8 @@ register_schema_models(
 register_response_schema_models(
     console_ns,
     AppDetailWithSite,
-    AppPagination,
+    AgentAppPagination,
+    AgentAppPublishedReferenceResponse,
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
     AgentInviteOptionsResponse,
@@ -171,6 +194,10 @@ def _serialize_agent_app_pagination(app_pagination, *, tenant_id: str) -> dict:
         tenant_id=tenant_id,
         agents=list(agents_by_app_id.values()),
     )
+    published_references_by_agent_id = roster_service.load_published_references_by_agent_id(
+        tenant_id=tenant_id,
+        agent_ids=[agent.id for agent in agents_by_app_id.values()],
+    )
     payload = AppPagination.model_validate(app_pagination, from_attributes=True).model_dump(mode="json")
     for item in payload["data"]:
         app_id = item["id"]
@@ -181,7 +208,22 @@ def _serialize_agent_app_pagination(app_pagination, *, tenant_id: str) -> dict:
             item["id"] = agent.id
             item["role"] = agent.role or ""
             item["active_config_is_published"] = active_config_is_published_by_agent_id.get(agent.id, False)
-    return payload
+            published_references = published_references_by_agent_id.get(agent.id, [])
+            item["published_reference_count"] = len(published_references)
+            item["published_references"] = [
+                {
+                    "app_id": reference["app_id"],
+                    "app_name": reference["app_name"],
+                    "app_icon_type": reference["app_icon_type"],
+                    "app_icon": reference["app_icon"],
+                    "app_icon_background": reference["app_icon_background"],
+                }
+                for reference in published_references
+            ]
+    return AgentAppPagination.model_validate(payload).model_dump(
+        mode="json",
+        exclude={"data": {"__all__": {"bound_agent_id"}}},
+    )
 
 
 def _resolve_agent_app_model(*, tenant_id: str, agent_id: UUID):
@@ -203,7 +245,7 @@ def _parse_observability_time_range(start: str | None, end: str | None, account:
 @console_ns.route("/agent")
 class AgentAppListApi(Resource):
     @console_ns.doc(params=query_params_from_model(AppListQuery))
-    @console_ns.response(200, "Agent app list", console_ns.models[AppPagination.__name__])
+    @console_ns.response(200, "Agent app list", console_ns.models[AgentAppPagination.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -224,7 +266,7 @@ class AgentAppListApi(Resource):
 
         app_pagination = AppService().get_paginate_apps(current_user.id, current_tenant_id, params)
         if app_pagination is None:
-            empty = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
+            empty = AgentAppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
             return empty.model_dump(mode="json")
 
         return _serialize_agent_app_pagination(app_pagination, tenant_id=current_tenant_id)

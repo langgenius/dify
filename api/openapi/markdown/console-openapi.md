@@ -311,7 +311,7 @@ Check if activation token is valid
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent app list | **application/json**: [AppPagination](#apppagination)<br> |
+| 200 | Agent app list | **application/json**: [AgentAppPagination](#agentapppagination)<br> |
 
 ### [POST] /agent
 #### Request Body
@@ -11341,6 +11341,59 @@ default (the config form sends the full desired feature state on save).
 | suggested_questions_after_answer | [AgentSuggestedQuestionsAfterAnswerFeatureConfig](#agentsuggestedquestionsafteranswerfeatureconfig) | Follow-up suggestions config, e.g. {'enabled': true} | No |
 | text_to_speech | [AgentTextToSpeechFeatureConfig](#agenttexttospeechfeatureconfig) | Text-to-speech config | No |
 
+#### AgentAppPagination
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AgentAppPartial](#agentapppartial) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### AgentAppPartial
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_mode | string |  | No |
+| active_config_is_published | boolean |  | No |
+| app_id | string |  | No |
+| author_name | string |  | No |
+| bound_agent_id | string |  | No |
+| create_user_name | string |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| description | string |  | No |
+| has_draft_trigger | boolean |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| icon_url | string |  | Yes |
+| id | string |  | Yes |
+| is_starred | boolean |  | No |
+| max_active_requests | integer |  | No |
+| mode | string |  | Yes |
+| model_config | [ModelConfigPartial](#modelconfigpartial) |  | No |
+| name | string |  | Yes |
+| published_reference_count | integer |  | No |
+| published_references | [ [AgentAppPublishedReferenceResponse](#agentapppublishedreferenceresponse) ] |  | No |
+| role | string |  | No |
+| tags | [ [Tag](#tag) ] |  | No |
+| updated_at | integer |  | No |
+| updated_by | string |  | No |
+| use_icon_as_answer_icon | boolean |  | No |
+| workflow | [WorkflowPartial](#workflowpartial) |  | No |
+
+#### AgentAppPublishedReferenceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_icon | string |  | No |
+| app_icon_background | string |  | No |
+| app_icon_type | string |  | No |
+| app_id | string |  | Yes |
+| app_name | string |  | Yes |
+
 #### AgentAppUpdatePayload
 
 | Name | Type | Description | Required |
@@ -12816,10 +12869,10 @@ AppMCPServer Status Enum
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ [AppPartial](#apppartial) ] |  | Yes |
-| has_more | boolean |  | Yes |
-| limit | integer |  | Yes |
+| has_next | boolean |  | Yes |
+| items | [ [AppPartial](#apppartial) ] |  | Yes |
 | page | integer |  | Yes |
+| per_page | integer |  | Yes |
 | total | integer |  | Yes |
 
 #### AppPartial
@@ -12829,22 +12882,21 @@ AppMCPServer Status Enum
 | access_mode | string |  | No |
 | active_config_is_published | boolean |  | No |
 | app_id | string |  | No |
+| app_model_config | [ModelConfigPartial](#modelconfigpartial) |  | No |
 | author_name | string |  | No |
 | bound_agent_id | string |  | No |
 | create_user_name | string |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
-| description | string |  | No |
+| desc_or_prompt | string |  | No |
 | has_draft_trigger | boolean |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
-| icon_url | string |  | Yes |
 | id | string |  | Yes |
 | is_starred | boolean |  | No |
 | max_active_requests | integer |  | No |
-| mode | string |  | Yes |
-| model_config | [ModelConfigPartial](#modelconfigpartial) |  | No |
+| mode_compatible_with_agent | string |  | Yes |
 | name | string |  | Yes |
 | role | string |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
