@@ -6,6 +6,7 @@ export type ClientOptions = {
 
 export type SystemFeatureModel = {
   branding: BrandingModel
+  enable_app_deploy: boolean
   enable_change_email: boolean
   enable_collaboration_mode: boolean
   enable_creators_platform: boolean

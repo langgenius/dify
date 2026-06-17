@@ -101,7 +101,7 @@ vi.mock('reactflow', () => ({
 }))
 
 vi.mock('@/app/components/app/app-publisher', () => ({
-  default: (props: AppPublisherProps) => {
+  AppPublisher: (props: AppPublisherProps) => {
     const inputs = props.inputs ?? []
     return (
       <div

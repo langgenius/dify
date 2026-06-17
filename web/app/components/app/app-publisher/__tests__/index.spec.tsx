@@ -5,7 +5,7 @@ import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
-import AppPublisher from '../index'
+import { AppPublisher } from '../index'
 
 const render = (ui: React.ReactElement) => renderWithSystemFeatures(ui, {
   systemFeatures: { webapp_auth: { enabled: true } },
@@ -16,6 +16,7 @@ const mockOnToggle = vi.fn()
 const mockSetAppDetail = vi.fn()
 const mockTrackEvent = vi.fn()
 const mockRefetch = vi.fn()
+const mockUseGetUserCanAccessApp = vi.fn()
 const mockOpenAsyncWindow = vi.fn()
 const mockFetchInstalledAppList = vi.fn()
 const mockFetchAppDetailDirect = vi.fn()
@@ -65,11 +66,14 @@ vi.mock('@/hooks/use-async-window-open', () => ({
 }))
 
 vi.mock('@/service/access-control', () => ({
-  useGetUserCanAccessApp: () => ({
-    data: { result: true },
-    isLoading: false,
-    refetch: mockRefetch,
-  }),
+  useGetUserCanAccessApp: (params: unknown) => {
+    mockUseGetUserCanAccessApp(params)
+    return {
+      data: { result: true },
+      isLoading: false,
+      refetch: mockRefetch,
+    }
+  },
   useAppWhiteListSubjects: () => ({
     data: { groups: [], members: [] },
     isLoading: false,
@@ -128,7 +132,7 @@ vi.mock('@/app/components/app/overview/embedded', () => ({
 }))
 
 vi.mock('../../app-access-control', () => ({
-  default: ({ onConfirm, onClose }: { onConfirm: () => Promise<void>, onClose: () => void }) => (
+  AccessControl: ({ onConfirm, onClose }: { onConfirm: () => Promise<void>, onClose: () => void }) => (
     <div data-testid="access-control">
       <button onClick={() => void onConfirm()}>confirm-access-control</button>
       <button onClick={onClose}>close-access-control</button>
@@ -212,7 +216,7 @@ describe('AppPublisher', () => {
     })
   })
 
-  it('should open the publish popover and refetch access permission data', async () => {
+  it('should enable access permission query when the publish popover opens', async () => {
     render(
       <AppPublisher
         publishedAt={Date.now()}
@@ -226,8 +230,12 @@ describe('AppPublisher', () => {
     expect(mockOnToggle).toHaveBeenCalledWith(true)
 
     await waitFor(() => {
-      expect(mockRefetch).toHaveBeenCalledTimes(1)
+      expect(mockUseGetUserCanAccessApp).toHaveBeenCalledWith({
+        appId: 'app-1',
+        enabled: true,
+      })
     })
+    expect(mockRefetch).not.toHaveBeenCalled()
   })
 
   it('should publish and track the publish event', async () => {

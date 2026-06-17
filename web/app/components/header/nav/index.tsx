@@ -7,7 +7,7 @@ import { useState } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Link from '@/next/link'
 import { useSelectedLayoutSegment } from '@/next/navigation'
-import NavSelector from './nav-selector'
+import { NavSelector } from './nav-selector'
 
 type INavProps = {
   icon: React.ReactNode
@@ -46,12 +46,12 @@ const Nav = ({
 
   return (
     <div className={`
-      flex h-8 max-w-167.5 shrink-0 items-center rounded-xl px-0.5 text-sm font-medium max-[1024px]:max-w-100
+      flex h-8 max-w-167.5 min-w-0 items-center rounded-xl px-0.5 text-sm font-medium max-[1120px]:max-w-100
       ${isActivated && 'bg-components-main-nav-nav-button-bg-active font-semibold shadow-md'}
       ${!curNav && !isActivated && 'hover:bg-components-main-nav-nav-button-bg-hover'}
     `}
     >
-      <Link href={link}>
+      <Link href={link} className="shrink-0">
         <div
           onClick={(e) => {
             // Don't clear state if opening in new tab/window
@@ -74,7 +74,7 @@ const Nav = ({
                   : icon
             }
           </div>
-          <div className="ml-2 max-[1024px]:hidden">
+          <div className="ml-2 max-[1120px]:hidden">
             {text}
           </div>
         </div>
@@ -82,7 +82,7 @@ const Nav = ({
       {
         curNav && isActivated && (
           <>
-            <div className="font-light text-divider-deep">/</div>
+            <div className="shrink-0 font-light text-divider-deep">/</div>
             <NavSelector
               isApp={isApp}
               curNav={curNav}
@@ -98,12 +98,12 @@ const Nav = ({
       {
         !curNav && shouldShowActiveLink && (
           <>
-            <div className="font-light text-divider-deep">/</div>
+            <div className="shrink-0 font-light text-divider-deep">/</div>
             <Link
               href={activeLink.link}
-              className="hover:bg-components-main-nav-nav-button-bg-active-hover flex h-7 cursor-pointer items-center rounded-[10px] px-2.5 text-components-main-nav-nav-button-text-active"
+              className="hover:bg-components-main-nav-nav-button-bg-active-hover flex h-7 min-w-0 cursor-pointer items-center rounded-[10px] px-2.5 text-components-main-nav-nav-button-text-active"
             >
-              {activeLink.text}
+              <span className="truncate">{activeLink.text}</span>
             </Link>
           </>
         )
