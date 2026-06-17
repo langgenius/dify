@@ -745,7 +745,7 @@ export type UserSatisfactionRateStatisticResponse = {
 export type TextToSpeechPayload = {
   message_id?: string | null
   streaming?: boolean | null
-  text: string
+  text?: string
   voice?: string | null
 }
 
