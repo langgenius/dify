@@ -36,11 +36,12 @@ export function AgentV2Panel({
   const inlineAgentQuery = useWorkflowInlineAgentDetail(id, inlineAgentId)
   const inlineAgent = inlineAgentQuery.data?.agent
   const isAgentPanelOpen = isInlineAgentReady ? isInlineAgentPanelOpen : isRosterAgentPanelOpen
-  const displayedAgent = rosterAgentQuery.data ?? (inlineAgent
+  const isInlineAgentLoading = isInlineAgentReady && !inlineAgent
+  const displayedAgent = rosterAgentQuery.data ?? (inlineAgentId && isInlineAgentReady
     ? {
-        id: inlineAgent.id,
-        name: inlineAgent.name,
-        description: inlineAgent.description,
+        id: inlineAgentId,
+        name: inlineAgent?.name || t('nodes.agent.roster.inlineSetup.name', { ns: 'workflow' }),
+        description: inlineAgent?.description,
         role: t('nodes.agent.roster.inlineSetup.type', { ns: 'workflow' }),
       }
     : undefined)
@@ -105,6 +106,7 @@ export function AgentV2Panel({
           agent={displayedAgent}
           agentId={rosterAgentId ?? inlineAgentId ?? undefined}
           canOpenPanel={!isInlineAgentPending}
+          isLoading={isInlineAgentLoading}
           isPanelOpen={isAgentPanelOpen}
           isPending={isInlineAgentPending}
           panelBody={isAgentPanelOpen && displayedAgent

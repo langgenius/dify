@@ -355,6 +355,38 @@ describe('agent/panel', () => {
     expect(screen.getByText('workflow.nodes.agent.task.label')).toBeInTheDocument()
   })
 
+  it('opens the inline panel while workflow composer state is still loading', () => {
+    mockStoreState.openInlineAgentPanelNodeId = 'agent-node'
+    mockUseWorkflowInlineAgentDetail.mockReturnValue({ data: undefined })
+
+    const { container } = render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          agent_binding: {
+            binding_type: 'inline_agent',
+            agent_id: 'inline-agent-1',
+            current_snapshot_id: 'snapshot-1',
+          },
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(mockUseWorkflowInlineAgentDetail).toHaveBeenCalledWith('agent-node', 'inline-agent-1')
+    expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
+    expect(screen.queryByText('workflow.nodes.agent.roster.inlineSetup.name')).not.toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'workflow.nodes.agent.roster.inlineSetup.title' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'inline-orchestrate-panel' })).toBeInTheDocument()
+    expect(mockOrchestrateDrawerPanelProps.at(-1)).toMatchObject({
+      agentId: 'inline-agent-1',
+      inlineComposerState: undefined,
+      isInline: true,
+      nodeId: 'agent-node',
+      open: true,
+    })
+  })
+
   it('updates roster agent binding from the selector', () => {
     render(
       <AgentV2Panel

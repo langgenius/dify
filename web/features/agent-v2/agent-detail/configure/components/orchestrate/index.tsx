@@ -5,6 +5,7 @@ import type { AgentConfigurePublishPayload } from './publish-bar'
 import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import { useTranslation } from 'react-i18next'
 import { AgentOrchestrateAddActionsProvider } from './add-actions'
 import { AgentAdvancedSettings } from './advanced'
 import { AgentFiles } from './files'
@@ -30,6 +31,7 @@ type AgentOrchestratePanelProps = {
   publishedReferences?: AgentPublishedReferenceResponse[]
   className?: string
   readOnly?: boolean
+  showHeader?: boolean
   showPublishBar?: boolean
   onSelectModel: (model: DefaultModel) => void
   onPublish: (payload: AgentConfigurePublishPayload) => void | Promise<void>
@@ -49,25 +51,29 @@ export function AgentOrchestratePanel({
   publishedReferences,
   className,
   readOnly = false,
+  showHeader = true,
   showPublishBar = true,
   onSelectModel,
   onPublish,
   onOpenVersions,
 }: AgentOrchestratePanelProps) {
+  const { t } = useTranslation('agentV2')
   const orchestrateHeadingId = 'agent-configure-orchestrate-heading'
+  const orchestrateLabel = t('agentDetail.configure.orchestrate')
 
   return (
     <div className={cn('flex max-w-140 min-w-90 flex-[0_0_min(41.08280255%,560px)] flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg', className)}>
-      <AgentOrchestrateHeader headingId={orchestrateHeadingId} />
+      {showHeader && <AgentOrchestrateHeader headingId={orchestrateHeadingId} />}
 
       <AgentOrchestrateReadOnlyContext value={readOnly}>
         <div
           aria-readonly={readOnly}
-          className="min-h-0 flex-1"
+          className="flex min-h-0 flex-1 flex-col"
         >
           <ScrollArea
             className="min-h-0 flex-1 overflow-hidden"
-            labelledBy={orchestrateHeadingId}
+            label={showHeader ? undefined : orchestrateLabel}
+            labelledBy={showHeader ? orchestrateHeadingId : undefined}
             slotClassNames={{
               viewport: 'overscroll-contain',
               content: 'min-h-full px-4 py-3',

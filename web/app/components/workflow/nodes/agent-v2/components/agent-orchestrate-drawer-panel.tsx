@@ -82,6 +82,7 @@ function AgentOrchestrateDrawerPanelContent({
       textGenerationModelList={textGenerationModelList}
       draftSavedAt={draftSavedAt}
       readOnly={!isInline}
+      showHeader={false}
       showPublishBar={false}
       className="h-full max-w-none min-w-0 flex-none rounded-none border-0"
       onSelectModel={setConfigureModel}

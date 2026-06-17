@@ -179,7 +179,7 @@ function AgentRosterDrawer({
               <div
                 role="region"
                 aria-label={t(`${i18nPrefix}.roster.panelLabel`, { ns: 'workflow', name: agent.name })}
-                className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-components-panel-bg"
+                className="min-h-0 flex-1 overflow-hidden bg-components-panel-bg"
               >
                 {children ?? <div className="h-full min-h-80 bg-components-panel-bg" />}
               </div>
@@ -197,6 +197,7 @@ export function AgentRosterField({
   canOpenPanel = true,
   isPanelOpen,
   isPending = false,
+  isLoading = false,
   panelBody,
   panelKind = 'roster',
   portalContainerRef,
@@ -207,6 +208,7 @@ export function AgentRosterField({
   agentId?: string
   canOpenPanel?: boolean
   isPanelOpen?: boolean
+  isLoading?: boolean
   isPending?: boolean
   panelBody?: ReactNode
   panelKind?: 'inline' | 'roster'
@@ -238,6 +240,15 @@ export function AgentRosterField({
         </>
       )
     : null
+  const loadingContent = (
+    <>
+      <span aria-hidden className="size-8 shrink-0 rounded-lg bg-text-quaternary/20" />
+      <span aria-hidden className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <span className="h-2.5 w-24 rounded-xs bg-text-quaternary/20" />
+        <span className="h-2 w-16 rounded-xs bg-text-quaternary/15" />
+      </span>
+    </>
+  )
 
   return (
     <FieldRoot name="agent_binding" className="gap-1 px-4 py-2">
@@ -290,10 +301,11 @@ export function AgentRosterField({
                     <button
                       type="button"
                       aria-label={t(`${i18nPrefix}.roster.openPanel`, { ns: 'workflow', name: agent.name })}
+                      aria-busy={isLoading || undefined}
                       className="flex h-13 w-full min-w-0 cursor-pointer items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3 hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                       onClick={() => setPanelOpen(true)}
                     >
-                      {agentContent}
+                      {isLoading ? loadingContent : agentContent}
                       <span className="flex shrink-0 items-center text-text-tertiary">
                         <span aria-hidden className="i-ri-arrow-right-line size-4" />
                       </span>
@@ -318,11 +330,7 @@ export function AgentRosterField({
         : isPending || agentId
           ? (
               <div aria-busy="true" className="flex h-13 w-full min-w-0 items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3">
-                <span aria-hidden className="size-8 shrink-0 rounded-lg bg-text-quaternary/20" />
-                <span aria-hidden className="flex min-w-0 flex-1 flex-col gap-1.5">
-                  <span className="h-2.5 w-24 rounded-xs bg-text-quaternary/20" />
-                  <span className="h-2 w-16 rounded-xs bg-text-quaternary/15" />
-                </span>
+                {loadingContent}
               </div>
             )
           : (
