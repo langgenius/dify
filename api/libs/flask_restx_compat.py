@@ -8,7 +8,7 @@ spec export fail or succeed in the same way.
 
 import hashlib
 import json
-from typing import TypeGuard
+from typing import TypeGuard, cast
 
 from flask import current_app
 from flask_restx import fields
@@ -140,8 +140,8 @@ def install_swagger_compatibility() -> None:
 
         original_register_field(self, field)
 
-    def schema_from_parameter_with_description(self: Swagger, param: dict[str, object]):
-        schema = original_schema_from_parameter(self, param)
+    def schema_from_parameter_with_description(self: Swagger, param: dict[str, object]) -> dict[str, object]:
+        schema = cast(dict[str, object], original_schema_from_parameter(self, param))
         description = param.get("description")
         if isinstance(description, str):
             schema["description"] = description

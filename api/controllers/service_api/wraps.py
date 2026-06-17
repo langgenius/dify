@@ -4,7 +4,7 @@ import time
 from collections.abc import Callable
 from enum import StrEnum, auto
 from functools import wraps
-from typing import cast, overload
+from typing import Protocol, cast, overload
 
 from flask import current_app, request
 from flask_login import user_logged_in
@@ -33,6 +33,12 @@ from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
+
+
+class _RestxDocumentedView(Protocol):
+    """Callable view object carrying Flask-RESTX documentation metadata."""
+
+    __apidoc__: dict[str, object]
 
 
 class WhereisUserArg(StrEnum):
@@ -73,7 +79,10 @@ def _document_app_token_contract(view_func: Callable[..., object], fetch_user_ar
             case WhereisUserArg.JSON:
                 pass
 
-    view_func.__apidoc__ = merge(getattr(view_func, "__apidoc__", {}), doc)
+    cast(_RestxDocumentedView, view_func).__apidoc__ = cast(
+        dict[str, object],
+        merge(getattr(view_func, "__apidoc__", {}), doc),
+    )
 
 
 @overload

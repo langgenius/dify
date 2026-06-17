@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Any, Literal, override
 from uuid import UUID
 
 from flask import request
@@ -122,6 +122,7 @@ class TagUnbindingPayload(BaseModel):
     target_id: str
 
     @classmethod
+    @override
     def __get_pydantic_json_schema__(cls, _core_schema: object, _handler: GetJsonSchemaHandler) -> dict[str, object]:
         tag_id_property = {
             "description": "Legacy single tag ID accepted by the Service API.",

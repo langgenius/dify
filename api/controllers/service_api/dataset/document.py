@@ -9,7 +9,7 @@ import json
 from collections.abc import Mapping
 from contextlib import ExitStack
 from copy import deepcopy
-from typing import Any, Literal, Self
+from typing import Any, Literal, Self, override
 from uuid import UUID
 
 from flask import request, send_file
@@ -107,6 +107,7 @@ class DocumentTextUpdate(BaseModel):
         return value
 
     @classmethod
+    @override
     def __get_pydantic_json_schema__(cls, core_schema: Any, handler: GetJsonSchemaHandler) -> dict[str, Any]:
         schema = handler.resolve_ref_schema(handler(core_schema))
         properties = schema.get("properties")

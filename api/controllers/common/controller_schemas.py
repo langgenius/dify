@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Any, Literal
+from typing import Any, Literal, override
 from uuid import UUID
 
 from pydantic import BaseModel, Field, GetJsonSchemaHandler, model_validator
@@ -14,6 +14,7 @@ class ConversationRenamePayload(BaseModel):
     auto_generate: bool = False
 
     @classmethod
+    @override
     def __get_pydantic_json_schema__(cls, core_schema: Any, handler: GetJsonSchemaHandler) -> dict[str, Any]:
         schema = handler.resolve_ref_schema(handler(core_schema))
         properties = schema.get("properties")
