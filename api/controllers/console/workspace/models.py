@@ -211,7 +211,7 @@ class DefaultModelApi(Resource):
         model_provider_service = ModelProviderService()
         default_model_entity = model_provider_service.get_default_model_of_model_type(
             tenant_id=tenant_id, model_type=args.model_type
-        )/
+        )
 
         return jsonable_encoder({"data": default_model_entity})
 
@@ -494,7 +494,7 @@ class ModelProviderModelCredentialSwitchApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE/, resource_required=False
+        RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False
     )
     @account_initialization_required
     @with_current_tenant_id
