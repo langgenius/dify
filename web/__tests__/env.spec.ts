@@ -5,7 +5,8 @@ describe('env runtime transport', () => {
     vi.clearAllMocks()
     vi.resetModules()
     vi.doUnmock('../utils/client')
-    delete document.body.dataset.enableAgentV2
+    document.body.removeAttribute('data-enable-agent-v2')
+    document.body.removeAttribute('data-enable-agent-v-2')
     delete process.env.NEXT_PUBLIC_ENABLE_AGENT_V2
   })
 
@@ -17,7 +18,7 @@ describe('env runtime transport', () => {
   })
 
   it('should read NEXT_PUBLIC_ENABLE_AGENT_V2 from the browser runtime dataset key', async () => {
-    document.body.dataset.enableAgentV2 = 'true'
+    document.body.setAttribute('data-enable-agent-v2', 'true')
 
     const { env } = await import('../env')
 
@@ -35,6 +36,7 @@ describe('env runtime transport', () => {
     const { getDatasetMap } = await import('../env')
     const datasetMap = getDatasetMap()
 
-    expect(datasetMap['data-enable-agent-v-2']).toBe(true)
+    expect(datasetMap['data-enable-agent-v2']).toBe(true)
+    expect(datasetMap['data-enable-agent-v-2']).toBeUndefined()
   })
 })

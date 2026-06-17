@@ -254,6 +254,11 @@ export const env = createEnv({
 type ClientEnvKey = keyof typeof clientSchema
 type DatasetKey = CamelCase<Replace<ClientEnvKey, typeof CLIENT_ENV_PREFIX>>
 
+function getDatasetAttributeName(envKey: ClientEnvKey) {
+  const datasetName = kebabCase(slice(envKey, length(CLIENT_ENV_PREFIX))).replace(/-([0-9])/g, '$1')
+  return concat('data-', datasetName)
+}
+
 /**
  * Browser-only function to get runtime env value from HTML body dataset.
  */
@@ -276,7 +281,7 @@ export function getDatasetMap() {
   return ObjectFromEntries(
     ObjectKeys(clientSchema)
       .map(envKey => [
-        concat('data-', kebabCase(slice(envKey, length(CLIENT_ENV_PREFIX)))),
+        getDatasetAttributeName(envKey),
         env[envKey],
       ]),
   )
