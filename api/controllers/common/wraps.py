@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from functools import wraps
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from core.rbac import RBACPermission, RBACResourceScope
 
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 __all__ = ["RBACPermission", "RBACResourceScope", "openapi_rbac_permission_required", "rbac_permission_required"]
 
-
+# TODO(wylswz): refactor: make RBAC a pipeline step
 def openapi_rbac_permission_required[**P, R](
     resource_type: RBACResourceScope,
     scene: RBACPermission,
@@ -26,7 +26,7 @@ def openapi_rbac_permission_required[**P, R](
 
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
-            auth_data: AuthData | None = kwargs.get("auth_data")
+            auth_data: AuthData | None = cast(AuthData | None, kwargs.get("auth_data"))
             if auth_data is not None and auth_data.caller_kind == "end_user":
                 # we can skip rbac for enduser for now.
                 return view(*args, **kwargs)
