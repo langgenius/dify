@@ -6,6 +6,7 @@ from collections.abc import Generator, Iterable, Sequence
 from typing import IO, Any, Literal, cast, overload, override
 
 from pydantic import ValidationError
+from pydantic.json_schema import JsonValue
 from redis import RedisError
 
 from configs import dify_config
@@ -17,6 +18,7 @@ from core.plugin.impl.model import PluginModelClient
 from core.plugin.plugin_service import PluginService
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.llm_entities import (
+    LLMPollingResult,
     LLMResult,
     LLMResultChunk,
     LLMResultChunkWithStructuredOutput,
@@ -428,6 +430,54 @@ class PluginModelRuntime(ModelRuntime):
             credentials=credentials,
             prompt_messages=list(prompt_messages),
             tools=list(tools) if tools else None,
+        )
+
+    def start_llm_polling(
+        self,
+        *,
+        provider: str,
+        model: str,
+        credentials: dict[str, Any],
+        model_parameters: dict[str, Any],
+        prompt_messages: Sequence[PromptMessage],
+        tools: Sequence[PromptMessageTool] | None,
+        stop: Sequence[str] | None,
+        json_schema: dict[str, Any] | None,
+    ) -> LLMPollingResult:
+        """Start a plugin-side polling job for long-running LLM invocations."""
+        plugin_id, provider_name = self._split_provider(provider)
+        return self.client.start_llm_polling(
+            tenant_id=self.tenant_id,
+            user_id=self.user_id,
+            plugin_id=plugin_id,
+            provider=provider_name,
+            model=model,
+            credentials=credentials,
+            prompt_messages=list(prompt_messages),
+            model_parameters=model_parameters,
+            tools=list(tools) if tools else None,
+            stop=list(stop) if stop else None,
+            json_schema=json_schema,
+        )
+
+    def check_llm_polling(
+        self,
+        *,
+        provider: str,
+        model: str,
+        credentials: dict[str, Any],
+        plugin_state: dict[str, JsonValue],
+    ) -> LLMPollingResult:
+        """Check the latest plugin-side polling state for an LLM invocation."""
+        plugin_id, provider_name = self._split_provider(provider)
+        return self.client.check_llm_polling(
+            tenant_id=self.tenant_id,
+            user_id=self.user_id,
+            plugin_id=plugin_id,
+            provider=provider_name,
+            model=model,
+            credentials=credentials,
+            plugin_state=plugin_state,
         )
 
     @override

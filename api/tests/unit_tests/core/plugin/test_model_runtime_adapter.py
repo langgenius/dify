@@ -14,7 +14,13 @@ from core.plugin.impl.model_runtime import TENANT_SCOPE_SCHEMA_CACHE_USER_ID, Pl
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from core.plugin.plugin_service import PluginService
 from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from graphon.model_runtime.entities.llm_entities import (
+    LLMPollingResult,
+    LLMPollingStatus,
+    LLMResultChunk,
+    LLMResultChunkDelta,
+    LLMUsage,
+)
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
@@ -280,6 +286,74 @@ class TestPluginModelRuntime:
             tools=None,
             stop=["END"],
             stream=True,
+        )
+
+    def test_start_llm_polling_resolves_plugin_fields(self) -> None:
+        client = Mock(spec=PluginModelClient)
+        polling_result = LLMPollingResult(
+            status=LLMPollingStatus.RUNNING,
+            plugin_state={"task_id": "poll-1"},
+            next_check_after_seconds=2,
+        )
+        client.start_llm_polling.return_value = polling_result
+        runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+
+        result = runtime.start_llm_polling(
+            provider="langgenius/openai/openai",
+            model="gpt-4o-mini",
+            credentials={"api_key": "secret"},
+            model_parameters={"temperature": 0.2},
+            prompt_messages=[],
+            tools=None,
+            stop=("END",),
+            json_schema={"type": "object"},
+        )
+
+        assert result == polling_result
+        client.start_llm_polling.assert_called_once_with(
+            tenant_id="tenant",
+            user_id="user",
+            plugin_id="langgenius/openai",
+            provider="openai",
+            model="gpt-4o-mini",
+            credentials={"api_key": "secret"},
+            prompt_messages=[],
+            model_parameters={"temperature": 0.2},
+            tools=None,
+            stop=["END"],
+            json_schema={"type": "object"},
+        )
+
+    def test_check_llm_polling_resolves_plugin_fields(self) -> None:
+        client = Mock(spec=PluginModelClient)
+        polling_result = LLMPollingResult(
+            status=LLMPollingStatus.SUCCEEDED,
+            result=model_runtime_module.LLMResult(
+                model="gpt-4o-mini",
+                prompt_messages=[],
+                message=AssistantPromptMessage(content="done"),
+                usage=LLMUsage.empty_usage(),
+            ),
+        )
+        client.check_llm_polling.return_value = polling_result
+        runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+
+        result = runtime.check_llm_polling(
+            provider="langgenius/openai/openai",
+            model="gpt-4o-mini",
+            credentials={"api_key": "secret"},
+            plugin_state={"task_id": "poll-1"},
+        )
+
+        assert result == polling_result
+        client.check_llm_polling.assert_called_once_with(
+            tenant_id="tenant",
+            user_id="user",
+            plugin_id="langgenius/openai",
+            provider="openai",
+            model="gpt-4o-mini",
+            credentials={"api_key": "secret"},
+            plugin_state={"task_id": "poll-1"},
         )
 
     def test_invoke_llm_rejects_per_call_user_override(self) -> None:
