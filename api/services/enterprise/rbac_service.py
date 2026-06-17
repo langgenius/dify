@@ -252,6 +252,7 @@ class ResourceUserAccessPolicies(_RBACModel):
 
 
 class ResourceUserAccessPoliciesResponse(_RBACModel):
+    scope: str
     data: list[ResourceUserAccessPolicies] = Field(default_factory=list)
 
 
