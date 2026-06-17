@@ -142,13 +142,15 @@ class WorkflowAgentRuntimeRequestBuilder:
                     model_settings=agent_soul.model.model_settings,
                 ),
                 # The execution-context layer is now the only public protocol
-                # carrier for Dify tenant/user/run identifiers. ``user_id`` must
-                # be forwarded here because downstream plugin-daemon provider and
-                # tool clients read it from this layer rather than from any
-                # parallel top-level request field.
+                # carrier for Dify tenant/user/run identifiers. ``user_id`` and
+                # ``user_from`` must be forwarded here because downstream plugin-
+                # daemon provider/tool clients and knowledge-base layers read
+                # caller identity from this layer rather than from any parallel
+                # top-level request field.
                 execution_context=DifyExecutionContextLayerConfig(
                     tenant_id=context.dify_context.tenant_id,
                     user_id=context.dify_context.user_id,
+                    user_from=context.dify_context.user_from.value,
                     app_id=context.dify_context.app_id,
                     workflow_id=context.workflow_id,
                     workflow_run_id=context.workflow_run_id,
