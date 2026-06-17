@@ -745,7 +745,7 @@ class TestTagService:
         tag_args = SaveTagPayload(name="test_tag_name", type="knowledge")
 
         # Act: Execute the method under test
-        result = TagService.save_tags(tag_args)
+        result = TagService.save_tags(tag_args, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -783,11 +783,11 @@ class TestTagService:
 
         # Create first tag
         tag_args = SaveTagPayload(name="duplicate_tag", type="app")
-        TagService.save_tags(tag_args)
+        TagService.save_tags(tag_args, db_session_with_containers)
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(ValueError) as exc_info:
-            TagService.save_tags(tag_args)
+            TagService.save_tags(tag_args, db_session_with_containers)
         assert "Tag name already exists" in str(exc_info.value)
 
     def test_update_tags_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
@@ -807,7 +807,7 @@ class TestTagService:
 
         # Create a tag to update
         tag_args = SaveTagPayload(name="original_name", type="knowledge")
-        tag = TagService.save_tags(tag_args)
+        tag = TagService.save_tags(tag_args, db_session_with_containers)
 
         # Update args
         update_args = UpdateTagPayload(name="updated_name")
@@ -875,10 +875,10 @@ class TestTagService:
 
         # Create two tags
         tag1_args = SaveTagPayload(name="first_tag", type="app")
-        tag1 = TagService.save_tags(tag1_args)
+        tag1 = TagService.save_tags(tag1_args, db_session_with_containers)
 
         tag2_args = SaveTagPayload(name="second_tag", type="app")
-        tag2 = TagService.save_tags(tag2_args)
+        tag2 = TagService.save_tags(tag2_args, db_session_with_containers)
 
         # Try to update second tag with first tag's name
         update_args = UpdateTagPayload(name="first_tag")
