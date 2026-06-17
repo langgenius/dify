@@ -21,7 +21,7 @@ export type AccessRulesEditorProps = {
   userAccessSettings: ResourceUserAccessSetting[]
   isLoadingRules: boolean
   isLoadingUserAccessSettings: boolean
-  openScope: ResourceOpenScope
+  openScope?: ResourceOpenScope
   isUpdatingOpenScope: boolean
   updatingAccountId: string | null
   maintainerId?: string | null
@@ -59,7 +59,7 @@ export default function AccessRulesEditor({
     <div className={cn('flex flex-col gap-4', className)}>
       <ResourceOpenScopeSection
         value={openScope}
-        disabled={isUpdatingOpenScope}
+        disabled={isUpdatingOpenScope || !openScope}
         onChange={onOpenScopeChange}
       />
       <div className="flex min-h-8 items-center gap-2">

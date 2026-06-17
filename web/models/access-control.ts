@@ -258,3 +258,7 @@ export type GetAccessPolicyDetailResponse = {
 }
 
 export type ResourceOpenScope = 'all' | 'specific'
+
+export type ResourceOpenScopeResponse = {
+  scope: ResourceOpenScope
+}

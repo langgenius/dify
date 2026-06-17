@@ -118,6 +118,28 @@ describe('AccessRulesEditor', () => {
     expect(screen.getByText('permission.accessRule.noUserAccessSettings')).toBeInTheDocument()
   })
 
+  it('should disable resource access controls before open scope is available', () => {
+    render(
+      <AccessRulesEditor
+        rules={[]}
+        userAccessSettings={[]}
+        isLoadingRules={false}
+        isLoadingUserAccessSettings={false}
+        isUpdatingOpenScope={false}
+        updatingAccountId={null}
+      />,
+    )
+
+    expect(screen.getByText('permission.accessRule.resourceOpenScope')).toBeInTheDocument()
+
+    const allMembersButton = screen.getByRole('button', { name: /permission\.accessRule\.allPermittedMembers/ })
+    const specificMembersButton = screen.getByRole('button', { name: /permission\.accessRule\.specificMembersOnly/ })
+    expect(allMembersButton).toBeDisabled()
+    expect(specificMembersButton).toBeDisabled()
+    expect(allMembersButton).toHaveAttribute('aria-pressed', 'false')
+    expect(specificMembersButton).toHaveAttribute('aria-pressed', 'false')
+  })
+
   it('should render resource access controls and update account exceptions', () => {
     const onOpenScopeChange = vi.fn()
     const onUserAccessPoliciesChange = vi.fn()

@@ -10,6 +10,7 @@ import { useLocale } from '@/context/i18n'
 import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import {
   useAppAccessRules,
+  useAppOpenScope,
   useAppUserAccessSettings,
   useUpdateAppOpenScope,
   useUpdateAppUserAccessSettings,
@@ -26,24 +27,26 @@ const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
   const maintainerId = useStore(state => state.appDetail?.maintainer)
   const { data: appAccessRulesResponse, isLoading: isLoadingAppAccessRules } = useAppAccessRules(appId, language)
   const { data: appUserAccessSettingsResponse, isLoading: isLoadingAppUserAccessSettings } = useAppUserAccessSettings(appId)
+  const { data: appOpenScopeResponse, isLoading: isLoadingAppOpenScope } = useAppOpenScope(appId)
   const { mutate: updateAppOpenScope, isPending: isUpdatingAppOpenScope } = useUpdateAppOpenScope(appId)
   const { mutate: updateAppUserAccessSettings } = useUpdateAppUserAccessSettings(appId)
-  const [openScope, setOpenScope] = useState<ResourceOpenScope>('specific')
+  const [optimisticOpenScope, setOptimisticOpenScope] = useState<ResourceOpenScope | null>(null)
   const [updatingAccountId, setUpdatingAccountId] = useState<string | null>(null)
 
   const appAccessRules = appAccessRulesResponse?.items || []
   const appUserAccessSettings = appUserAccessSettingsResponse?.data || []
+  const openScope = optimisticOpenScope || appOpenScopeResponse?.scope
 
   const handleOpenScopeChange = useCallback((nextOpenScope: ResourceOpenScope) => {
     if (nextOpenScope === openScope)
       return
 
-    const previousOpenScope = openScope
-    setOpenScope(nextOpenScope)
+    const previousOptimisticOpenScope = optimisticOpenScope
+    setOptimisticOpenScope(nextOpenScope)
     updateAppOpenScope(nextOpenScope, {
-      onError: () => setOpenScope(previousOpenScope),
+      onError: () => setOptimisticOpenScope(previousOptimisticOpenScope),
     })
-  }, [openScope, updateAppOpenScope])
+  }, [openScope, optimisticOpenScope, updateAppOpenScope])
 
   const handleUserAccessPoliciesChange = useCallback((accountId: string, accessPolicyIds: string[]) => {
     setUpdatingAccountId(accountId)
@@ -72,7 +75,7 @@ const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
           isLoadingRules={isLoadingAppAccessRules}
           isLoadingUserAccessSettings={isLoadingAppUserAccessSettings}
           openScope={openScope}
-          isUpdatingOpenScope={isUpdatingAppOpenScope}
+          isUpdatingOpenScope={isLoadingAppOpenScope || isUpdatingAppOpenScope}
           updatingAccountId={updatingAccountId}
           maintainerId={maintainerId}
           onOpenScopeChange={handleOpenScopeChange}

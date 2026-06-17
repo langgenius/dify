@@ -6,6 +6,7 @@ import type {
   GetDatasetAccessPolicyByDatasetIdResponse,
   GetDatasetUserAccessSettingsResponse,
   ResourceOpenScope,
+  ResourceOpenScopeResponse,
 } from '@/models/access-control'
 import { type } from '@orpc/contract'
 import { base } from '../base'
@@ -36,6 +37,18 @@ const appUserAccessSettingsContract = base
     }
   }>())
   .output(type<GetAppUserAccessSettingsResponse>())
+
+const appOpenScopeContract = base
+  .route({
+    path: '/workspaces/current/rbac/apps/{appId}/whitelist',
+    method: 'GET',
+  })
+  .input(type<{
+    params: {
+      appId: string
+    }
+  }>())
+  .output(type<ResourceOpenScopeResponse>())
 
 const updateAppUserAccessSettingsContract = base
   .route({
@@ -95,6 +108,18 @@ const datasetUserAccessSettingsContract = base
   }>())
   .output(type<GetDatasetUserAccessSettingsResponse>())
 
+const datasetOpenScopeContract = base
+  .route({
+    path: '/workspaces/current/rbac/datasets/{datasetId}/whitelist',
+    method: 'GET',
+  })
+  .input(type<{
+    params: {
+      datasetId: string
+    }
+  }>())
+  .output(type<ResourceOpenScopeResponse>())
+
 const updateDatasetUserAccessSettingsContract = base
   .route({
     path: '/workspaces/current/rbac/datasets/{datasetId}/users/{accountId}/access-policies',
@@ -130,12 +155,14 @@ export const rbacAccessConfigContract = {
   apps: {
     accessRules: appAccessRulesContract,
     userAccessSettings: appUserAccessSettingsContract,
+    openScope: appOpenScopeContract,
     updateUserAccessSettings: updateAppUserAccessSettingsContract,
     updateOpenScope: updateAppOpenScopeContract,
   },
   datasets: {
     accessRules: datasetAccessRulesContract,
     userAccessSettings: datasetUserAccessSettingsContract,
+    openScope: datasetOpenScopeContract,
     updateUserAccessSettings: updateDatasetUserAccessSettingsContract,
     updateOpenScope: updateDatasetOpenScopeContract,
   },

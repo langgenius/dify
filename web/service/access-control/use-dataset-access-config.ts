@@ -31,6 +31,16 @@ export const useDatasetUserAccessSettings = (datasetId: string) => {
   }))
 }
 
+export const useDatasetOpenScope = (datasetId: string) => {
+  return useQuery(consoleQuery.rbacAccessConfig.datasets.openScope.queryOptions({
+    input: {
+      params: {
+        datasetId,
+      },
+    },
+  }))
+}
+
 export const useUpdateDatasetUserAccessSettings = (datasetId: string) => {
   const queryClient = useQueryClient()
 
@@ -78,15 +88,26 @@ export const useUpdateDatasetOpenScope = (datasetId: string) => {
       },
     }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: consoleQuery.rbacAccessConfig.datasets.userAccessSettings.queryKey({
-          input: {
-            params: {
-              datasetId,
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.rbacAccessConfig.datasets.userAccessSettings.queryKey({
+            input: {
+              params: {
+                datasetId,
+              },
             },
-          },
+          }),
         }),
-      })
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.rbacAccessConfig.datasets.openScope.queryKey({
+            input: {
+              params: {
+                datasetId,
+              },
+            },
+          }),
+        }),
+      ])
     },
   })
 }

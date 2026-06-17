@@ -31,6 +31,16 @@ export const useAppUserAccessSettings = (appId: string) => {
   }))
 }
 
+export const useAppOpenScope = (appId: string) => {
+  return useQuery(consoleQuery.rbacAccessConfig.apps.openScope.queryOptions({
+    input: {
+      params: {
+        appId,
+      },
+    },
+  }))
+}
+
 export const useUpdateAppUserAccessSettings = (appId: string) => {
   const queryClient = useQueryClient()
 
@@ -78,15 +88,26 @@ export const useUpdateAppOpenScope = (appId: string) => {
       },
     }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: consoleQuery.rbacAccessConfig.apps.userAccessSettings.queryKey({
-          input: {
-            params: {
-              appId,
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.rbacAccessConfig.apps.userAccessSettings.queryKey({
+            input: {
+              params: {
+                appId,
+              },
             },
-          },
+          }),
         }),
-      })
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.rbacAccessConfig.apps.openScope.queryKey({
+            input: {
+              params: {
+                appId,
+              },
+            },
+          }),
+        }),
+      ])
     },
   })
 }

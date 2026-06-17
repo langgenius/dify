@@ -7,7 +7,7 @@ import OpenScopeConfirmDialog from './open-scope-confirm-dialog'
 import OpenScopeOption from './open-scope-option'
 
 type ResourceOpenScopeSectionProps = {
-  value: ResourceOpenScope
+  value?: ResourceOpenScope
   disabled: boolean
   onChange?: (openScope: ResourceOpenScope) => void
 }

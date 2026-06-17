@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import {
   useAppAccessRules,
+  useAppOpenScope,
   useAppUserAccessSettings,
   useUpdateAppOpenScope,
   useUpdateAppUserAccessSettings,
@@ -19,6 +20,11 @@ const mocks = vi.hoisted(() => ({
     queryFn: vi.fn().mockResolvedValue({ data: [] }),
   })),
   userAccessSettingsQueryKey: vi.fn(() => ['rbac-access-config', 'apps', 'user-access-settings', 'app-1']),
+  openScopeQueryOptions: vi.fn(() => ({
+    queryKey: ['rbac-access-config', 'apps', 'open-scope'],
+    queryFn: vi.fn().mockResolvedValue({ scope: 'specific' }),
+  })),
+  openScopeQueryKey: vi.fn(() => ['rbac-access-config', 'apps', 'open-scope', 'app-1']),
   updateOpenScope: vi.fn().mockResolvedValue({}),
   updateUserAccessSettings: vi.fn().mockResolvedValue({}),
 }))
@@ -42,6 +48,10 @@ vi.mock('@/service/client', () => ({
         userAccessSettings: {
           queryKey: mocks.userAccessSettingsQueryKey,
           queryOptions: mocks.userAccessSettingsQueryOptions,
+        },
+        openScope: {
+          queryKey: mocks.openScopeQueryKey,
+          queryOptions: mocks.openScopeQueryOptions,
         },
       },
     },
@@ -86,6 +96,18 @@ describe('use-app-access-config', () => {
 
   // User access settings configure which access policies apply to app users.
   describe('User Access Settings', () => {
+    it('should fetch open scope for an app id', () => {
+      renderHook(() => useAppOpenScope('app-1'), { wrapper: createWrapper() })
+
+      expect(mocks.openScopeQueryOptions).toHaveBeenCalledWith({
+        input: {
+          params: {
+            appId: 'app-1',
+          },
+        },
+      })
+    })
+
     it('should fetch user access settings for an app id', () => {
       renderHook(() => useAppUserAccessSettings('app-1'), { wrapper: createWrapper() })
 
@@ -140,6 +162,13 @@ describe('use-app-access-config', () => {
         },
       })
       expect(mocks.userAccessSettingsQueryKey).toHaveBeenCalledWith({
+        input: {
+          params: {
+            appId: 'app-1',
+          },
+        },
+      })
+      expect(mocks.openScopeQueryKey).toHaveBeenCalledWith({
         input: {
           params: {
             appId: 'app-1',

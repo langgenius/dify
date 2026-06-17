@@ -10,6 +10,7 @@ import { useLocale } from '@/context/i18n'
 import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import {
   useDatasetAccessRules,
+  useDatasetOpenScope,
   useDatasetUserAccessSettings,
   useUpdateDatasetOpenScope,
   useUpdateDatasetUserAccessSettings,
@@ -26,24 +27,26 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
   const maintainerId = useDatasetDetailContextWithSelector(state => state.dataset?.maintainer)
   const { data: datasetAccessRulesResponse, isLoading: isLoadingDatasetAccessRules } = useDatasetAccessRules(datasetId, language)
   const { data: datasetUserAccessSettingsResponse, isLoading: isLoadingDatasetUserAccessSettings } = useDatasetUserAccessSettings(datasetId)
+  const { data: datasetOpenScopeResponse, isLoading: isLoadingDatasetOpenScope } = useDatasetOpenScope(datasetId)
   const { mutate: updateDatasetOpenScope, isPending: isUpdatingDatasetOpenScope } = useUpdateDatasetOpenScope(datasetId)
   const { mutate: updateDatasetUserAccessSettings } = useUpdateDatasetUserAccessSettings(datasetId)
-  const [openScope, setOpenScope] = useState<ResourceOpenScope>('specific')
+  const [optimisticOpenScope, setOptimisticOpenScope] = useState<ResourceOpenScope | null>(null)
   const [updatingAccountId, setUpdatingAccountId] = useState<string | null>(null)
 
   const datasetAccessRules = datasetAccessRulesResponse?.items || []
   const datasetUserAccessSettings = datasetUserAccessSettingsResponse?.data || []
+  const openScope = optimisticOpenScope || datasetOpenScopeResponse?.scope
 
   const handleOpenScopeChange = useCallback((nextOpenScope: ResourceOpenScope) => {
     if (nextOpenScope === openScope)
       return
 
-    const previousOpenScope = openScope
-    setOpenScope(nextOpenScope)
+    const previousOptimisticOpenScope = optimisticOpenScope
+    setOptimisticOpenScope(nextOpenScope)
     updateDatasetOpenScope(nextOpenScope, {
-      onError: () => setOpenScope(previousOpenScope),
+      onError: () => setOptimisticOpenScope(previousOptimisticOpenScope),
     })
-  }, [openScope, updateDatasetOpenScope])
+  }, [openScope, optimisticOpenScope, updateDatasetOpenScope])
 
   const handleUserAccessPoliciesChange = useCallback((accountId: string, accessPolicyIds: string[]) => {
     setUpdatingAccountId(accountId)
@@ -72,7 +75,7 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
           isLoadingRules={isLoadingDatasetAccessRules}
           isLoadingUserAccessSettings={isLoadingDatasetUserAccessSettings}
           openScope={openScope}
-          isUpdatingOpenScope={isUpdatingDatasetOpenScope}
+          isUpdatingOpenScope={isLoadingDatasetOpenScope || isUpdatingDatasetOpenScope}
           updatingAccountId={updatingAccountId}
           maintainerId={maintainerId}
           onOpenScopeChange={handleOpenScopeChange}
