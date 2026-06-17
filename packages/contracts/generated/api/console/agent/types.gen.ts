@@ -122,6 +122,14 @@ export type AgentComposerValidateResponse = {
   warnings?: Array<ComposerValidationWarningResponse>
 }
 
+export type CopyAppPayload = {
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: IconType | null
+  name?: string | null
+}
+
 export type AgentDriveListResponse = {
   items?: Array<AgentDriveItemResponse>
 }
@@ -1702,6 +1710,27 @@ export type PostAgentByAgentIdComposerValidateResponses = {
 
 export type PostAgentByAgentIdComposerValidateResponse
   = PostAgentByAgentIdComposerValidateResponses[keyof PostAgentByAgentIdComposerValidateResponses]
+
+export type PostAgentByAgentIdCopyData = {
+  body: CopyAppPayload
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/copy'
+}
+
+export type PostAgentByAgentIdCopyErrors = {
+  400: unknown
+  403: unknown
+}
+
+export type PostAgentByAgentIdCopyResponses = {
+  201: AppDetailWithSite
+}
+
+export type PostAgentByAgentIdCopyResponse
+  = PostAgentByAgentIdCopyResponses[keyof PostAgentByAgentIdCopyResponses]
 
 export type GetAgentByAgentIdDriveFilesData = {
   body?: never

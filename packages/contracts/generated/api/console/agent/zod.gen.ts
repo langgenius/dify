@@ -110,6 +110,17 @@ export const zAgentAppUpdatePayload = z.object({
 })
 
 /**
+ * CopyAppPayload
+ */
+export const zCopyAppPayload = z.object({
+  description: z.string().max(400).nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: zIconType.nullish(),
+  name: z.string().nullish(),
+})
+
+/**
  * DeletedTool
  */
 export const zDeletedTool = z.object({
@@ -2179,6 +2190,17 @@ export const zPostAgentByAgentIdComposerValidatePath = z.object({
  * Agent app composer validation result
  */
 export const zPostAgentByAgentIdComposerValidateResponse = zAgentComposerValidateResponse
+
+export const zPostAgentByAgentIdCopyBody = zCopyAppPayload
+
+export const zPostAgentByAgentIdCopyPath = z.object({
+  agent_id: z.string(),
+})
+
+/**
+ * Agent app copied successfully
+ */
+export const zPostAgentByAgentIdCopyResponse = zAppDetailWithSite
 
 export const zGetAgentByAgentIdDriveFilesPath = z.object({
   agent_id: z.string(),

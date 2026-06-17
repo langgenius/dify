@@ -23,6 +23,7 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
+from models.model import IconType
 from models.workflow import Workflow
 from services.agent import composer_service, roster_service
 from services.agent.agent_soul_state import agent_soul_has_model
@@ -1308,6 +1309,267 @@ class TestAgentAppBackingAgent:
 
         with pytest.raises(roster_service.AgentNotFoundError):
             service.get_agent_app_model(tenant_id="tenant-1", agent_id="agent-x")
+
+    def test_duplicate_agent_app_copies_app_config_and_active_soul(self, monkeypatch):
+        source_config = SimpleNamespace(
+            opening_statement="hello",
+            suggested_questions='["q1"]',
+            suggested_questions_after_answer='{"enabled": true}',
+            speech_to_text='{"enabled": false}',
+            text_to_speech='{"enabled": false}',
+            more_like_this='{"enabled": false}',
+            model=None,
+            user_input_form=None,
+            dataset_query_variable=None,
+            pre_prompt=None,
+            agent_mode=None,
+            sensitive_word_avoidance=None,
+            retriever_resource='{"enabled": true}',
+            prompt_type="simple",
+            chat_prompt_config=None,
+            completion_prompt_config=None,
+            dataset_configs=None,
+            external_data_tools=None,
+            file_upload='{"image": {"enabled": true}}',
+        )
+        target_config = SimpleNamespace(**dict.fromkeys(AgentRosterService._APP_MODEL_CONFIG_COPY_FIELDS))
+        source_app = SimpleNamespace(
+            id="source-app",
+            tenant_id="tenant-1",
+            name="Iris",
+            description="source desc",
+            icon_type="emoji",
+            icon="robot",
+            icon_background="#fff",
+            api_rph=1,
+            api_rpm=2,
+            max_active_requests=3,
+            enable_site=False,
+            enable_api=True,
+            use_icon_as_answer_icon=True,
+            tracing="{}",
+            app_model_config=source_config,
+        )
+        target_app = SimpleNamespace(
+            id="target-app",
+            app_model_config=target_config,
+            enable_site=True,
+            enable_api=True,
+            use_icon_as_answer_icon=False,
+            tracing=None,
+        )
+        source_agent = Agent(
+            id="source-agent",
+            tenant_id="tenant-1",
+            name="Iris",
+            description="source desc",
+            role="Analyst",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            app_id="source-app",
+            active_config_snapshot_id="source-version",
+            active_config_has_model=True,
+        )
+        target_agent = Agent(
+            id="target-agent",
+            tenant_id="tenant-1",
+            name="Iris copy",
+            description="source desc",
+            role="Analyst",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            app_id="target-app",
+            active_config_snapshot_id="target-version",
+        )
+        source_version = AgentConfigSnapshot(
+            id="source-version",
+            tenant_id="tenant-1",
+            agent_id="source-agent",
+            version=1,
+            config_snapshot=_agent_soul_with_model(),
+            summary="configured",
+            version_note="v1",
+            created_by="account-1",
+        )
+        target_version = AgentConfigSnapshot(
+            id="target-version",
+            tenant_id="tenant-1",
+            agent_id="target-agent",
+            version=1,
+            config_snapshot=AgentSoulConfig(),
+            created_by="account-1",
+        )
+        session = FakeSession(
+            scalar=[source_agent, source_app, source_agent, target_agent, source_version, target_version],
+            scalars=[[]],
+        )
+        captured: dict[str, object] = {}
+
+        class FakeAppService:
+            def create_app(self, tenant_id: str, params, account: object) -> object:
+                captured["tenant_id"] = tenant_id
+                captured["params"] = params
+                captured["account"] = account
+                return target_app
+
+        monkeypatch.setattr(roster_service, "AppService", FakeAppService)
+        monkeypatch.setattr(
+            roster_service.FeatureService,
+            "get_system_features",
+            lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+        )
+
+        account = SimpleNamespace(id="account-1")
+        duplicated = AgentRosterService(session).duplicate_agent_app(
+            tenant_id="tenant-1",
+            agent_id="source-agent",
+            account=account,
+        )
+
+        assert duplicated is target_app
+        params = captured["params"]
+        assert params.name == "Iris copy"
+        assert params.mode == "agent"
+        assert params.agent_role == "Analyst"
+        assert target_app.enable_site is False
+        assert target_app.enable_api is True
+        assert target_app.use_icon_as_answer_icon is True
+        assert target_app.tracing == "{}"
+        assert target_config.opening_statement == "hello"
+        assert target_config.file_upload == '{"image": {"enabled": true}}'
+        assert target_config.updated_by == "account-1"
+        assert target_version.config_snapshot.model.model == "gpt-4o"
+        assert target_version.summary == "configured"
+        assert target_version.version_note == "v1"
+        assert target_agent.active_config_has_model is True
+        assert target_agent.updated_by == "account-1"
+        assert session.commits == 1
+
+    def test_duplicate_agent_app_inherits_webapp_access_mode(self, monkeypatch):
+        source_app = SimpleNamespace(
+            id="source-app",
+            tenant_id="tenant-1",
+            name="Iris",
+            description="source desc",
+            icon_type=None,
+            icon="robot",
+            icon_background="#fff",
+            api_rph=1,
+            api_rpm=2,
+            max_active_requests=3,
+            enable_site=True,
+            enable_api=True,
+            use_icon_as_answer_icon=False,
+            tracing=None,
+        )
+        source_agent = SimpleNamespace(id="source-agent", role="Analyst")
+        target_app = SimpleNamespace(id="target-app")
+        session = FakeSession()
+        service = AgentRosterService(session)
+        monkeypatch.setattr(service, "get_agent_app_model", lambda **_: source_app)
+        monkeypatch.setattr(service, "get_app_backing_agent", lambda **_: source_agent)
+        monkeypatch.setattr(service, "_copy_app_model_config", lambda **_: None)
+        monkeypatch.setattr(service, "_copy_agent_active_snapshot", lambda **_: None)
+        monkeypatch.setattr(service, "_next_duplicate_agent_name", lambda **_: "Iris copy")
+
+        class FakeAppService:
+            def create_app(self, tenant_id: str, params, account: object) -> object:
+                return target_app
+
+        access_mode_updates = []
+
+        class FakeWebAppAuth:
+            @classmethod
+            def get_app_access_mode_by_id(cls, app_id: str) -> object:
+                return SimpleNamespace(access_mode="private")
+
+            @classmethod
+            def update_app_access_mode(cls, app_id: str, access_mode: str) -> None:
+                access_mode_updates.append((app_id, access_mode))
+
+        monkeypatch.setattr(roster_service, "AppService", FakeAppService)
+        monkeypatch.setattr(
+            roster_service.FeatureService,
+            "get_system_features",
+            lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=True)),
+        )
+        monkeypatch.setattr(roster_service.EnterpriseService, "WebAppAuth", FakeWebAppAuth)
+
+        duplicated = service.duplicate_agent_app(
+            tenant_id="tenant-1",
+            agent_id="source-agent",
+            account=SimpleNamespace(id="account-1"),
+        )
+
+        assert duplicated is target_app
+        assert access_mode_updates == [("target-app", "private")]
+
+    def test_duplicate_agent_app_falls_back_to_public_access_mode(self, monkeypatch):
+        source_app = SimpleNamespace(
+            id="source-app",
+            tenant_id="tenant-1",
+            name="Iris",
+            description="source desc",
+            icon_type=IconType.EMOJI,
+            icon="robot",
+            icon_background="#fff",
+            api_rph=1,
+            api_rpm=2,
+            max_active_requests=3,
+            enable_site=True,
+            enable_api=True,
+            use_icon_as_answer_icon=False,
+            tracing=None,
+        )
+        source_agent = SimpleNamespace(id="source-agent", role="Analyst")
+        target_app = SimpleNamespace(id="target-app")
+        session = FakeSession()
+        service = AgentRosterService(session)
+        monkeypatch.setattr(service, "get_agent_app_model", lambda **_: source_app)
+        monkeypatch.setattr(service, "get_app_backing_agent", lambda **_: source_agent)
+        monkeypatch.setattr(service, "_copy_app_model_config", lambda **_: None)
+        monkeypatch.setattr(service, "_copy_agent_active_snapshot", lambda **_: None)
+        monkeypatch.setattr(service, "_next_duplicate_agent_name", lambda **_: "Iris copy")
+
+        class FakeAppService:
+            def create_app(self, tenant_id: str, params, account: object) -> object:
+                return target_app
+
+        access_mode_updates = []
+
+        class FakeWebAppAuth:
+            @classmethod
+            def get_app_access_mode_by_id(cls, app_id: str) -> object:
+                raise ValueError("not found")
+
+            @classmethod
+            def update_app_access_mode(cls, app_id: str, access_mode: str) -> None:
+                access_mode_updates.append((app_id, access_mode))
+
+        monkeypatch.setattr(roster_service, "AppService", FakeAppService)
+        monkeypatch.setattr(
+            roster_service.FeatureService,
+            "get_system_features",
+            lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=True)),
+        )
+        monkeypatch.setattr(roster_service.EnterpriseService, "WebAppAuth", FakeWebAppAuth)
+
+        service.duplicate_agent_app(
+            tenant_id="tenant-1",
+            agent_id="source-agent",
+            account=SimpleNamespace(id="account-1"),
+        )
+
+        assert access_mode_updates == [("target-app", "public")]
+
+    def test_normalize_app_icon_type(self):
+        assert AgentRosterService._normalize_app_icon_type(None) is None
+        assert AgentRosterService._normalize_app_icon_type(IconType.EMOJI) == "emoji"
+        assert AgentRosterService._normalize_app_icon_type("image") == "image"
 
 
 class TestListWorkflowsReferencingAppAgent:

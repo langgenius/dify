@@ -12,6 +12,7 @@ from controllers.console.app.app import (
     AppListQuery,
     AppPagination,
     AppPartial,
+    CopyAppPayload,
     UpdateAppPayload,
     _normalize_app_list_query_args,
 )
@@ -134,6 +135,7 @@ register_schema_models(
     console_ns,
     AgentAppCreatePayload,
     AgentAppUpdatePayload,
+    CopyAppPayload,
     AgentInviteOptionsQuery,
     AgentLogsQuery,
     AgentStatisticsQuery,
@@ -346,6 +348,34 @@ class AgentAppApi(Resource):
         app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         AppService().delete_app(app_model)
         return "", 204
+
+
+@console_ns.route("/agent/<uuid:agent_id>/copy")
+class AgentAppCopyApi(Resource):
+    @console_ns.expect(console_ns.models[CopyAppPayload.__name__])
+    @console_ns.response(201, "Agent app copied successfully", console_ns.models[AppDetailWithSite.__name__])
+    @console_ns.response(403, "Insufficient permissions")
+    @console_ns.response(400, "Invalid request parameters")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_resource_check("apps")
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, current_user: Account, agent_id: UUID):
+        args = CopyAppPayload.model_validate(console_ns.payload or {})
+        copied_app = _agent_roster_service().duplicate_agent_app(
+            tenant_id=tenant_id,
+            agent_id=str(agent_id),
+            account=current_user,
+            name=args.name,
+            description=args.description,
+            icon_type=args.icon_type,
+            icon=args.icon,
+            icon_background=args.icon_background,
+        )
+        return _serialize_agent_app_detail(copied_app), 201
 
 
 @console_ns.route("/agent/invite-options")
