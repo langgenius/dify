@@ -533,13 +533,19 @@ class TestTagService:
 
         # Act: Execute the method under test
         tag_ids = [tag.id for tag in tags]
-        result = TagService.get_target_ids_by_tag_ids("knowledge", tenant.id, tag_ids, db_session_with_containers,  match_all=True)
+        result = TagService.get_target_ids_by_tag_ids(
+            "knowledge", tenant.id, tag_ids, db_session_with_containers, match_all=True
+        )
 
         # Assert: Verify the expected outcomes
         assert result == [dataset_with_all_tags.id]
 
         missing_tag_result = TagService.get_target_ids_by_tag_ids(
-            "knowledge", tenant.id, [tags[0].id, str(uuid.uuid4())], db_session_with_containers, match_all=True,
+            "knowledge",
+            tenant.id,
+            [tags[0].id, str(uuid.uuid4())],
+            db_session_with_containers,
+            match_all=True,
         )
         assert missing_tag_result == []
 
@@ -565,7 +571,9 @@ class TestTagService:
         non_existent_tag_ids = [str(uuid.uuid4()), str(uuid.uuid4())]
 
         # Act: Execute the method under test
-        result = TagService.get_target_ids_by_tag_ids("knowledge", tenant.id, non_existent_tag_ids, db_session_with_containers)
+        result = TagService.get_target_ids_by_tag_ids(
+            "knowledge", tenant.id, non_existent_tag_ids, db_session_with_containers
+        )
 
         # Assert: Verify the expected outcomes
         assert result is not None
