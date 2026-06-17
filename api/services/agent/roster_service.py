@@ -432,6 +432,12 @@ class AgentRosterService:
 
         return self._load_published_references_by_agent_id(tenant_id=tenant_id, agent_ids=[agent.id]).get(agent.id, [])
 
+    def load_published_references_by_agent_id(
+        self, *, tenant_id: str, agent_ids: list[str]
+    ) -> dict[str, list[AgentReferencingWorkflow]]:
+        """Return published workflow references grouped by roster Agent id."""
+        return self._load_published_references_by_agent_id(tenant_id=tenant_id, agent_ids=agent_ids)
+
     def get_roster_agent_detail(self, *, tenant_id: str, agent_id: str) -> dict[str, Any]:
         agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
         active_version = self._get_version(
