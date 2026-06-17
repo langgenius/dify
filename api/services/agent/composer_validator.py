@@ -18,6 +18,7 @@ from services.agent.prompt_mentions import (
 from services.entities.agent_entities import (
     AgentSoulConfig,
     ComposerSavePayload,
+    ComposerSaveStrategy,
     ComposerVariant,
     WorkflowNodeJobConfig,
 )
@@ -50,7 +51,12 @@ _DANGEROUS_ACK_KEYS = (
 class ComposerConfigValidator:
     @classmethod
     def validate_save_payload(cls, payload: ComposerSavePayload) -> None:
-        if payload.variant == ComposerVariant.WORKFLOW and payload.soul_lock.locked and payload.agent_soul is not None:
+        if (
+            payload.variant == ComposerVariant.WORKFLOW
+            and payload.soul_lock.locked
+            and payload.agent_soul is not None
+            and payload.save_strategy != ComposerSaveStrategy.NODE_JOB_ONLY
+        ):
             raise AgentSoulLockedError()
 
         if payload.agent_soul is not None:

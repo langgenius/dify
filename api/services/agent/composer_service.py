@@ -115,7 +115,15 @@ class AgentComposerService:
             and binding is not None
             and binding.agent_id
             and payload.save_strategy
-            in (ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION, ComposerSaveStrategy.SAVE_AS_NEW_VERSION)
+            in (
+                ComposerSaveStrategy.NODE_JOB_ONLY,
+                ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION,
+                ComposerSaveStrategy.SAVE_AS_NEW_VERSION,
+            )
+            and (
+                payload.save_strategy != ComposerSaveStrategy.NODE_JOB_ONLY
+                or binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT
+            )
         ):
             cls._require_drive_refs_resolved(
                 tenant_id=tenant_id, agent_id=binding.agent_id, agent_soul=payload.agent_soul
@@ -823,6 +831,26 @@ class AgentComposerService:
         node_job = payload.node_job or WorkflowNodeJobConfig()
         if binding:
             binding.node_job_config = node_job
+            if payload.agent_soul is not None and binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT:
+                current_snapshot = cls._require_version(
+                    tenant_id=tenant_id,
+                    agent_id=binding.agent_id,
+                    version_id=binding.current_snapshot_id,
+                )
+                version = cls._update_current_version(
+                    current_snapshot=current_snapshot,
+                    account_id=account_id,
+                    agent_soul=payload.agent_soul,
+                    operation=AgentConfigRevisionOperation.SAVE_CURRENT_VERSION,
+                    version_note=payload.version_note,
+                )
+                agent = cls._require_agent(tenant_id=tenant_id, agent_id=binding.agent_id)
+                if agent.scope != AgentScope.WORKFLOW_ONLY:
+                    raise ValueError("Inline workflow agent binding must point to a workflow-only agent")
+                agent.active_config_snapshot_id = version.id
+                agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
+                agent.updated_by = account_id
+                binding.current_snapshot_id = version.id
             binding.updated_by = account_id
             return binding
 
