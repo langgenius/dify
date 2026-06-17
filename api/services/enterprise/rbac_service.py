@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 from enum import StrEnum
-from typing import Any, Generic, TypeVar
+from typing import Any, TypeVar
 
 from flask import has_request_context, request
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
@@ -28,7 +28,6 @@ class Pagination(_RBACModel):
     per_page: int = 0
     current_page: int = 0
     total_pages: int = 0
-
 
 
 class Paginated[T](_RBACModel):

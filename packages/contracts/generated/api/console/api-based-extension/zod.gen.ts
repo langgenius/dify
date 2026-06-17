@@ -36,15 +36,6 @@ export const zPostApiBasedExtensionBody = zApiBasedExtensionPayload
  */
 export const zPostApiBasedExtensionResponse = zApiBasedExtensionResponse
 
-export const zDeleteApiBasedExtensionByIdPath = z.object({
-  id: z.string(),
-})
-
-/**
- * Extension deleted successfully
- */
-export const zDeleteApiBasedExtensionByIdResponse = z.void()
-
 export const zGetApiBasedExtensionByIdPath = z.object({
   id: z.string(),
 })

@@ -557,16 +557,6 @@ export const zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunPath = z.obje
 export const zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunResponse
   = zWorkflowRunNodeExecutionResponse
 
-export const zDeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesPath = z.object({
-  node_id: z.string(),
-  snippet_id: z.string(),
-})
-
-/**
- * Node variables deleted successfully
- */
-export const zDeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponse = z.void()
-
 export const zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesPath = z.object({
   node_id: z.string(),
   snippet_id: z.string(),
@@ -599,15 +589,6 @@ export const zGetSnippetsBySnippetIdWorkflowsDraftSystemVariablesPath = z.object
 export const zGetSnippetsBySnippetIdWorkflowsDraftSystemVariablesResponse
   = zWorkflowDraftVariableList
 
-export const zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesPath = z.object({
-  snippet_id: z.string(),
-})
-
-/**
- * Workflow variables deleted successfully
- */
-export const zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesResponse = z.void()
-
 export const zGetSnippetsBySnippetIdWorkflowsDraftVariablesPath = z.object({
   snippet_id: z.string(),
 })
@@ -622,16 +603,6 @@ export const zGetSnippetsBySnippetIdWorkflowsDraftVariablesQuery = z.object({
  */
 export const zGetSnippetsBySnippetIdWorkflowsDraftVariablesResponse
   = zWorkflowDraftVariableListWithoutValue
-
-export const zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdPath = z.object({
-  snippet_id: z.string(),
-  variable_id: z.string(),
-})
-
-/**
- * Variable deleted successfully
- */
-export const zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse = z.void()
 
 export const zGetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdPath = z.object({
   snippet_id: z.string(),

@@ -340,10 +340,6 @@ export type GenerateSummaryPayload = {
   document_list: Array<string>
 }
 
-export type MetadataOperationData = {
-  operation_data: Array<DocumentMetadataOperation>
-}
-
 export type UrlResponse = {
   url: string
 }
@@ -533,10 +529,6 @@ export type DatasetQueryListResponse = {
 export type RelatedAppListResponse = {
   data: Array<RelatedAppResponse>
   total: number
-}
-
-export type DocumentRetryPayload = {
-  document_ids: Array<string>
 }
 
 export type UsageCheckResponse = {
@@ -780,12 +772,6 @@ export type DocumentWithSegmentsResponse = {
   word_count?: number | null
 }
 
-export type DocumentMetadataOperation = {
-  document_id: string
-  metadata_list: Array<MetadataDetail>
-  partial_update?: boolean
-}
-
 export type DocumentMetadataResponse = {
   id: string
   name: string
@@ -938,12 +924,6 @@ export type WeightModel = {
   keyword_setting?: WeightKeywordSetting | null
   vector_setting?: WeightVectorSetting | null
   weight_type?: 'customized' | 'keyword_first' | 'semantic_first' | null
-}
-
-export type MetadataDetail = {
-  id: string
-  name: string
-  value?: string | number | number | null
 }
 
 export type SegmentAttachmentResponse = {
@@ -1198,22 +1178,6 @@ export type PostDatasetsApiKeysResponses = {
 export type PostDatasetsApiKeysResponse
   = PostDatasetsApiKeysResponses[keyof PostDatasetsApiKeysResponses]
 
-export type DeleteDatasetsApiKeysByApiKeyIdData = {
-  body?: never
-  path: {
-    api_key_id: string
-  }
-  query?: never
-  url: '/datasets/api-keys/{api_key_id}'
-}
-
-export type DeleteDatasetsApiKeysByApiKeyIdResponses = {
-  204: void
-}
-
-export type DeleteDatasetsApiKeysByApiKeyIdResponse
-  = DeleteDatasetsApiKeysByApiKeyIdResponses[keyof DeleteDatasetsApiKeysByApiKeyIdResponses]
-
 export type GetDatasetsBatchImportStatusByJobIdData = {
   body?: never
   path: {
@@ -1296,22 +1260,6 @@ export type PostDatasetsExternalKnowledgeApiResponses = {
 
 export type PostDatasetsExternalKnowledgeApiResponse
   = PostDatasetsExternalKnowledgeApiResponses[keyof PostDatasetsExternalKnowledgeApiResponses]
-
-export type DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdData = {
-  body?: never
-  path: {
-    external_knowledge_api_id: string
-  }
-  query?: never
-  url: '/datasets/external-knowledge-api/{external_knowledge_api_id}'
-}
-
-export type DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses = {
-  204: void
-}
-
-export type DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse
-  = DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses[keyof DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses]
 
 export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdData = {
   body?: never
@@ -1470,22 +1418,6 @@ export type GetDatasetsRetrievalSettingByVectorTypeResponses = {
 export type GetDatasetsRetrievalSettingByVectorTypeResponse
   = GetDatasetsRetrievalSettingByVectorTypeResponses[keyof GetDatasetsRetrievalSettingByVectorTypeResponses]
 
-export type DeleteDatasetsByDatasetIdData = {
-  body?: never
-  path: {
-    dataset_id: string
-  }
-  query?: never
-  url: '/datasets/{dataset_id}'
-}
-
-export type DeleteDatasetsByDatasetIdResponses = {
-  204: void
-}
-
-export type DeleteDatasetsByDatasetIdResponse
-  = DeleteDatasetsByDatasetIdResponses[keyof DeleteDatasetsByDatasetIdResponses]
-
 export type GetDatasetsByDatasetIdData = {
   body?: never
   path: {
@@ -1599,22 +1531,6 @@ export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponses = {
 export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponse
   = GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponses[keyof GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponses]
 
-export type DeleteDatasetsByDatasetIdDocumentsData = {
-  body?: never
-  path: {
-    dataset_id: string
-  }
-  query?: never
-  url: '/datasets/{dataset_id}/documents'
-}
-
-export type DeleteDatasetsByDatasetIdDocumentsResponses = {
-  204: void
-}
-
-export type DeleteDatasetsByDatasetIdDocumentsResponse
-  = DeleteDatasetsByDatasetIdDocumentsResponses[keyof DeleteDatasetsByDatasetIdDocumentsResponses]
-
 export type GetDatasetsByDatasetIdDocumentsData = {
   body?: never
   path: {
@@ -1692,22 +1608,6 @@ export type PostDatasetsByDatasetIdDocumentsGenerateSummaryResponses = {
 export type PostDatasetsByDatasetIdDocumentsGenerateSummaryResponse
   = PostDatasetsByDatasetIdDocumentsGenerateSummaryResponses[keyof PostDatasetsByDatasetIdDocumentsGenerateSummaryResponses]
 
-export type PostDatasetsByDatasetIdDocumentsMetadataData = {
-  body: MetadataOperationData
-  path: {
-    dataset_id: string
-  }
-  query?: never
-  url: '/datasets/{dataset_id}/documents/metadata'
-}
-
-export type PostDatasetsByDatasetIdDocumentsMetadataResponses = {
-  204: void
-}
-
-export type PostDatasetsByDatasetIdDocumentsMetadataResponse
-  = PostDatasetsByDatasetIdDocumentsMetadataResponses[keyof PostDatasetsByDatasetIdDocumentsMetadataResponses]
-
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchData = {
   body?: never
   path: {
@@ -1724,23 +1624,6 @@ export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponses = {
 
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponse
   = PatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponses[keyof PatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponses]
-
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdData = {
-  body?: never
-  path: {
-    dataset_id: string
-    document_id: string
-  }
-  query?: never
-  url: '/datasets/{dataset_id}/documents/{document_id}'
-}
-
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
-  204: void
-}
-
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse
-  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdData = {
   body?: never
@@ -1881,40 +1764,6 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogRespo
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponse
   = GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponses]
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseData = {
-  body?: never
-  path: {
-    dataset_id: string
-    document_id: string
-  }
-  query?: never
-  url: '/datasets/{dataset_id}/documents/{document_id}/processing/pause'
-}
-
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseResponses = {
-  204: void
-}
-
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseResponse
-  = PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseResponses]
-
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeData = {
-  body?: never
-  path: {
-    dataset_id: string
-    document_id: string
-  }
-  query?: never
-  url: '/datasets/{dataset_id}/documents/{document_id}/processing/resume'
-}
-
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponses = {
-  204: void
-}
-
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponse
-  = PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponses]
-
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionData = {
   body?: never
   path: {
@@ -1992,25 +1841,6 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponse
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponse
   = PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponses]
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
-  body?: never
-  path: {
-    dataset_id: string
-    document_id: string
-  }
-  query?: {
-    segment_id?: Array<string>
-  }
-  url: '/datasets/{dataset_id}/documents/{document_id}/segments'
-}
-
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses = {
-  204: void
-}
-
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse
-  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses]
-
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
   body?: never
   path: {
@@ -2068,24 +1898,6 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportRespo
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse
   = PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses]
-
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData = {
-  body?: never
-  path: {
-    dataset_id: string
-    document_id: string
-    segment_id: string
-  }
-  query?: never
-  url: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
-}
-
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses = {
-  204: void
-}
-
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
-  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData = {
   body: SegmentUpdatePayload
@@ -2162,27 +1974,6 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChild
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
   = PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses]
-
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdData
-  = {
-    body?: never
-    path: {
-      child_chunk_id: string
-      dataset_id: string
-      document_id: string
-      segment_id: string
-    }
-    query?: never
-    url: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}'
-  }
-
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses
-  = {
-    204: void
-  }
-
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
-  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdData
   = {
@@ -2353,40 +2144,6 @@ export type PostDatasetsByDatasetIdMetadataResponses = {
 export type PostDatasetsByDatasetIdMetadataResponse
   = PostDatasetsByDatasetIdMetadataResponses[keyof PostDatasetsByDatasetIdMetadataResponses]
 
-export type PostDatasetsByDatasetIdMetadataBuiltInByActionData = {
-  body?: never
-  path: {
-    action: string
-    dataset_id: string
-  }
-  query?: never
-  url: '/datasets/{dataset_id}/metadata/built-in/{action}'
-}
-
-export type PostDatasetsByDatasetIdMetadataBuiltInByActionResponses = {
-  204: void
-}
-
-export type PostDatasetsByDatasetIdMetadataBuiltInByActionResponse
-  = PostDatasetsByDatasetIdMetadataBuiltInByActionResponses[keyof PostDatasetsByDatasetIdMetadataBuiltInByActionResponses]
-
-export type DeleteDatasetsByDatasetIdMetadataByMetadataIdData = {
-  body?: never
-  path: {
-    dataset_id: string
-    metadata_id: string
-  }
-  query?: never
-  url: '/datasets/{dataset_id}/metadata/{metadata_id}'
-}
-
-export type DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses = {
-  204: void
-}
-
-export type DeleteDatasetsByDatasetIdMetadataByMetadataIdResponse
-  = DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses[keyof DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses]
-
 export type PatchDatasetsByDatasetIdMetadataByMetadataIdData = {
   body: MetadataUpdatePayload
   path: {
@@ -2473,22 +2230,6 @@ export type GetDatasetsByDatasetIdRelatedAppsResponses = {
 export type GetDatasetsByDatasetIdRelatedAppsResponse
   = GetDatasetsByDatasetIdRelatedAppsResponses[keyof GetDatasetsByDatasetIdRelatedAppsResponses]
 
-export type PostDatasetsByDatasetIdRetryData = {
-  body: DocumentRetryPayload
-  path: {
-    dataset_id: string
-  }
-  query?: never
-  url: '/datasets/{dataset_id}/retry'
-}
-
-export type PostDatasetsByDatasetIdRetryResponses = {
-  204: void
-}
-
-export type PostDatasetsByDatasetIdRetryResponse
-  = PostDatasetsByDatasetIdRetryResponses[keyof PostDatasetsByDatasetIdRetryResponses]
-
 export type GetDatasetsByDatasetIdUseCheckData = {
   body?: never
   path: {
@@ -2540,20 +2281,3 @@ export type PostDatasetsByResourceIdApiKeysResponses = {
 
 export type PostDatasetsByResourceIdApiKeysResponse
   = PostDatasetsByResourceIdApiKeysResponses[keyof PostDatasetsByResourceIdApiKeysResponses]
-
-export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdData = {
-  body?: never
-  path: {
-    api_key_id: string
-    resource_id: string
-  }
-  query?: never
-  url: '/datasets/{resource_id}/api-keys/{api_key_id}'
-}
-
-export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponses = {
-  204: void
-}
-
-export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponse
-  = DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponses[keyof DeleteDatasetsByResourceIdApiKeysByApiKeyIdResponses]

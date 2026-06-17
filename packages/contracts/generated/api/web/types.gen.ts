@@ -778,30 +778,6 @@ export type GetConversationsResponses = {
 
 export type GetConversationsResponse = GetConversationsResponses[keyof GetConversationsResponses]
 
-export type DeleteConversationsByCIdData = {
-  body?: never
-  path: {
-    c_id: string
-  }
-  query?: never
-  url: '/conversations/{c_id}'
-}
-
-export type DeleteConversationsByCIdErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  500: unknown
-}
-
-export type DeleteConversationsByCIdResponses = {
-  204: void
-}
-
-export type DeleteConversationsByCIdResponse
-  = DeleteConversationsByCIdResponses[keyof DeleteConversationsByCIdResponses]
-
 export type PostConversationsByCIdNameData = {
   body: ConversationRenamePayload
   path: {
@@ -1362,30 +1338,6 @@ export type PostSavedMessagesResponses = {
 }
 
 export type PostSavedMessagesResponse = PostSavedMessagesResponses[keyof PostSavedMessagesResponses]
-
-export type DeleteSavedMessagesByMessageIdData = {
-  body?: never
-  path: {
-    message_id: string
-  }
-  query?: never
-  url: '/saved-messages/{message_id}'
-}
-
-export type DeleteSavedMessagesByMessageIdErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  500: unknown
-}
-
-export type DeleteSavedMessagesByMessageIdResponses = {
-  204: void
-}
-
-export type DeleteSavedMessagesByMessageIdResponse
-  = DeleteSavedMessagesByMessageIdResponses[keyof DeleteSavedMessagesByMessageIdResponses]
 
 export type GetSiteData = {
   body?: never

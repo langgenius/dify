@@ -372,9 +372,7 @@ class ToolBuiltinProviderDeleteApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def post(self, tenant_id: str, provider: str):
@@ -417,9 +415,7 @@ class ToolBuiltinProviderUpdateApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -480,9 +476,7 @@ class ToolApiProviderAddApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.TOOL_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.TOOL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -552,9 +546,7 @@ class ToolApiProviderUpdateApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.TOOL_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.TOOL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -583,9 +575,7 @@ class ToolApiProviderDeleteApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.TOOL_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.TOOL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -677,9 +667,7 @@ class ToolWorkflowProviderCreateApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.TOOL_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.TOOL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -707,9 +695,7 @@ class ToolWorkflowProviderUpdateApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.TOOL_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.TOOL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -737,9 +723,7 @@ class ToolWorkflowProviderDeleteApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.TOOL_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.TOOL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -885,9 +869,7 @@ class ToolPluginOAuthApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -989,9 +971,7 @@ class ToolBuiltinProviderSetDefaultApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def post(self, current_tenant_id: str, provider: str):
@@ -1008,9 +988,7 @@ class ToolOAuthCustomClient(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def post(self, tenant_id: str, provider: str):

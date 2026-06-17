@@ -157,9 +157,7 @@ class SnippetDraftWorkflowApi(Resource):
     @account_initialization_required
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False)
     def get(self, snippet: CustomizedSnippet):
         """Get draft workflow for snippet."""
         snippet_service = _snippet_service()
@@ -228,9 +226,7 @@ class SnippetDraftConfigApi(Resource):
     @account_initialization_required
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False)
     def get(self, snippet: CustomizedSnippet):
         """Get snippet draft workflow configuration limits."""
         return {
@@ -252,9 +248,7 @@ class SnippetPublishedWorkflowApi(Resource):
     @account_initialization_required
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False)
     def get(self, snippet: CustomizedSnippet):
         """Get published workflow for snippet."""
         if not snippet.is_published:
@@ -319,9 +313,7 @@ class SnippetDefaultBlockConfigsApi(Resource):
     @account_initialization_required
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False)
     def get(self, snippet: CustomizedSnippet):
         """Get default block configurations for snippet workflow."""
         snippet_service = _snippet_service()
@@ -344,9 +336,7 @@ class SnippetPublishedAllWorkflowApi(Resource):
     @account_initialization_required
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False)
     def get(self, snippet: CustomizedSnippet):
         """Get all published workflow versions for snippet."""
         args = SnippetWorkflowListQuery.model_validate(request.args.to_dict(flat=True))

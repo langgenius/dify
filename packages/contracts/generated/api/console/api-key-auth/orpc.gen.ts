@@ -4,8 +4,6 @@ import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
 import {
-  zDeleteApiKeyAuthDataSourceByBindingIdPath,
-  zDeleteApiKeyAuthDataSourceByBindingIdResponse,
   zGetApiKeyAuthDataSourceResponse,
   zPostApiKeyAuthDataSourceBindingBody,
   zPostApiKeyAuthDataSourceBindingResponse,
@@ -26,22 +24,6 @@ export const binding = {
   post,
 }
 
-export const delete_ = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'DELETE',
-    operationId: 'deleteApiKeyAuthDataSourceByBindingId',
-    path: '/api-key-auth/data-source/{binding_id}',
-    successStatus: 204,
-    tags: ['console'],
-  })
-  .input(z.object({ params: zDeleteApiKeyAuthDataSourceByBindingIdPath }))
-  .output(zDeleteApiKeyAuthDataSourceByBindingIdResponse)
-
-export const byBindingId = {
-  delete: delete_,
-}
-
 export const get = oc
   .route({
     inputStructure: 'detailed',
@@ -55,7 +37,6 @@ export const get = oc
 export const dataSource = {
   get,
   binding,
-  byBindingId,
 }
 
 export const apiKeyAuth = {

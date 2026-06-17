@@ -56,19 +56,3 @@ export type PostApiKeyAuthDataSourceBindingResponses = {
 
 export type PostApiKeyAuthDataSourceBindingResponse
   = PostApiKeyAuthDataSourceBindingResponses[keyof PostApiKeyAuthDataSourceBindingResponses]
-
-export type DeleteApiKeyAuthDataSourceByBindingIdData = {
-  body?: never
-  path: {
-    binding_id: string
-  }
-  query?: never
-  url: '/api-key-auth/data-source/{binding_id}'
-}
-
-export type DeleteApiKeyAuthDataSourceByBindingIdResponses = {
-  204: void
-}
-
-export type DeleteApiKeyAuthDataSourceByBindingIdResponse
-  = DeleteApiKeyAuthDataSourceByBindingIdResponses[keyof DeleteApiKeyAuthDataSourceByBindingIdResponses]

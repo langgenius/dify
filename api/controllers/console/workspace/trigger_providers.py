@@ -146,9 +146,7 @@ class TriggerSubscriptionListApi(Resource):
     @setup_required
     @login_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -178,9 +176,7 @@ class TriggerSubscriptionBuilderCreateApi(Resource):
     @setup_required
     @login_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -210,9 +206,7 @@ class TriggerSubscriptionBuilderGetApi(Resource):
     @setup_required
     @login_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     def get(self, provider: str, subscription_builder_id: str):
         """Get a subscription instance for a trigger provider"""
@@ -230,9 +224,7 @@ class TriggerSubscriptionBuilderVerifyApi(Resource):
     @setup_required
     @login_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -265,9 +257,7 @@ class TriggerSubscriptionBuilderUpdateApi(Resource):
     @setup_required
     @login_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def post(self, tenant_id: str, provider: str, subscription_builder_id: str):
@@ -300,9 +290,7 @@ class TriggerSubscriptionBuilderLogsApi(Resource):
     @setup_required
     @login_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     def get(self, provider: str, subscription_builder_id: str):
         """Get the request logs for a subscription instance for a trigger provider"""
@@ -323,9 +311,7 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
     @setup_required
     @login_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -360,9 +346,7 @@ class TriggerSubscriptionUpdateApi(Resource):
     @setup_required
     @login_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def post(self, tenant_id: str, subscription_id: str):
@@ -420,9 +404,7 @@ class TriggerSubscriptionDeleteApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def post(self, tenant_id: str, subscription_id: str):
@@ -611,9 +593,7 @@ class TriggerOAuthClientManageApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str, provider: str):
@@ -659,9 +639,7 @@ class TriggerOAuthClientManageApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def post(self, tenant_id: str, provider: str):
@@ -686,9 +664,7 @@ class TriggerOAuthClientManageApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @with_current_tenant_id
@@ -717,9 +693,7 @@ class TriggerSubscriptionVerifyApi(Resource):
     @setup_required
     @login_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id

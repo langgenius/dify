@@ -265,9 +265,7 @@ class CustomizedSnippetDetailApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False)
     @with_current_tenant_id
     def delete(self, current_tenant_id: str, snippet_id: str):
         """Delete customized snippet."""

@@ -54,4 +54,3 @@ class RBACPermission(StrEnum):
 
     TOOL_MANAGE = "tool_manage"
     MCP_MANAGE = "mcp_manage"
-

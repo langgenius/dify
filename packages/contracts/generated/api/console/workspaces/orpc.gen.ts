@@ -4,21 +4,10 @@ import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
 import {
-  zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdPath,
-  zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse,
   zDeleteWorkspacesCurrentEndpointsByIdPath,
   zDeleteWorkspacesCurrentEndpointsByIdResponse,
   zDeleteWorkspacesCurrentMembersByMemberIdPath,
   zDeleteWorkspacesCurrentMembersByMemberIdResponse,
-  zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsBody,
-  zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsPath,
-  zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponse,
-  zDeleteWorkspacesCurrentModelProvidersByProviderModelsBody,
-  zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsBody,
-  zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsPath,
-  zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse,
-  zDeleteWorkspacesCurrentModelProvidersByProviderModelsPath,
-  zDeleteWorkspacesCurrentModelProvidersByProviderModelsResponse,
   zDeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath,
   zDeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse,
   zDeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsPath,
@@ -580,22 +569,6 @@ export const useCount = {
 }
 
 /**
- * Delete customized snippet
- */
-export const delete_ = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'DELETE',
-    operationId: 'deleteWorkspacesCurrentCustomizedSnippetsBySnippetId',
-    path: '/workspaces/current/customized-snippets/{snippet_id}',
-    successStatus: 204,
-    summary: 'Delete customized snippet',
-    tags: ['console'],
-  })
-  .input(z.object({ params: zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdPath }))
-  .output(zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse)
-
-/**
  * Get customized snippet details
  */
 export const get5 = oc
@@ -631,7 +604,6 @@ export const patch = oc
   .output(zPatchWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse)
 
 export const bySnippetId = {
-  delete: delete_,
   get: get5,
   patch,
   checkDependencies,
@@ -760,7 +732,7 @@ export const post7 = oc
   .input(z.object({ body: zPostWorkspacesCurrentEndpointsDeleteBody }))
   .output(zPostWorkspacesCurrentEndpointsDeleteResponse)
 
-export const delete2 = {
+export const delete_ = {
   post: post7,
 }
 
@@ -867,7 +839,7 @@ export const update = {
 /**
  * Delete a plugin endpoint
  */
-export const delete3 = oc
+export const delete2 = oc
   .route({
     description: 'Delete a plugin endpoint',
     inputStructure: 'detailed',
@@ -900,7 +872,7 @@ export const patch2 = oc
   .output(zPatchWorkspacesCurrentEndpointsByIdResponse)
 
 export const byId = {
-  delete: delete3,
+  delete: delete2,
   patch: patch2,
 }
 
@@ -922,7 +894,7 @@ export const post11 = oc
 export const endpoints = {
   post: post11,
   create,
-  delete: delete2,
+  delete: delete_,
   disable,
   enable,
   list,
@@ -1016,7 +988,7 @@ export const updateRole = {
   put,
 }
 
-export const delete4 = oc
+export const delete3 = oc
   .route({
     inputStructure: 'detailed',
     method: 'DELETE',
@@ -1028,7 +1000,7 @@ export const delete4 = oc
   .output(zDeleteWorkspacesCurrentMembersByMemberIdResponse)
 
 export const byMemberId = {
-  delete: delete4,
+  delete: delete3,
   ownerTransfer,
   updateRole,
 }
@@ -1106,23 +1078,6 @@ export const validate = {
   post: post17,
 }
 
-export const delete5 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'DELETE',
-    operationId: 'deleteWorkspacesCurrentModelProvidersByProviderCredentials',
-    path: '/workspaces/current/model-providers/{provider}/credentials',
-    successStatus: 204,
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      body: zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsBody,
-      params: zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsPath,
-    }),
-  )
-  .output(zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponse)
-
 export const get13 = oc
   .route({
     inputStructure: 'detailed',
@@ -1173,7 +1128,6 @@ export const put2 = oc
   .output(zPutWorkspacesCurrentModelProvidersByProviderCredentialsResponse)
 
 export const credentials = {
-  delete: delete5,
   get: get13,
   post: post18,
   put: put2,
@@ -1220,23 +1174,6 @@ export const post20 = oc
 export const validate2 = {
   post: post20,
 }
-
-export const delete6 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'DELETE',
-    operationId: 'deleteWorkspacesCurrentModelProvidersByProviderModelsCredentials',
-    path: '/workspaces/current/model-providers/{provider}/models/credentials',
-    successStatus: 204,
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      body: zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsBody,
-      params: zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsPath,
-    }),
-  )
-  .output(zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse)
 
 export const get14 = oc
   .route({
@@ -1288,7 +1225,6 @@ export const put3 = oc
   .output(zPutWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse)
 
 export const credentials2 = {
-  delete: delete6,
   get: get14,
   post: post21,
   put: put3,
@@ -1413,23 +1349,6 @@ export const parameterRules = {
   get: get15,
 }
 
-export const delete7 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'DELETE',
-    operationId: 'deleteWorkspacesCurrentModelProvidersByProviderModels',
-    path: '/workspaces/current/model-providers/{provider}/models',
-    successStatus: 204,
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      body: zDeleteWorkspacesCurrentModelProvidersByProviderModelsBody,
-      params: zDeleteWorkspacesCurrentModelProvidersByProviderModelsPath,
-    }),
-  )
-  .output(zDeleteWorkspacesCurrentModelProvidersByProviderModelsResponse)
-
 export const get16 = oc
   .route({
     inputStructure: 'detailed',
@@ -1458,7 +1377,6 @@ export const post24 = oc
   .output(zPostWorkspacesCurrentModelProvidersByProviderModelsResponse)
 
 export const models = {
-  delete: delete7,
   get: get16,
   post: post24,
   credentials: credentials2,
@@ -1917,7 +1835,7 @@ export const post37 = oc
   .input(z.object({ params: zPostWorkspacesCurrentPluginTasksByTaskIdDeletePath }))
   .output(zPostWorkspacesCurrentPluginTasksByTaskIdDeleteResponse)
 
-export const delete8 = {
+export const delete4 = {
   post: post37,
   byIdentifier,
 }
@@ -1935,7 +1853,7 @@ export const get30 = oc
 
 export const byTaskId = {
   get: get30,
-  delete: delete8,
+  delete: delete4,
 }
 
 export const get31 = oc
@@ -2113,7 +2031,7 @@ export const copy = {
   post: post44,
 }
 
-export const delete9 = oc
+export const delete5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'DELETE',
@@ -2147,7 +2065,7 @@ export const put4 = oc
   .output(zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse)
 
 export const byPolicyId = {
-  delete: delete9,
+  delete: delete5,
   get: get33,
   put: put4,
   copy,
@@ -2219,7 +2137,7 @@ export const accessPolicyBindings = {
   byBindingId,
 }
 
-export const delete10 = oc
+export const delete6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'DELETE',
@@ -2250,7 +2168,7 @@ export const get35 = oc
   .output(zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponse)
 
 export const memberBindings = {
-  delete: delete10,
+  delete: delete6,
   get: get35,
 }
 
@@ -2378,7 +2296,7 @@ export const apps = {
   byAppId,
 }
 
-export const delete11 = oc
+export const delete7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'DELETE',
@@ -2417,7 +2335,7 @@ export const get40 = oc
   )
 
 export const memberBindings2 = {
-  delete: delete11,
+  delete: delete7,
   get: get40,
 }
 
@@ -2673,7 +2591,7 @@ export const members3 = {
   get: get50,
 }
 
-export const delete12 = oc
+export const delete8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'DELETE',
@@ -2707,7 +2625,7 @@ export const put12 = oc
   .output(zPutWorkspacesCurrentRbacRolesByRoleIdResponse)
 
 export const byRoleId = {
-  delete: delete12,
+  delete: delete8,
   get: get51,
   put: put12,
   copy: copy2,
@@ -2970,7 +2888,7 @@ export const post49 = oc
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderApiDeleteBody }))
   .output(zPostWorkspacesCurrentToolProviderApiDeleteResponse)
 
-export const delete13 = {
+export const delete9 = {
   post: post49,
 }
 
@@ -3070,7 +2988,7 @@ export const update2 = {
 
 export const api = {
   add,
-  delete: delete13,
+  delete: delete9,
   get: get61,
   remote,
   schema,
@@ -3207,7 +3125,7 @@ export const post55 = oc
   )
   .output(zPostWorkspacesCurrentToolProviderBuiltinByProviderDeleteResponse)
 
-export const delete14 = {
+export const delete10 = {
   post: post55,
 }
 
@@ -3258,7 +3176,7 @@ export const clientSchema = {
   get: get69,
 }
 
-export const delete15 = oc
+export const delete11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'DELETE',
@@ -3303,7 +3221,7 @@ export const post56 = oc
   .output(zPostWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponse)
 
 export const customClient = {
-  delete: delete15,
+  delete: delete11,
   get: get70,
   post: post56,
 }
@@ -3353,7 +3271,7 @@ export const byProvider2 = {
   credential,
   credentials: credentials3,
   defaultCredential,
-  delete: delete14,
+  delete: delete10,
   icon: icon2,
   info: info2,
   oauth,
@@ -3418,7 +3336,7 @@ export const update4 = {
   byProviderId: byProviderId2,
 }
 
-export const delete16 = oc
+export const delete12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'DELETE',
@@ -3452,7 +3370,7 @@ export const put15 = oc
   .output(zPutWorkspacesCurrentToolProviderMcpResponse)
 
 export const mcp = {
-  delete: delete16,
+  delete: delete12,
   post: post59,
   put: put15,
   auth,
@@ -3486,7 +3404,7 @@ export const post61 = oc
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderWorkflowDeleteBody }))
   .output(zPostWorkspacesCurrentToolProviderWorkflowDeleteResponse)
 
-export const delete17 = {
+export const delete13 = {
   post: post61,
 }
 
@@ -3537,7 +3455,7 @@ export const update5 = {
 
 export const workflow = {
   create: create2,
-  delete: delete17,
+  delete: delete13,
   get: get75,
   tools: tools4,
   update: update5,
@@ -3665,7 +3583,7 @@ export const info3 = {
 /**
  * Remove custom OAuth client configuration
  */
-export const delete18 = oc
+export const delete14 = oc
   .route({
     inputStructure: 'detailed',
     method: 'DELETE',
@@ -3713,7 +3631,7 @@ export const post63 = oc
   .output(zPostWorkspacesCurrentTriggerProviderByProviderOauthClientResponse)
 
 export const client = {
-  delete: delete18,
+  delete: delete14,
   get: get84,
   post: post63,
 }
@@ -4020,7 +3938,7 @@ export const post69 = oc
   )
   .output(zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeleteResponse)
 
-export const delete19 = {
+export const delete15 = {
   post: post69,
 }
 
@@ -4049,7 +3967,7 @@ export const update7 = {
 }
 
 export const subscriptions2 = {
-  delete: delete19,
+  delete: delete15,
   update: update7,
 }
 

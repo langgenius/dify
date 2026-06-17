@@ -2118,15 +2118,6 @@ export const zPostAppsAnnotationsBody = zAnnotationCreatePayload
  */
 export const zPostAppsAnnotationsResponse = zAnnotation
 
-export const zDeleteAppsAnnotationsByAnnotationIdPath = z.object({
-  annotation_id: z.string(),
-})
-
-/**
- * Annotation deleted successfully
- */
-export const zDeleteAppsAnnotationsByAnnotationIdResponse = z.void()
-
 export const zPutAppsAnnotationsByAnnotationIdBody = zAnnotationCreatePayload
 
 export const zPutAppsAnnotationsByAnnotationIdPath = z.object({
@@ -2188,15 +2179,6 @@ export const zGetConversationsQuery = z.object({
  * Conversations retrieved successfully
  */
 export const zGetConversationsResponse = zConversationInfiniteScrollPagination
-
-export const zDeleteConversationsByCIdPath = z.object({
-  c_id: z.string(),
-})
-
-/**
- * Conversation deleted successfully
- */
-export const zDeleteConversationsByCIdResponse = z.void()
 
 export const zPostConversationsByCIdNameBody = zConversationRenamePayload
 
@@ -2262,13 +2244,6 @@ export const zPostDatasetsResponse = zDatasetDetailResponse
  */
 export const zPostDatasetsPipelineFileUploadResponse = zPipelineUploadFileResponse
 
-export const zDeleteDatasetsTagsBody = zTagDeletePayload
-
-/**
- * Tag deleted successfully
- */
-export const zDeleteDatasetsTagsResponse = z.void()
-
 /**
  * Tags retrieved successfully
  */
@@ -2287,29 +2262,6 @@ export const zPostDatasetsTagsBody = zTagCreatePayload
  * Tag created successfully
  */
 export const zPostDatasetsTagsResponse = zKnowledgeTagResponse
-
-export const zPostDatasetsTagsBindingBody = zTagBindingPayload
-
-/**
- * Tags bound successfully
- */
-export const zPostDatasetsTagsBindingResponse = z.void()
-
-export const zPostDatasetsTagsUnbindingBody = zTagUnbindingPayload
-
-/**
- * Tags unbound successfully
- */
-export const zPostDatasetsTagsUnbindingResponse = z.void()
-
-export const zDeleteDatasetsByDatasetIdPath = z.object({
-  dataset_id: z.string(),
-})
-
-/**
- * Dataset deleted successfully
- */
-export const zDeleteDatasetsByDatasetIdResponse = z.void()
 
 export const zGetDatasetsByDatasetIdPath = z.object({
   dataset_id: z.string(),
@@ -2442,16 +2394,6 @@ export const zGetDatasetsByDatasetIdDocumentsByBatchIndexingStatusPath = z.objec
 export const zGetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponse
   = zDocumentStatusListResponse
 
-export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath = z.object({
-  dataset_id: z.string(),
-  document_id: z.string(),
-})
-
-/**
- * Document deleted successfully
- */
-export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse = z.void()
-
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdPath = z.object({
   dataset_id: z.string(),
   document_id: z.string(),
@@ -2521,17 +2463,6 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath = z.objec
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse
   = zSegmentCreateListResponse
 
-export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath = z.object({
-  dataset_id: z.string(),
-  document_id: z.string(),
-  segment_id: z.string(),
-})
-
-/**
- * Segment deleted successfully
- */
-export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse = z.void()
-
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath = z.object({
   dataset_id: z.string(),
   document_id: z.string(),
@@ -2594,20 +2525,6 @@ export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChi
  */
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
   = zChildChunkDetailResponse
-
-export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath
-  = z.object({
-    child_chunk_id: z.string(),
-    dataset_id: z.string(),
-    document_id: z.string(),
-    segment_id: z.string(),
-  })
-
-/**
- * Child chunk deleted successfully
- */
-export const zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
-  = z.void()
 
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdBody
   = zChildChunkUpdatePayload
@@ -2734,16 +2651,6 @@ export const zPostDatasetsByDatasetIdMetadataBuiltInByActionPath = z.object({
  */
 export const zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse
   = zDatasetMetadataActionResponse
-
-export const zDeleteDatasetsByDatasetIdMetadataByMetadataIdPath = z.object({
-  dataset_id: z.string(),
-  metadata_id: z.string(),
-})
-
-/**
- * Metadata deleted successfully
- */
-export const zDeleteDatasetsByDatasetIdMetadataByMetadataIdResponse = z.void()
 
 export const zPatchDatasetsByDatasetIdMetadataByMetadataIdBody = zMetadataUpdatePayload
 

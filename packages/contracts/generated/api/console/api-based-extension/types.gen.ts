@@ -48,22 +48,6 @@ export type PostApiBasedExtensionResponses = {
 export type PostApiBasedExtensionResponse
   = PostApiBasedExtensionResponses[keyof PostApiBasedExtensionResponses]
 
-export type DeleteApiBasedExtensionByIdData = {
-  body?: never
-  path: {
-    id: string
-  }
-  query?: never
-  url: '/api-based-extension/{id}'
-}
-
-export type DeleteApiBasedExtensionByIdResponses = {
-  204: void
-}
-
-export type DeleteApiBasedExtensionByIdResponse
-  = DeleteApiBasedExtensionByIdResponses[keyof DeleteApiBasedExtensionByIdResponses]
-
 export type GetApiBasedExtensionByIdData = {
   body?: never
   path: {

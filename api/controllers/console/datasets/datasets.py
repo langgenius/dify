@@ -1003,9 +1003,7 @@ class DatasetApiKeyApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(
-        RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def post(self, current_tenant_id: str):
@@ -1046,9 +1044,7 @@ class DatasetApiDeleteApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(
-        RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def delete(self, current_tenant_id: str, api_key_id: UUID):

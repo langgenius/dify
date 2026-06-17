@@ -615,23 +615,6 @@ export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunResponses = {
 export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunResponse
   = PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunResponses[keyof PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunResponses]
 
-export type DeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesData = {
-  body?: never
-  path: {
-    node_id: string
-    snippet_id: string
-  }
-  query?: never
-  url: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/variables'
-}
-
-export type DeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponses = {
-  204: void
-}
-
-export type DeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponse
-  = DeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponses[keyof DeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponses]
-
 export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesData = {
   body?: never
   path: {
@@ -685,22 +668,6 @@ export type GetSnippetsBySnippetIdWorkflowsDraftSystemVariablesResponses = {
 export type GetSnippetsBySnippetIdWorkflowsDraftSystemVariablesResponse
   = GetSnippetsBySnippetIdWorkflowsDraftSystemVariablesResponses[keyof GetSnippetsBySnippetIdWorkflowsDraftSystemVariablesResponses]
 
-export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesData = {
-  body?: never
-  path: {
-    snippet_id: string
-  }
-  query?: never
-  url: '/snippets/{snippet_id}/workflows/draft/variables'
-}
-
-export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesResponses = {
-  204: void
-}
-
-export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesResponse
-  = DeleteSnippetsBySnippetIdWorkflowsDraftVariablesResponses[keyof DeleteSnippetsBySnippetIdWorkflowsDraftVariablesResponses]
-
 export type GetSnippetsBySnippetIdWorkflowsDraftVariablesData = {
   body?: never
   path: {
@@ -719,27 +686,6 @@ export type GetSnippetsBySnippetIdWorkflowsDraftVariablesResponses = {
 
 export type GetSnippetsBySnippetIdWorkflowsDraftVariablesResponse
   = GetSnippetsBySnippetIdWorkflowsDraftVariablesResponses[keyof GetSnippetsBySnippetIdWorkflowsDraftVariablesResponses]
-
-export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdData = {
-  body?: never
-  path: {
-    snippet_id: string
-    variable_id: string
-  }
-  query?: never
-  url: '/snippets/{snippet_id}/workflows/draft/variables/{variable_id}'
-}
-
-export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: unknown
-}
-
-export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponses = {
-  204: void
-}
-
-export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse
-  = DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponses[keyof DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponses]
 
 export type GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdData = {
   body?: never

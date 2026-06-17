@@ -529,15 +529,6 @@ export const zPostInstalledAppsBody = zInstalledAppCreatePayload
  */
 export const zPostInstalledAppsResponse = zSimpleMessageResponse
 
-export const zDeleteInstalledAppsByInstalledAppIdPath = z.object({
-  installed_app_id: z.string(),
-})
-
-/**
- * App uninstalled successfully
- */
-export const zDeleteInstalledAppsByInstalledAppIdResponse = z.void()
-
 export const zPatchInstalledAppsByInstalledAppIdBody = zInstalledAppUpdatePayload
 
 export const zPatchInstalledAppsByInstalledAppIdPath = z.object({
@@ -618,16 +609,6 @@ export const zGetInstalledAppsByInstalledAppIdConversationsQuery = z.object({
  */
 export const zGetInstalledAppsByInstalledAppIdConversationsResponse
   = zConversationInfiniteScrollPagination
-
-export const zDeleteInstalledAppsByInstalledAppIdConversationsByCIdPath = z.object({
-  c_id: z.string(),
-  installed_app_id: z.string(),
-})
-
-/**
- * Conversation deleted successfully
- */
-export const zDeleteInstalledAppsByInstalledAppIdConversationsByCIdResponse = z.void()
 
 export const zPostInstalledAppsByInstalledAppIdConversationsByCIdNameBody
   = zConversationRenamePayload
@@ -760,16 +741,6 @@ export const zPostInstalledAppsByInstalledAppIdSavedMessagesPath = z.object({
  * Success
  */
 export const zPostInstalledAppsByInstalledAppIdSavedMessagesResponse = zResultResponse
-
-export const zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdPath = z.object({
-  installed_app_id: z.string(),
-  message_id: z.string(),
-})
-
-/**
- * Saved message deleted successfully
- */
-export const zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponse = z.void()
 
 export const zPostInstalledAppsByInstalledAppIdTextToAudioBody = zTextToAudioPayload
 

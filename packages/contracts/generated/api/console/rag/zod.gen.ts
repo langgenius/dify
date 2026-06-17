@@ -3,15 +3,6 @@
 import * as z from 'zod'
 
 /**
- * CustomizedPipelineTemplatePayload
- */
-export const zCustomizedPipelineTemplatePayload = z.object({
-  description: z.string().max(400).optional().default(''),
-  icon_info: z.record(z.string(), z.unknown()).optional(),
-  name: z.string().min(1).max(40),
-})
-
-/**
  * SimpleDataResponse
  */
 export const zSimpleDataResponse = z.object({
@@ -673,27 +664,6 @@ export const zDatasetDetailResponse = z.object({
   word_count: z.int(),
 })
 
-export const zDeleteRagPipelineCustomizedTemplatesByTemplateIdPath = z.object({
-  template_id: z.string(),
-})
-
-/**
- * Pipeline template deleted
- */
-export const zDeleteRagPipelineCustomizedTemplatesByTemplateIdResponse = z.void()
-
-export const zPatchRagPipelineCustomizedTemplatesByTemplateIdBody
-  = zCustomizedPipelineTemplatePayload
-
-export const zPatchRagPipelineCustomizedTemplatesByTemplateIdPath = z.object({
-  template_id: z.string(),
-})
-
-/**
- * Pipeline template updated
- */
-export const zPatchRagPipelineCustomizedTemplatesByTemplateIdResponse = z.void()
-
 export const zPostRagPipelineCustomizedTemplatesByTemplateIdPath = z.object({
   template_id: z.string(),
 })
@@ -786,17 +756,6 @@ export const zPostRagPipelinesTransformDatasetsByDatasetIdPath = z.object({
  * Success
  */
 export const zPostRagPipelinesTransformDatasetsByDatasetIdResponse = zRagPipelineOpaqueResponse
-
-export const zPostRagPipelinesByPipelineIdCustomizedPublishBody = zCustomizedPipelineTemplatePayload
-
-export const zPostRagPipelinesByPipelineIdCustomizedPublishPath = z.object({
-  pipeline_id: z.string(),
-})
-
-/**
- * Pipeline template published
- */
-export const zPostRagPipelinesByPipelineIdCustomizedPublishResponse = z.void()
 
 export const zGetRagPipelinesByPipelineIdExportsPath = z.object({
   pipeline_id: z.string(),
@@ -1009,16 +968,6 @@ export const zPostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunPath = z
 export const zPostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunResponse
   = zWorkflowRunNodeExecutionResponse
 
-export const zDeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesPath = z.object({
-  node_id: z.string(),
-  pipeline_id: z.string(),
-})
-
-/**
- * Node variables deleted successfully
- */
-export const zDeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse = z.void()
-
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesPath = z.object({
   node_id: z.string(),
   pipeline_id: z.string(),
@@ -1079,15 +1028,6 @@ export const zGetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesPath = z.o
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponse
   = zWorkflowDraftVariableList
 
-export const zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesPath = z.object({
-  pipeline_id: z.string(),
-})
-
-/**
- * Workflow variables deleted successfully
- */
-export const zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse = z.void()
-
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesPath = z.object({
   pipeline_id: z.string(),
 })
@@ -1102,16 +1042,6 @@ export const zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesQuery = z.object
  */
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse
   = zWorkflowDraftVariableListWithoutValue
-
-export const zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath = z.object({
-  pipeline_id: z.string(),
-  variable_id: z.string(),
-})
-
-/**
- * Variable deleted successfully
- */
-export const zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse = z.void()
 
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath = z.object({
   pipeline_id: z.string(),
@@ -1234,16 +1164,6 @@ export const zPostRagPipelinesByPipelineIdWorkflowsPublishedRunPath = z.object({
  * Success
  */
 export const zPostRagPipelinesByPipelineIdWorkflowsPublishedRunResponse = zRagPipelineOpaqueResponse
-
-export const zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath = z.object({
-  pipeline_id: z.string(),
-  workflow_id: z.string(),
-})
-
-/**
- * Workflow deleted successfully
- */
-export const zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse = z.void()
 
 export const zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdBody = zWorkflowUpdatePayload
 

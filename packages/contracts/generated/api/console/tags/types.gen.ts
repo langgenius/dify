@@ -51,21 +51,6 @@ export type PostTagsResponses = {
 
 export type PostTagsResponse = PostTagsResponses[keyof PostTagsResponses]
 
-export type DeleteTagsByTagIdData = {
-  body?: never
-  path: {
-    tag_id: string
-  }
-  query?: never
-  url: '/tags/{tag_id}'
-}
-
-export type DeleteTagsByTagIdResponses = {
-  204: void
-}
-
-export type DeleteTagsByTagIdResponse = DeleteTagsByTagIdResponses[keyof DeleteTagsByTagIdResponses]
-
 export type PatchTagsByTagIdData = {
   body: TagUpdateRequestPayload
   path: {

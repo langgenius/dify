@@ -105,9 +105,7 @@ class SnippetWorkflowVariableCollectionApi(Resource):
     )
     @_snippet_draft_var_prerequisite
     @marshal_with(workflow_draft_variable_list_without_value_model)
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False)
     def get(self, current_user: Account, snippet: CustomizedSnippet) -> WorkflowDraftVariableList:
         args = WorkflowDraftVariableListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 

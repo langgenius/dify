@@ -7,8 +7,6 @@ import {
   zDeleteAgentByAgentIdFilesPath,
   zDeleteAgentByAgentIdFilesQuery,
   zDeleteAgentByAgentIdFilesResponse,
-  zDeleteAgentByAgentIdPath,
-  zDeleteAgentByAgentIdResponse,
   zDeleteAgentByAgentIdSkillsBySlugPath,
   zDeleteAgentByAgentIdSkillsBySlugResponse,
   zGetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsPath,
@@ -693,18 +691,6 @@ export const versions = {
   byVersionId,
 }
 
-export const delete3 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'DELETE',
-    operationId: 'deleteAgentByAgentId',
-    path: '/agent/{agent_id}',
-    successStatus: 204,
-    tags: ['console'],
-  })
-  .input(z.object({ params: zDeleteAgentByAgentIdPath }))
-  .output(zDeleteAgentByAgentIdResponse)
-
 export const get17 = oc
   .route({
     inputStructure: 'detailed',
@@ -728,7 +714,6 @@ export const put2 = oc
   .output(zPutAgentByAgentIdResponse)
 
 export const byAgentId = {
-  delete: delete3,
   get: get17,
   put: put2,
   chatMessages,

@@ -2205,6 +2205,7 @@ Enum class for custom configuration status.
 | indexing_technique | string |  | Yes |
 | is_multimodal | boolean |  | Yes |
 | is_published | boolean |  | Yes |
+| maintainer | string |  | No |
 | name | string |  | Yes |
 | permission | string |  | Yes |
 | permission_keys | [ string ] |  | No |
@@ -2246,6 +2247,7 @@ Enum class for custom configuration status.
 | indexing_technique | string |  | Yes |
 | is_multimodal | boolean |  | Yes |
 | is_published | boolean |  | Yes |
+| maintainer | string |  | No |
 | name | string |  | Yes |
 | partial_member_list | [ string ] |  | No |
 | permission | string |  | Yes |

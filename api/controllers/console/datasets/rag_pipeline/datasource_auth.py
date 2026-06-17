@@ -107,9 +107,7 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.DATASET, RBACPermission.DATA_SOURCE_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATA_SOURCE_MANAGE, resource_required=False)
     @with_current_user
     @with_current_tenant_id
     def get(self, current_tenant_id: str, current_user: Account, provider_id: str):
@@ -224,9 +222,7 @@ class DatasourceAuth(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.DATASET, RBACPermission.DATA_SOURCE_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATA_SOURCE_MANAGE, resource_required=False)
     @with_current_tenant_id
     def post(self, current_tenant_id: str, provider_id: str):
         payload = DatasourceCredentialPayload.model_validate(console_ns.payload or {})
@@ -271,9 +267,7 @@ class DatasourceAuthDeleteApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.DATASET, RBACPermission.DATA_SOURCE_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATA_SOURCE_MANAGE, resource_required=False)
     @with_current_tenant_id
     def post(self, current_tenant_id: str, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
@@ -299,9 +293,7 @@ class DatasourceAuthUpdateApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.DATASET, RBACPermission.DATA_SOURCE_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATA_SOURCE_MANAGE, resource_required=False)
     @with_current_tenant_id
     def post(self, current_tenant_id: str, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
@@ -353,9 +345,7 @@ class DatasourceAuthOauthCustomClient(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.DATASET, RBACPermission.DATA_SOURCE_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATA_SOURCE_MANAGE, resource_required=False)
     @with_current_tenant_id
     def post(self, current_tenant_id: str, provider_id: str):
         payload = DatasourceCustomClientPayload.model_validate(console_ns.payload or {})
@@ -392,9 +382,7 @@ class DatasourceAuthDefaultApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.DATASET, RBACPermission.DATA_SOURCE_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATA_SOURCE_MANAGE, resource_required=False)
     @with_current_tenant_id
     def post(self, current_tenant_id: str, provider_id: str):
         payload = DatasourceDefaultPayload.model_validate(console_ns.payload or {})
@@ -416,9 +404,7 @@ class DatasourceUpdateProviderNameApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.DATASET, RBACPermission.DATA_SOURCE_MANAGE, resource_required=False
-    )
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATA_SOURCE_MANAGE, resource_required=False)
     @with_current_tenant_id
     def post(self, current_tenant_id: str, provider_id: str):
         payload = DatasourceUpdateNamePayload.model_validate(console_ns.payload or {})

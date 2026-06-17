@@ -18,6 +18,7 @@ from libs.login import current_account_with_tenant, login_required
 from models import Account
 from services.enterprise import rbac_service as svc
 
+
 class _RBACRoleList(svc.Paginated[svc.RBACRole]):
     pass
 

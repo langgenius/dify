@@ -565,10 +565,12 @@ export const zAgentAppPartial = z.object({
   icon_url: z.string().nullable(),
   id: z.string(),
   is_starred: z.boolean().optional().default(false),
+  maintainer: z.string().nullish(),
   max_active_requests: z.int().nullish(),
   mode: z.string(),
   model_config: zModelConfigPartial.nullish(),
   name: z.string(),
+  permission_keys: z.array(z.string()).optional(),
   published_reference_count: z.int().optional().default(0),
   published_references: z.array(zAgentAppPublishedReferenceResponse).optional(),
   role: z.string().nullish(),
@@ -627,10 +629,12 @@ export const zAppDetailWithSite = z.object({
   icon_type: z.string().nullish(),
   icon_url: z.string().nullable(),
   id: z.string(),
+  maintainer: z.string().nullish(),
   max_active_requests: z.int().nullish(),
   mode: z.string(),
   model_config: zModelConfig.nullish(),
   name: z.string(),
+  permission_keys: z.array(z.string()).optional(),
   role: z.string().nullish(),
   site: zSite.nullish(),
   tags: z.array(zTag).optional(),
@@ -1959,10 +1963,12 @@ export const zAgentAppPartialWritable = z.object({
   icon_type: z.string().nullish(),
   id: z.string(),
   is_starred: z.boolean().optional().default(false),
+  maintainer: z.string().nullish(),
   max_active_requests: z.int().nullish(),
   mode: z.string(),
   model_config: zModelConfigPartial.nullish(),
   name: z.string(),
+  permission_keys: z.array(z.string()).optional(),
   published_reference_count: z.int().optional().default(0),
   published_references: z.array(zAgentAppPublishedReferenceResponse).optional(),
   role: z.string().nullish(),
@@ -2022,10 +2028,12 @@ export const zAppDetailWithSiteWritable = z.object({
   icon_background: z.string().nullish(),
   icon_type: z.string().nullish(),
   id: z.string(),
+  maintainer: z.string().nullish(),
   max_active_requests: z.int().nullish(),
   mode: z.string(),
   model_config: zModelConfig.nullish(),
   name: z.string(),
+  permission_keys: z.array(z.string()).optional(),
   role: z.string().nullish(),
   site: zSiteWritable.nullish(),
   tags: z.array(zTag).optional(),
@@ -2085,15 +2093,6 @@ export const zGetAgentInviteOptionsQuery = z.object({
  * Agent invite options
  */
 export const zGetAgentInviteOptionsResponse = zAgentInviteOptionsResponse
-
-export const zDeleteAgentByAgentIdPath = z.object({
-  agent_id: z.string(),
-})
-
-/**
- * Agent app deleted successfully
- */
-export const zDeleteAgentByAgentIdResponse = z.void()
 
 export const zGetAgentByAgentIdPath = z.object({
   agent_id: z.string(),

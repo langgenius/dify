@@ -4,16 +4,6 @@ import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
 import {
-  zDeleteRagPipelineCustomizedTemplatesByTemplateIdPath,
-  zDeleteRagPipelineCustomizedTemplatesByTemplateIdResponse,
-  zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath,
-  zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse,
-  zDeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesPath,
-  zDeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse,
-  zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath,
-  zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse,
-  zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesPath,
-  zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse,
   zGetRagPipelinesByPipelineIdExportsPath,
   zGetRagPipelinesByPipelineIdExportsQuery,
   zGetRagPipelinesByPipelineIdExportsResponse,
@@ -71,9 +61,6 @@ import {
   zGetRagPipelineTemplatesByTemplateIdResponse,
   zGetRagPipelineTemplatesQuery,
   zGetRagPipelineTemplatesResponse,
-  zPatchRagPipelineCustomizedTemplatesByTemplateIdBody,
-  zPatchRagPipelineCustomizedTemplatesByTemplateIdPath,
-  zPatchRagPipelineCustomizedTemplatesByTemplateIdResponse,
   zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdBody,
   zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath,
   zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse,
@@ -85,9 +72,6 @@ import {
   zPostRagPipelineDatasetBody,
   zPostRagPipelineDatasetResponse,
   zPostRagPipelineEmptyDatasetResponse,
-  zPostRagPipelinesByPipelineIdCustomizedPublishBody,
-  zPostRagPipelinesByPipelineIdCustomizedPublishPath,
-  zPostRagPipelinesByPipelineIdCustomizedPublishResponse,
   zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopPath,
   zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponse,
   zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestorePath,
@@ -134,35 +118,6 @@ import {
   zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetResponse,
 } from './zod.gen'
 
-export const delete_ = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'DELETE',
-    operationId: 'deleteRagPipelineCustomizedTemplatesByTemplateId',
-    path: '/rag/pipeline/customized/templates/{template_id}',
-    successStatus: 204,
-    tags: ['console'],
-  })
-  .input(z.object({ params: zDeleteRagPipelineCustomizedTemplatesByTemplateIdPath }))
-  .output(zDeleteRagPipelineCustomizedTemplatesByTemplateIdResponse)
-
-export const patch = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'PATCH',
-    operationId: 'patchRagPipelineCustomizedTemplatesByTemplateId',
-    path: '/rag/pipeline/customized/templates/{template_id}',
-    successStatus: 204,
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      body: zPatchRagPipelineCustomizedTemplatesByTemplateIdBody,
-      params: zPatchRagPipelineCustomizedTemplatesByTemplateIdPath,
-    }),
-  )
-  .output(zPatchRagPipelineCustomizedTemplatesByTemplateIdResponse)
-
 export const post = oc
   .route({
     inputStructure: 'detailed',
@@ -175,8 +130,6 @@ export const post = oc
   .output(zPostRagPipelineCustomizedTemplatesByTemplateIdResponse)
 
 export const byTemplateId = {
-  delete: delete_,
-  patch,
   post,
 }
 
@@ -369,31 +322,6 @@ export const transform = {
   datasets,
 }
 
-export const post7 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postRagPipelinesByPipelineIdCustomizedPublish',
-    path: '/rag/pipelines/{pipeline_id}/customized/publish',
-    successStatus: 204,
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      body: zPostRagPipelinesByPipelineIdCustomizedPublishBody,
-      params: zPostRagPipelinesByPipelineIdCustomizedPublishPath,
-    }),
-  )
-  .output(zPostRagPipelinesByPipelineIdCustomizedPublishResponse)
-
-export const publish = {
-  post: post7,
-}
-
-export const customized2 = {
-  publish,
-}
-
 export const get6 = oc
   .route({
     inputStructure: 'detailed',
@@ -417,7 +345,7 @@ export const exports_ = {
 /**
  * Stop workflow task
  */
-export const post8 = oc
+export const post7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -430,7 +358,7 @@ export const post8 = oc
   .output(zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponse)
 
 export const stop = {
-  post: post8,
+  post: post7,
 }
 
 export const byTaskId = {
@@ -554,7 +482,7 @@ export const defaultWorkflowBlockConfigs = {
 /**
  * Run rag pipeline datasource
  */
-export const post9 = oc
+export const post8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -572,7 +500,7 @@ export const post9 = oc
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunResponse)
 
 export const run = {
-  post: post9,
+  post: post8,
 }
 
 export const byNodeId = {
@@ -586,7 +514,7 @@ export const nodes = {
 /**
  * Set datasource variables
  */
-export const post10 = oc
+export const post9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -604,7 +532,7 @@ export const post10 = oc
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectResponse)
 
 export const variablesInspect = {
-  post: post10,
+  post: post9,
 }
 
 export const datasource = {
@@ -634,7 +562,7 @@ export const environmentVariables = {
 /**
  * Run draft workflow iteration node
  */
-export const post11 = oc
+export const post10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -652,7 +580,7 @@ export const post11 = oc
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunResponse)
 
 export const run2 = {
-  post: post11,
+  post: post10,
 }
 
 export const byNodeId2 = {
@@ -670,7 +598,7 @@ export const iteration = {
 /**
  * Run draft workflow loop node
  */
-export const post12 = oc
+export const post11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -688,7 +616,7 @@ export const post12 = oc
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunResponse)
 
 export const run3 = {
-  post: post12,
+  post: post11,
 }
 
 export const byNodeId3 = {
@@ -721,7 +649,7 @@ export const lastRun = {
 /**
  * Run draft workflow node
  */
-export const post13 = oc
+export const post12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -739,22 +667,8 @@ export const post13 = oc
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunResponse)
 
 export const run4 = {
-  post: post13,
+  post: post12,
 }
-
-export const delete2 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'DELETE',
-    operationId: 'deleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariables',
-    path: '/rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/variables',
-    successStatus: 204,
-    tags: ['console'],
-  })
-  .input(
-    z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesPath }),
-  )
-  .output(zDeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse)
 
 export const get14 = oc
   .route({
@@ -768,7 +682,6 @@ export const get14 = oc
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse)
 
 export const variables = {
-  delete: delete2,
   get: get14,
 }
 
@@ -841,7 +754,7 @@ export const processing = {
 /**
  * Run draft workflow
  */
-export const post14 = oc
+export const post13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -859,7 +772,7 @@ export const post14 = oc
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftRunResponse)
 
 export const run5 = {
-  post: post14,
+  post: post13,
 }
 
 export const get17 = oc
@@ -894,20 +807,6 @@ export const reset = {
   put,
 }
 
-export const delete3 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'DELETE',
-    operationId: 'deleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableId',
-    path: '/rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}',
-    successStatus: 204,
-    tags: ['console'],
-  })
-  .input(
-    z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath }),
-  )
-  .output(zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
-
 export const get18 = oc
   .route({
     inputStructure: 'detailed',
@@ -919,7 +818,7 @@ export const get18 = oc
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
 
-export const patch2 = oc
+export const patch = oc
   .route({
     inputStructure: 'detailed',
     method: 'PATCH',
@@ -936,23 +835,10 @@ export const patch2 = oc
   .output(zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
 
 export const byVariableId = {
-  delete: delete3,
   get: get18,
-  patch: patch2,
+  patch,
   reset,
 }
-
-export const delete4 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'DELETE',
-    operationId: 'deleteRagPipelinesByPipelineIdWorkflowsDraftVariables',
-    path: '/rag/pipelines/{pipeline_id}/workflows/draft/variables',
-    successStatus: 204,
-    tags: ['console'],
-  })
-  .input(z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesPath }))
-  .output(zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse)
 
 /**
  * Get draft workflow
@@ -975,7 +861,6 @@ export const get19 = oc
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse)
 
 export const variables2 = {
-  delete: delete4,
   get: get19,
   byVariableId,
 }
@@ -998,7 +883,7 @@ export const get20 = oc
 /**
  * Sync draft workflow
  */
-export const post15 = oc
+export const post14 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1017,7 +902,7 @@ export const post15 = oc
 
 export const draft = {
   get: get20,
-  post: post15,
+  post: post14,
   datasource,
   environmentVariables,
   iteration,
@@ -1048,7 +933,7 @@ export const get21 = oc
 /**
  * Publish workflow
  */
-export const post16 = oc
+export const post15 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1060,15 +945,15 @@ export const post16 = oc
   .input(z.object({ params: zPostRagPipelinesByPipelineIdWorkflowsPublishPath }))
   .output(zPostRagPipelinesByPipelineIdWorkflowsPublishResponse)
 
-export const publish2 = {
+export const publish = {
   get: get21,
-  post: post16,
+  post: post15,
 }
 
 /**
  * Run datasource content preview
  */
-export const post17 = oc
+export const post16 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1086,13 +971,13 @@ export const post17 = oc
   .output(zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse)
 
 export const preview = {
-  post: post17,
+  post: post16,
 }
 
 /**
  * Run rag pipeline datasource
  */
-export const post18 = oc
+export const post17 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1110,7 +995,7 @@ export const post18 = oc
   .output(zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunResponse)
 
 export const run6 = {
-  post: post18,
+  post: post17,
 }
 
 export const byNodeId5 = {
@@ -1185,7 +1070,7 @@ export const processing2 = {
 /**
  * Run published workflow
  */
-export const post19 = oc
+export const post18 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1203,7 +1088,7 @@ export const post19 = oc
   .output(zPostRagPipelinesByPipelineIdWorkflowsPublishedRunResponse)
 
 export const run7 = {
-  post: post19,
+  post: post18,
 }
 
 export const published = {
@@ -1213,7 +1098,7 @@ export const published = {
   run: run7,
 }
 
-export const post20 = oc
+export const post19 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1225,29 +1110,13 @@ export const post20 = oc
   .output(zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse)
 
 export const restore = {
-  post: post20,
+  post: post19,
 }
-
-/**
- * Delete a published workflow version that is not currently active on the pipeline
- */
-export const delete5 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'DELETE',
-    operationId: 'deleteRagPipelinesByPipelineIdWorkflowsByWorkflowId',
-    path: '/rag/pipelines/{pipeline_id}/workflows/{workflow_id}',
-    successStatus: 204,
-    summary: 'Delete a published workflow version that is not currently active on the pipeline',
-    tags: ['console'],
-  })
-  .input(z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath }))
-  .output(zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse)
 
 /**
  * Update workflow attributes
  */
-export const patch3 = oc
+export const patch2 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PATCH',
@@ -1265,8 +1134,7 @@ export const patch3 = oc
   .output(zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse)
 
 export const byWorkflowId = {
-  delete: delete5,
-  patch: patch3,
+  patch: patch2,
   restore,
 }
 
@@ -1294,13 +1162,12 @@ export const workflows = {
   get: get24,
   defaultWorkflowBlockConfigs,
   draft,
-  publish: publish2,
+  publish,
   published,
   byWorkflowId,
 }
 
 export const byPipelineId2 = {
-  customized: customized2,
   exports: exports_,
   workflowRuns,
   workflows,

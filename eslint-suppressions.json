@@ -2948,14 +2948,6 @@
       "count": 3
     }
   },
-  "web/app/components/datasets/create/step-two/index.tsx": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 1
-    },
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/create/step-two/preview-item/index.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -3025,14 +3017,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/documents/components/document-list/components/document-table-row.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 2
-    }
-  },
   "web/app/components/datasets/documents/components/document-list/components/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
@@ -3049,14 +3033,6 @@
     }
   },
   "web/app/components/datasets/documents/components/list.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/documents/components/operations.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
     },
@@ -3425,11 +3401,6 @@
   },
   "web/app/components/datasets/hit-testing/index.tsx": {
     "react/unsupported-syntax": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/list/__tests__/header.spec.tsx": {
-    "jsx-a11y/label-has-associated-control": {
       "count": 1
     }
   },
@@ -4073,17 +4044,6 @@
       "count": 1
     }
   },
-  "web/app/components/plugins/marketplace/index.tsx": {
-    "style/indent": {
-      "count": 7
-    },
-    "style/jsx-closing-bracket-location": {
-      "count": 1
-    },
-    "style/jsx-indent-props": {
-      "count": 2
-    }
-  },
   "web/app/components/plugins/marketplace/list/list-with-collection.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -4432,11 +4392,6 @@
   "web/app/components/plugins/plugin-page/filter-management/search-box.tsx": {
     "no-restricted-imports": {
       "count": 1
-    }
-  },
-  "web/app/components/plugins/plugin-page/use-reference-setting.ts": {
-    "style/indent": {
-      "count": 3
     }
   },
   "web/app/components/plugins/reference-setting-modal/auto-update-setting/__tests__/index.spec.tsx": {
