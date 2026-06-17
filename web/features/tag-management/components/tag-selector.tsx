@@ -117,7 +117,7 @@ export const TagSelector = ({
         nextItems.push(tag)
     }
 
-    if (inputValue && nextItems.every(tag => tag.name !== inputValue)) {
+    if (canManageTags && inputValue && nextItems.every(tag => tag.name !== inputValue)) {
       nextItems.push({
         id: `__create_tag__:${inputValue}`,
         name: inputValue,
@@ -128,7 +128,7 @@ export const TagSelector = ({
     }
 
     return nextItems
-  }, [inputValue, tagList, type, value])
+  }, [canManageTags, inputValue, tagList, type, value])
 
   const applyTagBindings = useCallback(() => {
     const draftTagIds = draftTags.map(tag => tag.id)
@@ -175,7 +175,7 @@ export const TagSelector = ({
   }, [applyTagBindings, value])
 
   const createNewTag = useCallback((name: string) => {
-    if (!name || isCreatingTag)
+    if (!canManageTags || !name || isCreatingTag)
       return
 
     createTag({
@@ -192,7 +192,7 @@ export const TagSelector = ({
         toast.error(t('tag.failed', { ns: 'common' }))
       },
     })
-  }, [createTag, isCreatingTag, t, type])
+  }, [canManageTags, createTag, isCreatingTag, t, type])
 
   const handleValueChange = useCallback((nextTags: TagComboboxItem[]) => {
     const createOption = nextTags.find(isCreateTagOption)

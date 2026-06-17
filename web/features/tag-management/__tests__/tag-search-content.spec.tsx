@@ -202,6 +202,15 @@ describe('TagSearchContent', () => {
     expect(onOpenTagManagement).toHaveBeenCalledTimes(1)
   })
 
+  it('hides tag management action without tag management permission', () => {
+    mockWorkspacePermissionKeys.value = []
+
+    render(<PanelHarness />)
+
+    expect(screen.queryByRole('button', { name: i18n.manageTags })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Frontend/i })).toBeInTheDocument()
+  })
+
   it('renders knowledge tags when the panel type is knowledge', () => {
     render(<PanelHarness type="knowledge" value={[]} />)
     expect(screen.getByRole('option', { name: /KnowledgeDB/i })).toBeInTheDocument()

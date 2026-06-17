@@ -29,16 +29,16 @@ const Marketplace = async ({
       <HydrateQueryClient searchParams={searchParams}>
         <PluginInstallPermissionProviderGuard canInstallPlugin={showInstallButton}>
           <Description
-          isMarketplacePlatform={isMarketplacePlatform}
-          marketplaceNav={marketplaceNav}
-        />
-        {
-          !isMarketplacePlatform && (
+            isMarketplacePlatform={isMarketplacePlatform}
+            marketplaceNav={marketplaceNav}
+          />
+          {
+            !isMarketplacePlatform && (
               <StickySearchAndSwitchWrapper
                 pluginTypeSwitchClassName={pluginTypeSwitchClassName}
               />
-          )
-        }
+            )
+          }
           <ListWrapper
             showInstallButton={showInstallButton}
           />

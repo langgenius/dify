@@ -65,15 +65,15 @@ const Metadata: FC<MetadataProps> = ({ docDetail, loading, onUpdate, canEdit = f
               )
             )
           : canEdit && !showDocTypes && (
-              <div className={s.opBtnWrapper}>
-                <Button onClick={cancelEdit} className={`${s.opBtn} ${s.opCancelBtn}`}>
-                  {t('operation.cancel', { ns: 'common' })}
-                </Button>
-                <Button onClick={saveMetadata} className={`${s.opBtn} ${s.opSaveBtn}`} variant="primary" loading={saveLoading}>
-                  {t('operation.save', { ns: 'common' })}
-                </Button>
-              </div>
-            )}
+            <div className={s.opBtnWrapper}>
+              <Button onClick={cancelEdit} className={`${s.opBtn} ${s.opCancelBtn}`}>
+                {t('operation.cancel', { ns: 'common' })}
+              </Button>
+              <Button onClick={saveMetadata} className={`${s.opBtn} ${s.opSaveBtn}`} variant="primary" loading={saveLoading}>
+                {t('operation.save', { ns: 'common' })}
+              </Button>
+            </div>
+          )}
       </div>
 
       {/* Document type display / selector */}

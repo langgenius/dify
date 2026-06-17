@@ -272,6 +272,20 @@ describe('TagSelector', () => {
     await user.click(screen.getByRole('combobox', { name: /Frontend/i }))
 
     expect(await screen.findByRole('combobox', { name: i18n.selectorPlaceholder })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: i18n.manageTags })).not.toBeInTheDocument()
+  })
+
+  it('does not create new tags when only binding capability is available', async () => {
+    const user = userEvent.setup()
+    mockWorkspacePermissionKeys.value = []
+
+    render(<TagSelector {...defaultProps} canBindOrUnbindTags />)
+
+    await user.click(screen.getByRole('combobox', { name: /Frontend/i }))
+    await user.type(await screen.findByRole('combobox', { name: i18n.selectorPlaceholder }), 'BrandNewTag')
+
+    expect(screen.queryByRole('option', { name: /BrandNewTag/i })).not.toBeInTheDocument()
+    expect(createTag).not.toHaveBeenCalled()
   })
 
   it('opens snippet tag selector with snippets management permission', async () => {

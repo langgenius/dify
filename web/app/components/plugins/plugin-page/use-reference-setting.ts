@@ -44,9 +44,9 @@ const useReferenceSetting = (category: PluginCategoryEnum) => {
   const autoUpgradeQuery = usePluginAutoUpgradeSettings(category)
   const data = permissionAccess.permission && autoUpgradeQuery.data?.auto_upgrade
     ? {
-      permission: permissionAccess.permission,
-      auto_upgrade: autoUpgradeQuery.data.auto_upgrade,
-    }
+        permission: permissionAccess.permission,
+        auto_upgrade: autoUpgradeQuery.data.auto_upgrade,
+      }
     : undefined
   const invalidateReferenceSettings = useInvalidateReferenceSettings()
   const { mutate: updateReferenceSetting, isPending: isUpdatePending } = useMutationReferenceSettings({
