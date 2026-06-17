@@ -1,15 +1,16 @@
 """Client-safe DTOs for the Dify knowledge-base Agenton layer.
 
-The public layer config exposes only static retrieval controls: tool naming,
-dataset ids, retrieval strategy, metadata filtering, and observation-size
-limits. The agent model itself should only ever see a single ``query`` tool
-argument; tenant/app/user context comes from the execution-context layer and the
-actual retrieval is delegated to the Dify API inner endpoint.
+The public layer config exposes only static retrieval controls: dataset ids,
+retrieval strategy, metadata filtering, and observation-size limits. The agent
+model itself should only ever see a single ``query`` tool argument; tenant/
+app/user context comes from the execution-context layer and the actual
+retrieval is delegated to the Dify API inner endpoint. Tool naming is not
+caller-configurable: the runtime always exposes the same stable knowledge-base
+search tool.
 """
 
 from __future__ import annotations
 
-import re
 from typing import ClassVar, Final, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, model_validator
@@ -38,8 +39,6 @@ type DifyKnowledgeMetadataComparisonOperator = Literal[
 ]
 
 DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID: Final[str] = "dify.knowledge_base"
-_TOOL_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
-_MAX_TOOL_NAME_LENGTH = 64
 
 
 class DifyKnowledgeModelConfig(BaseModel):
@@ -155,13 +154,13 @@ class DifyKnowledgeMetadataFilteringConfig(BaseModel):
 class DifyKnowledgeBaseLayerConfig(LayerConfig):
     """Public config for one model-visible knowledge search tool.
 
-    The model only gets to choose whether to call the tool and what ``query`` to
-    send. Dataset ids, retrieval settings, metadata filtering, and caller context
-    remain config/runtime concerns outside the model-visible tool schema.
+    The model only gets to choose whether to call the tool and what ``query``
+    to send. Dataset ids, retrieval settings, metadata filtering, and caller
+    context remain config/runtime concerns outside the model-visible tool
+    schema. The tool name and description are fixed by the layer runtime and do
+    not appear in the public config DTO.
     """
 
-    tool_name: str = "knowledge_base_search"
-    tool_description: str = "Search configured knowledge bases for information relevant to the query."
     dataset_ids: list[str]
     retrieval: DifyKnowledgeRetrievalConfig
     metadata_filtering: DifyKnowledgeMetadataFilteringConfig = Field(default_factory=DifyKnowledgeMetadataFilteringConfig)
@@ -169,26 +168,6 @@ class DifyKnowledgeBaseLayerConfig(LayerConfig):
     max_observation_chars: int = Field(default=12000, ge=1)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
-    @field_validator("tool_name")
-    @classmethod
-    def validate_tool_name(cls, value: str) -> str:
-        normalized = value.strip()
-        if not normalized:
-            raise ValueError("value must not be blank")
-        if len(normalized) > _MAX_TOOL_NAME_LENGTH:
-            raise ValueError(f"tool_name must be {_MAX_TOOL_NAME_LENGTH} characters or fewer")
-        if _TOOL_NAME_PATTERN.fullmatch(normalized) is None:
-            raise ValueError("tool_name must contain only ASCII letters, digits, underscores, or hyphens")
-        return normalized
-
-    @field_validator("tool_description")
-    @classmethod
-    def validate_non_blank_description(cls, value: str) -> str:
-        normalized = value.strip()
-        if not normalized:
-            raise ValueError("value must not be blank")
-        return normalized
 
     @field_validator("dataset_ids")
     @classmethod

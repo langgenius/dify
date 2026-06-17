@@ -16,7 +16,6 @@ def _valid_config() -> dict[str, object]:
 def test_knowledge_base_config_accepts_valid_multiple_mode() -> None:
     config = DifyKnowledgeBaseLayerConfig.model_validate(_valid_config())
 
-    assert config.tool_name == "knowledge_base_search"
     assert config.dataset_ids == ["dataset-1"]
     assert config.retrieval.top_k == 4
     assert config.metadata_filtering.mode == "disabled"
@@ -26,9 +25,8 @@ def test_knowledge_base_config_accepts_valid_multiple_mode() -> None:
     "payload, expected_message",
     [
         ({"dataset_ids": [], "retrieval": {"mode": "multiple", "top_k": 4}}, "dataset_ids"),
-        ({"tool_name": "   ", **_valid_config()}, "blank"),
-        ({"tool_name": "knowledge search!", **_valid_config()}, "tool_name must contain only ASCII letters"),
-        ({"tool_name": "k" * 65, **_valid_config()}, "tool_name must be 64 characters or fewer"),
+        ({"tool_name": "knowledge_base_search", **_valid_config()}, "Extra inputs are not permitted"),
+        ({"tool_description": "Search knowledge", **_valid_config()}, "Extra inputs are not permitted"),
         ({"dataset_ids": ["dataset-1"], "retrieval": {"mode": "multiple"}}, "top_k"),
         ({"dataset_ids": ["dataset-1"], "retrieval": {"mode": "single"}}, "retrieval.model"),
         (

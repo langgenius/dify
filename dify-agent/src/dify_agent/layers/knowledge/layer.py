@@ -3,7 +3,10 @@
 The layer depends on ``DifyExecutionContextLayer`` for tenant/app/user/invoke
 identity, keeps retrieval controls in config only, and borrows a lifespan-owned
 HTTP client for each tool invocation. It never owns live clients or stores
-retrieved source content in layer state.
+retrieved source content in layer state. Tool identity is intentionally fixed at
+runtime: callers cannot rename the knowledge tool or override its description
+through public layer config because the model-visible surface must stay stable
+across API-side Agent Soul mappings.
 """
 
 from __future__ import annotations
@@ -28,6 +31,11 @@ from dify_agent.layers.knowledge.configs import DIFY_KNOWLEDGE_BASE_LAYER_TYPE_I
 
 logger = logging.getLogger(__name__)
 
+# Fixed model-visible tool identity. These stay module-private on purpose so the
+# public DTO cannot grow a parallel naming contract that diverges from the
+# runtime knowledge-search surface.
+_KNOWLEDGE_BASE_TOOL_NAME = "knowledge_base_search"
+_KNOWLEDGE_BASE_TOOL_DESCRIPTION = "Search configured knowledge bases for information relevant to the query."
 BLANK_QUERY_OBSERVATION = "knowledge base search requires a non-empty query"
 NO_RESULTS_OBSERVATION = "No relevant knowledge base results were found."
 TEMPORARY_UNAVAILABLE_OBSERVATION = (
@@ -172,8 +180,8 @@ class DifyKnowledgeBaseLayer(PlainLayer[DifyKnowledgeBaseDeps, DifyKnowledgeBase
             Tool(
                 knowledge_base_search,
                 takes_ctx=True,
-                name=self.config.tool_name,
-                description=self.config.tool_description,
+                name=_KNOWLEDGE_BASE_TOOL_NAME,
+                description=_KNOWLEDGE_BASE_TOOL_DESCRIPTION,
                 prepare=prepare_tool_definition,
             )
         ]

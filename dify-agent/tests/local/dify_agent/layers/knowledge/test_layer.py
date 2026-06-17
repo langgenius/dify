@@ -82,7 +82,9 @@ def test_knowledge_layer_exposes_one_query_only_tool_definition() -> None:
                 tool_def = await tool.prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
                 assert isinstance(tool, Tool)
                 assert tool.name == "knowledge_base_search"
+                assert tool.description == "Search configured knowledge bases for information relevant to the query."
                 assert tool_def is not None
+                assert tool_def.description == "Search configured knowledge bases for information relevant to the query."
                 assert tool_def.parameters_json_schema == {
                     "type": "object",
                     "properties": {
