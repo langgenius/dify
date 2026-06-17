@@ -164,6 +164,8 @@
   "upgrade.uploadMultipleFiles.title": "一括ドキュメントアップロード機能を解放するにはアップグレードが必要です",
   "upgrade.uploadMultiplePages.description": "現在のプランではアップロード上限に達しています。1回の操作で選択・アップロードできるドキュメントは1つのみです。",
   "upgrade.uploadMultiplePages.title": "複数ドキュメントを一度にアップロードするにはアップグレード",
+  "upgrade.workflowRestore.description": "現在のプランでは、ワークフローバージョンの復元は利用できません。",
+  "upgrade.workflowRestore.title": "アップグレードしてワークフローバージョンを復元",
   "upgradeBtn.encourage": "今すぐアップグレード",
   "upgradeBtn.encourageShort": "アップグレード",
   "upgradeBtn.plain": "プランを見る",

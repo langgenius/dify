@@ -164,6 +164,8 @@
   "upgrade.uploadMultipleFiles.title": "Nadgradite za odklep nalaganja dokumentov v skupkih",
   "upgrade.uploadMultiplePages.description": "Dosegli ste omejitev nalaganja — na vašem trenutnem načrtu je mogoče izbrati in naložiti le en dokument naenkrat.",
   "upgrade.uploadMultiplePages.title": "Nadgradite za nalaganje več dokumentov hkrati",
+  "upgrade.workflowRestore.description": "Obnovitev različic poteka dela v vašem trenutnem paketu ni na voljo.",
+  "upgrade.workflowRestore.title": "Nadgradite za obnovitev različic poteka dela",
   "upgradeBtn.encourage": "Nadgradi zdaj",
   "upgradeBtn.encourageShort": "Nadgradi",
   "upgradeBtn.plain": "Nadgradi načrt",
