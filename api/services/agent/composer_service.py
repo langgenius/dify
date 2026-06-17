@@ -1,7 +1,8 @@
 import logging
+import uuid
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 
 from extensions.ext_database import db
@@ -11,6 +12,7 @@ from models.agent import (
     AgentConfigRevision,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
+    AgentDriveFile,
     AgentKind,
     AgentScope,
     AgentSource,
@@ -19,14 +21,21 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import (
+    AgentFileRefConfig,
     DeclaredOutputConfig,
 )
 from models.agent_config_entities import (
     effective_declared_outputs as _effective_declared_outputs,
 )
 from models.workflow import Workflow
+from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
-from services.agent.errors import AgentNameConflictError, AgentNotFoundError, AgentVersionNotFoundError
+from services.agent.errors import (
+    AgentNameConflictError,
+    AgentNotFoundError,
+    AgentVersionNotFoundError,
+    InvalidComposerConfigError,
+)
 from services.entities.agent_entities import (
     AgentSoulConfig,
     ComposerCandidatesResponse,
@@ -43,6 +52,27 @@ _DRAFT_WORKFLOW_VERSION = "draft"
 logger = logging.getLogger(__name__)
 
 
+def _backfill_cli_tool_ids(agent_soul: AgentSoulConfig | None) -> None:
+    """Mint stable ids for CLI tools that predate the id field (ENG-616).
+
+    `[§cli_tool:<id>§]` mentions resolve by id so renames never break references;
+    the frontend mints ids for new entries, and save backfills legacy ones. Runs
+    before validation so duplicate-id checks see the final state. Save-only — the
+    validate endpoint must not mutate the payload.
+    """
+    if agent_soul is None:
+        return
+    seen_ids = {cli_tool.id for cli_tool in agent_soul.tools.cli_tools if cli_tool.id}
+    for cli_tool in agent_soul.tools.cli_tools:
+        if cli_tool.id:
+            continue
+        minted = uuid.uuid4().hex[:12]
+        while minted in seen_ids:
+            minted = uuid.uuid4().hex[:12]
+        cli_tool.id = minted
+        seen_ids.add(minted)
+
+
 class AgentComposerService:
     @classmethod
     def load_workflow_composer(cls, *, tenant_id: str, app_id: str, node_id: str) -> dict[str, Any]:
@@ -52,10 +82,15 @@ class AgentComposerService:
             return cls._empty_workflow_state(app_id=app_id, workflow_id=workflow.id, node_id=node_id)
 
         agent = cls._get_agent_if_present(tenant_id=tenant_id, agent_id=binding.agent_id)
+        version_id = (
+            agent.active_config_snapshot_id
+            if agent and binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+            else binding.current_snapshot_id
+        )
         version = cls._get_version_if_present(
             tenant_id=tenant_id,
             agent_id=agent.id if agent else None,
-            version_id=binding.current_snapshot_id,
+            version_id=version_id,
         )
         return cls._serialize_workflow_state(binding=binding, agent=agent, version=version)
 
@@ -66,9 +101,33 @@ class AgentComposerService:
         if payload.variant != ComposerVariant.WORKFLOW:
             raise ValueError("Workflow composer endpoint only accepts workflow variant")
 
+        _backfill_cli_tool_ids(payload.agent_soul)
         ComposerConfigValidator.validate_save_payload(payload)
         workflow = cls._get_draft_workflow(tenant_id=tenant_id, app_id=app_id)
         binding = cls._get_workflow_binding(tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id)
+
+        # ENG-623 §4.4: drive-backed refs must point at real drive rows before the
+        # soul is persisted. Only strategies that write the soul onto an *existing*
+        # agent are checked — new-agent strategies create a fresh (empty) drive, so
+        # any carried drive key would be flagged on the next save instead.
+        if (
+            payload.agent_soul is not None
+            and binding is not None
+            and binding.agent_id
+            and payload.save_strategy
+            in (
+                ComposerSaveStrategy.NODE_JOB_ONLY,
+                ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION,
+                ComposerSaveStrategy.SAVE_AS_NEW_VERSION,
+            )
+            and (
+                payload.save_strategy != ComposerSaveStrategy.NODE_JOB_ONLY
+                or binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT
+            )
+        ):
+            cls._require_drive_refs_resolved(
+                tenant_id=tenant_id, agent_id=binding.agent_id, agent_soul=payload.agent_soul
+            )
 
         match payload.save_strategy:
             case ComposerSaveStrategy.NODE_JOB_ONLY:
@@ -106,10 +165,15 @@ class AgentComposerService:
 
         db.session.commit()
         agent = cls._get_agent_if_present(tenant_id=tenant_id, agent_id=binding.agent_id)
+        version_id = (
+            agent.active_config_snapshot_id
+            if agent and binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+            else binding.current_snapshot_id
+        )
         version = cls._get_version_if_present(
             tenant_id=tenant_id,
             agent_id=agent.id if agent else None,
-            version_id=binding.current_snapshot_id,
+            version_id=version_id,
         )
         state = cls._serialize_workflow_state(binding=binding, agent=agent, version=version)
         state["validation"] = cls.collect_validation_findings(tenant_id=tenant_id, payload=payload)
@@ -150,6 +214,7 @@ class AgentComposerService:
     ) -> dict[str, Any]:
         if payload.variant != ComposerVariant.AGENT_APP:
             raise ValueError("Agent App composer endpoint only accepts agent_app variant")
+        _backfill_cli_tool_ids(payload.agent_soul)
         ComposerConfigValidator.validate_save_payload(payload)
         if payload.agent_soul is None:
             raise ValueError("agent_soul is required")
@@ -185,6 +250,9 @@ class AgentComposerService:
                 db.session.rollback()
                 raise AgentNameConflictError() from exc
 
+        # ENG-623 §4.4: dangling drive-backed refs are rejected before persisting.
+        cls._require_drive_refs_resolved(tenant_id=tenant_id, agent_id=agent.id, agent_soul=payload.agent_soul)
+
         if payload.save_strategy == ComposerSaveStrategy.SAVE_AS_NEW_VERSION or not agent.active_config_snapshot_id:
             version = cls._create_config_version(
                 tenant_id=tenant_id,
@@ -195,6 +263,7 @@ class AgentComposerService:
                 version_note=payload.version_note,
             )
             agent.active_config_snapshot_id = version.id
+            agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
         else:
             current_snapshot = cls._require_version(
                 tenant_id=tenant_id, agent_id=agent.id, version_id=agent.active_config_snapshot_id
@@ -207,6 +276,7 @@ class AgentComposerService:
                 version_note=payload.version_note,
             )
             agent.active_config_snapshot_id = version.id
+            agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
             agent.updated_by = account_id
 
         db.session.commit()
@@ -215,8 +285,18 @@ class AgentComposerService:
         return state
 
     @classmethod
-    def collect_validation_findings(cls, *, tenant_id: str, payload: ComposerSavePayload) -> dict[str, Any]:
-        """ENG-617 soft findings, with DB-backed dataset existence for placeholders."""
+    def collect_validation_findings(
+        cls,
+        *,
+        tenant_id: str,
+        payload: ComposerSavePayload,
+        agent_id: str | None = None,
+    ) -> dict[str, Any]:
+        """ENG-617 soft findings, with DB-backed dataset existence for placeholders.
+
+        With ``agent_id`` the drive-backed skill/file refs are also checked against
+        the agent drive (ENG-623 §4.4) and dangling ones surface as warnings.
+        """
         from services.agent.prompt_mentions import MentionKind, parse_prompt_mentions
 
         mentioned_ids: set[str] = set()
@@ -229,7 +309,242 @@ class AgentComposerService:
         existing_dataset_ids: set[str] | None = None
         if mentioned_ids:
             existing_dataset_ids = set(cls._dataset_rows(tenant_id=tenant_id, dataset_ids=sorted(mentioned_ids)))
-        return ComposerConfigValidator.collect_soft_findings(payload, existing_dataset_ids=existing_dataset_ids)
+        findings = ComposerConfigValidator.collect_soft_findings(payload, existing_dataset_ids=existing_dataset_ids)
+        if agent_id and payload.agent_soul is not None:
+            findings["warnings"].extend(
+                cls._drive_ref_findings(tenant_id=tenant_id, agent_id=agent_id, agent_soul=payload.agent_soul)
+            )
+        return findings
+
+    @classmethod
+    def remove_drive_refs(
+        cls,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        account_id: str,
+        skill_slug: str | None = None,
+        file_key: str | None = None,
+        app_id: str | None = None,
+        node_id: str | None = None,
+    ) -> str | None:
+        """Drop the soul refs backed by a drive skill/file before the drive rows go.
+
+        Soul-first ordering (ENG-625 D5): a mid-failure leaves harmless orphan KV
+        rows that an idempotent DELETE retry cleans, instead of a soul ref that
+        keeps failing dangling-ref validation. Returns the new config version id,
+        or ``None`` when the soul held no matching ref (idempotent re-delete).
+        """
+        if (skill_slug is None) == (file_key is None):
+            raise ValueError("remove_drive_refs requires exactly one of skill_slug or file_key")
+        agent = db.session.scalar(select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id).limit(1))
+        if agent is None or not agent.active_config_snapshot_id:
+            return None
+        current_snapshot = cls._require_version(
+            tenant_id=tenant_id, agent_id=agent.id, version_id=agent.active_config_snapshot_id
+        )
+        agent_soul = AgentSoulConfig.model_validate(current_snapshot.config_snapshot_dict)
+
+        removed_display: str | None = None
+        if skill_slug is not None:
+            kept_skills = []
+            for skill in agent_soul.skills_files.skills:
+                slug = (skill.skill_md_key or "").split("/", 1)[0] or (skill.path or "").strip("/")
+                if slug == skill_slug:
+                    removed_display = skill.name or skill.id or skill_slug
+                    continue
+                kept_skills.append(skill)
+            if removed_display is None:
+                return None
+            agent_soul.skills_files.skills = kept_skills
+            note = f"Removed skill '{removed_display}' from the drive."
+        else:
+            kept_files = []
+            for file in agent_soul.skills_files.files:
+                if file.drive_key == file_key:
+                    removed_display = file.name or file.drive_key
+                    continue
+                kept_files.append(file)
+            if removed_display is None:
+                return None
+            agent_soul.skills_files.files = kept_files
+            note = f"Removed file '{removed_display}' from the drive."
+
+        version = cls._update_current_version(
+            current_snapshot=current_snapshot,
+            account_id=account_id,
+            agent_soul=agent_soul,
+            operation=AgentConfigRevisionOperation.SAVE_CURRENT_VERSION,
+            version_note=note,
+        )
+        agent.active_config_snapshot_id = version.id
+        agent.updated_by = account_id
+        cls._sync_draft_binding_snapshot(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            node_id=node_id,
+            agent_id=agent_id,
+            snapshot_id=version.id,
+            account_id=account_id,
+        )
+        db.session.commit()
+        return version.id
+
+    @classmethod
+    def add_drive_file_ref(
+        cls,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        account_id: str,
+        file_ref: AgentFileRefConfig,
+        app_id: str | None = None,
+        node_id: str | None = None,
+    ) -> str | None:
+        """Add or replace one drive-backed file ref in the active Agent Soul.
+
+        ``POST /agent/files`` is an ADD FILE user action, not just a low-level
+        drive commit. The committed file must be present in ``skills_files.files``
+        because runtime ``dify.drive`` is built from the active Agent Soul.
+        """
+        if not file_ref.drive_key:
+            raise ValueError("file_ref.drive_key is required")
+        agent = db.session.scalar(select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id).limit(1))
+        if agent is None or not agent.active_config_snapshot_id:
+            return None
+        current_snapshot = cls._require_version(
+            tenant_id=tenant_id, agent_id=agent.id, version_id=agent.active_config_snapshot_id
+        )
+        agent_soul = AgentSoulConfig.model_validate(current_snapshot.config_snapshot_dict)
+        kept_files = [item for item in agent_soul.skills_files.files if item.drive_key != file_ref.drive_key]
+        kept_files.append(file_ref)
+        agent_soul.skills_files.files = kept_files
+
+        display = file_ref.name or file_ref.drive_key
+        version = cls._update_current_version(
+            current_snapshot=current_snapshot,
+            account_id=account_id,
+            agent_soul=agent_soul,
+            operation=AgentConfigRevisionOperation.SAVE_CURRENT_VERSION,
+            version_note=f"Added file '{display}' to the drive.",
+        )
+        agent.active_config_snapshot_id = version.id
+        agent.active_config_has_model = agent_soul_has_model(agent_soul)
+        agent.updated_by = account_id
+        cls._sync_draft_binding_snapshot(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            node_id=node_id,
+            agent_id=agent_id,
+            snapshot_id=version.id,
+            account_id=account_id,
+        )
+        db.session.commit()
+        return version.id
+
+    @classmethod
+    def resolve_bound_agent_id(cls, *, tenant_id: str, app_id: str) -> str | None:
+        """The Agent App's bound roster agent id, if any (validate-endpoint context)."""
+        return db.session.scalar(
+            select(Agent.id)
+            .where(
+                Agent.tenant_id == tenant_id,
+                Agent.app_id == app_id,
+                Agent.scope == AgentScope.ROSTER,
+                Agent.status == AgentStatus.ACTIVE,
+            )
+            .order_by(Agent.created_at.desc())
+            .limit(1)
+        )
+
+    @classmethod
+    def resolve_workflow_node_agent_id(cls, *, tenant_id: str, app_id: str, node_id: str) -> str | None:
+        """The draft workflow node binding's agent id, if any (validate-endpoint context)."""
+        try:
+            workflow = cls._get_draft_workflow(tenant_id=tenant_id, app_id=app_id)
+        except ValueError:
+            return None
+        binding = cls._get_workflow_binding(tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id)
+        return binding.agent_id if binding else None
+
+    @classmethod
+    def _sync_draft_binding_snapshot(
+        cls,
+        *,
+        tenant_id: str,
+        app_id: str | None,
+        node_id: str | None,
+        agent_id: str,
+        snapshot_id: str,
+        account_id: str,
+    ) -> None:
+        """Keep workflow node bindings on the new active snapshot after direct drive edits."""
+        if not app_id or not node_id:
+            return
+        try:
+            workflow = cls._get_draft_workflow(tenant_id=tenant_id, app_id=app_id)
+        except ValueError:
+            return
+        binding = cls._get_workflow_binding(tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id)
+        if binding is None or binding.agent_id != agent_id:
+            return
+        binding.current_snapshot_id = snapshot_id
+        binding.updated_by = account_id
+
+    @classmethod
+    def _drive_ref_findings(
+        cls,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        agent_soul: AgentSoulConfig,
+    ) -> list[dict[str, str | None]]:
+        """Drive-backed refs whose keys have no row in the agent drive (ENG-623 §4.4).
+
+        Each finding message starts with its stable code token
+        (``skill_ref_dangling`` / ``file_ref_dangling``) in the ENG-616/617 style.
+        """
+        wanted_keys: dict[str, tuple[str, str]] = {}
+        for skill in agent_soul.skills_files.skills:
+            if skill.skill_md_key:
+                wanted_keys[skill.skill_md_key] = ("skill_ref_dangling", skill.name or skill.id or "unknown")
+        for file in agent_soul.skills_files.files:
+            if file.drive_key:
+                wanted_keys[file.drive_key] = ("file_ref_dangling", file.name or file.id or "unknown")
+        if not wanted_keys:
+            return []
+
+        existing_keys = set(
+            db.session.scalars(
+                select(AgentDriveFile.key).where(
+                    AgentDriveFile.tenant_id == tenant_id,
+                    AgentDriveFile.agent_id == agent_id,
+                    AgentDriveFile.key.in_(sorted(wanted_keys)),
+                )
+            )
+        )
+        findings: list[dict[str, str | None]] = []
+        for key, (code, display) in wanted_keys.items():
+            if key in existing_keys:
+                continue
+            kind = "skill" if code == "skill_ref_dangling" else "file"
+            findings.append(
+                {
+                    "code": code,
+                    "surface": "agent_soul",
+                    "kind": kind,
+                    "id": key,
+                    "message": f"{code}: {kind} '{display}' has no drive entry for key '{key}'.",
+                }
+            )
+        return findings
+
+    @classmethod
+    def _require_drive_refs_resolved(cls, *, tenant_id: str, agent_id: str, agent_soul: AgentSoulConfig) -> None:
+        """Hard save-time guard: dangling drive-backed refs are rejected (400)."""
+        findings = cls._drive_ref_findings(tenant_id=tenant_id, agent_id=agent_id, agent_soul=agent_soul)
+        if findings:
+            raise InvalidComposerConfigError("; ".join(str(finding["message"]) for finding in findings))
 
     @classmethod
     def get_workflow_candidates(cls, *, tenant_id: str, app_id: str, node_id: str, user_id: str) -> dict[str, Any]:
@@ -433,10 +748,28 @@ class AgentComposerService:
             return []
         tools: list[dict[str, Any]] = []
         for provider in providers:
-            for tool in provider.tools or []:
+            provider_tools = provider.tools or []
+            # Provider-level entry first: selecting it means "all tools of this
+            # provider" (a provider hosts many tools, like an MCP server). Its
+            # ``id`` is also the mention id (``[§tool:<provider>/*§]``); the
+            # write-back is one ``tools.dify_tools`` entry with ``tool_name``
+            # omitted.
+            tools.append(
+                {
+                    "id": f"{provider.name}/*",
+                    "granularity": "provider",
+                    "name": provider.label.en_US if provider.label else provider.name,
+                    "description": provider.description.en_US if provider.description else None,
+                    "provider": provider.name,
+                    "plugin_id": provider.plugin_id or None,
+                    "tools_count": len(provider_tools),
+                }
+            )
+            for tool in provider_tools:
                 tools.append(
                     {
                         "id": f"{provider.name}/{tool.name}",
+                        "granularity": "tool",
                         "name": tool.name,
                         "description": tool.label.en_US if tool.label else tool.name,
                         "provider": provider.name,
@@ -447,11 +780,26 @@ class AgentComposerService:
 
     @classmethod
     def calculate_impact(cls, *, tenant_id: str, current_snapshot_id: str) -> dict[str, Any]:
+        snapshot = db.session.scalar(
+            select(AgentConfigSnapshot)
+            .where(
+                AgentConfigSnapshot.tenant_id == tenant_id,
+                AgentConfigSnapshot.id == current_snapshot_id,
+            )
+            .limit(1)
+        )
+        agent_id = snapshot.agent_id if snapshot else None
+        predicates = [WorkflowAgentNodeBinding.current_snapshot_id == current_snapshot_id]
+        if agent_id:
+            predicates.append(
+                (WorkflowAgentNodeBinding.agent_id == agent_id)
+                & (WorkflowAgentNodeBinding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT)
+            )
         bindings = list(
             db.session.scalars(
                 select(WorkflowAgentNodeBinding).where(
                     WorkflowAgentNodeBinding.tenant_id == tenant_id,
-                    WorkflowAgentNodeBinding.current_snapshot_id == current_snapshot_id,
+                    or_(*predicates),
                 )
             ).all()
         )
@@ -483,6 +831,26 @@ class AgentComposerService:
         node_job = payload.node_job or WorkflowNodeJobConfig()
         if binding:
             binding.node_job_config = node_job
+            if payload.agent_soul is not None and binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT:
+                current_snapshot = cls._require_version(
+                    tenant_id=tenant_id,
+                    agent_id=binding.agent_id,
+                    version_id=binding.current_snapshot_id,
+                )
+                version = cls._update_current_version(
+                    current_snapshot=current_snapshot,
+                    account_id=account_id,
+                    agent_soul=payload.agent_soul,
+                    operation=AgentConfigRevisionOperation.SAVE_CURRENT_VERSION,
+                    version_note=payload.version_note,
+                )
+                agent = cls._require_agent(tenant_id=tenant_id, agent_id=binding.agent_id)
+                if agent.scope != AgentScope.WORKFLOW_ONLY:
+                    raise ValueError("Inline workflow agent binding must point to a workflow-only agent")
+                agent.active_config_snapshot_id = version.id
+                agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
+                agent.updated_by = account_id
+                binding.current_snapshot_id = version.id
             binding.updated_by = account_id
             return binding
 
@@ -538,6 +906,7 @@ class AgentComposerService:
         )
         agent = cls._require_agent(tenant_id=tenant_id, agent_id=binding.agent_id)
         agent.active_config_snapshot_id = version.id
+        agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
         agent.updated_by = account_id
         binding.current_snapshot_id = version.id
         if payload.node_job is not None:
@@ -567,6 +936,7 @@ class AgentComposerService:
         )
         agent = cls._require_agent(tenant_id=tenant_id, agent_id=binding.agent_id)
         agent.active_config_snapshot_id = version.id
+        agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
         agent.updated_by = account_id
         binding.current_snapshot_id = version.id
         binding.updated_by = account_id
@@ -686,6 +1056,7 @@ class AgentComposerService:
             version_note=None,
         )
         agent.active_config_snapshot_id = version.id
+        agent.active_config_has_model = agent_soul_has_model(agent_soul)
         return agent
 
     @classmethod
@@ -725,6 +1096,7 @@ class AgentComposerService:
             version_note=version_note,
         )
         agent.active_config_snapshot_id = version.id
+        agent.active_config_has_model = agent_soul_has_model(agent_soul)
         return agent
 
     @classmethod
@@ -961,7 +1333,7 @@ class AgentComposerService:
                 "id": binding.id,
                 "binding_type": binding.binding_type.value,
                 "agent_id": binding.agent_id,
-                "current_snapshot_id": binding.current_snapshot_id,
+                "current_snapshot_id": version.id if version else binding.current_snapshot_id,
                 "workflow_id": binding.workflow_id,
                 "node_id": binding.node_id,
             },
@@ -980,10 +1352,8 @@ class AgentComposerService:
             # this is the same list (so callers don't need to special-case).
             "effective_declared_outputs": cls._serialize_effective_outputs(cls._declared_outputs_from_binding(binding)),
             "save_options": save_options,
-            "impact_summary": cls.calculate_impact(
-                tenant_id=binding.tenant_id, current_snapshot_id=binding.current_snapshot_id
-            )
-            if binding.current_snapshot_id
+            "impact_summary": cls.calculate_impact(tenant_id=binding.tenant_id, current_snapshot_id=version.id)
+            if version
             else None,
         }
 

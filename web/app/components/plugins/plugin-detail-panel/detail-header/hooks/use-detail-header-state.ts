@@ -7,7 +7,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useReferenceSetting from '../../../plugin-page/use-reference-setting'
 import { AUTO_UPDATE_MODE } from '../../../reference-setting-modal/auto-update-setting/types'
-import { PluginSource } from '../../../types'
+import { PluginCategoryEnum, PluginSource } from '../../../types'
 
 export type VersionTarget = {
   version: string | undefined
@@ -53,7 +53,8 @@ export const useDetailHeaderState = (detail: PluginDetail): UseDetailHeaderState
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
   })
-  const { referenceSetting } = useReferenceSetting()
+  const category = detail.declaration?.category ?? PluginCategoryEnum.tool
+  const { referenceSetting } = useReferenceSetting(category)
 
   const {
     source,

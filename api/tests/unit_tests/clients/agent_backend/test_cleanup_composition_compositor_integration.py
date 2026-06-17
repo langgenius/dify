@@ -20,7 +20,7 @@ from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID
 from agenton_collections.layers.plain.basic import PromptLayer
 from agenton_collections.layers.pydantic_ai import PYDANTIC_AI_HISTORY_LAYER_TYPE_ID, PydanticAIHistoryLayer
 
-from clients.agent_backend import AgentBackendRunRequestBuilder, CleanupLayerSpec
+from clients.agent_backend import AgentBackendRunRequestBuilder, RuntimeLayerSpec
 
 
 def test_cleanup_request_passes_agenton_snapshot_validation():
@@ -35,12 +35,12 @@ def test_cleanup_request_passes_agenton_snapshot_validation():
     # which is purely structural and does not depend on which non-plugin layer
     # types appear.
     persisted_specs = [
-        CleanupLayerSpec(
+        RuntimeLayerSpec(
             name="workflow_node_job_prompt",
             type=PLAIN_PROMPT_LAYER_TYPE_ID,
             config={"prefix": "Do the cleanup."},
         ),
-        CleanupLayerSpec(name="history", type=PYDANTIC_AI_HISTORY_LAYER_TYPE_ID),
+        RuntimeLayerSpec(name="history", type=PYDANTIC_AI_HISTORY_LAYER_TYPE_ID),
     ]
     # Saved snapshot still carries the LLM layer entry — cleanup's
     # ``_filter_snapshot_to_specs`` must drop it so names match.
@@ -66,7 +66,7 @@ def test_cleanup_request_passes_agenton_snapshot_validation():
 
     cleanup_request = AgentBackendRunRequestBuilder().build_cleanup_request(
         session_snapshot=full_snapshot,
-        composition_layer_specs=persisted_specs,
+        runtime_layer_specs=persisted_specs,
     )
 
     # Drive the real agenton compositor through ``from_config`` + ``_create_run``

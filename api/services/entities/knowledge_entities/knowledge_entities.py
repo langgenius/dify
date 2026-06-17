@@ -1,6 +1,6 @@
 from typing import Any, Literal
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from core.rag.entities import Rule
 from core.rag.entities.metadata_entities import MetadataFilteringCondition
@@ -100,7 +100,7 @@ class KnowledgeConfig(BaseModel):
     data_source: DataSource | None = None
     process_rule: ProcessRule | None = None
     retrieval_model: RetrievalModel | None = None
-    summary_index_setting: dict[str, Any] | None = None
+    summary_index_setting: dict[str, Any] | None = Field(default=None)
     doc_form: str = "text_model"
     doc_language: str = "English"
     embedding_model: str | None = None

@@ -47,6 +47,14 @@ class InvokeFrom(StrEnum):
         }
         return source_mapping.get(self, "dev")
 
+    def runs_as_account(self) -> bool:
+        """Whether a run from this entry point is attributed to a workspace
+        Account rather than an end user. Console contexts (debugger/explore)
+        run as the signed-in Account; webapp/service-api/trigger run as an
+        EndUser. Single source of truth for the created-by-role / user-type
+        split shared by the app runners and MCP identity forwarding."""
+        return self in (InvokeFrom.DEBUGGER, InvokeFrom.EXPLORE)
+
 
 class DifyRunContext(BaseModel):
     tenant_id: str

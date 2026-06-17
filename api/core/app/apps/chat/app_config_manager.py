@@ -81,7 +81,7 @@ class ChatAppConfigManager(BaseAppConfigManager):
         return app_config
 
     @classmethod
-    def config_validate(cls, tenant_id: str, config: dict) -> AppModelConfigDict:
+    def config_validate(cls, tenant_id: str, config: dict[str, Any]) -> AppModelConfigDict:
         """
         Validate for chat app model config
 

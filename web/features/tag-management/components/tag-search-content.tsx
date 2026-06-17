@@ -80,7 +80,7 @@ export const TagSearchContent = ({
       </ComboboxList>
       <ComboboxEmpty className="p-1">
         <div className="flex flex-col items-center gap-y-1 p-3">
-          <span aria-hidden="true" className="i-ri-price-tag-3-line size-6 text-text-quaternary" />
+          <span className="i-custom-vender-line-financeAndECommerce-tag-01 size-6 text-text-quaternary" aria-hidden="true" />
           <div className="system-xs-regular text-text-tertiary">{t('tag.noTag', { ns: 'common' })}</div>
         </div>
       </ComboboxEmpty>
@@ -88,13 +88,13 @@ export const TagSearchContent = ({
       <div className="p-1">
         <button
           type="button"
-          className="flex w-full cursor-pointer touch-manipulation items-center gap-x-1 rounded-lg px-2 py-1.5 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active"
+          className="flex w-full cursor-pointer touch-manipulation items-center gap-x-1 rounded-lg px-2 py-1.5 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           onClick={() => {
             onOpenTagManagement?.()
             onClose?.()
           }}
         >
-          <span aria-hidden="true" className="i-ri-price-tag-3-line size-4 text-text-tertiary" />
+          <span className="i-custom-vender-line-financeAndECommerce-tag-01 size-4 text-text-tertiary" aria-hidden="true" />
           <span className="min-w-0 grow truncate px-1 system-md-regular text-text-secondary">
             {t('tag.manageTags', { ns: 'common' })}
           </span>

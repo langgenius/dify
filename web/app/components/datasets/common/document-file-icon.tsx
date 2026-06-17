@@ -19,12 +19,12 @@ const extendToFileTypeMap: { [key: string]: FileAppearanceType } = {
   docx: FileAppearanceTypeEnum.word,
 }
 
-type Props = {
+type Props = Readonly<{
   extension?: string
   name?: string
   size?: 'sm' | 'md' | 'lg' | 'xl'
   className?: string
-}
+}>
 
 const DocumentFileIcon: FC<Props> = ({
   extension,

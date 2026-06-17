@@ -337,3 +337,166 @@ def test_manifest_download_url_none_when_unresolvable():
     ):
         items = AgentDriveService().manifest(tenant_id=TENANT, agent_id=AGENT, include_download_url=True)
     assert items[0]["download_url"] is None
+
+
+# ── ENG-625 D5: delete ────────────────────────────────────────────────────────
+
+
+def test_delete_by_key_cleans_drive_owned_value():
+    tf = _seed_tool_file(name="doomed.txt")
+    _commit("files/doomed.txt", tf, owned=True)
+
+    with patch("services.agent_drive_service.storage") as storage_mock:
+        removed = AgentDriveService().delete(tenant_id=TENANT, agent_id=AGENT, key="files/doomed.txt")
+        storage_mock.delete.assert_called_once()
+
+    assert removed == ["files/doomed.txt"]
+    with session_factory.create_session() as session:
+        assert session.scalar(select(ToolFile).where(ToolFile.id == tf)) is None
+        assert list(session.scalars(select(AgentDriveFile))) == []
+
+
+def test_delete_by_prefix_removes_all_skill_keys():
+    md = _seed_tool_file(name="SKILL.md")
+    zf = _seed_tool_file(name="full.zip")
+    _commit("tender-analyzer/SKILL.md", md, owned=True)
+    _commit("tender-analyzer/.DIFY-SKILL-FULL.zip", zf, owned=True)
+    other = _seed_tool_file(name="other.txt")
+    _commit("files/other.txt", other, owned=True)
+
+    with patch("services.agent_drive_service.storage"):
+        removed = AgentDriveService().delete(tenant_id=TENANT, agent_id=AGENT, prefix="tender-analyzer/")
+
+    assert sorted(removed) == ["tender-analyzer/.DIFY-SKILL-FULL.zip", "tender-analyzer/SKILL.md"]
+    with session_factory.create_session() as session:
+        # both skill ToolFiles physically removed, the unrelated file untouched
+        assert session.scalar(select(ToolFile).where(ToolFile.id == md)) is None
+        assert session.scalar(select(ToolFile).where(ToolFile.id == zf)) is None
+        assert session.scalar(select(ToolFile).where(ToolFile.id == other)) is not None
+        keys = [row.key for row in session.scalars(select(AgentDriveFile))]
+    assert keys == ["files/other.txt"]
+
+
+def test_delete_is_idempotent():
+    assert AgentDriveService().delete(tenant_id=TENANT, agent_id=AGENT, key="files/never-there.txt") == []
+    assert AgentDriveService().delete(tenant_id=TENANT, agent_id=AGENT, prefix="ghost-skill/") == []
+
+
+def test_delete_requires_exactly_one_scope():
+    with pytest.raises(AgentDriveError) as exc_info:
+        AgentDriveService().delete(tenant_id=TENANT, agent_id=AGENT)
+    assert exc_info.value.code == "invalid_delete_scope"
+    with pytest.raises(AgentDriveError):
+        AgentDriveService().delete(tenant_id=TENANT, agent_id=AGENT, prefix="a/", key="a/b")
+
+
+def test_delete_keeps_shared_value_records():
+    tf = _seed_tool_file(name="shared.txt")
+    _commit("files/shared.txt", tf, owned=False)
+
+    with patch("services.agent_drive_service.storage") as storage_mock:
+        removed = AgentDriveService().delete(tenant_id=TENANT, agent_id=AGENT, key="files/shared.txt")
+        storage_mock.delete.assert_not_called()
+
+    assert removed == ["files/shared.txt"]
+    with session_factory.create_session() as session:
+        # only the KV row dropped; the shared ToolFile survives
+        assert session.scalar(select(ToolFile).where(ToolFile.id == tf)) is not None
+
+
+def test_restandardize_same_slug_overwrites_both_keys_and_cleans_old_toolfiles():
+    """ENG-625 §5.3 replacement semantics: re-standardizing a same-name skill
+    overwrites <slug>/SKILL.md and <slug>/.DIFY-SKILL-FULL.zip, physically
+    cleaning both old drive-owned ToolFiles."""
+    old_md = _seed_tool_file(name="SKILL.md")
+    old_zip = _seed_tool_file(name="full-v1.zip")
+    _commit("pdf-toolkit/SKILL.md", old_md, owned=True)
+    _commit("pdf-toolkit/.DIFY-SKILL-FULL.zip", old_zip, owned=True)
+
+    new_md = _seed_tool_file(name="SKILL-v2.md")
+    new_zip = _seed_tool_file(name="full-v2.zip")
+    with patch("services.agent_drive_service.storage") as storage_mock:
+        _commit("pdf-toolkit/SKILL.md", new_md, owned=True)
+        _commit("pdf-toolkit/.DIFY-SKILL-FULL.zip", new_zip, owned=True)
+        assert storage_mock.delete.call_count == 2
+
+    with session_factory.create_session() as session:
+        assert session.scalar(select(ToolFile).where(ToolFile.id == old_md)) is None
+        assert session.scalar(select(ToolFile).where(ToolFile.id == old_zip)) is None
+        rows = {row.key: row.file_id for row in session.scalars(select(AgentDriveFile))}
+    assert rows == {
+        "pdf-toolkit/SKILL.md": new_md,
+        "pdf-toolkit/.DIFY-SKILL-FULL.zip": new_zip,
+    }
+
+
+# ── ENG-624: console drive inspector (service layer) ─────────────────────────
+
+
+def test_preview_returns_text_with_truncation_flags():
+    tf = _seed_tool_file(name="SKILL.md")
+    _commit("pdf-toolkit/SKILL.md", tf)
+
+    with patch("services.agent_drive_service.storage") as storage_mock:
+        storage_mock.load_stream.return_value = iter([b"# PDF Toolkit\nUse responsibly.\n"])
+        result = AgentDriveService().preview(tenant_id=TENANT, agent_id=AGENT, key="pdf-toolkit/SKILL.md")
+
+    assert result == {
+        "key": "pdf-toolkit/SKILL.md",
+        "size": 5,
+        "truncated": False,
+        "binary": False,
+        "text": "# PDF Toolkit\nUse responsibly.\n",
+    }
+
+
+def test_preview_marks_binary_and_oversized_content():
+    tf = _seed_tool_file(name="blob.bin")
+    _commit("files/blob.bin", tf)
+
+    with patch("services.agent_drive_service.storage") as storage_mock:
+        storage_mock.load_stream.return_value = iter([b"\x00\x01\x02"])
+        binary = AgentDriveService().preview(tenant_id=TENANT, agent_id=AGENT, key="files/blob.bin")
+    assert binary["binary"] is True
+    assert binary["text"] is None
+
+    with patch("services.agent_drive_service.storage") as storage_mock:
+        storage_mock.load_stream.return_value = iter([b"x" * (AgentDriveService.PREVIEW_MAX_BYTES + 10)])
+        oversized = AgentDriveService().preview(tenant_id=TENANT, agent_id=AGENT, key="files/blob.bin")
+    assert oversized["truncated"] is True
+    assert oversized["binary"] is False
+    assert len(oversized["text"]) == AgentDriveService.PREVIEW_MAX_BYTES
+
+
+def test_preview_unknown_key_is_404():
+    with pytest.raises(AgentDriveError) as exc_info:
+        AgentDriveService().preview(tenant_id=TENANT, agent_id=AGENT, key="ghost/SKILL.md")
+    assert exc_info.value.code == "drive_key_not_found"
+    assert exc_info.value.status_code == 404
+
+
+def test_preview_rejects_cross_tenant_agent():
+    with pytest.raises(AgentDriveError) as exc_info:
+        AgentDriveService().preview(
+            tenant_id="99999999-9999-9999-9999-999999999999", agent_id=AGENT, key="pdf-toolkit/SKILL.md"
+        )
+    assert exc_info.value.code == "agent_not_found"
+
+
+def test_download_url_signs_external_audience():
+    tf = _seed_tool_file(name="full.zip")
+    _commit("pdf-toolkit/.DIFY-SKILL-FULL.zip", tf)
+
+    with patch.object(AgentDriveService, "_resolve_download_url", return_value="https://signed.example/x") as resolver:
+        url = AgentDriveService().download_url(tenant_id=TENANT, agent_id=AGENT, key="pdf-toolkit/.DIFY-SKILL-FULL.zip")
+
+    assert url == "https://signed.example/x"
+    # console downloads are for browsers: external signing, never the internal URL
+    assert resolver.call_args.kwargs["for_external"] is True
+
+
+def test_manifest_items_carry_created_at_for_inspector():
+    tf = _seed_tool_file()
+    _commit("files/x.txt", tf)
+    items = AgentDriveService().manifest(tenant_id=TENANT, agent_id=AGENT)
+    assert items[0]["created_at"] is None or isinstance(items[0]["created_at"], int)

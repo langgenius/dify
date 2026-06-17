@@ -56,6 +56,7 @@ export type Collection = {
   is_team_authorization: boolean
   allow_delete: boolean
   labels: string[]
+  tools?: Tool[]
   plugin_id?: string
   letter?: string
   // MCP Server

@@ -12,13 +12,13 @@ import { useTranslation } from 'react-i18next'
 import ContentItem from '@/app/components/base/chat/chat/answer/human-input-content/content-item'
 import { getButtonStyle, getRenderedFormInputs, hasInvalidSelectOrFileInput, initializeInputs, splitByOutputVar } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 
-type Props = {
+type Props = Readonly<{
   nodeName: string
   data: HumanInputFormData
   showBackButton?: boolean
   handleBack?: () => void
   onSubmit?: ({ inputs, action }: { inputs: Record<string, HumanInputFieldValue>, action: string }) => Promise<void>
-}
+}>
 
 const FormContent = ({
   nodeName,

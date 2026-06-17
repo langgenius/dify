@@ -816,7 +816,7 @@ class ProviderManager:
         return [
             {
                 "model": model_key[0],
-                "model_type": ModelType.value_of(model_key[1]),
+                "model_type": ModelType(model_key[1]),
                 "available_model_credentials": [
                     CredentialConfiguration(credential_id=cred.id, credential_name=cred.credential_name)
                     for cred in creds

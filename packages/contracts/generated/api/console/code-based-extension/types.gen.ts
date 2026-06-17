@@ -12,8 +12,8 @@ export type CodeBasedExtensionResponse = {
 export type GetCodeBasedExtensionData = {
   body?: never
   path?: never
-  query?: {
-    module?: string
+  query: {
+    module: string
   }
   url: '/code-based-extension'
 }

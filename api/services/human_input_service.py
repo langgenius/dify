@@ -223,9 +223,12 @@ class HumanInputService:
 
         if result.form_kind != HumanInputFormKind.RUNTIME:
             return
-        if result.workflow_run_id is None:
-            return
-        self.enqueue_resume(result.workflow_run_id)
+        # A RUNTIME form is owned by a workflow run (workflow Agent node) or a
+        # conversation (ENG-635: Agent v2 chat). Route the resume accordingly.
+        if result.workflow_run_id is not None:
+            self.enqueue_resume(result.workflow_run_id)
+        elif result.conversation_id is not None:
+            self.enqueue_agent_app_resume(conversation_id=result.conversation_id, form_id=result.form_id)
 
     def ensure_form_active(self, form: Form) -> None:
         if form.submitted:
@@ -285,6 +288,22 @@ class HumanInputService:
             return
 
         logger.warning("App mode %s does not support resume for workflow run %s", app.mode, workflow_run_id)
+
+    def enqueue_agent_app_resume(self, *, conversation_id: str, form_id: str) -> None:
+        """ENG-635: resume an Agent v2 chat after its ask_human form is submitted.
+
+        Enqueues a background turn for the conversation; the Agent App runner
+        continues the agent run, threading the human's reply into the request as
+        ``deferred_tool_results``.
+        """
+        from tasks.app_generate.resume_agent_app_task import resume_agent_app_execution
+
+        try:
+            resume_agent_app_execution.apply_async(
+                kwargs={"conversation_id": conversation_id, "form_id": form_id},
+            )
+        except Exception:  # pragma: no cover
+            logger.exception("Failed to enqueue Agent App resume for conversation %s form %s", conversation_id, form_id)
 
     def _load_variable_pool_for_form(self, form: Form) -> ReadOnlyVariablePool | None:
         workflow_run_id = form.workflow_run_id

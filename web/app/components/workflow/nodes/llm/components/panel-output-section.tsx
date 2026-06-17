@@ -9,7 +9,7 @@ import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/compo
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import { StructureOutput } from './structure-output'
 
-type Props = {
+type Props = Readonly<{
   readOnly: boolean
   inputs: LLMNodeType
   isModelSupportStructuredOutput: boolean | undefined
@@ -17,7 +17,7 @@ type Props = {
   setStructuredOutputCollapsed: (collapsed: boolean) => void
   handleStructureOutputEnableChange: (enabled: boolean) => void
   handleStructureOutputChange: (newOutput: StructuredOutput) => void
-}
+}>
 
 const i18nPrefix = 'nodes.llm'
 

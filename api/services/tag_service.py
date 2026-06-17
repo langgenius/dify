@@ -6,6 +6,7 @@ from flask_login import current_user
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 from sqlalchemy.engine import CursorResult
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from extensions.ext_database import db
@@ -38,7 +39,7 @@ class TagBindingDeletePayload(BaseModel):
 
 class TagService:
     @staticmethod
-    def get_tags(tag_type: str, current_tenant_id: str, keyword: str | None = None):
+    def get_tags(session: Session, tag_type: str, current_tenant_id: str, keyword: str | None = None):
         stmt = (
             select(Tag.id, Tag.type, Tag.name, func.count(TagBinding.id).label("binding_count"))
             .outerjoin(TagBinding, Tag.id == TagBinding.tag_id)
@@ -50,7 +51,7 @@ class TagService:
             escaped_keyword = escape_like_pattern(keyword)
             stmt = stmt.where(sa.and_(Tag.name.ilike(f"%{escaped_keyword}%", escape="\\")))
         stmt = stmt.group_by(Tag.id, Tag.type, Tag.name, Tag.created_at)
-        results: list = list(db.session.execute(stmt.order_by(Tag.created_at.desc())).all())
+        results: list = list(session.execute(stmt.order_by(Tag.created_at.desc())).all())
         return results
 
     @staticmethod

@@ -5,10 +5,10 @@ import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
-type Props = {
+type Props = Readonly<{
   onClear: () => void
   readOnly?: boolean
-}
+}>
 
 const InputHasSetMultipleValue: FC<Props> = ({
   onClear,

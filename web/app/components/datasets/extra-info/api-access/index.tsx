@@ -32,7 +32,7 @@ const ApiAccess = ({
   }, [])
 
   return (
-    <div className="p-3 pt-2">
+    <div className={cn(expand ? 'px-1 py-2' : 'flex justify-center px-3 py-2')}>
       <Popover
         open={open}
         onOpenChange={setOpen}
@@ -47,7 +47,7 @@ const ApiAccess = ({
               )}
               >
                 <ApiAggregate className="size-4 shrink-0 text-text-secondary" />
-                {expand && <div className="grow system-sm-medium text-text-secondary">{t('appMenus.apiAccess', { ns: 'common' })}</div>}
+                {expand && <div className="min-w-0 grow truncate system-sm-regular text-text-secondary">{t('appMenus.apiAccess', { ns: 'common' })}</div>}
                 <StatusDot
                   className={cn('shrink-0', !expand && 'absolute -top-px -right-px')}
                   status={apiEnabled ? 'success' : 'warning'}

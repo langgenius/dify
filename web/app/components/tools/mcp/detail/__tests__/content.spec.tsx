@@ -229,9 +229,16 @@ describe('MCPDetailContent', () => {
 
     it('should render operation dropdown', () => {
       render(<MCPDetailContent {...defaultProps} />, { wrapper: createWrapper() })
-      // Operation dropdown trigger should be present
-      // Operation dropdown trigger should be present
-      expect(document.querySelector('button'))!.toBeInTheDocument()
+      expect(screen.getByTestId('operation-dropdown')).toBeInTheDocument()
+    })
+
+    it('should not render operation dropdown for non-workspace managers', () => {
+      mockIsCurrentWorkspaceManager = false
+
+      render(<MCPDetailContent {...defaultProps} />, { wrapper: createWrapper() })
+
+      expect(screen.queryByTestId('operation-dropdown')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
     })
   })
 
