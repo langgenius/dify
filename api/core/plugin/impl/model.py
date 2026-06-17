@@ -235,11 +235,6 @@ class PluginModelClient(BasePluginClient):
                             "stop": stop,
                             "stream": False,
                             "json_schema": json_schema,
-                            # The current plugin SDK still requires these fields even
-                            # though graphon no longer exposes them on its polling
-                            # protocol.
-                            "workflow_run_id": "",
-                            "node_id": "",
                         },
                     )
                 ),
@@ -277,9 +272,6 @@ class PluginModelClient(BasePluginClient):
                             "model": model,
                             "credentials": credentials,
                             "plugin_state": plugin_state,
-                            # Keep the legacy required fields for SDK compatibility.
-                            "workflow_run_id": "",
-                            "node_id": "",
                         },
                     )
                 ),

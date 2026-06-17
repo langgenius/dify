@@ -228,8 +228,6 @@ class TestPluginModelClient:
             "stop": ["STOP"],
             "stream": False,
             "json_schema": {"type": "object"},
-            "workflow_run_id": "",
-            "node_id": "",
         }
 
     def test_check_llm_polling(self, mocker: MockerFixture):
@@ -268,8 +266,6 @@ class TestPluginModelClient:
             "model": "gpt-test",
             "credentials": {"api_key": "key"},
             "plugin_state": {"task_id": "poll-1"},
-            "workflow_run_id": "",
-            "node_id": "",
         }
 
     def test_start_llm_polling_maps_unsupported_polling_invoke_error(self, mocker: MockerFixture):
