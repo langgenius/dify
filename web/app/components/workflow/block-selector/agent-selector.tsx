@@ -2,7 +2,6 @@ import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agen
 import type { ComboboxRootChangeEventDetails } from '@langgenius/dify-ui/combobox'
 import type { NodeDefault } from '../types'
 import type { AgentRosterNodeData } from './types'
-import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
@@ -25,6 +24,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import AppIcon from '@/app/components/base/app-icon'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
@@ -239,24 +239,14 @@ function AgentSelectorAvatar({
 }: {
   agent: AgentInviteOptionResponse
 }) {
-  const imageUrl = (agent.icon_type === 'image' || agent.icon_type === 'link') ? agent.icon : undefined
-
   return (
-    <AvatarRoot
-      size="md"
-      className="border-[0.5px] border-divider-regular text-lg"
-      style={{ background: imageUrl ? undefined : (agent.icon_background || '#FFEAD5') }}
-    >
-      {imageUrl && (
-        <AvatarImage
-          src={imageUrl}
-          alt={agent.name}
-        />
-      )}
-      <AvatarFallback size="md" className="text-lg text-text-primary-on-surface">
-        {agent.icon_type === 'emoji' && agent.icon ? agent.icon : agent.name[0]?.toLocaleUpperCase()}
-      </AvatarFallback>
-    </AvatarRoot>
+    <AppIcon
+      size="small"
+      iconType={agent.icon_type}
+      icon={agent.icon ?? undefined}
+      background={agent.icon_background}
+      imageUrl={agent.icon ?? undefined}
+    />
   )
 }
 

@@ -260,6 +260,10 @@ describe('consoleQuery agent mutation defaults', () => {
           workflow_node_id: null,
         },
       ],
+      has_more: false,
+      limit: 8,
+      page: 1,
+      total: 1,
     })
 
     const mutationOptions = consoleQuery.agent.byAgentId.composer.put.mutationOptions()

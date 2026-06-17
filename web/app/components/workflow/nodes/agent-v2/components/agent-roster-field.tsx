@@ -1,6 +1,6 @@
 import type { ReactNode, RefObject } from 'react'
 import type { AgentRosterNodeData } from '@/app/components/workflow/block-selector/types'
-import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
+import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -21,6 +21,7 @@ import {
 } from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import AppIcon from '@/app/components/base/app-icon'
 import { AgentSelectorContent } from '@/app/components/workflow/block-selector/agent-selector'
 import { getAgentDetailPath } from '@/features/agent-v2/agent-detail/routes'
 import Link from '@/next/link'
@@ -38,6 +39,13 @@ type AgentRosterDisplayData = {
   role?: string | null
 }
 
+const getAppIconType = (iconType?: string | null): AppIconType | null => {
+  if (iconType === 'emoji' || iconType === 'image' || iconType === 'link')
+    return iconType
+
+  return null
+}
+
 function AgentRosterAvatar({
   agent,
   size = 'lg',
@@ -47,24 +55,17 @@ function AgentRosterAvatar({
   size?: 'xs' | 'md' | 'lg'
   className?: string
 }) {
-  const imageUrl = (agent.icon_type === 'image' || agent.icon_type === 'link') ? agent.icon : undefined
+  const iconSize = size === 'md' ? 'medium' : size === 'xs' ? 'tiny' : 'small'
 
   return (
-    <AvatarRoot
-      size={size}
-      className={cn('border-[0.5px] border-divider-regular', className)}
-      style={{ background: imageUrl ? undefined : (agent.icon_background || '#FFEAD5') }}
-    >
-      {imageUrl && (
-        <AvatarImage
-          src={imageUrl}
-          alt={agent.name}
-        />
-      )}
-      <AvatarFallback size={size} className="text-text-primary-on-surface">
-        {agent.icon_type === 'emoji' && agent.icon ? agent.icon : agent.name[0]?.toLocaleUpperCase()}
-      </AvatarFallback>
-    </AvatarRoot>
+    <AppIcon
+      size={iconSize}
+      iconType={getAppIconType(agent.icon_type)}
+      icon={agent.icon ?? undefined}
+      background={agent.icon_background}
+      imageUrl={agent.icon ?? undefined}
+      className={className}
+    />
   )
 }
 
