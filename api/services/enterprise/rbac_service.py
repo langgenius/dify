@@ -703,7 +703,8 @@ def try_sync_creator_access_policy_member_bindings(
         )
     except Exception:
         logger.warning(
-            "Failed to sync creator access policy member binding for tenant_id=%s resource_type=%s resource_id=%s account_id=%s",
+            "Failed to sync creator access policy member binding for "
+            "tenant_id=%s resource_type=%s resource_id=%s account_id=%s",
             tenant_id,
             resource_type.value if isinstance(resource_type, RBACResourceType) else resource_type,
             resource_id,
@@ -1167,7 +1168,6 @@ class RBACService:
                 params={"app_id": app_id, "policy_id": policy_id},
                 json=payload.model_dump(mode="json"),
             )
-
 
         @staticmethod
         def replace_bindings(

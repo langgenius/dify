@@ -1,5 +1,6 @@
 from enum import StrEnum
 
+
 class RBACResourceScope(StrEnum):
     """Resource scopes accepted by the ``rbac_permission_required`` decorator.
 

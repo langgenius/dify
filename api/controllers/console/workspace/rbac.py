@@ -7,14 +7,14 @@ from flask import request
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError, field_validator
 from sqlalchemy import select
-from werkzeug.exceptions import BadRequest, NotFound
+from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from controllers.console import console_ns
 from controllers.console.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
 from core.db.session_factory import session_factory
 from libs.login import current_account_with_tenant, login_required
-from models import Account, TenantAccountJoin
+from models import Account
 from services.enterprise import rbac_service as svc
 
 _LEGACY_ROLE_PERMISSION_KEYS: dict[str, list[str]] = {

@@ -28,8 +28,8 @@ from models.agent import Agent, AgentIconType, AgentScope, AgentSource, AgentSta
 from models.model import App, AppMode, AppModelConfig, IconType, Site
 from models.tools import ApiToolProvider
 from services.billing_service import BillingService
-from services.enterprise.enterprise_service import EnterpriseService
 from services.enterprise import rbac_service as enterprise_rbac_service
+from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
 from services.tag_service import TagService

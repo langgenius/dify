@@ -15,8 +15,6 @@ from configs import dify_config
 from controllers.common.wraps import (
     RBACPermission,
     RBACResourceScope,
-    _extract_resource_id,
-    _is_resource_owned_by_current_user,
     rbac_permission_required,
 )
 from controllers.console.auth.error import AuthenticationFailedError, EmailCodeError
@@ -30,7 +28,6 @@ from models import Account
 from models.account import AccountStatus
 from models.dataset import RateLimitLog
 from models.model import DifySetup
-from services.enterprise.rbac_service import RBACService
 from services.feature_service import FeatureService, LicenseStatus
 from services.operation_service import OperationService, UtmInfo
 
@@ -347,7 +344,6 @@ def knowledge_pipeline_publish_enabled[**P, R](view: Callable[P, R]) -> Callable
 def edit_permission_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
     @wraps(f)
     def decorated_function(*args: P.args, **kwargs: P.kwargs):
-        from werkzeug.exceptions import Forbidden
 
         from libs.login import current_user
 
@@ -365,7 +361,6 @@ def edit_permission_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
 def is_admin_or_owner_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
     @wraps(f)
     def decorated_function(*args: P.args, **kwargs: P.kwargs):
-        from werkzeug.exceptions import Forbidden
 
         from libs.login import current_user
 
@@ -375,8 +370,6 @@ def is_admin_or_owner_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
         return f(*args, **kwargs)
 
     return decorated_function
-
-
 
 
 def annotation_import_rate_limit[**P, R](view: Callable[P, R]) -> Callable[P, R]:

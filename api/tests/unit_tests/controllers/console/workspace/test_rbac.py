@@ -334,6 +334,7 @@ class TestResourceAccessScopeBindings:
         assert (tenant_id, actor_id, dataset_id, policy_id) == ("tenant-1", "acct-actor", "dataset-1", "policy-1")
         assert payload.account_ids == ["acct-2"]
 
+
 class TestPaginationForwarding:
     def test_role_members_get_forwards_outer_pagination_params(self, app):
         with (

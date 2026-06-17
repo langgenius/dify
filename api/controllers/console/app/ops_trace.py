@@ -9,7 +9,6 @@ from controllers.common.schema import query_params_from_model, register_response
 from controllers.console import console_ns
 from controllers.console.app.error import TracingConfigCheckError, TracingConfigIsExist, TracingConfigNotExist
 from controllers.console.app.wraps import get_app_model
-
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
@@ -17,7 +16,6 @@ from controllers.console.wraps import (
     rbac_permission_required,
     setup_required,
 )
-
 from fields.base import ResponseModel
 from libs.login import login_required
 from models import App
