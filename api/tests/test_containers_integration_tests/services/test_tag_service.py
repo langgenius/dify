@@ -1048,7 +1048,7 @@ class TestTagService:
         binding_payload = TagBindingCreatePayload(
             type="knowledge", target_id=dataset.id, tag_ids=[tag.id for tag in tags]
         )
-        TagService.save_tag_binding(binding_payload)
+        TagService.save_tag_binding(binding_payload, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
 
@@ -1173,7 +1173,7 @@ class TestTagService:
         delete_payload = TagBindingDeletePayload(
             type="knowledge", target_id=dataset.id, tag_ids=[tag.id for tag in tags]
         )
-        TagService.delete_tag_binding(delete_payload)
+        TagService.delete_tag_binding(delete_payload, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         # Verify tag bindings were deleted
@@ -1209,7 +1209,7 @@ class TestTagService:
 
         # Act: Try to delete non-existent binding
         delete_payload = TagBindingDeletePayload(type="app", target_id=app.id, tag_ids=[tag.id])
-        TagService.delete_tag_binding(delete_payload)
+        TagService.delete_tag_binding(delete_payload, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         # No error should be raised, and database state should remain unchanged
