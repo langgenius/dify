@@ -42,6 +42,7 @@
   "filter.period.today": "आज",
   "filter.period.yearToDate": "वर्ष तक तिथि",
   "filter.sortBy": "इसके अनुसार क्रमबद्ध करें:",
+  "monitoring.description": "मॉनिटरिंग एप्लिकेशन की रनिंग स्थिति रिकॉर्ड करती है, जिसमें प्रदर्शन, उपयोगकर्ता गतिविधि और लागतें शामिल हैं।",
   "promptLog": "प्रॉम्प्ट लॉग",
   "runDetail.fileListDetail": "विस्तार",
   "runDetail.fileListLabel": "फ़ाइल विवरण",

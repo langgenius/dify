@@ -42,6 +42,7 @@
   "filter.period.today": "Сьогодні",
   "filter.period.yearToDate": "Рік до сьогодні",
   "filter.sortBy": "Сортувати за:",
+  "monitoring.description": "Моніторинг фіксує робочий стан застосунку, зокрема продуктивність, активність користувачів і витрати.",
   "promptLog": "Журнал Запитань",
   "runDetail.fileListDetail": "Деталь",
   "runDetail.fileListLabel": "Подробиці файлу",
