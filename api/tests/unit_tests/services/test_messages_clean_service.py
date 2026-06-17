@@ -11,7 +11,11 @@ from services.retention.conversation.messages_clean_policy import (
     SimpleMessage,
     create_message_clean_policy,
 )
-from services.retention.conversation.messages_clean_service import _SQL_IN_CHUNK_SIZE, MessagesCleanService
+from services.retention.conversation.messages_clean_service import (
+    _SQL_IN_CHUNK_SIZE,
+    MessageScanScope,
+    MessagesCleanService,
+)
 
 
 def make_simple_message(msg_id: str, app_id: str) -> SimpleMessage:
@@ -731,7 +735,7 @@ class TestMessagesCleanServiceAppScopes:
             dry_run=False,
         )
 
-        assert service._message_app_id_scopes(None) == [None]
+        assert service._message_app_id_scopes(None) == [MessageScanScope()]
 
     def test_message_app_id_scopes_chunks_eligible_app_ids(self):
         service = MessagesCleanService(
@@ -746,13 +750,26 @@ class TestMessagesCleanServiceAppScopes:
         scopes = service._message_app_id_scopes(app_ids)
 
         scoped_app_ids: set[str] = set()
-        non_empty_scopes = [scope for scope in scopes if scope is not None]
-        for scope in non_empty_scopes:
-            scoped_app_ids.update(scope)
+        for scope in scopes:
+            assert scope.app_ids is not None
+            assert scope.excluded_tenant_ids is None
+            scoped_app_ids.update(scope.app_ids)
 
-        assert [len(scope) for scope in non_empty_scopes] == [
+        assert [len(scope.app_ids or []) for scope in scopes] == [
             _SQL_IN_CHUNK_SIZE,
             _SQL_IN_CHUNK_SIZE,
             1,
         ]
         assert scoped_app_ids == app_ids
+
+    def test_tenant_denylist_preferred_for_high_eligible_tenant_ratio(self):
+        assert MessagesCleanService._should_use_tenant_denylist(
+            total_tenant_count=100,
+            excluded_tenant_count=10,
+        )
+
+    def test_tenant_denylist_skipped_for_low_eligible_tenant_ratio(self):
+        assert not MessagesCleanService._should_use_tenant_denylist(
+            total_tenant_count=100,
+            excluded_tenant_count=30,
+        )

@@ -3,6 +3,7 @@ import logging
 import random
 import time
 from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, TypedDict, cast
 
 import sqlalchemy as sa
@@ -33,6 +34,9 @@ from services.retention.conversation.messages_clean_policy import (
 logger = logging.getLogger(__name__)
 
 _SQL_IN_CHUNK_SIZE = 500
+_APP_ALLOWLIST_MAX_SIZE = 10_000
+_TENANT_DENYLIST_MAX_SIZE = 50_000
+_TENANT_DENYLIST_MIN_ELIGIBLE_RATIO = 0.8
 
 
 if TYPE_CHECKING:
@@ -165,6 +169,24 @@ class MessagesCleanStatsDict(TypedDict):
     total_messages: int
     filtered_messages: int
     total_deleted: int
+
+
+@dataclass(frozen=True)
+class MessageScanScope:
+    app_ids: frozenset[str] | None = None
+    excluded_tenant_ids: frozenset[str] | None = None
+
+    def __post_init__(self) -> None:
+        if self.app_ids is not None and self.excluded_tenant_ids is not None:
+            raise ValueError("app_ids and excluded_tenant_ids are mutually exclusive")
+
+    @property
+    def mode(self) -> str:
+        if self.app_ids is not None:
+            return "app_allowlist"
+        if self.excluded_tenant_ids is not None:
+            return "tenant_denylist"
+        return "global"
 
 
 class MessagesCleanService:
@@ -344,8 +366,8 @@ class MessagesCleanService:
         Time range is [start_from, end_before)
 
         Steps:
-        1. Resolve eligible apps up front when the policy supports tenant prefiltering
-        2. Iterate messages using cursor pagination (by created_at, id) within each app-id scope
+        1. Resolve an SQL scan scope when the policy supports tenant prefiltering
+        2. Iterate messages using cursor pagination (by created_at, id) within each scan scope
         3. Query or reuse app_id -> tenant_id mapping
         4. Delegate to policy to determine which messages to delete
         5. Batch delete messages and their relations
@@ -368,16 +390,18 @@ class MessagesCleanService:
         )
 
         max_batch_interval_ms = dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_MAX_INTERVAL
-        eligible_app_ids = self._resolve_eligible_app_ids()
-        if eligible_app_ids is not None:
-            if not eligible_app_ids:
-                logger.info("clean_messages: no eligible apps found, skip message scan")
-                return stats
+        scan_scopes = self._resolve_message_scan_scopes()
+        if not scan_scopes:
+            logger.info("clean_messages: no eligible tenants or apps found, skip message scan")
+            return stats
 
-            logger.info("clean_messages: prefiltered %s eligible apps", len(eligible_app_ids))
-
-        app_id_scopes = self._message_app_id_scopes(eligible_app_ids)
-        for app_id_scope in app_id_scopes:
+        for scan_scope in scan_scopes:
+            logger.info(
+                "clean_messages: scanning messages with %s scope (app_ids=%s, excluded_tenants=%s)",
+                scan_scope.mode,
+                len(scan_scope.app_ids) if scan_scope.app_ids is not None else 0,
+                len(scan_scope.excluded_tenant_ids) if scan_scope.excluded_tenant_ids is not None else 0,
+            )
             # Cursor-based pagination using (created_at, id) to avoid infinite loops
             # and ensure proper ordering with time-based filtering.
             cursor: tuple[datetime.datetime, str] | None = None
@@ -400,8 +424,12 @@ class MessagesCleanService:
                         .limit(self._batch_size)
                     )
 
-                    if app_id_scope is not None:
-                        msg_stmt = msg_stmt.where(Message.app_id.in_(app_id_scope))
+                    if scan_scope.app_ids is not None:
+                        msg_stmt = msg_stmt.where(Message.app_id.in_(scan_scope.app_ids))
+                    elif scan_scope.excluded_tenant_ids is not None:
+                        msg_stmt = msg_stmt.join(App, App.id == Message.app_id).where(
+                            ~App.tenant_id.in_(scan_scope.excluded_tenant_ids)
+                        )
 
                     if self._start_from:
                         msg_stmt = msg_stmt.where(Message.created_at >= self._start_from)
@@ -570,23 +598,24 @@ class MessagesCleanService:
 
         return stats
 
-    def _resolve_eligible_app_ids(self) -> set[str] | None:
+    def _resolve_message_scan_scopes(self) -> list[MessageScanScope]:
         """
-        Resolve app IDs that can be scanned before touching the high-volume messages table.
+        Resolve the safest SQL scope before touching the high-volume messages table.
 
-        A None return means the policy intentionally keeps the old query path. For billing-enabled
-        sandbox cleanup, this returns only apps whose tenants are eligible for deletion.
+        Billing-disabled cleanup keeps the original global time-cursor scan. Billing-enabled cleanup
+        prefers a tenant denylist when most tenants are eligible, because a huge eligible-app allowlist
+        can make the first ordered message fetch very expensive on sparse app distributions.
         """
         if not self._policy.supports_tenant_prefilter():
-            return None
+            return [MessageScanScope()]
 
         resolve_start = time.monotonic()
         with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
-            tenant_ids = list(session.scalars(select(App.tenant_id).distinct()).all())
+            tenant_ids = set(session.scalars(select(App.tenant_id).distinct()).all())
 
-        eligible_tenant_ids = self._policy.filter_eligible_tenant_ids(tenant_ids)
+        eligible_tenant_ids = self._policy.filter_eligible_tenant_ids(list(tenant_ids))
         if eligible_tenant_ids is None:
-            return None
+            return [MessageScanScope()]
 
         if not eligible_tenant_ids:
             logger.info(
@@ -594,7 +623,30 @@ class MessagesCleanService:
                 len(tenant_ids),
                 int((time.monotonic() - resolve_start) * 1000),
             )
-            return set()
+            return []
+
+        excluded_tenant_ids = tenant_ids - eligible_tenant_ids
+        if not excluded_tenant_ids:
+            logger.info(
+                "clean_messages: all %s tenants are eligible, using global message scan in %sms",
+                len(tenant_ids),
+                int((time.monotonic() - resolve_start) * 1000),
+            )
+            return [MessageScanScope()]
+
+        if self._should_use_tenant_denylist(
+            total_tenant_count=len(tenant_ids),
+            excluded_tenant_count=len(excluded_tenant_ids),
+        ):
+            logger.info(
+                "clean_messages: resolved %s eligible tenants and %s excluded tenants from %s tenants in %sms; "
+                "using tenant denylist scan",
+                len(eligible_tenant_ids),
+                len(excluded_tenant_ids),
+                len(tenant_ids),
+                int((time.monotonic() - resolve_start) * 1000),
+            )
+            return [MessageScanScope(excluded_tenant_ids=frozenset(excluded_tenant_ids))]
 
         eligible_app_ids: set[str] = set()
         with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
@@ -611,19 +663,53 @@ class MessagesCleanService:
             len(tenant_ids),
             int((time.monotonic() - resolve_start) * 1000),
         )
-        return eligible_app_ids
+        if not eligible_app_ids:
+            return []
 
-    def _message_app_id_scopes(self, eligible_app_ids: set[str] | None) -> list[set[str] | None]:
+        if len(eligible_app_ids) <= _APP_ALLOWLIST_MAX_SIZE:
+            logger.info("clean_messages: prefiltered %s eligible apps", len(eligible_app_ids))
+            return self._message_app_id_scopes(eligible_app_ids)
+
+        if len(excluded_tenant_ids) <= _TENANT_DENYLIST_MAX_SIZE:
+            logger.info(
+                "clean_messages: eligible app allowlist too broad (%s apps), using %s-tenant denylist scan",
+                len(eligible_app_ids),
+                len(excluded_tenant_ids),
+            )
+            return [MessageScanScope(excluded_tenant_ids=frozenset(excluded_tenant_ids))]
+
+        logger.info(
+            "clean_messages: eligible app allowlist too broad (%s apps) and tenant denylist too broad "
+            "(%s tenants), falling back to global message scan",
+            len(eligible_app_ids),
+            len(excluded_tenant_ids),
+        )
+        return [MessageScanScope()]
+
+    def _message_app_id_scopes(self, eligible_app_ids: set[str] | None) -> list[MessageScanScope]:
         """
         Build bounded app-id scopes for message scans.
 
-        None preserves the billing-disabled global scan, while prefiltered app IDs are chunked
-        so each message query keeps its SQL IN list small.
+        None preserves the billing-disabled global scan, while small prefiltered app ID sets are
+        chunked so each message query keeps its SQL IN list small.
         """
         if eligible_app_ids is None:
-            return [None]
+            return [MessageScanScope()]
 
-        return [set(app_id_chunk) for app_id_chunk in self._chunked(sorted(eligible_app_ids), _SQL_IN_CHUNK_SIZE)]
+        return [
+            MessageScanScope(app_ids=frozenset(app_id_chunk))
+            for app_id_chunk in self._chunked(sorted(eligible_app_ids), _SQL_IN_CHUNK_SIZE)
+        ]
+
+    @staticmethod
+    def _should_use_tenant_denylist(*, total_tenant_count: int, excluded_tenant_count: int) -> bool:
+        if total_tenant_count <= 0 or excluded_tenant_count <= 0:
+            return False
+
+        eligible_ratio = (total_tenant_count - excluded_tenant_count) / total_tenant_count
+        return (
+            excluded_tenant_count <= _TENANT_DENYLIST_MAX_SIZE and eligible_ratio >= _TENANT_DENYLIST_MIN_ELIGIBLE_RATIO
+        )
 
     def _get_app_to_tenant(self, session: Session, app_ids: Sequence[str]) -> dict[str, str]:
         missing_app_ids = [app_id for app_id in app_ids if app_id not in self._app_to_tenant_cache]

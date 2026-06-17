@@ -10,6 +10,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+import services.retention.conversation.messages_clean_service as messages_clean_service_module
 from enums.cloud_plan import CloudPlan
 from extensions.ext_redis import redis_client
 from graphon.file import FileType
@@ -499,6 +500,65 @@ class TestMessagesCleanServiceIntegration:
             .count()
             == 0
         )
+
+    def test_tenant_denylist_scope_skips_paid_tenant_before_message_scan(
+        self, db_session_with_containers: Session, monkeypatch
+    ):
+        """Test the high-eligible-ratio path that filters non-eligible tenants with a SQL denylist join."""
+        monkeypatch.setattr(messages_clean_service_module, "_TENANT_DENYLIST_MIN_ELIGIBLE_RATIO", 0.5)
+
+        sandbox_account, sandbox_tenant = self._create_account_and_tenant(
+            db_session_with_containers, plan=CloudPlan.SANDBOX
+        )
+        sandbox_app = self._create_app(db_session_with_containers, sandbox_tenant, sandbox_account)
+        sandbox_conv = self._create_conversation(db_session_with_containers, sandbox_app)
+        sandbox_msg = self._create_message(
+            db_session_with_containers,
+            sandbox_app,
+            sandbox_conv,
+            created_at=datetime.datetime.now() - datetime.timedelta(days=35),
+            with_relations=False,
+        )
+
+        paid_account, paid_tenant = self._create_account_and_tenant(
+            db_session_with_containers, plan=CloudPlan.PROFESSIONAL
+        )
+        paid_app = self._create_app(db_session_with_containers, paid_tenant, paid_account)
+        paid_conv = self._create_conversation(db_session_with_containers, paid_app)
+        paid_msg = self._create_message(
+            db_session_with_containers,
+            paid_app,
+            paid_conv,
+            created_at=datetime.datetime.now() - datetime.timedelta(days=35),
+            with_relations=False,
+        )
+
+        plan_provider = MagicMock(
+            return_value={
+                sandbox_tenant.id: {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
+                paid_tenant.id: {"plan": CloudPlan.PROFESSIONAL, "expiration_date": -1},
+            }
+        )
+        policy = BillingSandboxPolicy(plan_provider=plan_provider)
+        service = MessagesCleanService.from_time_range(
+            policy=policy,
+            start_from=datetime.datetime.now() - datetime.timedelta(days=60),
+            end_before=datetime.datetime.now() - datetime.timedelta(days=30),
+            batch_size=100,
+            dry_run=True,
+        )
+        service._message_app_id_scopes = MagicMock(side_effect=AssertionError("unexpected app allowlist scan"))  # type: ignore[method-assign]
+
+        stats = service.run()
+
+        assert stats["total_messages"] == 1
+        assert stats["filtered_messages"] == 1
+        assert stats["total_deleted"] == 0
+        assert db_session_with_containers.query(Message).where(Message.id == sandbox_msg.id).count() == 1
+        assert db_session_with_containers.query(Message).where(Message.id == paid_msg.id).count() == 1
+        assert sandbox_app.id in service._app_to_tenant_cache
+        assert paid_app.id not in service._app_to_tenant_cache
+        plan_provider.assert_called_once()
 
     def test_cursor_pagination_multiple_batches(
         self, db_session_with_containers: Session, mock_billing_enabled, mock_whitelist
