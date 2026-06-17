@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from enum import StrEnum
-from typing import Any, TypeVar
+from typing import Any, Generic, TypeVar
 
 from flask import has_request_context, request
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
@@ -29,7 +29,7 @@ class Pagination(_RBACModel):
     total_pages: int = 0
 
 
-class Paginated[T](_RBACModel):
+class Paginated(_RBACModel, Generic[T]):
     data: list[T] = Field(default_factory=list)
     pagination: Pagination | None = None
 
