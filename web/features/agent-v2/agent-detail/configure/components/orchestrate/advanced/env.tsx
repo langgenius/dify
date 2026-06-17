@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { useEnvVariables } from '@/features/agent-v2/agent-composer/store-modules/env'
 import { checkKeys } from '@/utils/var'
 import { ConfigureSection } from '../common/section'
+import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { getEnvImportPlatform, parseEnvVariables } from './env-utils'
 
 export type EnvScope = 'secret' | 'plain'
@@ -70,13 +71,23 @@ const createEnvVariableFromEntry = ({
 })
 
 function EnvEditorScope({
+  editable,
   scope,
   onChange,
 }: {
+  editable?: boolean
   scope: EnvScope
   onChange?: (scope: EnvScope) => void
 }) {
   const { t } = useTranslation('agentV2')
+
+  if (!editable) {
+    return (
+      <span className="min-w-0 truncate px-3 system-xs-regular text-text-secondary">
+        {t(scopeLabelKeys[scope])}
+      </span>
+    )
+  }
 
   return (
     <Select
@@ -229,18 +240,20 @@ function EnvEditorRow({
       </EnvEditorCell>
       {showScope && (
         <EnvEditorCell>
-          <EnvEditorScope scope={variable.scope} onChange={onScopeChange} />
+          <EnvEditorScope editable={editable} scope={variable.scope} onChange={onScopeChange} />
         </EnvEditorCell>
       )}
       <EnvEditorCell className="justify-center">
-        <button
-          type="button"
-          aria-label={t('agentDetail.configure.advancedSettings.envEditor.deleteVariable', { key: variable.key || t('agentDetail.configure.advancedSettings.envEditor.keyPlaceholder') })}
-          onClick={onDelete}
-          className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-        >
-          <span aria-hidden className="i-ri-delete-bin-line size-4" />
-        </button>
+        {editable && (
+          <button
+            type="button"
+            aria-label={t('agentDetail.configure.advancedSettings.envEditor.deleteVariable', { key: variable.key || t('agentDetail.configure.advancedSettings.envEditor.keyPlaceholder') })}
+            onClick={onDelete}
+            className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          >
+            <span aria-hidden className="i-ri-delete-bin-line size-4" />
+          </button>
+        )}
       </EnvEditorCell>
     </div>
   )
@@ -403,6 +416,7 @@ export function EnvVariablesTable({
 
 export function AgentEnvEditor() {
   const { t } = useTranslation('agentV2')
+  const readOnly = useAgentOrchestrateReadOnly()
   const [envVariables, setEnvVariables] = useEnvVariables()
   const [starterVariable] = useState(createEnvVariable)
   const [focusedVariable, setFocusedVariable] = useState<{ id: string, field: 'key' | 'value' }>()
@@ -476,47 +490,49 @@ export function AgentEnvEditor() {
       rootClassName="gap-1 pt-3"
       headerClassName="mb-0 gap-1 px-3"
       panelContentClassName="px-3 pb-3"
-      actions={(
-        <>
-          <input
-            ref={envImportInputRef}
-            className="hidden"
-            type="file"
-            onChange={(event) => {
-              const file = event.target.files?.[0]
-              event.target.value = ''
+      actions={!readOnly
+        ? (
+            <>
+              <input
+                ref={envImportInputRef}
+                className="hidden"
+                type="file"
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  event.target.value = ''
 
-              if (file)
-                void importEnvVariables(file)
-            }}
-          />
-          <Tooltip>
-            <TooltipTrigger
-              render={(
-                <button
-                  type="button"
-                  aria-label={t('agentDetail.configure.advancedSettings.envEditor.importEnv')}
-                  onClick={() => envImportInputRef.current?.click()}
-                  className="flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                >
-                  <span aria-hidden className="i-ri-file-upload-line size-3.5" />
-                  <span className="system-xs-medium">{t('agentDetail.configure.advancedSettings.envEditor.importEnv')}</span>
-                </button>
-              )}
-            />
-            <TooltipContent className="max-w-72">
-              {envImportTip}
-            </TooltipContent>
-          </Tooltip>
-        </>
-      )}
+                  if (file)
+                    void importEnvVariables(file)
+                }}
+              />
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <button
+                      type="button"
+                      aria-label={t('agentDetail.configure.advancedSettings.envEditor.importEnv')}
+                      onClick={() => envImportInputRef.current?.click()}
+                      className="flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                    >
+                      <span aria-hidden className="i-ri-file-upload-line size-3.5" />
+                      <span className="system-xs-medium">{t('agentDetail.configure.advancedSettings.envEditor.importEnv')}</span>
+                    </button>
+                  )}
+                />
+                <TooltipContent className="max-w-72">
+                  {envImportTip}
+                </TooltipContent>
+              </Tooltip>
+            </>
+          )
+        : undefined}
     >
       <EnvVariablesTable
-        editable
+        editable={!readOnly}
         envVariables={visibleEnvVariables}
         focusedVariable={focusedVariable}
         highlightedIndex={1}
-        onAdd={addVariable}
+        onAdd={readOnly ? undefined : addVariable}
         onDelete={deleteVariable}
         onKeyChange={updateVariableKey}
         onScopeChange={updateVariableScope}

@@ -3,6 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
+import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
 import { AgentFiles } from '../index'
 
 const mocks = vi.hoisted(() => ({
@@ -58,6 +59,26 @@ function renderAgentFiles() {
     <QueryClientProvider client={queryClient}>
       <AgentComposerProvider initialDraft={agentFilesDraft}>
         <AgentFiles />
+      </AgentComposerProvider>
+    </QueryClientProvider>,
+  )
+}
+
+function renderReadonlyAgentFiles() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <AgentComposerProvider initialDraft={agentFilesDraft}>
+        <AgentOrchestrateReadOnlyContext value>
+          <AgentFiles />
+        </AgentOrchestrateReadOnlyContext>
       </AgentComposerProvider>
     </QueryClientProvider>,
   )
@@ -125,5 +146,17 @@ describe('AgentFiles', () => {
     }))
 
     expect(screen.getByText('agentV2.agentDetail.configure.files.empty.title')).toBeInTheDocument()
+  })
+
+  it('should hide add and remove actions when readonly', () => {
+    renderReadonlyAgentFiles()
+
+    expect(screen.getByRole('button', {
+      name: 'agent-roster-skill-detail-dialog-preview-image.png',
+    })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'agentV2.agentDetail.configure.files.add' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', {
+      name: /agentV2\.agentDetail\.configure\.files\.remove.*agent-roster-skill-detail-dialog-preview-image\.png/,
+    })).not.toBeInTheDocument()
   })
 })

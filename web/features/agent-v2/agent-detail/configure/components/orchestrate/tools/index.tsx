@@ -21,6 +21,7 @@ import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
+import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { CliToolDialog } from './cli-tool/dialog'
 import { AgentCliToolItem } from './cli-tool/item'
 import { useAgentToolsOperations } from './hooks'
@@ -324,6 +325,7 @@ function AddToolMenu({
 
 export function AgentTools() {
   const { t } = useTranslation('agentV2')
+  const readOnly = useAgentOrchestrateReadOnly()
   const setProviderToolCredential = useSetProviderToolCredential()
   const providerById = useAgentToolProviderMap()
   const {
@@ -348,6 +350,9 @@ export function AgentTools() {
   } = useAgentToolsOperations()
   const displayTools = useDisplayTools(tools, providerById)
   useEffect(() => {
+    if (readOnly)
+      return
+
     let shouldSyncCredentials = false
     const nextTools = tools.map((tool, index) => {
       const displayTool = displayTools[index]
@@ -376,7 +381,7 @@ export function AgentTools() {
 
     if (shouldSyncCredentials)
       setTools(nextTools)
-  }, [displayTools, setTools, tools])
+  }, [displayTools, readOnly, setTools, tools])
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
   const openCliToolDialogFromPrompt = useCallback((options?: AgentOrchestrateAddActionOptions) => {
     promptAddCallbackRef.current = options?.onAdded

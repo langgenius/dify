@@ -23,6 +23,7 @@ import { useTools } from '@/features/agent-v2/agent-composer/store-modules/tools
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { useAgentOrchestrateAddActions } from '../add-actions-context'
+import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { replaceTrailingSlashWithToken } from './options'
 import { AgentPromptSlashMenu } from './slash'
 
@@ -147,6 +148,7 @@ const isSelectionAfterSlash = (rootElement: HTMLElement | null, fallbackValue: s
 
 export function AgentPromptEditor() {
   const { t } = useTranslation('agentV2')
+  const readOnly = useAgentOrchestrateReadOnly()
   const [value, onChange] = usePrompt()
   const [skills] = useSkills()
   const [files] = useFiles()
@@ -186,17 +188,17 @@ export function AgentPromptEditor() {
   }
 
   const syncSlashMenuWithSelection = useCallback(() => {
-    if (!isHydrated)
+    if (!isHydrated || readOnly)
       return
 
     if (isSelectionAfterSlash(editorRef.current, value))
       openSlashMenu()
     else
       closeSlashMenu()
-  }, [isHydrated, value])
+  }, [isHydrated, readOnly, value])
 
   const handleEditorKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (!isHydrated)
+    if (!isHydrated || readOnly)
       return
 
     if (event.key === 'Escape' && isSlashMenuOpen) {
@@ -340,6 +342,7 @@ export function AgentPromptEditor() {
               className="min-h-[72px] text-text-primary"
               placeholder={promptPlaceholder}
               placeholderClassName="top-0!"
+              editable={!readOnly}
               value={value}
               onChange={onChange}
               variableBlock={{
@@ -355,7 +358,7 @@ export function AgentPromptEditor() {
           </div>
         </div>
 
-        {isHydrated && isSlashMenuOpen && (
+        {isHydrated && !readOnly && isSlashMenuOpen && (
           <div data-agent-prompt-slash-menu className="absolute top-9 left-3 z-50">
             <AgentPromptSlashMenu
               view={slashMenuView}

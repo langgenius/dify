@@ -28,6 +28,7 @@ import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
+import { useAgentOrchestrateReadOnly } from '../../read-only-context'
 
 function ProviderIcon({
   icon,
@@ -160,6 +161,7 @@ function ProviderToolActionItem({
   onRemoveAction: (actionId: string) => void
 }) {
   const { t } = useTranslation('agentV2')
+  const readOnly = useAgentOrchestrateReadOnly()
   const handleConfigureAction = useCallback(() => {
     onConfigureAction({ action, tool })
   }, [action, onConfigureAction, tool])
@@ -175,24 +177,26 @@ function ProviderToolActionItem({
           {action.name}
         </span>
       </div>
-      <div className="hidden shrink-0 items-center gap-1 px-0.5 group-focus-within:flex group-hover:flex">
-        <button
-          type="button"
-          aria-label={t('agentDetail.configure.tools.editAction', { name: action.name })}
-          onClick={handleConfigureAction}
-          className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-        >
-          <span aria-hidden className="i-ri-equalizer-2-line size-4" />
-        </button>
-        <button
-          type="button"
-          aria-label={t('agentDetail.configure.tools.removeAction', { name: action.name })}
-          onClick={handleRemoveAction}
-          className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-        >
-          <span aria-hidden className="i-ri-delete-bin-line size-4" />
-        </button>
-      </div>
+      {!readOnly && (
+        <div className="hidden shrink-0 items-center gap-1 px-0.5 group-focus-within:flex group-hover:flex">
+          <button
+            type="button"
+            aria-label={t('agentDetail.configure.tools.editAction', { name: action.name })}
+            onClick={handleConfigureAction}
+            className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          >
+            <span aria-hidden className="i-ri-equalizer-2-line size-4" />
+          </button>
+          <button
+            type="button"
+            aria-label={t('agentDetail.configure.tools.removeAction', { name: action.name })}
+            onClick={handleRemoveAction}
+            className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          >
+            <span aria-hidden className="i-ri-delete-bin-line size-4" />
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -215,6 +219,7 @@ export function AgentProviderToolItem({
   onCredentialChange: (credentialId?: string) => void
 }) {
   const { t } = useTranslation('agentV2')
+  const readOnly = useAgentOrchestrateReadOnly()
   const { theme } = useTheme()
   const icon = theme === Theme.dark && tool.iconDark ? tool.iconDark : tool.icon
   const displayName = tool.displayName ?? tool.name
@@ -242,26 +247,30 @@ export function AgentProviderToolItem({
             />
           </span>
         </CollapsibleTrigger>
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger
-            aria-label={t('agentDetail.configure.tools.moreActions', { name: tool.name })}
-            className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
-          >
-            <span className="sr-only">{t('agentDetail.configure.tools.moreActions', { name: tool.name })}</span>
-            <span aria-hidden className="i-ri-more-fill size-4" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-44">
-            <DropdownMenuItem
-              variant="destructive"
-              className="gap-2"
-              onClick={onRemoveProvider}
-            >
-              <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-              <span>{t('agentDetail.configure.tools.removeProvider')}</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <CredentialStatus tool={tool} onCredentialChange={onCredentialChange} />
+        {!readOnly && (
+          <>
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger
+                aria-label={t('agentDetail.configure.tools.moreActions', { name: tool.name })}
+                className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
+              >
+                <span className="sr-only">{t('agentDetail.configure.tools.moreActions', { name: tool.name })}</span>
+                <span aria-hidden className="i-ri-more-fill size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-44">
+                <DropdownMenuItem
+                  variant="destructive"
+                  className="gap-2"
+                  onClick={onRemoveProvider}
+                >
+                  <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+                  <span>{t('agentDetail.configure.tools.removeProvider')}</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <CredentialStatus tool={tool} onCredentialChange={onCredentialChange} />
+          </>
+        )}
       </div>
 
       <CollapsiblePanel>

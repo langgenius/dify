@@ -294,7 +294,7 @@ function AccessSurfaceCard({
             >
               <span aria-hidden className="i-ri-file-copy-line size-4" />
             </Button>
-            {badge && (
+            {badge !== undefined && badge !== null && (
               <>
                 <span className="mx-1.5 h-3.5 w-px shrink-0 bg-divider-regular" />
                 <Button

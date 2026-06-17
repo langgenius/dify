@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
+import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { AgentSkillDetailDialog } from './detail-dialog'
 
 export type AgentSkill = {
@@ -48,6 +49,7 @@ export function AgentSkillItem({
   onRemove: (skillId: string) => void
 }) {
   const { t } = useTranslation('agentV2')
+  const readOnly = useAgentOrchestrateReadOnly()
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const handleRemove = useCallback(() => {
     onRemove(skill.id)
@@ -88,17 +90,19 @@ export function AgentSkillItem({
             {skill.name}
           </span>
         </button>
-        <div className="hidden shrink-0 items-center justify-center rounded-md p-0.5 group-focus-within:flex group-hover:flex">
-          <button
-            type="button"
-            data-agent-skill-remove-button
-            aria-label={t('agentDetail.configure.skills.remove', { name: skill.name })}
-            onClick={handleRemove}
-            className="flex size-5 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:bg-state-destructive-hover focus-visible:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          >
-            <span aria-hidden className="i-ri-delete-bin-line size-4" />
-          </button>
-        </div>
+        {!readOnly && (
+          <div className="hidden shrink-0 items-center justify-center rounded-md p-0.5 group-focus-within:flex group-hover:flex">
+            <button
+              type="button"
+              data-agent-skill-remove-button
+              aria-label={t('agentDetail.configure.skills.remove', { name: skill.name })}
+              onClick={handleRemove}
+              className="flex size-5 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:bg-state-destructive-hover focus-visible:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            >
+              <span aria-hidden className="i-ri-delete-bin-line size-4" />
+            </button>
+          </div>
+        )}
         <div className="flex shrink-0 items-center justify-center group-focus-within:hidden group-hover:hidden">
           <span className="system-xs-regular text-text-tertiary">
             {t('agentDetail.configure.skills.itemType')}

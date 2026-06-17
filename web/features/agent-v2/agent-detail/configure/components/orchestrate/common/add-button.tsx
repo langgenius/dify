@@ -4,6 +4,7 @@ import type { ButtonProps } from '@langgenius/dify-ui/button'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
+import { useAgentOrchestrateReadOnly } from '../read-only-context'
 
 type ConfigureSectionAddButtonProps = Omit<ButtonProps, 'aria-label' | 'children' | 'size' | 'variant'> & {
   ariaLabel: string
@@ -15,6 +16,10 @@ export function ConfigureSectionAddButton({
   ...props
 }: ConfigureSectionAddButtonProps) {
   const { t } = useTranslation('common')
+  const readOnly = useAgentOrchestrateReadOnly()
+
+  if (readOnly)
+    return null
 
   return (
     <Button

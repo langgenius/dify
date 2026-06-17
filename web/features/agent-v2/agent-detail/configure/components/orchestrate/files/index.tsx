@@ -18,6 +18,7 @@ import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
+import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { AgentSkillDetailDialog } from '../skills/detail-dialog'
 import { AgentFileTree } from './tree'
 import { AgentFileUploadDialog } from './upload-dialog'
@@ -45,6 +46,7 @@ function AgentFileItem({
   selected: boolean
 }) {
   const { t } = useTranslation('agentV2')
+  const readOnly = useAgentOrchestrateReadOnly()
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const previewQuery = useQuery({
     ...consoleQuery.files.byFileId.preview.get.queryOptions({
@@ -94,15 +96,17 @@ function AgentFileItem({
           />
         )}
       </Dialog>
-      <button
-        type="button"
-        data-agent-file-remove-button
-        aria-label={t('agentDetail.configure.files.remove', { name: file.name })}
-        onClick={handleRemove}
-        className="pointer-events-none absolute top-1/2 right-1 z-10 flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary opacity-0 group-focus-within/file-row:pointer-events-auto group-focus-within/file-row:opacity-100 group-hover/file-row:pointer-events-auto group-hover/file-row:opacity-100 hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:bg-state-destructive-hover focus-visible:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-      >
-        <span aria-hidden className="i-ri-delete-bin-line size-4" />
-      </button>
+      {!readOnly && (
+        <button
+          type="button"
+          data-agent-file-remove-button
+          aria-label={t('agentDetail.configure.files.remove', { name: file.name })}
+          onClick={handleRemove}
+          className="pointer-events-none absolute top-1/2 right-1 z-10 flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary opacity-0 group-focus-within/file-row:pointer-events-auto group-focus-within/file-row:opacity-100 group-hover/file-row:pointer-events-auto group-hover/file-row:opacity-100 hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:bg-state-destructive-hover focus-visible:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+        >
+          <span aria-hidden className="i-ri-delete-bin-line size-4" />
+        </button>
+      )}
     </li>
   )
 }

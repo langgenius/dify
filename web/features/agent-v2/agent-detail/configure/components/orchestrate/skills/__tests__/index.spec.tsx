@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { useAgentComposerConfigSnapshot } from '@/features/agent-v2/agent-composer/store'
+import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
 import { AgentSkills } from '../index'
 
 const mocks = vi.hoisted(() => ({
@@ -75,6 +76,26 @@ function renderAgentSkills() {
     <QueryClientProvider client={queryClient}>
       <AgentComposerProvider initialDraft={agentSkillsDraft}>
         <AgentSkills agentId="agent-1" />
+      </AgentComposerProvider>
+    </QueryClientProvider>,
+  )
+}
+
+function renderReadonlyAgentSkills() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <AgentComposerProvider initialDraft={agentSkillsDraft}>
+        <AgentOrchestrateReadOnlyContext value>
+          <AgentSkills agentId="agent-1" />
+        </AgentOrchestrateReadOnlyContext>
       </AgentComposerProvider>
     </QueryClientProvider>,
   )
@@ -152,6 +173,16 @@ describe('AgentSkills', () => {
     expect(screen.queryByText('Tender Analyzer')).not.toBeInTheDocument()
     expect(screen.getByText('Meeting Brief')).toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('should hide add and remove actions when readonly', () => {
+    renderReadonlyAgentSkills()
+
+    expect(screen.getByRole('button', { name: 'Tender Analyzer' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'agentV2.agentDetail.configure.skills.add' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', {
+      name: /agentV2\.agentDetail\.configure\.skills\.remove.*Tender Analyzer/,
+    })).not.toBeInTheDocument()
   })
 
   // Upload uses the drive-backed response so the added skill can be reloaded from agent drive paths.

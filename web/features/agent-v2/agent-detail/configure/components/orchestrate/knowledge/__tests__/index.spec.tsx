@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { useConfigPublishPayload } from '@/features/agent-v2/agent-composer/store'
+import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
 import { AgentKnowledgeRetrieval } from '../index'
 
 const agentKnowledgeDraft = {
@@ -30,9 +31,11 @@ function PublishPayloadPreview() {
 
 function renderKnowledgeRetrieval({
   initialDraft = agentKnowledgeDraft,
+  readOnly = false,
   showPublishPayload = false,
 }: {
   initialDraft?: AgentSoulConfigFormState
+  readOnly?: boolean
   showPublishPayload?: boolean
 } = {}) {
   const queryClient = new QueryClient()
@@ -40,7 +43,9 @@ function renderKnowledgeRetrieval({
   return render(
     <QueryClientProvider client={queryClient}>
       <AgentComposerProvider initialDraft={initialDraft}>
-        <AgentKnowledgeRetrieval />
+        <AgentOrchestrateReadOnlyContext value={readOnly}>
+          <AgentKnowledgeRetrieval />
+        </AgentOrchestrateReadOnlyContext>
         {showPublishPayload && <PublishPayloadPreview />}
       </AgentComposerProvider>
     </QueryClientProvider>,
@@ -58,6 +63,19 @@ describe('AgentKnowledgeRetrieval', () => {
 
       expect(screen.getByText('agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne')).toBeInTheDocument()
       expect(screen.queryByText('agentV2.agentDetail.configure.knowledgeRetrieval.retrievalTwo')).not.toBeInTheDocument()
+    })
+
+    it('should hide add, edit, and remove actions when readonly', () => {
+      renderKnowledgeRetrieval({ readOnly: true })
+
+      expect(screen.getByText('agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'agentV2.agentDetail.configure.knowledgeRetrieval.add' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.edit:{"name":"agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne"}',
+      })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.remove:{"name":"agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne"}',
+      })).not.toBeInTheDocument()
     })
   })
 

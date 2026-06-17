@@ -13,6 +13,7 @@ import { AgentKnowledgeRetrieval } from './knowledge'
 import { AgentModelField } from './model-config/field'
 import { AgentPromptEditor } from './prompt-editor'
 import { AgentConfigurePublishBar } from './publish-bar'
+import { AgentOrchestrateReadOnlyContext } from './read-only-context'
 import { AgentSkills } from './skills'
 import { AgentTools } from './tools'
 
@@ -59,34 +60,35 @@ export function AgentOrchestratePanel({
     <div className={cn('flex max-w-140 min-w-90 flex-[0_0_min(41.08280255%,560px)] flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg', className)}>
       <AgentOrchestrateHeader headingId={orchestrateHeadingId} />
 
-      <div
-        aria-disabled={readOnly}
-        inert={readOnly ? true : undefined}
-        className="min-h-0 flex-1"
-      >
-        <ScrollArea
-          className="min-h-0 flex-1 overflow-hidden"
-          labelledBy={orchestrateHeadingId}
-          slotClassNames={{
-            viewport: 'overscroll-contain',
-            content: 'min-h-full px-4 py-3',
-          }}
+      <AgentOrchestrateReadOnlyContext value={readOnly}>
+        <div
+          aria-readonly={readOnly}
+          className="min-h-0 flex-1"
         >
-          <AgentOrchestrateAddActionsProvider>
-            <AgentModelField
-              currentModel={currentModel}
-              textGenerationModelList={textGenerationModelList}
-              onSelect={onSelectModel}
-            />
-            <AgentPromptEditor />
-            <AgentSkills agentId={agentId} />
-            <AgentFiles />
-            <AgentTools />
-            <AgentKnowledgeRetrieval />
-            <AgentAdvancedSettings />
-          </AgentOrchestrateAddActionsProvider>
-        </ScrollArea>
-      </div>
+          <ScrollArea
+            className="min-h-0 flex-1 overflow-hidden"
+            labelledBy={orchestrateHeadingId}
+            slotClassNames={{
+              viewport: 'overscroll-contain',
+              content: 'min-h-full px-4 py-3',
+            }}
+          >
+            <AgentOrchestrateAddActionsProvider>
+              <AgentModelField
+                currentModel={currentModel}
+                textGenerationModelList={textGenerationModelList}
+                onSelect={onSelectModel}
+              />
+              <AgentPromptEditor />
+              <AgentSkills agentId={agentId} />
+              <AgentFiles />
+              <AgentTools />
+              <AgentKnowledgeRetrieval />
+              <AgentAdvancedSettings />
+            </AgentOrchestrateAddActionsProvider>
+          </ScrollArea>
+        </div>
+      </AgentOrchestrateReadOnlyContext>
 
       {showPublishBar && (
         <AgentConfigurePublishBar

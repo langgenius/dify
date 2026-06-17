@@ -50,6 +50,8 @@ export function ConfigureSection({
   panelContentClassName,
 }: ConfigureSectionProps) {
   const Heading = headingLevel
+  const hasDescription = description !== undefined && description !== null
+  const hasTip = tip !== undefined && tip !== null
 
   return (
     <CollapsibleRoot
@@ -70,7 +72,7 @@ export function ConfigureSection({
                 </span>
               </CollapsibleTrigger>
             </Heading>
-            {tip && (
+            {hasTip && (
               <Infotip aria-label={tipAriaLabel} className="ml-0.5 size-3.5" popupClassName="max-w-64">
                 {tip}
               </Infotip>
@@ -85,7 +87,7 @@ export function ConfigureSection({
               />
             </CollapsibleTrigger>
           </div>
-          {description && (
+          {hasDescription && (
             <p className="system-xs-regular text-text-tertiary">
               {description}
             </p>

@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CollectionType } from '@/app/components/tools/types'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
+import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
 import { AgentTools } from '../index'
 
 const toolProviderState = vi.hoisted(() => ({
@@ -232,6 +233,26 @@ function renderAgentTools(initialDraft: AgentSoulConfigFormState = agentToolsDra
   )
 }
 
+function renderReadonlyAgentTools(initialDraft: AgentSoulConfigFormState = agentToolsDraft) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <AgentComposerProvider initialDraft={initialDraft}>
+        <AgentOrchestrateReadOnlyContext value>
+          <AgentTools />
+        </AgentOrchestrateReadOnlyContext>
+      </AgentComposerProvider>
+    </QueryClientProvider>,
+  )
+}
+
 describe('AgentTools', () => {
   beforeEach(() => {
     cleanup()
@@ -288,6 +309,35 @@ describe('AgentTools', () => {
       expect(screen.getByRole('button', {
         name: 'agentV2.agentDetail.configure.tools.add',
       })).toBeInTheDocument()
+    })
+
+    it('should hide add, edit, and remove actions when readonly', async () => {
+      const user = userEvent.setup()
+      renderReadonlyAgentTools()
+
+      expect(screen.queryByRole('button', {
+        name: 'agentV2.agentDetail.configure.tools.add',
+      })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', {
+        name: 'agentV2.agentDetail.configure.tools.moreActions:{"name":"DuckDuckGo"}',
+      })).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', {
+        name: 'DuckDuckGo',
+      }))
+
+      expect(screen.queryByRole('button', {
+        name: 'agentV2.agentDetail.configure.tools.editAction:{"name":"DuckDuckGo Search"}',
+      })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', {
+        name: 'agentV2.agentDetail.configure.tools.removeAction:{"name":"DuckDuckGo Image Search"}',
+      })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', {
+        name: 'agentV2.agentDetail.configure.tools.editAction:{"name":"Lark CLI"}',
+      })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', {
+        name: 'agentV2.agentDetail.configure.tools.removeAction:{"name":"Lark CLI"}',
+      })).not.toBeInTheDocument()
     })
   })
 

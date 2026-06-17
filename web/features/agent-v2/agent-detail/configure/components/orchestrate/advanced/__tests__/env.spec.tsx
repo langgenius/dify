@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
+import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
 import { AgentEnvEditor, EnvVariablesTable } from '../env'
 import { getEnvImportPlatform, parseEnvVariables } from '../env-utils'
 
@@ -19,6 +20,26 @@ function renderAgentEnvEditor() {
   return render(
     <AgentComposerProvider initialDraft={defaultAgentSoulConfigFormState}>
       <AgentEnvEditor />
+    </AgentComposerProvider>,
+  )
+}
+
+function renderReadonlyAgentEnvEditor() {
+  return render(
+    <AgentComposerProvider
+      initialDraft={{
+        ...defaultAgentSoulConfigFormState,
+        envVariables: [{
+          id: 'env-1',
+          key: 'API_KEY',
+          value: 'secret-value',
+          scope: 'secret',
+        }],
+      }}
+    >
+      <AgentOrchestrateReadOnlyContext value>
+        <AgentEnvEditor />
+      </AgentOrchestrateReadOnlyContext>
     </AgentComposerProvider>,
   )
 }
@@ -122,6 +143,19 @@ describe('AgentEnvEditor', () => {
       expect(screen.getByDisplayValue('abc123')).toBeInTheDocument()
       expect(screen.getByDisplayValue('BASE_URL')).toBeInTheDocument()
       expect(screen.getByDisplayValue('https://example.com')).toBeInTheDocument()
+    })
+
+    it('should hide import, add, edit, and delete controls when readonly', () => {
+      renderReadonlyAgentEnvEditor()
+
+      expect(screen.getByText('API_KEY')).toBeInTheDocument()
+      expect(screen.getByText('secret-value')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.importEnv' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.add' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', {
+        name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.deleteVariable:{"key":"API_KEY"}',
+      })).not.toBeInTheDocument()
+      expect(screen.queryByDisplayValue('API_KEY')).not.toBeInTheDocument()
     })
 
     it('should reveal and hide masked variable values from the eye button', async () => {
