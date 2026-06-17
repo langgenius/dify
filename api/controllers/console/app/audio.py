@@ -61,7 +61,7 @@ logger = logging.getLogger(__name__)
 
 class TextToSpeechPayload(BaseModel):
     message_id: str | None = Field(default=None, description="Message ID")
-    text: str = Field(default="", description="Text to convert")
+    text: str = Field(..., description="Text to convert")
     voice: str | None = Field(default=None, description="Voice name")
     streaming: bool | None = Field(default=None, description="Whether to stream audio")
 
@@ -278,7 +278,9 @@ class ChatMessageTextApi(Resource):
     @get_app_model
     def post(self, app_model: App):
         try:
-            payload = TextToSpeechPayload.model_validate(console_ns.payload)
+            payload_data = dict(console_ns.payload or {})
+            payload_data.setdefault("text", "")
+            payload = TextToSpeechPayload.model_validate(payload_data)
             message_ref = None
             if payload.message_id:
                 app_ref = AppRefService.create_app_ref(app_model)

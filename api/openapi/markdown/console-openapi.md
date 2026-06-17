@@ -22087,7 +22087,7 @@ Tag type
 | ---- | ---- | ----------- | -------- |
 | message_id | string | Message ID | No |
 | streaming | boolean | Whether to stream audio | No |
-| text | string | Text to convert | No |
+| text | string | Text to convert | Yes |
 | voice | string | Voice name | No |
 
 #### TextToSpeechRequest
