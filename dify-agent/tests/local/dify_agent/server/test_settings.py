@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 import secrets
+from typing import cast
 
+import httpx
 import pytest
 from pydantic import ValidationError
 
@@ -201,7 +203,8 @@ def test_server_settings_create_agent_stub_drive_request_handler_returns_handler
     assert isinstance(handler, DifyApiAgentStubDriveRequestHandler)
     assert handler.dify_api_base_url == "https://api.example.com"
     assert handler.dify_api_inner_api_key == "inner-secret"
-    assert handler.timeout.connect == 11
-    assert handler.timeout.read == 22
-    assert handler.timeout.write == 33
-    assert handler.timeout.pool == 44
+    timeout = cast(httpx.Timeout, handler.timeout)
+    assert timeout.connect == 11
+    assert timeout.read == 22
+    assert timeout.write == 33
+    assert timeout.pool == 44
