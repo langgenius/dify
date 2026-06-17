@@ -30,7 +30,7 @@ class Pagination(_RBACModel):
     total_pages: int = 0
 
 
-class Paginated(_RBACModel, Generic[T]):
+class Paginated(_RBACModel, Generic[T]):  # noqa: UP046
     data: list[T] = Field(default_factory=list)
     pagination: Pagination | None = None
 

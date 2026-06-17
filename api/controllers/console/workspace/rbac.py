@@ -82,8 +82,9 @@ def _account_names_by_ids(account_ids: list[str]) -> dict[str, dict[str, str]]:
         return {}
 
     with session_factory.create_session() as session:
-        rows = session.execute(select(
-            Account.id, Account.name, Account.avatar, Account.email).where(Account.id.in_(ids))).all()
+        rows = session.execute(
+            select(Account.id, Account.name, Account.avatar, Account.email).where(Account.id.in_(ids))
+        ).all()
 
     return {
         account_id: {
