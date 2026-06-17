@@ -2,7 +2,7 @@
 // DON NOT EDIT IT MANUALLY
 //
 // Generated from: https://raw.githubusercontent.com/langgenius/dify-docs/feat/audience-products/docs.json
-// Generated at: 2026-06-17T04:25:20.766Z
+// Generated at: 2026-06-17T04:42:51.293Z
 
 // Language prefixes
 export type DocLanguage = 'en' | 'zh' | 'ja'
@@ -508,9 +508,6 @@ type DocPathWithoutLangBase =
 export type DocPathWithoutLang =
   | DocPathWithoutLangBase
   | `${DocPathWithoutLangBase}#${string}`
-
-// Full documentation path with language prefix
-export type DifyDocPath = `${DocLanguage}/${DocPathWithoutLang}`
 
 // Product availability for productless docs paths
 export const docPathProductAvailability: Record<string, readonly DocsProduct[]> = {

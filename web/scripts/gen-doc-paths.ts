@@ -388,12 +388,6 @@ function generateTypeDefinitions(
   lines.push('  | `${DocPathWithoutLangBase}#${string}`')
   lines.push('')
 
-  // Generate full path type with language prefix
-  lines.push('// Full documentation path with language prefix')
-  // eslint-disable-next-line no-template-curly-in-string
-  lines.push('export type DifyDocPath = `${DocLanguage}/${DocPathWithoutLang}`')
-  lines.push('')
-
   // Generate product availability map for productless runtime links.
   lines.push('// Product availability for productless docs paths')
   lines.push('export const docPathProductAvailability: Record<string, readonly DocsProduct[]> = {')
