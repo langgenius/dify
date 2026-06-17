@@ -170,7 +170,7 @@ describe('EditAgentDialog', () => {
     }))
   })
 
-  it('shows a toast error when saving with an empty name', async () => {
+  it('shows a field error when saving with an empty name', async () => {
     const user = userEvent.setup()
     renderDialog()
 
@@ -181,11 +181,12 @@ describe('EditAgentDialog', () => {
     expect(saveButton).not.toBeDisabled()
     await user.click(saveButton)
 
-    expect(toastMock.error).toHaveBeenCalledWith('agentV2.roster.createForm.nameRequired')
+    expect(await within(dialog).findByText('agentV2.roster.createForm.nameRequired')).toBeInTheDocument()
+    expect(toastMock.error).not.toHaveBeenCalled()
     expect(mutationMock.mutate).not.toHaveBeenCalled()
   })
 
-  it('shows a toast error when saving with an empty role', async () => {
+  it('shows a field error when saving with an empty role', async () => {
     const user = userEvent.setup()
     renderDialog()
 
@@ -196,7 +197,25 @@ describe('EditAgentDialog', () => {
     expect(saveButton).not.toBeDisabled()
     await user.click(saveButton)
 
-    expect(toastMock.error).toHaveBeenCalledWith('agentV2.roster.createForm.roleRequired')
+    expect(await within(dialog).findByText('agentV2.roster.createForm.roleRequired')).toBeInTheDocument()
+    expect(toastMock.error).not.toHaveBeenCalled()
+    expect(mutationMock.mutate).not.toHaveBeenCalled()
+  })
+
+  it('shows a field error when saving with a blank role', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+
+    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
+    await user.clear(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.roleLabel' }))
+    await user.type(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.roleLabel' }), '   ')
+
+    const saveButton = within(dialog).getByRole('button', { name: 'common.operation.save' })
+    expect(saveButton).not.toBeDisabled()
+    await user.click(saveButton)
+
+    expect(await within(dialog).findByText('agentV2.roster.createForm.roleRequired')).toBeInTheDocument()
+    expect(toastMock.error).not.toHaveBeenCalled()
     expect(mutationMock.mutate).not.toHaveBeenCalled()
   })
 })
