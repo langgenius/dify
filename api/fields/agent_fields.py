@@ -107,17 +107,58 @@ class AgentInviteOptionsResponse(ResponseModel):
     has_more: bool
 
 
-class AgentLogItemResponse(ResponseModel):
+class AgentLogSourceResponse(ResponseModel):
+    id: str
+    type: Literal["webapp", "workflow"]
+    app_id: str
+    app_name: str
+    app_icon_type: str | None = None
+    app_icon: str | None = None
+    app_icon_background: str | None = None
+    workflow_id: str | None = None
+    workflow_version: str | None = None
+    node_id: str | None = None
+
+
+class AgentLogSourceGroupResponse(ResponseModel):
+    type: Literal["webapp", "workflow"]
+    label: str
+    sources: list[AgentLogSourceResponse] = Field(default_factory=list)
+
+
+class AgentLogSourceListResponse(ResponseModel):
+    data: list[AgentLogSourceResponse]
+    groups: list[AgentLogSourceGroupResponse]
+
+
+class AgentLogConversationItemResponse(ResponseModel):
+    id: str
+    conversation_id: str
+    title: str | None = None
+    end_user_id: str | None = None
+    message_count: int
+    user_rate: float | None = None
+    operation_rate: float | None = None
+    unread: bool
+    source: AgentLogSourceResponse | None = None
+    status: Literal["success", "failed", "paused"]
+    created_at: int | None = None
+    updated_at: int | None = None
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class AgentLogMessageItemResponse(ResponseModel):
     id: str
     message_id: str
     conversation_id: str
-    conversation_name: str | None = None
     query: str
     answer: str
     status: str
     error: str | None = None
-    source: str | None = None
-    from_source: str | None = None
     from_end_user_id: str | None = None
     from_account_id: str | None = None
     message_tokens: int
@@ -136,7 +177,15 @@ class AgentLogItemResponse(ResponseModel):
 
 
 class AgentLogListResponse(ResponseModel):
-    data: list[AgentLogItemResponse]
+    data: list[AgentLogConversationItemResponse]
+    page: int
+    limit: int
+    total: int
+    has_more: bool
+
+
+class AgentLogMessageListResponse(ResponseModel):
+    data: list[AgentLogMessageItemResponse]
     page: int
     limit: int
     total: int

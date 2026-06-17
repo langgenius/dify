@@ -29,6 +29,11 @@ import {
   zGetAgentByAgentIdDriveFilesPreviewResponse,
   zGetAgentByAgentIdDriveFilesQuery,
   zGetAgentByAgentIdDriveFilesResponse,
+  zGetAgentByAgentIdLogsByConversationIdMessagesPath,
+  zGetAgentByAgentIdLogsByConversationIdMessagesQuery,
+  zGetAgentByAgentIdLogsByConversationIdMessagesResponse,
+  zGetAgentByAgentIdLogSourcesPath,
+  zGetAgentByAgentIdLogSourcesResponse,
   zGetAgentByAgentIdLogsPath,
   zGetAgentByAgentIdLogsQuery,
   zGetAgentByAgentIdLogsResponse,
@@ -420,6 +425,45 @@ export const get9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
+    operationId: 'getAgentByAgentIdLogSources',
+    path: '/agent/{agent_id}/log-sources',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetAgentByAgentIdLogSourcesPath }))
+  .output(zGetAgentByAgentIdLogSourcesResponse)
+
+export const logSources = {
+  get: get9,
+}
+
+export const get10 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAgentByAgentIdLogsByConversationIdMessages',
+    path: '/agent/{agent_id}/logs/{conversation_id}/messages',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetAgentByAgentIdLogsByConversationIdMessagesPath,
+      query: zGetAgentByAgentIdLogsByConversationIdMessagesQuery.optional(),
+    }),
+  )
+  .output(zGetAgentByAgentIdLogsByConversationIdMessagesResponse)
+
+export const messages = {
+  get: get10,
+}
+
+export const byConversationId = {
+  messages,
+}
+
+export const get11 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
     operationId: 'getAgentByAgentIdLogs',
     path: '/agent/{agent_id}/logs',
     tags: ['console'],
@@ -430,13 +474,14 @@ export const get9 = oc
   .output(zGetAgentByAgentIdLogsResponse)
 
 export const logs = {
-  get: get9,
+  get: get11,
+  byConversationId,
 }
 
 /**
  * Get Agent App message details by ID
  */
-export const get10 = oc
+export const get12 = oc
   .route({
     description: 'Get Agent App message details by ID',
     inputStructure: 'detailed',
@@ -449,17 +494,17 @@ export const get10 = oc
   .output(zGetAgentByAgentIdMessagesByMessageIdResponse)
 
 export const byMessageId2 = {
-  get: get10,
+  get: get12,
 }
 
-export const messages = {
+export const messages2 = {
   byMessageId: byMessageId2,
 }
 
 /**
  * List workflow apps that reference this Agent App's bound Agent (read-only)
  */
-export const get11 = oc
+export const get13 = oc
   .route({
     description: 'List workflow apps that reference this Agent App\'s bound Agent (read-only)',
     inputStructure: 'detailed',
@@ -472,13 +517,13 @@ export const get11 = oc
   .output(zGetAgentByAgentIdReferencingWorkflowsResponse)
 
 export const referencingWorkflows = {
-  get: get11,
+  get: get13,
 }
 
 /**
  * Read a text/binary preview file in an Agent App conversation sandbox
  */
-export const get12 = oc
+export const get14 = oc
   .route({
     description: 'Read a text/binary preview file in an Agent App conversation sandbox',
     inputStructure: 'detailed',
@@ -496,7 +541,7 @@ export const get12 = oc
   .output(zGetAgentByAgentIdSandboxFilesReadResponse)
 
 export const read = {
-  get: get12,
+  get: get14,
 }
 
 /**
@@ -526,7 +571,7 @@ export const upload = {
 /**
  * List a directory in an Agent App conversation sandbox
  */
-export const get13 = oc
+export const get15 = oc
   .route({
     description: 'List a directory in an Agent App conversation sandbox',
     inputStructure: 'detailed',
@@ -544,7 +589,7 @@ export const get13 = oc
   .output(zGetAgentByAgentIdSandboxFilesResponse)
 
 export const files3 = {
-  get: get13,
+  get: get15,
   read,
   upload,
 }
@@ -638,7 +683,7 @@ export const skills = {
   bySlug,
 }
 
-export const get14 = oc
+export const get16 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -655,14 +700,14 @@ export const get14 = oc
   .output(zGetAgentByAgentIdStatisticsSummaryResponse)
 
 export const summary = {
-  get: get14,
+  get: get16,
 }
 
 export const statistics = {
   summary,
 }
 
-export const get15 = oc
+export const get17 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -674,10 +719,10 @@ export const get15 = oc
   .output(zGetAgentByAgentIdVersionsByVersionIdResponse)
 
 export const byVersionId = {
-  get: get15,
+  get: get17,
 }
 
-export const get16 = oc
+export const get18 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -689,7 +734,7 @@ export const get16 = oc
   .output(zGetAgentByAgentIdVersionsResponse)
 
 export const versions = {
-  get: get16,
+  get: get18,
   byVersionId,
 }
 
@@ -705,7 +750,7 @@ export const delete3 = oc
   .input(z.object({ params: zDeleteAgentByAgentIdPath }))
   .output(zDeleteAgentByAgentIdResponse)
 
-export const get17 = oc
+export const get19 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -729,7 +774,7 @@ export const put2 = oc
 
 export const byAgentId = {
   delete: delete3,
-  get: get17,
+  get: get19,
   put: put2,
   chatMessages,
   composer,
@@ -738,8 +783,9 @@ export const byAgentId = {
   features,
   feedbacks,
   files: files2,
+  logSources,
   logs,
-  messages,
+  messages: messages2,
   referencingWorkflows,
   sandbox,
   skills,
@@ -747,7 +793,7 @@ export const byAgentId = {
   versions,
 }
 
-export const get18 = oc
+export const get20 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -771,7 +817,7 @@ export const post11 = oc
   .output(zPostAgentResponse)
 
 export const agent = {
-  get: get18,
+  get: get20,
   post: post11,
   inviteOptions,
   byAgentId,
