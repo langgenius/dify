@@ -7,6 +7,7 @@ This test file covers the methods not fully tested in test_embedding_service.py:
 """
 
 import base64
+import logging
 from decimal import Decimal
 from unittest.mock import Mock, patch
 
@@ -188,7 +189,7 @@ class TestCacheEmbeddingMultimodalDocuments:
             assert len(result) == 3
             assert result[0] == normalized_cached
 
-    def test_embed_multimodal_documents_nan_handling(self, mock_model_instance):
+    def test_embed_multimodal_documents_nan_handling(self, mock_model_instance, caplog):
         """Test handling of NaN values in multimodal embeddings."""
         cache_embedding = CacheEmbedding(mock_model_instance)
         documents = [{"file_id": "valid"}, {"file_id": "nan"}]
@@ -216,14 +217,14 @@ class TestCacheEmbeddingMultimodalDocuments:
             mock_session.scalar.return_value = None
             mock_model_instance.invoke_multimodal_embedding.return_value = embedding_result
 
-            with patch("core.rag.embedding.cached_embedding.logger") as mock_logger:
+            with caplog.at_level(logging.WARNING, logger="core.rag.embedding.cached_embedding"):
                 result = cache_embedding.embed_multimodal_documents(documents)
 
                 assert len(result) == 2
                 assert result[0] is not None
                 assert result[1] is None
 
-                mock_logger.warning.assert_called_once()
+                assert any(record.levelno == logging.WARNING for record in caplog.records)
 
     def test_embed_multimodal_documents_large_batch(self, mock_model_instance):
         """Test embedding large batch of multimodal documents respecting MAX_CHUNKS."""
@@ -463,7 +464,7 @@ class TestCacheEmbeddingQueryErrors:
         model_instance.credentials = {"api_key": "test-key"}
         return model_instance
 
-    def test_embed_query_api_error_debug_mode(self, mock_model_instance):
+    def test_embed_query_api_error_debug_mode(self, mock_model_instance, caplog):
         """Test handling of API errors in debug mode."""
         cache_embedding = CacheEmbedding(mock_model_instance)
         query = "test query"
@@ -475,14 +476,14 @@ class TestCacheEmbeddingQueryErrors:
             with patch("core.rag.embedding.cached_embedding.dify_config") as mock_config:
                 mock_config.DEBUG = True
 
-                with patch("core.rag.embedding.cached_embedding.logger") as mock_logger:
+                with caplog.at_level(logging.ERROR, logger="core.rag.embedding.cached_embedding"):
                     with pytest.raises(RuntimeError) as exc_info:
                         cache_embedding.embed_query(query)
 
                     assert "API Error" in str(exc_info.value)
-                    mock_logger.exception.assert_called()
+                    assert any(record.levelno == logging.ERROR for record in caplog.records)
 
-    def test_embed_query_redis_set_error_debug_mode(self, mock_model_instance):
+    def test_embed_query_redis_set_error_debug_mode(self, mock_model_instance, caplog):
         """Test handling of Redis set errors in debug mode."""
         cache_embedding = CacheEmbedding(mock_model_instance)
         query = "test query"
@@ -514,11 +515,11 @@ class TestCacheEmbeddingQueryErrors:
             with patch("core.rag.embedding.cached_embedding.dify_config") as mock_config:
                 mock_config.DEBUG = True
 
-                with patch("core.rag.embedding.cached_embedding.logger") as mock_logger:
+                with caplog.at_level(logging.ERROR, logger="core.rag.embedding.cached_embedding"):
                     with pytest.raises(RuntimeError):
                         cache_embedding.embed_query(query)
 
-                    mock_logger.exception.assert_called()
+                    assert any(record.levelno == logging.ERROR for record in caplog.records)
 
 
 class TestCacheEmbeddingInitialization:
