@@ -19,6 +19,7 @@ from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
 from extensions.ext_database import db
 from graphon.model_runtime.utils.encoders import jsonable_encoder
+from graphon.nodes.llm.entities import ModelConfig
 from models.dataset import Dataset
 from models.model import App
 from services.entities.knowledge_retrieval_inner import (
@@ -104,7 +105,9 @@ class InnerKnowledgeRetrievalService:
             completion_params=request.retrieval.model.completion_params if request.retrieval.model else None,
             model_mode=request.retrieval.model.mode if request.retrieval.model else None,
             model_name=request.retrieval.model.name if request.retrieval.model else None,
-            metadata_model_config=metadata_model_config.model_dump(mode="python") if metadata_model_config else None,
+            metadata_model_config=ModelConfig.model_validate(metadata_model_config.model_dump(mode="python"))
+            if metadata_model_config
+            else None,
             metadata_filtering_conditions=(
                 MetadataFilteringCondition(
                     logical_operator=metadata_conditions.logical_operator,
