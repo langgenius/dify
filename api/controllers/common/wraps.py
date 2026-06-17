@@ -18,8 +18,7 @@ def openapi_rbac_permission_required[**P, R](
     *,
     resource_required: bool = True,
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:
-    """RBAC guard for OpenAPI endpoints that may be called by either an Account or an EndUser.
-    """
+    """RBAC guard for OpenAPI endpoints that may be called by either an Account or an EndUser."""
     inner = rbac_permission_required(resource_type, scene, resource_required=resource_required)
 
     def decorator(view: Callable[P, R]) -> Callable[P, R]:
