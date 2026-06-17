@@ -11339,15 +11339,24 @@ default (the config form sends the full desired feature state on save).
 | mode | string |  | Yes |
 | model_config | [ModelConfigPartial](#modelconfigpartial) |  | No |
 | name | string |  | Yes |
-| published_node_reference_count | integer |  | No |
 | published_reference_count | integer |  | No |
-| published_references | [ [AgentPublishedReferenceResponse](#agentpublishedreferenceresponse) ] |  | No |
+| published_references | [ [AgentAppPublishedReferenceResponse](#agentapppublishedreferenceresponse) ] |  | No |
 | role | string |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
 | workflow | [WorkflowPartial](#workflowpartial) |  | No |
+
+#### AgentAppPublishedReferenceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_icon | string |  | No |
+| app_icon_background | string |  | No |
+| app_icon_type | string |  | No |
+| app_id | string |  | Yes |
+| app_name | string |  | Yes |
 
 #### AgentAppUpdatePayload
 
