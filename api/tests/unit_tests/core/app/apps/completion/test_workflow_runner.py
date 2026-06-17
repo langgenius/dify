@@ -8,7 +8,9 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.moderation.base import ModerationError
 from core.workflow.node_runtime import DIFY_BEFORE_LLM_INVOKE_KEY
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from models.model import AppMode
+from models.provider import ProviderType
 
 
 def _entity() -> SimpleNamespace:
@@ -120,6 +122,47 @@ def test_runner_builds_workflow_entry_and_adapts_events(monkeypatch) -> None:
     adapter.handle_event.assert_called_once_with("event")
 
 
+def test_runner_returns_when_input_moderation_stops(monkeypatch) -> None:
+    app = SimpleNamespace(id="app", tenant_id="tenant", mode=AppMode.COMPLETION)
+    entity = _entity()
+    builder = MagicMock()
+    runner = CompletionWorkflowRunner(runtime_workflow_builder=builder)
+    monkeypatch.setattr(runner, "_get_app", MagicMock(return_value=app))
+    monkeypatch.setattr(
+        runner,
+        "_run_input_moderation",
+        MagicMock(return_value=ModeratedCompletionInputs(stopped=True, inputs={}, query="")),
+    )
+
+    runner.run(
+        application_generate_entity=entity,
+        queue_manager=MagicMock(),
+        message=SimpleNamespace(id="message"),
+    )
+
+    builder.build.assert_not_called()
+
+
+def test_runner_get_app_raises_when_record_is_missing(monkeypatch) -> None:
+    from core.app.apps.completion import workflow_runner as module
+
+    runner = CompletionWorkflowRunner(runtime_workflow_builder=MagicMock())
+    monkeypatch.setattr(module.db.session, "scalar", MagicMock(return_value=None))
+
+    with pytest.raises(ValueError, match="App not found"):
+        runner._get_app("missing-app")
+
+
+def test_runner_get_app_returns_record(monkeypatch) -> None:
+    from core.app.apps.completion import workflow_runner as module
+
+    app = SimpleNamespace(id="app")
+    runner = CompletionWorkflowRunner(runtime_workflow_builder=MagicMock())
+    monkeypatch.setattr(module.db.session, "scalar", MagicMock(return_value=app))
+
+    assert runner._get_app("app") is app
+
+
 def test_runner_direct_outputs_on_input_moderation() -> None:
     runner = CompletionWorkflowRunner(runtime_workflow_builder=MagicMock())
     app_record = SimpleNamespace(id="app", tenant_id="tenant")
@@ -143,6 +186,24 @@ def test_runner_direct_outputs_on_input_moderation() -> None:
     runner.direct_output.assert_called_once()
 
 
+def test_runner_returns_moderated_inputs_when_input_moderation_passes() -> None:
+    runner = CompletionWorkflowRunner(runtime_workflow_builder=MagicMock())
+    app_record = SimpleNamespace(id="app", tenant_id="tenant")
+    entity = _entity()
+    message = SimpleNamespace(id="message")
+    runner.organize_prompt_messages = MagicMock(return_value=(["prompt"], None))
+    runner.moderation_for_inputs = MagicMock(return_value=(None, {"name": "Grace"}, "moderated query"))
+
+    result = runner._run_input_moderation(
+        app_record=app_record,
+        application_generate_entity=entity,
+        queue_manager=MagicMock(),
+        message=message,
+    )
+
+    assert result == ModeratedCompletionInputs(stopped=False, inputs={"name": "Grace"}, query="moderated query")
+
+
 def test_runner_hosting_moderation_hook_uses_final_prompt() -> None:
     runner = CompletionWorkflowRunner(runtime_workflow_builder=MagicMock())
     entity = _entity()
@@ -162,3 +223,63 @@ def test_runner_hosting_moderation_hook_uses_final_prompt() -> None:
         queue_manager=queue_manager,
         prompt_messages=["final prompt"],
     )
+
+
+def test_runner_should_not_check_hosting_moderation_when_config_is_disabled(monkeypatch) -> None:
+    from core.app.apps.completion import workflow_runner as module
+
+    runner = CompletionWorkflowRunner(runtime_workflow_builder=MagicMock())
+    monkeypatch.setattr(
+        module,
+        "hosting_configuration",
+        SimpleNamespace(
+            moderation_config=SimpleNamespace(enabled=False),
+            provider_map={},
+        ),
+    )
+
+    assert runner._should_check_hosting_moderation(_entity()) is False
+
+
+def test_runner_should_check_hosting_moderation_for_system_provider(monkeypatch) -> None:
+    from core.app.apps.completion import workflow_runner as module
+
+    entity = _entity()
+    entity.model_conf = SimpleNamespace(
+        provider="openai",
+        provider_model_bundle=SimpleNamespace(
+            configuration=SimpleNamespace(using_provider_type=ProviderType.SYSTEM),
+        ),
+    )
+    runner = CompletionWorkflowRunner(runtime_workflow_builder=MagicMock())
+    monkeypatch.setattr(
+        module,
+        "hosting_configuration",
+        SimpleNamespace(
+            moderation_config=SimpleNamespace(enabled=True, providers=["openai"]),
+            provider_map={
+                f"{module.DEFAULT_PLUGIN_ID}/openai/openai": SimpleNamespace(
+                    enabled=True,
+                    credentials={"api_key": "secret"},
+                )
+            },
+        ),
+    )
+
+    assert runner._should_check_hosting_moderation(entity) is True
+
+
+def test_runner_resolves_account_user_from() -> None:
+    entity = _entity()
+    entity.invoke_from = InvokeFrom.EXPLORE
+
+    assert CompletionWorkflowRunner._resolve_user_from(entity) == UserFrom.ACCOUNT
+
+
+def test_runner_resolves_configured_image_detail() -> None:
+    entity = _entity()
+    entity.file_upload_config = SimpleNamespace(
+        image_config=SimpleNamespace(detail=ImagePromptMessageContent.DETAIL.HIGH),
+    )
+
+    assert CompletionWorkflowRunner._resolve_image_detail_config(entity) == ImagePromptMessageContent.DETAIL.HIGH
