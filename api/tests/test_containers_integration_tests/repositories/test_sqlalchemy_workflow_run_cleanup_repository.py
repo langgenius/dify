@@ -87,7 +87,7 @@ def _add_app_log(session: Session, scope: _TestScope, workflow_run: WorkflowRun)
     session.commit()
 
 
-def _add_pause_with_reason(session: Session, _scope: _TestScope, workflow_run: WorkflowRun) -> WorkflowPause:
+def _add_pause_with_reason(session: Session, workflow_run: WorkflowRun) -> WorkflowPause:
     pause = WorkflowPause(
         workflow_id=workflow_run.workflow_id,
         workflow_run_id=workflow_run.id,
@@ -185,7 +185,7 @@ class TestCountRunsWithRelatedByIds:
         )
         missing_run_id = str(uuid4())
         _add_app_log(db_session_with_containers, scope, workflow_run)
-        _add_pause_with_reason(db_session_with_containers, scope, workflow_run)
+        _add_pause_with_reason(db_session_with_containers, workflow_run)
         counted_node_run_ids: list[str] = []
         counted_trigger_run_ids: list[str] = []
 
@@ -239,7 +239,7 @@ class TestDeleteRunsWithRelatedByIds:
             created_at=datetime(2024, 1, 1, 12, 0, 0),
         )
         _add_app_log(db_session_with_containers, scope, workflow_run)
-        pause = _add_pause_with_reason(db_session_with_containers, scope, workflow_run)
+        pause = _add_pause_with_reason(db_session_with_containers, workflow_run)
         pause_id = pause.id
         deleted_node_run_ids: list[str] = []
         deleted_trigger_run_ids: list[str] = []
