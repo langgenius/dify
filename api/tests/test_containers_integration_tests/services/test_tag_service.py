@@ -625,7 +625,7 @@ class TestTagService:
         )
 
         # Act: Execute the method under test with non-existent tag name
-        result = TagService.get_tag_by_tag_name("knowledge", tenant.id, "nonexistent_tag",db_session_with_containers)
+        result = TagService.get_tag_by_tag_name("knowledge", tenant.id, "nonexistent_tag", db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -650,8 +650,8 @@ class TestTagService:
         )
 
         # Act: Execute the method under test with empty parameters
-        result_empty_type = TagService.get_tag_by_tag_name("", tenant.id, "test_tag",db_session_with_containers)
-        result_empty_name = TagService.get_tag_by_tag_name("knowledge", tenant.id, "",db_session_with_containers)
+        result_empty_type = TagService.get_tag_by_tag_name("", tenant.id, "test_tag", db_session_with_containers)
+        result_empty_name = TagService.get_tag_by_tag_name("knowledge", tenant.id, "", db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         assert result_empty_type is not None
