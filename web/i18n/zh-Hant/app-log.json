@@ -42,6 +42,7 @@
   "filter.period.today": "今天",
   "filter.period.yearToDate": "本年至今",
   "filter.sortBy": "排序：",
+  "monitoring.description": "監控記錄應用的執行情況，包括效能、使用者活動和成本。",
   "promptLog": "Prompt 日誌",
   "runDetail.fileListDetail": "細節",
   "runDetail.fileListLabel": "檔詳細資訊",

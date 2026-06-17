@@ -42,6 +42,7 @@
   "filter.period.today": "Dzisiaj",
   "filter.period.yearToDate": "Od początku roku",
   "filter.sortBy": "Sortuj według:",
+  "monitoring.description": "Monitoring rejestruje stan działania aplikacji, w tym wydajność, aktywność użytkowników i koszty.",
   "promptLog": "Dziennik monitów",
   "runDetail.fileListDetail": "Detal",
   "runDetail.fileListLabel": "Szczegóły pliku",

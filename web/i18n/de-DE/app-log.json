@@ -42,6 +42,7 @@
   "filter.period.today": "Heute",
   "filter.period.yearToDate": "Jahr bis heute",
   "filter.sortBy": "Sortieren nach:",
+  "monitoring.description": "Das Monitoring zeichnet den Betriebsstatus der Anwendung auf, einschließlich Leistung, Nutzeraktivität und Kosten.",
   "promptLog": "Prompt-Protokoll",
   "runDetail.fileListDetail": "Detail",
   "runDetail.fileListLabel": "Details zur Datei",

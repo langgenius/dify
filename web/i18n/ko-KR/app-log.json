@@ -42,6 +42,7 @@
   "filter.period.today": "오늘",
   "filter.period.yearToDate": "연 초부터 오늘까지",
   "filter.sortBy": "정렬 기준:",
+  "monitoring.description": "모니터링은 성능, 사용자 활동, 비용을 포함한 애플리케이션 실행 상태를 기록합니다.",
   "promptLog": "프롬프트 로그",
   "runDetail.fileListDetail": "세부",
   "runDetail.fileListLabel": "파일 세부 정보",

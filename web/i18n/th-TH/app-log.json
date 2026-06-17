@@ -42,6 +42,7 @@
   "filter.period.today": "วันนี้",
   "filter.period.yearToDate": "ปีจนถึงปัจจุบัน",
   "filter.sortBy": "เมืองสีดํา:",
+  "monitoring.description": "การมอนิเตอร์บันทึกสถานะการทำงานของแอปพลิเคชัน รวมถึงประสิทธิภาพ กิจกรรมผู้ใช้ และค่าใช้จ่าย",
   "promptLog": "บันทึกพร้อมท์",
   "runDetail.fileListDetail": "รายละเอียด",
   "runDetail.fileListLabel": "รายละเอียดไฟล์",

@@ -42,6 +42,7 @@
   "filter.period.today": "اليوم",
   "filter.period.yearToDate": "السنة حتى الآن",
   "filter.sortBy": "رتب حسب:",
+  "monitoring.description": "يسجل الرصد حالة تشغيل التطبيق، بما في ذلك الأداء ونشاط المستخدمين والتكاليف.",
   "promptLog": "سجل المطالبة",
   "runDetail.fileListDetail": "تفاصيل",
   "runDetail.fileListLabel": "تفاصيل الملف",

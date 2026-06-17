@@ -42,6 +42,7 @@
   "filter.period.today": "Aujourd'hui",
   "filter.period.yearToDate": "Année à ce jour",
   "filter.sortBy": "Trier par :",
+  "monitoring.description": "Le monitoring enregistre l’état de fonctionnement de l’application, notamment les performances, l’activité des utilisateurs et les coûts.",
   "promptLog": "Journal de consigne",
   "runDetail.fileListDetail": "Détail",
   "runDetail.fileListLabel": "Détails du fichier",

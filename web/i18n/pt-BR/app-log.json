@@ -42,6 +42,7 @@
   "filter.period.today": "Hoje",
   "filter.period.yearToDate": "Ano até hoje",
   "filter.sortBy": "Ordenar por:",
+  "monitoring.description": "O monitoramento registra o status de execução do aplicativo, incluindo desempenho, atividade dos usuários e custos.",
   "promptLog": "Registro de Prompt",
   "runDetail.fileListDetail": "Detalhe",
   "runDetail.fileListLabel": "Detalhes do arquivo",
