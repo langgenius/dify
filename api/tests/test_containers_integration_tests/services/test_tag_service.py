@@ -688,7 +688,7 @@ class TestTagService:
         )
 
         # Act: Execute the method under test
-        result = TagService.get_tags_by_target_id("app", tenant.id, app.id)
+        result = TagService.get_tags_by_target_id("app", tenant.id, app.id, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -720,7 +720,7 @@ class TestTagService:
         app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, tenant.id)
 
         # Act: Execute the method under test
-        result = TagService.get_tags_by_target_id("app", tenant.id, app.id)
+        result = TagService.get_tags_by_target_id("app", tenant.id, app.id, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -1090,10 +1090,10 @@ class TestTagService:
 
         # Create first binding
         binding_payload = TagBindingCreatePayload(type="app", target_id=app.id, tag_ids=[tag.id])
-        TagService.save_tag_binding(binding_payload)
+        TagService.save_tag_binding(binding_payload, db_session_with_containers)
 
         # Act: Try to create duplicate binding
-        TagService.save_tag_binding(binding_payload)
+        TagService.save_tag_binding(binding_payload, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
 

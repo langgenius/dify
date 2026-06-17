@@ -234,7 +234,7 @@ class TestAppService:
         # Get paginated apps
         params = AppListParams(page=1, limit=10, mode="chat")
 
-        paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, params)
+        paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, params, db_session_with_containers)
 
         # Verify pagination results
         assert paginated_apps is not None
@@ -305,7 +305,7 @@ class TestAppService:
         ]
 
         recently_created_apps = app_service.get_paginate_apps(
-            account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat", sort_by="recently_created")
+            account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat", sort_by="recently_created"), db_session_with_containers
         )
         assert recently_created_apps is not None
         assert [app.name for app in recently_created_apps.items] == [
@@ -315,7 +315,7 @@ class TestAppService:
         ]
 
         earliest_created_apps = app_service.get_paginate_apps(
-            account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat", sort_by="earliest_created")
+            account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat", sort_by="earliest_created"),db_session_with_containers
         )
         assert earliest_created_apps is not None
         assert [app.name for app in earliest_created_apps.items] == [
@@ -366,7 +366,7 @@ class TestAppService:
         assert star_count == 1
 
         paginated_apps = app_service.get_paginate_apps(
-            account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat")
+            account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat"), db_session_with_containers
         )
         assert paginated_apps is not None
         starred_by_app_id = {app.id: app.is_starred for app in paginated_apps.items}
@@ -377,7 +377,7 @@ class TestAppService:
         db_session_with_containers.commit()
 
         paginated_apps = app_service.get_paginate_apps(
-            account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat")
+            account.id, tenant.id, AppListParams(page=1, limit=10, mode="chat"), db_session_with_containers
         )
         assert paginated_apps is not None
         starred_by_app_id = {app.id: app.is_starred for app in paginated_apps.items}
@@ -442,7 +442,7 @@ class TestAppService:
         db_session_with_containers.commit()
 
         last_modified_apps = app_service.get_paginate_starred_apps(
-            account.id, tenant.id, StarredAppListParams(page=1, limit=10, mode="chat")
+            account.id, tenant.id, StarredAppListParams(page=1, limit=10, mode="chat"), db_session_with_containers
         )
         assert last_modified_apps is not None
         assert [app.name for app in last_modified_apps.items] == [
@@ -457,6 +457,7 @@ class TestAppService:
             account.id,
             tenant.id,
             StarredAppListParams(page=1, limit=10, mode="chat", sort_by="recently_created"),
+            db_session_with_containers
         )
         assert recently_created_apps is not None
         assert [app.name for app in recently_created_apps.items] == [
