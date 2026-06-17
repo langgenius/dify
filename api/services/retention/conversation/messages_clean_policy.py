@@ -25,6 +25,12 @@ class MessagesCleanPolicy(Protocol):
     A policy determines which messages from a batch should be deleted.
     """
 
+    def supports_tenant_prefilter(self) -> bool:
+        """
+        Return whether the cleanup service can prefilter apps by eligible tenants before scanning messages.
+        """
+        ...
+
     def filter_message_ids(
         self,
         messages: Sequence[SimpleMessage],
@@ -42,6 +48,14 @@ class MessagesCleanPolicy(Protocol):
         """
         ...
 
+    def filter_eligible_tenant_ids(self, tenant_ids: Sequence[str]) -> set[str] | None:
+        """
+        Return tenant IDs eligible for cleanup before scanning messages.
+
+        Returns None when a policy intentionally does not support SQL prefiltering.
+        """
+        ...
+
 
 class BillingDisabledPolicy(MessagesCleanPolicy):
     """
@@ -51,12 +65,20 @@ class BillingDisabledPolicy(MessagesCleanPolicy):
     """
 
     @override
+    def supports_tenant_prefilter(self) -> bool:
+        return False
+
+    @override
     def filter_message_ids(
         self,
         messages: Sequence[SimpleMessage],
         app_to_tenant: dict[str, str],
     ) -> Sequence[str]:
         return [msg.id for msg in messages]
+
+    @override
+    def filter_eligible_tenant_ids(self, tenant_ids: Sequence[str]) -> set[str] | None:
+        return None
 
 
 class BillingSandboxPolicy(MessagesCleanPolicy):
@@ -68,7 +90,22 @@ class BillingSandboxPolicy(MessagesCleanPolicy):
     - Only delete messages from sandbox plan tenants
     - Respect grace period after subscription expiration
     - Safe default: if tenant mapping or plan is missing, do NOT delete
+
+    Tenant plans are cached for the policy instance lifetime. Cleanup jobs may revisit the
+    same tenant across many message batches, and Redis' cross-job TTL should not be the only
+    cache protecting billing lookups during one run.
     """
+
+    _graceful_period_days: int
+    _tenant_whitelist: set[str]
+    _plan_provider: Callable[[Sequence[str]], dict[str, SubscriptionPlan]]
+    _current_timestamp: int | None
+    _tenant_plan_cache: dict[str, SubscriptionPlan]
+    _missing_plan_tenant_cache: set[str]
+
+    @override
+    def supports_tenant_prefilter(self) -> bool:
+        return True
 
     def __init__(
         self,
@@ -78,9 +115,11 @@ class BillingSandboxPolicy(MessagesCleanPolicy):
         current_timestamp: int | None = None,
     ) -> None:
         self._graceful_period_days = graceful_period_days
-        self._tenant_whitelist: Sequence[str] = tenant_whitelist or []
+        self._tenant_whitelist = set(tenant_whitelist or [])
         self._plan_provider = plan_provider
         self._current_timestamp = current_timestamp
+        self._tenant_plan_cache = {}
+        self._missing_plan_tenant_cache = set()
 
     @override
     def filter_message_ids(
@@ -101,9 +140,8 @@ class BillingSandboxPolicy(MessagesCleanPolicy):
         if not messages or not app_to_tenant:
             return []
 
-        # Get unique tenant_ids and fetch subscription plans
         tenant_ids = list(set(app_to_tenant.values()))
-        tenant_plans = self._plan_provider(tenant_ids)
+        tenant_plans = self._get_tenant_plans(tenant_ids)
 
         if not tenant_plans:
             return []
@@ -114,6 +152,70 @@ class BillingSandboxPolicy(MessagesCleanPolicy):
             app_to_tenant=app_to_tenant,
             tenant_plans=tenant_plans,
         )
+
+    @override
+    def filter_eligible_tenant_ids(self, tenant_ids: Sequence[str]) -> set[str] | None:
+        """
+        Filter tenants eligible for message cleanup before scanning message rows.
+
+        Missing billing plans remain non-eligible for the current cleanup job, matching
+        the per-message safe default while avoiding repeated billing lookups.
+        """
+        tenant_id_set = set(tenant_ids)
+        if not tenant_id_set:
+            return set()
+
+        tenant_plans = self._get_tenant_plans(list(tenant_id_set))
+        if not tenant_plans:
+            return set()
+
+        return {
+            tenant_id
+            for tenant_id in tenant_id_set
+            if self._is_expired_sandbox_tenant(tenant_id, tenant_plans.get(tenant_id))
+        }
+
+    def _get_tenant_plans(self, tenant_ids: Sequence[str]) -> dict[str, SubscriptionPlan]:
+        tenant_id_set = set(tenant_ids)
+        tenant_plans = {
+            tenant_id: self._tenant_plan_cache[tenant_id]
+            for tenant_id in tenant_id_set
+            if tenant_id in self._tenant_plan_cache
+        }
+        cache_misses = [
+            tenant_id
+            for tenant_id in tenant_id_set
+            if tenant_id not in self._tenant_plan_cache and tenant_id not in self._missing_plan_tenant_cache
+        ]
+        if not cache_misses:
+            return tenant_plans
+
+        fetched_plans = self._plan_provider(cache_misses)
+        self._tenant_plan_cache.update(fetched_plans)
+        self._missing_plan_tenant_cache.update(set(cache_misses) - set(fetched_plans))
+        tenant_plans.update(fetched_plans)
+        return tenant_plans
+
+    def _current_time_seconds(self) -> int:
+        if self._current_timestamp is not None:
+            return self._current_timestamp
+
+        return int(datetime.datetime.now(datetime.UTC).timestamp())
+
+    def _is_expired_sandbox_tenant(self, tenant_id: str, tenant_plan: SubscriptionPlan | None) -> bool:
+        if tenant_id in self._tenant_whitelist or not tenant_plan:
+            return False
+
+        plan = str(tenant_plan["plan"])
+        if plan != CloudPlan.SANDBOX:
+            return False
+
+        expiration_date = int(tenant_plan["expiration_date"])
+        if expiration_date == -1:
+            return True
+
+        graceful_period_seconds = self._graceful_period_days * 24 * 60 * 60
+        return self._current_time_seconds() - expiration_date > graceful_period_seconds
 
     def _filter_expired_sandbox_messages(
         self,
@@ -138,12 +240,7 @@ class BillingSandboxPolicy(MessagesCleanPolicy):
         Returns:
             List of message IDs that should be deleted
         """
-        current_timestamp = self._current_timestamp
-        if current_timestamp is None:
-            current_timestamp = int(datetime.datetime.now(datetime.UTC).timestamp())
-
         sandbox_message_ids: list[str] = []
-        graceful_period_seconds = self._graceful_period_days * 24 * 60 * 60
 
         for msg in messages:
             # Get tenant_id for this message's app
@@ -151,29 +248,7 @@ class BillingSandboxPolicy(MessagesCleanPolicy):
             if not tenant_id:
                 continue
 
-            # Skip tenant messages in whitelist
-            if tenant_id in self._tenant_whitelist:
-                continue
-
-            # Get subscription plan for this tenant
-            tenant_plan = tenant_plans.get(tenant_id)
-            if not tenant_plan:
-                continue
-
-            plan = str(tenant_plan["plan"])
-            expiration_date = int(tenant_plan["expiration_date"])
-
-            # Only process sandbox plans
-            if plan != CloudPlan.SANDBOX:
-                continue
-
-            # Case 1: No previous subscription (-1 means never had a paid subscription)
-            if expiration_date == -1:
-                sandbox_message_ids.append(msg.id)
-                continue
-
-            # Case 2: Subscription expired beyond grace period
-            if current_timestamp - expiration_date > graceful_period_seconds:
+            if self._is_expired_sandbox_tenant(tenant_id, tenant_plans.get(tenant_id)):
                 sandbox_message_ids.append(msg.id)
 
         return sandbox_message_ids

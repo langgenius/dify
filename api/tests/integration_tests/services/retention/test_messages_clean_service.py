@@ -1,11 +1,13 @@
 import datetime
 import math
 import uuid
+from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import delete, func, select
 
 from core.db.session_factory import session_factory
+from enums.cloud_plan import CloudPlan
 from models import Tenant
 from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import (
@@ -15,7 +17,7 @@ from models.model import (
     MessageAnnotation,
     MessageFeedback,
 )
-from services.retention.conversation.messages_clean_policy import BillingDisabledPolicy
+from services.retention.conversation.messages_clean_policy import BillingDisabledPolicy, BillingSandboxPolicy
 from services.retention.conversation.messages_clean_service import MessagesCleanService
 
 _NOW = datetime.datetime(2026, 1, 15, 12, 0, 0, tzinfo=datetime.UTC)
@@ -191,6 +193,79 @@ class TestMessagesCleanServiceIntegration:
             session.execute(delete(Message).where(Message.id == msg_id))
             session.commit()
 
+    @pytest.fixture
+    def mixed_plan_messages(self, flask_req_ctx):
+        """Seeds one eligible sandbox app and one paid app in the cleanup window."""
+        with session_factory.create_session() as session:
+            sandbox_tenant = Tenant(name="retention_sandbox_tenant")
+            paid_tenant = Tenant(name="retention_paid_tenant")
+            session.add_all([sandbox_tenant, paid_tenant])
+            session.flush()
+
+            sandbox_app = App(
+                tenant_id=sandbox_tenant.id,
+                name="Retention Sandbox App",
+                mode="chat",
+                enable_site=True,
+                enable_api=True,
+            )
+            paid_app = App(
+                tenant_id=paid_tenant.id,
+                name="Retention Paid App",
+                mode="chat",
+                enable_site=True,
+                enable_api=True,
+            )
+            session.add_all([sandbox_app, paid_app])
+            session.flush()
+
+            sandbox_conv = Conversation(
+                app_id=sandbox_app.id,
+                mode="chat",
+                name="sandbox_conv",
+                status="normal",
+                from_source="console",
+                _inputs={},
+            )
+            paid_conv = Conversation(
+                app_id=paid_app.id,
+                mode="chat",
+                name="paid_conv",
+                status="normal",
+                from_source="console",
+                _inputs={},
+            )
+            session.add_all([sandbox_conv, paid_conv])
+            session.flush()
+
+            sandbox_msg = _make_message(sandbox_app.id, sandbox_conv.id, _OLD)
+            paid_msg = _make_message(paid_app.id, paid_conv.id, _OLD)
+            session.add_all([sandbox_msg, paid_msg])
+            session.flush()
+
+            data = {
+                "sandbox_tenant_id": sandbox_tenant.id,
+                "paid_tenant_id": paid_tenant.id,
+                "sandbox_app_id": sandbox_app.id,
+                "paid_app_id": paid_app.id,
+                "sandbox_conv_id": sandbox_conv.id,
+                "paid_conv_id": paid_conv.id,
+                "sandbox_msg_id": sandbox_msg.id,
+                "paid_msg_id": paid_msg.id,
+            }
+            session.commit()
+
+        yield data
+
+        with session_factory.create_session() as session:
+            session.execute(delete(Message).where(Message.id.in_([data["sandbox_msg_id"], data["paid_msg_id"]])))
+            session.execute(
+                delete(Conversation).where(Conversation.id.in_([data["sandbox_conv_id"], data["paid_conv_id"]]))
+            )
+            session.execute(delete(App).where(App.id.in_([data["sandbox_app_id"], data["paid_app_id"]])))
+            session.execute(delete(Tenant).where(Tenant.id.in_([data["sandbox_tenant_id"], data["paid_tenant_id"]])))
+            session.commit()
+
     def test_dry_run_does_not_delete(self, seed_messages):
         """Dry-run must count eligible rows without deleting any of them."""
         data = seed_messages
@@ -330,6 +405,33 @@ class TestMessagesCleanServiceIntegration:
                 )
                 == 0
             )
+
+    def test_billing_sandbox_prefilters_eligible_apps_before_message_scan(self, mixed_plan_messages):
+        """Billing-enabled cleanup should only scan messages from prequalified eligible apps."""
+        data = mixed_plan_messages
+        plan_provider = MagicMock(
+            return_value={
+                data["sandbox_tenant_id"]: {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
+                data["paid_tenant_id"]: {"plan": CloudPlan.TEAM, "expiration_date": -1},
+            }
+        )
+        policy = BillingSandboxPolicy(plan_provider=plan_provider, current_timestamp=int(_NOW.timestamp()))
+        svc = MessagesCleanService.from_time_range(
+            policy=policy,
+            start_from=_WINDOW_START,
+            end_before=_WINDOW_END,
+            batch_size=_DEFAULT_BATCH_SIZE,
+            dry_run=True,
+        )
+
+        stats = svc.run()
+
+        assert stats["total_messages"] == 1
+        assert stats["filtered_messages"] == 1
+        assert stats["total_deleted"] == 0
+        assert data["sandbox_app_id"] in svc._app_to_tenant_cache
+        assert data["paid_app_id"] not in svc._app_to_tenant_cache
+        plan_provider.assert_called_once()
 
     def test_factory_from_time_range_validation(self):
         with pytest.raises(ValueError, match="start_from"):

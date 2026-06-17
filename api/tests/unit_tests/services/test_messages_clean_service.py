@@ -433,7 +433,7 @@ class TestCreateMessageCleanPolicy:
         mock_billing_service.get_expired_subscription_cleanup_whitelist.assert_called_once()
         assert isinstance(policy, BillingSandboxPolicy)
         assert policy._graceful_period_days == 14
-        assert list(policy._tenant_whitelist) == whitelist
+        assert policy._tenant_whitelist == set(whitelist)
         assert policy._plan_provider == mock_plan_provider
         assert policy._current_timestamp == 1234567
 
@@ -685,3 +685,37 @@ class TestMessagesCleanServiceRun:
             service.run()
         assert len(completion_calls) == 1
         assert completion_calls[0]["status"] == "failed"
+
+
+class TestMessagesCleanServiceSleep:
+    def test_calculate_batch_sleep_scales_with_deleted_count(self):
+        service = MessagesCleanService(
+            policy=BillingDisabledPolicy(),
+            start_from=datetime.datetime(2024, 1, 1),
+            end_before=datetime.datetime(2024, 1, 2),
+            batch_size=1000,
+            dry_run=False,
+        )
+
+        with patch(
+            "services.retention.conversation.messages_clean_service.random.uniform", return_value=1.5
+        ) as random_uniform:
+            sleep_ms = service._calculate_batch_sleep_ms(deleted_messages=3, max_batch_interval_ms=1000)
+
+        assert sleep_ms == 1.5
+        random_uniform.assert_called_once_with(0, 3.0)
+
+    def test_calculate_batch_sleep_skips_when_no_rows_deleted(self):
+        service = MessagesCleanService(
+            policy=BillingDisabledPolicy(),
+            start_from=datetime.datetime(2024, 1, 1),
+            end_before=datetime.datetime(2024, 1, 2),
+            batch_size=1000,
+            dry_run=False,
+        )
+
+        with patch("services.retention.conversation.messages_clean_service.random.uniform") as random_uniform:
+            sleep_ms = service._calculate_batch_sleep_ms(deleted_messages=0, max_batch_interval_ms=1000)
+
+        assert sleep_ms == 0
+        random_uniform.assert_not_called()

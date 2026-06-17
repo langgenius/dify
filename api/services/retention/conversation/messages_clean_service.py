@@ -32,6 +32,8 @@ from services.retention.conversation.messages_clean_policy import (
 
 logger = logging.getLogger(__name__)
 
+_SQL_IN_CHUNK_SIZE = 500
+
 
 if TYPE_CHECKING:
     from opentelemetry.metrics import Counter, Histogram
@@ -173,6 +175,14 @@ class MessagesCleanService:
     If billing is enabled: only sandbox plan tenant messages are deleted (with whitelist and grace period support).
     """
 
+    _policy: MessagesCleanPolicy
+    _end_before: datetime.datetime
+    _start_from: datetime.datetime | None
+    _batch_size: int
+    _dry_run: bool
+    _metrics: MessagesCleanupMetrics
+    _app_to_tenant_cache: dict[str, str]
+
     def __init__(
         self,
         policy: MessagesCleanPolicy,
@@ -198,6 +208,7 @@ class MessagesCleanService:
         self._start_from = start_from
         self._batch_size = batch_size
         self._dry_run = dry_run
+        self._app_to_tenant_cache = {}
         self._metrics = MessagesCleanupMetrics(
             dry_run=dry_run,
             has_window=bool(start_from),
@@ -333,10 +344,11 @@ class MessagesCleanService:
         Time range is [start_from, end_before)
 
         Steps:
-        1. Iterate messages using cursor pagination (by created_at, id)
-        2. Query app_id -> tenant_id mapping
-        3. Delegate to policy to determine which messages to delete
-        4. Batch delete messages and their relations
+        1. Resolve eligible apps up front when the policy supports tenant prefiltering
+        2. Iterate messages using cursor pagination (by created_at, id)
+        3. Query or reuse app_id -> tenant_id mapping
+        4. Delegate to policy to determine which messages to delete
+        5. Batch delete messages and their relations
 
         Returns:
             Dict with statistics: batches, filtered_messages, total_deleted
@@ -360,6 +372,13 @@ class MessagesCleanService:
         )
 
         max_batch_interval_ms = dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_MAX_INTERVAL
+        eligible_app_ids = self._resolve_eligible_app_ids()
+        if eligible_app_ids is not None:
+            if not eligible_app_ids:
+                logger.info("clean_messages: no eligible apps found, skip message scan")
+                return stats
+
+            logger.info("clean_messages: prefiltered %s eligible apps", len(eligible_app_ids))
 
         while True:
             stats["batches"] += 1
@@ -367,6 +386,7 @@ class MessagesCleanService:
             batch_scanned_messages = 0
             batch_filtered_messages = 0
             batch_deleted_messages = 0
+            app_to_tenant: dict[str, str] = {}
 
             # Step 1: Fetch a batch of messages using cursor
             with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
@@ -377,6 +397,9 @@ class MessagesCleanService:
                     .order_by(Message.created_at, Message.id)
                     .limit(self._batch_size)
                 )
+
+                if eligible_app_ids is not None:
+                    msg_stmt = msg_stmt.where(Message.app_id.in_(eligible_app_ids))
 
                 if self._start_from:
                     msg_stmt = msg_stmt.where(Message.created_at >= self._start_from)
@@ -428,17 +451,16 @@ class MessagesCleanService:
                     continue
 
                 fetch_apps_start = time.monotonic()
-                app_stmt = select(App.id, App.tenant_id).where(App.id.in_(app_ids))
-                apps = list(session.execute(app_stmt).all())
+                app_to_tenant = self._get_app_to_tenant(session, app_ids)
                 logger.info(
-                    "clean_messages (batch %s): fetched %s apps for %s app_ids in %sms",
+                    "clean_messages (batch %s): resolved %s apps for %s app_ids in %sms",
                     stats["batches"],
-                    len(apps),
+                    len(app_to_tenant),
                     len(app_ids),
                     int((time.monotonic() - fetch_apps_start) * 1000),
                 )
 
-            if not apps:
+            if not app_to_tenant:
                 logger.info("clean_messages (batch %s): no apps found, skip", stats["batches"])
                 self._metrics.record_batch(
                     scanned_messages=batch_scanned_messages,
@@ -447,9 +469,6 @@ class MessagesCleanService:
                     batch_duration_seconds=time.monotonic() - batch_start,
                 )
                 continue
-
-            # Build app_id -> tenant_id mapping
-            app_to_tenant: dict[str, str] = {app.id: app.tenant_id for app in apps}
 
             # Step 3: Delegate to policy to determine which messages to delete
             policy_start = time.monotonic()
@@ -509,10 +528,11 @@ class MessagesCleanService:
                         int((time.monotonic() - batch_start) * 1000),
                     )
 
-                # Random sleep between batches to avoid overwhelming the database
-                sleep_ms = random.uniform(0, max_batch_interval_ms)  # noqa: S311
-                logger.info("clean_messages (batch %s): sleeping for %.2fms", stats["batches"], sleep_ms)
-                time.sleep(sleep_ms / 1000)
+                self._sleep_after_delete_batch(
+                    batch_index=stats["batches"],
+                    deleted_messages=batch_deleted_messages,
+                    max_batch_interval_ms=max_batch_interval_ms,
+                )
             else:
                 # Log random sample of message IDs that would be deleted (up to 10)
                 sample_size = min(10, len(message_ids_to_delete))
@@ -543,6 +563,95 @@ class MessagesCleanService:
         )
 
         return stats
+
+    def _resolve_eligible_app_ids(self) -> set[str] | None:
+        """
+        Resolve app IDs that can be scanned before touching the high-volume messages table.
+
+        A None return means the policy intentionally keeps the old query path. For billing-enabled
+        sandbox cleanup, this returns only apps whose tenants are eligible for deletion.
+        """
+        if not self._policy.supports_tenant_prefilter():
+            return None
+
+        resolve_start = time.monotonic()
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
+            tenant_ids = list(session.scalars(select(App.tenant_id).distinct()).all())
+
+        eligible_tenant_ids = self._policy.filter_eligible_tenant_ids(tenant_ids)
+        if eligible_tenant_ids is None:
+            return None
+
+        if not eligible_tenant_ids:
+            logger.info(
+                "clean_messages: resolved 0 eligible tenants from %s tenants in %sms",
+                len(tenant_ids),
+                int((time.monotonic() - resolve_start) * 1000),
+            )
+            return set()
+
+        eligible_app_ids: set[str] = set()
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
+            for tenant_id_chunk in self._chunked(list(eligible_tenant_ids), _SQL_IN_CHUNK_SIZE):
+                app_stmt = select(App.id, App.tenant_id).where(App.tenant_id.in_(tenant_id_chunk))
+                for app_id, tenant_id in session.execute(app_stmt).all():
+                    self._app_to_tenant_cache[app_id] = tenant_id
+                    eligible_app_ids.add(app_id)
+
+        logger.info(
+            "clean_messages: resolved %s eligible tenants and %s apps from %s tenants in %sms",
+            len(eligible_tenant_ids),
+            len(eligible_app_ids),
+            len(tenant_ids),
+            int((time.monotonic() - resolve_start) * 1000),
+        )
+        return eligible_app_ids
+
+    def _get_app_to_tenant(self, session: Session, app_ids: Sequence[str]) -> dict[str, str]:
+        missing_app_ids = [app_id for app_id in app_ids if app_id not in self._app_to_tenant_cache]
+        for app_id_chunk in self._chunked(missing_app_ids, _SQL_IN_CHUNK_SIZE):
+            app_stmt = select(App.id, App.tenant_id).where(App.id.in_(app_id_chunk))
+            self._app_to_tenant_cache.update(dict(session.execute(app_stmt).all()))
+
+        return {app_id: self._app_to_tenant_cache[app_id] for app_id in app_ids if app_id in self._app_to_tenant_cache}
+
+    def _sleep_after_delete_batch(
+        self,
+        *,
+        batch_index: int,
+        deleted_messages: int,
+        max_batch_interval_ms: int,
+    ) -> None:
+        sleep_ms = self._calculate_batch_sleep_ms(
+            deleted_messages=deleted_messages,
+            max_batch_interval_ms=max_batch_interval_ms,
+        )
+        if sleep_ms <= 0:
+            logger.info(
+                "clean_messages (batch %s): skip sleep after deleting %s messages",
+                batch_index,
+                deleted_messages,
+            )
+            return
+
+        logger.info(
+            "clean_messages (batch %s): sleeping for %.2fms after deleting %s messages",
+            batch_index,
+            sleep_ms,
+            deleted_messages,
+        )
+        time.sleep(sleep_ms / 1000)
+
+    def _calculate_batch_sleep_ms(self, *, deleted_messages: int, max_batch_interval_ms: int) -> float:
+        if deleted_messages <= 0 or max_batch_interval_ms <= 0:
+            return 0
+
+        sleep_cap_ms = max_batch_interval_ms * min(deleted_messages / self._batch_size, 1)
+        return random.uniform(0, sleep_cap_ms)  # noqa: S311
+
+    @staticmethod
+    def _chunked(items: Sequence[str], chunk_size: int) -> list[Sequence[str]]:
+        return [items[index : index + chunk_size] for index in range(0, len(items), chunk_size)]
 
     @staticmethod
     def _batch_delete_message_relations(session: Session, message_ids: Sequence[str]) -> None:

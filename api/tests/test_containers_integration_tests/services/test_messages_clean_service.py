@@ -399,8 +399,8 @@ class TestMessagesCleanServiceIntegration:
             )
             stats = service.run()
 
-        # Assert - loop runs once to check, finds nothing
-        assert stats["batches"] == 1
+        # Assert - no eligible apps, so the job skips the message scan entirely
+        assert stats["batches"] == 0
         assert stats["total_messages"] == 0
         assert stats["filtered_messages"] == 0
         assert stats["total_deleted"] == 0
@@ -477,7 +477,7 @@ class TestMessagesCleanServiceIntegration:
             stats = service.run()
 
         # Assert
-        assert stats["total_messages"] == 10  # 2 sandbox * 3 + 2 paid * 2
+        assert stats["total_messages"] == 6  # Only eligible sandbox app messages are scanned
         assert stats["filtered_messages"] == 6  # 2 sandbox tenants * 3 messages
         assert stats["total_deleted"] == 6
 
@@ -651,7 +651,7 @@ class TestMessagesCleanServiceIntegration:
             stats = service.run()
 
         # Assert - Only tenant[0]'s message should be deleted
-        assert stats["total_messages"] == 3  # 3 tenants * 1 message
+        assert stats["total_messages"] == 1  # Only the eligible sandbox app message is scanned
         assert stats["filtered_messages"] == 1
         assert stats["total_deleted"] == 1
 
@@ -698,7 +698,7 @@ class TestMessagesCleanServiceIntegration:
             stats = service.run()
 
         # Assert - No messages should be deleted when plan is unknown
-        assert stats["total_messages"] == 1
+        assert stats["total_messages"] == 0
         assert stats["filtered_messages"] == 0  # Cannot determine sandbox messages
         assert stats["total_deleted"] == 0
 
@@ -903,7 +903,7 @@ class TestMessagesCleanServiceIntegration:
             stats = service.run()
 
         # Assert - Only messages from scenario 2 and 3 should be deleted
-        assert stats["total_messages"] == 5  # 5 tenants * 1 message
+        assert stats["total_messages"] == 2  # Only eligible sandbox app messages are scanned
         assert stats["filtered_messages"] == 2
         assert stats["total_deleted"] == 2
 
@@ -976,7 +976,7 @@ class TestMessagesCleanServiceIntegration:
             stats = service.run()
 
         # Assert - Only tenant2's message should be deleted (not whitelisted)
-        assert stats["total_messages"] == 3  # 3 tenants * 1 message
+        assert stats["total_messages"] == 1  # Only the non-whitelisted eligible app message is scanned
         assert stats["filtered_messages"] == 1
         assert stats["total_deleted"] == 1
 
@@ -1112,7 +1112,7 @@ class TestMessagesCleanServiceIntegration:
         # Assert - No messages should be deleted
         # tenant1: whitelisted (protected even though beyond grace period)
         # tenant2: within grace period (not eligible for deletion)
-        assert stats["total_messages"] == 2  # 2 tenants * 1 message
+        assert stats["total_messages"] == 0
         assert stats["filtered_messages"] == 0
         assert stats["total_deleted"] == 0
 
