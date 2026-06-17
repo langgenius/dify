@@ -5,7 +5,7 @@ User-scoped programmatic API (bearer auth)
 
 ### Available authorizations
 #### Bearer (HTTP, bearer)
-Use the Service API key as a Bearer token in the Authorization header.  
+Use the Service API key as a Bearer token in the Authorization header.
 Bearer format: API_KEY
 
 ---
