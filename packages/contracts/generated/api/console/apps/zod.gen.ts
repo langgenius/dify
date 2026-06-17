@@ -1938,25 +1938,24 @@ export const zModelConfigPartial = z.object({
  */
 export const zAppPartial = z.object({
   access_mode: z.string().nullish(),
-  active_config_is_published: z.boolean().optional().default(false),
   app_id: z.string().nullish(),
-  app_model_config: zModelConfigPartial.nullish(),
   author_name: z.string().nullish(),
   bound_agent_id: z.string().nullish(),
   create_user_name: z.string().nullish(),
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
-  desc_or_prompt: z.string().nullish(),
+  description: z.string().nullish(),
   has_draft_trigger: z.boolean().nullish(),
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
   icon_type: z.string().nullish(),
+  icon_url: z.string().nullable(),
   id: z.string(),
   is_starred: z.boolean().optional().default(false),
   max_active_requests: z.int().nullish(),
-  mode_compatible_with_agent: z.string(),
+  mode: z.string(),
+  model_config: zModelConfigPartial.nullish(),
   name: z.string(),
-  role: z.string().nullish(),
   tags: z.array(zTag).optional(),
   updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
@@ -1968,10 +1967,10 @@ export const zAppPartial = z.object({
  * AppPagination
  */
 export const zAppPagination = z.object({
-  has_next: z.boolean(),
-  items: z.array(zAppPartial),
+  data: z.array(zAppPartial),
+  has_more: z.boolean(),
+  limit: z.int(),
   page: z.int(),
-  per_page: z.int(),
   total: z.int(),
 })
 
@@ -1997,7 +1996,6 @@ export const zModelConfig = z.object({
  */
 export const zAppDetailWithSite = z.object({
   access_mode: z.string().nullish(),
-  active_config_is_published: z.boolean().optional().default(false),
   api_base_url: z.string().nullish(),
   app_id: z.string().nullish(),
   bound_agent_id: z.string().nullish(),
@@ -2016,7 +2014,6 @@ export const zAppDetailWithSite = z.object({
   mode: z.string(),
   model_config: zModelConfig.nullish(),
   name: z.string(),
-  role: z.string().nullish(),
   site: zSite.nullish(),
   tags: z.array(zTag).optional(),
   tracing: zJsonValue.nullish(),
@@ -3465,6 +3462,46 @@ export const zMessageInfiniteScrollPaginationResponse = z.object({
 export const zGeneratedAppResponseWritable = zJsonValue
 
 /**
+ * AppPartial
+ */
+export const zAppPartialWritable = z.object({
+  access_mode: z.string().nullish(),
+  app_id: z.string().nullish(),
+  author_name: z.string().nullish(),
+  bound_agent_id: z.string().nullish(),
+  create_user_name: z.string().nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  description: z.string().nullish(),
+  has_draft_trigger: z.boolean().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  id: z.string(),
+  is_starred: z.boolean().optional().default(false),
+  max_active_requests: z.int().nullish(),
+  mode: z.string(),
+  model_config: zModelConfigPartial.nullish(),
+  name: z.string(),
+  tags: z.array(zTag).optional(),
+  updated_at: z.int().nullish(),
+  updated_by: z.string().nullish(),
+  use_icon_as_answer_icon: z.boolean().nullish(),
+  workflow: zWorkflowPartial.nullish(),
+})
+
+/**
+ * AppPagination
+ */
+export const zAppPaginationWritable = z.object({
+  data: z.array(zAppPartialWritable),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
  * Site
  */
 export const zSiteWritable = z.object({
@@ -3488,7 +3525,6 @@ export const zSiteWritable = z.object({
  */
 export const zAppDetailWithSiteWritable = z.object({
   access_mode: z.string().nullish(),
-  active_config_is_published: z.boolean().optional().default(false),
   api_base_url: z.string().nullish(),
   app_id: z.string().nullish(),
   bound_agent_id: z.string().nullish(),
@@ -3506,7 +3542,6 @@ export const zAppDetailWithSiteWritable = z.object({
   mode: z.string(),
   model_config: zModelConfig.nullish(),
   name: z.string(),
-  role: z.string().nullish(),
   site: zSiteWritable.nullish(),
   tags: z.array(zTag).optional(),
   tracing: zJsonValue.nullish(),
@@ -3695,7 +3730,7 @@ export const zPostAppsWorkflowsOnlineUsersBody = zWorkflowOnlineUsersPayload
 export const zPostAppsWorkflowsOnlineUsersResponse = zWorkflowOnlineUsersResponse
 
 export const zDeleteAppsByAppIdPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -3704,7 +3739,7 @@ export const zDeleteAppsByAppIdPath = z.object({
 export const zDeleteAppsByAppIdResponse = z.void()
 
 export const zGetAppsByAppIdPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -3715,7 +3750,7 @@ export const zGetAppsByAppIdResponse = zAppDetailWithSite
 export const zPutAppsByAppIdBody = zUpdateAppPayload
 
 export const zPutAppsByAppIdPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -3724,7 +3759,7 @@ export const zPutAppsByAppIdPath = z.object({
 export const zPutAppsByAppIdResponse = zAppDetailWithSite
 
 export const zGetAppsByAppIdAdvancedChatWorkflowRunsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdAdvancedChatWorkflowRunsQuery = z.object({
@@ -3741,7 +3776,7 @@ export const zGetAppsByAppIdAdvancedChatWorkflowRunsResponse
   = zAdvancedChatWorkflowRunPaginationResponse
 
 export const zGetAppsByAppIdAdvancedChatWorkflowRunsCountPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdAdvancedChatWorkflowRunsCountQuery = z.object({
@@ -3760,7 +3795,7 @@ export const zPostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFo
 
 export const zPostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewPath
   = z.object({
-    app_id: z.string(),
+    app_id: z.uuid(),
     node_id: z.string(),
   })
 
@@ -3775,7 +3810,7 @@ export const zPostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFo
 
 export const zPostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunPath
   = z.object({
-    app_id: z.string(),
+    app_id: z.uuid(),
     node_id: z.string(),
   })
 
@@ -3789,7 +3824,7 @@ export const zPostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRun
   = zIterationNodeRunPayload
 
 export const zPostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   node_id: z.string(),
 })
 
@@ -3803,7 +3838,7 @@ export const zPostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunBody
   = zLoopNodeRunPayload
 
 export const zPostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   node_id: z.string(),
 })
 
@@ -3816,7 +3851,7 @@ export const zPostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunRespo
 export const zPostAppsByAppIdAdvancedChatWorkflowsDraftRunBody = zAdvancedChatWorkflowRunPayload
 
 export const zPostAppsByAppIdAdvancedChatWorkflowsDraftRunPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -3825,7 +3860,7 @@ export const zPostAppsByAppIdAdvancedChatWorkflowsDraftRunPath = z.object({
 export const zPostAppsByAppIdAdvancedChatWorkflowsDraftRunResponse = zGeneratedAppResponse
 
 export const zGetAppsByAppIdAgentDriveFilesPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdAgentDriveFilesQuery = z.object({
@@ -3839,7 +3874,7 @@ export const zGetAppsByAppIdAgentDriveFilesQuery = z.object({
 export const zGetAppsByAppIdAgentDriveFilesResponse = zAgentDriveListResponse
 
 export const zGetAppsByAppIdAgentDriveFilesDownloadPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdAgentDriveFilesDownloadQuery = z.object({
@@ -3853,7 +3888,7 @@ export const zGetAppsByAppIdAgentDriveFilesDownloadQuery = z.object({
 export const zGetAppsByAppIdAgentDriveFilesDownloadResponse = zAgentDriveDownloadResponse
 
 export const zGetAppsByAppIdAgentDriveFilesPreviewPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdAgentDriveFilesPreviewQuery = z.object({
@@ -3867,7 +3902,7 @@ export const zGetAppsByAppIdAgentDriveFilesPreviewQuery = z.object({
 export const zGetAppsByAppIdAgentDriveFilesPreviewResponse = zAgentDrivePreviewResponse
 
 export const zDeleteAppsByAppIdAgentFilesPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zDeleteAppsByAppIdAgentFilesQuery = z.object({
@@ -3883,7 +3918,7 @@ export const zDeleteAppsByAppIdAgentFilesResponse = zAgentDriveDeleteResponse
 export const zPostAppsByAppIdAgentFilesBody = zAgentDriveFilePayload
 
 export const zPostAppsByAppIdAgentFilesPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zPostAppsByAppIdAgentFilesQuery = z.object({
@@ -3896,7 +3931,7 @@ export const zPostAppsByAppIdAgentFilesQuery = z.object({
 export const zPostAppsByAppIdAgentFilesResponse = zAgentDriveFileCommitResponse
 
 export const zGetAppsByAppIdAgentLogsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdAgentLogsQuery = z.object({
@@ -3914,7 +3949,7 @@ export const zPostAppsByAppIdAgentSkillsUploadBody = z.object({
 })
 
 export const zPostAppsByAppIdAgentSkillsUploadPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zPostAppsByAppIdAgentSkillsUploadQuery = z.object({
@@ -3927,7 +3962,7 @@ export const zPostAppsByAppIdAgentSkillsUploadQuery = z.object({
 export const zPostAppsByAppIdAgentSkillsUploadResponse = zAgentSkillUploadResponse
 
 export const zDeleteAppsByAppIdAgentSkillsBySlugPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   slug: z.string(),
 })
 
@@ -3941,7 +3976,7 @@ export const zDeleteAppsByAppIdAgentSkillsBySlugQuery = z.object({
 export const zDeleteAppsByAppIdAgentSkillsBySlugResponse = zAgentDriveDeleteResponse
 
 export const zPostAppsByAppIdAgentSkillsBySlugInferToolsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   slug: z.string(),
 })
 
@@ -3958,7 +3993,7 @@ export const zPostAppsByAppIdAnnotationReplyByActionBody = zAnnotationReplyPaylo
 
 export const zPostAppsByAppIdAnnotationReplyByActionPath = z.object({
   action: z.string(),
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -3968,8 +4003,8 @@ export const zPostAppsByAppIdAnnotationReplyByActionResponse = zAnnotationJobSta
 
 export const zGetAppsByAppIdAnnotationReplyByActionStatusByJobIdPath = z.object({
   action: z.string(),
-  app_id: z.string(),
-  job_id: z.string(),
+  app_id: z.uuid(),
+  job_id: z.uuid(),
 })
 
 /**
@@ -3979,7 +4014,7 @@ export const zGetAppsByAppIdAnnotationReplyByActionStatusByJobIdResponse
   = zAnnotationJobStatusResponse
 
 export const zGetAppsByAppIdAnnotationSettingPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -3991,8 +4026,8 @@ export const zPostAppsByAppIdAnnotationSettingsByAnnotationSettingIdBody
   = zAnnotationSettingUpdatePayload
 
 export const zPostAppsByAppIdAnnotationSettingsByAnnotationSettingIdPath = z.object({
-  annotation_setting_id: z.string(),
-  app_id: z.string(),
+  annotation_setting_id: z.uuid(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4002,7 +4037,7 @@ export const zPostAppsByAppIdAnnotationSettingsByAnnotationSettingIdResponse
   = zAnnotationSettingResponse
 
 export const zDeleteAppsByAppIdAnnotationsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4011,7 +4046,7 @@ export const zDeleteAppsByAppIdAnnotationsPath = z.object({
 export const zDeleteAppsByAppIdAnnotationsResponse = z.void()
 
 export const zGetAppsByAppIdAnnotationsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdAnnotationsQuery = z.object({
@@ -4028,7 +4063,7 @@ export const zGetAppsByAppIdAnnotationsResponse = zAnnotationList
 export const zPostAppsByAppIdAnnotationsBody = zCreateAnnotationPayload
 
 export const zPostAppsByAppIdAnnotationsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4037,7 +4072,7 @@ export const zPostAppsByAppIdAnnotationsPath = z.object({
 export const zPostAppsByAppIdAnnotationsResponse = zAnnotation
 
 export const zPostAppsByAppIdAnnotationsBatchImportPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4046,8 +4081,8 @@ export const zPostAppsByAppIdAnnotationsBatchImportPath = z.object({
 export const zPostAppsByAppIdAnnotationsBatchImportResponse = zAnnotationJobStatusResponse
 
 export const zGetAppsByAppIdAnnotationsBatchImportStatusByJobIdPath = z.object({
-  app_id: z.string(),
-  job_id: z.string(),
+  app_id: z.uuid(),
+  job_id: z.uuid(),
 })
 
 /**
@@ -4057,7 +4092,7 @@ export const zGetAppsByAppIdAnnotationsBatchImportStatusByJobIdResponse
   = zAnnotationJobStatusResponse
 
 export const zGetAppsByAppIdAnnotationsCountPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4066,7 +4101,7 @@ export const zGetAppsByAppIdAnnotationsCountPath = z.object({
 export const zGetAppsByAppIdAnnotationsCountResponse = zAnnotationCountResponse
 
 export const zGetAppsByAppIdAnnotationsExportPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4075,8 +4110,8 @@ export const zGetAppsByAppIdAnnotationsExportPath = z.object({
 export const zGetAppsByAppIdAnnotationsExportResponse = zAnnotationExportList
 
 export const zDeleteAppsByAppIdAnnotationsByAnnotationIdPath = z.object({
-  annotation_id: z.string(),
-  app_id: z.string(),
+  annotation_id: z.uuid(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4087,15 +4122,15 @@ export const zDeleteAppsByAppIdAnnotationsByAnnotationIdResponse = z.void()
 export const zPostAppsByAppIdAnnotationsByAnnotationIdBody = zUpdateAnnotationPayload
 
 export const zPostAppsByAppIdAnnotationsByAnnotationIdPath = z.object({
-  annotation_id: z.string(),
-  app_id: z.string(),
+  annotation_id: z.uuid(),
+  app_id: z.uuid(),
 })
 
 export const zPostAppsByAppIdAnnotationsByAnnotationIdResponse = z.union([zAnnotation, z.void()])
 
 export const zGetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesPath = z.object({
-  annotation_id: z.string(),
-  app_id: z.string(),
+  annotation_id: z.uuid(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesQuery = z.object({
@@ -4112,7 +4147,7 @@ export const zGetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesResponse
 export const zPostAppsByAppIdApiEnableBody = zAppApiStatusPayload
 
 export const zPostAppsByAppIdApiEnablePath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4121,7 +4156,7 @@ export const zPostAppsByAppIdApiEnablePath = z.object({
 export const zPostAppsByAppIdApiEnableResponse = zAppDetail
 
 export const zPostAppsByAppIdAudioToTextPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4130,7 +4165,7 @@ export const zPostAppsByAppIdAudioToTextPath = z.object({
 export const zPostAppsByAppIdAudioToTextResponse = zAudioTranscriptResponse
 
 export const zGetAppsByAppIdChatConversationsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdChatConversationsQuery = z.object({
@@ -4152,8 +4187,8 @@ export const zGetAppsByAppIdChatConversationsQuery = z.object({
 export const zGetAppsByAppIdChatConversationsResponse = zConversationWithSummaryPagination
 
 export const zDeleteAppsByAppIdChatConversationsByConversationIdPath = z.object({
-  app_id: z.string(),
-  conversation_id: z.string(),
+  app_id: z.uuid(),
+  conversation_id: z.uuid(),
 })
 
 /**
@@ -4162,8 +4197,8 @@ export const zDeleteAppsByAppIdChatConversationsByConversationIdPath = z.object(
 export const zDeleteAppsByAppIdChatConversationsByConversationIdResponse = z.void()
 
 export const zGetAppsByAppIdChatConversationsByConversationIdPath = z.object({
-  app_id: z.string(),
-  conversation_id: z.string(),
+  app_id: z.uuid(),
+  conversation_id: z.uuid(),
 })
 
 /**
@@ -4172,7 +4207,7 @@ export const zGetAppsByAppIdChatConversationsByConversationIdPath = z.object({
 export const zGetAppsByAppIdChatConversationsByConversationIdResponse = zConversationDetail
 
 export const zGetAppsByAppIdChatMessagesPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdChatMessagesQuery = z.object({
@@ -4187,8 +4222,8 @@ export const zGetAppsByAppIdChatMessagesQuery = z.object({
 export const zGetAppsByAppIdChatMessagesResponse = zMessageInfiniteScrollPaginationResponse
 
 export const zGetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsPath = z.object({
-  app_id: z.string(),
-  message_id: z.string(),
+  app_id: z.uuid(),
+  message_id: z.uuid(),
 })
 
 /**
@@ -4198,7 +4233,7 @@ export const zGetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsResponse
   = zSuggestedQuestionsResponse
 
 export const zPostAppsByAppIdChatMessagesByTaskIdStopPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   task_id: z.string(),
 })
 
@@ -4208,7 +4243,7 @@ export const zPostAppsByAppIdChatMessagesByTaskIdStopPath = z.object({
 export const zPostAppsByAppIdChatMessagesByTaskIdStopResponse = zSimpleResultResponse
 
 export const zGetAppsByAppIdCompletionConversationsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdCompletionConversationsQuery = z.object({
@@ -4226,8 +4261,8 @@ export const zGetAppsByAppIdCompletionConversationsQuery = z.object({
 export const zGetAppsByAppIdCompletionConversationsResponse = zConversationPagination
 
 export const zDeleteAppsByAppIdCompletionConversationsByConversationIdPath = z.object({
-  app_id: z.string(),
-  conversation_id: z.string(),
+  app_id: z.uuid(),
+  conversation_id: z.uuid(),
 })
 
 /**
@@ -4236,8 +4271,8 @@ export const zDeleteAppsByAppIdCompletionConversationsByConversationIdPath = z.o
 export const zDeleteAppsByAppIdCompletionConversationsByConversationIdResponse = z.void()
 
 export const zGetAppsByAppIdCompletionConversationsByConversationIdPath = z.object({
-  app_id: z.string(),
-  conversation_id: z.string(),
+  app_id: z.uuid(),
+  conversation_id: z.uuid(),
 })
 
 /**
@@ -4249,7 +4284,7 @@ export const zGetAppsByAppIdCompletionConversationsByConversationIdResponse
 export const zPostAppsByAppIdCompletionMessagesBody = zCompletionMessagePayload
 
 export const zPostAppsByAppIdCompletionMessagesPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4258,7 +4293,7 @@ export const zPostAppsByAppIdCompletionMessagesPath = z.object({
 export const zPostAppsByAppIdCompletionMessagesResponse = zGeneratedAppResponse
 
 export const zPostAppsByAppIdCompletionMessagesByTaskIdStopPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   task_id: z.string(),
 })
 
@@ -4268,7 +4303,7 @@ export const zPostAppsByAppIdCompletionMessagesByTaskIdStopPath = z.object({
 export const zPostAppsByAppIdCompletionMessagesByTaskIdStopResponse = zSimpleResultResponse
 
 export const zGetAppsByAppIdConversationVariablesPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdConversationVariablesQuery = z.object({
@@ -4283,7 +4318,7 @@ export const zGetAppsByAppIdConversationVariablesResponse = zPaginatedConversati
 export const zPostAppsByAppIdConvertToWorkflowBody = zConvertToWorkflowPayload
 
 export const zPostAppsByAppIdConvertToWorkflowPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4294,7 +4329,7 @@ export const zPostAppsByAppIdConvertToWorkflowResponse = zNewAppResponse
 export const zPostAppsByAppIdCopyBody = zCopyAppPayload
 
 export const zPostAppsByAppIdCopyPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4303,7 +4338,7 @@ export const zPostAppsByAppIdCopyPath = z.object({
 export const zPostAppsByAppIdCopyResponse = zAppDetailWithSite
 
 export const zGetAppsByAppIdExportPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdExportQuery = z.object({
@@ -4319,7 +4354,7 @@ export const zGetAppsByAppIdExportResponse = zAppExportResponse
 export const zPostAppsByAppIdFeedbacksBody = zMessageFeedbackPayload
 
 export const zPostAppsByAppIdFeedbacksPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4328,7 +4363,7 @@ export const zPostAppsByAppIdFeedbacksPath = z.object({
 export const zPostAppsByAppIdFeedbacksResponse = zSimpleResultResponse
 
 export const zGetAppsByAppIdFeedbacksExportPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdFeedbacksExportQuery = z.object({
@@ -4348,7 +4383,7 @@ export const zGetAppsByAppIdFeedbacksExportResponse = zTextFileResponse
 export const zPostAppsByAppIdIconBody = zAppIconPayload
 
 export const zPostAppsByAppIdIconPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4357,8 +4392,8 @@ export const zPostAppsByAppIdIconPath = z.object({
 export const zPostAppsByAppIdIconResponse = zAppDetail
 
 export const zGetAppsByAppIdMessagesByMessageIdPath = z.object({
-  app_id: z.string(),
-  message_id: z.string(),
+  app_id: z.uuid(),
+  message_id: z.uuid(),
 })
 
 /**
@@ -4369,7 +4404,7 @@ export const zGetAppsByAppIdMessagesByMessageIdResponse = zMessageDetailResponse
 export const zPostAppsByAppIdModelConfigBody = zModelConfigRequest
 
 export const zPostAppsByAppIdModelConfigPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4380,7 +4415,7 @@ export const zPostAppsByAppIdModelConfigResponse = zSimpleResultResponse
 export const zPostAppsByAppIdNameBody = zAppNamePayload
 
 export const zPostAppsByAppIdNamePath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4389,7 +4424,7 @@ export const zPostAppsByAppIdNamePath = z.object({
 export const zPostAppsByAppIdNameResponse = zAppDetail
 
 export const zPostAppsByAppIdPublishToCreatorsPlatformPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4398,7 +4433,7 @@ export const zPostAppsByAppIdPublishToCreatorsPlatformPath = z.object({
 export const zPostAppsByAppIdPublishToCreatorsPlatformResponse = zRedirectUrlResponse
 
 export const zGetAppsByAppIdServerPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4409,7 +4444,7 @@ export const zGetAppsByAppIdServerResponse = zAppMcpServerResponse
 export const zPostAppsByAppIdServerBody = zMcpServerCreatePayload
 
 export const zPostAppsByAppIdServerPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4420,7 +4455,7 @@ export const zPostAppsByAppIdServerResponse = zAppMcpServerResponse
 export const zPutAppsByAppIdServerBody = zMcpServerUpdatePayload
 
 export const zPutAppsByAppIdServerPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4431,7 +4466,7 @@ export const zPutAppsByAppIdServerResponse = zAppMcpServerResponse
 export const zPostAppsByAppIdSiteBody = zAppSiteUpdatePayload
 
 export const zPostAppsByAppIdSitePath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4442,7 +4477,7 @@ export const zPostAppsByAppIdSiteResponse = zAppSiteResponse
 export const zPostAppsByAppIdSiteEnableBody = zAppSiteStatusPayload
 
 export const zPostAppsByAppIdSiteEnablePath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4451,7 +4486,7 @@ export const zPostAppsByAppIdSiteEnablePath = z.object({
 export const zPostAppsByAppIdSiteEnableResponse = zAppDetail
 
 export const zPostAppsByAppIdSiteAccessTokenResetPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4460,7 +4495,7 @@ export const zPostAppsByAppIdSiteAccessTokenResetPath = z.object({
 export const zPostAppsByAppIdSiteAccessTokenResetResponse = zAppSiteResponse
 
 export const zDeleteAppsByAppIdStarPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4469,7 +4504,7 @@ export const zDeleteAppsByAppIdStarPath = z.object({
 export const zDeleteAppsByAppIdStarResponse = zSimpleResultResponse
 
 export const zPostAppsByAppIdStarPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4478,7 +4513,7 @@ export const zPostAppsByAppIdStarPath = z.object({
 export const zPostAppsByAppIdStarResponse = zSimpleResultResponse
 
 export const zGetAppsByAppIdStatisticsAverageResponseTimePath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdStatisticsAverageResponseTimeQuery = z.object({
@@ -4493,7 +4528,7 @@ export const zGetAppsByAppIdStatisticsAverageResponseTimeResponse
   = zAverageResponseTimeStatisticResponse
 
 export const zGetAppsByAppIdStatisticsAverageSessionInteractionsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdStatisticsAverageSessionInteractionsQuery = z.object({
@@ -4508,7 +4543,7 @@ export const zGetAppsByAppIdStatisticsAverageSessionInteractionsResponse
   = zAverageSessionInteractionStatisticResponse
 
 export const zGetAppsByAppIdStatisticsDailyConversationsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdStatisticsDailyConversationsQuery = z.object({
@@ -4523,7 +4558,7 @@ export const zGetAppsByAppIdStatisticsDailyConversationsResponse
   = zDailyConversationStatisticResponse
 
 export const zGetAppsByAppIdStatisticsDailyEndUsersPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdStatisticsDailyEndUsersQuery = z.object({
@@ -4537,7 +4572,7 @@ export const zGetAppsByAppIdStatisticsDailyEndUsersQuery = z.object({
 export const zGetAppsByAppIdStatisticsDailyEndUsersResponse = zDailyTerminalStatisticResponse
 
 export const zGetAppsByAppIdStatisticsDailyMessagesPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdStatisticsDailyMessagesQuery = z.object({
@@ -4551,7 +4586,7 @@ export const zGetAppsByAppIdStatisticsDailyMessagesQuery = z.object({
 export const zGetAppsByAppIdStatisticsDailyMessagesResponse = zDailyMessageStatisticResponse
 
 export const zGetAppsByAppIdStatisticsTokenCostsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdStatisticsTokenCostsQuery = z.object({
@@ -4565,7 +4600,7 @@ export const zGetAppsByAppIdStatisticsTokenCostsQuery = z.object({
 export const zGetAppsByAppIdStatisticsTokenCostsResponse = zDailyTokenCostStatisticResponse
 
 export const zGetAppsByAppIdStatisticsTokensPerSecondPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdStatisticsTokensPerSecondQuery = z.object({
@@ -4579,7 +4614,7 @@ export const zGetAppsByAppIdStatisticsTokensPerSecondQuery = z.object({
 export const zGetAppsByAppIdStatisticsTokensPerSecondResponse = zTokensPerSecondStatisticResponse
 
 export const zGetAppsByAppIdStatisticsUserSatisfactionRatePath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdStatisticsUserSatisfactionRateQuery = z.object({
@@ -4596,7 +4631,7 @@ export const zGetAppsByAppIdStatisticsUserSatisfactionRateResponse
 export const zPostAppsByAppIdTextToAudioBody = zTextToSpeechPayload
 
 export const zPostAppsByAppIdTextToAudioPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4605,7 +4640,7 @@ export const zPostAppsByAppIdTextToAudioPath = z.object({
 export const zPostAppsByAppIdTextToAudioResponse = zAudioBinaryResponse
 
 export const zGetAppsByAppIdTextToAudioVoicesPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdTextToAudioVoicesQuery = z.object({
@@ -4618,7 +4653,7 @@ export const zGetAppsByAppIdTextToAudioVoicesQuery = z.object({
 export const zGetAppsByAppIdTextToAudioVoicesResponse = zTextToSpeechVoiceListResponse
 
 export const zGetAppsByAppIdTracePath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4629,7 +4664,7 @@ export const zGetAppsByAppIdTraceResponse = zAppTraceResponse
 export const zPostAppsByAppIdTraceBody = zAppTracePayload
 
 export const zPostAppsByAppIdTracePath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4638,7 +4673,7 @@ export const zPostAppsByAppIdTracePath = z.object({
 export const zPostAppsByAppIdTraceResponse = zSimpleResultResponse
 
 export const zDeleteAppsByAppIdTraceConfigPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zDeleteAppsByAppIdTraceConfigQuery = z.object({
@@ -4651,7 +4686,7 @@ export const zDeleteAppsByAppIdTraceConfigQuery = z.object({
 export const zDeleteAppsByAppIdTraceConfigResponse = z.void()
 
 export const zGetAppsByAppIdTraceConfigPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdTraceConfigQuery = z.object({
@@ -4666,7 +4701,7 @@ export const zGetAppsByAppIdTraceConfigResponse = zTraceAppConfigResponse
 export const zPatchAppsByAppIdTraceConfigBody = zTraceConfigPayload
 
 export const zPatchAppsByAppIdTraceConfigPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4677,7 +4712,7 @@ export const zPatchAppsByAppIdTraceConfigResponse = zTraceAppConfigResponse
 export const zPostAppsByAppIdTraceConfigBody = zTraceConfigPayload
 
 export const zPostAppsByAppIdTraceConfigPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4688,7 +4723,7 @@ export const zPostAppsByAppIdTraceConfigResponse = zTraceAppConfigResponse
 export const zPostAppsByAppIdTriggerEnableBody = zParserEnable
 
 export const zPostAppsByAppIdTriggerEnablePath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4697,7 +4732,7 @@ export const zPostAppsByAppIdTriggerEnablePath = z.object({
 export const zPostAppsByAppIdTriggerEnableResponse = zWorkflowTriggerResponse
 
 export const zGetAppsByAppIdTriggersPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4706,7 +4741,7 @@ export const zGetAppsByAppIdTriggersPath = z.object({
 export const zGetAppsByAppIdTriggersResponse = zWorkflowTriggerListResponse
 
 export const zGetAppsByAppIdWorkflowAppLogsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdWorkflowAppLogsQuery = z.object({
@@ -4729,7 +4764,7 @@ export const zGetAppsByAppIdWorkflowAppLogsQuery = z.object({
 export const zGetAppsByAppIdWorkflowAppLogsResponse = zWorkflowAppLogPaginationResponse
 
 export const zGetAppsByAppIdWorkflowArchivedLogsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdWorkflowArchivedLogsQuery = z.object({
@@ -4752,7 +4787,7 @@ export const zGetAppsByAppIdWorkflowArchivedLogsQuery = z.object({
 export const zGetAppsByAppIdWorkflowArchivedLogsResponse = zWorkflowArchivedLogPaginationResponse
 
 export const zGetAppsByAppIdWorkflowRunsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdWorkflowRunsQuery = z.object({
@@ -4768,7 +4803,7 @@ export const zGetAppsByAppIdWorkflowRunsQuery = z.object({
 export const zGetAppsByAppIdWorkflowRunsResponse = zWorkflowRunPaginationResponse
 
 export const zGetAppsByAppIdWorkflowRunsCountPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdWorkflowRunsCountQuery = z.object({
@@ -4783,7 +4818,7 @@ export const zGetAppsByAppIdWorkflowRunsCountQuery = z.object({
 export const zGetAppsByAppIdWorkflowRunsCountResponse = zWorkflowRunCountResponse
 
 export const zPostAppsByAppIdWorkflowRunsTasksByTaskIdStopPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   task_id: z.string(),
 })
 
@@ -4793,8 +4828,8 @@ export const zPostAppsByAppIdWorkflowRunsTasksByTaskIdStopPath = z.object({
 export const zPostAppsByAppIdWorkflowRunsTasksByTaskIdStopResponse = zSimpleResultResponse
 
 export const zGetAppsByAppIdWorkflowRunsByRunIdPath = z.object({
-  app_id: z.string(),
-  run_id: z.string(),
+  app_id: z.uuid(),
+  run_id: z.uuid(),
 })
 
 /**
@@ -4803,8 +4838,8 @@ export const zGetAppsByAppIdWorkflowRunsByRunIdPath = z.object({
 export const zGetAppsByAppIdWorkflowRunsByRunIdResponse = zWorkflowRunDetailResponse
 
 export const zGetAppsByAppIdWorkflowRunsByRunIdExportPath = z.object({
-  app_id: z.string(),
-  run_id: z.string(),
+  app_id: z.uuid(),
+  run_id: z.uuid(),
 })
 
 /**
@@ -4813,8 +4848,8 @@ export const zGetAppsByAppIdWorkflowRunsByRunIdExportPath = z.object({
 export const zGetAppsByAppIdWorkflowRunsByRunIdExportResponse = zWorkflowRunExportResponse
 
 export const zGetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsPath = z.object({
-  app_id: z.string(),
-  run_id: z.string(),
+  app_id: z.uuid(),
+  run_id: z.uuid(),
 })
 
 /**
@@ -4825,9 +4860,9 @@ export const zGetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponse
 
 export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesPath
   = z.object({
-    app_id: z.string(),
+    app_id: z.uuid(),
     node_id: z.string(),
-    workflow_run_id: z.string(),
+    workflow_run_id: z.uuid(),
   })
 
 export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesQuery
@@ -4844,9 +4879,9 @@ export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandbox
 
 export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadPath
   = z.object({
-    app_id: z.string(),
+    app_id: z.uuid(),
     node_id: z.string(),
-    workflow_run_id: z.string(),
+    workflow_run_id: z.uuid(),
   })
 
 export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadQuery
@@ -4866,9 +4901,9 @@ export const zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandbo
 
 export const zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadPath
   = z.object({
-    app_id: z.string(),
+    app_id: z.uuid(),
     node_id: z.string(),
-    workflow_run_id: z.string(),
+    workflow_run_id: z.uuid(),
   })
 
 /**
@@ -4878,7 +4913,7 @@ export const zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandbo
   = zSandboxUploadResponse
 
 export const zGetAppsByAppIdWorkflowCommentsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4889,7 +4924,7 @@ export const zGetAppsByAppIdWorkflowCommentsResponse = zWorkflowCommentBasicList
 export const zPostAppsByAppIdWorkflowCommentsBody = zWorkflowCommentCreatePayload
 
 export const zPostAppsByAppIdWorkflowCommentsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4898,7 +4933,7 @@ export const zPostAppsByAppIdWorkflowCommentsPath = z.object({
 export const zPostAppsByAppIdWorkflowCommentsResponse = zWorkflowCommentCreate
 
 export const zGetAppsByAppIdWorkflowCommentsMentionUsersPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -4908,7 +4943,7 @@ export const zGetAppsByAppIdWorkflowCommentsMentionUsersResponse
   = zWorkflowCommentMentionUsersPayload
 
 export const zDeleteAppsByAppIdWorkflowCommentsByCommentIdPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   comment_id: z.string(),
 })
 
@@ -4918,7 +4953,7 @@ export const zDeleteAppsByAppIdWorkflowCommentsByCommentIdPath = z.object({
 export const zDeleteAppsByAppIdWorkflowCommentsByCommentIdResponse = z.void()
 
 export const zGetAppsByAppIdWorkflowCommentsByCommentIdPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   comment_id: z.string(),
 })
 
@@ -4930,7 +4965,7 @@ export const zGetAppsByAppIdWorkflowCommentsByCommentIdResponse = zWorkflowComme
 export const zPutAppsByAppIdWorkflowCommentsByCommentIdBody = zWorkflowCommentUpdatePayload
 
 export const zPutAppsByAppIdWorkflowCommentsByCommentIdPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   comment_id: z.string(),
 })
 
@@ -4942,7 +4977,7 @@ export const zPutAppsByAppIdWorkflowCommentsByCommentIdResponse = zWorkflowComme
 export const zPostAppsByAppIdWorkflowCommentsByCommentIdRepliesBody = zWorkflowCommentReplyPayload
 
 export const zPostAppsByAppIdWorkflowCommentsByCommentIdRepliesPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   comment_id: z.string(),
 })
 
@@ -4953,7 +4988,7 @@ export const zPostAppsByAppIdWorkflowCommentsByCommentIdRepliesResponse
   = zWorkflowCommentReplyCreate
 
 export const zDeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   comment_id: z.string(),
   reply_id: z.string(),
 })
@@ -4967,7 +5002,7 @@ export const zPutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdBody
   = zWorkflowCommentReplyPayload
 
 export const zPutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   comment_id: z.string(),
   reply_id: z.string(),
 })
@@ -4979,7 +5014,7 @@ export const zPutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponse
   = zWorkflowCommentReplyUpdate
 
 export const zPostAppsByAppIdWorkflowCommentsByCommentIdResolvePath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   comment_id: z.string(),
 })
 
@@ -4989,7 +5024,7 @@ export const zPostAppsByAppIdWorkflowCommentsByCommentIdResolvePath = z.object({
 export const zPostAppsByAppIdWorkflowCommentsByCommentIdResolveResponse = zWorkflowCommentResolve
 
 export const zGetAppsByAppIdWorkflowStatisticsAverageAppInteractionsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdWorkflowStatisticsAverageAppInteractionsQuery = z.object({
@@ -5004,7 +5039,7 @@ export const zGetAppsByAppIdWorkflowStatisticsAverageAppInteractionsResponse
   = zWorkflowAverageAppInteractionStatisticResponse
 
 export const zGetAppsByAppIdWorkflowStatisticsDailyConversationsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdWorkflowStatisticsDailyConversationsQuery = z.object({
@@ -5019,7 +5054,7 @@ export const zGetAppsByAppIdWorkflowStatisticsDailyConversationsResponse
   = zWorkflowDailyRunsStatisticResponse
 
 export const zGetAppsByAppIdWorkflowStatisticsDailyTerminalsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdWorkflowStatisticsDailyTerminalsQuery = z.object({
@@ -5034,7 +5069,7 @@ export const zGetAppsByAppIdWorkflowStatisticsDailyTerminalsResponse
   = zWorkflowDailyTerminalsStatisticResponse
 
 export const zGetAppsByAppIdWorkflowStatisticsTokenCostsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdWorkflowStatisticsTokenCostsQuery = z.object({
@@ -5049,7 +5084,7 @@ export const zGetAppsByAppIdWorkflowStatisticsTokenCostsResponse
   = zWorkflowDailyTokenCostStatisticResponse
 
 export const zGetAppsByAppIdWorkflowsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdWorkflowsQuery = z.object({
@@ -5065,7 +5100,7 @@ export const zGetAppsByAppIdWorkflowsQuery = z.object({
 export const zGetAppsByAppIdWorkflowsResponse = zWorkflowPaginationResponse
 
 export const zGetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -5075,7 +5110,7 @@ export const zGetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsResponse
   = zDefaultBlockConfigsResponse
 
 export const zGetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypePath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   block_type: z.string(),
 })
 
@@ -5090,7 +5125,7 @@ export const zGetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeRespo
   = zDefaultBlockConfigResponse
 
 export const zGetAppsByAppIdWorkflowsDraftPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -5101,7 +5136,7 @@ export const zGetAppsByAppIdWorkflowsDraftResponse = zWorkflowResponse
 export const zPostAppsByAppIdWorkflowsDraftBody = zSyncDraftWorkflowPayload
 
 export const zPostAppsByAppIdWorkflowsDraftPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -5110,7 +5145,7 @@ export const zPostAppsByAppIdWorkflowsDraftPath = z.object({
 export const zPostAppsByAppIdWorkflowsDraftResponse = zSyncDraftWorkflowResponse
 
 export const zGetAppsByAppIdWorkflowsDraftConversationVariablesPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -5122,7 +5157,7 @@ export const zPostAppsByAppIdWorkflowsDraftConversationVariablesBody
   = zConversationVariableUpdatePayload
 
 export const zPostAppsByAppIdWorkflowsDraftConversationVariablesPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -5131,7 +5166,7 @@ export const zPostAppsByAppIdWorkflowsDraftConversationVariablesPath = z.object(
 export const zPostAppsByAppIdWorkflowsDraftConversationVariablesResponse = zSimpleResultResponse
 
 export const zGetAppsByAppIdWorkflowsDraftEnvironmentVariablesPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -5144,7 +5179,7 @@ export const zPostAppsByAppIdWorkflowsDraftEnvironmentVariablesBody
   = zEnvironmentVariableUpdatePayload
 
 export const zPostAppsByAppIdWorkflowsDraftEnvironmentVariablesPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -5155,7 +5190,7 @@ export const zPostAppsByAppIdWorkflowsDraftEnvironmentVariablesResponse = zSimpl
 export const zPostAppsByAppIdWorkflowsDraftFeaturesBody = zWorkflowFeaturesPayload
 
 export const zPostAppsByAppIdWorkflowsDraftFeaturesPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -5167,7 +5202,7 @@ export const zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestBo
   = zHumanInputDeliveryTestPayload
 
 export const zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   node_id: z.string(),
 })
 
@@ -5181,7 +5216,7 @@ export const zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewBod
   = zHumanInputFormPreviewPayload
 
 export const zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   node_id: z.string(),
 })
 
@@ -5195,7 +5230,7 @@ export const zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunBody
   = zHumanInputFormSubmitPayload
 
 export const zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   node_id: z.string(),
 })
 
@@ -5208,7 +5243,7 @@ export const zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunRespons
 export const zPostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunBody = zIterationNodeRunPayload
 
 export const zPostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   node_id: z.string(),
 })
 
@@ -5220,7 +5255,7 @@ export const zPostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunResponse = z
 export const zPostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunBody = zLoopNodeRunPayload
 
 export const zPostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   node_id: z.string(),
 })
 
@@ -5230,7 +5265,7 @@ export const zPostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunPath = z.object({
 export const zPostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponse = zGeneratedAppResponse
 
 export const zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   node_id: z.string(),
 })
 
@@ -5243,7 +5278,7 @@ export const zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse
 export const zPutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerBody = zComposerSavePayload
 
 export const zPutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   node_id: z.string(),
 })
 
@@ -5254,7 +5289,7 @@ export const zPutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse
   = zWorkflowAgentComposerResponse
 
 export const zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   node_id: z.string(),
 })
 
@@ -5268,7 +5303,7 @@ export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactBody
   = zComposerSavePayload
 
 export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   node_id: z.string(),
 })
 
@@ -5282,7 +5317,7 @@ export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRoste
   = zComposerSavePayload
 
 export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   node_id: z.string(),
 })
 
@@ -5296,7 +5331,7 @@ export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateBod
   = zComposerSavePayload
 
 export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidatePath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   node_id: z.string(),
 })
 
@@ -5307,7 +5342,7 @@ export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateRes
   = zAgentComposerValidateResponse
 
 export const zGetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   node_id: z.string(),
 })
 
@@ -5320,7 +5355,7 @@ export const zGetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunResponse
 export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdRunBody = zDraftWorkflowNodeRunPayload
 
 export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdRunPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   node_id: z.string(),
 })
 
@@ -5331,7 +5366,7 @@ export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdRunResponse
   = zWorkflowRunNodeExecutionResponse
 
 export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   node_id: z.string(),
 })
 
@@ -5341,7 +5376,7 @@ export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunPath = z.objec
 export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponse = zGeneratedAppResponse
 
 export const zDeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   node_id: z.string(),
 })
 
@@ -5351,7 +5386,7 @@ export const zDeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesPath = z.obje
 export const zDeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponse = z.void()
 
 export const zGetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   node_id: z.string(),
 })
 
@@ -5364,7 +5399,7 @@ export const zGetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponse
 export const zPostAppsByAppIdWorkflowsDraftRunBody = zDraftWorkflowRunPayload
 
 export const zPostAppsByAppIdWorkflowsDraftRunPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -5373,8 +5408,8 @@ export const zPostAppsByAppIdWorkflowsDraftRunPath = z.object({
 export const zPostAppsByAppIdWorkflowsDraftRunResponse = zGeneratedAppResponse
 
 export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsPath = z.object({
-  app_id: z.string(),
-  run_id: z.string(),
+  app_id: z.uuid(),
+  run_id: z.uuid(),
 })
 
 /**
@@ -5383,8 +5418,8 @@ export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsPath = z.object(
 export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponse = zWorkflowRunSnapshotView
 
 export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsPath = z.object({
-  app_id: z.string(),
-  run_id: z.string(),
+  app_id: z.uuid(),
+  run_id: z.uuid(),
 })
 
 /**
@@ -5394,9 +5429,9 @@ export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponse
   = zEventStreamResponse
 
 export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   node_id: z.string(),
-  run_id: z.string(),
+  run_id: z.uuid(),
 })
 
 /**
@@ -5406,10 +5441,10 @@ export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdResponse
 
 export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewPath
   = z.object({
-    app_id: z.string(),
+    app_id: z.uuid(),
     node_id: z.string(),
     output_name: z.string(),
-    run_id: z.string(),
+    run_id: z.uuid(),
   })
 
 /**
@@ -5419,7 +5454,7 @@ export const zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutput
   = zOutputPreviewView
 
 export const zGetAppsByAppIdWorkflowsDraftSystemVariablesPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -5430,7 +5465,7 @@ export const zGetAppsByAppIdWorkflowsDraftSystemVariablesResponse = zWorkflowDra
 export const zPostAppsByAppIdWorkflowsDraftTriggerRunBody = zDraftWorkflowTriggerRunRequest
 
 export const zPostAppsByAppIdWorkflowsDraftTriggerRunPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -5441,7 +5476,7 @@ export const zPostAppsByAppIdWorkflowsDraftTriggerRunResponse = zGeneratedAppRes
 export const zPostAppsByAppIdWorkflowsDraftTriggerRunAllBody = zDraftWorkflowTriggerRunAllPayload
 
 export const zPostAppsByAppIdWorkflowsDraftTriggerRunAllPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -5450,7 +5485,7 @@ export const zPostAppsByAppIdWorkflowsDraftTriggerRunAllPath = z.object({
 export const zPostAppsByAppIdWorkflowsDraftTriggerRunAllResponse = zGeneratedAppResponse
 
 export const zDeleteAppsByAppIdWorkflowsDraftVariablesPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -5459,7 +5494,7 @@ export const zDeleteAppsByAppIdWorkflowsDraftVariablesPath = z.object({
 export const zDeleteAppsByAppIdWorkflowsDraftVariablesResponse = z.void()
 
 export const zGetAppsByAppIdWorkflowsDraftVariablesPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdWorkflowsDraftVariablesQuery = z.object({
@@ -5473,8 +5508,8 @@ export const zGetAppsByAppIdWorkflowsDraftVariablesQuery = z.object({
 export const zGetAppsByAppIdWorkflowsDraftVariablesResponse = zWorkflowDraftVariableListWithoutValue
 
 export const zDeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdPath = z.object({
-  app_id: z.string(),
-  variable_id: z.string(),
+  app_id: z.uuid(),
+  variable_id: z.uuid(),
 })
 
 /**
@@ -5483,8 +5518,8 @@ export const zDeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdPath = z.objec
 export const zDeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse = z.void()
 
 export const zGetAppsByAppIdWorkflowsDraftVariablesByVariableIdPath = z.object({
-  app_id: z.string(),
-  variable_id: z.string(),
+  app_id: z.uuid(),
+  variable_id: z.uuid(),
 })
 
 /**
@@ -5496,8 +5531,8 @@ export const zPatchAppsByAppIdWorkflowsDraftVariablesByVariableIdBody
   = zWorkflowDraftVariableUpdatePayload
 
 export const zPatchAppsByAppIdWorkflowsDraftVariablesByVariableIdPath = z.object({
-  app_id: z.string(),
-  variable_id: z.string(),
+  app_id: z.uuid(),
+  variable_id: z.uuid(),
 })
 
 /**
@@ -5506,8 +5541,8 @@ export const zPatchAppsByAppIdWorkflowsDraftVariablesByVariableIdPath = z.object
 export const zPatchAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse = zWorkflowDraftVariable
 
 export const zPutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetPath = z.object({
-  app_id: z.string(),
-  variable_id: z.string(),
+  app_id: z.uuid(),
+  variable_id: z.uuid(),
 })
 
 export const zPutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetResponse = z.union([
@@ -5516,7 +5551,7 @@ export const zPutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetResponse = z
 ])
 
 export const zGetAppsByAppIdWorkflowsPublishPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -5527,7 +5562,7 @@ export const zGetAppsByAppIdWorkflowsPublishResponse = zWorkflowResponse
 export const zPostAppsByAppIdWorkflowsPublishBody = zPublishWorkflowPayload
 
 export const zPostAppsByAppIdWorkflowsPublishPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -5536,8 +5571,8 @@ export const zPostAppsByAppIdWorkflowsPublishPath = z.object({
 export const zPostAppsByAppIdWorkflowsPublishResponse = zWorkflowPublishResponse
 
 export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsPath = z.object({
-  app_id: z.string(),
-  run_id: z.string(),
+  app_id: z.uuid(),
+  run_id: z.uuid(),
 })
 
 /**
@@ -5547,8 +5582,8 @@ export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponse
   = zWorkflowRunSnapshotView
 
 export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsPath = z.object({
-  app_id: z.string(),
-  run_id: z.string(),
+  app_id: z.uuid(),
+  run_id: z.uuid(),
 })
 
 /**
@@ -5558,9 +5593,9 @@ export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsRespon
   = zEventStreamResponse
 
 export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   node_id: z.string(),
-  run_id: z.string(),
+  run_id: z.uuid(),
 })
 
 /**
@@ -5571,10 +5606,10 @@ export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResp
 
 export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewPath
   = z.object({
-    app_id: z.string(),
+    app_id: z.uuid(),
     node_id: z.string(),
     output_name: z.string(),
-    run_id: z.string(),
+    run_id: z.uuid(),
   })
 
 /**
@@ -5584,7 +5619,7 @@ export const zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOu
   = zOutputPreviewView
 
 export const zGetAppsByAppIdWorkflowsTriggersWebhookPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetAppsByAppIdWorkflowsTriggersWebhookQuery = z.object({
@@ -5597,7 +5632,7 @@ export const zGetAppsByAppIdWorkflowsTriggersWebhookQuery = z.object({
 export const zGetAppsByAppIdWorkflowsTriggersWebhookResponse = zWebhookTriggerResponse
 
 export const zDeleteAppsByAppIdWorkflowsByWorkflowIdPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   workflow_id: z.string(),
 })
 
@@ -5609,7 +5644,7 @@ export const zDeleteAppsByAppIdWorkflowsByWorkflowIdResponse = z.void()
 export const zPatchAppsByAppIdWorkflowsByWorkflowIdBody = zWorkflowUpdatePayload
 
 export const zPatchAppsByAppIdWorkflowsByWorkflowIdPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   workflow_id: z.string(),
 })
 
@@ -5619,7 +5654,7 @@ export const zPatchAppsByAppIdWorkflowsByWorkflowIdPath = z.object({
 export const zPatchAppsByAppIdWorkflowsByWorkflowIdResponse = zWorkflowResponse
 
 export const zPostAppsByAppIdWorkflowsByWorkflowIdRestorePath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   workflow_id: z.string(),
 })
 
@@ -5629,7 +5664,7 @@ export const zPostAppsByAppIdWorkflowsByWorkflowIdRestorePath = z.object({
 export const zPostAppsByAppIdWorkflowsByWorkflowIdRestoreResponse = zWorkflowRestoreResponse
 
 export const zGetAppsByResourceIdApiKeysPath = z.object({
-  resource_id: z.string(),
+  resource_id: z.uuid(),
 })
 
 /**
@@ -5638,7 +5673,7 @@ export const zGetAppsByResourceIdApiKeysPath = z.object({
 export const zGetAppsByResourceIdApiKeysResponse = zApiKeyList
 
 export const zPostAppsByResourceIdApiKeysPath = z.object({
-  resource_id: z.string(),
+  resource_id: z.uuid(),
 })
 
 /**
@@ -5647,8 +5682,8 @@ export const zPostAppsByResourceIdApiKeysPath = z.object({
 export const zPostAppsByResourceIdApiKeysResponse = zApiKeyItem
 
 export const zDeleteAppsByResourceIdApiKeysByApiKeyIdPath = z.object({
-  api_key_id: z.string(),
-  resource_id: z.string(),
+  api_key_id: z.uuid(),
+  resource_id: z.uuid(),
 })
 
 /**
@@ -5657,7 +5692,7 @@ export const zDeleteAppsByResourceIdApiKeysByApiKeyIdPath = z.object({
 export const zDeleteAppsByResourceIdApiKeysByApiKeyIdResponse = z.void()
 
 export const zGetAppsByServerIdServerRefreshPath = z.object({
-  server_id: z.string(),
+  server_id: z.uuid(),
 })
 
 /**

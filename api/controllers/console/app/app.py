@@ -402,8 +402,6 @@ class AppPartial(ResponseModel):
     bound_agent_id: str | None = None
     # For Agent App responses exposed through /agent.
     app_id: str | None = None
-    role: str | None = None
-    active_config_is_published: bool = False
     is_starred: bool = False
 
     @computed_field(return_type=str | None)  # type: ignore
@@ -457,8 +455,6 @@ class AppDetailWithSite(AppDetail):
     bound_agent_id: str | None = None
     # For Agent App responses exposed through /agent.
     app_id: str | None = None
-    role: str | None = None
-    active_config_is_published: bool = False
 
     @computed_field(return_type=str | None)  # type: ignore
     @property
@@ -541,10 +537,7 @@ register_schema_models(
     ModelConfig,
     Site,
     DeletedTool,
-    AppPartial,
     AppDetail,
-    AppDetailWithSite,
-    AppPagination,
     AppExportResponse,
     Segmentation,
     PreProcessingRule,
@@ -562,6 +555,13 @@ register_schema_models(
     RerankingModel,
     DataSource,
     LoadBalancingPayload,
+)
+
+register_response_schema_models(
+    console_ns,
+    AppPartial,
+    AppDetailWithSite,
+    AppPagination,
 )
 
 

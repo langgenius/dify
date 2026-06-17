@@ -4,6 +4,10 @@ import type { AgentV2NodeType } from './types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  extractAgentOutputNames,
+  replaceAgentOutputName,
+} from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
 import { useStore } from '@/app/components/workflow/store'
 import { isAgentV2Enabled } from '@/utils/features'
@@ -23,6 +27,8 @@ export function AgentV2Panel({
 }: NodePanelProps<AgentV2NodeType>) {
   const { t } = useTranslation()
   const { inputs, setInputs } = useNodeCrud<AgentV2NodeType>(id, data)
+  const inputsRef = useRef(inputs)
+  const promptOutputNamesRef = useRef(extractAgentOutputNames(inputs.agent_task || ''))
   const [isRosterAgentPanelOpen, setIsRosterAgentPanelOpen] = useState(false)
   const [isInlineAgentPanelOpenedFromTrigger, setIsInlineAgentPanelOpenedFromTrigger] = useState(false)
   const { handleNodeDataUpdate, handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
@@ -51,6 +57,11 @@ export function AgentV2Panel({
     : undefined)
 
   useEffect(() => {
+    inputsRef.current = inputs
+    promptOutputNamesRef.current = extractAgentOutputNames(inputs.agent_task || '')
+  }, [inputs])
+
+  useEffect(() => {
     if (!inputs._openInlineAgentPanel || !isInlineAgentReady)
       return
 
@@ -64,11 +75,20 @@ export function AgentV2Panel({
   }, [handleNodeDataUpdate, id, inputs._openInlineAgentPanel, isInlineAgentReady, setOpenInlineAgentPanelNodeId])
 
   const handleTaskChange = useCallback((value: string) => {
-    const newInputs = produce(inputs, (draft) => {
+    const currentPromptOutputNames = extractAgentOutputNames(value)
+    const removedPromptOutputNames = [...promptOutputNamesRef.current].filter(name => !currentPromptOutputNames.has(name))
+    const newInputs = produce(inputsRef.current, (draft) => {
       draft.agent_task = value
+      if (removedPromptOutputNames.length) {
+        const removedNameSet = new Set(removedPromptOutputNames)
+        draft.agent_declared_outputs = getAgentV2DeclaredOutputs(draft)
+          .filter(output => !removedNameSet.has(output.name))
+      }
     })
+    inputsRef.current = newInputs
+    promptOutputNamesRef.current = currentPromptOutputNames
     setInputs(newInputs)
-  }, [inputs, setInputs])
+  }, [setInputs])
 
   const handleRosterChange = useCallback((agent: AgentRosterNodeData) => {
     setOpenInlineAgentPanelNodeId(undefined)
@@ -103,10 +123,33 @@ export function AgentV2Panel({
     setIsRosterAgentPanelOpen(open)
   }, [id, isInlineAgentReady, setOpenInlineAgentPanelNodeId])
 
-  const handleDeclaredOutputsChange = useCallback((outputs: ReturnType<typeof getAgentV2DeclaredOutputs>) => {
-    const newInputs = produce(inputs, (draft) => {
+  const handleDeclaredOutputsChange = useCallback((outputs: ReturnType<typeof getAgentV2DeclaredOutputs>, agentTask?: string) => {
+    const previousOutputs = getAgentV2DeclaredOutputs(inputsRef.current)
+    let nextAgentTask = agentTask
+    if (nextAgentTask === undefined && previousOutputs.length === outputs.length) {
+      const renamedOutputs = previousOutputs
+        .map((previousOutput, index) => ({
+          oldName: previousOutput.name,
+          nextName: outputs[index]?.name,
+        }))
+        .filter(({ oldName, nextName }) => nextName && oldName !== nextName)
+
+      if (renamedOutputs.length === 1) {
+        const { oldName, nextName } = renamedOutputs[0]!
+        const currentAgentTask = inputsRef.current.agent_task || ''
+        if (extractAgentOutputNames(currentAgentTask).has(oldName))
+          nextAgentTask = replaceAgentOutputName(currentAgentTask, oldName, nextName!)
+      }
+    }
+
+    const newInputs = produce(inputsRef.current, (draft) => {
       draft.agent_declared_outputs = outputs
+      if (nextAgentTask !== undefined)
+        draft.agent_task = nextAgentTask
     })
+    inputsRef.current = newInputs
+    if (nextAgentTask !== undefined)
+      promptOutputNamesRef.current = extractAgentOutputNames(nextAgentTask)
     handleNodeDataUpdateWithSyncDraft(
       {
         id,
@@ -117,7 +160,7 @@ export function AgentV2Panel({
         notRefreshWhenSyncError: true,
       },
     )
-  }, [handleNodeDataUpdateWithSyncDraft, id, inputs])
+  }, [handleNodeDataUpdateWithSyncDraft, id])
 
   return (
     <div ref={drawerPortalContainerRef} className="pt-2">
@@ -126,6 +169,7 @@ export function AgentV2Panel({
           agent={displayedAgent}
           agentId={rosterAgentId ?? inlineAgentId ?? undefined}
           canOpenPanel={!isInlineAgentPending}
+          isInlineSetup={isInlineAgentReady}
           isLoading={isInlineAgentLoading}
           isPanelOpen={isAgentPanelOpen}
           isPending={isInlineAgentPending}
@@ -158,7 +202,9 @@ export function AgentV2Panel({
           <AgentTaskField
             id={id}
             data={inputs}
+            outputs={declaredOutputs}
             onChange={handleTaskChange}
+            onOutputsChange={handleDeclaredOutputsChange}
           />
         </div>
         <AgentAdvancedSettings />

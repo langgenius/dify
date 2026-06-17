@@ -164,6 +164,8 @@
   "upgrade.uploadMultipleFiles.title": "बैच दस्तावेज़ अपलोड अनलॉक करने के लिए अपग्रेड करें",
   "upgrade.uploadMultiplePages.description": "आपने अपलोड की सीमा तक पहुँच लिया है — आपके वर्तमान प्लान पर एक समय में केवल एक ही दस्तावेज़ चुना और अपलोड किया जा सकता है।",
   "upgrade.uploadMultiplePages.title": "एक बार में कई दस्तावेज़ अपलोड करने के लिए अपग्रेड करें",
+  "upgrade.workflowRestore.description": "आपकी वर्तमान योजना में वर्कफ़्लो संस्करण पुनर्स्थापना उपलब्ध नहीं है।",
+  "upgrade.workflowRestore.title": "वर्कफ़्लो संस्करणों को पुनर्स्थापित करने के लिए अपग्रेड करें",
   "upgradeBtn.encourage": "अभी अपग्रेड करें",
   "upgradeBtn.encourageShort": "अपग्रेड करें",
   "upgradeBtn.plain": "योजना अपग्रेड करें",

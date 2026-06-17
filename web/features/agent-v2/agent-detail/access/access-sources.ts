@@ -1,4 +1,4 @@
-import type { AppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 
 export type AgentAccessSource = {
@@ -10,10 +10,10 @@ export type AgentAccessSource = {
   icon: string
 }
 
-const getStatus = (agent: AppDetailWithSite): AgentAccessSource['status'] =>
+const getStatus = (agent: AgentAppDetailWithSite): AgentAccessSource['status'] =>
   agent.id ? 'enabled' : 'disabled'
 
-export const getAgentAccessSources = (agent?: AppDetailWithSite): AgentAccessSource[] => {
+export const getAgentAccessSources = (agent?: AgentAppDetailWithSite): AgentAccessSource[] => {
   if (!agent)
     return []
 

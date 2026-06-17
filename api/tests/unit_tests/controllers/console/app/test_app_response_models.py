@@ -351,6 +351,7 @@ def test_app_partial_serialization_uses_aliases(app_models):
         create_user_name="Creator",
         author_name="Author",
         has_draft_trigger=True,
+        role="Should stay agent-only",
     )
 
     serialized = AppPartial.model_validate(app_obj, from_attributes=True).model_dump(mode="json")
@@ -363,6 +364,7 @@ def test_app_partial_serialization_uses_aliases(app_models):
     assert serialized["model_config"]["model"] == {"provider": "openai", "name": "gpt-4o"}
     assert serialized["workflow"]["id"] == "wf-1"
     assert serialized["tags"][0]["name"] == "Utilities"
+    assert "role" not in serialized
 
 
 def test_app_detail_with_site_includes_nested_serialization(app_models):
@@ -405,6 +407,7 @@ def test_app_detail_with_site_includes_nested_serialization(app_models):
         deleted_tools=[{"type": "api", "tool_name": "search", "provider_id": "prov"}],
         site=site,
         bound_agent_id="agent-1",
+        role="Should stay agent-only",
     )
 
     serialized = AppDetailWithSite.model_validate(app_obj, from_attributes=True).model_dump(mode="json")
@@ -415,6 +418,7 @@ def test_app_detail_with_site_includes_nested_serialization(app_models):
     assert serialized["site"]["icon_url"] == "signed:site-icon"
     assert serialized["site"]["created_at"] == int(timestamp.timestamp())
     assert serialized["bound_agent_id"] == "agent-1"
+    assert "role" not in serialized
 
 
 def test_app_pagination_aliases_per_page_and_has_next(app_models):

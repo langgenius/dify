@@ -1,10 +1,18 @@
 import type { NodeProps } from '../../types'
 import type { AgentV2NodeType } from './types'
-import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
+import type { AppIconType } from '@/types/app'
 import { useTranslation } from 'react-i18next'
+import AppIcon from '@/app/components/base/app-icon'
 import { SettingItem } from '../_base/components/setting-item'
 import { useAgentRosterDetail, useWorkflowInlineAgentDetail } from './hooks'
 import { hasInlineAgentBinding, hasValidRosterAgentBinding } from './types'
+
+const getAppIconType = (iconType?: string | null): AppIconType | null => {
+  if (iconType === 'emoji' || iconType === 'image' || iconType === 'link')
+    return iconType
+
+  return null
+}
 
 function AgentNodeAvatar({
   agent,
@@ -13,8 +21,6 @@ function AgentNodeAvatar({
   agent?: ReturnType<typeof useAgentRosterDetail>['data']
   isInlineAgent: boolean
 }) {
-  const imageUrl = agent && (agent.icon_type === 'image' || agent.icon_type === 'link') ? agent.icon : undefined
-
   if (isInlineAgent) {
     return (
       <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-background-default-burn text-text-tertiary">
@@ -27,21 +33,13 @@ function AgentNodeAvatar({
     return <span aria-hidden className="size-8 shrink-0 rounded-full bg-text-quaternary/20" />
 
   return (
-    <AvatarRoot
-      size="md"
-      className="border-[0.5px] border-divider-regular"
-      style={{ background: imageUrl ? undefined : (agent.icon_background || '#FFEAD5') }}
-    >
-      {imageUrl && (
-        <AvatarImage
-          src={imageUrl}
-          alt={agent.name}
-        />
-      )}
-      <AvatarFallback size="md" className="text-lg text-text-primary-on-surface">
-        {agent.icon_type === 'emoji' && agent.icon ? agent.icon : agent.name[0]?.toLocaleUpperCase()}
-      </AvatarFallback>
-    </AvatarRoot>
+    <AppIcon
+      size="small"
+      iconType={getAppIconType(agent.icon_type)}
+      icon={agent.icon ?? undefined}
+      background={agent.icon_background}
+      imageUrl={agent.icon ?? undefined}
+    />
   )
 }
 

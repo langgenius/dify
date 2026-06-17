@@ -18,10 +18,10 @@ const renderToolbar = ({
       <RosterToolbar
         draftAgents={2}
         filter={filter}
-        inUseAgents={1}
         keyword=""
         onFilterChange={onFilterChange}
         onKeywordChange={vi.fn()}
+        publishedAgents={1}
       />
     </QueryClientProvider>,
   )
@@ -34,15 +34,15 @@ describe('RosterToolbar', () => {
     const user = userEvent.setup()
     const { onFilterChange } = renderToolbar()
 
-    const inUseFilter = screen.getByRole('button', { name: /agentV2\.roster\.filters\.inUse/ })
+    const publishedFilter = screen.getByRole('button', { name: /agentV2\.roster\.filters\.published/ })
     const draftsFilter = screen.getByRole('button', { name: /agentV2\.roster\.filters\.drafts/ })
 
-    expect(inUseFilter).toBeEnabled()
+    expect(publishedFilter).toBeEnabled()
     expect(draftsFilter).toBeEnabled()
 
-    await user.click(inUseFilter)
+    await user.click(publishedFilter)
 
-    expect(onFilterChange).toHaveBeenCalledWith('in-use')
+    expect(onFilterChange).toHaveBeenCalledWith('published')
   })
 
   it('renders stable filter count badges and omits the all count', () => {

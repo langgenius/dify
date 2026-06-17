@@ -1,6 +1,6 @@
 import type { ReactNode, RefObject } from 'react'
 import type { AgentRosterNodeData } from '@/app/components/workflow/block-selector/types'
-import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
+import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -21,6 +21,7 @@ import {
 } from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import AppIcon from '@/app/components/base/app-icon'
 import { AgentSelectorContent } from '@/app/components/workflow/block-selector/agent-selector'
 import { getAgentDetailPath } from '@/features/agent-v2/agent-detail/routes'
 import Link from '@/next/link'
@@ -38,6 +39,13 @@ type AgentRosterDisplayData = {
   role?: string | null
 }
 
+const getAppIconType = (iconType?: string | null): AppIconType | null => {
+  if (iconType === 'emoji' || iconType === 'image' || iconType === 'link')
+    return iconType
+
+  return null
+}
+
 function AgentRosterAvatar({
   agent,
   size = 'lg',
@@ -47,24 +55,29 @@ function AgentRosterAvatar({
   size?: 'xs' | 'md' | 'lg'
   className?: string
 }) {
-  const imageUrl = (agent.icon_type === 'image' || agent.icon_type === 'link') ? agent.icon : undefined
+  const iconSize = size === 'md' ? 'medium' : size === 'xs' ? 'tiny' : 'small'
 
   return (
-    <AvatarRoot
-      size={size}
-      className={cn('border-[0.5px] border-divider-regular', className)}
-      style={{ background: imageUrl ? undefined : (agent.icon_background || '#FFEAD5') }}
-    >
-      {imageUrl && (
-        <AvatarImage
-          src={imageUrl}
-          alt={agent.name}
-        />
-      )}
-      <AvatarFallback size={size} className="text-text-primary-on-surface">
-        {agent.icon_type === 'emoji' && agent.icon ? agent.icon : agent.name[0]?.toLocaleUpperCase()}
-      </AvatarFallback>
-    </AvatarRoot>
+    <AppIcon
+      size={iconSize}
+      iconType={getAppIconType(agent.icon_type)}
+      icon={agent.icon ?? undefined}
+      background={agent.icon_background}
+      imageUrl={agent.icon ?? undefined}
+      className={className}
+    />
+  )
+}
+
+function InlineSetupAvatar({
+  className,
+}: {
+  className?: string
+}) {
+  return (
+    <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-full bg-background-default-burn', className)}>
+      <span aria-hidden className="i-custom-vender-agent-v2-robot-3 size-5 text-text-tertiary" />
+    </span>
   )
 }
 
@@ -205,6 +218,7 @@ export function AgentRosterField({
   isPanelOpen,
   isPending = false,
   isLoading = false,
+  isInlineSetup = false,
   panelBody,
   panelMode = 'detail',
   showChangeAction = true,
@@ -219,6 +233,7 @@ export function AgentRosterField({
   canOpenPanel?: boolean
   isPanelOpen?: boolean
   isLoading?: boolean
+  isInlineSetup?: boolean
   isPending?: boolean
   panelBody?: ReactNode
   panelMode?: AgentRosterDrawerMode
@@ -234,6 +249,8 @@ export function AgentRosterField({
   const [isSelectorOpen, setIsSelectorOpen] = useState(false)
   const panelOpen = isPanelOpen ?? localPanelOpen
   const setPanelOpen = onPanelOpenChange ?? setLocalPanelOpen
+  const inlineSetupName = t(`${i18nPrefix}.roster.inlineSetup.name`, { ns: 'workflow' })
+  const inlineSetupType = t(`${i18nPrefix}.roster.inlineSetup.type`, { ns: 'workflow' })
   const rosterRequiredMessage = t('errorMsg.fieldRequired', {
     ns: 'workflow',
     field: t(`${i18nPrefix}.roster.label`, { ns: 'workflow' }),
@@ -241,13 +258,13 @@ export function AgentRosterField({
   const agentContent = agent
     ? (
         <>
-          <AgentRosterAvatar agent={agent} />
+          {isInlineSetup ? <InlineSetupAvatar /> : <AgentRosterAvatar agent={agent} />}
           <span className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
             <span className="truncate system-sm-medium text-text-secondary">
-              {agent.name}
+              {isInlineSetup ? inlineSetupName : agent.name}
             </span>
             <span className="truncate system-xs-regular text-text-tertiary">
-              {agent.role}
+              {isInlineSetup ? inlineSetupType : agent.role}
             </span>
           </span>
         </>
@@ -315,7 +332,7 @@ export function AgentRosterField({
                   <>
                     <button
                       type="button"
-                      aria-label={t(`${i18nPrefix}.roster.openPanel`, { ns: 'workflow', name: agent.name })}
+                      aria-label={t(`${i18nPrefix}.roster.openPanel`, { ns: 'workflow', name: isInlineSetup ? inlineSetupName : agent.name })}
                       aria-busy={isLoading || undefined}
                       className="flex h-13 w-full min-w-0 cursor-pointer items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3 hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                       onClick={() => setPanelOpen(true)}

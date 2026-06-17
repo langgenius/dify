@@ -216,6 +216,55 @@ describe('consoleQuery agent mutation defaults', () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const removeQueries = vi.spyOn(queryClient, 'removeQueries')
+    const inviteOptionsQueryKey = consoleQuery.agent.inviteOptions.get.queryKey({
+      input: {
+        query: {
+          app_id: 'app-1',
+          limit: 8,
+          page: 1,
+        },
+      },
+    })
+    queryClient.setQueryData(inviteOptionsQueryKey, {
+      data: [
+        {
+          active_config_is_published: true,
+          active_config_snapshot: null,
+          active_config_snapshot_id: 'snapshot-1',
+          agent_kind: 'dify_agent',
+          app_id: null,
+          archived_at: null,
+          archived_by: null,
+          created_at: 1,
+          created_by: null,
+          description: 'Agent description',
+          existing_node_ids: [],
+          icon: null,
+          icon_background: null,
+          icon_type: null,
+          id: 'agent-1',
+          in_current_workflow_count: 0,
+          is_in_current_workflow: false,
+          name: 'Agent',
+          published_node_reference_count: 0,
+          published_reference_count: 0,
+          published_references: [],
+          role: '',
+          scope: 'roster',
+          source: 'workflow',
+          status: 'active',
+          updated_at: 1,
+          updated_by: null,
+          workflow_id: null,
+          workflow_node_id: null,
+        },
+      ],
+      has_more: false,
+      limit: 8,
+      page: 1,
+      total: 1,
+    })
 
     const mutationOptions = consoleQuery.agent.byAgentId.composer.put.mutationOptions()
     await mutationOptions.onSuccess?.(
@@ -242,6 +291,10 @@ describe('consoleQuery agent mutation defaults', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.agent.inviteOptions.get.key(),
     })
+    expect(removeQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.inviteOptions.get.key(),
+    })
+    expect(queryClient.getQueryData(inviteOptionsQueryKey)).toBeUndefined()
   })
 
   it('should keep roster and invite option lists stable after saving an agent draft', async () => {

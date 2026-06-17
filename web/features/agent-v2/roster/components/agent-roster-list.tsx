@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentAppPartial, AgentIconType } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentAppPartial, AgentIconType, AgentPublishedReferenceResponse } from '@dify/contracts/api/console/agent/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   DropdownMenu,
@@ -31,7 +31,10 @@ type AgentRosterListProps = {
   onLoadMore: () => void
 }
 
-export type AgentRosterListItem = AgentAppPartial
+export type AgentRosterListItem = AgentAppPartial & {
+  published_reference_count?: number
+  published_references?: AgentPublishedReferenceResponse[]
+}
 
 const skeletonRows = ['primary', 'secondary', 'tertiary'] as const
 const emptyPlaceholderCardIds = Array.from({ length: 16 }, (_, index) => `agent-roster-placeholder-card-${index}`)
@@ -62,10 +65,10 @@ function AgentRosterSkeleton() {
   )
 }
 
-function AgentRosterEmptyState({ title }: { title: string }) {
+function AgentRosterPlaceholderState({ title }: { title: string }) {
   return (
     <section
-      aria-labelledby="agent-roster-empty-title"
+      aria-labelledby="agent-roster-placeholder-title"
       className="relative col-span-full min-h-[calc(100vh-142px)] overflow-hidden"
     >
       <div className="pointer-events-none absolute inset-0 grid grid-cols-1 grid-rows-4 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -81,7 +84,7 @@ function AgentRosterEmptyState({ title }: { title: string }) {
               <span aria-hidden className="i-ri-robot-2-line size-6 text-text-tertiary" />
             </div>
           </div>
-          <h2 id="agent-roster-empty-title" className="system-sm-regular whitespace-nowrap text-text-tertiary">
+          <h2 id="agent-roster-placeholder-title" className="system-sm-regular whitespace-nowrap text-text-tertiary">
             {title}
           </h2>
         </div>
@@ -108,7 +111,7 @@ function AgentRosterItem({
   const referenceCount = agent.published_reference_count ?? 0
   const publishedReferences = agent.published_references ?? []
   const hasPublishedReferences = publishedReferences.length > 0
-  const usageStatus = referenceCount > 0 ? 'inUse' : 'draft'
+  const isDraft = agent.active_config_is_published !== true
   const imageUrl = (agent.icon_type === 'image' || agent.icon_type === 'link') ? agent.icon : undefined
   const iconType = (imageUrl ? 'image' : agent.icon_type) as AgentIconType | null | undefined
 
@@ -137,7 +140,7 @@ function AgentRosterItem({
                 {agent.name}
               </h2>
               <p className="truncate system-xs-regular text-text-tertiary">
-                {agent.mode}
+                {agent.role}
               </p>
             </div>
           </div>
@@ -172,12 +175,14 @@ function AgentRosterItem({
           </div>
         </div>
       </div>
-      <div className="absolute top-0 right-0 flex h-5 items-start overflow-hidden">
-        <div className="h-5 w-3 bg-background-section-burn [clip-path:polygon(0_0,100%_0,100%_100%)]" />
-        <div className="flex h-5 items-center bg-background-section-burn pr-2 pl-0.5 system-2xs-medium-uppercase text-text-tertiary">
-          {t(`roster.usageStatus.${usageStatus}`)}
+      {isDraft && (
+        <div className="absolute top-0 right-0 flex h-5 items-start overflow-hidden">
+          <div className="h-5 w-3 bg-background-section-burn [clip-path:polygon(0_0,100%_0,100%_100%)]" />
+          <div className="flex h-5 items-center bg-background-section-burn pr-2 pl-0.5 system-2xs-medium-uppercase text-text-tertiary">
+            {t('roster.usageStatus.draft')}
+          </div>
         </div>
-      </div>
+      )}
       <div
         className="pointer-events-none absolute top-2 right-2 z-20 flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 opacity-0 shadow-lg backdrop-blur-xs transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 has-data-popup-open:pointer-events-auto has-data-popup-open:opacity-100"
       >
@@ -233,12 +238,10 @@ export function AgentRosterList({
     <section aria-label={label} className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,294px),1fr))] gap-2.5" aria-busy={isFetching || undefined}>
       {isPending && <AgentRosterSkeleton />}
       {!isPending && isError && (
-        <div className="col-span-full rounded-xl border border-components-card-border bg-components-card-bg px-4 py-8 text-center shadow-xs">
-          <p className="system-sm-medium text-text-secondary">{t('roster.loadingError')}</p>
-        </div>
+        <AgentRosterPlaceholderState title={t('roster.loadingError')} />
       )}
       {!isPending && !isError && agents.length === 0 && (
-        <AgentRosterEmptyState title={isEmptySearch ? t('roster.emptySearch') : t('roster.empty')} />
+        <AgentRosterPlaceholderState title={isEmptySearch ? t('roster.emptySearch') : t('roster.empty')} />
       )}
       {!isPending && !isError && agents.map(agent => (
         <AgentRosterItem key={agent.id} agent={agent} />

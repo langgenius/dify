@@ -110,17 +110,21 @@ export function EditAgentDialog({
       || trimmedRole !== (agent.role?.trim() ?? '')
       || hasIconChanges
 
-    if (!trimmedName || !hasFormChanges || updateAgentMutation.isPending)
+    if (updateAgentMutation.isPending)
+      return
+
+    if (!hasFormChanges)
       return
 
     const body: AgentAppUpdatePayload = {
       name: trimmedName,
       description: trimmedDescription,
+      // Keep sending the trimmed role even when empty: omitting the field
+      // preserves the current backing-agent role, while "" intentionally clears it.
       role: trimmedRole,
     }
 
-    if (hasIconChanges)
-      applyIconPayload(body, agentIcon)
+    applyIconPayload(body, agentIcon)
 
     updateAgentMutation.mutate({
       params: {
@@ -178,7 +182,7 @@ export function EditAgentDialog({
             onFormSubmit={handleSubmit}
           >
             <div className="space-y-5 px-6 py-3">
-              <div className="flex items-end gap-4">
+              <div className="flex items-end gap-4 pb-2">
                 <button
                   type="button"
                   aria-label={t('roster.editAgent', { name: agent.name })}
@@ -196,7 +200,16 @@ export function EditAgentDialog({
                   />
                 </button>
                 <div className="flex min-w-0 flex-1 gap-3 pb-1">
-                  <FieldRoot name="name" className="min-w-0 flex-1">
+                  <FieldRoot
+                    name="name"
+                    className="relative min-w-0 flex-1"
+                    validate={(value) => {
+                      if (typeof value === 'string' && value.length > 0 && !value.trim())
+                        return t('roster.createForm.nameRequired')
+
+                      return null
+                    }}
+                  >
                     <FieldLabel>
                       {t('roster.createForm.nameLabel')}
                     </FieldLabel>
@@ -210,11 +223,21 @@ export function EditAgentDialog({
                       required
                       value={name}
                     />
-                    <FieldError match="valueMissing">
-                      {t('roster.createForm.nameRequired')}
-                    </FieldError>
+                    <div className="absolute top-full left-0 mt-1">
+                      <FieldError match="valueMissing">{t('roster.createForm.nameRequired')}</FieldError>
+                      <FieldError match="customError" />
+                    </div>
                   </FieldRoot>
-                  <FieldRoot name="role" className="min-w-0 flex-1">
+                  <FieldRoot
+                    name="role"
+                    className="relative min-w-0 flex-1"
+                    validate={(value) => {
+                      if (typeof value === 'string' && value.length > 0 && !value.trim())
+                        return t('roster.createForm.roleRequired')
+
+                      return null
+                    }}
+                  >
                     <FieldLabel>
                       {t('roster.createForm.roleLabel')}
                     </FieldLabel>
@@ -223,8 +246,13 @@ export function EditAgentDialog({
                       maxLength={255}
                       onValueChange={setRole}
                       placeholder={t('roster.createForm.rolePlaceholder')}
+                      required
                       value={role}
                     />
+                    <div className="absolute top-full left-0 mt-1">
+                      <FieldError match="valueMissing">{t('roster.createForm.roleRequired')}</FieldError>
+                      <FieldError match="customError" />
+                    </div>
                   </FieldRoot>
                 </div>
               </div>
@@ -252,7 +280,7 @@ export function EditAgentDialog({
                 type="submit"
                 variant="primary"
                 className="min-w-18"
-                disabled={!trimmedName || !hasChanges}
+                disabled={!hasChanges}
                 loading={updateAgentMutation.isPending}
               >
                 {tCommon('operation.save')}

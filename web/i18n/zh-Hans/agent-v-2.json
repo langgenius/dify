@@ -222,6 +222,12 @@
   "agentDetail.configure.tools.removeProvider": "移除所有工具",
   "agentDetail.configure.tools.tip": "此智能体在编排任务时可调用的工具。",
   "agentDetail.configure.tools.toggle": "展开或收起工具",
+  "agentDetail.configure.tools.toolTabs.all": "全部",
+  "agentDetail.configure.tools.toolTabs.cli": "CLI",
+  "agentDetail.configure.tools.toolTabs.custom": "自定义",
+  "agentDetail.configure.tools.toolTabs.mcp": "MCP",
+  "agentDetail.configure.tools.toolTabs.plugins": "插件",
+  "agentDetail.configure.tools.toolTabs.workflow": "Workflow",
   "agentDetail.documentTitle": "智能体",
   "agentDetail.history": "历史记录",
   "agentDetail.logs.description": "完整日志记录应用运行状态，包括用户输入、智能体回复、规划和工具使用。",
@@ -328,6 +334,7 @@
   "roster.createForm.nameRequired": "请输入名称。",
   "roster.createForm.roleLabel": "角色",
   "roster.createForm.rolePlaceholder": "例如：研究助理",
+  "roster.createForm.roleRequired": "请输入角色。",
   "roster.createSuccess": "智能体已创建。",
   "roster.dateTimeFormat": "YYYY-MM-DD HH:mm:ss",
   "roster.deleteDialog.description": "此智能体将从当前活跃 Roster 列表中移除。",
@@ -344,8 +351,8 @@
   "roster.emptySearchDescription": "请尝试其他智能体名称。",
   "roster.filters.all": "全部",
   "roster.filters.drafts": "草稿",
-  "roster.filters.inUse": "使用中",
   "roster.filters.label": "智能体筛选",
+  "roster.filters.published": "已发布",
   "roster.learnMore": "了解 Agent Roster",
   "roster.listLabel": "智能体 Roster 列表",
   "roster.loadMore": "加载更多",
@@ -371,6 +378,5 @@
   "roster.tabsLabel": "Roster 类型",
   "roster.updateFailed": "智能体更新失败。请检查字段后重试。",
   "roster.updateSuccess": "智能体已更新。",
-  "roster.usageStatus.draft": "草稿",
-  "roster.usageStatus.inUse": "使用中"
+  "roster.usageStatus.draft": "草稿"
 }

@@ -7,6 +7,7 @@ import type {
 import type { FC } from 'react'
 import type { Hotkey, ShortcutPopupDisplayMode, ShortcutPopupInsertHandler } from './plugins/shortcuts-popup-plugin'
 import type {
+  AgentOutputBlockType,
   ContextBlockType,
   CurrentBlockType,
   ErrorMessageBlockType,
@@ -35,6 +36,7 @@ import {
   UPDATE_DATASETS_EVENT_EMITTER,
   UPDATE_HISTORY_EVENT_EMITTER,
 } from './constants'
+import { AgentOutputBlockNode } from './plugins/agent-output-block/node'
 import {
   ContextBlockNode,
 } from './plugins/context-block'
@@ -45,10 +47,10 @@ import { CustomTextNode } from './plugins/custom-text/node'
 import {
   ErrorMessageBlockNode,
 } from './plugins/error-message-block'
+
 import {
   HistoryBlockNode,
 } from './plugins/history-block'
-
 import {
   HITLInputNode,
 } from './plugins/hitl-input-block'
@@ -130,6 +132,7 @@ export type PromptEditorProps = {
   rosterReferenceBlock?: RosterReferenceBlockType
   externalToolBlock?: ExternalToolBlockType
   workflowVariableBlock?: WorkflowVariableBlockType
+  agentOutputBlock?: AgentOutputBlockType
   hitlInputBlock?: HITLInputBlockType
   currentBlock?: CurrentBlockType
   errorMessageBlock?: ErrorMessageBlockType
@@ -166,6 +169,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   rosterReferenceBlock,
   externalToolBlock,
   workflowVariableBlock,
+  agentOutputBlock,
   hitlInputBlock,
   currentBlock,
   errorMessageBlock,
@@ -200,6 +204,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
       CurrentBlockNode,
       ErrorMessageBlockNode,
       LastRunBlockNode, // LastRunBlockNode is used for error message block replacement
+      AgentOutputBlockNode,
     ],
     editorState: textToEditorState(value || ''),
     onError: (error: Error) => {
@@ -257,6 +262,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           rosterReferenceBlock={rosterReferenceBlock}
           externalToolBlock={externalToolBlock}
           workflowVariableBlock={workflowVariableBlock}
+          agentOutputBlock={agentOutputBlock}
           hitlInputBlock={hitlInputBlock}
           currentBlock={currentBlock}
           errorMessageBlock={errorMessageBlock}

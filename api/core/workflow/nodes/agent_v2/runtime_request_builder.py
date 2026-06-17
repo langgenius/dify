@@ -16,6 +16,7 @@ from dify_agent.layers.execution_context import (
     DifyExecutionContextLayerConfig,
     DifyExecutionContextUserFrom,
 )
+from dify_agent.layers.knowledge import DifyKnowledgeBaseLayerConfig, DifyKnowledgeRetrievalConfig
 from dify_agent.layers.shell import (
     DifyShellCliToolConfig,
     DifyShellEnvVarConfig,
@@ -40,6 +41,7 @@ from graphon.file import FileTransferMethod
 from graphon.variables.segments import Segment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
+    AgentKnowledgeQueryConfig,
     AgentSoulConfig,
     DeclaredArrayItem,
     DeclaredOutputChildConfig,
@@ -60,6 +62,7 @@ from services.agent.prompt_mentions import (
 
 from .output_failure_orchestrator import retry_idempotency_key
 from .plugin_tools_builder import WorkflowAgentPluginToolsBuilder, WorkflowAgentPluginToolsBuildError
+from .runtime_feature_manifest import build_runtime_feature_manifest, list_configured_knowledge_dataset_ids
 
 _DENIED_PERMISSION_STATUSES = frozenset({"unauthorized", "denied", "forbidden", "invalid", "unavailable"})
 _DANGEROUS_FLAG_KEYS = ("dangerous", "dangerous_command", "requires_confirmation")
@@ -69,7 +72,6 @@ _DANGEROUS_ACK_KEYS = (
     "risk_accepted",
     "approved",
 )
-from .runtime_feature_manifest import build_runtime_feature_manifest
 
 
 class WorkflowAgentRuntimeRequestBuildError(ValueError):
@@ -183,6 +185,7 @@ class WorkflowAgentRuntimeRequestBuilder:
         if dify_config.AGENT_DRIVE_MANIFEST_ENABLED:
             drive_config, drive_warnings = build_drive_layer_config(agent_soul, agent_id=context.agent.id)
             append_runtime_warnings(metadata, drive_warnings)
+        knowledge_config = build_knowledge_layer_config(agent_soul)
 
         request = self._request_builder.build_for_workflow_node(
             AgentBackendWorkflowNodeRunInput(
@@ -197,10 +200,11 @@ class WorkflowAgentRuntimeRequestBuilder:
                     model_settings=agent_soul.model.model_settings.model_dump(mode="json", exclude_none=True),
                 ),
                 # The execution-context layer is now the only public protocol
-                # carrier for Dify tenant/user/run identifiers. ``user_id`` must
-                # be forwarded here because downstream plugin-daemon provider and
-                # tool clients read it from this layer rather than from any
-                # parallel top-level request field.
+                # carrier for Dify tenant/user/run identifiers. ``user_id`` and
+                # ``user_from`` must be forwarded here because downstream plugin-
+                # daemon provider/tool clients and knowledge-base layers read
+                # caller identity from this layer rather than from any parallel
+                # top-level request field.
                 execution_context=DifyExecutionContextLayerConfig(
                     tenant_id=context.dify_context.tenant_id,
                     user_id=context.dify_context.user_id,
@@ -221,6 +225,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 user_prompt=user_prompt,
                 output=self._build_output_config(node_job.declared_outputs),
                 tools=tools_layer,
+                knowledge=knowledge_config,
                 drive_config=drive_config,
                 ask_human_config=build_ask_human_layer_config(agent_soul),
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
@@ -532,6 +537,45 @@ def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfi
         if agent_soul.sandbox.provider or sandbox_config
         else None,
     )
+
+
+def build_knowledge_layer_config(agent_soul: AgentSoulConfig) -> DifyKnowledgeBaseLayerConfig | None:
+    """Map Agent Soul knowledge config into the fixed Dify knowledge-base layer.
+
+    Normalization intentionally matches the current dify-agent runtime contract:
+
+    - blank or missing dataset ids are ignored;
+    - if no valid dataset ids remain, no knowledge layer is injected;
+    - retrieval mode is always forced to ``multiple`` in this first wiring pass;
+    - ``top_k`` falls back to a stable runtime default when the soul omits it;
+    - ``score_threshold`` is only forwarded when the product config explicitly
+      enables it, otherwise the layer keeps the disabled/default ``0.0`` value;
+    - metadata filtering stays at the layer DTO default (disabled).
+    """
+    dataset_ids = list_configured_knowledge_dataset_ids(agent_soul)
+    if not dataset_ids:
+        return None
+
+    query_config = agent_soul.knowledge.query_config
+    return DifyKnowledgeBaseLayerConfig(
+        dataset_ids=dataset_ids,
+        retrieval=DifyKnowledgeRetrievalConfig(
+            mode="multiple",
+            top_k=_knowledge_top_k(query_config),
+            score_threshold=_knowledge_score_threshold(query_config),
+        ),
+    )
+
+
+def _knowledge_top_k(query_config: AgentKnowledgeQueryConfig) -> int:
+    top_k = query_config.top_k
+    return top_k if isinstance(top_k, int) and top_k >= 1 else 4
+
+
+def _knowledge_score_threshold(query_config: AgentKnowledgeQueryConfig) -> float:
+    if query_config.score_threshold_enabled and query_config.score_threshold is not None:
+        return query_config.score_threshold
+    return 0.0
 
 
 def build_ask_human_layer_config(agent_soul: AgentSoulConfig) -> DifyAskHumanLayerConfig | None:

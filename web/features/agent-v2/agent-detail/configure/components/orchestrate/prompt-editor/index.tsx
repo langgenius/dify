@@ -1,6 +1,6 @@
 'use client'
 
-import type { KeyboardEvent, MouseEvent } from 'react'
+import type { KeyboardEvent, MouseEvent, PointerEvent } from 'react'
 import type { AgentTool } from '../tools/types'
 import type { SlashMenuCategory, SlashMenuView } from './slash'
 import type { RosterReferenceToken } from '@/app/components/base/prompt-editor/plugins/roster-reference-block/utils'
@@ -217,7 +217,15 @@ export function AgentPromptEditor() {
     window.requestAnimationFrame(syncSlashMenuWithSelection)
   }
 
-  const handleEditorPointerUp = () => {
+  const handleEditorPointerUp = (event: PointerEvent<HTMLDivElement>) => {
+    const target = event.target
+    if (
+      target instanceof Element
+      && target.closest('[data-agent-prompt-toolbar]')
+    ) {
+      return
+    }
+
     window.requestAnimationFrame(syncSlashMenuWithSelection)
   }
 
@@ -229,8 +237,15 @@ export function AgentPromptEditor() {
     if (editorRef.current?.contains(target))
       return
 
-    if (target instanceof Element && target.closest('[data-agent-prompt-slash-menu]'))
+    if (
+      target instanceof Element
+      && (
+        target.closest('[data-agent-prompt-slash-menu]')
+        || target.closest('[data-agent-prompt-toolbar]')
+      )
+    ) {
       return
+    }
 
     closeSlashMenu()
   }
@@ -238,6 +253,11 @@ export function AgentPromptEditor() {
   const handleSlashSelect = (token: string) => {
     onChange(replaceTrailingSlashWithToken(value, token))
     closeSlashMenu()
+  }
+
+  const handleInsertSlash = () => {
+    onChange(`${value}/`)
+    openSlashMenu()
   }
 
   const renderRosterReferenceIcon = useCallback((token: RosterReferenceToken) => {
@@ -329,7 +349,7 @@ export function AgentPromptEditor() {
         onPointerDownCapture={handleRootPointerDown}
       >
         <div
-          className="min-h-20 overflow-hidden rounded-[10px] border-[1.5px] border-transparent bg-components-input-bg-normal pt-1 focus-within:border-components-input-border-active-prompt-1 focus-within:bg-components-input-bg-active focus-within:shadow-xs focus-within:shadow-shadow-shadow-3"
+          className="group min-h-28 overflow-hidden rounded-[10px] border-[1.5px] border-transparent bg-components-input-bg-normal pt-1 focus-within:border-components-input-border-active-prompt-1 focus-within:bg-components-input-bg-active focus-within:shadow-xs focus-within:shadow-shadow-shadow-3"
           onKeyDownCapture={handleEditorKeyDown}
           onKeyUpCapture={handleEditorKeyUp}
           onPointerUpCapture={handleEditorPointerUp}
@@ -356,6 +376,26 @@ export function AgentPromptEditor() {
               disableBracePicker
             />
           </div>
+          {!readOnly && (
+            <div
+              data-agent-prompt-toolbar
+              className="flex h-8 shrink-0 items-center justify-between px-3 text-text-tertiary opacity-0 transition-opacity group-focus-within:opacity-100"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <button
+                  type="button"
+                  className="flex items-center gap-1 system-xs-medium hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                  onClick={handleInsertSlash}
+                >
+                  <span aria-hidden className="i-ri-slash-commands-2 size-3.5" />
+                  {t('agentDetail.configure.prompt.insert.label')}
+                </button>
+              </div>
+              <div className="rounded-sm border border-divider-regular bg-background-default px-1 system-2xs-regular text-text-tertiary">
+                {value.length}
+              </div>
+            </div>
+          )}
         </div>
 
         {isHydrated && !readOnly && isSlashMenuOpen && (

@@ -2,7 +2,6 @@ import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agen
 import type { ComboboxRootChangeEventDetails } from '@langgenius/dify-ui/combobox'
 import type { NodeDefault } from '../types'
 import type { AgentRosterNodeData } from './types'
-import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
@@ -21,10 +20,11 @@ import {
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import AppIcon from '@/app/components/base/app-icon'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
@@ -45,11 +45,9 @@ export function AgentSelectorContent({
   onStartFromScratch?: () => void
 }) {
   const { t } = useTranslation(['agentV2', 'common', 'workflow'])
-  const queryClient = useQueryClient()
   const appId = useHooksStore(s => s.configsMap?.flowId)
   const agentV2Enabled = isAgentV2Enabled()
   const [searchText, setSearchText] = useState('')
-  const [validatingAgentId, setValidatingAgentId] = useState<string>()
   const debouncedSearchText = useDebounce(searchText.trim(), { wait: 300 })
   const agentsQuery = useQuery({
     ...consoleQuery.agent.inviteOptions.get.queryOptions({
@@ -69,8 +67,8 @@ export function AgentSelectorContent({
     if (details.reason !== 'item-press')
       setSearchText(nextSearchText)
   }
-  const handleValueChange = async (agent: AgentInviteOptionResponse | null) => {
-    if (!agent || validatingAgentId)
+  const handleValueChange = (agent: AgentInviteOptionResponse | null) => {
+    if (!agent)
       return
 
     if (!agent.active_config_snapshot_id) {
@@ -78,30 +76,7 @@ export function AgentSelectorContent({
       return
     }
 
-    setValidatingAgentId(agent.id)
-    try {
-      const activeConfigSnapshot = await queryClient.fetchQuery(consoleQuery.agent.byAgentId.versions.byVersionId.get.queryOptions({
-        input: {
-          params: {
-            agent_id: agent.id,
-            version_id: agent.active_config_snapshot_id,
-          },
-        },
-      }))
-
-      if (!activeConfigSnapshot.config_snapshot.model) {
-        toast.error(t('nodes.agent.modelNotSelected', { ns: 'workflow' }))
-        return
-      }
-
-      onSelect(toAgentRosterNodeData(agent))
-    }
-    catch {
-      toast.error(t('roster.loadingError', { ns: 'agentV2' }))
-    }
-    finally {
-      setValidatingAgentId(undefined)
-    }
+    onSelect(toAgentRosterNodeData(agent))
   }
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen)
@@ -244,24 +219,14 @@ function AgentSelectorAvatar({
 }: {
   agent: AgentInviteOptionResponse
 }) {
-  const imageUrl = (agent.icon_type === 'image' || agent.icon_type === 'link') ? agent.icon : undefined
-
   return (
-    <AvatarRoot
-      size="md"
-      className="border-[0.5px] border-divider-regular text-lg"
-      style={{ background: imageUrl ? undefined : (agent.icon_background || '#FFEAD5') }}
-    >
-      {imageUrl && (
-        <AvatarImage
-          src={imageUrl}
-          alt={agent.name}
-        />
-      )}
-      <AvatarFallback size="md" className="text-lg text-text-primary-on-surface">
-        {agent.icon_type === 'emoji' && agent.icon ? agent.icon : agent.name[0]?.toLocaleUpperCase()}
-      </AvatarFallback>
-    </AvatarRoot>
+    <AppIcon
+      size="small"
+      iconType={agent.icon_type}
+      icon={agent.icon ?? undefined}
+      background={agent.icon_background}
+      imageUrl={agent.icon ?? undefined}
+    />
   )
 }
 

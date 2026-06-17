@@ -1,8 +1,8 @@
-from typing import Any, Literal
+from typing import Any, Literal, override
 from uuid import UUID
 
 from flask import request
-from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, GetJsonSchemaHandler, RootModel, field_validator, model_validator
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -79,6 +79,13 @@ class DocumentStatusPayload(BaseModel):
     document_ids: list[str] = Field(default_factory=list, description="Document IDs to update")
 
 
+DOCUMENT_STATUS_ACTION_PARAM = {
+    "description": "Action to perform: 'enable', 'disable', 'archive', or 'un_archive'",
+    "enum": ["enable", "disable", "archive", "un_archive"],
+    "type": "string",
+}
+
+
 class TagNamePayload(BaseModel):
     name: str = Field(..., min_length=1, max_length=50)
 
@@ -113,6 +120,45 @@ class TagUnbindingPayload(BaseModel):
     tag_ids: list[str] = Field(default_factory=list)
     tag_id: str | None = None
     target_id: str
+
+    @classmethod
+    @override
+    def __get_pydantic_json_schema__(cls, _core_schema: object, _handler: GetJsonSchemaHandler) -> dict[str, object]:
+        tag_id_property = {
+            "description": "Legacy single tag ID accepted by the Service API.",
+            "type": "string",
+        }
+        tag_ids_property = {
+            "description": "Tag IDs to unbind. Use this for new integrations.",
+            "items": {"type": "string"},
+            "minItems": 1,
+            "type": "array",
+        }
+        target_id_property = {"title": "Target Id", "type": "string"}
+        return {
+            "anyOf": [
+                {
+                    "properties": {
+                        "tag_id": tag_id_property,
+                        "tag_ids": tag_ids_property,
+                        "target_id": target_id_property,
+                    },
+                    "required": ["tag_id", "target_id"],
+                    "type": "object",
+                },
+                {
+                    "properties": {
+                        "tag_id": {**tag_id_property, "nullable": True},
+                        "tag_ids": tag_ids_property,
+                        "target_id": target_id_property,
+                    },
+                    "required": ["tag_ids", "target_id"],
+                    "type": "object",
+                },
+            ],
+            "description": "Accepts either the legacy tag_id payload or the normalized tag_ids payload.",
+            "title": cls.__name__,
+        }
 
     @model_validator(mode="before")
     @classmethod
@@ -529,7 +575,7 @@ class DocumentStatusApi(DatasetApiResource):
     @service_api_ns.doc(
         params={
             "dataset_id": "Dataset ID",
-            "action": "Action to perform: 'enable', 'disable', 'archive', or 'un_archive'",
+            "action": DOCUMENT_STATUS_ACTION_PARAM,
         }
     )
     @service_api_ns.doc(

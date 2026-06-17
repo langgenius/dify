@@ -24,6 +24,12 @@ from services.entities.knowledge_entities.knowledge_entities import (
 )
 from services.metadata_service import MetadataService
 
+BUILT_IN_METADATA_ACTION_PARAM = {
+    "description": "Action to perform: 'enable' or 'disable'",
+    "enum": ["enable", "disable"],
+    "type": "string",
+}
+
 register_schema_model(service_api_ns, MetadataUpdatePayload)
 register_schema_models(
     service_api_ns,
@@ -175,7 +181,7 @@ class DatasetMetadataBuiltInFieldServiceApi(DatasetApiResource):
 class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
     @service_api_ns.doc("toggle_built_in_field")
     @service_api_ns.doc(description="Enable or disable built-in metadata field")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID", "action": "Action to perform: 'enable' or 'disable'"})
+    @service_api_ns.doc(params={"dataset_id": "Dataset ID", "action": BUILT_IN_METADATA_ACTION_PARAM})
     @service_api_ns.doc(
         responses={
             200: "Action completed successfully",

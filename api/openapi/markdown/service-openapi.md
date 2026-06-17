@@ -4,10 +4,9 @@ API for application services
 ## Version: 1.0
 
 ### Available authorizations
-#### Bearer (API Key Authentication)
-Type: Bearer {your-api-key}  
-**Name:** Authorization  
-**In:** header  
+#### Bearer (HTTP, bearer)
+Use the Service API key as a Bearer token in the Authorization header.
+Bearer format: API_KEY
 
 ---
 ## service_api
@@ -39,6 +38,7 @@ Returns paginated list of all feedback submitted for messages in this app.
 | ---- | ----------- | ------ |
 | 200 | Feedbacks retrieved successfully | **application/json**: [AppFeedbackListResponse](#appfeedbacklistresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 
 ### [POST] /apps/annotation-reply/{action}
 **Enable or disable annotation reply feature**
@@ -47,7 +47,7 @@ Returns paginated list of all feedback submitted for messages in this app.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| action | path | Action to perform: 'enable' or 'disable' | Yes | string |
+| action | path | Action to perform: 'enable' or 'disable' | Yes | string, <br>**Available values:** "disable", "enable" |
 
 #### Request Body
 
@@ -61,6 +61,7 @@ Returns paginated list of all feedback submitted for messages in this app.
 | ---- | ----------- | ------ |
 | 200 | Action completed successfully | **application/json**: [AnnotationJobStatusResponse](#annotationjobstatusresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 
 ### [GET] /apps/annotation-reply/{action}/status/{job_id}
 **Get the status of an annotation reply action job**
@@ -70,7 +71,7 @@ Returns paginated list of all feedback submitted for messages in this app.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | action | path | Action type | Yes | string |
-| job_id | path | Job ID | Yes | string |
+| job_id | path | Job ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -78,6 +79,7 @@ Returns paginated list of all feedback submitted for messages in this app.
 | ---- | ----------- | ------ |
 | 200 | Job status retrieved successfully | **application/json**: [AnnotationJobStatusResponse](#annotationjobstatusresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | Job not found |  |
 
 ### [GET] /apps/annotations
@@ -97,6 +99,7 @@ Returns paginated list of all feedback submitted for messages in this app.
 | ---- | ----------- | ------ |
 | 200 | Annotations retrieved successfully | **application/json**: [AnnotationList](#annotationlist)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 
 ### [POST] /apps/annotations
 **Create a new annotation**
@@ -113,6 +116,7 @@ Returns paginated list of all feedback submitted for messages in this app.
 | ---- | ----------- | ------ |
 | 201 | Annotation created successfully | **application/json**: [Annotation](#annotation)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 
 ### [DELETE] /apps/annotations/{annotation_id}
 **Delete an annotation**
@@ -121,7 +125,7 @@ Returns paginated list of all feedback submitted for messages in this app.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| annotation_id | path | Annotation ID | Yes | string |
+| annotation_id | path | Annotation ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -139,7 +143,7 @@ Returns paginated list of all feedback submitted for messages in this app.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| annotation_id | path | Annotation ID | Yes | string |
+| annotation_id | path | Annotation ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -162,6 +166,12 @@ Returns paginated list of all feedback submitted for messages in this app.
 Convert audio to text using speech-to-text
 Accepts an audio file upload and returns the transcribed text.
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary, **"user"**: string }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -169,6 +179,7 @@ Accepts an audio file upload and returns the transcribed text.
 | 200 | Audio successfully transcribed | **application/json**: [AudioTranscriptResponse](#audiotranscriptresponse)<br> |
 | 400 | Bad request - no audio or invalid audio |  |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 413 | Audio file too large |  |
 | 415 | Unsupported audio type |  |
 | 500 | Internal server error |  |
@@ -184,15 +195,16 @@ Supports conversation management and both blocking and streaming response modes.
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [ChatRequestPayload](#chatrequestpayload)<br> |
+|  Yes | **application/json**: [ChatRequestPayloadWithUser](#chatrequestpayloadwithuser)<br> |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Message sent successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 200 | Message sent successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br>**text/event-stream**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 400 | Bad request - invalid parameters or workflow issues |  |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | Conversation or workflow not found |  |
 | 429 | Rate limit exceeded |  |
 | 500 | Internal server error |  |
@@ -206,12 +218,19 @@ Supports conversation management and both blocking and streaming response modes.
 | ---- | ---------- | ----------- | -------- | ------ |
 | task_id | path | The ID of the task to stop | Yes | string |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [RequiredServiceApiUserPayload](#requiredserviceapiuserpayload)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | Task not found |  |
 
 ### [POST] /completion-messages
@@ -225,15 +244,16 @@ Supports both blocking and streaming response modes.
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [CompletionRequestPayload](#completionrequestpayload)<br> |
+|  Yes | **application/json**: [CompletionRequestPayloadWithUser](#completionrequestpayloadwithuser)<br> |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Completion created successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 200 | Completion created successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br>**text/event-stream**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 400 | Bad request - invalid parameters |  |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | Conversation not found |  |
 | 500 | Internal server error |  |
 
@@ -246,12 +266,19 @@ Supports both blocking and streaming response modes.
 | ---- | ---------- | ----------- | -------- | ------ |
 | task_id | path | The ID of the task to stop | Yes | string |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [RequiredServiceApiUserPayload](#requiredserviceapiuserpayload)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | Task not found |  |
 
 ### [GET] /conversations
@@ -267,6 +294,7 @@ Supports pagination using last_id and limit parameters.
 | last_id | query | Last conversation ID for pagination | No | string |
 | limit | query | Number of conversations to return | No | integer, <br>**Default:** 20 |
 | sort_by | query | Sort order for conversations | No | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at |
+| user | query | End user identifier | No | string |
 
 #### Responses
 
@@ -274,6 +302,7 @@ Supports pagination using last_id and limit parameters.
 | ---- | ----------- | ------ |
 | 200 | Conversations retrieved successfully | **application/json**: [ConversationInfiniteScrollPagination](#conversationinfinitescrollpagination)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | Last conversation not found |  |
 
 ### [DELETE] /conversations/{c_id}
@@ -283,7 +312,13 @@ Supports pagination using last_id and limit parameters.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path | Conversation ID | Yes | string |
+| c_id | path | Conversation ID | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [OptionalServiceApiUserPayload](#optionalserviceapiuserpayload)<br> |
 
 #### Responses
 
@@ -291,6 +326,7 @@ Supports pagination using last_id and limit parameters.
 | ---- | ----------- |
 | 204 | Conversation deleted successfully |
 | 401 | Unauthorized - invalid API token |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |
 | 404 | Conversation not found |
 
 ### [POST] /conversations/{c_id}/name
@@ -300,13 +336,13 @@ Supports pagination using last_id and limit parameters.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path | Conversation ID | Yes | string |
+| c_id | path | Conversation ID | Yes | string (uuid) |
 
 #### Request Body
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [ConversationRenamePayload](#conversationrenamepayload)<br> |
+|  Yes | **application/json**: [ConversationRenamePayloadWithUser](#conversationrenamepayloadwithuser)<br> |
 
 #### Responses
 
@@ -314,6 +350,7 @@ Supports pagination using last_id and limit parameters.
 | ---- | ----------- | ------ |
 | 200 | Conversation renamed successfully | **application/json**: [SimpleConversation](#simpleconversation)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | Conversation not found |  |
 
 ### [GET] /conversations/{c_id}/variables
@@ -326,9 +363,10 @@ Conversational variables are only available for chat applications.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path | Conversation ID | Yes | string |
+| c_id | path | Conversation ID | Yes | string (uuid) |
 | last_id | query | Last variable ID for pagination | No | string |
 | limit | query | Number of variables to return | No | integer, <br>**Default:** 20 |
+| user | query | End user identifier | No | string |
 | variable_name | query | Filter variables by name | No | string |
 
 #### Responses
@@ -337,6 +375,7 @@ Conversational variables are only available for chat applications.
 | ---- | ----------- | ------ |
 | 200 | Variables retrieved successfully | **application/json**: [ConversationVariableInfiniteScrollPaginationResponse](#conversationvariableinfinitescrollpaginationresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | Conversation not found |  |
 
 ### [PUT] /conversations/{c_id}/variables/{variable_id}
@@ -350,14 +389,14 @@ The value must match the variable's expected type.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path | Conversation ID | Yes | string |
-| variable_id | path | Variable ID | Yes | string |
+| c_id | path | Conversation ID | Yes | string (uuid) |
+| variable_id | path | Variable ID | Yes | string (uuid) |
 
 #### Request Body
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [ConversationVariableUpdatePayload](#conversationvariableupdatepayload)<br> |
+|  Yes | **application/json**: [ConversationVariableUpdatePayloadWithUser](#conversationvariableupdatepayloadwithuser)<br> |
 
 #### Responses
 
@@ -366,6 +405,7 @@ The value must match the variable's expected type.
 | 200 | Variable updated successfully | **application/json**: [ConversationVariableResponse](#conversationvariableresponse)<br> |
 | 400 | Bad request - type mismatch |  |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | Conversation or variable not found |  |
 
 ### [GET] /datasets
@@ -389,6 +429,7 @@ List all datasets
 | ---- | ----------- | ------ |
 | 200 | Datasets retrieved successfully | **application/json**: [DatasetListResponse](#datasetlistresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 
 ### [POST] /datasets
 **Resource for creating datasets**
@@ -408,12 +449,19 @@ Create a new dataset
 | 200 | Dataset created successfully | **application/json**: [DatasetDetailResponse](#datasetdetailresponse)<br> |
 | 400 | Bad request - invalid parameters |  |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 
 ### [POST] /datasets/pipeline/file-upload
 **Upload a file for use in conversations**
 
 Upload a file to a knowledgebase pipeline
 Accepts a single file upload via multipart/form-data.
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
 
 #### Responses
 
@@ -422,6 +470,7 @@ Accepts a single file upload via multipart/form-data.
 | 201 | File uploaded successfully | **application/json**: [PipelineUploadFileResponse](#pipelineuploadfileresponse)<br> |
 | 400 | Bad request - no file or invalid file |  |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 | 413 | File too large |  |
 | 415 | Unsupported file type |  |
 
@@ -451,6 +500,7 @@ Accepts a single file upload via multipart/form-data.
 | ---- | ----------- | ------ |
 | 200 | Tags retrieved successfully | **application/json**: [KnowledgeTagListResponse](#knowledgetaglistresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 
 ### [PATCH] /datasets/tags
 Update a knowledge type tag
@@ -540,7 +590,7 @@ Raises:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -548,6 +598,7 @@ Raises:
 | ---- | ----------- |
 | 204 | Dataset deleted successfully |
 | 401 | Unauthorized - invalid API token |
+| 403 | Forbidden - dataset API access or workspace access denied |
 | 404 | Dataset not found |
 | 409 | Conflict - dataset is in use |
 
@@ -558,7 +609,7 @@ Get a specific dataset by ID
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -576,7 +627,7 @@ Update an existing dataset
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -600,7 +651,7 @@ Create a new document by uploading a file
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -615,6 +666,7 @@ Create a new document by uploading a file
 | 200 | Document created successfully | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
 | 400 | Bad request - invalid file or parameters |  |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 
 ### [POST] /datasets/{dataset_id}/document/create-by-text
 Create a new document by providing text content
@@ -623,7 +675,7 @@ Create a new document by providing text content
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -638,15 +690,19 @@ Create a new document by providing text content
 | 200 | Document created successfully | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
 | 400 | Bad request - invalid parameters |  |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 
-### [POST] /datasets/{dataset_id}/document/create_by_file
+### ~~[POST] /datasets/{dataset_id}/document/create_by_file~~
+
+***DEPRECATED***
+
 Create a new document by uploading a file
 
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -661,6 +717,7 @@ Create a new document by uploading a file
 | 200 | Document created successfully | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
 | 400 | Bad request - invalid file or parameters |  |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 
 ### ~~[POST] /datasets/{dataset_id}/document/create_by_text~~
 
@@ -672,7 +729,7 @@ Deprecated legacy alias for creating a new document by providing text content. U
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -687,6 +744,7 @@ Deprecated legacy alias for creating a new document by providing text content. U
 | 200 | Document created successfully | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
 | 400 | Bad request - invalid parameters |  |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 
 ### [GET] /datasets/{dataset_id}/documents
 List all documents in a dataset
@@ -695,7 +753,7 @@ List all documents in a dataset
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 | keyword | query | Search keyword | No | string |
 | limit | query | Number of items per page | No | integer, <br>**Default:** 20 |
 | page | query | Page number | No | integer, <br>**Default:** 1 |
@@ -707,6 +765,7 @@ List all documents in a dataset
 | ---- | ----------- | ------ |
 | 200 | Documents retrieved successfully | **application/json**: [DocumentListResponse](#documentlistresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset not found |  |
 
 ### [POST] /datasets/{dataset_id}/documents/download-zip
@@ -716,7 +775,7 @@ Download selected uploaded documents as a single ZIP archive
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -726,12 +785,12 @@ Download selected uploaded documents as a single ZIP archive
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | ZIP archive generated successfully | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - insufficient permissions |  |
-| 404 | Document or dataset not found |  |
+| Code | Description |
+| ---- | ----------- |
+| 200 | ZIP archive generated successfully |
+| 401 | Unauthorized - invalid API token |
+| 403 | Forbidden - insufficient permissions |
+| 404 | Document or dataset not found |
 
 ### [POST] /datasets/{dataset_id}/documents/metadata
 **Update metadata for multiple documents**
@@ -740,7 +799,7 @@ Download selected uploaded documents as a single ZIP archive
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -754,6 +813,7 @@ Download selected uploaded documents as a single ZIP archive
 | ---- | ----------- | ------ |
 | 200 | Documents metadata updated successfully | **application/json**: [DatasetMetadataActionResponse](#datasetmetadataactionresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset not found |  |
 
 ### [PATCH] /datasets/{dataset_id}/documents/status/{action}
@@ -778,8 +838,8 @@ Raises:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| action | path | Action to perform: 'enable', 'disable', 'archive', or 'un_archive' | Yes | string |
-| dataset_id | path | Dataset ID | Yes | string |
+| action | path | Action to perform: 'enable', 'disable', 'archive', or 'un_archive' | Yes | string, <br>**Available values:** "archive", "disable", "enable", "un_archive" |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -805,7 +865,7 @@ Get indexing status for documents in a batch
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | batch | path | Batch ID | Yes | string |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -813,6 +873,7 @@ Get indexing status for documents in a batch
 | ---- | ----------- | ------ |
 | 200 | Indexing status retrieved successfully | **application/json**: [DocumentStatusListResponse](#documentstatuslistresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset or documents not found |  |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}
@@ -824,8 +885,8 @@ Delete a document
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -843,8 +904,8 @@ Get a specific document by ID
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
 | metadata | query | Metadata response mode | No | string, <br>**Available values:** "all", "only", "without", <br>**Default:** all |
 
 #### Responses
@@ -863,8 +924,8 @@ Update an existing document by uploading a file
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -878,6 +939,7 @@ Update an existing document by uploading a file
 | ---- | ----------- | ------ |
 | 200 | Document updated successfully | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Document not found |  |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/download
@@ -887,8 +949,8 @@ Get a signed download URL for a document's original uploaded file
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -906,8 +968,8 @@ List segments in a document
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
 | keyword | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 20 |
 | page | query |  | No | integer, <br>**Default:** 1 |
@@ -919,6 +981,7 @@ List segments in a document
 | ---- | ----------- | ------ |
 | 200 | Segments retrieved successfully | **application/json**: [SegmentListResponse](#segmentlistresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset or document not found |  |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/segments
@@ -928,8 +991,8 @@ Create segments in a document
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -944,6 +1007,7 @@ Create segments in a document
 | 200 | Segments created successfully | **application/json**: [SegmentCreateListResponse](#segmentcreatelistresponse)<br> |
 | 400 | Bad request - segments data is missing |  |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset or document not found |  |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}
@@ -953,9 +1017,9 @@ Delete a specific segment
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
-| segment_id | path | Segment ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
+| segment_id | path | Segment ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -963,6 +1027,7 @@ Delete a specific segment
 | ---- | ----------- |
 | 204 | Segment deleted successfully |
 | 401 | Unauthorized - invalid API token |
+| 403 | Forbidden - dataset API access or workspace access denied |
 | 404 | Dataset, document, or segment not found |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}
@@ -972,9 +1037,9 @@ Get a specific segment by ID
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
-| segment_id | path | Segment ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
+| segment_id | path | Segment ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -982,6 +1047,7 @@ Get a specific segment by ID
 | ---- | ----------- | ------ |
 | 200 | Segment retrieved successfully | **application/json**: [SegmentDetailResponse](#segmentdetailresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset, document, or segment not found |  |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}
@@ -991,9 +1057,9 @@ Update a specific segment
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
-| segment_id | path | Segment ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
+| segment_id | path | Segment ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1007,6 +1073,7 @@ Update a specific segment
 | ---- | ----------- | ------ |
 | 200 | Segment updated successfully | **application/json**: [SegmentDetailResponse](#segmentdetailresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset, document, or segment not found |  |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
@@ -1016,9 +1083,9 @@ List child chunks for a segment
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
-| segment_id | path | Parent segment ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
+| segment_id | path | Parent segment ID | Yes | string (uuid) |
 | keyword | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 20 |
 | page | query |  | No | integer, <br>**Default:** 1 |
@@ -1029,6 +1096,7 @@ List child chunks for a segment
 | ---- | ----------- | ------ |
 | 200 | Child chunks retrieved successfully | **application/json**: [ChildChunkListResponse](#childchunklistresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset, document, or segment not found |  |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
@@ -1038,9 +1106,9 @@ Create a new child chunk for a segment
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
-| segment_id | path | Parent segment ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
+| segment_id | path | Parent segment ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1054,6 +1122,7 @@ Create a new child chunk for a segment
 | ---- | ----------- | ------ |
 | 200 | Child chunk created successfully | **application/json**: [ChildChunkDetailResponse](#childchunkdetailresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset, document, or segment not found |  |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}
@@ -1063,10 +1132,10 @@ Delete a specific child chunk
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| child_chunk_id | path | Child chunk ID | Yes | string |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
-| segment_id | path | Parent segment ID | Yes | string |
+| child_chunk_id | path | Child chunk ID | Yes | string (uuid) |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
+| segment_id | path | Parent segment ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -1074,6 +1143,7 @@ Delete a specific child chunk
 | ---- | ----------- |
 | 204 | Child chunk deleted successfully |
 | 401 | Unauthorized - invalid API token |
+| 403 | Forbidden - dataset API access or workspace access denied |
 | 404 | Dataset, document, segment, or child chunk not found |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}
@@ -1083,10 +1153,10 @@ Update a specific child chunk
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| child_chunk_id | path | Child chunk ID | Yes | string |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
-| segment_id | path | Parent segment ID | Yes | string |
+| child_chunk_id | path | Child chunk ID | Yes | string (uuid) |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
+| segment_id | path | Parent segment ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1100,6 +1170,7 @@ Update a specific child chunk
 | ---- | ----------- | ------ |
 | 200 | Child chunk updated successfully | **application/json**: [ChildChunkDetailResponse](#childchunkdetailresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset, document, segment, or child chunk not found |  |
 
 ### ~~[POST] /datasets/{dataset_id}/documents/{document_id}/update-by-file~~
@@ -1112,8 +1183,8 @@ Deprecated legacy alias for updating an existing document by uploading a file. U
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1127,6 +1198,7 @@ Deprecated legacy alias for updating an existing document by uploading a file. U
 | ---- | ----------- | ------ |
 | 200 | Document updated successfully | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Document not found |  |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/update-by-text
@@ -1136,8 +1208,8 @@ Update an existing document by providing text content
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1151,6 +1223,7 @@ Update an existing document by providing text content
 | ---- | ----------- | ------ |
 | 200 | Document updated successfully | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Document not found |  |
 
 ### ~~[POST] /datasets/{dataset_id}/documents/{document_id}/update_by_file~~
@@ -1163,8 +1236,8 @@ Deprecated legacy alias for updating an existing document by uploading a file. U
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1178,6 +1251,7 @@ Deprecated legacy alias for updating an existing document by uploading a file. U
 | ---- | ----------- | ------ |
 | 200 | Document updated successfully | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Document not found |  |
 
 ### ~~[POST] /datasets/{dataset_id}/documents/{document_id}/update_by_text~~
@@ -1190,8 +1264,8 @@ Deprecated legacy alias for updating an existing document by providing text cont
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1205,6 +1279,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | ---- | ----------- | ------ |
 | 200 | Document updated successfully | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Document not found |  |
 
 ### [POST] /datasets/{dataset_id}/hit-testing
@@ -1217,7 +1292,7 @@ Tests retrieval performance for the specified dataset.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1231,6 +1306,7 @@ Tests retrieval performance for the specified dataset.
 | ---- | ----------- | ------ |
 | 200 | Hit testing results | **application/json**: [HitTestingResponse](#hittestingresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset not found |  |
 
 ### [GET] /datasets/{dataset_id}/metadata
@@ -1240,7 +1316,7 @@ Tests retrieval performance for the specified dataset.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -1248,6 +1324,7 @@ Tests retrieval performance for the specified dataset.
 | ---- | ----------- | ------ |
 | 200 | Metadata retrieved successfully | **application/json**: [DatasetMetadataListResponse](#datasetmetadatalistresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset not found |  |
 
 ### [POST] /datasets/{dataset_id}/metadata
@@ -1257,7 +1334,7 @@ Tests retrieval performance for the specified dataset.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1271,6 +1348,7 @@ Tests retrieval performance for the specified dataset.
 | ---- | ----------- | ------ |
 | 201 | Metadata created successfully | **application/json**: [DatasetMetadataResponse](#datasetmetadataresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset not found |  |
 
 ### [GET] /datasets/{dataset_id}/metadata/built-in
@@ -1280,7 +1358,7 @@ Tests retrieval performance for the specified dataset.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -1288,6 +1366,7 @@ Tests retrieval performance for the specified dataset.
 | ---- | ----------- | ------ |
 | 200 | Built-in fields retrieved successfully | **application/json**: [DatasetMetadataBuiltInFieldsResponse](#datasetmetadatabuiltinfieldsresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 
 ### [POST] /datasets/{dataset_id}/metadata/built-in/{action}
 **Enable or disable built-in metadata field**
@@ -1296,8 +1375,8 @@ Tests retrieval performance for the specified dataset.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| action | path | Action to perform: 'enable' or 'disable' | Yes | string |
-| dataset_id | path | Dataset ID | Yes | string |
+| action | path | Action to perform: 'enable' or 'disable' | Yes | string, <br>**Available values:** "disable", "enable" |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -1305,6 +1384,7 @@ Tests retrieval performance for the specified dataset.
 | ---- | ----------- | ------ |
 | 200 | Action completed successfully | **application/json**: [DatasetMetadataActionResponse](#datasetmetadataactionresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset not found |  |
 
 ### [DELETE] /datasets/{dataset_id}/metadata/{metadata_id}
@@ -1314,8 +1394,8 @@ Tests retrieval performance for the specified dataset.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| metadata_id | path | Metadata ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| metadata_id | path | Metadata ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -1323,6 +1403,7 @@ Tests retrieval performance for the specified dataset.
 | ---- | ----------- |
 | 204 | Metadata deleted successfully |
 | 401 | Unauthorized - invalid API token |
+| 403 | Forbidden - dataset API access or workspace access denied |
 | 404 | Dataset or metadata not found |
 
 ### [PATCH] /datasets/{dataset_id}/metadata/{metadata_id}
@@ -1332,8 +1413,8 @@ Tests retrieval performance for the specified dataset.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| metadata_id | path | Metadata ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| metadata_id | path | Metadata ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1347,6 +1428,7 @@ Tests retrieval performance for the specified dataset.
 | ---- | ----------- | ------ |
 | 200 | Metadata updated successfully | **application/json**: [DatasetMetadataResponse](#datasetmetadataresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset or metadata not found |  |
 
 ### [GET] /datasets/{dataset_id}/pipeline/datasource-plugins
@@ -1359,7 +1441,7 @@ List all datasource plugins for a rag pipeline
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | is_published | query |  | No | boolean, <br>**Default:** true |
-| dataset_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -1367,6 +1449,7 @@ List all datasource plugins for a rag pipeline
 | ---- | ----------- | ------ |
 | 200 | Datasource plugins retrieved successfully | **application/json**: [DatasourcePluginListResponse](#datasourcepluginlistresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 
 ### [POST] /datasets/{dataset_id}/pipeline/datasource/nodes/{node_id}/run
 **Resource for getting datasource plugins**
@@ -1377,7 +1460,7 @@ Run a datasource node for a rag pipeline
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
 | node_id | path |  | Yes | string |
 
 #### Request Body
@@ -1390,8 +1473,9 @@ Run a datasource node for a rag pipeline
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Datasource node run successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 200 | Datasource node run successfully | **text/event-stream**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 
 ### [POST] /datasets/{dataset_id}/pipeline/run
 **Resource for running a rag pipeline**
@@ -1402,7 +1486,7 @@ Run a datasource node for a rag pipeline
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1414,8 +1498,9 @@ Run a datasource node for a rag pipeline
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Pipeline run successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 200 | Pipeline run successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br>**text/event-stream**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 
 ### [POST] /datasets/{dataset_id}/retrieve
 **Perform hit testing on a dataset**
@@ -1427,7 +1512,7 @@ Tests retrieval performance for the specified dataset.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1441,6 +1526,7 @@ Tests retrieval performance for the specified dataset.
 | ---- | ----------- | ------ |
 | 200 | Hit testing results | **application/json**: [HitTestingResponse](#hittestingresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset not found |  |
 
 ### [GET] /datasets/{dataset_id}/tags
@@ -1452,7 +1538,7 @@ Get tags bound to a specific dataset
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -1460,6 +1546,7 @@ Get tags bound to a specific dataset
 | ---- | ----------- | ------ |
 | 200 | Tags retrieved successfully | **application/json**: [DatasetBoundTagListResponse](#datasetboundtaglistresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
 
 ### [GET] /end-users/{end_user_id}
 **Get end user detail**
@@ -1472,7 +1559,7 @@ cross-tenant/app access when an end-user ID is known.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| end_user_id | path | End user ID | Yes | string |
+| end_user_id | path | End user ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -1480,6 +1567,7 @@ cross-tenant/app access when an end-user ID is known.
 | ---- | ----------- | ------ |
 | 200 | End user retrieved successfully | **application/json**: [EndUserDetail](#enduserdetail)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | End user not found |  |
 
 ### [POST] /files/upload
@@ -1488,6 +1576,12 @@ cross-tenant/app access when an end-user ID is known.
 Upload a file for use in conversations
 Accepts a single file upload via multipart/form-data.
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary, **"user"**: string }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -1495,6 +1589,7 @@ Accepts a single file upload via multipart/form-data.
 | 201 | File uploaded successfully | **application/json**: [FileResponse](#fileresponse)<br> |
 | 400 | Bad request - no file or invalid file |  |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 413 | File too large |  |
 | 415 | Unsupported file type |  |
 
@@ -1509,17 +1604,18 @@ Files can only be accessed if they belong to messages within the requesting app'
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| file_id | path | UUID of the file to preview | Yes | string |
+| file_id | path | UUID of the file to preview | Yes | string (uuid) |
 | as_attachment | query | Download as attachment | No | boolean |
+| user | query | End user identifier | No | string |
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | File retrieved successfully | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - file access denied |  |
-| 404 | File not found |  |
+| Code | Description |
+| ---- | ----------- |
+| 200 | File retrieved successfully |
+| 401 | Unauthorized - invalid API token |
+| 403 | Forbidden - file access denied |
+| 404 | File not found |
 
 ### [GET] /form/human_input/{form_token}
 Get a paused human input form by token
@@ -1536,6 +1632,7 @@ Get a paused human input form by token
 | ---- | ----------- | ------ |
 | 200 | Form retrieved successfully | **application/json**: [HumanInputFormDefinitionResponse](#humaninputformdefinitionresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | Form not found |  |
 | 412 | Form already submitted or expired |  |
 
@@ -1552,7 +1649,7 @@ Submit a paused human input form by token
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [HumanInputFormSubmitPayload](#humaninputformsubmitpayload)<br> |
+|  Yes | **application/json**: [HumanInputFormSubmitPayloadWithUser](#humaninputformsubmitpayloadwithuser)<br> |
 
 #### Responses
 
@@ -1561,6 +1658,7 @@ Submit a paused human input form by token
 | 200 | Form submitted successfully | **application/json**: [HumanInputFormSubmitResponse](#humaninputformsubmitresponse)<br> |
 | 400 | Bad request - invalid submission data |  |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | Form not found |  |
 | 412 | Form already submitted or expired |  |
 
@@ -1576,6 +1674,7 @@ Returns basic information about the application including name, description, tag
 | ---- | ----------- | ------ |
 | 200 | Application info retrieved successfully | **application/json**: [AppInfoResponse](#appinforesponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | Application not found |  |
 
 ### [GET] /messages
@@ -1591,6 +1690,7 @@ Retrieves messages with pagination support using first_id.
 | conversation_id | query | Conversation UUID | Yes | string |
 | first_id | query | First message ID for pagination | No | string |
 | limit | query | Number of messages to return (1-100) | No | integer, <br>**Default:** 20 |
+| user | query | End user identifier | No | string |
 
 #### Responses
 
@@ -1598,6 +1698,7 @@ Retrieves messages with pagination support using first_id.
 | ---- | ----------- | ------ |
 | 200 | Messages retrieved successfully | **application/json**: [MessageInfiniteScrollPagination](#messageinfinitescrollpagination)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | Conversation or first message not found |  |
 
 ### [POST] /messages/{message_id}/feedbacks
@@ -1610,13 +1711,13 @@ Allows users to rate messages as like/dislike and provide optional feedback cont
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| message_id | path | Message ID | Yes | string |
+| message_id | path | Message ID | Yes | string (uuid) |
 
 #### Request Body
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [MessageFeedbackPayload](#messagefeedbackpayload)<br> |
+|  Yes | **application/json**: [MessageFeedbackPayloadWithUser](#messagefeedbackpayloadwithuser)<br> |
 
 #### Responses
 
@@ -1624,6 +1725,7 @@ Allows users to rate messages as like/dislike and provide optional feedback cont
 | ---- | ----------- | ------ |
 | 200 | Feedback submitted successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | Message not found |  |
 
 ### [GET] /messages/{message_id}/suggested
@@ -1636,7 +1738,8 @@ Returns AI-generated follow-up questions based on the message content.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| message_id | path | Message ID | Yes | string |
+| message_id | path | Message ID | Yes | string (uuid) |
+| user | query | End user identifier | Yes | string |
 
 #### Responses
 
@@ -1645,6 +1748,7 @@ Returns AI-generated follow-up questions based on the message content.
 | 200 | Suggested questions retrieved successfully | **application/json**: [SimpleResultStringListResponse](#simpleresultstringlistresponse)<br> |
 | 400 | Suggested questions feature is disabled |  |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | Message not found |  |
 | 500 | Internal server error |  |
 
@@ -1660,6 +1764,7 @@ Returns metadata about the application including configuration and settings.
 | ---- | ----------- | ------ |
 | 200 | Metadata retrieved successfully | **application/json**: [AppMetaResponse](#appmetaresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | Application not found |  |
 
 ### [GET] /parameters
@@ -1674,6 +1779,7 @@ Returns the input form parameters and configuration for the application.
 | ---- | ----------- | ------ |
 | 200 | Parameters retrieved successfully | **application/json**: [Parameters](#parameters)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | Application not found |  |
 
 ### [GET] /site
@@ -1700,16 +1806,17 @@ Converts the provided text to audio using the specified voice.
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [TextToAudioPayload](#texttoaudiopayload)<br> |
+|  Yes | **application/json**: [TextToAudioPayloadWithUser](#texttoaudiopayloadwithuser)<br> |
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Text successfully converted to audio | **application/json**: [AudioBinaryResponse](#audiobinaryresponse)<br> |
-| 400 | Bad request - invalid parameters |  |
-| 401 | Unauthorized - invalid API token |  |
-| 500 | Internal server error |  |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Text successfully converted to audio |
+| 400 | Bad request - invalid parameters |
+| 401 | Unauthorized - invalid API token |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |
+| 500 | Internal server error |
 
 ### [GET] /workflow/{task_id}/events
 Get workflow execution events stream after resume
@@ -1727,8 +1834,9 @@ Get workflow execution events stream after resume
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | SSE event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 200 | SSE event stream | **text/event-stream**: [EventStreamResponse](#eventstreamresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | Workflow run not found |  |
 
 ### [GET] /workflows/logs
@@ -1756,6 +1864,7 @@ Returns paginated workflow execution logs with filtering options.
 | ---- | ----------- | ------ |
 | 200 | Logs retrieved successfully | **application/json**: [WorkflowAppLogPaginationResponse](#workflowapplogpaginationresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 
 ### [POST] /workflows/run
 **Execute a workflow**
@@ -1768,15 +1877,16 @@ Supports both blocking and streaming response modes.
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [WorkflowRunPayload](#workflowrunpayload)<br> |
+|  Yes | **application/json**: [WorkflowRunPayloadWithUser](#workflowrunpayloadwithuser)<br> |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow executed successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 200 | Workflow executed successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br>**text/event-stream**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 400 | Bad request - invalid parameters or workflow issues |  |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | Workflow not found |  |
 | 429 | Rate limit exceeded |  |
 | 500 | Internal server error |  |
@@ -1799,6 +1909,7 @@ Returns detailed information about a specific workflow run.
 | ---- | ----------- | ------ |
 | 200 | Workflow run details retrieved successfully | **application/json**: [WorkflowRunResponse](#workflowrunresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | Workflow run not found |  |
 
 ### [POST] /workflows/tasks/{task_id}/stop
@@ -1810,12 +1921,19 @@ Returns detailed information about a specific workflow run.
 | ---- | ---------- | ----------- | -------- | ------ |
 | task_id | path | Task ID to stop | Yes | string |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [RequiredServiceApiUserPayload](#requiredserviceapiuserpayload)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | Task not found |  |
 
 ### [POST] /workflows/{workflow_id}/run
@@ -1834,15 +1952,16 @@ Executes a specific workflow version identified by its ID.
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [WorkflowRunPayload](#workflowrunpayload)<br> |
+|  Yes | **application/json**: [WorkflowRunPayloadWithUser](#workflowrunpayloadwithuser)<br> |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow executed successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 200 | Workflow executed successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br>**text/event-stream**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 400 | Bad request - invalid parameters or workflow issues |  |
 | 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | Workflow not found |  |
 | 429 | Rate limit exceeded |  |
 | 500 | Internal server error |  |
@@ -2014,6 +2133,21 @@ Button styles for user actions.
 | trace_session_id | string | Trace session ID for observability grouping | No |
 | workflow_id | string | Workflow ID for advanced chat | No |
 
+#### ChatRequestPayloadWithUser
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| auto_generate_name | boolean, <br>**Default:** true | Auto generate conversation name | No |
+| conversation_id | string | Conversation UUID | No |
+| files | [ object ] |  | No |
+| inputs | object |  | Yes |
+| query | string |  | Yes |
+| response_mode | string |  | No |
+| retriever_from | string, <br>**Default:** dev |  | No |
+| trace_session_id | string | Trace session ID for observability grouping | No |
+| user | string | End user identifier | Yes |
+| workflow_id | string | Workflow ID for advanced chat | No |
+
 #### ChildChunkCreatePayload
 
 | Name | Type | Description | Required |
@@ -2074,6 +2208,18 @@ Button styles for user actions.
 | retriever_from | string, <br>**Default:** dev |  | No |
 | trace_session_id | string | Trace session ID for observability grouping | No |
 
+#### CompletionRequestPayloadWithUser
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| files | [ object ] |  | No |
+| inputs | object |  | Yes |
+| query | string |  | No |
+| response_mode | string |  | No |
+| retriever_from | string, <br>**Default:** dev |  | No |
+| trace_session_id | string | Trace session ID for observability grouping | No |
+| user | string | End user identifier | Yes |
+
 #### Condition
 
 Condition detail
@@ -2107,6 +2253,14 @@ Condition detail
 | auto_generate | boolean |  | No |
 | name | string |  | No |
 
+#### ConversationRenamePayloadWithUser
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| auto_generate | boolean |  | No |
+| name | string |  | No |
+| user | string | End user identifier | No |
+
 #### ConversationVariableInfiniteScrollPaginationResponse
 
 | Name | Type | Description | Required |
@@ -2131,6 +2285,13 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| value |  |  | Yes |
+
+#### ConversationVariableUpdatePayloadWithUser
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| user | string | End user identifier | No |
 | value |  |  | Yes |
 
 #### ConversationVariablesQuery
@@ -2914,6 +3075,14 @@ Enum class for fetch from.
 | action | string |  | Yes |
 | inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
 
+#### HumanInputFormSubmitPayloadWithUser
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action | string |  | Yes |
+| inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
+| user | string | End user identifier | Yes |
+
 #### HumanInputFormSubmitResponse
 
 | Name | Type | Description | Required |
@@ -2981,6 +3150,14 @@ Model class for i18n object.
 | ---- | ---- | ----------- | -------- |
 | content | string |  | No |
 | rating | string |  | No |
+
+#### MessageFeedbackPayloadWithUser
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | No |
+| rating | string |  | No |
+| user | string | End user identifier | Yes |
 
 #### MessageFile
 
@@ -3101,6 +3278,12 @@ Enum class for model type.
 | ---- | ---- | ----------- | -------- |
 | ModelType | string | Enum class for model type. |  |
 
+#### OptionalServiceApiUserPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| user | string | End user identifier | No |
+
 #### ParagraphInputConfig
 
 Form input definition.
@@ -3217,6 +3400,12 @@ Model class for provider with models response.
 | provider | string |  | Yes |
 | status | [CustomConfigurationStatus](#customconfigurationstatus) |  | Yes |
 | tenant_id | string |  | Yes |
+
+#### RequiredServiceApiUserPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| user | string | End user identifier | Yes |
 
 #### RerankingModel
 
@@ -3398,7 +3587,7 @@ Model class for provider with models response.
 | ---- | ---- | ----------- | -------- |
 | chunk_overlap | integer |  | No |
 | max_tokens | integer |  | Yes |
-| separator | string, <br>**Default:** 
+| separator | string, <br>**Default:**
  |  | No |
 
 #### SelectInputConfig
@@ -3525,13 +3714,11 @@ Default configuration for form inputs.
 
 #### TagUnbindingPayload
 
-Accept the legacy single-tag Service API payload while exposing a normalized tag_ids list internally.
+Accepts either the legacy tag_id payload or the normalized tag_ids payload.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| tag_id | string |  | No |
-| tag_ids | [ string ] |  | No |
-| target_id | string |  | Yes |
+| TagUnbindingPayload | object<br>object | Accepts either the legacy tag_id payload or the normalized tag_ids payload. |  |
 
 #### TagUpdatePayload
 
@@ -3547,6 +3734,16 @@ Accept the legacy single-tag Service API payload while exposing a normalized tag
 | message_id | string | Message ID | No |
 | streaming | boolean | Enable streaming response | No |
 | text | string | Text to convert to audio | No |
+| voice | string | Voice to use for TTS | No |
+
+#### TextToAudioPayloadWithUser
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| message_id | string | Message ID | No |
+| streaming | boolean | Enable streaming response | No |
+| text | string | Text to convert to audio | No |
+| user | string | End user identifier | No |
 | voice | string | Voice to use for TTS | No |
 
 #### UrlResponse
@@ -3664,6 +3861,16 @@ in form definiton, or a variable while the workflow is running.
 | inputs | object |  | Yes |
 | response_mode | string |  | No |
 | trace_session_id | string | Trace session ID for observability grouping | No |
+
+#### WorkflowRunPayloadWithUser
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| files | [ object ] |  | No |
+| inputs | object |  | Yes |
+| response_mode | string |  | No |
+| trace_session_id | string | Trace session ID for observability grouping | No |
+| user | string | End user identifier | Yes |
 
 #### WorkflowRunResponse
 

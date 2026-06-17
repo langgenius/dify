@@ -1,3 +1,4 @@
+import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
 import type { AgentV2NodeType } from '../types'
 import type { WorkflowNodesMap } from '@/app/components/base/prompt-editor/types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -26,11 +27,11 @@ function AgentTaskToolbar({
   const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
 
-  const handleInsert = useCallback((text: '/' | '{') => {
+  const handleInsert = useCallback(() => {
     onInsert()
     editor.focus()
     editor.update(() => {
-      $insertNodes([$createCustomTextNode(text)])
+      $insertNodes([$createCustomTextNode('/')])
     })
   }, [editor, onInsert])
 
@@ -40,18 +41,10 @@ function AgentTaskToolbar({
         <button
           type="button"
           className="flex items-center gap-1 system-xs-medium hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          onClick={() => handleInsert('/')}
+          onClick={handleInsert}
         >
           <span aria-hidden className="i-ri-slash-commands-2 size-3.5" />
           {t(`${i18nPrefix}.task.insert`, { ns: 'workflow' })}
-        </button>
-        <button
-          type="button"
-          className="flex items-center gap-1 system-xs-medium hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          onClick={() => handleInsert('{')}
-        >
-          <span aria-hidden className="i-ri-at-line size-3.5" />
-          {t(`${i18nPrefix}.task.mention`, { ns: 'workflow' })}
         </button>
       </div>
       <div className="rounded-sm border border-divider-regular bg-background-default px-1 system-2xs-regular text-text-tertiary">
@@ -66,11 +59,15 @@ export function AgentTaskField({
   data,
   readOnly,
   onChange,
+  outputs,
+  onOutputsChange,
 }: {
   id: string
   data: AgentV2NodeType
   readOnly?: boolean
   onChange: (value: string) => void
+  outputs: DeclaredOutputConfig[]
+  onOutputsChange: (outputs: DeclaredOutputConfig[], prompt?: string) => void
 }) {
   const { t } = useTranslation()
   const getVarType = useWorkflowVariableType()
@@ -135,11 +132,18 @@ export function AgentTaskField({
               getVarType,
               workflowNodesMap,
             }}
+            agentOutputBlock={{
+              show: true,
+              outputs,
+              onChange: onOutputsChange,
+            }}
           >
-            <AgentTaskToolbar
-              taskLength={(data.agent_task || '').length}
-              onInsert={setFocus}
-            />
+            {isFocus && (
+              <AgentTaskToolbar
+                taskLength={(data.agent_task || '').length}
+                onInsert={setFocus}
+              />
+            )}
           </PromptEditor>
         </div>
       </div>

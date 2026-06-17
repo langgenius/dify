@@ -173,6 +173,15 @@ vi.mock('@/features/agent-v2/agent-detail/navigation', () => ({
   ),
 }))
 
+vi.mock('@/features/deployments/detail/deployment-sidebar', () => ({
+  DeploymentDetailSection: ({ expand }: { expand: boolean }) => <div data-testid="deployment-detail-section" data-expand={expand} />,
+  DeploymentDetailTop: ({ expand, onToggle }: { expand: boolean, onToggle: () => void }) => (
+    <div data-testid="deployment-detail-top" data-expand={expand}>
+      <button type="button" data-testid="deployment-detail-toggle" onClick={onToggle}>Toggle</button>
+    </div>
+  ),
+}))
+
 vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
@@ -254,8 +263,10 @@ const appContextValue: AppContextValue = {
   isValidatingCurrentWorkspace: false,
 }
 
+type MainNavSystemFeatures = NonNullable<Parameters<typeof renderWithSystemFeatures>[1]>['systemFeatures']
+
 const renderMainNav = (
-  systemFeatures = { branding: { enabled: false } },
+  systemFeatures: MainNavSystemFeatures = { branding: { enabled: false } },
   options: { store?: ReturnType<typeof createStore>, extra?: ReactNode } = {},
 ) => {
   const queryClient = createTestQueryClient()
@@ -347,6 +358,22 @@ describe('MainNav', () => {
     renderMainNav()
 
     expect(screen.queryByRole('link', { name: /common.menus.roster/ })).not.toBeInTheDocument()
+  })
+
+  it('renders deployments in primary navigation when app deploy is enabled', () => {
+    renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })
+
+    const marketplaceLink = screen.getByRole('link', { name: /common.mainNav.marketplace/ })
+    const deploymentsLink = screen.getByRole('link', { name: /common.menus.deployments/ })
+
+    expect(deploymentsLink).toHaveAttribute('href', '/deployments')
+    expect(marketplaceLink.compareDocumentPosition(deploymentsLink)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  })
+
+  it('hides deployments in primary navigation when app deploy is disabled', () => {
+    renderMainNav({ branding: { enabled: false }, enable_app_deploy: false })
+
+    expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
   })
 
   it('aligns the global navigation spacing with the main sidebar design', () => {
@@ -477,13 +504,14 @@ describe('MainNav', () => {
       isCurrentWorkspaceOwner: false,
     })
 
-    renderMainNav()
+    renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })
 
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.roster/ })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.menus.datasets/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toBeInTheDocument()
   })
 
@@ -677,6 +705,23 @@ describe('MainNav', () => {
     expect(screen.queryByRole('link', { name: /common.menus.roster/ })).not.toBeInTheDocument()
   })
 
+  it('replaces global navigation with deployment detail navigation on deployment routes', () => {
+    mockPathname = '/deployments/app-instance-1/releases'
+
+    renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })
+
+    expect(screen.getByTestId('deployment-detail-top')).toBeInTheDocument()
+    expect(screen.getByTestId('deployment-detail-section')).toBeInTheDocument()
+    expect(screen.getByTestId('deployment-detail-top')).toHaveAttribute('data-expand', 'true')
+    expect(screen.getByTestId('deployment-detail-section')).toHaveAttribute('data-expand', 'true')
+    expect(screen.getByRole('complementary')).toHaveClass('w-[248px]')
+    expect(screen.getByRole('complementary')).toHaveClass('p-1')
+    expect(screen.getByRole('complementary')).toHaveClass('bg-background-body')
+    expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /common.mainNav.home/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
+  })
+
   it('collapses agent detail navigation from the top-right toggle', () => {
     mockPathname = '/roster/agent/agent-1/configure'
 
@@ -688,6 +733,33 @@ describe('MainNav', () => {
     expect(screen.getByTestId('agent-detail-top')).toHaveAttribute('data-expand', 'false')
     expect(screen.getByTestId('agent-detail-section')).toHaveAttribute('data-expand', 'false')
     expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('collapse')
+  })
+
+  it('collapses deployment detail navigation from the top-right toggle', () => {
+    mockPathname = '/deployments/app-instance-1/releases'
+
+    renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })
+    fireEvent.click(screen.getByTestId('deployment-detail-toggle'))
+
+    expect(screen.getByRole('complementary')).toHaveClass('w-16')
+    expect(screen.getByRole('complementary')).toHaveClass('p-1')
+    expect(screen.getByTestId('deployment-detail-top')).toHaveAttribute('data-expand', 'false')
+    expect(screen.getByTestId('deployment-detail-section')).toHaveAttribute('data-expand', 'false')
+    expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('collapse')
+  })
+
+  it.each([
+    '/deployments',
+    '/deployments/create',
+  ])('keeps global navigation on deployment collection route %s', (pathname) => {
+    mockPathname = pathname
+
+    renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })
+
+    expect(screen.queryByTestId('deployment-detail-top')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('deployment-detail-section')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common.menus.deployments/ })).toHaveAttribute('href', '/deployments')
   })
 
   it('registers the detail navigation shortcut to run while inputs are focused', () => {

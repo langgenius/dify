@@ -68,6 +68,8 @@ vi.mock('@/app/components/base/prompt-editor', () => ({
           placeholder={typeof props.placeholder === 'string' ? props.placeholder : undefined}
           value={props.value}
           onChange={event => props.onChange?.(event.currentTarget.value)}
+          onBlur={props.onBlur}
+          onFocus={props.onFocus}
         />
         {props.children}
       </>
@@ -332,7 +334,7 @@ describe('agent/panel', () => {
 
   it('renders inline agent detail from workflow composer state and opens the inline panel', () => {
     mockStoreState.openInlineAgentPanelNodeId = 'agent-node'
-    render(
+    const { container } = render(
       <AgentV2Panel
         id="agent-node"
         data={createData({
@@ -349,8 +351,11 @@ describe('agent/panel', () => {
 
     expect(mockUseAgentRosterDetail).toHaveBeenCalledWith(undefined)
     expect(mockUseWorkflowInlineAgentDetail).toHaveBeenCalledWith('agent-node', 'inline-agent-1')
-    expect(screen.getByText('Workflow Agent 1')).toBeInTheDocument()
+    expect(screen.queryByText('Workflow Agent 1')).not.toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.name')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.type')).toBeInTheDocument()
+    expect(container.querySelector('.i-custom-vender-agent-v2-robot-3')).toHaveClass('size-5')
+    expect(container.querySelector('.i-custom-vender-agent-v2-robot-3')?.parentElement).toHaveClass('size-8', 'rounded-full', 'bg-background-default-burn')
     expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.title')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.description')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ })).toBeInTheDocument()
@@ -564,14 +569,106 @@ describe('agent/panel', () => {
     expect(mockPromptEditorProps[0]?.workflowVariableBlock).toMatchObject({
       show: true,
     })
+    expect(mockPromptEditorProps[0]?.agentOutputBlock).toMatchObject({
+      show: true,
+      outputs: expect.arrayContaining([
+        expect.objectContaining({ name: 'text' }),
+      ]),
+    })
     expect(mockPromptEditorProps[0]?.contextBlock).toBeUndefined()
+
+    expect(screen.queryByRole('button', { name: 'workflow.nodes.agent.task.insert' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'workflow.nodes.agent.task.mention' })).not.toBeInTheDocument()
+
+    fireEvent.focus(editor)
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.task.insert' }))
     expect(mockEditorFocus).toHaveBeenCalled()
     expect(mockInsertNodes.mock.calls[0]?.[0]?.[0]?.getTextContent()).toBe('/')
+    expect(screen.queryByRole('button', { name: 'workflow.nodes.agent.task.mention' })).not.toBeInTheDocument()
+  })
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.task.mention' }))
-    expect(mockInsertNodes.mock.calls[1]?.[0]?.[0]?.getTextContent()).toBe('{')
+  it('syncs declared outputs created from the agent task editor', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData()}
+        panelProps={panelProps}
+      />,
+    )
+
+    mockPromptEditorProps[0]?.agentOutputBlock?.onChange?.([
+      ...mockPromptEditorProps[0]!.agentOutputBlock!.outputs!,
+      {
+        name: 'summary',
+        type: 'string',
+        required: false,
+      },
+    ], 'Use [§output:summary:summary§]')
+
+    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
+      {
+        id: 'agent-node',
+        data: expect.objectContaining({
+          agent_task: 'Use [§output:summary:summary§]',
+          agent_declared_outputs: expect.arrayContaining([
+            expect.objectContaining({
+              name: 'summary',
+              type: 'string',
+              required: false,
+            }),
+          ]),
+        }),
+      },
+      expect.objectContaining({
+        sync: true,
+        notRefreshWhenSyncError: true,
+      }),
+    )
+  })
+
+  it('keeps the latest local task draft when outputs change before rerender', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData()}
+        panelProps={panelProps}
+      />,
+    )
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'workflow.nodes.agent.task.label' }), {
+      target: {
+        value: 'Draft before output',
+      },
+    })
+    mockPromptEditorProps[0]?.agentOutputBlock?.onChange?.([
+      ...mockPromptEditorProps[0]!.agentOutputBlock!.outputs!,
+      {
+        name: 'summary',
+        type: 'string',
+        required: false,
+      },
+    ])
+
+    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
+      {
+        id: 'agent-node',
+        data: expect.objectContaining({
+          agent_task: 'Draft before output',
+          agent_declared_outputs: expect.arrayContaining([
+            expect.objectContaining({
+              name: 'summary',
+              type: 'string',
+              required: false,
+            }),
+          ]),
+        }),
+      },
+      expect.objectContaining({
+        sync: true,
+        notRefreshWhenSyncError: true,
+      }),
+    )
   })
 
   it('saves agent task to workflow draft node data', () => {
@@ -592,6 +689,138 @@ describe('agent/panel', () => {
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
       agent_task: 'Use the previous result',
     }))
+  })
+
+  it('removes declared outputs when their prompt output token is deleted', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          agent_task: 'Use [§output:summary:summary§] and [§output:manual:manual§]',
+          agent_declared_outputs: [
+            {
+              name: 'summary',
+              type: 'string',
+              required: false,
+            },
+            {
+              name: 'manual',
+              type: 'string',
+              required: false,
+            },
+          ],
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'workflow.nodes.agent.task.label' }), {
+      target: {
+        value: 'Use [§output:manual:manual§]',
+      },
+    })
+
+    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
+      agent_task: 'Use [§output:manual:manual§]',
+      agent_declared_outputs: [
+        expect.objectContaining({
+          name: 'manual',
+        }),
+      ],
+    }))
+  })
+
+  it('does not remove prompt output tokens when declared outputs are changed from the output list', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          agent_task: 'Use [§output:summary:summary§]',
+          agent_declared_outputs: [
+            {
+              name: 'summary',
+              type: 'string',
+              required: false,
+            },
+          ],
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    mockPromptEditorProps[0]?.agentOutputBlock?.onChange?.([])
+
+    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
+      {
+        id: 'agent-node',
+        data: expect.objectContaining({
+          agent_task: 'Use [§output:summary:summary§]',
+          agent_declared_outputs: [],
+        }),
+      },
+      expect.objectContaining({
+        sync: true,
+        notRefreshWhenSyncError: true,
+      }),
+    )
+  })
+
+  it('renames prompt output tokens when a referenced declared output is renamed from the output list', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          agent_task: 'Use [§output:summary:summary§] and §output:other:other§',
+          agent_declared_outputs: [
+            {
+              name: 'summary',
+              type: 'string',
+              required: false,
+            },
+            {
+              name: 'other',
+              type: 'string',
+              required: false,
+            },
+          ],
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    mockPromptEditorProps[0]?.agentOutputBlock?.onChange?.([
+      {
+        name: 'final_summary',
+        type: 'string',
+        required: false,
+      },
+      {
+        name: 'other',
+        type: 'string',
+        required: false,
+      },
+    ])
+
+    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
+      {
+        id: 'agent-node',
+        data: expect.objectContaining({
+          agent_task: 'Use [§output:final_summary:final_summary§] and §output:other:other§',
+          agent_declared_outputs: [
+            expect.objectContaining({
+              name: 'final_summary',
+            }),
+            expect.objectContaining({
+              name: 'other',
+            }),
+          ],
+        }),
+      },
+      expect.objectContaining({
+        sync: true,
+        notRefreshWhenSyncError: true,
+      }),
+    )
   })
 
   it('renders declared outputs from workflow draft graph data', () => {

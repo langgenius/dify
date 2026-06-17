@@ -50,13 +50,14 @@ export function CreateAgentDialog() {
 
   const handleSubmit = (formValues: AgentFormValues) => {
     const trimmedName = formValues.name?.trim() ?? ''
-    if (!trimmedName || createAgentMutation.isPending)
+    const trimmedRole = formValues.role?.trim() ?? ''
+    if (createAgentMutation.isPending)
       return
 
     const body = {
       name: trimmedName,
       description: formValues.description?.trim() ?? '',
-      role: formValues.role?.trim() ?? '',
+      role: trimmedRole,
       icon_type: agentIcon.type,
       icon: agentIcon.type === 'image' ? agentIcon.fileId : agentIcon.icon,
       icon_background: agentIcon.type === 'emoji' ? agentIcon.background : undefined,
@@ -105,7 +106,7 @@ export function CreateAgentDialog() {
             onFormSubmit={handleSubmit}
           >
             <div className="space-y-5 px-6 py-3">
-              <div className="flex items-end gap-4">
+              <div className="flex items-end gap-4 pb-2">
                 <button
                   type="button"
                   aria-label={t('roster.createForm.changeIcon')}
@@ -123,7 +124,16 @@ export function CreateAgentDialog() {
                   />
                 </button>
                 <div className="flex min-w-0 flex-1 gap-3 pb-1">
-                  <FieldRoot name="name" className="min-w-0 flex-1">
+                  <FieldRoot
+                    name="name"
+                    className="relative min-w-0 flex-1"
+                    validate={(value) => {
+                      if (typeof value === 'string' && value.length > 0 && !value.trim())
+                        return t('roster.createForm.nameRequired')
+
+                      return null
+                    }}
+                  >
                     <FieldLabel>
                       {t('roster.createForm.nameLabel')}
                     </FieldLabel>
@@ -135,11 +145,21 @@ export function CreateAgentDialog() {
                       placeholder={t('roster.createForm.namePlaceholder')}
                       required
                     />
-                    <FieldError match="valueMissing">
-                      {t('roster.createForm.nameRequired')}
-                    </FieldError>
+                    <div className="absolute top-full left-0 mt-1">
+                      <FieldError match="valueMissing">{t('roster.createForm.nameRequired')}</FieldError>
+                      <FieldError match="customError" />
+                    </div>
                   </FieldRoot>
-                  <FieldRoot name="role" className="min-w-0 flex-1">
+                  <FieldRoot
+                    name="role"
+                    className="relative min-w-0 flex-1"
+                    validate={(value) => {
+                      if (typeof value === 'string' && value.length > 0 && !value.trim())
+                        return t('roster.createForm.roleRequired')
+
+                      return null
+                    }}
+                  >
                     <FieldLabel>
                       {t('roster.createForm.roleLabel')}
                     </FieldLabel>
@@ -147,7 +167,12 @@ export function CreateAgentDialog() {
                       autoComplete="off"
                       maxLength={255}
                       placeholder={t('roster.createForm.rolePlaceholder')}
+                      required
                     />
+                    <div className="absolute top-full left-0 mt-1">
+                      <FieldError match="valueMissing">{t('roster.createForm.roleRequired')}</FieldError>
+                      <FieldError match="customError" />
+                    </div>
                   </FieldRoot>
                 </div>
               </div>

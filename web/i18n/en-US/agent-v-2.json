@@ -222,6 +222,12 @@
   "agentDetail.configure.tools.removeProvider": "Remove all tools",
   "agentDetail.configure.tools.tip": "Tools this agent can call while orchestrating tasks.",
   "agentDetail.configure.tools.toggle": "Toggle tools",
+  "agentDetail.configure.tools.toolTabs.all": "All",
+  "agentDetail.configure.tools.toolTabs.cli": "CLI",
+  "agentDetail.configure.tools.toolTabs.custom": "Custom",
+  "agentDetail.configure.tools.toolTabs.mcp": "MCP",
+  "agentDetail.configure.tools.toolTabs.plugins": "Plugins",
+  "agentDetail.configure.tools.toolTabs.workflow": "Workflow",
   "agentDetail.documentTitle": "Agent",
   "agentDetail.history": "History",
   "agentDetail.logs.description": "Full logs record the running status of the application, including user inputs, agent replies, planning and tool uses.",
@@ -328,6 +334,7 @@
   "roster.createForm.nameRequired": "Name is required.",
   "roster.createForm.roleLabel": "Role",
   "roster.createForm.rolePlaceholder": "e.g. Research Assistant",
+  "roster.createForm.roleRequired": "Role is required.",
   "roster.createSuccess": "Agent created.",
   "roster.dateTimeFormat": "MM/DD/YYYY hh:mm:ss A",
   "roster.deleteDialog.description": "This agent will be removed from the active roster list.",
@@ -344,8 +351,8 @@
   "roster.emptySearchDescription": "Try another agent name.",
   "roster.filters.all": "All",
   "roster.filters.drafts": "Drafts",
-  "roster.filters.inUse": "In use",
   "roster.filters.label": "Agent filters",
+  "roster.filters.published": "Published",
   "roster.learnMore": "Learn more about Agent Roster",
   "roster.listLabel": "Agent roster list",
   "roster.loadMore": "Load more",
@@ -371,6 +378,5 @@
   "roster.tabsLabel": "Roster type",
   "roster.updateFailed": "Failed to update agent. Check the fields and try again.",
   "roster.updateSuccess": "Agent updated.",
-  "roster.usageStatus.draft": "Draft",
-  "roster.usageStatus.inUse": "In use"
+  "roster.usageStatus.draft": "Draft"
 }

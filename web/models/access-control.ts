@@ -1,27 +1,31 @@
-export enum SubjectType {
-  GROUP = 'group',
-  ACCOUNT = 'account',
-}
+export const SubjectType = {
+  GROUP: 'group',
+  ACCOUNT: 'account',
+} as const
 
-export enum AccessMode {
-  PUBLIC = 'public',
-  SPECIFIC_GROUPS_MEMBERS = 'private',
-  ORGANIZATION = 'private_all',
-  EXTERNAL_MEMBERS = 'sso_verified',
-}
+export type SubjectType = typeof SubjectType[keyof typeof SubjectType]
+
+export const AccessMode = {
+  PUBLIC: 'public',
+  SPECIFIC_GROUPS_MEMBERS: 'private',
+  ORGANIZATION: 'private_all',
+  EXTERNAL_MEMBERS: 'sso_verified',
+} as const
+
+export type AccessMode = typeof AccessMode[keyof typeof AccessMode]
 
 export type AccessControlGroup = {
-  id: 'string'
-  name: 'string'
-  groupSize: 5
+  id: string
+  name: string
+  groupSize: number
 }
 
 export type AccessControlAccount = {
-  id: 'string'
-  name: 'string'
-  email: 'string'
-  avatar: 'string'
-  avatarUrl: 'string'
+  id: string
+  name: string
+  email: string
+  avatar: string
+  avatarUrl: string
 }
 
 export type SubjectGroup = { subjectId: string, subjectType: SubjectType, groupData: AccessControlGroup }

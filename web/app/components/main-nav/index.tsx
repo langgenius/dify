@@ -18,6 +18,7 @@ import EnvNav from '@/app/components/header/env-nav'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useAppContext } from '@/context/app-context'
 import { AgentDetailSection, AgentDetailTop } from '@/features/agent-v2/agent-detail/navigation'
+import { DeploymentDetailSection, DeploymentDetailTop } from '@/features/deployments/detail/deployment-sidebar'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
@@ -31,6 +32,7 @@ import { WorkspaceCard } from './components/workspace-card'
 
 const DATASET_COLLECTION_ROUTES = new Set(['create', 'create-from-pipeline', 'connect'])
 const DATASET_DOCUMENT_CREATION_ROUTES = new Set(['create', 'create-from-pipeline'])
+const DEPLOYMENT_COLLECTION_ROUTES = new Set(['create'])
 const DETAIL_SIDEBAR_STORAGE_KEY = 'app-detail-collapse-or-expand'
 const secondarySidebarHelpTriggerIcon = <span aria-hidden className="i-ri-question-line size-4 shrink-0" />
 
@@ -68,6 +70,12 @@ const isAgentDetailPathname = (pathname: string) => {
   return section === 'roster' && type === 'agent' && !!agentId
 }
 
+const isDeploymentDetailPathname = (pathname: string) => {
+  const [section, appInstanceId] = pathname.split('/').filter(Boolean)
+
+  return section === 'deployments' && !!appInstanceId && !DEPLOYMENT_COLLECTION_ROUTES.has(appInstanceId)
+}
+
 const isSnippetDetailPathname = (pathname: string) => {
   const [section, snippetId] = pathname.split('/').filter(Boolean)
 
@@ -83,11 +91,13 @@ const MainNav = ({
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const agentV2Enabled = isAgentV2Enabled()
   const showEnvTag = langGeniusVersionInfo.current_env === 'TESTING' || langGeniusVersionInfo.current_env === 'DEVELOPMENT'
+  const canUseAppDeploy = isCurrentWorkspaceEditor && systemFeatures.enable_app_deploy
   const showAppDetailNavigation = !isCurrentWorkspaceDatasetOperator && pathname.startsWith('/app/')
   const showDatasetDetailNavigation = isDatasetDetailPathname(pathname)
   const showAgentDetailNavigation = agentV2Enabled && !isCurrentWorkspaceDatasetOperator && isAgentDetailPathname(pathname)
+  const showDeploymentDetailNavigation = canUseAppDeploy && !isCurrentWorkspaceDatasetOperator && isDeploymentDetailPathname(pathname)
   const showSnippetDetailBottomNavigation = isSnippetDetailPathname(pathname)
-  const showDetailNavigation = showAppDetailNavigation || showDatasetDetailNavigation || showAgentDetailNavigation
+  const showDetailNavigation = showAppDetailNavigation || showDatasetDetailNavigation || showAgentDetailNavigation || showDeploymentDetailNavigation
   const { hasAppDetail, appSidebarExpand, setAppDetail, setAppSidebarExpand } = useAppStore(useShallow(state => ({
     hasAppDetail: !!state.appDetail,
     appSidebarExpand: state.appSidebarExpand,
@@ -232,7 +242,16 @@ const MainNav = ({
       icon: 'i-custom-vender-main-nav-marketplace',
       activeIcon: 'i-custom-vender-main-nav-marketplace-active',
     },
-  ], [agentV2Enabled, isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceEditor, t])
+    ...(canUseAppDeploy
+      ? [{
+          href: '/deployments',
+          label: t('menus.deployments', { ns: 'common' }),
+          active: (path: string) => path.startsWith('/deployments'),
+          icon: 'i-ri-rocket-line',
+          activeIcon: 'i-ri-rocket-fill',
+        }]
+      : []),
+  ], [agentV2Enabled, canUseAppDeploy, isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceEditor, t])
 
   const renderLogo = () => {
     const appTitle = systemFeatures.branding.enabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'
@@ -295,7 +314,14 @@ const MainNav = ({
                     onToggle={handleToggleDetailNavigation}
                   />
                 )
-              : showAgentDetailNavigation
+              : showDatasetDetailNavigation
+                ? (
+                    <DatasetDetailTop
+                      expand={detailNavigationVisibleExpanded}
+                      onToggle={handleToggleDetailNavigation}
+                    />
+                  )
+                : showAgentDetailNavigation
                 ? (
                     <AgentDetailTop
                       expand={detailNavigationVisibleExpanded}
@@ -303,7 +329,7 @@ const MainNav = ({
                     />
                   )
                 : (
-                    <DatasetDetailTop
+                    <DeploymentDetailTop
                       expand={detailNavigationVisibleExpanded}
                       onToggle={handleToggleDetailNavigation}
                     />
@@ -324,9 +350,11 @@ const MainNav = ({
           {showDetailNavigation
             ? showAppDetailNavigation
               ? <AppDetailSection expand={detailNavigationVisibleExpanded} />
-              : showAgentDetailNavigation
-                ? <AgentDetailSection expand={detailNavigationVisibleExpanded} />
-                : <DatasetDetailSection expand={detailNavigationVisibleExpanded} />
+              : showDatasetDetailNavigation
+                ? <DatasetDetailSection expand={detailNavigationVisibleExpanded} />
+                : showAgentDetailNavigation
+                  ? <AgentDetailSection expand={detailNavigationVisibleExpanded} />
+                : <DeploymentDetailSection expand={detailNavigationVisibleExpanded} />
             : showSnippetDetailBottomNavigation
               ? null
               : (

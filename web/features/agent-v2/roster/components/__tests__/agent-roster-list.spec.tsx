@@ -12,6 +12,7 @@ vi.mock('@/hooks/use-timestamp', () => ({
 }))
 
 const createAgent = (overrides: Partial<AgentRosterListItem> = {}): AgentRosterListItem => ({
+  active_config_is_published: false,
   description: 'Find and summarize market materials.',
   id: 'agent-1',
   icon_url: null,
@@ -19,6 +20,7 @@ const createAgent = (overrides: Partial<AgentRosterListItem> = {}): AgentRosterL
   name: 'Research Agent',
   published_reference_count: 0,
   published_references: [],
+  role: 'Research Assistant',
   ...overrides,
 })
 
@@ -51,26 +53,27 @@ describe('AgentRosterList', () => {
     vi.clearAllMocks()
   })
 
-  it('renders mode under the card title instead of the agent source', () => {
+  it('renders role under the card title instead of the agent mode', () => {
     renderList([createAgent()])
 
-    expect(screen.getByText('agent')).toBeInTheDocument()
-    expect(screen.queryByText('agentV2.roster.sources.agent_app')).not.toBeInTheDocument()
+    expect(screen.getByText('Research Assistant')).toBeInTheDocument()
+    expect(screen.queryByText('agent')).not.toBeInTheDocument()
   })
 
-  it('uses the Figma-aligned card title and mode typography', () => {
+  it('uses the Figma-aligned card title and role typography', () => {
     renderList([createAgent()])
 
     expect(screen.getByRole('heading', { name: 'Research Agent' })).toHaveClass('system-md-semibold')
-    expect(screen.getByText('agent')).toHaveClass('system-xs-regular')
+    expect(screen.getByText('Research Assistant')).toHaveClass('system-xs-regular')
     expect(screen.getByText('agentV2.roster.usageStatus.draft')).toHaveClass('system-2xs-medium-uppercase')
   })
 
-  it('derives the card badge from published reference count', () => {
+  it('only renders the draft badge for unpublished agents', () => {
     renderList([
       createAgent({
-        id: 'agent-in-use',
-        name: 'Research Agent',
+        active_config_is_published: true,
+        id: 'agent-published',
+        name: 'Published Agent',
         published_reference_count: 1,
       }),
       createAgent({
@@ -80,8 +83,9 @@ describe('AgentRosterList', () => {
       }),
     ])
 
-    expect(screen.getByText('agentV2.roster.usageStatus.inUse')).toBeInTheDocument()
     expect(screen.getByText('agentV2.roster.usageStatus.draft')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Published Agent' })).toBeInTheDocument()
+    expect(screen.queryByText('agentV2.roster.usageStatus.inUse')).not.toBeInTheDocument()
     expect(screen.queryByText('agentV2.roster.status.active')).not.toBeInTheDocument()
   })
 
@@ -100,6 +104,14 @@ describe('AgentRosterList', () => {
     expect(screen.getByRole('heading', { name: 'agentV2.roster.emptySearch' })).toBeInTheDocument()
     expect(container.querySelectorAll('.bg-background-default-lighter')).toHaveLength(16)
     expect(screen.queryByText('agentV2.roster.emptySearchDescription')).not.toBeInTheDocument()
+  })
+
+  it('uses the same overlay treatment for loading errors', () => {
+    const { container } = renderList([], { isError: true })
+
+    expect(screen.getByRole('heading', { name: 'agentV2.roster.loadingError' })).toHaveClass('system-sm-regular', 'text-text-tertiary')
+    expect(container.querySelectorAll('.bg-background-default-lighter')).toHaveLength(16)
+    expect(container.querySelector('.bg-linear-to-b')).toBeInTheDocument()
   })
 
   it('opens published workflow references from the card reference trigger', async () => {
