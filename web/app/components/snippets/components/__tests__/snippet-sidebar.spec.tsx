@@ -53,20 +53,6 @@ vi.mock('@/app/components/app/configuration/config-var/config-modal', () => ({
   },
 }))
 
-vi.mock('@/next/link', () => ({
-  default: ({
-    children,
-    href,
-    className,
-  }: {
-    children: React.ReactNode
-    href: string
-    className?: string
-  }) => (
-    <a href={href} className={className}>{children}</a>
-  ),
-}))
-
 vi.mock('@/app/components/workflow/nodes/start/components/var-list', () => ({
   default: (props: {
     list: InputVar[]
@@ -155,7 +141,11 @@ describe('SnippetSidebar', () => {
       />,
     )
 
-    expect(screen.getByRole('link', { name: /snippet\.management/i })).toHaveAttribute('href', '/snippets')
+    expect(screen.queryByRole('link', { name: /snippet\.management/i })).not.toBeInTheDocument()
+    expect(screen.getByText(snippet.name)).toHaveAttribute('title', snippet.name)
+    expect(screen.getByText(snippet.name)).toHaveClass('truncate')
+    expect(screen.getByText(snippet.description)).toHaveAttribute('title', snippet.description)
+    expect(screen.getByText(snippet.description)).toHaveClass('truncate')
     expect(screen.queryByRole('button', { name: /common\.operation\.add/i })).not.toBeInTheDocument()
     expect(capturedVarListProps?.readonly).toBe(true)
   })

@@ -14,6 +14,9 @@ import DatasetDetailTop from '@/app/components/app-sidebar/dataset-detail-top'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
+// import { buildIntegrationPath } from '@/app/components/integrations/routes'
+// import { SnippetSidebarContent } from '@/app/components/snippets/components/snippet-sidebar'
+// import { useSnippetDetailStore } from '@/app/components/snippets/store'
 import { useAppContext } from '@/context/app-context'
 import { AgentDetailSection, AgentDetailTop } from '@/features/agent-v2/agent-detail/navigation'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
@@ -25,6 +28,7 @@ import AccountSection from './components/account-section'
 import HelpMenu from './components/help-menu'
 import MainNavLink from './components/nav-link'
 import { MainNavSearchButton } from './components/search-button'
+// import SnippetDetailTop from './components/snippet-detail-top'
 import WebAppsSection from './components/web-apps-section'
 import { WorkspaceCard } from './components/workspace-card'
 import { isMainNavRouteVisible, MAIN_NAV_ROUTES } from './routes'
@@ -111,9 +115,7 @@ const MainNav = ({
   const detailNavigationTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isDetailNavigationHoverPreviewOpen = isCollapsedDetailNavigation && detailNavigationHoverPreviewOpen
   const detailNavigationVisibleExpanded = detailNavigationExpanded || isDetailNavigationHoverPreviewOpen
-  const bottomNavigationExpanded = showSnippetDetailBottomNavigation
-    ? false
-    : !showDetailNavigation || detailNavigationVisibleExpanded
+  const bottomNavigationExpanded = !showDetailNavigation || detailNavigationVisibleExpanded
   const handleToggleDetailNavigation = useCallback(() => {
     if (isDetailNavigationHoverPreviewOpen) {
       if (detailNavigationTransitionTimerRef.current)
@@ -222,9 +224,7 @@ const MainNav = ({
           ? detailNavigationExpanded
             ? 'w-[248px] bg-background-body p-1'
             : 'w-16 bg-background-body p-1'
-          : showSnippetDetailBottomNavigation
-            ? 'w-16 bg-background-body p-1'
-            : 'w-60 flex-col',
+          : 'w-60 flex-col',
         'bg-background-body',
         className,
       )}

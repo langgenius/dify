@@ -1,4 +1,4 @@
-import type { SnippetInputField } from '@/models/snippet'
+import type { SnippetDetail, SnippetInputField } from '@/models/snippet'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useSnippetDetailStore } from '..'
 
@@ -8,6 +8,15 @@ const createField = (variable: string): SnippetInputField => ({
   type: PipelineInputVarType.textInput,
   required: true,
 })
+
+const snippet: SnippetDetail = {
+  id: 'snippet-1',
+  name: 'Snippet',
+  description: 'Description',
+  updatedAt: '2026-03-29 10:00',
+  usage: '0',
+  tags: [],
+}
 
 describe('useSnippetDetailStore', () => {
   beforeEach(() => {
@@ -27,5 +36,33 @@ describe('useSnippetDetailStore', () => {
     useSnippetDetailStore.getState().reset()
 
     expect(useSnippetDetailStore.getState().fields).toEqual([])
+  })
+
+  it('should store and reset snippet navigation state', () => {
+    const onFieldsChange = vi.fn()
+
+    useSnippetDetailStore.getState().setNavigationState({
+      snippetId: 'snippet-1',
+      snippet,
+      readonly: false,
+      onFieldsChange,
+    })
+
+    expect(useSnippetDetailStore.getState()).toMatchObject({
+      snippetId: 'snippet-1',
+      snippet,
+      readonly: false,
+      onFieldsChange,
+    })
+
+    useSnippetDetailStore.getState().reset()
+
+    expect(useSnippetDetailStore.getState()).toMatchObject({
+      fields: [],
+      readonly: true,
+      snippet: undefined,
+      snippetId: undefined,
+      onFieldsChange: undefined,
+    })
   })
 })

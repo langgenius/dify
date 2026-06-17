@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
 import type { WorkflowProps } from '@/app/components/workflow'
-import type { SnippetDetailPayload, SnippetInputField } from '@/models/snippet'
+import type { SnippetDetail, SnippetDetailPayload, SnippetInputField } from '@/models/snippet'
 import { toast } from '@langgenius/dify-ui/toast'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { PipelineInputVarType } from '@/models/pipeline'
@@ -13,6 +13,7 @@ const mockDoSyncWorkflowDraft = vi.fn()
 const mockSyncWorkflowDraftWhenPageClose = vi.fn()
 const mockReset = vi.fn()
 const mockSetFields = vi.fn()
+const mockSetNavigationState = vi.fn()
 const mockPublishSnippetMutateAsync = vi.fn()
 const mockUseSnippetPublishedWorkflow = vi.fn()
 const mockFetchInspectVars = vi.fn()
@@ -62,8 +63,13 @@ let capturedHooksStore: Record<string, unknown> | undefined
 let capturedWorkflowNodes: WorkflowProps['nodes'] | undefined
 let snippetDetailStoreState: {
   fields: SnippetInputField[]
+  onFieldsChange?: (fields: SnippetInputField[]) => void
+  readonly: boolean
   reset: typeof mockReset
   setFields: typeof mockSetFields
+  setNavigationState: typeof mockSetNavigationState
+  snippet?: SnippetDetail
+  snippetId?: string
 }
 
 vi.mock('@/app/components/snippets/store', () => ({
@@ -190,34 +196,6 @@ vi.mock('@/app/components/snippets/components/snippet-children', () => ({
   ),
 }))
 
-vi.mock('@/app/components/snippets/components/snippet-sidebar', () => ({
-  default: ({
-    fields,
-    onFieldsChange,
-  }: {
-    fields: SnippetInputField[]
-    onFieldsChange: (fields: SnippetInputField[]) => void
-  }) => (
-    <div>
-      <button type="button" onClick={() => onFieldsChange([])}>remove</button>
-      <button
-        type="button"
-        onClick={() => onFieldsChange([
-          ...fields,
-          {
-            type: PipelineInputVarType.textInput,
-            label: 'New Field',
-            variable: 'new_field',
-            required: true,
-          },
-        ])}
-      >
-        submit
-      </button>
-    </div>
-  ),
-}))
-
 const payload: SnippetDetailPayload = {
   snippet: {
     id: 'snippet-1',
@@ -328,12 +306,20 @@ describe('SnippetMain', () => {
       },
     })
     mockHandleCheckBeforePublish.mockResolvedValue(true)
+    mockSetNavigationState.mockImplementation((state) => {
+      snippetDetailStoreState = {
+        ...snippetDetailStoreState,
+        ...state,
+      }
+    })
     capturedHooksStore = undefined
     capturedWorkflowNodes = undefined
     snippetDetailStoreState = {
       fields: [...payload.inputFields],
+      readonly: true,
       reset: mockReset,
       setFields: mockSetFields,
+      setNavigationState: mockSetNavigationState,
     }
     mockWorkspacePermissionKeys.value = ['snippets.create_and_modify']
   })
@@ -414,7 +400,12 @@ describe('SnippetMain', () => {
     it('should sync draft input_fields when removing a field from the panel', async () => {
       renderSnippetMain({ currentNodes: [createDraftNode()] })
 
-      fireEvent.click(screen.getByRole('button', { name: 'remove' }))
+      await waitFor(() => {
+        expect(snippetDetailStoreState.onFieldsChange).toEqual(expect.any(Function))
+      })
+      act(() => {
+        snippetDetailStoreState.onFieldsChange?.([])
+      })
 
       await waitFor(() => {
         expect(mockSyncInputFieldsDraft).toHaveBeenCalledWith([], {
@@ -426,7 +417,20 @@ describe('SnippetMain', () => {
     it('should sync draft input_fields when adding a field from the sidebar', async () => {
       renderSnippetMain({ currentNodes: [createDraftNode()] })
 
-      fireEvent.click(screen.getByRole('button', { name: 'submit' }))
+      await waitFor(() => {
+        expect(snippetDetailStoreState.onFieldsChange).toEqual(expect.any(Function))
+      })
+      act(() => {
+        snippetDetailStoreState.onFieldsChange?.([
+          ...payload.inputFields,
+          {
+            type: PipelineInputVarType.textInput,
+            label: 'New Field',
+            variable: 'new_field',
+            required: true,
+          },
+        ])
+      })
 
       await waitFor(() => {
         expect(mockSyncInputFieldsDraft).toHaveBeenCalledWith([

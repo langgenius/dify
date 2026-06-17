@@ -39,7 +39,6 @@ import { useSnippetInputFieldActions } from './hooks/use-snippet-input-field-act
 import { useSnippetPublish } from './hooks/use-snippet-publish'
 import SaveBeforeLeavingDialog from './save-before-leaving-dialog'
 import SnippetChildren from './snippet-children'
-import SnippetSidebar from './snippet-sidebar'
 
 type SnippetMainProps = {
   payload: SnippetDetailPayload
@@ -365,9 +364,11 @@ const SnippetMain = ({
   const {
     reset,
     setFields,
+    setNavigationState,
   } = useSnippetDetailStore(useShallow(state => ({
     reset: state.reset,
     setFields: state.setFields,
+    setNavigationState: state.setNavigationState,
   })))
   const {
     fields,
@@ -385,6 +386,8 @@ const SnippetMain = ({
   const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl(snippetId)
   useEffect(() => {
     reset()
+
+    return () => reset()
   }, [reset, snippetId])
 
   useEffect(() => {
@@ -446,6 +449,15 @@ const SnippetMain = ({
     handleFieldsChange(nextFields)
     setHasDraftChanges(true)
   }, [canCreateAndModifySnippet, handleFieldsChange, isEditing, setHasDraftChanges])
+
+  useEffect(() => {
+    setNavigationState({
+      snippetId,
+      snippet,
+      readonly: !isEditing,
+      onFieldsChange: handleFieldsChangeInEditing,
+    })
+  }, [handleFieldsChangeInEditing, isEditing, setNavigationState, snippet, snippetId])
 
   const updateLocalDraftFromSyncPayload = useCallback((
     syncedDraftPayload?: Omit<SnippetDraftSyncPayload, 'hash'> | void,
@@ -600,12 +612,6 @@ const SnippetMain = ({
 
   return (
     <div className="relative flex h-full min-h-0 min-w-0">
-      <SnippetSidebar
-        snippet={snippet}
-        fields={fields}
-        readonly={!isEditing}
-        onFieldsChange={handleFieldsChangeInEditing}
-      />
       <div className="relative min-h-0 min-w-0 grow">
         <WorkflowWithInnerContext
           key={`${snippetId}-${isEditing ? 'draft' : 'published'}`}
