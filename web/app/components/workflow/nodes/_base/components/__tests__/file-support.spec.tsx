@@ -1,6 +1,7 @@
 import type { UploadFileSetting } from '@/app/components/workflow/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { useFileUploadConfig } from '@/service/use-common'
@@ -118,6 +119,35 @@ describe('File upload support components', () => {
       expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
         max_length: 5,
       }))
+    })
+
+    it('should keep upload limits within the configured range', () => {
+      const StatefulFileUploadSetting = () => {
+        const [payload, setPayload] = useState(createPayload())
+
+        return (
+          <FileUploadSetting
+            payload={payload}
+            isMultiple
+            onChange={setPayload}
+          />
+        )
+      }
+
+      render(<StatefulFileUploadSetting />)
+
+      const input = screen.getByRole('spinbutton')
+
+      fireEvent.change(input, { target: { value: '20' } })
+      expect(input).toHaveValue(10)
+
+      fireEvent.change(input, { target: { value: '0' } })
+      expect(input).toHaveValue(1)
+
+      fireEvent.change(input, { target: { value: '' } })
+      expect(input).toHaveValue(null)
+      fireEvent.blur(input)
+      expect(input).toHaveValue(1)
     })
 
     it('should toggle built-in and custom file type selections', async () => {

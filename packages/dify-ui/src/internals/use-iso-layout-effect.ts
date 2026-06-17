@@ -1,3 +1,5 @@
+'use client'
+
 import * as React from 'react'
 
 const noop: typeof React.useLayoutEffect = () => {}

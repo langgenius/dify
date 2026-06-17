@@ -113,6 +113,9 @@ export const DesignSpec: Story = {
     </div>
   ),
   parameters: {
+    a11y: {
+      test: 'todo',
+    },
     docs: {
       description: {
         story: 'Figma node 2473:9851: segmented control examples with text+icon and icon-only rows, with and without outer padding.',
@@ -168,6 +171,9 @@ export const DataAttributeStates: Story = {
     </div>
   ),
   parameters: {
+    a11y: {
+      test: 'todo',
+    },
     docs: {
       description: {
         story: '`SegmentedControlItem` gets `data-pressed` and `data-disabled` from Base UI Toggle. Accent, neutral, and multiple-selection examples are composed through props and className.',

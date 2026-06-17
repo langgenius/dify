@@ -7,8 +7,12 @@ import Explore from '../index'
 const mockReplace = vi.fn()
 const mockPush = vi.fn()
 const mockInstalledAppsData = { installed_apps: [] as const }
+type MediaTypeValue = (typeof MediaType)[keyof typeof MediaType]
+
+let mockMediaType: MediaTypeValue = MediaType.pc
 
 vi.mock('@/next/navigation', () => ({
+  usePathname: () => '/explore',
   useRouter: () => ({
     replace: mockReplace,
     push: mockPush,
@@ -17,7 +21,7 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/hooks/use-breakpoints', () => ({
-  default: () => MediaType.pc,
+  default: () => mockMediaType,
   MediaType: {
     mobile: 'mobile',
     tablet: 'tablet',
@@ -45,6 +49,7 @@ vi.mock('@/context/app-context', () => ({
 describe('Explore', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockMediaType = MediaType.pc
     ;(useAppContext as Mock).mockReturnValue({
       isCurrentWorkspaceDatasetOperator: false,
     })
@@ -59,6 +64,28 @@ describe('Explore', () => {
       ))
 
       expect(screen.getByText('child')).toBeInTheDocument()
+    })
+
+    it('should not render the legacy explore sidebar on desktop', () => {
+      render((
+        <Explore>
+          <div>child</div>
+        </Explore>
+      ))
+
+      expect(screen.queryByText('explore.sidebar.title')).not.toBeInTheDocument()
+    })
+
+    it('should keep the legacy explore sidebar on mobile', () => {
+      mockMediaType = MediaType.mobile
+
+      render((
+        <Explore>
+          <div>child</div>
+        </Explore>
+      ))
+
+      expect(screen.getByRole('link', { name: 'explore.sidebar.title' })).toBeInTheDocument()
     })
   })
 

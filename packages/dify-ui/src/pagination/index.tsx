@@ -483,9 +483,8 @@ export function PaginationPage({
       aria-current={current ? 'page' : undefined}
       aria-label={ariaLabel ?? (current ? `Page ${page}, current page` : `Go to page ${page}`)}
       className={cn(
-        'inline-flex h-8 min-w-8 touch-manipulation items-center justify-center rounded-lg px-1 py-2 system-sm-medium tabular-nums text-text-tertiary outline-hidden transition-colors hover:bg-components-button-ghost-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+        'inline-flex h-8 min-w-8 touch-manipulation items-center justify-center rounded-lg px-1 py-2 system-sm-medium tabular-nums text-text-tertiary outline-hidden hover:bg-components-button-ghost-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
         current && 'bg-components-button-tertiary-bg text-components-button-tertiary-text hover:bg-components-button-ghost-bg-hover',
-        'motion-reduce:transition-none',
         className,
       )}
       onClick={(event) => {

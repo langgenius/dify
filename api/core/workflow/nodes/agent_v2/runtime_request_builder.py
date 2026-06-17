@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Literal, Protocol, assert_never, cast
 
 from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.layers.ask_human import DifyAskHumanLayerConfig
 from dify_agent.layers.drive import (
     DifyDriveFileConfig,
     DifyDriveLayerConfig,
@@ -22,7 +23,7 @@ from dify_agent.layers.shell import (
     DifyShellSandboxConfig,
     DifyShellSecretRefConfig,
 )
-from dify_agent.protocol import CreateRunRequest
+from dify_agent.protocol import CreateRunRequest, DeferredToolResultsPayload
 from pydantic import BaseModel
 
 from clients.agent_backend import (
@@ -41,6 +42,7 @@ from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
     AgentSoulConfig,
     DeclaredArrayItem,
+    DeclaredOutputChildConfig,
     DeclaredOutputConfig,
     DeclaredOutputType,
     WorkflowNodeJobConfig,
@@ -103,6 +105,9 @@ class WorkflowAgentRuntimeBuildContext:
     # idempotency key so the backend treats each retry as a fresh request.
     attempt: int = 0
     session_snapshot: CompositorSessionSnapshot | None = None
+    # ENG-638: set when resuming after a submitted ask_human HITL form; threads
+    # the human's answer back into the second Agent run keyed by tool_call_id.
+    deferred_tool_results: DeferredToolResultsPayload | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -217,9 +222,11 @@ class WorkflowAgentRuntimeRequestBuilder:
                 output=self._build_output_config(node_job.declared_outputs),
                 tools=tools_layer,
                 drive_config=drive_config,
+                ask_human_config=build_ask_human_layer_config(agent_soul),
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
                 shell_config=build_shell_layer_config(agent_soul),
                 session_snapshot=context.session_snapshot,
+                deferred_tool_results=context.deferred_tool_results,
                 idempotency_key=self._idempotency_key(context),
                 metadata=metadata,
             )
@@ -389,7 +396,11 @@ class WorkflowAgentRuntimeRequestBuilder:
 
     @staticmethod
     def _schema_for_declared_output(output: DeclaredOutputConfig) -> dict[str, Any]:
-        schema = WorkflowAgentRuntimeRequestBuilder._schema_for_type(output.type, array_item=output.array_item)
+        schema = WorkflowAgentRuntimeRequestBuilder._schema_for_type(
+            output.type,
+            array_item=output.array_item,
+            children=output.children,
+        )
         if output.description:
             schema["description"] = output.description
         return schema
@@ -399,6 +410,7 @@ class WorkflowAgentRuntimeRequestBuilder:
         output_type: DeclaredOutputType,
         *,
         array_item: DeclaredArrayItem | None = None,
+        children: Sequence[DeclaredOutputChildConfig] | None = None,
     ) -> dict[str, Any]:
         match output_type:
             case DeclaredOutputType.STRING:
@@ -408,18 +420,23 @@ class WorkflowAgentRuntimeRequestBuilder:
             case DeclaredOutputType.BOOLEAN:
                 return {"type": "boolean"}
             case DeclaredOutputType.OBJECT:
-                return {"type": "object"}
+                object_schema: dict[str, Any] = {"type": "object"}
+                WorkflowAgentRuntimeRequestBuilder._apply_child_properties(object_schema, children or [])
+                return object_schema
             case DeclaredOutputType.ARRAY:
                 # Stage 4 §4.2: items shape mirrors the declared array_item.
                 # Validator guarantees array_item is set when type is array.
                 item_type = array_item.type if array_item else DeclaredOutputType.OBJECT
-                schema: dict[str, Any] = {
+                array_schema: dict[str, Any] = {
                     "type": "array",
-                    "items": WorkflowAgentRuntimeRequestBuilder._schema_for_type(item_type),
+                    "items": WorkflowAgentRuntimeRequestBuilder._schema_for_type(
+                        item_type,
+                        children=array_item.children if array_item else None,
+                    ),
                 }
                 if array_item is not None and array_item.description:
-                    schema["items"]["description"] = array_item.description
-                return schema
+                    array_schema["items"]["description"] = array_item.description
+                return array_schema
             case DeclaredOutputType.FILE:
                 return {
                     "oneOf": [
@@ -464,6 +481,27 @@ class WorkflowAgentRuntimeRequestBuilder:
         assert_never(output_type)
 
     @staticmethod
+    def _apply_child_properties(schema: dict[str, Any], children: Sequence[DeclaredOutputChildConfig]) -> None:
+        if not children:
+            return
+        properties: dict[str, Any] = {}
+        required: list[str] = []
+        for child in children:
+            child_schema = WorkflowAgentRuntimeRequestBuilder._schema_for_type(
+                child.type,
+                array_item=child.array_item,
+                children=child.children,
+            )
+            if child.description:
+                child_schema["description"] = child.description
+            properties[child.name] = child_schema
+            if child.required:
+                required.append(child.name)
+        schema["properties"] = properties
+        if required:
+            schema["required"] = required
+
+    @staticmethod
     def _normalize_credentials(credentials: Mapping[str, Any]) -> dict[str, str | int | float | bool | None]:
         normalized: dict[str, str | int | float | bool | None] = {}
         for key, value in credentials.items():
@@ -494,6 +532,20 @@ def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfi
         if agent_soul.sandbox.provider or sandbox_config
         else None,
     )
+
+
+def build_ask_human_layer_config(agent_soul: AgentSoulConfig) -> DifyAskHumanLayerConfig | None:
+    """Enable the dify.ask_human deferred tool when the soul configures human involvement.
+
+    HITL is opt-in: only when at least one human contact is configured does the
+    model get the ``ask_human`` tool (recipients for the resulting form come from
+    those contacts, ENG-635). Returns ``None`` to leave the tool off entirely.
+    The tool/field guardrails use the layer defaults; ``human.tools`` semantics are
+    out of scope this round.
+    """
+    if not agent_soul.human.contacts:
+        return None
+    return DifyAskHumanLayerConfig()
 
 
 def append_runtime_warnings(metadata: dict[str, Any], warnings: list[dict[str, str]]) -> None:
@@ -649,7 +701,13 @@ def _shell_secret_ref(item: object) -> DifyShellSecretRefConfig | None:
     name = _name_from_mapping(data)
     if name is None:
         return None
-    ref = data.get("ref") or data.get("id") or data.get("credential_id") or data.get("provider_credential_id")
+    ref = (
+        data.get("ref")
+        or data.get("value")
+        or data.get("id")
+        or data.get("credential_id")
+        or data.get("provider_credential_id")
+    )
     return DifyShellSecretRefConfig(name=name, ref=str(ref) if ref is not None else None)
 
 

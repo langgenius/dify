@@ -51,7 +51,7 @@ export async function runUseWorkspace(
     workspace: { id: detail.id, name: detail.name, role: detail.role },
   }
   deps.reg.upsert(deps.active.host, deps.active.email, nextCtx)
-  deps.reg.save()
+  await deps.reg.save()
   deps.io.out.write(`${cs.successIcon()} Switched to ${detail.name} (${detail.id})\n`)
   return deps.reg
 }

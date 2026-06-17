@@ -21,6 +21,9 @@ from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
     AgentSoulConfig,
     AgentSoulModelConfig,
+    DeclaredArrayItem,
+    DeclaredOutputChildConfig,
+    DeclaredOutputConfig,
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
@@ -321,6 +324,7 @@ def test_build_shell_layer_config_accepts_legacy_fallback_keys():
                 "secret_refs": [
                     {"variable": "TOKEN", "credential_id": "credential-1"},
                     {"name": "API_KEY", "provider_credential_id": "credential-2"},
+                    {"name": "EDITABLE_TOKEN", "value": "credential-3"},
                     {"ref": "missing-name"},
                 ],
             },
@@ -341,6 +345,7 @@ def test_build_shell_layer_config_accepts_legacy_fallback_keys():
     assert config["secret_refs"] == [
         {"name": "TOKEN", "ref": "credential-1"},
         {"name": "API_KEY", "ref": "credential-2"},
+        {"name": "EDITABLE_TOKEN", "ref": "credential-3"},
     ]
     assert config["sandbox"] is None
 
@@ -630,6 +635,40 @@ def test_array_output_emits_typed_items_per_array_item():
     assert output_schema["required"] == ["tags"]
 
 
+def test_nested_declared_output_emits_object_and_array_child_schema():
+    profile_output = DeclaredOutputConfig(
+        name="profile",
+        type=DeclaredOutputType.OBJECT,
+        children=[
+            DeclaredOutputChildConfig(name="email", type=DeclaredOutputType.STRING),
+            DeclaredOutputChildConfig(
+                name="nickname",
+                type=DeclaredOutputType.STRING,
+                required=False,
+                description="Optional display name",
+            ),
+            DeclaredOutputChildConfig(
+                name="addresses",
+                type=DeclaredOutputType.ARRAY,
+                array_item=DeclaredArrayItem(
+                    type=DeclaredOutputType.OBJECT,
+                    description="Address item",
+                    children=[DeclaredOutputChildConfig(name="city", type=DeclaredOutputType.STRING)],
+                ),
+            ),
+        ],
+    )
+
+    schema = WorkflowAgentRuntimeRequestBuilder._schema_for_declared_output(profile_output)
+
+    assert schema["properties"]["email"] == {"type": "string"}
+    assert schema["properties"]["nickname"] == {"type": "string", "description": "Optional display name"}
+    assert schema["properties"]["addresses"]["items"]["properties"]["city"] == {"type": "string"}
+    assert schema["properties"]["addresses"]["items"]["description"] == "Address item"
+    assert schema["properties"]["addresses"]["items"]["required"] == ["city"]
+    assert schema["required"] == ["email", "addresses"]
+
+
 def test_effective_declared_outputs_passthrough_when_user_declared():
     """effective_declared_outputs() must return user-provided outputs verbatim
     when non-empty; only empty input gets PRD defaults injected."""
@@ -796,3 +835,36 @@ def test_build_drive_layer_config_all_refs_dangling_yields_no_config():
     config, warnings = build_drive_layer_config(soul, agent_id="agent-1")
     assert config is None
     assert [w["code"] for w in warnings] == ["skill_ref_dangling"]
+
+
+# ── ENG-635: ask_human layer gating + feature manifest ───────────────────────
+
+
+def test_build_ask_human_layer_config_gated_on_human_contacts():
+    from dify_agent.layers.ask_human import DifyAskHumanLayerConfig
+
+    from core.workflow.nodes.agent_v2.runtime_request_builder import build_ask_human_layer_config
+
+    # no human involvement configured -> tool stays off
+    assert build_ask_human_layer_config(AgentSoulConfig()) is None
+
+    soul = AgentSoulConfig.model_validate(
+        {"human": {"contacts": [{"id": "c-1", "name": "David", "email": "d@acme.com", "channel": "email"}]}}
+    )
+    config = build_ask_human_layer_config(soul)
+    assert isinstance(config, DifyAskHumanLayerConfig)
+    assert config.enabled is True
+
+
+def test_feature_manifest_marks_human_supported_when_configured():
+    from core.workflow.nodes.agent_v2.runtime_feature_manifest import build_runtime_feature_manifest
+
+    soul = AgentSoulConfig.model_validate(
+        {"human": {"contacts": [{"id": "c-1", "name": "David", "email": "d@acme.com", "channel": "email"}]}}
+    )
+    manifest = build_runtime_feature_manifest(soul)
+    assert "human" in manifest["supported"]
+    assert "human" not in manifest["reserved"]
+    assert manifest["reserved_status"]["human"] == "supported_by_ask_human_hitl"
+    # configured human no longer produces a "not executed" warning
+    assert all("human" not in w["section"] for w in manifest["unsupported_runtime_warnings"])
