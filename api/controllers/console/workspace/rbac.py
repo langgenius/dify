@@ -590,7 +590,7 @@ class RBACAppRoleBindingsApi(Resource):
         return _dump(svc.RBACService.AppAccess.list_role_bindings(tenant_id, account_id, str(app_id), str(policy_id)))
 
 
-@console_ns.route("/workspaces/current/rbac/apps/<uuid:app_id>/access-policies/<str:policy_id>/member-bindings")
+@console_ns.route("/workspaces/current/rbac/apps/<uuid:app_id>/access-policies/<string:policy_id>/member-bindings")
 class RBACAppMemberBindingsApi(Resource):
     @login_required
     def get(self, app_id, policy_id):
@@ -685,7 +685,7 @@ class RBACDatasetRoleBindingsApi(Resource):
 
 
 @console_ns.route(
-    "/workspaces/current/rbac/datasets/<uuid:dataset_id>/access-policies/<str:policy_id>/member-bindings"
+    "/workspaces/current/rbac/datasets/<uuid:dataset_id>/access-policies/<string:policy_id>/member-bindings"
 )
 class RBACDatasetMemberBindingsApi(Resource):
     @login_required
