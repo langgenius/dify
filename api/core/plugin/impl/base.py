@@ -371,8 +371,10 @@ class BasePluginClient:
                         raise TriggerInvokeError(error_object.get("message"))
                     case EventIgnoreError.__name__:
                         raise EventIgnoreError(description=error_object.get("message"))
+                    # NOTE: current plugin sdk / plugin daemon does not raise exception with
+                    # type `PluginLLMPollingUnsupportedError`.
                     case PluginLLMPollingUnsupportedError.__name__:
-                        raise PluginLLMPollingUnsupportedError(description=message)
+                        raise PluginLLMPollingUnsupportedError(description=error_object.get("message"))
                     case _:
                         raise PluginInvokeError(description=message)
             case PluginDaemonInternalServerError.__name__:

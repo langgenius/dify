@@ -292,6 +292,8 @@ class PluginModelClient(BasePluginClient):
 
         if (
             error.get_error_type() in _POLLING_UNSUPPORTED_INVOKE_ERROR_TYPES
+            # This is ugly, we should not rely on error messages while checking
+            # error types.
             and _POLLING_UNSUPPORTED_ERROR_MESSAGE in error.get_error_message().lower()
         ):
             raise PluginLLMPollingUnsupportedError(description=error.description) from error
