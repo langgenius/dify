@@ -7,12 +7,12 @@ from flask_login import LoginManager, UserMixin
 from pydantic import BaseModel
 from werkzeug.exceptions import HTTPException
 
+from controllers.common.wraps import _extract_resource_id
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 from controllers.console.workspace.error import AccountNotInitializedError
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
-    _extract_resource_id,
     account_initialization_required,
     cloud_edition_billing_enabled,
     cloud_edition_billing_rate_limit_check,

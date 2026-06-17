@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from enum import StrEnum
 from typing import Any, Generic, TypeVar
 
@@ -236,16 +237,9 @@ class ResourceUserAccessPolicies(_RBACModel):
     roles: list[RBACRole] = Field(default_factory=list)
     access_policies: list[AccessPolicy] = Field(default_factory=list)
 
-    @field_validator("access_policies", mode="before")
+    @field_validator("access_policies", "roles", mode="before")
     @classmethod
-    def _coerce_resource_ids(cls, value: Any) -> list[str]:
-        if value is None:
-            return []
-        return value
-
-    @field_validator("roles", mode="before")
-    @classmethod
-    def _coerce_resource_ids(cls, value: Any) -> list[str]:
+    def _coerce_none_to_list(cls, value: Any) -> Any:
         if value is None:
             return []
         return value
@@ -980,7 +974,7 @@ class RBACService:
             *,
             resource_type: RBACResourceType | str,
             resource_id: str,
-        ) -> list[AccessPolicyMemberBinding]:
+        ) -> Sequence[AccessPolicyMemberBinding]:
             params = _resource_id_params(resource_type, resource_id)
             data = _inner_call(
                 "PUT",
@@ -989,7 +983,7 @@ class RBACService:
                 account_id=account_id,
                 params=params,
             )
-            items = []
+            items: list[Any] = []
             if isinstance(data, dict):
                 items = data.get("data") or []
             return [AccessPolicyMemberBinding.model_validate(item) for item in items]

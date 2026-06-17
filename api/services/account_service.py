@@ -1702,6 +1702,7 @@ class TenantService:
         account_id = account.id
         account_email = account.email
 
+        owner_id: str | None
         if dify_config.RBAC_ENABLED:
             owner_id = AccountService.get_rbac_workspace_owner_account_id(str(tenant.id), str(operator.id))
         else:
@@ -1713,8 +1714,8 @@ class TenantService:
                 )
                 .limit(1)
             )
-            if owner_id is None:
-                raise ValueError(f"Workspace owner not found for tenant {tenant.id}.")
+        if owner_id is None:
+            raise ValueError(f"Workspace owner not found for tenant {tenant.id}.")
 
         db.session.execute(
             update(App)
