@@ -45,6 +45,13 @@ class AnnotationJobStatusResponse(ResponseModel):
     error_msg: str | None = None
 
 
+ANNOTATION_REPLY_ACTION_PARAM = {
+    "description": "Action to perform: 'enable' or 'disable'",
+    "enum": ["enable", "disable"],
+    "type": "string",
+}
+
+
 register_schema_models(
     service_api_ns,
     AnnotationCreatePayload,
@@ -61,7 +68,7 @@ class AnnotationReplyActionApi(Resource):
     @service_api_ns.expect(service_api_ns.models[AnnotationReplyActionPayload.__name__])
     @service_api_ns.doc("annotation_reply_action")
     @service_api_ns.doc(description="Enable or disable annotation reply feature")
-    @service_api_ns.doc(params={"action": "Action to perform: 'enable' or 'disable'"})
+    @service_api_ns.doc(params={"action": ANNOTATION_REPLY_ACTION_PARAM})
     @service_api_ns.doc(
         responses={
             200: "Action completed successfully",

@@ -6,6 +6,7 @@ definitions without changing the Pydantic models used for runtime validation.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from copy import deepcopy
 
 from flask_restx import Namespace
@@ -67,8 +68,9 @@ def event_stream_response(namespace: Namespace):
     return namespace.doc(produces=["text/event-stream"])
 
 
-def binary_response(namespace: Namespace, media_type: str):
-    return namespace.doc(produces=[media_type])
+def binary_response(namespace: Namespace, media_type: str | Sequence[str]):
+    media_types = [media_type] if isinstance(media_type, str) else list(media_type)
+    return namespace.doc(produces=media_types)
 
 
 def _json_user_required(view_func) -> bool:
@@ -80,6 +82,20 @@ def _json_user_required(view_func) -> bool:
 
 
 def _add_user_property(schema: dict[str, object], *, required: bool) -> None:
+    variants: list[dict[str, object]] = []
+    for keyword in ("anyOf", "oneOf"):
+        candidates = schema.get(keyword)
+        if isinstance(candidates, list):
+            variants.extend(candidate for candidate in candidates if isinstance(candidate, dict))
+
+    if variants:
+        for variant in variants:
+            _add_user_property_to_object_schema(variant, required=required)
+
+    _add_user_property_to_object_schema(schema, required=required)
+
+
+def _add_user_property_to_object_schema(schema: dict[str, object], *, required: bool) -> None:
     properties = schema.setdefault("properties", {})
     if isinstance(properties, dict):
         properties["user"] = USER_PROPERTY_SCHEMA

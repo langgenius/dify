@@ -47,7 +47,7 @@ Returns paginated list of all feedback submitted for messages in this app.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| action | path | Action to perform: 'enable' or 'disable' | Yes | string |
+| action | path | Action to perform: 'enable' or 'disable' | Yes | string, <br>**Available values:** "disable", "enable" |
 
 #### Request Body
 
@@ -838,7 +838,7 @@ Raises:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| action | path | Action to perform: 'enable', 'disable', 'archive', or 'un_archive' | Yes | string |
+| action | path | Action to perform: 'enable', 'disable', 'archive', or 'un_archive' | Yes | string, <br>**Available values:** "archive", "disable", "enable", "un_archive" |
 | dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Request Body
@@ -1375,7 +1375,7 @@ Tests retrieval performance for the specified dataset.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| action | path | Action to perform: 'enable' or 'disable' | Yes | string |
+| action | path | Action to perform: 'enable' or 'disable' | Yes | string, <br>**Available values:** "disable", "enable" |
 | dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Responses

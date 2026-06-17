@@ -320,7 +320,25 @@ def test_service_openapi_documents_non_json_response_media_types(monkeypatch: py
     }
     assert _response_content_types(paths["/workflow/{task_id}/events"]["get"]) == {"text/event-stream"}
     assert _response_content_types(paths["/text-to-audio"]["post"]) == {"audio/mpeg"}
-    assert _response_content_types(paths["/files/{file_id}/preview"]["get"]) == {"application/octet-stream"}
+    assert _response_content_types(paths["/files/{file_id}/preview"]["get"]) == {
+        "application/octet-stream",
+        "application/pdf",
+        "audio/aac",
+        "audio/flac",
+        "audio/mp4",
+        "audio/mpeg",
+        "audio/ogg",
+        "audio/wav",
+        "audio/x-m4a",
+        "image/gif",
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "text/plain",
+        "video/mp4",
+        "video/quicktime",
+        "video/webm",
+    }
     assert _response_content_types(paths["/datasets/{dataset_id}/documents/download-zip"]["post"]) == {
         "application/zip"
     }
@@ -356,6 +374,62 @@ def test_service_openapi_documents_uuid_params_and_deprecated_routes(monkeypatch
 
     assert paths["/datasets/{dataset_id}/document/create_by_file"]["post"]["deprecated"] is True
     assert paths["/datasets/{dataset_id}/documents/{document_id}/update_by_text"]["post"]["deprecated"] is True
+
+
+def test_service_openapi_documents_path_action_enums(monkeypatch: pytest.MonkeyPatch):
+    from configs import dify_config
+    from controllers.service_api import bp as service_api_bp
+
+    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
+
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
+    app.register_blueprint(service_api_bp)
+
+    payload = app.test_client().get("/v1/openapi.json").get_json()
+    paths = payload["paths"]
+
+    annotation_params = _parameters_by_name(paths["/apps/annotation-reply/{action}"]["post"])
+    assert annotation_params["action"]["schema"]["enum"] == ["enable", "disable"]
+
+    document_status_params = _parameters_by_name(paths["/datasets/{dataset_id}/documents/status/{action}"]["patch"])
+    assert document_status_params["action"]["schema"]["enum"] == ["enable", "disable", "archive", "un_archive"]
+
+    metadata_params = _parameters_by_name(paths["/datasets/{dataset_id}/metadata/built-in/{action}"]["post"])
+    assert metadata_params["action"]["schema"]["enum"] == ["enable", "disable"]
+
+
+def test_service_openapi_documents_conditional_payload_schemas(monkeypatch: pytest.MonkeyPatch):
+    from configs import dify_config
+    from controllers.service_api import bp as service_api_bp
+
+    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
+
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
+    app.register_blueprint(service_api_bp)
+
+    payload = app.test_client().get("/v1/openapi.json").get_json()
+    paths = payload["paths"]
+
+    rename_schema = _json_body_schema(payload, paths["/conversations/{c_id}/name"]["post"])
+    auto_generate_branch, manual_name_branch = rename_schema["anyOf"]
+    assert auto_generate_branch["properties"]["auto_generate"]["enum"] == [True]
+    assert auto_generate_branch["required"] == ["auto_generate"]
+    assert manual_name_branch["properties"]["auto_generate"]["enum"] == [False]
+    assert manual_name_branch["properties"]["name"]["pattern"] == r".*\S.*"
+    assert manual_name_branch["required"] == ["name"]
+    for branch in rename_schema["anyOf"]:
+        assert branch["properties"]["user"] == {"description": "End user identifier", "type": "string"}
+
+    document_update_schema = payload["components"]["schemas"]["DocumentTextUpdate"]
+    with_text_branch, without_text_branch = document_update_schema["anyOf"]
+    assert with_text_branch["properties"]["text"]["type"] == "string"
+    assert with_text_branch["properties"]["name"]["type"] == "string"
+    assert with_text_branch["required"] == ["name", "text"]
+    assert without_text_branch["properties"]["text"]["type"] == "null"
 
 
 def test_service_openapi_does_not_encode_docs_coverage_boundaries(monkeypatch: pytest.MonkeyPatch):

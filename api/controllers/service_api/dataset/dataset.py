@@ -79,6 +79,13 @@ class DocumentStatusPayload(BaseModel):
     document_ids: list[str] = Field(default_factory=list, description="Document IDs to update")
 
 
+DOCUMENT_STATUS_ACTION_PARAM = {
+    "description": "Action to perform: 'enable', 'disable', 'archive', or 'un_archive'",
+    "enum": ["enable", "disable", "archive", "un_archive"],
+    "type": "string",
+}
+
+
 class TagNamePayload(BaseModel):
     name: str = Field(..., min_length=1, max_length=50)
 
@@ -567,7 +574,7 @@ class DocumentStatusApi(DatasetApiResource):
     @service_api_ns.doc(
         params={
             "dataset_id": "Dataset ID",
-            "action": "Action to perform: 'enable', 'disable', 'archive', or 'un_archive'",
+            "action": DOCUMENT_STATUS_ACTION_PARAM,
         }
     )
     @service_api_ns.doc(

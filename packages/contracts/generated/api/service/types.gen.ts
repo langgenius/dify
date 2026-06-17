@@ -232,12 +232,32 @@ export type ConversationListQuery = {
   sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
 }
 
-export type ConversationRenamePayload = {
+export type ConversationRenamePayload = (
+  | {
+    auto_generate: true
+    name?: string | null
+  }
+  | {
+    auto_generate?: false
+    name: string
+  }
+) & {
   auto_generate?: boolean
   name?: string | null
 }
 
-export type ConversationRenamePayloadWithUser = {
+export type ConversationRenamePayloadWithUser = (
+  | {
+    auto_generate: true
+    name?: string | null
+    user?: string
+  }
+  | {
+    auto_generate?: false
+    name: string
+    user?: string
+  }
+) & {
   auto_generate?: boolean
   name?: string | null
   user?: string
@@ -693,7 +713,24 @@ export type DocumentTextCreatePayload = {
   text: string
 }
 
-export type DocumentTextUpdate = {
+export type DocumentTextUpdate = (
+  | {
+    doc_form?: string
+    doc_language?: string
+    name: string
+    process_rule?: ProcessRule | null
+    retrieval_model?: RetrievalModel | null
+    text: string
+  }
+  | {
+    doc_form?: string
+    doc_language?: string
+    name?: string | null
+    process_rule?: ProcessRule | null
+    retrieval_model?: RetrievalModel | null
+    text?: null
+  }
+) & {
   doc_form?: string
   doc_language?: string
   name?: string | null
@@ -1646,7 +1683,7 @@ export type GetAppFeedbacksResponse = GetAppFeedbacksResponses[keyof GetAppFeedb
 export type PostAppsAnnotationReplyByActionData = {
   body: AnnotationReplyActionPayload
   path: {
-    action: string
+    action: 'disable' | 'enable'
   }
   query?: never
   url: '/apps/annotation-reply/{action}'
@@ -2421,7 +2458,7 @@ export type PostDatasetsByDatasetIdDocumentsMetadataResponse
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionData = {
   body: DocumentStatusPayload
   path: {
-    action: string
+    action: 'archive' | 'disable' | 'enable' | 'un_archive'
     dataset_id: string
   }
   query?: never
@@ -2982,7 +3019,7 @@ export type GetDatasetsByDatasetIdMetadataBuiltInResponse
 export type PostDatasetsByDatasetIdMetadataBuiltInByActionData = {
   body?: never
   path: {
-    action: string
+    action: 'disable' | 'enable'
     dataset_id: string
   }
   query?: never

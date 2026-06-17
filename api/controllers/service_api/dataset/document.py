@@ -8,11 +8,12 @@ deprecated in generated API docs so clients migrate toward the canonical paths.
 import json
 from collections.abc import Mapping
 from contextlib import ExitStack
+from copy import deepcopy
 from typing import Any, Literal, Self
 from uuid import UUID
 
 from flask import request, send_file
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, GetJsonSchemaHandler, field_validator, model_validator
 from sqlalchemy import desc, func, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -105,11 +106,58 @@ class DocumentTextUpdate(BaseModel):
             raise ValueError("Invalid doc_form.")
         return value
 
+    @classmethod
+    def __get_pydantic_json_schema__(cls, core_schema: Any, handler: GetJsonSchemaHandler) -> dict[str, Any]:
+        schema = handler.resolve_ref_schema(handler(core_schema))
+        properties = schema.get("properties")
+        if not isinstance(properties, dict):
+            return schema
+
+        text_branch_properties = deepcopy(properties)
+        text_branch_properties["text"] = _non_null_property_schema(properties.get("text"))
+        text_branch_properties["name"] = _non_null_property_schema(properties.get("name"))
+
+        no_text_branch_properties = deepcopy(properties)
+        no_text_branch_properties["text"] = {"type": "null"}
+
+        return {
+            **schema,
+            "anyOf": [
+                {
+                    "properties": text_branch_properties,
+                    "required": ["name", "text"],
+                    "type": "object",
+                },
+                {
+                    "properties": no_text_branch_properties,
+                    "type": "object",
+                },
+            ],
+        }
+
     @model_validator(mode="after")
     def check_text_and_name(self) -> Self:
         if self.text is not None and self.name is None:
             raise ValueError("name is required when text is provided")
         return self
+
+
+def _non_null_property_schema(property_schema: object) -> dict[str, Any]:
+    if not isinstance(property_schema, dict):
+        return {}
+
+    any_of = property_schema.get("anyOf")
+    if isinstance(any_of, list):
+        non_null_candidates = [
+            candidate for candidate in any_of if isinstance(candidate, dict) and candidate.get("type") != "null"
+        ]
+        if len(non_null_candidates) == 1:
+            return {
+                **{key: value for key, value in property_schema.items() if key != "anyOf"},
+                **deepcopy(non_null_candidates[0]),
+            }
+
+    return deepcopy(property_schema)
 
 
 class DocumentListQuery(BaseModel):

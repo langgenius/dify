@@ -31,6 +31,26 @@ class FilePreviewQuery(BaseModel):
 register_schema_model(service_api_ns, FilePreviewQuery)
 register_response_schema_model(service_api_ns, BinaryFileResponse)
 
+FILE_PREVIEW_RESPONSE_MEDIA_TYPES = [
+    "application/octet-stream",
+    "application/pdf",
+    "audio/aac",
+    "audio/flac",
+    "audio/mp4",
+    "audio/mpeg",
+    "audio/ogg",
+    "audio/wav",
+    "audio/x-m4a",
+    "image/gif",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "text/plain",
+    "video/mp4",
+    "video/quicktime",
+    "video/webm",
+]
+
 
 @service_api_ns.route("/files/<uuid:file_id>/preview")
 class FilePreviewApi(Resource):
@@ -42,7 +62,7 @@ class FilePreviewApi(Resource):
     """
 
     @service_api_ns.doc(params=query_params_from_model(FilePreviewQuery))
-    @binary_response(service_api_ns, "application/octet-stream")
+    @binary_response(service_api_ns, FILE_PREVIEW_RESPONSE_MEDIA_TYPES)
     @service_api_ns.doc("preview_file")
     @service_api_ns.doc(description="Preview or download a file uploaded via Service API")
     @service_api_ns.doc(params={"file_id": "UUID of the file to preview"})

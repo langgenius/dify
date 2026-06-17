@@ -278,22 +278,42 @@ export const zConversationListQuery = z.object({
     .default('-updated_at'),
 })
 
-/**
- * ConversationRenamePayload
- */
-export const zConversationRenamePayload = z.object({
-  auto_generate: z.boolean().optional().default(false),
-  name: z.string().nullish(),
-})
+export const zConversationRenamePayload = z.intersection(
+  z.union([
+    z.object({
+      auto_generate: z.literal(true),
+      name: z.string().nullish(),
+    }),
+    z.object({
+      auto_generate: z.literal(false).optional().default(false),
+      name: z.string().regex(/.*\S.*/),
+    }),
+  ]),
+  z.object({
+    auto_generate: z.boolean().optional().default(false),
+    name: z.string().nullish(),
+  }),
+)
 
-/**
- * ConversationRenamePayload
- */
-export const zConversationRenamePayloadWithUser = z.object({
-  auto_generate: z.boolean().optional().default(false),
-  name: z.string().nullish(),
-  user: z.string().optional(),
-})
+export const zConversationRenamePayloadWithUser = z.intersection(
+  z.union([
+    z.object({
+      auto_generate: z.literal(true),
+      name: z.string().nullish(),
+      user: z.string().optional(),
+    }),
+    z.object({
+      auto_generate: z.literal(false).optional().default(false),
+      name: z.string().regex(/.*\S.*/),
+      user: z.string().optional(),
+    }),
+  ]),
+  z.object({
+    auto_generate: z.boolean().optional().default(false),
+    name: z.string().nullish(),
+    user: z.string().optional(),
+  }),
+)
 
 /**
  * ConversationVariableResponse
@@ -1995,17 +2015,34 @@ export const zDocumentTextCreatePayload = z.object({
   text: z.string(),
 })
 
-/**
- * DocumentTextUpdate
- */
-export const zDocumentTextUpdate = z.object({
-  doc_form: z.string().optional().default('text_model'),
-  doc_language: z.string().optional().default('English'),
-  name: z.string().nullish(),
-  process_rule: zProcessRule.nullish(),
-  retrieval_model: zRetrievalModel.nullish(),
-  text: z.string().nullish(),
-})
+export const zDocumentTextUpdate = z.intersection(
+  z.union([
+    z.object({
+      doc_form: z.string().optional().default('text_model'),
+      doc_language: z.string().optional().default('English'),
+      name: z.string(),
+      process_rule: zProcessRule.nullish(),
+      retrieval_model: zRetrievalModel.nullish(),
+      text: z.string(),
+    }),
+    z.object({
+      doc_form: z.string().optional().default('text_model'),
+      doc_language: z.string().optional().default('English'),
+      name: z.string().nullish(),
+      process_rule: zProcessRule.nullish(),
+      retrieval_model: zRetrievalModel.nullish(),
+      text: z.null().optional(),
+    }),
+  ]),
+  z.object({
+    doc_form: z.string().optional().default('text_model'),
+    doc_language: z.string().optional().default('English'),
+    name: z.string().nullish(),
+    process_rule: zProcessRule.nullish(),
+    retrieval_model: zRetrievalModel.nullish(),
+    text: z.string().nullish(),
+  }),
+)
 
 /**
  * HitTestingPayload
@@ -2185,7 +2222,7 @@ export const zGetAppFeedbacksResponse = zAppFeedbackListResponse
 export const zPostAppsAnnotationReplyByActionBody = zAnnotationReplyActionPayload
 
 export const zPostAppsAnnotationReplyByActionPath = z.object({
-  action: z.string(),
+  action: z.enum(['disable', 'enable']),
 })
 
 /**
@@ -2543,7 +2580,7 @@ export const zPostDatasetsByDatasetIdDocumentsMetadataResponse = zDatasetMetadat
 export const zPatchDatasetsByDatasetIdDocumentsStatusByActionBody = zDocumentStatusPayload
 
 export const zPatchDatasetsByDatasetIdDocumentsStatusByActionPath = z.object({
-  action: z.string(),
+  action: z.enum(['archive', 'disable', 'enable', 'un_archive']),
   dataset_id: z.uuid(),
 })
 
@@ -2846,7 +2883,7 @@ export const zGetDatasetsByDatasetIdMetadataBuiltInPath = z.object({
 export const zGetDatasetsByDatasetIdMetadataBuiltInResponse = zDatasetMetadataBuiltInFieldsResponse
 
 export const zPostDatasetsByDatasetIdMetadataBuiltInByActionPath = z.object({
-  action: z.string(),
+  action: z.enum(['disable', 'enable']),
   dataset_id: z.uuid(),
 })
 
