@@ -136,6 +136,16 @@ def test_init_rejects_unsafe_collection_names(oracle_module, monkeypatch: pytest
     create_pool.assert_not_called()
 
 
+def test_init_rejects_generated_text_index_names_that_are_too_long(oracle_module, monkeypatch: pytest.MonkeyPatch):
+    create_pool = MagicMock()
+    monkeypatch.setattr(oracle_module.oracledb, "create_pool", create_pool)
+
+    with pytest.raises(ValueError, match="text_index_name"):
+        oracle_module.OracleVector("c" * 111, _config(oracle_module))
+
+    create_pool.assert_not_called()
+
+
 def test_numpy_converters_and_type_handlers(oracle_module):
     vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
 
@@ -171,15 +181,52 @@ def test_numpy_converters_and_type_handlers(oracle_module):
     assert out_float64.dtype == numpy.float64
 
 
-def test_get_connection_acquires_from_pool(oracle_module):
+def test_get_connection_acquires_from_pool_and_releases_it(oracle_module):
     pool = MagicMock()
-    pool.acquire.return_value = "connection"
+    connection = MagicMock()
+    pool.acquire.return_value = connection
 
     vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
     vector.pool = pool
 
-    assert vector._get_connection() == "connection"
+    with vector._get_connection() as conn:
+        assert conn is connection
+
     pool.acquire.assert_called_once_with()
+    pool.release.assert_called_once_with(connection)
+
+
+def test_get_connection_releases_pool_after_errors(oracle_module):
+    pool = MagicMock()
+    connection = MagicMock()
+    pool.acquire.return_value = connection
+
+    vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
+    vector.pool = pool
+
+    with pytest.raises(RuntimeError, match="boom"):
+        with vector._get_connection():
+            raise RuntimeError("boom")
+
+    connection.rollback.assert_called_once_with()
+    pool.release.assert_called_once_with(connection)
+
+
+def test_get_connection_releases_pool_when_rollback_fails(oracle_module):
+    pool = MagicMock()
+    connection = MagicMock()
+    connection.rollback.side_effect = RuntimeError("rollback failed")
+    pool.acquire.return_value = connection
+
+    vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
+    vector.pool = pool
+
+    with pytest.raises(RuntimeError, match="boom"):
+        with vector._get_connection():
+            raise RuntimeError("boom")
+
+    connection.rollback.assert_called_once_with()
+    pool.release.assert_called_once_with(connection)
 
 
 def test_create_connection_pool_supports_standard_and_autonomous_paths(oracle_module, monkeypatch: pytest.MonkeyPatch):
@@ -238,6 +285,17 @@ def test_create_validates_embedding_shape(oracle_module):
         vector.create([docs[0]], [[]])
 
 
+@pytest.mark.parametrize("bad_top_k", [0, -1, True, "bad", "1.5", 10001])
+def test_validate_top_k_rejects_invalid_values(oracle_module, bad_top_k):
+    with pytest.raises(ValueError, match="top_k"):
+        oracle_module.validate_top_k(bad_top_k, 4)
+
+
+def test_validate_top_k_uses_default_only_when_missing(oracle_module):
+    assert oracle_module.validate_top_k(None, 4) == 4
+    assert oracle_module.validate_top_k("8", 4) == 8
+
+
 def test_add_texts_batch_upserts_by_id(oracle_module):
     vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
     vector.table_name = "embedding_collection_1"
@@ -266,6 +324,43 @@ def test_add_texts_batch_upserts_by_id(oracle_module):
     connection.commit.assert_called_once()
 
 
+def test_metadata_with_primary_key_preserves_existing_metadata_without_mutation(oracle_module):
+    metadata = {"doc_id": "existing-id", "document_id": "parent-doc"}
+
+    doc_id, normalized_metadata = oracle_module.metadata_with_primary_key(metadata)
+
+    assert doc_id == "existing-id"
+    assert normalized_metadata == {"doc_id": "existing-id", "document_id": "parent-doc"}
+    assert normalized_metadata is not metadata
+    assert metadata == {"doc_id": "existing-id", "document_id": "parent-doc"}
+
+
+def test_add_texts_generates_and_persists_doc_ids_for_missing_metadata(oracle_module, monkeypatch: pytest.MonkeyPatch):
+    vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
+    vector.table_name = "embedding_collection_1"
+    vector.input_type_handler = MagicMock()
+    vector.output_type_handler = MagicMock()
+
+    cursor = MagicMock()
+    connection = _connection_with_cursor(cursor)
+    vector._get_connection = MagicMock(return_value=connection)
+    generated_ids = iter(["generated-1", "generated-2"])
+    monkeypatch.setattr(oracle_module.uuid, "uuid4", lambda: next(generated_ids))
+    docs = [
+        SimpleNamespace(page_content="without metadata", metadata=None),
+        Document(page_content="without doc id", metadata={"document_id": "parent-doc"}),
+    ]
+
+    ids = vector.add_texts(docs, [[0.1], [0.2]])
+
+    assert ids == ["generated-1", "generated-2"]
+    _insert_sql, insert_rows = cursor.executemany.call_args_list[1].args
+    assert insert_rows[0][0] == "generated-1"
+    assert insert_rows[0][1] == '{"doc_id": "generated-1"}'
+    assert insert_rows[1][0] == "generated-2"
+    assert insert_rows[1][1] == '{"document_id": "parent-doc", "doc_id": "generated-2"}'
+
+
 def test_add_texts_inserts_and_logs_on_failures(oracle_module, monkeypatch: pytest.MonkeyPatch):
     vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
     vector.table_name = "embedding_collection_1"
@@ -289,11 +384,10 @@ def test_add_texts_inserts_and_logs_on_failures(oracle_module, monkeypatch: pyte
     monkeypatch.setattr(oracle_module.uuid, "uuid4", lambda: "generated-uuid")
     docs = [
         Document(page_content="a", metadata={"doc_id": "doc-a"}),
-        Document(page_content="b", metadata={"document_id": "doc-b"}),
-        SimpleNamespace(page_content="c", metadata=None),
+        Document(page_content="b", metadata={"doc_id": "doc-b"}),
     ]
 
-    ids = vector.add_texts(docs, [[0.1], [0.2], [0.3]])
+    ids = vector.add_texts(docs, [[0.1], [0.2]])
 
     assert ids == ["doc-a"]
     assert cursor.executemany.call_count == 2
@@ -376,7 +470,7 @@ def test_search_by_vector_with_threshold_and_filter(oracle_module):
 
     docs = vector.search_by_vector(
         [0.1, 0.2],
-        top_k=0,
+        top_k=4,
         score_threshold=0.5,
         document_ids_filter=["d-1", "d-2"],
     )
@@ -386,6 +480,17 @@ def test_search_by_vector_with_threshold_and_filter(oracle_module):
     sql = cursor.execute.call_args.args[0]
     assert "fetch first 4 rows only" in sql
     assert "JSON_VALUE(meta, '$.document_id') IN (:2, :3)" in sql
+
+
+def test_search_by_vector_rejects_invalid_top_k_before_sql(oracle_module):
+    vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
+    vector.table_name = "embedding_collection_1"
+    vector._get_connection = MagicMock()
+
+    with pytest.raises(ValueError, match="top_k"):
+        vector.search_by_vector([0.1, 0.2], top_k=0)
+
+    vector._get_connection.assert_not_called()
 
 
 def _fake_nltk_module(*, missing_data=False):
@@ -424,13 +529,24 @@ def test_search_by_full_text_chinese_and_english_paths(oracle_module, monkeypatc
     monkeypatch.setitem(sys.modules, "nltk", nltk)
     monkeypatch.setitem(sys.modules, "nltk.corpus", nltk_corpus)
     cursor.__iter__.return_value = iter([('{"doc_id": "2"}', "text-2", [0.3, 0.4], 80)])
-    en_docs = vector.search_by_full_text("alice and bob?", top_k=-1, document_ids_filter=["d-1"])
+    en_docs = vector.search_by_full_text("alice and bob?", top_k=5, document_ids_filter=["d-1"])
     assert len(en_docs) == 1
     en_sql = cursor.execute.call_args.args[0]
     en_params = cursor.execute.call_args.args[1]
     assert "fetch first 5 rows only" in en_sql
     assert en_params["kk"] == "alice ACCUM bob"
     assert "doc_id_0" in en_params
+
+
+def test_search_by_full_text_rejects_invalid_top_k_before_sql(oracle_module):
+    vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
+    vector.table_name = "embedding_collection_1"
+    vector._get_connection = MagicMock()
+
+    with pytest.raises(ValueError, match="top_k"):
+        vector.search_by_full_text("query", top_k=-1)
+
+    vector._get_connection.assert_not_called()
 
 
 def test_search_by_full_text_empty_query_and_missing_nltk(oracle_module, monkeypatch: pytest.MonkeyPatch):
@@ -491,6 +607,7 @@ def test_create_collection_cache_and_execute_path(oracle_module, monkeypatch: py
     vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
     vector._collection_name = "collection_1"
     vector.table_name = "embedding_collection_1"
+    vector.text_index_name = "idx_docs_embedding_collection_1"
     cursor = MagicMock()
     vector._get_connection = MagicMock(return_value=_connection_with_cursor(cursor))
 
@@ -518,6 +635,7 @@ def test_create_collection_does_not_cache_when_index_creation_fails(oracle_modul
     vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
     vector._collection_name = "collection_1"
     vector.table_name = "embedding_collection_1"
+    vector.text_index_name = "idx_docs_embedding_collection_1"
     cursor = MagicMock()
     cursor.execute.side_effect = [None, RuntimeError("index failed")]
     vector._get_connection = MagicMock(return_value=_connection_with_cursor(cursor))
