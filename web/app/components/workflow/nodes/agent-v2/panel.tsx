@@ -2,7 +2,7 @@ import type { AgentRosterNodeData } from '../../block-selector/types'
 import type { NodePanelProps } from '../../types'
 import type { AgentV2NodeType } from './types'
 import { produce } from 'immer'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
 import { useStore } from '@/app/components/workflow/store'
@@ -14,6 +14,7 @@ import { AgentRosterField } from './components/agent-roster-field'
 import { AgentTaskField } from './components/agent-task-field'
 import { useAgentRosterDetail, useWorkflowInlineAgentDetail } from './hooks'
 import { getAgentV2DeclaredOutputs } from './output-variables'
+import { hasValidInlineAgentBinding } from './types'
 
 export function AgentV2Panel({
   id,
@@ -23,15 +24,15 @@ export function AgentV2Panel({
   const { inputs, setInputs } = useNodeCrud<AgentV2NodeType>(id, data)
   const [isRosterAgentPanelOpen, setIsRosterAgentPanelOpen] = useState(false)
   const [isInlineAgentPanelOpenedFromTrigger, setIsInlineAgentPanelOpenedFromTrigger] = useState(false)
-  const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
+  const { handleNodeDataUpdate, handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
   const openInlineAgentPanelNodeId = useStore(state => state.openInlineAgentPanelNodeId)
   const setOpenInlineAgentPanelNodeId = useStore(state => state.setOpenInlineAgentPanelNodeId)
   const drawerPortalContainerRef = useRef<HTMLDivElement>(null)
   const declaredOutputs = getAgentV2DeclaredOutputs(inputs)
   const rosterAgentId = inputs.agent_binding?.binding_type === 'roster_agent' ? inputs.agent_binding.agent_id : undefined
   const inlineAgentId = inputs.agent_binding?.binding_type === 'inline_agent' ? inputs.agent_binding.agent_id : undefined
-  const isInlineAgentPending = inputs.agent_binding?.binding_type === 'inline_agent' && inputs._isTempNode
-  const isInlineAgentReady = Boolean(inlineAgentId && !isInlineAgentPending)
+  const isInlineAgentReady = hasValidInlineAgentBinding(inputs)
+  const isInlineAgentPending = inputs.agent_binding?.binding_type === 'inline_agent' && !isInlineAgentReady
   const isInlineAgentPanelOpen = isInlineAgentReady && openInlineAgentPanelNodeId === id
   const rosterAgentQuery = useAgentRosterDetail(rosterAgentId)
   const inlineAgentQuery = useWorkflowInlineAgentDetail(id, inlineAgentId)
@@ -46,6 +47,19 @@ export function AgentV2Panel({
         role: t('nodes.agent.roster.inlineSetup.type', { ns: 'workflow' }),
       }
     : undefined)
+
+  useEffect(() => {
+    if (!inputs._openInlineAgentPanel || !isInlineAgentReady)
+      return
+
+    setOpenInlineAgentPanelNodeId(id)
+    handleNodeDataUpdate({
+      id,
+      data: {
+        _openInlineAgentPanel: false,
+      },
+    })
+  }, [handleNodeDataUpdate, id, inputs._openInlineAgentPanel, isInlineAgentReady, setOpenInlineAgentPanelNodeId])
 
   const handleTaskChange = useCallback((value: string) => {
     const newInputs = produce(inputs, (draft) => {

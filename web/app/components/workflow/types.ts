@@ -95,6 +95,7 @@ export type CommonNodeType<T = {}> = {
   _retryIndex?: number
   _dataSourceStartToAdd?: boolean
   _isTempNode?: boolean
+  _openInlineAgentPanel?: boolean
   isInIteration?: boolean
   iteration_id?: string
   selected?: boolean

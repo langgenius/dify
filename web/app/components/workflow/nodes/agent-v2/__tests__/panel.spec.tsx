@@ -9,6 +9,7 @@ import { AgentV2Panel } from '../panel'
 const {
   mockEditorFocus,
   mockEditorUpdate,
+  mockHandleNodeDataUpdate,
   mockHandleNodeDataUpdateWithSyncDraft,
   mockInsertNodes,
   mockOrchestrateDrawerPanelProps,
@@ -21,6 +22,7 @@ const {
 } = vi.hoisted(() => ({
   mockEditorFocus: vi.fn(),
   mockEditorUpdate: vi.fn((callback: () => void) => callback()),
+  mockHandleNodeDataUpdate: vi.fn(),
   mockHandleNodeDataUpdateWithSyncDraft: vi.fn((_payload, options) => options?.callback?.onSuccess?.()),
   mockInsertNodes: vi.fn(),
   mockOrchestrateDrawerPanelProps: [] as Array<{
@@ -165,6 +167,7 @@ vi.mock('../../_base/hooks/use-available-var-list', () => ({
 
 vi.mock('@/app/components/workflow/hooks', () => ({
   useNodeDataUpdate: () => ({
+    handleNodeDataUpdate: mockHandleNodeDataUpdate,
     handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
   }),
   useWorkflowVariableType: () => vi.fn(),
@@ -326,6 +329,7 @@ describe('agent/panel', () => {
       <AgentV2Panel
         id="agent-node"
         data={createData({
+          _isTempNode: true,
           agent_binding: {
             binding_type: 'inline_agent',
             agent_id: 'inline-agent-1',
@@ -428,6 +432,33 @@ describe('agent/panel', () => {
       isInline: true,
       nodeId: 'agent-node',
       open: true,
+    })
+  })
+
+  it('recovers the inline setup panel open state from the node open marker', () => {
+    mockUseWorkflowInlineAgentDetail.mockReturnValue({ data: undefined })
+
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          _openInlineAgentPanel: true,
+          agent_binding: {
+            binding_type: 'inline_agent',
+            agent_id: 'inline-agent-1',
+            current_snapshot_id: 'snapshot-1',
+          },
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(mockStoreState.setOpenInlineAgentPanelNodeId).toHaveBeenCalledWith('agent-node')
+    expect(mockHandleNodeDataUpdate).toHaveBeenCalledWith({
+      id: 'agent-node',
+      data: {
+        _openInlineAgentPanel: false,
+      },
     })
   })
 

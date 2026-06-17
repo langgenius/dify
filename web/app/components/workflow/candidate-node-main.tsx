@@ -101,6 +101,7 @@ const CandidateNodeMain: FC<Props> = ({
             if (node) {
               if (isAgentV2NodeData(node.data) && needsInlineAgentBindingCreation(node.data))
                 node.data.agent_binding = binding
+              node.data._openInlineAgentPanel = true
               delete node.data._isTempNode
             }
           }))
