@@ -461,10 +461,10 @@ class TestWorkspaceRbacGuards:
             patch("libs.login.dify_config.LOGIN_DISABLED", True),
             patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
             patch(
-                "controllers.console.wraps.current_account_with_tenant",
+                "controllers.common.wraps.current_account_with_tenant",
                 return_value=(SimpleNamespace(id="acct-1"), "tenant-1"),
             ),
-            patch("controllers.console.wraps.RBACService.CheckAccess.check", return_value=False),
+            patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=False),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.create") as mock_create,
         ):
             with pytest.raises(Forbidden):
@@ -482,10 +482,10 @@ class TestWorkspaceRbacGuards:
             patch("libs.login.dify_config.LOGIN_DISABLED", True),
             patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
             patch(
-                "controllers.console.wraps.current_account_with_tenant",
+                "controllers.common.wraps.current_account_with_tenant",
                 return_value=(SimpleNamespace(id="acct-1"), "tenant-1"),
             ),
-            patch("controllers.console.wraps.RBACService.CheckAccess.check", return_value=False),
+            patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=False),
             patch("controllers.console.workspace.rbac.svc.RBACService.AccessPolicies.create") as mock_create,
         ):
             with pytest.raises(Forbidden):

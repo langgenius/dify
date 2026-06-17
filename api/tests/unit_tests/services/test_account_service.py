@@ -829,8 +829,8 @@ class TestTenantService:
                 tenant_id="tenant-456", account_id="operator-123", role="owner"
             )
 
-            # scalar calls: permission check, ta lookup, remaining count
-            mock_db.session.scalar.side_effect = [mock_operator_join, mock_ta, 0]
+            # scalar calls: permission check, ta lookup, owner_id lookup, remaining count
+            mock_db.session.scalar.side_effect = [mock_operator_join, mock_ta, "operator-123", 0]
 
             with patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync:
                 mock_sync.return_value = True
@@ -869,8 +869,8 @@ class TestTenantService:
                 tenant_id="tenant-456", account_id="operator-123", role="owner"
             )
 
-            # scalar calls: permission check, ta lookup, remaining count = 1
-            mock_db.session.scalar.side_effect = [mock_operator_join, mock_ta, 1]
+            # scalar calls: permission check, ta lookup, owner_id lookup, remaining count = 1
+            mock_db.session.scalar.side_effect = [mock_operator_join, mock_ta, "operator-123", 1]
 
             with patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync:
                 mock_sync.return_value = True
@@ -900,8 +900,8 @@ class TestTenantService:
                 tenant_id="tenant-456", account_id="operator-123", role="owner"
             )
 
-            # scalar calls: permission check, ta lookup (no count needed for active member)
-            mock_db.session.scalar.side_effect = [mock_operator_join, mock_ta]
+            # scalar calls: permission check, ta lookup, owner_id lookup (no count for active member)
+            mock_db.session.scalar.side_effect = [mock_operator_join, mock_ta, "operator-123"]
 
             with patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync:
                 mock_sync.return_value = True
