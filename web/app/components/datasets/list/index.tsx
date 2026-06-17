@@ -135,7 +135,12 @@ const List = () => {
         onClose={() => setShowTagManagementModal(false)}
         onTagsChange={invalidDatasetList}
       />
-      {showExternalApiPanel && <ExternalAPIPanel onClose={() => setShowExternalApiPanel(false)} />}
+      {showExternalApiPanel && canConnectExternalDataset && (
+        <ExternalAPIPanel
+          canManageExternalKnowledgeApi={canConnectExternalDataset}
+          onClose={() => setShowExternalApiPanel(false)}
+        />
+      )}
     </div>
   )
 }

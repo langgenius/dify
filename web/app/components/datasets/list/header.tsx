@@ -53,14 +53,16 @@ const DatasetListHeader = ({
       <div className="flex h-6 w-full items-center gap-2">
         <h1 className="min-w-0 flex-1 text-[18px]/[21.6px] font-semibold text-text-primary">{t('knowledge', { ns: 'dataset' })}</h1>
         <div className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            className="flex items-center justify-center gap-1 overflow-hidden rounded-md px-1.5 py-1 text-text-tertiary hover:bg-state-base-hover"
-            onClick={onExternalApiClick}
-          >
-            <span aria-hidden className="i-custom-vender-solid-development-api-connection-mod size-3.5 shrink-0" />
-            <span className="px-0.5 system-xs-medium">{t('externalAPIPanelTitle', { ns: 'dataset' })}</span>
-          </button>
+          {canConnectExternalDataset && (
+            <button
+              type="button"
+              className="flex items-center justify-center gap-1 overflow-hidden rounded-md px-1.5 py-1 text-text-tertiary hover:bg-state-base-hover"
+              onClick={onExternalApiClick}
+            >
+              <span aria-hidden className="i-custom-vender-solid-development-api-connection-mod size-3.5 shrink-0" />
+              <span className="px-0.5 system-xs-medium">{t('externalAPIPanelTitle', { ns: 'dataset' })}</span>
+            </button>
+          )}
           {isCurrentWorkspaceManager && (
             <ServiceApi apiBaseUrl={apiBaseUrl} />
           )}

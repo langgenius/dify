@@ -6,6 +6,7 @@ import DatasetsLayout from './layout'
 const mockReplace = vi.fn()
 const mockUseAppContext = vi.fn()
 let mockPathname = '/datasets'
+let mockExternalKnowledgeApiProviderEnabled: boolean | undefined
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -24,7 +25,10 @@ vi.mock('@/context/external-api-panel-context', () => ({
 }))
 
 vi.mock('@/context/external-knowledge-api-context', () => ({
-  ExternalKnowledgeApiProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
+  ExternalKnowledgeApiProvider: ({ children, enabled }: { children: ReactNode, enabled?: boolean }) => {
+    mockExternalKnowledgeApiProviderEnabled = enabled
+    return <>{children}</>
+  },
 }))
 
 type AppContextMock = {
@@ -60,6 +64,7 @@ describe('DatasetsLayout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPathname = '/datasets'
+    mockExternalKnowledgeApiProviderEnabled = undefined
     setAppContext()
   })
 
@@ -200,5 +205,33 @@ describe('DatasetsLayout', () => {
 
     expect(screen.getByText('datasets')).toBeInTheDocument()
     expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('should disable external knowledge API queries without dataset.external.connect', () => {
+    setAppContext({
+      workspacePermissionKeys: [],
+    })
+
+    render((
+      <DatasetsLayout>
+        <div>datasets</div>
+      </DatasetsLayout>
+    ))
+
+    expect(mockExternalKnowledgeApiProviderEnabled).toBe(false)
+  })
+
+  it('should enable external knowledge API queries with dataset.external.connect', () => {
+    setAppContext({
+      workspacePermissionKeys: ['dataset.external.connect'],
+    })
+
+    render((
+      <DatasetsLayout>
+        <div>datasets</div>
+      </DatasetsLayout>
+    ))
+
+    expect(mockExternalKnowledgeApiProviderEnabled).toBe(true)
   })
 })

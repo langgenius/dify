@@ -48,7 +48,7 @@ export default function DatasetsLayout({ children }: { children: React.ReactNode
   }
 
   return (
-    <ExternalKnowledgeApiProvider>
+    <ExternalKnowledgeApiProvider enabled={canConnectExternalDataset}>
       <ExternalApiPanelProvider>
         {children}
       </ExternalApiPanelProvider>

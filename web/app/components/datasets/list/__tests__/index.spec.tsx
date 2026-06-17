@@ -81,8 +81,8 @@ vi.mock('../datasets', () => ({
 
 // Mock ExternalAPIPanel component
 vi.mock('../../external-api/external-api-panel', () => ({
-  default: ({ onClose }: { onClose: () => void }) => (
-    <div data-testid="external-api-panel">
+  default: ({ canManageExternalKnowledgeApi, onClose }: { canManageExternalKnowledgeApi: boolean, onClose: () => void }) => (
+    <div data-testid="external-api-panel" data-can-manage-external-knowledge-api={canManageExternalKnowledgeApi}>
       <button onClick={onClose}>Close Panel</button>
     </div>
   ),
@@ -164,6 +164,18 @@ describe('List', () => {
     it('should render external API panel button', () => {
       render(<List />)
       expect(screen.getByText(/externalAPIPanelTitle/)).toBeInTheDocument()
+    })
+
+    it('should hide external API panel button without dataset.external.connect', () => {
+      mockAppContextState = {
+        isCurrentWorkspaceEditor: true,
+        isCurrentWorkspaceManager: true,
+        workspacePermissionKeys: ['dataset.create_and_management'],
+      }
+
+      render(<List />)
+
+      expect(screen.queryByText(/externalAPIPanelTitle/)).not.toBeInTheDocument()
     })
   })
 
@@ -401,9 +413,48 @@ describe('List', () => {
       render(<ListComponent />)
 
       expect(screen.getByTestId('external-api-panel')).toBeInTheDocument()
+      expect(screen.getByTestId('external-api-panel')).toHaveAttribute('data-can-manage-external-knowledge-api', 'true')
+    })
+
+    it('should not show ExternalAPIPanel without dataset.external.connect even when panel state is open', async () => {
+      vi.doMock('@/context/app-context', () => ({
+        useAppContext: () => ({
+          currentWorkspace: { role: 'admin' },
+          isCurrentWorkspaceOwner: true,
+        }),
+        useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector({
+          isCurrentWorkspaceEditor: true,
+          isCurrentWorkspaceManager: true,
+          workspacePermissionKeys: ['dataset.create_and_management'],
+        }),
+      }))
+      vi.doMock('@/context/external-api-panel-context', () => ({
+        useExternalApiPanel: () => ({
+          showExternalApiPanel: true,
+          setShowExternalApiPanel: mockSetShowExternalApiPanel,
+        }),
+      }))
+
+      vi.resetModules()
+      const { default: ListComponent } = await import('../index')
+
+      render(<ListComponent />)
+
+      expect(screen.queryByTestId('external-api-panel')).not.toBeInTheDocument()
     })
 
     it('should close ExternalAPIPanel when onClose is called', async () => {
+      vi.doMock('@/context/app-context', () => ({
+        useAppContext: () => ({
+          currentWorkspace: { role: 'admin' },
+          isCurrentWorkspaceOwner: true,
+        }),
+        useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector({
+          isCurrentWorkspaceEditor: true,
+          isCurrentWorkspaceManager: true,
+          workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
+        }),
+      }))
       vi.doMock('@/context/external-api-panel-context', () => ({
         useExternalApiPanel: () => ({
           showExternalApiPanel: true,

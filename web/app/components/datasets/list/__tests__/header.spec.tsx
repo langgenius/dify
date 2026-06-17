@@ -71,6 +71,12 @@ describe('DatasetListHeader', () => {
     expect(screen.getByRole('button', { name: /dataset\.connectDataset/ })).toBeInTheDocument()
   })
 
+  it('should hide external API panel entry when dataset.external.connect is unavailable', () => {
+    render(<DatasetListHeader {...defaultProps} canConnectExternalDataset={false} />)
+
+    expect(screen.queryByRole('button', { name: /dataset\.externalAPIPanelTitle/ })).not.toBeInTheDocument()
+  })
+
   it('should hide the create menu when no creation or connection action is available', () => {
     render((
       <DatasetListHeader
