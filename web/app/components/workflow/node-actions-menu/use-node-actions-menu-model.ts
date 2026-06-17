@@ -41,7 +41,7 @@ export function useNodeActionsMenuModel({
   const { data: workflowTools } = useAllWorkflowTools()
 
   const isChildNode = !!(data.isInIteration || data.isInLoop)
-  const canRun = canRunWorkflow && canRunBySingle(data.type, isChildNode)
+  const canRun = canRunWorkflow && !nodesReadOnly && canRunBySingle(data.type, isChildNode)
   const isSingleRunning = data._singleRunningStatus === NodeRunningStatus.Running
   const canChangeBlock = !nodeMetaData.isTypeFixed && !nodeMetaData.isUndeletable && !nodesReadOnly
   const sourceHandle = useMemo(() => {

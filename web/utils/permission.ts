@@ -119,7 +119,7 @@ export const getAppACLCapabilities = (
     canTestAndRun,
     canEdit,
     canAccessLayout: canViewLayout || canTestAndRun || canEdit,
-    canComment: canViewLayout || canTestAndRun || canEdit,
+    canComment: canViewLayout || canEdit,
     canPreviewApp: canViewLayout || canTestAndRun,
     canImportExportDSL: hasResourcePermission(permissionKeys, AppACLPermission.ImportExportDSL, hasMaintainerPermissions),
     canDelete: hasResourcePermission(permissionKeys, AppACLPermission.Delete, hasMaintainerPermissions),

@@ -9,9 +9,11 @@ import NodeControl from '../node-control'
 const {
   mockHandleNodeSelect,
   mockCanRunBySingle,
+  mockUseNodesReadOnly,
 } = vi.hoisted(() => ({
   mockHandleNodeSelect: vi.fn(),
   mockCanRunBySingle: vi.fn(() => true),
+  mockUseNodesReadOnly: vi.fn(() => false),
 }))
 
 let mockPluginInstallLocked = false
@@ -23,6 +25,7 @@ vi.mock('../../../../hooks', async () => {
     useNodesInteractions: () => ({
       handleNodeSelect: mockHandleNodeSelect,
     }),
+    useNodesReadOnly: mockUseNodesReadOnly,
   }
 })
 
@@ -77,6 +80,7 @@ describe('NodeControl', () => {
     vi.clearAllMocks()
     mockPluginInstallLocked = false
     mockCanRunBySingle.mockReturnValue(true)
+    mockUseNodesReadOnly.mockReturnValue(false)
   })
 
   // Run/stop behavior should be driven by the workflow store, not CSS classes.
@@ -152,6 +156,17 @@ describe('NodeControl', () => {
           canImportExportDSL: false,
           canReleaseAndVersion: false,
         },
+      )
+
+      expect(screen.queryByRole('button', { name: 'workflow.panel.runThisStep' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'open panel' })).toBeInTheDocument()
+    })
+
+    it('should hide the run control when nodes are read-only', () => {
+      mockUseNodesReadOnly.mockReturnValue(true)
+
+      renderNodeControl(
+        <NodeControlHarness id="node-6" data={makeData()} />,
       )
 
       expect(screen.queryByRole('button', { name: 'workflow.panel.runThisStep' })).not.toBeInTheDocument()

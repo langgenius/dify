@@ -513,7 +513,7 @@ export const AppCardActionBar: React.FC<AppCardActionBarProps> = ({ app, onRefre
   }, [app.id, app.is_starred, isTogglingStar, mutateToggleAppStar, onRefresh, t])
 
   const shouldShowEditOption = appACLCapabilities.canEdit
-  const shouldShowDuplicateOption = canCreateApp && appACLCapabilities.canImportExportDSL
+  const shouldShowDuplicateOption = canCreateApp
   const shouldShowExportOption = appACLCapabilities.canImportExportDSL
   const shouldShowSwitchOption = canCreateApp && appACLCapabilities.canEdit && (app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT)
   const shouldShowAccessControlOption = systemFeatures.webapp_auth.enabled && appACLCapabilities.canReleaseAndVersion

@@ -15,6 +15,7 @@ import useActionMenu from './use-action-menu'
 export type ActionMenuProps = {
   isShowDelete: boolean
   isNamedVersion: boolean
+  canImportExportDSL: boolean
   open: boolean
   setOpen: React.Dispatch<React.SetStateAction<boolean>>
   handleClickActionMenuItem: (operation: VersionHistoryContextMenuOptions) => void

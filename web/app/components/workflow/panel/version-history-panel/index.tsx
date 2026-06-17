@@ -54,6 +54,7 @@ export const VersionHistoryPanel = ({
   const setCurrentVersion = useStore(s => s.setCurrentVersion)
   const userProfile = useAppContextSelector(s => s.userProfile)
   const configsMap = useHooksStore(s => s.configsMap)
+  const canImportExportDSL = useHooksStore(s => s.accessControl.canImportExportDSL)
   const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
   const {
     deleteAllInspectVars,
@@ -124,10 +125,12 @@ export const VersionHistoryPanel = ({
         toast.success(t('versionHistory.action.copyIdSuccess', { ns: 'workflow' }))
         break
       case VersionHistoryContextMenuOptions.exportDSL:
+        if (!canImportExportDSL)
+          return
         handleExportDSL?.(false, item.id)
         break
     }
-  }, [t, handleExportDSL])
+  }, [canImportExportDSL, t, handleExportDSL])
 
   const handleCancel = useCallback((operation: VersionHistoryContextMenuOptions) => {
     switch (operation) {
@@ -293,6 +296,7 @@ export const VersionHistoryPanel = ({
                           latestVersionId={latestVersionId || ''}
                           onClick={handleVersionClick}
                           handleClickActionMenuItem={handleClickActionMenuItem.bind(null, item)}
+                          canImportExportDSL={canImportExportDSL}
                           isLast={isLast}
                         />
                       )

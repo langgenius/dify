@@ -14,6 +14,7 @@ type VersionHistoryItemProps = {
   latestVersionId: string
   onClick: (item: VersionHistory) => void
   handleClickActionMenuItem: (operation: VersionHistoryContextMenuOptions) => void
+  canImportExportDSL: boolean
   isLast: boolean
 }
 
@@ -42,6 +43,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
   latestVersionId,
   onClick,
   handleClickActionMenuItem,
+  canImportExportDSL,
   isLast,
 }) => {
   const { t } = useTranslation()
@@ -128,6 +130,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
           <ActionMenu
             isShowDelete={!isLatest}
             isNamedVersion={!!item.marked_name}
+            canImportExportDSL={canImportExportDSL}
             open={open}
             setOpen={setOpen}
             handleClickActionMenuItem={handleClickActionMenuItem}

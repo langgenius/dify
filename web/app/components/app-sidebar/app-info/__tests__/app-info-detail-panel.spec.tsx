@@ -244,6 +244,19 @@ describe('AppInfoDetailPanel', () => {
       expect(screen.queryByTestId('op-import')).not.toBeInTheDocument()
     })
 
+    it('should not show import DSL when import/export DSL permission is missing', () => {
+      render(
+        <AppInfoDetailPanel
+          {...defaultProps}
+          appDetail={createAppDetail({
+            mode: AppModeEnum.WORKFLOW,
+            permission_keys: [AppACLPermission.Edit],
+          })}
+        />,
+      )
+      expect(screen.queryByTestId('op-import')).not.toBeInTheDocument()
+    })
+
     it('should call openModal with importDSL when import is clicked', async () => {
       const user = userEvent.setup()
       render(

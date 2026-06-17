@@ -297,6 +297,28 @@ describe('useConfiguration', () => {
     })
 
     expect(result.current.contextValue.readonly).toBe(true)
+    expect(result.current.contextValue.canTestAndRun).toBe(false)
+    expect(result.current.appPublisherProps.disabled).toBe(true)
+    expect(result.current.appPublisherProps.publishDisabled).toBe(true)
+
+    await act(async () => {
+      await result.current.appPublisherProps.onPublish!(undefined, result.current.featuresData)
+    })
+
+    expect(updateAppModelConfig).not.toHaveBeenCalled()
+  })
+
+  it('should allow test and run while keeping configuration readonly when only app test/run permission exists', async () => {
+    mockAppPermissionKeys = [AppACLPermission.TestAndRun]
+
+    const { result } = renderHook(() => useConfiguration())
+
+    await waitFor(() => {
+      expect(result.current.showLoading).toBe(false)
+    })
+
+    expect(result.current.contextValue.readonly).toBe(true)
+    expect(result.current.contextValue.canTestAndRun).toBe(true)
     expect(result.current.appPublisherProps.disabled).toBe(true)
     expect(result.current.appPublisherProps.publishDisabled).toBe(true)
 
@@ -317,6 +339,7 @@ describe('useConfiguration', () => {
     })
 
     expect(result.current.contextValue.readonly).toBe(false)
+    expect(result.current.contextValue.canTestAndRun).toBe(false)
     expect(result.current.appPublisherProps.disabled).toBe(true)
     expect(result.current.appPublisherProps.publishDisabled).toBe(true)
 
@@ -337,6 +360,7 @@ describe('useConfiguration', () => {
     })
 
     expect(result.current.contextValue.readonly).toBe(true)
+    expect(result.current.contextValue.canTestAndRun).toBe(false)
     expect(result.current.appPublisherProps.disabled).toBe(false)
     expect(result.current.appPublisherProps.publishDisabled).toBe(false)
 

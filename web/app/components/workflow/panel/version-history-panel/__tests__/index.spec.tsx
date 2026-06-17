@@ -7,10 +7,12 @@ import { VersionHistoryContextMenuOptions, WorkflowVersion } from '../../../type
 const mockHandleRestoreFromPublishedWorkflow = vi.fn()
 const mockHandleLoadBackupDraft = vi.fn()
 const mockHandleRefreshWorkflowDraft = vi.fn()
+const mockHandleExportDSL = vi.fn()
 const mockRestoreWorkflow = vi.fn()
 const mockSetCurrentVersion = vi.fn()
 const mockSetShowWorkflowVersionHistoryPanel = vi.fn()
 const mockWorkflowStoreSetState = vi.fn()
+let mockCanImportExportDSL = true
 
 const createVersionHistory = (overrides: Partial<VersionHistory> = {}): VersionHistory => ({
   id: 'version-id',
@@ -50,6 +52,7 @@ type MockVersionHistoryItemProps = {
   item: VersionHistory
   onClick: (item: VersionHistory) => void
   handleClickActionMenuItem: (operation: VersionHistoryContextMenuOptions) => void
+  canImportExportDSL: boolean
 }
 
 vi.mock('@/context/app-context', () => ({
@@ -88,7 +91,7 @@ vi.mock('@/service/use-workflow', () => ({
 }))
 
 vi.mock('../../../hooks', () => ({
-  useDSL: () => ({ handleExportDSL: vi.fn() }),
+  useDSL: () => ({ handleExportDSL: mockHandleExportDSL }),
   useWorkflowRefreshDraft: () => ({ handleRefreshWorkflowDraft: mockHandleRefreshWorkflowDraft }),
   useWorkflowRun: () => ({
     handleRestoreFromPublishedWorkflow: mockHandleRestoreFromPublishedWorkflow,
@@ -97,9 +100,22 @@ vi.mock('../../../hooks', () => ({
 }))
 
 vi.mock('../../../hooks-store', () => ({
-  useHooksStore: () => ({
-    flowId: 'test-flow-id',
-    flowType: 'workflow',
+  useHooksStore: <T,>(selector: (state: {
+    configsMap: {
+      flowId: string
+      flowType: string
+    }
+    accessControl: {
+      canImportExportDSL: boolean
+    }
+  }) => T) => selector({
+    configsMap: {
+      flowId: 'test-flow-id',
+      flowType: 'workflow',
+    },
+    accessControl: {
+      canImportExportDSL: mockCanImportExportDSL,
+    },
   }),
 }))
 
@@ -148,7 +164,7 @@ vi.mock('@/app/components/app/app-publisher/version-info-modal', () => ({
 vi.mock('../version-history-item', () => ({
   default: (props: MockVersionHistoryItemProps) => {
     const MockVersionHistoryItem = () => {
-      const { item, onClick, handleClickActionMenuItem } = props
+      const { item, onClick, handleClickActionMenuItem, canImportExportDSL } = props
 
       useEffect(() => {
         if (item.version === WorkflowVersion.Draft)
@@ -163,6 +179,11 @@ vi.mock('../version-history-item', () => ({
               {`restore-${item.id}`}
             </button>
           )}
+          {item.version !== WorkflowVersion.Draft && canImportExportDSL && (
+            <button onClick={() => handleClickActionMenuItem(VersionHistoryContextMenuOptions.exportDSL)}>
+              {`export-${item.id}`}
+            </button>
+          )}
         </div>
       )
     }
@@ -175,6 +196,7 @@ describe('VersionHistoryPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockCurrentVersion = null
+    mockCanImportExportDSL = true
   })
 
   describe('Version Click Behavior', () => {
@@ -265,5 +287,35 @@ describe('VersionHistoryPanel', () => {
     expect(mockWorkflowStoreSetState).not.toHaveBeenCalledWith({ backupDraft: undefined })
     expect(mockSetCurrentVersion).not.toHaveBeenCalled()
     expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
+  })
+
+  it('should export a version only when import/export DSL permission is granted', async () => {
+    const { VersionHistoryPanel } = await import('../index')
+
+    render(
+      <VersionHistoryPanel
+        latestVersionId="published-version-id"
+        restoreVersionUrl={versionId => `/apps/app-1/workflows/${versionId}/restore`}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('export-published-version-id'))
+
+    expect(mockHandleExportDSL).toHaveBeenCalledWith(false, 'published-version-id')
+  })
+
+  it('should not expose version export when import/export DSL permission is missing', async () => {
+    const { VersionHistoryPanel } = await import('../index')
+    mockCanImportExportDSL = false
+
+    render(
+      <VersionHistoryPanel
+        latestVersionId="published-version-id"
+        restoreVersionUrl={versionId => `/apps/app-1/workflows/${versionId}/restore`}
+      />,
+    )
+
+    expect(screen.queryByText('export-published-version-id')).not.toBeInTheDocument()
+    expect(mockHandleExportDSL).not.toHaveBeenCalled()
   })
 })

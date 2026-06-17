@@ -113,12 +113,12 @@ describe('permission', () => {
   })
 
   describe('getAppACLCapabilities', () => {
-    it('allows test-and-run users to access layout and comment without edit', () => {
+    it('allows test-and-run users to access layout without edit or comment', () => {
       const capabilities = getAppACLCapabilities([AppACLPermission.TestAndRun])
 
       expect(capabilities.canTestAndRun).toBe(true)
       expect(capabilities.canAccessLayout).toBe(true)
-      expect(capabilities.canComment).toBe(true)
+      expect(capabilities.canComment).toBe(false)
       expect(capabilities.canEdit).toBe(false)
     })
 

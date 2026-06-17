@@ -14,6 +14,7 @@ describe('ActionMenu', () => {
       <ActionMenu
         isNamedVersion
         isShowDelete
+        canImportExportDSL
         open
         setOpen={setOpen}
         handleClickActionMenuItem={handleClickActionMenuItem}

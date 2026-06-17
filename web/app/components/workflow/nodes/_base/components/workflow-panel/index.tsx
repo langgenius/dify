@@ -265,6 +265,7 @@ const BasePanel: FC<BasePanelProps> = ({
   } = useNodesMetaData()
 
   const configsMap = useHooksStore(s => s.configsMap)
+  const canRun = useHooksStore(s => s.accessControl.canRun)
   const {
     isShowSingleRun,
     hideSingleRun,
@@ -566,7 +567,7 @@ const BasePanel: FC<BasePanelProps> = ({
             )}
             <div className="flex shrink-0 items-center text-text-tertiary">
               {
-                isSupportSingleRun && !nodesReadOnly && (
+                isSupportSingleRun && canRun && !nodesReadOnly && (
                   <Tooltip disabled={isSingleRunning}>
                     <TooltipTrigger
                       render={(

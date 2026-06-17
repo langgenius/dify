@@ -10,6 +10,7 @@ import * as workflowService from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import AppCard from '../app-card'
+import { StarredAppCard } from '../starred-app-card'
 
 let mockWebappAuthEnabled = false
 
@@ -582,6 +583,22 @@ describe('AppCard', () => {
         permission_keys: [AppACLPermission.ViewLayout],
       })
       render(<AppCard app={appWithoutImportExportPermission} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+
+      await waitFor(() => {
+        expect(screen.getByText('app.duplicate')).toBeInTheDocument()
+      })
+      expect(screen.queryByText('app.export')).not.toBeInTheDocument()
+    })
+
+    it('should show duplicate option on starred cards when user can create apps without app import export permission', async () => {
+      const appWithoutImportExportPermission = createMockApp({
+        created_by: 'another-user',
+        maintainer: 'another-user',
+        permission_keys: [AppACLPermission.ViewLayout],
+      })
+      render(<StarredAppCard app={appWithoutImportExportPermission} />)
 
       fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
 

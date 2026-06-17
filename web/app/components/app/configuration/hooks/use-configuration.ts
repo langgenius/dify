@@ -579,6 +579,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
 
   const contextValue: DebugConfigurationValue = {
     readonly: configurationReadonly,
+    canTestAndRun: appACLCapabilities.canTestAndRun,
     appId,
     isAPIKeySet,
     isTrailFinished: false,
