@@ -9,7 +9,7 @@ from flask_restx import Resource
 from werkzeug.exceptions import Conflict, NotFound, UnprocessableEntity
 
 from controllers.common.fields import Parameters
-from controllers.common.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
+from controllers.common.wraps import RBACPermission, RBACResourceScope, openapi_rbac_permission_required
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
 from controllers.openapi._input_schema import EMPTY_INPUT_SCHEMA, build_input_schema, resolve_app_config
@@ -88,7 +88,7 @@ def parameters_payload(app: App) -> dict:
 @openapi_ns.route("/apps/<string:app_id>/describe")
 class AppDescribeApi(AppReadResource):
     @auth_router.guard(scope=Scope.APPS_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @openapi_rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @returns(200, AppDescribeResponse, description="App description")
     @accepts(query=AppDescribeQuery)
     def get(self, app_id: str, *, auth_data: AuthData, query: AppDescribeQuery):
@@ -139,7 +139,7 @@ class AppDescribeApi(AppReadResource):
 @openapi_ns.route("/apps")
 class AppListApi(Resource):
     @auth_router.guard_workspace(scope=Scope.APPS_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT, resource_required=False)
+    @openapi_rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT, resource_required=False)
     @returns(200, AppListResponse, description="App list")
     @accepts(query=AppListQuery)
     def get(self, *, auth_data: AuthData, query: AppListQuery):
