@@ -2,7 +2,8 @@ import { QueryClient } from '@tanstack/react-query'
 import { act, waitFor } from '@testing-library/react'
 import { FlowType } from '@/types/common'
 import { renderWorkflowHook } from '../../../__tests__/workflow-test-env'
-import { useCreateInlineAgentBinding, useWorkflowInlineAgentConfigureSync } from '../hooks'
+import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
+import { useCreateInlineAgentBinding } from '../hooks'
 
 const mockDefaultModel = vi.hoisted(() => ({
   value: {

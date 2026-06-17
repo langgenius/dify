@@ -11,7 +11,7 @@ import { useHydrateAgentSoulConfigFormState } from '@/features/agent-v2/agent-co
 import { useAgentConfigureCurrentModel, useAgentConfigureModel } from '@/features/agent-v2/agent-detail/configure/atoms'
 import { AgentOrchestratePanel } from '@/features/agent-v2/agent-detail/configure/components/orchestrate'
 import { consoleQuery } from '@/service/client'
-import { useWorkflowInlineAgentConfigureSync } from '../hooks'
+import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
 
 type AgentOrchestrateDrawerPanelProps = {
   agentId: string
