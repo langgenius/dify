@@ -104,11 +104,14 @@ def _field_signature(field: object) -> object:
         "description",
         "example",
         "max",
+        "max_items",
         "min",
+        "min_items",
         "nullable",
         "readonly",
         "required",
         "title",
+        "unique",
     ):
         if hasattr(field_instance, attr_name):
             signature[attr_name] = _jsonable_schema_value(getattr(field_instance, attr_name))
