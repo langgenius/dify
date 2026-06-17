@@ -399,7 +399,7 @@ export const zAppSiteStatusPayload = z.object({
 export const zTextToSpeechPayload = z.object({
   message_id: z.string().nullish(),
   streaming: z.boolean().nullish(),
-  text: z.string().optional().default(''),
+  text: z.string(),
   voice: z.string().nullish(),
 })
 
@@ -1946,23 +1946,23 @@ export const zModelConfigPartial = z.object({
  */
 export const zAppPartial = z.object({
   access_mode: z.string().nullish(),
+  active_config_is_published: z.boolean().optional().default(false),
   app_id: z.string().nullish(),
+  app_model_config: zModelConfigPartial.nullish(),
   author_name: z.string().nullish(),
   bound_agent_id: z.string().nullish(),
   create_user_name: z.string().nullish(),
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
-  description: z.string().nullish(),
+  desc_or_prompt: z.string().nullish(),
   has_draft_trigger: z.boolean().nullish(),
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
   icon_type: z.string().nullish(),
-  icon_url: z.string().nullable(),
   id: z.string(),
   is_starred: z.boolean().optional().default(false),
   max_active_requests: z.int().nullish(),
-  mode: z.string(),
-  model_config: zModelConfigPartial.nullish(),
+  mode_compatible_with_agent: z.string(),
   name: z.string(),
   role: z.string().nullish(),
   tags: z.array(zTag).optional(),
@@ -1976,10 +1976,10 @@ export const zAppPartial = z.object({
  * AppPagination
  */
 export const zAppPagination = z.object({
-  data: z.array(zAppPartial),
-  has_more: z.boolean(),
-  limit: z.int(),
+  has_next: z.boolean(),
+  items: z.array(zAppPartial),
   page: z.int(),
+  per_page: z.int(),
   total: z.int(),
 })
 
@@ -2005,6 +2005,7 @@ export const zModelConfig = z.object({
  */
 export const zAppDetailWithSite = z.object({
   access_mode: z.string().nullish(),
+  active_config_is_published: z.boolean().optional().default(false),
   api_base_url: z.string().nullish(),
   app_id: z.string().nullish(),
   bound_agent_id: z.string().nullish(),
@@ -2475,6 +2476,25 @@ export const zAgentComposerBindingResponse = z.object({
  * about. Stage 4 §4.2.
  */
 export const zDeclaredArrayItem = z.object({
+  children: z
+    .array(
+      z.object({
+        array_item: z
+          .object({
+            children: z.array(z.record(z.string(), z.unknown())).optional(),
+            description: z.string().nullish(),
+            type: z.enum(['array', 'boolean', 'file', 'number', 'object', 'string']).optional(),
+          })
+          .optional(),
+        children: z.array(z.record(z.string(), z.unknown())).optional(),
+        description: z.string().nullish(),
+        file: z.record(z.string(), z.unknown()).optional(),
+        name: z.string(),
+        required: z.boolean().optional(),
+        type: z.enum(['array', 'boolean', 'file', 'number', 'object', 'string']),
+      }),
+    )
+    .optional(),
   description: z.string().nullish(),
   type: zDeclaredOutputType,
 })
@@ -2908,6 +2928,7 @@ export const zAgentSecretRefConfig = z.object({
   provider_credential_id: z.string().max(255).nullish(),
   ref: z.string().max(255).nullish(),
   type: z.string().max(64).nullish(),
+  value: z.string().max(255).nullish(),
   variable: z.string().max(255).nullish(),
 })
 
@@ -3079,6 +3100,25 @@ export const zDeclaredOutputCheckConfig = z.object({
 export const zDeclaredOutputConfig = z.object({
   array_item: zDeclaredArrayItem.nullish(),
   check: zDeclaredOutputCheckConfig.nullish(),
+  children: z
+    .array(
+      z.object({
+        array_item: z
+          .object({
+            children: z.array(z.record(z.string(), z.unknown())).optional(),
+            description: z.string().nullish(),
+            type: z.enum(['array', 'boolean', 'file', 'number', 'object', 'string']).optional(),
+          })
+          .optional(),
+        children: z.array(z.record(z.string(), z.unknown())).optional(),
+        description: z.string().nullish(),
+        file: z.record(z.string(), z.unknown()).optional(),
+        name: z.string(),
+        required: z.boolean().optional(),
+        type: z.enum(['array', 'boolean', 'file', 'number', 'object', 'string']),
+      }),
+    )
+    .optional(),
   description: z.string().nullish(),
   failure_strategy: zDeclaredOutputFailureStrategy.optional(),
   file: zDeclaredOutputFileConfig.nullish(),
@@ -3433,47 +3473,6 @@ export const zMessageInfiniteScrollPaginationResponse = z.object({
 export const zGeneratedAppResponseWritable = zJsonValue
 
 /**
- * AppPartial
- */
-export const zAppPartialWritable = z.object({
-  access_mode: z.string().nullish(),
-  app_id: z.string().nullish(),
-  author_name: z.string().nullish(),
-  bound_agent_id: z.string().nullish(),
-  create_user_name: z.string().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  description: z.string().nullish(),
-  has_draft_trigger: z.boolean().nullish(),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  icon_type: z.string().nullish(),
-  id: z.string(),
-  is_starred: z.boolean().optional().default(false),
-  max_active_requests: z.int().nullish(),
-  mode: z.string(),
-  model_config: zModelConfigPartial.nullish(),
-  name: z.string(),
-  role: z.string().nullish(),
-  tags: z.array(zTag).optional(),
-  updated_at: z.int().nullish(),
-  updated_by: z.string().nullish(),
-  use_icon_as_answer_icon: z.boolean().nullish(),
-  workflow: zWorkflowPartial.nullish(),
-})
-
-/**
- * AppPagination
- */
-export const zAppPaginationWritable = z.object({
-  data: z.array(zAppPartialWritable),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
-})
-
-/**
  * Site
  */
 export const zSiteWritable = z.object({
@@ -3497,6 +3496,7 @@ export const zSiteWritable = z.object({
  */
 export const zAppDetailWithSiteWritable = z.object({
   access_mode: z.string().nullish(),
+  active_config_is_published: z.boolean().optional().default(false),
   api_base_url: z.string().nullish(),
   app_id: z.string().nullish(),
   bound_agent_id: z.string().nullish(),
