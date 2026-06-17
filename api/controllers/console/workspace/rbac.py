@@ -82,14 +82,16 @@ def _account_names_by_ids(account_ids: list[str]) -> dict[str, dict[str, str]]:
         return {}
 
     with session_factory.create_session() as session:
-        rows = session.execute(select(Account.id, Account.name, Account.avatar).where(Account.id.in_(ids))).all()
+        rows = session.execute(select(
+            Account.id, Account.name, Account.avatar, Account.email).where(Account.id.in_(ids))).all()
 
     return {
         account_id: {
             "name": name or "",
             "avatar": avatar or "",
+            "email": email or "",
         }
-        for account_id, name, avatar in rows
+        for account_id, name, avatar, email in rows
     }
 
 
@@ -111,6 +113,7 @@ def _hydrate_access_matrix_account_names(items: list[svc.AccessMatrixItem]) -> N
             if account_id and not account.account_name:
                 account.account_name = account_names.get(account_id, {}).get("name", "")
             account.avatar = account_names.get(account_id, {}).get("avatar", "")
+            account.email = account_names.get(account_id, {}).get("email", "")
 
 
 def _hydrate_resource_user_account_names(items: list[svc.ResourceUserAccessPolicies]) -> None:

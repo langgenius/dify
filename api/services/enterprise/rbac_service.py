@@ -169,6 +169,7 @@ class AccessPolicyAccount(BaseModel):
     binding_id: str
     is_locked: bool = False
     avatar: str = ""
+    email: str = ""
 
 
 class AccessMatrixItem(_RBACModel):
