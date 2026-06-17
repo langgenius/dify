@@ -61,6 +61,24 @@ class FilePreviewApi(Resource):
     Files can only be accessed if they belong to messages within the requesting app's context.
     """
 
+    @service_api_ns.doc(
+        summary="Download File",
+        description=(
+            "Preview or download uploaded files previously uploaded via the [Upload "
+            "File](/api-reference/files/upload-file) API. Files can only be accessed if they belong to "
+            "messages within the requesting application."
+        ),
+        tags=["Files"],
+        responses={
+            200: (
+                "Returns the raw file content. The `Content-Type` header is set to the file's MIME type. If "
+                "`as_attachment` is `true`, the file is returned as a download with `Content-Disposition: "
+                "attachment`."
+            ),
+            403: "`file_access_denied` : Access to the requested file is denied.",
+            404: "`file_not_found` : The requested file was not found.",
+        },
+    )
     @service_api_ns.doc(params=query_params_from_model(FilePreviewQuery))
     @binary_response(service_api_ns, FILE_PREVIEW_RESPONSE_MEDIA_TYPES)
     @service_api_ns.doc("preview_file")

@@ -141,4 +141,7 @@ class TextToAudioPayload(BaseModel):
     message_id: str | None = Field(default=None, description="Message ID")
     voice: str | None = Field(default=None, description="Voice to use for TTS")
     text: str | None = Field(default=None, description="Text to convert to audio")
-    streaming: bool | None = Field(default=None, description="Enable streaming response")
+    streaming: bool | None = Field(
+        default=None,
+        description="Reserved for compatibility; TTS response streaming is determined by the provider output.",
+    )

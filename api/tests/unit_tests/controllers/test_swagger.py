@@ -206,6 +206,31 @@ def test_service_document_file_routes_document_multipart_form_data(monkeypatch: 
         assert update_operation["requestBody"]["required"] is False
 
 
+def test_service_openapi_merges_public_api_reference_descriptions(monkeypatch: pytest.MonkeyPatch):
+    from configs import dify_config
+    from controllers.service_api import bp as service_api_bp
+
+    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
+
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
+    app.register_blueprint(service_api_bp)
+
+    payload = app.test_client().get("/v1/openapi.json").get_json()
+
+    chat_operation = payload["paths"]["/chat-messages"]["post"]
+    assert chat_operation["summary"] == "Send Chat Message"
+    assert chat_operation["description"] == "Send a request to the chat application."
+    assert chat_operation["tags"] == ["Chats", "Chatflows"]
+    assert chat_operation["responses"]["200"]["description"].startswith("Successful response.")
+
+    rename_operation = payload["paths"]["/conversations/{c_id}/name"]["post"]
+    assert rename_operation["summary"] == "Rename Conversation"
+    assert rename_operation["tags"] == ["Conversations"]
+    assert _parameters_by_name(rename_operation)["c_id"]["description"] == "Conversation ID"
+
+
 def test_service_document_list_documents_query_params_render(monkeypatch: pytest.MonkeyPatch):
     from configs import dify_config
     from controllers.service_api import bp as service_api_bp
