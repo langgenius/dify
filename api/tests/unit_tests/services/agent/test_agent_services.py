@@ -459,6 +459,70 @@ def test_composer_save_helpers_create_and_rebind_agents(monkeypatch):
     assert new_version_binding.current_snapshot_id == "new-version-1"
 
 
+def test_node_job_only_updates_inline_agent_soul(monkeypatch):
+    fake_session = FakeSession()
+    monkeypatch.setattr(composer_service.db, "session", fake_session)
+    inline_agent = SimpleNamespace(
+        id="inline-agent-1",
+        scope=AgentScope.WORKFLOW_ONLY,
+        active_config_snapshot_id="inline-version-1",
+        active_config_has_model=False,
+        updated_by=None,
+    )
+    current_snapshot = AgentConfigSnapshot(
+        id="inline-version-1",
+        tenant_id="tenant-1",
+        agent_id="inline-agent-1",
+        version=1,
+        config_snapshot='{"prompt":{"system_prompt":"old"}}',
+    )
+    next_snapshot = AgentConfigSnapshot(
+        id="inline-version-2",
+        tenant_id="tenant-1",
+        agent_id="inline-agent-1",
+        version=2,
+    )
+
+    monkeypatch.setattr(AgentComposerService, "_require_version", lambda **kwargs: current_snapshot)
+    monkeypatch.setattr(AgentComposerService, "_update_current_version", lambda **kwargs: next_snapshot)
+    monkeypatch.setattr(AgentComposerService, "_require_agent", lambda **kwargs: inline_agent)
+
+    binding = WorkflowAgentNodeBinding(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        workflow_version="draft",
+        node_id="node-1",
+        binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+        agent_id="inline-agent-1",
+        current_snapshot_id="inline-version-1",
+    )
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": ComposerVariant.WORKFLOW.value,
+            "save_strategy": ComposerSaveStrategy.NODE_JOB_ONLY.value,
+            "agent_soul": {"prompt": {"system_prompt": "new"}},
+            "node_job": {"workflow_prompt": "use prior output"},
+        }
+    )
+
+    updated_binding = AgentComposerService._save_node_job_only(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        node_id="node-1",
+        account_id="account-1",
+        binding=binding,
+        payload=payload,
+    )
+
+    assert updated_binding.current_snapshot_id == "inline-version-2"
+    assert updated_binding.node_job_config_dict["workflow_prompt"] == "use prior output"
+    assert updated_binding.updated_by == "account-1"
+    assert inline_agent.active_config_snapshot_id == "inline-version-2"
+    assert inline_agent.updated_by == "account-1"
+
+
 def test_composer_create_agents_syncs_active_config_has_model(monkeypatch):
     fake_session = FakeSession()
     monkeypatch.setattr(composer_service.db, "session", fake_session)
