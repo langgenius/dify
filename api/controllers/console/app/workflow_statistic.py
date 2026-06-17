@@ -98,7 +98,6 @@ class WorkflowDailyRunsStatistic(Resource):
         "Daily runs statistics retrieved successfully",
         console_ns.models[WorkflowDailyRunsStatisticResponse.__name__],
     )
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
@@ -143,7 +142,6 @@ class WorkflowDailyTerminalsStatistic(Resource):
         "Daily terminals statistics retrieved successfully",
         console_ns.models[WorkflowDailyTerminalsStatisticResponse.__name__],
     )
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
@@ -188,7 +186,6 @@ class WorkflowDailyTokenCostStatistic(Resource):
         "Daily token cost statistics retrieved successfully",
         console_ns.models[WorkflowDailyTokenCostStatisticResponse.__name__],
     )
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
