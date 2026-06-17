@@ -658,6 +658,19 @@ Commit an uploaded file into the Agent App drive under files/<name>
 | ---- | ----------- | ------ |
 | 201 | File committed into the agent drive | **application/json**: [AgentDriveFileCommitResponse](#agentdrivefilecommitresponse)<br> |
 
+### [GET] /agent/{agent_id}/log-sources
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent log sources | **application/json**: [AgentLogSourceListResponse](#agentlogsourcelistresponse)<br> |
+
 ### [GET] /agent/{agent_id}/logs
 #### Parameters
 
@@ -677,6 +690,27 @@ Commit an uploaded file into the Agent App drive under files/<name>
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent logs | **application/json**: [AgentLogListResponse](#agentloglistresponse)<br> |
+
+### [GET] /agent/{agent_id}/logs/{conversation_id}/messages
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| end | query | End date (YYYY-MM-DD HH:MM) | No | string |
+| keyword | query | Search query, answer, or conversation name | No | string |
+| limit | query | Page size | No | integer, <br>**Default:** 20 |
+| page | query | Page number | No | integer, <br>**Default:** 1 |
+| source | query | Filter by all, console/explore, api/service-api, web-app, debugger, openapi, or trigger | No | string |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
+| status | query | Filter by success, failed, or paused | No | string |
+| agent_id | path |  | Yes | string |
+| conversation_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent log messages | **application/json**: [AgentLogMessageListResponse](#agentlogmessagelistresponse)<br> |
 
 ### [GET] /agent/{agent_id}/messages/{message_id}
 Get Agent App message details by ID
@@ -11941,36 +11975,60 @@ the current roster/workflow APIs scoped to Dify Agent.
 | ---- | ---- | ----------- | -------- |
 | AgentKnowledgeQueryMode | string |  |  |
 
-#### AgentLogItemResponse
+#### AgentLogConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_id | string |  | Yes |
+| created_at | integer |  | No |
+| end_user_id | string |  | No |
+| id | string |  | Yes |
+| message_count | integer |  | Yes |
+| operation_rate | number |  | No |
+| source | [AgentLogSourceResponse](#agentlogsourceresponse) |  | No |
+| status | string, <br>**Available values:** "failed", "paused", "success" | *Enum:* `"failed"`, `"paused"`, `"success"` | Yes |
+| title | string |  | No |
+| unread | boolean |  | Yes |
+| updated_at | integer |  | No |
+| user_rate | number |  | No |
+
+#### AgentLogListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AgentLogConversationItemResponse](#agentlogconversationitemresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### AgentLogMessageItemResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | answer | string |  | Yes |
 | answer_tokens | integer |  | Yes |
 | conversation_id | string |  | Yes |
-| conversation_name | string |  | No |
 | created_at | integer |  | No |
 | currency | string |  | Yes |
 | error | string |  | No |
 | from_account_id | string |  | No |
 | from_end_user_id | string |  | No |
-| from_source | string |  | No |
 | id | string |  | Yes |
 | latency | number |  | Yes |
 | message_id | string |  | Yes |
 | message_tokens | integer |  | Yes |
 | query | string |  | Yes |
-| source | string |  | No |
 | status | string |  | Yes |
 | total_price | string |  | Yes |
 | total_tokens | integer |  | Yes |
 | updated_at | integer |  | No |
 
-#### AgentLogListResponse
+#### AgentLogMessageListResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ [AgentLogItemResponse](#agentlogitemresponse) ] |  | Yes |
+| data | [ [AgentLogMessageItemResponse](#agentlogmessageitemresponse) ] |  | Yes |
 | has_more | boolean |  | Yes |
 | limit | integer |  | Yes |
 | page | integer |  | Yes |
@@ -12002,6 +12060,36 @@ the current roster/workflow APIs scoped to Dify Agent.
 | files | [  ] |  | No |
 | iterations | [ [AgentIterationLogResponse](#agentiterationlogresponse) ] |  | Yes |
 | meta | [AgentLogMetaResponse](#agentlogmetaresponse) |  | Yes |
+
+#### AgentLogSourceGroupResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| label | string |  | Yes |
+| sources | [ [AgentLogSourceResponse](#agentlogsourceresponse) ] |  | No |
+| type | string, <br>**Available values:** "webapp", "workflow" | *Enum:* `"webapp"`, `"workflow"` | Yes |
+
+#### AgentLogSourceListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AgentLogSourceResponse](#agentlogsourceresponse) ] |  | Yes |
+| groups | [ [AgentLogSourceGroupResponse](#agentlogsourcegroupresponse) ] |  | Yes |
+
+#### AgentLogSourceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_icon | string |  | No |
+| app_icon_background | string |  | No |
+| app_icon_type | string |  | No |
+| app_id | string |  | Yes |
+| app_name | string |  | Yes |
+| id | string |  | Yes |
+| node_id | string |  | No |
+| type | string, <br>**Available values:** "webapp", "workflow" | *Enum:* `"webapp"`, `"workflow"` | Yes |
+| workflow_id | string |  | No |
+| workflow_version | string |  | No |
 
 #### AgentLogsQuery
 
