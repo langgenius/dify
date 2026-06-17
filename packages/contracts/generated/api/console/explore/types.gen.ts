@@ -9,8 +9,18 @@ export type RecommendedAppListResponse = {
   recommended_apps: Array<RecommendedAppResponse>
 }
 
+export type LearnDifyAppListResponse = {
+  recommended_apps: Array<RecommendedAppResponse>
+}
+
+export type RecommendedAppDetailResponse = {
+  [key: string]: unknown
+}
+
+export type BannerListResponse = Array<BannerResponse>
+
 export type RecommendedAppResponse = {
-  app?: RecommendedAppInfoResponse
+  app?: RecommendedAppInfoResponse | null
   app_id: string
   can_trial?: boolean | null
   categories?: Array<string>
@@ -20,6 +30,15 @@ export type RecommendedAppResponse = {
   is_listed?: boolean | null
   position?: number | null
   privacy_policy?: string | null
+}
+
+export type BannerResponse = {
+  content: unknown
+  created_at?: string | null
+  id: string
+  link?: string | null
+  sort: number
+  status: string
 }
 
 export type RecommendedAppInfoResponse = {
@@ -46,6 +65,22 @@ export type GetExploreAppsResponses = {
 
 export type GetExploreAppsResponse = GetExploreAppsResponses[keyof GetExploreAppsResponses]
 
+export type GetExploreAppsLearnDifyData = {
+  body?: never
+  path?: never
+  query?: {
+    language?: string
+  }
+  url: '/explore/apps/learn-dify'
+}
+
+export type GetExploreAppsLearnDifyResponses = {
+  200: LearnDifyAppListResponse
+}
+
+export type GetExploreAppsLearnDifyResponse
+  = GetExploreAppsLearnDifyResponses[keyof GetExploreAppsLearnDifyResponses]
+
 export type GetExploreAppsByAppIdData = {
   body?: never
   path: {
@@ -56,9 +91,7 @@ export type GetExploreAppsByAppIdData = {
 }
 
 export type GetExploreAppsByAppIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RecommendedAppDetailResponse
 }
 
 export type GetExploreAppsByAppIdResponse
@@ -67,14 +100,14 @@ export type GetExploreAppsByAppIdResponse
 export type GetExploreBannersData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    language?: string
+  }
   url: '/explore/banners'
 }
 
 export type GetExploreBannersResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: BannerListResponse
 }
 
 export type GetExploreBannersResponse = GetExploreBannersResponses[keyof GetExploreBannersResponses]

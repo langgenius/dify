@@ -125,5 +125,12 @@ describe('ApiAccess', () => {
       // When expanded, should have gap-2 and text, not justify-center
       expect(innerDiv).not.toHaveClass('justify-center')
     })
+
+    it('should use compact sidebar footer spacing when expanded', () => {
+      const { container } = render(<ApiAccess expand={true} apiEnabled={true} />)
+
+      expect(container.firstChild).toHaveClass('px-1', 'py-2')
+      expect(screen.getByText('common.appMenus.apiAccess')).toHaveClass('system-sm-regular', 'truncate')
+    })
   })
 })

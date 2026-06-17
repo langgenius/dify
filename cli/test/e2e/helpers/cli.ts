@@ -8,11 +8,13 @@
  * withTempConfig) to prevent session state leaking between tests.
  */
 
+import type { TokenDoc } from '@/store/token-store'
 import { Buffer } from 'node:buffer'
 import { execSync, spawn } from 'node:child_process'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import yaml from 'js-yaml'
 
 /** Path to the dev entry point — no build required. */
 export const BIN = resolve(__dirname, '../../../bin/dev.js')
@@ -208,13 +210,11 @@ function splitHost(host: string): { bare: string, scheme: string } {
 }
 
 async function writeFileToken(configDir: string, host: string, email: string, bearer: string): Promise<void> {
-  const dotParts = `tokens.${host}.${email}`.split('.')
-  let yaml = ''
-  for (let i = 0; i < dotParts.length - 1; i++) {
-    yaml += `${'  '.repeat(i) + dotParts[i]}:\n`
+  const doc: TokenDoc = {
+    version: 1,
+    tokens: { [host]: { [email]: bearer } },
   }
-  yaml += `${'  '.repeat(dotParts.length - 1) + (dotParts[dotParts.length - 1] ?? '')}: "${bearer}"\n`
-  await writeFile(join(configDir, 'tokens.yml'), yaml, { mode: 0o600 })
+  await writeFile(join(configDir, 'tokens.yml'), yaml.dump(doc, { lineWidth: -1, noRefs: true }), { mode: 0o600 })
 }
 
 /**
@@ -289,11 +289,8 @@ export async function injectAuth(configDir: string, opts: AuthInjectionOptions):
     new Entry('difyctl', account).setPassword(JSON.stringify(opts.bearer))
   }
   else {
-    // Fall back to tokens.yml.
-    // YamlStore.doGet splits the key on '.' and traverses the nested object,
-    // so "tokens.localhost.user@dify.ai" splits into 4 parts:
-    //   tokens -> localhost -> user@dify -> ai
-    // The YAML must mirror that exact nesting.
+    // Fall back to tokens.yml — FileTokenStore uses getTyped<TokenDoc>()
+    // which expects flat tokens[host][email] with version: 1.
     await writeFileToken(configDir, bare, email, opts.bearer)
   }
 }

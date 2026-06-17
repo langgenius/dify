@@ -11,7 +11,7 @@ export type AccountPayload = {
 }
 
 export type AccountResponse = {
-  account?: AccountPayload
+  account?: AccountPayload | null
   default_workspace_id?: string | null
   subject_email?: string | null
   subject_issuer?: string | null
@@ -36,7 +36,7 @@ export type AppDescribeQuery = {
 }
 
 export type AppDescribeResponse = {
-  info?: AppDescribeInfo
+  info?: AppDescribeInfo | null
   input_schema?: {
     [key: string]: unknown
   } | null
@@ -77,7 +77,7 @@ export type AppInfoResponse = {
 
 export type AppListQuery = {
   limit?: number
-  mode?: AppMode
+  mode?: AppMode | null
   name?: string | null
   page?: number
   tag?: string | null
@@ -168,6 +168,18 @@ export type DevicePollRequest = {
   device_code: string
 }
 
+export type DeviceTokenResponse = {
+  account?: AccountPayload | null
+  default_workspace_id?: string | null
+  expires_at: string
+  subject_email?: string | null
+  subject_issuer?: string | null
+  subject_type: 'account' | 'external_sso'
+  token: string
+  token_id: string
+  workspaces?: Array<WorkspacePayload>
+}
+
 export type ErrorBody = {
   code: string
   details?: Array<ErrorDetail> | null
@@ -177,10 +189,12 @@ export type ErrorBody = {
 }
 
 export type ErrorDetail = {
-  loc?: Array<unknown>
+  loc?: Array<string | number>
   msg: string
   type: string
 }
+
+export type EventStreamResponse = string
 
 export type FileResponse = {
   conversation_id?: string | null
@@ -215,6 +229,20 @@ export type HealthResponse = {
   ok: boolean
 }
 
+export type HumanInputFormDefinitionResponse = {
+  expiration_time?: number | null
+  form_content: string
+  inputs?: Array<{
+    [key: string]: unknown
+  }>
+  resolved_default_values: {
+    [key: string]: string
+  }
+  user_actions?: Array<{
+    [key: string]: unknown
+  }>
+}
+
 export type HumanInputFormSubmitPayload = {
   action: string
   inputs: {
@@ -242,7 +270,7 @@ export type Marketplace = {
 }
 
 export type MemberActionResponse = {
-  result?: string
+  result?: 'success'
 }
 
 export type MemberInvitePayload = {
@@ -254,7 +282,7 @@ export type MemberInviteResponse = {
   email: string
   invite_url: string
   member_id: string
-  result?: string
+  result?: 'success'
   role: string
   tenant_id: string
 }
@@ -289,7 +317,7 @@ export type MessageMetadata = {
   retriever_resources?: Array<{
     [key: string]: unknown
   }>
-  usage?: UsageInfo
+  usage?: UsageInfo | null
 }
 
 export type OpenApiErrorCode
@@ -330,7 +358,7 @@ export type Package = {
 
 export type PermittedExternalAppsListQuery = {
   limit?: number
-  mode?: AppMode
+  mode?: AppMode | null
   name?: string | null
   page?: number
 }
@@ -346,7 +374,7 @@ export type PermittedExternalAppsListResponse = {
 export type PluginDependency = {
   current_identifier?: string | null
   type: Type
-  value: unknown
+  value: Github | Marketplace | Package
 }
 
 export type RevokeResponse = {
@@ -386,7 +414,7 @@ export type TagItem = {
 }
 
 export type TaskStopResponse = {
-  result: string
+  result: 'success'
 }
 
 export type Type = 'github' | 'marketplace' | 'package'
@@ -569,7 +597,15 @@ export type GetAppsData = {
   path?: never
   query: {
     limit?: number
-    mode?: string
+    mode?:
+      | 'advanced-chat'
+      | 'agent'
+      | 'agent-chat'
+      | 'channel'
+      | 'chat'
+      | 'completion'
+      | 'rag-pipeline'
+      | 'workflow'
     name?: string
     page?: number
     tag?: string
@@ -676,18 +712,10 @@ export type PostAppsByAppIdFilesUploadData = {
 }
 
 export type PostAppsByAppIdFilesUploadErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  413: {
-    [key: string]: unknown
-  }
-  415: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  413: unknown
+  415: unknown
   default: ErrorBody
 }
 
@@ -712,9 +740,7 @@ export type GetAppsByAppIdFormHumanInputByFormTokenData = {
 }
 
 export type GetAppsByAppIdFormHumanInputByFormTokenResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: HumanInputFormDefinitionResponse
 }
 
 export type GetAppsByAppIdFormHumanInputByFormTokenResponse
@@ -761,9 +787,7 @@ export type PostAppsByAppIdRunErrors = {
 export type PostAppsByAppIdRunError = PostAppsByAppIdRunErrors[keyof PostAppsByAppIdRunErrors]
 
 export type PostAppsByAppIdRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: EventStreamResponse
 }
 
 export type PostAppsByAppIdRunResponse
@@ -775,14 +799,15 @@ export type GetAppsByAppIdTasksByTaskIdEventsData = {
     app_id: string
     task_id: string
   }
-  query?: never
+  query?: {
+    continue_on_pause?: boolean
+    include_state_snapshot?: boolean
+  }
   url: '/apps/{app_id}/tasks/{task_id}/events'
 }
 
 export type GetAppsByAppIdTasksByTaskIdEventsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: EventStreamResponse
 }
 
 export type GetAppsByAppIdTasksByTaskIdEventsResponse
@@ -878,9 +903,7 @@ export type PostOauthDeviceTokenData = {
 }
 
 export type PostOauthDeviceTokenResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DeviceTokenResponse
 }
 
 export type PostOauthDeviceTokenResponse
@@ -891,7 +914,15 @@ export type GetPermittedExternalAppsData = {
   path?: never
   query?: {
     limit?: number
-    mode?: string
+    mode?:
+      | 'advanced-chat'
+      | 'agent'
+      | 'agent-chat'
+      | 'channel'
+      | 'chat'
+      | 'completion'
+      | 'rag-pipeline'
+      | 'workflow'
     name?: string
     page?: number
   }

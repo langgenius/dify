@@ -256,6 +256,31 @@ describe('useChecklist', () => {
     expect(startRequired!.canNavigate).toBe(false)
   })
 
+  it('should not report the global missing start node item when a start placeholder is present', () => {
+    mockNodesMap[BlockEnum.StartPlaceholder] = {
+      checkValid: () => ({ errorMessage: 'workflow.nodes.startPlaceholder.validationRequired' }),
+      metaData: { isStart: false, isRequired: false },
+    }
+    const placeholderNode = createNode({
+      id: 'start-placeholder',
+      data: { type: BlockEnum.StartPlaceholder, title: 'Workflow start' },
+    })
+
+    const { result } = renderWorkflowHook(
+      () => useChecklist([placeholderNode], []),
+    )
+
+    expect(result.current.find((item: ChecklistItem) => item.id === 'start-node-required')).toBeUndefined()
+    expect(result.current).toEqual([
+      expect.objectContaining({
+        id: 'start-placeholder',
+        type: BlockEnum.StartPlaceholder,
+        unConnected: false,
+        errorMessages: ['workflow.nodes.startPlaceholder.validationRequired'],
+      }),
+    ])
+  })
+
   it('should detect plugin not installed', () => {
     const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
     const toolNode = createNode({

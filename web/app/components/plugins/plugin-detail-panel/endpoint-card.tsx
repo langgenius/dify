@@ -169,11 +169,11 @@ const EndpointCard = ({
             </ActionButton>
           </div>
         </div>
-        {data.declaration.endpoints.filter(endpoint => !endpoint.hidden).map((endpoint, index) => (
+        {(data.declaration.endpoints ?? []).filter(endpoint => !endpoint.hidden).map((endpoint, index) => (
           <div key={index} className="flex h-6 items-center">
             <div className="w-12 shrink-0 system-xs-regular text-text-tertiary">{endpoint.method}</div>
             <div className="group/item flex grow items-center truncate system-xs-regular text-text-secondary">
-              <div title={`${data.url}${endpoint.path}`} className="truncate">{`${data.url}${endpoint.path}`}</div>
+              <div className="truncate">{`${data.url}${endpoint.path}`}</div>
               <Tooltip>
                 <TooltipTrigger
                   render={(
@@ -220,7 +220,7 @@ const EndpointCard = ({
         open={isShowDisableConfirm}
         onOpenChange={handleDisableConfirmOpenChange}
       >
-        <AlertDialogContent>
+        <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
               {t('detailPanel.endpointDisableTip', { ns: 'plugin' })}
@@ -240,7 +240,7 @@ const EndpointCard = ({
         </AlertDialogContent>
       </AlertDialog>
       <AlertDialog open={isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
-        <AlertDialogContent>
+        <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
               {t('detailPanel.endpointDeleteTip', { ns: 'plugin' })}

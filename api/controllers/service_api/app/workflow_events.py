@@ -7,9 +7,12 @@ from collections.abc import Generator
 
 from flask import Response, request
 from flask_restx import Resource
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
+from controllers.common.fields import EventStreamResponse
+from controllers.common.schema import query_params_from_model, register_response_schema_model, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotWorkflowAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
@@ -27,26 +30,24 @@ from repositories.factory import DifyAPIRepositoryFactory
 from services.workflow_event_snapshot_service import build_workflow_event_stream
 
 
+class WorkflowEventsQuery(BaseModel):
+    user: str = Field(..., description="End user identifier")
+    include_state_snapshot: bool = Field(default=False, description="Replay from persisted state snapshot")
+    continue_on_pause: bool = Field(default=False, description="Keep the stream open across workflow_paused events")
+
+
+register_schema_models(service_api_ns, WorkflowEventsQuery)
+register_response_schema_model(service_api_ns, EventStreamResponse)
+
+
 @service_api_ns.route("/workflow/<string:task_id>/events")
 class WorkflowEventsApi(Resource):
     """Service API for getting workflow execution events after resume."""
 
     @service_api_ns.doc("get_workflow_events")
     @service_api_ns.doc(description="Get workflow execution events stream after resume")
-    @service_api_ns.doc(
-        params={
-            "task_id": "Workflow run ID",
-            "user": "End user identifier (query param)",
-            "include_state_snapshot": (
-                "Whether to replay from persisted state snapshot, "
-                'specify `"true"` to include a status snapshot of executed nodes'
-            ),
-            "continue_on_pause": (
-                "Whether to keep the stream open across workflow_paused events,"
-                'specify `"true"` to keep the stream open for `workflow_paused` events.'
-            ),
-        }
-    )
+    @service_api_ns.doc(params={"task_id": "Workflow run ID"})
+    @service_api_ns.doc(params=query_params_from_model(WorkflowEventsQuery))
     @service_api_ns.doc(
         responses={
             200: "SSE event stream",
@@ -54,6 +55,7 @@ class WorkflowEventsApi(Resource):
             404: "Workflow run not found",
         }
     )
+    @service_api_ns.response(200, "SSE event stream", service_api_ns.models[EventStreamResponse.__name__])
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY, required=True))
     def get(self, app_model: App, end_user: EndUser, task_id: str):
         app_mode = AppMode.value_of(app_model.mode)

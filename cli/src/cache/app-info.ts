@@ -42,17 +42,17 @@ export type AppInfoCacheOptions = {
 export async function loadAppInfoCache(opts: AppInfoCacheOptions = {}): Promise<AppInfoCache> {
   const store = opts.store ?? getCache(CACHE_APP_INFO)
   const ttlMs = opts.ttlMs ?? APP_INFO_TTL_MS
-  const state: State = { entries: readEntries(store) }
+  const state: State = { entries: await readEntries(store) }
   return {
     get: (host, appId) => state.entries.get(key(host, appId)),
     set: async (host, appId, meta) => {
       const record: AppMetaCacheRecord = { meta, fetchedAt: (opts.now ?? (() => new Date()))().toISOString() }
       state.entries.set(key(host, appId), record)
-      writeEntries(store, state.entries)
+      await writeEntries(store, state.entries)
     },
     delete: async (host, appId) => {
       state.entries.delete(key(host, appId))
-      writeEntries(store, state.entries)
+      await writeEntries(store, state.entries)
     },
     isFresh: (record, now) => {
       const t = (now ?? new Date()).getTime() - new Date(record.fetchedAt).getTime()
@@ -65,11 +65,11 @@ function key(host: string, appId: string): string {
   return `${host}::${appId}`
 }
 
-function readEntries(store: Store): Map<string, AppMetaCacheRecord> {
+async function readEntries(store: Store): Promise<Map<string, AppMetaCacheRecord>> {
   const out = new Map<string, AppMetaCacheRecord>()
   let raw: Record<string, DiskEntry>
   try {
-    raw = store.get(ENTRIES_KEY)
+    raw = await store.get(ENTRIES_KEY)
   }
   catch {
     return out
@@ -111,8 +111,8 @@ function serialize(record: AppMetaCacheRecord): DiskEntry {
   }
 }
 
-function writeEntries(store: Store, entries: Map<string, AppMetaCacheRecord>): void {
+async function writeEntries(store: Store, entries: Map<string, AppMetaCacheRecord>): Promise<void> {
   const out: Record<string, DiskEntry> = {}
   for (const [k, v] of entries) out[k] = serialize(v)
-  store.set(ENTRIES_KEY, out)
+  await store.set(ENTRIES_KEY, out)
 }

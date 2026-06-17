@@ -79,7 +79,7 @@ function AppPickerOption({
           background={app.icon_background}
           imageUrl={app.icon_url}
         />
-        <span title={`${app.name} (${app.id})`} className="min-w-0 grow truncate system-sm-medium text-components-input-text-filled">
+        <span className="min-w-0 grow truncate system-sm-medium text-components-input-text-filled">
           <span className="mr-1">{app.name}</span>
           <span className="text-text-tertiary">
             (

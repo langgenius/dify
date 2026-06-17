@@ -16,6 +16,7 @@ import Loading from '@/app/components/base/loading'
 import { APP_PAGE_LIMIT } from '@/config'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useWorkflowLogs } from '@/service/use-log'
+import PageTitle from '../log-annotation/page-title'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
 import List from './list'
 
@@ -67,8 +68,10 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
 
   return (
     <div className="flex h-full flex-col">
-      <h1 className="system-xl-semibold text-text-primary">{t('workflowTitle', { ns: 'appLog' })}</h1>
-      <p className="system-sm-regular text-text-tertiary">{t('workflowSubtitle', { ns: 'appLog' })}</p>
+      <PageTitle
+        title={t('workflowTitle', { ns: 'appLog' })}
+        description={t('workflowSubtitle', { ns: 'appLog' })}
+      />
       <div className="flex max-h-[calc(100%-16px)] flex-1 flex-col py-4">
         <Filter queryParams={queryParams} setQueryParams={setQueryParams} />
         {/* workflow log */}
