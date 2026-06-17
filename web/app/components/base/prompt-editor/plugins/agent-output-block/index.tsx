@@ -37,7 +37,7 @@ const AgentOutputBlock = memo(({
           const name = getUniqueAgentOutputName(outputs)
           const outputType = 'string'
           const nextOutputs = [...outputs, createAgentOutputConfig(name, outputType)]
-          const agentOutputBlockNode = $createAgentOutputBlockNode(name, outputType, nextOutputs, onChange)
+          const agentOutputBlockNode = $createAgentOutputBlockNode(name, outputType, true, nextOutputs, onChange)
 
           $insertNodes([agentOutputBlockNode])
           const nextPrompt = $getRoot().getChildren().map(node => node.getTextContent()).join('\n')
@@ -71,7 +71,7 @@ const AgentOutputBlockReplacementBlock = memo(({
     const output = outputs.find(item => item.name === name)
     const outputType = output ? getAgentOutputTypeOptionValue(output) : 'string'
 
-    return $applyNodeReplacement($createAgentOutputBlockNode(name, outputType, outputs, onChange))
+    return $applyNodeReplacement($createAgentOutputBlockNode(name, outputType, false, outputs, onChange))
   }, [onChange, outputs])
 
   const getMatch = useCallback((text: string) => {
@@ -87,7 +87,9 @@ const AgentOutputBlockReplacementBlock = memo(({
   }, [])
 
   const transformListener = useCallback((textNode: CustomTextNode) => {
-    return decoratorTransform(textNode, getMatch, createAgentOutputBlockNode)
+    return decoratorTransform(textNode, getMatch, createAgentOutputBlockNode, {
+      allowAdjacentMatches: true,
+    })
   }, [createAgentOutputBlockNode, getMatch])
 
   useEffect(() => {

@@ -22,6 +22,7 @@ export function AgentV2Panel({
 }: NodePanelProps<AgentV2NodeType>) {
   const { t } = useTranslation()
   const { inputs, setInputs } = useNodeCrud<AgentV2NodeType>(id, data)
+  const inputsRef = useRef(inputs)
   const [isRosterAgentPanelOpen, setIsRosterAgentPanelOpen] = useState(false)
   const [isInlineAgentPanelOpenedFromTrigger, setIsInlineAgentPanelOpenedFromTrigger] = useState(false)
   const { handleNodeDataUpdate, handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
@@ -49,6 +50,10 @@ export function AgentV2Panel({
     : undefined)
 
   useEffect(() => {
+    inputsRef.current = inputs
+  }, [inputs])
+
+  useEffect(() => {
     if (!inputs._openInlineAgentPanel || !isInlineAgentReady)
       return
 
@@ -62,11 +67,12 @@ export function AgentV2Panel({
   }, [handleNodeDataUpdate, id, inputs._openInlineAgentPanel, isInlineAgentReady, setOpenInlineAgentPanelNodeId])
 
   const handleTaskChange = useCallback((value: string) => {
-    const newInputs = produce(inputs, (draft) => {
+    const newInputs = produce(inputsRef.current, (draft) => {
       draft.agent_task = value
     })
+    inputsRef.current = newInputs
     setInputs(newInputs)
-  }, [inputs, setInputs])
+  }, [setInputs])
 
   const handleRosterChange = useCallback((agent: AgentRosterNodeData) => {
     setOpenInlineAgentPanelNodeId(undefined)
@@ -102,11 +108,12 @@ export function AgentV2Panel({
   }, [id, isInlineAgentReady, setOpenInlineAgentPanelNodeId])
 
   const handleDeclaredOutputsChange = useCallback((outputs: ReturnType<typeof getAgentV2DeclaredOutputs>, agentTask?: string) => {
-    const newInputs = produce(inputs, (draft) => {
+    const newInputs = produce(inputsRef.current, (draft) => {
       draft.agent_declared_outputs = outputs
       if (agentTask !== undefined)
         draft.agent_task = agentTask
     })
+    inputsRef.current = newInputs
     handleNodeDataUpdateWithSyncDraft(
       {
         id,
@@ -117,7 +124,7 @@ export function AgentV2Panel({
         notRefreshWhenSyncError: true,
       },
     )
-  }, [handleNodeDataUpdateWithSyncDraft, id, inputs])
+  }, [handleNodeDataUpdateWithSyncDraft, id])
 
   return (
     <div ref={drawerPortalContainerRef} className="pt-2">

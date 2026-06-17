@@ -1,17 +1,19 @@
 import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { $getNodeByKey } from 'lexical'
 import AgentOutputBlockComponent from '../component'
 import { $createAgentOutputBlockNode } from '../node'
 
-const { mockEditorUpdate, mockGetRootText, mockNodeReplace } = vi.hoisted(() => ({
+const { mockEditorFocus, mockEditorUpdate, mockGetRootText, mockNodeReplace, mockSelectNext } = vi.hoisted(() => ({
+  mockEditorFocus: vi.fn(),
   mockEditorUpdate: vi.fn((callback: () => void) => callback()),
   mockGetRootText: {
     value: '[§output:summary:summary§]',
   },
   mockNodeReplace: vi.fn(),
+  mockSelectNext: vi.fn(),
 }))
 
 vi.mock('@lexical/react/LexicalComposerContext')
@@ -30,7 +32,8 @@ vi.mock('lexical', async (importOriginal) => {
 })
 
 vi.mock('../node', () => ({
-  $createAgentOutputBlockNode: vi.fn((name: string, outputType: string) => ({
+  $createAgentOutputBlockNode: vi.fn((name: string, outputType: string, isEditing: boolean) => ({
+    isEditing,
     name,
     outputType,
   })),
@@ -50,16 +53,19 @@ describe('AgentOutputBlockComponent', () => {
     vi.clearAllMocks()
     vi.mocked(useLexicalComposerContext).mockReturnValue([
       {
+        focus: mockEditorFocus,
         update: mockEditorUpdate,
       },
       {},
     ] as unknown as ReturnType<typeof useLexicalComposerContext>)
     vi.mocked($getNodeByKey).mockReturnValue({
-      replace: mockNodeReplace,
+      replace: mockNodeReplace.mockReturnValue({
+        selectNext: mockSelectNext,
+      }),
     } as never)
   })
 
-  it('does not replace the Lexical node while typing an output name', async () => {
+  it('does not replace the Lexical node while typing an output name and commits on blur', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
 
@@ -68,6 +74,7 @@ describe('AgentOutputBlockComponent', () => {
         nodeKey="output-node"
         name="output"
         outputType="string"
+        isEditing
         outputs={outputs}
         onChange={onChange}
       />,
@@ -87,6 +94,7 @@ describe('AgentOutputBlockComponent', () => {
     expect($createAgentOutputBlockNode).toHaveBeenCalledWith(
       'summary',
       'string',
+      false,
       expect.arrayContaining([
         expect.objectContaining({
           name: 'summary',
@@ -97,6 +105,8 @@ describe('AgentOutputBlockComponent', () => {
       onChange,
     )
     expect(mockNodeReplace).toHaveBeenCalledTimes(1)
+    expect(mockSelectNext).not.toHaveBeenCalled()
+    expect(mockEditorFocus).not.toHaveBeenCalled()
     expect(onChange).toHaveBeenCalledWith(expect.arrayContaining([
       expect.objectContaining({
         name: 'summary',
@@ -104,5 +114,107 @@ describe('AgentOutputBlockComponent', () => {
         required: false,
       }),
     ]), '[§output:summary:summary§]')
+  })
+
+  it('moves the editor selection after the output block when committing with Enter', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <AgentOutputBlockComponent
+        nodeKey="output-node"
+        name="output"
+        outputType="string"
+        isEditing
+        outputs={outputs}
+      />,
+    )
+
+    const input = screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })
+
+    await user.clear(input)
+    await user.type(input, 'summary')
+    await user.keyboard('{Enter}')
+
+    expect(mockNodeReplace).toHaveBeenCalledTimes(1)
+    expect(mockSelectNext).toHaveBeenCalledTimes(1)
+    await waitFor(() => {
+      expect(mockEditorFocus).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it('commits the input DOM value on Enter even before React state rerenders', () => {
+    const onChange = vi.fn()
+
+    render(
+      <AgentOutputBlockComponent
+        nodeKey="output-node"
+        name="output"
+        outputType="string"
+        isEditing
+        outputs={outputs}
+        onChange={onChange}
+      />,
+    )
+
+    const input = screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })
+
+    fireEvent.change(input, { target: { value: 'summary' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    expect($createAgentOutputBlockNode).toHaveBeenCalledWith(
+      'summary',
+      'string',
+      false,
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'summary',
+        }),
+      ]),
+      onChange,
+    )
+  })
+
+  it('does not save stale output data when the Lexical node has already been replaced', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    vi.mocked($getNodeByKey).mockReturnValue(null)
+
+    render(
+      <AgentOutputBlockComponent
+        nodeKey="output-node"
+        name="output"
+        outputType="string"
+        isEditing
+        outputs={outputs}
+        onChange={onChange}
+      />,
+    )
+
+    const input = screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })
+
+    await user.clear(input)
+    await user.type(input, 'summary')
+    await user.keyboard('{Enter}')
+
+    expect(mockNodeReplace).not.toHaveBeenCalled()
+    expect(onChange).not.toHaveBeenCalled()
+    expect(mockEditorFocus).not.toHaveBeenCalled()
+  })
+
+  it('renders the committed output block as non-editable adaptive text', () => {
+    render(
+      <AgentOutputBlockComponent
+        nodeKey="output-node"
+        name="qna_report_pdf"
+        outputType="file"
+        isEditing={false}
+        outputs={outputs}
+      />,
+    )
+
+    expect(screen.queryByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'workflow.nodes.agent.outputVars.typeLabel' })).not.toBeInTheDocument()
+    expect(screen.getByText('qna_report_pdf')).toBeInTheDocument()
+    expect(screen.getByText('file')).toBeInTheDocument()
   })
 })

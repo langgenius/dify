@@ -594,6 +594,50 @@ describe('agent/panel', () => {
     )
   })
 
+  it('keeps the latest local task draft when outputs change before rerender', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData()}
+        panelProps={panelProps}
+      />,
+    )
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'workflow.nodes.agent.task.label' }), {
+      target: {
+        value: 'Draft before output',
+      },
+    })
+    mockPromptEditorProps[0]?.agentOutputBlock?.onChange?.([
+      ...mockPromptEditorProps[0]!.agentOutputBlock!.outputs!,
+      {
+        name: 'summary',
+        type: 'string',
+        required: false,
+      },
+    ])
+
+    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
+      {
+        id: 'agent-node',
+        data: expect.objectContaining({
+          agent_task: 'Draft before output',
+          agent_declared_outputs: expect.arrayContaining([
+            expect.objectContaining({
+              name: 'summary',
+              type: 'string',
+              required: false,
+            }),
+          ]),
+        }),
+      },
+      expect.objectContaining({
+        sync: true,
+        notRefreshWhenSyncError: true,
+      }),
+    )
+  })
+
   it('saves agent task to workflow draft node data', () => {
     render(
       <AgentV2Panel

@@ -11,7 +11,7 @@ import {
 } from '@langgenius/dify-ui/select'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $getNodeByKey, $getRoot } from 'lexical'
-import { memo, useState } from 'react'
+import { memo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { $createAgentOutputBlockNode, $isAgentOutputBlockNode } from './node'
 import {
@@ -25,6 +25,7 @@ type AgentOutputBlockComponentProps = {
   nodeKey: string
   name: string
   outputType: AgentOutputTypeOptionValue
+  isEditing: boolean
   outputs: DeclaredOutputConfig[]
   onChange?: (outputs: DeclaredOutputConfig[], prompt?: string) => void
 }
@@ -55,6 +56,7 @@ const AgentOutputBlockComponent = ({
   nodeKey,
   name,
   outputType,
+  isEditing,
   outputs,
   onChange,
 }: AgentOutputBlockComponentProps) => {
@@ -63,31 +65,58 @@ const AgentOutputBlockComponent = ({
   const selected = getAgentOutputTypeOption(outputType)
   const [draftName, setDraftName] = useState(name)
   const [lastNodeName, setLastNodeName] = useState(name)
+  const skipNextBlurCommitRef = useRef(false)
 
   if (name !== lastNodeName) {
     setLastNodeName(name)
     setDraftName(name)
   }
 
-  const commitOutput = (nextName: string, nextType: AgentOutputTypeOptionValue) => {
+  const commitOutput = (nextName: string, nextType: AgentOutputTypeOptionValue, selectAfterCommit = false) => {
     const trimmedName = nextName.trim()
     const nextOutputs = upsertOutput(outputs, name, trimmedName, nextType)
     if (!nextOutputs) {
       setDraftName(name)
-      return
+      return false
     }
 
+    let didCommit = false
     let nextPrompt: string | undefined
     editor.update(() => {
       const node = $getNodeByKey(nodeKey)
       if (!$isAgentOutputBlockNode(node))
         return
 
-      node.replace($createAgentOutputBlockNode(trimmedName, nextType, nextOutputs, onChange))
+      const nextNode = node.replace($createAgentOutputBlockNode(trimmedName, nextType, false, nextOutputs, onChange))
+      if (selectAfterCommit)
+        nextNode.selectNext()
       nextPrompt = $getRoot().getChildren().map(node => node.getTextContent()).join('\n')
+      didCommit = true
     })
 
+    if (!didCommit)
+      return false
+
     onChange?.(nextOutputs, nextPrompt)
+
+    return true
+  }
+
+  if (!isEditing) {
+    return (
+      <span
+        contentEditable={false}
+        className="inline-flex min-w-[18px] items-center gap-1 rounded-[5px] border border-util-colors-violet-violet-100 bg-util-colors-violet-violet-50 px-1 py-0.5 align-middle shadow-xs"
+      >
+        <span aria-hidden="true" className="i-custom-vender-workflow-variable-x size-3.5 shrink-0 text-util-colors-violet-violet-700" />
+        <span className="system-xs-medium whitespace-nowrap text-util-colors-violet-violet-700">
+          {name}
+        </span>
+        <span className="rounded-[3px] px-0.5 system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary">
+          {selected.label}
+        </span>
+      </span>
+    )
   }
 
   return (
@@ -96,7 +125,7 @@ const AgentOutputBlockComponent = ({
       className="inline-flex items-center gap-[3px] rounded-[5px] border border-util-colors-violet-violet-700 bg-util-colors-violet-violet-50 p-px align-middle shadow-xs"
     >
       <span className="flex min-w-0 items-center gap-0.5 pl-0.5">
-        <span aria-hidden="true" className="i-ri-braces-line size-3.5 shrink-0 text-util-colors-violet-violet-700" />
+        <span aria-hidden="true" className="i-custom-vender-workflow-variable-x size-3.5 shrink-0 text-util-colors-violet-violet-700" />
         <input
           aria-label={t('nodes.agent.outputVars.nameLabel', { ns: 'workflow' })}
           value={draftName}
@@ -106,10 +135,19 @@ const AgentOutputBlockComponent = ({
           onClick={event => event.stopPropagation()}
           onKeyDown={(event) => {
             event.stopPropagation()
+            event.nativeEvent.stopImmediatePropagation?.()
             if (event.key === 'Enter') {
               event.preventDefault()
-              commitOutput(draftName, outputType)
-              event.currentTarget.blur()
+              skipNextBlurCommitRef.current = true
+              const didCommit = commitOutput(event.currentTarget.value, outputType, true)
+              if (!didCommit) {
+                skipNextBlurCommitRef.current = false
+                return
+              }
+
+              queueMicrotask(() => {
+                editor.focus()
+              })
             }
             if (event.key === 'Escape') {
               event.preventDefault()
@@ -118,7 +156,14 @@ const AgentOutputBlockComponent = ({
             }
           }}
           onChange={event => setDraftName(event.currentTarget.value)}
-          onBlur={() => commitOutput(draftName, outputType)}
+          onBlur={(event) => {
+            if (skipNextBlurCommitRef.current) {
+              skipNextBlurCommitRef.current = false
+              return
+            }
+
+            commitOutput(event.currentTarget.value, outputType)
+          }}
         />
       </span>
       <Select<AgentOutputTypeOptionValue>
