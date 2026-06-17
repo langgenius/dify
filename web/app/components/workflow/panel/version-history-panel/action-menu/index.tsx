@@ -41,7 +41,7 @@ const ActionMenu: FC<ActionMenuProps> = (props: ActionMenuProps) => {
       <DropdownMenuContent
         placement="bottom-end"
         sideOffset={4}
-        popupClassName="w-[184px] shadow-shadow-shadow-5"
+        popupClassName="w-max min-w-[184px] max-w-[calc(100vw-24px)] shadow-shadow-shadow-5"
       >
         {
           options.map(option => (

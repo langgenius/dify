@@ -164,6 +164,8 @@
   "upgrade.uploadMultipleFiles.title": "Nâng cấp để mở khóa tải lên nhiều tài liệu",
   "upgrade.uploadMultiplePages.description": "Bạn đã đạt đến giới hạn tải lên — chỉ có thể chọn và tải lên một tài liệu trong một lần với gói hiện tại của bạn.",
   "upgrade.uploadMultiplePages.title": "Nâng cấp để tải lên nhiều tài liệu cùng lúc",
+  "upgrade.workflowRestore.description": "Tính năng khôi phục phiên bản quy trình không khả dụng trong gói hiện tại của bạn.",
+  "upgrade.workflowRestore.title": "Nâng cấp để khôi phục các phiên bản quy trình",
   "upgradeBtn.encourage": "Nâng cấp Ngay",
   "upgradeBtn.encourageShort": "Nâng cấp",
   "upgradeBtn.plain": "Nâng cấp Kế hoạch",

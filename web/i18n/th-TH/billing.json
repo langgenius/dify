@@ -164,6 +164,8 @@
   "upgrade.uploadMultipleFiles.title": "อัปเกรดเพื่อปลดล็อกการอัปโหลดเอกสารเป็นชุด",
   "upgrade.uploadMultiplePages.description": "คุณได้ถึงขีดจำกัดการอัปโหลดแล้ว — สามารถเลือกและอัปโหลดเอกสารได้เพียงไฟล์เดียวต่อครั้งในแผนปัจจุบันของคุณ",
   "upgrade.uploadMultiplePages.title": "อัปเกรดเพื่ออัปโหลดเอกสารหลายฉบับพร้อมกัน",
+  "upgrade.workflowRestore.description": "การกู้คืนเวอร์ชันเวิร์กโฟลว์ไม่พร้อมใช้งานในแผนปัจจุบันของคุณ",
+  "upgrade.workflowRestore.title": "อัปเกรดเพื่อกู้คืนเวอร์ชันเวิร์กโฟลว์",
   "upgradeBtn.encourage": "อัปเกรดเดี๋ยวนี้",
   "upgradeBtn.encourageShort": "อัพ เกรด",
   "upgradeBtn.plain": "แผนการอัปเกรด",
