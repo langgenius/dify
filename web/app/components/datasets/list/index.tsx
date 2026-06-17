@@ -11,6 +11,7 @@ import { TagManagementModal } from '@/features/tag-management/components/tag-man
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
 import { useDatasetApiBaseUrl, useDatasetList, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { hasPermission } from '@/utils/permission'
 // Components
 import FilterEmptyState from '../../base/filter-empty-state'
 import ExternalAPIPanel from '../external-api/external-api-panel'
@@ -48,7 +49,9 @@ const List = () => {
   }
 
   const isCurrentWorkspaceManager = useAppContextSelector(state => state.isCurrentWorkspaceManager)
-  const isCurrentWorkspaceEditor = useAppContextSelector(state => state.isCurrentWorkspaceEditor)
+  const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
+  const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
+  const canConnectExternalDataset = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
   const datasetListQuery = useDatasetList({
     initialPage: 1,
@@ -61,7 +64,7 @@ const List = () => {
   const hasResolvedFirstPage = pages.length > 0
   const hasAnyDataset = (pages[0]?.total ?? 0) > 0
   const hasActiveFilters = tagIDs.length > 0 || keywords.trim().length > 0 || searchKeywords.trim().length > 0 || includeAll
-  const showEmptyDataList = !hasAnyDataset && isCurrentWorkspaceEditor && hasResolvedFirstPage && !hasActiveFilters
+  const showEmptyDataList = !hasAnyDataset && (canCreateDataset || canConnectExternalDataset) && hasResolvedFirstPage && !hasActiveFilters
   const showFilteredEmptyState = !hasAnyDataset && hasResolvedFirstPage && hasActiveFilters
 
   return (
@@ -71,8 +74,9 @@ const List = () => {
             <>
               <DatasetListHeader
                 apiBaseUrl={apiBaseInfo?.api_base_url ?? ''}
+                canConnectExternalDataset={canConnectExternalDataset}
+                canCreateDataset={canCreateDataset}
                 includeAll={includeAll}
-                isCurrentWorkspaceEditor={isCurrentWorkspaceEditor}
                 isCurrentWorkspaceManager={isCurrentWorkspaceManager}
                 isCurrentWorkspaceOwner={isCurrentWorkspaceOwner}
                 keywords={keywords}
@@ -86,15 +90,19 @@ const List = () => {
                 onOpenTagManagement={() => setShowTagManagementModal(true)}
                 onTagsChange={handleTagsChange}
               />
-              <DatasetFirstEmptyState />
+              <DatasetFirstEmptyState
+                canConnectExternalDataset={canConnectExternalDataset}
+                canCreateDataset={canCreateDataset}
+              />
             </>
           )
         : (
             <>
               <DatasetListHeader
                 apiBaseUrl={apiBaseInfo?.api_base_url ?? ''}
+                canConnectExternalDataset={canConnectExternalDataset}
+                canCreateDataset={canCreateDataset}
                 includeAll={includeAll}
-                isCurrentWorkspaceEditor={isCurrentWorkspaceEditor}
                 isCurrentWorkspaceManager={isCurrentWorkspaceManager}
                 isCurrentWorkspaceOwner={isCurrentWorkspaceOwner}
                 keywords={keywords}

@@ -10,8 +10,9 @@ import ServiceApi from '../extra-info/service-api'
 
 type Props = {
   apiBaseUrl: string
+  canConnectExternalDataset: boolean
+  canCreateDataset: boolean
   includeAll: boolean
-  isCurrentWorkspaceEditor: boolean
   isCurrentWorkspaceManager: boolean
   isCurrentWorkspaceOwner: boolean
   keywords: string
@@ -28,8 +29,9 @@ type Props = {
 
 const DatasetListHeader = ({
   apiBaseUrl,
+  canConnectExternalDataset,
+  canCreateDataset,
   includeAll,
-  isCurrentWorkspaceEditor,
   isCurrentWorkspaceManager,
   isCurrentWorkspaceOwner,
   keywords,
@@ -44,6 +46,7 @@ const DatasetListHeader = ({
   onTagsChange,
 }: Props) => {
   const { t } = useTranslation()
+  const showCreateMenu = canCreateDataset || canConnectExternalDataset
 
   return (
     <div className="sticky top-0 z-10 flex flex-col gap-[14px] bg-background-body px-8 pt-4 pb-2">
@@ -92,7 +95,7 @@ const DatasetListHeader = ({
           )}
         </div>
         <div className="flex items-center gap-2">
-          {isCurrentWorkspaceEditor && (
+          {showCreateMenu && (
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger
                 render={(
@@ -112,28 +115,36 @@ const DatasetListHeader = ({
                 sideOffset={4}
                 popupClassName="w-80"
               >
-                <DropdownMenuItem
-                  className="h-8 gap-1 rounded-lg px-2 py-1 system-md-regular text-text-secondary"
-                  onClick={onCreateDataset}
-                >
-                  <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-secondary" />
-                  <span className="min-w-0 flex-1 truncate px-1">{t('firstEmpty.createTitle', { ns: 'dataset' })}</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="h-8 gap-1 rounded-lg px-2 py-1 system-md-regular text-text-secondary"
-                  onClick={onCreateFromPipeline}
-                >
-                  <span aria-hidden className="i-custom-vender-pipeline-pipeline-line size-4 shrink-0 text-text-secondary" />
-                  <span className="min-w-0 flex-1 truncate px-1">{t('firstEmpty.pipelineTitle', { ns: 'dataset' })}</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator className="my-1" />
-                <DropdownMenuItem
-                  className="h-8 gap-1 rounded-lg px-2 py-1 system-md-regular text-text-secondary"
-                  onClick={onConnectDataset}
-                >
-                  <span aria-hidden className="i-custom-vender-solid-development-api-connection-mod size-4 shrink-0 text-text-secondary" />
-                  <span className="min-w-0 flex-1 truncate px-1">{t('connectDataset', { ns: 'dataset' })}</span>
-                </DropdownMenuItem>
+                {canCreateDataset && (
+                  <>
+                    <DropdownMenuItem
+                      className="h-8 gap-1 rounded-lg px-2 py-1 system-md-regular text-text-secondary"
+                      onClick={onCreateDataset}
+                    >
+                      <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-secondary" />
+                      <span className="min-w-0 flex-1 truncate px-1">{t('firstEmpty.createTitle', { ns: 'dataset' })}</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="h-8 gap-1 rounded-lg px-2 py-1 system-md-regular text-text-secondary"
+                      onClick={onCreateFromPipeline}
+                    >
+                      <span aria-hidden className="i-custom-vender-pipeline-pipeline-line size-4 shrink-0 text-text-secondary" />
+                      <span className="min-w-0 flex-1 truncate px-1">{t('firstEmpty.pipelineTitle', { ns: 'dataset' })}</span>
+                    </DropdownMenuItem>
+                  </>
+                )}
+                {canCreateDataset && canConnectExternalDataset && (
+                  <DropdownMenuSeparator className="my-1" />
+                )}
+                {canConnectExternalDataset && (
+                  <DropdownMenuItem
+                    className="h-8 gap-1 rounded-lg px-2 py-1 system-md-regular text-text-secondary"
+                    onClick={onConnectDataset}
+                  >
+                    <span aria-hidden className="i-custom-vender-solid-development-api-connection-mod size-4 shrink-0 text-text-secondary" />
+                    <span className="min-w-0 flex-1 truncate px-1">{t('connectDataset', { ns: 'dataset' })}</span>
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
