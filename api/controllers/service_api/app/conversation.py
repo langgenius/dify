@@ -13,6 +13,7 @@ from controllers.common.controller_schemas import ConversationRenamePayload
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
+from controllers.service_api.schema import expect_user_json, expect_with_user
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
@@ -197,6 +198,7 @@ class ConversationApi(Resource):
 
 @service_api_ns.route("/conversations/<uuid:c_id>")
 class ConversationDetailApi(Resource):
+    @expect_user_json(service_api_ns)
     @service_api_ns.doc("delete_conversation")
     @service_api_ns.doc(description="Delete a specific conversation")
     @service_api_ns.doc(params={"c_id": "Conversation ID"})
@@ -225,7 +227,7 @@ class ConversationDetailApi(Resource):
 
 @service_api_ns.route("/conversations/<uuid:c_id>/name")
 class ConversationRenameApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[ConversationRenamePayload.__name__])
+    @expect_with_user(service_api_ns, ConversationRenamePayload)
     @service_api_ns.doc("rename_conversation")
     @service_api_ns.doc(description="Rename a conversation or auto-generate a name")
     @service_api_ns.doc(params={"c_id": "Conversation ID"})
@@ -312,7 +314,7 @@ class ConversationVariablesApi(Resource):
 
 @service_api_ns.route("/conversations/<uuid:c_id>/variables/<uuid:variable_id>")
 class ConversationVariableDetailApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[ConversationVariableUpdatePayload.__name__])
+    @expect_with_user(service_api_ns, ConversationVariableUpdatePayload)
     @service_api_ns.doc("update_conversation_variable")
     @service_api_ns.doc(description="Update a conversation variable's value")
     @service_api_ns.doc(params={"c_id": "Conversation ID", "variable_id": "Variable ID"})

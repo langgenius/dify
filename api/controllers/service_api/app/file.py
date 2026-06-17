@@ -12,6 +12,7 @@ from controllers.common.errors import (
 )
 from controllers.common.schema import register_schema_models
 from controllers.service_api import service_api_ns
+from controllers.service_api.schema import multipart_file_params
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from extensions.ext_database import db
 from fields.file_fields import FileResponse
@@ -25,6 +26,7 @@ register_schema_models(service_api_ns, FileResponse)
 class FileApi(Resource):
     @service_api_ns.doc("upload_file")
     @service_api_ns.doc(description="Upload a file for use in conversations")
+    @service_api_ns.doc(consumes=["multipart/form-data"], params=multipart_file_params(include_user=True))
     @service_api_ns.doc(
         responses={
             201: "File uploaded successfully",

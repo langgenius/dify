@@ -12,6 +12,7 @@ from controllers.common.fields import SimpleResultStringListResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
+from controllers.service_api.schema import expect_with_user
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.base import ResponseModel
@@ -112,7 +113,7 @@ class MessageListApi(Resource):
 
 @service_api_ns.route("/messages/<uuid:message_id>/feedbacks")
 class MessageFeedbackApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[MessageFeedbackPayload.__name__])
+    @expect_with_user(service_api_ns, MessageFeedbackPayload)
     @service_api_ns.response(200, "Feedback submitted successfully", service_api_ns.models[ResultResponse.__name__])
     @service_api_ns.doc("create_message_feedback")
     @service_api_ns.doc(description="Submit feedback for a message")

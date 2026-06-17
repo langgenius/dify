@@ -19,6 +19,11 @@ from controllers.common.schema import (
 from controllers.service_api import service_api_ns
 from controllers.service_api.dataset.error import PipelineRunError
 from controllers.service_api.dataset.rag_pipeline.serializers import serialize_upload_file
+from controllers.service_api.schema import (
+    event_stream_response,
+    json_or_event_stream_response,
+    multipart_file_params,
+)
 from controllers.service_api.wraps import DatasetApiResource
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -137,6 +142,7 @@ class DatasourcePluginsApi(DatasetApiResource):
 class DatasourceNodeRunApi(DatasetApiResource):
     """Resource for datasource node run."""
 
+    @event_stream_response(service_api_ns)
     @service_api_ns.doc(shortcut="pipeline_datasource_node_run")
     @service_api_ns.doc(description="Run a datasource node for a rag pipeline")
     @service_api_ns.doc(
@@ -195,6 +201,7 @@ class DatasourceNodeRunApi(DatasetApiResource):
 class PipelineRunApi(DatasetApiResource):
     """Resource for datasource node run."""
 
+    @json_or_event_stream_response(service_api_ns)
     @service_api_ns.doc(shortcut="pipeline_datasource_node_run")
     @service_api_ns.doc(description="Run a datasource node for a rag pipeline")
     @service_api_ns.doc(
@@ -250,6 +257,7 @@ class KnowledgebasePipelineFileUploadApi(DatasetApiResource):
 
     @service_api_ns.doc(shortcut="knowledgebase_pipeline_file_upload")
     @service_api_ns.doc(description="Upload a file to a knowledgebase pipeline")
+    @service_api_ns.doc(consumes=["multipart/form-data"], params=multipart_file_params(include_user=False))
     @service_api_ns.doc(
         responses={
             201: "File uploaded successfully",

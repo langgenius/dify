@@ -20,6 +20,7 @@ from controllers.service_api.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from controllers.service_api.schema import expect_user_json, expect_with_user, json_or_event_stream_response
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -92,7 +93,8 @@ register_response_schema_models(service_api_ns, GeneratedAppResponse, SimpleResu
 
 @service_api_ns.route("/completion-messages")
 class CompletionApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[CompletionRequestPayload.__name__])
+    @expect_with_user(service_api_ns, CompletionRequestPayload)
+    @json_or_event_stream_response(service_api_ns)
     @service_api_ns.doc("create_completion")
     @service_api_ns.doc(description="Create a completion for the given prompt")
     @service_api_ns.doc(
@@ -168,6 +170,7 @@ class CompletionApi(Resource):
 
 @service_api_ns.route("/completion-messages/<string:task_id>/stop")
 class CompletionStopApi(Resource):
+    @expect_user_json(service_api_ns)
     @service_api_ns.doc("stop_completion")
     @service_api_ns.doc(description="Stop a running completion task")
     @service_api_ns.doc(params={"task_id": "The ID of the task to stop"})
@@ -197,7 +200,8 @@ class CompletionStopApi(Resource):
 
 @service_api_ns.route("/chat-messages")
 class ChatApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[ChatRequestPayload.__name__])
+    @expect_with_user(service_api_ns, ChatRequestPayload)
+    @json_or_event_stream_response(service_api_ns)
     @service_api_ns.doc("create_chat_message")
     @service_api_ns.doc(description="Send a message in a chat conversation")
     @service_api_ns.doc(
@@ -276,6 +280,7 @@ class ChatApi(Resource):
 
 @service_api_ns.route("/chat-messages/<string:task_id>/stop")
 class ChatStopApi(Resource):
+    @expect_user_json(service_api_ns)
     @service_api_ns.doc("stop_chat_message")
     @service_api_ns.doc(description="Stop a running chat message generation")
     @service_api_ns.doc(params={"task_id": "The ID of the task to stop"})

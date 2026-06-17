@@ -4,10 +4,9 @@ User-scoped programmatic API (bearer auth)
 ## Version: 1.0
 
 ### Available authorizations
-#### Bearer (API Key Authentication)
-Type: Bearer {your-api-key}  
-**Name:** Authorization  
-**In:** header  
+#### Bearer (HTTP, bearer)
+Use the Service API key as a Bearer token in the Authorization header.
+Bearer format: API_KEY
 
 ---
 ## openapi
