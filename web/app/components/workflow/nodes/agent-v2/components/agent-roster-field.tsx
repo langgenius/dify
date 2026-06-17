@@ -105,23 +105,36 @@ function AgentRosterDrawer({
               width: 'var(--workflow-node-panel-width, 400px)',
             }}
           >
-            <DrawerContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0 pb-0">
-              <header className={cn('flex shrink-0 flex-col gap-3 border-b border-divider-subtle bg-components-panel-bg py-3 pr-4 pl-3', isInline ? 'h-16' : 'h-[108px]')}>
-                <div className="flex h-10 min-w-0 items-start justify-between">
-                  <div className="flex h-10 min-w-0 flex-1 items-center gap-2 px-0.5 py-0.5">
-                    <AgentRosterAvatar agent={agent} size="md" className="size-9" />
-                    <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
-                      <div className="flex min-w-0 items-center gap-1">
-                        <DrawerTitle className="truncate system-sm-medium text-text-secondary">
-                          {agent.name}
-                        </DrawerTitle>
-                        <span aria-hidden className="i-ri-lock-line size-3 shrink-0 text-text-tertiary" />
-                      </div>
-                      <p className="truncate system-xs-regular text-text-tertiary">
-                        {agent.role}
-                      </p>
-                    </div>
-                  </div>
+            <DrawerContent className="flex h-full min-h-0 flex-1 flex-col overflow-hidden p-0 pb-0">
+              <header className={cn('flex shrink-0 flex-col border-b border-divider-subtle bg-components-panel-bg', isInline ? 'h-16 px-4 py-3' : 'h-[108px] gap-3 py-3 pr-4 pl-3')}>
+                <div className="flex min-w-0 items-start justify-between">
+                  {isInline
+                    ? (
+                        <div className="flex min-w-px flex-1 flex-col">
+                          <DrawerTitle className="truncate system-xl-semibold text-text-primary">
+                            {t(`${i18nPrefix}.roster.inlineSetup.title`, { ns: 'workflow' })}
+                          </DrawerTitle>
+                          <p className="min-w-full system-xs-regular text-text-tertiary">
+                            {t(`${i18nPrefix}.roster.inlineSetup.description`, { ns: 'workflow' })}
+                          </p>
+                        </div>
+                      )
+                    : (
+                        <div className="flex h-10 min-w-0 flex-1 items-center gap-2 px-0.5 py-0.5">
+                          <AgentRosterAvatar agent={agent} size="md" className="size-9" />
+                          <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
+                            <div className="flex min-w-0 items-center gap-1">
+                              <DrawerTitle className="truncate system-sm-medium text-text-secondary">
+                                {agent.name}
+                              </DrawerTitle>
+                              <span aria-hidden className="i-ri-lock-line size-3 shrink-0 text-text-tertiary" />
+                            </div>
+                            <p className="truncate system-xs-regular text-text-tertiary">
+                              {agent.role}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                   <div className="flex shrink-0 items-center gap-1 py-1">
                     <button
                       type="button"
@@ -166,7 +179,7 @@ function AgentRosterDrawer({
               <div
                 role="region"
                 aria-label={t(`${i18nPrefix}.roster.panelLabel`, { ns: 'workflow', name: agent.name })}
-                className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+                className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-components-panel-bg"
               >
                 {children ?? <div className="h-full min-h-80 bg-components-panel-bg" />}
               </div>

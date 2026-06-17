@@ -338,10 +338,12 @@ describe('agent/panel', () => {
 
     expect(mockUseAgentRosterDetail).toHaveBeenCalledWith(undefined)
     expect(mockUseWorkflowInlineAgentDetail).toHaveBeenCalledWith('agent-node', 'inline-agent-1')
-    expect(screen.getAllByText('Workflow Agent 1')).toHaveLength(2)
-    expect(screen.getAllByText('workflow.nodes.agent.roster.inlineSetup.type')).toHaveLength(2)
+    expect(screen.getByText('Workflow Agent 1')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.type')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.title')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.description')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ })).toBeInTheDocument()
-    expect(screen.getByRole('dialog', { name: 'Workflow Agent 1' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'workflow.nodes.agent.roster.inlineSetup.title' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'inline-orchestrate-panel' })).toBeInTheDocument()
     expect(mockOrchestrateDrawerPanelProps.at(-1)).toMatchObject({
       agentId: 'inline-agent-1',

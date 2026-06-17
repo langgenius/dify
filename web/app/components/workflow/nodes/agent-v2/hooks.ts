@@ -65,13 +65,6 @@ export function useCreateInlineAgentBinding() {
       return
     }
 
-    const agentSoul = getDefaultAgentSoul(defaultModel)
-    if (!agentSoul) {
-      toast.error(t('roster.nodeSelector.createInlineFailed'))
-      options?.onError?.()
-      return
-    }
-
     mutate(
       {
         params: {
@@ -84,7 +77,7 @@ export function useCreateInlineAgentBinding() {
           soul_lock: {
             locked: false,
           },
-          agent_soul: agentSoul,
+          agent_soul: getDefaultAgentSoul(defaultModel),
         },
       },
       {
