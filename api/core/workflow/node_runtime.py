@@ -4,6 +4,7 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, cast, overload, override
 
+from pydantic import JsonValue
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -38,6 +39,7 @@ from factories import file_factory
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities import LLMMode
 from graphon.model_runtime.entities.llm_entities import (
+    LLMPollingResult,
     LLMResult,
     LLMResultChunk,
     LLMResultChunkWithStructuredOutput,
@@ -54,6 +56,7 @@ from graphon.nodes.human_input.entities import (
     HumanInputNodeData,
 )
 from graphon.nodes.llm.runtime_protocols import (
+    LLMPollingCapableProtocol,
     LLMProtocol,
     PromptMessageSerializerProtocol,
     RetrieverAttachmentLoaderProtocol,
@@ -276,6 +279,58 @@ class DifyPreparedLLM(LLMProtocol):
     @override
     def is_structured_output_parse_error(self, error: Exception) -> bool:
         return isinstance(error, OutputParserError)
+
+
+class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
+    """Prepared workflow LLM adapter that exposes Graphon's polling protocol."""
+
+    def __init__(self, model_instance: ModelInstance) -> None:
+        from core.plugin.impl.model_runtime import PluginModelRuntime
+
+        super().__init__(model_instance)
+        model_type_instance = model_instance.model_type_instance
+        if not isinstance(model_type_instance, LargeLanguageModel):
+            raise TypeError("Polling wrapper requires a large-language-model instance.")
+
+        plugin_model_runtime = model_type_instance.model_runtime
+        if not isinstance(plugin_model_runtime, PluginModelRuntime):
+            raise TypeError("Polling wrapper requires a plugin-backed model runtime.")
+
+        self._plugin_model_runtime = plugin_model_runtime
+
+    @override
+    def start_llm_polling(
+        self,
+        *,
+        prompt_messages: Sequence[PromptMessage],
+        model_parameters: Mapping[str, Any],
+        tools: Sequence[PromptMessageTool] | None,
+        stop: Sequence[str] | None,
+        json_schema: Mapping[str, Any] | None,
+    ) -> LLMPollingResult:
+        return self._plugin_model_runtime.start_llm_polling(
+            provider=self.provider,
+            model=self.model_name,
+            credentials=self._model_instance.credentials,
+            prompt_messages=prompt_messages,
+            model_parameters=dict(model_parameters),
+            tools=tools,
+            stop=stop,
+            json_schema=dict(json_schema) if json_schema is not None else None,
+        )
+
+    @override
+    def check_llm_polling(
+        self,
+        *,
+        plugin_state: Mapping[str, JsonValue],
+    ) -> LLMPollingResult:
+        return self._plugin_model_runtime.check_llm_polling(
+            provider=self.provider,
+            model=self.model_name,
+            credentials=self._model_instance.credentials,
+            plugin_state=dict(plugin_state),
+        )
 
 
 class DifyPromptMessageSerializer(PromptMessageSerializerProtocol):
