@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import * as ReactI18next from 'react-i18next'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { expectLoadingButton } from '@/test/button'
 import { useChatWithHistoryContext } from '../../context'
 import Sidebar from '../index'
 import RenameModal from '../rename-modal'
@@ -550,7 +551,7 @@ describe('Sidebar Index', () => {
       render(<Sidebar />)
       await user.click(screen.getByTestId('rename-1'))
       const saveButton = screen.getByText('common.operation.save').closest('button')
-      expect(saveButton).toBeDisabled()
+      expectLoadingButton(saveButton)
     })
 
     it('should handle rename for different items', async () => {

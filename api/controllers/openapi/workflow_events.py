@@ -13,9 +13,12 @@ from collections.abc import Generator
 
 from flask import Response, request
 from flask_restx import Resource
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound, UnprocessableEntity
 
+from controllers.common.fields import EventStreamResponse
+from controllers.common.schema import query_params_from_model
 from controllers.openapi import openapi_ns
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData
@@ -34,9 +37,15 @@ from repositories.factory import DifyAPIRepositoryFactory
 from services.workflow_event_snapshot_service import build_workflow_event_stream
 
 
+class WorkflowEventsQuery(BaseModel):
+    include_state_snapshot: bool = Field(default=False, description="Whether to include workflow state snapshots")
+    continue_on_pause: bool = Field(default=False, description="Whether to keep the event stream open on pause")
+
+
 @openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>/events")
 class OpenApiWorkflowEventsApi(Resource):
-    @openapi_ns.response(200, "SSE event stream")
+    @openapi_ns.doc(params=query_params_from_model(WorkflowEventsQuery))
+    @openapi_ns.response(200, "SSE event stream", openapi_ns.models[EventStreamResponse.__name__])
     @auth_router.guard(scope=Scope.APPS_RUN)
     def get(self, app_id: str, task_id: str, *, auth_data: AuthData):
         app_model, caller, caller_kind = auth_data.require_app_context()

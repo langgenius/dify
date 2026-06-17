@@ -42,6 +42,8 @@ class AgentToolRuntimeProvider(Protocol):
         user_id: str | None = None,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         variable_pool: Any | None = None,
+        allow_file_parameters: bool = False,
+        use_default_for_missing_form_parameters: bool = False,
     ) -> Tool: ...
 
 
@@ -176,6 +178,8 @@ class WorkflowAgentPluginToolsBuilder:
                 user_id=user_id,
                 invoke_from=invoke_from,
                 variable_pool=None,
+                allow_file_parameters=True,
+                use_default_for_missing_form_parameters=True,
             )
         except ToolProviderNotFoundError as exc:
             raise WorkflowAgentPluginToolsBuildError(

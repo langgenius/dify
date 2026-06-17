@@ -69,6 +69,28 @@ describe('@langgenius/dify-ui/toast', () => {
     dispatchToastMouseOut(viewport)
   })
 
+  it('should clamp varying-height toasts to the frontmost stack height when collapsed', async () => {
+    const screen = await render(<ToastHost />)
+
+    toast.info('Long background toast', {
+      description: 'This longer toast intentionally spans multiple lines so it would overflow the collapsed stack without matching the frontmost toast height.',
+    })
+    toast.success('Short front toast', {
+      description: 'Short message.',
+    })
+
+    await expect.element(screen.getByText('Short front toast')).toBeInTheDocument()
+    await expect.element(screen.getByText('Long background toast')).toBeInTheDocument()
+    await expect.element(screen.getByRole('region', { name: 'Notifications' })).toHaveAttribute('aria-live', 'polite')
+    await expect.element(screen.getByRole('dialog', { name: 'Short front toast' })).toBeInTheDocument()
+    await expect.element(screen.getByRole('dialog', { name: 'Long background toast' })).toBeInTheDocument()
+
+    const longToastContent = screen.getByText('Long background toast').element().closest('[class*="transition-opacity"]')
+    expect(longToastContent).toHaveAttribute('data-behind')
+    expect(longToastContent).toHaveClass('h-full')
+    expect(longToastContent?.parentElement).toHaveClass('h-full')
+  })
+
   it('should render a neutral toast when called directly', async () => {
     const screen = await render(<ToastHost />)
 

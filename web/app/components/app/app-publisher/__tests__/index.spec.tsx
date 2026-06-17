@@ -204,7 +204,7 @@ describe('AppPublisher', () => {
       access_mode: AccessMode.PUBLIC,
     })
     mockOpenAsyncWindow.mockImplementation(async (resolver: () => Promise<string>) => {
-      await resolver()
+      return resolver()
     })
     Object.defineProperty(window, 'open', {
       writable: true,
@@ -397,6 +397,11 @@ describe('AppPublisher', () => {
   })
 
   it('should open the installed explore page through the async window helper', async () => {
+    let openedUrl = ''
+    mockOpenAsyncWindow.mockImplementation(async (resolver: () => Promise<string>) => {
+      openedUrl = await resolver()
+    })
+
     render(
       <AppPublisher
         publishedAt={Date.now()}
@@ -409,6 +414,7 @@ describe('AppPublisher', () => {
     await waitFor(() => {
       expect(mockOpenAsyncWindow).toHaveBeenCalledTimes(1)
       expect(mockFetchInstalledAppList).toHaveBeenCalledWith('app-1')
+      expect(openedUrl).toBe('/installed/installed-1')
       expect(sectionProps.actions?.appURL).toBe(`https://example.com${basePath}/chat/token-1`)
     })
   })

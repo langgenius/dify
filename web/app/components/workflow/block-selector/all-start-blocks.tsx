@@ -19,11 +19,11 @@ import {
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
+import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
 import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
-import { getMarketplaceUrl } from '@/utils/var'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '../../plugins/types'
 import { BlockEnum as BlockEnumValue } from '../types'
@@ -258,7 +258,7 @@ const AllStartBlocks = ({
         {shouldShowMarketplaceFooter && (
           <Link
             className={isPanelVariant ? panelMarketplaceFooterClassName : popoverMarketplaceFooterClassName}
-            href={getMarketplaceUrl('/plugins/trigger')}
+            href={getMarketplaceCategoryUrl(PluginCategoryEnum.trigger)}
             target="_blank"
           >
             {isPanelVariant

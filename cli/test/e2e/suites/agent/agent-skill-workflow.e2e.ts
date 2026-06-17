@@ -349,9 +349,11 @@ describe('E2E / agent skill — describe app -o json (auth required)', () => {
     assertPipeFriendlyJson(r)
   })
 
-  itWithAuth('[P0] nonexistent app → exit 1 + JSON error envelope', async () => {
+  itWithAuth('[P0] invalid (non-UUID) app id → exit 2 + usage error envelope', async () => {
+    // 'app-id-nonexistent-e2e-xyz' is not a valid UUID; describe app rejects it
+    // client-side via isValidUuid() with usage_invalid_flag (exit 2).
     const r = await fx.r(['describe', 'app', 'app-id-nonexistent-e2e-xyz', '-o', 'json'])
-    expect(r.exitCode).toBe(1)
+    expect(r.exitCode).toBe(2)
     assertErrorEnvelope(r)
   })
 })

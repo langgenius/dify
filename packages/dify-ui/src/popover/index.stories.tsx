@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { Placement } from '.'
 import { Button } from '@langgenius/dify-ui/button'
-import { useState } from 'react'
+import * as React from 'react'
 import {
   Popover,
   PopoverClose,
@@ -127,9 +127,9 @@ export const Infotip: Story = {
           closeDelay={200}
           aria-label="Set which resource to use first when running models."
           render={(
-            <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center">
+            <button type="button" className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-sm outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid">
               <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" />
-            </span>
+            </button>
           )}
         />
         <PopoverContent
@@ -159,7 +159,7 @@ const PLACEMENTS: Placement[] = [
 ]
 
 const PlacementsDemo = () => {
-  const [placement, setPlacement] = useState<Placement>('bottom')
+  const [placement, setPlacement] = React.useState<Placement>('bottom')
 
   return (
     <div className="flex flex-col items-center gap-4 p-20">
@@ -208,7 +208,7 @@ export const Placements: Story = {
 }
 
 const ControlledDemo = () => {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = React.useState(false)
 
   return (
     <div className="flex items-center gap-3">
