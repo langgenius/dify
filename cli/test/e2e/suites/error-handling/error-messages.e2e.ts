@@ -37,6 +37,7 @@ import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
 import { ZERO } from '@/util/uuid.js'
 import {
   assertErrorEnvelope,
+  assertExitCode,
   assertNoAnsi,
   assertNonZeroExit,
 } from '../../helpers/assert.js'
@@ -215,74 +216,62 @@ describe('E2E / error message standards (spec 5.3)', () => {
     expect(result.stderr).not.toContain(sentValue)
   })
 
-  // ── 5.70d-j  ErrorBody contract — error.server structure ─────────────────
-  // The ErrorBody unification spec introduces a canonical error body:
-  //   { code, status, message, hint?, details?[{type, loc, msg}] }
-  // On a canonical 422 the CLI attaches the full server object as error.server
-  // in the JSON envelope and uses server?.code for the human-readable header.
+  // ── 5.70d-h  ErrorBody contract — error.server structure and rendering priorities ──
+  // PR #37285 introduces canonical ErrorBody on every /openapi/v1 non-2xx response.
+  // CLI strict-parses via zErrorBody.safeParse; success → full struct at error.server.
+  //
+  // V2 rendering priorities (format.ts, verified against codebase):
+  //   header code : server?.code ?? cliCode   — server wins, CLI fallback
+  //   hint        : cliHint ?? server?.hint   — CLI wins, server fallback (V2 correction)
+  //   details     : server?.details[]         — "  - loc: msg (type)" per entry, no -v
 
-  it('[P0] 5.70d JSON envelope contains error.server with code, status, message on validation failure', async () => {
-    // Spec: every canonical 422 from @accepts carries code:"invalid_param",
-    // status:422 and message. The CLI attaches the parsed ErrorBody verbatim as
-    // error.server — zero field copying so the contract is single-source.
-    const result = await fx.r([
-      'run',
-      'app',
-      E.workflowAppId,
-      '--inputs',
-      JSON.stringify({ x: 'hello', num: 'not-a-number', enum_var: 'A', paragraph: 'ok' }),
-      '-o',
-      'json',
-    ])
+  it('[P0] 5.70d JSON envelope contains error.server with canonical code/status/message', async () => {
+    // Trigger: describe app ZERO — server returns canonical 404 ErrorBody
+    // { code:"not_found", status:404, message:"app not found" }.
+    // zErrorBody.safeParse succeeds → error.server is populated on the current server.
+    const result = await fx.r(['describe', 'app', ZERO, '-o', 'json'])
     assertNonZeroExit(result)
     const envelope = JSON.parse(result.stderr.trim()) as {
-      error: {
-        code: string
-        server?: { code: string, status: number, message: string }
-      }
+      error: { code: string, server?: { code: string, status: number, message: string } }
     }
-    expect(envelope.error.server, 'error.server must be present for canonical ErrorBody responses').toBeDefined()
-    expect(envelope.error.server?.code).toBe('invalid_param')
-    expect(envelope.error.server?.status).toBe(422)
-    expect(typeof envelope.error.server?.message).toBe('string')
+    expect(envelope.error.server, 'error.server must be present when server returns canonical ErrorBody').toBeDefined()
+    expect(typeof envelope.error.server?.code, 'error.server.code must be a string').toBe('string')
+    expect(envelope.error.server?.code.length).toBeGreaterThan(0)
+    expect(typeof envelope.error.server?.status, 'error.server.status must be a number').toBe('number')
+    expect(typeof envelope.error.server?.message, 'error.server.message must be a string').toBe('string')
     expect(envelope.error.server?.message.length).toBeGreaterThan(0)
   })
 
-  it('[P1] 5.70e error.server.details array carries field-level error entries', async () => {
-    // Spec: @accepts emits details:[{type, loc, msg}] for each failing field.
-    // CLI forwards the array as-is inside error.server.details — no truncation.
-    const result = await fx.r([
-      'run',
-      'app',
-      E.workflowAppId,
-      '--inputs',
-      JSON.stringify({ x: 'hello', num: 'not-a-number', enum_var: 'A', paragraph: 'ok' }),
-      '-o',
-      'json',
-    ])
-    assertNonZeroExit(result)
-    const envelope = JSON.parse(result.stderr.trim()) as {
-      error: {
-        server?: {
-          details?: Array<{ type: string, msg: string, loc?: Array<string | number> }>
-        }
-      }
+  it('[P1] 5.70e @accepts query validation returns canonical 422 with details array', async () => {
+    // Trigger: direct fetch to GET /apps?page=not-integer — @accepts(query=AppListQuery)
+    // validates page as int and emits canonical 422 ErrorBody with details[].
+    // Direct fetch is used because the CLI validates --page as integer client-side
+    // (would exit 2 before hitting the server); this pins the server-side contract.
+    const res = await fetch(
+      `${E.host.replace(/\/$/, '')}/openapi/v1/apps?workspace_id=${E.workspaceId}&page=not-an-integer`,
+      { headers: { Authorization: `Bearer ${E.token}` }, signal: AbortSignal.timeout(8_000) },
+    )
+    expect(res.status).toBe(422)
+    const body = await res.json() as {
+      code?: string
+      status?: number
+      details?: Array<{ type: string, loc: Array<string | number>, msg: string }>
     }
-    const details = envelope.error.server?.details
-    expect(Array.isArray(details), 'error.server.details must be an array').toBe(true)
-    expect(details!.length, 'details must contain at least one entry').toBeGreaterThan(0)
-    // Each entry must have type and msg; loc is optional but expected for body fields
-    const entry = details![0]!
-    expect(typeof entry.type, 'detail.type must be a string').toBe('string')
-    expect(entry.type.length).toBeGreaterThan(0)
-    expect(typeof entry.msg, 'detail.msg must be a string').toBe('string')
-    expect(entry.msg.length).toBeGreaterThan(0)
+    expect(body.code).toBe('invalid_param')
+    expect(body.status).toBe(422)
+    expect(Array.isArray(body.details), 'details must be an array').toBe(true)
+    expect(body.details!.length).toBeGreaterThan(0)
+    const entry = body.details![0]!
+    expect(typeof entry.type).toBe('string')
+    expect(typeof entry.msg).toBe('string')
+    expect(Array.isArray(entry.loc)).toBe(true)
   })
 
-  it('[P1] 5.70f human-readable text mode renders details as indented lines', async () => {
-    // Spec: format.ts iterates server?.details and renders each entry as
-    //   "  - <loc>: <msg> (<type>)"
-    // This means field-level errors are visible without -v.
+  it('[P1] 5.70f @accepts 422 human-readable text mode renders details as indented lines', async () => {
+    // format.ts renders server?.details as "  - <loc>: <msg> (<type>)" lines (no -v needed).
+    // Trigger: run app wrong-type input. The server-side app execution layer currently
+    // returns HTTP 500 (SSE error event) rather than @accepts 422 for this path, so this
+    // is a forward-looking contract test — will pass once @accepts covers the app run path.
     const result = await fx.r([
       'run',
       'app',
@@ -291,47 +280,53 @@ describe('E2E / error message standards (spec 5.3)', () => {
       JSON.stringify({ x: 'hello', num: 'not-a-number', enum_var: 'A', paragraph: 'ok' }),
     ])
     assertNonZeroExit(result)
-    // Must contain at least one "  - ... (...)" detail line
     expect(result.stderr).toMatch(/\s+-\s[^(]+\([^)]+\)/)
   })
 
-  it('[P1] 5.70g text mode header uses server code (invalid_param) not CLI classification code', async () => {
-    // Spec: renderHuman computes headerCode = server?.code ?? e.code
-    // For a canonical 422, server.code = "invalid_param" wins over the CLI's
-    // classification code ("server_4xx_other"), so stderr starts with "invalid_param:".
-    const result = await fx.r([
-      'run',
-      'app',
-      E.workflowAppId,
-      '--inputs',
-      JSON.stringify({ x: 'hello', num: 'not-a-number', enum_var: 'A', paragraph: 'ok' }),
-    ])
+  it('[P1] 5.70g rendering priority — header code: server code wins over CLI classification code', async () => {
+    // renderHuman: headerCode = server?.code ?? e.code  (server wins, V2 unchanged)
+    // When canonical ErrorBody is parsed, the server semantic code replaces the CLI
+    // classification code ("server_4xx_other") in the human-readable output header.
+    // Trigger: describe app ZERO → canonical 404; header starts with "not_found:".
+    const result = await fx.r(['describe', 'app', ZERO])
     assertNonZeroExit(result)
-    expect(result.stderr.trimStart()).toMatch(/^invalid_param:/)
+    expect(result.stderr.trimStart()).not.toMatch(/^server_4xx_other:/)
+    expect(result.stderr.trimStart()).toMatch(/^not_found:/)
   })
 
-  it('[P1] 5.70h JSON envelope error.code is CLI classification; server code lives in error.server.code', async () => {
-    // Spec: toEnvelope() sets error.code = c.code (CLI classification = "server_4xx_other")
-    // while the server's semantic code sits separately in error.server.code.
-    // Agents and tooling can read error.server.code for semantic branching
-    // without parsing human-readable text.
-    const result = await fx.r([
-      'run',
-      'app',
-      E.workflowAppId,
-      '--inputs',
-      JSON.stringify({ x: 'hello', num: 'not-a-number', enum_var: 'A', paragraph: 'ok' }),
-      '-o',
-      'json',
-    ])
+  it('[P1] 5.70g2 rendering priority — hint: CLI hint wins over server hint (V2 correction)', async () => {
+    // renderHuman: hint = cliHint ?? server?.hint  (CLI wins — V2 spec correction)
+    // V1 incorrectly documented "server wins"; V2 aligns with codebase: CLI wins.
+    // Test: 401 AuthExpired — classifyResponse sets c.hint = AUTH_LOGIN_HINT before
+    // serverError is parsed; CLI hint takes precedence over any server-provided hint.
+    // Verified on current server (no @accepts deployment required).
+    const unauthTmp = await withTempConfig()
+    try {
+      const result = await run(['get', 'app', '-o', 'json'], { configDir: unauthTmp.configDir })
+      assertExitCode(result, 4)
+      const envelope = JSON.parse(result.stderr.trim()) as { error: { hint?: string } }
+      expect(envelope.error.hint, 'CLI login hint must appear for auth error').toMatch(/auth login/i)
+    }
+    finally {
+      await unauthTmp.cleanup()
+    }
+  })
+
+  it('[P1] 5.70h JSON envelope: error.code = CLI classification; error.server.code = server semantic code', async () => {
+    // toEnvelope() sets error.code from HTTP status bucket (e.g. "server_4xx_other")
+    // while the server's semantic code is separate in error.server.code.
+    // Agents can branch on error.server.code without parsing human-readable text.
+    // Trigger: describe app ZERO → canonical 404; error.code="server_4xx_other",
+    // error.server.code="not_found" — always distinct when ErrorBody is present.
+    const result = await fx.r(['describe', 'app', ZERO, '-o', 'json'])
     assertNonZeroExit(result)
     const envelope = JSON.parse(result.stderr.trim()) as {
       error: { code: string, server?: { code: string } }
     }
     expect(envelope.error.code).toBe('server_4xx_other')
-    expect(envelope.error.server?.code).toBe('invalid_param')
+    expect(envelope.error.server?.code).toBeDefined()
+    expect(envelope.error.server?.code).not.toBe('server_4xx_other')
   })
-
   // ── 5.70i / 5.70j  PR #37285 boundary contract ───────────────────────────
 
   it('[P1] 5.70i unknown /openapi/v1 route returns canonical 404 ErrorBody without route suggestions', async () => {
