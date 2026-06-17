@@ -21,7 +21,7 @@ from dify_agent.layers.drive.configs import DIFY_DRIVE_LAYER_TYPE_ID, DifyDriveL
 class DifyDriveLayer(PlainLayer[NoLayerDeps, DifyDriveLayerConfig, EmptyRuntimeState]):
     """Config-only carrier of the drive Skills & Files manifest."""
 
-    type_id: ClassVar[str] = DIFY_DRIVE_LAYER_TYPE_ID
+    type_id: ClassVar[str | None] = DIFY_DRIVE_LAYER_TYPE_ID
 
     config: DifyDriveLayerConfig
 

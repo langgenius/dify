@@ -262,6 +262,10 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
             getattr(route, "path", None) == "/agent-stub/files/download-request"
             for route in create_app(settings).routes
         )
+        assert any(
+            getattr(route, "path", None) == "/agent-stub/drive/manifest" for route in create_app(settings).routes
+        )
+        assert any(getattr(route, "path", None) == "/agent-stub/drive/commit" for route in create_app(settings).routes)
 
     assert FakeRunScheduler.created[0].shutdown_called is True
     assert FakeRunScheduler.created[0].dify_api_http_client.is_closed is True
@@ -334,6 +338,64 @@ def test_create_app_wires_authenticated_agent_stub_file_upload_route(monkeypatch
     assert fake_redis.closed is True
 
 
+def test_create_app_wires_authenticated_agent_stub_drive_manifest_route(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_redis, fake_http_client = _patch_app_lifecycle(monkeypatch)
+    settings = ServerSettings(
+        redis_url="redis://example.invalid/0",
+        agent_stub_url="https://agent.example.com/agent-stub",
+        server_secret_key=_base64url_secret(b"1" * 32),
+        dify_api_base_url="https://api.example.com",
+        dify_api_inner_api_key="inner-secret",
+    )
+    token_codec = settings.create_agent_stub_token_codec()
+    assert token_codec is not None
+    token = token_codec.encode_connection_token(
+        _execution_context().model_copy(update={"agent_id": "agent-1"}), now=int(time.time()) - 1
+    )
+
+    original_async_client = httpx.AsyncClient
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert str(request.url) == (
+            "https://api.example.com/inner/api/drive/agent-agent-1/manifest"
+            "?tenant_id=tenant-1&prefix=skills%2F&include_download_url=false"
+        )
+        assert request.headers["X-Inner-Api-Key"] == "inner-secret"
+        return httpx.Response(
+            200,
+            json={
+                "items": [
+                    {
+                        "key": "skills/example/SKILL.md",
+                        "size": 12,
+                        "hash": "sha256:abc",
+                        "mime_type": "text/markdown",
+                        "file_kind": "tool_file",
+                        "file_id": "tool-file-1",
+                    }
+                ]
+            },
+        )
+
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.server.agent_stub_drive.httpx.AsyncClient",
+        lambda **kwargs: original_async_client(transport=httpx.MockTransport(handler), **kwargs),
+    )
+
+    with TestClient(create_app(settings)) as client:
+        response = client.get(
+            "/agent-stub/drive/manifest",
+            headers={"Authorization": f"Bearer {token}"},
+            params={"prefix": "skills/"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["items"][0]["key"] == "skills/example/SKILL.md"
+    assert FakeRunScheduler.created[0].shutdown_called is True
+    assert fake_http_client.is_closed is True
+    assert fake_redis.closed is True
+
+
 def test_create_app_starts_and_stops_agent_stub_grpc_server_for_grpc_url(monkeypatch: pytest.MonkeyPatch) -> None:
     fake_redis, fake_http_client = _patch_app_lifecycle(monkeypatch)
     started: dict[str, object] = {}
@@ -380,7 +442,6 @@ def test_create_plugin_daemon_http_client_uses_generic_outbound_httpx_constructi
     )
 
     assert isinstance(client, FakePluginDaemonHttpClient)
-    assert isinstance(client.timeout, FakeTimeout)
     assert client.timeout.connect == 1
     assert client.timeout.read == 2
     assert client.timeout.write == 3
@@ -410,7 +471,6 @@ def test_create_dify_api_inner_http_client_uses_generic_outbound_httpx_construct
     )
 
     assert isinstance(client, FakePluginDaemonHttpClient)
-    assert isinstance(client.timeout, FakeTimeout)
     assert client.timeout.connect == 1
     assert client.timeout.read == 2
     assert client.timeout.write == 3

@@ -7,6 +7,11 @@ from pathlib import Path
 import pytest
 
 from dify_agent.agent_stub.cli.main import main
+from dify_agent.agent_stub.protocol.agent_stub import (
+    AgentStubDriveCommitResponse,
+    AgentStubDriveItem,
+    AgentStubDriveManifestResponse,
+)
 from dify_agent.agent_stub.protocol.agent_stub import AgentStubConnectResponse
 
 
@@ -194,3 +199,97 @@ def test_cli_file_download_prints_saved_path(
     captured = capsys.readouterr()
     assert exc_info.value.code == 0
     assert captured.out.strip() == "/tmp/report.pdf"
+
+
+def test_cli_drive_list_prints_manifest_json(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli.main.list_drive_from_environment",
+        lambda *, prefix, json_output: AgentStubDriveManifestResponse(
+            items=[
+                AgentStubDriveItem(
+                    key=prefix + "example/SKILL.md",
+                    size=12,
+                    hash="sha256:abc",
+                    mime_type="text/markdown",
+                    file_kind="tool_file",
+                    file_id="tool-file-1",
+                )
+            ]
+        ),
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["drive", "list", "skills/", "--json"])
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert json.loads(captured.out)["items"][0]["key"] == "skills/example/SKILL.md"
+
+
+def test_cli_drive_list_prints_human_readable_listing(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli.main.list_drive_from_environment",
+        lambda *, prefix, json_output: f"12\ttext/markdown\t-\t{prefix}example/SKILL.md",
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["drive", "list", "skills/"])
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert captured.out.strip() == "12\ttext/markdown\t-\tskills/example/SKILL.md"
+
+
+def test_cli_drive_pull_prints_downloaded_paths(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli.main.pull_drive_from_environment",
+        lambda *, prefix, drive_base: [Path(drive_base) / prefix / "SKILL.md", Path(drive_base) / prefix / "helper.py"],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["drive", "pull", "skills/example", "--drive-base", "/tmp/drive"])
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert captured.out.strip().splitlines() == [
+        "/tmp/drive/skills/example/SKILL.md",
+        "/tmp/drive/skills/example/helper.py",
+    ]
+
+
+def test_cli_drive_push_prints_commit_json(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli.main.push_drive_from_environment",
+        lambda *, local_path, drive_path, recursive: AgentStubDriveCommitResponse(
+            items=[
+                AgentStubDriveItem(
+                    key=drive_path,
+                    size=12,
+                    hash=None,
+                    mime_type="text/markdown",
+                    file_kind="tool_file",
+                    file_id=Path(local_path).name,
+                    value_owned_by_drive=recursive is False,
+                )
+            ]
+        ),
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["drive", "push", "/tmp/report.md", "skills/example/SKILL.md"])
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert json.loads(captured.out)["items"][0]["key"] == "skills/example/SKILL.md"

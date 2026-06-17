@@ -5,10 +5,16 @@ import json
 from typing import Literal
 
 import pytest
+from pydantic import ValidationError
 
 from dify_agent.agent_stub.protocol.agent_stub import (
+    AgentStubDriveCommitItem,
+    AgentStubDriveCommitRequest,
+    AgentStubDriveFileRef,
     AgentStubFileMapping,
     agent_stub_connections_url,
+    agent_stub_drive_commit_url,
+    agent_stub_drive_manifest_url,
     agent_stub_file_download_request_url,
     agent_stub_file_upload_request_url,
     normalize_agent_stub_url,
@@ -36,6 +42,15 @@ def test_agent_stub_file_request_urls_handle_trailing_slash() -> None:
     )
     assert agent_stub_file_download_request_url("https://agent.example.com/agent-stub") == (
         "https://agent.example.com/agent-stub/files/download-request"
+    )
+
+
+def test_agent_stub_drive_request_urls_handle_trailing_slash() -> None:
+    assert agent_stub_drive_manifest_url("https://agent.example.com/agent-stub/") == (
+        "https://agent.example.com/agent-stub/drive/manifest"
+    )
+    assert agent_stub_drive_commit_url("https://agent.example.com/agent-stub") == (
+        "https://agent.example.com/agent-stub/drive/commit"
     )
 
 
@@ -96,6 +111,25 @@ def test_agent_stub_file_mapping_rejects_remote_url_with_reference() -> None:
             url="https://example.com/file",
             reference=reference,
         )
+
+
+def test_agent_stub_drive_commit_request_validates_file_refs() -> None:
+    request = AgentStubDriveCommitRequest(
+        items=[
+            AgentStubDriveCommitItem(
+                key="skills/example/SKILL.md",
+                file_ref=AgentStubDriveFileRef(kind="tool_file", id="tool-file-1"),
+            )
+        ]
+    )
+
+    assert request.items[0].file_ref.kind == "tool_file"
+
+    with pytest.raises(ValidationError, match="tool_file"):
+        _ = AgentStubDriveFileRef(kind="bad_kind", id="tool-file-1")  # pyright: ignore[reportArgumentType]
+
+    with pytest.raises(ValidationError, match="file_ref"):
+        _ = AgentStubDriveCommitItem.model_validate({"key": "skills/example/SKILL.md"})
 
 
 @pytest.mark.parametrize("transfer_method", ["tool_file", "local_file", "datasource_file"])
