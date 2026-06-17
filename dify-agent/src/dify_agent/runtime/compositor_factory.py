@@ -4,23 +4,23 @@ Only explicitly allowed provider type ids are constructible here. The default
 provider set contains prompt layers, the optional pydantic-ai history layer, the
 state-free Dify structured output layer, the optional Dify ask-human layer, the
 Dify execution-context layer, the stateful Dify shell layer, and the Dify
-plugin business-layer family:
+plugin/knowledge business-layer family:
 
 - ``dify.drive`` for the inert Skills & Files drive declaration,
 - ``dify.execution_context`` for shared tenant/user/run daemon context,
 - ``dify.shell`` for shellctl-backed shell job control,
-- ``dify.plugin.llm`` for plugin-backed model selection, and
-- ``dify.plugin.tools`` for prepared plugin tool exposure.
+- ``dify.plugin.llm`` for plugin-backed model selection,
+- ``dify.plugin.tools`` for prepared plugin tool exposure, and
+- ``dify.knowledge_base`` for inner-API-backed knowledge search tools.
 
 Public DTOs provide Dify context plus plugin/model/tool data, while server-only
-plugin daemon settings are injected through the provider factory for
-``DifyExecutionContextLayer`` and the optional shellctl entrypoint/auth token plus
-client factory plus optional Agent Stub URL/token issuer are injected for
-``DifyShellLayer``. The resulting ``Compositor``
-remains Agenton state-only at the snapshot boundary: live resources such as
-HTTP clients are injected by runtime-owned providers, may be held on active
-layer instances inside ``resource_context()``, and never enter session
-snapshots.
+plugin daemon settings and Dify API inner settings are injected through provider
+factories. Optional shellctl entrypoint/auth token, client factory, and Agent
+Stub URL/token issuer are injected for ``DifyShellLayer``. The resulting
+``Compositor`` remains Agenton state-only at the snapshot boundary: live
+resources such as HTTP clients are injected by runtime-owned providers, may be
+held on active layer instances inside ``resource_context()``, and never enter
+session snapshots.
 """
 
 from collections.abc import Mapping, Sequence
@@ -41,6 +41,8 @@ from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
 from dify_agent.layers.drive.layer import DifyDriveLayer
 from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
+from dify_agent.layers.knowledge.configs import DifyKnowledgeBaseLayerConfig
+from dify_agent.layers.knowledge.layer import DifyKnowledgeBaseLayer
 from dify_agent.layers.output.output_layer import DifyOutputLayer
 from dify_agent.layers.shell.configs import DifyShellLayerConfig
 from dify_agent.layers.shell.layer import DifyShellLayer, create_shellctl_client_factory
@@ -52,6 +54,8 @@ def create_default_layer_providers(
     *,
     plugin_daemon_url: str = "http://localhost:5002",
     plugin_daemon_api_key: str = "",
+    dify_api_inner_url: str = "http://localhost:5001",
+    dify_api_inner_api_key: str = "",
     shellctl_entrypoint: str | None = None,
     shellctl_auth_token: str | None = None,
     agent_stub_url: str | None = None,
@@ -109,6 +113,14 @@ def create_default_layer_providers(
         ),
         LayerProvider.from_layer_type(DifyPluginLLMLayer),
         LayerProvider.from_layer_type(DifyPluginToolsLayer),
+        LayerProvider.from_factory(
+            layer_type=DifyKnowledgeBaseLayer,
+            create=lambda config: DifyKnowledgeBaseLayer.from_config_with_settings(
+                DifyKnowledgeBaseLayerConfig.model_validate(config),
+                dify_api_inner_url=dify_api_inner_url,
+                dify_api_inner_api_key=dify_api_inner_api_key,
+            ),
+        ),
     )
 
 
