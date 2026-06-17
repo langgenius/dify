@@ -50,8 +50,7 @@ class TestDeleteDraftVariableOffloadData:
         assert result == 0
         mock_conn.execute.assert_not_called()
 
-    @patch("tasks.remove_app_and_related_data_task.logging")
-    def test_delete_draft_variable_offload_data_database_failure(self, mock_logging):
+    def test_delete_draft_variable_offload_data_database_failure(self, caplog):
         """Test handling of database operation failures."""
         mock_conn = MagicMock()
         file_ids = ["file-1"]
@@ -60,13 +59,14 @@ class TestDeleteDraftVariableOffloadData:
         mock_conn.execute.side_effect = Exception("Database error")
 
         # Execute function - should not raise, but log error
-        result = _delete_draft_variable_offload_data(mock_conn, file_ids)
+        with caplog.at_level(logging.ERROR):
+            result = _delete_draft_variable_offload_data(mock_conn, file_ids)
 
         # Should return 0 when error occurs
         assert result == 0
 
         # Verify error was logged
-        mock_logging.exception.assert_called_once_with("Error deleting draft variable offload data:")
+        assert "Error deleting draft variable offload data:" in caplog.text
 
 
 class TestDeleteWorkflowArchiveLogs:
