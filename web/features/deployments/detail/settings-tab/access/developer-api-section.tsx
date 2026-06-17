@@ -115,6 +115,7 @@ function ApiKeyListSection({ apiKeys, environments, action }: {
   action?: ReactNode
 }) {
   const { t } = useTranslation('deployments')
+  const hasAction = Boolean(action)
 
   return (
     <div className="flex flex-col gap-2">
@@ -122,7 +123,7 @@ function ApiKeyListSection({ apiKeys, environments, action }: {
         <div className="system-xs-semibold-uppercase text-text-tertiary">
           {t('access.api.keyList')}
         </div>
-        {action && (
+        {hasAction && (
           <div className="w-full shrink-0 sm:w-auto [&_button]:w-full sm:[&_button]:w-auto">
             {action}
           </div>
