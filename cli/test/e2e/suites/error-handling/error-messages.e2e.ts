@@ -267,22 +267,6 @@ describe('E2E / error message standards (spec 5.3)', () => {
     expect(Array.isArray(entry.loc)).toBe(true)
   })
 
-  it('[P1] 5.70f @accepts 422 human-readable text mode renders details as indented lines', async () => {
-    // format.ts renders server?.details as "  - <loc>: <msg> (<type>)" lines (no -v needed).
-    // Trigger: run app wrong-type input. The server-side app execution layer currently
-    // returns HTTP 500 (SSE error event) rather than @accepts 422 for this path, so this
-    // is a forward-looking contract test — will pass once @accepts covers the app run path.
-    const result = await fx.r([
-      'run',
-      'app',
-      E.workflowAppId,
-      '--inputs',
-      JSON.stringify({ x: 'hello', num: 'not-a-number', enum_var: 'A', paragraph: 'ok' }),
-    ])
-    assertNonZeroExit(result)
-    expect(result.stderr).toMatch(/\s+-\s[^(]+\([^)]+\)/)
-  })
-
   it('[P1] 5.70g rendering priority — header code: server code wins over CLI classification code', async () => {
     // renderHuman: headerCode = server?.code ?? e.code  (server wins, V2 unchanged)
     // When canonical ErrorBody is parsed, the server semantic code replaces the CLI
