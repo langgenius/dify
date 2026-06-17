@@ -157,6 +157,23 @@ export const consoleQuery = createTanstackQueryUtils(consoleClient, {
             },
           },
         },
+        composer: {
+          put: {
+            mutationOptions: {
+              onSuccess: (_composerState, variables, _onMutateResult, context) => {
+                if (variables.body.save_strategy !== 'save_as_new_version')
+                  return
+
+                context.client.invalidateQueries({
+                  queryKey: consoleQuery.agent.get.key(),
+                })
+                context.client.invalidateQueries({
+                  queryKey: consoleQuery.agent.inviteOptions.get.key(),
+                })
+              },
+            },
+          },
+        },
         delete: {
           mutationOptions: {
             onSuccess: (_data, variables, _onMutateResult, context) => {

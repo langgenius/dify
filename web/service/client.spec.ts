@@ -45,6 +45,7 @@ const createApiBasedExtension = (overrides: Partial<ApiBasedExtensionResponse> =
 })
 
 type AgentMutationResponse = Parameters<NonNullable<ReturnType<typeof ConsoleQuery.agent.post.mutationOptions>['onSuccess']>>[0]
+type AgentComposerMutationResponse = Parameters<NonNullable<ReturnType<typeof ConsoleQuery.agent.byAgentId.composer.put.mutationOptions>['onSuccess']>>[0]
 
 const createAgent = (overrides: Partial<AgentMutationResponse> = {}): AgentMutationResponse => ({
   ...overrides,
@@ -56,6 +57,27 @@ const createAgent = (overrides: Partial<AgentMutationResponse> = {}): AgentMutat
   icon_url: overrides.icon_url ?? null,
   mode: overrides.mode ?? 'agent',
   name: overrides.name ?? 'Agent',
+})
+
+const createComposerState = (overrides: Partial<AgentComposerMutationResponse> = {}): AgentComposerMutationResponse => ({
+  active_config_snapshot: {
+    id: 'snapshot-1',
+    version: 1,
+  },
+  agent: {
+    active_config_snapshot_id: 'snapshot-1',
+    description: 'Agent description',
+    id: 'agent-1',
+    name: 'Agent',
+    scope: 'roster',
+    status: 'active',
+  },
+  agent_soul: {
+    schema_version: 1,
+  },
+  save_options: ['save_to_current_version', 'save_as_new_version'],
+  variant: 'agent_app',
+  ...overrides,
 })
 
 // Scenario: base URL selection and warnings.
@@ -186,6 +208,70 @@ describe('consoleQuery agent mutation defaults', () => {
     )
 
     expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.inviteOptions.get.key(),
+    })
+  })
+
+  it('should invalidate roster and invite option lists after publishing an agent config', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+
+    const mutationOptions = consoleQuery.agent.byAgentId.composer.put.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      createComposerState(),
+      {
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: {
+          variant: 'agent_app',
+          save_strategy: 'save_as_new_version',
+          agent_soul: {
+            schema_version: 1,
+          },
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.get.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.inviteOptions.get.key(),
+    })
+  })
+
+  it('should keep roster and invite option lists stable after saving an agent draft', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+
+    const mutationOptions = consoleQuery.agent.byAgentId.composer.put.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      createComposerState(),
+      {
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: {
+          variant: 'agent_app',
+          save_strategy: 'save_to_current_version',
+          agent_soul: {
+            schema_version: 1,
+          },
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.get.key(),
+    })
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
       queryKey: consoleQuery.agent.inviteOptions.get.key(),
     })
   })
