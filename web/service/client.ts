@@ -170,6 +170,9 @@ export const consoleQuery = createTanstackQueryUtils(consoleClient, {
                 context.client.invalidateQueries({
                   queryKey: consoleQuery.agent.inviteOptions.get.key(),
                 })
+                context.client.removeQueries({
+                  queryKey: consoleQuery.agent.inviteOptions.get.key(),
+                })
               },
             },
           },
