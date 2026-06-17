@@ -106,6 +106,22 @@ def test_generate_specs_writes_get_operations_without_request_bodies(tmp_path):
         assert all("requestBody" not in operation for operation in _get_operations(payload))
 
 
+def test_generate_specs_writes_service_api_reference_descriptions(tmp_path):
+    module = _load_generate_swagger_specs_module()
+
+    written_paths = module.generate_specs(tmp_path)
+    service_path = next(path for path in written_paths if path.name == "service-openapi.json")
+    payload = json.loads(service_path.read_text(encoding="utf-8"))
+
+    chat_operation = payload["paths"]["/chat-messages"]["post"]
+    assert chat_operation["summary"] == "Send Chat Message"
+    assert chat_operation["description"] == "Send a request to the chat application."
+    assert chat_operation["tags"] == ["Chatflows", "Chats"]
+
+    rename_operation = payload["paths"]["/conversations/{c_id}/name"]["post"]
+    assert rename_operation["summary"] == "Rename Conversation"
+
+
 def test_standalone_inline_model_name_includes_list_constraints():
     module = _load_generate_swagger_specs_module()
 

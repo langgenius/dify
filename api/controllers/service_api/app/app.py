@@ -33,6 +33,18 @@ register_response_schema_models(service_api_ns, Parameters, AppMetaResponse, App
 class AppParameterApi(Resource):
     """Resource for app variables."""
 
+    @service_api_ns.doc(
+        summary="Get App Parameters",
+        description=(
+            "Retrieve the application's input form configuration, including feature switches, input "
+            "parameter names, types, and default values."
+        ),
+        tags=["Applications"],
+        responses={
+            200: "Application parameters information.",
+            400: "`app_unavailable` : App unavailable or misconfigured.",
+        },
+    )
     @service_api_ns.doc("get_app_parameters")
     @service_api_ns.doc(description="Retrieve application input parameters and configuration")
     @service_api_ns.doc(
@@ -71,6 +83,14 @@ class AppParameterApi(Resource):
 
 @service_api_ns.route("/meta")
 class AppMetaApi(Resource):
+    @service_api_ns.doc(
+        summary="Get App Meta",
+        description="Retrieve metadata about this application, including tool icons and other configuration details.",
+        tags=["Applications"],
+        responses={
+            200: "Successfully retrieved application meta information.",
+        },
+    )
     @service_api_ns.doc("get_app_meta")
     @service_api_ns.doc(description="Get application metadata")
     @service_api_ns.doc(
@@ -92,6 +112,14 @@ class AppMetaApi(Resource):
 
 @service_api_ns.route("/info")
 class AppInfoApi(Resource):
+    @service_api_ns.doc(
+        summary="Get App Info",
+        description="Retrieve basic information about this application, including name, description, tags, and mode.",
+        tags=["Applications"],
+        responses={
+            200: "Basic information of the application.",
+        },
+    )
     @service_api_ns.doc("get_app_info")
     @service_api_ns.doc(description="Get basic application information")
     @service_api_ns.doc(

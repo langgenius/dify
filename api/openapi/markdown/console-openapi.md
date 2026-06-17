@@ -18690,7 +18690,7 @@ Tag type
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | message_id | string | Message ID | No |
-| streaming | boolean | Enable streaming response | No |
+| streaming | boolean | Reserved for compatibility; TTS response streaming is determined by the provider output. | No |
 | text | string | Text to convert to audio | No |
 | voice | string | Voice to use for TTS | No |
 

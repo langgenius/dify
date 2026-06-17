@@ -100,6 +100,18 @@ register_response_schema_models(
 class DatasourcePluginsApi(DatasetApiResource):
     """Resource for datasource plugins."""
 
+    @service_api_ns.doc(
+        summary="List Datasource Plugins",
+        description=(
+            "List the datasource nodes configured in the knowledge pipeline. Each node includes the "
+            "plugin it uses plus the metadata needed to run it."
+        ),
+        tags=["Knowledge Pipeline"],
+        responses={
+            200: "List of datasource nodes configured in the pipeline.",
+            404: "`not_found` : Dataset not found.",
+        },
+    )
     @service_api_ns.doc(shortcut="list_rag_pipeline_datasource_plugins")
     @service_api_ns.doc(description="List all datasource plugins for a rag pipeline")
     @service_api_ns.doc(
@@ -142,6 +154,18 @@ class DatasourcePluginsApi(DatasetApiResource):
 class DatasourceNodeRunApi(DatasetApiResource):
     """Resource for datasource node run."""
 
+    @service_api_ns.doc(
+        summary="Run Datasource Node",
+        description=(
+            "Execute a single datasource node within the knowledge pipeline. Returns a streaming "
+            "response with the node execution results."
+        ),
+        tags=["Knowledge Pipeline"],
+        responses={
+            200: "Streaming response with node execution events.",
+            404: "`not_found` : Dataset not found.",
+        },
+    )
     @event_stream_response(service_api_ns)
     @service_api_ns.doc(shortcut="pipeline_datasource_node_run")
     @service_api_ns.doc(description="Run a datasource node for a rag pipeline")
@@ -201,6 +225,23 @@ class DatasourceNodeRunApi(DatasetApiResource):
 class PipelineRunApi(DatasetApiResource):
     """Resource for datasource node run."""
 
+    @service_api_ns.doc(
+        summary="Run Pipeline",
+        description=(
+            "Execute the full knowledge pipeline for a knowledge base. Supports both streaming and "
+            "blocking response modes."
+        ),
+        tags=["Knowledge Pipeline"],
+        responses={
+            200: (
+                "Pipeline execution result. Format depends on `response_mode`: streaming returns a "
+                "`text/event-stream`, blocking returns a JSON object."
+            ),
+            403: "`forbidden` : Forbidden.",
+            404: "`not_found` : Dataset not found.",
+            500: "`pipeline_run_error` : Pipeline execution failed.",
+        },
+    )
     @json_or_event_stream_response(service_api_ns)
     @service_api_ns.doc(shortcut="pipeline_datasource_node_run")
     @service_api_ns.doc(description="Run a datasource node for a rag pipeline")
@@ -255,6 +296,21 @@ class PipelineRunApi(DatasetApiResource):
 class KnowledgebasePipelineFileUploadApi(DatasetApiResource):
     """Resource for uploading a file to a knowledgebase pipeline."""
 
+    @service_api_ns.doc(
+        summary="Upload Pipeline File",
+        description="Upload a file for use in a knowledge pipeline. Accepts a single file via `multipart/form-data`.",
+        tags=["Knowledge Pipeline"],
+        responses={
+            201: "File uploaded successfully.",
+            400: (
+                "- `no_file_uploaded` : Please upload your file.\n"
+                "- `filename_not_exists_error` : The specified filename does not exist.\n"
+                "- `too_many_files` : Only one file is allowed."
+            ),
+            413: "`file_too_large` : File size exceeded.",
+            415: "`unsupported_file_type` : File type not allowed.",
+        },
+    )
     @service_api_ns.doc(shortcut="knowledgebase_pipeline_file_upload")
     @service_api_ns.doc(description="Upload a file to a knowledgebase pipeline")
     @service_api_ns.doc(consumes=["multipart/form-data"], params=multipart_file_params(include_user=False))
