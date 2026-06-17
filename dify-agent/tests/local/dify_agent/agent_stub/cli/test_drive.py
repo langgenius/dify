@@ -88,10 +88,7 @@ def test_list_drive_from_environment_returns_human_readable_listing(monkeypatch:
 
     result = list_drive_from_environment(prefix="skills/", json_output=False)
 
-    assert result == (
-        "12\ttext/markdown\t-\tskills/example/SKILL.md\n"
-        "-\t-\tsha256:abc\tskills/example/helper.py"
-    )
+    assert result == ("12\ttext/markdown\t-\tskills/example/SKILL.md\n-\t-\tsha256:abc\tskills/example/helper.py")
     assert captured["prefix"] == "skills/"
     assert captured["include_download_url"] is False
 

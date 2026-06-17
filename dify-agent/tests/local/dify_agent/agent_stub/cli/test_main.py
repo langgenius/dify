@@ -7,7 +7,11 @@ from pathlib import Path
 import pytest
 
 from dify_agent.agent_stub.cli.main import main
-from dify_agent.agent_stub.protocol.agent_stub import AgentStubDriveCommitResponse, AgentStubDriveItem, AgentStubDriveManifestResponse
+from dify_agent.agent_stub.protocol.agent_stub import (
+    AgentStubDriveCommitResponse,
+    AgentStubDriveItem,
+    AgentStubDriveManifestResponse,
+)
 from dify_agent.agent_stub.protocol.agent_stub import AgentStubConnectResponse
 
 

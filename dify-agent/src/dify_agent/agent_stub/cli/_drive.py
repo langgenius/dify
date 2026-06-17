@@ -34,7 +34,9 @@ from dify_agent.agent_stub.protocol.agent_stub import (
 
 _SKILL_MD_FILENAME = "SKILL.md"
 _SKILL_ARCHIVE_FILENAME = ".DIFY-SKILL-FULL.zip"
-_SKIP_DIR_NAMES = frozenset({".git", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".venv", "node_modules"})
+_SKIP_DIR_NAMES = frozenset(
+    {".git", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".venv", "node_modules"}
+)
 _SKIP_FILE_NAMES = frozenset({".DS_Store", _SKILL_ARCHIVE_FILENAME})
 
 
@@ -255,7 +257,9 @@ def _iter_regular_files_with_skip_filter(root_path: Path, *, skip_filtered: bool
         try:
             relative_path = resolved_candidate.relative_to(root_resolved)
         except ValueError as exc:
-            raise AgentStubValidationError(f"drive push file resolves outside the source directory: {candidate}") from exc
+            raise AgentStubValidationError(
+                f"drive push file resolves outside the source directory: {candidate}"
+            ) from exc
         collected.append((resolved_candidate, relative_path.as_posix()))
     return collected
 

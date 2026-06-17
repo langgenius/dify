@@ -5,8 +5,15 @@ import json
 
 import httpx
 
-from dify_agent.agent_stub.protocol.agent_stub import AgentStubDriveCommitItem, AgentStubDriveCommitRequest, AgentStubDriveFileRef
-from dify_agent.agent_stub.server.agent_stub_drive import AgentStubDriveRequestError, DifyApiAgentStubDriveRequestHandler
+from dify_agent.agent_stub.protocol.agent_stub import (
+    AgentStubDriveCommitItem,
+    AgentStubDriveCommitRequest,
+    AgentStubDriveFileRef,
+)
+from dify_agent.agent_stub.server.agent_stub_drive import (
+    AgentStubDriveRequestError,
+    DifyApiAgentStubDriveRequestHandler,
+)
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubPrincipal
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 

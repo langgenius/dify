@@ -185,8 +185,7 @@ def test_request_agent_stub_drive_manifest_sync_gets_manifest_request() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.method == "GET"
         assert str(request.url) == (
-            "https://agent.example.com/agent-stub/drive/manifest"
-            "?prefix=skills%2F&include_download_url=true"
+            "https://agent.example.com/agent-stub/drive/manifest?prefix=skills%2F&include_download_url=true"
         )
         assert request.headers["Authorization"] == "Bearer test-jwe"
         return httpx.Response(

@@ -101,7 +101,9 @@ def test_create_agent_stub_app_wires_configured_drive_handler_for_manifest_reque
     )
     token_codec = settings.create_agent_stub_token_codec()
     assert token_codec is not None
-    token = token_codec.encode_connection_token(_execution_context().model_copy(update={"agent_id": "agent-1"}), now=int(time.time()) - 1)
+    token = token_codec.encode_connection_token(
+        _execution_context().model_copy(update={"agent_id": "agent-1"}), now=int(time.time()) - 1
+    )
 
     original_async_client = httpx.AsyncClient
 

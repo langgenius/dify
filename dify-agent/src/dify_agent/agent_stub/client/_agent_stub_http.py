@@ -152,7 +152,9 @@ def request_agent_stub_drive_manifest_http_sync(
         timeout=timeout,
         sync_http_client=sync_http_client,
     )
-    return _parse_success_response(response=response, response_model=AgentStubDriveManifestResponse, label="drive manifest")
+    return _parse_success_response(
+        response=response, response_model=AgentStubDriveManifestResponse, label="drive manifest"
+    )
 
 
 def request_agent_stub_drive_commit_http_sync(

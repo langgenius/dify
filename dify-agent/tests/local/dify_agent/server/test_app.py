@@ -262,7 +262,9 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
             getattr(route, "path", None) == "/agent-stub/files/download-request"
             for route in create_app(settings).routes
         )
-        assert any(getattr(route, "path", None) == "/agent-stub/drive/manifest" for route in create_app(settings).routes)
+        assert any(
+            getattr(route, "path", None) == "/agent-stub/drive/manifest" for route in create_app(settings).routes
+        )
         assert any(getattr(route, "path", None) == "/agent-stub/drive/commit" for route in create_app(settings).routes)
 
     assert FakeRunScheduler.created[0].shutdown_called is True
@@ -347,7 +349,9 @@ def test_create_app_wires_authenticated_agent_stub_drive_manifest_route(monkeypa
     )
     token_codec = settings.create_agent_stub_token_codec()
     assert token_codec is not None
-    token = token_codec.encode_connection_token(_execution_context().model_copy(update={"agent_id": "agent-1"}), now=int(time.time()) - 1)
+    token = token_codec.encode_connection_token(
+        _execution_context().model_copy(update={"agent_id": "agent-1"}), now=int(time.time()) - 1
+    )
 
     original_async_client = httpx.AsyncClient
 
