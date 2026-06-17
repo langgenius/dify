@@ -4,8 +4,8 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
-export type AgentAppPagination = {
-  data: Array<AgentAppPartial>
+export type AppPagination = {
+  data: Array<AppPartial>
   has_more: boolean
   limit: number
   page: number
@@ -38,10 +38,12 @@ export type AppDetailWithSite = {
   icon_type?: string | null
   readonly icon_url: string | null
   id: string
+  maintainer?: string | null
   max_active_requests?: number | null
   mode: string
   model_config?: ModelConfig | null
   name: string
+  permission_keys?: Array<string>
   role?: string | null
   site?: Site | null
   tags?: Array<Tag>
@@ -272,7 +274,7 @@ export type AgentConfigSnapshotDetailResponse = {
   version_note?: string | null
 }
 
-export type AgentAppPartial = {
+export type AppPartial = {
   access_mode?: string | null
   active_config_is_published?: boolean
   app_id?: string | null
@@ -289,12 +291,12 @@ export type AgentAppPartial = {
   readonly icon_url: string | null
   id: string
   is_starred?: boolean
+  maintainer?: string | null
   max_active_requests?: number | null
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
-  published_reference_count?: number
-  published_references?: Array<AgentAppPublishedReferenceResponse>
+  permission_keys?: Array<string>
   role?: string | null
   tags?: Array<Tag>
   updated_at?: number | null
@@ -726,14 +728,6 @@ export type ModelConfigPartial = {
   pre_prompt?: string | null
   updated_at?: number | null
   updated_by?: string | null
-}
-
-export type AgentAppPublishedReferenceResponse = {
-  app_icon?: string | null
-  app_icon_background?: string | null
-  app_icon_type?: string | null
-  app_id: string
-  app_name: string
 }
 
 export type LlmMode = 'chat' | 'completion'
@@ -1371,8 +1365,8 @@ export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url'
 
 export type ValueSourceType = 'constant' | 'variable'
 
-export type AgentAppPaginationWritable = {
-  data: Array<AgentAppPartialWritable>
+export type AppPaginationWritable = {
+  data: Array<AppPartialWritable>
   has_more: boolean
   limit: number
   page: number
@@ -1395,10 +1389,12 @@ export type AppDetailWithSiteWritable = {
   icon_background?: string | null
   icon_type?: string | null
   id: string
+  maintainer?: string | null
   max_active_requests?: number | null
   mode: string
   model_config?: ModelConfig | null
   name: string
+  permission_keys?: Array<string>
   role?: string | null
   site?: SiteWritable | null
   tags?: Array<Tag>
@@ -1409,7 +1405,7 @@ export type AppDetailWithSiteWritable = {
   workflow?: WorkflowPartial | null
 }
 
-export type AgentAppPartialWritable = {
+export type AppPartialWritable = {
   access_mode?: string | null
   active_config_is_published?: boolean
   app_id?: string | null
@@ -1425,12 +1421,12 @@ export type AgentAppPartialWritable = {
   icon_type?: string | null
   id: string
   is_starred?: boolean
+  maintainer?: string | null
   max_active_requests?: number | null
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
-  published_reference_count?: number
-  published_references?: Array<AgentAppPublishedReferenceResponse>
+  permission_keys?: Array<string>
   role?: string | null
   tags?: Array<Tag>
   updated_at?: number | null
@@ -1480,7 +1476,7 @@ export type GetAgentData = {
 }
 
 export type GetAgentResponses = {
-  200: AgentAppPagination
+  200: AppPagination
 }
 
 export type GetAgentResponse = GetAgentResponses[keyof GetAgentResponses]

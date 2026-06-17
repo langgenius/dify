@@ -237,6 +237,7 @@ export const zTrialAppDetailWithSite = z.object({
   mode: z.string().optional(),
   model_config: zTrialAppModelConfig.optional(),
   name: z.string().optional(),
+  permission_keys: z.array(z.string()).optional(),
   site: zTrialSite.optional(),
   tags: z.array(zTrialTag).optional(),
   updated_at: z.coerce
@@ -286,6 +287,7 @@ export const zTrialDataset = z.object({
   indexing_technique: z.string().optional(),
   name: z.string().optional(),
   permission: z.string().optional(),
+  permission_keys: z.array(z.string()).optional(),
 })
 
 export const zTrialDatasetList = z.object({

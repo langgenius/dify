@@ -524,20 +524,9 @@ export const zModelConfigPartial = z.object({
 })
 
 /**
- * AgentAppPublishedReferenceResponse
+ * AppPartial
  */
-export const zAgentAppPublishedReferenceResponse = z.object({
-  app_icon: z.string().nullish(),
-  app_icon_background: z.string().nullish(),
-  app_icon_type: z.string().nullish(),
-  app_id: z.string(),
-  app_name: z.string(),
-})
-
-/**
- * AgentAppPartial
- */
-export const zAgentAppPartial = z.object({
+export const zAppPartial = z.object({
   access_mode: z.string().nullish(),
   active_config_is_published: z.boolean().optional().default(false),
   app_id: z.string().nullish(),
@@ -554,12 +543,12 @@ export const zAgentAppPartial = z.object({
   icon_url: z.string().nullable(),
   id: z.string(),
   is_starred: z.boolean().optional().default(false),
+  maintainer: z.string().nullish(),
   max_active_requests: z.int().nullish(),
   mode: z.string(),
   model_config: zModelConfigPartial.nullish(),
   name: z.string(),
-  published_reference_count: z.int().optional().default(0),
-  published_references: z.array(zAgentAppPublishedReferenceResponse).optional(),
+  permission_keys: z.array(z.string()).optional(),
   role: z.string().nullish(),
   tags: z.array(zTag).optional(),
   updated_at: z.int().nullish(),
@@ -569,10 +558,10 @@ export const zAgentAppPartial = z.object({
 })
 
 /**
- * AgentAppPagination
+ * AppPagination
  */
-export const zAgentAppPagination = z.object({
-  data: z.array(zAgentAppPartial),
+export const zAppPagination = z.object({
+  data: z.array(zAppPartial),
   has_more: z.boolean(),
   limit: z.int(),
   page: z.int(),
@@ -616,10 +605,12 @@ export const zAppDetailWithSite = z.object({
   icon_type: z.string().nullish(),
   icon_url: z.string().nullable(),
   id: z.string(),
+  maintainer: z.string().nullish(),
   max_active_requests: z.int().nullish(),
   mode: z.string(),
   model_config: zModelConfig.nullish(),
   name: z.string(),
+  permission_keys: z.array(z.string()).optional(),
   role: z.string().nullish(),
   site: zSite.nullish(),
   tags: z.array(zTag).optional(),
@@ -1930,9 +1921,9 @@ export const zMessageInfiniteScrollPaginationResponse = z.object({
 })
 
 /**
- * AgentAppPartial
+ * AppPartial
  */
-export const zAgentAppPartialWritable = z.object({
+export const zAppPartialWritable = z.object({
   access_mode: z.string().nullish(),
   active_config_is_published: z.boolean().optional().default(false),
   app_id: z.string().nullish(),
@@ -1948,12 +1939,12 @@ export const zAgentAppPartialWritable = z.object({
   icon_type: z.string().nullish(),
   id: z.string(),
   is_starred: z.boolean().optional().default(false),
+  maintainer: z.string().nullish(),
   max_active_requests: z.int().nullish(),
   mode: z.string(),
   model_config: zModelConfigPartial.nullish(),
   name: z.string(),
-  published_reference_count: z.int().optional().default(0),
-  published_references: z.array(zAgentAppPublishedReferenceResponse).optional(),
+  permission_keys: z.array(z.string()).optional(),
   role: z.string().nullish(),
   tags: z.array(zTag).optional(),
   updated_at: z.int().nullish(),
@@ -1963,10 +1954,10 @@ export const zAgentAppPartialWritable = z.object({
 })
 
 /**
- * AgentAppPagination
+ * AppPagination
  */
-export const zAgentAppPaginationWritable = z.object({
-  data: z.array(zAgentAppPartialWritable),
+export const zAppPaginationWritable = z.object({
+  data: z.array(zAppPartialWritable),
   has_more: z.boolean(),
   limit: z.int(),
   page: z.int(),
@@ -2011,10 +2002,12 @@ export const zAppDetailWithSiteWritable = z.object({
   icon_background: z.string().nullish(),
   icon_type: z.string().nullish(),
   id: z.string(),
+  maintainer: z.string().nullish(),
   max_active_requests: z.int().nullish(),
   mode: z.string(),
   model_config: zModelConfig.nullish(),
   name: z.string(),
+  permission_keys: z.array(z.string()).optional(),
   role: z.string().nullish(),
   site: zSiteWritable.nullish(),
   tags: z.array(zTag).optional(),
@@ -2054,7 +2047,7 @@ export const zGetAgentQuery = z.object({
 /**
  * Agent app list
  */
-export const zGetAgentResponse = zAgentAppPagination
+export const zGetAgentResponse = zAppPagination
 
 export const zPostAgentBody = zAgentAppCreatePayload
 
