@@ -9,15 +9,17 @@ import { zGetSpecSchemaDefinitionsResponse } from './zod.gen'
  *
  * Used for frontend component type mapping
  */
-export const get = oc.route({
-  description: 'Used for frontend component type mapping',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getSpecSchemaDefinitions',
-  path: '/spec/schema-definitions',
-  summary: 'Get system JSON Schema definitions specification',
-  tags: ['console'],
-}).output(zGetSpecSchemaDefinitionsResponse)
+export const get = oc
+  .route({
+    description: 'Used for frontend component type mapping',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getSpecSchemaDefinitions',
+    path: '/spec/schema-definitions',
+    summary: 'Get system JSON Schema definitions specification',
+    tags: ['console'],
+  })
+  .output(zGetSpecSchemaDefinitionsResponse)
 
 export const schemaDefinitions = {
   get,

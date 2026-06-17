@@ -5,13 +5,16 @@ import * as z from 'zod'
 
 import { zGetAllWorkspacesQuery, zGetAllWorkspacesResponse } from './zod.gen'
 
-export const get = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getAllWorkspaces',
-  path: '/all-workspaces',
-  tags: ['console'],
-}).input(z.object({ query: zGetAllWorkspacesQuery.optional() })).output(zGetAllWorkspacesResponse)
+export const get = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAllWorkspaces',
+    path: '/all-workspaces',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetAllWorkspacesQuery.optional() }))
+  .output(zGetAllWorkspacesResponse)
 
 export const allWorkspaces = {
   get,

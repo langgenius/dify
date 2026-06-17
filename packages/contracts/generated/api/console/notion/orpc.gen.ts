@@ -3,15 +3,29 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
-import { zGetNotionPagesByPageIdByPageTypePreviewPath, zGetNotionPagesByPageIdByPageTypePreviewQuery, zGetNotionPagesByPageIdByPageTypePreviewResponse, zGetNotionPreImportPagesQuery, zGetNotionPreImportPagesResponse } from './zod.gen'
+import {
+  zGetNotionPagesByPageIdByPageTypePreviewPath,
+  zGetNotionPagesByPageIdByPageTypePreviewQuery,
+  zGetNotionPagesByPageIdByPageTypePreviewResponse,
+  zGetNotionPreImportPagesQuery,
+  zGetNotionPreImportPagesResponse,
+} from './zod.gen'
 
-export const get = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getNotionPagesByPageIdByPageTypePreview',
-  path: '/notion/pages/{page_id}/{page_type}/preview',
-  tags: ['console'],
-}).input(z.object({ params: zGetNotionPagesByPageIdByPageTypePreviewPath, query: zGetNotionPagesByPageIdByPageTypePreviewQuery })).output(zGetNotionPagesByPageIdByPageTypePreviewResponse)
+export const get = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getNotionPagesByPageIdByPageTypePreview',
+    path: '/notion/pages/{page_id}/{page_type}/preview',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetNotionPagesByPageIdByPageTypePreviewPath,
+      query: zGetNotionPagesByPageIdByPageTypePreviewQuery,
+    }),
+  )
+  .output(zGetNotionPagesByPageIdByPageTypePreviewResponse)
 
 export const preview = {
   get,
@@ -29,13 +43,16 @@ export const pages = {
   byPageId,
 }
 
-export const get2 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getNotionPreImportPages',
-  path: '/notion/pre-import/pages',
-  tags: ['console'],
-}).input(z.object({ query: zGetNotionPreImportPagesQuery })).output(zGetNotionPreImportPagesResponse)
+export const get2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getNotionPreImportPages',
+    path: '/notion/pre-import/pages',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetNotionPreImportPagesQuery }))
+  .output(zGetNotionPreImportPagesResponse)
 
 export const pages2 = {
   get: get2,

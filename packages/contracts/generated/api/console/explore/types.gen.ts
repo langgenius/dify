@@ -94,7 +94,8 @@ export type GetExploreAppsByAppIdResponses = {
   200: RecommendedAppDetailResponse
 }
 
-export type GetExploreAppsByAppIdResponse = GetExploreAppsByAppIdResponses[keyof GetExploreAppsByAppIdResponses]
+export type GetExploreAppsByAppIdResponse
+  = GetExploreAppsByAppIdResponses[keyof GetExploreAppsByAppIdResponses]
 
 export type GetExploreBannersData = {
   body?: never

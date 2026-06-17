@@ -9,15 +9,17 @@ import { zGetAppDslVersionResponse } from './zod.gen'
  *
  * Get current app DSL version
  */
-export const get = oc.route({
-  description: 'Get current app DSL version',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getAppDslVersion',
-  path: '/app-dsl-version',
-  summary: 'Get current app DSL version for workflow clipboard compatibility',
-  tags: ['console'],
-}).output(zGetAppDslVersionResponse)
+export const get = oc
+  .route({
+    description: 'Get current app DSL version',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppDslVersion',
+    path: '/app-dsl-version',
+    summary: 'Get current app DSL version for workflow clipboard compatibility',
+    tags: ['console'],
+  })
+  .output(zGetAppDslVersionResponse)
 
 export const appDslVersion = {
   get,

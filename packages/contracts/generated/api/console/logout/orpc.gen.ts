@@ -4,13 +4,15 @@ import { oc } from '@orpc/contract'
 
 import { zPostLogoutResponse } from './zod.gen'
 
-export const post = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postLogout',
-  path: '/logout',
-  tags: ['console'],
-}).output(zPostLogoutResponse)
+export const post = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postLogout',
+    path: '/logout',
+    tags: ['console'],
+  })
+  .output(zPostLogoutResponse)
 
 export const logout = {
   post,

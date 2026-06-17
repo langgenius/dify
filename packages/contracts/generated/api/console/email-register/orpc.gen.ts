@@ -3,39 +3,55 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
-import { zPostEmailRegisterBody, zPostEmailRegisterResponse, zPostEmailRegisterSendEmailBody, zPostEmailRegisterSendEmailResponse, zPostEmailRegisterValidityBody, zPostEmailRegisterValidityResponse } from './zod.gen'
+import {
+  zPostEmailRegisterBody,
+  zPostEmailRegisterResponse,
+  zPostEmailRegisterSendEmailBody,
+  zPostEmailRegisterSendEmailResponse,
+  zPostEmailRegisterValidityBody,
+  zPostEmailRegisterValidityResponse,
+} from './zod.gen'
 
-export const post = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postEmailRegisterSendEmail',
-  path: '/email-register/send-email',
-  tags: ['console'],
-}).input(z.object({ body: zPostEmailRegisterSendEmailBody })).output(zPostEmailRegisterSendEmailResponse)
+export const post = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postEmailRegisterSendEmail',
+    path: '/email-register/send-email',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostEmailRegisterSendEmailBody }))
+  .output(zPostEmailRegisterSendEmailResponse)
 
 export const sendEmail = {
   post,
 }
 
-export const post2 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postEmailRegisterValidity',
-  path: '/email-register/validity',
-  tags: ['console'],
-}).input(z.object({ body: zPostEmailRegisterValidityBody })).output(zPostEmailRegisterValidityResponse)
+export const post2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postEmailRegisterValidity',
+    path: '/email-register/validity',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostEmailRegisterValidityBody }))
+  .output(zPostEmailRegisterValidityResponse)
 
 export const validity = {
   post: post2,
 }
 
-export const post3 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postEmailRegister',
-  path: '/email-register',
-  tags: ['console'],
-}).input(z.object({ body: zPostEmailRegisterBody })).output(zPostEmailRegisterResponse)
+export const post3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postEmailRegister',
+    path: '/email-register',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostEmailRegisterBody }))
+  .output(zPostEmailRegisterResponse)
 
 export const emailRegister = {
   post: post3,

@@ -8,14 +8,17 @@ import { zPostTestRetrievalBody, zPostTestRetrievalResponse } from './zod.gen'
 /**
  * Bedrock retrieval test (internal use only)
  */
-export const post = oc.route({
-  description: 'Bedrock retrieval test (internal use only)',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postTestRetrieval',
-  path: '/test/retrieval',
-  tags: ['console'],
-}).input(z.object({ body: zPostTestRetrievalBody })).output(zPostTestRetrievalResponse)
+export const post = oc
+  .route({
+    description: 'Bedrock retrieval test (internal use only)',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postTestRetrieval',
+    path: '/test/retrieval',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostTestRetrievalBody }))
+  .output(zPostTestRetrievalResponse)
 
 export const retrieval = {
   post,

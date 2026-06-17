@@ -9,15 +9,17 @@ import { zGetFeaturesResponse, zGetFeaturesVectorSpaceResponse } from './zod.gen
  *
  * Get vector-space usage and limit for current tenant
  */
-export const get = oc.route({
-  description: 'Get vector-space usage and limit for current tenant',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getFeaturesVectorSpace',
-  path: '/features/vector-space',
-  summary: 'Get vector-space usage and limit for current tenant',
-  tags: ['console'],
-}).output(zGetFeaturesVectorSpaceResponse)
+export const get = oc
+  .route({
+    description: 'Get vector-space usage and limit for current tenant',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getFeaturesVectorSpace',
+    path: '/features/vector-space',
+    summary: 'Get vector-space usage and limit for current tenant',
+    tags: ['console'],
+  })
+  .output(zGetFeaturesVectorSpaceResponse)
 
 export const vectorSpace = {
   get,
@@ -28,15 +30,17 @@ export const vectorSpace = {
  *
  * Get feature configuration for current tenant
  */
-export const get2 = oc.route({
-  description: 'Get feature configuration for current tenant',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getFeatures',
-  path: '/features',
-  summary: 'Get feature configuration for current tenant',
-  tags: ['console'],
-}).output(zGetFeaturesResponse)
+export const get2 = oc
+  .route({
+    description: 'Get feature configuration for current tenant',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getFeatures',
+    path: '/features',
+    summary: 'Get feature configuration for current tenant',
+    tags: ['console'],
+  })
+  .output(zGetFeaturesResponse)
 
 export const features = {
   get: get2,

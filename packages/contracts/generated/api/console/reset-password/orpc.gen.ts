@@ -5,13 +5,16 @@ import * as z from 'zod'
 
 import { zPostResetPasswordBody, zPostResetPasswordResponse } from './zod.gen'
 
-export const post = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postResetPassword',
-  path: '/reset-password',
-  tags: ['console'],
-}).input(z.object({ body: zPostResetPasswordBody })).output(zPostResetPasswordResponse)
+export const post = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postResetPassword',
+    path: '/reset-password',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostResetPasswordBody }))
+  .output(zPostResetPasswordResponse)
 
 export const resetPassword = {
   post,

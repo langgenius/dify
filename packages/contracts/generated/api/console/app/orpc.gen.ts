@@ -8,14 +8,17 @@ import { zGetAppPromptTemplatesQuery, zGetAppPromptTemplatesResponse } from './z
 /**
  * Get advanced prompt templates based on app mode and model configuration
  */
-export const get = oc.route({
-  description: 'Get advanced prompt templates based on app mode and model configuration',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getAppPromptTemplates',
-  path: '/app/prompt-templates',
-  tags: ['console'],
-}).input(z.object({ query: zGetAppPromptTemplatesQuery })).output(zGetAppPromptTemplatesResponse)
+export const get = oc
+  .route({
+    description: 'Get advanced prompt templates based on app mode and model configuration',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppPromptTemplates',
+    path: '/app/prompt-templates',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetAppPromptTemplatesQuery }))
+  .output(zGetAppPromptTemplatesResponse)
 
 export const promptTemplates = {
   get,

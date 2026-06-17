@@ -3,19 +3,26 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
-import { zGetNotificationResponse, zPostNotificationDismissBody, zPostNotificationDismissResponse } from './zod.gen'
+import {
+  zGetNotificationResponse,
+  zPostNotificationDismissBody,
+  zPostNotificationDismissResponse,
+} from './zod.gen'
 
 /**
  * Mark a notification as dismissed for the current user.
  */
-export const post = oc.route({
-  description: 'Mark a notification as dismissed for the current user.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postNotificationDismiss',
-  path: '/notification/dismiss',
-  tags: ['console'],
-}).input(z.object({ body: zPostNotificationDismissBody })).output(zPostNotificationDismissResponse)
+export const post = oc
+  .route({
+    description: 'Mark a notification as dismissed for the current user.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postNotificationDismiss',
+    path: '/notification/dismiss',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostNotificationDismissBody }))
+  .output(zPostNotificationDismissResponse)
 
 export const dismiss = {
   post,
@@ -24,14 +31,17 @@ export const dismiss = {
 /**
  * Return the active in-product notification for the current user in their interface language (falls back to English if unavailable). The notification is NOT marked as seen here; call POST /notification/dismiss when the user explicitly closes the modal.
  */
-export const get = oc.route({
-  description: 'Return the active in-product notification for the current user in their interface language (falls back to English if unavailable). The notification is NOT marked as seen here; call POST /notification/dismiss when the user explicitly closes the modal.',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getNotification',
-  path: '/notification',
-  tags: ['console'],
-}).output(zGetNotificationResponse)
+export const get = oc
+  .route({
+    description:
+      'Return the active in-product notification for the current user in their interface language (falls back to English if unavailable). The notification is NOT marked as seen here; call POST /notification/dismiss when the user explicitly closes the modal.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getNotification',
+    path: '/notification',
+    tags: ['console'],
+  })
+  .output(zGetNotificationResponse)
 
 export const notification = {
   get,

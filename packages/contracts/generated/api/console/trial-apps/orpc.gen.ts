@@ -3,63 +3,123 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
-import { zGetTrialAppsByAppIdDatasetsPath, zGetTrialAppsByAppIdDatasetsQuery, zGetTrialAppsByAppIdDatasetsResponse, zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath, zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse, zGetTrialAppsByAppIdParametersPath, zGetTrialAppsByAppIdParametersResponse, zGetTrialAppsByAppIdPath, zGetTrialAppsByAppIdResponse, zGetTrialAppsByAppIdSitePath, zGetTrialAppsByAppIdSiteResponse, zGetTrialAppsByAppIdWorkflowsPath, zGetTrialAppsByAppIdWorkflowsResponse, zPostTrialAppsByAppIdAudioToTextPath, zPostTrialAppsByAppIdAudioToTextResponse, zPostTrialAppsByAppIdChatMessagesBody, zPostTrialAppsByAppIdChatMessagesPath, zPostTrialAppsByAppIdChatMessagesResponse, zPostTrialAppsByAppIdCompletionMessagesBody, zPostTrialAppsByAppIdCompletionMessagesPath, zPostTrialAppsByAppIdCompletionMessagesResponse, zPostTrialAppsByAppIdTextToAudioBody, zPostTrialAppsByAppIdTextToAudioPath, zPostTrialAppsByAppIdTextToAudioResponse, zPostTrialAppsByAppIdWorkflowsRunBody, zPostTrialAppsByAppIdWorkflowsRunPath, zPostTrialAppsByAppIdWorkflowsRunResponse, zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopPath, zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse } from './zod.gen'
+import {
+  zGetTrialAppsByAppIdDatasetsPath,
+  zGetTrialAppsByAppIdDatasetsQuery,
+  zGetTrialAppsByAppIdDatasetsResponse,
+  zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath,
+  zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse,
+  zGetTrialAppsByAppIdParametersPath,
+  zGetTrialAppsByAppIdParametersResponse,
+  zGetTrialAppsByAppIdPath,
+  zGetTrialAppsByAppIdResponse,
+  zGetTrialAppsByAppIdSitePath,
+  zGetTrialAppsByAppIdSiteResponse,
+  zGetTrialAppsByAppIdWorkflowsPath,
+  zGetTrialAppsByAppIdWorkflowsResponse,
+  zPostTrialAppsByAppIdAudioToTextPath,
+  zPostTrialAppsByAppIdAudioToTextResponse,
+  zPostTrialAppsByAppIdChatMessagesBody,
+  zPostTrialAppsByAppIdChatMessagesPath,
+  zPostTrialAppsByAppIdChatMessagesResponse,
+  zPostTrialAppsByAppIdCompletionMessagesBody,
+  zPostTrialAppsByAppIdCompletionMessagesPath,
+  zPostTrialAppsByAppIdCompletionMessagesResponse,
+  zPostTrialAppsByAppIdTextToAudioBody,
+  zPostTrialAppsByAppIdTextToAudioPath,
+  zPostTrialAppsByAppIdTextToAudioResponse,
+  zPostTrialAppsByAppIdWorkflowsRunBody,
+  zPostTrialAppsByAppIdWorkflowsRunPath,
+  zPostTrialAppsByAppIdWorkflowsRunResponse,
+  zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopPath,
+  zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse,
+} from './zod.gen'
 
-export const post = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postTrialAppsByAppIdAudioToText',
-  path: '/trial-apps/{app_id}/audio-to-text',
-  tags: ['console'],
-}).input(z.object({ params: zPostTrialAppsByAppIdAudioToTextPath })).output(zPostTrialAppsByAppIdAudioToTextResponse)
+export const post = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postTrialAppsByAppIdAudioToText',
+    path: '/trial-apps/{app_id}/audio-to-text',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostTrialAppsByAppIdAudioToTextPath }))
+  .output(zPostTrialAppsByAppIdAudioToTextResponse)
 
 export const audioToText = {
   post,
 }
 
-export const post2 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postTrialAppsByAppIdChatMessages',
-  path: '/trial-apps/{app_id}/chat-messages',
-  tags: ['console'],
-}).input(z.object({ body: zPostTrialAppsByAppIdChatMessagesBody, params: zPostTrialAppsByAppIdChatMessagesPath })).output(zPostTrialAppsByAppIdChatMessagesResponse)
+export const post2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postTrialAppsByAppIdChatMessages',
+    path: '/trial-apps/{app_id}/chat-messages',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostTrialAppsByAppIdChatMessagesBody,
+      params: zPostTrialAppsByAppIdChatMessagesPath,
+    }),
+  )
+  .output(zPostTrialAppsByAppIdChatMessagesResponse)
 
 export const chatMessages = {
   post: post2,
 }
 
-export const post3 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postTrialAppsByAppIdCompletionMessages',
-  path: '/trial-apps/{app_id}/completion-messages',
-  tags: ['console'],
-}).input(z.object({ body: zPostTrialAppsByAppIdCompletionMessagesBody, params: zPostTrialAppsByAppIdCompletionMessagesPath })).output(zPostTrialAppsByAppIdCompletionMessagesResponse)
+export const post3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postTrialAppsByAppIdCompletionMessages',
+    path: '/trial-apps/{app_id}/completion-messages',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostTrialAppsByAppIdCompletionMessagesBody,
+      params: zPostTrialAppsByAppIdCompletionMessagesPath,
+    }),
+  )
+  .output(zPostTrialAppsByAppIdCompletionMessagesResponse)
 
 export const completionMessages = {
   post: post3,
 }
 
-export const get = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getTrialAppsByAppIdDatasets',
-  path: '/trial-apps/{app_id}/datasets',
-  tags: ['console'],
-}).input(z.object({ params: zGetTrialAppsByAppIdDatasetsPath, query: zGetTrialAppsByAppIdDatasetsQuery.optional() })).output(zGetTrialAppsByAppIdDatasetsResponse)
+export const get = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdDatasets',
+    path: '/trial-apps/{app_id}/datasets',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetTrialAppsByAppIdDatasetsPath,
+      query: zGetTrialAppsByAppIdDatasetsQuery.optional(),
+    }),
+  )
+  .output(zGetTrialAppsByAppIdDatasetsResponse)
 
 export const datasets = {
   get,
 }
 
-export const get2 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getTrialAppsByAppIdMessagesByMessageIdSuggestedQuestions',
-  path: '/trial-apps/{app_id}/messages/{message_id}/suggested-questions',
-  tags: ['console'],
-}).input(z.object({ params: zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath })).output(zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse)
+export const get2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdMessagesByMessageIdSuggestedQuestions',
+    path: '/trial-apps/{app_id}/messages/{message_id}/suggested-questions',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath }))
+  .output(zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse)
 
 export const suggestedQuestions = {
   get: get2,
@@ -76,14 +136,17 @@ export const messages = {
 /**
  * Retrieve app parameters
  */
-export const get3 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getTrialAppsByAppIdParameters',
-  path: '/trial-apps/{app_id}/parameters',
-  summary: 'Retrieve app parameters',
-  tags: ['console'],
-}).input(z.object({ params: zGetTrialAppsByAppIdParametersPath })).output(zGetTrialAppsByAppIdParametersResponse)
+export const get3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdParameters',
+    path: '/trial-apps/{app_id}/parameters',
+    summary: 'Retrieve app parameters',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetTrialAppsByAppIdParametersPath }))
+  .output(zGetTrialAppsByAppIdParametersResponse)
 
 export const parameters = {
   get: get3,
@@ -94,27 +157,39 @@ export const parameters = {
  *
  * Returns the site configuration for the application including theme, icons, and text.
  */
-export const get4 = oc.route({
-  description: 'Returns the site configuration for the application including theme, icons, and text.',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getTrialAppsByAppIdSite',
-  path: '/trial-apps/{app_id}/site',
-  summary: 'Retrieve app site info',
-  tags: ['console'],
-}).input(z.object({ params: zGetTrialAppsByAppIdSitePath })).output(zGetTrialAppsByAppIdSiteResponse)
+export const get4 = oc
+  .route({
+    description:
+      'Returns the site configuration for the application including theme, icons, and text.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdSite',
+    path: '/trial-apps/{app_id}/site',
+    summary: 'Retrieve app site info',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetTrialAppsByAppIdSitePath }))
+  .output(zGetTrialAppsByAppIdSiteResponse)
 
 export const site = {
   get: get4,
 }
 
-export const post4 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postTrialAppsByAppIdTextToAudio',
-  path: '/trial-apps/{app_id}/text-to-audio',
-  tags: ['console'],
-}).input(z.object({ body: zPostTrialAppsByAppIdTextToAudioBody, params: zPostTrialAppsByAppIdTextToAudioPath })).output(zPostTrialAppsByAppIdTextToAudioResponse)
+export const post4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postTrialAppsByAppIdTextToAudio',
+    path: '/trial-apps/{app_id}/text-to-audio',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostTrialAppsByAppIdTextToAudioBody,
+      params: zPostTrialAppsByAppIdTextToAudioPath,
+    }),
+  )
+  .output(zPostTrialAppsByAppIdTextToAudioResponse)
 
 export const textToAudio = {
   post: post4,
@@ -123,14 +198,22 @@ export const textToAudio = {
 /**
  * Run workflow
  */
-export const post5 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postTrialAppsByAppIdWorkflowsRun',
-  path: '/trial-apps/{app_id}/workflows/run',
-  summary: 'Run workflow',
-  tags: ['console'],
-}).input(z.object({ body: zPostTrialAppsByAppIdWorkflowsRunBody, params: zPostTrialAppsByAppIdWorkflowsRunPath })).output(zPostTrialAppsByAppIdWorkflowsRunResponse)
+export const post5 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postTrialAppsByAppIdWorkflowsRun',
+    path: '/trial-apps/{app_id}/workflows/run',
+    summary: 'Run workflow',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostTrialAppsByAppIdWorkflowsRunBody,
+      params: zPostTrialAppsByAppIdWorkflowsRunPath,
+    }),
+  )
+  .output(zPostTrialAppsByAppIdWorkflowsRunResponse)
 
 export const run = {
   post: post5,
@@ -139,14 +222,17 @@ export const run = {
 /**
  * Stop workflow task
  */
-export const post6 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postTrialAppsByAppIdWorkflowsTasksByTaskIdStop',
-  path: '/trial-apps/{app_id}/workflows/tasks/{task_id}/stop',
-  summary: 'Stop workflow task',
-  tags: ['console'],
-}).input(z.object({ params: zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopPath })).output(zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse)
+export const post6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postTrialAppsByAppIdWorkflowsTasksByTaskIdStop',
+    path: '/trial-apps/{app_id}/workflows/tasks/{task_id}/stop',
+    summary: 'Stop workflow task',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopPath }))
+  .output(zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse)
 
 export const stop = {
   post: post6,
@@ -163,14 +249,17 @@ export const tasks = {
 /**
  * Get workflow detail
  */
-export const get5 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getTrialAppsByAppIdWorkflows',
-  path: '/trial-apps/{app_id}/workflows',
-  summary: 'Get workflow detail',
-  tags: ['console'],
-}).input(z.object({ params: zGetTrialAppsByAppIdWorkflowsPath })).output(zGetTrialAppsByAppIdWorkflowsResponse)
+export const get5 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppIdWorkflows',
+    path: '/trial-apps/{app_id}/workflows',
+    summary: 'Get workflow detail',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetTrialAppsByAppIdWorkflowsPath }))
+  .output(zGetTrialAppsByAppIdWorkflowsResponse)
 
 export const workflows = {
   get: get5,
@@ -181,14 +270,17 @@ export const workflows = {
 /**
  * Get app detail
  */
-export const get6 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getTrialAppsByAppId',
-  path: '/trial-apps/{app_id}',
-  summary: 'Get app detail',
-  tags: ['console'],
-}).input(z.object({ params: zGetTrialAppsByAppIdPath })).output(zGetTrialAppsByAppIdResponse)
+export const get6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialAppsByAppId',
+    path: '/trial-apps/{app_id}',
+    summary: 'Get app detail',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetTrialAppsByAppIdPath }))
+  .output(zGetTrialAppsByAppIdResponse)
 
 export const byAppId = {
   get: get6,

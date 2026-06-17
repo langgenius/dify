@@ -3,15 +3,24 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
-import { zGetBillingInvoicesResponse, zGetBillingSubscriptionQuery, zGetBillingSubscriptionResponse, zPutBillingPartnersByPartnerKeyTenantsBody, zPutBillingPartnersByPartnerKeyTenantsPath, zPutBillingPartnersByPartnerKeyTenantsResponse } from './zod.gen'
+import {
+  zGetBillingInvoicesResponse,
+  zGetBillingSubscriptionQuery,
+  zGetBillingSubscriptionResponse,
+  zPutBillingPartnersByPartnerKeyTenantsBody,
+  zPutBillingPartnersByPartnerKeyTenantsPath,
+  zPutBillingPartnersByPartnerKeyTenantsResponse,
+} from './zod.gen'
 
-export const get = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getBillingInvoices',
-  path: '/billing/invoices',
-  tags: ['console'],
-}).output(zGetBillingInvoicesResponse)
+export const get = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getBillingInvoices',
+    path: '/billing/invoices',
+    tags: ['console'],
+  })
+  .output(zGetBillingInvoicesResponse)
 
 export const invoices = {
   get,
@@ -20,14 +29,22 @@ export const invoices = {
 /**
  * Sync partner tenants bindings
  */
-export const put = oc.route({
-  description: 'Sync partner tenants bindings',
-  inputStructure: 'detailed',
-  method: 'PUT',
-  operationId: 'putBillingPartnersByPartnerKeyTenants',
-  path: '/billing/partners/{partner_key}/tenants',
-  tags: ['console'],
-}).input(z.object({ body: zPutBillingPartnersByPartnerKeyTenantsBody, params: zPutBillingPartnersByPartnerKeyTenantsPath })).output(zPutBillingPartnersByPartnerKeyTenantsResponse)
+export const put = oc
+  .route({
+    description: 'Sync partner tenants bindings',
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putBillingPartnersByPartnerKeyTenants',
+    path: '/billing/partners/{partner_key}/tenants',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPutBillingPartnersByPartnerKeyTenantsBody,
+      params: zPutBillingPartnersByPartnerKeyTenantsPath,
+    }),
+  )
+  .output(zPutBillingPartnersByPartnerKeyTenantsResponse)
 
 export const tenants = {
   put,
@@ -41,13 +58,16 @@ export const partners = {
   byPartnerKey,
 }
 
-export const get2 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getBillingSubscription',
-  path: '/billing/subscription',
-  tags: ['console'],
-}).input(z.object({ query: zGetBillingSubscriptionQuery })).output(zGetBillingSubscriptionResponse)
+export const get2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getBillingSubscription',
+    path: '/billing/subscription',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetBillingSubscriptionQuery }))
+  .output(zGetBillingSubscriptionResponse)
 
 export const subscription = {
   get: get2,

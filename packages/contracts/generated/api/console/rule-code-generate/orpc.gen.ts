@@ -8,14 +8,17 @@ import { zPostRuleCodeGenerateBody, zPostRuleCodeGenerateResponse } from './zod.
 /**
  * Generate code rules using LLM
  */
-export const post = oc.route({
-  description: 'Generate code rules using LLM',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postRuleCodeGenerate',
-  path: '/rule-code-generate',
-  tags: ['console'],
-}).input(z.object({ body: zPostRuleCodeGenerateBody })).output(zPostRuleCodeGenerateResponse)
+export const post = oc
+  .route({
+    description: 'Generate code rules using LLM',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postRuleCodeGenerate',
+    path: '/rule-code-generate',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostRuleCodeGenerateBody }))
+  .output(zPostRuleCodeGenerateResponse)
 
 export const ruleCodeGenerate = {
   post,

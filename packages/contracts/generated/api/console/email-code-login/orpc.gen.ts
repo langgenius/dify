@@ -3,27 +3,38 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
-import { zPostEmailCodeLoginBody, zPostEmailCodeLoginResponse, zPostEmailCodeLoginValidityBody, zPostEmailCodeLoginValidityResponse } from './zod.gen'
+import {
+  zPostEmailCodeLoginBody,
+  zPostEmailCodeLoginResponse,
+  zPostEmailCodeLoginValidityBody,
+  zPostEmailCodeLoginValidityResponse,
+} from './zod.gen'
 
-export const post = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postEmailCodeLoginValidity',
-  path: '/email-code-login/validity',
-  tags: ['console'],
-}).input(z.object({ body: zPostEmailCodeLoginValidityBody })).output(zPostEmailCodeLoginValidityResponse)
+export const post = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postEmailCodeLoginValidity',
+    path: '/email-code-login/validity',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostEmailCodeLoginValidityBody }))
+  .output(zPostEmailCodeLoginValidityResponse)
 
 export const validity = {
   post,
 }
 
-export const post2 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postEmailCodeLogin',
-  path: '/email-code-login',
-  tags: ['console'],
-}).input(z.object({ body: zPostEmailCodeLoginBody })).output(zPostEmailCodeLoginResponse)
+export const post2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postEmailCodeLogin',
+    path: '/email-code-login',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostEmailCodeLoginBody }))
+  .output(zPostEmailCodeLoginResponse)
 
 export const emailCodeLogin = {
   post: post2,

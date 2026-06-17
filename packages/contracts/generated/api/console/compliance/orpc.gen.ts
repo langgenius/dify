@@ -8,14 +8,17 @@ import { zGetComplianceDownloadQuery, zGetComplianceDownloadResponse } from './z
 /**
  * Get compliance document download link
  */
-export const get = oc.route({
-  description: 'Get compliance document download link',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getComplianceDownload',
-  path: '/compliance/download',
-  tags: ['console'],
-}).input(z.object({ query: zGetComplianceDownloadQuery })).output(zGetComplianceDownloadResponse)
+export const get = oc
+  .route({
+    description: 'Get compliance document download link',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getComplianceDownload',
+    path: '/compliance/download',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetComplianceDownloadQuery }))
+  .output(zGetComplianceDownloadResponse)
 
 export const download = {
   get,

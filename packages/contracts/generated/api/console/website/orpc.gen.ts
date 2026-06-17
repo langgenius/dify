@@ -3,19 +3,33 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
-import { zGetWebsiteCrawlStatusByJobIdPath, zGetWebsiteCrawlStatusByJobIdQuery, zGetWebsiteCrawlStatusByJobIdResponse, zPostWebsiteCrawlBody, zPostWebsiteCrawlResponse } from './zod.gen'
+import {
+  zGetWebsiteCrawlStatusByJobIdPath,
+  zGetWebsiteCrawlStatusByJobIdQuery,
+  zGetWebsiteCrawlStatusByJobIdResponse,
+  zPostWebsiteCrawlBody,
+  zPostWebsiteCrawlResponse,
+} from './zod.gen'
 
 /**
  * Get website crawl status
  */
-export const get = oc.route({
-  description: 'Get website crawl status',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getWebsiteCrawlStatusByJobId',
-  path: '/website/crawl/status/{job_id}',
-  tags: ['console'],
-}).input(z.object({ params: zGetWebsiteCrawlStatusByJobIdPath, query: zGetWebsiteCrawlStatusByJobIdQuery })).output(zGetWebsiteCrawlStatusByJobIdResponse)
+export const get = oc
+  .route({
+    description: 'Get website crawl status',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWebsiteCrawlStatusByJobId',
+    path: '/website/crawl/status/{job_id}',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetWebsiteCrawlStatusByJobIdPath,
+      query: zGetWebsiteCrawlStatusByJobIdQuery,
+    }),
+  )
+  .output(zGetWebsiteCrawlStatusByJobIdResponse)
 
 export const byJobId = {
   get,
@@ -28,14 +42,17 @@ export const status = {
 /**
  * Crawl website content
  */
-export const post = oc.route({
-  description: 'Crawl website content',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postWebsiteCrawl',
-  path: '/website/crawl',
-  tags: ['console'],
-}).input(z.object({ body: zPostWebsiteCrawlBody })).output(zPostWebsiteCrawlResponse)
+export const post = oc
+  .route({
+    description: 'Crawl website content',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWebsiteCrawl',
+    path: '/website/crawl',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostWebsiteCrawlBody }))
+  .output(zPostWebsiteCrawlResponse)
 
 export const crawl = {
   post,

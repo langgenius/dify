@@ -55,7 +55,8 @@ export type GetDataSourceIntegratesResponses = {
   200: DataSourceIntegrateListResponse
 }
 
-export type GetDataSourceIntegratesResponse = GetDataSourceIntegratesResponses[keyof GetDataSourceIntegratesResponses]
+export type GetDataSourceIntegratesResponse
+  = GetDataSourceIntegratesResponses[keyof GetDataSourceIntegratesResponses]
 
 export type PatchDataSourceIntegratesData = {
   body?: never
@@ -68,7 +69,8 @@ export type PatchDataSourceIntegratesResponses = {
   200: SimpleResultResponse
 }
 
-export type PatchDataSourceIntegratesResponse = PatchDataSourceIntegratesResponses[keyof PatchDataSourceIntegratesResponses]
+export type PatchDataSourceIntegratesResponse
+  = PatchDataSourceIntegratesResponses[keyof PatchDataSourceIntegratesResponses]
 
 export type GetDataSourceIntegratesByBindingIdByActionData = {
   body?: never
@@ -84,7 +86,8 @@ export type GetDataSourceIntegratesByBindingIdByActionResponses = {
   200: DataSourceIntegrateListResponse
 }
 
-export type GetDataSourceIntegratesByBindingIdByActionResponse = GetDataSourceIntegratesByBindingIdByActionResponses[keyof GetDataSourceIntegratesByBindingIdByActionResponses]
+export type GetDataSourceIntegratesByBindingIdByActionResponse
+  = GetDataSourceIntegratesByBindingIdByActionResponses[keyof GetDataSourceIntegratesByBindingIdByActionResponses]
 
 export type PatchDataSourceIntegratesByBindingIdByActionData = {
   body?: never
@@ -100,4 +103,5 @@ export type PatchDataSourceIntegratesByBindingIdByActionResponses = {
   200: SimpleResultResponse
 }
 
-export type PatchDataSourceIntegratesByBindingIdByActionResponse = PatchDataSourceIntegratesByBindingIdByActionResponses[keyof PatchDataSourceIntegratesByBindingIdByActionResponses]
+export type PatchDataSourceIntegratesByBindingIdByActionResponse
+  = PatchDataSourceIntegratesByBindingIdByActionResponses[keyof PatchDataSourceIntegratesByBindingIdByActionResponses]

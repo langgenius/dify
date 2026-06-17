@@ -8,14 +8,17 @@ import { zPostLoginBody, zPostLoginResponse } from './zod.gen'
 /**
  * Authenticate user and login
  */
-export const post = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postLogin',
-  path: '/login',
-  summary: 'Authenticate user and login',
-  tags: ['console'],
-}).input(z.object({ body: zPostLoginBody })).output(zPostLoginResponse)
+export const post = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postLogin',
+    path: '/login',
+    summary: 'Authenticate user and login',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostLoginBody }))
+  .output(zPostLoginResponse)
 
 export const login = {
   post,

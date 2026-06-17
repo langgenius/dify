@@ -21,4 +21,5 @@ export type GetComplianceDownloadResponses = {
   200: ComplianceDownloadResponse
 }
 
-export type GetComplianceDownloadResponse = GetComplianceDownloadResponses[keyof GetComplianceDownloadResponses]
+export type GetComplianceDownloadResponse
+  = GetComplianceDownloadResponses[keyof GetComplianceDownloadResponses]

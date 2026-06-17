@@ -3,19 +3,27 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
-import { zGetActivateCheckQuery, zGetActivateCheckResponse, zPostActivateBody, zPostActivateResponse } from './zod.gen'
+import {
+  zGetActivateCheckQuery,
+  zGetActivateCheckResponse,
+  zPostActivateBody,
+  zPostActivateResponse,
+} from './zod.gen'
 
 /**
  * Check if activation token is valid
  */
-export const get = oc.route({
-  description: 'Check if activation token is valid',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getActivateCheck',
-  path: '/activate/check',
-  tags: ['console'],
-}).input(z.object({ query: zGetActivateCheckQuery })).output(zGetActivateCheckResponse)
+export const get = oc
+  .route({
+    description: 'Check if activation token is valid',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getActivateCheck',
+    path: '/activate/check',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetActivateCheckQuery }))
+  .output(zGetActivateCheckResponse)
 
 export const check = {
   get,
@@ -24,14 +32,17 @@ export const check = {
 /**
  * Activate account with invitation token
  */
-export const post = oc.route({
-  description: 'Activate account with invitation token',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postActivate',
-  path: '/activate',
-  tags: ['console'],
-}).input(z.object({ body: zPostActivateBody })).output(zPostActivateResponse)
+export const post = oc
+  .route({
+    description: 'Activate account with invitation token',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postActivate',
+    path: '/activate',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostActivateBody }))
+  .output(zPostActivateResponse)
 
 export const activate = {
   post,

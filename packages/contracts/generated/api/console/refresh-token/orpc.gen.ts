@@ -4,13 +4,15 @@ import { oc } from '@orpc/contract'
 
 import { zPostRefreshTokenResponse } from './zod.gen'
 
-export const post = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postRefreshToken',
-  path: '/refresh-token',
-  tags: ['console'],
-}).output(zPostRefreshTokenResponse)
+export const post = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postRefreshToken',
+    path: '/refresh-token',
+    tags: ['console'],
+  })
+  .output(zPostRefreshTokenResponse)
 
 export const refreshToken = {
   post,

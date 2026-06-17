@@ -160,7 +160,10 @@ export const zDevicePollRequest = z.object({
  * ErrorDetail
  */
 export const zErrorDetail = z.object({
-  loc: z.array(z.union([z.string(), z.int()])).optional().default([]),
+  loc: z
+    .array(z.union([z.string(), z.int()]))
+    .optional()
+    .default([]),
   msg: z.string(),
   type: z.string(),
 })
@@ -248,12 +251,7 @@ export const zHumanInputFormDefinitionResponse = z.object({
 /**
  * ImportStatus
  */
-export const zImportStatus = z.enum([
-  'completed',
-  'completed-with-warnings',
-  'failed',
-  'pending',
-])
+export const zImportStatus = z.enum(['completed', 'completed-with-warnings', 'failed', 'pending'])
 
 /**
  * Import
@@ -265,7 +263,6 @@ export const zImport = z.object({
   error: z.string().optional().default(''),
   id: z.string(),
   imported_dsl_version: z.string().optional().default(''),
-  permission_keys: z.array(z.string()).optional(),
   status: zImportStatus,
 })
 
@@ -554,11 +551,7 @@ export const zTaskStopResponse = z.object({
 /**
  * Type
  */
-export const zType = z.enum([
-  'github',
-  'marketplace',
-  'package',
-])
+export const zType = z.enum(['github', 'marketplace', 'package'])
 
 /**
  * PluginDependency
@@ -566,11 +559,7 @@ export const zType = z.enum([
 export const zPluginDependency = z.object({
   current_identifier: z.string().nullish(),
   type: zType,
-  value: z.union([
-    zGithub,
-    zMarketplace,
-    zPackage,
-  ]),
+  value: z.union([zGithub, zMarketplace, zPackage]),
 })
 
 /**
@@ -720,16 +709,18 @@ export const zDeleteAccountSessionsBySessionIdResponse = zRevokeResponse
 
 export const zGetAppsQuery = z.object({
   limit: z.int().gte(1).lte(200).optional().default(20),
-  mode: z.enum([
-    'advanced-chat',
-    'agent',
-    'agent-chat',
-    'channel',
-    'chat',
-    'completion',
-    'rag-pipeline',
-    'workflow',
-  ]).optional(),
+  mode: z
+    .enum([
+      'advanced-chat',
+      'agent',
+      'agent-chat',
+      'channel',
+      'chat',
+      'completion',
+      'rag-pipeline',
+      'workflow',
+    ])
+    .optional(),
   name: z.string().max(200).optional(),
   page: z.int().gte(1).optional().default(1),
   tag: z.string().max(100).optional(),
@@ -883,16 +874,18 @@ export const zPostOauthDeviceTokenResponse = zDeviceTokenResponse
 
 export const zGetPermittedExternalAppsQuery = z.object({
   limit: z.int().gte(1).lte(200).optional().default(20),
-  mode: z.enum([
-    'advanced-chat',
-    'agent',
-    'agent-chat',
-    'channel',
-    'chat',
-    'completion',
-    'rag-pipeline',
-    'workflow',
-  ]).optional(),
+  mode: z
+    .enum([
+      'advanced-chat',
+      'agent',
+      'agent-chat',
+      'channel',
+      'chat',
+      'completion',
+      'rag-pipeline',
+      'workflow',
+    ])
+    .optional(),
   name: z.string().max(200).optional(),
   page: z.int().gte(1).optional().default(1),
 })

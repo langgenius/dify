@@ -3,19 +3,27 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
-import { zPostInstructionGenerateBody, zPostInstructionGenerateResponse, zPostInstructionGenerateTemplateBody, zPostInstructionGenerateTemplateResponse } from './zod.gen'
+import {
+  zPostInstructionGenerateBody,
+  zPostInstructionGenerateResponse,
+  zPostInstructionGenerateTemplateBody,
+  zPostInstructionGenerateTemplateResponse,
+} from './zod.gen'
 
 /**
  * Get instruction generation template
  */
-export const post = oc.route({
-  description: 'Get instruction generation template',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postInstructionGenerateTemplate',
-  path: '/instruction-generate/template',
-  tags: ['console'],
-}).input(z.object({ body: zPostInstructionGenerateTemplateBody })).output(zPostInstructionGenerateTemplateResponse)
+export const post = oc
+  .route({
+    description: 'Get instruction generation template',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postInstructionGenerateTemplate',
+    path: '/instruction-generate/template',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostInstructionGenerateTemplateBody }))
+  .output(zPostInstructionGenerateTemplateResponse)
 
 export const template = {
   post,
@@ -24,14 +32,17 @@ export const template = {
 /**
  * Generate instruction for workflow nodes or general use
  */
-export const post2 = oc.route({
-  description: 'Generate instruction for workflow nodes or general use',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postInstructionGenerate',
-  path: '/instruction-generate',
-  tags: ['console'],
-}).input(z.object({ body: zPostInstructionGenerateBody })).output(zPostInstructionGenerateResponse)
+export const post2 = oc
+  .route({
+    description: 'Generate instruction for workflow nodes or general use',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postInstructionGenerate',
+    path: '/instruction-generate',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostInstructionGenerateBody }))
+  .output(zPostInstructionGenerateResponse)
 
 export const instructionGenerate = {
   post: post2,

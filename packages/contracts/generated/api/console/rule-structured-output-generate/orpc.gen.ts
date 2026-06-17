@@ -3,19 +3,25 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
-import { zPostRuleStructuredOutputGenerateBody, zPostRuleStructuredOutputGenerateResponse } from './zod.gen'
+import {
+  zPostRuleStructuredOutputGenerateBody,
+  zPostRuleStructuredOutputGenerateResponse,
+} from './zod.gen'
 
 /**
  * Generate structured output rules using LLM
  */
-export const post = oc.route({
-  description: 'Generate structured output rules using LLM',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postRuleStructuredOutputGenerate',
-  path: '/rule-structured-output-generate',
-  tags: ['console'],
-}).input(z.object({ body: zPostRuleStructuredOutputGenerateBody })).output(zPostRuleStructuredOutputGenerateResponse)
+export const post = oc
+  .route({
+    description: 'Generate structured output rules using LLM',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postRuleStructuredOutputGenerate',
+    path: '/rule-structured-output-generate',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostRuleStructuredOutputGenerateBody }))
+  .output(zPostRuleStructuredOutputGenerateResponse)
 
 export const ruleStructuredOutputGenerate = {
   post,

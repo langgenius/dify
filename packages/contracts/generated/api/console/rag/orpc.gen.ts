@@ -3,33 +3,176 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
-import { zDeleteRagPipelineCustomizedTemplatesByTemplateIdPath, zDeleteRagPipelineCustomizedTemplatesByTemplateIdResponse, zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath, zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse, zDeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesPath, zDeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse, zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath, zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse, zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesPath, zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse, zGetRagPipelinesByPipelineIdExportsPath, zGetRagPipelinesByPipelineIdExportsQuery, zGetRagPipelinesByPipelineIdExportsResponse, zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsPath, zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsResponse, zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdPath, zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdResponse, zGetRagPipelinesByPipelineIdWorkflowRunsPath, zGetRagPipelinesByPipelineIdWorkflowRunsQuery, zGetRagPipelinesByPipelineIdWorkflowRunsResponse, zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypePath, zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeQuery, zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponse, zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsPath, zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsResponse, zGetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesPath, zGetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesResponse, zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunPath, zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunResponse, zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesPath, zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse, zGetRagPipelinesByPipelineIdWorkflowsDraftPath, zGetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersPath, zGetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersQuery, zGetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersResponse, zGetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersPath, zGetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersQuery, zGetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponse, zGetRagPipelinesByPipelineIdWorkflowsDraftResponse, zGetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesPath, zGetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponse, zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath, zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse, zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesPath, zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesQuery, zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse, zGetRagPipelinesByPipelineIdWorkflowsPath, zGetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersPath, zGetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersQuery, zGetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersResponse, zGetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersPath, zGetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersQuery, zGetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersResponse, zGetRagPipelinesByPipelineIdWorkflowsPublishPath, zGetRagPipelinesByPipelineIdWorkflowsPublishResponse, zGetRagPipelinesByPipelineIdWorkflowsQuery, zGetRagPipelinesByPipelineIdWorkflowsResponse, zGetRagPipelinesDatasourcePluginsResponse, zGetRagPipelinesImportsByPipelineIdCheckDependenciesPath, zGetRagPipelinesImportsByPipelineIdCheckDependenciesResponse, zGetRagPipelinesRecommendedPluginsQuery, zGetRagPipelinesRecommendedPluginsResponse, zGetRagPipelineTemplatesByTemplateIdPath, zGetRagPipelineTemplatesByTemplateIdQuery, zGetRagPipelineTemplatesByTemplateIdResponse, zGetRagPipelineTemplatesQuery, zGetRagPipelineTemplatesResponse, zPatchRagPipelineCustomizedTemplatesByTemplateIdBody, zPatchRagPipelineCustomizedTemplatesByTemplateIdPath, zPatchRagPipelineCustomizedTemplatesByTemplateIdResponse, zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdBody, zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath, zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse, zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdBody, zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath, zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse, zPostRagPipelineCustomizedTemplatesByTemplateIdPath, zPostRagPipelineCustomizedTemplatesByTemplateIdResponse, zPostRagPipelineDatasetBody, zPostRagPipelineDatasetResponse, zPostRagPipelineEmptyDatasetResponse, zPostRagPipelinesByPipelineIdCustomizedPublishBody, zPostRagPipelinesByPipelineIdCustomizedPublishPath, zPostRagPipelinesByPipelineIdCustomizedPublishResponse, zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopPath, zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponse, zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestorePath, zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse, zPostRagPipelinesByPipelineIdWorkflowsDraftBody, zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunBody, zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunPath, zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunResponse, zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectBody, zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectPath, zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectResponse, zPostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunBody, zPostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunPath, zPostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunResponse, zPostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunBody, zPostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunPath, zPostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunResponse, zPostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunBody, zPostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunPath, zPostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunResponse, zPostRagPipelinesByPipelineIdWorkflowsDraftPath, zPostRagPipelinesByPipelineIdWorkflowsDraftResponse, zPostRagPipelinesByPipelineIdWorkflowsDraftRunBody, zPostRagPipelinesByPipelineIdWorkflowsDraftRunPath, zPostRagPipelinesByPipelineIdWorkflowsDraftRunResponse, zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewBody, zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewPath, zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse, zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunBody, zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunPath, zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunResponse, zPostRagPipelinesByPipelineIdWorkflowsPublishedRunBody, zPostRagPipelinesByPipelineIdWorkflowsPublishedRunPath, zPostRagPipelinesByPipelineIdWorkflowsPublishedRunResponse, zPostRagPipelinesByPipelineIdWorkflowsPublishPath, zPostRagPipelinesByPipelineIdWorkflowsPublishResponse, zPostRagPipelinesImportsBody, zPostRagPipelinesImportsByImportIdConfirmPath, zPostRagPipelinesImportsByImportIdConfirmResponse, zPostRagPipelinesImportsResponse, zPostRagPipelinesTransformDatasetsByDatasetIdPath, zPostRagPipelinesTransformDatasetsByDatasetIdResponse, zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetPath, zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetResponse } from './zod.gen'
+import {
+  zDeleteRagPipelineCustomizedTemplatesByTemplateIdPath,
+  zDeleteRagPipelineCustomizedTemplatesByTemplateIdResponse,
+  zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath,
+  zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse,
+  zDeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesPath,
+  zDeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse,
+  zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath,
+  zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse,
+  zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesPath,
+  zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse,
+  zGetRagPipelinesByPipelineIdExportsPath,
+  zGetRagPipelinesByPipelineIdExportsQuery,
+  zGetRagPipelinesByPipelineIdExportsResponse,
+  zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsPath,
+  zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsResponse,
+  zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdPath,
+  zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdResponse,
+  zGetRagPipelinesByPipelineIdWorkflowRunsPath,
+  zGetRagPipelinesByPipelineIdWorkflowRunsQuery,
+  zGetRagPipelinesByPipelineIdWorkflowRunsResponse,
+  zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypePath,
+  zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeQuery,
+  zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponse,
+  zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsPath,
+  zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsResponse,
+  zGetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesPath,
+  zGetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesResponse,
+  zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunPath,
+  zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunResponse,
+  zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesPath,
+  zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse,
+  zGetRagPipelinesByPipelineIdWorkflowsDraftPath,
+  zGetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersPath,
+  zGetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersQuery,
+  zGetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersResponse,
+  zGetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersPath,
+  zGetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersQuery,
+  zGetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponse,
+  zGetRagPipelinesByPipelineIdWorkflowsDraftResponse,
+  zGetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesPath,
+  zGetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponse,
+  zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath,
+  zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse,
+  zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesPath,
+  zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesQuery,
+  zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse,
+  zGetRagPipelinesByPipelineIdWorkflowsPath,
+  zGetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersPath,
+  zGetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersQuery,
+  zGetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersResponse,
+  zGetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersPath,
+  zGetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersQuery,
+  zGetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersResponse,
+  zGetRagPipelinesByPipelineIdWorkflowsPublishPath,
+  zGetRagPipelinesByPipelineIdWorkflowsPublishResponse,
+  zGetRagPipelinesByPipelineIdWorkflowsQuery,
+  zGetRagPipelinesByPipelineIdWorkflowsResponse,
+  zGetRagPipelinesDatasourcePluginsResponse,
+  zGetRagPipelinesImportsByPipelineIdCheckDependenciesPath,
+  zGetRagPipelinesImportsByPipelineIdCheckDependenciesResponse,
+  zGetRagPipelinesRecommendedPluginsQuery,
+  zGetRagPipelinesRecommendedPluginsResponse,
+  zGetRagPipelineTemplatesByTemplateIdPath,
+  zGetRagPipelineTemplatesByTemplateIdQuery,
+  zGetRagPipelineTemplatesByTemplateIdResponse,
+  zGetRagPipelineTemplatesQuery,
+  zGetRagPipelineTemplatesResponse,
+  zPatchRagPipelineCustomizedTemplatesByTemplateIdBody,
+  zPatchRagPipelineCustomizedTemplatesByTemplateIdPath,
+  zPatchRagPipelineCustomizedTemplatesByTemplateIdResponse,
+  zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdBody,
+  zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath,
+  zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse,
+  zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdBody,
+  zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath,
+  zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse,
+  zPostRagPipelineCustomizedTemplatesByTemplateIdPath,
+  zPostRagPipelineCustomizedTemplatesByTemplateIdResponse,
+  zPostRagPipelineDatasetBody,
+  zPostRagPipelineDatasetResponse,
+  zPostRagPipelineEmptyDatasetResponse,
+  zPostRagPipelinesByPipelineIdCustomizedPublishBody,
+  zPostRagPipelinesByPipelineIdCustomizedPublishPath,
+  zPostRagPipelinesByPipelineIdCustomizedPublishResponse,
+  zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopPath,
+  zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponse,
+  zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestorePath,
+  zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse,
+  zPostRagPipelinesByPipelineIdWorkflowsDraftBody,
+  zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunBody,
+  zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunPath,
+  zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunResponse,
+  zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectBody,
+  zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectPath,
+  zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectResponse,
+  zPostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunBody,
+  zPostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunPath,
+  zPostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunResponse,
+  zPostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunBody,
+  zPostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunPath,
+  zPostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunResponse,
+  zPostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunBody,
+  zPostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunPath,
+  zPostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunResponse,
+  zPostRagPipelinesByPipelineIdWorkflowsDraftPath,
+  zPostRagPipelinesByPipelineIdWorkflowsDraftResponse,
+  zPostRagPipelinesByPipelineIdWorkflowsDraftRunBody,
+  zPostRagPipelinesByPipelineIdWorkflowsDraftRunPath,
+  zPostRagPipelinesByPipelineIdWorkflowsDraftRunResponse,
+  zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewBody,
+  zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewPath,
+  zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse,
+  zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunBody,
+  zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunPath,
+  zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunResponse,
+  zPostRagPipelinesByPipelineIdWorkflowsPublishedRunBody,
+  zPostRagPipelinesByPipelineIdWorkflowsPublishedRunPath,
+  zPostRagPipelinesByPipelineIdWorkflowsPublishedRunResponse,
+  zPostRagPipelinesByPipelineIdWorkflowsPublishPath,
+  zPostRagPipelinesByPipelineIdWorkflowsPublishResponse,
+  zPostRagPipelinesImportsBody,
+  zPostRagPipelinesImportsByImportIdConfirmPath,
+  zPostRagPipelinesImportsByImportIdConfirmResponse,
+  zPostRagPipelinesImportsResponse,
+  zPostRagPipelinesTransformDatasetsByDatasetIdPath,
+  zPostRagPipelinesTransformDatasetsByDatasetIdResponse,
+  zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetPath,
+  zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetResponse,
+} from './zod.gen'
 
-export const delete_ = oc.route({
-  inputStructure: 'detailed',
-  method: 'DELETE',
-  operationId: 'deleteRagPipelineCustomizedTemplatesByTemplateId',
-  path: '/rag/pipeline/customized/templates/{template_id}',
-  successStatus: 204,
-  tags: ['console'],
-}).input(z.object({ params: zDeleteRagPipelineCustomizedTemplatesByTemplateIdPath })).output(zDeleteRagPipelineCustomizedTemplatesByTemplateIdResponse)
+export const delete_ = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteRagPipelineCustomizedTemplatesByTemplateId',
+    path: '/rag/pipeline/customized/templates/{template_id}',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteRagPipelineCustomizedTemplatesByTemplateIdPath }))
+  .output(zDeleteRagPipelineCustomizedTemplatesByTemplateIdResponse)
 
-export const patch = oc.route({
-  inputStructure: 'detailed',
-  method: 'PATCH',
-  operationId: 'patchRagPipelineCustomizedTemplatesByTemplateId',
-  path: '/rag/pipeline/customized/templates/{template_id}',
-  successStatus: 204,
-  tags: ['console'],
-}).input(z.object({ body: zPatchRagPipelineCustomizedTemplatesByTemplateIdBody, params: zPatchRagPipelineCustomizedTemplatesByTemplateIdPath })).output(zPatchRagPipelineCustomizedTemplatesByTemplateIdResponse)
+export const patch = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchRagPipelineCustomizedTemplatesByTemplateId',
+    path: '/rag/pipeline/customized/templates/{template_id}',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPatchRagPipelineCustomizedTemplatesByTemplateIdBody,
+      params: zPatchRagPipelineCustomizedTemplatesByTemplateIdPath,
+    }),
+  )
+  .output(zPatchRagPipelineCustomizedTemplatesByTemplateIdResponse)
 
-export const post = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postRagPipelineCustomizedTemplatesByTemplateId',
-  path: '/rag/pipeline/customized/templates/{template_id}',
-  tags: ['console'],
-}).input(z.object({ params: zPostRagPipelineCustomizedTemplatesByTemplateIdPath })).output(zPostRagPipelineCustomizedTemplatesByTemplateIdResponse)
+export const post = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postRagPipelineCustomizedTemplatesByTemplateId',
+    path: '/rag/pipeline/customized/templates/{template_id}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostRagPipelineCustomizedTemplatesByTemplateIdPath }))
+  .output(zPostRagPipelineCustomizedTemplatesByTemplateIdResponse)
 
 export const byTemplateId = {
   delete: delete_,
@@ -45,51 +188,67 @@ export const customized = {
   templates,
 }
 
-export const post2 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postRagPipelineDataset',
-  path: '/rag/pipeline/dataset',
-  successStatus: 201,
-  tags: ['console'],
-}).input(z.object({ body: zPostRagPipelineDatasetBody })).output(zPostRagPipelineDatasetResponse)
+export const post2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postRagPipelineDataset',
+    path: '/rag/pipeline/dataset',
+    successStatus: 201,
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostRagPipelineDatasetBody }))
+  .output(zPostRagPipelineDatasetResponse)
 
 export const dataset = {
   post: post2,
 }
 
-export const post3 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postRagPipelineEmptyDataset',
-  path: '/rag/pipeline/empty-dataset',
-  successStatus: 201,
-  tags: ['console'],
-}).output(zPostRagPipelineEmptyDatasetResponse)
+export const post3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postRagPipelineEmptyDataset',
+    path: '/rag/pipeline/empty-dataset',
+    successStatus: 201,
+    tags: ['console'],
+  })
+  .output(zPostRagPipelineEmptyDatasetResponse)
 
 export const emptyDataset = {
   post: post3,
 }
 
-export const get = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRagPipelineTemplatesByTemplateId',
-  path: '/rag/pipeline/templates/{template_id}',
-  tags: ['console'],
-}).input(z.object({ params: zGetRagPipelineTemplatesByTemplateIdPath, query: zGetRagPipelineTemplatesByTemplateIdQuery.optional() })).output(zGetRagPipelineTemplatesByTemplateIdResponse)
+export const get = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRagPipelineTemplatesByTemplateId',
+    path: '/rag/pipeline/templates/{template_id}',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetRagPipelineTemplatesByTemplateIdPath,
+      query: zGetRagPipelineTemplatesByTemplateIdQuery.optional(),
+    }),
+  )
+  .output(zGetRagPipelineTemplatesByTemplateIdResponse)
 
 export const byTemplateId2 = {
   get,
 }
 
-export const get2 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRagPipelineTemplates',
-  path: '/rag/pipeline/templates',
-  tags: ['console'],
-}).input(z.object({ query: zGetRagPipelineTemplatesQuery.optional() })).output(zGetRagPipelineTemplatesResponse)
+export const get2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRagPipelineTemplates',
+    path: '/rag/pipeline/templates',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetRagPipelineTemplatesQuery.optional() }))
+  .output(zGetRagPipelineTemplatesResponse)
 
 export const templates2 = {
   get: get2,
@@ -103,25 +262,30 @@ export const pipeline = {
   templates: templates2,
 }
 
-export const get3 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRagPipelinesDatasourcePlugins',
-  path: '/rag/pipelines/datasource-plugins',
-  tags: ['console'],
-}).output(zGetRagPipelinesDatasourcePluginsResponse)
+export const get3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRagPipelinesDatasourcePlugins',
+    path: '/rag/pipelines/datasource-plugins',
+    tags: ['console'],
+  })
+  .output(zGetRagPipelinesDatasourcePluginsResponse)
 
 export const datasourcePlugins = {
   get: get3,
 }
 
-export const post4 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postRagPipelinesImportsByImportIdConfirm',
-  path: '/rag/pipelines/imports/{import_id}/confirm',
-  tags: ['console'],
-}).input(z.object({ params: zPostRagPipelinesImportsByImportIdConfirmPath })).output(zPostRagPipelinesImportsByImportIdConfirmResponse)
+export const post4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postRagPipelinesImportsByImportIdConfirm',
+    path: '/rag/pipelines/imports/{import_id}/confirm',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostRagPipelinesImportsByImportIdConfirmPath }))
+  .output(zPostRagPipelinesImportsByImportIdConfirmResponse)
 
 export const confirm = {
   post: post4,
@@ -131,13 +295,16 @@ export const byImportId = {
   confirm,
 }
 
-export const get4 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRagPipelinesImportsByPipelineIdCheckDependencies',
-  path: '/rag/pipelines/imports/{pipeline_id}/check-dependencies',
-  tags: ['console'],
-}).input(z.object({ params: zGetRagPipelinesImportsByPipelineIdCheckDependenciesPath })).output(zGetRagPipelinesImportsByPipelineIdCheckDependenciesResponse)
+export const get4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRagPipelinesImportsByPipelineIdCheckDependencies',
+    path: '/rag/pipelines/imports/{pipeline_id}/check-dependencies',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetRagPipelinesImportsByPipelineIdCheckDependenciesPath }))
+  .output(zGetRagPipelinesImportsByPipelineIdCheckDependenciesResponse)
 
 export const checkDependencies = {
   get: get4,
@@ -147,13 +314,16 @@ export const byPipelineId = {
   checkDependencies,
 }
 
-export const post5 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postRagPipelinesImports',
-  path: '/rag/pipelines/imports',
-  tags: ['console'],
-}).input(z.object({ body: zPostRagPipelinesImportsBody })).output(zPostRagPipelinesImportsResponse)
+export const post5 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postRagPipelinesImports',
+    path: '/rag/pipelines/imports',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostRagPipelinesImportsBody }))
+  .output(zPostRagPipelinesImportsResponse)
 
 export const imports = {
   post: post5,
@@ -161,25 +331,31 @@ export const imports = {
   byPipelineId,
 }
 
-export const get5 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRagPipelinesRecommendedPlugins',
-  path: '/rag/pipelines/recommended-plugins',
-  tags: ['console'],
-}).input(z.object({ query: zGetRagPipelinesRecommendedPluginsQuery.optional() })).output(zGetRagPipelinesRecommendedPluginsResponse)
+export const get5 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRagPipelinesRecommendedPlugins',
+    path: '/rag/pipelines/recommended-plugins',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetRagPipelinesRecommendedPluginsQuery.optional() }))
+  .output(zGetRagPipelinesRecommendedPluginsResponse)
 
 export const recommendedPlugins = {
   get: get5,
 }
 
-export const post6 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postRagPipelinesTransformDatasetsByDatasetId',
-  path: '/rag/pipelines/transform/datasets/{dataset_id}',
-  tags: ['console'],
-}).input(z.object({ params: zPostRagPipelinesTransformDatasetsByDatasetIdPath })).output(zPostRagPipelinesTransformDatasetsByDatasetIdResponse)
+export const post6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postRagPipelinesTransformDatasetsByDatasetId',
+    path: '/rag/pipelines/transform/datasets/{dataset_id}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostRagPipelinesTransformDatasetsByDatasetIdPath }))
+  .output(zPostRagPipelinesTransformDatasetsByDatasetIdResponse)
 
 export const byDatasetId = {
   post: post6,
@@ -193,14 +369,22 @@ export const transform = {
   datasets,
 }
 
-export const post7 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postRagPipelinesByPipelineIdCustomizedPublish',
-  path: '/rag/pipelines/{pipeline_id}/customized/publish',
-  successStatus: 204,
-  tags: ['console'],
-}).input(z.object({ body: zPostRagPipelinesByPipelineIdCustomizedPublishBody, params: zPostRagPipelinesByPipelineIdCustomizedPublishPath })).output(zPostRagPipelinesByPipelineIdCustomizedPublishResponse)
+export const post7 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postRagPipelinesByPipelineIdCustomizedPublish',
+    path: '/rag/pipelines/{pipeline_id}/customized/publish',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostRagPipelinesByPipelineIdCustomizedPublishBody,
+      params: zPostRagPipelinesByPipelineIdCustomizedPublishPath,
+    }),
+  )
+  .output(zPostRagPipelinesByPipelineIdCustomizedPublishResponse)
 
 export const publish = {
   post: post7,
@@ -210,13 +394,21 @@ export const customized2 = {
   publish,
 }
 
-export const get6 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRagPipelinesByPipelineIdExports',
-  path: '/rag/pipelines/{pipeline_id}/exports',
-  tags: ['console'],
-}).input(z.object({ params: zGetRagPipelinesByPipelineIdExportsPath, query: zGetRagPipelinesByPipelineIdExportsQuery.optional() })).output(zGetRagPipelinesByPipelineIdExportsResponse)
+export const get6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRagPipelinesByPipelineIdExports',
+    path: '/rag/pipelines/{pipeline_id}/exports',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetRagPipelinesByPipelineIdExportsPath,
+      query: zGetRagPipelinesByPipelineIdExportsQuery.optional(),
+    }),
+  )
+  .output(zGetRagPipelinesByPipelineIdExportsResponse)
 
 export const exports_ = {
   get: get6,
@@ -225,14 +417,17 @@ export const exports_ = {
 /**
  * Stop workflow task
  */
-export const post8 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStop',
-  path: '/rag/pipelines/{pipeline_id}/workflow-runs/tasks/{task_id}/stop',
-  summary: 'Stop workflow task',
-  tags: ['console'],
-}).input(z.object({ params: zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopPath })).output(zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponse)
+export const post8 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStop',
+    path: '/rag/pipelines/{pipeline_id}/workflow-runs/tasks/{task_id}/stop',
+    summary: 'Stop workflow task',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopPath }))
+  .output(zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponse)
 
 export const stop = {
   post: post8,
@@ -249,14 +444,17 @@ export const tasks = {
 /**
  * Get workflow run node execution list
  */
-export const get7 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutions',
-  path: '/rag/pipelines/{pipeline_id}/workflow-runs/{run_id}/node-executions',
-  summary: 'Get workflow run node execution list',
-  tags: ['console'],
-}).input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsPath })).output(zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsResponse)
+export const get7 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutions',
+    path: '/rag/pipelines/{pipeline_id}/workflow-runs/{run_id}/node-executions',
+    summary: 'Get workflow run node execution list',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsPath }))
+  .output(zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsResponse)
 
 export const nodeExecutions = {
   get: get7,
@@ -265,14 +463,17 @@ export const nodeExecutions = {
 /**
  * Get workflow run detail
  */
-export const get8 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRagPipelinesByPipelineIdWorkflowRunsByRunId',
-  path: '/rag/pipelines/{pipeline_id}/workflow-runs/{run_id}',
-  summary: 'Get workflow run detail',
-  tags: ['console'],
-}).input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdPath })).output(zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdResponse)
+export const get8 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRagPipelinesByPipelineIdWorkflowRunsByRunId',
+    path: '/rag/pipelines/{pipeline_id}/workflow-runs/{run_id}',
+    summary: 'Get workflow run detail',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdPath }))
+  .output(zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdResponse)
 
 export const byRunId = {
   get: get8,
@@ -282,14 +483,22 @@ export const byRunId = {
 /**
  * Get workflow run list
  */
-export const get9 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRagPipelinesByPipelineIdWorkflowRuns',
-  path: '/rag/pipelines/{pipeline_id}/workflow-runs',
-  summary: 'Get workflow run list',
-  tags: ['console'],
-}).input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowRunsPath, query: zGetRagPipelinesByPipelineIdWorkflowRunsQuery.optional() })).output(zGetRagPipelinesByPipelineIdWorkflowRunsResponse)
+export const get9 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRagPipelinesByPipelineIdWorkflowRuns',
+    path: '/rag/pipelines/{pipeline_id}/workflow-runs',
+    summary: 'Get workflow run list',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetRagPipelinesByPipelineIdWorkflowRunsPath,
+      query: zGetRagPipelinesByPipelineIdWorkflowRunsQuery.optional(),
+    }),
+  )
+  .output(zGetRagPipelinesByPipelineIdWorkflowRunsResponse)
 
 export const workflowRuns = {
   get: get9,
@@ -300,14 +509,23 @@ export const workflowRuns = {
 /**
  * Get default block config
  */
-export const get10 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockType',
-  path: '/rag/pipelines/{pipeline_id}/workflows/default-workflow-block-configs/{block_type}',
-  summary: 'Get default block config',
-  tags: ['console'],
-}).input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypePath, query: zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeQuery.optional() })).output(zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponse)
+export const get10 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockType',
+    path: '/rag/pipelines/{pipeline_id}/workflows/default-workflow-block-configs/{block_type}',
+    summary: 'Get default block config',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypePath,
+      query:
+        zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeQuery.optional(),
+    }),
+  )
+  .output(zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponse)
 
 export const byBlockType = {
   get: get10,
@@ -316,14 +534,17 @@ export const byBlockType = {
 /**
  * Get default block config
  */
-export const get11 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigs',
-  path: '/rag/pipelines/{pipeline_id}/workflows/default-workflow-block-configs',
-  summary: 'Get default block config',
-  tags: ['console'],
-}).input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsPath })).output(zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsResponse)
+export const get11 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigs',
+    path: '/rag/pipelines/{pipeline_id}/workflows/default-workflow-block-configs',
+    summary: 'Get default block config',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsPath }))
+  .output(zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsResponse)
 
 export const defaultWorkflowBlockConfigs = {
   get: get11,
@@ -333,14 +554,22 @@ export const defaultWorkflowBlockConfigs = {
 /**
  * Run rag pipeline datasource
  */
-export const post9 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRun',
-  path: '/rag/pipelines/{pipeline_id}/workflows/draft/datasource/nodes/{node_id}/run',
-  summary: 'Run rag pipeline datasource',
-  tags: ['console'],
-}).input(z.object({ body: zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunBody, params: zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunPath })).output(zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunResponse)
+export const post9 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRun',
+    path: '/rag/pipelines/{pipeline_id}/workflows/draft/datasource/nodes/{node_id}/run',
+    summary: 'Run rag pipeline datasource',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunBody,
+      params: zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunPath,
+    }),
+  )
+  .output(zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunResponse)
 
 export const run = {
   post: post9,
@@ -357,14 +586,22 @@ export const nodes = {
 /**
  * Set datasource variables
  */
-export const post10 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspect',
-  path: '/rag/pipelines/{pipeline_id}/workflows/draft/datasource/variables-inspect',
-  summary: 'Set datasource variables',
-  tags: ['console'],
-}).input(z.object({ body: zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectBody, params: zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectPath })).output(zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectResponse)
+export const post10 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspect',
+    path: '/rag/pipelines/{pipeline_id}/workflows/draft/datasource/variables-inspect',
+    summary: 'Set datasource variables',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectBody,
+      params: zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectPath,
+    }),
+  )
+  .output(zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectResponse)
 
 export const variablesInspect = {
   post: post10,
@@ -378,14 +615,17 @@ export const datasource = {
 /**
  * Get draft workflow
  */
-export const get12 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariables',
-  path: '/rag/pipelines/{pipeline_id}/workflows/draft/environment-variables',
-  summary: 'Get draft workflow',
-  tags: ['console'],
-}).input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesPath })).output(zGetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesResponse)
+export const get12 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariables',
+    path: '/rag/pipelines/{pipeline_id}/workflows/draft/environment-variables',
+    summary: 'Get draft workflow',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesPath }))
+  .output(zGetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesResponse)
 
 export const environmentVariables = {
   get: get12,
@@ -394,14 +634,22 @@ export const environmentVariables = {
 /**
  * Run draft workflow iteration node
  */
-export const post11 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRun',
-  path: '/rag/pipelines/{pipeline_id}/workflows/draft/iteration/nodes/{node_id}/run',
-  summary: 'Run draft workflow iteration node',
-  tags: ['console'],
-}).input(z.object({ body: zPostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunBody, params: zPostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunPath })).output(zPostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunResponse)
+export const post11 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRun',
+    path: '/rag/pipelines/{pipeline_id}/workflows/draft/iteration/nodes/{node_id}/run',
+    summary: 'Run draft workflow iteration node',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunBody,
+      params: zPostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunPath,
+    }),
+  )
+  .output(zPostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunResponse)
 
 export const run2 = {
   post: post11,
@@ -422,14 +670,22 @@ export const iteration = {
 /**
  * Run draft workflow loop node
  */
-export const post12 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRun',
-  path: '/rag/pipelines/{pipeline_id}/workflows/draft/loop/nodes/{node_id}/run',
-  summary: 'Run draft workflow loop node',
-  tags: ['console'],
-}).input(z.object({ body: zPostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunBody, params: zPostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunPath })).output(zPostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunResponse)
+export const post12 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRun',
+    path: '/rag/pipelines/{pipeline_id}/workflows/draft/loop/nodes/{node_id}/run',
+    summary: 'Run draft workflow loop node',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunBody,
+      params: zPostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunPath,
+    }),
+  )
+  .output(zPostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunResponse)
 
 export const run3 = {
   post: post12,
@@ -447,13 +703,16 @@ export const loop = {
   nodes: nodes3,
 }
 
-export const get13 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRun',
-  path: '/rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/last-run',
-  tags: ['console'],
-}).input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunPath })).output(zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunResponse)
+export const get13 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRun',
+    path: '/rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/last-run',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunPath }))
+  .output(zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunResponse)
 
 export const lastRun = {
   get: get13,
@@ -462,35 +721,51 @@ export const lastRun = {
 /**
  * Run draft workflow node
  */
-export const post13 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRun',
-  path: '/rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/run',
-  summary: 'Run draft workflow node',
-  tags: ['console'],
-}).input(z.object({ body: zPostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunBody, params: zPostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunPath })).output(zPostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunResponse)
+export const post13 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRun',
+    path: '/rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/run',
+    summary: 'Run draft workflow node',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunBody,
+      params: zPostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunPath,
+    }),
+  )
+  .output(zPostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunResponse)
 
 export const run4 = {
   post: post13,
 }
 
-export const delete2 = oc.route({
-  inputStructure: 'detailed',
-  method: 'DELETE',
-  operationId: 'deleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariables',
-  path: '/rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/variables',
-  successStatus: 204,
-  tags: ['console'],
-}).input(z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesPath })).output(zDeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse)
+export const delete2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariables',
+    path: '/rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/variables',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(
+    z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesPath }),
+  )
+  .output(zDeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse)
 
-export const get14 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariables',
-  path: '/rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/variables',
-  tags: ['console'],
-}).input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesPath })).output(zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse)
+export const get14 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariables',
+    path: '/rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/variables',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesPath }))
+  .output(zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse)
 
 export const variables = {
   delete: delete2,
@@ -510,14 +785,22 @@ export const nodes4 = {
 /**
  * Get first step parameters of rag pipeline
  */
-export const get15 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParameters',
-  path: '/rag/pipelines/{pipeline_id}/workflows/draft/pre-processing/parameters',
-  summary: 'Get first step parameters of rag pipeline',
-  tags: ['console'],
-}).input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersPath, query: zGetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersQuery })).output(zGetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersResponse)
+export const get15 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParameters',
+    path: '/rag/pipelines/{pipeline_id}/workflows/draft/pre-processing/parameters',
+    summary: 'Get first step parameters of rag pipeline',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersPath,
+      query: zGetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersQuery,
+    }),
+  )
+  .output(zGetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersResponse)
 
 export const parameters = {
   get: get15,
@@ -530,14 +813,22 @@ export const preProcessing = {
 /**
  * Get second step parameters of rag pipeline
  */
-export const get16 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRagPipelinesByPipelineIdWorkflowsDraftProcessingParameters',
-  path: '/rag/pipelines/{pipeline_id}/workflows/draft/processing/parameters',
-  summary: 'Get second step parameters of rag pipeline',
-  tags: ['console'],
-}).input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersPath, query: zGetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersQuery })).output(zGetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponse)
+export const get16 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRagPipelinesByPipelineIdWorkflowsDraftProcessingParameters',
+    path: '/rag/pipelines/{pipeline_id}/workflows/draft/processing/parameters',
+    summary: 'Get second step parameters of rag pipeline',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersPath,
+      query: zGetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersQuery,
+    }),
+  )
+  .output(zGetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponse)
 
 export const parameters2 = {
   get: get16,
@@ -550,67 +841,99 @@ export const processing = {
 /**
  * Run draft workflow
  */
-export const post14 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postRagPipelinesByPipelineIdWorkflowsDraftRun',
-  path: '/rag/pipelines/{pipeline_id}/workflows/draft/run',
-  summary: 'Run draft workflow',
-  tags: ['console'],
-}).input(z.object({ body: zPostRagPipelinesByPipelineIdWorkflowsDraftRunBody, params: zPostRagPipelinesByPipelineIdWorkflowsDraftRunPath })).output(zPostRagPipelinesByPipelineIdWorkflowsDraftRunResponse)
+export const post14 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postRagPipelinesByPipelineIdWorkflowsDraftRun',
+    path: '/rag/pipelines/{pipeline_id}/workflows/draft/run',
+    summary: 'Run draft workflow',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostRagPipelinesByPipelineIdWorkflowsDraftRunBody,
+      params: zPostRagPipelinesByPipelineIdWorkflowsDraftRunPath,
+    }),
+  )
+  .output(zPostRagPipelinesByPipelineIdWorkflowsDraftRunResponse)
 
 export const run5 = {
   post: post14,
 }
 
-export const get17 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRagPipelinesByPipelineIdWorkflowsDraftSystemVariables',
-  path: '/rag/pipelines/{pipeline_id}/workflows/draft/system-variables',
-  tags: ['console'],
-}).input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesPath })).output(zGetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponse)
+export const get17 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRagPipelinesByPipelineIdWorkflowsDraftSystemVariables',
+    path: '/rag/pipelines/{pipeline_id}/workflows/draft/system-variables',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesPath }))
+  .output(zGetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponse)
 
 export const systemVariables = {
   get: get17,
 }
 
-export const put = oc.route({
-  inputStructure: 'detailed',
-  method: 'PUT',
-  operationId: 'putRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdReset',
-  path: '/rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}/reset',
-  tags: ['console'],
-}).input(z.object({ params: zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetPath })).output(zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetResponse)
+export const put = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdReset',
+    path: '/rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}/reset',
+    tags: ['console'],
+  })
+  .input(
+    z.object({ params: zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetPath }),
+  )
+  .output(zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetResponse)
 
 export const reset = {
   put,
 }
 
-export const delete3 = oc.route({
-  inputStructure: 'detailed',
-  method: 'DELETE',
-  operationId: 'deleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableId',
-  path: '/rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}',
-  successStatus: 204,
-  tags: ['console'],
-}).input(z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath })).output(zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
+export const delete3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableId',
+    path: '/rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(
+    z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath }),
+  )
+  .output(zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
 
-export const get18 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableId',
-  path: '/rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}',
-  tags: ['console'],
-}).input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath })).output(zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
+export const get18 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableId',
+    path: '/rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath }))
+  .output(zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
 
-export const patch2 = oc.route({
-  inputStructure: 'detailed',
-  method: 'PATCH',
-  operationId: 'patchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableId',
-  path: '/rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}',
-  tags: ['console'],
-}).input(z.object({ body: zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdBody, params: zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath })).output(zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
+export const patch2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableId',
+    path: '/rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdBody,
+      params: zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath,
+    }),
+  )
+  .output(zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
 
 export const byVariableId = {
   delete: delete3,
@@ -619,26 +942,37 @@ export const byVariableId = {
   reset,
 }
 
-export const delete4 = oc.route({
-  inputStructure: 'detailed',
-  method: 'DELETE',
-  operationId: 'deleteRagPipelinesByPipelineIdWorkflowsDraftVariables',
-  path: '/rag/pipelines/{pipeline_id}/workflows/draft/variables',
-  successStatus: 204,
-  tags: ['console'],
-}).input(z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesPath })).output(zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse)
+export const delete4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteRagPipelinesByPipelineIdWorkflowsDraftVariables',
+    path: '/rag/pipelines/{pipeline_id}/workflows/draft/variables',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesPath }))
+  .output(zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse)
 
 /**
  * Get draft workflow
  */
-export const get19 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRagPipelinesByPipelineIdWorkflowsDraftVariables',
-  path: '/rag/pipelines/{pipeline_id}/workflows/draft/variables',
-  summary: 'Get draft workflow',
-  tags: ['console'],
-}).input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesPath, query: zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesQuery.optional() })).output(zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse)
+export const get19 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRagPipelinesByPipelineIdWorkflowsDraftVariables',
+    path: '/rag/pipelines/{pipeline_id}/workflows/draft/variables',
+    summary: 'Get draft workflow',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesPath,
+      query: zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesQuery.optional(),
+    }),
+  )
+  .output(zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse)
 
 export const variables2 = {
   delete: delete4,
@@ -649,26 +983,37 @@ export const variables2 = {
 /**
  * Get draft rag pipeline's workflow
  */
-export const get20 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRagPipelinesByPipelineIdWorkflowsDraft',
-  path: '/rag/pipelines/{pipeline_id}/workflows/draft',
-  summary: 'Get draft rag pipeline\'s workflow',
-  tags: ['console'],
-}).input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftPath })).output(zGetRagPipelinesByPipelineIdWorkflowsDraftResponse)
+export const get20 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRagPipelinesByPipelineIdWorkflowsDraft',
+    path: '/rag/pipelines/{pipeline_id}/workflows/draft',
+    summary: 'Get draft rag pipeline\'s workflow',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftPath }))
+  .output(zGetRagPipelinesByPipelineIdWorkflowsDraftResponse)
 
 /**
  * Sync draft workflow
  */
-export const post15 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postRagPipelinesByPipelineIdWorkflowsDraft',
-  path: '/rag/pipelines/{pipeline_id}/workflows/draft',
-  summary: 'Sync draft workflow',
-  tags: ['console'],
-}).input(z.object({ body: zPostRagPipelinesByPipelineIdWorkflowsDraftBody, params: zPostRagPipelinesByPipelineIdWorkflowsDraftPath })).output(zPostRagPipelinesByPipelineIdWorkflowsDraftResponse)
+export const post15 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postRagPipelinesByPipelineIdWorkflowsDraft',
+    path: '/rag/pipelines/{pipeline_id}/workflows/draft',
+    summary: 'Sync draft workflow',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostRagPipelinesByPipelineIdWorkflowsDraftBody,
+      params: zPostRagPipelinesByPipelineIdWorkflowsDraftPath,
+    }),
+  )
+  .output(zPostRagPipelinesByPipelineIdWorkflowsDraftResponse)
 
 export const draft = {
   get: get20,
@@ -688,26 +1033,32 @@ export const draft = {
 /**
  * Get published pipeline
  */
-export const get21 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRagPipelinesByPipelineIdWorkflowsPublish',
-  path: '/rag/pipelines/{pipeline_id}/workflows/publish',
-  summary: 'Get published pipeline',
-  tags: ['console'],
-}).input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsPublishPath })).output(zGetRagPipelinesByPipelineIdWorkflowsPublishResponse)
+export const get21 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRagPipelinesByPipelineIdWorkflowsPublish',
+    path: '/rag/pipelines/{pipeline_id}/workflows/publish',
+    summary: 'Get published pipeline',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsPublishPath }))
+  .output(zGetRagPipelinesByPipelineIdWorkflowsPublishResponse)
 
 /**
  * Publish workflow
  */
-export const post16 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postRagPipelinesByPipelineIdWorkflowsPublish',
-  path: '/rag/pipelines/{pipeline_id}/workflows/publish',
-  summary: 'Publish workflow',
-  tags: ['console'],
-}).input(z.object({ params: zPostRagPipelinesByPipelineIdWorkflowsPublishPath })).output(zPostRagPipelinesByPipelineIdWorkflowsPublishResponse)
+export const post16 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postRagPipelinesByPipelineIdWorkflowsPublish',
+    path: '/rag/pipelines/{pipeline_id}/workflows/publish',
+    summary: 'Publish workflow',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostRagPipelinesByPipelineIdWorkflowsPublishPath }))
+  .output(zPostRagPipelinesByPipelineIdWorkflowsPublishResponse)
 
 export const publish2 = {
   get: get21,
@@ -717,14 +1068,22 @@ export const publish2 = {
 /**
  * Run datasource content preview
  */
-export const post17 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreview',
-  path: '/rag/pipelines/{pipeline_id}/workflows/published/datasource/nodes/{node_id}/preview',
-  summary: 'Run datasource content preview',
-  tags: ['console'],
-}).input(z.object({ body: zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewBody, params: zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewPath })).output(zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse)
+export const post17 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreview',
+    path: '/rag/pipelines/{pipeline_id}/workflows/published/datasource/nodes/{node_id}/preview',
+    summary: 'Run datasource content preview',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewBody,
+      params: zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewPath,
+    }),
+  )
+  .output(zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse)
 
 export const preview = {
   post: post17,
@@ -733,14 +1092,22 @@ export const preview = {
 /**
  * Run rag pipeline datasource
  */
-export const post18 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRun',
-  path: '/rag/pipelines/{pipeline_id}/workflows/published/datasource/nodes/{node_id}/run',
-  summary: 'Run rag pipeline datasource',
-  tags: ['console'],
-}).input(z.object({ body: zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunBody, params: zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunPath })).output(zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunResponse)
+export const post18 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRun',
+    path: '/rag/pipelines/{pipeline_id}/workflows/published/datasource/nodes/{node_id}/run',
+    summary: 'Run rag pipeline datasource',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunBody,
+      params: zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunPath,
+    }),
+  )
+  .output(zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunResponse)
 
 export const run6 = {
   post: post18,
@@ -762,14 +1129,22 @@ export const datasource2 = {
 /**
  * Get first step parameters of rag pipeline
  */
-export const get22 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParameters',
-  path: '/rag/pipelines/{pipeline_id}/workflows/published/pre-processing/parameters',
-  summary: 'Get first step parameters of rag pipeline',
-  tags: ['console'],
-}).input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersPath, query: zGetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersQuery })).output(zGetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersResponse)
+export const get22 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParameters',
+    path: '/rag/pipelines/{pipeline_id}/workflows/published/pre-processing/parameters',
+    summary: 'Get first step parameters of rag pipeline',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersPath,
+      query: zGetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersQuery,
+    }),
+  )
+  .output(zGetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersResponse)
 
 export const parameters3 = {
   get: get22,
@@ -782,14 +1157,22 @@ export const preProcessing2 = {
 /**
  * Get second step parameters of rag pipeline
  */
-export const get23 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRagPipelinesByPipelineIdWorkflowsPublishedProcessingParameters',
-  path: '/rag/pipelines/{pipeline_id}/workflows/published/processing/parameters',
-  summary: 'Get second step parameters of rag pipeline',
-  tags: ['console'],
-}).input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersPath, query: zGetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersQuery })).output(zGetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersResponse)
+export const get23 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRagPipelinesByPipelineIdWorkflowsPublishedProcessingParameters',
+    path: '/rag/pipelines/{pipeline_id}/workflows/published/processing/parameters',
+    summary: 'Get second step parameters of rag pipeline',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersPath,
+      query: zGetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersQuery,
+    }),
+  )
+  .output(zGetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersResponse)
 
 export const parameters4 = {
   get: get23,
@@ -802,14 +1185,22 @@ export const processing2 = {
 /**
  * Run published workflow
  */
-export const post19 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postRagPipelinesByPipelineIdWorkflowsPublishedRun',
-  path: '/rag/pipelines/{pipeline_id}/workflows/published/run',
-  summary: 'Run published workflow',
-  tags: ['console'],
-}).input(z.object({ body: zPostRagPipelinesByPipelineIdWorkflowsPublishedRunBody, params: zPostRagPipelinesByPipelineIdWorkflowsPublishedRunPath })).output(zPostRagPipelinesByPipelineIdWorkflowsPublishedRunResponse)
+export const post19 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postRagPipelinesByPipelineIdWorkflowsPublishedRun',
+    path: '/rag/pipelines/{pipeline_id}/workflows/published/run',
+    summary: 'Run published workflow',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostRagPipelinesByPipelineIdWorkflowsPublishedRunBody,
+      params: zPostRagPipelinesByPipelineIdWorkflowsPublishedRunPath,
+    }),
+  )
+  .output(zPostRagPipelinesByPipelineIdWorkflowsPublishedRunResponse)
 
 export const run7 = {
   post: post19,
@@ -822,13 +1213,16 @@ export const published = {
   run: run7,
 }
 
-export const post20 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestore',
-  path: '/rag/pipelines/{pipeline_id}/workflows/{workflow_id}/restore',
-  tags: ['console'],
-}).input(z.object({ params: zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestorePath })).output(zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse)
+export const post20 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestore',
+    path: '/rag/pipelines/{pipeline_id}/workflows/{workflow_id}/restore',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestorePath }))
+  .output(zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse)
 
 export const restore = {
   post: post20,
@@ -837,27 +1231,38 @@ export const restore = {
 /**
  * Delete a published workflow version that is not currently active on the pipeline
  */
-export const delete5 = oc.route({
-  inputStructure: 'detailed',
-  method: 'DELETE',
-  operationId: 'deleteRagPipelinesByPipelineIdWorkflowsByWorkflowId',
-  path: '/rag/pipelines/{pipeline_id}/workflows/{workflow_id}',
-  successStatus: 204,
-  summary: 'Delete a published workflow version that is not currently active on the pipeline',
-  tags: ['console'],
-}).input(z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath })).output(zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse)
+export const delete5 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteRagPipelinesByPipelineIdWorkflowsByWorkflowId',
+    path: '/rag/pipelines/{pipeline_id}/workflows/{workflow_id}',
+    successStatus: 204,
+    summary: 'Delete a published workflow version that is not currently active on the pipeline',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath }))
+  .output(zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse)
 
 /**
  * Update workflow attributes
  */
-export const patch3 = oc.route({
-  inputStructure: 'detailed',
-  method: 'PATCH',
-  operationId: 'patchRagPipelinesByPipelineIdWorkflowsByWorkflowId',
-  path: '/rag/pipelines/{pipeline_id}/workflows/{workflow_id}',
-  summary: 'Update workflow attributes',
-  tags: ['console'],
-}).input(z.object({ body: zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdBody, params: zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath })).output(zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse)
+export const patch3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchRagPipelinesByPipelineIdWorkflowsByWorkflowId',
+    path: '/rag/pipelines/{pipeline_id}/workflows/{workflow_id}',
+    summary: 'Update workflow attributes',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdBody,
+      params: zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath,
+    }),
+  )
+  .output(zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse)
 
 export const byWorkflowId = {
   delete: delete5,
@@ -868,14 +1273,22 @@ export const byWorkflowId = {
 /**
  * Get published workflows
  */
-export const get24 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRagPipelinesByPipelineIdWorkflows',
-  path: '/rag/pipelines/{pipeline_id}/workflows',
-  summary: 'Get published workflows',
-  tags: ['console'],
-}).input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsPath, query: zGetRagPipelinesByPipelineIdWorkflowsQuery.optional() })).output(zGetRagPipelinesByPipelineIdWorkflowsResponse)
+export const get24 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRagPipelinesByPipelineIdWorkflows',
+    path: '/rag/pipelines/{pipeline_id}/workflows',
+    summary: 'Get published workflows',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetRagPipelinesByPipelineIdWorkflowsPath,
+      query: zGetRagPipelinesByPipelineIdWorkflowsQuery.optional(),
+    }),
+  )
+  .output(zGetRagPipelinesByPipelineIdWorkflowsResponse)
 
 export const workflows = {
   get: get24,

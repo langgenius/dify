@@ -3,27 +3,98 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
-import { zDeleteInstalledAppsByInstalledAppIdConversationsByCIdPath, zDeleteInstalledAppsByInstalledAppIdConversationsByCIdResponse, zDeleteInstalledAppsByInstalledAppIdPath, zDeleteInstalledAppsByInstalledAppIdResponse, zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdPath, zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponse, zGetInstalledAppsByInstalledAppIdConversationsPath, zGetInstalledAppsByInstalledAppIdConversationsQuery, zGetInstalledAppsByInstalledAppIdConversationsResponse, zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisPath, zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisQuery, zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponse, zGetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsPath, zGetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsResponse, zGetInstalledAppsByInstalledAppIdMessagesPath, zGetInstalledAppsByInstalledAppIdMessagesQuery, zGetInstalledAppsByInstalledAppIdMessagesResponse, zGetInstalledAppsByInstalledAppIdMetaPath, zGetInstalledAppsByInstalledAppIdMetaResponse, zGetInstalledAppsByInstalledAppIdParametersPath, zGetInstalledAppsByInstalledAppIdParametersResponse, zGetInstalledAppsByInstalledAppIdSavedMessagesPath, zGetInstalledAppsByInstalledAppIdSavedMessagesQuery, zGetInstalledAppsByInstalledAppIdSavedMessagesResponse, zGetInstalledAppsQuery, zGetInstalledAppsResponse, zPatchInstalledAppsByInstalledAppIdBody, zPatchInstalledAppsByInstalledAppIdConversationsByCIdPinPath, zPatchInstalledAppsByInstalledAppIdConversationsByCIdPinResponse, zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinPath, zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinResponse, zPatchInstalledAppsByInstalledAppIdPath, zPatchInstalledAppsByInstalledAppIdResponse, zPostInstalledAppsBody, zPostInstalledAppsByInstalledAppIdAudioToTextPath, zPostInstalledAppsByInstalledAppIdAudioToTextResponse, zPostInstalledAppsByInstalledAppIdChatMessagesBody, zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopPath, zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponse, zPostInstalledAppsByInstalledAppIdChatMessagesPath, zPostInstalledAppsByInstalledAppIdChatMessagesResponse, zPostInstalledAppsByInstalledAppIdCompletionMessagesBody, zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopPath, zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponse, zPostInstalledAppsByInstalledAppIdCompletionMessagesPath, zPostInstalledAppsByInstalledAppIdCompletionMessagesResponse, zPostInstalledAppsByInstalledAppIdConversationsByCIdNameBody, zPostInstalledAppsByInstalledAppIdConversationsByCIdNamePath, zPostInstalledAppsByInstalledAppIdConversationsByCIdNameResponse, zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksBody, zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksPath, zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponse, zPostInstalledAppsByInstalledAppIdSavedMessagesBody, zPostInstalledAppsByInstalledAppIdSavedMessagesPath, zPostInstalledAppsByInstalledAppIdSavedMessagesResponse, zPostInstalledAppsByInstalledAppIdTextToAudioBody, zPostInstalledAppsByInstalledAppIdTextToAudioPath, zPostInstalledAppsByInstalledAppIdTextToAudioResponse, zPostInstalledAppsByInstalledAppIdWorkflowsRunBody, zPostInstalledAppsByInstalledAppIdWorkflowsRunPath, zPostInstalledAppsByInstalledAppIdWorkflowsRunResponse, zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopPath, zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponse, zPostInstalledAppsResponse } from './zod.gen'
+import {
+  zDeleteInstalledAppsByInstalledAppIdConversationsByCIdPath,
+  zDeleteInstalledAppsByInstalledAppIdConversationsByCIdResponse,
+  zDeleteInstalledAppsByInstalledAppIdPath,
+  zDeleteInstalledAppsByInstalledAppIdResponse,
+  zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdPath,
+  zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponse,
+  zGetInstalledAppsByInstalledAppIdConversationsPath,
+  zGetInstalledAppsByInstalledAppIdConversationsQuery,
+  zGetInstalledAppsByInstalledAppIdConversationsResponse,
+  zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisPath,
+  zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisQuery,
+  zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponse,
+  zGetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsPath,
+  zGetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsResponse,
+  zGetInstalledAppsByInstalledAppIdMessagesPath,
+  zGetInstalledAppsByInstalledAppIdMessagesQuery,
+  zGetInstalledAppsByInstalledAppIdMessagesResponse,
+  zGetInstalledAppsByInstalledAppIdMetaPath,
+  zGetInstalledAppsByInstalledAppIdMetaResponse,
+  zGetInstalledAppsByInstalledAppIdParametersPath,
+  zGetInstalledAppsByInstalledAppIdParametersResponse,
+  zGetInstalledAppsByInstalledAppIdSavedMessagesPath,
+  zGetInstalledAppsByInstalledAppIdSavedMessagesQuery,
+  zGetInstalledAppsByInstalledAppIdSavedMessagesResponse,
+  zGetInstalledAppsQuery,
+  zGetInstalledAppsResponse,
+  zPatchInstalledAppsByInstalledAppIdBody,
+  zPatchInstalledAppsByInstalledAppIdConversationsByCIdPinPath,
+  zPatchInstalledAppsByInstalledAppIdConversationsByCIdPinResponse,
+  zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinPath,
+  zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinResponse,
+  zPatchInstalledAppsByInstalledAppIdPath,
+  zPatchInstalledAppsByInstalledAppIdResponse,
+  zPostInstalledAppsBody,
+  zPostInstalledAppsByInstalledAppIdAudioToTextPath,
+  zPostInstalledAppsByInstalledAppIdAudioToTextResponse,
+  zPostInstalledAppsByInstalledAppIdChatMessagesBody,
+  zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopPath,
+  zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponse,
+  zPostInstalledAppsByInstalledAppIdChatMessagesPath,
+  zPostInstalledAppsByInstalledAppIdChatMessagesResponse,
+  zPostInstalledAppsByInstalledAppIdCompletionMessagesBody,
+  zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopPath,
+  zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponse,
+  zPostInstalledAppsByInstalledAppIdCompletionMessagesPath,
+  zPostInstalledAppsByInstalledAppIdCompletionMessagesResponse,
+  zPostInstalledAppsByInstalledAppIdConversationsByCIdNameBody,
+  zPostInstalledAppsByInstalledAppIdConversationsByCIdNamePath,
+  zPostInstalledAppsByInstalledAppIdConversationsByCIdNameResponse,
+  zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksBody,
+  zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksPath,
+  zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponse,
+  zPostInstalledAppsByInstalledAppIdSavedMessagesBody,
+  zPostInstalledAppsByInstalledAppIdSavedMessagesPath,
+  zPostInstalledAppsByInstalledAppIdSavedMessagesResponse,
+  zPostInstalledAppsByInstalledAppIdTextToAudioBody,
+  zPostInstalledAppsByInstalledAppIdTextToAudioPath,
+  zPostInstalledAppsByInstalledAppIdTextToAudioResponse,
+  zPostInstalledAppsByInstalledAppIdWorkflowsRunBody,
+  zPostInstalledAppsByInstalledAppIdWorkflowsRunPath,
+  zPostInstalledAppsByInstalledAppIdWorkflowsRunResponse,
+  zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopPath,
+  zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponse,
+  zPostInstalledAppsResponse,
+} from './zod.gen'
 
-export const post = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postInstalledAppsByInstalledAppIdAudioToText',
-  path: '/installed-apps/{installed_app_id}/audio-to-text',
-  tags: ['console'],
-}).input(z.object({ params: zPostInstalledAppsByInstalledAppIdAudioToTextPath })).output(zPostInstalledAppsByInstalledAppIdAudioToTextResponse)
+export const post = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postInstalledAppsByInstalledAppIdAudioToText',
+    path: '/installed-apps/{installed_app_id}/audio-to-text',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostInstalledAppsByInstalledAppIdAudioToTextPath }))
+  .output(zPostInstalledAppsByInstalledAppIdAudioToTextResponse)
 
 export const audioToText = {
   post,
 }
 
-export const post2 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postInstalledAppsByInstalledAppIdChatMessagesByTaskIdStop',
-  path: '/installed-apps/{installed_app_id}/chat-messages/{task_id}/stop',
-  tags: ['console'],
-}).input(z.object({ params: zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopPath })).output(zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponse)
+export const post2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postInstalledAppsByInstalledAppIdChatMessagesByTaskIdStop',
+    path: '/installed-apps/{installed_app_id}/chat-messages/{task_id}/stop',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopPath }))
+  .output(zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponse)
 
 export const stop = {
   post: post2,
@@ -33,26 +104,37 @@ export const byTaskId = {
   stop,
 }
 
-export const post3 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postInstalledAppsByInstalledAppIdChatMessages',
-  path: '/installed-apps/{installed_app_id}/chat-messages',
-  tags: ['console'],
-}).input(z.object({ body: zPostInstalledAppsByInstalledAppIdChatMessagesBody, params: zPostInstalledAppsByInstalledAppIdChatMessagesPath })).output(zPostInstalledAppsByInstalledAppIdChatMessagesResponse)
+export const post3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postInstalledAppsByInstalledAppIdChatMessages',
+    path: '/installed-apps/{installed_app_id}/chat-messages',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostInstalledAppsByInstalledAppIdChatMessagesBody,
+      params: zPostInstalledAppsByInstalledAppIdChatMessagesPath,
+    }),
+  )
+  .output(zPostInstalledAppsByInstalledAppIdChatMessagesResponse)
 
 export const chatMessages = {
   post: post3,
   byTaskId,
 }
 
-export const post4 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStop',
-  path: '/installed-apps/{installed_app_id}/completion-messages/{task_id}/stop',
-  tags: ['console'],
-}).input(z.object({ params: zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopPath })).output(zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponse)
+export const post4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStop',
+    path: '/installed-apps/{installed_app_id}/completion-messages/{task_id}/stop',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopPath }))
+  .output(zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponse)
 
 export const stop2 = {
   post: post4,
@@ -62,63 +144,88 @@ export const byTaskId2 = {
   stop: stop2,
 }
 
-export const post5 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postInstalledAppsByInstalledAppIdCompletionMessages',
-  path: '/installed-apps/{installed_app_id}/completion-messages',
-  tags: ['console'],
-}).input(z.object({ body: zPostInstalledAppsByInstalledAppIdCompletionMessagesBody, params: zPostInstalledAppsByInstalledAppIdCompletionMessagesPath })).output(zPostInstalledAppsByInstalledAppIdCompletionMessagesResponse)
+export const post5 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postInstalledAppsByInstalledAppIdCompletionMessages',
+    path: '/installed-apps/{installed_app_id}/completion-messages',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostInstalledAppsByInstalledAppIdCompletionMessagesBody,
+      params: zPostInstalledAppsByInstalledAppIdCompletionMessagesPath,
+    }),
+  )
+  .output(zPostInstalledAppsByInstalledAppIdCompletionMessagesResponse)
 
 export const completionMessages = {
   post: post5,
   byTaskId: byTaskId2,
 }
 
-export const post6 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postInstalledAppsByInstalledAppIdConversationsByCIdName',
-  path: '/installed-apps/{installed_app_id}/conversations/{c_id}/name',
-  tags: ['console'],
-}).input(z.object({ body: zPostInstalledAppsByInstalledAppIdConversationsByCIdNameBody, params: zPostInstalledAppsByInstalledAppIdConversationsByCIdNamePath })).output(zPostInstalledAppsByInstalledAppIdConversationsByCIdNameResponse)
+export const post6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postInstalledAppsByInstalledAppIdConversationsByCIdName',
+    path: '/installed-apps/{installed_app_id}/conversations/{c_id}/name',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostInstalledAppsByInstalledAppIdConversationsByCIdNameBody,
+      params: zPostInstalledAppsByInstalledAppIdConversationsByCIdNamePath,
+    }),
+  )
+  .output(zPostInstalledAppsByInstalledAppIdConversationsByCIdNameResponse)
 
 export const name = {
   post: post6,
 }
 
-export const patch = oc.route({
-  inputStructure: 'detailed',
-  method: 'PATCH',
-  operationId: 'patchInstalledAppsByInstalledAppIdConversationsByCIdPin',
-  path: '/installed-apps/{installed_app_id}/conversations/{c_id}/pin',
-  tags: ['console'],
-}).input(z.object({ params: zPatchInstalledAppsByInstalledAppIdConversationsByCIdPinPath })).output(zPatchInstalledAppsByInstalledAppIdConversationsByCIdPinResponse)
+export const patch = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchInstalledAppsByInstalledAppIdConversationsByCIdPin',
+    path: '/installed-apps/{installed_app_id}/conversations/{c_id}/pin',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPatchInstalledAppsByInstalledAppIdConversationsByCIdPinPath }))
+  .output(zPatchInstalledAppsByInstalledAppIdConversationsByCIdPinResponse)
 
 export const pin = {
   patch,
 }
 
-export const patch2 = oc.route({
-  inputStructure: 'detailed',
-  method: 'PATCH',
-  operationId: 'patchInstalledAppsByInstalledAppIdConversationsByCIdUnpin',
-  path: '/installed-apps/{installed_app_id}/conversations/{c_id}/unpin',
-  tags: ['console'],
-}).input(z.object({ params: zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinPath })).output(zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinResponse)
+export const patch2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchInstalledAppsByInstalledAppIdConversationsByCIdUnpin',
+    path: '/installed-apps/{installed_app_id}/conversations/{c_id}/unpin',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinPath }))
+  .output(zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinResponse)
 
 export const unpin = {
   patch: patch2,
 }
 
-export const delete_ = oc.route({
-  inputStructure: 'detailed',
-  method: 'DELETE',
-  operationId: 'deleteInstalledAppsByInstalledAppIdConversationsByCId',
-  path: '/installed-apps/{installed_app_id}/conversations/{c_id}',
-  successStatus: 204,
-  tags: ['console'],
-}).input(z.object({ params: zDeleteInstalledAppsByInstalledAppIdConversationsByCIdPath })).output(zDeleteInstalledAppsByInstalledAppIdConversationsByCIdResponse)
+export const delete_ = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteInstalledAppsByInstalledAppIdConversationsByCId',
+    path: '/installed-apps/{installed_app_id}/conversations/{c_id}',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteInstalledAppsByInstalledAppIdConversationsByCIdPath }))
+  .output(zDeleteInstalledAppsByInstalledAppIdConversationsByCIdResponse)
 
 export const byCId = {
   delete: delete_,
@@ -127,50 +234,81 @@ export const byCId = {
   unpin,
 }
 
-export const get = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getInstalledAppsByInstalledAppIdConversations',
-  path: '/installed-apps/{installed_app_id}/conversations',
-  tags: ['console'],
-}).input(z.object({ params: zGetInstalledAppsByInstalledAppIdConversationsPath, query: zGetInstalledAppsByInstalledAppIdConversationsQuery.optional() })).output(zGetInstalledAppsByInstalledAppIdConversationsResponse)
+export const get = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getInstalledAppsByInstalledAppIdConversations',
+    path: '/installed-apps/{installed_app_id}/conversations',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetInstalledAppsByInstalledAppIdConversationsPath,
+      query: zGetInstalledAppsByInstalledAppIdConversationsQuery.optional(),
+    }),
+  )
+  .output(zGetInstalledAppsByInstalledAppIdConversationsResponse)
 
 export const conversations = {
   get,
   byCId,
 }
 
-export const post7 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacks',
-  path: '/installed-apps/{installed_app_id}/messages/{message_id}/feedbacks',
-  tags: ['console'],
-}).input(z.object({ body: zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksBody, params: zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksPath })).output(zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponse)
+export const post7 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacks',
+    path: '/installed-apps/{installed_app_id}/messages/{message_id}/feedbacks',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksBody,
+      params: zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksPath,
+    }),
+  )
+  .output(zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponse)
 
 export const feedbacks = {
   post: post7,
 }
 
-export const get2 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThis',
-  path: '/installed-apps/{installed_app_id}/messages/{message_id}/more-like-this',
-  tags: ['console'],
-}).input(z.object({ params: zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisPath, query: zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisQuery })).output(zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponse)
+export const get2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThis',
+    path: '/installed-apps/{installed_app_id}/messages/{message_id}/more-like-this',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisPath,
+      query: zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisQuery,
+    }),
+  )
+  .output(zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponse)
 
 export const moreLikeThis = {
   get: get2,
 }
 
-export const get3 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestions',
-  path: '/installed-apps/{installed_app_id}/messages/{message_id}/suggested-questions',
-  tags: ['console'],
-}).input(z.object({ params: zGetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsPath })).output(zGetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsResponse)
+export const get3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestions',
+    path: '/installed-apps/{installed_app_id}/messages/{message_id}/suggested-questions',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsPath,
+    }),
+  )
+  .output(zGetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsResponse)
 
 export const suggestedQuestions = {
   get: get3,
@@ -182,13 +320,21 @@ export const byMessageId = {
   suggestedQuestions,
 }
 
-export const get4 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getInstalledAppsByInstalledAppIdMessages',
-  path: '/installed-apps/{installed_app_id}/messages',
-  tags: ['console'],
-}).input(z.object({ params: zGetInstalledAppsByInstalledAppIdMessagesPath, query: zGetInstalledAppsByInstalledAppIdMessagesQuery })).output(zGetInstalledAppsByInstalledAppIdMessagesResponse)
+export const get4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getInstalledAppsByInstalledAppIdMessages',
+    path: '/installed-apps/{installed_app_id}/messages',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetInstalledAppsByInstalledAppIdMessagesPath,
+      query: zGetInstalledAppsByInstalledAppIdMessagesQuery,
+    }),
+  )
+  .output(zGetInstalledAppsByInstalledAppIdMessagesResponse)
 
 export const messages = {
   get: get4,
@@ -198,14 +344,17 @@ export const messages = {
 /**
  * Get app meta
  */
-export const get5 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getInstalledAppsByInstalledAppIdMeta',
-  path: '/installed-apps/{installed_app_id}/meta',
-  summary: 'Get app meta',
-  tags: ['console'],
-}).input(z.object({ params: zGetInstalledAppsByInstalledAppIdMetaPath })).output(zGetInstalledAppsByInstalledAppIdMetaResponse)
+export const get5 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getInstalledAppsByInstalledAppIdMeta',
+    path: '/installed-apps/{installed_app_id}/meta',
+    summary: 'Get app meta',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetInstalledAppsByInstalledAppIdMetaPath }))
+  .output(zGetInstalledAppsByInstalledAppIdMetaResponse)
 
 export const meta = {
   get: get5,
@@ -214,47 +363,69 @@ export const meta = {
 /**
  * Retrieve app parameters
  */
-export const get6 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getInstalledAppsByInstalledAppIdParameters',
-  path: '/installed-apps/{installed_app_id}/parameters',
-  summary: 'Retrieve app parameters',
-  tags: ['console'],
-}).input(z.object({ params: zGetInstalledAppsByInstalledAppIdParametersPath })).output(zGetInstalledAppsByInstalledAppIdParametersResponse)
+export const get6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getInstalledAppsByInstalledAppIdParameters',
+    path: '/installed-apps/{installed_app_id}/parameters',
+    summary: 'Retrieve app parameters',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetInstalledAppsByInstalledAppIdParametersPath }))
+  .output(zGetInstalledAppsByInstalledAppIdParametersResponse)
 
 export const parameters = {
   get: get6,
 }
 
-export const delete2 = oc.route({
-  inputStructure: 'detailed',
-  method: 'DELETE',
-  operationId: 'deleteInstalledAppsByInstalledAppIdSavedMessagesByMessageId',
-  path: '/installed-apps/{installed_app_id}/saved-messages/{message_id}',
-  successStatus: 204,
-  tags: ['console'],
-}).input(z.object({ params: zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdPath })).output(zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponse)
+export const delete2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteInstalledAppsByInstalledAppIdSavedMessagesByMessageId',
+    path: '/installed-apps/{installed_app_id}/saved-messages/{message_id}',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdPath }))
+  .output(zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponse)
 
 export const byMessageId2 = {
   delete: delete2,
 }
 
-export const get7 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getInstalledAppsByInstalledAppIdSavedMessages',
-  path: '/installed-apps/{installed_app_id}/saved-messages',
-  tags: ['console'],
-}).input(z.object({ params: zGetInstalledAppsByInstalledAppIdSavedMessagesPath, query: zGetInstalledAppsByInstalledAppIdSavedMessagesQuery.optional() })).output(zGetInstalledAppsByInstalledAppIdSavedMessagesResponse)
+export const get7 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getInstalledAppsByInstalledAppIdSavedMessages',
+    path: '/installed-apps/{installed_app_id}/saved-messages',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetInstalledAppsByInstalledAppIdSavedMessagesPath,
+      query: zGetInstalledAppsByInstalledAppIdSavedMessagesQuery.optional(),
+    }),
+  )
+  .output(zGetInstalledAppsByInstalledAppIdSavedMessagesResponse)
 
-export const post8 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postInstalledAppsByInstalledAppIdSavedMessages',
-  path: '/installed-apps/{installed_app_id}/saved-messages',
-  tags: ['console'],
-}).input(z.object({ body: zPostInstalledAppsByInstalledAppIdSavedMessagesBody, params: zPostInstalledAppsByInstalledAppIdSavedMessagesPath })).output(zPostInstalledAppsByInstalledAppIdSavedMessagesResponse)
+export const post8 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postInstalledAppsByInstalledAppIdSavedMessages',
+    path: '/installed-apps/{installed_app_id}/saved-messages',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostInstalledAppsByInstalledAppIdSavedMessagesBody,
+      params: zPostInstalledAppsByInstalledAppIdSavedMessagesPath,
+    }),
+  )
+  .output(zPostInstalledAppsByInstalledAppIdSavedMessagesResponse)
 
 export const savedMessages = {
   get: get7,
@@ -262,13 +433,21 @@ export const savedMessages = {
   byMessageId: byMessageId2,
 }
 
-export const post9 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postInstalledAppsByInstalledAppIdTextToAudio',
-  path: '/installed-apps/{installed_app_id}/text-to-audio',
-  tags: ['console'],
-}).input(z.object({ body: zPostInstalledAppsByInstalledAppIdTextToAudioBody, params: zPostInstalledAppsByInstalledAppIdTextToAudioPath })).output(zPostInstalledAppsByInstalledAppIdTextToAudioResponse)
+export const post9 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postInstalledAppsByInstalledAppIdTextToAudio',
+    path: '/installed-apps/{installed_app_id}/text-to-audio',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostInstalledAppsByInstalledAppIdTextToAudioBody,
+      params: zPostInstalledAppsByInstalledAppIdTextToAudioPath,
+    }),
+  )
+  .output(zPostInstalledAppsByInstalledAppIdTextToAudioResponse)
 
 export const textToAudio = {
   post: post9,
@@ -277,14 +456,22 @@ export const textToAudio = {
 /**
  * Run workflow
  */
-export const post10 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postInstalledAppsByInstalledAppIdWorkflowsRun',
-  path: '/installed-apps/{installed_app_id}/workflows/run',
-  summary: 'Run workflow',
-  tags: ['console'],
-}).input(z.object({ body: zPostInstalledAppsByInstalledAppIdWorkflowsRunBody, params: zPostInstalledAppsByInstalledAppIdWorkflowsRunPath })).output(zPostInstalledAppsByInstalledAppIdWorkflowsRunResponse)
+export const post10 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postInstalledAppsByInstalledAppIdWorkflowsRun',
+    path: '/installed-apps/{installed_app_id}/workflows/run',
+    summary: 'Run workflow',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostInstalledAppsByInstalledAppIdWorkflowsRunBody,
+      params: zPostInstalledAppsByInstalledAppIdWorkflowsRunPath,
+    }),
+  )
+  .output(zPostInstalledAppsByInstalledAppIdWorkflowsRunResponse)
 
 export const run = {
   post: post10,
@@ -293,14 +480,17 @@ export const run = {
 /**
  * Stop workflow task
  */
-export const post11 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStop',
-  path: '/installed-apps/{installed_app_id}/workflows/tasks/{task_id}/stop',
-  summary: 'Stop workflow task',
-  tags: ['console'],
-}).input(z.object({ params: zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopPath })).output(zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponse)
+export const post11 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStop',
+    path: '/installed-apps/{installed_app_id}/workflows/tasks/{task_id}/stop',
+    summary: 'Stop workflow task',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopPath }))
+  .output(zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponse)
 
 export const stop3 = {
   post: post11,
@@ -319,22 +509,33 @@ export const workflows = {
   tasks,
 }
 
-export const delete3 = oc.route({
-  inputStructure: 'detailed',
-  method: 'DELETE',
-  operationId: 'deleteInstalledAppsByInstalledAppId',
-  path: '/installed-apps/{installed_app_id}',
-  successStatus: 204,
-  tags: ['console'],
-}).input(z.object({ params: zDeleteInstalledAppsByInstalledAppIdPath })).output(zDeleteInstalledAppsByInstalledAppIdResponse)
+export const delete3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteInstalledAppsByInstalledAppId',
+    path: '/installed-apps/{installed_app_id}',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteInstalledAppsByInstalledAppIdPath }))
+  .output(zDeleteInstalledAppsByInstalledAppIdResponse)
 
-export const patch3 = oc.route({
-  inputStructure: 'detailed',
-  method: 'PATCH',
-  operationId: 'patchInstalledAppsByInstalledAppId',
-  path: '/installed-apps/{installed_app_id}',
-  tags: ['console'],
-}).input(z.object({ body: zPatchInstalledAppsByInstalledAppIdBody, params: zPatchInstalledAppsByInstalledAppIdPath })).output(zPatchInstalledAppsByInstalledAppIdResponse)
+export const patch3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchInstalledAppsByInstalledAppId',
+    path: '/installed-apps/{installed_app_id}',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPatchInstalledAppsByInstalledAppIdBody,
+      params: zPatchInstalledAppsByInstalledAppIdPath,
+    }),
+  )
+  .output(zPatchInstalledAppsByInstalledAppIdResponse)
 
 export const byInstalledAppId = {
   delete: delete3,
@@ -351,21 +552,27 @@ export const byInstalledAppId = {
   workflows,
 }
 
-export const get8 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getInstalledApps',
-  path: '/installed-apps',
-  tags: ['console'],
-}).input(z.object({ query: zGetInstalledAppsQuery.optional() })).output(zGetInstalledAppsResponse)
+export const get8 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getInstalledApps',
+    path: '/installed-apps',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetInstalledAppsQuery.optional() }))
+  .output(zGetInstalledAppsResponse)
 
-export const post12 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postInstalledApps',
-  path: '/installed-apps',
-  tags: ['console'],
-}).input(z.object({ body: zPostInstalledAppsBody })).output(zPostInstalledAppsResponse)
+export const post12 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postInstalledApps',
+    path: '/installed-apps',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostInstalledAppsBody }))
+  .output(zPostInstalledAppsResponse)
 
 export const installedApps = {
   get: get8,

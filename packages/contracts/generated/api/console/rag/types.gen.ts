@@ -55,7 +55,6 @@ export type DatasetDetailResponse = {
   is_published: boolean
   name: string
   permission: string
-  permission_keys?: Array<string>
   pipeline_id: string | null
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse
@@ -294,9 +293,16 @@ export type WorkflowDraftVariable = {
   name?: string
   selector?: Array<string>
   type?: string
-  value?: string | number | number | boolean | {
-    [key: string]: unknown
-  } | Array<unknown> | null
+  value?:
+    | string
+    | number
+    | number
+    | boolean
+    | {
+      [key: string]: unknown
+    }
+    | Array<unknown>
+    | null
   value_type?: string
   visible?: boolean
 }
@@ -549,7 +555,8 @@ export type DeleteRagPipelineCustomizedTemplatesByTemplateIdResponses = {
   204: void
 }
 
-export type DeleteRagPipelineCustomizedTemplatesByTemplateIdResponse = DeleteRagPipelineCustomizedTemplatesByTemplateIdResponses[keyof DeleteRagPipelineCustomizedTemplatesByTemplateIdResponses]
+export type DeleteRagPipelineCustomizedTemplatesByTemplateIdResponse
+  = DeleteRagPipelineCustomizedTemplatesByTemplateIdResponses[keyof DeleteRagPipelineCustomizedTemplatesByTemplateIdResponses]
 
 export type PatchRagPipelineCustomizedTemplatesByTemplateIdData = {
   body: CustomizedPipelineTemplatePayload
@@ -564,7 +571,8 @@ export type PatchRagPipelineCustomizedTemplatesByTemplateIdResponses = {
   204: void
 }
 
-export type PatchRagPipelineCustomizedTemplatesByTemplateIdResponse = PatchRagPipelineCustomizedTemplatesByTemplateIdResponses[keyof PatchRagPipelineCustomizedTemplatesByTemplateIdResponses]
+export type PatchRagPipelineCustomizedTemplatesByTemplateIdResponse
+  = PatchRagPipelineCustomizedTemplatesByTemplateIdResponses[keyof PatchRagPipelineCustomizedTemplatesByTemplateIdResponses]
 
 export type PostRagPipelineCustomizedTemplatesByTemplateIdData = {
   body?: never
@@ -579,7 +587,8 @@ export type PostRagPipelineCustomizedTemplatesByTemplateIdResponses = {
   200: SimpleDataResponse
 }
 
-export type PostRagPipelineCustomizedTemplatesByTemplateIdResponse = PostRagPipelineCustomizedTemplatesByTemplateIdResponses[keyof PostRagPipelineCustomizedTemplatesByTemplateIdResponses]
+export type PostRagPipelineCustomizedTemplatesByTemplateIdResponse
+  = PostRagPipelineCustomizedTemplatesByTemplateIdResponses[keyof PostRagPipelineCustomizedTemplatesByTemplateIdResponses]
 
 export type PostRagPipelineDatasetData = {
   body: RagPipelineDatasetImportPayload
@@ -592,7 +601,8 @@ export type PostRagPipelineDatasetResponses = {
   201: RagPipelineImportResponse
 }
 
-export type PostRagPipelineDatasetResponse = PostRagPipelineDatasetResponses[keyof PostRagPipelineDatasetResponses]
+export type PostRagPipelineDatasetResponse
+  = PostRagPipelineDatasetResponses[keyof PostRagPipelineDatasetResponses]
 
 export type PostRagPipelineEmptyDatasetData = {
   body?: never
@@ -605,7 +615,8 @@ export type PostRagPipelineEmptyDatasetResponses = {
   201: DatasetDetailResponse
 }
 
-export type PostRagPipelineEmptyDatasetResponse = PostRagPipelineEmptyDatasetResponses[keyof PostRagPipelineEmptyDatasetResponses]
+export type PostRagPipelineEmptyDatasetResponse
+  = PostRagPipelineEmptyDatasetResponses[keyof PostRagPipelineEmptyDatasetResponses]
 
 export type GetRagPipelineTemplatesData = {
   body?: never
@@ -621,7 +632,8 @@ export type GetRagPipelineTemplatesResponses = {
   200: PipelineTemplateListResponse
 }
 
-export type GetRagPipelineTemplatesResponse = GetRagPipelineTemplatesResponses[keyof GetRagPipelineTemplatesResponses]
+export type GetRagPipelineTemplatesResponse
+  = GetRagPipelineTemplatesResponses[keyof GetRagPipelineTemplatesResponses]
 
 export type GetRagPipelineTemplatesByTemplateIdData = {
   body?: never
@@ -638,7 +650,8 @@ export type GetRagPipelineTemplatesByTemplateIdResponses = {
   200: PipelineTemplateDetailResponse
 }
 
-export type GetRagPipelineTemplatesByTemplateIdResponse = GetRagPipelineTemplatesByTemplateIdResponses[keyof GetRagPipelineTemplatesByTemplateIdResponses]
+export type GetRagPipelineTemplatesByTemplateIdResponse
+  = GetRagPipelineTemplatesByTemplateIdResponses[keyof GetRagPipelineTemplatesByTemplateIdResponses]
 
 export type GetRagPipelinesDatasourcePluginsData = {
   body?: never
@@ -651,7 +664,8 @@ export type GetRagPipelinesDatasourcePluginsResponses = {
   200: RagPipelineOpaqueResponse
 }
 
-export type GetRagPipelinesDatasourcePluginsResponse = GetRagPipelinesDatasourcePluginsResponses[keyof GetRagPipelinesDatasourcePluginsResponses]
+export type GetRagPipelinesDatasourcePluginsResponse
+  = GetRagPipelinesDatasourcePluginsResponses[keyof GetRagPipelinesDatasourcePluginsResponses]
 
 export type PostRagPipelinesImportsData = {
   body: RagPipelineImportPayload
@@ -664,14 +678,16 @@ export type PostRagPipelinesImportsErrors = {
   400: RagPipelineImportResponse
 }
 
-export type PostRagPipelinesImportsError = PostRagPipelinesImportsErrors[keyof PostRagPipelinesImportsErrors]
+export type PostRagPipelinesImportsError
+  = PostRagPipelinesImportsErrors[keyof PostRagPipelinesImportsErrors]
 
 export type PostRagPipelinesImportsResponses = {
   200: RagPipelineImportResponse
   202: RagPipelineImportResponse
 }
 
-export type PostRagPipelinesImportsResponse = PostRagPipelinesImportsResponses[keyof PostRagPipelinesImportsResponses]
+export type PostRagPipelinesImportsResponse
+  = PostRagPipelinesImportsResponses[keyof PostRagPipelinesImportsResponses]
 
 export type PostRagPipelinesImportsByImportIdConfirmData = {
   body?: never
@@ -686,13 +702,15 @@ export type PostRagPipelinesImportsByImportIdConfirmErrors = {
   400: RagPipelineImportResponse
 }
 
-export type PostRagPipelinesImportsByImportIdConfirmError = PostRagPipelinesImportsByImportIdConfirmErrors[keyof PostRagPipelinesImportsByImportIdConfirmErrors]
+export type PostRagPipelinesImportsByImportIdConfirmError
+  = PostRagPipelinesImportsByImportIdConfirmErrors[keyof PostRagPipelinesImportsByImportIdConfirmErrors]
 
 export type PostRagPipelinesImportsByImportIdConfirmResponses = {
   200: RagPipelineImportResponse
 }
 
-export type PostRagPipelinesImportsByImportIdConfirmResponse = PostRagPipelinesImportsByImportIdConfirmResponses[keyof PostRagPipelinesImportsByImportIdConfirmResponses]
+export type PostRagPipelinesImportsByImportIdConfirmResponse
+  = PostRagPipelinesImportsByImportIdConfirmResponses[keyof PostRagPipelinesImportsByImportIdConfirmResponses]
 
 export type GetRagPipelinesImportsByPipelineIdCheckDependenciesData = {
   body?: never
@@ -707,7 +725,8 @@ export type GetRagPipelinesImportsByPipelineIdCheckDependenciesResponses = {
   200: RagPipelineImportCheckDependenciesResponse
 }
 
-export type GetRagPipelinesImportsByPipelineIdCheckDependenciesResponse = GetRagPipelinesImportsByPipelineIdCheckDependenciesResponses[keyof GetRagPipelinesImportsByPipelineIdCheckDependenciesResponses]
+export type GetRagPipelinesImportsByPipelineIdCheckDependenciesResponse
+  = GetRagPipelinesImportsByPipelineIdCheckDependenciesResponses[keyof GetRagPipelinesImportsByPipelineIdCheckDependenciesResponses]
 
 export type GetRagPipelinesRecommendedPluginsData = {
   body?: never
@@ -722,7 +741,8 @@ export type GetRagPipelinesRecommendedPluginsResponses = {
   200: RagPipelineOpaqueResponse
 }
 
-export type GetRagPipelinesRecommendedPluginsResponse = GetRagPipelinesRecommendedPluginsResponses[keyof GetRagPipelinesRecommendedPluginsResponses]
+export type GetRagPipelinesRecommendedPluginsResponse
+  = GetRagPipelinesRecommendedPluginsResponses[keyof GetRagPipelinesRecommendedPluginsResponses]
 
 export type PostRagPipelinesTransformDatasetsByDatasetIdData = {
   body?: never
@@ -737,7 +757,8 @@ export type PostRagPipelinesTransformDatasetsByDatasetIdResponses = {
   200: RagPipelineOpaqueResponse
 }
 
-export type PostRagPipelinesTransformDatasetsByDatasetIdResponse = PostRagPipelinesTransformDatasetsByDatasetIdResponses[keyof PostRagPipelinesTransformDatasetsByDatasetIdResponses]
+export type PostRagPipelinesTransformDatasetsByDatasetIdResponse
+  = PostRagPipelinesTransformDatasetsByDatasetIdResponses[keyof PostRagPipelinesTransformDatasetsByDatasetIdResponses]
 
 export type PostRagPipelinesByPipelineIdCustomizedPublishData = {
   body: CustomizedPipelineTemplatePayload
@@ -752,7 +773,8 @@ export type PostRagPipelinesByPipelineIdCustomizedPublishResponses = {
   204: void
 }
 
-export type PostRagPipelinesByPipelineIdCustomizedPublishResponse = PostRagPipelinesByPipelineIdCustomizedPublishResponses[keyof PostRagPipelinesByPipelineIdCustomizedPublishResponses]
+export type PostRagPipelinesByPipelineIdCustomizedPublishResponse
+  = PostRagPipelinesByPipelineIdCustomizedPublishResponses[keyof PostRagPipelinesByPipelineIdCustomizedPublishResponses]
 
 export type GetRagPipelinesByPipelineIdExportsData = {
   body?: never
@@ -769,7 +791,8 @@ export type GetRagPipelinesByPipelineIdExportsResponses = {
   200: SimpleDataResponse
 }
 
-export type GetRagPipelinesByPipelineIdExportsResponse = GetRagPipelinesByPipelineIdExportsResponses[keyof GetRagPipelinesByPipelineIdExportsResponses]
+export type GetRagPipelinesByPipelineIdExportsResponse
+  = GetRagPipelinesByPipelineIdExportsResponses[keyof GetRagPipelinesByPipelineIdExportsResponses]
 
 export type GetRagPipelinesByPipelineIdWorkflowRunsData = {
   body?: never
@@ -787,7 +810,8 @@ export type GetRagPipelinesByPipelineIdWorkflowRunsResponses = {
   200: WorkflowRunPaginationResponse
 }
 
-export type GetRagPipelinesByPipelineIdWorkflowRunsResponse = GetRagPipelinesByPipelineIdWorkflowRunsResponses[keyof GetRagPipelinesByPipelineIdWorkflowRunsResponses]
+export type GetRagPipelinesByPipelineIdWorkflowRunsResponse
+  = GetRagPipelinesByPipelineIdWorkflowRunsResponses[keyof GetRagPipelinesByPipelineIdWorkflowRunsResponses]
 
 export type PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopData = {
   body?: never
@@ -803,7 +827,8 @@ export type PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponses =
   200: SimpleResultResponse
 }
 
-export type PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponse = PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponses[keyof PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponses]
+export type PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponse
+  = PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponses[keyof PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponses]
 
 export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdData = {
   body?: never
@@ -819,7 +844,8 @@ export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdResponses = {
   200: WorkflowRunDetailResponse
 }
 
-export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdResponse = GetRagPipelinesByPipelineIdWorkflowRunsByRunIdResponses[keyof GetRagPipelinesByPipelineIdWorkflowRunsByRunIdResponses]
+export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdResponse
+  = GetRagPipelinesByPipelineIdWorkflowRunsByRunIdResponses[keyof GetRagPipelinesByPipelineIdWorkflowRunsByRunIdResponses]
 
 export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsData = {
   body?: never
@@ -835,7 +861,8 @@ export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsResponse
   200: WorkflowRunNodeExecutionListResponse
 }
 
-export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsResponse = GetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsResponses[keyof GetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsResponses]
+export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsResponse
+  = GetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsResponses[keyof GetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsResponses]
 
 export type GetRagPipelinesByPipelineIdWorkflowsData = {
   body?: never
@@ -859,7 +886,8 @@ export type GetRagPipelinesByPipelineIdWorkflowsResponses = {
   200: WorkflowPaginationResponse
 }
 
-export type GetRagPipelinesByPipelineIdWorkflowsResponse = GetRagPipelinesByPipelineIdWorkflowsResponses[keyof GetRagPipelinesByPipelineIdWorkflowsResponses]
+export type GetRagPipelinesByPipelineIdWorkflowsResponse
+  = GetRagPipelinesByPipelineIdWorkflowsResponses[keyof GetRagPipelinesByPipelineIdWorkflowsResponses]
 
 export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsData = {
   body?: never
@@ -874,7 +902,8 @@ export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsRespo
   200: DefaultBlockConfigsResponse
 }
 
-export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsResponse = GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsResponses]
+export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsResponse
+  = GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsResponses]
 
 export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeData = {
   body?: never
@@ -892,7 +921,8 @@ export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlo
   200: DefaultBlockConfigResponse
 }
 
-export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponse = GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponses]
+export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponse
+  = GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponses]
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftData = {
   body?: never
@@ -911,7 +941,8 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftResponses = {
   200: WorkflowResponse
 }
 
-export type GetRagPipelinesByPipelineIdWorkflowsDraftResponse = GetRagPipelinesByPipelineIdWorkflowsDraftResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftResponses]
+export type GetRagPipelinesByPipelineIdWorkflowsDraftResponse
+  = GetRagPipelinesByPipelineIdWorkflowsDraftResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftResponses]
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftData = {
   body: DraftWorkflowSyncPayload
@@ -926,7 +957,8 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftResponses = {
   200: RagPipelineWorkflowSyncResponse
 }
 
-export type PostRagPipelinesByPipelineIdWorkflowsDraftResponse = PostRagPipelinesByPipelineIdWorkflowsDraftResponses[keyof PostRagPipelinesByPipelineIdWorkflowsDraftResponses]
+export type PostRagPipelinesByPipelineIdWorkflowsDraftResponse
+  = PostRagPipelinesByPipelineIdWorkflowsDraftResponses[keyof PostRagPipelinesByPipelineIdWorkflowsDraftResponses]
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunData = {
   body: DatasourceNodeRunPayload
@@ -942,7 +974,8 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRun
   200: RagPipelineOpaqueResponse
 }
 
-export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunResponse = PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunResponses[keyof PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunResponses]
+export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunResponse
+  = PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunResponses[keyof PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunResponses]
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectData = {
   body: DatasourceVariablesPayload
@@ -957,7 +990,8 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspect
   200: WorkflowRunNodeExecutionResponse
 }
 
-export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectResponse = PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectResponses[keyof PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectResponses]
+export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectResponse
+  = PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectResponses[keyof PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectResponses]
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesData = {
   body?: never
@@ -972,7 +1006,8 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesRespons
   200: EnvironmentVariableListResponse
 }
 
-export type GetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesResponse = GetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesResponses]
+export type GetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesResponse
+  = GetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesResponses]
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunData = {
   body: NodeRunPayload
@@ -988,7 +1023,8 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunR
   200: RagPipelineOpaqueResponse
 }
 
-export type PostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunResponse = PostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunResponses[keyof PostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunResponses]
+export type PostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunResponse
+  = PostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunResponses[keyof PostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunResponses]
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunData = {
   body: NodeRunPayload
@@ -1004,7 +1040,8 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunRespon
   200: RagPipelineOpaqueResponse
 }
 
-export type PostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunResponse = PostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunResponses[keyof PostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunResponses]
+export type PostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunResponse
+  = PostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunResponses[keyof PostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunResponses]
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunData = {
   body?: never
@@ -1020,7 +1057,8 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunRespons
   200: WorkflowRunNodeExecutionResponse
 }
 
-export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunResponse = GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunResponses]
+export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunResponse
+  = GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunResponses]
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunData = {
   body: NodeRunRequiredPayload
@@ -1036,7 +1074,8 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunResponses 
   200: WorkflowRunNodeExecutionResponse
 }
 
-export type PostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunResponse = PostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunResponses[keyof PostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunResponses]
+export type PostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunResponse
+  = PostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunResponses[keyof PostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunResponses]
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesData = {
   body?: never
@@ -1052,7 +1091,8 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesRe
   204: void
 }
 
-export type DeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse = DeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponses[keyof DeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponses]
+export type DeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse
+  = DeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponses[keyof DeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponses]
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesData = {
   body?: never
@@ -1068,7 +1108,8 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesRespo
   200: WorkflowDraftVariableList
 }
 
-export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse = GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponses]
+export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse
+  = GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponses]
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersData = {
   body?: never
@@ -1085,7 +1126,8 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersResp
   200: RagPipelineStepParametersResponse
 }
 
-export type GetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersResponse = GetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersResponses]
+export type GetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersResponse
+  = GetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersResponses]
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersData = {
   body?: never
@@ -1102,7 +1144,8 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersRespons
   200: RagPipelineStepParametersResponse
 }
 
-export type GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponse = GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponses]
+export type GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponse
+  = GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponses]
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftRunData = {
   body: DraftWorkflowRunPayload
@@ -1117,7 +1160,8 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftRunResponses = {
   200: RagPipelineOpaqueResponse
 }
 
-export type PostRagPipelinesByPipelineIdWorkflowsDraftRunResponse = PostRagPipelinesByPipelineIdWorkflowsDraftRunResponses[keyof PostRagPipelinesByPipelineIdWorkflowsDraftRunResponses]
+export type PostRagPipelinesByPipelineIdWorkflowsDraftRunResponse
+  = PostRagPipelinesByPipelineIdWorkflowsDraftRunResponses[keyof PostRagPipelinesByPipelineIdWorkflowsDraftRunResponses]
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesData = {
   body?: never
@@ -1132,7 +1176,8 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponses = 
   200: WorkflowDraftVariableList
 }
 
-export type GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponse = GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponses]
+export type GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponse
+  = GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponses]
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesData = {
   body?: never
@@ -1147,7 +1192,8 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponses = {
   204: void
 }
 
-export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse = DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponses[keyof DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponses]
+export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse
+  = DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponses[keyof DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponses]
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesData = {
   body?: never
@@ -1165,7 +1211,8 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponses = {
   200: WorkflowDraftVariableListWithoutValue
 }
 
-export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse = GetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponses]
+export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse
+  = GetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponses]
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdData = {
   body?: never
@@ -1181,7 +1228,8 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdRes
   204: void
 }
 
-export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse = DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses[keyof DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses]
+export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse
+  = DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses[keyof DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses]
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdData = {
   body?: never
@@ -1197,7 +1245,8 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdRespon
   200: WorkflowDraftVariable
 }
 
-export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse = GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses]
+export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse
+  = GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses]
 
 export type PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdData = {
   body: WorkflowDraftVariablePatchPayload
@@ -1213,7 +1262,8 @@ export type PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResp
   200: WorkflowDraftVariable
 }
 
-export type PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse = PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses[keyof PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses]
+export type PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse
+  = PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses[keyof PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses]
 
 export type PutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetData = {
   body?: never
@@ -1230,7 +1280,8 @@ export type PutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetR
   204: void
 }
 
-export type PutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetResponse = PutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetResponses[keyof PutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetResponses]
+export type PutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetResponse
+  = PutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetResponses[keyof PutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetResponses]
 
 export type GetRagPipelinesByPipelineIdWorkflowsPublishData = {
   body?: never
@@ -1245,7 +1296,8 @@ export type GetRagPipelinesByPipelineIdWorkflowsPublishResponses = {
   200: WorkflowResponse
 }
 
-export type GetRagPipelinesByPipelineIdWorkflowsPublishResponse = GetRagPipelinesByPipelineIdWorkflowsPublishResponses[keyof GetRagPipelinesByPipelineIdWorkflowsPublishResponses]
+export type GetRagPipelinesByPipelineIdWorkflowsPublishResponse
+  = GetRagPipelinesByPipelineIdWorkflowsPublishResponses[keyof GetRagPipelinesByPipelineIdWorkflowsPublishResponses]
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishData = {
   body?: never
@@ -1260,7 +1312,8 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishResponses = {
   200: RagPipelineWorkflowPublishResponse
 }
 
-export type PostRagPipelinesByPipelineIdWorkflowsPublishResponse = PostRagPipelinesByPipelineIdWorkflowsPublishResponses[keyof PostRagPipelinesByPipelineIdWorkflowsPublishResponses]
+export type PostRagPipelinesByPipelineIdWorkflowsPublishResponse
+  = PostRagPipelinesByPipelineIdWorkflowsPublishResponses[keyof PostRagPipelinesByPipelineIdWorkflowsPublishResponses]
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewData = {
   body: Parser
@@ -1272,11 +1325,13 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeI
   url: '/rag/pipelines/{pipeline_id}/workflows/published/datasource/nodes/{node_id}/preview'
 }
 
-export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponses = {
-  200: DataSourceContentPreviewResponse
-}
+export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponses
+  = {
+    200: DataSourceContentPreviewResponse
+  }
 
-export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse = PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponses[keyof PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponses]
+export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse
+  = PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponses[keyof PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponses]
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunData = {
   body: DatasourceNodeRunPayload
@@ -1292,7 +1347,8 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeI
   200: RagPipelineOpaqueResponse
 }
 
-export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunResponse = PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunResponses[keyof PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunResponses]
+export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunResponse
+  = PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunResponses[keyof PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunResponses]
 
 export type GetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersData = {
   body?: never
@@ -1309,7 +1365,8 @@ export type GetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParameters
   200: RagPipelineStepParametersResponse
 }
 
-export type GetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersResponse = GetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersResponses[keyof GetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersResponses]
+export type GetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersResponse
+  = GetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersResponses[keyof GetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersResponses]
 
 export type GetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersData = {
   body?: never
@@ -1326,7 +1383,8 @@ export type GetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersRes
   200: RagPipelineStepParametersResponse
 }
 
-export type GetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersResponse = GetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersResponses[keyof GetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersResponses]
+export type GetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersResponse
+  = GetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersResponses[keyof GetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersResponses]
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedRunData = {
   body: PublishedWorkflowRunPayload
@@ -1341,7 +1399,8 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishedRunResponses = {
   200: RagPipelineOpaqueResponse
 }
 
-export type PostRagPipelinesByPipelineIdWorkflowsPublishedRunResponse = PostRagPipelinesByPipelineIdWorkflowsPublishedRunResponses[keyof PostRagPipelinesByPipelineIdWorkflowsPublishedRunResponses]
+export type PostRagPipelinesByPipelineIdWorkflowsPublishedRunResponse
+  = PostRagPipelinesByPipelineIdWorkflowsPublishedRunResponses[keyof PostRagPipelinesByPipelineIdWorkflowsPublishedRunResponses]
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdData = {
   body?: never
@@ -1357,7 +1416,8 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses = {
   204: void
 }
 
-export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse = DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses[keyof DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses]
+export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse
+  = DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses[keyof DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses]
 
 export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdData = {
   body: WorkflowUpdatePayload
@@ -1379,7 +1439,8 @@ export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses = {
   200: WorkflowResponse
 }
 
-export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse = PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses[keyof PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses]
+export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse
+  = PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses[keyof PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses]
 
 export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreData = {
   body?: never
@@ -1395,4 +1456,5 @@ export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponses = 
   200: RagPipelineWorkflowSyncResponse
 }
 
-export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse = PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponses[keyof PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponses]
+export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse
+  = PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponses[keyof PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponses]

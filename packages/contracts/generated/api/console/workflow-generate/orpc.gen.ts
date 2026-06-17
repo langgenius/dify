@@ -8,14 +8,17 @@ import { zPostWorkflowGenerateBody, zPostWorkflowGenerateResponse } from './zod.
 /**
  * Generate a Dify workflow graph from natural language
  */
-export const post = oc.route({
-  description: 'Generate a Dify workflow graph from natural language',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postWorkflowGenerate',
-  path: '/workflow-generate',
-  tags: ['console'],
-}).input(z.object({ body: zPostWorkflowGenerateBody })).output(zPostWorkflowGenerateResponse)
+export const post = oc
+  .route({
+    description: 'Generate a Dify workflow graph from natural language',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkflowGenerate',
+    path: '/workflow-generate',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostWorkflowGenerateBody }))
+  .output(zPostWorkflowGenerateResponse)
 
 export const workflowGenerate = {
   post,

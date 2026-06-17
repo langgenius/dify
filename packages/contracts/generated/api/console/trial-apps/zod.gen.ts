@@ -100,7 +100,15 @@ export const zTrialAppModelConfig = z.object({
   annotation_reply: z.record(z.string(), z.unknown()).optional(),
   chat_prompt_config: z.record(z.string(), z.unknown()).optional(),
   completion_prompt_config: z.record(z.string(), z.unknown()).optional(),
-  created_at: z.coerce.bigint().min(BigInt('-9223372036854775808'), { error: 'Invalid value: Expected int64 to be >= -9223372036854775808' }).max(BigInt('9223372036854775807'), { error: 'Invalid value: Expected int64 to be <= 9223372036854775807' }).optional(),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .optional(),
   created_by: z.string().optional(),
   dataset_configs: z.record(z.string(), z.unknown()).optional(),
   dataset_query_variable: z.string().optional(),
@@ -117,7 +125,15 @@ export const zTrialAppModelConfig = z.object({
   suggested_questions: z.array(z.string()).optional(),
   suggested_questions_after_answer: z.record(z.string(), z.unknown()).optional(),
   text_to_speech: z.record(z.string(), z.unknown()).optional(),
-  updated_at: z.coerce.bigint().min(BigInt('-9223372036854775808'), { error: 'Invalid value: Expected int64 to be >= -9223372036854775808' }).max(BigInt('9223372036854775807'), { error: 'Invalid value: Expected int64 to be <= 9223372036854775807' }).optional(),
+  updated_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .optional(),
   updated_by: z.string().optional(),
   user_input_form: z.array(z.record(z.string(), z.unknown())).optional(),
 })
@@ -129,7 +145,15 @@ export const zTrialSite = z.object({
   chat_color_theme_inverted: z.boolean().optional(),
   code: z.string().optional(),
   copyright: z.string().optional(),
-  created_at: z.coerce.bigint().min(BigInt('-9223372036854775808'), { error: 'Invalid value: Expected int64 to be >= -9223372036854775808' }).max(BigInt('9223372036854775807'), { error: 'Invalid value: Expected int64 to be <= 9223372036854775807' }).optional(),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .optional(),
   created_by: z.string().optional(),
   custom_disclaimer: z.string().optional(),
   customize_domain: z.string().optional(),
@@ -144,7 +168,15 @@ export const zTrialSite = z.object({
   prompt_public: z.boolean().optional(),
   show_workflow_steps: z.boolean().optional(),
   title: z.string().optional(),
-  updated_at: z.coerce.bigint().min(BigInt('-9223372036854775808'), { error: 'Invalid value: Expected int64 to be >= -9223372036854775808' }).max(BigInt('9223372036854775807'), { error: 'Invalid value: Expected int64 to be <= 9223372036854775807' }).optional(),
+  updated_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .optional(),
   updated_by: z.string().optional(),
   use_icon_as_answer_icon: z.boolean().optional(),
 })
@@ -156,17 +188,41 @@ export const zTrialTag = z.object({
 })
 
 export const zTrialWorkflowPartial = z.object({
-  created_at: z.coerce.bigint().min(BigInt('-9223372036854775808'), { error: 'Invalid value: Expected int64 to be >= -9223372036854775808' }).max(BigInt('9223372036854775807'), { error: 'Invalid value: Expected int64 to be <= 9223372036854775807' }).optional(),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .optional(),
   created_by: z.string().optional(),
   id: z.string().optional(),
-  updated_at: z.coerce.bigint().min(BigInt('-9223372036854775808'), { error: 'Invalid value: Expected int64 to be >= -9223372036854775808' }).max(BigInt('9223372036854775807'), { error: 'Invalid value: Expected int64 to be <= 9223372036854775807' }).optional(),
+  updated_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .optional(),
   updated_by: z.string().optional(),
 })
 
 export const zTrialAppDetailWithSite = z.object({
   access_mode: z.string().optional(),
   api_base_url: z.string().optional(),
-  created_at: z.coerce.bigint().min(BigInt('-9223372036854775808'), { error: 'Invalid value: Expected int64 to be >= -9223372036854775808' }).max(BigInt('9223372036854775807'), { error: 'Invalid value: Expected int64 to be <= 9223372036854775807' }).optional(),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .optional(),
   created_by: z.string().optional(),
   deleted_tools: z.array(zTrialDeletedTool).optional(),
   description: z.string().optional(),
@@ -181,23 +237,32 @@ export const zTrialAppDetailWithSite = z.object({
   mode: z.string().optional(),
   model_config: zTrialAppModelConfig.optional(),
   name: z.string().optional(),
-  permission_keys: z.array(z.string()).optional(),
   site: zTrialSite.optional(),
   tags: z.array(zTrialTag).optional(),
-  updated_at: z.coerce.bigint().min(BigInt('-9223372036854775808'), { error: 'Invalid value: Expected int64 to be >= -9223372036854775808' }).max(BigInt('9223372036854775807'), { error: 'Invalid value: Expected int64 to be <= 9223372036854775807' }).optional(),
+  updated_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .optional(),
   updated_by: z.string().optional(),
   use_icon_as_answer_icon: z.boolean().optional(),
   workflow: zTrialWorkflowPartial.optional(),
 })
 
-export const zJsonValue = z.union([
-  z.string(),
-  z.int(),
-  z.number(),
-  z.boolean(),
-  z.record(z.string(), z.unknown()),
-  z.array(z.unknown()),
-]).nullable()
+export const zJsonValue = z
+  .union([
+    z.string(),
+    z.int(),
+    z.number(),
+    z.boolean(),
+    z.record(z.string(), z.unknown()),
+    z.array(z.unknown()),
+  ])
+  .nullable()
 
 /**
  * GeneratedAppResponse
@@ -205,7 +270,15 @@ export const zJsonValue = z.union([
 export const zGeneratedAppResponse = zJsonValue
 
 export const zTrialDataset = z.object({
-  created_at: z.coerce.bigint().min(BigInt('-9223372036854775808'), { error: 'Invalid value: Expected int64 to be >= -9223372036854775808' }).max(BigInt('9223372036854775807'), { error: 'Invalid value: Expected int64 to be <= 9223372036854775807' }).optional(),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .optional(),
   created_by: z.string().optional(),
   data_source_type: z.string().optional(),
   description: z.string().optional(),
@@ -213,7 +286,6 @@ export const zTrialDataset = z.object({
   indexing_technique: z.string().optional(),
   name: z.string().optional(),
   permission: z.string().optional(),
-  permission_keys: z.array(z.string()).optional(),
 })
 
 export const zTrialDatasetList = z.object({
@@ -259,14 +331,16 @@ export const zTrialConversationVariable = z.object({
   description: z.string().optional(),
   id: z.string().optional(),
   name: z.string().optional(),
-  value: z.union([
-    z.string(),
-    z.int(),
-    z.number(),
-    z.boolean(),
-    z.record(z.string(), z.unknown()),
-    z.array(z.unknown()),
-  ]).nullish(),
+  value: z
+    .union([
+      z.string(),
+      z.int(),
+      z.number(),
+      z.boolean(),
+      z.record(z.string(), z.unknown()),
+      z.array(z.unknown()),
+    ])
+    .nullish(),
   value_type: z.string().optional(),
 })
 
@@ -281,14 +355,16 @@ export const zTrialPipelineVariable = z.object({
   allow_file_upload_methods: z.array(z.string()).optional(),
   allowed_file_types: z.array(z.string()).optional(),
   belong_to_node_id: z.string().optional(),
-  default_value: z.union([
-    z.string(),
-    z.int(),
-    z.number(),
-    z.boolean(),
-    z.record(z.string(), z.unknown()),
-    z.array(z.unknown()),
-  ]).nullish(),
+  default_value: z
+    .union([
+      z.string(),
+      z.int(),
+      z.number(),
+      z.boolean(),
+      z.record(z.string(), z.unknown()),
+      z.array(z.unknown()),
+    ])
+    .nullish(),
   label: z.string().optional(),
   max_length: z.int().optional(),
   options: z.array(z.string()).optional(),
@@ -302,7 +378,15 @@ export const zTrialPipelineVariable = z.object({
 
 export const zTrialWorkflow = z.object({
   conversation_variables: z.array(zTrialConversationVariable).optional(),
-  created_at: z.coerce.bigint().min(BigInt('-9223372036854775808'), { error: 'Invalid value: Expected int64 to be >= -9223372036854775808' }).max(BigInt('9223372036854775807'), { error: 'Invalid value: Expected int64 to be <= 9223372036854775807' }).optional(),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .optional(),
   created_by: zTrialSimpleAccount.optional(),
   environment_variables: z.array(z.record(z.string(), z.unknown())).optional(),
   features: z.record(z.string(), z.unknown()).optional(),
@@ -313,7 +397,15 @@ export const zTrialWorkflow = z.object({
   marked_name: z.string().optional(),
   rag_pipeline_variables: z.array(zTrialPipelineVariable).optional(),
   tool_published: z.boolean().optional(),
-  updated_at: z.coerce.bigint().min(BigInt('-9223372036854775808'), { error: 'Invalid value: Expected int64 to be >= -9223372036854775808' }).max(BigInt('9223372036854775807'), { error: 'Invalid value: Expected int64 to be <= 9223372036854775807' }).optional(),
+  updated_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .optional(),
   updated_by: zTrialSimpleAccount.optional(),
   version: z.string().optional(),
 })
@@ -405,7 +497,8 @@ export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath = z.o
 /**
  * Success
  */
-export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse = zSuggestedQuestionsResponse
+export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse
+  = zSuggestedQuestionsResponse
 
 export const zGetTrialAppsByAppIdParametersPath = z.object({
   app_id: z.string(),

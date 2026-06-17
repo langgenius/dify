@@ -3,22 +3,31 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
-import { zGetFormHumanInputByFormTokenPath, zGetFormHumanInputByFormTokenResponse, zPostFormHumanInputByFormTokenBody, zPostFormHumanInputByFormTokenPath, zPostFormHumanInputByFormTokenResponse } from './zod.gen'
+import {
+  zGetFormHumanInputByFormTokenPath,
+  zGetFormHumanInputByFormTokenResponse,
+  zPostFormHumanInputByFormTokenBody,
+  zPostFormHumanInputByFormTokenPath,
+  zPostFormHumanInputByFormTokenResponse,
+} from './zod.gen'
 
 /**
  * Get human input form definition by form token
  *
  * GET /console/api/form/human_input/<form_token>
  */
-export const get = oc.route({
-  description: 'GET /console/api/form/human_input/<form_token>',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getFormHumanInputByFormToken',
-  path: '/form/human_input/{form_token}',
-  summary: 'Get human input form definition by form token',
-  tags: ['console'],
-}).input(z.object({ params: zGetFormHumanInputByFormTokenPath })).output(zGetFormHumanInputByFormTokenResponse)
+export const get = oc
+  .route({
+    description: 'GET /console/api/form/human_input/<form_token>',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getFormHumanInputByFormToken',
+    path: '/form/human_input/{form_token}',
+    summary: 'Get human input form definition by form token',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetFormHumanInputByFormTokenPath }))
+  .output(zGetFormHumanInputByFormTokenResponse)
 
 /**
  * Submit human input form by form token
@@ -33,15 +42,24 @@ export const get = oc.route({
  * "action": "Approve"
  * }
  */
-export const post = oc.route({
-  description: 'POST /console/api/form/human_input/<form_token>\n\nRequest body:\n{\n    "inputs": {\n        "content": "User input content"\n    },\n    "action": "Approve"\n}',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postFormHumanInputByFormToken',
-  path: '/form/human_input/{form_token}',
-  summary: 'Submit human input form by form token',
-  tags: ['console'],
-}).input(z.object({ body: zPostFormHumanInputByFormTokenBody, params: zPostFormHumanInputByFormTokenPath })).output(zPostFormHumanInputByFormTokenResponse)
+export const post = oc
+  .route({
+    description:
+      'POST /console/api/form/human_input/<form_token>\n\nRequest body:\n{\n    "inputs": {\n        "content": "User input content"\n    },\n    "action": "Approve"\n}',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFormHumanInputByFormToken',
+    path: '/form/human_input/{form_token}',
+    summary: 'Submit human input form by form token',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostFormHumanInputByFormTokenBody,
+      params: zPostFormHumanInputByFormTokenPath,
+    }),
+  )
+  .output(zPostFormHumanInputByFormTokenResponse)
 
 export const byFormToken = {
   get,

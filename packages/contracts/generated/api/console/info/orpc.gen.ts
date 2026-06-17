@@ -4,13 +4,15 @@ import { oc } from '@orpc/contract'
 
 import { zPostInfoResponse } from './zod.gen'
 
-export const post = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postInfo',
-  path: '/info',
-  tags: ['console'],
-}).output(zPostInfoResponse)
+export const post = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postInfo',
+    path: '/info',
+    tags: ['console'],
+  })
+  .output(zPostInfoResponse)
 
 export const info = {
   post,

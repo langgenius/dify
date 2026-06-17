@@ -3,23 +3,36 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
-import { zGetDataSourceIntegratesByBindingIdByActionPath, zGetDataSourceIntegratesByBindingIdByActionResponse, zGetDataSourceIntegratesResponse, zPatchDataSourceIntegratesByBindingIdByActionPath, zPatchDataSourceIntegratesByBindingIdByActionResponse, zPatchDataSourceIntegratesResponse } from './zod.gen'
+import {
+  zGetDataSourceIntegratesByBindingIdByActionPath,
+  zGetDataSourceIntegratesByBindingIdByActionResponse,
+  zGetDataSourceIntegratesResponse,
+  zPatchDataSourceIntegratesByBindingIdByActionPath,
+  zPatchDataSourceIntegratesByBindingIdByActionResponse,
+  zPatchDataSourceIntegratesResponse,
+} from './zod.gen'
 
-export const get = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getDataSourceIntegratesByBindingIdByAction',
-  path: '/data-source/integrates/{binding_id}/{action}',
-  tags: ['console'],
-}).input(z.object({ params: zGetDataSourceIntegratesByBindingIdByActionPath })).output(zGetDataSourceIntegratesByBindingIdByActionResponse)
+export const get = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDataSourceIntegratesByBindingIdByAction',
+    path: '/data-source/integrates/{binding_id}/{action}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetDataSourceIntegratesByBindingIdByActionPath }))
+  .output(zGetDataSourceIntegratesByBindingIdByActionResponse)
 
-export const patch = oc.route({
-  inputStructure: 'detailed',
-  method: 'PATCH',
-  operationId: 'patchDataSourceIntegratesByBindingIdByAction',
-  path: '/data-source/integrates/{binding_id}/{action}',
-  tags: ['console'],
-}).input(z.object({ params: zPatchDataSourceIntegratesByBindingIdByActionPath })).output(zPatchDataSourceIntegratesByBindingIdByActionResponse)
+export const patch = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchDataSourceIntegratesByBindingIdByAction',
+    path: '/data-source/integrates/{binding_id}/{action}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPatchDataSourceIntegratesByBindingIdByActionPath }))
+  .output(zPatchDataSourceIntegratesByBindingIdByActionResponse)
 
 export const byAction = {
   get,
@@ -30,21 +43,25 @@ export const byBindingId = {
   byAction,
 }
 
-export const get2 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getDataSourceIntegrates',
-  path: '/data-source/integrates',
-  tags: ['console'],
-}).output(zGetDataSourceIntegratesResponse)
+export const get2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDataSourceIntegrates',
+    path: '/data-source/integrates',
+    tags: ['console'],
+  })
+  .output(zGetDataSourceIntegratesResponse)
 
-export const patch2 = oc.route({
-  inputStructure: 'detailed',
-  method: 'PATCH',
-  operationId: 'patchDataSourceIntegrates',
-  path: '/data-source/integrates',
-  tags: ['console'],
-}).output(zPatchDataSourceIntegratesResponse)
+export const patch2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchDataSourceIntegrates',
+    path: '/data-source/integrates',
+    tags: ['console'],
+  })
+  .output(zPatchDataSourceIntegratesResponse)
 
 export const integrates = {
   get: get2,

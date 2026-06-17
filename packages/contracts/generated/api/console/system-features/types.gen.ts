@@ -22,7 +22,6 @@ export type SystemFeatureModel = {
   max_plugin_package_size: number
   plugin_installation_permission: PluginInstallationPermissionModel
   plugin_manager: PluginManagerModel
-  rbac_enabled: boolean
   sso_enforced_for_signin: boolean
   sso_enforced_for_signin_protocol: string
   webapp_auth: WebAppAuthModel
@@ -67,7 +66,11 @@ export type LicenseLimitationModel = {
   size: number
 }
 
-export type PluginInstallationScope = 'all' | 'none' | 'official_and_specific_partners' | 'official_only'
+export type PluginInstallationScope
+  = | 'all'
+    | 'none'
+    | 'official_and_specific_partners'
+    | 'official_only'
 
 export type WebAppAuthSsoModel = {
   protocol: string

@@ -3,15 +3,223 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
-import { zDeleteAppsAnnotationsByAnnotationIdPath, zDeleteAppsAnnotationsByAnnotationIdResponse, zDeleteConversationsByCIdPath, zDeleteConversationsByCIdResponse, zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath, zDeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse, zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath, zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse, zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath, zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse, zDeleteDatasetsByDatasetIdMetadataByMetadataIdPath, zDeleteDatasetsByDatasetIdMetadataByMetadataIdResponse, zDeleteDatasetsByDatasetIdPath, zDeleteDatasetsByDatasetIdResponse, zDeleteDatasetsTagsBody, zDeleteDatasetsTagsResponse, zGetAppFeedbacksQuery, zGetAppFeedbacksResponse, zGetAppsAnnotationReplyByActionStatusByJobIdPath, zGetAppsAnnotationReplyByActionStatusByJobIdResponse, zGetAppsAnnotationsQuery, zGetAppsAnnotationsResponse, zGetConversationsByCIdVariablesPath, zGetConversationsByCIdVariablesQuery, zGetConversationsByCIdVariablesResponse, zGetConversationsQuery, zGetConversationsResponse, zGetDatasetsByDatasetIdDocumentsByBatchIndexingStatusPath, zGetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponse, zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadPath, zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse, zGetDatasetsByDatasetIdDocumentsByDocumentIdPath, zGetDatasetsByDatasetIdDocumentsByDocumentIdQuery, zGetDatasetsByDatasetIdDocumentsByDocumentIdResponse, zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath, zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksQuery, zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse, zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath, zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse, zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath, zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery, zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse, zGetDatasetsByDatasetIdDocumentsPath, zGetDatasetsByDatasetIdDocumentsQuery, zGetDatasetsByDatasetIdDocumentsResponse, zGetDatasetsByDatasetIdMetadataBuiltInPath, zGetDatasetsByDatasetIdMetadataBuiltInResponse, zGetDatasetsByDatasetIdMetadataPath, zGetDatasetsByDatasetIdMetadataResponse, zGetDatasetsByDatasetIdPath, zGetDatasetsByDatasetIdPipelineDatasourcePluginsPath, zGetDatasetsByDatasetIdPipelineDatasourcePluginsQuery, zGetDatasetsByDatasetIdPipelineDatasourcePluginsResponse, zGetDatasetsByDatasetIdResponse, zGetDatasetsByDatasetIdTagsPath, zGetDatasetsByDatasetIdTagsResponse, zGetDatasetsQuery, zGetDatasetsResponse, zGetDatasetsTagsResponse, zGetEndUsersByEndUserIdPath, zGetEndUsersByEndUserIdResponse, zGetFilesByFileIdPreviewPath, zGetFilesByFileIdPreviewQuery, zGetFilesByFileIdPreviewResponse, zGetFormHumanInputByFormTokenPath, zGetFormHumanInputByFormTokenResponse, zGetInfoResponse, zGetMessagesByMessageIdSuggestedPath, zGetMessagesByMessageIdSuggestedResponse, zGetMessagesQuery, zGetMessagesResponse, zGetMetaResponse, zGetParametersResponse, zGetRootResponse, zGetSiteResponse, zGetWorkflowByTaskIdEventsPath, zGetWorkflowByTaskIdEventsQuery, zGetWorkflowByTaskIdEventsResponse, zGetWorkflowsLogsQuery, zGetWorkflowsLogsResponse, zGetWorkflowsRunByWorkflowRunIdPath, zGetWorkflowsRunByWorkflowRunIdResponse, zGetWorkspacesCurrentModelsModelTypesByModelTypePath, zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse, zPatchDatasetsByDatasetIdBody, zPatchDatasetsByDatasetIdDocumentsByDocumentIdBody, zPatchDatasetsByDatasetIdDocumentsByDocumentIdPath, zPatchDatasetsByDatasetIdDocumentsByDocumentIdResponse, zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdBody, zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath, zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse, zPatchDatasetsByDatasetIdDocumentsStatusByActionBody, zPatchDatasetsByDatasetIdDocumentsStatusByActionPath, zPatchDatasetsByDatasetIdDocumentsStatusByActionResponse, zPatchDatasetsByDatasetIdMetadataByMetadataIdBody, zPatchDatasetsByDatasetIdMetadataByMetadataIdPath, zPatchDatasetsByDatasetIdMetadataByMetadataIdResponse, zPatchDatasetsByDatasetIdPath, zPatchDatasetsByDatasetIdResponse, zPatchDatasetsTagsBody, zPatchDatasetsTagsResponse, zPostAppsAnnotationReplyByActionBody, zPostAppsAnnotationReplyByActionPath, zPostAppsAnnotationReplyByActionResponse, zPostAppsAnnotationsBody, zPostAppsAnnotationsResponse, zPostAudioToTextResponse, zPostChatMessagesBody, zPostChatMessagesByTaskIdStopPath, zPostChatMessagesByTaskIdStopResponse, zPostChatMessagesResponse, zPostCompletionMessagesBody, zPostCompletionMessagesByTaskIdStopPath, zPostCompletionMessagesByTaskIdStopResponse, zPostCompletionMessagesResponse, zPostConversationsByCIdNameBody, zPostConversationsByCIdNamePath, zPostConversationsByCIdNameResponse, zPostDatasetsBody, zPostDatasetsByDatasetIdDocumentCreateByFile2Body, zPostDatasetsByDatasetIdDocumentCreateByFile2Path, zPostDatasetsByDatasetIdDocumentCreateByFile2Response, zPostDatasetsByDatasetIdDocumentCreateByFileBody, zPostDatasetsByDatasetIdDocumentCreateByFilePath, zPostDatasetsByDatasetIdDocumentCreateByFileResponse, zPostDatasetsByDatasetIdDocumentCreateByText2Body, zPostDatasetsByDatasetIdDocumentCreateByText2Path, zPostDatasetsByDatasetIdDocumentCreateByText2Response, zPostDatasetsByDatasetIdDocumentCreateByTextBody, zPostDatasetsByDatasetIdDocumentCreateByTextPath, zPostDatasetsByDatasetIdDocumentCreateByTextResponse, zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBody, zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdBody, zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksBody, zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath, zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse, zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath, zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse, zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath, zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse, zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Body, zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Path, zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response, zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileBody, zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFilePath, zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponse, zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Body, zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Path, zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Response, zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextBody, zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextPath, zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse, zPostDatasetsByDatasetIdDocumentsDownloadZipBody, zPostDatasetsByDatasetIdDocumentsDownloadZipPath, zPostDatasetsByDatasetIdDocumentsDownloadZipResponse, zPostDatasetsByDatasetIdDocumentsMetadataBody, zPostDatasetsByDatasetIdDocumentsMetadataPath, zPostDatasetsByDatasetIdDocumentsMetadataResponse, zPostDatasetsByDatasetIdHitTestingBody, zPostDatasetsByDatasetIdHitTestingPath, zPostDatasetsByDatasetIdHitTestingResponse, zPostDatasetsByDatasetIdMetadataBody, zPostDatasetsByDatasetIdMetadataBuiltInByActionPath, zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse, zPostDatasetsByDatasetIdMetadataPath, zPostDatasetsByDatasetIdMetadataResponse, zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunBody, zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunPath, zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse, zPostDatasetsByDatasetIdPipelineRunBody, zPostDatasetsByDatasetIdPipelineRunPath, zPostDatasetsByDatasetIdPipelineRunResponse, zPostDatasetsByDatasetIdRetrieveBody, zPostDatasetsByDatasetIdRetrievePath, zPostDatasetsByDatasetIdRetrieveResponse, zPostDatasetsPipelineFileUploadResponse, zPostDatasetsResponse, zPostDatasetsTagsBindingBody, zPostDatasetsTagsBindingResponse, zPostDatasetsTagsBody, zPostDatasetsTagsResponse, zPostDatasetsTagsUnbindingBody, zPostDatasetsTagsUnbindingResponse, zPostFilesUploadResponse, zPostFormHumanInputByFormTokenBody, zPostFormHumanInputByFormTokenPath, zPostFormHumanInputByFormTokenResponse, zPostMessagesByMessageIdFeedbacksBody, zPostMessagesByMessageIdFeedbacksPath, zPostMessagesByMessageIdFeedbacksResponse, zPostTextToAudioBody, zPostTextToAudioResponse, zPostWorkflowsByWorkflowIdRunBody, zPostWorkflowsByWorkflowIdRunPath, zPostWorkflowsByWorkflowIdRunResponse, zPostWorkflowsRunBody, zPostWorkflowsRunResponse, zPostWorkflowsTasksByTaskIdStopPath, zPostWorkflowsTasksByTaskIdStopResponse, zPutAppsAnnotationsByAnnotationIdBody, zPutAppsAnnotationsByAnnotationIdPath, zPutAppsAnnotationsByAnnotationIdResponse, zPutConversationsByCIdVariablesByVariableIdBody, zPutConversationsByCIdVariablesByVariableIdPath, zPutConversationsByCIdVariablesByVariableIdResponse } from './zod.gen'
+import {
+  zDeleteAppsAnnotationsByAnnotationIdPath,
+  zDeleteAppsAnnotationsByAnnotationIdResponse,
+  zDeleteConversationsByCIdPath,
+  zDeleteConversationsByCIdResponse,
+  zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath,
+  zDeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse,
+  zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath,
+  zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse,
+  zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath,
+  zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse,
+  zDeleteDatasetsByDatasetIdMetadataByMetadataIdPath,
+  zDeleteDatasetsByDatasetIdMetadataByMetadataIdResponse,
+  zDeleteDatasetsByDatasetIdPath,
+  zDeleteDatasetsByDatasetIdResponse,
+  zDeleteDatasetsTagsBody,
+  zDeleteDatasetsTagsResponse,
+  zGetAppFeedbacksQuery,
+  zGetAppFeedbacksResponse,
+  zGetAppsAnnotationReplyByActionStatusByJobIdPath,
+  zGetAppsAnnotationReplyByActionStatusByJobIdResponse,
+  zGetAppsAnnotationsQuery,
+  zGetAppsAnnotationsResponse,
+  zGetConversationsByCIdVariablesPath,
+  zGetConversationsByCIdVariablesQuery,
+  zGetConversationsByCIdVariablesResponse,
+  zGetConversationsQuery,
+  zGetConversationsResponse,
+  zGetDatasetsByDatasetIdDocumentsByBatchIndexingStatusPath,
+  zGetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponse,
+  zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadPath,
+  zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse,
+  zGetDatasetsByDatasetIdDocumentsByDocumentIdPath,
+  zGetDatasetsByDatasetIdDocumentsByDocumentIdQuery,
+  zGetDatasetsByDatasetIdDocumentsByDocumentIdResponse,
+  zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath,
+  zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksQuery,
+  zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse,
+  zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath,
+  zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse,
+  zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath,
+  zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery,
+  zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse,
+  zGetDatasetsByDatasetIdDocumentsPath,
+  zGetDatasetsByDatasetIdDocumentsQuery,
+  zGetDatasetsByDatasetIdDocumentsResponse,
+  zGetDatasetsByDatasetIdMetadataBuiltInPath,
+  zGetDatasetsByDatasetIdMetadataBuiltInResponse,
+  zGetDatasetsByDatasetIdMetadataPath,
+  zGetDatasetsByDatasetIdMetadataResponse,
+  zGetDatasetsByDatasetIdPath,
+  zGetDatasetsByDatasetIdPipelineDatasourcePluginsPath,
+  zGetDatasetsByDatasetIdPipelineDatasourcePluginsQuery,
+  zGetDatasetsByDatasetIdPipelineDatasourcePluginsResponse,
+  zGetDatasetsByDatasetIdResponse,
+  zGetDatasetsByDatasetIdTagsPath,
+  zGetDatasetsByDatasetIdTagsResponse,
+  zGetDatasetsQuery,
+  zGetDatasetsResponse,
+  zGetDatasetsTagsResponse,
+  zGetEndUsersByEndUserIdPath,
+  zGetEndUsersByEndUserIdResponse,
+  zGetFilesByFileIdPreviewPath,
+  zGetFilesByFileIdPreviewQuery,
+  zGetFilesByFileIdPreviewResponse,
+  zGetFormHumanInputByFormTokenPath,
+  zGetFormHumanInputByFormTokenResponse,
+  zGetInfoResponse,
+  zGetMessagesByMessageIdSuggestedPath,
+  zGetMessagesByMessageIdSuggestedResponse,
+  zGetMessagesQuery,
+  zGetMessagesResponse,
+  zGetMetaResponse,
+  zGetParametersResponse,
+  zGetRootResponse,
+  zGetSiteResponse,
+  zGetWorkflowByTaskIdEventsPath,
+  zGetWorkflowByTaskIdEventsQuery,
+  zGetWorkflowByTaskIdEventsResponse,
+  zGetWorkflowsLogsQuery,
+  zGetWorkflowsLogsResponse,
+  zGetWorkflowsRunByWorkflowRunIdPath,
+  zGetWorkflowsRunByWorkflowRunIdResponse,
+  zGetWorkspacesCurrentModelsModelTypesByModelTypePath,
+  zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse,
+  zPatchDatasetsByDatasetIdBody,
+  zPatchDatasetsByDatasetIdDocumentsByDocumentIdBody,
+  zPatchDatasetsByDatasetIdDocumentsByDocumentIdPath,
+  zPatchDatasetsByDatasetIdDocumentsByDocumentIdResponse,
+  zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdBody,
+  zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath,
+  zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse,
+  zPatchDatasetsByDatasetIdDocumentsStatusByActionBody,
+  zPatchDatasetsByDatasetIdDocumentsStatusByActionPath,
+  zPatchDatasetsByDatasetIdDocumentsStatusByActionResponse,
+  zPatchDatasetsByDatasetIdMetadataByMetadataIdBody,
+  zPatchDatasetsByDatasetIdMetadataByMetadataIdPath,
+  zPatchDatasetsByDatasetIdMetadataByMetadataIdResponse,
+  zPatchDatasetsByDatasetIdPath,
+  zPatchDatasetsByDatasetIdResponse,
+  zPatchDatasetsTagsBody,
+  zPatchDatasetsTagsResponse,
+  zPostAppsAnnotationReplyByActionBody,
+  zPostAppsAnnotationReplyByActionPath,
+  zPostAppsAnnotationReplyByActionResponse,
+  zPostAppsAnnotationsBody,
+  zPostAppsAnnotationsResponse,
+  zPostAudioToTextResponse,
+  zPostChatMessagesBody,
+  zPostChatMessagesByTaskIdStopPath,
+  zPostChatMessagesByTaskIdStopResponse,
+  zPostChatMessagesResponse,
+  zPostCompletionMessagesBody,
+  zPostCompletionMessagesByTaskIdStopPath,
+  zPostCompletionMessagesByTaskIdStopResponse,
+  zPostCompletionMessagesResponse,
+  zPostConversationsByCIdNameBody,
+  zPostConversationsByCIdNamePath,
+  zPostConversationsByCIdNameResponse,
+  zPostDatasetsBody,
+  zPostDatasetsByDatasetIdDocumentCreateByFile2Body,
+  zPostDatasetsByDatasetIdDocumentCreateByFile2Path,
+  zPostDatasetsByDatasetIdDocumentCreateByFile2Response,
+  zPostDatasetsByDatasetIdDocumentCreateByFileBody,
+  zPostDatasetsByDatasetIdDocumentCreateByFilePath,
+  zPostDatasetsByDatasetIdDocumentCreateByFileResponse,
+  zPostDatasetsByDatasetIdDocumentCreateByText2Body,
+  zPostDatasetsByDatasetIdDocumentCreateByText2Path,
+  zPostDatasetsByDatasetIdDocumentCreateByText2Response,
+  zPostDatasetsByDatasetIdDocumentCreateByTextBody,
+  zPostDatasetsByDatasetIdDocumentCreateByTextPath,
+  zPostDatasetsByDatasetIdDocumentCreateByTextResponse,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBody,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdBody,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksBody,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Body,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Path,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileBody,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFilePath,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponse,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Body,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Path,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Response,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextBody,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextPath,
+  zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse,
+  zPostDatasetsByDatasetIdDocumentsDownloadZipBody,
+  zPostDatasetsByDatasetIdDocumentsDownloadZipPath,
+  zPostDatasetsByDatasetIdDocumentsDownloadZipResponse,
+  zPostDatasetsByDatasetIdDocumentsMetadataBody,
+  zPostDatasetsByDatasetIdDocumentsMetadataPath,
+  zPostDatasetsByDatasetIdDocumentsMetadataResponse,
+  zPostDatasetsByDatasetIdHitTestingBody,
+  zPostDatasetsByDatasetIdHitTestingPath,
+  zPostDatasetsByDatasetIdHitTestingResponse,
+  zPostDatasetsByDatasetIdMetadataBody,
+  zPostDatasetsByDatasetIdMetadataBuiltInByActionPath,
+  zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse,
+  zPostDatasetsByDatasetIdMetadataPath,
+  zPostDatasetsByDatasetIdMetadataResponse,
+  zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunBody,
+  zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunPath,
+  zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse,
+  zPostDatasetsByDatasetIdPipelineRunBody,
+  zPostDatasetsByDatasetIdPipelineRunPath,
+  zPostDatasetsByDatasetIdPipelineRunResponse,
+  zPostDatasetsByDatasetIdRetrieveBody,
+  zPostDatasetsByDatasetIdRetrievePath,
+  zPostDatasetsByDatasetIdRetrieveResponse,
+  zPostDatasetsPipelineFileUploadResponse,
+  zPostDatasetsResponse,
+  zPostDatasetsTagsBindingBody,
+  zPostDatasetsTagsBindingResponse,
+  zPostDatasetsTagsBody,
+  zPostDatasetsTagsResponse,
+  zPostDatasetsTagsUnbindingBody,
+  zPostDatasetsTagsUnbindingResponse,
+  zPostFilesUploadResponse,
+  zPostFormHumanInputByFormTokenBody,
+  zPostFormHumanInputByFormTokenPath,
+  zPostFormHumanInputByFormTokenResponse,
+  zPostMessagesByMessageIdFeedbacksBody,
+  zPostMessagesByMessageIdFeedbacksPath,
+  zPostMessagesByMessageIdFeedbacksResponse,
+  zPostTextToAudioBody,
+  zPostTextToAudioResponse,
+  zPostWorkflowsByWorkflowIdRunBody,
+  zPostWorkflowsByWorkflowIdRunPath,
+  zPostWorkflowsByWorkflowIdRunResponse,
+  zPostWorkflowsRunBody,
+  zPostWorkflowsRunResponse,
+  zPostWorkflowsTasksByTaskIdStopPath,
+  zPostWorkflowsTasksByTaskIdStopResponse,
+  zPutAppsAnnotationsByAnnotationIdBody,
+  zPutAppsAnnotationsByAnnotationIdPath,
+  zPutAppsAnnotationsByAnnotationIdResponse,
+  zPutConversationsByCIdVariablesByVariableIdBody,
+  zPutConversationsByCIdVariablesByVariableIdPath,
+  zPutConversationsByCIdVariablesByVariableIdResponse,
+} from './zod.gen'
 
-export const get = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRoot',
-  path: '/',
-  tags: ['service_api'],
-}).output(zGetRootResponse)
+export const get = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRoot',
+    path: '/',
+    tags: ['service_api'],
+  })
+  .output(zGetRootResponse)
 
 export const root = {
   get,
@@ -23,15 +231,19 @@ export const root = {
  * Get all feedbacks for the application
  * Returns paginated list of all feedback submitted for messages in this app.
  */
-export const get2 = oc.route({
-  description: 'Get all feedbacks for the application\nReturns paginated list of all feedback submitted for messages in this app.',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getAppFeedbacks',
-  path: '/app/feedbacks',
-  summary: 'Get all feedbacks for the application',
-  tags: ['service_api'],
-}).input(z.object({ query: zGetAppFeedbacksQuery.optional() })).output(zGetAppFeedbacksResponse)
+export const get2 = oc
+  .route({
+    description:
+      'Get all feedbacks for the application\nReturns paginated list of all feedback submitted for messages in this app.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppFeedbacks',
+    path: '/app/feedbacks',
+    summary: 'Get all feedbacks for the application',
+    tags: ['service_api'],
+  })
+  .input(z.object({ query: zGetAppFeedbacksQuery.optional() }))
+  .output(zGetAppFeedbacksResponse)
 
 export const feedbacks = {
   get: get2,
@@ -46,15 +258,18 @@ export const app = {
  *
  * Get the status of an annotation reply action job
  */
-export const get3 = oc.route({
-  description: 'Get the status of an annotation reply action job',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getAppsAnnotationReplyByActionStatusByJobId',
-  path: '/apps/annotation-reply/{action}/status/{job_id}',
-  summary: 'Get the status of an annotation reply action job',
-  tags: ['service_api'],
-}).input(z.object({ params: zGetAppsAnnotationReplyByActionStatusByJobIdPath })).output(zGetAppsAnnotationReplyByActionStatusByJobIdResponse)
+export const get3 = oc
+  .route({
+    description: 'Get the status of an annotation reply action job',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsAnnotationReplyByActionStatusByJobId',
+    path: '/apps/annotation-reply/{action}/status/{job_id}',
+    summary: 'Get the status of an annotation reply action job',
+    tags: ['service_api'],
+  })
+  .input(z.object({ params: zGetAppsAnnotationReplyByActionStatusByJobIdPath }))
+  .output(zGetAppsAnnotationReplyByActionStatusByJobIdResponse)
 
 export const byJobId = {
   get: get3,
@@ -69,15 +284,23 @@ export const status = {
  *
  * Enable or disable annotation reply feature
  */
-export const post = oc.route({
-  description: 'Enable or disable annotation reply feature',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postAppsAnnotationReplyByAction',
-  path: '/apps/annotation-reply/{action}',
-  summary: 'Enable or disable annotation reply feature',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostAppsAnnotationReplyByActionBody, params: zPostAppsAnnotationReplyByActionPath })).output(zPostAppsAnnotationReplyByActionResponse)
+export const post = oc
+  .route({
+    description: 'Enable or disable annotation reply feature',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAppsAnnotationReplyByAction',
+    path: '/apps/annotation-reply/{action}',
+    summary: 'Enable or disable annotation reply feature',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPostAppsAnnotationReplyByActionBody,
+      params: zPostAppsAnnotationReplyByActionPath,
+    }),
+  )
+  .output(zPostAppsAnnotationReplyByActionResponse)
 
 export const byAction = {
   post,
@@ -93,31 +316,42 @@ export const annotationReply = {
  *
  * Delete an annotation
  */
-export const delete_ = oc.route({
-  description: 'Delete an annotation',
-  inputStructure: 'detailed',
-  method: 'DELETE',
-  operationId: 'deleteAppsAnnotationsByAnnotationId',
-  path: '/apps/annotations/{annotation_id}',
-  successStatus: 204,
-  summary: 'Delete an annotation',
-  tags: ['service_api'],
-}).input(z.object({ params: zDeleteAppsAnnotationsByAnnotationIdPath })).output(zDeleteAppsAnnotationsByAnnotationIdResponse)
+export const delete_ = oc
+  .route({
+    description: 'Delete an annotation',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteAppsAnnotationsByAnnotationId',
+    path: '/apps/annotations/{annotation_id}',
+    successStatus: 204,
+    summary: 'Delete an annotation',
+    tags: ['service_api'],
+  })
+  .input(z.object({ params: zDeleteAppsAnnotationsByAnnotationIdPath }))
+  .output(zDeleteAppsAnnotationsByAnnotationIdResponse)
 
 /**
  * Update an existing annotation
  *
  * Update an existing annotation
  */
-export const put = oc.route({
-  description: 'Update an existing annotation',
-  inputStructure: 'detailed',
-  method: 'PUT',
-  operationId: 'putAppsAnnotationsByAnnotationId',
-  path: '/apps/annotations/{annotation_id}',
-  summary: 'Update an existing annotation',
-  tags: ['service_api'],
-}).input(z.object({ body: zPutAppsAnnotationsByAnnotationIdBody, params: zPutAppsAnnotationsByAnnotationIdPath })).output(zPutAppsAnnotationsByAnnotationIdResponse)
+export const put = oc
+  .route({
+    description: 'Update an existing annotation',
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putAppsAnnotationsByAnnotationId',
+    path: '/apps/annotations/{annotation_id}',
+    summary: 'Update an existing annotation',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPutAppsAnnotationsByAnnotationIdBody,
+      params: zPutAppsAnnotationsByAnnotationIdPath,
+    }),
+  )
+  .output(zPutAppsAnnotationsByAnnotationIdResponse)
 
 export const byAnnotationId = {
   delete: delete_,
@@ -129,31 +363,37 @@ export const byAnnotationId = {
  *
  * List annotations for the application
  */
-export const get4 = oc.route({
-  description: 'List annotations for the application',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getAppsAnnotations',
-  path: '/apps/annotations',
-  summary: 'List annotations for the application',
-  tags: ['service_api'],
-}).input(z.object({ query: zGetAppsAnnotationsQuery.optional() })).output(zGetAppsAnnotationsResponse)
+export const get4 = oc
+  .route({
+    description: 'List annotations for the application',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAppsAnnotations',
+    path: '/apps/annotations',
+    summary: 'List annotations for the application',
+    tags: ['service_api'],
+  })
+  .input(z.object({ query: zGetAppsAnnotationsQuery.optional() }))
+  .output(zGetAppsAnnotationsResponse)
 
 /**
  * Create a new annotation
  *
  * Create a new annotation
  */
-export const post2 = oc.route({
-  description: 'Create a new annotation',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postAppsAnnotations',
-  path: '/apps/annotations',
-  successStatus: 201,
-  summary: 'Create a new annotation',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostAppsAnnotationsBody })).output(zPostAppsAnnotationsResponse)
+export const post2 = oc
+  .route({
+    description: 'Create a new annotation',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAppsAnnotations',
+    path: '/apps/annotations',
+    successStatus: 201,
+    summary: 'Create a new annotation',
+    tags: ['service_api'],
+  })
+  .input(z.object({ body: zPostAppsAnnotationsBody }))
+  .output(zPostAppsAnnotationsResponse)
 
 export const annotations = {
   get: get4,
@@ -172,15 +412,18 @@ export const apps = {
  * Convert audio to text using speech-to-text
  * Accepts an audio file upload and returns the transcribed text.
  */
-export const post3 = oc.route({
-  description: 'Convert audio to text using speech-to-text\nAccepts an audio file upload and returns the transcribed text.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postAudioToText',
-  path: '/audio-to-text',
-  summary: 'Convert audio to text using speech-to-text',
-  tags: ['service_api'],
-}).output(zPostAudioToTextResponse)
+export const post3 = oc
+  .route({
+    description:
+      'Convert audio to text using speech-to-text\nAccepts an audio file upload and returns the transcribed text.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAudioToText',
+    path: '/audio-to-text',
+    summary: 'Convert audio to text using speech-to-text',
+    tags: ['service_api'],
+  })
+  .output(zPostAudioToTextResponse)
 
 export const audioToText = {
   post: post3,
@@ -191,15 +434,18 @@ export const audioToText = {
  *
  * Stop a running chat message generation
  */
-export const post4 = oc.route({
-  description: 'Stop a running chat message generation',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postChatMessagesByTaskIdStop',
-  path: '/chat-messages/{task_id}/stop',
-  summary: 'Stop a running chat message generation',
-  tags: ['service_api'],
-}).input(z.object({ params: zPostChatMessagesByTaskIdStopPath })).output(zPostChatMessagesByTaskIdStopResponse)
+export const post4 = oc
+  .route({
+    description: 'Stop a running chat message generation',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postChatMessagesByTaskIdStop',
+    path: '/chat-messages/{task_id}/stop',
+    summary: 'Stop a running chat message generation',
+    tags: ['service_api'],
+  })
+  .input(z.object({ params: zPostChatMessagesByTaskIdStopPath }))
+  .output(zPostChatMessagesByTaskIdStopResponse)
 
 export const stop = {
   post: post4,
@@ -216,15 +462,19 @@ export const byTaskId = {
  * This endpoint handles chat messages for chat, agent chat, and advanced chat applications.
  * Supports conversation management and both blocking and streaming response modes.
  */
-export const post5 = oc.route({
-  description: 'Send a message in a chat conversation\nThis endpoint handles chat messages for chat, agent chat, and advanced chat applications.\nSupports conversation management and both blocking and streaming response modes.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postChatMessages',
-  path: '/chat-messages',
-  summary: 'Send a message in a chat conversation',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostChatMessagesBody })).output(zPostChatMessagesResponse)
+export const post5 = oc
+  .route({
+    description:
+      'Send a message in a chat conversation\nThis endpoint handles chat messages for chat, agent chat, and advanced chat applications.\nSupports conversation management and both blocking and streaming response modes.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postChatMessages',
+    path: '/chat-messages',
+    summary: 'Send a message in a chat conversation',
+    tags: ['service_api'],
+  })
+  .input(z.object({ body: zPostChatMessagesBody }))
+  .output(zPostChatMessagesResponse)
 
 export const chatMessages = {
   post: post5,
@@ -236,15 +486,18 @@ export const chatMessages = {
  *
  * Stop a running completion task
  */
-export const post6 = oc.route({
-  description: 'Stop a running completion task',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postCompletionMessagesByTaskIdStop',
-  path: '/completion-messages/{task_id}/stop',
-  summary: 'Stop a running completion task',
-  tags: ['service_api'],
-}).input(z.object({ params: zPostCompletionMessagesByTaskIdStopPath })).output(zPostCompletionMessagesByTaskIdStopResponse)
+export const post6 = oc
+  .route({
+    description: 'Stop a running completion task',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postCompletionMessagesByTaskIdStop',
+    path: '/completion-messages/{task_id}/stop',
+    summary: 'Stop a running completion task',
+    tags: ['service_api'],
+  })
+  .input(z.object({ params: zPostCompletionMessagesByTaskIdStopPath }))
+  .output(zPostCompletionMessagesByTaskIdStopResponse)
 
 export const stop2 = {
   post: post6,
@@ -261,15 +514,19 @@ export const byTaskId2 = {
  * This endpoint generates a completion based on the provided inputs and query.
  * Supports both blocking and streaming response modes.
  */
-export const post7 = oc.route({
-  description: 'Create a completion for the given prompt\nThis endpoint generates a completion based on the provided inputs and query.\nSupports both blocking and streaming response modes.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postCompletionMessages',
-  path: '/completion-messages',
-  summary: 'Create a completion for the given prompt',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostCompletionMessagesBody })).output(zPostCompletionMessagesResponse)
+export const post7 = oc
+  .route({
+    description:
+      'Create a completion for the given prompt\nThis endpoint generates a completion based on the provided inputs and query.\nSupports both blocking and streaming response modes.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postCompletionMessages',
+    path: '/completion-messages',
+    summary: 'Create a completion for the given prompt',
+    tags: ['service_api'],
+  })
+  .input(z.object({ body: zPostCompletionMessagesBody }))
+  .output(zPostCompletionMessagesResponse)
 
 export const completionMessages = {
   post: post7,
@@ -281,15 +538,20 @@ export const completionMessages = {
  *
  * Rename a conversation or auto-generate a name
  */
-export const post8 = oc.route({
-  description: 'Rename a conversation or auto-generate a name',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postConversationsByCIdName',
-  path: '/conversations/{c_id}/name',
-  summary: 'Rename a conversation or auto-generate a name',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostConversationsByCIdNameBody, params: zPostConversationsByCIdNamePath })).output(zPostConversationsByCIdNameResponse)
+export const post8 = oc
+  .route({
+    description: 'Rename a conversation or auto-generate a name',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postConversationsByCIdName',
+    path: '/conversations/{c_id}/name',
+    summary: 'Rename a conversation or auto-generate a name',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({ body: zPostConversationsByCIdNameBody, params: zPostConversationsByCIdNamePath }),
+  )
+  .output(zPostConversationsByCIdNameResponse)
 
 export const name = {
   post: post8,
@@ -302,15 +564,24 @@ export const name = {
  * Allows updating the value of a specific conversation variable.
  * The value must match the variable's expected type.
  */
-export const put2 = oc.route({
-  description: 'Update a conversation variable\'s value\nAllows updating the value of a specific conversation variable.\nThe value must match the variable\'s expected type.',
-  inputStructure: 'detailed',
-  method: 'PUT',
-  operationId: 'putConversationsByCIdVariablesByVariableId',
-  path: '/conversations/{c_id}/variables/{variable_id}',
-  summary: 'Update a conversation variable\'s value',
-  tags: ['service_api'],
-}).input(z.object({ body: zPutConversationsByCIdVariablesByVariableIdBody, params: zPutConversationsByCIdVariablesByVariableIdPath })).output(zPutConversationsByCIdVariablesByVariableIdResponse)
+export const put2 = oc
+  .route({
+    description:
+      'Update a conversation variable\'s value\nAllows updating the value of a specific conversation variable.\nThe value must match the variable\'s expected type.',
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putConversationsByCIdVariablesByVariableId',
+    path: '/conversations/{c_id}/variables/{variable_id}',
+    summary: 'Update a conversation variable\'s value',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPutConversationsByCIdVariablesByVariableIdBody,
+      params: zPutConversationsByCIdVariablesByVariableIdPath,
+    }),
+  )
+  .output(zPutConversationsByCIdVariablesByVariableIdResponse)
 
 export const byVariableId = {
   put: put2,
@@ -322,15 +593,24 @@ export const byVariableId = {
  * List all variables for a conversation
  * Conversational variables are only available for chat applications.
  */
-export const get5 = oc.route({
-  description: 'List all variables for a conversation\nConversational variables are only available for chat applications.',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getConversationsByCIdVariables',
-  path: '/conversations/{c_id}/variables',
-  summary: 'List all variables for a conversation',
-  tags: ['service_api'],
-}).input(z.object({ params: zGetConversationsByCIdVariablesPath, query: zGetConversationsByCIdVariablesQuery.optional() })).output(zGetConversationsByCIdVariablesResponse)
+export const get5 = oc
+  .route({
+    description:
+      'List all variables for a conversation\nConversational variables are only available for chat applications.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getConversationsByCIdVariables',
+    path: '/conversations/{c_id}/variables',
+    summary: 'List all variables for a conversation',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      params: zGetConversationsByCIdVariablesPath,
+      query: zGetConversationsByCIdVariablesQuery.optional(),
+    }),
+  )
+  .output(zGetConversationsByCIdVariablesResponse)
 
 export const variables = {
   get: get5,
@@ -342,16 +622,19 @@ export const variables = {
  *
  * Delete a specific conversation
  */
-export const delete2 = oc.route({
-  description: 'Delete a specific conversation',
-  inputStructure: 'detailed',
-  method: 'DELETE',
-  operationId: 'deleteConversationsByCId',
-  path: '/conversations/{c_id}',
-  successStatus: 204,
-  summary: 'Delete a specific conversation',
-  tags: ['service_api'],
-}).input(z.object({ params: zDeleteConversationsByCIdPath })).output(zDeleteConversationsByCIdResponse)
+export const delete2 = oc
+  .route({
+    description: 'Delete a specific conversation',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteConversationsByCId',
+    path: '/conversations/{c_id}',
+    successStatus: 204,
+    summary: 'Delete a specific conversation',
+    tags: ['service_api'],
+  })
+  .input(z.object({ params: zDeleteConversationsByCIdPath }))
+  .output(zDeleteConversationsByCIdResponse)
 
 export const byCId = {
   delete: delete2,
@@ -365,15 +648,19 @@ export const byCId = {
  * List all conversations for the current user
  * Supports pagination using last_id and limit parameters.
  */
-export const get6 = oc.route({
-  description: 'List all conversations for the current user\nSupports pagination using last_id and limit parameters.',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getConversations',
-  path: '/conversations',
-  summary: 'List all conversations for the current user',
-  tags: ['service_api'],
-}).input(z.object({ query: zGetConversationsQuery.optional() })).output(zGetConversationsResponse)
+export const get6 = oc
+  .route({
+    description:
+      'List all conversations for the current user\nSupports pagination using last_id and limit parameters.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getConversations',
+    path: '/conversations',
+    summary: 'List all conversations for the current user',
+    tags: ['service_api'],
+  })
+  .input(z.object({ query: zGetConversationsQuery.optional() }))
+  .output(zGetConversationsResponse)
 
 export const conversations = {
   get: get6,
@@ -386,16 +673,19 @@ export const conversations = {
  * Upload a file to a knowledgebase pipeline
  * Accepts a single file upload via multipart/form-data.
  */
-export const post9 = oc.route({
-  description: 'Upload a file to a knowledgebase pipeline\nAccepts a single file upload via multipart/form-data.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postDatasetsPipelineFileUpload',
-  path: '/datasets/pipeline/file-upload',
-  successStatus: 201,
-  summary: 'Upload a file for use in conversations',
-  tags: ['service_api'],
-}).output(zPostDatasetsPipelineFileUploadResponse)
+export const post9 = oc
+  .route({
+    description:
+      'Upload a file to a knowledgebase pipeline\nAccepts a single file upload via multipart/form-data.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsPipelineFileUpload',
+    path: '/datasets/pipeline/file-upload',
+    successStatus: 201,
+    summary: 'Upload a file for use in conversations',
+    tags: ['service_api'],
+  })
+  .output(zPostDatasetsPipelineFileUploadResponse)
 
 export const fileUpload = {
   post: post9,
@@ -408,15 +698,18 @@ export const pipeline = {
 /**
  * Bind tags to a dataset
  */
-export const post10 = oc.route({
-  description: 'Bind tags to a dataset',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postDatasetsTagsBinding',
-  path: '/datasets/tags/binding',
-  successStatus: 204,
-  tags: ['service_api'],
-}).input(z.object({ body: zPostDatasetsTagsBindingBody })).output(zPostDatasetsTagsBindingResponse)
+export const post10 = oc
+  .route({
+    description: 'Bind tags to a dataset',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsTagsBinding',
+    path: '/datasets/tags/binding',
+    successStatus: 204,
+    tags: ['service_api'],
+  })
+  .input(z.object({ body: zPostDatasetsTagsBindingBody }))
+  .output(zPostDatasetsTagsBindingResponse)
 
 export const binding = {
   post: post10,
@@ -425,15 +718,18 @@ export const binding = {
 /**
  * Unbind tags from a dataset
  */
-export const post11 = oc.route({
-  description: 'Unbind tags from a dataset',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postDatasetsTagsUnbinding',
-  path: '/datasets/tags/unbinding',
-  successStatus: 204,
-  tags: ['service_api'],
-}).input(z.object({ body: zPostDatasetsTagsUnbindingBody })).output(zPostDatasetsTagsUnbindingResponse)
+export const post11 = oc
+  .route({
+    description: 'Unbind tags from a dataset',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsTagsUnbinding',
+    path: '/datasets/tags/unbinding',
+    successStatus: 204,
+    tags: ['service_api'],
+  })
+  .input(z.object({ body: zPostDatasetsTagsUnbindingBody }))
+  .output(zPostDatasetsTagsUnbindingResponse)
 
 export const unbinding = {
   post: post11,
@@ -444,58 +740,69 @@ export const unbinding = {
  *
  * Delete a knowledge type tag
  */
-export const delete3 = oc.route({
-  description: 'Delete a knowledge type tag',
-  inputStructure: 'detailed',
-  method: 'DELETE',
-  operationId: 'deleteDatasetsTags',
-  path: '/datasets/tags',
-  successStatus: 204,
-  summary: 'Delete a knowledge type tag',
-  tags: ['service_api'],
-}).input(z.object({ body: zDeleteDatasetsTagsBody })).output(zDeleteDatasetsTagsResponse)
+export const delete3 = oc
+  .route({
+    description: 'Delete a knowledge type tag',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteDatasetsTags',
+    path: '/datasets/tags',
+    successStatus: 204,
+    summary: 'Delete a knowledge type tag',
+    tags: ['service_api'],
+  })
+  .input(z.object({ body: zDeleteDatasetsTagsBody }))
+  .output(zDeleteDatasetsTagsResponse)
 
 /**
  * Get all knowledge type tags
  *
  * Get all knowledge type tags
  */
-export const get7 = oc.route({
-  description: 'Get all knowledge type tags',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getDatasetsTags',
-  path: '/datasets/tags',
-  summary: 'Get all knowledge type tags',
-  tags: ['service_api'],
-}).output(zGetDatasetsTagsResponse)
+export const get7 = oc
+  .route({
+    description: 'Get all knowledge type tags',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasetsTags',
+    path: '/datasets/tags',
+    summary: 'Get all knowledge type tags',
+    tags: ['service_api'],
+  })
+  .output(zGetDatasetsTagsResponse)
 
 /**
  * Update a knowledge type tag
  */
-export const patch = oc.route({
-  description: 'Update a knowledge type tag',
-  inputStructure: 'detailed',
-  method: 'PATCH',
-  operationId: 'patchDatasetsTags',
-  path: '/datasets/tags',
-  tags: ['service_api'],
-}).input(z.object({ body: zPatchDatasetsTagsBody })).output(zPatchDatasetsTagsResponse)
+export const patch = oc
+  .route({
+    description: 'Update a knowledge type tag',
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchDatasetsTags',
+    path: '/datasets/tags',
+    tags: ['service_api'],
+  })
+  .input(z.object({ body: zPatchDatasetsTagsBody }))
+  .output(zPatchDatasetsTagsResponse)
 
 /**
  * Add a knowledge type tag
  *
  * Add a knowledge type tag
  */
-export const post12 = oc.route({
-  description: 'Add a knowledge type tag',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postDatasetsTags',
-  path: '/datasets/tags',
-  summary: 'Add a knowledge type tag',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostDatasetsTagsBody })).output(zPostDatasetsTagsResponse)
+export const post12 = oc
+  .route({
+    description: 'Add a knowledge type tag',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsTags',
+    path: '/datasets/tags',
+    summary: 'Add a knowledge type tag',
+    tags: ['service_api'],
+  })
+  .input(z.object({ body: zPostDatasetsTagsBody }))
+  .output(zPostDatasetsTagsResponse)
 
 export const tags = {
   delete: delete3,
@@ -509,26 +816,42 @@ export const tags = {
 /**
  * Create a new document by uploading a file
  */
-export const post13 = oc.route({
-  description: 'Create a new document by uploading a file',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postDatasetsByDatasetIdDocumentCreateByFile',
-  path: '/datasets/{dataset_id}/document/create-by-file',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostDatasetsByDatasetIdDocumentCreateByFileBody, params: zPostDatasetsByDatasetIdDocumentCreateByFilePath })).output(zPostDatasetsByDatasetIdDocumentCreateByFileResponse)
+export const post13 = oc
+  .route({
+    description: 'Create a new document by uploading a file',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdDocumentCreateByFile',
+    path: '/datasets/{dataset_id}/document/create-by-file',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentCreateByFileBody,
+      params: zPostDatasetsByDatasetIdDocumentCreateByFilePath,
+    }),
+  )
+  .output(zPostDatasetsByDatasetIdDocumentCreateByFileResponse)
 
 /**
  * Create a new document by uploading a file
  */
-export const post14 = oc.route({
-  description: 'Create a new document by uploading a file',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postDatasetsByDatasetIdDocumentCreateByFile',
-  path: '/datasets/{dataset_id}/document/create_by_file',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostDatasetsByDatasetIdDocumentCreateByFile2Body, params: zPostDatasetsByDatasetIdDocumentCreateByFile2Path })).output(zPostDatasetsByDatasetIdDocumentCreateByFile2Response)
+export const post14 = oc
+  .route({
+    description: 'Create a new document by uploading a file',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdDocumentCreateByFile',
+    path: '/datasets/{dataset_id}/document/create_by_file',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentCreateByFile2Body,
+      params: zPostDatasetsByDatasetIdDocumentCreateByFile2Path,
+    }),
+  )
+  .output(zPostDatasetsByDatasetIdDocumentCreateByFile2Response)
 
 export const createByFile = {
   post: post14,
@@ -537,29 +860,46 @@ export const createByFile = {
 /**
  * Create a new document by providing text content
  */
-export const post15 = oc.route({
-  description: 'Create a new document by providing text content',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postDatasetsByDatasetIdDocumentCreateByText',
-  path: '/datasets/{dataset_id}/document/create-by-text',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostDatasetsByDatasetIdDocumentCreateByTextBody, params: zPostDatasetsByDatasetIdDocumentCreateByTextPath })).output(zPostDatasetsByDatasetIdDocumentCreateByTextResponse)
+export const post15 = oc
+  .route({
+    description: 'Create a new document by providing text content',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdDocumentCreateByText',
+    path: '/datasets/{dataset_id}/document/create-by-text',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentCreateByTextBody,
+      params: zPostDatasetsByDatasetIdDocumentCreateByTextPath,
+    }),
+  )
+  .output(zPostDatasetsByDatasetIdDocumentCreateByTextResponse)
 
 /**
  * Deprecated legacy alias for creating a new document by providing text content. Use /datasets/{dataset_id}/document/create-by-text instead.
  *
  * @deprecated
  */
-export const post16 = oc.route({
-  deprecated: true,
-  description: 'Deprecated legacy alias for creating a new document by providing text content. Use /datasets/{dataset_id}/document/create-by-text instead.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postDatasetsByDatasetIdDocumentCreateByText',
-  path: '/datasets/{dataset_id}/document/create_by_text',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostDatasetsByDatasetIdDocumentCreateByText2Body, params: zPostDatasetsByDatasetIdDocumentCreateByText2Path })).output(zPostDatasetsByDatasetIdDocumentCreateByText2Response)
+export const post16 = oc
+  .route({
+    deprecated: true,
+    description:
+      'Deprecated legacy alias for creating a new document by providing text content. Use /datasets/{dataset_id}/document/create-by-text instead.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdDocumentCreateByText',
+    path: '/datasets/{dataset_id}/document/create_by_text',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentCreateByText2Body,
+      params: zPostDatasetsByDatasetIdDocumentCreateByText2Path,
+    }),
+  )
+  .output(zPostDatasetsByDatasetIdDocumentCreateByText2Response)
 
 export const createByText = {
   post: post16,
@@ -573,14 +913,22 @@ export const document_ = {
 /**
  * Download selected uploaded documents as a single ZIP archive
  */
-export const post17 = oc.route({
-  description: 'Download selected uploaded documents as a single ZIP archive',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postDatasetsByDatasetIdDocumentsDownloadZip',
-  path: '/datasets/{dataset_id}/documents/download-zip',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostDatasetsByDatasetIdDocumentsDownloadZipBody, params: zPostDatasetsByDatasetIdDocumentsDownloadZipPath })).output(zPostDatasetsByDatasetIdDocumentsDownloadZipResponse)
+export const post17 = oc
+  .route({
+    description: 'Download selected uploaded documents as a single ZIP archive',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdDocumentsDownloadZip',
+    path: '/datasets/{dataset_id}/documents/download-zip',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentsDownloadZipBody,
+      params: zPostDatasetsByDatasetIdDocumentsDownloadZipPath,
+    }),
+  )
+  .output(zPostDatasetsByDatasetIdDocumentsDownloadZipResponse)
 
 export const downloadZip = {
   post: post17,
@@ -591,15 +939,23 @@ export const downloadZip = {
  *
  * Update metadata for multiple documents
  */
-export const post18 = oc.route({
-  description: 'Update metadata for multiple documents',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postDatasetsByDatasetIdDocumentsMetadata',
-  path: '/datasets/{dataset_id}/documents/metadata',
-  summary: 'Update metadata for multiple documents',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostDatasetsByDatasetIdDocumentsMetadataBody, params: zPostDatasetsByDatasetIdDocumentsMetadataPath })).output(zPostDatasetsByDatasetIdDocumentsMetadataResponse)
+export const post18 = oc
+  .route({
+    description: 'Update metadata for multiple documents',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdDocumentsMetadata',
+    path: '/datasets/{dataset_id}/documents/metadata',
+    summary: 'Update metadata for multiple documents',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentsMetadataBody,
+      params: zPostDatasetsByDatasetIdDocumentsMetadataPath,
+    }),
+  )
+  .output(zPostDatasetsByDatasetIdDocumentsMetadataResponse)
 
 export const metadata = {
   post: post18,
@@ -623,15 +979,24 @@ export const metadata = {
  * Forbidden: If the user does not have permission.
  * InvalidActionError: If the action is invalid or cannot be performed.
  */
-export const patch2 = oc.route({
-  description: 'Batch update document status\nArgs:\n    tenant_id: tenant id\n    dataset_id: dataset id\n    action: action to perform (Literal["enable", "disable", "archive", "un_archive"])\n\nReturns:\n    dict: A dictionary with a key \'result\' and a value \'success\'\n    int: HTTP status code 200 indicating that the operation was successful.\n\nRaises:\n    NotFound: If the dataset with the given ID does not exist.\n    Forbidden: If the user does not have permission.\n    InvalidActionError: If the action is invalid or cannot be performed.',
-  inputStructure: 'detailed',
-  method: 'PATCH',
-  operationId: 'patchDatasetsByDatasetIdDocumentsStatusByAction',
-  path: '/datasets/{dataset_id}/documents/status/{action}',
-  summary: 'Batch update document status',
-  tags: ['service_api'],
-}).input(z.object({ body: zPatchDatasetsByDatasetIdDocumentsStatusByActionBody, params: zPatchDatasetsByDatasetIdDocumentsStatusByActionPath })).output(zPatchDatasetsByDatasetIdDocumentsStatusByActionResponse)
+export const patch2 = oc
+  .route({
+    description:
+      'Batch update document status\nArgs:\n    tenant_id: tenant id\n    dataset_id: dataset id\n    action: action to perform (Literal["enable", "disable", "archive", "un_archive"])\n\nReturns:\n    dict: A dictionary with a key \'result\' and a value \'success\'\n    int: HTTP status code 200 indicating that the operation was successful.\n\nRaises:\n    NotFound: If the dataset with the given ID does not exist.\n    Forbidden: If the user does not have permission.\n    InvalidActionError: If the action is invalid or cannot be performed.',
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchDatasetsByDatasetIdDocumentsStatusByAction',
+    path: '/datasets/{dataset_id}/documents/status/{action}',
+    summary: 'Batch update document status',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPatchDatasetsByDatasetIdDocumentsStatusByActionBody,
+      params: zPatchDatasetsByDatasetIdDocumentsStatusByActionPath,
+    }),
+  )
+  .output(zPatchDatasetsByDatasetIdDocumentsStatusByActionResponse)
 
 export const byAction2 = {
   patch: patch2,
@@ -644,14 +1009,17 @@ export const status2 = {
 /**
  * Get indexing status for documents in a batch
  */
-export const get8 = oc.route({
-  description: 'Get indexing status for documents in a batch',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getDatasetsByDatasetIdDocumentsByBatchIndexingStatus',
-  path: '/datasets/{dataset_id}/documents/{batch}/indexing-status',
-  tags: ['service_api'],
-}).input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByBatchIndexingStatusPath })).output(zGetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponse)
+export const get8 = oc
+  .route({
+    description: 'Get indexing status for documents in a batch',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasetsByDatasetIdDocumentsByBatchIndexingStatus',
+    path: '/datasets/{dataset_id}/documents/{batch}/indexing-status',
+    tags: ['service_api'],
+  })
+  .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByBatchIndexingStatusPath }))
+  .output(zGetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponse)
 
 export const indexingStatus = {
   get: get8,
@@ -664,14 +1032,17 @@ export const byBatch = {
 /**
  * Get a signed download URL for a document's original uploaded file
  */
-export const get9 = oc.route({
-  description: 'Get a signed download URL for a document\'s original uploaded file',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdDownload',
-  path: '/datasets/{dataset_id}/documents/{document_id}/download',
-  tags: ['service_api'],
-}).input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadPath })).output(zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse)
+export const get9 = oc
+  .route({
+    description: 'Get a signed download URL for a document\'s original uploaded file',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdDownload',
+    path: '/datasets/{dataset_id}/documents/{document_id}/download',
+    tags: ['service_api'],
+  })
+  .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadPath }))
+  .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse)
 
 export const download = {
   get: get9,
@@ -680,27 +1051,50 @@ export const download = {
 /**
  * Delete a specific child chunk
  */
-export const delete4 = oc.route({
-  description: 'Delete a specific child chunk',
-  inputStructure: 'detailed',
-  method: 'DELETE',
-  operationId: 'deleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkId',
-  path: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}',
-  successStatus: 204,
-  tags: ['service_api'],
-}).input(z.object({ params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath })).output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse)
+export const delete4 = oc
+  .route({
+    description: 'Delete a specific child chunk',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId:
+      'deleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkId',
+    path: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}',
+    successStatus: 204,
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      params:
+        zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath,
+    }),
+  )
+  .output(
+    zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse,
+  )
 
 /**
  * Update a specific child chunk
  */
-export const patch3 = oc.route({
-  description: 'Update a specific child chunk',
-  inputStructure: 'detailed',
-  method: 'PATCH',
-  operationId: 'patchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkId',
-  path: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}',
-  tags: ['service_api'],
-}).input(z.object({ body: zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdBody, params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath })).output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse)
+export const patch3 = oc
+  .route({
+    description: 'Update a specific child chunk',
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId:
+      'patchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkId',
+    path: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdBody,
+      params:
+        zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath,
+    }),
+  )
+  .output(
+    zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse,
+  )
 
 export const byChildChunkId = {
   delete: delete4,
@@ -710,26 +1104,43 @@ export const byChildChunkId = {
 /**
  * List child chunks for a segment
  */
-export const get10 = oc.route({
-  description: 'List child chunks for a segment',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunks',
-  path: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks',
-  tags: ['service_api'],
-}).input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath, query: zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksQuery.optional() })).output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse)
+export const get10 = oc
+  .route({
+    description: 'List child chunks for a segment',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunks',
+    path: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      params: zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath,
+      query:
+        zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksQuery.optional(),
+    }),
+  )
+  .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse)
 
 /**
  * Create a new child chunk for a segment
  */
-export const post19 = oc.route({
-  description: 'Create a new child chunk for a segment',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunks',
-  path: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksBody, params: zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath })).output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse)
+export const post19 = oc
+  .route({
+    description: 'Create a new child chunk for a segment',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunks',
+    path: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksBody,
+      params: zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksPath,
+    }),
+  )
+  .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse)
 
 export const childChunks = {
   get: get10,
@@ -740,39 +1151,55 @@ export const childChunks = {
 /**
  * Delete a specific segment
  */
-export const delete5 = oc.route({
-  description: 'Delete a specific segment',
-  inputStructure: 'detailed',
-  method: 'DELETE',
-  operationId: 'deleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentId',
-  path: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}',
-  successStatus: 204,
-  tags: ['service_api'],
-}).input(z.object({ params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath })).output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse)
+export const delete5 = oc
+  .route({
+    description: 'Delete a specific segment',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentId',
+    path: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}',
+    successStatus: 204,
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({ params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath }),
+  )
+  .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse)
 
 /**
  * Get a specific segment by ID
  */
-export const get11 = oc.route({
-  description: 'Get a specific segment by ID',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentId',
-  path: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}',
-  tags: ['service_api'],
-}).input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath })).output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse)
+export const get11 = oc
+  .route({
+    description: 'Get a specific segment by ID',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentId',
+    path: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}',
+    tags: ['service_api'],
+  })
+  .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath }))
+  .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse)
 
 /**
  * Update a specific segment
  */
-export const post20 = oc.route({
-  description: 'Update a specific segment',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentId',
-  path: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdBody, params: zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath })).output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse)
+export const post20 = oc
+  .route({
+    description: 'Update a specific segment',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentId',
+    path: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdBody,
+      params: zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath,
+    }),
+  )
+  .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse)
 
 export const bySegmentId = {
   delete: delete5,
@@ -784,26 +1211,42 @@ export const bySegmentId = {
 /**
  * List segments in a document
  */
-export const get12 = oc.route({
-  description: 'List segments in a document',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSegments',
-  path: '/datasets/{dataset_id}/documents/{document_id}/segments',
-  tags: ['service_api'],
-}).input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath, query: zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery.optional() })).output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse)
+export const get12 = oc
+  .route({
+    description: 'List segments in a document',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSegments',
+    path: '/datasets/{dataset_id}/documents/{document_id}/segments',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      params: zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath,
+      query: zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery.optional(),
+    }),
+  )
+  .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse)
 
 /**
  * Create segments in a document
  */
-export const post21 = oc.route({
-  description: 'Create segments in a document',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdSegments',
-  path: '/datasets/{dataset_id}/documents/{document_id}/segments',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBody, params: zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath })).output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse)
+export const post21 = oc
+  .route({
+    description: 'Create segments in a document',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdSegments',
+    path: '/datasets/{dataset_id}/documents/{document_id}/segments',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBody,
+      params: zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath,
+    }),
+  )
+  .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse)
 
 export const segments = {
   get: get12,
@@ -816,30 +1259,48 @@ export const segments = {
  *
  * @deprecated
  */
-export const post22 = oc.route({
-  deprecated: true,
-  description: 'Deprecated legacy alias for updating an existing document by uploading a file. Use PATCH /datasets/{dataset_id}/documents/{document_id} instead.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile',
-  path: '/datasets/{dataset_id}/documents/{document_id}/update-by-file',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileBody.optional(), params: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFilePath })).output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponse)
+export const post22 = oc
+  .route({
+    deprecated: true,
+    description:
+      'Deprecated legacy alias for updating an existing document by uploading a file. Use PATCH /datasets/{dataset_id}/documents/{document_id} instead.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile',
+    path: '/datasets/{dataset_id}/documents/{document_id}/update-by-file',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileBody.optional(),
+      params: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFilePath,
+    }),
+  )
+  .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponse)
 
 /**
  * Deprecated legacy alias for updating an existing document by uploading a file. Use PATCH /datasets/{dataset_id}/documents/{document_id} instead.
  *
  * @deprecated
  */
-export const post23 = oc.route({
-  deprecated: true,
-  description: 'Deprecated legacy alias for updating an existing document by uploading a file. Use PATCH /datasets/{dataset_id}/documents/{document_id} instead.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile',
-  path: '/datasets/{dataset_id}/documents/{document_id}/update_by_file',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Body.optional(), params: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Path })).output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response)
+export const post23 = oc
+  .route({
+    deprecated: true,
+    description:
+      'Deprecated legacy alias for updating an existing document by uploading a file. Use PATCH /datasets/{dataset_id}/documents/{document_id} instead.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile',
+    path: '/datasets/{dataset_id}/documents/{document_id}/update_by_file',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Body.optional(),
+      params: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Path,
+    }),
+  )
+  .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response)
 
 export const updateByFile = {
   post: post23,
@@ -848,29 +1309,46 @@ export const updateByFile = {
 /**
  * Update an existing document by providing text content
  */
-export const post24 = oc.route({
-  description: 'Update an existing document by providing text content',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText',
-  path: '/datasets/{dataset_id}/documents/{document_id}/update-by-text',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextBody, params: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextPath })).output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse)
+export const post24 = oc
+  .route({
+    description: 'Update an existing document by providing text content',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText',
+    path: '/datasets/{dataset_id}/documents/{document_id}/update-by-text',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextBody,
+      params: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextPath,
+    }),
+  )
+  .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse)
 
 /**
  * Deprecated legacy alias for updating an existing document by providing text content. Use /datasets/{dataset_id}/documents/{document_id}/update-by-text instead.
  *
  * @deprecated
  */
-export const post25 = oc.route({
-  deprecated: true,
-  description: 'Deprecated legacy alias for updating an existing document by providing text content. Use /datasets/{dataset_id}/documents/{document_id}/update-by-text instead.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText',
-  path: '/datasets/{dataset_id}/documents/{document_id}/update_by_text',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Body, params: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Path })).output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Response)
+export const post25 = oc
+  .route({
+    deprecated: true,
+    description:
+      'Deprecated legacy alias for updating an existing document by providing text content. Use /datasets/{dataset_id}/documents/{document_id}/update-by-text instead.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText',
+    path: '/datasets/{dataset_id}/documents/{document_id}/update_by_text',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Body,
+      params: zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Path,
+    }),
+  )
+  .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Response)
 
 export const updateByText = {
   post: post25,
@@ -881,40 +1359,59 @@ export const updateByText = {
  *
  * Delete a document
  */
-export const delete6 = oc.route({
-  description: 'Delete a document',
-  inputStructure: 'detailed',
-  method: 'DELETE',
-  operationId: 'deleteDatasetsByDatasetIdDocumentsByDocumentId',
-  path: '/datasets/{dataset_id}/documents/{document_id}',
-  successStatus: 204,
-  summary: 'Delete document',
-  tags: ['service_api'],
-}).input(z.object({ params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath })).output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse)
+export const delete6 = oc
+  .route({
+    description: 'Delete a document',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteDatasetsByDatasetIdDocumentsByDocumentId',
+    path: '/datasets/{dataset_id}/documents/{document_id}',
+    successStatus: 204,
+    summary: 'Delete document',
+    tags: ['service_api'],
+  })
+  .input(z.object({ params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath }))
+  .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse)
 
 /**
  * Get a specific document by ID
  */
-export const get13 = oc.route({
-  description: 'Get a specific document by ID',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getDatasetsByDatasetIdDocumentsByDocumentId',
-  path: '/datasets/{dataset_id}/documents/{document_id}',
-  tags: ['service_api'],
-}).input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdPath, query: zGetDatasetsByDatasetIdDocumentsByDocumentIdQuery.optional() })).output(zGetDatasetsByDatasetIdDocumentsByDocumentIdResponse)
+export const get13 = oc
+  .route({
+    description: 'Get a specific document by ID',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasetsByDatasetIdDocumentsByDocumentId',
+    path: '/datasets/{dataset_id}/documents/{document_id}',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      params: zGetDatasetsByDatasetIdDocumentsByDocumentIdPath,
+      query: zGetDatasetsByDatasetIdDocumentsByDocumentIdQuery.optional(),
+    }),
+  )
+  .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdResponse)
 
 /**
  * Update an existing document by uploading a file
  */
-export const patch4 = oc.route({
-  description: 'Update an existing document by uploading a file',
-  inputStructure: 'detailed',
-  method: 'PATCH',
-  operationId: 'patchDatasetsByDatasetIdDocumentsByDocumentId',
-  path: '/datasets/{dataset_id}/documents/{document_id}',
-  tags: ['service_api'],
-}).input(z.object({ body: zPatchDatasetsByDatasetIdDocumentsByDocumentIdBody.optional(), params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdPath })).output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdResponse)
+export const patch4 = oc
+  .route({
+    description: 'Update an existing document by uploading a file',
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchDatasetsByDatasetIdDocumentsByDocumentId',
+    path: '/datasets/{dataset_id}/documents/{document_id}',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPatchDatasetsByDatasetIdDocumentsByDocumentIdBody.optional(),
+      params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdPath,
+    }),
+  )
+  .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdResponse)
 
 export const byDocumentId = {
   delete: delete6,
@@ -929,14 +1426,22 @@ export const byDocumentId = {
 /**
  * List all documents in a dataset
  */
-export const get14 = oc.route({
-  description: 'List all documents in a dataset',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getDatasetsByDatasetIdDocuments',
-  path: '/datasets/{dataset_id}/documents',
-  tags: ['service_api'],
-}).input(z.object({ params: zGetDatasetsByDatasetIdDocumentsPath, query: zGetDatasetsByDatasetIdDocumentsQuery.optional() })).output(zGetDatasetsByDatasetIdDocumentsResponse)
+export const get14 = oc
+  .route({
+    description: 'List all documents in a dataset',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasetsByDatasetIdDocuments',
+    path: '/datasets/{dataset_id}/documents',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      params: zGetDatasetsByDatasetIdDocumentsPath,
+      query: zGetDatasetsByDatasetIdDocumentsQuery.optional(),
+    }),
+  )
+  .output(zGetDatasetsByDatasetIdDocumentsResponse)
 
 export const documents = {
   get: get14,
@@ -953,15 +1458,24 @@ export const documents = {
  * Perform hit testing on a dataset
  * Tests retrieval performance for the specified dataset.
  */
-export const post26 = oc.route({
-  description: 'Perform hit testing on a dataset\nTests retrieval performance for the specified dataset.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postDatasetsByDatasetIdHitTesting',
-  path: '/datasets/{dataset_id}/hit-testing',
-  summary: 'Perform hit testing on a dataset',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostDatasetsByDatasetIdHitTestingBody, params: zPostDatasetsByDatasetIdHitTestingPath })).output(zPostDatasetsByDatasetIdHitTestingResponse)
+export const post26 = oc
+  .route({
+    description:
+      'Perform hit testing on a dataset\nTests retrieval performance for the specified dataset.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdHitTesting',
+    path: '/datasets/{dataset_id}/hit-testing',
+    summary: 'Perform hit testing on a dataset',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdHitTestingBody,
+      params: zPostDatasetsByDatasetIdHitTestingPath,
+    }),
+  )
+  .output(zPostDatasetsByDatasetIdHitTestingResponse)
 
 export const hitTesting = {
   post: post26,
@@ -972,15 +1486,18 @@ export const hitTesting = {
  *
  * Enable or disable built-in metadata field
  */
-export const post27 = oc.route({
-  description: 'Enable or disable built-in metadata field',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postDatasetsByDatasetIdMetadataBuiltInByAction',
-  path: '/datasets/{dataset_id}/metadata/built-in/{action}',
-  summary: 'Enable or disable built-in metadata field',
-  tags: ['service_api'],
-}).input(z.object({ params: zPostDatasetsByDatasetIdMetadataBuiltInByActionPath })).output(zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse)
+export const post27 = oc
+  .route({
+    description: 'Enable or disable built-in metadata field',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdMetadataBuiltInByAction',
+    path: '/datasets/{dataset_id}/metadata/built-in/{action}',
+    summary: 'Enable or disable built-in metadata field',
+    tags: ['service_api'],
+  })
+  .input(z.object({ params: zPostDatasetsByDatasetIdMetadataBuiltInByActionPath }))
+  .output(zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse)
 
 export const byAction3 = {
   post: post27,
@@ -991,15 +1508,18 @@ export const byAction3 = {
  *
  * Get all built-in metadata fields
  */
-export const get15 = oc.route({
-  description: 'Get all built-in metadata fields',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getDatasetsByDatasetIdMetadataBuiltIn',
-  path: '/datasets/{dataset_id}/metadata/built-in',
-  summary: 'Get all built-in metadata fields',
-  tags: ['service_api'],
-}).input(z.object({ params: zGetDatasetsByDatasetIdMetadataBuiltInPath })).output(zGetDatasetsByDatasetIdMetadataBuiltInResponse)
+export const get15 = oc
+  .route({
+    description: 'Get all built-in metadata fields',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasetsByDatasetIdMetadataBuiltIn',
+    path: '/datasets/{dataset_id}/metadata/built-in',
+    summary: 'Get all built-in metadata fields',
+    tags: ['service_api'],
+  })
+  .input(z.object({ params: zGetDatasetsByDatasetIdMetadataBuiltInPath }))
+  .output(zGetDatasetsByDatasetIdMetadataBuiltInResponse)
 
 export const builtIn = {
   get: get15,
@@ -1011,31 +1531,42 @@ export const builtIn = {
  *
  * Delete metadata
  */
-export const delete7 = oc.route({
-  description: 'Delete metadata',
-  inputStructure: 'detailed',
-  method: 'DELETE',
-  operationId: 'deleteDatasetsByDatasetIdMetadataByMetadataId',
-  path: '/datasets/{dataset_id}/metadata/{metadata_id}',
-  successStatus: 204,
-  summary: 'Delete metadata',
-  tags: ['service_api'],
-}).input(z.object({ params: zDeleteDatasetsByDatasetIdMetadataByMetadataIdPath })).output(zDeleteDatasetsByDatasetIdMetadataByMetadataIdResponse)
+export const delete7 = oc
+  .route({
+    description: 'Delete metadata',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteDatasetsByDatasetIdMetadataByMetadataId',
+    path: '/datasets/{dataset_id}/metadata/{metadata_id}',
+    successStatus: 204,
+    summary: 'Delete metadata',
+    tags: ['service_api'],
+  })
+  .input(z.object({ params: zDeleteDatasetsByDatasetIdMetadataByMetadataIdPath }))
+  .output(zDeleteDatasetsByDatasetIdMetadataByMetadataIdResponse)
 
 /**
  * Update metadata name
  *
  * Update metadata name
  */
-export const patch5 = oc.route({
-  description: 'Update metadata name',
-  inputStructure: 'detailed',
-  method: 'PATCH',
-  operationId: 'patchDatasetsByDatasetIdMetadataByMetadataId',
-  path: '/datasets/{dataset_id}/metadata/{metadata_id}',
-  summary: 'Update metadata name',
-  tags: ['service_api'],
-}).input(z.object({ body: zPatchDatasetsByDatasetIdMetadataByMetadataIdBody, params: zPatchDatasetsByDatasetIdMetadataByMetadataIdPath })).output(zPatchDatasetsByDatasetIdMetadataByMetadataIdResponse)
+export const patch5 = oc
+  .route({
+    description: 'Update metadata name',
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchDatasetsByDatasetIdMetadataByMetadataId',
+    path: '/datasets/{dataset_id}/metadata/{metadata_id}',
+    summary: 'Update metadata name',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPatchDatasetsByDatasetIdMetadataByMetadataIdBody,
+      params: zPatchDatasetsByDatasetIdMetadataByMetadataIdPath,
+    }),
+  )
+  .output(zPatchDatasetsByDatasetIdMetadataByMetadataIdResponse)
 
 export const byMetadataId = {
   delete: delete7,
@@ -1047,31 +1578,42 @@ export const byMetadataId = {
  *
  * Get all metadata for a dataset
  */
-export const get16 = oc.route({
-  description: 'Get all metadata for a dataset',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getDatasetsByDatasetIdMetadata',
-  path: '/datasets/{dataset_id}/metadata',
-  summary: 'Get all metadata for a dataset',
-  tags: ['service_api'],
-}).input(z.object({ params: zGetDatasetsByDatasetIdMetadataPath })).output(zGetDatasetsByDatasetIdMetadataResponse)
+export const get16 = oc
+  .route({
+    description: 'Get all metadata for a dataset',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasetsByDatasetIdMetadata',
+    path: '/datasets/{dataset_id}/metadata',
+    summary: 'Get all metadata for a dataset',
+    tags: ['service_api'],
+  })
+  .input(z.object({ params: zGetDatasetsByDatasetIdMetadataPath }))
+  .output(zGetDatasetsByDatasetIdMetadataResponse)
 
 /**
  * Create metadata for a dataset
  *
  * Create metadata for a dataset
  */
-export const post28 = oc.route({
-  description: 'Create metadata for a dataset',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postDatasetsByDatasetIdMetadata',
-  path: '/datasets/{dataset_id}/metadata',
-  successStatus: 201,
-  summary: 'Create metadata for a dataset',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostDatasetsByDatasetIdMetadataBody, params: zPostDatasetsByDatasetIdMetadataPath })).output(zPostDatasetsByDatasetIdMetadataResponse)
+export const post28 = oc
+  .route({
+    description: 'Create metadata for a dataset',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdMetadata',
+    path: '/datasets/{dataset_id}/metadata',
+    successStatus: 201,
+    summary: 'Create metadata for a dataset',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdMetadataBody,
+      params: zPostDatasetsByDatasetIdMetadataPath,
+    }),
+  )
+  .output(zPostDatasetsByDatasetIdMetadataResponse)
 
 export const metadata2 = {
   get: get16,
@@ -1085,15 +1627,23 @@ export const metadata2 = {
  *
  * List all datasource plugins for a rag pipeline
  */
-export const get17 = oc.route({
-  description: 'List all datasource plugins for a rag pipeline',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getDatasetsByDatasetIdPipelineDatasourcePlugins',
-  path: '/datasets/{dataset_id}/pipeline/datasource-plugins',
-  summary: 'Resource for getting datasource plugins',
-  tags: ['service_api'],
-}).input(z.object({ params: zGetDatasetsByDatasetIdPipelineDatasourcePluginsPath, query: zGetDatasetsByDatasetIdPipelineDatasourcePluginsQuery.optional() })).output(zGetDatasetsByDatasetIdPipelineDatasourcePluginsResponse)
+export const get17 = oc
+  .route({
+    description: 'List all datasource plugins for a rag pipeline',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasetsByDatasetIdPipelineDatasourcePlugins',
+    path: '/datasets/{dataset_id}/pipeline/datasource-plugins',
+    summary: 'Resource for getting datasource plugins',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      params: zGetDatasetsByDatasetIdPipelineDatasourcePluginsPath,
+      query: zGetDatasetsByDatasetIdPipelineDatasourcePluginsQuery.optional(),
+    }),
+  )
+  .output(zGetDatasetsByDatasetIdPipelineDatasourcePluginsResponse)
 
 export const datasourcePlugins = {
   get: get17,
@@ -1104,15 +1654,23 @@ export const datasourcePlugins = {
  *
  * Run a datasource node for a rag pipeline
  */
-export const post29 = oc.route({
-  description: 'Run a datasource node for a rag pipeline',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRun',
-  path: '/datasets/{dataset_id}/pipeline/datasource/nodes/{node_id}/run',
-  summary: 'Resource for getting datasource plugins',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunBody, params: zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunPath })).output(zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse)
+export const post29 = oc
+  .route({
+    description: 'Run a datasource node for a rag pipeline',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRun',
+    path: '/datasets/{dataset_id}/pipeline/datasource/nodes/{node_id}/run',
+    summary: 'Resource for getting datasource plugins',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunBody,
+      params: zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunPath,
+    }),
+  )
+  .output(zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse)
 
 export const run = {
   post: post29,
@@ -1135,15 +1693,23 @@ export const datasource = {
  *
  * Run a datasource node for a rag pipeline
  */
-export const post30 = oc.route({
-  description: 'Run a datasource node for a rag pipeline',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postDatasetsByDatasetIdPipelineRun',
-  path: '/datasets/{dataset_id}/pipeline/run',
-  summary: 'Resource for running a rag pipeline',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostDatasetsByDatasetIdPipelineRunBody, params: zPostDatasetsByDatasetIdPipelineRunPath })).output(zPostDatasetsByDatasetIdPipelineRunResponse)
+export const post30 = oc
+  .route({
+    description: 'Run a datasource node for a rag pipeline',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdPipelineRun',
+    path: '/datasets/{dataset_id}/pipeline/run',
+    summary: 'Resource for running a rag pipeline',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdPipelineRunBody,
+      params: zPostDatasetsByDatasetIdPipelineRunPath,
+    }),
+  )
+  .output(zPostDatasetsByDatasetIdPipelineRunResponse)
 
 export const run2 = {
   post: post30,
@@ -1161,15 +1727,24 @@ export const pipeline2 = {
  * Perform hit testing on a dataset
  * Tests retrieval performance for the specified dataset.
  */
-export const post31 = oc.route({
-  description: 'Perform hit testing on a dataset\nTests retrieval performance for the specified dataset.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postDatasetsByDatasetIdRetrieve',
-  path: '/datasets/{dataset_id}/retrieve',
-  summary: 'Perform hit testing on a dataset',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostDatasetsByDatasetIdRetrieveBody, params: zPostDatasetsByDatasetIdRetrievePath })).output(zPostDatasetsByDatasetIdRetrieveResponse)
+export const post31 = oc
+  .route({
+    description:
+      'Perform hit testing on a dataset\nTests retrieval performance for the specified dataset.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdRetrieve',
+    path: '/datasets/{dataset_id}/retrieve',
+    summary: 'Perform hit testing on a dataset',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdRetrieveBody,
+      params: zPostDatasetsByDatasetIdRetrievePath,
+    }),
+  )
+  .output(zPostDatasetsByDatasetIdRetrieveResponse)
 
 export const retrieve = {
   post: post31,
@@ -1180,15 +1755,18 @@ export const retrieve = {
  *
  * Get tags bound to a specific dataset
  */
-export const get18 = oc.route({
-  description: 'Get tags bound to a specific dataset',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getDatasetsByDatasetIdTags',
-  path: '/datasets/{dataset_id}/tags',
-  summary: 'Get all knowledge type tags',
-  tags: ['service_api'],
-}).input(z.object({ params: zGetDatasetsByDatasetIdTagsPath })).output(zGetDatasetsByDatasetIdTagsResponse)
+export const get18 = oc
+  .route({
+    description: 'Get tags bound to a specific dataset',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasetsByDatasetIdTags',
+    path: '/datasets/{dataset_id}/tags',
+    summary: 'Get all knowledge type tags',
+    tags: ['service_api'],
+  })
+  .input(z.object({ params: zGetDatasetsByDatasetIdTagsPath }))
+  .output(zGetDatasetsByDatasetIdTagsResponse)
 
 export const tags2 = {
   get: get18,
@@ -1210,40 +1788,50 @@ export const tags2 = {
  * Raises:
  * NotFound: If the dataset with the given ID does not exist.
  */
-export const delete8 = oc.route({
-  description: 'Delete a dataset\nArgs:\n    _: ignore\n    dataset_id (UUID): The ID of the dataset to be deleted.\n\nReturns:\n    dict: A dictionary with a key \'result\' and a value \'success\'\n          if the dataset was successfully deleted. Omitted in HTTP response.\n    int: HTTP status code 204 indicating that the operation was successful.\n\nRaises:\n    NotFound: If the dataset with the given ID does not exist.',
-  inputStructure: 'detailed',
-  method: 'DELETE',
-  operationId: 'deleteDatasetsByDatasetId',
-  path: '/datasets/{dataset_id}',
-  successStatus: 204,
-  summary: 'Deletes a dataset given its ID',
-  tags: ['service_api'],
-}).input(z.object({ params: zDeleteDatasetsByDatasetIdPath })).output(zDeleteDatasetsByDatasetIdResponse)
+export const delete8 = oc
+  .route({
+    description:
+      'Delete a dataset\nArgs:\n    _: ignore\n    dataset_id (UUID): The ID of the dataset to be deleted.\n\nReturns:\n    dict: A dictionary with a key \'result\' and a value \'success\'\n          if the dataset was successfully deleted. Omitted in HTTP response.\n    int: HTTP status code 204 indicating that the operation was successful.\n\nRaises:\n    NotFound: If the dataset with the given ID does not exist.',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteDatasetsByDatasetId',
+    path: '/datasets/{dataset_id}',
+    successStatus: 204,
+    summary: 'Deletes a dataset given its ID',
+    tags: ['service_api'],
+  })
+  .input(z.object({ params: zDeleteDatasetsByDatasetIdPath }))
+  .output(zDeleteDatasetsByDatasetIdResponse)
 
 /**
  * Get a specific dataset by ID
  */
-export const get19 = oc.route({
-  description: 'Get a specific dataset by ID',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getDatasetsByDatasetId',
-  path: '/datasets/{dataset_id}',
-  tags: ['service_api'],
-}).input(z.object({ params: zGetDatasetsByDatasetIdPath })).output(zGetDatasetsByDatasetIdResponse)
+export const get19 = oc
+  .route({
+    description: 'Get a specific dataset by ID',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasetsByDatasetId',
+    path: '/datasets/{dataset_id}',
+    tags: ['service_api'],
+  })
+  .input(z.object({ params: zGetDatasetsByDatasetIdPath }))
+  .output(zGetDatasetsByDatasetIdResponse)
 
 /**
  * Update an existing dataset
  */
-export const patch6 = oc.route({
-  description: 'Update an existing dataset',
-  inputStructure: 'detailed',
-  method: 'PATCH',
-  operationId: 'patchDatasetsByDatasetId',
-  path: '/datasets/{dataset_id}',
-  tags: ['service_api'],
-}).input(z.object({ body: zPatchDatasetsByDatasetIdBody, params: zPatchDatasetsByDatasetIdPath })).output(zPatchDatasetsByDatasetIdResponse)
+export const patch6 = oc
+  .route({
+    description: 'Update an existing dataset',
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchDatasetsByDatasetId',
+    path: '/datasets/{dataset_id}',
+    tags: ['service_api'],
+  })
+  .input(z.object({ body: zPatchDatasetsByDatasetIdBody, params: zPatchDatasetsByDatasetIdPath }))
+  .output(zPatchDatasetsByDatasetIdResponse)
 
 export const byDatasetId = {
   delete: delete8,
@@ -1263,30 +1851,36 @@ export const byDatasetId = {
  *
  * List all datasets
  */
-export const get20 = oc.route({
-  description: 'List all datasets',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getDatasets',
-  path: '/datasets',
-  summary: 'Resource for getting datasets',
-  tags: ['service_api'],
-}).input(z.object({ query: zGetDatasetsQuery.optional() })).output(zGetDatasetsResponse)
+export const get20 = oc
+  .route({
+    description: 'List all datasets',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasets',
+    path: '/datasets',
+    summary: 'Resource for getting datasets',
+    tags: ['service_api'],
+  })
+  .input(z.object({ query: zGetDatasetsQuery.optional() }))
+  .output(zGetDatasetsResponse)
 
 /**
  * Resource for creating datasets
  *
  * Create a new dataset
  */
-export const post32 = oc.route({
-  description: 'Create a new dataset',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postDatasets',
-  path: '/datasets',
-  summary: 'Resource for creating datasets',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostDatasetsBody })).output(zPostDatasetsResponse)
+export const post32 = oc
+  .route({
+    description: 'Create a new dataset',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasets',
+    path: '/datasets',
+    summary: 'Resource for creating datasets',
+    tags: ['service_api'],
+  })
+  .input(z.object({ body: zPostDatasetsBody }))
+  .output(zPostDatasetsResponse)
 
 export const datasets = {
   get: get20,
@@ -1303,15 +1897,19 @@ export const datasets = {
  * This endpoint is scoped to the current app token's tenant/app to prevent
  * cross-tenant/app access when an end-user ID is known.
  */
-export const get21 = oc.route({
-  description: 'Get an end user by ID\nThis endpoint is scoped to the current app token\'s tenant/app to prevent\ncross-tenant/app access when an end-user ID is known.',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getEndUsersByEndUserId',
-  path: '/end-users/{end_user_id}',
-  summary: 'Get end user detail',
-  tags: ['service_api'],
-}).input(z.object({ params: zGetEndUsersByEndUserIdPath })).output(zGetEndUsersByEndUserIdResponse)
+export const get21 = oc
+  .route({
+    description:
+      'Get an end user by ID\nThis endpoint is scoped to the current app token\'s tenant/app to prevent\ncross-tenant/app access when an end-user ID is known.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getEndUsersByEndUserId',
+    path: '/end-users/{end_user_id}',
+    summary: 'Get end user detail',
+    tags: ['service_api'],
+  })
+  .input(z.object({ params: zGetEndUsersByEndUserIdPath }))
+  .output(zGetEndUsersByEndUserIdResponse)
 
 export const byEndUserId = {
   get: get21,
@@ -1327,16 +1925,19 @@ export const endUsers = {
  * Upload a file for use in conversations
  * Accepts a single file upload via multipart/form-data.
  */
-export const post33 = oc.route({
-  description: 'Upload a file for use in conversations\nAccepts a single file upload via multipart/form-data.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postFilesUpload',
-  path: '/files/upload',
-  successStatus: 201,
-  summary: 'Upload a file for use in conversations',
-  tags: ['service_api'],
-}).output(zPostFilesUploadResponse)
+export const post33 = oc
+  .route({
+    description:
+      'Upload a file for use in conversations\nAccepts a single file upload via multipart/form-data.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFilesUpload',
+    path: '/files/upload',
+    successStatus: 201,
+    summary: 'Upload a file for use in conversations',
+    tags: ['service_api'],
+  })
+  .output(zPostFilesUploadResponse)
 
 export const upload = {
   post: post33,
@@ -1349,15 +1950,24 @@ export const upload = {
  * Provides secure file preview/download functionality.
  * Files can only be accessed if they belong to messages within the requesting app's context.
  */
-export const get22 = oc.route({
-  description: 'Preview or download a file uploaded via Service API\nProvides secure file preview/download functionality.\nFiles can only be accessed if they belong to messages within the requesting app\'s context.',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getFilesByFileIdPreview',
-  path: '/files/{file_id}/preview',
-  summary: 'Preview/Download a file that was uploaded via Service API',
-  tags: ['service_api'],
-}).input(z.object({ params: zGetFilesByFileIdPreviewPath, query: zGetFilesByFileIdPreviewQuery.optional() })).output(zGetFilesByFileIdPreviewResponse)
+export const get22 = oc
+  .route({
+    description:
+      'Preview or download a file uploaded via Service API\nProvides secure file preview/download functionality.\nFiles can only be accessed if they belong to messages within the requesting app\'s context.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getFilesByFileIdPreview',
+    path: '/files/{file_id}/preview',
+    summary: 'Preview/Download a file that was uploaded via Service API',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      params: zGetFilesByFileIdPreviewPath,
+      query: zGetFilesByFileIdPreviewQuery.optional(),
+    }),
+  )
+  .output(zGetFilesByFileIdPreviewResponse)
 
 export const preview = {
   get: get22,
@@ -1375,26 +1985,37 @@ export const files = {
 /**
  * Get a paused human input form by token
  */
-export const get23 = oc.route({
-  description: 'Get a paused human input form by token',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getFormHumanInputByFormToken',
-  path: '/form/human_input/{form_token}',
-  tags: ['service_api'],
-}).input(z.object({ params: zGetFormHumanInputByFormTokenPath })).output(zGetFormHumanInputByFormTokenResponse)
+export const get23 = oc
+  .route({
+    description: 'Get a paused human input form by token',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getFormHumanInputByFormToken',
+    path: '/form/human_input/{form_token}',
+    tags: ['service_api'],
+  })
+  .input(z.object({ params: zGetFormHumanInputByFormTokenPath }))
+  .output(zGetFormHumanInputByFormTokenResponse)
 
 /**
  * Submit a paused human input form by token
  */
-export const post34 = oc.route({
-  description: 'Submit a paused human input form by token',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postFormHumanInputByFormToken',
-  path: '/form/human_input/{form_token}',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostFormHumanInputByFormTokenBody, params: zPostFormHumanInputByFormTokenPath })).output(zPostFormHumanInputByFormTokenResponse)
+export const post34 = oc
+  .route({
+    description: 'Submit a paused human input form by token',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFormHumanInputByFormToken',
+    path: '/form/human_input/{form_token}',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPostFormHumanInputByFormTokenBody,
+      params: zPostFormHumanInputByFormTokenPath,
+    }),
+  )
+  .output(zPostFormHumanInputByFormTokenResponse)
 
 export const byFormToken = {
   get: get23,
@@ -1415,15 +2036,18 @@ export const form = {
  * Get basic application information
  * Returns basic information about the application including name, description, tags, and mode.
  */
-export const get24 = oc.route({
-  description: 'Get basic application information\nReturns basic information about the application including name, description, tags, and mode.',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getInfo',
-  path: '/info',
-  summary: 'Get app information',
-  tags: ['service_api'],
-}).output(zGetInfoResponse)
+export const get24 = oc
+  .route({
+    description:
+      'Get basic application information\nReturns basic information about the application including name, description, tags, and mode.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getInfo',
+    path: '/info',
+    summary: 'Get app information',
+    tags: ['service_api'],
+  })
+  .output(zGetInfoResponse)
 
 export const info = {
   get: get24,
@@ -1435,15 +2059,24 @@ export const info = {
  * Submit feedback for a message
  * Allows users to rate messages as like/dislike and provide optional feedback content.
  */
-export const post35 = oc.route({
-  description: 'Submit feedback for a message\nAllows users to rate messages as like/dislike and provide optional feedback content.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postMessagesByMessageIdFeedbacks',
-  path: '/messages/{message_id}/feedbacks',
-  summary: 'Submit feedback for a message',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostMessagesByMessageIdFeedbacksBody, params: zPostMessagesByMessageIdFeedbacksPath })).output(zPostMessagesByMessageIdFeedbacksResponse)
+export const post35 = oc
+  .route({
+    description:
+      'Submit feedback for a message\nAllows users to rate messages as like/dislike and provide optional feedback content.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postMessagesByMessageIdFeedbacks',
+    path: '/messages/{message_id}/feedbacks',
+    summary: 'Submit feedback for a message',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPostMessagesByMessageIdFeedbacksBody,
+      params: zPostMessagesByMessageIdFeedbacksPath,
+    }),
+  )
+  .output(zPostMessagesByMessageIdFeedbacksResponse)
 
 export const feedbacks2 = {
   post: post35,
@@ -1455,15 +2088,19 @@ export const feedbacks2 = {
  * Get suggested follow-up questions for a message
  * Returns AI-generated follow-up questions based on the message content.
  */
-export const get25 = oc.route({
-  description: 'Get suggested follow-up questions for a message\nReturns AI-generated follow-up questions based on the message content.',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getMessagesByMessageIdSuggested',
-  path: '/messages/{message_id}/suggested',
-  summary: 'Get suggested follow-up questions for a message',
-  tags: ['service_api'],
-}).input(z.object({ params: zGetMessagesByMessageIdSuggestedPath })).output(zGetMessagesByMessageIdSuggestedResponse)
+export const get25 = oc
+  .route({
+    description:
+      'Get suggested follow-up questions for a message\nReturns AI-generated follow-up questions based on the message content.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getMessagesByMessageIdSuggested',
+    path: '/messages/{message_id}/suggested',
+    summary: 'Get suggested follow-up questions for a message',
+    tags: ['service_api'],
+  })
+  .input(z.object({ params: zGetMessagesByMessageIdSuggestedPath }))
+  .output(zGetMessagesByMessageIdSuggestedResponse)
 
 export const suggested = {
   get: get25,
@@ -1480,15 +2117,19 @@ export const byMessageId = {
  * List messages in a conversation
  * Retrieves messages with pagination support using first_id.
  */
-export const get26 = oc.route({
-  description: 'List messages in a conversation\nRetrieves messages with pagination support using first_id.',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getMessages',
-  path: '/messages',
-  summary: 'List messages in a conversation',
-  tags: ['service_api'],
-}).input(z.object({ query: zGetMessagesQuery })).output(zGetMessagesResponse)
+export const get26 = oc
+  .route({
+    description:
+      'List messages in a conversation\nRetrieves messages with pagination support using first_id.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getMessages',
+    path: '/messages',
+    summary: 'List messages in a conversation',
+    tags: ['service_api'],
+  })
+  .input(z.object({ query: zGetMessagesQuery }))
+  .output(zGetMessagesResponse)
 
 export const messages = {
   get: get26,
@@ -1501,15 +2142,18 @@ export const messages = {
  * Get application metadata
  * Returns metadata about the application including configuration and settings.
  */
-export const get27 = oc.route({
-  description: 'Get application metadata\nReturns metadata about the application including configuration and settings.',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getMeta',
-  path: '/meta',
-  summary: 'Get app metadata',
-  tags: ['service_api'],
-}).output(zGetMetaResponse)
+export const get27 = oc
+  .route({
+    description:
+      'Get application metadata\nReturns metadata about the application including configuration and settings.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getMeta',
+    path: '/meta',
+    summary: 'Get app metadata',
+    tags: ['service_api'],
+  })
+  .output(zGetMetaResponse)
 
 export const meta = {
   get: get27,
@@ -1521,15 +2165,18 @@ export const meta = {
  * Retrieve application input parameters and configuration
  * Returns the input form parameters and configuration for the application.
  */
-export const get28 = oc.route({
-  description: 'Retrieve application input parameters and configuration\nReturns the input form parameters and configuration for the application.',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getParameters',
-  path: '/parameters',
-  summary: 'Retrieve app parameters',
-  tags: ['service_api'],
-}).output(zGetParametersResponse)
+export const get28 = oc
+  .route({
+    description:
+      'Retrieve application input parameters and configuration\nReturns the input form parameters and configuration for the application.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getParameters',
+    path: '/parameters',
+    summary: 'Retrieve app parameters',
+    tags: ['service_api'],
+  })
+  .output(zGetParametersResponse)
 
 export const parameters = {
   get: get28,
@@ -1541,15 +2188,18 @@ export const parameters = {
  * Get application site configuration
  * Returns the site configuration for the application including theme, icons, and text.
  */
-export const get29 = oc.route({
-  description: 'Get application site configuration\nReturns the site configuration for the application including theme, icons, and text.',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getSite',
-  path: '/site',
-  summary: 'Retrieve app site info',
-  tags: ['service_api'],
-}).output(zGetSiteResponse)
+export const get29 = oc
+  .route({
+    description:
+      'Get application site configuration\nReturns the site configuration for the application including theme, icons, and text.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getSite',
+    path: '/site',
+    summary: 'Retrieve app site info',
+    tags: ['service_api'],
+  })
+  .output(zGetSiteResponse)
 
 export const site = {
   get: get29,
@@ -1561,15 +2211,19 @@ export const site = {
  * Convert text to audio using text-to-speech
  * Converts the provided text to audio using the specified voice.
  */
-export const post36 = oc.route({
-  description: 'Convert text to audio using text-to-speech\nConverts the provided text to audio using the specified voice.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postTextToAudio',
-  path: '/text-to-audio',
-  summary: 'Convert text to audio using text-to-speech',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostTextToAudioBody })).output(zPostTextToAudioResponse)
+export const post36 = oc
+  .route({
+    description:
+      'Convert text to audio using text-to-speech\nConverts the provided text to audio using the specified voice.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postTextToAudio',
+    path: '/text-to-audio',
+    summary: 'Convert text to audio using text-to-speech',
+    tags: ['service_api'],
+  })
+  .input(z.object({ body: zPostTextToAudioBody }))
+  .output(zPostTextToAudioResponse)
 
 export const textToAudio = {
   post: post36,
@@ -1578,14 +2232,19 @@ export const textToAudio = {
 /**
  * Get workflow execution events stream after resume
  */
-export const get30 = oc.route({
-  description: 'Get workflow execution events stream after resume',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getWorkflowByTaskIdEvents',
-  path: '/workflow/{task_id}/events',
-  tags: ['service_api'],
-}).input(z.object({ params: zGetWorkflowByTaskIdEventsPath, query: zGetWorkflowByTaskIdEventsQuery })).output(zGetWorkflowByTaskIdEventsResponse)
+export const get30 = oc
+  .route({
+    description: 'Get workflow execution events stream after resume',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkflowByTaskIdEvents',
+    path: '/workflow/{task_id}/events',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({ params: zGetWorkflowByTaskIdEventsPath, query: zGetWorkflowByTaskIdEventsQuery }),
+  )
+  .output(zGetWorkflowByTaskIdEventsResponse)
 
 export const events = {
   get: get30,
@@ -1605,15 +2264,19 @@ export const workflow = {
  * Get workflow execution logs
  * Returns paginated workflow execution logs with filtering options.
  */
-export const get31 = oc.route({
-  description: 'Get workflow execution logs\nReturns paginated workflow execution logs with filtering options.',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getWorkflowsLogs',
-  path: '/workflows/logs',
-  summary: 'Get workflow app logs',
-  tags: ['service_api'],
-}).input(z.object({ query: zGetWorkflowsLogsQuery.optional() })).output(zGetWorkflowsLogsResponse)
+export const get31 = oc
+  .route({
+    description:
+      'Get workflow execution logs\nReturns paginated workflow execution logs with filtering options.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkflowsLogs',
+    path: '/workflows/logs',
+    summary: 'Get workflow app logs',
+    tags: ['service_api'],
+  })
+  .input(z.object({ query: zGetWorkflowsLogsQuery.optional() }))
+  .output(zGetWorkflowsLogsResponse)
 
 export const logs = {
   get: get31,
@@ -1625,15 +2288,19 @@ export const logs = {
  * Get workflow run details
  * Returns detailed information about a specific workflow run.
  */
-export const get32 = oc.route({
-  description: 'Get workflow run details\nReturns detailed information about a specific workflow run.',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getWorkflowsRunByWorkflowRunId',
-  path: '/workflows/run/{workflow_run_id}',
-  summary: 'Get a workflow task running detail',
-  tags: ['service_api'],
-}).input(z.object({ params: zGetWorkflowsRunByWorkflowRunIdPath })).output(zGetWorkflowsRunByWorkflowRunIdResponse)
+export const get32 = oc
+  .route({
+    description:
+      'Get workflow run details\nReturns detailed information about a specific workflow run.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkflowsRunByWorkflowRunId',
+    path: '/workflows/run/{workflow_run_id}',
+    summary: 'Get a workflow task running detail',
+    tags: ['service_api'],
+  })
+  .input(z.object({ params: zGetWorkflowsRunByWorkflowRunIdPath }))
+  .output(zGetWorkflowsRunByWorkflowRunIdResponse)
 
 export const byWorkflowRunId = {
   get: get32,
@@ -1646,15 +2313,19 @@ export const byWorkflowRunId = {
  * Runs a workflow with the provided inputs and returns the results.
  * Supports both blocking and streaming response modes.
  */
-export const post37 = oc.route({
-  description: 'Execute a workflow\nRuns a workflow with the provided inputs and returns the results.\nSupports both blocking and streaming response modes.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postWorkflowsRun',
-  path: '/workflows/run',
-  summary: 'Execute a workflow',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostWorkflowsRunBody })).output(zPostWorkflowsRunResponse)
+export const post37 = oc
+  .route({
+    description:
+      'Execute a workflow\nRuns a workflow with the provided inputs and returns the results.\nSupports both blocking and streaming response modes.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkflowsRun',
+    path: '/workflows/run',
+    summary: 'Execute a workflow',
+    tags: ['service_api'],
+  })
+  .input(z.object({ body: zPostWorkflowsRunBody }))
+  .output(zPostWorkflowsRunResponse)
 
 export const run3 = {
   post: post37,
@@ -1666,15 +2337,18 @@ export const run3 = {
  *
  * Stop a running workflow task
  */
-export const post38 = oc.route({
-  description: 'Stop a running workflow task',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postWorkflowsTasksByTaskIdStop',
-  path: '/workflows/tasks/{task_id}/stop',
-  summary: 'Stop a running workflow task',
-  tags: ['service_api'],
-}).input(z.object({ params: zPostWorkflowsTasksByTaskIdStopPath })).output(zPostWorkflowsTasksByTaskIdStopResponse)
+export const post38 = oc
+  .route({
+    description: 'Stop a running workflow task',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkflowsTasksByTaskIdStop',
+    path: '/workflows/tasks/{task_id}/stop',
+    summary: 'Stop a running workflow task',
+    tags: ['service_api'],
+  })
+  .input(z.object({ params: zPostWorkflowsTasksByTaskIdStopPath }))
+  .output(zPostWorkflowsTasksByTaskIdStopResponse)
 
 export const stop3 = {
   post: post38,
@@ -1694,15 +2368,24 @@ export const tasks = {
  * Execute a specific workflow by ID
  * Executes a specific workflow version identified by its ID.
  */
-export const post39 = oc.route({
-  description: 'Execute a specific workflow by ID\nExecutes a specific workflow version identified by its ID.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postWorkflowsByWorkflowIdRun',
-  path: '/workflows/{workflow_id}/run',
-  summary: 'Run specific workflow by ID',
-  tags: ['service_api'],
-}).input(z.object({ body: zPostWorkflowsByWorkflowIdRunBody, params: zPostWorkflowsByWorkflowIdRunPath })).output(zPostWorkflowsByWorkflowIdRunResponse)
+export const post39 = oc
+  .route({
+    description:
+      'Execute a specific workflow by ID\nExecutes a specific workflow version identified by its ID.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkflowsByWorkflowIdRun',
+    path: '/workflows/{workflow_id}/run',
+    summary: 'Run specific workflow by ID',
+    tags: ['service_api'],
+  })
+  .input(
+    z.object({
+      body: zPostWorkflowsByWorkflowIdRunBody,
+      params: zPostWorkflowsByWorkflowIdRunPath,
+    }),
+  )
+  .output(zPostWorkflowsByWorkflowIdRunResponse)
 
 export const run4 = {
   post: post39,
@@ -1725,15 +2408,19 @@ export const workflows = {
  * Get available models by model type
  * Returns a list of available models for the specified model type.
  */
-export const get33 = oc.route({
-  description: 'Get available models by model type\nReturns a list of available models for the specified model type.',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getWorkspacesCurrentModelsModelTypesByModelType',
-  path: '/workspaces/current/models/model-types/{model_type}',
-  summary: 'Get available models by model type',
-  tags: ['service_api'],
-}).input(z.object({ params: zGetWorkspacesCurrentModelsModelTypesByModelTypePath })).output(zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse)
+export const get33 = oc
+  .route({
+    description:
+      'Get available models by model type\nReturns a list of available models for the specified model type.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentModelsModelTypesByModelType',
+    path: '/workspaces/current/models/model-types/{model_type}',
+    summary: 'Get available models by model type',
+    tags: ['service_api'],
+  })
+  .input(z.object({ params: zGetWorkspacesCurrentModelsModelTypesByModelTypePath }))
+  .output(zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse)
 
 export const byModelType = {
   get: get33,

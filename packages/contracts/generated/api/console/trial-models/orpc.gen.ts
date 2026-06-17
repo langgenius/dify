@@ -9,15 +9,17 @@ import { zGetTrialModelsResponse } from './zod.gen'
  *
  * Get hosted trial model provider configuration
  */
-export const get = oc.route({
-  description: 'Get hosted trial model provider configuration',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getTrialModels',
-  path: '/trial-models',
-  summary: 'Get hosted trial model provider configuration for model-provider pages',
-  tags: ['console'],
-}).output(zGetTrialModelsResponse)
+export const get = oc
+  .route({
+    description: 'Get hosted trial model provider configuration',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getTrialModels',
+    path: '/trial-models',
+    summary: 'Get hosted trial model provider configuration for model-provider pages',
+    tags: ['console'],
+  })
+  .output(zGetTrialModelsResponse)
 
 export const trialModels = {
   get,

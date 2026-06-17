@@ -3,28 +3,39 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
-import { zGetRemoteFilesByUrlPath, zGetRemoteFilesByUrlResponse, zPostRemoteFilesUploadBody, zPostRemoteFilesUploadResponse } from './zod.gen'
+import {
+  zGetRemoteFilesByUrlPath,
+  zGetRemoteFilesByUrlResponse,
+  zPostRemoteFilesUploadBody,
+  zPostRemoteFilesUploadResponse,
+} from './zod.gen'
 
-export const post = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postRemoteFilesUpload',
-  path: '/remote-files/upload',
-  successStatus: 201,
-  tags: ['console'],
-}).input(z.object({ body: zPostRemoteFilesUploadBody })).output(zPostRemoteFilesUploadResponse)
+export const post = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postRemoteFilesUpload',
+    path: '/remote-files/upload',
+    successStatus: 201,
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostRemoteFilesUploadBody }))
+  .output(zPostRemoteFilesUploadResponse)
 
 export const upload = {
   post,
 }
 
-export const get = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRemoteFilesByUrl',
-  path: '/remote-files/{url}',
-  tags: ['console'],
-}).input(z.object({ params: zGetRemoteFilesByUrlPath })).output(zGetRemoteFilesByUrlResponse)
+export const get = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRemoteFilesByUrl',
+    path: '/remote-files/{url}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetRemoteFilesByUrlPath }))
+  .output(zGetRemoteFilesByUrlResponse)
 
 export const byUrl = {
   get,

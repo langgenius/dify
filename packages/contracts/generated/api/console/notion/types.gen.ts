@@ -50,7 +50,8 @@ export type GetNotionPagesByPageIdByPageTypePreviewResponses = {
   200: TextContentResponse
 }
 
-export type GetNotionPagesByPageIdByPageTypePreviewResponse = GetNotionPagesByPageIdByPageTypePreviewResponses[keyof GetNotionPagesByPageIdByPageTypePreviewResponses]
+export type GetNotionPagesByPageIdByPageTypePreviewResponse
+  = GetNotionPagesByPageIdByPageTypePreviewResponses[keyof GetNotionPagesByPageIdByPageTypePreviewResponses]
 
 export type GetNotionPreImportPagesData = {
   body?: never
@@ -66,4 +67,5 @@ export type GetNotionPreImportPagesResponses = {
   200: NotionIntegrateInfoListResponse
 }
 
-export type GetNotionPreImportPagesResponse = GetNotionPreImportPagesResponses[keyof GetNotionPreImportPagesResponses]
+export type GetNotionPreImportPagesResponse
+  = GetNotionPreImportPagesResponses[keyof GetNotionPreImportPagesResponses]

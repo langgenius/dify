@@ -3,19 +3,29 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
-import { zPostForgotPasswordBody, zPostForgotPasswordResetsBody, zPostForgotPasswordResetsResponse, zPostForgotPasswordResponse, zPostForgotPasswordValidityBody, zPostForgotPasswordValidityResponse } from './zod.gen'
+import {
+  zPostForgotPasswordBody,
+  zPostForgotPasswordResetsBody,
+  zPostForgotPasswordResetsResponse,
+  zPostForgotPasswordResponse,
+  zPostForgotPasswordValidityBody,
+  zPostForgotPasswordValidityResponse,
+} from './zod.gen'
 
 /**
  * Reset password with verification token
  */
-export const post = oc.route({
-  description: 'Reset password with verification token',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postForgotPasswordResets',
-  path: '/forgot-password/resets',
-  tags: ['console'],
-}).input(z.object({ body: zPostForgotPasswordResetsBody })).output(zPostForgotPasswordResetsResponse)
+export const post = oc
+  .route({
+    description: 'Reset password with verification token',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postForgotPasswordResets',
+    path: '/forgot-password/resets',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostForgotPasswordResetsBody }))
+  .output(zPostForgotPasswordResetsResponse)
 
 export const resets = {
   post,
@@ -24,14 +34,17 @@ export const resets = {
 /**
  * Verify password reset code
  */
-export const post2 = oc.route({
-  description: 'Verify password reset code',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postForgotPasswordValidity',
-  path: '/forgot-password/validity',
-  tags: ['console'],
-}).input(z.object({ body: zPostForgotPasswordValidityBody })).output(zPostForgotPasswordValidityResponse)
+export const post2 = oc
+  .route({
+    description: 'Verify password reset code',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postForgotPasswordValidity',
+    path: '/forgot-password/validity',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostForgotPasswordValidityBody }))
+  .output(zPostForgotPasswordValidityResponse)
 
 export const validity = {
   post: post2,
@@ -40,14 +53,17 @@ export const validity = {
 /**
  * Send password reset email
  */
-export const post3 = oc.route({
-  description: 'Send password reset email',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postForgotPassword',
-  path: '/forgot-password',
-  tags: ['console'],
-}).input(z.object({ body: zPostForgotPasswordBody })).output(zPostForgotPasswordResponse)
+export const post3 = oc
+  .route({
+    description: 'Send password reset email',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postForgotPassword',
+    path: '/forgot-password',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostForgotPasswordBody }))
+  .output(zPostForgotPasswordResponse)
 
 export const forgotPassword = {
   post: post3,

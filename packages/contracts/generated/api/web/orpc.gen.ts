@@ -3,22 +3,110 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
-import { zDeleteConversationsByCIdPath, zDeleteConversationsByCIdResponse, zDeleteSavedMessagesByMessageIdPath, zDeleteSavedMessagesByMessageIdResponse, zGetConversationsQuery, zGetConversationsResponse, zGetFormHumanInputByFormTokenPath, zGetFormHumanInputByFormTokenResponse, zGetLoginStatusQuery, zGetLoginStatusResponse, zGetMessagesByMessageIdMoreLikeThisPath, zGetMessagesByMessageIdMoreLikeThisQuery, zGetMessagesByMessageIdMoreLikeThisResponse, zGetMessagesByMessageIdSuggestedQuestionsPath, zGetMessagesByMessageIdSuggestedQuestionsResponse, zGetMessagesQuery, zGetMessagesResponse, zGetMetaResponse, zGetParametersResponse, zGetPassportQuery, zGetPassportResponse, zGetRemoteFilesByUrlPath, zGetRemoteFilesByUrlResponse, zGetSavedMessagesQuery, zGetSavedMessagesResponse, zGetSiteResponse, zGetSystemFeaturesResponse, zGetWebappAccessModeQuery, zGetWebappAccessModeResponse, zGetWebappPermissionQuery, zGetWebappPermissionResponse, zGetWorkflowByTaskIdEventsPath, zGetWorkflowByTaskIdEventsResponse, zPatchConversationsByCIdPinPath, zPatchConversationsByCIdPinResponse, zPatchConversationsByCIdUnpinPath, zPatchConversationsByCIdUnpinResponse, zPostAudioToTextResponse, zPostChatMessagesBody, zPostChatMessagesByTaskIdStopPath, zPostChatMessagesByTaskIdStopResponse, zPostChatMessagesResponse, zPostCompletionMessagesBody, zPostCompletionMessagesByTaskIdStopPath, zPostCompletionMessagesByTaskIdStopResponse, zPostCompletionMessagesResponse, zPostConversationsByCIdNameBody, zPostConversationsByCIdNamePath, zPostConversationsByCIdNameQuery, zPostConversationsByCIdNameResponse, zPostEmailCodeLoginBody, zPostEmailCodeLoginResponse, zPostEmailCodeLoginValidityBody, zPostEmailCodeLoginValidityResponse, zPostFilesUploadResponse, zPostForgotPasswordBody, zPostForgotPasswordResetsBody, zPostForgotPasswordResetsResponse, zPostForgotPasswordResponse, zPostForgotPasswordValidityBody, zPostForgotPasswordValidityResponse, zPostFormHumanInputByFormTokenBody, zPostFormHumanInputByFormTokenPath, zPostFormHumanInputByFormTokenResponse, zPostFormHumanInputByFormTokenUploadTokenPath, zPostFormHumanInputByFormTokenUploadTokenResponse, zPostHumanInputFormsFilesResponse, zPostLoginBody, zPostLoginResponse, zPostLogoutResponse, zPostMessagesByMessageIdFeedbacksBody, zPostMessagesByMessageIdFeedbacksPath, zPostMessagesByMessageIdFeedbacksQuery, zPostMessagesByMessageIdFeedbacksResponse, zPostRemoteFilesUploadBody, zPostRemoteFilesUploadResponse, zPostSavedMessagesBody, zPostSavedMessagesQuery, zPostSavedMessagesResponse, zPostTextToAudioBody, zPostTextToAudioResponse, zPostWorkflowsRunBody, zPostWorkflowsRunResponse, zPostWorkflowsTasksByTaskIdStopPath, zPostWorkflowsTasksByTaskIdStopResponse } from './zod.gen'
+import {
+  zDeleteConversationsByCIdPath,
+  zDeleteConversationsByCIdResponse,
+  zDeleteSavedMessagesByMessageIdPath,
+  zDeleteSavedMessagesByMessageIdResponse,
+  zGetConversationsQuery,
+  zGetConversationsResponse,
+  zGetFormHumanInputByFormTokenPath,
+  zGetFormHumanInputByFormTokenResponse,
+  zGetLoginStatusQuery,
+  zGetLoginStatusResponse,
+  zGetMessagesByMessageIdMoreLikeThisPath,
+  zGetMessagesByMessageIdMoreLikeThisQuery,
+  zGetMessagesByMessageIdMoreLikeThisResponse,
+  zGetMessagesByMessageIdSuggestedQuestionsPath,
+  zGetMessagesByMessageIdSuggestedQuestionsResponse,
+  zGetMessagesQuery,
+  zGetMessagesResponse,
+  zGetMetaResponse,
+  zGetParametersResponse,
+  zGetPassportQuery,
+  zGetPassportResponse,
+  zGetRemoteFilesByUrlPath,
+  zGetRemoteFilesByUrlResponse,
+  zGetSavedMessagesQuery,
+  zGetSavedMessagesResponse,
+  zGetSiteResponse,
+  zGetSystemFeaturesResponse,
+  zGetWebappAccessModeQuery,
+  zGetWebappAccessModeResponse,
+  zGetWebappPermissionQuery,
+  zGetWebappPermissionResponse,
+  zGetWorkflowByTaskIdEventsPath,
+  zGetWorkflowByTaskIdEventsResponse,
+  zPatchConversationsByCIdPinPath,
+  zPatchConversationsByCIdPinResponse,
+  zPatchConversationsByCIdUnpinPath,
+  zPatchConversationsByCIdUnpinResponse,
+  zPostAudioToTextResponse,
+  zPostChatMessagesBody,
+  zPostChatMessagesByTaskIdStopPath,
+  zPostChatMessagesByTaskIdStopResponse,
+  zPostChatMessagesResponse,
+  zPostCompletionMessagesBody,
+  zPostCompletionMessagesByTaskIdStopPath,
+  zPostCompletionMessagesByTaskIdStopResponse,
+  zPostCompletionMessagesResponse,
+  zPostConversationsByCIdNameBody,
+  zPostConversationsByCIdNamePath,
+  zPostConversationsByCIdNameQuery,
+  zPostConversationsByCIdNameResponse,
+  zPostEmailCodeLoginBody,
+  zPostEmailCodeLoginResponse,
+  zPostEmailCodeLoginValidityBody,
+  zPostEmailCodeLoginValidityResponse,
+  zPostFilesUploadResponse,
+  zPostForgotPasswordBody,
+  zPostForgotPasswordResetsBody,
+  zPostForgotPasswordResetsResponse,
+  zPostForgotPasswordResponse,
+  zPostForgotPasswordValidityBody,
+  zPostForgotPasswordValidityResponse,
+  zPostFormHumanInputByFormTokenBody,
+  zPostFormHumanInputByFormTokenPath,
+  zPostFormHumanInputByFormTokenResponse,
+  zPostFormHumanInputByFormTokenUploadTokenPath,
+  zPostFormHumanInputByFormTokenUploadTokenResponse,
+  zPostHumanInputFormsFilesResponse,
+  zPostLoginBody,
+  zPostLoginResponse,
+  zPostLogoutResponse,
+  zPostMessagesByMessageIdFeedbacksBody,
+  zPostMessagesByMessageIdFeedbacksPath,
+  zPostMessagesByMessageIdFeedbacksQuery,
+  zPostMessagesByMessageIdFeedbacksResponse,
+  zPostRemoteFilesUploadBody,
+  zPostRemoteFilesUploadResponse,
+  zPostSavedMessagesBody,
+  zPostSavedMessagesQuery,
+  zPostSavedMessagesResponse,
+  zPostTextToAudioBody,
+  zPostTextToAudioResponse,
+  zPostWorkflowsRunBody,
+  zPostWorkflowsRunResponse,
+  zPostWorkflowsTasksByTaskIdStopPath,
+  zPostWorkflowsTasksByTaskIdStopResponse,
+} from './zod.gen'
 
 /**
  * Convert audio to text
  *
  * Convert audio file to text using speech-to-text service.
  */
-export const post = oc.route({
-  description: 'Convert audio file to text using speech-to-text service.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postAudioToText',
-  path: '/audio-to-text',
-  summary: 'Convert audio to text',
-  tags: ['web'],
-}).output(zPostAudioToTextResponse)
+export const post = oc
+  .route({
+    description: 'Convert audio file to text using speech-to-text service.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAudioToText',
+    path: '/audio-to-text',
+    summary: 'Convert audio to text',
+    tags: ['web'],
+  })
+  .output(zPostAudioToTextResponse)
 
 export const audioToText = {
   post,
@@ -27,14 +115,17 @@ export const audioToText = {
 /**
  * Stop a running chat message task.
  */
-export const post2 = oc.route({
-  description: 'Stop a running chat message task.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postChatMessagesByTaskIdStop',
-  path: '/chat-messages/{task_id}/stop',
-  tags: ['web'],
-}).input(z.object({ params: zPostChatMessagesByTaskIdStopPath })).output(zPostChatMessagesByTaskIdStopResponse)
+export const post2 = oc
+  .route({
+    description: 'Stop a running chat message task.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postChatMessagesByTaskIdStop',
+    path: '/chat-messages/{task_id}/stop',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zPostChatMessagesByTaskIdStopPath }))
+  .output(zPostChatMessagesByTaskIdStopResponse)
 
 export const stop = {
   post: post2,
@@ -47,14 +138,17 @@ export const byTaskId = {
 /**
  * Create a chat message for conversational applications.
  */
-export const post3 = oc.route({
-  description: 'Create a chat message for conversational applications.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postChatMessages',
-  path: '/chat-messages',
-  tags: ['web'],
-}).input(z.object({ body: zPostChatMessagesBody })).output(zPostChatMessagesResponse)
+export const post3 = oc
+  .route({
+    description: 'Create a chat message for conversational applications.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postChatMessages',
+    path: '/chat-messages',
+    tags: ['web'],
+  })
+  .input(z.object({ body: zPostChatMessagesBody }))
+  .output(zPostChatMessagesResponse)
 
 export const chatMessages = {
   post: post3,
@@ -64,14 +158,17 @@ export const chatMessages = {
 /**
  * Stop a running completion message task.
  */
-export const post4 = oc.route({
-  description: 'Stop a running completion message task.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postCompletionMessagesByTaskIdStop',
-  path: '/completion-messages/{task_id}/stop',
-  tags: ['web'],
-}).input(z.object({ params: zPostCompletionMessagesByTaskIdStopPath })).output(zPostCompletionMessagesByTaskIdStopResponse)
+export const post4 = oc
+  .route({
+    description: 'Stop a running completion message task.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postCompletionMessagesByTaskIdStop',
+    path: '/completion-messages/{task_id}/stop',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zPostCompletionMessagesByTaskIdStopPath }))
+  .output(zPostCompletionMessagesByTaskIdStopResponse)
 
 export const stop2 = {
   post: post4,
@@ -84,14 +181,17 @@ export const byTaskId2 = {
 /**
  * Create a completion message for text generation applications.
  */
-export const post5 = oc.route({
-  description: 'Create a completion message for text generation applications.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postCompletionMessages',
-  path: '/completion-messages',
-  tags: ['web'],
-}).input(z.object({ body: zPostCompletionMessagesBody })).output(zPostCompletionMessagesResponse)
+export const post5 = oc
+  .route({
+    description: 'Create a completion message for text generation applications.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postCompletionMessages',
+    path: '/completion-messages',
+    tags: ['web'],
+  })
+  .input(z.object({ body: zPostCompletionMessagesBody }))
+  .output(zPostCompletionMessagesResponse)
 
 export const completionMessages = {
   post: post5,
@@ -101,18 +201,23 @@ export const completionMessages = {
 /**
  * Rename a specific conversation with a custom name or auto-generate one.
  */
-export const post6 = oc.route({
-  description: 'Rename a specific conversation with a custom name or auto-generate one.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postConversationsByCIdName',
-  path: '/conversations/{c_id}/name',
-  tags: ['web'],
-}).input(z.object({
-  body: zPostConversationsByCIdNameBody,
-  params: zPostConversationsByCIdNamePath,
-  query: zPostConversationsByCIdNameQuery.optional(),
-})).output(zPostConversationsByCIdNameResponse)
+export const post6 = oc
+  .route({
+    description: 'Rename a specific conversation with a custom name or auto-generate one.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postConversationsByCIdName',
+    path: '/conversations/{c_id}/name',
+    tags: ['web'],
+  })
+  .input(
+    z.object({
+      body: zPostConversationsByCIdNameBody,
+      params: zPostConversationsByCIdNamePath,
+      query: zPostConversationsByCIdNameQuery.optional(),
+    }),
+  )
+  .output(zPostConversationsByCIdNameResponse)
 
 export const name = {
   post: post6,
@@ -121,14 +226,17 @@ export const name = {
 /**
  * Pin a specific conversation to keep it at the top of the list.
  */
-export const patch = oc.route({
-  description: 'Pin a specific conversation to keep it at the top of the list.',
-  inputStructure: 'detailed',
-  method: 'PATCH',
-  operationId: 'patchConversationsByCIdPin',
-  path: '/conversations/{c_id}/pin',
-  tags: ['web'],
-}).input(z.object({ params: zPatchConversationsByCIdPinPath })).output(zPatchConversationsByCIdPinResponse)
+export const patch = oc
+  .route({
+    description: 'Pin a specific conversation to keep it at the top of the list.',
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchConversationsByCIdPin',
+    path: '/conversations/{c_id}/pin',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zPatchConversationsByCIdPinPath }))
+  .output(zPatchConversationsByCIdPinResponse)
 
 export const pin = {
   patch,
@@ -137,14 +245,17 @@ export const pin = {
 /**
  * Unpin a specific conversation to remove it from the top of the list.
  */
-export const patch2 = oc.route({
-  description: 'Unpin a specific conversation to remove it from the top of the list.',
-  inputStructure: 'detailed',
-  method: 'PATCH',
-  operationId: 'patchConversationsByCIdUnpin',
-  path: '/conversations/{c_id}/unpin',
-  tags: ['web'],
-}).input(z.object({ params: zPatchConversationsByCIdUnpinPath })).output(zPatchConversationsByCIdUnpinResponse)
+export const patch2 = oc
+  .route({
+    description: 'Unpin a specific conversation to remove it from the top of the list.',
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchConversationsByCIdUnpin',
+    path: '/conversations/{c_id}/unpin',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zPatchConversationsByCIdUnpinPath }))
+  .output(zPatchConversationsByCIdUnpinResponse)
 
 export const unpin = {
   patch: patch2,
@@ -153,15 +264,18 @@ export const unpin = {
 /**
  * Delete a specific conversation.
  */
-export const delete_ = oc.route({
-  description: 'Delete a specific conversation.',
-  inputStructure: 'detailed',
-  method: 'DELETE',
-  operationId: 'deleteConversationsByCId',
-  path: '/conversations/{c_id}',
-  successStatus: 204,
-  tags: ['web'],
-}).input(z.object({ params: zDeleteConversationsByCIdPath })).output(zDeleteConversationsByCIdResponse)
+export const delete_ = oc
+  .route({
+    description: 'Delete a specific conversation.',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteConversationsByCId',
+    path: '/conversations/{c_id}',
+    successStatus: 204,
+    tags: ['web'],
+  })
+  .input(z.object({ params: zDeleteConversationsByCIdPath }))
+  .output(zDeleteConversationsByCIdResponse)
 
 export const byCId = {
   delete: delete_,
@@ -173,14 +287,17 @@ export const byCId = {
 /**
  * Retrieve paginated list of conversations for a chat application.
  */
-export const get = oc.route({
-  description: 'Retrieve paginated list of conversations for a chat application.',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getConversations',
-  path: '/conversations',
-  tags: ['web'],
-}).input(z.object({ query: zGetConversationsQuery.optional() })).output(zGetConversationsResponse)
+export const get = oc
+  .route({
+    description: 'Retrieve paginated list of conversations for a chat application.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getConversations',
+    path: '/conversations',
+    tags: ['web'],
+  })
+  .input(z.object({ query: zGetConversationsQuery.optional() }))
+  .output(zGetConversationsResponse)
 
 export const conversations = {
   get,
@@ -190,14 +307,17 @@ export const conversations = {
 /**
  * Verify email code and complete login
  */
-export const post7 = oc.route({
-  description: 'Verify email code and complete login',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postEmailCodeLoginValidity',
-  path: '/email-code-login/validity',
-  tags: ['web'],
-}).input(z.object({ body: zPostEmailCodeLoginValidityBody })).output(zPostEmailCodeLoginValidityResponse)
+export const post7 = oc
+  .route({
+    description: 'Verify email code and complete login',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postEmailCodeLoginValidity',
+    path: '/email-code-login/validity',
+    tags: ['web'],
+  })
+  .input(z.object({ body: zPostEmailCodeLoginValidityBody }))
+  .output(zPostEmailCodeLoginValidityResponse)
 
 export const validity = {
   post: post7,
@@ -206,14 +326,17 @@ export const validity = {
 /**
  * Send email verification code for login
  */
-export const post8 = oc.route({
-  description: 'Send email verification code for login',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postEmailCodeLogin',
-  path: '/email-code-login',
-  tags: ['web'],
-}).input(z.object({ body: zPostEmailCodeLoginBody })).output(zPostEmailCodeLoginResponse)
+export const post8 = oc
+  .route({
+    description: 'Send email verification code for login',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postEmailCodeLogin',
+    path: '/email-code-login',
+    tags: ['web'],
+  })
+  .input(z.object({ body: zPostEmailCodeLoginBody }))
+  .output(zPostEmailCodeLoginResponse)
 
 export const emailCodeLogin = {
   post: post8,
@@ -246,16 +369,19 @@ export const emailCodeLogin = {
  * FileTooLargeError: File exceeds size limit
  * UnsupportedFileTypeError: File type not supported
  */
-export const post9 = oc.route({
-  description: 'Upload a file for use in web applications\nAccepts file uploads for use within web applications, supporting\nmultiple file types with automatic validation and storage.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user uploading the file\n\nForm Parameters:\n    file: The file to upload (required)\n    source: Optional source type (datasets or None)\n\nReturns:\n    dict: File information including ID, URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    NoFileUploadedError: No file provided in request\n    TooManyFilesError: Multiple files provided (only one allowed)\n    FilenameNotExistsError: File has no filename\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postFilesUpload',
-  path: '/files/upload',
-  successStatus: 201,
-  summary: 'Upload a file for use in web applications',
-  tags: ['web'],
-}).output(zPostFilesUploadResponse)
+export const post9 = oc
+  .route({
+    description:
+      'Upload a file for use in web applications\nAccepts file uploads for use within web applications, supporting\nmultiple file types with automatic validation and storage.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user uploading the file\n\nForm Parameters:\n    file: The file to upload (required)\n    source: Optional source type (datasets or None)\n\nReturns:\n    dict: File information including ID, URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    NoFileUploadedError: No file provided in request\n    TooManyFilesError: Multiple files provided (only one allowed)\n    FilenameNotExistsError: File has no filename\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFilesUpload',
+    path: '/files/upload',
+    successStatus: 201,
+    summary: 'Upload a file for use in web applications',
+    tags: ['web'],
+  })
+  .output(zPostFilesUploadResponse)
 
 export const upload = {
   post: post9,
@@ -268,14 +394,17 @@ export const files = {
 /**
  * Reset user password with verification token
  */
-export const post10 = oc.route({
-  description: 'Reset user password with verification token',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postForgotPasswordResets',
-  path: '/forgot-password/resets',
-  tags: ['web'],
-}).input(z.object({ body: zPostForgotPasswordResetsBody })).output(zPostForgotPasswordResetsResponse)
+export const post10 = oc
+  .route({
+    description: 'Reset user password with verification token',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postForgotPasswordResets',
+    path: '/forgot-password/resets',
+    tags: ['web'],
+  })
+  .input(z.object({ body: zPostForgotPasswordResetsBody }))
+  .output(zPostForgotPasswordResetsResponse)
 
 export const resets = {
   post: post10,
@@ -284,14 +413,17 @@ export const resets = {
 /**
  * Verify password reset token validity
  */
-export const post11 = oc.route({
-  description: 'Verify password reset token validity',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postForgotPasswordValidity',
-  path: '/forgot-password/validity',
-  tags: ['web'],
-}).input(z.object({ body: zPostForgotPasswordValidityBody })).output(zPostForgotPasswordValidityResponse)
+export const post11 = oc
+  .route({
+    description: 'Verify password reset token validity',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postForgotPasswordValidity',
+    path: '/forgot-password/validity',
+    tags: ['web'],
+  })
+  .input(z.object({ body: zPostForgotPasswordValidityBody }))
+  .output(zPostForgotPasswordValidityResponse)
 
 export const validity2 = {
   post: post11,
@@ -300,14 +432,17 @@ export const validity2 = {
 /**
  * Send password reset email
  */
-export const post12 = oc.route({
-  description: 'Send password reset email',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postForgotPassword',
-  path: '/forgot-password',
-  tags: ['web'],
-}).input(z.object({ body: zPostForgotPasswordBody })).output(zPostForgotPasswordResponse)
+export const post12 = oc
+  .route({
+    description: 'Send password reset email',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postForgotPassword',
+    path: '/forgot-password',
+    tags: ['web'],
+  })
+  .input(z.object({ body: zPostForgotPasswordBody }))
+  .output(zPostForgotPasswordResponse)
 
 export const forgotPassword = {
   post: post12,
@@ -320,15 +455,18 @@ export const forgotPassword = {
  *
  * POST /api/form/human_input/<form_token>/upload-token
  */
-export const post13 = oc.route({
-  description: 'POST /api/form/human_input/<form_token>/upload-token',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postFormHumanInputByFormTokenUploadToken',
-  path: '/form/human_input/{form_token}/upload-token',
-  summary: 'Issue an upload token for a human input form',
-  tags: ['web'],
-}).input(z.object({ params: zPostFormHumanInputByFormTokenUploadTokenPath })).output(zPostFormHumanInputByFormTokenUploadTokenResponse)
+export const post13 = oc
+  .route({
+    description: 'POST /api/form/human_input/<form_token>/upload-token',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFormHumanInputByFormTokenUploadToken',
+    path: '/form/human_input/{form_token}/upload-token',
+    summary: 'Issue an upload token for a human input form',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zPostFormHumanInputByFormTokenUploadTokenPath }))
+  .output(zPostFormHumanInputByFormTokenUploadTokenResponse)
 
 export const uploadToken = {
   post: post13,
@@ -339,15 +477,18 @@ export const uploadToken = {
  *
  * GET /api/form/human_input/<form_token>
  */
-export const get2 = oc.route({
-  description: 'GET /api/form/human_input/<form_token>',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getFormHumanInputByFormToken',
-  path: '/form/human_input/{form_token}',
-  summary: 'Get human input form definition by token',
-  tags: ['web'],
-}).input(z.object({ params: zGetFormHumanInputByFormTokenPath })).output(zGetFormHumanInputByFormTokenResponse)
+export const get2 = oc
+  .route({
+    description: 'GET /api/form/human_input/<form_token>',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getFormHumanInputByFormToken',
+    path: '/form/human_input/{form_token}',
+    summary: 'Get human input form definition by token',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zGetFormHumanInputByFormTokenPath }))
+  .output(zGetFormHumanInputByFormTokenResponse)
 
 /**
  * Submit human input form by token
@@ -362,15 +503,24 @@ export const get2 = oc.route({
  * "action": "Approve"
  * }
  */
-export const post14 = oc.route({
-  description: 'POST /api/form/human_input/<form_token>\n\nRequest body:\n{\n    "inputs": {\n        "content": "User input content"\n    },\n    "action": "Approve"\n}',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postFormHumanInputByFormToken',
-  path: '/form/human_input/{form_token}',
-  summary: 'Submit human input form by token',
-  tags: ['web'],
-}).input(z.object({ body: zPostFormHumanInputByFormTokenBody, params: zPostFormHumanInputByFormTokenPath })).output(zPostFormHumanInputByFormTokenResponse)
+export const post14 = oc
+  .route({
+    description:
+      'POST /api/form/human_input/<form_token>\n\nRequest body:\n{\n    "inputs": {\n        "content": "User input content"\n    },\n    "action": "Approve"\n}',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFormHumanInputByFormToken',
+    path: '/form/human_input/{form_token}',
+    summary: 'Submit human input form by token',
+    tags: ['web'],
+  })
+  .input(
+    z.object({
+      body: zPostFormHumanInputByFormTokenBody,
+      params: zPostFormHumanInputByFormTokenPath,
+    }),
+  )
+  .output(zPostFormHumanInputByFormTokenResponse)
 
 export const byFormToken = {
   get: get2,
@@ -389,15 +539,17 @@ export const form = {
 /**
  * Upload one local file or remote URL file for a HITL human input form
  */
-export const post15 = oc.route({
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postHumanInputFormsFiles',
-  path: '/human-input-forms/files',
-  successStatus: 201,
-  summary: 'Upload one local file or remote URL file for a HITL human input form',
-  tags: ['web'],
-}).output(zPostHumanInputFormsFilesResponse)
+export const post15 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postHumanInputFormsFiles',
+    path: '/human-input-forms/files',
+    successStatus: 201,
+    summary: 'Upload one local file or remote URL file for a HITL human input form',
+    tags: ['web'],
+  })
+  .output(zPostHumanInputFormsFilesResponse)
 
 export const files2 = {
   post: post15,
@@ -410,14 +562,17 @@ export const humanInputForms = {
 /**
  * Check login status
  */
-export const get3 = oc.route({
-  description: 'Check login status',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getLoginStatus',
-  path: '/login/status',
-  tags: ['web'],
-}).input(z.object({ query: zGetLoginStatusQuery.optional() })).output(zGetLoginStatusResponse)
+export const get3 = oc
+  .route({
+    description: 'Check login status',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getLoginStatus',
+    path: '/login/status',
+    tags: ['web'],
+  })
+  .input(z.object({ query: zGetLoginStatusQuery.optional() }))
+  .output(zGetLoginStatusResponse)
 
 export const status = {
   get: get3,
@@ -428,15 +583,18 @@ export const status = {
  *
  * Authenticate user for web application access
  */
-export const post16 = oc.route({
-  description: 'Authenticate user for web application access',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postLogin',
-  path: '/login',
-  summary: 'Authenticate user and login',
-  tags: ['web'],
-}).input(z.object({ body: zPostLoginBody })).output(zPostLoginResponse)
+export const post16 = oc
+  .route({
+    description: 'Authenticate user for web application access',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postLogin',
+    path: '/login',
+    summary: 'Authenticate user and login',
+    tags: ['web'],
+  })
+  .input(z.object({ body: zPostLoginBody }))
+  .output(zPostLoginResponse)
 
 export const login = {
   post: post16,
@@ -446,14 +604,16 @@ export const login = {
 /**
  * Logout user from web application
  */
-export const post17 = oc.route({
-  description: 'Logout user from web application',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postLogout',
-  path: '/logout',
-  tags: ['web'],
-}).output(zPostLogoutResponse)
+export const post17 = oc
+  .route({
+    description: 'Logout user from web application',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postLogout',
+    path: '/logout',
+    tags: ['web'],
+  })
+  .output(zPostLogoutResponse)
 
 export const logout = {
   post: post17,
@@ -462,18 +622,23 @@ export const logout = {
 /**
  * Submit feedback (like/dislike) for a specific message.
  */
-export const post18 = oc.route({
-  description: 'Submit feedback (like/dislike) for a specific message.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postMessagesByMessageIdFeedbacks',
-  path: '/messages/{message_id}/feedbacks',
-  tags: ['web'],
-}).input(z.object({
-  body: zPostMessagesByMessageIdFeedbacksBody,
-  params: zPostMessagesByMessageIdFeedbacksPath,
-  query: zPostMessagesByMessageIdFeedbacksQuery.optional(),
-})).output(zPostMessagesByMessageIdFeedbacksResponse)
+export const post18 = oc
+  .route({
+    description: 'Submit feedback (like/dislike) for a specific message.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postMessagesByMessageIdFeedbacks',
+    path: '/messages/{message_id}/feedbacks',
+    tags: ['web'],
+  })
+  .input(
+    z.object({
+      body: zPostMessagesByMessageIdFeedbacksBody,
+      params: zPostMessagesByMessageIdFeedbacksPath,
+      query: zPostMessagesByMessageIdFeedbacksQuery.optional(),
+    }),
+  )
+  .output(zPostMessagesByMessageIdFeedbacksResponse)
 
 export const feedbacks = {
   post: post18,
@@ -482,14 +647,22 @@ export const feedbacks = {
 /**
  * Generate a new completion similar to an existing message (completion apps only).
  */
-export const get4 = oc.route({
-  description: 'Generate a new completion similar to an existing message (completion apps only).',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getMessagesByMessageIdMoreLikeThis',
-  path: '/messages/{message_id}/more-like-this',
-  tags: ['web'],
-}).input(z.object({ params: zGetMessagesByMessageIdMoreLikeThisPath, query: zGetMessagesByMessageIdMoreLikeThisQuery })).output(zGetMessagesByMessageIdMoreLikeThisResponse)
+export const get4 = oc
+  .route({
+    description: 'Generate a new completion similar to an existing message (completion apps only).',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getMessagesByMessageIdMoreLikeThis',
+    path: '/messages/{message_id}/more-like-this',
+    tags: ['web'],
+  })
+  .input(
+    z.object({
+      params: zGetMessagesByMessageIdMoreLikeThisPath,
+      query: zGetMessagesByMessageIdMoreLikeThisQuery,
+    }),
+  )
+  .output(zGetMessagesByMessageIdMoreLikeThisResponse)
 
 export const moreLikeThis = {
   get: get4,
@@ -498,14 +671,17 @@ export const moreLikeThis = {
 /**
  * Get suggested follow-up questions after a message (chat apps only).
  */
-export const get5 = oc.route({
-  description: 'Get suggested follow-up questions after a message (chat apps only).',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getMessagesByMessageIdSuggestedQuestions',
-  path: '/messages/{message_id}/suggested-questions',
-  tags: ['web'],
-}).input(z.object({ params: zGetMessagesByMessageIdSuggestedQuestionsPath })).output(zGetMessagesByMessageIdSuggestedQuestionsResponse)
+export const get5 = oc
+  .route({
+    description: 'Get suggested follow-up questions after a message (chat apps only).',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getMessagesByMessageIdSuggestedQuestions',
+    path: '/messages/{message_id}/suggested-questions',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zGetMessagesByMessageIdSuggestedQuestionsPath }))
+  .output(zGetMessagesByMessageIdSuggestedQuestionsResponse)
 
 export const suggestedQuestions = {
   get: get5,
@@ -520,14 +696,17 @@ export const byMessageId = {
 /**
  * Retrieve paginated list of messages from a conversation in a chat application.
  */
-export const get6 = oc.route({
-  description: 'Retrieve paginated list of messages from a conversation in a chat application.',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getMessages',
-  path: '/messages',
-  tags: ['web'],
-}).input(z.object({ query: zGetMessagesQuery })).output(zGetMessagesResponse)
+export const get6 = oc
+  .route({
+    description: 'Retrieve paginated list of messages from a conversation in a chat application.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getMessages',
+    path: '/messages',
+    tags: ['web'],
+  })
+  .input(z.object({ query: zGetMessagesQuery }))
+  .output(zGetMessagesResponse)
 
 export const messages = {
   get: get6,
@@ -539,15 +718,17 @@ export const messages = {
  *
  * Retrieve the metadata for a specific app.
  */
-export const get7 = oc.route({
-  description: 'Retrieve the metadata for a specific app.',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getMeta',
-  path: '/meta',
-  summary: 'Get app meta',
-  tags: ['web'],
-}).output(zGetMetaResponse)
+export const get7 = oc
+  .route({
+    description: 'Retrieve the metadata for a specific app.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getMeta',
+    path: '/meta',
+    summary: 'Get app meta',
+    tags: ['web'],
+  })
+  .output(zGetMetaResponse)
 
 export const meta = {
   get: get7,
@@ -558,15 +739,17 @@ export const meta = {
  *
  * Retrieve the parameters for a specific app.
  */
-export const get8 = oc.route({
-  description: 'Retrieve the parameters for a specific app.',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getParameters',
-  path: '/parameters',
-  summary: 'Retrieve app parameters',
-  tags: ['web'],
-}).output(zGetParametersResponse)
+export const get8 = oc
+  .route({
+    description: 'Retrieve the parameters for a specific app.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getParameters',
+    path: '/parameters',
+    summary: 'Retrieve app parameters',
+    tags: ['web'],
+  })
+  .output(zGetParametersResponse)
 
 export const parameters = {
   get: get8,
@@ -575,14 +758,17 @@ export const parameters = {
 /**
  * Get authentication passport for web application access
  */
-export const get9 = oc.route({
-  description: 'Get authentication passport for web application access',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getPassport',
-  path: '/passport',
-  tags: ['web'],
-}).input(z.object({ query: zGetPassportQuery.optional() })).output(zGetPassportResponse)
+export const get9 = oc
+  .route({
+    description: 'Get authentication passport for web application access',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getPassport',
+    path: '/passport',
+    tags: ['web'],
+  })
+  .input(z.object({ query: zGetPassportQuery.optional() }))
+  .output(zGetPassportResponse)
 
 export const passport = {
   get: get9,
@@ -611,16 +797,20 @@ export const passport = {
  * FileTooLargeError: File exceeds size limit
  * UnsupportedFileTypeError: File type not supported
  */
-export const post19 = oc.route({
-  description: 'Upload a file from a remote URL\nDownloads a file from the provided remote URL and uploads it\nto the platform storage for use in web applications.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n\nJSON Parameters:\n    url: The remote URL to download the file from (required)\n\nReturns:\n    dict: File information including ID, signed URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    RemoteFileUploadError: Failed to fetch file from remote URL\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postRemoteFilesUpload',
-  path: '/remote-files/upload',
-  successStatus: 201,
-  summary: 'Upload a file from a remote URL',
-  tags: ['web'],
-}).input(z.object({ body: zPostRemoteFilesUploadBody })).output(zPostRemoteFilesUploadResponse)
+export const post19 = oc
+  .route({
+    description:
+      'Upload a file from a remote URL\nDownloads a file from the provided remote URL and uploads it\nto the platform storage for use in web applications.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n\nJSON Parameters:\n    url: The remote URL to download the file from (required)\n\nReturns:\n    dict: File information including ID, signed URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    RemoteFileUploadError: Failed to fetch file from remote URL\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postRemoteFilesUpload',
+    path: '/remote-files/upload',
+    successStatus: 201,
+    summary: 'Upload a file from a remote URL',
+    tags: ['web'],
+  })
+  .input(z.object({ body: zPostRemoteFilesUploadBody }))
+  .output(zPostRemoteFilesUploadResponse)
 
 export const upload2 = {
   post: post19,
@@ -644,15 +834,19 @@ export const upload2 = {
  * Raises:
  * HTTPException: If the remote file cannot be accessed
  */
-export const get10 = oc.route({
-  description: 'Get information about a remote file\nRetrieves basic information about a file located at a remote URL,\nincluding content type and content length.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n    url: URL-encoded path to the remote file\n\nReturns:\n    dict: Remote file information including type and length\n\nRaises:\n    HTTPException: If the remote file cannot be accessed',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getRemoteFilesByUrl',
-  path: '/remote-files/{url}',
-  summary: 'Get information about a remote file',
-  tags: ['web'],
-}).input(z.object({ params: zGetRemoteFilesByUrlPath })).output(zGetRemoteFilesByUrlResponse)
+export const get10 = oc
+  .route({
+    description:
+      'Get information about a remote file\nRetrieves basic information about a file located at a remote URL,\nincluding content type and content length.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n    url: URL-encoded path to the remote file\n\nReturns:\n    dict: Remote file information including type and length\n\nRaises:\n    HTTPException: If the remote file cannot be accessed',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getRemoteFilesByUrl',
+    path: '/remote-files/{url}',
+    summary: 'Get information about a remote file',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zGetRemoteFilesByUrlPath }))
+  .output(zGetRemoteFilesByUrlResponse)
 
 export const byUrl = {
   get: get10,
@@ -666,15 +860,18 @@ export const remoteFiles = {
 /**
  * Remove a message from saved messages.
  */
-export const delete2 = oc.route({
-  description: 'Remove a message from saved messages.',
-  inputStructure: 'detailed',
-  method: 'DELETE',
-  operationId: 'deleteSavedMessagesByMessageId',
-  path: '/saved-messages/{message_id}',
-  successStatus: 204,
-  tags: ['web'],
-}).input(z.object({ params: zDeleteSavedMessagesByMessageIdPath })).output(zDeleteSavedMessagesByMessageIdResponse)
+export const delete2 = oc
+  .route({
+    description: 'Remove a message from saved messages.',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteSavedMessagesByMessageId',
+    path: '/saved-messages/{message_id}',
+    successStatus: 204,
+    tags: ['web'],
+  })
+  .input(z.object({ params: zDeleteSavedMessagesByMessageIdPath }))
+  .output(zDeleteSavedMessagesByMessageIdResponse)
 
 export const byMessageId2 = {
   delete: delete2,
@@ -683,26 +880,32 @@ export const byMessageId2 = {
 /**
  * Retrieve paginated list of saved messages for a completion application.
  */
-export const get11 = oc.route({
-  description: 'Retrieve paginated list of saved messages for a completion application.',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getSavedMessages',
-  path: '/saved-messages',
-  tags: ['web'],
-}).input(z.object({ query: zGetSavedMessagesQuery.optional() })).output(zGetSavedMessagesResponse)
+export const get11 = oc
+  .route({
+    description: 'Retrieve paginated list of saved messages for a completion application.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getSavedMessages',
+    path: '/saved-messages',
+    tags: ['web'],
+  })
+  .input(z.object({ query: zGetSavedMessagesQuery.optional() }))
+  .output(zGetSavedMessagesResponse)
 
 /**
  * Save a specific message for later reference.
  */
-export const post20 = oc.route({
-  description: 'Save a specific message for later reference.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postSavedMessages',
-  path: '/saved-messages',
-  tags: ['web'],
-}).input(z.object({ body: zPostSavedMessagesBody, query: zPostSavedMessagesQuery })).output(zPostSavedMessagesResponse)
+export const post20 = oc
+  .route({
+    description: 'Save a specific message for later reference.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postSavedMessages',
+    path: '/saved-messages',
+    tags: ['web'],
+  })
+  .input(z.object({ body: zPostSavedMessagesBody, query: zPostSavedMessagesQuery }))
+  .output(zPostSavedMessagesResponse)
 
 export const savedMessages = {
   get: get11,
@@ -715,15 +918,17 @@ export const savedMessages = {
  *
  * Retrieve app site information and configuration.
  */
-export const get12 = oc.route({
-  description: 'Retrieve app site information and configuration.',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getSite',
-  path: '/site',
-  summary: 'Retrieve app site info',
-  tags: ['web'],
-}).output(zGetSiteResponse)
+export const get12 = oc
+  .route({
+    description: 'Retrieve app site information and configuration.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getSite',
+    path: '/site',
+    summary: 'Retrieve app site info',
+    tags: ['web'],
+  })
+  .output(zGetSiteResponse)
 
 export const site = {
   get: get12,
@@ -749,15 +954,18 @@ export const site = {
  *
  * Only non-sensitive configuration data should be returned by this endpoint.
  */
-export const get13 = oc.route({
-  description: 'Get system feature flags and configuration\nReturns the current system feature flags and configuration\nthat control various functionalities across the platform.\n\nReturns:\n    dict: System feature configuration object\n\nThis endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,\nexcept it is intended for use by the web app, instead of the console dashboard.\n\nNOTE: This endpoint is unauthenticated by design, as it provides system features\ndata required for webapp initialization.\n\nAuthentication would create circular dependency (can\'t authenticate without webapp loading).\n\nOnly non-sensitive configuration data should be returned by this endpoint.',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getSystemFeatures',
-  path: '/system-features',
-  summary: 'Get system feature flags and configuration',
-  tags: ['web'],
-}).output(zGetSystemFeaturesResponse)
+export const get13 = oc
+  .route({
+    description:
+      'Get system feature flags and configuration\nReturns the current system feature flags and configuration\nthat control various functionalities across the platform.\n\nReturns:\n    dict: System feature configuration object\n\nThis endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,\nexcept it is intended for use by the web app, instead of the console dashboard.\n\nNOTE: This endpoint is unauthenticated by design, as it provides system features\ndata required for webapp initialization.\n\nAuthentication would create circular dependency (can\'t authenticate without webapp loading).\n\nOnly non-sensitive configuration data should be returned by this endpoint.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getSystemFeatures',
+    path: '/system-features',
+    summary: 'Get system feature flags and configuration',
+    tags: ['web'],
+  })
+  .output(zGetSystemFeaturesResponse)
 
 export const systemFeatures = {
   get: get13,
@@ -768,15 +976,18 @@ export const systemFeatures = {
  *
  * Convert text to audio using text-to-speech service.
  */
-export const post21 = oc.route({
-  description: 'Convert text to audio using text-to-speech service.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postTextToAudio',
-  path: '/text-to-audio',
-  summary: 'Convert text to audio',
-  tags: ['web'],
-}).input(z.object({ body: zPostTextToAudioBody })).output(zPostTextToAudioResponse)
+export const post21 = oc
+  .route({
+    description: 'Convert text to audio using text-to-speech service.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postTextToAudio',
+    path: '/text-to-audio',
+    summary: 'Convert text to audio',
+    tags: ['web'],
+  })
+  .input(z.object({ body: zPostTextToAudioBody }))
+  .output(zPostTextToAudioResponse)
 
 export const textToAudio = {
   post: post21,
@@ -785,14 +996,17 @@ export const textToAudio = {
 /**
  * Retrieve the access mode for a web application (public or restricted).
  */
-export const get14 = oc.route({
-  description: 'Retrieve the access mode for a web application (public or restricted).',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getWebappAccessMode',
-  path: '/webapp/access-mode',
-  tags: ['web'],
-}).input(z.object({ query: zGetWebappAccessModeQuery.optional() })).output(zGetWebappAccessModeResponse)
+export const get14 = oc
+  .route({
+    description: 'Retrieve the access mode for a web application (public or restricted).',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWebappAccessMode',
+    path: '/webapp/access-mode',
+    tags: ['web'],
+  })
+  .input(z.object({ query: zGetWebappAccessModeQuery.optional() }))
+  .output(zGetWebappAccessModeResponse)
 
 export const accessMode = {
   get: get14,
@@ -801,14 +1015,17 @@ export const accessMode = {
 /**
  * Check if user has permission to access a web application.
  */
-export const get15 = oc.route({
-  description: 'Check if user has permission to access a web application.',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getWebappPermission',
-  path: '/webapp/permission',
-  tags: ['web'],
-}).input(z.object({ query: zGetWebappPermissionQuery })).output(zGetWebappPermissionResponse)
+export const get15 = oc
+  .route({
+    description: 'Check if user has permission to access a web application.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWebappPermission',
+    path: '/webapp/permission',
+    tags: ['web'],
+  })
+  .input(z.object({ query: zGetWebappPermissionQuery }))
+  .output(zGetWebappPermissionResponse)
 
 export const permission = {
   get: get15,
@@ -826,15 +1043,18 @@ export const webapp = {
  *
  * Returns Server-Sent Events stream.
  */
-export const get16 = oc.route({
-  description: 'GET /api/workflow/<task_id>/events\n\nReturns Server-Sent Events stream.',
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getWorkflowByTaskIdEvents',
-  path: '/workflow/{task_id}/events',
-  summary: 'Get workflow execution events stream after resume',
-  tags: ['default'],
-}).input(z.object({ params: zGetWorkflowByTaskIdEventsPath })).output(zGetWorkflowByTaskIdEventsResponse)
+export const get16 = oc
+  .route({
+    description: 'GET /api/workflow/<task_id>/events\n\nReturns Server-Sent Events stream.',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkflowByTaskIdEvents',
+    path: '/workflow/{task_id}/events',
+    summary: 'Get workflow execution events stream after resume',
+    tags: ['default'],
+  })
+  .input(z.object({ params: zGetWorkflowByTaskIdEventsPath }))
+  .output(zGetWorkflowByTaskIdEventsResponse)
 
 export const events = {
   get: get16,
@@ -853,15 +1073,18 @@ export const workflow = {
  *
  * Execute a workflow with provided inputs and files.
  */
-export const post22 = oc.route({
-  description: 'Execute a workflow with provided inputs and files.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postWorkflowsRun',
-  path: '/workflows/run',
-  summary: 'Run workflow',
-  tags: ['web'],
-}).input(z.object({ body: zPostWorkflowsRunBody })).output(zPostWorkflowsRunResponse)
+export const post22 = oc
+  .route({
+    description: 'Execute a workflow with provided inputs and files.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkflowsRun',
+    path: '/workflows/run',
+    summary: 'Run workflow',
+    tags: ['web'],
+  })
+  .input(z.object({ body: zPostWorkflowsRunBody }))
+  .output(zPostWorkflowsRunResponse)
 
 export const run = {
   post: post22,
@@ -872,15 +1095,18 @@ export const run = {
  *
  * Stop a running workflow task.
  */
-export const post23 = oc.route({
-  description: 'Stop a running workflow task.',
-  inputStructure: 'detailed',
-  method: 'POST',
-  operationId: 'postWorkflowsTasksByTaskIdStop',
-  path: '/workflows/tasks/{task_id}/stop',
-  summary: 'Stop workflow task',
-  tags: ['web'],
-}).input(z.object({ params: zPostWorkflowsTasksByTaskIdStopPath })).output(zPostWorkflowsTasksByTaskIdStopResponse)
+export const post23 = oc
+  .route({
+    description: 'Stop a running workflow task.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkflowsTasksByTaskIdStop',
+    path: '/workflows/tasks/{task_id}/stop',
+    summary: 'Stop workflow task',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zPostWorkflowsTasksByTaskIdStopPath }))
+  .output(zPostWorkflowsTasksByTaskIdStopResponse)
 
 export const stop3 = {
   post: post23,

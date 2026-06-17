@@ -69,7 +69,8 @@ export type PostEmailRegisterSendEmailResponses = {
   200: SimpleResultDataResponse
 }
 
-export type PostEmailRegisterSendEmailResponse = PostEmailRegisterSendEmailResponses[keyof PostEmailRegisterSendEmailResponses]
+export type PostEmailRegisterSendEmailResponse
+  = PostEmailRegisterSendEmailResponses[keyof PostEmailRegisterSendEmailResponses]
 
 export type PostEmailRegisterValidityData = {
   body: EmailRegisterValidityPayload
@@ -82,4 +83,5 @@ export type PostEmailRegisterValidityResponses = {
   200: VerificationTokenResponse
 }
 
-export type PostEmailRegisterValidityResponse = PostEmailRegisterValidityResponses[keyof PostEmailRegisterValidityResponses]
+export type PostEmailRegisterValidityResponse
+  = PostEmailRegisterValidityResponses[keyof PostEmailRegisterValidityResponses]

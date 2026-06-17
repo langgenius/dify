@@ -129,12 +129,7 @@ export const zBrandingModel = z.object({
  *
  * Button styles for user actions.
  */
-export const zButtonStyle = z.enum([
-  'accent',
-  'default',
-  'ghost',
-  'primary',
-])
+export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
 
 /**
  * ChatMessagePayload
@@ -167,12 +162,10 @@ export const zConversationListQuery = z.object({
   last_id: z.string().nullish(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   pinned: z.boolean().nullish(),
-  sort_by: z.enum([
-    '-created_at',
-    '-updated_at',
-    'created_at',
-    'updated_at',
-  ]).optional().default('-updated_at'),
+  sort_by: z
+    .enum(['-created_at', '-updated_at', 'created_at', 'updated_at'])
+    .optional()
+    .default('-updated_at'),
 })
 
 /**
@@ -244,13 +237,7 @@ export const zFileTransferMethod = z.enum([
 /**
  * FileType
  */
-export const zFileType = z.enum([
-  'audio',
-  'custom',
-  'document',
-  'image',
-  'video',
-])
+export const zFileType = z.enum(['audio', 'custom', 'document', 'image', 'video'])
 
 /**
  * FileInputConfig
@@ -351,14 +338,16 @@ export const zHumanInputUploadTokenResponse = z.object({
 
 export const zJsonObject = z.record(z.string(), z.unknown())
 
-export const zJsonValue = z.union([
-  z.string(),
-  z.int(),
-  z.number(),
-  z.boolean(),
-  z.record(z.string(), z.unknown()),
-  z.array(z.unknown()),
-]).nullable()
+export const zJsonValue = z
+  .union([
+    z.string(),
+    z.int(),
+    z.number(),
+    z.boolean(),
+    z.record(z.string(), z.unknown()),
+    z.array(z.unknown()),
+  ])
+  .nullable()
 
 /**
  * AgentThought
@@ -422,14 +411,7 @@ export const zLicenseLimitationModel = z.object({
 /**
  * LicenseStatus
  */
-export const zLicenseStatus = z.enum([
-  'active',
-  'expired',
-  'expiring',
-  'inactive',
-  'lost',
-  'none',
-])
+export const zLicenseStatus = z.enum(['active', 'expired', 'expiring', 'inactive', 'lost', 'none'])
 
 /**
  * LicenseModel
@@ -864,9 +846,11 @@ export const zSystemFeatureModel = z.object({
     },
   }),
   max_plugin_package_size: z.int().default(15728640),
-  plugin_installation_permission: zPluginInstallationPermissionModel.default({ plugin_installation_scope: 'all', restrict_to_marketplace_only: false }),
+  plugin_installation_permission: zPluginInstallationPermissionModel.default({
+    plugin_installation_scope: 'all',
+    restrict_to_marketplace_only: false,
+  }),
   plugin_manager: zPluginManagerModel.default({ enabled: false }),
-  rbac_enabled: z.boolean().default(false),
   sso_enforced_for_signin: z.boolean().default(false),
   sso_enforced_for_signin_protocol: z.string().default(''),
   webapp_auth: zWebAppAuthModel.default({
@@ -957,12 +941,10 @@ export const zGetConversationsQuery = z.object({
   last_id: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   pinned: z.boolean().optional(),
-  sort_by: z.enum([
-    '-created_at',
-    '-updated_at',
-    'created_at',
-    'updated_at',
-  ]).optional().default('-updated_at'),
+  sort_by: z
+    .enum(['-created_at', '-updated_at', 'created_at', 'updated_at'])
+    .optional()
+    .default('-updated_at'),
 })
 
 /**
