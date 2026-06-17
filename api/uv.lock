@@ -5353,11 +5353,11 @@ wheels = [
 
 [[package]]
 name = "pypdf"
-version = "6.10.2"
+version = "6.13.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/7b/3f/9f2167401c2e94833ca3b69535bad89e533b5de75fefe4197a2c224baec2/pypdf-6.10.2.tar.gz", hash = "sha256:7d09ce108eff6bf67465d461b6ef352dcb8d84f7a91befc02f904455c6eea11d", size = 5315679, upload-time = "2026-04-15T16:37:36.978Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/70/79/9fd087fbff8300e5c2a9b2bd0200b75c6ef8c1f9a7a2cfe3df0659aa4025/pypdf-6.13.0.tar.gz", hash = "sha256:558683ec9daf6b91c280c322c84c32f5cc216afd3eaa3a37de5ae88ae0c3b787", size = 6476995, upload-time = "2026-06-05T10:12:05.568Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0c/d6/1d5c60cc17bbdf37c1552d9c03862fc6d32c5836732a0415b2d637edc2d0/pypdf-6.10.2-py3-none-any.whl", hash = "sha256:aa53be9826655b51c96741e5d7983ca224d898ac0a77896e64636810517624aa", size = 336308, upload-time = "2026-04-15T16:37:34.851Z" },
+    { url = "https://files.pythonhosted.org/packages/9d/70/16942ec95d32187d8679ce8419cee2d5c0dbe90fa3ac1b307daea4c86da9/pypdf-6.13.0-py3-none-any.whl", hash = "sha256:de1294ae49d6956edb4e5c41527fb9e8716ddd2b120f2185c68aab784d4ffe60", size = 345958, upload-time = "2026-06-05T10:12:03.453Z" },
 ]
 
 [[package]]
