@@ -22,6 +22,7 @@ export function AgentV2Panel({
   const { t } = useTranslation()
   const { inputs, setInputs } = useNodeCrud<AgentV2NodeType>(id, data)
   const [isRosterAgentPanelOpen, setIsRosterAgentPanelOpen] = useState(false)
+  const [isInlineAgentPanelOpenedFromTrigger, setIsInlineAgentPanelOpenedFromTrigger] = useState(false)
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
   const openInlineAgentPanelNodeId = useStore(state => state.openInlineAgentPanelNodeId)
   const setOpenInlineAgentPanelNodeId = useStore(state => state.setOpenInlineAgentPanelNodeId)
@@ -76,6 +77,9 @@ export function AgentV2Panel({
 
   const handleAgentPanelOpenChange = useCallback((open: boolean) => {
     if (isInlineAgentReady) {
+      if (open)
+        setIsInlineAgentPanelOpenedFromTrigger(true)
+
       setOpenInlineAgentPanelNodeId(open ? id : undefined)
       return
     }
@@ -120,8 +124,9 @@ export function AgentV2Panel({
                 />
               )
             : undefined}
-          panelKind={isInlineAgentReady ? 'inline' : 'roster'}
+          panelMode={isInlineAgentReady && !isInlineAgentPanelOpenedFromTrigger ? 'setup' : 'detail'}
           portalContainerRef={drawerPortalContainerRef}
+          showPanelDetailActions={!isInlineAgentReady}
           onChange={handleRosterChange}
           onPanelOpenChange={handleAgentPanelOpenChange}
         />

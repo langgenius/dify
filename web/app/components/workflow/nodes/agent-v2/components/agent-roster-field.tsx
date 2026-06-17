@@ -26,6 +26,7 @@ import { getAgentDetailPath } from '@/features/agent-v2/agent-detail/routes'
 import Link from '@/next/link'
 
 const i18nPrefix = 'nodes.agent'
+type AgentRosterDrawerMode = 'setup' | 'detail'
 
 type AgentRosterDisplayData = {
   description?: string | null
@@ -70,20 +71,24 @@ function AgentRosterAvatar({
 function AgentRosterDrawer({
   agent,
   children,
-  kind = 'roster',
+  mode = 'detail',
   open,
   portalContainerRef,
+  showDetailActions = true,
   onClose,
 }: {
   agent: AgentRosterDisplayData
   children?: ReactNode
-  kind?: 'inline' | 'roster'
+  mode?: AgentRosterDrawerMode
   open: boolean
   portalContainerRef: RefObject<HTMLDivElement | null>
+  showDetailActions?: boolean
   onClose: () => void
 }) {
   const { t } = useTranslation()
-  const isInline = kind === 'inline'
+  const isSetup = mode === 'setup'
+  const title = isSetup ? t(`${i18nPrefix}.roster.inlineSetup.title`, { ns: 'workflow' }) : agent.name
+  const description = isSetup ? t(`${i18nPrefix}.roster.inlineSetup.description`, { ns: 'workflow' }) : agent.role
 
   return (
     <Drawer
@@ -106,35 +111,33 @@ function AgentRosterDrawer({
             }}
           >
             <DrawerContent className="flex h-full min-h-0 flex-1 flex-col overflow-hidden p-0 pb-0">
-              <header className={cn('flex shrink-0 flex-col border-b border-divider-subtle bg-components-panel-bg', isInline ? 'h-16 px-4 py-3' : 'h-[108px] gap-3 py-3 pr-4 pl-3')}>
+              <header
+                className={cn(
+                  'flex shrink-0 flex-col border-b border-divider-subtle bg-components-panel-bg',
+                  isSetup
+                    ? 'h-16 px-4 py-3'
+                    : showDetailActions
+                      ? 'h-[108px] gap-3 py-3 pr-4 pl-3'
+                      : 'py-3 pr-4 pl-3',
+                )}
+              >
                 <div className="flex min-w-0 items-start justify-between">
-                  {isInline
-                    ? (
-                        <div className="flex min-w-px flex-1 flex-col">
-                          <DrawerTitle className="truncate system-xl-semibold text-text-primary">
-                            {t(`${i18nPrefix}.roster.inlineSetup.title`, { ns: 'workflow' })}
-                          </DrawerTitle>
-                          <p className="min-w-full system-xs-regular text-text-tertiary">
-                            {t(`${i18nPrefix}.roster.inlineSetup.description`, { ns: 'workflow' })}
-                          </p>
-                        </div>
-                      )
-                    : (
-                        <div className="flex h-10 min-w-0 flex-1 items-center gap-2 px-0.5 py-0.5">
-                          <AgentRosterAvatar agent={agent} size="md" className="size-9" />
-                          <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
-                            <div className="flex min-w-0 items-center gap-1">
-                              <DrawerTitle className="truncate system-sm-medium text-text-secondary">
-                                {agent.name}
-                              </DrawerTitle>
-                              <span aria-hidden className="i-ri-lock-line size-3 shrink-0 text-text-tertiary" />
-                            </div>
-                            <p className="truncate system-xs-regular text-text-tertiary">
-                              {agent.role}
-                            </p>
-                          </div>
-                        </div>
+                  <div className={cn('flex min-w-0 flex-1', isSetup ? 'min-w-px flex-col' : 'h-10 items-center gap-2 px-0.5 py-0.5')}>
+                    {!isSetup && <AgentRosterAvatar agent={agent} size="md" className="size-9" />}
+                    <div className={cn('flex min-w-0 flex-1 flex-col', isSetup ? '' : 'gap-0.5 py-px')}>
+                      <div className="flex min-w-0 items-center gap-1">
+                        <DrawerTitle className={cn('truncate', isSetup ? 'system-xl-semibold text-text-primary' : 'system-sm-medium text-text-secondary')}>
+                          {title}
+                        </DrawerTitle>
+                        {!isSetup && <span aria-hidden className="i-ri-lock-line size-3 shrink-0 text-text-tertiary" />}
+                      </div>
+                      {description && (
+                        <p className={cn(isSetup ? 'min-w-full' : 'truncate', 'system-xs-regular text-text-tertiary')}>
+                          {description}
+                        </p>
                       )}
+                    </div>
+                  </div>
                   <div className="flex shrink-0 items-center gap-1 py-1">
                     <button
                       type="button"
@@ -152,7 +155,7 @@ function AgentRosterDrawer({
                     />
                   </div>
                 </div>
-                {!isInline && (
+                {!isSetup && showDetailActions && (
                   <div className="flex h-8 gap-2 pl-1">
                     <Link
                       href={getAgentDetailPath(agent.id, 'configure')}
@@ -199,7 +202,8 @@ export function AgentRosterField({
   isPending = false,
   isLoading = false,
   panelBody,
-  panelKind = 'roster',
+  panelMode = 'detail',
+  showPanelDetailActions = true,
   portalContainerRef,
   onChange,
   onPanelOpenChange,
@@ -211,7 +215,8 @@ export function AgentRosterField({
   isLoading?: boolean
   isPending?: boolean
   panelBody?: ReactNode
-  panelKind?: 'inline' | 'roster'
+  panelMode?: AgentRosterDrawerMode
+  showPanelDetailActions?: boolean
   portalContainerRef: RefObject<HTMLDivElement | null>
   onChange: (agent: AgentRosterNodeData) => void
   onPanelOpenChange?: (open: boolean) => void
@@ -312,9 +317,10 @@ export function AgentRosterField({
                     </button>
                     <AgentRosterDrawer
                       agent={agent}
-                      kind={panelKind}
+                      mode={panelMode}
                       open={panelOpen}
                       portalContainerRef={portalContainerRef}
+                      showDetailActions={showPanelDetailActions}
                       onClose={() => setPanelOpen(false)}
                     >
                       {panelBody}
