@@ -1,3 +1,4 @@
+from sqlalchemy.orm import scoped_session
 import json
 import logging
 from collections.abc import Iterator, Mapping, Sequence
@@ -192,6 +193,7 @@ class SnippetService:
         self,
         *,
         tenant_id: str,
+        session: scoped_session,
         page: int = 1,
         limit: int = 20,
         keyword: str | None = None,
@@ -229,20 +231,19 @@ class SnippetService:
             stmt = stmt.where(CustomizedSnippet.created_by.in_(creators))
 
         if tag_ids:
-            target_ids = TagService.get_target_ids_by_tag_ids("snippet", tenant_id, tag_ids, match_all=True)
+            target_ids = TagService.get_target_ids_by_tag_ids("snippet", tenant_id, tag_ids, session, match_all=True)
             if target_ids:
                 stmt = stmt.where(CustomizedSnippet.id.in_(target_ids))
             else:
                 return [], 0, False
 
-        with self._session_scope() as session:
-            # Get total count
-            count_stmt = select(func.count()).select_from(stmt.subquery())
-            total = session.scalar(count_stmt) or 0
+        # Get total count
+        count_stmt = select(func.count()).select_from(stmt.subquery())
+        total = session.scalar(count_stmt) or 0
 
-            # Apply pagination
-            stmt = stmt.limit(limit + 1).offset((page - 1) * limit)
-            snippets = list(session.scalars(stmt).all())
+        # Apply pagination
+        stmt = stmt.limit(limit + 1).offset((page - 1) * limit)
+        snippets = list(session.scalars(stmt).all())
 
         has_more = len(snippets) > limit
         if has_more:

@@ -1,3 +1,4 @@
+from sqlalchemy.orm import scoped_session
 import copy
 import datetime
 import json
@@ -235,7 +236,7 @@ class _EstimateArgs(BaseModel):
 
 class DatasetService:
     @staticmethod
-    def get_datasets(page, per_page, tenant_id=None, user=None, search=None, tag_ids=None, include_all=False):
+    def get_datasets(page, per_page, session: scoped_session, tenant_id=None, user=None, search=None, tag_ids=None, include_all=False):
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
 
         if user:
@@ -295,6 +296,7 @@ class DatasetService:
                     "knowledge",
                     tenant_id,
                     tag_ids,
+                    session,
                     match_all=True,
                 )
             else:
