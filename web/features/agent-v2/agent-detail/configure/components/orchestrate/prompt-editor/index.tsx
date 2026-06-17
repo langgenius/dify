@@ -240,6 +240,11 @@ export function AgentPromptEditor() {
     closeSlashMenu()
   }
 
+  const handleInsertSlash = () => {
+    onChange(`${value}/`)
+    openSlashMenu()
+  }
+
   const renderRosterReferenceIcon = useCallback((token: RosterReferenceToken) => {
     if (token.kind !== 'tool' && token.kind !== 'tool-all' && token.kind !== 'cli_tool')
       return null
@@ -329,7 +334,7 @@ export function AgentPromptEditor() {
         onPointerDownCapture={handleRootPointerDown}
       >
         <div
-          className="min-h-20 overflow-hidden rounded-[10px] border-[1.5px] border-transparent bg-components-input-bg-normal pt-1 focus-within:border-components-input-border-active-prompt-1 focus-within:bg-components-input-bg-active focus-within:shadow-xs focus-within:shadow-shadow-shadow-3"
+          className="group min-h-28 overflow-hidden rounded-[10px] border-[1.5px] border-transparent bg-components-input-bg-normal pt-1 focus-within:border-components-input-border-active-prompt-1 focus-within:bg-components-input-bg-active focus-within:shadow-xs focus-within:shadow-shadow-shadow-3"
           onKeyDownCapture={handleEditorKeyDown}
           onKeyUpCapture={handleEditorKeyUp}
           onPointerUpCapture={handleEditorPointerUp}
@@ -356,6 +361,22 @@ export function AgentPromptEditor() {
               disableBracePicker
             />
           </div>
+          {!readOnly && (
+            <div className="flex h-8 items-center border-t border-divider-subtle px-2 opacity-0 transition-opacity group-focus-within:opacity-100">
+              <button
+                type="button"
+                className="flex h-6 shrink-0 items-center gap-0.5 rounded-md px-1.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                onClick={handleInsertSlash}
+              >
+                <Kbd className="text-text-placeholder">
+                  /
+                </Kbd>
+                <span className="system-xs-medium">
+                  {t('agentDetail.configure.prompt.insert.label')}
+                </span>
+              </button>
+            </div>
+          )}
         </div>
 
         {isHydrated && !readOnly && isSlashMenuOpen && (

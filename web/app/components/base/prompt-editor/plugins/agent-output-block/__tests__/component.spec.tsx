@@ -1,4 +1,5 @@
 import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
+import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -17,6 +18,35 @@ const { mockEditorFocus, mockEditorUpdate, mockGetRootText, mockNodeReplace, moc
 }))
 
 vi.mock('@lexical/react/LexicalComposerContext')
+vi.mock('@langgenius/dify-ui/select', () => ({
+  Select: ({
+    children,
+    onValueChange,
+  }: {
+    children: ReactNode
+    onValueChange: (value: string) => void
+  }) => (
+    <div>
+      {children}
+      <button type="button" onClick={() => onValueChange('file')}>Select file</button>
+    </div>
+  ),
+  SelectContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  SelectItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  SelectItemIndicator: () => <span />,
+  SelectItemText: ({ children }: { children: ReactNode }) => <span>{children}</span>,
+  SelectLabel: ({ children }: { children: ReactNode }) => <span>{children}</span>,
+  SelectTrigger: ({
+    children,
+    onClick,
+    onMouseDown,
+    ...props
+  }: ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button type="button" onClick={onClick} onMouseDown={onMouseDown} {...props}>
+      {children}
+    </button>
+  ),
+}))
 vi.mock('lexical', async (importOriginal) => {
   const actual = await importOriginal<typeof import('lexical')>()
 
@@ -247,6 +277,46 @@ describe('AgentOutputBlockComponent', () => {
         expect.objectContaining({
           name: 'report.customext',
           type: 'string',
+        }),
+      ]),
+      onChange,
+    )
+  })
+
+  it('does not commit the name blur before selecting an output type', () => {
+    const onChange = vi.fn()
+    mockGetRootText.value = '[§output:summary:summary§]'
+
+    render(
+      <AgentOutputBlockComponent
+        nodeKey="output-node"
+        name="output"
+        outputType="string"
+        isEditing
+        outputs={outputs}
+        onChange={onChange}
+      />,
+    )
+
+    const input = screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })
+    const typeTrigger = screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.typeLabel' })
+
+    fireEvent.change(input, { target: { value: 'summary' } })
+    fireEvent.mouseDown(typeTrigger)
+    fireEvent.blur(input)
+
+    expect(onChange).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select file' }))
+
+    expect($createAgentOutputBlockNode).toHaveBeenCalledWith(
+      'summary',
+      'file',
+      false,
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'summary',
+          type: 'file',
         }),
       ]),
       onChange,

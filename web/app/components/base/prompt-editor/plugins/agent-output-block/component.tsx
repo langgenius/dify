@@ -68,10 +68,12 @@ const AgentOutputBlockComponent = ({
   const [draftName, setDraftName] = useState(name)
   const [lastNodeName, setLastNodeName] = useState(name)
   const skipNextBlurCommitRef = useRef(false)
+  const latestDraftNameRef = useRef(name)
 
   if (name !== lastNodeName) {
     setLastNodeName(name)
     setDraftName(name)
+    latestDraftNameRef.current = name
   }
 
   const commitOutput = (nextName: string, nextType: AgentOutputTypeOptionValue, selectAfterCommit = false) => {
@@ -158,7 +160,10 @@ const AgentOutputBlockComponent = ({
               event.currentTarget.blur()
             }
           }}
-          onChange={event => setDraftName(event.currentTarget.value)}
+          onChange={(event) => {
+            latestDraftNameRef.current = event.currentTarget.value
+            setDraftName(event.currentTarget.value)
+          }}
           onBlur={(event) => {
             if (skipNextBlurCommitRef.current) {
               skipNextBlurCommitRef.current = false
@@ -172,8 +177,9 @@ const AgentOutputBlockComponent = ({
       <Select<AgentOutputTypeOptionValue>
         value={outputType}
         onValueChange={(nextType) => {
+          skipNextBlurCommitRef.current = false
           if (nextType)
-            commitOutput(draftName, nextType)
+            commitOutput(latestDraftNameRef.current, nextType)
         }}
       >
         <SelectLabel className="sr-only">
@@ -182,6 +188,9 @@ const AgentOutputBlockComponent = ({
         <SelectTrigger
           aria-label={t('nodes.agent.outputVars.typeLabel', { ns: 'workflow' })}
           className="h-4 min-w-4 rounded bg-util-colors-violet-violet-200 py-0 pr-0.5 pl-1 system-2xs-semibold-uppercase text-util-colors-violet-violet-700 hover:bg-util-colors-violet-violet-200"
+          onMouseDown={() => {
+            skipNextBlurCommitRef.current = true
+          }}
           onClick={event => event.stopPropagation()}
         >
           {selected.label}
