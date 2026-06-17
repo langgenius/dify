@@ -3,17 +3,19 @@
 Drive commands stay in the sandbox-facing CLI because they orchestrate existing
 control-plane and signed data-plane helpers. The Agent Stub server authenticates
 and injects trusted drive scope; this module only formats manifest output,
-downloads signed URLs into a local drive base, and uploads local files before
-committing their ToolFile ids back into the drive.
+downloads signed URLs into a local drive base (including safe auto-extraction of
+downloaded skill archives), and uploads local files before committing their
+ToolFile ids back into the drive.
 """
 
 from __future__ import annotations
 
+import stat
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from tempfile import TemporaryDirectory
 from uuid import uuid4
-from zipfile import ZIP_DEFLATED, ZipFile
+from zipfile import BadZipFile, ZIP_DEFLATED, ZipFile, ZipInfo
 
 from dify_agent.agent_stub.cli._env import read_agent_stub_environment
 from dify_agent.agent_stub.cli._files import upload_tool_file_resource_from_environment
@@ -94,14 +96,24 @@ def pull_drive_from_environment(prefix: str, drive_base: str = "/mnt/drive") -> 
         returned item to include ``download_url``, downloads bytes directly from
         those signed URLs, blocks path traversal by resolving each destination
         under the resolved drive base, writes through a temporary sibling file
-        before replacing the final path, and validates byte length when the
-        manifest includes ``size``.
+        before replacing the final path, validates byte length when the manifest
+        includes ``size``, and automatically extracts
+        ``.DIFY-SKILL-FULL.zip`` archives into their containing skill
+        directory with the same path-safety checks. Archive extraction is staged
+        under a temporary directory and only moved into place after the full
+        archive validates successfully.
+
+        The return value remains the list of downloaded paths only; extracted
+        files are materialized on disk but are not added to the returned list.
 
     Raises:
-        AgentStubValidationError: if a manifest item omits ``download_url`` or a
-            destination would escape the drive base.
+        AgentStubValidationError: if a manifest item omits ``download_url``, a
+            destination would escape the drive base, or a downloaded skill
+            archive contains unsafe entries such as absolute paths, traversal
+            entries, or symlink entries.
         AgentStubTransferError: if a downloaded payload does not match declared
-            size metadata.
+            size metadata or a downloaded skill archive is corrupt / not a valid
+            zip file.
     """
 
     environment = read_agent_stub_environment()
@@ -127,6 +139,8 @@ def pull_drive_from_environment(prefix: str, drive_base: str = "/mnt/drive") -> 
         temp_path.write_bytes(payload)
         temp_path.replace(destination)
         written_paths.append(destination)
+        if destination.name == _SKILL_ARCHIVE_FILENAME:
+            _extract_skill_archive(destination)
     return written_paths
 
 
@@ -275,6 +289,80 @@ def _build_skill_archive(source_path: Path, archive_path: Path) -> None:
     with ZipFile(archive_path, mode="w", compression=ZIP_DEFLATED) as archive:
         for file_path, relative_path in _iter_skill_archive_files(source_path):
             archive.write(file_path, arcname=relative_path)
+
+
+def _extract_skill_archive(archive_path: Path) -> None:
+    """Safely extract one downloaded skill archive into its containing directory.
+
+    Extraction is staged under a temporary directory created inside the target
+    skill directory. Every entry is validated and materialized into staging
+    first, and only after the full archive succeeds are staged files moved into
+    their final locations under the skill directory. Existing files at those
+    final locations are overwritten in place by the extracted archive content.
+
+    Error mapping is intentionally stable for CLI callers: unsafe archive entry
+    names raise ``AgentStubValidationError``, while malformed archives and zip
+    parsing / archive I/O failures are translated into ``AgentStubTransferError``.
+    """
+
+    target_dir = archive_path.parent.resolve()
+    try:
+        with TemporaryDirectory(dir=target_dir, prefix=".dify-skill-extract-") as staging_dir_name:
+            staging_dir = Path(staging_dir_name).resolve()
+            with ZipFile(archive_path) as archive:
+                for zip_info in archive.infolist():
+                    destination = _resolve_zip_entry_destination(staging_dir, zip_info.filename)
+                    if _is_zip_symlink(zip_info):
+                        raise AgentStubValidationError(
+                            f"skill archive contains unsupported symlink entry: {zip_info.filename}"
+                        )
+                    if zip_info.is_dir():
+                        destination.mkdir(parents=True, exist_ok=True)
+                        continue
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    with archive.open(zip_info) as source_file:
+                        temp_path = destination.with_name(f"{destination.name}.tmp-{uuid4().hex}")
+                        temp_path.write_bytes(source_file.read())
+                        temp_path.replace(destination)
+            for staged_path in sorted(staging_dir.rglob("*")):
+                if staged_path.is_dir():
+                    continue
+                relative_path = staged_path.relative_to(staging_dir)
+                destination = (target_dir / relative_path).resolve()
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                staged_path.replace(destination)
+    except AgentStubValidationError:
+        raise
+    except (BadZipFile, OSError) as exc:
+        raise AgentStubTransferError(f"downloaded skill archive is invalid: {archive_path.name}") from exc
+
+
+def _resolve_zip_entry_destination(target_dir: Path, entry_name: str) -> Path:
+    """Resolve one zip entry path under a target skill directory.
+
+    Zip metadata may contain POSIX or backslash-separated names, so entry names
+    are normalized to forward slashes before validation. The resolved entry must
+    not be absolute, empty, ``.`` / ``..`` based, or otherwise escape the target
+    skill directory after resolution.
+    """
+
+    normalized_name = entry_name.replace("\\", "/")
+    pure_path = PurePosixPath(normalized_name)
+    if not normalized_name or normalized_name.startswith("/") or pure_path.is_absolute():
+        raise AgentStubValidationError(f"skill archive contains unsafe absolute path: {entry_name}")
+    if any(part in {"", ".", ".."} for part in pure_path.parts):
+        raise AgentStubValidationError(f"skill archive contains unsafe path traversal entry: {entry_name}")
+    destination = (target_dir / Path(*pure_path.parts)).resolve()
+    try:
+        destination.relative_to(target_dir)
+    except ValueError as exc:
+        raise AgentStubValidationError(f"skill archive entry resolves outside the skill directory: {entry_name}") from exc
+    return destination
+
+
+def _is_zip_symlink(zip_info: ZipInfo) -> bool:
+    file_mode = zip_info.external_attr >> 16
+    return stat.S_ISLNK(file_mode)
 
 
 def _join_drive_key(base_key: str, child_key: str) -> str:

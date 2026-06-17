@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from io import BytesIO
 from pathlib import Path
-from zipfile import ZipFile
+import stat
+from zipfile import ZipFile, ZipInfo
 
 import pytest
 
@@ -134,6 +136,48 @@ def test_pull_drive_from_environment_writes_files_under_drive_base(
     assert captured["include_download_url"] is True
 
 
+def test_pull_drive_from_environment_auto_extracts_skill_archive(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    archive_buffer = BytesIO()
+    with ZipFile(archive_buffer, mode="w") as archive:
+        archive.writestr("SKILL.md", "# Example\n")
+        archive.writestr("nested/helper.py", "print('x')\n")
+    archive_bytes = archive_buffer.getvalue()
+
+    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli._drive.request_agent_stub_drive_manifest_sync",
+        lambda **_kwargs: AgentStubDriveManifestResponse(
+            items=[
+                AgentStubDriveItem(
+                    key="skills/foo/.DIFY-SKILL-FULL.zip",
+                    size=len(archive_bytes),
+                    hash=None,
+                    mime_type="application/zip",
+                    file_kind="tool_file",
+                    file_id="tool-file-1",
+                    download_url="https://files.example.com/download",
+                )
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli._drive.download_file_bytes_from_signed_url_sync",
+        lambda **_kwargs: archive_bytes,
+    )
+
+    results = pull_drive_from_environment(prefix="skills/foo", drive_base=str(tmp_path))
+
+    archive_path = tmp_path / "skills" / "foo" / ".DIFY-SKILL-FULL.zip"
+    assert results == [archive_path]
+    assert archive_path.read_bytes() == archive_bytes
+    assert (tmp_path / "skills" / "foo" / "SKILL.md").read_text(encoding="utf-8") == "# Example\n"
+    assert (tmp_path / "skills" / "foo" / "nested" / "helper.py").read_text(encoding="utf-8") == "print('x')\n"
+
+
 def test_pull_drive_from_environment_rejects_traversal_keys(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -159,6 +203,151 @@ def test_pull_drive_from_environment_rejects_traversal_keys(
 
     with pytest.raises(AgentStubValidationError, match="outside the drive base"):
         _ = pull_drive_from_environment(prefix="", drive_base=str(tmp_path))
+
+
+def test_pull_drive_from_environment_rejects_skill_archive_path_traversal(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    archive_buffer = BytesIO()
+    with ZipFile(archive_buffer, mode="w") as archive:
+        archive.writestr("SKILL.md", "# Example\n")
+        archive.writestr("../escape.txt", "escape")
+    archive_bytes = archive_buffer.getvalue()
+
+    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli._drive.request_agent_stub_drive_manifest_sync",
+        lambda **_kwargs: AgentStubDriveManifestResponse(
+            items=[
+                AgentStubDriveItem(
+                    key="skills/foo/.DIFY-SKILL-FULL.zip",
+                    size=len(archive_bytes),
+                    hash=None,
+                    mime_type="application/zip",
+                    file_kind="tool_file",
+                    file_id="tool-file-1",
+                    download_url="https://files.example.com/download",
+                )
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli._drive.download_file_bytes_from_signed_url_sync",
+        lambda **_kwargs: archive_bytes,
+    )
+
+    with pytest.raises(AgentStubValidationError, match="path traversal"):
+        _ = pull_drive_from_environment(prefix="skills/foo", drive_base=str(tmp_path))
+    assert not (tmp_path / "skills" / "foo" / "SKILL.md").exists()
+
+
+def test_pull_drive_from_environment_rejects_skill_archive_absolute_entry(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    archive_buffer = BytesIO()
+    with ZipFile(archive_buffer, mode="w") as archive:
+        archive.writestr("/escape.txt", "escape")
+    archive_bytes = archive_buffer.getvalue()
+
+    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli._drive.request_agent_stub_drive_manifest_sync",
+        lambda **_kwargs: AgentStubDriveManifestResponse(
+            items=[
+                AgentStubDriveItem(
+                    key="skills/foo/.DIFY-SKILL-FULL.zip",
+                    size=len(archive_bytes),
+                    hash=None,
+                    mime_type="application/zip",
+                    file_kind="tool_file",
+                    file_id="tool-file-1",
+                    download_url="https://files.example.com/download",
+                )
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli._drive.download_file_bytes_from_signed_url_sync",
+        lambda **_kwargs: archive_bytes,
+    )
+
+    with pytest.raises(AgentStubValidationError, match="absolute path"):
+        _ = pull_drive_from_environment(prefix="skills/foo", drive_base=str(tmp_path))
+
+
+def test_pull_drive_from_environment_rejects_skill_archive_symlink_entry(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    archive_buffer = BytesIO()
+    with ZipFile(archive_buffer, mode="w") as archive:
+        symlink_info = ZipInfo("linked.txt")
+        symlink_info.external_attr = (stat.S_IFLNK | 0o777) << 16
+        archive.writestr(symlink_info, "outside.txt")
+    archive_bytes = archive_buffer.getvalue()
+
+    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli._drive.request_agent_stub_drive_manifest_sync",
+        lambda **_kwargs: AgentStubDriveManifestResponse(
+            items=[
+                AgentStubDriveItem(
+                    key="skills/foo/.DIFY-SKILL-FULL.zip",
+                    size=len(archive_bytes),
+                    hash=None,
+                    mime_type="application/zip",
+                    file_kind="tool_file",
+                    file_id="tool-file-1",
+                    download_url="https://files.example.com/download",
+                )
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli._drive.download_file_bytes_from_signed_url_sync",
+        lambda **_kwargs: archive_bytes,
+    )
+
+    with pytest.raises(AgentStubValidationError, match="symlink entry"):
+        _ = pull_drive_from_environment(prefix="skills/foo", drive_base=str(tmp_path))
+
+
+def test_pull_drive_from_environment_rejects_invalid_skill_archive(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    archive_bytes = b"not-a-zip"
+
+    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli._drive.request_agent_stub_drive_manifest_sync",
+        lambda **_kwargs: AgentStubDriveManifestResponse(
+            items=[
+                AgentStubDriveItem(
+                    key="skills/foo/.DIFY-SKILL-FULL.zip",
+                    size=len(archive_bytes),
+                    hash=None,
+                    mime_type="application/zip",
+                    file_kind="tool_file",
+                    file_id="tool-file-1",
+                    download_url="https://files.example.com/download",
+                )
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli._drive.download_file_bytes_from_signed_url_sync",
+        lambda **_kwargs: archive_bytes,
+    )
+
+    with pytest.raises(AgentStubTransferError, match="downloaded skill archive is invalid"):
+        _ = pull_drive_from_environment(prefix="skills/foo", drive_base=str(tmp_path))
 
 
 def test_pull_drive_from_environment_rejects_missing_download_url(
