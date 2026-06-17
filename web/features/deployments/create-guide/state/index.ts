@@ -13,7 +13,6 @@ import { EnvVarValueSource as ApiEnvVarValueSource } from '@dify/contracts/enter
 import { keepPreviousData } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithMutation, atomWithQuery } from 'jotai-tanstack-query'
-import { unwrap } from 'jotai/utils'
 import { envVarBindingSlotFromContract, envVarBindingValueType } from '@/features/deployments/components/env-var-bindings-utils'
 import {
   hasMissingRequiredRuntimeCredentialBinding,
@@ -269,15 +268,52 @@ export const deployableEnvironmentsQueryAtom = atomWithQuery((get) => {
   })
 })
 
-// TODO: precheckRelease before options — the guide currently surfaces
-// unsupported-node findings by parsing the computeDeploymentOptions error
-// (deploymentOptionsUnsupportedDslNodesAtom below); a dedicated precheck query
-// would report them from response data instead.
-export const deploymentOptionsQueryAtom = atomWithQuery((get) => {
+const precheckReleaseQueryAtom = atomWithQuery((get) => {
   const method = get(methodAtom)
   const effectiveSelectedApp = get(effectiveSelectedAppAtom)
   const dslContent = get(dslContentAtom)
   const enabled = sourceReady(get)
+
+  // PrecheckRelease takes exactly one source arm (dsl | sourceAppId).
+  const precheckReleaseQueryOptions = method === 'importDsl'
+    ? consoleQuery.enterprise.releaseService.precheckRelease.queryOptions({
+        input: {
+          body: {
+            dsl: dslContent.trim() ? encodeDslContent(dslContent) : '',
+          },
+        },
+        enabled,
+      })
+    : consoleQuery.enterprise.releaseService.precheckRelease.queryOptions({
+        input: {
+          body: {
+            sourceAppId: effectiveSelectedApp?.id ?? '',
+          },
+        },
+        enabled: enabled && Boolean(effectiveSelectedApp?.id),
+      })
+
+  return {
+    ...precheckReleaseQueryOptions,
+    retry: false,
+  }
+})
+
+function precheckReleaseReady(get: Getter) {
+  const precheckReleaseQuery = get(precheckReleaseQueryAtom)
+
+  return sourceReady(get)
+    && precheckReleaseQuery.isSuccess
+    && Boolean(precheckReleaseQuery.data?.canCreate)
+    && (precheckReleaseQuery.data?.unsupportedNodes.length ?? 0) === 0
+    && get(submissionUnsupportedDslNodesAtom).length === 0
+}
+
+export const deploymentOptionsQueryAtom = atomWithQuery((get) => {
+  const method = get(methodAtom)
+  const effectiveSelectedApp = get(effectiveSelectedAppAtom)
+  const dslContent = get(dslContentAtom)
+  const enabled = precheckReleaseReady(get)
 
   // ComputeDeploymentOptions takes exactly one source arm (dsl | sourceAppId | releaseId).
   const deploymentOptionsQueryOptions = method === 'importDsl'
@@ -306,51 +342,39 @@ export const deploymentOptionsQueryAtom = atomWithQuery((get) => {
 })
 
 // Unsupported DSL state
-const deploymentOptionsUnsupportedDslNodesAtom = unwrap(atom(async (get): Promise<UnsupportedDslNode[] | undefined> => {
-  const deploymentOptionsQuery = get(deploymentOptionsQueryAtom)
-
-  if (!sourceReady(get) || !deploymentOptionsQuery.isError)
-    return []
-
-  const unsupportedError = await unsupportedDslNodeError(deploymentOptionsQuery.error)
-  return unsupportedError?.nodes
-}), (): undefined => undefined)
-
 export const unsupportedDslNodesAtom = atom((get): UnsupportedDslNode[] => {
   const submissionUnsupportedDslNodes = get(submissionUnsupportedDslNodesAtom)
   if (submissionUnsupportedDslNodes.length > 0)
     return submissionUnsupportedDslNodes
 
-  try {
-    return get(deploymentOptionsUnsupportedDslNodesAtom) ?? []
-  }
-  catch {
+  if (!sourceReady(get))
     return []
-  }
+
+  return get(precheckReleaseQueryAtom).data?.unsupportedNodes ?? []
+})
+
+const precheckReleaseReadyAtom = atom((get) => {
+  return precheckReleaseReady(get)
 })
 
 const deploymentOptionsReadyAtom = atom((get) => {
   const deploymentOptionsQuery = get(deploymentOptionsQueryAtom)
 
   return sourceReady(get)
+    && get(precheckReleaseReadyAtom)
     && deploymentOptionsQuery.isSuccess
-    && get(unsupportedDslNodesAtom).length === 0
 })
 
 const deploymentOptionsContentCheckedAtom = atom((get) => {
   const deploymentOptionsQuery = get(deploymentOptionsQueryAtom)
+  const precheckReleaseQuery = get(precheckReleaseQueryAtom)
   const isLoadingOptions = deploymentOptionsQuery.isLoading || (deploymentOptionsQuery.isFetching && !deploymentOptionsQuery.data)
+  const isCheckingReleaseContent = precheckReleaseQuery.isLoading || (precheckReleaseQuery.isFetching && !precheckReleaseQuery.data)
 
-  if (!sourceReady(get) || isLoadingOptions)
+  if (!sourceReady(get) || isCheckingReleaseContent || isLoadingOptions)
     return false
 
-  if (deploymentOptionsQuery.isError) {
-    const unsupportedDslNodes = get(deploymentOptionsUnsupportedDslNodesAtom)
-
-    return unsupportedDslNodes !== undefined && unsupportedDslNodes.length === 0
-  }
-
-  return deploymentOptionsQuery.isSuccess && get(unsupportedDslNodesAtom).length === 0
+  return get(precheckReleaseReadyAtom) && deploymentOptionsQuery.isSuccess
 })
 
 export const sourceCanGoNextAtom = atom((get) => {
