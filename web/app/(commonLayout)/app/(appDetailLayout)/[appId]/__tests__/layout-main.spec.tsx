@@ -229,6 +229,39 @@ describe('AppDetailLayout', () => {
     expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 
+  it('should redirect access config pages when access config access is missing', async () => {
+    mockPathname = '/app/app-1/access-config'
+    mockFetchAppDetailDirect.mockResolvedValue(createAppDetail({ permission_keys: [AppACLPermission.ViewLayout] }))
+
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/app/app-1/workflow')
+    })
+    expect(screen.queryByText('App page content')).not.toBeInTheDocument()
+    expect(useStore.getState().appDetail).toBeUndefined()
+  })
+
+  it('should allow users with access config access to open access config directly', async () => {
+    mockPathname = '/app/app-1/access-config'
+    mockFetchAppDetailDirect.mockResolvedValue(createAppDetail({ permission_keys: [AppACLPermission.AccessConfig] }))
+
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    await waitForAppContent()
+
+    expect(mockReplace).not.toHaveBeenCalled()
+    expect(useStore.getState().appDetail?.id).toBe('app-1')
+  })
+
   it('should redirect annotation pages when edit access is missing', async () => {
     mockPathname = '/app/app-1/annotations'
     mockFetchAppDetailDirect.mockResolvedValue(createAppDetail({

@@ -6,6 +6,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessRulesEditor from '@/app/components/access-rules-editor'
 import { useStore } from '@/app/components/app/store'
+import { useAppContext } from '@/context/app-context'
 import { useLocale } from '@/context/i18n'
 import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import {
@@ -15,16 +16,21 @@ import {
   useUpdateAppOpenScope,
   useUpdateAppUserAccessSettings,
 } from '@/service/access-control/use-app-access-config'
+import { getAppACLCapabilities } from '@/utils/permission'
 
 type AppAccessConfigPageProps = {
   appId: string
 }
 
-const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
+type AppAccessConfigContentProps = {
+  appId: string
+  maintainerId?: string | null
+}
+
+const AppAccessConfigContent = ({ appId, maintainerId }: AppAccessConfigContentProps) => {
   const { t } = useTranslation()
   const locale = useLocale()
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
-  const maintainerId = useStore(state => state.appDetail?.maintainer)
   const { data: appAccessRulesResponse, isLoading: isLoadingAppAccessRules } = useAppAccessRules(appId, language)
   const { data: appUserAccessSettingsResponse, isLoading: isLoadingAppUserAccessSettings } = useAppUserAccessSettings(appId, language)
   const { mutate: updateAppOpenScope, isPending: isUpdatingAppOpenScope } = useUpdateAppOpenScope(appId)
@@ -94,6 +100,21 @@ const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
       </main>
     </ScrollArea>
   )
+}
+
+const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
+  const { userProfile, workspacePermissionKeys } = useAppContext()
+  const appDetail = useStore(state => state.appDetail)
+  const appACLCapabilities = useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
+    currentUserId: userProfile?.id,
+    resourceMaintainer: appDetail?.maintainer,
+    workspacePermissionKeys,
+  }), [appDetail?.maintainer, appDetail?.permission_keys, userProfile?.id, workspacePermissionKeys])
+
+  if (!appDetail || appDetail.id !== appId || !appACLCapabilities.canAccessConfig)
+    return null
+
+  return <AppAccessConfigContent appId={appId} maintainerId={appDetail.maintainer} />
 }
 
 export default AppAccessConfigPage

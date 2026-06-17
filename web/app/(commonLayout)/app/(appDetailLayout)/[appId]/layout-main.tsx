@@ -100,11 +100,13 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     const isLogsPath = pathname.endsWith('logs')
     const isAnnotationsPath = pathname.endsWith('annotations')
     const isOverviewPath = pathname.endsWith('overview')
+    const isAccessConfigPath = pathname.endsWith('access-config')
     if (
       (isLayoutPath && !appACLCapabilities.canAccessLayout)
       || (isLogsPath && !appACLCapabilities.canMonitor)
       || (isAnnotationsPath && !appACLCapabilities.canEdit)
       || (isOverviewPath && !appACLCapabilities.canMonitor)
+      || (isAccessConfigPath && !appACLCapabilities.canAccessConfig)
     ) {
       router.replace(getRedirectionPath(routeAppDetail, {
         currentUserId: userProfile?.id,

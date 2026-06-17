@@ -1,7 +1,17 @@
 import type { AccessRulesEditorProps } from '@/app/components/access-rules-editor'
 import { render, screen } from '@testing-library/react'
 import { useStore } from '@/app/components/app/store'
+import {
+  useAppAccessRules,
+  useAppUserAccessSettings,
+} from '@/service/access-control/use-app-access-config'
+import { AppACLPermission } from '@/utils/permission'
 import AppAccessConfigPage from '../index'
+
+const mockAppContext = vi.hoisted(() => ({
+  userProfile: { id: 'user-1' },
+  workspacePermissionKeys: [] as string[],
+}))
 
 const mockAppAccessRules = vi.hoisted(() => ({
   items: [] as AccessRulesEditorProps['rules'],
@@ -22,6 +32,10 @@ const mockMutations = vi.hoisted(() => ({
   updateOpenScope: vi.fn(),
   updateUserAccessSettings: vi.fn(),
   removeMemberBindings: vi.fn(),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useAppContext: () => mockAppContext,
 }))
 
 vi.mock('@/service/access-control/use-app-access-config', () => ({
@@ -59,13 +73,21 @@ vi.mock('@/app/components/access-rules-editor', () => ({
 describe('AppAccessConfigPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockAppContext.userProfile = { id: 'user-1' }
+    mockAppContext.workspacePermissionKeys = []
     mockAppAccessRules.items = []
     mockAppAccessRules.isLoading = false
     mockAppUserAccessSettings.data = []
     mockAppUserAccessSettings.scope = 'specific'
     mockAppUserAccessSettings.isLoading = false
     mockAccessRulesEditor.props = null
-    useStore.setState({ appDetail: undefined })
+    useStore.setState({
+      appDetail: {
+        id: 'app-1',
+        maintainer: 'account-1',
+        permission_keys: [AppACLPermission.AccessConfig],
+      } as NonNullable<ReturnType<typeof useStore.getState>['appDetail']>,
+    })
   })
 
   // Rendering wires the app access rules into the shared editor.
@@ -115,6 +137,7 @@ describe('AppAccessConfigPage', () => {
         appDetail: {
           id: 'app-1',
           maintainer: 'account-1',
+          permission_keys: [AppACLPermission.AccessConfig],
         } as NonNullable<ReturnType<typeof useStore.getState>['appDetail']>,
       })
 
@@ -154,6 +177,38 @@ describe('AppAccessConfigPage', () => {
       }, expect.objectContaining({
         onSettled: expect.any(Function),
       }))
+    })
+
+    it('should not mount access config data hooks when access config permission is missing', () => {
+      useStore.setState({
+        appDetail: {
+          id: 'app-1',
+          maintainer: 'account-1',
+          permission_keys: [AppACLPermission.ViewLayout],
+        } as NonNullable<ReturnType<typeof useStore.getState>['appDetail']>,
+      })
+
+      render(<AppAccessConfigPage appId="app-1" />)
+
+      expect(screen.queryByTestId('access-rules-editor')).not.toBeInTheDocument()
+      expect(useAppAccessRules).not.toHaveBeenCalled()
+      expect(useAppUserAccessSettings).not.toHaveBeenCalled()
+    })
+
+    it('should allow the app maintainer with app management workspace permission', () => {
+      mockAppContext.userProfile = { id: 'account-1' }
+      mockAppContext.workspacePermissionKeys = ['app.create_and_management']
+      useStore.setState({
+        appDetail: {
+          id: 'app-1',
+          maintainer: 'account-1',
+          permission_keys: [] as string[],
+        } as NonNullable<ReturnType<typeof useStore.getState>['appDetail']>,
+      })
+
+      render(<AppAccessConfigPage appId="app-1" />)
+
+      expect(screen.getByTestId('access-rules-editor')).toBeInTheDocument()
     })
   })
 })
