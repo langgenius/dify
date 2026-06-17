@@ -28,7 +28,7 @@ export function AgentModelField({
       <div className="relative h-8 min-w-0">
         {readOnly
           ? (
-              <div className="border-components-input-border flex h-8 w-full min-w-0 items-center rounded-lg border bg-components-input-bg-disabled px-3 system-sm-regular text-components-input-text-filled">
+              <div className="flex h-8 w-full min-w-0 items-center rounded-lg bg-components-input-bg-disabled px-3 system-sm-regular text-components-input-text-filled">
                 <span className="truncate">{currentModel?.model}</span>
               </div>
             )

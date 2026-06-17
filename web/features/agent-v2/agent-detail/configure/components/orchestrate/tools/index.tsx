@@ -417,13 +417,15 @@ export function AgentTools() {
         tipAriaLabel={toolsTip}
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="flex flex-col gap-1 pb-4"
-        actions={(
-          <AddToolMenu
-            onAddCliTool={openCliToolDialog}
-            onAddTools={addTools}
-            selectedTools={selectedTools}
-          />
-        )}
+        actions={!readOnly
+          ? (
+              <AddToolMenu
+                onAddCliTool={openCliToolDialog}
+                onAddTools={addTools}
+                selectedTools={selectedTools}
+              />
+            )
+          : undefined}
       >
         {displayTools.length === 0
           ? (
