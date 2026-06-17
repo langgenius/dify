@@ -29,6 +29,10 @@ const ActionMenuItem: FC<ActionMenuItemProps> = ({
       )}
       onClick={(event) => {
         event.stopPropagation()
+        const target = event.target
+        if (target instanceof Element && target.closest('[data-upgrade-action]'))
+          return
+
         onClick(item.key)
       }}
     >
@@ -41,9 +45,8 @@ const ActionMenuItem: FC<ActionMenuItemProps> = ({
       </div>
       {item.showUpgrade && (
         <div
+          data-upgrade-action
           className="shrink-0"
-          onClick={event => event.stopPropagation()}
-          onPointerDown={event => event.stopPropagation()}
         >
           <UpgradeBtn
             size="custom"

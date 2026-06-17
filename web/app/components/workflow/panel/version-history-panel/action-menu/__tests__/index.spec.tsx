@@ -60,7 +60,9 @@ describe('ActionMenu', () => {
     )
   })
 
-  it('shows upgrade buttons beside restore and export for sandbox users', () => {
+  it('shows upgrade buttons beside restore and export for sandbox users', async () => {
+    const user = userEvent.setup()
+    const handleClickActionMenuItem = vi.fn()
     mockPlanType = Plan.sandbox
 
     renderWorkflowComponent(
@@ -69,10 +71,15 @@ describe('ActionMenu', () => {
         isShowDelete
         open
         setOpen={vi.fn()}
-        handleClickActionMenuItem={vi.fn()}
+        handleClickActionMenuItem={handleClickActionMenuItem}
       />,
     )
 
-    expect(screen.getAllByRole('button', { name: 'billing.upgradeBtn.encourageShort' })).toHaveLength(2)
+    const upgradeButtons = screen.getAllByRole('button', { name: 'billing.upgradeBtn.encourageShort' })
+    expect(upgradeButtons).toHaveLength(2)
+
+    await user.click(upgradeButtons[0]!)
+
+    expect(handleClickActionMenuItem).not.toHaveBeenCalled()
   })
 })
