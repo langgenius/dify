@@ -8,13 +8,21 @@ from controllers.common.schema import query_params_from_model, register_response
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_app_model
 from controllers.console.app.app import (
+    AppDetailWithSite as GenericAppDetailWithSite,
+)
+from controllers.console.app.app import (
     AppListQuery,
     CopyAppPayload,
-    AppDetailWithSite as GenericAppDetailWithSite,
-    AppPagination as GenericAppPagination,
-    AppPartial as GenericAppPartial,
-    UpdateAppPayload as GenericUpdateAppPayload,
     _normalize_app_list_query_args,
+)
+from controllers.console.app.app import (
+    AppPagination as GenericAppPagination,
+)
+from controllers.console.app.app import (
+    AppPartial as GenericAppPartial,
+)
+from controllers.console.app.app import (
+    UpdateAppPayload as GenericUpdateAppPayload,
 )
 from controllers.console.wraps import (
     account_initialization_required,
