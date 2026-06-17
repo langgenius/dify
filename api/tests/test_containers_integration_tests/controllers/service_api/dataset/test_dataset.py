@@ -366,6 +366,7 @@ DATASET_DETAIL_KEYS = {
     "total_available_documents",
     "enable_api",
     "is_multimodal",
+    "maintainer",
 }
 
 
