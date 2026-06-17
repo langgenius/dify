@@ -19,7 +19,7 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus
-from models.model import App, AppMode
+from models.model import App, AppMode, IconType
 from models.workflow import Workflow
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
@@ -473,7 +473,7 @@ class AgentRosterService:
                 description=copied_description,
                 mode="agent",
                 agent_role=source_agent.role or "",
-                icon_type=(copied_icon_type.value if hasattr(copied_icon_type, "value") else copied_icon_type),
+                icon_type=self._normalize_app_icon_type(copied_icon_type),
                 icon=copied_icon,
                 icon_background=copied_icon_background,
                 api_rph=source_app.api_rph or 0,
@@ -506,6 +506,14 @@ class AgentRosterService:
             EnterpriseService.WebAppAuth.update_app_access_mode(target_app.id, access_mode)
 
         return target_app
+
+    @staticmethod
+    def _normalize_app_icon_type(icon_type: IconType | str | None) -> str | None:
+        if icon_type is None:
+            return None
+        if isinstance(icon_type, IconType):
+            return icon_type.value
+        return icon_type
 
     def _copy_app_model_config(self, *, source_app: App, target_app: App, account_id: str) -> None:
         source_config = source_app.app_model_config
