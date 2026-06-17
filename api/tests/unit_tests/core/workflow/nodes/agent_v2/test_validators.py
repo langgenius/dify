@@ -8,7 +8,7 @@ from core.workflow.nodes.agent_v2.validators import (
     WorkflowAgentNodeValidationError,
     WorkflowAgentNodeValidator,
 )
-from models.agent import Agent, AgentConfigSnapshot, AgentStatus, WorkflowAgentNodeBinding
+from models.agent import Agent, AgentConfigSnapshot, AgentStatus, WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig, WorkflowNodeJobConfig
 from models.workflow import Workflow
 
@@ -111,6 +111,24 @@ def test_publish_validation_accepts_upstream_previous_output_ref():
     )
 
 
+def test_publish_validation_uses_active_snapshot_for_roster_agent():
+    node_job = WorkflowNodeJobConfig()
+    binding = _binding(node_job)
+    binding.binding_type = WorkflowAgentBindingType.ROSTER_AGENT
+    binding.current_snapshot_id = "old-snapshot"
+    agent = _agent()
+    agent.active_config_snapshot_id = "active-snapshot"
+    snapshot = _snapshot()
+    snapshot.id = "active-snapshot"
+    session = Mock()
+    session.scalar.side_effect = [binding, agent, snapshot]
+
+    WorkflowAgentNodeValidator.validate_published_workflow(
+        session=session,
+        workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+    )
+
+
 def test_publish_validation_rejects_non_upstream_previous_output_ref():
     node_job = WorkflowNodeJobConfig.model_validate(
         {"previous_node_output_refs": [{"node_id": "later-node", "output": "text"}]}
@@ -189,6 +207,64 @@ def test_publish_validation_rejects_missing_agent_soul_model():
             session=session,
             workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
         )
+
+
+def test_publish_validation_dedupes_provider_level_tool_entries():
+    """Provider-level entries (tool_name omitted = all tools of the provider)
+    dedupe per provider; one provider-level + one explicit tool entry for the
+    same provider is fine (the runtime builder reconciles those)."""
+    node_job = WorkflowNodeJobConfig.model_validate({})
+    snapshot = _snapshot()
+    snapshot.config_snapshot = AgentSoulConfig(
+        model=AgentSoulModelConfig(
+            plugin_id="langgenius/openai",
+            model_provider="openai",
+            model="gpt-test",
+        ),
+        tools={
+            "dify_tools": [
+                {"provider_id": "langgenius/duckduckgo/duckduckgo", "credential_type": "unauthorized"},
+                {"provider_id": "langgenius/duckduckgo/duckduckgo", "credential_type": "unauthorized"},
+            ]
+        },
+    )
+    session = Mock()
+    session.scalar.side_effect = [_binding(node_job), _agent(), snapshot]
+
+    with pytest.raises(WorkflowAgentNodeValidationError, match="duplicate Dify Plugin Tool"):
+        WorkflowAgentNodeValidator.validate_published_workflow(
+            session=session,
+            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        )
+
+
+def test_publish_validation_accepts_provider_level_plus_explicit_tool_entry():
+    node_job = WorkflowNodeJobConfig.model_validate({})
+    snapshot = _snapshot()
+    snapshot.config_snapshot = AgentSoulConfig(
+        model=AgentSoulModelConfig(
+            plugin_id="langgenius/openai",
+            model_provider="openai",
+            model="gpt-test",
+        ),
+        tools={
+            "dify_tools": [
+                {"provider_id": "langgenius/duckduckgo/duckduckgo", "credential_type": "unauthorized"},
+                {
+                    "provider_id": "langgenius/duckduckgo/duckduckgo",
+                    "tool_name": "ddg_search",
+                    "credential_type": "unauthorized",
+                },
+            ]
+        },
+    )
+    session = Mock()
+    session.scalar.side_effect = [_binding(node_job), _agent(), snapshot]
+
+    WorkflowAgentNodeValidator.validate_published_workflow(
+        session=session,
+        workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+    )
 
 
 def test_publish_validation_rejects_duplicate_cli_tool_names():
@@ -271,6 +347,60 @@ def test_publish_validation_rejects_unauthorized_secret_ref():
     session.scalar.side_effect = [_binding(node_job), _agent(), snapshot]
 
     with pytest.raises(WorkflowAgentNodeValidationError, match="unauthorized secret reference API_TOKEN"):
+        WorkflowAgentNodeValidator.validate_published_workflow(
+            session=session,
+            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        )
+
+
+def test_publish_validation_rejects_cli_tool_scoped_env_conflicts_and_unauthorized_secret_refs():
+    node_job = WorkflowNodeJobConfig.model_validate({})
+    snapshot = _snapshot()
+    snapshot.config_snapshot = AgentSoulConfig(
+        model=AgentSoulModelConfig(
+            plugin_id="langgenius/openai",
+            model_provider="openai",
+            model="gpt-test",
+        ),
+        env={"variables": [{"name": "TOKEN", "value": "agent"}]},
+        tools={
+            "cli_tools": [
+                {
+                    "name": "github",
+                    "env": {"secret_refs": [{"name": "TOKEN", "id": "credential-1"}]},
+                }
+            ]
+        },
+    )
+    session = Mock()
+    session.scalar.side_effect = [_binding(node_job), _agent(), snapshot]
+
+    with pytest.raises(WorkflowAgentNodeValidationError, match="duplicate env/secret name TOKEN"):
+        WorkflowAgentNodeValidator.validate_published_workflow(
+            session=session,
+            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        )
+
+    snapshot.config_snapshot = AgentSoulConfig(
+        model=AgentSoulModelConfig(
+            plugin_id="langgenius/openai",
+            model_provider="openai",
+            model="gpt-test",
+        ),
+        tools={
+            "cli_tools": [
+                {
+                    "name": "github",
+                    "env": {
+                        "secret_refs": [{"name": "GITHUB_TOKEN", "id": "credential-1", "permission_status": "denied"}]
+                    },
+                }
+            ]
+        },
+    )
+    session.scalar.side_effect = [_binding(node_job), _agent(), snapshot]
+
+    with pytest.raises(WorkflowAgentNodeValidationError, match="unauthorized secret reference GITHUB_TOKEN"):
         WorkflowAgentNodeValidator.validate_published_workflow(
             session=session,
             workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),

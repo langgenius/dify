@@ -7,14 +7,27 @@ describe('block-selector hooks', () => {
     vi.clearAllMocks()
   })
 
-  it('falls back to the first valid tab when the preferred start tab is disabled', () => {
+  it('keeps the start tab enabled when a configured user input start node exists', () => {
     const { result } = renderHook(() => useTabs({
       noStart: false,
-      hasUserInputNode: true,
       defaultActiveTab: TabsEnum.Start,
     }))
 
-    expect(result.current.tabs.find(tab => tab.key === TabsEnum.Start)?.disabled).toBe(true)
+    expect(result.current.tabs.find(tab => tab.key === TabsEnum.Start)?.disabled).toBeFalsy()
+    expect(result.current.activeTab).toBe(TabsEnum.Start)
+  })
+
+  it('disables the start tab when an unconfigured start placeholder exists', () => {
+    const { result } = renderHook(() => useTabs({
+      noStart: false,
+      hasStartPlaceholderNode: true,
+      defaultActiveTab: TabsEnum.Start,
+    }))
+
+    const startTab = result.current.tabs.find(tab => tab.key === TabsEnum.Start)
+    expect(startTab?.disabled).toBe(true)
+    expect(startTab?.disabledTip).toBe('workflow.tabs.unconfiguredStartDisabledTip')
+    expect(startTab?.disabledTipLinkKey).toBe('startNodesDocs')
     expect(result.current.activeTab).toBe(TabsEnum.Blocks)
   })
 
@@ -22,7 +35,6 @@ describe('block-selector hooks', () => {
     const props: Parameters<typeof useTabs>[0] = {
       noBlocks: false,
       noStart: false,
-      hasUserInputNode: true,
       forceEnableStartTab: true,
     }
 
@@ -67,6 +79,24 @@ describe('block-selector hooks', () => {
     }))
 
     expect(result.current.tabs.some(tab => tab.key === TabsEnum.Snippets)).toBe(false)
+    expect(result.current.activeTab).toBe(TabsEnum.Blocks)
+  })
+
+  it('resets the active tab to the current default tab', () => {
+    const { result } = renderHook(() => useTabs({
+      noStart: false,
+    }))
+
+    act(() => {
+      result.current.setActiveTab(TabsEnum.Start)
+    })
+
+    expect(result.current.activeTab).toBe(TabsEnum.Start)
+
+    act(() => {
+      result.current.resetActiveTab()
+    })
+
     expect(result.current.activeTab).toBe(TabsEnum.Blocks)
   })
 })

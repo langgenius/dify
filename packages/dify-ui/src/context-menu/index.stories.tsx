@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { useState } from 'react'
+import * as React from 'react'
 import {
   ContextMenu,
   ContextMenuCheckboxItem,
@@ -100,7 +100,7 @@ export const WithGroupLabel: Story = {
 }
 
 const WithRadioItemsDemo = () => {
-  const [value, setValue] = useState('comfortable')
+  const [value, setValue] = React.useState('comfortable')
 
   return (
     <ContextMenu>
@@ -130,9 +130,9 @@ export const WithRadioItems: Story = {
 }
 
 const WithCheckboxItemsDemo = () => {
-  const [showToolbar, setShowToolbar] = useState(true)
-  const [showSidebar, setShowSidebar] = useState(false)
-  const [showStatusBar, setShowStatusBar] = useState(true)
+  const [showToolbar, setShowToolbar] = React.useState(true)
+  const [showSidebar, setShowSidebar] = React.useState(false)
+  const [showStatusBar, setShowStatusBar] = React.useState(true)
 
   return (
     <ContextMenu>

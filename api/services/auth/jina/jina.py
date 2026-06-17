@@ -43,10 +43,16 @@ class JinaAuth(ApiKeyAuthBase):
 
     def _handle_error(self, response):
         if response.status_code in {402, 409, 500}:
-            error_message = response.json().get("error", "Unknown error occurred")
+            try:
+                error_message = response.json().get("error", "Unknown error occurred")
+            except ValueError:
+                error_message = response.text or "Unknown error occurred"
             raise Exception(f"Failed to authorize. Status code: {response.status_code}. Error: {error_message}")
         else:
             if response.text:
-                error_message = json.loads(response.text).get("error", "Unknown error occurred")
+                try:
+                    error_message = json.loads(response.text).get("error", "Unknown error occurred")
+                except ValueError:
+                    error_message = response.text
                 raise Exception(f"Failed to authorize. Status code: {response.status_code}. Error: {error_message}")
             raise Exception(f"Unexpected error occurred while trying to authorize. Status code: {response.status_code}")

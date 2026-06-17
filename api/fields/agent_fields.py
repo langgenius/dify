@@ -41,10 +41,24 @@ class AgentConfigSnapshotSummaryResponse(ResponseModel):
     created_at: int | None = None
 
 
+class AgentPublishedReferenceResponse(ResponseModel):
+    app_id: str
+    app_name: str
+    app_icon_type: str | None = None
+    app_icon: str | None = None
+    app_icon_background: str | None = None
+    app_mode: str
+    app_updated_at: int | None = None
+    workflow_id: str
+    workflow_version: str
+    node_ids: list[str] = Field(default_factory=list)
+
+
 class AgentRosterResponse(ResponseModel):
     id: str
     name: str
     description: str
+    role: str = ""
     icon_type: AgentIconType | None = None
     icon: str | None = None
     icon_background: str | None = None
@@ -56,6 +70,7 @@ class AgentRosterResponse(ResponseModel):
     workflow_node_id: str | None = None
     active_config_snapshot_id: str | None = None
     active_config_snapshot: AgentConfigSnapshotSummaryResponse | None = None
+    active_config_is_published: bool = False
     status: AgentStatus
     created_by: str | None = None
     updated_by: str | None = None
@@ -63,6 +78,9 @@ class AgentRosterResponse(ResponseModel):
     archived_at: int | None = None
     created_at: int | None = None
     updated_at: int | None = None
+    published_reference_count: int = 0
+    published_node_reference_count: int = 0
+    published_references: list[AgentPublishedReferenceResponse] = Field(default_factory=list)
 
 
 class AgentInviteOptionResponse(AgentRosterResponse):
@@ -197,11 +215,15 @@ class AgentComposerValidateResponse(ResponseModel):
 
 class AgentComposerDifyToolCandidateResponse(ResponseModel):
     id: str | None = None
+    # "provider" = the whole provider (all of its tools, id "<provider>/*");
+    # "tool" = one tool (id "<provider>/<tool_name>"). See ENG-616.
+    granularity: str | None = None
     name: str | None = None
     description: str | None = None
     provider: str | None = None
     provider_id: str | None = None
     plugin_id: str | None = None
+    tools_count: int | None = None
 
 
 class AgentComposerSkillCandidateResponse(AgentSkillRefConfig):

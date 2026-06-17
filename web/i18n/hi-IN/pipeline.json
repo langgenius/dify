@@ -15,7 +15,7 @@
   "inputField.manage": "प्रबंधित करें",
   "publishToast.desc": "जब पाइपलाइन प्रकाशित नहीं होती है, तो आप ज्ञान बेस नोड में हिस्सा संरचना को संशोधित कर सकते हैं, और पाइपलाइन संचालन और परिवर्तनों को स्वचालित रूप से मसौदे के रूप में सहेजा जाएगा।",
   "publishToast.title": "यह पाइपलाइन अभी तक प्रकाशित नहीं हुई है",
-  "ragToolSuggestions.noRecommendationPlugins": "कोई सुझाए गए प्लगइन्स नहीं, और अधिक खोजें <CustomLink>मार्केटप्लेस</CustomLink> में",
+  "ragToolSuggestions.noRecommendationPlugins": "कोई सुझाए गए एकीकरण नहीं, और अधिक खोजें <CustomLink>मार्केटप्लेस</CustomLink> में",
   "ragToolSuggestions.title": "आरएजी के लिए सुझाव",
   "result.resultPreview.error": "कार्यवाही के दौरान त्रुटि हुई",
   "result.resultPreview.footerTip": "परीक्षण रन मोड में, {{count}} खंड तक पूर्वावलोकन करें",

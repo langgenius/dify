@@ -17,7 +17,6 @@ const HeaderWrapper = ({
 }: HeaderWrapperProps) => {
   const pathname = usePathname()
   const isBordered = ['/apps', '/snippets', '/datasets/create', '/tools'].includes(pathname)
-  // Check if the current path is a workflow canvas & fullscreen
   const inWorkflowCanvas = pathname.endsWith('/workflow')
   const isPipelineCanvas = pathname.endsWith('/pipeline')
   const [storedHideHeader] = useLocalStorage<boolean>('workflow-canvas-maximize', false)

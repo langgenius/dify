@@ -241,36 +241,27 @@ class ComposerConfigValidator:
     @classmethod
     def _validate_shell_config(cls, soul: dict[str, Any]) -> None:
         """Fail fast on shell env/secret/CLI config the sandbox would otherwise reject at run time."""
-        env = soul.get("env") or {}
         seen_env_names: set[str] = set()
-        for section in ("variables", "secret_refs"):
-            entries = env.get(section)
-            if not isinstance(entries, list):
-                continue
-            for entry in entries:
-                if not isinstance(entry, dict):
-                    continue
-                raw_name = entry.get("name")
-                if not isinstance(raw_name, str) or not raw_name.strip():
-                    # Unnamed draft rows are tolerated; only named entries are bound to the shell.
-                    continue
-                name = raw_name.strip()
-                if not _SHELL_ENV_NAME_PATTERN.fullmatch(name):
-                    raise InvalidComposerConfigError(
-                        f"env/secret name '{name}' must be a valid shell identifier (^[A-Za-z_][A-Za-z0-9_]*$)."
-                    )
-                if section == "secret_refs" and cls._permission_denied(entry):
-                    raise InvalidComposerConfigError(f"secret reference '{name}' is not authorized for this agent.")
-                if name in seen_env_names:
-                    raise InvalidComposerConfigError(
-                        f"duplicate env/secret name '{name}': environment variables and secret references "
-                        "share the shell namespace."
-                    )
-                seen_env_names.add(name)
+        env = soul.get("env") or {}
+        cls._validate_env_config(env, seen_env_names=seen_env_names, label="agent")
 
         tools = soul.get("tools") or {}
         cli_tools = tools.get("cli_tools")
         if isinstance(cli_tools, list):
+            # Mention references resolve `[§cli_tool:<id>§]` by id, so ids must be
+            # unique across the whole list — disabled entries included, since they
+            # stay in config and would make resolution ambiguous.
+            seen_cli_tool_ids: set[str] = set()
+            for entry in cli_tools:
+                if not isinstance(entry, dict):
+                    continue
+                raw_id = entry.get("id")
+                if isinstance(raw_id, str) and raw_id.strip():
+                    if raw_id in seen_cli_tool_ids:
+                        raise InvalidComposerConfigError(
+                            f"duplicate CLI tool id '{raw_id}': cli_tool mention references require unique ids."
+                        )
+                    seen_cli_tool_ids.add(raw_id)
             for entry in cli_tools:
                 if not isinstance(entry, dict) or entry.get("enabled") is False:
                     continue
@@ -284,6 +275,56 @@ class ComposerConfigValidator:
                     raise InvalidComposerConfigError(
                         "a dangerous CLI tool command must be explicitly acknowledged before save."
                     )
+                tool_name = cls._cli_tool_name(entry) or "<unnamed>"
+                cls._validate_env_config(
+                    entry.get("env") or {},
+                    seen_env_names=seen_env_names,
+                    label=f"CLI tool '{tool_name}'",
+                )
+
+    @classmethod
+    def _validate_env_config(cls, env: Any, *, seen_env_names: set[str], label: str) -> None:
+        if not isinstance(env, dict):
+            return
+        for section in ("variables", "secret_refs"):
+            entries = env.get(section)
+            if not isinstance(entries, list):
+                continue
+            for entry in entries:
+                if not isinstance(entry, dict):
+                    continue
+                name = cls._env_name(entry)
+                if name is None:
+                    # Unnamed draft rows are tolerated; only named entries are bound to the shell.
+                    continue
+                if not _SHELL_ENV_NAME_PATTERN.fullmatch(name):
+                    raise InvalidComposerConfigError(
+                        f"env/secret name '{name}' must be a valid shell identifier (^[A-Za-z_][A-Za-z0-9_]*$)."
+                    )
+                if section == "secret_refs" and cls._permission_denied(entry):
+                    raise InvalidComposerConfigError(f"secret reference '{name}' is not authorized for {label}.")
+                if name in seen_env_names:
+                    raise InvalidComposerConfigError(
+                        f"duplicate env/secret name '{name}': environment variables and secret references "
+                        "share the shell namespace."
+                    )
+                seen_env_names.add(name)
+
+    @staticmethod
+    def _env_name(entry: dict[str, Any]) -> str | None:
+        for key in ("name", "key", "env_name", "variable"):
+            value = entry.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        return None
+
+    @staticmethod
+    def _cli_tool_name(entry: dict[str, Any]) -> str | None:
+        for key in _CLI_TOOL_NAME_KEYS:
+            value = entry.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        return None
 
     @classmethod
     def _reject_plaintext_secrets(cls, value: Any, *, path: str) -> None:

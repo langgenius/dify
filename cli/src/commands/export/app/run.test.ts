@@ -9,13 +9,14 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { bufferStreams } from '@/sys/io/streams'
 import { runExportApp } from './run.js'
 
+const WS_ID = 'aaaaaaaa-0000-0000-0000-000000000001'
+
 const baseActive: ActiveContext = {
   host: '127.0.0.1',
   email: 'tester@dify.ai',
   ctx: {
     account: { id: 'acct-1', email: 'tester@dify.ai', name: 'Test Tester' },
-    workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
-    available_workspaces: [{ id: 'ws-1', name: 'Default', role: 'owner' }],
+    workspace: { id: WS_ID, name: 'Default', role: 'owner' },
   },
   scheme: 'http',
 }

@@ -174,6 +174,32 @@ describe('ProviderDetail', () => {
   })
 
   describe('Rendering', () => {
+    it('uses the full-height right drawer layout from the design', () => {
+      render(
+        <ProviderDetail
+          collection={createMockCollection()}
+          onHide={mockOnHide}
+          onRefreshData={mockOnRefreshData}
+        />,
+      )
+
+      const dialog = screen.getByRole('dialog')
+
+      expect(dialog).toHaveClass(
+        'data-[swipe-direction=right]:top-2',
+        'data-[swipe-direction=right]:right-2',
+        'data-[swipe-direction=right]:bottom-2',
+        'data-[swipe-direction=right]:h-[calc(100dvh-16px)]',
+        'data-[swipe-direction=right]:w-[400px]',
+        'data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]',
+      )
+      expect(dialog).not.toHaveClass(
+        'data-[swipe-direction=right]:top-16',
+        'data-[swipe-direction=right]:w-[420px]',
+        'data-[swipe-direction=right]:max-w-[420px]',
+      )
+    })
+
     it('renders title, org info and description for a builtIn collection', async () => {
       render(
         <ProviderDetail
@@ -271,6 +297,39 @@ describe('ProviderDetail', () => {
         expect(screen.getByText('tools.createTool.editAction'))!.toBeInTheDocument()
       })
     })
+
+    it('shows custom API author copy below the title', async () => {
+      mockFetchCustomCollection.mockResolvedValue({
+        credentials: { auth_type: 'none' },
+      })
+      render(
+        <ProviderDetail
+          collection={createMockCollection({ type: CollectionType.custom })}
+          onHide={mockOnHide}
+          onRefreshData={mockOnRefreshData}
+        />,
+      )
+
+      expect(await screen.findByText('tools.author Test Author')).toBeInTheDocument()
+      expect(screen.queryByTestId('org-info')).not.toBeInTheDocument()
+    })
+
+    it('uses the equalizer icon for custom API configure action', async () => {
+      mockFetchCustomCollection.mockResolvedValue({
+        credentials: { auth_type: 'none' },
+      })
+      render(
+        <ProviderDetail
+          collection={createMockCollection({ type: CollectionType.custom })}
+          onHide={mockOnHide}
+          onRefreshData={mockOnRefreshData}
+        />,
+      )
+
+      const configureButton = (await screen.findByText('tools.createTool.editAction')).closest('button')!
+
+      expect(configureButton.querySelector('.i-ri-equalizer-2-line')).toBeInTheDocument()
+    })
   })
 
   describe('Workflow Collection', () => {
@@ -289,6 +348,52 @@ describe('ProviderDetail', () => {
         expect(screen.getByText('tools.openInStudio'))!.toBeInTheDocument()
         expect(screen.getByText('tools.createTool.editAction'))!.toBeInTheDocument()
       })
+    })
+
+    it('shows workflow author copy below the title', async () => {
+      render(
+        <ProviderDetail
+          collection={createMockCollection({ type: CollectionType.workflow })}
+          onHide={mockOnHide}
+          onRefreshData={mockOnRefreshData}
+        />,
+      )
+
+      expect(await screen.findByText('tools.author Test Author')).toBeInTheDocument()
+      expect(screen.queryByTestId('org-info')).not.toBeInTheDocument()
+    })
+
+    it('uses the designed workflow action button styles', async () => {
+      render(
+        <ProviderDetail
+          collection={createMockCollection({ type: CollectionType.workflow })}
+          onHide={mockOnHide}
+          onRefreshData={mockOnRefreshData}
+        />,
+      )
+
+      const openInStudio = (await screen.findByText('tools.openInStudio')).closest('a')!
+      const configureButton = (await screen.findByText('tools.createTool.editAction')).closest('button')!
+
+      expect(openInStudio).toHaveAttribute('href', '/app/wf-123/workflow')
+      expect(openInStudio).toHaveClass('h-8', 'min-w-0', 'flex-1', 'rounded-lg', 'px-3', 'py-2')
+      expect(openInStudio.querySelector('.i-ri-arrow-right-up-line')).toBeInTheDocument()
+      expect(configureButton).toHaveClass('h-8', 'min-w-0', 'flex-1', 'rounded-lg', 'px-3', 'py-2')
+      expect(configureButton.querySelector('.i-ri-equalizer-2-line')).toBeInTheDocument()
+    })
+
+    it('uses a full-width divider below workflow actions', async () => {
+      render(
+        <ProviderDetail
+          collection={createMockCollection({ type: CollectionType.workflow })}
+          onHide={mockOnHide}
+          onRefreshData={mockOnRefreshData}
+        />,
+      )
+
+      const actions = (await screen.findByText('tools.openInStudio')).closest('.border-b-\\[0\\.5px\\]')!
+
+      expect(actions).toHaveClass('-mx-4', 'px-4', 'border-b-[0.5px]', 'border-divider-subtle')
     })
   })
 

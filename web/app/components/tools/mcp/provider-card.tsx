@@ -10,7 +10,6 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { RiHammerFill } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -39,6 +38,10 @@ const MCPCard = ({
   const { t } = useTranslation()
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { isCurrentWorkspaceManager } = useAppContext()
+  const isConfigured = data.is_team_authorization && data.tools.length > 0
+  const updatedAtText = data.updated_at
+    ? `${t('mcp.updateTime', { ns: 'tools' })} ${formatTimeFromNow(data.updated_at * 1000)}`
+    : undefined
 
   const { mutateAsync: updateMCP } = useUpdateMCP({})
   const { mutateAsync: deleteMCP } = useDeleteMCP({})
@@ -85,38 +88,39 @@ const MCPCard = ({
     <div
       onClick={() => handleSelect(data.id)}
       className={cn(
-        'group relative flex cursor-pointer flex-col rounded-xl border-[1.5px] border-transparent bg-components-card-bg shadow-xs hover:bg-components-card-bg-alt hover:shadow-md',
-        currentProvider?.id === data.id && 'border-components-option-card-option-selected-border bg-components-card-bg-alt',
+        'group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
+        currentProvider?.id === data.id && 'border-components-option-card-option-selected-border bg-components-panel-on-panel-item-bg-hover',
       )}
     >
-      <div className="flex grow items-center gap-3 rounded-t-xl p-4">
-        <div className="shrink-0 overflow-hidden rounded-xl border border-components-panel-border-subtle">
+      <div className="flex shrink-0 items-center gap-3 rounded-t-xl p-4">
+        <div className="shrink-0 overflow-hidden rounded-lg border-[0.5px] border-effects-icon-border">
           <Icon src={data.icon} />
         </div>
-        <div className="grow">
+        <div className="min-w-0 grow">
           <div className="mb-1 truncate system-md-semibold text-text-secondary" title={data.name}>{data.name}</div>
-          <div className="system-xs-regular text-text-tertiary">{data.server_identifier}</div>
+          <div className="truncate system-xs-regular text-text-tertiary" title={data.server_identifier}>{data.server_identifier}</div>
         </div>
       </div>
       <div className="flex items-center gap-1 rounded-b-xl pt-1.5 pr-2.5 pb-2.5 pl-4">
         <div className="flex w-0 grow items-center gap-2">
-          <div className="flex items-center gap-1">
-            <RiHammerFill className="size-3 shrink-0 text-text-quaternary" />
-            {data.tools.length > 0 && (
-              <div className="shrink-0 system-xs-regular text-text-tertiary">{t('mcp.toolsCount', { ns: 'tools', count: data.tools.length })}</div>
-            )}
-            {!data.tools.length && (
-              <div className="shrink-0 system-xs-regular text-text-tertiary">{t('mcp.noTools', { ns: 'tools' })}</div>
-            )}
-          </div>
-          <div className={cn('system-xs-regular text-divider-deep', (!data.is_team_authorization || !data.tools.length) && 'sm:hidden')}>/</div>
-          <div className={cn('truncate system-xs-regular text-text-tertiary', (!data.is_team_authorization || !data.tools.length) && 'sm:hidden')} title={`${t('mcp.updateTime', { ns: 'tools' })} ${formatTimeFromNow(data.updated_at! * 1000)}`}>{`${t('mcp.updateTime', { ns: 'tools' })} ${formatTimeFromNow(data.updated_at! * 1000)}`}</div>
+          {data.tools.length > 0 && (
+            <div className="shrink-0 system-xs-regular text-text-tertiary">{t('mcp.toolsCount', { ns: 'tools', count: data.tools.length })}</div>
+          )}
+          {!data.tools.length && (
+            <div className="shrink-0 system-xs-regular text-text-tertiary">{t('mcp.noTools', { ns: 'tools' })}</div>
+          )}
+          {updatedAtText && (
+            <>
+              <div className="system-xs-regular text-divider-deep">·</div>
+              <div className="truncate system-xs-regular text-text-tertiary" title={updatedAtText}>{updatedAtText}</div>
+            </>
+          )}
         </div>
-        {data.is_team_authorization && data.tools.length > 0 && <StatusDot status="success" className="shrink-0" />}
-        {(!data.is_team_authorization || !data.tools.length) && (
+        {isConfigured && <StatusDot status="success" size="small" className="shrink-0" />}
+        {!isConfigured && (
           <div className="flex shrink-0 items-center gap-1 rounded-md border border-util-colors-red-red-500 bg-components-badge-bg-red-soft px-1.5 py-0.5 system-xs-medium text-util-colors-red-red-500">
             {t('mcp.noConfigured', { ns: 'tools' })}
-            <StatusDot status="error" />
+            <StatusDot status="error" size="small" />
           </div>
         )}
       </div>
