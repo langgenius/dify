@@ -18,14 +18,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 type QueryResult = {
   data?: {
-    options: {
-      credentialSlots: CredentialSlot[]
-      envVarSlots: EnvVarSlot[]
-    }
+    options: DeploymentOptions
   }
   isLoading: boolean
   isFetching: boolean
   isError: boolean
+}
+
+type DeploymentOptions = {
+  credentialSlots: CredentialSlot[]
+  envVarSlots: EnvVarSlot[]
 }
 
 type MutationOptions = {
@@ -202,7 +204,7 @@ function deployConfig() {
   }
 }
 
-function setQueryOptions(options: QueryResult['data']['options']) {
+function setQueryOptions(options: DeploymentOptions) {
   mockDeploymentOptionsQuery.current = {
     data: {
       options,
@@ -287,14 +289,20 @@ describe('deploy drawer state', () => {
     })
 
     store.set(state.selectDeployBindingAtom, 'langgenius/openai:PLUGIN_CATEGORY_MODEL', 'credential-1')
-    store.set(state.setDeployEnvVarAtom, 'API_KEY', { value: 'secret' })
+    store.set(state.setDeployEnvVarAtom, 'API_KEY', {
+      value: 'secret',
+      valueSource: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL,
+    })
     store.set(state.showDeployValidationErrorsAtom)
 
     expect(store.get(state.deploySelectedBindingsAtom)).toEqual({
       'langgenius/openai:PLUGIN_CATEGORY_MODEL': 'credential-1',
     })
     expect(store.get(state.deployEnvVarValuesAtom)).toEqual({
-      API_KEY: { value: 'secret' },
+      API_KEY: {
+        value: 'secret',
+        valueSource: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL,
+      },
     })
     expect(store.get(state.deployShowValidationErrorsAtom)).toBe(true)
 
@@ -364,10 +372,16 @@ describe('deploy drawer state', () => {
     expect(store.get(state.canAttemptDeployAtom)).toBe(true)
     expect(store.get(state.canSubmitDeployAtom)).toBe(false)
 
-    store.set(state.setDeployEnvVarAtom, 'PORT', { value: 'abc' })
+    store.set(state.setDeployEnvVarAtom, 'PORT', {
+      value: 'abc',
+      valueSource: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL,
+    })
     expect(store.get(state.canSubmitDeployAtom)).toBe(false)
 
-    store.set(state.setDeployEnvVarAtom, 'PORT', { value: '3000' })
+    store.set(state.setDeployEnvVarAtom, 'PORT', {
+      value: '3000',
+      valueSource: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_LITERAL,
+    })
     expect(store.get(state.canSubmitDeployAtom)).toBe(true)
   })
 
