@@ -23,7 +23,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CreateSnippetDialog from '@/app/components/snippets/create-snippet-dialog'
 import { canCreateAndModifySnippets, canManageSnippets } from '@/app/components/snippets/utils/permission'
-import { useAppContext } from '@/context/app-context'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { TagSelector } from '@/features/tag-management/components/tag-selector'
 import Link from '@/next/link'
 import { useMembers } from '@/service/use-common'
@@ -46,7 +46,7 @@ const SnippetCard = ({
 }: Props) => {
   const { t } = useTranslation('snippet')
   const { t: tCommon } = useTranslation()
-  const { workspacePermissionKeys } = useAppContext()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const { data: membersData } = useMembers()
   const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -82,6 +82,9 @@ const SnippetCard = ({
   }
 
   const handleExportSnippet = async () => {
+    if (!canManageSnippet)
+      return
+
     setIsOperationsMenuOpen(false)
     try {
       const data = await exportSnippetMutation.mutateAsync({ snippetId: snippet.id })

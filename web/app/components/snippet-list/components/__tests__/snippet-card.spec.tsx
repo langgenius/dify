@@ -29,6 +29,13 @@ vi.mock('@/context/app-context', () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
     workspacePermissionKeys: mockWorkspacePermissionKeys(),
   }),
+  useSelector: <T,>(selector: (state: {
+    isCurrentWorkspaceEditor: boolean
+    workspacePermissionKeys: string[]
+  }) => T): T => selector({
+    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
+  }),
 }))
 
 vi.mock('@/service/use-common', () => ({
@@ -170,10 +177,11 @@ describe('SnippetCard', () => {
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
 
       expect(await screen.findByRole('menuitem', { name: 'snippet.menu.editInfo' })).toBeInTheDocument()
+      expect(screen.queryByRole('menuitem', { name: 'snippet.menu.exportSnippet' })).not.toBeInTheDocument()
       expect(screen.queryByRole('menuitem', { name: 'snippet.menu.deleteSnippet' })).not.toBeInTheDocument()
     })
 
-    it('should show delete with snippet management permission without edit info', async () => {
+    it('should show export and delete with snippet management permission without edit info', async () => {
       mockIsCurrentWorkspaceEditor.mockReturnValue(false)
       mockWorkspacePermissionKeys.mockReturnValue(['snippets.management'])
 
@@ -182,6 +190,7 @@ describe('SnippetCard', () => {
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
 
       expect(screen.queryByRole('menuitem', { name: 'snippet.menu.editInfo' })).not.toBeInTheDocument()
+      expect(await screen.findByRole('menuitem', { name: 'snippet.menu.exportSnippet' })).toBeInTheDocument()
       expect(await screen.findByRole('menuitem', { name: 'snippet.menu.deleteSnippet' })).toBeInTheDocument()
     })
 
@@ -206,6 +215,7 @@ describe('SnippetCard', () => {
     })
 
     it('should export a snippet from the operations menu', async () => {
+      mockWorkspacePermissionKeys.mockReturnValue(['snippets.management'])
       mockExportMutateAsync.mockResolvedValue('snippet-yaml')
 
       render(<SnippetCard snippet={createSnippet()} />)
@@ -222,6 +232,7 @@ describe('SnippetCard', () => {
     })
 
     it('should show an error toast when snippet export fails', async () => {
+      mockWorkspacePermissionKeys.mockReturnValue(['snippets.management'])
       mockExportMutateAsync.mockRejectedValue(new Error('export failed'))
 
       render(<SnippetCard snippet={createSnippet()} />)

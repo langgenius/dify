@@ -58,6 +58,9 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
   }, [])
 
   const handleExportSnippet = React.useCallback(async () => {
+    if (!canManageSnippet)
+      return
+
     setOpen(false)
     try {
       const data = await exportSnippetMutation.mutateAsync({ snippetId: snippet.id })
@@ -67,7 +70,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
     catch {
       toast.error(t('exportFailed'))
     }
-  }, [exportSnippetMutation, snippet.id, snippet.name, t])
+  }, [canManageSnippet, exportSnippetMutation, snippet.id, snippet.name, t])
 
   const handleEditSnippet = React.useCallback(async ({ name, description }: {
     name: string

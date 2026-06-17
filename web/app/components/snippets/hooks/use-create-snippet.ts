@@ -2,7 +2,7 @@ import type { CreateSnippetDialogPayload } from '@/app/components/snippets/creat
 import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAppContext } from '@/context/app-context'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/client'
 import { useCreateSnippetMutation } from '@/service/use-snippets'
@@ -11,7 +11,7 @@ import { canCreateAndModifySnippets } from '../utils/permission'
 export const useCreateSnippet = () => {
   const { t } = useTranslation()
   const { push } = useRouter()
-  const { workspacePermissionKeys } = useAppContext()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const createSnippetMutation = useCreateSnippetMutation()
   const [isCreateSnippetDialogOpen, setIsCreateSnippetDialogOpen] = useState(false)
   const [isCreatingSnippet, setIsCreatingSnippet] = useState(false)
@@ -70,6 +70,7 @@ export const useCreateSnippet = () => {
   }
 
   return {
+    canCreateAndModifySnippet,
     createSnippetMutation,
     handleCloseCreateSnippetDialog,
     handleCreateSnippet,

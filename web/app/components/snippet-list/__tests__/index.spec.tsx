@@ -72,7 +72,24 @@ const mockIsCurrentWorkspaceEditor = vi.fn(() => true)
 const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
 const mockWorkspacePermissionKeys = vi.fn(() => ['snippets.create_and_modify'])
 vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+  useAppContext: () => {
+    const state = {
+      isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
+      isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator(),
+      isLoadingCurrentWorkspace: false,
+      userProfile: { id: 'creator-1' },
+      workspacePermissionKeys: mockWorkspacePermissionKeys(),
+    }
+
+    return state
+  },
+  useSelector: <T,>(selector: (state: {
+    isCurrentWorkspaceEditor: boolean
+    isCurrentWorkspaceDatasetOperator: boolean
+    isLoadingCurrentWorkspace: boolean
+    userProfile: { id: string }
+    workspacePermissionKeys: string[]
+  }) => T): T => selector({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
     isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator(),
     isLoadingCurrentWorkspace: false,

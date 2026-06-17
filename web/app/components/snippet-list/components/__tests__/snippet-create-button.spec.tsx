@@ -29,6 +29,9 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys(),
   }),
+  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
+  }),
 }))
 
 vi.mock('@/service/use-snippets', () => ({
@@ -58,6 +61,14 @@ describe('SnippetCreateButton', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
+  })
+
+  it('should not render without snippet create permission', () => {
+    mockWorkspacePermissionKeys.mockReturnValue([])
+
+    render(<SnippetCreateButton />)
+
+    expect(screen.queryByRole('button', { name: 'snippet.create' })).not.toBeInTheDocument()
   })
 
   it('should open the create dialog and create a snippet from the modal', async () => {

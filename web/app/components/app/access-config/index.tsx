@@ -81,7 +81,7 @@ const AppAccessConfigContent = ({ appId, maintainerId }: AppAccessConfigContentP
           {t('accessRule.appDescription', { ns: 'permission' })}
         </p>
       </header>
-      <main className="w-full px-6 pt-8 pb-10 sm:px-10 lg:pl-20">
+      <main className="w-full px-6 pt-8 pb-10">
         <AccessRulesEditor
           className="w-full max-w-200"
           rules={appAccessRules}
