@@ -96,10 +96,14 @@ def test_knowledge_client_marks_retryable_http_failures() -> None:
     async def scenario() -> None:
         async with httpx.AsyncClient(
             transport=httpx.MockTransport(
-                lambda _request: httpx.Response(502, json={"code": "external_knowledge_failed", "message": "bad gateway"})
+                lambda _request: httpx.Response(
+                    502, json={"code": "external_knowledge_failed", "message": "bad gateway"}
+                )
             )
         ) as http_client:
-            client = DifyKnowledgeBaseClient(base_url="http://dify-api", api_key="inner-secret", http_client=http_client)
+            client = DifyKnowledgeBaseClient(
+                base_url="http://dify-api", api_key="inner-secret", http_client=http_client
+            )
             with pytest.raises(DifyKnowledgeBaseClientError) as exc_info:
                 _ = await client.retrieve(
                     tenant_id="tenant-1",
@@ -131,7 +135,9 @@ def test_knowledge_client_marks_non_retryable_http_failures() -> None:
                 )
             )
         ) as http_client:
-            client = DifyKnowledgeBaseClient(base_url="http://dify-api", api_key="inner-secret", http_client=http_client)
+            client = DifyKnowledgeBaseClient(
+                base_url="http://dify-api", api_key="inner-secret", http_client=http_client
+            )
             with pytest.raises(DifyKnowledgeBaseClientError) as exc_info:
                 _ = await client.retrieve(
                     tenant_id="tenant-1",
@@ -155,8 +161,12 @@ def test_knowledge_client_marks_non_retryable_http_failures() -> None:
 
 def test_knowledge_client_rejects_malformed_success_response() -> None:
     async def scenario() -> None:
-        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _request: httpx.Response(200, json={"bad": []}))) as http_client:
-            client = DifyKnowledgeBaseClient(base_url="http://dify-api", api_key="inner-secret", http_client=http_client)
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda _request: httpx.Response(200, json={"bad": []}))
+        ) as http_client:
+            client = DifyKnowledgeBaseClient(
+                base_url="http://dify-api", api_key="inner-secret", http_client=http_client
+            )
             with pytest.raises(DifyKnowledgeBaseClientError) as exc_info:
                 _ = await client.retrieve(
                     tenant_id="tenant-1",
@@ -190,7 +200,9 @@ def test_knowledge_client_marks_transport_failures_retryable(error_factory) -> N
 
     async def scenario() -> None:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
-            client = DifyKnowledgeBaseClient(base_url="http://dify-api", api_key="inner-secret", http_client=http_client)
+            client = DifyKnowledgeBaseClient(
+                base_url="http://dify-api", api_key="inner-secret", http_client=http_client
+            )
             with pytest.raises(DifyKnowledgeBaseClientError) as exc_info:
                 _ = await client.retrieve(
                     tenant_id="tenant-1",
@@ -214,7 +226,9 @@ def test_knowledge_client_treats_invalid_url_errors_as_non_retryable_configurati
     async def scenario() -> None:
         async with httpx.AsyncClient() as http_client:
             http_client.post = AsyncMock(side_effect=httpx.UnsupportedProtocol("unsupported protocol"))
-            client = DifyKnowledgeBaseClient(base_url="http://dify-api", api_key="inner-secret", http_client=http_client)
+            client = DifyKnowledgeBaseClient(
+                base_url="http://dify-api", api_key="inner-secret", http_client=http_client
+            )
             with pytest.raises(DifyKnowledgeBaseClientError) as exc_info:
                 _ = await client.retrieve(
                     tenant_id="tenant-1",

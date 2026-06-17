@@ -163,7 +163,9 @@ class DifyKnowledgeBaseLayerConfig(LayerConfig):
 
     dataset_ids: list[str]
     retrieval: DifyKnowledgeRetrievalConfig
-    metadata_filtering: DifyKnowledgeMetadataFilteringConfig = Field(default_factory=DifyKnowledgeMetadataFilteringConfig)
+    metadata_filtering: DifyKnowledgeMetadataFilteringConfig = Field(
+        default_factory=DifyKnowledgeMetadataFilteringConfig
+    )
     max_result_content_chars: int = Field(default=2000, ge=1)
     max_observation_chars: int = Field(default=12000, ge=1)
 

@@ -80,9 +80,7 @@ class InnerKnowledgeRetrievalService:
         found_ids = {dataset.id for dataset in datasets}
         missing_ids = sorted(set(dataset_ids) - found_ids)
         if missing_ids:
-            raise InnerKnowledgeRetrieveDatasetNotFoundError(
-                f"Datasets not found: {', '.join(missing_ids)}"
-            )
+            raise InnerKnowledgeRetrieveDatasetNotFoundError(f"Datasets not found: {', '.join(missing_ids)}")
 
         mismatched_ids = sorted(dataset.id for dataset in datasets if dataset.tenant_id != tenant_id)
         if mismatched_ids:

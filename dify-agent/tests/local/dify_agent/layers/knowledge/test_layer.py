@@ -84,7 +84,9 @@ def test_knowledge_layer_exposes_one_query_only_tool_definition() -> None:
                 assert tool.name == "knowledge_base_search"
                 assert tool.description == "Search configured knowledge bases for information relevant to the query."
                 assert tool_def is not None
-                assert tool_def.description == "Search configured knowledge bases for information relevant to the query."
+                assert (
+                    tool_def.description == "Search configured knowledge bases for information relevant to the query."
+                )
                 assert tool_def.parameters_json_schema == {
                     "type": "object",
                     "properties": {
@@ -190,11 +192,11 @@ def test_knowledge_layer_formats_results_and_truncates_observation() -> None:
         )
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
             async with compositor.enter(
-                    configs={
-                        "execution_context": _execution_context_config(),
-                        "knowledge": _knowledge_config(max_result_content_chars=8, max_observation_chars=160),
-                    }
-                ) as run:
+                configs={
+                    "execution_context": _execution_context_config(),
+                    "knowledge": _knowledge_config(max_result_content_chars=8, max_observation_chars=160),
+                }
+            ) as run:
                 knowledge_layer = run.get_layer("knowledge", DifyKnowledgeBaseLayer)
                 tool = (await knowledge_layer.get_tools(http_client=http_client))[0]
                 result = await tool.function_schema.call({"query": "reset"}, None)  # pyright: ignore[reportArgumentType]
@@ -216,7 +218,9 @@ def test_knowledge_layer_returns_no_results_observation() -> None:
                 LayerNode("knowledge", _knowledge_provider(), deps={"execution_context": "execution_context"}),
             ]
         )
-        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _request: httpx.Response(200, json={"results": [], "usage": {}}))) as http_client:
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda _request: httpx.Response(200, json={"results": [], "usage": {}}))
+        ) as http_client:
             async with compositor.enter(
                 configs={
                     "execution_context": _execution_context_config(),
@@ -240,7 +244,9 @@ def test_knowledge_layer_converts_retryable_failures_into_observation() -> None:
             ]
         )
         async with httpx.AsyncClient(
-            transport=httpx.MockTransport(lambda _request: httpx.Response(429, json={"code": "knowledge_rate_limited", "message": "slow down"}))
+            transport=httpx.MockTransport(
+                lambda _request: httpx.Response(429, json={"code": "knowledge_rate_limited", "message": "slow down"})
+            )
         ) as http_client:
             async with compositor.enter(
                 configs={
@@ -298,7 +304,9 @@ def test_knowledge_layer_raises_non_retryable_client_errors() -> None:
             ]
         )
         async with httpx.AsyncClient(
-            transport=httpx.MockTransport(lambda _request: httpx.Response(403, json={"code": "dataset_tenant_mismatch", "message": "forbidden"}))
+            transport=httpx.MockTransport(
+                lambda _request: httpx.Response(403, json={"code": "dataset_tenant_mismatch", "message": "forbidden"})
+            )
         ) as http_client:
             async with compositor.enter(
                 configs={

@@ -1066,9 +1066,10 @@ def test_runner_passes_dynamic_dify_knowledge_tools_to_agent(monkeypatch: pytest
     sink = InMemoryRunEventSink()
 
     async def scenario() -> None:
-        async with httpx.AsyncClient() as plugin_client, httpx.AsyncClient(
-            headers={"X-Test-Client": "dify-api"}
-        ) as dify_api_client:
+        async with (
+            httpx.AsyncClient() as plugin_client,
+            httpx.AsyncClient(headers={"X-Test-Client": "dify-api"}) as dify_api_client,
+        ):
             await AgentRunRunner(
                 sink=sink,
                 request=request,

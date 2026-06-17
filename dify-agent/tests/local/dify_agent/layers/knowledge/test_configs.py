@@ -13,6 +13,7 @@ def _valid_config() -> dict[str, object]:
         },
     }
 
+
 def test_knowledge_base_config_accepts_valid_multiple_mode() -> None:
     config = DifyKnowledgeBaseLayerConfig.model_validate(_valid_config())
 
