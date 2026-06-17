@@ -1,3 +1,4 @@
+import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
 import type { GeneratorType } from '../../app/configuration/config/automatic/types'
 import type { FormInputItem } from '../../workflow/nodes/human-input/types'
 import type { Type } from '../../workflow/nodes/llm/types'
@@ -85,6 +86,12 @@ export type WorkflowVariableBlockType = {
   getVarType?: GetVarType
   showManageInputField?: boolean
   onManageInputField?: () => void
+}
+
+export type AgentOutputBlockType = {
+  show?: boolean
+  outputs?: DeclaredOutputConfig[]
+  onChange?: (outputs: DeclaredOutputConfig[], prompt?: string) => void
 }
 
 export type WorkflowNodesMap = Record<string, Pick<Node['data'], 'title' | 'type' | 'height' | 'width' | 'position'> & { modelProvider?: string }>

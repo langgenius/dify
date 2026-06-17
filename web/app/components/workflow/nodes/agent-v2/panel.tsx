@@ -101,9 +101,11 @@ export function AgentV2Panel({
     setIsRosterAgentPanelOpen(open)
   }, [id, isInlineAgentReady, setOpenInlineAgentPanelNodeId])
 
-  const handleDeclaredOutputsChange = useCallback((outputs: ReturnType<typeof getAgentV2DeclaredOutputs>) => {
+  const handleDeclaredOutputsChange = useCallback((outputs: ReturnType<typeof getAgentV2DeclaredOutputs>, agentTask?: string) => {
     const newInputs = produce(inputs, (draft) => {
       draft.agent_declared_outputs = outputs
+      if (agentTask !== undefined)
+        draft.agent_task = agentTask
     })
     handleNodeDataUpdateWithSyncDraft(
       {
@@ -155,7 +157,9 @@ export function AgentV2Panel({
           <AgentTaskField
             id={id}
             data={inputs}
+            outputs={declaredOutputs}
             onChange={handleTaskChange}
+            onOutputsChange={handleDeclaredOutputsChange}
           />
         </div>
         <AgentAdvancedSettings />

@@ -2,6 +2,7 @@ import type { EditorState } from 'lexical'
 import type { FC } from 'react'
 import type { Hotkey, ShortcutPopupDisplayMode, ShortcutPopupInsertHandler } from './plugins/shortcuts-popup-plugin'
 import type {
+  AgentOutputBlockType,
   ContextBlockType,
   CurrentBlockType,
   ErrorMessageBlockType,
@@ -22,6 +23,10 @@ import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import * as React from 'react'
+import {
+  AgentOutputBlock,
+  AgentOutputBlockReplacementBlock,
+} from './plugins/agent-output-block'
 import ComponentPickerBlock from './plugins/component-picker-block'
 import {
   ContextBlock,
@@ -90,6 +95,7 @@ type PromptEditorContentProps = {
   rosterReferenceBlock?: RosterReferenceBlockType
   externalToolBlock?: ExternalToolBlockType
   workflowVariableBlock?: WorkflowVariableBlockType
+  agentOutputBlock?: AgentOutputBlockType
   hitlInputBlock?: HITLInputBlockType
   currentBlock?: CurrentBlockType
   errorMessageBlock?: ErrorMessageBlockType
@@ -119,6 +125,7 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
   rosterReferenceBlock,
   externalToolBlock,
   workflowVariableBlock,
+  agentOutputBlock,
   hitlInputBlock,
   currentBlock,
   errorMessageBlock,
@@ -169,6 +176,7 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
           variableBlock={variableBlock}
           externalToolBlock={externalToolBlock}
           workflowVariableBlock={workflowVariableBlock}
+          agentOutputBlock={agentOutputBlock}
           currentBlock={currentBlock}
           errorMessageBlock={errorMessageBlock}
           lastRunBlock={lastRunBlock}
@@ -185,6 +193,7 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
           variableBlock={variableBlock}
           externalToolBlock={externalToolBlock}
           workflowVariableBlock={workflowVariableBlock}
+          agentOutputBlock={agentOutputBlock}
           currentBlock={currentBlock}
           errorMessageBlock={errorMessageBlock}
           lastRunBlock={lastRunBlock}
@@ -222,6 +231,12 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
         <>
           <WorkflowVariableBlock {...workflowVariableBlock} />
           <WorkflowVariableBlockReplacementBlock {...workflowVariableBlock} />
+        </>
+      )}
+      {agentOutputBlock?.show && (
+        <>
+          <AgentOutputBlock {...agentOutputBlock} />
+          <AgentOutputBlockReplacementBlock {...agentOutputBlock} />
         </>
       )}
       {hitlInputBlock?.show && (

@@ -270,7 +270,7 @@ function AgentPromptToolRows({
   onConfiguredToolsChange: (tools: AgentTool[]) => void
   onSelect: (token: string) => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation('agentV2')
   const language = useGetLanguage()
   const [activeTab, setActiveTab] = useState<ToolPromptTab>('all')
   const [expandedProviderIds, setExpandedProviderIds] = useState<Set<string>>(() => new Set())
@@ -296,12 +296,12 @@ function AgentPromptToolRows({
 
   const selectedTools = useMemo(() => configuredTools.flatMap(toSelectedToolValue), [configuredTools])
   const tabs = [
-    { key: 'all' as const, label: t('tabs.allTool', { ns: 'workflow' }) },
-    { key: ToolTabEnum.BuiltIn, label: t('tabs.plugin', { ns: 'workflow' }) },
-    { key: ToolTabEnum.Workflow, label: t('tabs.workflowTool', { ns: 'workflow' }) },
-    { key: ToolTabEnum.Custom, label: t('tabs.customTool', { ns: 'workflow' }) },
-    { key: ToolTabEnum.MCP, label: 'MCP' },
-    { key: 'cli' as const, label: t('agentDetail.configure.tools.cliTool', { ns: 'agentV2' }) },
+    { key: 'all' as const, label: t('agentDetail.configure.tools.toolTabs.all') },
+    { key: ToolTabEnum.BuiltIn, label: t('agentDetail.configure.tools.toolTabs.plugins') },
+    { key: ToolTabEnum.Workflow, label: t('agentDetail.configure.tools.toolTabs.workflow') },
+    { key: ToolTabEnum.Custom, label: t('agentDetail.configure.tools.toolTabs.custom') },
+    { key: ToolTabEnum.MCP, label: t('agentDetail.configure.tools.toolTabs.mcp') },
+    { key: 'cli' as const, label: t('agentDetail.configure.tools.toolTabs.cli') },
   ]
 
   const selectTools = (tools: AgentProviderToolDefaultValue[]) => {
@@ -463,13 +463,13 @@ function getProviderTypeLabel(
   t: ReturnType<typeof useTranslation>['t'],
 ) {
   if (provider.type === CollectionType.workflow)
-    return t('tabs.workflowTool', { ns: 'workflow' })
+    return t('agentDetail.configure.tools.toolTabs.workflow')
   if (provider.type === CollectionType.custom)
-    return t('tabs.customTool', { ns: 'workflow' })
+    return t('agentDetail.configure.tools.toolTabs.custom')
   if (provider.type === CollectionType.mcp)
-    return 'MCP'
+    return t('agentDetail.configure.tools.toolTabs.mcp')
 
-  return t('tabs.plugin', { ns: 'workflow' })
+  return t('agentDetail.configure.tools.toolTabs.plugins')
 }
 
 function AgentPromptProviderToolRow({
@@ -613,6 +613,8 @@ function AgentPromptCliToolRow({
   tool: Extract<AgentTool, { kind: 'cli' }>
   onClick: () => void
 }) {
+  const { t } = useTranslation('agentV2')
+
   return (
     <button
       type="button"
@@ -624,7 +626,9 @@ function AgentPromptCliToolRow({
           <span aria-hidden className="i-ri-terminal-box-line size-3.5 text-text-tertiary" />
         </span>
         <span className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary">{tool.name}</span>
-        <span className="shrink-0 system-xs-regular text-text-quaternary">CLI</span>
+        <span className="shrink-0 system-xs-regular text-text-quaternary">
+          {t('agentDetail.configure.tools.toolTabs.cli')}
+        </span>
       </span>
     </button>
   )

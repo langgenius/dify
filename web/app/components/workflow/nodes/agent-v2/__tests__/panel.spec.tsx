@@ -539,6 +539,12 @@ describe('agent/panel', () => {
     expect(mockPromptEditorProps[0]?.workflowVariableBlock).toMatchObject({
       show: true,
     })
+    expect(mockPromptEditorProps[0]?.agentOutputBlock).toMatchObject({
+      show: true,
+      outputs: expect.arrayContaining([
+        expect.objectContaining({ name: 'text' }),
+      ]),
+    })
     expect(mockPromptEditorProps[0]?.contextBlock).toBeUndefined()
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.task.insert' }))
@@ -547,6 +553,45 @@ describe('agent/panel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.task.mention' }))
     expect(mockInsertNodes.mock.calls[1]?.[0]?.[0]?.getTextContent()).toBe('{')
+  })
+
+  it('syncs declared outputs created from the agent task editor', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData()}
+        panelProps={panelProps}
+      />,
+    )
+
+    mockPromptEditorProps[0]?.agentOutputBlock?.onChange?.([
+      ...mockPromptEditorProps[0]!.agentOutputBlock!.outputs!,
+      {
+        name: 'summary',
+        type: 'string',
+        required: false,
+      },
+    ], 'Use [§output:summary:summary§]')
+
+    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
+      {
+        id: 'agent-node',
+        data: expect.objectContaining({
+          agent_task: 'Use [§output:summary:summary§]',
+          agent_declared_outputs: expect.arrayContaining([
+            expect.objectContaining({
+              name: 'summary',
+              type: 'string',
+              required: false,
+            }),
+          ]),
+        }),
+      },
+      expect.objectContaining({
+        sync: true,
+        notRefreshWhenSyncError: true,
+      }),
+    )
   })
 
   it('saves agent task to workflow draft node data', () => {
