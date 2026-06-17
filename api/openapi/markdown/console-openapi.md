@@ -663,7 +663,7 @@ Commit an uploaded file into the Agent App drive under files/<name>
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path |  | Yes | string |
+| agent_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -703,8 +703,8 @@ Commit an uploaded file into the Agent App drive under files/<name>
 | source | query | Filter by all, console/explore, api/service-api, web-app, debugger, openapi, or trigger | No | string |
 | start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
 | status | query | Filter by success, failed, or paused | No | string |
-| agent_id | path |  | Yes | string |
-| conversation_id | path |  | Yes | string |
+| agent_id | path |  | Yes | string (uuid) |
+| conversation_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
