@@ -5,6 +5,7 @@ import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessRulesEditor from '@/app/components/access-rules-editor'
+import { useStore } from '@/app/components/app/store'
 import { useLocale } from '@/context/i18n'
 import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import {
@@ -22,6 +23,7 @@ const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
   const { t } = useTranslation()
   const locale = useLocale()
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
+  const maintainerId = useStore(state => state.appDetail?.maintainer)
   const { data: appAccessRulesResponse, isLoading: isLoadingAppAccessRules } = useAppAccessRules(appId, language)
   const { data: appUserAccessSettingsResponse, isLoading: isLoadingAppUserAccessSettings } = useAppUserAccessSettings(appId)
   const { mutate: updateAppOpenScope, isPending: isUpdatingAppOpenScope } = useUpdateAppOpenScope(appId)
@@ -72,6 +74,7 @@ const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
           openScope={openScope}
           isUpdatingOpenScope={isUpdatingAppOpenScope}
           updatingAccountId={updatingAccountId}
+          maintainerId={maintainerId}
           onOpenScopeChange={handleOpenScopeChange}
           onUserAccessPoliciesChange={handleUserAccessPoliciesChange}
           onAddAccessSubject={handleUserAccessPoliciesChange}

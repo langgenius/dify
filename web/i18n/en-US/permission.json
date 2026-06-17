@@ -25,6 +25,7 @@
   "accessRule.individualPermissionSettingsTip": "Set permission exceptions for specific collaborators or groups. These settings override the default access level.",
   "accessRule.lockedSummary_one": "· {{count}} locked",
   "accessRule.lockedSummary_other": "· {{count}} locked",
+  "accessRule.maintainer": "Maintainer",
   "accessRule.newPermissionSet": "New permission set",
   "accessRule.noAvailableMembers": "No members available to add",
   "accessRule.noDescription": "No description",

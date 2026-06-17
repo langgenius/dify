@@ -221,6 +221,7 @@ export type GetMembersOfRoleRequest = {
 type Account = {
   account_id: string
   account_name: string
+  email?: string
   avatar?: string
 }
 

@@ -12,6 +12,10 @@ const mockDatasetUserAccessSettings = vi.hoisted(() => ({
   isLoading: false,
 }))
 
+const mockDatasetDetail = vi.hoisted(() => ({
+  dataset: undefined as { maintainer?: string | null } | undefined,
+}))
+
 const mockAccessRulesEditor = vi.hoisted(() => ({
   props: null as AccessRulesEditorProps | null,
 }))
@@ -39,6 +43,12 @@ vi.mock('@/service/access-control/use-dataset-access-config', () => ({
   })),
 }))
 
+vi.mock('@/context/dataset-detail', () => ({
+  useDatasetDetailContextWithSelector: vi.fn((selector: (state: { dataset?: { maintainer?: string | null } }) => unknown) => {
+    return selector({ dataset: mockDatasetDetail.dataset })
+  }),
+}))
+
 vi.mock('@/app/components/access-rules-editor', () => ({
   default: (props: AccessRulesEditorProps) => {
     mockAccessRulesEditor.props = props
@@ -55,6 +65,7 @@ describe('DatasetAccessConfigPage', () => {
     mockDatasetAccessRules.isLoading = false
     mockDatasetUserAccessSettings.data = []
     mockDatasetUserAccessSettings.isLoading = false
+    mockDatasetDetail.dataset = undefined
     mockAccessRulesEditor.props = null
   })
 
@@ -80,6 +91,14 @@ describe('DatasetAccessConfigPage', () => {
 
       expect(mockAccessRulesEditor.props?.isLoadingRules).toBe(true)
       expect(mockAccessRulesEditor.props?.isLoadingUserAccessSettings).toBe(true)
+    })
+
+    it('should pass the dataset maintainer id from dataset detail to the editor', () => {
+      mockDatasetDetail.dataset = { maintainer: 'account-1' }
+
+      render(<DatasetAccessConfigPage datasetId="dataset-1" />)
+
+      expect(mockAccessRulesEditor.props?.maintainerId).toBe('account-1')
     })
 
     it('should wire open scope and user policy updates', () => {

@@ -1,5 +1,6 @@
 import type { AccessRulesEditorProps } from '@/app/components/access-rules-editor'
 import { render, screen } from '@testing-library/react'
+import { useStore } from '@/app/components/app/store'
 import AppAccessConfigPage from '../index'
 
 const mockAppAccessRules = vi.hoisted(() => ({
@@ -56,6 +57,7 @@ describe('AppAccessConfigPage', () => {
     mockAppUserAccessSettings.data = []
     mockAppUserAccessSettings.isLoading = false
     mockAccessRulesEditor.props = null
+    useStore.setState({ appDetail: undefined })
   })
 
   // Rendering wires the app access rules into the shared editor.
@@ -80,6 +82,19 @@ describe('AppAccessConfigPage', () => {
 
       expect(mockAccessRulesEditor.props?.isLoadingRules).toBe(true)
       expect(mockAccessRulesEditor.props?.isLoadingUserAccessSettings).toBe(true)
+    })
+
+    it('should pass the app maintainer id from app detail to the editor', () => {
+      useStore.setState({
+        appDetail: {
+          id: 'app-1',
+          maintainer: 'account-1',
+        } as NonNullable<ReturnType<typeof useStore.getState>['appDetail']>,
+      })
+
+      render(<AppAccessConfigPage appId="app-1" />)
+
+      expect(mockAccessRulesEditor.props?.maintainerId).toBe('account-1')
     })
 
     it('should wire open scope and user policy updates', () => {

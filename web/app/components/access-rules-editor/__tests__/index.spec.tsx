@@ -38,6 +38,7 @@ const createUserAccessSetting = (): ResourceUserAccessSetting => ({
   account: {
     account_id: 'account-1',
     account_name: 'Evan',
+    email: 'evan@example.com',
   },
   roles: [{
     id: 'role-1',
@@ -139,6 +140,8 @@ describe('AccessRulesEditor', () => {
     expect(screen.getByRole('button', { name: /permission\.accessRule\.specificMembersOnly/ })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByText('permission.accessRule.individualPermissionSettings')).toBeInTheDocument()
     expect(screen.getByText('Evan')).toBeInTheDocument()
+    expect(screen.getByText('evan@example.com')).toBeInTheDocument()
+    expect(screen.queryByText('Maintainer')).not.toBeInTheDocument()
     expect(screen.getAllByText('Manage').length).toBeGreaterThan(0)
 
     fireEvent.click(screen.getByRole('button', { name: /permission\.accessRule\.allPermittedMembers/ }))
@@ -167,6 +170,33 @@ describe('AccessRulesEditor', () => {
     )
 
     expect(screen.getByText('permission.accessRule.defaultPermission')).toBeInTheDocument()
+  })
+
+  it('should mark maintainer rows and prevent editing them', () => {
+    const onUserAccessPoliciesChange = vi.fn()
+
+    render(
+      <AccessRulesEditor
+        rules={[createRule('app')]}
+        userAccessSettings={[createUserAccessSetting()]}
+        isLoadingRules={false}
+        isLoadingUserAccessSettings={false}
+        openScope="specific"
+        isUpdatingOpenScope={false}
+        updatingAccountId={null}
+        maintainerId="account-1"
+        onUserAccessPoliciesChange={onUserAccessPoliciesChange}
+      />,
+    )
+
+    expect(screen.getByText('permission.accessRule.maintainer')).toBeInTheDocument()
+    expect(screen.getByLabelText(/permission\.accessRule\.exceptionPermissionFor/)).toBeDisabled()
+
+    const removeButton = screen.getByRole('button', { name: 'common.operation.remove' })
+    expect(removeButton).toBeDisabled()
+
+    fireEvent.click(removeButton)
+    expect(onUserAccessPoliciesChange).not.toHaveBeenCalled()
   })
 
   it('should keep open scope unchanged when the confirmation is cancelled', () => {

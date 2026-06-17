@@ -25,6 +25,7 @@
   "accessRule.individualPermissionSettingsTip": "為指定協作者或群組設定權限例外。這些設定會覆蓋預設存取層級。",
   "accessRule.lockedSummary_one": "· {{count}} 個鎖定",
   "accessRule.lockedSummary_other": "· {{count}} 個鎖定",
+  "accessRule.maintainer": "維護者",
   "accessRule.newPermissionSet": "新增權限集",
   "accessRule.noAvailableMembers": "暫無可新增成員",
   "accessRule.noDescription": "無描述",

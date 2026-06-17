@@ -5,6 +5,7 @@ import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessRulesEditor from '@/app/components/access-rules-editor'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useLocale } from '@/context/i18n'
 import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import {
@@ -22,6 +23,7 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
   const { t } = useTranslation()
   const locale = useLocale()
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
+  const maintainerId = useDatasetDetailContextWithSelector(state => state.dataset?.maintainer)
   const { data: datasetAccessRulesResponse, isLoading: isLoadingDatasetAccessRules } = useDatasetAccessRules(datasetId, language)
   const { data: datasetUserAccessSettingsResponse, isLoading: isLoadingDatasetUserAccessSettings } = useDatasetUserAccessSettings(datasetId)
   const { mutate: updateDatasetOpenScope, isPending: isUpdatingDatasetOpenScope } = useUpdateDatasetOpenScope(datasetId)
@@ -72,6 +74,7 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
           openScope={openScope}
           isUpdatingOpenScope={isUpdatingDatasetOpenScope}
           updatingAccountId={updatingAccountId}
+          maintainerId={maintainerId}
           onOpenScopeChange={handleOpenScopeChange}
           onUserAccessPoliciesChange={handleUserAccessPoliciesChange}
           onAddAccessSubject={handleUserAccessPoliciesChange}

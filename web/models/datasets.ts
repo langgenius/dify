@@ -60,6 +60,7 @@ export type DataSet = {
   indexing_technique: IndexingType
   author_name?: string
   created_by: string
+  maintainer?: string
   updated_by: string
   updated_at: number
   app_count: number

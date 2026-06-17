@@ -24,6 +24,7 @@ export type AccessRulesEditorProps = {
   openScope: ResourceOpenScope
   isUpdatingOpenScope: boolean
   updatingAccountId: string | null
+  maintainerId?: string | null
   className?: string
   onOpenScopeChange?: (openScope: ResourceOpenScope) => void
   onUserAccessPoliciesChange?: (accountId: string, accessPolicyIds: string[]) => void
@@ -38,6 +39,7 @@ export default function AccessRulesEditor({
   openScope,
   isUpdatingOpenScope,
   updatingAccountId,
+  maintainerId,
   className,
   onOpenScopeChange,
   onUserAccessPoliciesChange,
@@ -127,6 +129,7 @@ export default function AccessRulesEditor({
                       setting={setting}
                       policyOptions={policyOptions}
                       disabled={!onUserAccessPoliciesChange || updatingAccountId === setting.account.account_id}
+                      isMaintainer={maintainerId === setting.account.account_id}
                       className={cn(index > 0 && 'border-t border-divider-subtle')}
                       onChange={onUserAccessPoliciesChange}
                     />
