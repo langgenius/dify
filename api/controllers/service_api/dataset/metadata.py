@@ -49,6 +49,17 @@ register_response_schema_models(
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/metadata")
 class DatasetMetadataCreateServiceApi(DatasetApiResource):
+    @service_api_ns.doc(
+        summary="Create Metadata Field",
+        description=(
+            "Create a custom metadata field for the knowledge base. Metadata fields can be used to "
+            "annotate documents with structured information."
+        ),
+        tags=["Metadata"],
+        responses={
+            201: "Metadata field created successfully.",
+        },
+    )
     @service_api_ns.expect(service_api_ns.models[MetadataArgs.__name__])
     @service_api_ns.doc("create_dataset_metadata")
     @service_api_ns.doc(description="Create metadata for a dataset")
@@ -77,6 +88,17 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
         metadata = MetadataService.create_metadata(dataset_id_str, metadata_args)
         return dump_response(DatasetMetadataResponse, metadata), 201
 
+    @service_api_ns.doc(
+        summary="List Metadata Fields",
+        description=(
+            "Returns the list of all metadata fields (both custom and built-in) for the knowledge base, "
+            "along with the count of documents using each field."
+        ),
+        tags=["Metadata"],
+        responses={
+            200: "Metadata fields for the knowledge base.",
+        },
+    )
     @service_api_ns.doc("get_dataset_metadata")
     @service_api_ns.doc(description="Get all metadata for a dataset")
     @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
@@ -102,6 +124,14 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/metadata/<uuid:metadata_id>")
 class DatasetMetadataServiceApi(DatasetApiResource):
+    @service_api_ns.doc(
+        summary="Update Metadata Field",
+        description="Rename a custom metadata field.",
+        tags=["Metadata"],
+        responses={
+            200: "Metadata field updated successfully.",
+        },
+    )
     @service_api_ns.expect(service_api_ns.models[MetadataUpdatePayload.__name__])
     @service_api_ns.doc("update_dataset_metadata")
     @service_api_ns.doc(description="Update metadata name")
@@ -131,6 +161,17 @@ class DatasetMetadataServiceApi(DatasetApiResource):
         metadata = MetadataService.update_metadata_name(dataset_id_str, metadata_id_str, payload.name)
         return dump_response(DatasetMetadataResponse, metadata), 200
 
+    @service_api_ns.doc(
+        summary="Delete Metadata Field",
+        description=(
+            "Permanently delete a custom metadata field. Documents using this field will lose their "
+            "metadata values for it."
+        ),
+        tags=["Metadata"],
+        responses={
+            204: "Success.",
+        },
+    )
     @service_api_ns.doc("delete_dataset_metadata")
     @service_api_ns.doc(description="Delete metadata")
     @service_api_ns.doc(params={"dataset_id": "Dataset ID", "metadata_id": "Metadata ID"})
@@ -158,6 +199,16 @@ class DatasetMetadataServiceApi(DatasetApiResource):
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/metadata/built-in")
 class DatasetMetadataBuiltInFieldServiceApi(DatasetApiResource):
+    @service_api_ns.doc(
+        summary="Get Built-in Metadata Fields",
+        description=(
+            "Returns the list of built-in metadata fields provided by the system (e.g., document type, source URL)."
+        ),
+        tags=["Metadata"],
+        responses={
+            200: "Built-in metadata fields.",
+        },
+    )
     @service_api_ns.doc("get_built_in_fields")
     @service_api_ns.doc(description="Get all built-in metadata fields")
     @service_api_ns.doc(
@@ -179,6 +230,14 @@ class DatasetMetadataBuiltInFieldServiceApi(DatasetApiResource):
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/metadata/built-in/<string:action>")
 class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
+    @service_api_ns.doc(
+        summary="Update Built-in Metadata Field",
+        description="Enable or disable built-in metadata fields for the knowledge base.",
+        tags=["Metadata"],
+        responses={
+            200: "Built-in metadata field toggled successfully.",
+        },
+    )
     @service_api_ns.doc("toggle_built_in_field")
     @service_api_ns.doc(description="Enable or disable built-in metadata field")
     @service_api_ns.doc(params={"dataset_id": "Dataset ID", "action": BUILT_IN_METADATA_ACTION_PARAM})
@@ -211,6 +270,17 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents/metadata")
 class DocumentMetadataEditServiceApi(DatasetApiResource):
+    @service_api_ns.doc(
+        summary="Update Document Metadata in Batch",
+        description=(
+            "Update metadata values for multiple documents at once. Each document in the request "
+            "receives the specified metadata key-value pairs."
+        ),
+        tags=["Metadata"],
+        responses={
+            200: "Document metadata updated successfully.",
+        },
+    )
     @service_api_ns.expect(service_api_ns.models[MetadataOperationData.__name__])
     @service_api_ns.doc("update_documents_metadata")
     @service_api_ns.doc(description="Update metadata for multiple documents")

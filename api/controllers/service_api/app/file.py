@@ -24,6 +24,24 @@ register_schema_models(service_api_ns, FileResponse)
 
 @service_api_ns.route("/files/upload")
 class FileApi(Resource):
+    @service_api_ns.doc(
+        summary="Upload File",
+        description=(
+            "Upload a file for use when sending messages, enabling multimodal understanding of images, "
+            "documents, audio, and video. Uploaded files are for use by the current end-user only."
+        ),
+        tags=["Files"],
+        responses={
+            201: "File uploaded successfully.",
+            400: (
+                "- `no_file_uploaded` : No file was provided in the request.\n"
+                "- `too_many_files` : Only one file is allowed per request.\n"
+                "- `filename_not_exists_error` : The uploaded file has no filename."
+            ),
+            413: "`file_too_large` : File size exceeded.",
+            415: "`unsupported_file_type` : File type not allowed.",
+        },
+    )
     @service_api_ns.doc("upload_file")
     @service_api_ns.doc(description="Upload a file for use in conversations")
     @service_api_ns.doc(consumes=["multipart/form-data"], params=multipart_file_params(include_user=True))

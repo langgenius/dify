@@ -15,6 +15,7 @@ from flask_restx import fields
 from flask_restx import swagger as restx_swagger
 from flask_restx.model import Model, OrderedModel, instance
 from flask_restx.swagger import Swagger
+from flask_restx.utils import not_none
 
 
 def _is_inline_field_map(value: object) -> TypeGuard[dict[object, object]]:
@@ -118,6 +119,9 @@ def install_swagger_compatibility() -> None:
     original_register_field = Swagger.register_field
     original_extract_path_params = restx_swagger.extract_path_params
     original_schema_from_parameter = Swagger.schema_from_parameter
+    original_description_for = Swagger.description_for
+    original_serialize_operation = Swagger.serialize_operation
+    original_parameters_and_request_body_for = Swagger.parameters_and_request_body_for
     original_as_dict = Swagger.as_dict
 
     def get_or_create_inline_model(self: Swagger, nested_fields: dict[object, object]) -> object:
@@ -154,6 +158,51 @@ def install_swagger_compatibility() -> None:
                 params[variable]["format"] = "uuid"
         return params
 
+    def description_for_with_explicit_summary(self: Swagger, doc: dict[str, object], method: str):
+        method_doc = doc.get(method)
+        if (
+            isinstance(method_doc, dict)
+            and isinstance(method_doc.get("summary"), str)
+            and isinstance(method_doc.get("description"), str)
+        ):
+            return method_doc["description"]
+        return original_description_for(self, doc, method)
+
+    def serialize_operation_with_explicit_summary_tags(
+        self: Swagger, doc: dict[str, object], method: str, inherited_request_body=None
+    ):
+        operation = original_serialize_operation(self, doc, method, inherited_request_body)
+        method_doc = doc.get(method)
+        if not isinstance(method_doc, dict):
+            return operation
+
+        summary = method_doc.get("summary")
+        if isinstance(summary, str):
+            operation["summary"] = summary
+
+        tags = method_doc.get("tags")
+        if isinstance(tags, list) and all(isinstance(tag, str) for tag in tags):
+            operation["tags"] = tags
+
+        return operation
+
+    def serialize_resource_with_explicit_operation_tags(self: Swagger, ns, resource, url, route_doc=None, **kwargs):
+        doc = self.extract_resource_doc(resource, url, route_doc=route_doc)
+        if doc is False:
+            return None
+
+        path_params, path_request_body = original_parameters_and_request_body_for(self, doc)
+        path: dict[str, object] = {"parameters": path_params or None}
+        methods = [method.lower() for method in resource.methods or []]
+        requested_methods = [method.lower() for method in kwargs.get("methods", [])]
+        for method in methods:
+            if doc[method] is False or requested_methods and method not in requested_methods:
+                continue
+            operation = self.serialize_operation(doc, method, path_request_body)
+            operation.setdefault("tags", [ns.name])
+            path[method] = operation
+        return not_none(path)
+
     def as_dict_with_inline_dict_support(self: Swagger):
         # Temporary set RESTX_INCLUDE_ALL_MODELS = false to prevent "length changed while iterating" error
         include_all_models = current_app.config.get("RESTX_INCLUDE_ALL_MODELS", False)
@@ -167,5 +216,8 @@ def install_swagger_compatibility() -> None:
     Swagger.register_field = register_field_with_inline_dict_support
     restx_swagger.extract_path_params = extract_path_params_with_uuid_format
     Swagger.schema_from_parameter = schema_from_parameter_with_description
+    Swagger.description_for = description_for_with_explicit_summary
+    Swagger.serialize_operation = serialize_operation_with_explicit_summary_tags
+    Swagger.serialize_resource = serialize_resource_with_explicit_operation_tags
     Swagger.as_dict = as_dict_with_inline_dict_support
     Swagger._dify_swagger_compatibility_installed = True
