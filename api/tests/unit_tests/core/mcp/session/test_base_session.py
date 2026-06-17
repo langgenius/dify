@@ -1,3 +1,4 @@
+import logging
 import queue
 import time
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -511,10 +512,8 @@ def test_receive_loop_http_error_unknown_id(streams):
 
 
 @pytest.mark.timeout(10)
-def test_receive_loop_validation_error_notification(streams):
-    from core.mcp.session.base_session import logger
-
-    with patch.object(logger, "warning") as mock_warning:
+def test_receive_loop_validation_error_notification(streams, caplog):
+    with caplog.at_level(logging.WARNING, logger="core.mcp.session.base_session"):
         read_stream, write_stream = streams
         session = MockSession(read_stream, write_stream, ReceiveRequest, RootModel[MockNotification])
 
@@ -523,7 +522,7 @@ def test_receive_loop_validation_error_notification(streams):
             read_stream.put(SessionMessage(message=JSONRPCMessage.model_validate(notif_payload)))
             time.sleep(1.0)
 
-        assert mock_warning.called
+    assert "Failed to validate notification" in caplog.text
 
 
 @pytest.mark.timeout(5)
@@ -571,16 +570,16 @@ def test_session_exit_timeout(streams):
 
 
 @pytest.mark.timeout(10)
-def test_receive_loop_fatal_exception(streams):
+def test_receive_loop_fatal_exception(streams, caplog):
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
 
     with patch.object(read_stream, "get", side_effect=RuntimeError("Fatal loop error")):
-        with patch("core.mcp.session.base_session.logger") as mock_logger:
+        with caplog.at_level(logging.ERROR, logger="core.mcp.session.base_session"):
             with pytest.raises(RuntimeError, match="Fatal loop error"):
                 with session:
                     pass
-            mock_logger.exception.assert_called_with("Error in message processing loop")
+            assert "Error in message processing loop" in caplog.text
 
 
 @pytest.mark.timeout(5)
