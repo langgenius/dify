@@ -1,12 +1,13 @@
 """FastAPI application factory for the Dify Agent run server.
 
-The HTTP process owns Redis clients, one shared plugin daemon ``httpx.AsyncClient``,
-route wiring, and a process-local scheduler. Run execution happens in background
-``asyncio`` tasks rather than request handlers, so client disconnects do not
-cancel the agent runtime. Redis persists run records and per-run event streams
-with configured retention only; it is not used as a job queue. Agenton layers and
-providers stay state-only: they borrow the lifespan-owned plugin daemon client
-through the runner and never create or close it themselves.
+The HTTP process owns Redis clients plus separate shared ``httpx.AsyncClient``
+instances for plugin-daemon and Dify API inner calls, route wiring, and a
+process-local scheduler. Run execution happens in background ``asyncio`` tasks
+rather than request handlers, so client disconnects do not cancel the agent
+runtime. Redis persists run records and per-run event streams with configured
+retention only; it is not used as a job queue. Agenton layers and providers
+stay state-only: they borrow the lifespan-owned clients through the runner and
+never create or close them themselves.
 """
 
 from collections.abc import AsyncGenerator
@@ -29,6 +30,8 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     layer_providers = create_default_layer_providers(
         plugin_daemon_url=resolved_settings.plugin_daemon_url,
         plugin_daemon_api_key=resolved_settings.plugin_daemon_api_key,
+        dify_api_inner_url=resolved_settings.dify_api_inner_url,
+        dify_api_inner_api_key=resolved_settings.dify_api_inner_api_key,
     )
     state: dict[str, object] = {}
 
@@ -36,6 +39,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         redis = Redis.from_url(resolved_settings.redis_url)
         plugin_daemon_http_client = create_plugin_daemon_http_client(resolved_settings)
+        dify_api_inner_http_client = create_dify_api_inner_http_client(resolved_settings)
         store = RedisRunStore(
             redis,
             prefix=resolved_settings.redis_prefix,
@@ -44,6 +48,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         scheduler = RunScheduler(
             store=store,
             plugin_daemon_http_client=plugin_daemon_http_client,
+            dify_api_http_client=dify_api_inner_http_client,
             shutdown_grace_seconds=resolved_settings.shutdown_grace_seconds,
             layer_providers=layer_providers,
         )
@@ -53,6 +58,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             yield
         finally:
             await scheduler.shutdown()
+            await dify_api_inner_http_client.aclose()
             await plugin_daemon_http_client.aclose()
             await redis.aclose()
 
@@ -75,17 +81,33 @@ def create_plugin_daemon_http_client(settings: ServerSettings) -> httpx.AsyncCli
     process and must be closed by the app lifespan after the scheduler has stopped
     using it.
     """
+    return _create_shared_http_client(settings)
+
+
+def create_dify_api_inner_http_client(settings: ServerSettings) -> httpx.AsyncClient:
+    """Create the lifespan-owned Dify API inner HTTP client.
+
+    The Dify API inner client intentionally shares the generic outbound HTTP
+    timeout and connection-pool settings with the plugin daemon client so
+    operational tuning stays in one place while endpoint URL/API keys remain
+    distinct server settings.
+    """
+    return _create_shared_http_client(settings)
+
+
+def _create_shared_http_client(settings: ServerSettings) -> httpx.AsyncClient:
+    """Build one shared HTTP client using generic outbound timeout/pool settings."""
     return httpx.AsyncClient(
         timeout=httpx.Timeout(
-            connect=settings.plugin_daemon_connect_timeout,
-            read=settings.plugin_daemon_read_timeout,
-            write=settings.plugin_daemon_write_timeout,
-            pool=settings.plugin_daemon_pool_timeout,
+            connect=settings.outbound_http_connect_timeout,
+            read=settings.outbound_http_read_timeout,
+            write=settings.outbound_http_write_timeout,
+            pool=settings.outbound_http_pool_timeout,
         ),
         limits=httpx.Limits(
-            max_connections=settings.plugin_daemon_max_connections,
-            max_keepalive_connections=settings.plugin_daemon_max_keepalive_connections,
-            keepalive_expiry=settings.plugin_daemon_keepalive_expiry,
+            max_connections=settings.outbound_http_max_connections,
+            max_keepalive_connections=settings.outbound_http_max_keepalive_connections,
+            keepalive_expiry=settings.outbound_http_keepalive_expiry,
         ),
         trust_env=False,
     )
@@ -94,4 +116,4 @@ def create_plugin_daemon_http_client(settings: ServerSettings) -> httpx.AsyncCli
 app = create_app()
 
 
-__all__ = ["app", "create_app", "create_plugin_daemon_http_client"]
+__all__ = ["app", "create_app", "create_dify_api_inner_http_client", "create_plugin_daemon_http_client"]

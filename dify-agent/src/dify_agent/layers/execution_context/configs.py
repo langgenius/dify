@@ -5,6 +5,10 @@ transport context shared by plugin-backed business layers. The identifiers are
 for observability and product correlation only; callers must not treat them as
 authorization proof. Server-only plugin-daemon settings are injected by the
 runtime provider factory and therefore do not appear in this public schema.
+
+Knowledge-base layers also read ``user_from`` from this shared config so the
+inner Dify API can distinguish platform-user and end-user searches without
+making that caller identity model-controlled.
 """
 
 from typing import ClassVar, Final, Literal, TypeAlias
@@ -29,6 +33,7 @@ class DifyExecutionContextLayerConfig(LayerConfig):
 
     tenant_id: str
     user_id: str | None = None
+    user_from: Literal["account", "end-user"] | None = None
     app_id: str | None = None
     workflow_id: str | None = None
     workflow_run_id: str | None = None

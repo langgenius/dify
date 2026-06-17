@@ -15,9 +15,10 @@ resolved into an output contract whose type both exposes the output schema to
 the model and performs runtime JSON Schema validation through custom Pydantic
 hooks. Invalid structured outputs therefore trigger Pydantic AI's normal
 output-validation retry behavior before Dify Agent emits ``run_succeeded``.
-Layers still never own the FastAPI lifespan-owned plugin daemon HTTP client.
-Successful terminal events contain both the JSON-safe final output and session
-snapshot; there are no separate output or snapshot events to correlate.
+Layers still never own the FastAPI lifespan-owned plugin daemon or Dify API
+inner HTTP clients. Successful terminal events contain both the JSON-safe final
+output and session snapshot; there are no separate output or snapshot events to
+correlate.
 """
 
 from collections.abc import AsyncIterable
@@ -32,6 +33,7 @@ from agenton.compositor import CompositorSessionSnapshot, LayerProviderInput
 from agenton.layers.types import PydanticAITool
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
 from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
+from dify_agent.layers.knowledge.layer import DifyKnowledgeBaseLayer
 from dify_agent.protocol.schemas import DIFY_AGENT_MODEL_LAYER_ID, CreateRunRequest, normalize_composition
 from dify_agent.runtime.agent_factory import create_agent, normalize_user_input
 from dify_agent.runtime.agenton_validation import is_agenton_enter_validation_runtime_error
@@ -70,6 +72,7 @@ class AgentRunRunner:
     run_id: str
     layer_providers: tuple[LayerProviderInput, ...]
     plugin_daemon_http_client: httpx.AsyncClient
+    dify_api_http_client: httpx.AsyncClient
 
     def __init__(
         self,
@@ -78,12 +81,14 @@ class AgentRunRunner:
         request: CreateRunRequest,
         run_id: str,
         plugin_daemon_http_client: httpx.AsyncClient,
+        dify_api_http_client: httpx.AsyncClient,
         layer_providers: tuple[LayerProviderInput, ...] | None = None,
     ) -> None:
         self.sink = sink
         self.request = request
         self.run_id = run_id
         self.plugin_daemon_http_client = plugin_daemon_http_client
+        self.dify_api_http_client = dify_api_http_client
         self.layer_providers = layer_providers if layer_providers is not None else create_default_layer_providers()
 
     async def run(self) -> None:
@@ -152,7 +157,11 @@ class AgentRunRunner:
                     )
                     llm_layer = run.get_layer(DIFY_AGENT_MODEL_LAYER_ID, DifyPluginLLMLayer)
                     model = llm_layer.get_model(http_client=self.plugin_daemon_http_client)
-                    tools = await _resolve_run_tools(run, http_client=self.plugin_daemon_http_client)
+                    tools = await _resolve_run_tools(
+                        run,
+                        plugin_daemon_http_client=self.plugin_daemon_http_client,
+                        dify_api_http_client=self.dify_api_http_client,
+                    )
                 except (KeyError, TypeError, RuntimeError, ValueError) as exc:
                     raise AgentRunValidationError(str(exc)) from exc
 
@@ -187,14 +196,17 @@ def _serialize_agent_output(output: object) -> JsonValue:
 async def _resolve_run_tools(
     run: Any,
     *,
-    http_client: httpx.AsyncClient,
+    plugin_daemon_http_client: httpx.AsyncClient,
+    dify_api_http_client: httpx.AsyncClient,
 ) -> list[PydanticAITool[object]]:
-    """Return the static compositor tools plus any Dify plugin runtime tools."""
+    """Return the static compositor tools plus any Dify runtime tools."""
     resolved_tools = list(cast(list[PydanticAITool[object]], run.tools))
     for slot in run.slots.values():
         layer = slot.layer
         if isinstance(layer, DifyPluginToolsLayer):
-            resolved_tools.extend(await layer.get_tools(http_client=http_client))
+            resolved_tools.extend(await layer.get_tools(http_client=plugin_daemon_http_client))
+        if isinstance(layer, DifyKnowledgeBaseLayer):
+            resolved_tools.extend(await layer.get_tools(http_client=dify_api_http_client))
     _validate_unique_tool_names(resolved_tools)
     return resolved_tools
 

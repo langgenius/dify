@@ -19,12 +19,14 @@ def test_execution_context_layer_config_forbids_runtime_settings_and_unknown_fie
     config = DifyExecutionContextLayerConfig(
         tenant_id="tenant-1",
         user_id="user-1",
+        user_from="account",
         workflow_id="workflow-1",
         invoke_from="workflow_run",
     )
 
     assert config.tenant_id == "tenant-1"
     assert config.user_id == "user-1"
+    assert config.user_from == "account"
     assert config.workflow_id == "workflow-1"
     assert config.invoke_from == "workflow_run"
 
