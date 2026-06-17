@@ -146,7 +146,9 @@ class AgentAppDetailWithSite(GenericAppDetailWithSite):
 
 
 class AgentAppPagination(GenericAppPagination):
-    data: list[AgentAppPartial] = Field(validation_alias=AliasChoices("items", "data"))
+    data: list[AgentAppPartial] = Field(  # type: ignore[assignment]  # pyrefly: ignore[bad-override-mutable-attribute]
+        validation_alias=AliasChoices("items", "data")
+    )
 
 
 register_schema_models(
