@@ -23,6 +23,7 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
+from models.model import IconType
 from models.workflow import Workflow
 from services.agent import composer_service, roster_service
 from services.agent.agent_soul_state import agent_soul_has_model
@@ -1447,6 +1448,128 @@ class TestAgentAppBackingAgent:
         assert target_agent.active_config_has_model is True
         assert target_agent.updated_by == "account-1"
         assert session.commits == 1
+
+    def test_duplicate_agent_app_inherits_webapp_access_mode(self, monkeypatch):
+        source_app = SimpleNamespace(
+            id="source-app",
+            tenant_id="tenant-1",
+            name="Iris",
+            description="source desc",
+            icon_type=None,
+            icon="robot",
+            icon_background="#fff",
+            api_rph=1,
+            api_rpm=2,
+            max_active_requests=3,
+            enable_site=True,
+            enable_api=True,
+            use_icon_as_answer_icon=False,
+            tracing=None,
+        )
+        source_agent = SimpleNamespace(id="source-agent", role="Analyst")
+        target_app = SimpleNamespace(id="target-app")
+        session = FakeSession()
+        service = AgentRosterService(session)
+        monkeypatch.setattr(service, "get_agent_app_model", lambda **_: source_app)
+        monkeypatch.setattr(service, "get_app_backing_agent", lambda **_: source_agent)
+        monkeypatch.setattr(service, "_copy_app_model_config", lambda **_: None)
+        monkeypatch.setattr(service, "_copy_agent_active_snapshot", lambda **_: None)
+        monkeypatch.setattr(service, "_next_duplicate_agent_name", lambda **_: "Iris copy")
+
+        class FakeAppService:
+            def create_app(self, tenant_id: str, params, account: object) -> object:
+                return target_app
+
+        access_mode_updates = []
+
+        class FakeWebAppAuth:
+            @classmethod
+            def get_app_access_mode_by_id(cls, app_id: str) -> object:
+                return SimpleNamespace(access_mode="private")
+
+            @classmethod
+            def update_app_access_mode(cls, app_id: str, access_mode: str) -> None:
+                access_mode_updates.append((app_id, access_mode))
+
+        monkeypatch.setattr(roster_service, "AppService", FakeAppService)
+        monkeypatch.setattr(
+            roster_service.FeatureService,
+            "get_system_features",
+            lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=True)),
+        )
+        monkeypatch.setattr(roster_service.EnterpriseService, "WebAppAuth", FakeWebAppAuth)
+
+        duplicated = service.duplicate_agent_app(
+            tenant_id="tenant-1",
+            agent_id="source-agent",
+            account=SimpleNamespace(id="account-1"),
+        )
+
+        assert duplicated is target_app
+        assert access_mode_updates == [("target-app", "private")]
+
+    def test_duplicate_agent_app_falls_back_to_public_access_mode(self, monkeypatch):
+        source_app = SimpleNamespace(
+            id="source-app",
+            tenant_id="tenant-1",
+            name="Iris",
+            description="source desc",
+            icon_type=IconType.EMOJI,
+            icon="robot",
+            icon_background="#fff",
+            api_rph=1,
+            api_rpm=2,
+            max_active_requests=3,
+            enable_site=True,
+            enable_api=True,
+            use_icon_as_answer_icon=False,
+            tracing=None,
+        )
+        source_agent = SimpleNamespace(id="source-agent", role="Analyst")
+        target_app = SimpleNamespace(id="target-app")
+        session = FakeSession()
+        service = AgentRosterService(session)
+        monkeypatch.setattr(service, "get_agent_app_model", lambda **_: source_app)
+        monkeypatch.setattr(service, "get_app_backing_agent", lambda **_: source_agent)
+        monkeypatch.setattr(service, "_copy_app_model_config", lambda **_: None)
+        monkeypatch.setattr(service, "_copy_agent_active_snapshot", lambda **_: None)
+        monkeypatch.setattr(service, "_next_duplicate_agent_name", lambda **_: "Iris copy")
+
+        class FakeAppService:
+            def create_app(self, tenant_id: str, params, account: object) -> object:
+                return target_app
+
+        access_mode_updates = []
+
+        class FakeWebAppAuth:
+            @classmethod
+            def get_app_access_mode_by_id(cls, app_id: str) -> object:
+                raise ValueError("not found")
+
+            @classmethod
+            def update_app_access_mode(cls, app_id: str, access_mode: str) -> None:
+                access_mode_updates.append((app_id, access_mode))
+
+        monkeypatch.setattr(roster_service, "AppService", FakeAppService)
+        monkeypatch.setattr(
+            roster_service.FeatureService,
+            "get_system_features",
+            lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=True)),
+        )
+        monkeypatch.setattr(roster_service.EnterpriseService, "WebAppAuth", FakeWebAppAuth)
+
+        service.duplicate_agent_app(
+            tenant_id="tenant-1",
+            agent_id="source-agent",
+            account=SimpleNamespace(id="account-1"),
+        )
+
+        assert access_mode_updates == [("target-app", "public")]
+
+    def test_normalize_app_icon_type(self):
+        assert AgentRosterService._normalize_app_icon_type(None) is None
+        assert AgentRosterService._normalize_app_icon_type(IconType.EMOJI) == "emoji"
+        assert AgentRosterService._normalize_app_icon_type("image") == "image"
 
 
 class TestListWorkflowsReferencingAppAgent:
