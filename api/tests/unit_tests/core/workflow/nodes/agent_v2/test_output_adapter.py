@@ -6,7 +6,6 @@ from agenton.compositor import CompositorSessionSnapshot
 from clients.agent_backend import (
     AgentBackendRunCancelledInternalEvent,
     AgentBackendRunFailedInternalEvent,
-    AgentBackendRunPausedInternalEvent,
     AgentBackendRunSucceededInternalEvent,
 )
 from core.workflow.file_reference import build_file_reference
@@ -142,24 +141,6 @@ def test_success_output_adapter_preserves_dict_output():
     assert result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]["session_snapshot"] == {
         "layer_count": 0,
     }
-
-
-def test_failure_output_adapter_maps_paused_to_unsupported_failure():
-    result = WorkflowAgentOutputAdapter().build_failure_result(
-        event=AgentBackendRunPausedInternalEvent(
-            run_id="run-1",
-            source_event_id="2-0",
-            reason="human",
-            message=None,
-            session_snapshot=None,
-        ),
-        inputs={},
-        process_data={},
-        metadata={},
-    )
-
-    assert result.status == WorkflowNodeExecutionStatus.FAILED
-    assert result.error_type == "agent_backend_paused_unsupported"
 
 
 def test_failure_output_adapter_preserves_backend_failed_reason():

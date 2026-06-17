@@ -3,6 +3,13 @@
 import * as z from 'zod'
 
 /**
+ * DatasourceCredentialsResponse
+ */
+export const zDatasourceCredentialsResponse = z.object({
+  result: z.unknown(),
+})
+
+/**
  * DatasourceCredentialPayload
  */
 export const zDatasourceCredentialPayload = z.object({
@@ -59,12 +66,12 @@ export const zDatasourceUpdateNamePayload = z.object({
 /**
  * Success
  */
-export const zGetAuthPluginDatasourceDefaultListResponse = z.record(z.string(), z.unknown())
+export const zGetAuthPluginDatasourceDefaultListResponse = zDatasourceCredentialsResponse
 
 /**
  * Success
  */
-export const zGetAuthPluginDatasourceListResponse = z.record(z.string(), z.unknown())
+export const zGetAuthPluginDatasourceListResponse = zDatasourceCredentialsResponse
 
 export const zGetAuthPluginDatasourceByProviderIdPath = z.object({
   provider_id: z.string(),
@@ -73,7 +80,7 @@ export const zGetAuthPluginDatasourceByProviderIdPath = z.object({
 /**
  * Success
  */
-export const zGetAuthPluginDatasourceByProviderIdResponse = z.record(z.string(), z.unknown())
+export const zGetAuthPluginDatasourceByProviderIdResponse = zDatasourceCredentialsResponse
 
 export const zPostAuthPluginDatasourceByProviderIdBody = zDatasourceCredentialPayload
 
@@ -84,7 +91,7 @@ export const zPostAuthPluginDatasourceByProviderIdPath = z.object({
 /**
  * Success
  */
-export const zPostAuthPluginDatasourceByProviderIdResponse = z.record(z.string(), z.unknown())
+export const zPostAuthPluginDatasourceByProviderIdResponse = zSimpleResultResponse
 
 export const zDeleteAuthPluginDatasourceByProviderIdCustomClientPath = z.object({
   provider_id: z.string(),
@@ -104,10 +111,7 @@ export const zPostAuthPluginDatasourceByProviderIdCustomClientPath = z.object({
 /**
  * Success
  */
-export const zPostAuthPluginDatasourceByProviderIdCustomClientResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostAuthPluginDatasourceByProviderIdCustomClientResponse = zSimpleResultResponse
 
 export const zPostAuthPluginDatasourceByProviderIdDefaultBody = zDatasourceDefaultPayload
 
@@ -140,7 +144,7 @@ export const zPostAuthPluginDatasourceByProviderIdUpdatePath = z.object({
 /**
  * Success
  */
-export const zPostAuthPluginDatasourceByProviderIdUpdateResponse = z.record(z.string(), z.unknown())
+export const zPostAuthPluginDatasourceByProviderIdUpdateResponse = zSimpleResultResponse
 
 export const zPostAuthPluginDatasourceByProviderIdUpdateNameBody = zDatasourceUpdateNamePayload
 

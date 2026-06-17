@@ -24,6 +24,9 @@ const preview: Preview = {
     docs: {
       toc: true,
     },
+    a11y: {
+      test: 'error',
+    },
   },
   tags: ['autodocs'],
 }

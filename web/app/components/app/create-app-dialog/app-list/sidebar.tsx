@@ -1,6 +1,6 @@
 'use client'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiStickyNoteAddLine, RiThumbUpLine } from '@remixicon/react'
+import { RiStickyNoteAddLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 
@@ -52,11 +52,6 @@ function CategoryItem({ category, active, onClick }: CategoryItemProps) {
         className={cn('group flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg border-none bg-transparent p-1 pl-3 text-left hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden [&.active]:bg-state-base-active', active && 'active')}
         onClick={() => { onClick?.(category) }}
       >
-        {category === AppCategories.RECOMMENDED && (
-          <div className="inline-flex size-5 items-center justify-center rounded-md">
-            <RiThumbUpLine className="size-4 text-components-menu-item-text group-[.active]:text-components-menu-item-text-active" aria-hidden="true" />
-          </div>
-        )}
         <AppCategoryLabel
           category={category}
           className={cn('system-sm-medium text-components-menu-item-text group-hover:text-components-menu-item-text-hover group-[.active]:text-components-menu-item-text-active', active && 'system-sm-semibold')}

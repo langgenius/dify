@@ -3,7 +3,7 @@ import logging
 from werkzeug.exceptions import InternalServerError
 
 from controllers.common.controller_schemas import WorkflowRunPayload
-from controllers.common.fields import SimpleResultResponse
+from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import (
@@ -33,7 +33,7 @@ from services.errors.llm import InvokeRateLimitError
 logger = logging.getLogger(__name__)
 
 register_schema_models(web_ns, WorkflowRunPayload)
-register_response_schema_models(web_ns, SimpleResultResponse)
+register_response_schema_models(web_ns, GeneratedAppResponse, SimpleResultResponse)
 
 
 @web_ns.route("/workflows/run")
@@ -51,6 +51,7 @@ class WorkflowRunApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
+    @web_ns.response(200, "Success", web_ns.models[GeneratedAppResponse.__name__])
     def post(self, app_model: App, end_user: EndUser):
         """
         Run workflow

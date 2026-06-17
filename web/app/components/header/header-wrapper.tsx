@@ -1,10 +1,10 @@
 'use client'
 import type { EventEmitterValue } from '@/context/event-emitter'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useLocalStorage } from 'foxact/use-local-storage'
 import * as React from 'react'
 import { useState } from 'react'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { useLocalStorage } from '@/hooks/use-local-storage'
 import { usePathname } from '@/next/navigation'
 import s from './index.module.css'
 
@@ -17,7 +17,6 @@ const HeaderWrapper = ({
 }: HeaderWrapperProps) => {
   const pathname = usePathname()
   const isBordered = ['/apps', '/snippets', '/datasets/create', '/tools'].includes(pathname)
-  // Check if the current path is a workflow canvas & fullscreen
   const inWorkflowCanvas = pathname.endsWith('/workflow')
   const isPipelineCanvas = pathname.endsWith('/pipeline')
   const [storedHideHeader] = useLocalStorage<boolean>('workflow-canvas-maximize', false)

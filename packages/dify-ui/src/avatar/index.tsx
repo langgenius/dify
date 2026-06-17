@@ -1,3 +1,5 @@
+'use client'
+
 import type { ImageLoadingStatus } from '@base-ui/react/avatar'
 import { Avatar as BaseAvatar } from '@base-ui/react/avatar'
 import { cn } from '../cn'

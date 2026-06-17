@@ -44,9 +44,9 @@ import ModifyRetrievalModal from './modify-retrieval-modal'
 
 const limit = 10
 
-type Props = {
+type Props = Readonly<{
   datasetId: string
-}
+}>
 
 const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   const { t } = useTranslation()

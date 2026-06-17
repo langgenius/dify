@@ -25,7 +25,7 @@ describe('SegmentedControl wrappers', () => {
     await expect.element(screen.getByRole('button', { name: 'One' })).toHaveClass(
       'data-pressed:bg-components-segmented-control-item-active-bg',
       'data-pressed:text-text-accent-light-mode-only',
-      'focus-visible:z-10',
+      'focus-visible:ring-inset',
     )
   })
 

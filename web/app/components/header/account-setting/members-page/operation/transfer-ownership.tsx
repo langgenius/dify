@@ -16,9 +16,9 @@ import { useAppContext } from '@/context/app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useWorkspacePermissions } from '@/service/use-workspace'
 
-type Props = {
+type Props = Readonly<{
   onOperate: () => void
-}
+}>
 
 const TransferOwnership = ({ onOperate }: Props) => {
   const { t } = useTranslation()

@@ -21,6 +21,7 @@ from pydantic import BaseModel, ValidationError
 
 from controllers.common.schema import query_params_from_model, query_params_from_request
 from controllers.openapi import openapi_ns
+from controllers.openapi._errors import ErrorBody
 
 
 def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | None = None) -> Callable:
@@ -51,6 +52,8 @@ def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | Non
             openapi_ns.doc(params=query_params_from_model(query))(wrapper)
         if body is not None:
             openapi_ns.expect(openapi_ns.models[body.__name__])(wrapper)
+        if query is not None or body is not None:
+            openapi_ns.response(422, "Validation error", openapi_ns.models[ErrorBody.__name__])(wrapper)
         return wrapper
 
     return decorator
@@ -76,6 +79,7 @@ def returns(code: int, model: type[BaseModel], description: str | None = None) -
             return result
 
         openapi_ns.response(code, description or model.__name__, openapi_ns.models[model.__name__])(wrapper)
+        openapi_ns.response("default", "Error", openapi_ns.models[ErrorBody.__name__])(wrapper)
         return wrapper
 
     return decorator

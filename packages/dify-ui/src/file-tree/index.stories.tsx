@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { ReactNode } from 'react'
 import type { FileTreeIconType } from '.'
-import { useState } from 'react'
+import * as React from 'react'
+import { expect } from 'storybook/test'
 import {
   FileTreeBadge,
   FileTreeFile,
@@ -118,7 +118,7 @@ function FileTreeNodeRows({
 }
 
 function ComposedFileTree() {
-  const [selectedItemId, setSelectedItemId] = useState<string | null>('button')
+  const [selectedItemId, setSelectedItemId] = React.useState<string | null>('button')
 
   return (
     <FileTreeRoot
@@ -177,7 +177,7 @@ function ComposedFileTree() {
 }
 
 function DataDrivenFileTree() {
-  const [selectedItemId, setSelectedItemId] = useState<string | null>('app-components-file-tree')
+  const [selectedItemId, setSelectedItemId] = React.useState<string | null>('app-components-file-tree')
 
   return (
     <FileTreeRoot
@@ -241,7 +241,7 @@ function StateFrame({
   children,
 }: {
   label: string
-  children: ReactNode
+  children: React.ReactNode
 }) {
   return (
     <div className="w-80 min-w-0 space-y-1">
@@ -331,6 +331,19 @@ function VisualStates() {
 
 export const Default: Story = {
   render: () => <ComposedFileTree />,
+  play: async ({ canvas, userEvent }) => {
+    const srcFolder = canvas.getByRole('button', { name: 'src' })
+
+    await expect(canvas.getByRole('button', { name: 'components' })).toBeVisible()
+
+    await userEvent.click(srcFolder)
+    await expect(srcFolder).toHaveAttribute('aria-expanded', 'false')
+    await expect(canvas.queryByRole('button', { name: 'components' })).not.toBeInTheDocument()
+
+    await userEvent.click(srcFolder)
+    await expect(srcFolder).toHaveAttribute('aria-expanded', 'true')
+    await expect(canvas.getByRole('button', { name: 'components' })).toBeVisible()
+  },
 }
 
 export const DataDriven: Story = {

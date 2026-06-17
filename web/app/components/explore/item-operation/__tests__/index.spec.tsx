@@ -168,12 +168,12 @@ describe('ItemOperation', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should keep the menu open when item hover leaves', async () => {
-      const { props, rerender } = renderComponent({ isItemHovering: true })
+    it('should keep the menu open after rerender', async () => {
+      const { props, rerender } = renderComponent()
       fireEvent.click(screen.getByTestId('item-operation-trigger'))
       await screen.findByText('explore.sidebar.action.pin')
 
-      rerender(<ItemOperation {...props} isItemHovering={false} />)
+      rerender(<ItemOperation {...props} />)
 
       expect(screen.getByText('explore.sidebar.action.pin')).toBeInTheDocument()
     })

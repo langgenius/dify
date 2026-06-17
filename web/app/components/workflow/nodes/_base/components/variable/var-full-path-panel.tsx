@@ -7,12 +7,12 @@ import { PickerPanelMain as Panel } from '@/app/components/workflow/nodes/_base/
 import { BlockEnum } from '@/app/components/workflow/types'
 import { Type } from '../../../llm/types'
 
-type Props = {
+type Props = Readonly<{
   nodeName: string
   path: string[]
   varType: TypeWithArray
   nodeType?: BlockEnum
-}
+}>
 
 const VarFullPathPanel: FC<Props> = ({
   nodeName,

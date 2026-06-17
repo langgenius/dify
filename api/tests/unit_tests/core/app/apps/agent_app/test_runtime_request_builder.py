@@ -186,3 +186,52 @@ class TestAgentAppRuntimeRequestBuilder:
             "dify_tool_names": [],
             "cli_tool_count": 1,
         }
+
+
+# ── ENG-623: drive declaration on the Agent App surface ──────────────────────
+
+
+def _soul_with_model_and_skill() -> AgentSoulConfig:
+    from models.agent_config_entities import AgentSkillRefConfig
+
+    soul = _soul_with_model()
+    soul.skills_files.skills = [
+        AgentSkillRefConfig.model_validate(
+            {
+                "id": "abc",
+                "name": "Tender Analyzer",
+                "description": "Parses RFPs.",
+                "skill_md_key": "tender-analyzer/SKILL.md",
+            }
+        )
+    ]
+    return soul
+
+
+class TestAgentAppDriveLayer:
+    def test_drive_layer_injected_when_flag_enabled(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
+        )
+        builder = AgentAppRuntimeRequestBuilder(
+            credentials_provider=_FakeCredentialsProvider(),
+            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(_soul_with_model_and_skill()))
+
+        drive = next(layer for layer in result.request.composition.layers if layer.name == "drive")
+        assert drive.type == "dify.drive"
+        assert drive.config.drive_ref == "agent-agent-1"
+        assert [skill.skill_md_key for skill in drive.config.skills] == ["tender-analyzer/SKILL.md"]
+        # injected right after execution_context, mirroring the workflow surface
+        names = [layer.name for layer in result.request.composition.layers]
+        assert names.index("drive") == names.index("execution_context") + 1
+
+    def test_no_drive_layer_when_flag_disabled(self):
+        builder = AgentAppRuntimeRequestBuilder(
+            credentials_provider=_FakeCredentialsProvider(),
+            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+        result = builder.build(_ctx(_soul_with_model_and_skill()))
+        assert all(layer.name != "drive" for layer in result.request.composition.layers)

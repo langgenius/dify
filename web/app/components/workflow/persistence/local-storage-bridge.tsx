@@ -1,5 +1,5 @@
+import { useLocalStorage, useSetLocalStorage } from 'foxact/use-local-storage'
 import { useEffect, useLayoutEffect as useLayoutEffectFromReact } from 'react'
-import { useLocalStorage, useSetLocalStorage } from '@/hooks/use-local-storage'
 import { useStore, useWorkflowStore } from '../store'
 import {
   isControlMode,

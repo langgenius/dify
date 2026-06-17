@@ -1,11 +1,12 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type { HTMLAttributes, ReactNode } from 'react'
+import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Autocomplete as BaseAutocomplete } from '@base-ui/react/autocomplete'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
+import { textControlCompoundFocusClassName } from '../form-control-shared'
 import {
   overlayIndicatorClassName,
   overlayLabelClassName,
@@ -49,7 +50,7 @@ const autocompleteInputGroupVariants = cva(
   [
     'group/autocomplete flex w-full min-w-0 items-center border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color,box-shadow]',
     'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
-    'focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs',
+    textControlCompoundFocusClassName,
     'data-focused:border-components-input-border-active data-focused:bg-components-input-bg-active data-focused:shadow-xs',
     'data-disabled:cursor-not-allowed data-disabled:border-transparent data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled',
     'data-disabled:hover:border-transparent data-disabled:hover:bg-components-input-bg-disabled',
@@ -223,7 +224,7 @@ export function AutocompleteIcon({
 }
 
 type AutocompleteContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -302,7 +303,7 @@ export function AutocompleteItem({
   )
 }
 
-export type AutocompleteItemTextProps = HTMLAttributes<HTMLSpanElement>
+export type AutocompleteItemTextProps = React.ComponentProps<'span'>
 
 export function AutocompleteItemText({
   className,
@@ -368,7 +369,7 @@ export function AutocompleteItemIndicator({
   className,
   children,
   ...props
-}: HTMLAttributes<HTMLSpanElement>) {
+}: React.ComponentProps<'span'>) {
   return (
     <span
       className={cn(overlayIndicatorClassName, className)}

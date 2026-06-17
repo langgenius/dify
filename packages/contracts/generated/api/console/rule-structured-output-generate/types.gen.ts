@@ -9,6 +9,8 @@ export type RuleStructuredOutputPayload = {
   model_config: ModelConfig
 }
 
+export type GeneratorResponse = unknown
+
 export type ModelConfig = {
   completion_params?: {
     [key: string]: unknown
@@ -28,21 +30,12 @@ export type PostRuleStructuredOutputGenerateData = {
 }
 
 export type PostRuleStructuredOutputGenerateErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  402: {
-    [key: string]: unknown
-  }
+  400: unknown
+  402: unknown
 }
 
-export type PostRuleStructuredOutputGenerateError
-  = PostRuleStructuredOutputGenerateErrors[keyof PostRuleStructuredOutputGenerateErrors]
-
 export type PostRuleStructuredOutputGenerateResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratorResponse
 }
 
 export type PostRuleStructuredOutputGenerateResponse

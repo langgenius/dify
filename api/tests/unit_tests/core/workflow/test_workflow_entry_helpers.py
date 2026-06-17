@@ -338,6 +338,52 @@ class TestWorkflowEntryRun:
 
         assert list(entry.run()) == []
 
+    def test_iter_dify_graph_engine_events_applies_response_stream_filter(self):
+        graph_engine = MagicMock()
+        graph_engine.run.return_value = iter([sentinel.raw_event])
+
+        with (
+            patch.object(
+                workflow_entry.GraphEventFilterContext,
+                "from_engine",
+                return_value=sentinel.filter_context,
+            ) as from_engine,
+            patch.object(
+                workflow_entry,
+                "ResponseStreamFilter",
+                return_value=sentinel.response_stream_filter,
+            ) as response_stream_filter_cls,
+            patch.object(
+                workflow_entry,
+                "filter_graph_events",
+                return_value=iter([sentinel.filtered_event]),
+            ) as filter_graph_events,
+        ):
+            events = list(workflow_entry.iter_dify_graph_engine_events(graph_engine))
+
+        assert events == [sentinel.filtered_event]
+        from_engine.assert_called_once_with(graph_engine)
+        response_stream_filter_cls.assert_called_once_with()
+        filter_graph_events.assert_called_once_with(
+            graph_engine.run.return_value,
+            context=sentinel.filter_context,
+            filters=[sentinel.response_stream_filter],
+        )
+
+    def test_run_delegates_to_dify_event_iterator(self):
+        entry = object.__new__(workflow_entry.WorkflowEntry)
+        entry.graph_engine = sentinel.graph_engine
+
+        with patch.object(
+            workflow_entry,
+            "iter_dify_graph_engine_events",
+            return_value=iter([sentinel.filtered_event]),
+        ) as iter_dify_graph_engine_events:
+            events = list(entry.run())
+
+        assert events == [sentinel.filtered_event]
+        iter_dify_graph_engine_events.assert_called_once_with(sentinel.graph_engine)
+
     def test_run_emits_failed_event_for_unexpected_errors(self):
         entry = object.__new__(workflow_entry.WorkflowEntry)
         entry.graph_engine = MagicMock()

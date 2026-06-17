@@ -5,14 +5,14 @@ from uuid import UUID
 
 from flask import abort, request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, RootModel, ValidationError
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
 from controllers.common.fields import SimpleResultResponse
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     ConversationCompletedError,
@@ -21,6 +21,8 @@ from controllers.console.app.error import (
 )
 from controllers.console.app.workflow import (
     RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE,
+    DefaultBlockConfigResponse,
+    DefaultBlockConfigsResponse,
     WorkflowPaginationResponse,
     WorkflowResponse,
 )
@@ -48,7 +50,7 @@ from fields.workflow_run_fields import (
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs import helper
 from libs.helper import TimestampField, UUIDStrOrEmpty, dump_response
-from libs.login import current_user, login_required
+from libs.login import login_required
 from models import Account
 from models.dataset import Pipeline
 from models.model import EndUser
@@ -67,14 +69,14 @@ logger = logging.getLogger(__name__)
 class DraftWorkflowSyncPayload(BaseModel):
     graph: dict[str, Any]
     hash: str | None = None
-    environment_variables: list[dict[str, Any]] | None = None
-    conversation_variables: list[dict[str, Any]] | None = None
-    rag_pipeline_variables: list[dict[str, Any]] | None = None
-    features: dict[str, Any] | None = None
+    environment_variables: list[dict[str, Any]] | None = Field(default=None)
+    conversation_variables: list[dict[str, Any]] | None = Field(default=None)
+    rag_pipeline_variables: list[dict[str, Any]] | None = Field(default=None)
+    features: dict[str, Any] | None = Field(default=None)
 
 
 class NodeRunPayload(BaseModel):
-    inputs: dict[str, Any] | None = None
+    inputs: dict[str, Any] | None = Field(default=None)
 
 
 class NodeRunRequiredPayload(BaseModel):
@@ -131,6 +133,14 @@ class RagPipelineWorkflowPublishResponse(ResponseModel):
     created_at: int
 
 
+class RagPipelineOpaqueResponse(RootModel[Any]):
+    root: Any
+
+
+class RagPipelineStepParametersResponse(ResponseModel):
+    variables: Any
+
+
 register_schema_models(
     console_ns,
     DraftWorkflowSyncPayload,
@@ -149,6 +159,10 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
+    DefaultBlockConfigResponse,
+    DefaultBlockConfigsResponse,
+    RagPipelineOpaqueResponse,
+    RagPipelineStepParametersResponse,
     RagPipelineWorkflowPublishResponse,
     RagPipelineWorkflowSyncResponse,
     SimpleResultResponse,
@@ -192,6 +206,7 @@ class DraftRagPipelineApi(Resource):
     @with_current_user
     @get_rag_pipeline
     @edit_permission_required
+    @console_ns.expect(console_ns.models[DraftWorkflowSyncPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[RagPipelineWorkflowSyncResponse.__name__])
     def post(self, current_user: Account, pipeline: Pipeline):
         """
@@ -244,6 +259,7 @@ class DraftRagPipelineApi(Resource):
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/iteration/nodes/<string:node_id>/run")
 class RagPipelineDraftRunIterationNodeApi(Resource):
     @console_ns.expect(console_ns.models[NodeRunPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[RagPipelineOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -277,6 +293,7 @@ class RagPipelineDraftRunIterationNodeApi(Resource):
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/loop/nodes/<string:node_id>/run")
 class RagPipelineDraftRunLoopNodeApi(Resource):
     @console_ns.expect(console_ns.models[NodeRunPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[RagPipelineOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -310,6 +327,7 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/run")
 class DraftRagPipelineRunApi(Resource):
     @console_ns.expect(console_ns.models[DraftWorkflowRunPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[RagPipelineOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -340,6 +358,7 @@ class DraftRagPipelineRunApi(Resource):
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/run")
 class PublishedRagPipelineRunApi(Resource):
     @console_ns.expect(console_ns.models[PublishedWorkflowRunPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[RagPipelineOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -371,6 +390,7 @@ class PublishedRagPipelineRunApi(Resource):
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/run")
 class RagPipelinePublishedDatasourceNodeRunApi(Resource):
     @console_ns.expect(console_ns.models[DatasourceNodeRunPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[RagPipelineOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -402,6 +422,7 @@ class RagPipelinePublishedDatasourceNodeRunApi(Resource):
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/datasource/nodes/<string:node_id>/run")
 class RagPipelineDraftDatasourceNodeRunApi(Resource):
     @console_ns.expect(console_ns.models[DatasourceNodeRunPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[RagPipelineOpaqueResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
@@ -541,6 +562,11 @@ class PublishedRagPipelineApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/default-workflow-block-configs")
 class DefaultRagPipelineBlockConfigsApi(Resource):
+    @console_ns.response(
+        200,
+        "Default block configs retrieved successfully",
+        console_ns.models[DefaultBlockConfigsResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -557,6 +583,12 @@ class DefaultRagPipelineBlockConfigsApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/default-workflow-block-configs/<string:block_type>")
 class DefaultRagPipelineBlockConfigApi(Resource):
+    @console_ns.doc(params=query_params_from_model(DefaultBlockConfigQuery))
+    @console_ns.response(
+        200,
+        "Default block config retrieved successfully",
+        console_ns.models[DefaultBlockConfigResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -582,6 +614,7 @@ class DefaultRagPipelineBlockConfigApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows")
 class PublishedAllRagPipelineApi(Resource):
+    @console_ns.doc(params=query_params_from_model(WorkflowListQuery))
     @console_ns.response(
         200,
         "Published workflows retrieved successfully",
@@ -673,6 +706,7 @@ class RagPipelineByIdApi(Resource):
     @edit_permission_required
     @with_current_user
     @get_rag_pipeline
+    @console_ns.expect(console_ns.models[WorkflowUpdatePayload.__name__])
     def patch(self, current_user: Account, pipeline: Pipeline, workflow_id: str):
         """
         Update workflow attributes
@@ -734,6 +768,8 @@ class RagPipelineByIdApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/processing/parameters")
 class PublishedRagPipelineSecondStepApi(Resource):
+    @console_ns.doc(params=query_params_from_model(NodeIdQuery))
+    @console_ns.response(200, "Success", console_ns.models[RagPipelineStepParametersResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -754,6 +790,8 @@ class PublishedRagPipelineSecondStepApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/pre-processing/parameters")
 class PublishedRagPipelineFirstStepApi(Resource):
+    @console_ns.doc(params=query_params_from_model(NodeIdQuery))
+    @console_ns.response(200, "Success", console_ns.models[RagPipelineStepParametersResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -774,6 +812,8 @@ class PublishedRagPipelineFirstStepApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/pre-processing/parameters")
 class DraftRagPipelineFirstStepApi(Resource):
+    @console_ns.doc(params=query_params_from_model(NodeIdQuery))
+    @console_ns.response(200, "Success", console_ns.models[RagPipelineStepParametersResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -794,6 +834,8 @@ class DraftRagPipelineFirstStepApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/processing/parameters")
 class DraftRagPipelineSecondStepApi(Resource):
+    @console_ns.doc(params=query_params_from_model(NodeIdQuery))
+    @console_ns.response(200, "Success", console_ns.models[RagPipelineStepParametersResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -815,6 +857,7 @@ class DraftRagPipelineSecondStepApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflow-runs")
 class RagPipelineWorkflowRunListApi(Resource):
+    @console_ns.doc(params=query_params_from_model(WorkflowRunQuery))
     @console_ns.response(
         200,
         "Workflow runs retrieved successfully",
@@ -835,7 +878,7 @@ class RagPipelineWorkflowRunListApi(Resource):
             }
         )
         args = {
-            "last_id": str(query.last_id) if query.last_id else None,
+            "last_id": query.last_id or None,
             "limit": query.limit,
         }
 
@@ -881,7 +924,8 @@ class RagPipelineWorkflowRunNodeExecutionListApi(Resource):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
-    def get(self, pipeline: Pipeline, run_id: UUID):
+    @with_current_user
+    def get(self, current_user: Account, pipeline: Pipeline, run_id: UUID):
         """
         Get workflow run node execution list
         """
@@ -902,6 +946,7 @@ class RagPipelineWorkflowRunNodeExecutionListApi(Resource):
 
 @console_ns.route("/rag/pipelines/datasource-plugins")
 class DatasourceListApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[RagPipelineOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -938,6 +983,7 @@ class RagPipelineWorkflowLastRunApi(Resource):
 
 @console_ns.route("/rag/pipelines/transform/datasets/<uuid:dataset_id>")
 class RagPipelineTransformApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[RagPipelineOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -948,7 +994,7 @@ class RagPipelineTransformApi(Resource):
 
         dataset_id_str = str(dataset_id)
         rag_pipeline_transform_service = RagPipelineTransformService()
-        result = rag_pipeline_transform_service.transform_dataset(dataset_id_str)
+        result = rag_pipeline_transform_service.transform_dataset(dataset_id_str, db.session)
         return result
 
 
@@ -985,12 +1031,16 @@ class RagPipelineDatasourceVariableApi(Resource):
 
 @console_ns.route("/rag/pipelines/recommended-plugins")
 class RagPipelineRecommendedPluginApi(Resource):
+    @console_ns.doc(params=query_params_from_model(RagPipelineRecommendedPluginQuery))
+    @console_ns.response(200, "Success", console_ns.models[RagPipelineOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, current_user: Account):
         query = RagPipelineRecommendedPluginQuery.model_validate(request.args.to_dict())
 
         rag_pipeline_service = RagPipelineService()
-        recommended_plugins = rag_pipeline_service.get_recommended_plugins(query.type)
+        recommended_plugins = rag_pipeline_service.get_recommended_plugins(query.type, current_user, current_tenant_id)
         return recommended_plugins

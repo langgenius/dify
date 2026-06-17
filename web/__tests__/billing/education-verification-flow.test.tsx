@@ -24,6 +24,14 @@ const mockRouterPush = vi.fn()
 const mockMutateAsync = vi.fn()
 const mockSetEducationVerifying = vi.hoisted(() => vi.fn())
 
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: true,
+  }
+})
+
 // ─── Context mocks ───────────────────────────────────────────────────────────
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => mockProviderCtx,
@@ -77,7 +85,7 @@ vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => vi.fn(),
 }))
 
-vi.mock('@/hooks/use-local-storage', () => ({
+vi.mock('foxact/use-local-storage', () => ({
   useSetLocalStorage: () => mockSetEducationVerifying,
 }))
 

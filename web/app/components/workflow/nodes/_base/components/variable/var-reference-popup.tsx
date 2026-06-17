@@ -8,14 +8,14 @@ import ListEmpty from '@/app/components/base/list-empty'
 import { useStore } from '@/app/components/workflow/store'
 import VarReferenceVars from './var-reference-vars'
 
-type Props = {
+type Props = Readonly<{
   vars: NodeOutPutVar[]
   popupFor?: 'assigned' | 'toAssigned'
   onChange: (value: ValueSelector, varDetail: Var) => void
   itemWidth?: number
   isSupportFileVar?: boolean
   preferSchemaType?: boolean
-}
+}>
 const VarReferencePopup: FC<Props> = ({
   vars,
   popupFor,

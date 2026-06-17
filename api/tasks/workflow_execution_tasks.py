@@ -101,11 +101,13 @@ def _create_workflow_run_from_execution(
     workflow_run.triggered_from = triggered_from
     workflow_run.version = execution.workflow_version
     json_converter = WorkflowRuntimeTypeConverter()
-    workflow_run.graph = json.dumps(json_converter.to_json_encodable(execution.graph))
-    workflow_run.inputs = json.dumps(json_converter.to_json_encodable(execution.inputs))
+    workflow_run.graph = json.dumps(json_converter.to_json_encodable(execution.graph), ensure_ascii=False)
+    workflow_run.inputs = json.dumps(json_converter.to_json_encodable(execution.inputs), ensure_ascii=False)
     workflow_run.status = execution.status
     workflow_run.outputs = (
-        json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"
+        json.dumps(json_converter.to_json_encodable(execution.outputs), ensure_ascii=False)
+        if execution.outputs
+        else "{}"
     )
     workflow_run.error = execution.error_message
     workflow_run.elapsed_time = execution.elapsed_time

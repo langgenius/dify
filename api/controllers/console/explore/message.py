@@ -7,7 +7,8 @@ from pydantic import BaseModel, TypeAdapter
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.fields import GeneratedAppResponse
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.app.error import (
     AppMoreLikeThisDisabledError,
     AppUnavailableError,
@@ -52,7 +53,13 @@ class MoreLikeThisQuery(BaseModel):
 
 
 register_schema_models(console_ns, MessageListQuery, MessageFeedbackPayload, MoreLikeThisQuery)
-register_response_schema_models(console_ns, ResultResponse, SuggestedQuestionsResponse)
+register_response_schema_models(
+    console_ns,
+    GeneratedAppResponse,
+    MessageInfiniteScrollPagination,
+    ResultResponse,
+    SuggestedQuestionsResponse,
+)
 
 
 @console_ns.route(
@@ -60,7 +67,8 @@ register_response_schema_models(console_ns, ResultResponse, SuggestedQuestionsRe
     endpoint="installed_app_messages",
 )
 class MessageListApi(InstalledAppResource):
-    @console_ns.expect(console_ns.models[MessageListQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(MessageListQuery))
+    @console_ns.response(200, "Success", console_ns.models[MessageInfiniteScrollPagination.__name__])
     @with_current_user
     def get(self, current_user: Account, installed_app: InstalledApp):
         app_model = installed_app.app
@@ -129,7 +137,8 @@ class MessageFeedbackApi(InstalledAppResource):
     endpoint="installed_app_more_like_this",
 )
 class MessageMoreLikeThisApi(InstalledAppResource):
-    @console_ns.expect(console_ns.models[MoreLikeThisQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(MoreLikeThisQuery))
+    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
     @with_current_user
     def get(self, current_user: Account, installed_app: InstalledApp, message_id: UUID):
         app_model = installed_app.app
