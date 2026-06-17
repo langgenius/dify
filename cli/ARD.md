@@ -47,13 +47,12 @@ Examples: `get/app/`, `auth/devices/revoke/`, `describe/app/`.
 
 **3. Optional files — add as needed**
 
-| File               | Purpose                                             |
-| ------------------ | --------------------------------------------------- |
-| `handlers.ts`      | Output format handlers (text, table, etc.)          |
-| `print-flags.ts`   | `--output` flag → printer resolution                |
-| `payload-shape.ts` | Response type narrowing/transformation              |
-| `run.test.ts`      | Behavior tests against `run.ts`                     |
-| `guide.ts`         | Agent onboarding text — exports `agentGuide` string |
+| File               | Purpose                                                            |
+| ------------------ | ------------------------------------------------------------------ |
+| `handlers.ts`      | Output types implementing `FormattedPrintable` or `TablePrintable` |
+| `payload-shape.ts` | Response type narrowing/transformation                             |
+| `run.test.ts`      | Behavior tests against `run.ts`                                    |
+| `guide.ts`         | Agent onboarding text — exports `agentGuide` string                |
 
 **4. Checklist**
 
@@ -79,7 +78,7 @@ export default class MyCommand extends DifyCommand {
     const { args, flags } = this.parse(MyCommand, argv)
 
     // Authed: authedCtx() sets outputFormat + builds context
-    const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], format: flags.output })
+    const ctx = await this.authedCtx({ format: flags.output })
 
     process.stdout.write(await runMyThing({ /* args */ }, { bundle: ctx.bundle, http: ctx.http, io: ctx.io }))
   }
@@ -163,21 +162,28 @@ Only override `enabled` for intentional suppression (e.g., tests using `bufferSt
 
 ---
 
-## Printer chain
+## Output protocol
 
-Output rendering separated from data fetching.
+Output rendering separated from data fetching via protocol objects.
 
-1. `run.ts` returns string — rendered result.
-1. `handlers.ts` defines format handlers (`TextHandler`, `TableHandler`, etc.).
-1. `print-flags.ts` maps `--output` value to correct handler.
+- Data classes implement `TablePrintable` or `FormattedPrintable` from `src/framework/output`.
+- Streaming commands implement `StreamPrinter` from `src/framework/stream`.
+- `index.ts` wraps the result with `table({format, data})` or `formatted({format, data})` and returns it; the base class calls `stringifyOutput()`.
+- Commands that write incrementally (streaming) write directly from the strategy via `deps.io.out.write(stringifyOutput(...))`.
 
 ```typescript
-// run.ts
-const printer = new AppPrintFlags().toPrinter(format)
-return printer.print(data)
+// handlers.ts — implement the protocol on the data object
+export class MyListOutput implements TablePrintable {
+  tableColumns() { return COLUMNS }
+  tableRows() { return this.rows.map(r => r.tableRow()) }
+  json() { return { items: this.rows.map(r => r.json()) } }
+}
+
+// index.ts — wrap and return
+return table({ format: flags.output, data: result })
 ```
 
-New output format: implement handler interface, register in `print-flags.ts`. Never add `if (format === 'json')` branches in `run.ts`.
+New output format: add to `OutputFormat` in `framework/output.ts` and handle in `stringifyOutput`. Never add `if (format === 'json')` branches in `run.ts` or handlers.
 
 ---
 
@@ -190,14 +196,11 @@ export type RunStrategy = {
   execute: (ctx: RunContext) => Promise<void>
 }
 
-const blocking = new BlockingStrategy()
 const streamingText = new StreamingTextStrategy()
 const streamingStructured = new StreamingStructuredStrategy()
 
-export function pickStrategy(useStream: boolean, isText: boolean): RunStrategy {
-  if (!useStream)
-    return blocking
-  return isText ? streamingText : streamingStructured
+export function pickStrategy(isText: boolean, livePrint: boolean): RunStrategy {
+  return isText && livePrint ? streamingText : streamingStructured
 }
 ```
 
@@ -329,17 +332,17 @@ Repo runs `@antfu/eslint-config` + perfectionist + unicorn.
 
 ## Anti-patterns
 
-| Pattern                                                              | Do instead                                              |
-| -------------------------------------------------------------------- | ------------------------------------------------------- |
-| `if (format === 'json') { ... }` in `run.ts`                         | Printer handler per format                              |
-| `try { ... } catch (e) { if (isBaseError(e)) ... }` in every command | Throw `BaseError`; `DifyCommand.catch()` handles        |
-| Raw string error codes `'not_logged_in'`                             | `ErrorCode.NotLoggedIn`                                 |
-| `enabled: !isHuman` in `runWithSpinner`                              | Set `outputFormat` on `IOStreams`; spinner auto-detects |
-| Long positional arg lists                                            | Options struct                                          |
-| `Record<string, Strategy>` dispatch map                              | Named singletons + picker function                      |
-| `src/framework/` import in `run.ts`                                  | Keep framework imports in `index.ts` only               |
-| `buildAuthedContext(this, opts)` in command body                     | `this.authedCtx(opts)`                                  |
-| `console.log` in `src/`                                              | Return string from `run.ts`; write in `index.ts`        |
-| New dependency without approval                                      | Check first                                             |
+| Pattern                                                              | Do instead                                                                 |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `if (format === 'json') { ... }` in `run.ts`                         | Printer handler per format                                                 |
+| `try { ... } catch (e) { if (isBaseError(e)) ... }` in every command | Throw `BaseError`; `DifyCommand.catch()` handles                           |
+| Raw string error codes `'not_logged_in'`                             | `ErrorCode.NotLoggedIn`                                                    |
+| `enabled: !isHuman` in `runWithSpinner`                              | Set `outputFormat` on `IOStreams`; spinner auto-detects                    |
+| Long positional arg lists                                            | Options struct                                                             |
+| `Record<string, Strategy>` dispatch map                              | Named singletons + picker function                                         |
+| `src/framework/` import in `run.ts`, `api/`, or `auth/`              | Framework imports belong in `index.ts`, `handlers.ts`, and strategies only |
+| `buildAuthedContext(this, opts)` in command body                     | `this.authedCtx(opts)`                                                     |
+| `console.log` in `src/`                                              | Return string from `run.ts`; write in `index.ts`                           |
+| New dependency without approval                                      | Check first                                                                |
 
 [`docs/specs/`]: docs/specs/

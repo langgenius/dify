@@ -70,6 +70,7 @@ from services.errors.account import (
 )
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
+from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from tasks.delete_account_task import delete_account_task
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code
 from tasks.mail_change_mail_task import (
@@ -119,6 +120,8 @@ class TokenPair(BaseModel):
 REFRESH_TOKEN_PREFIX = "refresh_token:"
 ACCOUNT_REFRESH_TOKEN_PREFIX = "account_refresh_token:"
 REFRESH_TOKEN_EXPIRY = timedelta(days=dify_config.REFRESH_TOKEN_EXPIRE_DAYS)
+ACCOUNT_LAST_ACTIVE_REFRESH_PREFIX = "account_last_active_refresh:"
+ACCOUNT_LAST_ACTIVE_REFRESH_INTERVAL = timedelta(minutes=10)
 
 
 class AccountService:
@@ -151,6 +154,40 @@ class AccountService:
     @staticmethod
     def _get_account_refresh_token_key(account_id: str) -> str:
         return f"{ACCOUNT_REFRESH_TOKEN_PREFIX}{account_id}"
+
+    @staticmethod
+    def _get_account_last_active_refresh_key(account_id: str) -> str:
+        return f"{ACCOUNT_LAST_ACTIVE_REFRESH_PREFIX}{account_id}"
+
+    @staticmethod
+    @redis_fallback(default_return=True)
+    def _should_refresh_account_last_active(account_id: str) -> bool:
+        return bool(
+            redis_client.set(
+                AccountService._get_account_last_active_refresh_key(account_id),
+                1,
+                ex=int(ACCOUNT_LAST_ACTIVE_REFRESH_INTERVAL.total_seconds()),
+                nx=True,
+            )
+        )
+
+    @staticmethod
+    def _refresh_account_last_active(account: Account) -> None:
+        now = naive_utc_now()
+        refresh_before = now - ACCOUNT_LAST_ACTIVE_REFRESH_INTERVAL
+
+        if account.last_active_at >= refresh_before:
+            return
+
+        if not AccountService._should_refresh_account_last_active(account.id):
+            return
+
+        db.session.execute(
+            update(Account)
+            .where(Account.id == account.id, Account.last_active_at < refresh_before)
+            .values(last_active_at=now, updated_at=func.current_timestamp())
+        )
+        db.session.commit()
 
     @staticmethod
     def _store_refresh_token(refresh_token: str, account_id: str):
@@ -227,11 +264,10 @@ class AccountService:
 
             account.set_tenant_id(available_ta.tenant_id)
             available_ta.current = True
+            available_ta.last_opened_at = naive_utc_now()
             db.session.commit()
 
-        if naive_utc_now() - account.last_active_at > timedelta(minutes=10):
-            account.last_active_at = naive_utc_now()
-            db.session.commit()
+        AccountService._refresh_account_last_active(account)
         # NOTE: make sure account is accessible outside of a db session
         # This ensures that it will work correctly after upgrading to Flask version 3.1.2
         db.session.refresh(account)
@@ -1133,15 +1169,17 @@ class TenantService:
         db.session.add(tenant)
         db.session.commit()
 
-        plugin_upgrade_strategy = TenantPluginAutoUpgradeStrategy(
-            tenant_id=tenant.id,
-            strategy_setting=TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY,
-            upgrade_time_of_day=0,
-            upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
-            exclude_plugins=[],
-            include_plugins=[],
-        )
-        db.session.add(plugin_upgrade_strategy)
+        for category in TenantPluginAutoUpgradeStrategy.PluginCategory:
+            plugin_upgrade_strategy = TenantPluginAutoUpgradeStrategy(
+                tenant_id=tenant.id,
+                category=category,
+                strategy_setting=PluginAutoUpgradeService.default_strategy_setting_for_category(category),
+                upgrade_time_of_day=PluginAutoUpgradeService.default_upgrade_time_of_day(tenant.id),
+                upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
+                exclude_plugins=[],
+                include_plugins=[],
+            )
+            db.session.add(plugin_upgrade_strategy)
         db.session.commit()
 
         tenant.encrypt_public_key = generate_key_pair(tenant.id)
@@ -1295,9 +1333,9 @@ class TenantService:
     ) -> TenantAccountRole | None:
         """Return the caller's role in ``tenant_id``, or ``None`` if not a member.
 
-        Backs ``controllers.openapi.auth.role_gate.require_workspace_role``:
-        the gate maps ``None`` to 404 (non-member — no cross-tenant ID leak)
-        and an out-of-set role to 403, so it never touches the ORM itself.
+        Backs the openapi auth pipeline's ``load_workspace_role`` prepare step:
+        ``None`` is treated as non-member (the pipeline maps it to 404 — no
+        cross-tenant ID leak) and an out-of-set role to 403.
 
         ``None``/empty ``account_id`` short-circuits to ``None`` so SSO
         bearers (no account) collapse to the non-member path. Mirrors the
@@ -1380,7 +1418,7 @@ class TenantService:
             .limit(1)
         )
         if ta:
-            tenant.role = ta.role
+            object.__setattr__(tenant, "role", ta.role)
         else:
             raise TenantNotFoundError("Tenant not found for the account.")
         return tenant
@@ -1413,6 +1451,7 @@ class TenantService:
                 .values(current=False)
             )
             tenant_account_join.current = True
+            tenant_account_join.last_opened_at = naive_utc_now()
             # Set the current tenant for the account
             account.set_tenant_id(tenant_account_join.tenant_id)
             db.session.commit()

@@ -1,4 +1,4 @@
-import type { UserProfileResponse } from '@/models/common'
+import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import { ToastHost } from '@langgenius/dify-ui/toast'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { languages } from '@/i18n-config/language'
@@ -9,7 +9,7 @@ import LanguagePage from '../index'
 const mockRefresh = vi.fn()
 const mockMutateUserProfile = vi.fn()
 let mockLocale: string | undefined = 'en-US'
-let mockUserProfile: UserProfileResponse
+let mockUserProfile: GetAccountProfileResponse
 
 vi.mock('@langgenius/dify-ui/select', async () => {
   const React = await import('react')
@@ -89,7 +89,7 @@ vi.mock('@/i18n-config', () => ({
 
 const updateUserProfileMock = vi.mocked(updateUserProfile)
 
-const createUserProfile = (overrides: Partial<UserProfileResponse> = {}): UserProfileResponse => ({
+const createUserProfile = (overrides: Partial<GetAccountProfileResponse> = {}): GetAccountProfileResponse => ({
   id: 'user-id',
   name: 'Test User',
   email: 'test@example.com',

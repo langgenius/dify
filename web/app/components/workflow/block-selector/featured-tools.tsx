@@ -6,17 +6,18 @@ import type { Plugin } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
 import { createPreviewCardHandle, PreviewCard, PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
 import { RiMoreLine } from '@remixicon/react'
+import { useLocalStorage } from 'foxact/use-local-storage'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowDownDoubleLine, ArrowDownRoundFill, ArrowUpDoubleLine } from '@/app/components/base/icons/src/vender/solid/arrows'
 import Loading from '@/app/components/base/loading'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
+import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import Action from '@/app/components/workflow/block-selector/market-place-plugin/action'
 import { useGetLanguage } from '@/context/i18n'
 import Link from '@/next/link'
-import { isServer } from '@/utils/client'
 import { formatNumber } from '@/utils/format'
-import { getMarketplaceUrl } from '@/utils/var'
+import { PluginCategoryEnum } from '../../plugins/types'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import Tools from './tools'
@@ -55,18 +56,7 @@ const FeaturedTools = ({
   const previewCardHandle = useMemo(() => createPreviewCardHandle<FeaturedToolPreviewPayload>(), [])
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT)
   const [visibleCountPlugins, setVisibleCountPlugins] = useState(plugins)
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
-    if (isServer)
-      return false
-    const stored = window.localStorage.getItem(STORAGE_KEY)
-    return stored === 'true'
-  })
-
-  useEffect(() => {
-    if (isServer)
-      return
-    window.localStorage.setItem(STORAGE_KEY, String(isCollapsed))
-  }, [isCollapsed])
+  const [isCollapsed, setIsCollapsed] = useLocalStorage<boolean>(STORAGE_KEY, false)
 
   if (visibleCountPlugins !== plugins) {
     setVisibleCountPlugins(plugins)
@@ -147,7 +137,7 @@ const FeaturedTools = ({
 
           {showEmptyState && (
             <p className="py-2 system-xs-regular text-text-tertiary">
-              <Link className="text-text-accent" href={getMarketplaceUrl('', { category: 'tool' })} target="_blank" rel="noopener noreferrer">
+              <Link className="text-text-accent" href={getMarketplaceCategoryUrl(PluginCategoryEnum.tool)} target="_blank" rel="noopener noreferrer">
                 {t('tabs.noFeaturedPlugins', { ns: 'workflow' })}
               </Link>
             </p>

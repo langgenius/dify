@@ -26,9 +26,9 @@ import {
 import { BlockEnum } from './types'
 import { getIterationStartNode, getLoopStartNode } from './utils'
 
-type Props = {
+type Props = Readonly<{
   candidateNode: Node
-}
+}>
 const CandidateNodeMain: FC<Props> = ({
   candidateNode,
 }) => {

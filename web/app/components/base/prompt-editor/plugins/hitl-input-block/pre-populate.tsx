@@ -11,7 +11,7 @@ import { VarType } from '@/app/components/workflow/types'
 import TagLabel from './tag-label'
 import TypeSwitch from './type-switch'
 
-type Props = {
+type Props = Readonly<{
   isVariable?: boolean
   onIsVariableChange?: (isVariable: boolean) => void
   nodeId: string
@@ -19,7 +19,7 @@ type Props = {
   onValueSelectorChange?: (valueSelector: ValueSelector | string) => void
   value?: string
   onValueChange?: (value: string) => void
-}
+}>
 
 const i18nPrefix = 'nodes.humanInput.insertInputField'
 
@@ -29,7 +29,6 @@ type PlaceholderProps = {
     value: ValueSelector
     onChange: (valueSelector: ValueSelector | string) => void
     readonly: boolean
-    zIndex: number
     filterVar: (varPayload: Var) => boolean
     isJustShowValue?: boolean
   }
@@ -86,7 +85,6 @@ const PrePopulate: FC<Props> = ({
     value: valueSelector || [],
     onChange: onValueSelectorChange!,
     readonly: false,
-    zIndex: 1000000, // bigger than shortcut plugin popup
     filterVar: (varPayload: Var) => {
       return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
     },

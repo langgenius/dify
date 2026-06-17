@@ -1,4 +1,4 @@
-import type { AccountProfileResponse } from '@/contract/console/account'
+import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import { QueryClient } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { resolveServerConsoleApiUrl } from '@/service/server'
@@ -18,7 +18,7 @@ vi.mock('@/next/headers', () => ({
   cookies: () => cookiesMock(),
 }))
 
-const createProfile = (overrides: Partial<AccountProfileResponse> = {}): AccountProfileResponse => ({
+const createProfile = (overrides: Partial<GetAccountProfileResponse> = {}): GetAccountProfileResponse => ({
   id: 'account-id',
   name: 'Dify User',
   email: 'user@example.com',

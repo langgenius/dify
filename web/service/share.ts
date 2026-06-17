@@ -26,6 +26,7 @@ import {
   patchPublic as patch,
   postPublic as post,
   ssePost,
+  upload,
 } from './base'
 import { getWebAppAccessToken } from './webapp-auth'
 
@@ -274,8 +275,117 @@ export const getHumanInputForm = (token: string) => {
   return get<HumanInputFormData>(`/form/human_input/${token}`)
 }
 
+type HumanInputFormUploadTokenResponse = {
+  upload_token: string
+  expires_at: number
+}
+
+type HumanInputFormLocalFileUploadResponse = {
+  created_at: number
+  created_by: string
+  extension: string
+  id: string
+  mime_type: string
+  name: string
+  preview_url: string | null
+  size: number
+  source_url: string
+}
+
+type HumanInputFormRemoteFileUploadResponse = {
+  created_at: number
+  created_by: string
+  extension: string
+  id: string
+  mime_type: string
+  name: string
+  size: number
+  url: string
+}
+
+type HumanInputFormLocalFileUploadParams = {
+  formToken: string
+  file: File
+  onProgressCallback: (progress: number) => void
+  onSuccessCallback: (res: HumanInputFormLocalFileUploadResponse) => void
+  onErrorCallback: (error?: unknown) => void
+}
+
+const humanInputFormUploadTokenCache = new Map<string, HumanInputFormUploadTokenResponse>()
+const UPLOAD_TOKEN_REFRESH_BUFFER_SECONDS = 30
+
+const getHumanInputFormUploadToken = async (formToken: string) => {
+  const cachedToken = humanInputFormUploadTokenCache.get(formToken)
+  const now = Math.floor(Date.now() / 1000)
+
+  if (cachedToken && cachedToken.expires_at > now + UPLOAD_TOKEN_REFRESH_BUFFER_SECONDS)
+    return cachedToken.upload_token
+
+  const tokenResponse = await post<HumanInputFormUploadTokenResponse>(`/form/human_input/${formToken}/upload-token`)
+  humanInputFormUploadTokenCache.set(formToken, tokenResponse)
+  return tokenResponse.upload_token
+}
+
+const uploadHumanInputFormFile = async (
+  formToken: string,
+  formData: FormData,
+  onProgress?: (e: ProgressEvent) => void,
+) => {
+  const uploadToken = await getHumanInputFormUploadToken(formToken)
+
+  return upload({
+    xhr: new XMLHttpRequest(),
+    data: formData,
+    headers: {
+      Authorization: `bearer ${uploadToken}`,
+    },
+    onprogress: onProgress,
+  }, true, '/human-input-forms/files')
+}
+
+export const uploadHumanInputFormLocalFile = async ({
+  formToken,
+  file,
+  onProgressCallback,
+  onSuccessCallback,
+  onErrorCallback,
+}: HumanInputFormLocalFileUploadParams) => {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const onProgress = (e: ProgressEvent) => {
+    if (e.lengthComputable) {
+      const percent = Math.floor(e.loaded / e.total * 100)
+      onProgressCallback(percent)
+    }
+  }
+
+  try {
+    const response = await uploadHumanInputFormFile(
+      formToken,
+      formData,
+      onProgress,
+    ) as HumanInputFormLocalFileUploadResponse
+
+    onSuccessCallback(response)
+  }
+  catch (error) {
+    onErrorCallback(error)
+  }
+}
+
+export const uploadHumanInputFormRemoteFileInfo = async (
+  formToken: string,
+  url: string,
+): Promise<HumanInputFormRemoteFileUploadResponse> => {
+  const formData = new FormData()
+  formData.append('url', url)
+
+  return uploadHumanInputFormFile(formToken, formData) as Promise<HumanInputFormRemoteFileUploadResponse>
+}
+
 export const submitHumanInputForm = (token: string, data: {
-  inputs: Record<string, string>
+  inputs: Record<string, unknown>
   action: string
 }) => {
   return post(`/form/human_input/${token}`, { body: data })

@@ -51,6 +51,10 @@ from .agent import roster as agent_roster
 from .app import (
     advanced_prompt_template,
     agent,
+    agent_app_access,
+    agent_app_feature,
+    agent_app_sandbox,
+    agent_drive_inspector,
     annotation,
     app,
     audio,
@@ -119,6 +123,7 @@ from .explore import (
     saved_message,
     trial,
 )
+from .snippets import snippet_workflow, snippet_workflow_draft_variable
 from .socketio import workflow as socketio_workflow
 
 # Import tag controllers
@@ -134,6 +139,7 @@ from .workspace import (
     model_providers,
     models,
     plugin,
+    snippets,
     tool_providers,
     trigger_providers,
     workspace,
@@ -146,7 +152,11 @@ __all__ = [
     "activate",
     "advanced_prompt_template",
     "agent",
+    "agent_app_access",
+    "agent_app_feature",
+    "agent_app_sandbox",
     "agent_composer",
+    "agent_drive_inspector",
     "agent_providers",
     "agent_roster",
     "annotation",
@@ -206,6 +216,9 @@ __all__ = [
     "saved_message",
     "setup",
     "site",
+    "snippet_workflow",
+    "snippet_workflow_draft_variable",
+    "snippets",
     "socketio_workflow",
     "spec",
     "statistic",

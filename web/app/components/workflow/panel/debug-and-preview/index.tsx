@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { RiCloseLine, RiEqualizer2Line } from '@remixicon/react'
 import { debounce } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
+import { useSetLocalStorage } from 'foxact/use-local-storage'
 import {
   memo,
   useCallback,
@@ -54,11 +55,12 @@ const DebugAndPreview = () => {
   const nodePanelWidth = useStore(s => s.nodePanelWidth)
   const panelWidth = useStore(s => s.previewPanelWidth)
   const setPanelWidth = useStore(s => s.setPreviewPanelWidth)
+  const setPanelWidthStorage = useSetLocalStorage<string>('debug-and-preview-panel-width', { raw: true })
   const handleResize = useCallback((width: number, source: 'user' | 'system' = 'user') => {
     if (source === 'user')
-      localStorage.setItem('debug-and-preview-panel-width', `${width}`)
+      setPanelWidthStorage(`${width}`)
     setPanelWidth(width)
-  }, [setPanelWidth])
+  }, [setPanelWidth, setPanelWidthStorage])
   const maxPanelWidth = useMemo(() => {
     if (!workflowCanvasWidth)
       return 720

@@ -6,12 +6,14 @@ from flask_login import current_user
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 from sqlalchemy.engine import CursorResult
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from extensions.ext_database import db
 from models.dataset import Dataset
 from models.enums import TagType
 from models.model import App, Tag, TagBinding
+from models.snippet import CustomizedSnippet
 
 
 class SaveTagPayload(BaseModel):
@@ -37,7 +39,7 @@ class TagBindingDeletePayload(BaseModel):
 
 class TagService:
     @staticmethod
-    def get_tags(tag_type: str, current_tenant_id: str, keyword: str | None = None):
+    def get_tags(session: Session, tag_type: str, current_tenant_id: str, keyword: str | None = None):
         stmt = (
             select(Tag.id, Tag.type, Tag.name, func.count(TagBinding.id).label("binding_count"))
             .outerjoin(TagBinding, Tag.id == TagBinding.tag_id)
@@ -49,23 +51,47 @@ class TagService:
             escaped_keyword = escape_like_pattern(keyword)
             stmt = stmt.where(sa.and_(Tag.name.ilike(f"%{escaped_keyword}%", escape="\\")))
         stmt = stmt.group_by(Tag.id, Tag.type, Tag.name, Tag.created_at)
-        results: list = list(db.session.execute(stmt.order_by(Tag.created_at.desc())).all())
+        results: list = list(session.execute(stmt.order_by(Tag.created_at.desc())).all())
         return results
 
     @staticmethod
-    def get_target_ids_by_tag_ids(tag_type: str, current_tenant_id: str, tag_ids: list):
+    def get_target_ids_by_tag_ids(
+        tag_type: str, current_tenant_id: str, tag_ids: list[str], *, match_all: bool = False
+    ):
+        """
+        Return target IDs bound to tags for the given tenant and resource type.
+
+        By default this preserves the legacy "match any tag" behavior and returns one target ID per matching
+        binding. When match_all is enabled, every requested tag must exist for the tenant/type and each returned
+        target must be bound to all requested tags.
+        """
         # Check if tag_ids is not empty to avoid WHERE false condition
         if not tag_ids or len(tag_ids) == 0:
             return []
+        # Deduplicate repeated query params so match_all counts each requested tag once.
+        requested_tag_ids = list(dict.fromkeys(tag_ids))
         tags = db.session.scalars(
-            select(Tag).where(Tag.id.in_(tag_ids), Tag.tenant_id == current_tenant_id, Tag.type == tag_type)
+            select(Tag.id).where(
+                Tag.id.in_(requested_tag_ids),
+                Tag.tenant_id == current_tenant_id,
+                Tag.type == tag_type,
+            )
         ).all()
         if not tags:
             return []
-        tag_ids = [tag.id for tag in tags]
+        tag_ids = list(tags)
         # Check if tag_ids is not empty to avoid WHERE false condition
         if not tag_ids or len(tag_ids) == 0:
             return []
+        if match_all:
+            if len(tag_ids) != len(requested_tag_ids):
+                return []
+            return db.session.scalars(
+                select(TagBinding.target_id)
+                .where(TagBinding.tag_id.in_(tag_ids), TagBinding.tenant_id == current_tenant_id)
+                .group_by(TagBinding.target_id)
+                .having(func.count(sa.distinct(TagBinding.tag_id)) == len(tag_ids))
+            ).all()
         tag_bindings = db.session.scalars(
             select(TagBinding.target_id).where(
                 TagBinding.tag_id.in_(tag_ids), TagBinding.tenant_id == current_tenant_id
@@ -159,7 +185,14 @@ class TagService:
     @staticmethod
     def save_tag_binding(payload: TagBindingCreatePayload):
         TagService.check_target_exists(payload.type, payload.target_id)
-        for tag_id in payload.tag_ids:
+        valid_tag_ids = db.session.scalars(
+            select(Tag.id).where(
+                Tag.id.in_(payload.tag_ids),
+                Tag.tenant_id == current_user.current_tenant_id,
+                Tag.type == payload.type,
+            )
+        ).all()
+        for tag_id in valid_tag_ids:
             tag_binding = db.session.scalar(
                 select(TagBinding)
                 .where(TagBinding.tag_id == tag_id, TagBinding.target_id == payload.target_id)
@@ -186,6 +219,12 @@ class TagService:
                     TagBinding.target_id == payload.target_id,
                     TagBinding.tag_id.in_(payload.tag_ids),
                     TagBinding.tenant_id == current_user.current_tenant_id,
+                    TagBinding.tag_id.in_(
+                        select(Tag.id).where(
+                            Tag.tenant_id == current_user.current_tenant_id,
+                            Tag.type == payload.type,
+                        )
+                    ),
                 )
             ),
         )
@@ -209,5 +248,13 @@ class TagService:
             )
             if not app:
                 raise NotFound("App not found")
+        elif type == "snippet":
+            snippet = db.session.scalar(
+                select(CustomizedSnippet)
+                .where(CustomizedSnippet.tenant_id == current_user.current_tenant_id, CustomizedSnippet.id == target_id)
+                .limit(1)
+            )
+            if not snippet:
+                raise NotFound("Snippet not found")
         else:
             raise NotFound("Invalid binding type")

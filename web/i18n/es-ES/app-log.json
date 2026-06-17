@@ -42,6 +42,7 @@
   "filter.period.today": "Hoy",
   "filter.period.yearToDate": "Año hasta la fecha",
   "filter.sortBy": "Ordenar por:",
+  "monitoring.description": "La monitorización registra el estado de ejecución de la aplicación, incluyendo rendimiento, actividad de los usuarios y costes.",
   "promptLog": "Registro de Indicación",
   "runDetail.fileListDetail": "Detalle",
   "runDetail.fileListLabel": "Detalles del archivo",

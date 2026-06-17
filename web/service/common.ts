@@ -20,7 +20,6 @@ import type {
   ICurrentWorkspace,
   InitValidateStatusResponse,
   InvitationResponse,
-  IWorkspace,
   LangGeniusVersionResponse,
   Member,
   ModerateResponse,
@@ -139,14 +138,6 @@ export const fetchCurrentWorkspace = ({ url, params }: { url: string, params: Re
 
 export const updateCurrentWorkspace = ({ url, body }: { url: string, body: Record<string, any> }): Promise<ICurrentWorkspace> => {
   return post<ICurrentWorkspace>(url, { body })
-}
-
-export const fetchWorkspaces = ({ url, params }: { url: string, params: Record<string, any> }): Promise<{ workspaces: IWorkspace[] }> => {
-  return get<{ workspaces: IWorkspace[] }>(url, { params })
-}
-
-export const switchWorkspace = ({ url, body }: { url: string, body: Record<string, any> }): Promise<CommonResponse & { new_tenant: IWorkspace }> => {
-  return post<CommonResponse & { new_tenant: IWorkspace }>(url, { body })
 }
 
 export const updateWorkspaceInfo = ({ url, body }: { url: string, body: Record<string, any> }): Promise<ICurrentWorkspace> => {
@@ -371,5 +362,5 @@ export const checkEmailExisted = (body: { email: string }): Promise<CommonRespon
 
 export const getAvatar = async ({ avatar }: { avatar: string }): Promise<{ avatar_url: string }> => {
   const { consoleClient } = await import('./client')
-  return consoleClient.account.avatar({ query: { avatar } })
+  return consoleClient.account.avatar.get({ query: { avatar } })
 }

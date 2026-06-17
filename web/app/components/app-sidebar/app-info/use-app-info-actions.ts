@@ -3,6 +3,7 @@ import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-moda
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSetLocalStorage } from 'foxact/use-local-storage'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -107,6 +108,8 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
     setActiveModal(null)
   }, [setActiveModal])
 
+  const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
+
   const emitAppMetaUpdate = useCallback(() => {
     if (!appDetail?.id)
       return
@@ -208,7 +211,7 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
       })
       closeModal()
       toast(t('newApp.appCreated', { ns: 'app' }), { type: 'success' })
-      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+      setNeedRefresh('1')
       onPlanInfoChanged()
       getRedirection(true, newApp, replace)
     }

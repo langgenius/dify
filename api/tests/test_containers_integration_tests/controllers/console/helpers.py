@@ -1,6 +1,8 @@
-"""Shared helpers for authenticated console controller integration tests."""
+"""Shared helpers for console controller integration tests."""
 
 import uuid
+from collections.abc import Callable
+from typing import cast
 
 from flask.testing import FlaskClient
 from sqlalchemy import select
@@ -83,3 +85,10 @@ def authenticate_console_client(test_client: FlaskClient, account: Account) -> d
         "Authorization": f"Bearer {access_token}",
         HEADER_NAME_CSRF_TOKEN: csrf_token,
     }
+
+
+def unwrap[R](func: Callable[..., R]) -> Callable[..., R]:
+    """Return the undecorated callable for controller methods wrapped by Flask/RESTX."""
+    while hasattr(func, "__wrapped__"):
+        func = cast(Callable[..., R], func.__wrapped__)
+    return func

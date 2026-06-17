@@ -11,6 +11,7 @@ from configs import dify_config
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.app.llm.model_access import build_dify_model_access, fetch_model_config
 from core.db.session_factory import session_factory
+from core.file import remote_fetcher
 from core.helper.code_executor.code_executor import (
     CodeExecutionError,
     CodeExecutor,
@@ -194,13 +195,16 @@ class _LazyNodeTypeClassesMapping(MutableMapping[NodeType, Mapping[str, type[Nod
         snapshot.update(self._overrides)
         return snapshot
 
+    @override
     def __getitem__(self, key: NodeType) -> Mapping[str, type[Node]]:
         return self._snapshot()[key]
 
+    @override
     def __setitem__(self, key: NodeType, value: Mapping[str, type[Node]]) -> None:
         self._deleted.discard(key)
         self._overrides[key] = value
 
+    @override
     def __delitem__(self, key: NodeType) -> None:
         if key in self._overrides:
             del self._overrides[key]
@@ -210,9 +214,11 @@ class _LazyNodeTypeClassesMapping(MutableMapping[NodeType, Mapping[str, type[Nod
             return
         raise KeyError(key)
 
+    @override
     def __iter__(self) -> Iterator[NodeType]:
         return iter(self._snapshot())
 
+    @override
     def __len__(self) -> int:
         return len(self._snapshot())
 
@@ -307,6 +313,7 @@ class DifyNodeFactory(NodeFactory):
         self._jinja2_template_renderer = CodeExecutorJinja2TemplateRenderer()
         self._template_transform_max_output_length = dify_config.TEMPLATE_TRANSFORM_MAX_LENGTH
         self._http_request_http_client = graphon_ssrf_proxy
+        self._remote_file_http_client = remote_fetcher.graphon_remote_file_fetcher
         self._bound_tool_file_manager_factory = lambda: DifyToolFileManager(
             self._dify_context,
             conversation_id_getter=self._conversation_id,
@@ -318,7 +325,7 @@ class DifyNodeFactory(NodeFactory):
         )
         self._llm_file_saver = build_dify_llm_file_saver(
             run_context=self._dify_context,
-            http_client=self._http_request_http_client,
+            http_client=self._remote_file_http_client,
             conversation_id_getter=self._conversation_id,
         )
         self._human_input_runtime = DifyHumanInputNodeRuntime(
@@ -327,6 +334,7 @@ class DifyNodeFactory(NodeFactory):
                 self.graph_runtime_state.variable_pool,
                 SystemVariableKey.WORKFLOW_EXECUTION_ID,
             ),
+            conversation_id_getter=self._conversation_id,
         )
         self._tool_runtime = DifyToolNodeRuntime(self._dify_context)
         self._http_request_file_manager = file_manager
@@ -416,7 +424,7 @@ class DifyNodeFactory(NodeFactory):
             ),
             BuiltinNodeTypes.DOCUMENT_EXTRACTOR: lambda: {
                 "unstructured_api_config": self._document_extractor_unstructured_api_config,
-                "http_client": self._http_request_http_client,
+                "http_client": self._remote_file_http_client,
             },
             BuiltinNodeTypes.QUESTION_CLASSIFIER: lambda: self._build_llm_compatible_node_init_kwargs(
                 node_class=node_class,
@@ -472,8 +480,9 @@ class DifyNodeFactory(NodeFactory):
         if issubclass(node_class, DifyAgentNode):
             from clients.agent_backend import AgentBackendRunEventAdapter, AgentBackendRunRequestBuilder
             from clients.agent_backend.factory import create_agent_backend_run_client
-            from core.workflow.nodes.agent_v2.file_tenant_validator import UploadFileTenantValidator
+            from core.workflow.nodes.agent_v2.file_tenant_validator import AgentOutputFileTenantValidator
             from core.workflow.nodes.agent_v2.output_failure_orchestrator import OutputFailureOrchestrator
+            from core.workflow.nodes.agent_v2.output_file_rebacker import reback_tool_file_output
             from core.workflow.nodes.agent_v2.output_type_checker import PerOutputTypeChecker
             from core.workflow.nodes.agent_v2.session_store import WorkflowAgentRuntimeSessionStore
 
@@ -489,11 +498,12 @@ class DifyNodeFactory(NodeFactory):
                     fake_scenario=dify_config.AGENT_BACKEND_FAKE_SCENARIO,
                 ),
                 "event_adapter": AgentBackendRunEventAdapter(),
-                "output_adapter": WorkflowAgentOutputAdapter(),
+                # Agent Files §4.6: reback file outputs from the ToolFile row so
+                # downstream metadata is authoritative, not sandbox-provided.
+                "output_adapter": WorkflowAgentOutputAdapter(tool_file_rebacker=reback_tool_file_output),
                 # Stage 4 §5/§7: per-output validation + failure orchestration. The
-                # tenant validator queries upload_files so it stays cheap when
-                # outputs contain no file refs.
-                "type_checker": PerOutputTypeChecker(file_validator=UploadFileTenantValidator()),
+                # tenant validator resolves ToolFile (canonical) + UploadFile refs.
+                "type_checker": PerOutputTypeChecker(file_validator=AgentOutputFileTenantValidator()),
                 "failure_orchestrator": OutputFailureOrchestrator(),
                 "session_store": WorkflowAgentRuntimeSessionStore(),
             }
@@ -530,7 +540,7 @@ class DifyNodeFactory(NodeFactory):
         if validated_node_data.type == BuiltinNodeTypes.QUESTION_CLASSIFIER:
             node_init_kwargs["template_renderer"] = self._jinja2_template_renderer
         if include_http_client:
-            node_init_kwargs["http_client"] = self._http_request_http_client
+            node_init_kwargs["http_client"] = self._remote_file_http_client
         if include_llm_file_saver:
             node_init_kwargs["llm_file_saver"] = self._llm_file_saver
         if include_prompt_message_serializer:

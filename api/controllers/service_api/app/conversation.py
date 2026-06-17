@@ -10,7 +10,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 import services
 from controllers.common.controller_schemas import ConversationRenamePayload
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
@@ -134,11 +134,18 @@ register_schema_models(
     ConversationVariableResponse,
     ConversationVariableInfiniteScrollPaginationResponse,
 )
+register_response_schema_models(
+    service_api_ns,
+    ConversationInfiniteScrollPagination,
+    SimpleConversation,
+    ConversationVariableResponse,
+    ConversationVariableInfiniteScrollPaginationResponse,
+)
 
 
 @service_api_ns.route("/conversations")
 class ConversationApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[ConversationListQuery.__name__])
+    @service_api_ns.doc(params=query_params_from_model(ConversationListQuery))
     @service_api_ns.doc("list_conversations")
     @service_api_ns.doc(description="List all conversations for the current user")
     @service_api_ns.doc(
@@ -148,6 +155,11 @@ class ConversationApi(Resource):
             404: "Last conversation not found",
         }
     )
+    @service_api_ns.response(
+        200,
+        "Conversations retrieved successfully",
+        service_api_ns.models[ConversationInfiniteScrollPagination.__name__],
+    )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
     def get(self, app_model: App, end_user: EndUser):
         """List all conversations for the current user.
@@ -155,7 +167,7 @@ class ConversationApi(Resource):
         Supports pagination using last_id and limit parameters.
         """
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         query_args = ConversationListQuery.model_validate(request.args.to_dict())
@@ -199,7 +211,7 @@ class ConversationDetailApi(Resource):
     def delete(self, app_model: App, end_user: EndUser, c_id: UUID):
         """Delete a specific conversation."""
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         conversation_id = str(c_id)
@@ -224,11 +236,16 @@ class ConversationRenameApi(Resource):
             404: "Conversation not found",
         }
     )
+    @service_api_ns.response(
+        200,
+        "Conversation renamed successfully",
+        service_api_ns.models[SimpleConversation.__name__],
+    )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
     def post(self, app_model: App, end_user: EndUser, c_id: UUID):
         """Rename a conversation or auto-generate a name."""
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         conversation_id = str(c_id)
@@ -250,7 +267,7 @@ class ConversationRenameApi(Resource):
 
 @service_api_ns.route("/conversations/<uuid:c_id>/variables")
 class ConversationVariablesApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[ConversationVariablesQuery.__name__])
+    @service_api_ns.doc(params=query_params_from_model(ConversationVariablesQuery))
     @service_api_ns.doc("list_conversation_variables")
     @service_api_ns.doc(description="List all variables for a conversation")
     @service_api_ns.doc(params={"c_id": "Conversation ID"})

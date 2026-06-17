@@ -24,7 +24,8 @@ def _execution_context_config(**overrides: object) -> DifyExecutionContextLayerC
         "user_id": "user-1",
         "user_from": "account",
         "app_id": "app-1",
-        "invoke_from": "agent_app",
+        "agent_mode": "agent_app",
+        "invoke_from": "web-app",
     }
     payload.update(overrides)
     return DifyExecutionContextLayerConfig.model_validate(payload)
@@ -348,7 +349,7 @@ def test_knowledge_layer_sends_execution_context_and_static_config_to_inner_api(
             "user_id": "user-1",
             "app_id": "app-1",
             "user_from": "account",
-            "invoke_from": "agent_app",
+            "invoke_from": "web-app",
         }
         assert payload["dataset_ids"] == ["dataset-1", "dataset-2"]
         assert payload["query"] == "reset"

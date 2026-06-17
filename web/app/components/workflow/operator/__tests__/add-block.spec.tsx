@@ -20,6 +20,7 @@ type BlockSelectorMockProps = {
   popupClassName: string
   availableBlocksTypes: BlockEnum[]
   showStartTab: boolean
+  defaultActiveTab?: unknown
 }
 
 const {
@@ -130,6 +131,7 @@ describe('AddBlock', () => {
         placement: 'right-start',
         popupClassName: 'min-w-[256px]!',
       })
+      expect(latestBlockSelectorProps?.defaultActiveTab).toBeUndefined()
       expect(latestBlockSelectorProps?.offset).toEqual({
         mainAxis: 4,
         crossAxis: -8,
@@ -150,6 +152,20 @@ describe('AddBlock', () => {
       renderWithReactFlow([])
 
       expect(latestBlockSelectorProps?.showStartTab).toBe(false)
+    })
+
+    it.each([
+      BlockEnum.Start,
+      BlockEnum.TriggerWebhook,
+    ])('should keep the normal default tab when a %s node already exists', async (type) => {
+      renderWithReactFlow([
+        createNode({ id: 'entry-node', position: { x: 0, y: 0 }, data: { type } }),
+      ])
+
+      await waitFor(() => expect(latestBlockSelectorProps).not.toBeNull())
+
+      expect(latestBlockSelectorProps?.showStartTab).toBe(true)
+      expect(latestBlockSelectorProps?.defaultActiveTab).toBeUndefined()
     })
   })
 

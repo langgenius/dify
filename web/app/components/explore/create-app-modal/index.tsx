@@ -2,6 +2,7 @@
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -12,7 +13,6 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import Input from '@/app/components/base/input'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { useProviderContext } from '@/context/provider-context'
 import { AppModeEnum } from '@/types/app'
@@ -114,18 +114,18 @@ const CreateAppModal = ({
   return (
     <>
       <Dialog open={show} onOpenChange={open => !open && onHide()} disablePointerDismissal>
-        <DialogContent className="px-8">
+        <DialogContent backdropProps={{ forceRender: true }} className="px-8">
           <DialogCloseButton />
           {isEditModal && (
-            <DialogTitle className="mb-9 text-xl leading-[30px] font-semibold text-text-primary">{t('editAppTitle', { ns: 'app' })}</DialogTitle>
+            <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">{t('editAppTitle', { ns: 'app' })}</DialogTitle>
           )}
           {!isEditModal && (
-            <DialogTitle className="mb-9 text-xl leading-[30px] font-semibold text-text-primary">{t('appCustomize.title', { ns: 'explore', name: appName })}</DialogTitle>
+            <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">{t('appCustomize.title', { ns: 'explore', name: appName })}</DialogTitle>
           )}
           <div className="mb-9">
             {/* icon & name */}
             <div className="pt-2">
-              <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('newApp.captionName', { ns: 'app' })}</div>
+              <div className="py-2 text-sm leading-5 font-medium text-text-primary">{t('newApp.captionName', { ns: 'app' })}</div>
               <div className="flex items-center justify-between space-x-2">
                 <AppIcon
                   size="large"
@@ -146,7 +146,7 @@ const CreateAppModal = ({
             </div>
             {/* description */}
             <div className="pt-2">
-              <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('newApp.captionDescription', { ns: 'app' })}</div>
+              <div className="py-2 text-sm leading-5 font-medium text-text-primary">{t('newApp.captionDescription', { ns: 'app' })}</div>
               <Textarea
                 aria-label={t('newApp.captionDescription', { ns: 'app' })}
                 className="resize-none"
@@ -159,7 +159,7 @@ const CreateAppModal = ({
             {isEditModal && (appMode === AppModeEnum.CHAT || appMode === AppModeEnum.ADVANCED_CHAT || appMode === AppModeEnum.AGENT_CHAT) && (
               <div className="pt-2">
                 <div className="flex items-center justify-between">
-                  <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('answerIcon.title', { ns: 'app' })}</div>
+                  <div className="py-2 text-sm leading-5 font-medium text-text-primary">{t('answerIcon.title', { ns: 'app' })}</div>
                   <Switch
                     checked={useIconAsAnswerIcon}
                     onCheckedChange={v => setUseIconAsAnswerIcon(v)}
@@ -170,7 +170,7 @@ const CreateAppModal = ({
             )}
             {isEditModal && (
               <div className="pt-2">
-                <div className="mt-2 mb-2 text-sm leading-[20px] font-medium text-text-primary">{t('maxActiveRequests', { ns: 'app' })}</div>
+                <div className="mt-2 mb-2 text-sm leading-5 font-medium text-text-primary">{t('maxActiveRequests', { ns: 'app' })}</div>
                 <Input
                   type="number"
                   min={1}

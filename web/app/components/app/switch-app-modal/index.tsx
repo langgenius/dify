@@ -16,6 +16,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
+import { useSetLocalStorage } from 'foxact/use-local-storage'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -60,6 +61,8 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
   const [removeOriginal, setRemoveOriginal] = useState<boolean>(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
 
+  const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
+
   const goStart = async () => {
     try {
       const { new_app_id: newAppID } = await switchApp({
@@ -78,7 +81,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         setAppDetail()
       if (removeOriginal)
         await deleteApp(appDetail.id)
-      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+      setNeedRefresh('1')
       getRedirection(
         isCurrentWorkspaceEditor,
         {

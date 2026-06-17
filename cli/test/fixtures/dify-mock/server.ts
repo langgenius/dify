@@ -2,7 +2,7 @@ import type { AddressInfo } from 'node:net'
 import type { Scenario } from './scenarios.js'
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
-import { ACCOUNT, APPS, SESSIONS, WORKSPACES } from './scenarios.js'
+import { ACCOUNT, APPS, DSL_YAML, SESSIONS, WORKSPACES } from './scenarios.js'
 
 export type DifyMockOptions = {
   scenario?: Scenario
@@ -19,6 +19,8 @@ export type DifyMock = {
   lastRunBody: Record<string, unknown> | null
   /** Number of times POST /apps/:id/files/upload was called */
   uploadCallCount: number
+  /** Body of the most recent POST to /workspaces/:id/apps/imports */
+  lastImportBody: Record<string, unknown> | null
 }
 
 const TOKEN_RE = /^Bearer\s+dfo[ae]_[\w-]+$/
@@ -106,6 +108,7 @@ function hitlResumedResponse(): string {
 export type MockState = {
   lastRunBody: Record<string, unknown> | null
   uploadCallCount: number
+  lastImportBody: Record<string, unknown> | null
 }
 
 export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
@@ -147,8 +150,9 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
   app.use('*', async (c, next) => {
     const scenario = getScenario()
     if (scenario === 'rate-limited') {
+      // Unified ErrorBody — per-token throttle (retryable); Retry-After advises the wait.
       return c.json(
-        { error: { code: 'rate_limited', message: 'too many requests' } },
+        { code: 'too_many_requests', message: 'Too many requests for this API token.', status: 429 },
         { status: 429, headers: { 'retry-after': '1' } },
       )
     }
@@ -178,7 +182,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
       subject_email: ACCOUNT.email,
       account: { id: ACCOUNT.id, email: ACCOUNT.email, name: ACCOUNT.name },
       workspaces: WORKSPACES.map(w => ({ id: w.id, name: w.name, role: w.role })),
-      default_workspace_id: 'ws-1',
+      default_workspace_id: ACCOUNT.current_workspace_id,
     })
   })
 
@@ -227,7 +231,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     const mode = c.req.query('mode')
     const tag = c.req.query('tag')
     const name = c.req.query('name')
-    const workspaceId = c.req.query('workspace_id') ?? 'ws-1'
+    const workspaceId = c.req.query('workspace_id') ?? ACCOUNT.current_workspace_id
     let filtered = APPS.filter(a => a.workspace_id === workspaceId)
     if (mode !== undefined && mode !== '')
       filtered = filtered.filter(a => a.mode === mode)
@@ -277,6 +281,38 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     })
   })
 
+  app.get('/openapi/v1/apps/:id/export', (c) => {
+    const id = c.req.param('id')
+    const found = APPS.find(a => a.id === id)
+    if (found === undefined)
+      return c.json({ error: { code: 'not_found', message: 'app not found' } }, { status: 404 })
+    return c.json({ data: DSL_YAML })
+  })
+
+  app.get('/openapi/v1/apps/:id/check-dependencies', (c) => {
+    const id = c.req.param('id')
+    const found = APPS.find(a => a.id === id)
+    if (found === undefined)
+      return c.json({ error: { code: 'not_found', message: 'app not found' } }, { status: 404 })
+    return c.json({ leaked_dependencies: [] })
+  })
+
+  app.post('/openapi/v1/workspaces/:wsId/apps/imports', async (c) => {
+    const body = await c.req.json() as Record<string, unknown>
+    if (state !== undefined)
+      state.lastImportBody = body
+    const scenario = getScenario()
+    if (scenario === 'import-failed')
+      return c.json({ id: 'imp-1', status: 'failed', error: 'unsupported DSL version' }, { status: 200 })
+    if (scenario === 'import-pending')
+      return c.json({ id: 'imp-1', status: 'pending', current_dsl_version: '0.1.4', imported_dsl_version: '0.0.9' }, { status: 202 })
+    return c.json({ id: 'imp-1', status: 'completed', app_id: 'app-1', app_mode: 'chat' }, { status: 200 })
+  })
+
+  app.post('/openapi/v1/workspaces/:wsId/apps/imports/:importId/confirm', (c) => {
+    return c.json({ id: 'imp-1', status: 'completed', app_id: 'app-1', app_mode: 'chat' }, { status: 200 })
+  })
+
   app.post('/openapi/v1/apps/:id/run', async (c) => {
     const id = c.req.param('id')
     const body = await c.req.json() as { query?: string, inputs?: unknown }
@@ -288,6 +324,12 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     const isAgent = app.is_agent === true || app.mode === 'agent-chat'
     const query = body.query ?? ''
     const scenario = getScenario()
+    if (scenario === 'run-422-stale') {
+      return c.json(
+        { error: { code: 'query_not_supported_for_workflow', message: 'query not supported for workflow mode' } },
+        { status: 422 },
+      )
+    }
     if (scenario === 'stream-error') {
       const errSse = sseChunks([{ event: 'error', data: { message: 'boom', status: 503 } }])
       return new Response(errSse, { status: 200, headers: { 'content-type': 'text/event-stream' } })
@@ -362,12 +404,22 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
         token_id: 'tok-sso-1',
       })
     }
+    if (scenario === 'no-email') {
+      return c.json({
+        token: 'dfoa_test',
+        subject_type: 'account',
+        account: { id: ACCOUNT.id, email: '', name: '' },
+        workspaces: WORKSPACES.map(w => ({ id: w.id, name: w.name, role: w.role })),
+        default_workspace_id: ACCOUNT.current_workspace_id,
+        token_id: 'tok-1',
+      })
+    }
     return c.json({
       token: 'dfoa_test',
       subject_type: 'account',
       account: ACCOUNT,
       workspaces: WORKSPACES.map(w => ({ id: w.id, name: w.name, role: w.role })),
-      default_workspace_id: 'ws-1',
+      default_workspace_id: ACCOUNT.current_workspace_id,
       token_id: 'tok-1',
     })
   })
@@ -377,7 +429,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
 
 export function startMock(opts: DifyMockOptions = {}): Promise<DifyMock> {
   let scenario: Scenario = opts.scenario ?? 'happy'
-  const state: MockState = { lastRunBody: null, uploadCallCount: 0 }
+  const state: MockState = { lastRunBody: null, uploadCallCount: 0, lastImportBody: null }
   const app = buildApp(() => scenario, state)
   return new Promise((resolve, reject) => {
     const server = serve({
@@ -400,6 +452,7 @@ export function startMock(opts: DifyMockOptions = {}): Promise<DifyMock> {
         },
         get lastRunBody() { return state.lastRunBody },
         get uploadCallCount() { return state.uploadCallCount },
+        get lastImportBody() { return state.lastImportBody },
       })
     })
     server.on('error', reject)

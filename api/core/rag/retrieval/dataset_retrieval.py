@@ -609,7 +609,7 @@ class DatasetRetrieval:
         metadata_filter_document_ids: dict[str, list[str]] | None = None,
         metadata_condition: MetadataFilteringCondition | None = None,
     ):
-        tools = []
+        tools: list[PromptMessageTool] = []
         for dataset in available_datasets:
             description = dataset.description
             if not description:
@@ -1162,7 +1162,7 @@ class DatasetRetrieval:
         :param invoke_from: invoke from
         :param hit_callback: hit callback
         """
-        tools = []
+        tools: list[DatasetRetrieverBaseTool] = []
         available_datasets = []
         for dataset_id in dataset_ids:
             # get dataset from dataset id

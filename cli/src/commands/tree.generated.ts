@@ -4,9 +4,9 @@
 import type { CommandTree } from '@/framework/registry'
 import AuthDevicesList from '@/commands/auth/devices/list/index'
 import AuthDevicesRevoke from '@/commands/auth/devices/revoke/index'
+import AuthList from '@/commands/auth/list/index'
 import AuthLogin from '@/commands/auth/login/index'
 import AuthLogout from '@/commands/auth/logout/index'
-import AuthStatus from '@/commands/auth/status/index'
 import AuthWhoami from '@/commands/auth/whoami/index'
 import ConfigGet from '@/commands/config/get/index'
 import ConfigPath from '@/commands/config/path/index'
@@ -17,15 +17,17 @@ import CreateMember from '@/commands/create/member/index'
 import DeleteMember from '@/commands/delete/member/index'
 import DescribeApp from '@/commands/describe/app/index'
 import EnvList from '@/commands/env/list/index'
+import ExportApp from '@/commands/export/app/index'
 import GetApp from '@/commands/get/app/index'
 import GetMember from '@/commands/get/member/index'
 import GetWorkspace from '@/commands/get/workspace/index'
-import HelpAccount from '@/commands/help/account/index'
-import HelpEnvironment from '@/commands/help/environment/index'
-import HelpExternal from '@/commands/help/external/index'
+import ImportApp from '@/commands/import/app/index'
 import ResumeApp from '@/commands/resume/app/index'
 import RunApp from '@/commands/run/app/index'
 import SetMember from '@/commands/set/member/index'
+import SkillsInstall from '@/commands/skills/install/index'
+import UseAccount from '@/commands/use/account/index'
+import UseHost from '@/commands/use/host/index'
 import UseWorkspace from '@/commands/use/workspace/index'
 import Version from '@/commands/version/index'
 
@@ -38,9 +40,9 @@ export const commandTree: CommandTree = {
           revoke: { command: AuthDevicesRevoke, subcommands: {} },
         },
       },
+      list: { command: AuthList, subcommands: {} },
       login: { command: AuthLogin, subcommands: {} },
       logout: { command: AuthLogout, subcommands: {} },
-      status: { command: AuthStatus, subcommands: {} },
       whoami: { command: AuthWhoami, subcommands: {} },
     },
   },
@@ -73,6 +75,11 @@ export const commandTree: CommandTree = {
       list: { command: EnvList, subcommands: {} },
     },
   },
+  export: {
+    subcommands: {
+      app: { command: ExportApp, subcommands: {} },
+    },
+  },
   get: {
     subcommands: {
       app: { command: GetApp, subcommands: {} },
@@ -80,11 +87,9 @@ export const commandTree: CommandTree = {
       workspace: { command: GetWorkspace, subcommands: {} },
     },
   },
-  help: {
+  import: {
     subcommands: {
-      account: { command: HelpAccount, subcommands: {} },
-      environment: { command: HelpEnvironment, subcommands: {} },
-      external: { command: HelpExternal, subcommands: {} },
+      app: { command: ImportApp, subcommands: {} },
     },
   },
   resume: {
@@ -102,8 +107,15 @@ export const commandTree: CommandTree = {
       member: { command: SetMember, subcommands: {} },
     },
   },
+  skills: {
+    subcommands: {
+      install: { command: SkillsInstall, subcommands: {} },
+    },
+  },
   use: {
     subcommands: {
+      account: { command: UseAccount, subcommands: {} },
+      host: { command: UseHost, subcommands: {} },
       workspace: { command: UseWorkspace, subcommands: {} },
     },
   },

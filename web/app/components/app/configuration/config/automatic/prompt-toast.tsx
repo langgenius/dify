@@ -6,10 +6,10 @@ import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
 import s from './style.module.css'
 
-type Props = {
+type Props = Readonly<{
   message: string
   className?: string
-}
+}>
 const PromptToast = ({
   message,
   className,

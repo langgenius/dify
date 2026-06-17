@@ -1,5 +1,6 @@
 import type { EditorState } from 'lexical'
 import type { NoteTheme } from './types'
+import { useSetLocalStorage } from 'foxact/use-local-storage'
 import { useCallback } from 'react'
 import { useNodeDataUpdate, useWorkflowHistory, WorkflowHistoryEvent } from '../hooks'
 import { NOTE_SHOW_AUTHOR_STORAGE_KEY } from './constants'
@@ -7,6 +8,7 @@ import { NOTE_SHOW_AUTHOR_STORAGE_KEY } from './constants'
 export const useNote = (id: string) => {
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
   const { saveStateToHistory } = useWorkflowHistory()
+  const setShowAuthorStorage = useSetLocalStorage<string>(NOTE_SHOW_AUTHOR_STORAGE_KEY, { raw: true })
 
   const handleThemeChange = useCallback((theme: NoteTheme) => {
     handleNodeDataUpdateWithSyncDraft({ id, data: { theme } })
@@ -21,10 +23,10 @@ export const useNote = (id: string) => {
   }, [handleNodeDataUpdateWithSyncDraft, id])
 
   const handleShowAuthorChange = useCallback((showAuthor: boolean) => {
-    localStorage.setItem(NOTE_SHOW_AUTHOR_STORAGE_KEY, String(showAuthor))
+    setShowAuthorStorage(String(showAuthor))
     handleNodeDataUpdateWithSyncDraft({ id, data: { showAuthor } })
     saveStateToHistory(WorkflowHistoryEvent.NoteChange, { nodeId: id })
-  }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
+  }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory, setShowAuthorStorage])
 
   return {
     handleThemeChange,

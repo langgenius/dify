@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 
 import services
 from configs import dify_config
-from controllers.common.fields import SimpleResultDataResponse, VerificationTokenResponse
+from controllers.common.fields import SimpleResultDataResponse, SimpleResultResponse, VerificationTokenResponse
 from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
@@ -29,6 +29,7 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from fields.base import ResponseModel
 from fields.member_fields import AccountWithRole, AccountWithRoleList
 from libs.helper import extract_remote_ip
 from libs.login import login_required
@@ -61,6 +62,24 @@ class OwnerTransferPayload(BaseModel):
     token: str
 
 
+class MemberInviteResultResponse(ResponseModel):
+    status: str
+    email: str
+    url: str | None = None
+    message: str | None = None
+
+
+class MemberInviteResponse(ResponseModel):
+    result: str
+    invitation_results: list[MemberInviteResultResponse]
+    tenant_id: str
+
+
+class MemberActionTenantResponse(ResponseModel):
+    result: str
+    tenant_id: str
+
+
 register_enum_models(console_ns, TenantAccountRole)
 register_schema_models(
     console_ns,
@@ -72,7 +91,14 @@ register_schema_models(
     OwnerTransferCheckPayload,
     OwnerTransferPayload,
 )
-register_response_schema_models(console_ns, SimpleResultDataResponse, VerificationTokenResponse)
+register_response_schema_models(
+    console_ns,
+    SimpleResultDataResponse,
+    SimpleResultResponse,
+    VerificationTokenResponse,
+    MemberInviteResponse,
+    MemberActionTenantResponse,
+)
 
 
 def _is_role_enabled(role: TenantAccountRole | str, tenant_id: str) -> bool:
@@ -152,6 +178,7 @@ class MemberInviteEmailApi(Resource):
     """Invite a new member by email."""
 
     @console_ns.expect(console_ns.models[MemberInvitePayload.__name__])
+    @console_ns.response(201, "Success", console_ns.models[MemberInviteResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -221,6 +248,7 @@ class MemberInviteEmailApi(Resource):
 class MemberCancelInviteApi(Resource):
     """Cancel an invitation by member id."""
 
+    @console_ns.response(200, "Success", console_ns.models[MemberActionTenantResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -254,6 +282,7 @@ class MemberUpdateRoleApi(Resource):
     """Update member role."""
 
     @console_ns.expect(console_ns.models[MemberRoleUpdatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -396,6 +425,7 @@ class OwnerTransferCheckApi(Resource):
 @console_ns.route("/workspaces/current/members/<uuid:member_id>/owner-transfer")
 class OwnerTransfer(Resource):
     @console_ns.expect(console_ns.models[OwnerTransferPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required

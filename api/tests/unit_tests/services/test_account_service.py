@@ -65,6 +65,7 @@ class TestAccountAssociatedDataFactory:
         tenant_join.account_id = account_id
         tenant_join.current = current
         tenant_join.role = role
+        tenant_join.last_opened_at = kwargs.pop("last_opened_at", None)
         for key, value in kwargs.items():
             setattr(tenant_join, key, value)
         return tenant_join
@@ -436,7 +437,10 @@ class TestAccountService:
         mock_db_dependencies["db"].session.scalar.return_value = mock_tenant_join
 
         # Mock datetime
-        with patch("services.account_service.datetime") as mock_datetime:
+        with (
+            patch("services.account_service.datetime") as mock_datetime,
+            patch.object(AccountService, "_refresh_account_last_active") as mock_refresh_last_active,
+        ):
             mock_now = datetime.now()
             mock_datetime.now.return_value = mock_now
             mock_datetime.UTC = "UTC"
@@ -447,6 +451,7 @@ class TestAccountService:
             # Verify results
             assert result == mock_account
             assert mock_account.set_tenant_id.called
+            mock_refresh_last_active.assert_called_once_with(mock_account)
 
     def test_load_user_not_found(self, mock_db_dependencies):
         """Test user loading when user does not exist."""
@@ -483,10 +488,15 @@ class TestAccountService:
         mock_db_dependencies["db"].session.scalar.side_effect = [None, mock_available_tenant]
 
         # Mock datetime
-        with patch("services.account_service.datetime") as mock_datetime:
+        with (
+            patch("services.account_service.datetime") as mock_datetime,
+            patch("services.account_service.naive_utc_now") as mock_naive_utc_now,
+            patch.object(AccountService, "_refresh_account_last_active") as mock_refresh_last_active,
+        ):
             mock_now = datetime.now()
             mock_datetime.now.return_value = mock_now
             mock_datetime.UTC = "UTC"
+            mock_naive_utc_now.return_value = mock_now
 
             # Execute test
             result = AccountService.load_user("user-123")
@@ -494,7 +504,9 @@ class TestAccountService:
             # Verify results
             assert result == mock_account
             assert mock_available_tenant.current is True
+            assert mock_available_tenant.last_opened_at == mock_now
             self._assert_database_operations_called(mock_db_dependencies["db"])
+            mock_refresh_last_active.assert_called_once_with(mock_account)
 
     def test_load_user_no_tenants(self, mock_db_dependencies):
         """Test user loading when user has no tenants at all."""
@@ -516,6 +528,68 @@ class TestAccountService:
 
             # Verify results
             assert result is None
+
+    def test_refresh_account_last_active_uses_redis_gate_and_conditional_update(self, mock_db_dependencies):
+        """Test last-active refresh is gated in Redis and conditionally written to DB."""
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock()
+        now = datetime(2026, 6, 2, 2, 45, 49)
+        mock_account.last_active_at = now - timedelta(minutes=15)
+
+        with (
+            patch("services.account_service.naive_utc_now", return_value=now),
+            patch("services.account_service.redis_client") as mock_redis_client,
+        ):
+            mock_redis_client.set.return_value = True
+
+            AccountService._refresh_account_last_active(mock_account)
+
+        mock_redis_client.set.assert_called_once_with(
+            "account_last_active_refresh:user-123",
+            1,
+            ex=600,
+            nx=True,
+        )
+        mock_db_dependencies["db"].session.execute.assert_called_once()
+        mock_db_dependencies["db"].session.commit.assert_called_once()
+
+    def test_refresh_account_last_active_skips_db_when_redis_gate_exists(self, mock_db_dependencies):
+        """Test concurrent refresh attempts do not enqueue duplicate DB updates."""
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock()
+        now = datetime(2026, 6, 2, 2, 45, 49)
+        mock_account.last_active_at = now - timedelta(minutes=15)
+
+        with (
+            patch("services.account_service.naive_utc_now", return_value=now),
+            patch("services.account_service.redis_client") as mock_redis_client,
+        ):
+            mock_redis_client.set.return_value = None
+
+            AccountService._refresh_account_last_active(mock_account)
+
+        mock_redis_client.set.assert_called_once_with(
+            "account_last_active_refresh:user-123",
+            1,
+            ex=600,
+            nx=True,
+        )
+        mock_db_dependencies["db"].session.execute.assert_not_called()
+        mock_db_dependencies["db"].session.commit.assert_not_called()
+
+    def test_refresh_account_last_active_skips_recent_account(self, mock_db_dependencies):
+        """Test recent activity does not touch Redis or DB."""
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock()
+        now = datetime(2026, 6, 2, 2, 45, 49)
+        mock_account.last_active_at = now - timedelta(minutes=5)
+
+        with (
+            patch("services.account_service.naive_utc_now", return_value=now),
+            patch("services.account_service.redis_client") as mock_redis_client,
+        ):
+            AccountService._refresh_account_last_active(mock_account)
+
+        mock_redis_client.set.assert_not_called()
+        mock_db_dependencies["db"].session.execute.assert_not_called()
+        mock_db_dependencies["db"].session.commit.assert_not_called()
 
 
 class TestTenantService:
@@ -568,8 +642,8 @@ class TestTenantService:
             callable_func(*args, **kwargs)
 
     # ==================== get_account_role_in_tenant Tests ====================
-    # Backs `require_workspace_role`: None => non-member (gate maps to 404),
-    # otherwise the caller's role (gate maps an out-of-set role to 403).
+    # Backs the auth pipeline's `load_workspace_role`: None => non-member
+    # (pipeline maps to 404), otherwise the caller's role (out-of-set role => 403).
 
     def test_get_account_role_in_tenant_returns_role_for_member(self):
         """A row in TenantAccountJoin yields the caller's role."""
@@ -852,11 +926,16 @@ class TestTenantService:
             # Mock scalar for the join query
             mock_db.session.scalar.return_value = mock_tenant_join
 
-            # Execute test
-            TenantService.switch_tenant(mock_account, "tenant-456")
+            with patch("services.account_service.naive_utc_now") as mock_naive_utc_now:
+                mock_now = datetime(2026, 6, 5, 11, 0, 0)
+                mock_naive_utc_now.return_value = mock_now
+
+                # Execute test
+                TenantService.switch_tenant(mock_account, "tenant-456")
 
             # Verify tenant was switched
             assert mock_tenant_join.current is True
+            assert mock_tenant_join.last_opened_at == mock_now
             self._assert_database_operations_called(mock_db)
 
     def test_switch_tenant_no_tenant_id(self):

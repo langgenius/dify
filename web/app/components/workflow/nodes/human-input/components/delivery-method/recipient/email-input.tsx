@@ -13,7 +13,7 @@ import MemberList from './member-list'
 
 const i18nPrefix = 'nodes.humanInput'
 
-type Props = {
+type Props = Readonly<{
   email: string
   value: RecipientItem[]
   list: Member[]
@@ -21,7 +21,7 @@ type Props = {
   onSelect: (value: string) => void
   onAdd: (email: string) => void
   disabled?: boolean
-}
+}>
 
 const EmailInput = ({
   email,
@@ -104,6 +104,8 @@ const EmailInput = ({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    e.stopPropagation()
+
     if (e.key === 'Enter' || e.key === 'Tab' || e.key === ' ' || e.key === ',') {
       e.preventDefault()
       handleEmailAdd()
@@ -155,6 +157,7 @@ const EmailInput = ({
               sideOffset={4}
               alignOffset={-40}
               popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+              popupProps={{ initialFocus: false, finalFocus: false }}
               positionerProps={{ anchor: inputRef }}
             >
               <MemberList

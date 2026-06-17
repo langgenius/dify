@@ -71,7 +71,10 @@ class MessageListItem(ResponseModel):
 
 
 class WebMessageListItem(MessageListItem):
-    metadata: JSONValueType | None = Field(default=None, validation_alias="message_metadata_dict")
+    metadata: JSONValueType | None = Field(
+        default=None,
+        validation_alias="message_metadata_dict",
+    )
 
 
 class MessageInfiniteScrollPagination(ResponseModel):

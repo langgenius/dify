@@ -7,9 +7,9 @@ import { useTranslation } from 'react-i18next'
 import FileIcon from '@/app/components/base/file-uploader/file-type-icon'
 
 type Props = {
-  docType: FileAppearanceTypeEnum
-  docTitle: string
-  showDetailModal: () => void
+  readonly docType: FileAppearanceTypeEnum
+  readonly docTitle: string
+  readonly showDetailModal: () => void
 }
 const i18nPrefix = ''
 

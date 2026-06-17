@@ -1,20 +1,14 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import PluginAuth from '../plugin-auth'
 import { AuthCategory } from '../types'
 
 const mockUsePluginAuth = vi.fn()
+const mockSetShowAccountSettingModal = vi.fn()
+
 vi.mock('../hooks/use-plugin-auth', () => ({
   usePluginAuth: (...args: unknown[]) => mockUsePluginAuth(...args),
-}))
-
-vi.mock('../authorize', () => ({
-  default: ({ pluginPayload }: { pluginPayload: { provider: string } }) => (
-    <div data-testid="authorize">
-      Authorize:
-      {pluginPayload.provider}
-    </div>
-  ),
 }))
 
 vi.mock('../authorized', () => ({
@@ -24,6 +18,12 @@ vi.mock('../authorized', () => ({
       {pluginPayload.provider}
     </div>
   ),
+}))
+
+vi.mock('@/context/modal-context', () => ({
+  useModalContext: () => ({
+    setShowAccountSettingModal: mockSetShowAccountSettingModal,
+  }),
 }))
 
 const defaultPayload = {
@@ -52,7 +52,7 @@ describe('PluginAuth', () => {
     })
 
     render(<PluginAuth pluginPayload={defaultPayload} />)
-    expect(screen.getByTestId('authorize')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeEnabled()
     expect(screen.queryByTestId('authorized')).not.toBeInTheDocument()
   })
 
@@ -135,5 +135,75 @@ describe('PluginAuth', () => {
 
     render(<PluginAuth pluginPayload={defaultPayload} />)
     expect(mockUsePluginAuth).toHaveBeenCalledWith(defaultPayload, true)
+  })
+
+  it('renders permission hint when authorization configuration is disabled by workspace permissions', () => {
+    mockUsePluginAuth.mockReturnValue({
+      isAuthorized: false,
+      canOAuth: false,
+      canApiKey: true,
+      credentials: [],
+      disabled: true,
+      invalidPluginCredentialInfo: vi.fn(),
+      notAllowCustomCredential: false,
+    })
+
+    render(<PluginAuth pluginPayload={defaultPayload} />)
+
+    expect(screen.getByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeDisabled()
+    expect(screen.getByText('plugin.auth.permissionHint.title')).toBeInTheDocument()
+    expect(screen.getByText('plugin.auth.permissionHint.description')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'plugin.auth.permissionHint.action' })).toBeInTheDocument()
+  })
+
+  it('opens members settings when permission hint action is clicked', () => {
+    mockUsePluginAuth.mockReturnValue({
+      isAuthorized: false,
+      canOAuth: false,
+      canApiKey: true,
+      credentials: [],
+      disabled: true,
+      invalidPluginCredentialInfo: vi.fn(),
+      notAllowCustomCredential: false,
+    })
+
+    render(<PluginAuth pluginPayload={defaultPayload} />)
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.auth.permissionHint.action' }))
+
+    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
+      payload: ACCOUNT_SETTING_TAB.MEMBERS,
+    })
+  })
+
+  it('does not render permission hint for datasource authorization', () => {
+    mockUsePluginAuth.mockReturnValue({
+      isAuthorized: false,
+      canOAuth: false,
+      canApiKey: true,
+      credentials: [],
+      disabled: true,
+      invalidPluginCredentialInfo: vi.fn(),
+      notAllowCustomCredential: false,
+    })
+
+    render(<PluginAuth pluginPayload={{ ...defaultPayload, category: AuthCategory.datasource }} />)
+
+    expect(screen.queryByText('plugin.auth.permissionHint.title')).not.toBeInTheDocument()
+  })
+
+  it('does not render permission hint when custom credentials are unavailable', () => {
+    mockUsePluginAuth.mockReturnValue({
+      isAuthorized: false,
+      canOAuth: false,
+      canApiKey: true,
+      credentials: [],
+      disabled: true,
+      invalidPluginCredentialInfo: vi.fn(),
+      notAllowCustomCredential: true,
+    })
+
+    render(<PluginAuth pluginPayload={defaultPayload} />)
+
+    expect(screen.queryByText('plugin.auth.permissionHint.title')).not.toBeInTheDocument()
   })
 })

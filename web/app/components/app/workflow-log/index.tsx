@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { App } from '@/types/app'
 import { Pagination } from '@langgenius/dify-ui/pagination'
+import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
@@ -13,8 +14,9 @@ import { useTranslation } from 'react-i18next'
 import EmptyElement from '@/app/components/app/log/empty-element'
 import Loading from '@/app/components/base/loading'
 import { APP_PAGE_LIMIT } from '@/config'
-import { useAppContext } from '@/context/app-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useWorkflowLogs } from '@/service/use-log'
+import PageTitle from '../log-annotation/page-title'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
 import List from './list'
 
@@ -33,7 +35,10 @@ export type QueryParam = {
 
 const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const { t } = useTranslation()
-  const { userProfile: { timezone } } = useAppContext()
+  const { data: timezone } = useQuery({
+    ...userProfileQueryOptions(),
+    select: data => data.profile.timezone ?? undefined,
+  })
   const [queryParams, setQueryParams] = useState<QueryParam>({ status: 'all', period: '2' })
   const [currPage, setCurrPage] = React.useState<number>(0)
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
@@ -63,8 +68,10 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
 
   return (
     <div className="flex h-full flex-col">
-      <h1 className="system-xl-semibold text-text-primary">{t('workflowTitle', { ns: 'appLog' })}</h1>
-      <p className="system-sm-regular text-text-tertiary">{t('workflowSubtitle', { ns: 'appLog' })}</p>
+      <PageTitle
+        title={t('workflowTitle', { ns: 'appLog' })}
+        description={t('workflowSubtitle', { ns: 'appLog' })}
+      />
       <div className="flex max-h-[calc(100%-16px)] flex-1 flex-col py-4">
         <Filter queryParams={queryParams} setQueryParams={setQueryParams} />
         {/* workflow log */}

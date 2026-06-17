@@ -61,6 +61,7 @@ class ComposerSavePayload(BaseModel):
 class RosterAgentCreatePayload(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     description: str = ""
+    role: str = Field(default="", max_length=255)
     icon_type: AgentIconType | None = None
     icon: str | None = Field(default=None, max_length=255)
     icon_background: str | None = Field(default=None, max_length=255)
@@ -71,6 +72,7 @@ class RosterAgentCreatePayload(BaseModel):
 class RosterAgentUpdatePayload(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None
+    role: str | None = Field(default=None, max_length=255)
     icon_type: AgentIconType | None = None
     icon: str | None = Field(default=None, max_length=255)
     icon_background: str | None = Field(default=None, max_length=255)
@@ -91,3 +93,5 @@ class ComposerCandidatesResponse(BaseModel):
     allowed_node_job_candidates: dict[str, Any] = Field(default_factory=dict)
     allowed_soul_candidates: dict[str, Any] = Field(default_factory=dict)
     capabilities: ComposerCandidateCapabilities = Field(default_factory=ComposerCandidateCapabilities)
+    # True when any candidate list was clipped to the per-list cap (ENG-615 §3.3).
+    truncated: bool = False

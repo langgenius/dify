@@ -37,13 +37,13 @@ import ListLoading from './list-loading'
 import OperationDropdown from './operation-dropdown'
 import ToolItem from './tool-item'
 
-type Props = {
+type Props = Readonly<{
   detail: ToolWithProvider
   onUpdate: (isDelete?: boolean) => void
   onHide: () => void
   isTriggerAuthorize: boolean
   onFirstCreate: () => void
-}
+}>
 
 type MCPModalConfirmPayload = Parameters<ComponentProps<typeof MCPModal>['onConfirm']>[0]
 type MutationResult = {
@@ -176,7 +176,7 @@ const MCPDetailContent: FC<Props> = ({
           </div>
           <div className="ml-3 w-0 grow">
             <div className="flex h-5 items-center">
-              <div className="truncate system-md-semibold text-text-primary" title={detail.name}>{detail.name}</div>
+              <div className="truncate system-md-semibold text-text-primary">{detail.name}</div>
             </div>
             <div className="mt-0.5 flex items-center gap-1">
               <Tooltip>
@@ -214,10 +214,12 @@ const MCPDetailContent: FC<Props> = ({
             </div>
           </div>
           <div className="flex gap-1">
-            <OperationDropdown
-              onEdit={showUpdateModal}
-              onRemove={showDeleteConfirm}
-            />
+            {isCurrentWorkspaceManager && (
+              <OperationDropdown
+                onEdit={showUpdateModal}
+                onRemove={showDeleteConfirm}
+              />
+            )}
             <ActionButton aria-label={t('operation.close', { ns: 'common' })} onClick={onHide}>
               <span aria-hidden className="i-ri-close-line size-4" />
             </ActionButton>

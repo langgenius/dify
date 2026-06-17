@@ -228,6 +228,20 @@ describe('Header layout components', () => {
       expect(store.getState().showChatVariablePanel).toBe(false)
       expect(store.getState().showGlobalVariablePanel).toBe(false)
     })
+
+    it('should hide env and global variable buttons when the controls are disabled', () => {
+      renderWorkflowComponent(
+        <HeaderInNormal
+          controls={{
+            showEnvButton: false,
+            showGlobalVariableButton: false,
+          }}
+        />,
+      )
+
+      expect(screen.queryByTestId('env-button')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('global-variable-button')).not.toBeInTheDocument()
+    })
   })
 
   describe('HeaderInRestoring', () => {
@@ -337,6 +351,39 @@ describe('Header layout components', () => {
 
       await waitFor(() => {
         expect(mockRestoreWorkflow).toHaveBeenCalledWith('/rag/pipelines/pipeline-1/workflows/version-1/restore')
+        expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalledTimes(1)
+      })
+      expect(mockEmitRestoreIntent).not.toHaveBeenCalled()
+      expect(mockEmitRestoreComplete).not.toHaveBeenCalled()
+      expect(mockEmitWorkflowUpdate).not.toHaveBeenCalled()
+    })
+
+    it('should restore snippet versions through snippet routes without emitting collaboration events', async () => {
+      const currentVersion = createCurrentVersion()
+
+      renderWorkflowComponent(
+        <HeaderInRestoring />,
+        {
+          initialStoreState: {
+            isRestoring: true,
+            showWorkflowVersionHistoryPanel: true,
+            backupDraft: createBackupDraft(),
+            currentVersion,
+          },
+          hooksStoreProps: {
+            configsMap: {
+              flowType: FlowType.snippet,
+              flowId: 'snippet-1',
+              fileSettings: {},
+            },
+          },
+        },
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
+
+      await waitFor(() => {
+        expect(mockRestoreWorkflow).toHaveBeenCalledWith('/snippets/snippet-1/workflows/version-1/restore')
         expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalledTimes(1)
       })
       expect(mockEmitRestoreIntent).not.toHaveBeenCalled()

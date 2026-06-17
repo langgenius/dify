@@ -4,13 +4,13 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { Infotip } from '@/app/components/base/infotip'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   icon: React.JSX.Element
   name: string
   description: string
   children: React.JSX.Element
-}
+}>
 
 const ItemPanel: FC<Props> = ({
   className,

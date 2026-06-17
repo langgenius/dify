@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any
+from typing import Any, override
 
 from flask import current_app
 
@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class ElasticSearchJaVector(ElasticSearchVector):
+    @override
     def create_collection(
         self,
         embeddings: list[list[float]],
@@ -82,6 +83,7 @@ class ElasticSearchJaVector(ElasticSearchVector):
 
 
 class ElasticSearchJaVectorFactory(ElasticSearchVectorFactory):
+    @override
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> ElasticSearchJaVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]

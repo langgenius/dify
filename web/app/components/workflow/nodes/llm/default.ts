@@ -3,6 +3,7 @@ import type { LLMNodeType } from './types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 // import { RETRIEVAL_OUTPUT_STRUCT } from '../../constants'
 import { AppModeEnum } from '@/types/app'
+import { FlowType } from '@/types/common'
 import { BlockEnum, EditionType, PromptRole } from '../../types'
 import { getLLMModelIssue, LLMModelIssueCode } from './utils'
 
@@ -59,8 +60,9 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
     '#context#': [RETRIEVAL_OUTPUT_STRUCT],
     '#files#': [],
   },
-  checkValid(payload: LLMNodeType, t: any) {
+  checkValid(payload: LLMNodeType, t: any, moreDataForCheckValid?: { flowType?: FlowType }) {
     let errorMessages = ''
+    const isSnippetFlow = moreDataForCheckValid?.flowType === FlowType.snippet
     const modelIssue = getLLMModelIssue({ modelProvider: payload.model.provider })
     if (!errorMessages && modelIssue === LLMModelIssueCode.providerRequired)
       errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.model`, { ns: 'workflow' }) })
@@ -82,7 +84,7 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
     if (!errorMessages && !!payload.memory) {
       const isChatModel = payload.model.mode === AppModeEnum.CHAT
       // payload.memory.query_prompt_template not pass is default: {{#sys.query#}}
-      if (isChatModel && !!payload.memory.query_prompt_template && !payload.memory.query_prompt_template.includes('{{#sys.query#}}'))
+      if (!isSnippetFlow && isChatModel && !!payload.memory.query_prompt_template && !payload.memory.query_prompt_template.includes('{{#sys.query#}}'))
         errorMessages = t('nodes.llm.sysQueryInUser', { ns: 'workflow' })
     }
 

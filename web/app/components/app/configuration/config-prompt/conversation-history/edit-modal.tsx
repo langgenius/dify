@@ -7,13 +7,13 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-type Props = {
+type Props = Readonly<{
   isShow: boolean
   saveLoading: boolean
   data: ConversationHistoriesRole
   onClose: () => void
   onSave: (data: any) => void
-}
+}>
 
 const EditModal: FC<Props> = ({
   isShow,

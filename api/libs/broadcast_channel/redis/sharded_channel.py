@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, override
 
 from extensions.redis_names import serialize_redis_name
 from libs.broadcast_channel.channel import Producer, Subscriber, Subscription
@@ -64,17 +64,21 @@ class ShardedTopic:
 class _RedisShardedSubscription(RedisSubscriptionBase):
     """Redis 7.0+ sharded pub/sub subscription implementation."""
 
+    @override
     def _get_subscription_type(self) -> str:
         return "sharded"
 
+    @override
     def _subscribe(self) -> None:
         assert self._pubsub is not None
         self._pubsub.ssubscribe(self._topic)  # type: ignore[attr-defined]
 
+    @override
     def _unsubscribe(self) -> None:
         assert self._pubsub is not None
         self._pubsub.sunsubscribe(self._topic)  # type: ignore[attr-defined]
 
+    @override
     def _get_message(self) -> dict[str, Any] | None:
         assert self._pubsub is not None
         # NOTE(QuantumGhost): this is an issue in
@@ -101,5 +105,6 @@ class _RedisShardedSubscription(RedisSubscriptionBase):
         else:
             raise AssertionError("client should be either Redis or RedisCluster.")
 
+    @override
     def _get_message_type(self) -> str:
         return "smessage"

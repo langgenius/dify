@@ -5,6 +5,7 @@ import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiDraggable } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
+import { useLocalStorage } from 'foxact/use-local-storage'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -19,14 +20,14 @@ import { getDefaultClassLabel, isDefaultClassLabel } from './class-label-utils'
 const i18nPrefix = 'nodes.questionClassifiers'
 const INLINE_LABEL_HINT_STORAGE_KEY = 'question-classifier-inline-label-hint-dismissed'
 
-type Props = {
+type Props = Readonly<{
   nodeId: string
   list: Topic[]
   onChange: (list: Topic[]) => void
   readonly?: boolean
   filterVar: (payload: Var, valueSelector: ValueSelector) => boolean
   handleSortTopic?: (newTopics: (Topic & { id: string })[]) => void
-}
+}>
 
 const ClassList: FC<Props> = ({
   nodeId,
@@ -42,17 +43,8 @@ const ClassList: FC<Props> = ({
   const [shouldScrollToEnd, setShouldScrollToEnd] = useState(false)
   const prevListLength = useRef(list.length)
   const [collapsed, setCollapsed] = useState(false)
-  const [isRenameHintDismissed, setIsRenameHintDismissed] = useState(() => {
-    if (typeof window === 'undefined')
-      return true
-
-    try {
-      return window.localStorage.getItem(INLINE_LABEL_HINT_STORAGE_KEY) === 'true'
-    }
-    catch {
-      return false
-    }
-  })
+  const [storedRenameHintDismissed, setIsRenameHintDismissed] = useLocalStorage<boolean>(INLINE_LABEL_HINT_STORAGE_KEY)
+  const isRenameHintDismissed = storedRenameHintDismissed ?? false
 
   const handleClassChange = useCallback((index: number) => {
     return (value: Topic) => {
@@ -104,12 +96,7 @@ const ClassList: FC<Props> = ({
       return
 
     setIsRenameHintDismissed(true)
-    try {
-      window.localStorage.setItem(INLINE_LABEL_HINT_STORAGE_KEY, 'true')
-    }
-    catch {
-    }
-  }, [isRenameHintDismissed])
+  }, [isRenameHintDismissed, setIsRenameHintDismissed])
 
   const shouldShowRenameHint = !readonly && !isRenameHintDismissed && list.some((item, index) => {
     return isDefaultClassLabel(item.label, index + 1, t)

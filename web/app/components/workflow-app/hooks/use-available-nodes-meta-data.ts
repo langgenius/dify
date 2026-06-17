@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
 import AnswerDefault from '@/app/components/workflow/nodes/answer/default'
 import EndDefault from '@/app/components/workflow/nodes/end/default'
+import StartPlaceholderDefault from '@/app/components/workflow/nodes/start-placeholder/default'
 import StartDefault from '@/app/components/workflow/nodes/start/default'
 import TriggerPluginDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
 import TriggerScheduleDefault from '@/app/components/workflow/nodes/trigger-schedule/default'
@@ -26,20 +27,23 @@ export const useAvailableNodesMetaData = () => {
     },
   }), [isChatMode])
 
-  const mergedNodesMetaData = useMemo(() => [
-    ...WORKFLOW_COMMON_NODES,
-    startNodeMetaData,
-    ...(
-      isChatMode
-        ? [AnswerDefault]
-        : [
-            EndDefault,
-            TriggerWebhookDefault,
-            TriggerScheduleDefault,
-            TriggerPluginDefault,
-          ]
-    ),
-  ], [isChatMode, startNodeMetaData])
+  const mergedNodesMetaData = useMemo(() => {
+    return [
+      ...WORKFLOW_COMMON_NODES,
+      startNodeMetaData,
+      ...(
+        isChatMode
+          ? [AnswerDefault]
+          : [
+              StartPlaceholderDefault,
+              EndDefault,
+              TriggerWebhookDefault,
+              TriggerScheduleDefault,
+              TriggerPluginDefault,
+            ]
+      ),
+    ]
+  }, [isChatMode, startNodeMetaData])
 
   const availableNodesMetaData = useMemo(() => mergedNodesMetaData.map((node) => {
     const { metaData } = node

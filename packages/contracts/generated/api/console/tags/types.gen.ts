@@ -20,14 +20,14 @@ export type TagUpdateRequestPayload = {
   name: string
 }
 
-export type TagType = 'app' | 'knowledge'
+export type TagType = 'app' | 'knowledge' | 'snippet'
 
 export type GetTagsData = {
   body?: never
   path?: never
   query?: {
     keyword?: string
-    type?: string
+    type?: '' | 'app' | 'knowledge' | 'snippet'
   }
   url: '/tags'
 }
@@ -61,9 +61,7 @@ export type DeleteTagsByTagIdData = {
 }
 
 export type DeleteTagsByTagIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteTagsByTagIdResponse = DeleteTagsByTagIdResponses[keyof DeleteTagsByTagIdResponses]

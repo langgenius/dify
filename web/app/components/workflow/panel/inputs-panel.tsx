@@ -25,9 +25,9 @@ import {
   WorkflowRunningStatus,
 } from '../types'
 
-type Props = {
+type Props = Readonly<{
   onRun: () => void
-}
+}>
 
 const InputsPanel = ({ onRun }: Props) => {
   const { t } = useTranslation()

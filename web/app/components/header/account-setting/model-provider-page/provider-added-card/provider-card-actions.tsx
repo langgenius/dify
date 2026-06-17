@@ -15,10 +15,10 @@ import { useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { getMarketplaceUrl } from '@/utils/var'
 
-type Props = {
+type Props = Readonly<{
   detail: PluginDetail
   onUpdate?: () => void
-}
+}>
 
 const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
   const { t } = useTranslation()
@@ -131,6 +131,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
         onRemove={modalStates.showDeleteConfirm}
         detailUrl={detailUrl}
         placement="bottom-start"
+        destructiveRemove
       />
 
       <HeaderModals

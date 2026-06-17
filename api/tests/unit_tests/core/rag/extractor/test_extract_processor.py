@@ -97,7 +97,7 @@ class TestExtractProcessorLoaders:
         self, monkeypatch: pytest.MonkeyPatch, url, headers, expected_suffix
     ):
         response = SimpleNamespace(headers=headers, content=b"body")
-        monkeypatch.setattr(processor_module.ssrf_proxy, "get", lambda *args, **kwargs: response)
+        monkeypatch.setattr(processor_module.remote_fetcher, "make_request", lambda *args, **kwargs: response)
         monkeypatch.setattr(processor_module, "ExtractSetting", lambda **kwargs: SimpleNamespace(**kwargs))
 
         captured = {}
@@ -139,7 +139,12 @@ class TestExtractProcessorFileRouting:
 
         setting = SimpleNamespace(
             datasource_type=DatasourceType.FILE,
-            upload_file=SimpleNamespace(key=f"uploaded{extension}", tenant_id="tenant-1", created_by="user-1"),
+            upload_file=SimpleNamespace(
+                id="upload-file-1",
+                key=f"uploaded{extension}",
+                tenant_id="tenant-1",
+                created_by="user-1",
+            ),
         )
 
         docs = ExtractProcessor.extract(setting, is_automatic=is_automatic)
@@ -199,6 +204,13 @@ class TestExtractProcessorFileRouting:
         extractor_name, _, _ = self._run_extract_for_extension(monkeypatch, extension, etl_type="SelfHosted")
 
         assert extractor_name == expected_extractor
+
+    def test_extract_routes_excel_with_upload_context(self, monkeypatch: pytest.MonkeyPatch):
+        extractor_name, args, kwargs = self._run_extract_for_extension(monkeypatch, ".xlsx", etl_type="SelfHosted")
+
+        assert extractor_name == "ExcelExtractor"
+        assert args[1:] == ("tenant-1", "user-1", "upload-file-1")
+        assert kwargs == {}
 
     def test_extract_requires_upload_file_when_file_path_not_provided(self):
         setting = SimpleNamespace(datasource_type=DatasourceType.FILE, upload_file=None)

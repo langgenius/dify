@@ -11,6 +11,7 @@ vi.mock('@/context/i18n', () => ({ useGetLanguage: () => 'en' }))
 
 const mockNodeTypes = [
   BlockEnum.Start,
+  BlockEnum.StartPlaceholder,
   BlockEnum.End,
   BlockEnum.LLM,
   BlockEnum.Code,
@@ -56,6 +57,11 @@ describe('useAvailableBlocks', () => {
       expect(result.current.availablePrevBlocks).toEqual([])
     })
 
+    it('should return empty array for StartPlaceholder node', () => {
+      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.StartPlaceholder), { hooksStoreProps })
+      expect(result.current.availablePrevBlocks).toEqual([])
+    })
+
     it('should return empty array for trigger nodes', () => {
       for (const trigger of [BlockEnum.TriggerPlugin, BlockEnum.TriggerWebhook, BlockEnum.TriggerSchedule]) {
         const { result } = renderWorkflowHook(() => useAvailableBlocks(trigger), { hooksStoreProps })
@@ -81,9 +87,10 @@ describe('useAvailableBlocks', () => {
       expect(result.current.availableNextBlocks).toEqual([])
     })
 
-    it('should return empty array for End node', () => {
+    it('should return available nodes for End node', () => {
       const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.End), { hooksStoreProps })
-      expect(result.current.availableNextBlocks).toEqual([])
+      expect(result.current.availableNextBlocks.length).toBeGreaterThan(0)
+      expect(result.current.availableNextBlocks).toContain(BlockEnum.Code)
     })
 
     it('should return empty array for LoopEnd node', () => {
@@ -96,9 +103,15 @@ describe('useAvailableBlocks', () => {
       expect(result.current.availableNextBlocks).toEqual([])
     })
 
+    it('should return empty array for StartPlaceholder node', () => {
+      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.StartPlaceholder), { hooksStoreProps })
+      expect(result.current.availableNextBlocks).toEqual([])
+    })
+
     it('should return all available nodes for regular block types', () => {
       const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LLM), { hooksStoreProps })
       expect(result.current.availableNextBlocks.length).toBeGreaterThan(0)
+      expect(result.current.availableNextBlocks).not.toContain(BlockEnum.StartPlaceholder)
     })
   })
 
@@ -143,10 +156,19 @@ describe('useAvailableBlocks', () => {
       expect(blocks.availablePrevBlocks).toEqual([])
     })
 
-    it('should return empty nextBlocks for End/LoopEnd/KnowledgeBase', () => {
+    it('should return no blocks for StartPlaceholder node', () => {
+      const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LLM), { hooksStoreProps })
+      const blocks = result.current.getAvailableBlocks(BlockEnum.StartPlaceholder)
+
+      expect(blocks.availablePrevBlocks).toEqual([])
+      expect(blocks.availableNextBlocks).toEqual([])
+    })
+
+    it('should return empty nextBlocks for LoopEnd/KnowledgeBase and available nodes for End', () => {
       const { result } = renderWorkflowHook(() => useAvailableBlocks(BlockEnum.LLM), { hooksStoreProps })
 
-      expect(result.current.getAvailableBlocks(BlockEnum.End).availableNextBlocks).toEqual([])
+      expect(result.current.getAvailableBlocks(BlockEnum.End).availableNextBlocks.length).toBeGreaterThan(0)
+      expect(result.current.getAvailableBlocks(BlockEnum.End).availableNextBlocks).toContain(BlockEnum.Code)
       expect(result.current.getAvailableBlocks(BlockEnum.LoopEnd).availableNextBlocks).toEqual([])
       expect(result.current.getAvailableBlocks(BlockEnum.KnowledgeBase).availableNextBlocks).toEqual([])
     })

@@ -24,12 +24,12 @@ import { Resolution, TransferMethod } from '@/types/app'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import RunOnce from '../../../share/text-generation/run-once'
 
-type Props = {
+type Props = Readonly<{
   appId: string
   className?: string
   isWorkflow?: boolean
   appData: AppData | null
-}
+}>
 
 const TextGeneration: FC<Props> = ({
   appId,

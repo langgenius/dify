@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import AllTools from '@/app/components/workflow/block-selector/all-tools'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import {
   createCustomCollection,
 } from '@/service/tools'
@@ -36,7 +36,7 @@ import {
   useInvalidateAllWorkflowTools,
 } from '@/service/use-tools'
 
-type Props = {
+type Props = Readonly<{
   panelClassName?: string
   disabled: boolean
   trigger: React.ReactNode
@@ -49,7 +49,7 @@ type Props = {
   supportAddCustomTool?: boolean
   scope?: string
   selectedTools?: ToolValue[]
-}
+}>
 
 const ToolPicker: FC<Props> = ({
   disabled,

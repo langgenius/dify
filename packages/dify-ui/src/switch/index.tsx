@@ -2,7 +2,7 @@
 
 import type { Switch as BaseSwitchNS } from '@base-ui/react/switch'
 import type { VariantProps } from 'class-variance-authority'
-import type { HTMLAttributes } from 'react'
+import type * as React from 'react'
 import { Switch as BaseSwitch } from '@base-ui/react/switch'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
@@ -10,7 +10,7 @@ import { cn } from '../cn'
 const switchRootStateClassName = 'bg-components-toggle-bg-unchecked hover:bg-components-toggle-bg-unchecked-hover data-checked:bg-components-toggle-bg data-checked:hover:bg-components-toggle-bg-hover data-disabled:cursor-not-allowed data-disabled:bg-components-toggle-bg-unchecked-disabled data-disabled:hover:bg-components-toggle-bg-unchecked-disabled data-disabled:data-checked:bg-components-toggle-bg-disabled data-disabled:data-checked:hover:bg-components-toggle-bg-disabled'
 
 const switchRootVariants = cva(
-  `group relative inline-flex shrink-0 cursor-pointer touch-manipulation items-center transition-colors duration-200 ease-in-out focus-visible:ring-2 focus-visible:ring-components-toggle-bg motion-reduce:transition-none ${switchRootStateClassName}`,
+  `group relative inline-flex shrink-0 cursor-pointer touch-manipulation items-center transition-colors duration-200 ease-in-out focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none ${switchRootStateClassName}`,
   {
     variants: {
       size: {
@@ -134,7 +134,7 @@ const switchSkeletonVariants = cva(
 )
 
 export type SwitchSkeletonProps
-  = HTMLAttributes<HTMLDivElement>
+  = React.ComponentProps<'div'>
     & VariantProps<typeof switchSkeletonVariants>
 
 export function SwitchSkeleton({

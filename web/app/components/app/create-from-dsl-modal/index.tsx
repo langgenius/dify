@@ -8,6 +8,7 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { toast } from '@langgenius/dify-ui/toast'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useDebounceFn } from 'ahooks'
+import { useSetLocalStorage } from 'foxact/use-local-storage'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
@@ -25,6 +26,7 @@ import {
   importDSL,
   importDSLConfirm,
 } from '@/service/apps'
+import { useInvalidateAppList } from '@/service/use-apps'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import Uploader from './uploader'
@@ -54,6 +56,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   const [versions, setVersions] = useState<{ importedVersion: string, systemVersion: string }>()
   const [importId, setImportId] = useState<string>()
   const { handleCheckPluginDependencies } = usePluginDependencies()
+  const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
 
   const readFile = useCallback((file: File) => {
     const reader = new FileReader()
@@ -75,6 +78,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
+  const invalidateAppList = useInvalidateAppList()
 
   const isCreatingRef = useRef(false)
 
@@ -124,7 +128,8 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
             ? t('newApp.appCreateDSLWarning', { ns: 'app' })
             : undefined,
         })
-        localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+        setNeedRefresh('1')
+        invalidateAppList()
         if (app_id)
           await handleCheckPluginDependencies(app_id)
         getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
@@ -178,7 +183,8 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         toast.success(t('newApp.appCreated', { ns: 'app' }))
         if (app_id)
           await handleCheckPluginDependencies(app_id)
-        localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+        setNeedRefresh('1')
+        invalidateAppList()
         getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
       }
       else if (status === DSLImportStatus.FAILED) {

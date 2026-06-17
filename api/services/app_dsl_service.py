@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
-from core.helper import ssrf_proxy
+from core.file import remote_fetcher
 from core.plugin.entities.plugin import PluginDependency
 from core.trigger.constants import (
     TRIGGER_PLUGIN_NODE_TYPE,
@@ -41,6 +41,7 @@ from models.model import AppModelConfig, AppModelConfigDict, IconType
 from models.workflow import Workflow
 from services.dsl_version import check_version_compatibility
 from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus
+from services.errors.app import WorkflowNotFoundError
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
@@ -127,7 +128,7 @@ class AppDslService:
                 ):
                     yaml_url = yaml_url.replace("https://github.com", "https://raw.githubusercontent.com")
                     yaml_url = yaml_url.replace("/blob/", "/")
-                response = ssrf_proxy.get(yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
+                response = remote_fetcher.make_request("GET", yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
                 response.raise_for_status()
                 content = response.content.decode()
 
@@ -557,7 +558,7 @@ class AppDslService:
         workflow_service = WorkflowService()
         workflow = workflow_service.get_draft_workflow(app_model, workflow_id)
         if not workflow:
-            raise ValueError("Missing draft workflow configuration, please check.")
+            raise WorkflowNotFoundError("Missing draft workflow configuration, please check.")
 
         workflow_dict = workflow.to_dict(include_secret=include_secret)
         # TODO: refactor: we need a better way to filter workspace related data from nodes

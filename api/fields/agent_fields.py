@@ -1,8 +1,10 @@
-from typing import Any, Literal
+from datetime import datetime
+from typing import Annotated, Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from fields.base import ResponseModel
+from libs.helper import to_timestamp
 from models.agent import (
     AgentConfigRevisionOperation,
     AgentIconType,
@@ -13,10 +15,16 @@ from models.agent import (
     WorkflowAgentBindingType,
 )
 from models.agent_config_entities import (
+    AgentCliToolConfig,
+    AgentFileRefConfig,
+    AgentHumanContactConfig,
+    AgentKnowledgeDatasetConfig,
+    AgentSkillRefConfig,
     AgentSoulConfig,
     DeclaredOutputConfig,
     DeclaredOutputType,
     WorkflowNodeJobConfig,
+    WorkflowPreviousNodeOutputRef,
 )
 from services.entities.agent_entities import (
     ComposerCandidateCapabilities,
@@ -32,13 +40,27 @@ class AgentConfigSnapshotSummaryResponse(ResponseModel):
     summary: str | None = None
     version_note: str | None = None
     created_by: str | None = None
-    created_at: str | None = None
+    created_at: int | None = None
+
+
+class AgentPublishedReferenceResponse(ResponseModel):
+    app_id: str
+    app_name: str
+    app_icon_type: str | None = None
+    app_icon: str | None = None
+    app_icon_background: str | None = None
+    app_mode: str
+    app_updated_at: int | None = None
+    workflow_id: str
+    workflow_version: str
+    node_ids: list[str] = Field(default_factory=list)
 
 
 class AgentRosterResponse(ResponseModel):
     id: str
     name: str
     description: str
+    role: str = ""
     icon_type: AgentIconType | None = None
     icon: str | None = None
     icon_background: str | None = None
@@ -50,13 +72,17 @@ class AgentRosterResponse(ResponseModel):
     workflow_node_id: str | None = None
     active_config_snapshot_id: str | None = None
     active_config_snapshot: AgentConfigSnapshotSummaryResponse | None = None
+    active_config_is_published: bool = False
     status: AgentStatus
     created_by: str | None = None
     updated_by: str | None = None
     archived_by: str | None = None
-    archived_at: str | None = None
-    created_at: str | None = None
-    updated_at: str | None = None
+    archived_at: int | None = None
+    created_at: int | None = None
+    updated_at: int | None = None
+    published_reference_count: int = 0
+    published_node_reference_count: int = 0
+    published_references: list[AgentPublishedReferenceResponse] = Field(default_factory=list)
 
 
 class AgentInviteOptionResponse(AgentRosterResponse):
@@ -81,6 +107,114 @@ class AgentInviteOptionsResponse(ResponseModel):
     has_more: bool
 
 
+class AgentLogItemResponse(ResponseModel):
+    id: str
+    message_id: str
+    conversation_id: str
+    conversation_name: str | None = None
+    query: str
+    answer: str
+    status: str
+    error: str | None = None
+    source: str | None = None
+    from_source: str | None = None
+    from_end_user_id: str | None = None
+    from_account_id: str | None = None
+    message_tokens: int
+    answer_tokens: int
+    total_tokens: int
+    total_price: str
+    currency: str
+    latency: float
+    created_at: int | None = None
+    updated_at: int | None = None
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class AgentLogListResponse(ResponseModel):
+    data: list[AgentLogItemResponse]
+    page: int
+    limit: int
+    total: int
+    has_more: bool
+
+
+class AgentStatisticSummaryResponse(ResponseModel):
+    total_messages: int
+    total_conversations: int
+    total_end_users: int
+    total_tokens: int
+    total_price: str
+    currency: str
+    average_session_interactions: float
+    average_response_time: float
+    tokens_per_second: float
+    user_satisfaction_rate: float
+
+
+class AgentDailyMessageStatisticResponse(ResponseModel):
+    date: str
+    message_count: int
+
+
+class AgentDailyConversationStatisticResponse(ResponseModel):
+    date: str
+    conversation_count: int
+
+
+class AgentDailyEndUserStatisticResponse(ResponseModel):
+    date: str
+    terminal_count: int
+
+
+class AgentTokenUsageStatisticResponse(ResponseModel):
+    date: str
+    token_count: int
+    total_price: str
+    currency: str
+
+
+class AgentAverageSessionInteractionStatisticResponse(ResponseModel):
+    date: str
+    interactions: float
+
+
+class AgentAverageResponseTimeStatisticResponse(ResponseModel):
+    date: str
+    latency: float
+
+
+class AgentTokensPerSecondStatisticResponse(ResponseModel):
+    date: str
+    tps: float
+
+
+class AgentUserSatisfactionRateStatisticResponse(ResponseModel):
+    date: str
+    rate: float
+
+
+class AgentStatisticChartsResponse(ResponseModel):
+    daily_messages: list[AgentDailyMessageStatisticResponse] = Field(default_factory=list)
+    daily_conversations: list[AgentDailyConversationStatisticResponse] = Field(default_factory=list)
+    daily_end_users: list[AgentDailyEndUserStatisticResponse] = Field(default_factory=list)
+    token_usage: list[AgentTokenUsageStatisticResponse] = Field(default_factory=list)
+    average_session_interactions: list[AgentAverageSessionInteractionStatisticResponse] = Field(default_factory=list)
+    average_response_time: list[AgentAverageResponseTimeStatisticResponse] = Field(default_factory=list)
+    tokens_per_second: list[AgentTokensPerSecondStatisticResponse] = Field(default_factory=list)
+    user_satisfaction_rate: list[AgentUserSatisfactionRateStatisticResponse] = Field(default_factory=list)
+
+
+class AgentStatisticSummaryEnvelopeResponse(ResponseModel):
+    source: str
+    summary: AgentStatisticSummaryResponse
+    charts: AgentStatisticChartsResponse
+
+
 class AgentConfigRevisionResponse(ResponseModel):
     id: str
     previous_snapshot_id: str | None = None
@@ -90,7 +224,7 @@ class AgentConfigRevisionResponse(ResponseModel):
     summary: str | None = None
     version_note: str | None = None
     created_by: str | None = None
-    created_at: str | None = None
+    created_at: int | None = None
 
 
 class AgentConfigSnapshotDetailResponse(AgentConfigSnapshotSummaryResponse):
@@ -149,6 +283,7 @@ class WorkflowAgentComposerResponse(ResponseModel):
     effective_declared_outputs: list[DeclaredOutputConfig] = Field(default_factory=list)
     save_options: list[ComposerSaveStrategy]
     impact_summary: AgentComposerImpactResponse | None = None
+    validation: "ComposerValidationFindingsResponse | None" = None
     app_id: str | None = None
     workflow_id: str | None = None
     node_id: str | None = None
@@ -160,25 +295,73 @@ class AgentAppComposerResponse(ResponseModel):
     active_config_snapshot: AgentConfigSnapshotSummaryResponse
     agent_soul: AgentSoulConfig
     save_options: list[ComposerSaveStrategy]
+    validation: "ComposerValidationFindingsResponse | None" = None
+
+
+class ComposerValidationWarningResponse(ResponseModel):
+    code: str
+    surface: str | None = None
+    kind: str | None = None
+    id: str | None = None
+    message: str | None = None
+
+
+class ComposerKnowledgePlaceholderResponse(ResponseModel):
+    id: str
+    placeholder_name: str
+
+
+class ComposerValidationFindingsResponse(ResponseModel):
+    warnings: list[ComposerValidationWarningResponse] = Field(default_factory=list)
+    knowledge_retrieval_placeholder: list[ComposerKnowledgePlaceholderResponse] = Field(default_factory=list)
 
 
 class AgentComposerValidateResponse(ResponseModel):
     result: Literal["success"]
     errors: list[str] = Field(default_factory=list)
+    warnings: list[ComposerValidationWarningResponse] = Field(default_factory=list)
+    knowledge_retrieval_placeholder: list[ComposerKnowledgePlaceholderResponse] = Field(default_factory=list)
+
+
+class AgentComposerDifyToolCandidateResponse(ResponseModel):
+    id: str | None = None
+    # "provider" = the whole provider (all of its tools, id "<provider>/*");
+    # "tool" = one tool (id "<provider>/<tool_name>"). See ENG-616.
+    granularity: str | None = None
+    name: str | None = None
+    description: str | None = None
+    provider: str | None = None
+    provider_id: str | None = None
+    plugin_id: str | None = None
+    tools_count: int | None = None
+
+
+class AgentComposerSkillCandidateResponse(AgentSkillRefConfig):
+    kind: Literal["skill"] = "skill"
+
+
+class AgentComposerFileCandidateResponse(AgentFileRefConfig):
+    kind: Literal["file"] = "file"
+
+
+AgentComposerSkillFileCandidateResponse = Annotated[
+    AgentComposerSkillCandidateResponse | AgentComposerFileCandidateResponse,
+    Field(discriminator="kind"),
+]
 
 
 class AgentComposerNodeJobCandidatesResponse(ResponseModel):
-    previous_node_outputs: list[dict[str, Any]] = Field(default_factory=list)
+    previous_node_outputs: list[WorkflowPreviousNodeOutputRef] = Field(default_factory=list)
     declare_output_types: list[DeclaredOutputType] = Field(default_factory=list)
-    human_contacts: list[dict[str, Any]] = Field(default_factory=list)
+    human_contacts: list[AgentHumanContactConfig] = Field(default_factory=list)
 
 
 class AgentComposerSoulCandidatesResponse(ResponseModel):
-    skills_files: list[dict[str, Any]] = Field(default_factory=list)
-    dify_tools: list[dict[str, Any]] = Field(default_factory=list)
-    cli_tools: list[dict[str, Any]] = Field(default_factory=list)
-    knowledge_datasets: list[dict[str, Any]] = Field(default_factory=list)
-    human_contacts: list[dict[str, Any]] = Field(default_factory=list)
+    skills_files: list[AgentComposerSkillFileCandidateResponse] = Field(default_factory=list)
+    dify_tools: list[AgentComposerDifyToolCandidateResponse] = Field(default_factory=list)
+    cli_tools: list[AgentCliToolConfig] = Field(default_factory=list)
+    knowledge_datasets: list[AgentKnowledgeDatasetConfig] = Field(default_factory=list)
+    human_contacts: list[AgentHumanContactConfig] = Field(default_factory=list)
 
 
 class AgentComposerCandidatesResponse(ResponseModel):
@@ -190,3 +373,4 @@ class AgentComposerCandidatesResponse(ResponseModel):
         default_factory=AgentComposerSoulCandidatesResponse
     )
     capabilities: ComposerCandidateCapabilities = Field(default_factory=ComposerCandidateCapabilities)
+    truncated: bool = False

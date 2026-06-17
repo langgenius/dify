@@ -7,12 +7,12 @@ import * as React from 'react'
 import InputCombined from './input-combined'
 import Label from './label'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   payload: MetadataItemWithEdit
   onChange: (value: MetadataItemWithEdit) => void
   onRemove: () => void
-}
+}>
 
 const AddRow: FC<Props> = ({
   className,

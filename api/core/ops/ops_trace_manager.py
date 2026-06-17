@@ -5,8 +5,9 @@ import os
 import queue
 import threading
 import time
+from collections.abc import Mapping
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict, override
 from uuid import UUID, uuid4
 
 from cachetools import LRUCache
@@ -62,6 +63,11 @@ def _dump_parent_trace_context(parent_trace_context: Any) -> dict[str, str] | No
         except ValueError:
             return None
     return None
+
+
+def _get_trace_session_id(kwargs: Mapping[str, Any]) -> str | None:
+    value = kwargs.get("trace_session_id")
+    return value if isinstance(value, str) and value else None
 
 
 class _AppTracingConfig(TypedDict, total=False):
@@ -215,9 +221,10 @@ class TracingProviderConfigEntry(TypedDict):
 
 
 class OpsTraceProviderConfigMap(collections.UserDict[str, TracingProviderConfigEntry]):
-    def __getitem__(self, provider: str) -> TracingProviderConfigEntry:
+    @override
+    def __getitem__(self, key: str) -> TracingProviderConfigEntry:
         try:
-            match provider:
+            match key:
                 case TracingProviderEnum.LANGFUSE:
                     from dify_trace_langfuse.config import LangfuseConfig
                     from dify_trace_langfuse.langfuse_trace import LangFuseDataTrace
@@ -324,9 +331,9 @@ class OpsTraceProviderConfigMap(collections.UserDict[str, TracingProviderConfigE
                     }
 
                 case _:
-                    raise KeyError(f"Unsupported tracing provider: {provider}")
+                    raise KeyError(f"Unsupported tracing provider: {key}")
         except ImportError:
-            raise ImportError(f"Provider {provider} is not installed.")
+            raise ImportError(f"Provider {key} is not installed.")
 
 
 provider_config_map = OpsTraceProviderConfigMap()
@@ -873,6 +880,10 @@ class TraceTask:
         if dumped_parent_trace_context:
             metadata["parent_trace_context"] = dumped_parent_trace_context
 
+        trace_session_id = _get_trace_session_id(self.kwargs)
+        if trace_session_id:
+            metadata["trace_session_id"] = trace_session_id
+
         workflow_trace_info = WorkflowTraceInfo(
             trace_id=self.trace_id,
             workflow_data=workflow_run.to_dict(),
@@ -955,6 +966,10 @@ class TraceTask:
         }
         if node_execution_id := kwargs.get("node_execution_id"):
             metadata["node_execution_id"] = node_execution_id
+
+        trace_session_id = _get_trace_session_id(kwargs)
+        if trace_session_id:
+            metadata["trace_session_id"] = trace_session_id
 
         message_tokens = message_data.message_tokens
 

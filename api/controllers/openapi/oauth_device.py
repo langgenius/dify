@@ -26,7 +26,12 @@ from werkzeug.exceptions import BadRequest
 
 from configs import dify_config
 from controllers.common.schema import query_params_from_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+)
 from controllers.openapi import openapi_ns
 from controllers.openapi._models import (
     AccountPayload,
@@ -37,19 +42,20 @@ from controllers.openapi._models import (
     DeviceMutateRequest,
     DeviceMutateResponse,
     DevicePollRequest,
+    DeviceTokenResponse,
     WorkspacePayload,
 )
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.helper import extract_remote_ip
-from libs.login import current_account_with_tenant
 from libs.oauth_bearer import MINTABLE_PROFILES, SubjectType, bearer_feature_required
 from libs.rate_limit import (
-    LIMIT_APPROVE_CONSOLE,
     LIMIT_DEVICE_CODE_PER_IP,
+    LIMIT_DEVICE_FLOW_APPROVE,
     LIMIT_LOOKUP_PUBLIC,
     rate_limit,
 )
+from models import Account
 from services.account_service import TenantService
 from services.oauth_device_flow import (
     ACCOUNT_ISSUER_SENTINEL,
@@ -125,6 +131,7 @@ class OAuthDeviceTokenApi(Resource):
     """RFC 8628 poll."""
 
     @openapi_ns.expect(openapi_ns.models[DevicePollRequest.__name__])
+    @openapi_ns.response(200, "Device token", openapi_ns.models[DeviceTokenResponse.__name__])
     def post(self):
         payload = _validate_json(DevicePollRequest)
         device_code = payload.device_code
@@ -205,12 +212,13 @@ class DeviceApproveApi(Resource):
     @login_required
     @account_initialization_required
     @bearer_feature_required
-    @rate_limit(LIMIT_APPROVE_CONSOLE)
-    def post(self):
+    @rate_limit(LIMIT_DEVICE_FLOW_APPROVE)
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant: str, account: Account):
         payload = _validate_json(DeviceMutateRequest)
         user_code = payload.user_code.strip().upper()
 
-        account, tenant = current_account_with_tenant()
         store = DeviceFlowRedis(redis_client)
 
         found = store.load_by_user_code(user_code)
@@ -281,7 +289,7 @@ class DeviceDenyApi(Resource):
     @login_required
     @account_initialization_required
     @bearer_feature_required
-    @rate_limit(LIMIT_APPROVE_CONSOLE)
+    @rate_limit(LIMIT_DEVICE_FLOW_APPROVE)
     def post(self):
         payload = _validate_json(DeviceMutateRequest)
         user_code = payload.user_code.strip().upper()

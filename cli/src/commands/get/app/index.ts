@@ -3,10 +3,12 @@ import { DifyCommand } from '@/commands/_shared/dify-command'
 import { httpRetryFlag } from '@/commands/_shared/global-flags'
 import { Args, Flags } from '@/framework/flags'
 import { OutputFormat, table } from '@/framework/output'
+import { agentGuide } from './guide'
 import { runGetApp } from './run'
 
 const APP_MODE_VALUES: readonly AppMode[] = [
   'advanced-chat',
+  'agent',
   'agent-chat',
   'channel',
   'chat',
@@ -55,14 +57,18 @@ export default class GetApp extends DifyCommand {
       allWorkspaces: flags['all-workspaces'],
       page: flags.page,
       limitRaw: flags.limit,
-      mode: flags.mode,
+      mode: flags.mode as AppMode | undefined,
       name: flags.name,
       tag: flags.tag,
       format,
-    }, { bundle: ctx.bundle, http: ctx.http, io: ctx.io })
+    }, { active: ctx.active, http: ctx.http, io: ctx.io })
     return table({
       format,
       data: result.data,
     })
+  }
+
+  override agentGuide(): string {
+    return agentGuide
   }
 }
