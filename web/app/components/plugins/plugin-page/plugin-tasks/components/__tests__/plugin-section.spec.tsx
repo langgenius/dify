@@ -158,7 +158,7 @@ describe('PluginSection', () => {
       render(<PluginSection {...defaultProps} plugins={plugins} count={1} />)
 
       expect(screen.getByText('Solo'))!.toBeInTheDocument()
-      expect(screen.getByText(/solo/i).closest('.max-h-\\[300px\\]'))!.toBeInTheDocument()
+      expect(screen.getByRole('region', { name: /installing plugins/i })).toBeInTheDocument()
     })
   })
 })

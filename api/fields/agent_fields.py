@@ -44,7 +44,11 @@ class AgentConfigSnapshotSummaryResponse(ResponseModel):
 class AgentPublishedReferenceResponse(ResponseModel):
     app_id: str
     app_name: str
+    app_icon_type: str | None = None
+    app_icon: str | None = None
+    app_icon_background: str | None = None
     app_mode: str
+    app_updated_at: int | None = None
     workflow_id: str
     workflow_version: str
     node_ids: list[str] = Field(default_factory=list)
@@ -66,6 +70,7 @@ class AgentRosterResponse(ResponseModel):
     workflow_node_id: str | None = None
     active_config_snapshot_id: str | None = None
     active_config_snapshot: AgentConfigSnapshotSummaryResponse | None = None
+    active_config_is_published: bool = False
     status: AgentStatus
     created_by: str | None = None
     updated_by: str | None = None

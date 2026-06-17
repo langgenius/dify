@@ -3,6 +3,7 @@ import { useRafInterval } from 'ahooks'
 import Recorder from 'js-audio-recorder'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { useParams, usePathname } from '@/next/navigation'
 import { AppSourceType, audioToText } from '@/service/share'
 import s from './index.module.css'
@@ -96,7 +97,7 @@ const VoiceInput = ({
       isPublic = true
     }
     else if (params.appId) {
-      if (pathname.search('explore/installed') > -1)
+      if (isInstalledAppPath(pathname))
         url = `/installed-apps/${params.appId}/audio-to-text`
       else
         url = `/apps/${params.appId}/audio-to-text`

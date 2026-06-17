@@ -4,7 +4,7 @@ import { expect } from '@playwright/test'
 import { adminCredentials } from '../../../fixtures/auth'
 
 When('I open the sign-in page', async function (this: DifyWorld) {
-  await this.getPage().goto('/signin')
+  await this.getPage().goto('/signin?redirect_url=%2Fapps')
 })
 
 When('I sign in as the default E2E admin', async function (this: DifyWorld) {

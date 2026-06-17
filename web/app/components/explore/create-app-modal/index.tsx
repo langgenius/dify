@@ -117,15 +117,15 @@ const CreateAppModal = ({
         <DialogContent backdropProps={{ forceRender: true }} className="px-8">
           <DialogCloseButton />
           {isEditModal && (
-            <DialogTitle className="mb-9 text-xl leading-[30px] font-semibold text-text-primary">{t('editAppTitle', { ns: 'app' })}</DialogTitle>
+            <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">{t('editAppTitle', { ns: 'app' })}</DialogTitle>
           )}
           {!isEditModal && (
-            <DialogTitle className="mb-9 text-xl leading-[30px] font-semibold text-text-primary">{t('appCustomize.title', { ns: 'explore', name: appName })}</DialogTitle>
+            <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">{t('appCustomize.title', { ns: 'explore', name: appName })}</DialogTitle>
           )}
           <div className="mb-9">
             {/* icon & name */}
             <div className="pt-2">
-              <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('newApp.captionName', { ns: 'app' })}</div>
+              <div className="py-2 text-sm leading-5 font-medium text-text-primary">{t('newApp.captionName', { ns: 'app' })}</div>
               <div className="flex items-center justify-between space-x-2">
                 <AppIcon
                   size="large"
@@ -146,7 +146,7 @@ const CreateAppModal = ({
             </div>
             {/* description */}
             <div className="pt-2">
-              <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('newApp.captionDescription', { ns: 'app' })}</div>
+              <div className="py-2 text-sm leading-5 font-medium text-text-primary">{t('newApp.captionDescription', { ns: 'app' })}</div>
               <Textarea
                 aria-label={t('newApp.captionDescription', { ns: 'app' })}
                 className="resize-none"
@@ -159,7 +159,7 @@ const CreateAppModal = ({
             {isEditModal && (appMode === AppModeEnum.CHAT || appMode === AppModeEnum.ADVANCED_CHAT || appMode === AppModeEnum.AGENT_CHAT) && (
               <div className="pt-2">
                 <div className="flex items-center justify-between">
-                  <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('answerIcon.title', { ns: 'app' })}</div>
+                  <div className="py-2 text-sm leading-5 font-medium text-text-primary">{t('answerIcon.title', { ns: 'app' })}</div>
                   <Switch
                     checked={useIconAsAnswerIcon}
                     onCheckedChange={v => setUseIconAsAnswerIcon(v)}
@@ -170,7 +170,7 @@ const CreateAppModal = ({
             )}
             {isEditModal && (
               <div className="pt-2">
-                <div className="mt-2 mb-2 text-sm leading-[20px] font-medium text-text-primary">{t('maxActiveRequests', { ns: 'app' })}</div>
+                <div className="mt-2 mb-2 text-sm leading-5 font-medium text-text-primary">{t('maxActiveRequests', { ns: 'app' })}</div>
                 <Input
                   type="number"
                   min={1}

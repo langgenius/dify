@@ -6,6 +6,7 @@ from sqlalchemy.orm import scoped_session
 from configs import dify_config
 from models.model import AccountTrialAppRecord, TrialApp
 from services.feature_service import FeatureService
+from services.recommend_app.database.database_retrieval import DatabaseRecommendAppRetrieval
 from services.recommend_app.recommend_app_factory import RecommendAppRetrievalFactory
 
 
@@ -31,12 +32,23 @@ class RecommendedAppService:
             apps = result["recommended_apps"]
             for app in apps:
                 app_id = app["app_id"]
-                trial_app_model = session.scalar(select(TrialApp).where(TrialApp.app_id == app_id).limit(1))
-                if trial_app_model:
-                    app["can_trial"] = True
-                else:
-                    app["can_trial"] = False
+                app["can_trial"] = cls._can_trial_app(session, app_id)
         return result
+
+    @classmethod
+    def get_learn_dify_apps(cls, session: scoped_session, language: str) -> dict[str, Any]:
+        """
+        Get database-backed recommended apps marked as Learn Dify.
+        :param language: language
+        :return:
+        """
+        result = DatabaseRecommendAppRetrieval.fetch_learn_dify_apps_from_db(language)
+
+        if FeatureService.get_system_features().enable_trial_app:
+            for app in result["recommended_apps"]:
+                app["can_trial"] = cls._can_trial_app(session, app["app_id"])
+
+        return {"recommended_apps": result["recommended_apps"]}
 
     @classmethod
     def get_recommend_app_detail(cls, session: scoped_session, app_id: str) -> dict[str, Any] | None:
@@ -52,11 +64,7 @@ class RecommendedAppService:
             return None
         if FeatureService.get_system_features().enable_trial_app:
             app_id = result["id"]
-            trial_app_model = session.scalar(select(TrialApp).where(TrialApp.app_id == app_id).limit(1))
-            if trial_app_model:
-                result["can_trial"] = True
-            else:
-                result["can_trial"] = False
+            result["can_trial"] = cls._can_trial_app(session, app_id)
         return result
 
     @classmethod
@@ -77,3 +85,8 @@ class RecommendedAppService:
         else:
             session.add(AccountTrialAppRecord(app_id=app_id, count=1, account_id=account_id))
             session.commit()
+
+    @staticmethod
+    def _can_trial_app(session: scoped_session, app_id: str) -> bool:
+        trial_app_model = session.scalar(select(TrialApp).where(TrialApp.app_id == app_id).limit(1))
+        return trial_app_model is not None
