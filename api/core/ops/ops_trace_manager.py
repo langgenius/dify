@@ -592,15 +592,31 @@ class OpsTraceManager:
         """
         Get app tracing config
         :param app_id: app id
-        :return:
+        :return: app tracing status with a configured provider fallback when the status has not selected one yet
         """
         app: App | None = session.get(App, app_id)
         if not app:
             raise ValueError("App not found")
+        tracing_provider = cls._get_active_tracing_provider(app_id, session)
         if not app.tracing:
-            return {"enabled": False, "tracing_provider": None}
+            return {"enabled": False, "tracing_provider": tracing_provider}
         app_trace_config = _app_tracing_config_adapter.validate_json(app.tracing)
+        if not app_trace_config.get("tracing_provider"):
+            app_trace_config["tracing_provider"] = tracing_provider
         return app_trace_config
+
+    @staticmethod
+    def _get_active_tracing_provider(app_id: str, session: Session) -> str | None:
+        return session.scalar(
+            select(TraceAppConfig.tracing_provider)
+            .where(
+                TraceAppConfig.app_id == app_id,
+                TraceAppConfig.is_active.is_(True),
+                TraceAppConfig.tracing_provider.is_not(None),
+            )
+            .order_by(TraceAppConfig.updated_at.desc())
+            .limit(1)
+        )
 
     @staticmethod
     def check_trace_config_is_effective(tracing_config: dict[str, Any], tracing_provider: str):
