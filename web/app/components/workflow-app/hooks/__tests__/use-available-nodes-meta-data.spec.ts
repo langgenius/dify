@@ -47,4 +47,16 @@ describe('useAvailableNodesMetaData', () => {
       title: 'workflow.blocks.start',
     })
   })
+
+  it('should not create help links for nodes without generated docs pages', () => {
+    mockUseIsChatMode.mockReturnValue(false)
+
+    const { result } = renderHook(() => useAvailableNodesMetaData())
+
+    expect(result.current.nodesMap?.[BlockEnum.End]?.metaData.helpLinkUri).toBeUndefined()
+    expect(result.current.nodesMap?.[BlockEnum.IterationStart]?.metaData.helpLinkUri).toBeUndefined()
+    expect(result.current.nodesMap?.[BlockEnum.LoopStart]?.metaData.helpLinkUri).toBeUndefined()
+    expect(result.current.nodesMap?.[BlockEnum.LoopEnd]?.metaData.helpLinkUri).toBeUndefined()
+    expect(result.current.nodesMap?.[BlockEnum.Start]?.metaData.helpLinkUri).toBe('/docs/use-dify/nodes/user-input')
+  })
 })
