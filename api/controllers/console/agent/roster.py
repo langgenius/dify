@@ -53,14 +53,20 @@ class AgentIdPath(BaseModel):
 class AgentAppCreatePayload(BaseModel):
     name: str = Field(..., min_length=1, description="Agent name")
     description: str | None = Field(default=None, description="Agent description (max 400 chars)", max_length=400)
+    role: str = Field(default="", description="Agent role", max_length=255)
     icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
 
 
+class AgentAppUpdatePayload(UpdateAppPayload):
+    role: str | None = Field(default=None, description="Agent role", max_length=255)
+
+
 register_schema_models(
     console_ns,
     AgentAppCreatePayload,
+    AgentAppUpdatePayload,
     AgentInviteOptionsQuery,
     AgentIdPath,
     AppListQuery,
@@ -89,20 +95,43 @@ def _serialize_agent_app_detail(app_model) -> dict:
         app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
         app_model.access_mode = app_setting.access_mode  # type: ignore[attr-defined]
 
-    payload = AppDetailWithSite.model_validate(app_model, from_attributes=True).model_dump(mode="json")
-    agent_id = payload.pop("bound_agent_id", None)
-    if not agent_id:
+    roster_service = _agent_roster_service()
+    agent = roster_service.get_app_backing_agent(tenant_id=app_model.tenant_id, app_id=app_model.id)
+    if not agent:
         raise AgentNotFoundError()
-    payload["id"] = agent_id
+    payload = AppDetailWithSite.model_validate(app_model, from_attributes=True).model_dump(mode="json")
+    payload.pop("bound_agent_id", None)
+    payload["app_id"] = str(app_model.id)
+    payload["id"] = agent.id
+    payload["role"] = agent.role or ""
+    payload["active_config_is_published"] = roster_service.active_config_is_published(
+        tenant_id=app_model.tenant_id,
+        agent=agent,
+    )
     return payload
 
 
-def _serialize_agent_app_pagination(app_pagination) -> dict:
+def _serialize_agent_app_pagination(app_pagination, *, tenant_id: str) -> dict:
+    app_ids = [str(app.id) for app in app_pagination.items]
+    roster_service = _agent_roster_service()
+    agents_by_app_id = roster_service.load_app_backing_agents_by_app_id(
+        tenant_id=tenant_id,
+        app_ids=app_ids,
+    )
+    active_config_is_published_by_agent_id = roster_service.load_active_config_is_published_by_agent_id(
+        tenant_id=tenant_id,
+        agents=list(agents_by_app_id.values()),
+    )
     payload = AppPagination.model_validate(app_pagination, from_attributes=True).model_dump(mode="json")
     for item in payload["data"]:
-        agent_id = item.pop("bound_agent_id", None)
-        if agent_id:
-            item["id"] = agent_id
+        app_id = item["id"]
+        item.pop("bound_agent_id", None)
+        agent = agents_by_app_id.get(app_id)
+        if agent:
+            item["app_id"] = app_id
+            item["id"] = agent.id
+            item["role"] = agent.role or ""
+            item["active_config_is_published"] = active_config_is_published_by_agent_id.get(agent.id, False)
     return payload
 
 
@@ -137,7 +166,7 @@ class AgentAppListApi(Resource):
             empty = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
             return empty.model_dump(mode="json")
 
-        return _serialize_agent_app_pagination(app_pagination)
+        return _serialize_agent_app_pagination(app_pagination, tenant_id=current_tenant_id)
 
     @console_ns.expect(console_ns.models[AgentAppCreatePayload.__name__])
     @console_ns.response(201, "Agent app created successfully", console_ns.models[AppDetailWithSite.__name__])
@@ -156,6 +185,7 @@ class AgentAppListApi(Resource):
             name=args.name,
             description=args.description,
             mode="agent",
+            agent_role=args.role,
             icon_type=args.icon_type,
             icon=args.icon,
             icon_background=args.icon_background,
@@ -177,7 +207,7 @@ class AgentAppApi(Resource):
         app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         return _serialize_agent_app_detail(app_model)
 
-    @console_ns.expect(console_ns.models[UpdateAppPayload.__name__])
+    @console_ns.expect(console_ns.models[AgentAppUpdatePayload.__name__])
     @console_ns.response(200, "Agent app updated successfully", console_ns.models[AppDetailWithSite.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(400, "Invalid request parameters")
@@ -188,7 +218,7 @@ class AgentAppApi(Resource):
     @with_current_tenant_id
     def put(self, tenant_id: str, agent_id: UUID):
         app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
-        args = UpdateAppPayload.model_validate(console_ns.payload)
+        args = AgentAppUpdatePayload.model_validate(console_ns.payload)
         args_dict: AppService.ArgsDict = {
             "name": args.name,
             "description": args.description or "",
@@ -197,6 +227,7 @@ class AgentAppApi(Resource):
             "icon_background": args.icon_background or "",
             "use_icon_as_answer_icon": args.use_icon_as_answer_icon or False,
             "max_active_requests": args.max_active_requests or 0,
+            "role": args.role,
         }
         updated = AppService().update_app(app_model, args_dict)
         return _serialize_agent_app_detail(updated)

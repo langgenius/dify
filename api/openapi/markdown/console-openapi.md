@@ -382,7 +382,7 @@ Check if activation token is valid
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [UpdateAppPayload](#updateapppayload)<br> |
+|  Yes | **application/json**: [AgentAppUpdatePayload](#agentappupdatepayload)<br> |
 
 #### Responses
 
@@ -11286,6 +11286,7 @@ Default namespace
 | icon_background | string | Icon background color | No |
 | icon_type | [IconType](#icontype) | Icon type | No |
 | name | string | Agent name | Yes |
+| role | string | Agent role | No |
 
 #### AgentAppFeaturesPayload
 
@@ -11303,6 +11304,19 @@ default (the config form sends the full desired feature state on save).
 | suggested_questions | [ string ] | Preset questions shown alongside the opener | No |
 | suggested_questions_after_answer | [AgentSuggestedQuestionsAfterAnswerFeatureConfig](#agentsuggestedquestionsafteranswerfeatureconfig) | Follow-up suggestions config, e.g. {'enabled': true} | No |
 | text_to_speech | [AgentTextToSpeechFeatureConfig](#agenttexttospeechfeatureconfig) | Text-to-speech config | No |
+
+#### AgentAppUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string | App description (max 400 chars) | No |
+| icon | string | Icon | No |
+| icon_background | string | Icon background color | No |
+| icon_type | [IconType](#icontype) | Icon type | No |
+| max_active_requests | integer | Maximum active requests | No |
+| name | string | App name | Yes |
+| role | string | Agent role | No |
+| use_icon_as_answer_icon | boolean | Use icon as answer icon | No |
 
 #### AgentCliToolAuthorizationStatus
 
@@ -11689,6 +11703,7 @@ Supported icon storage formats for Agent roster entries.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| active_config_is_published | boolean |  | No |
 | active_config_snapshot | [AgentConfigSnapshotSummaryResponse](#agentconfigsnapshotsummaryresponse) |  | No |
 | active_config_snapshot_id | string |  | No |
 | agent_kind | [AgentKind](#agentkind) |  | Yes |
@@ -11910,6 +11925,7 @@ the current roster/workflow APIs scoped to Dify Agent.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| active_config_is_published | boolean |  | No |
 | active_config_snapshot | [AgentConfigSnapshotSummaryResponse](#agentconfigsnapshotsummaryresponse) |  | No |
 | active_config_snapshot_id | string |  | No |
 | agent_kind | [AgentKind](#agentkind) |  | Yes |
@@ -11975,6 +11991,7 @@ Visibility and lifecycle scope of an Agent record.
 | provider_credential_id | string |  | No |
 | ref | string |  | No |
 | type | string |  | No |
+| value | string |  | No |
 | variable | string |  | No |
 
 #### AgentSensitiveWordAvoidanceFeatureConfig
@@ -12501,7 +12518,9 @@ Enum class for api provider schema type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
+| active_config_is_published | boolean |  | No |
 | api_base_url | string |  | No |
+| app_id | string |  | No |
 | bound_agent_id | string |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
@@ -12518,6 +12537,7 @@ Enum class for api provider schema type.
 | mode | string |  | Yes |
 | model_config | [ModelConfig](#modelconfig) |  | No |
 | name | string |  | Yes |
+| role | string |  | No |
 | site | [Site](#site) |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | tracing | [JSONValue](#jsonvalue) |  | No |
@@ -12622,6 +12642,8 @@ AppMCPServer Status Enum
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
+| active_config_is_published | boolean |  | No |
+| app_id | string |  | No |
 | author_name | string |  | No |
 | bound_agent_id | string |  | No |
 | create_user_name | string |  | No |
@@ -12639,6 +12661,7 @@ AppMCPServer Status Enum
 | mode | string |  | Yes |
 | model_config | [ModelConfigPartial](#modelconfigpartial) |  | No |
 | name | string |  | Yes |
+| role | string |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
@@ -14183,6 +14206,7 @@ about. Stage 4 §4.2.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| children | [ { **"array_item"**: { **"children"**: [ object ], **"description"**: , **"type"**: string, <br>**Available values:** "array", "boolean", "file", "number", "object", "string" }, **"children"**: [ object ], **"description"**: , **"file"**: object, **"name"**: string, **"required"**: boolean, **"type"**: string, <br>**Available values:** "array", "boolean", "file", "number", "object", "string" } ] |  | No |
 | description | string |  | No |
 | type | [DeclaredOutputType](#declaredoutputtype) |  | Yes |
 
@@ -14211,6 +14235,7 @@ code can call ``output.failure_strategy.on_failure`` without None-guards.
 | ---- | ---- | ----------- | -------- |
 | array_item | [DeclaredArrayItem](#declaredarrayitem) |  | No |
 | check | [DeclaredOutputCheckConfig](#declaredoutputcheckconfig) |  | No |
+| children | [ { **"array_item"**: { **"children"**: [ object ], **"description"**: , **"type"**: string, <br>**Available values:** "array", "boolean", "file", "number", "object", "string" }, **"children"**: [ object ], **"description"**: , **"file"**: object, **"name"**: string, **"required"**: boolean, **"type"**: string, <br>**Available values:** "array", "boolean", "file", "number", "object", "string" } ] |  | No |
 | description | string |  | No |
 | failure_strategy | [DeclaredOutputFailureStrategy](#declaredoutputfailurestrategy) |  | No |
 | file | [DeclaredOutputFileConfig](#declaredoutputfileconfig) |  | No |

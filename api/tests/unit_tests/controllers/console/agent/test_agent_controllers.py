@@ -113,6 +113,7 @@ def _app_detail_obj(**overrides):
         "deleted_tools": [],
         "site": None,
         "bound_agent_id": "00000000-0000-0000-0000-000000000001",
+        "tenant_id": "tenant-1",
     }
     data.update(overrides)
     return SimpleNamespace(**data)
@@ -196,6 +197,20 @@ def test_agent_app_list_and_create_use_agent_route(
 
     monkeypatch.setattr(roster_controller, "AppService", FakeAppService)
     monkeypatch.setattr(
+        roster_controller.AgentRosterService,
+        "load_app_backing_agents_by_app_id",
+        lambda _self, **kwargs: {
+            "app-list": SimpleNamespace(id="agent-list", role="List role", active_config_snapshot_id=None)
+        },
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentRosterService,
+        "get_app_backing_agent",
+        lambda _self, **kwargs: SimpleNamespace(
+            id="agent-created", role="Created role", active_config_snapshot_id=None
+        ),
+    )
+    monkeypatch.setattr(
         roster_controller.FeatureService,
         "get_system_features",
         lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
@@ -208,6 +223,9 @@ def test_agent_app_list_and_create_use_agent_route(
     assert listed["limit"] == 10
     assert listed["total"] == 1
     assert listed["data"][0]["id"] == "agent-list"
+    assert listed["data"][0]["app_id"] == "app-list"
+    assert listed["data"][0]["role"] == "List role"
+    assert listed["data"][0]["active_config_is_published"] is False
     assert "bound_agent_id" not in listed["data"][0]
     list_call = cast(dict[str, object], captured["list"])
     list_params = cast(Any, list_call["params"])
@@ -222,6 +240,9 @@ def test_agent_app_list_and_create_use_agent_route(
 
     assert status == 201
     assert created["id"] == "agent-created"
+    assert created["app_id"] == "app-created"
+    assert created["role"] == "Created role"
+    assert created["active_config_is_published"] is False
     assert "bound_agent_id" not in created
     create_call = cast(dict[str, object], captured["create"])
     create_params = cast(Any, create_call["params"])
@@ -239,6 +260,11 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
         roster_controller.AgentRosterService,
         "get_agent_app_model",
         lambda _self, **kwargs: app_model,
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentRosterService,
+        "get_app_backing_agent",
+        lambda _self, **kwargs: SimpleNamespace(id=agent_id, role="Resolved role", active_config_snapshot_id=None),
     )
     monkeypatch.setattr(
         roster_controller.FeatureService,
@@ -262,6 +288,9 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
 
     detail = unwrap(AgentAppApi.get)(AgentAppApi(), "tenant-1", agent_id)
     assert detail["id"] == agent_id
+    assert detail["app_id"] == "app-1"
+    assert detail["role"] == "Resolved role"
+    assert detail["active_config_is_published"] is False
     assert "bound_agent_id" not in detail
 
     with app.test_request_context(
@@ -272,6 +301,9 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
 
     assert updated["name"] == "Renamed"
     assert updated["id"] == agent_id
+    assert updated["app_id"] == "app-1"
+    assert updated["role"] == "Resolved role"
+    assert updated["active_config_is_published"] is False
     assert "bound_agent_id" not in updated
     update_call = cast(dict[str, object], captured["update"])
     assert update_call["app"] is app_model

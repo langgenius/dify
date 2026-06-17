@@ -68,6 +68,12 @@ const isDeploymentDetailPathname = (pathname: string) => {
   return section === 'deployments' && !!appInstanceId && !DEPLOYMENT_COLLECTION_ROUTES.has(appInstanceId)
 }
 
+const isSnippetDetailPathname = (pathname: string) => {
+  const [section, snippetId] = pathname.split('/').filter(Boolean)
+
+  return section === 'snippets' && !!snippetId
+}
+
 const MainNav = ({
   className,
 }: MainNavProps) => {
@@ -80,6 +86,7 @@ const MainNav = ({
   const showAppDetailNavigation = !isCurrentWorkspaceDatasetOperator && pathname.startsWith('/app/')
   const showDatasetDetailNavigation = isDatasetDetailPathname(pathname)
   const showDeploymentDetailNavigation = canUseAppDeploy && !isCurrentWorkspaceDatasetOperator && isDeploymentDetailPathname(pathname)
+  const showSnippetDetailBottomNavigation = isSnippetDetailPathname(pathname)
   const showDetailNavigation = showAppDetailNavigation || showDatasetDetailNavigation || showDeploymentDetailNavigation
   const { hasAppDetail, appSidebarExpand, setAppDetail, setAppSidebarExpand } = useAppStore(useShallow(state => ({
     hasAppDetail: !!state.appDetail,
@@ -97,7 +104,9 @@ const MainNav = ({
   const detailNavigationTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isDetailNavigationHoverPreviewOpen = isCollapsedDetailNavigation && detailNavigationHoverPreviewOpen
   const detailNavigationVisibleExpanded = detailNavigationExpanded || isDetailNavigationHoverPreviewOpen
-  const bottomNavigationExpanded = !showDetailNavigation || detailNavigationVisibleExpanded
+  const bottomNavigationExpanded = showSnippetDetailBottomNavigation
+    ? false
+    : !showDetailNavigation || detailNavigationVisibleExpanded
   const handleToggleDetailNavigation = useCallback(() => {
     if (isDetailNavigationHoverPreviewOpen) {
       if (detailNavigationTransitionTimerRef.current)
@@ -253,7 +262,9 @@ const MainNav = ({
           ? detailNavigationExpanded
             ? 'w-[248px] bg-background-body p-1'
             : 'w-16 bg-background-body p-1'
-          : 'w-60 flex-col',
+          : showSnippetDetailBottomNavigation
+            ? 'w-16 bg-background-body p-1'
+            : 'w-60 flex-col',
         'bg-background-body',
         className,
       )}
@@ -293,34 +304,38 @@ const MainNav = ({
                       onToggle={handleToggleDetailNavigation}
                     />
                   )
-            : (
-                <>
-                  <div className="flex items-center justify-between pt-3 pr-2 pb-2 pl-4">
-                    {renderLogo()}
-                    <MainNavSearchButton />
-                  </div>
-                  <div className="p-2">
-                    <WorkspaceCard />
-                  </div>
-                </>
-              )}
+            : showSnippetDetailBottomNavigation
+              ? null
+              : (
+                  <>
+                    <div className="flex items-center justify-between pt-3 pr-2 pb-2 pl-4">
+                      {renderLogo()}
+                      <MainNavSearchButton />
+                    </div>
+                    <div className="p-2">
+                      <WorkspaceCard />
+                    </div>
+                  </>
+                )}
           {showDetailNavigation
             ? showAppDetailNavigation
               ? <AppDetailSection expand={detailNavigationVisibleExpanded} />
               : showDatasetDetailNavigation
                 ? <DatasetDetailSection expand={detailNavigationVisibleExpanded} />
                 : <DeploymentDetailSection expand={detailNavigationVisibleExpanded} />
-            : (
-                <>
-                  <nav className="flex flex-col gap-px p-2">
-                    {navItems.map(item => (
-                      <MainNavLink key={item.href} item={item} pathname={pathname} />
-                    ))}
-                  </nav>
-                  {!isCurrentWorkspaceDatasetOperator && <WebAppsSection />}
-                </>
-              )}
-          {showEnvTag && detailNavigationVisibleExpanded && (
+            : showSnippetDetailBottomNavigation
+              ? null
+              : (
+                  <>
+                    <nav className="flex flex-col gap-px p-2">
+                      {navItems.map(item => (
+                        <MainNavLink key={item.href} item={item} pathname={pathname} />
+                      ))}
+                    </nav>
+                    {!isCurrentWorkspaceDatasetOperator && <WebAppsSection />}
+                  </>
+                )}
+          {showEnvTag && !showSnippetDetailBottomNavigation && detailNavigationVisibleExpanded && (
             <div className="relative z-30 mt-auto shrink-0 px-3 pb-2">
               <EnvNav />
             </div>
