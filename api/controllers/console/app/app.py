@@ -407,6 +407,9 @@ class AppPartial(ResponseModel):
     permission_keys: list[str] = Field(default_factory=list)
     # For Agent App type: the roster Agent backing this app (None otherwise).
     bound_agent_id: str | None = None
+    # For Agent App responses exposed through /agent.
+    app_id: str | None = None
+    role: str | None = None
     is_starred: bool = False
     maintainer: str | None = None
 
@@ -461,6 +464,9 @@ class AppDetailWithSite(AppDetail):
     site: Site | None = None
     # For Agent App type: the roster Agent backing this app (None otherwise).
     bound_agent_id: str | None = None
+    # For Agent App responses exposed through /agent.
+    app_id: str | None = None
+    role: str | None = None
 
     @computed_field(return_type=str | None)  # type: ignore
     @property

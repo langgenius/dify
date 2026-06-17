@@ -8,6 +8,7 @@ from uuid import uuid4
 import yaml
 from flask_login import current_user
 from sqlalchemy import select
+from sqlalchemy.orm import scoped_session
 
 from configs import dify_config
 from constants import DOCUMENT_EXTENSIONS
@@ -28,8 +29,8 @@ logger = logging.getLogger(__name__)
 
 
 class RagPipelineTransformService:
-    def transform_dataset(self, dataset_id: str):
-        dataset = db.session.get(Dataset, dataset_id)
+    def transform_dataset(self, dataset_id: str, session: scoped_session):
+        dataset = session.get(Dataset, dataset_id)
         if not dataset:
             raise ValueError("Dataset not found")
         if dataset.pipeline_id and dataset.runtime_mode == DatasetRuntimeMode.RAG_PIPELINE:
@@ -94,9 +95,9 @@ class RagPipelineTransformService:
         dataset.pipeline_id = pipeline.id
 
         # deal document data
-        self._deal_document_data(dataset)
+        self._deal_document_data(dataset, session)
 
-        db.session.commit()
+        session.commit()
         return {
             "pipeline_id": pipeline.id,
             "dataset_id": dataset_id,
@@ -310,13 +311,13 @@ class RagPipelineTransformService:
             "status": "success",
         }
 
-    def _deal_document_data(self, dataset: Dataset):
+    def _deal_document_data(self, dataset: Dataset, session: scoped_session):
         file_node_id = "1752479895761"
         notion_node_id = "1752489759475"
         jina_node_id = "1752491761974"
         firecrawl_node_id = "1752565402678"
 
-        documents = db.session.scalars(select(Document).where(Document.dataset_id == dataset.id)).all()
+        documents = session.scalars(select(Document).where(Document.dataset_id == dataset.id)).all()
 
         for document in documents:
             data_source_info_dict = document.data_source_info_dict
@@ -326,7 +327,7 @@ class RagPipelineTransformService:
                 document.data_source_type = DataSourceType.LOCAL_FILE
                 file_id = data_source_info_dict.get("upload_file_id")
                 if file_id:
-                    file = db.session.get(UploadFile, file_id)
+                    file = session.get(UploadFile, file_id)
                     if file:
                         data_source_info = json.dumps(
                             {
@@ -350,8 +351,8 @@ class RagPipelineTransformService:
                             datasource_node_id=file_node_id,
                         )
                         document_pipeline_execution_log.created_at = document.created_at
-                        db.session.add(document)
-                        db.session.add(document_pipeline_execution_log)
+                        session.add(document)
+                        session.add(document_pipeline_execution_log)
             elif document.data_source_type == DataSourceType.NOTION_IMPORT:
                 document.data_source_type = DataSourceType.ONLINE_DOCUMENT
                 data_source_info = json.dumps(
@@ -378,8 +379,8 @@ class RagPipelineTransformService:
                     datasource_node_id=notion_node_id,
                 )
                 document_pipeline_execution_log.created_at = document.created_at
-                db.session.add(document)
-                db.session.add(document_pipeline_execution_log)
+                session.add(document)
+                session.add(document_pipeline_execution_log)
             elif document.data_source_type == DataSourceType.WEBSITE_CRAWL:
                 data_source_info = json.dumps(
                     {
@@ -406,5 +407,5 @@ class RagPipelineTransformService:
                     datasource_node_id=datasource_node_id,
                 )
                 document_pipeline_execution_log.created_at = document.created_at
-                db.session.add(document)
-                db.session.add(document_pipeline_execution_log)
+                session.add(document)
+                session.add(document_pipeline_execution_log)

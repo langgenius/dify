@@ -37,7 +37,11 @@ class AgentReferencingWorkflow(TypedDict):
 
     app_id: str
     app_name: str
+    app_icon_type: str | None
+    app_icon: str | None
+    app_icon_background: str | None
     app_mode: str
+    app_updated_at: int | None
     workflow_id: str
     workflow_version: str
     node_ids: list[str]
@@ -278,6 +282,7 @@ class AgentRosterService:
         app_id: str,
         name: str,
         description: str = "",
+        role: str = "",
         icon_type: Any = None,
         icon: str | None = None,
         icon_background: str | None = None,
@@ -294,7 +299,7 @@ class AgentRosterService:
             tenant_id=tenant_id,
             name=name,
             description=description,
-            role="",
+            role=role,
             icon_type=icon_type,
             icon=icon,
             icon_background=icon_background,
@@ -336,6 +341,21 @@ class AgentRosterService:
         agent.active_config_has_model = agent_soul_has_model(AgentSoulConfig())
         self._session.flush()
         return agent
+
+    def load_app_backing_agents_by_app_id(self, *, tenant_id: str, app_ids: list[str]) -> dict[str, Agent]:
+        """Return active app-backed Agents keyed by Agent App id."""
+        if not app_ids:
+            return {}
+        agents = self._session.scalars(
+            select(Agent).where(
+                Agent.tenant_id == tenant_id,
+                Agent.app_id.in_(app_ids),
+                Agent.scope == AgentScope.ROSTER,
+                Agent.source == AgentSource.AGENT_APP,
+                Agent.status == AgentStatus.ACTIVE,
+            )
+        ).all()
+        return {agent.app_id: agent for agent in agents if agent.app_id}
 
     def get_app_backing_agent(self, *, tenant_id: str, app_id: str) -> Agent | None:
         """Return the roster Agent that backs the given Agent App, if any."""
@@ -440,12 +460,36 @@ class AgentRosterService:
         agent.updated_by = account_id
         self._session.commit()
 
+    @staticmethod
+    def _visible_version_operations(agent: Agent) -> set[AgentConfigRevisionOperation]:
+        if agent.source == AgentSource.AGENT_APP:
+            return {AgentConfigRevisionOperation.SAVE_NEW_VERSION}
+        return {
+            AgentConfigRevisionOperation.CREATE_VERSION,
+            AgentConfigRevisionOperation.SAVE_NEW_VERSION,
+            AgentConfigRevisionOperation.SAVE_NEW_AGENT,
+            AgentConfigRevisionOperation.SAVE_TO_ROSTER,
+        }
+
     def list_agent_versions(self, *, tenant_id: str, agent_id: str) -> list[dict[str, Any]]:
-        self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
+        agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
+        visible_version_ids = (
+            select(AgentConfigRevision.current_snapshot_id)
+            .where(
+                AgentConfigRevision.tenant_id == tenant_id,
+                AgentConfigRevision.agent_id == agent_id,
+                AgentConfigRevision.operation.in_(self._visible_version_operations(agent)),
+            )
+            .subquery()
+        )
         versions = list(
             self._session.scalars(
                 select(AgentConfigSnapshot)
-                .where(AgentConfigSnapshot.tenant_id == tenant_id, AgentConfigSnapshot.agent_id == agent_id)
+                .where(
+                    AgentConfigSnapshot.tenant_id == tenant_id,
+                    AgentConfigSnapshot.agent_id == agent_id,
+                    AgentConfigSnapshot.id.in_(select(visible_version_ids.c.current_snapshot_id)),
+                )
                 .order_by(AgentConfigSnapshot.version.desc())
             ).all()
         )
@@ -456,7 +500,19 @@ class AgentRosterService:
         ]
 
     def get_agent_version_detail(self, *, tenant_id: str, agent_id: str, version_id: str) -> dict[str, Any]:
-        self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
+        agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
+        visible_revision_id = self._session.scalar(
+            select(AgentConfigRevision.id)
+            .where(
+                AgentConfigRevision.tenant_id == tenant_id,
+                AgentConfigRevision.agent_id == agent_id,
+                AgentConfigRevision.current_snapshot_id == version_id,
+                AgentConfigRevision.operation.in_(self._visible_version_operations(agent)),
+            )
+            .limit(1)
+        )
+        if not visible_revision_id:
+            raise AgentVersionNotFoundError()
         version = self._get_version(tenant_id=tenant_id, agent_id=agent_id, version_id=version_id)
         revisions = list(
             self._session.scalars(
@@ -557,7 +613,11 @@ class AgentRosterService:
                 AgentReferencingWorkflow(
                     app_id=binding.app_id,
                     app_name=app.name,
+                    app_icon_type=(icon_type.value if (icon_type := getattr(app, "icon_type", None)) else None),
+                    app_icon=getattr(app, "icon", None),
+                    app_icon_background=getattr(app, "icon_background", None),
                     app_mode=str(app.mode),
+                    app_updated_at=to_timestamp(getattr(app, "updated_at", None)),
                     workflow_id=binding.workflow_id,
                     workflow_version=binding.workflow_version,
                     node_ids=[],
@@ -570,7 +630,7 @@ class AgentRosterService:
             references = list(by_workflow.values())
             for reference in references:
                 reference["node_ids"] = sorted(set(reference["node_ids"]))
-            references.sort(key=lambda item: (item["app_name"].lower(), item["workflow_id"]))
+            references.sort(key=lambda item: (-(item["app_updated_at"] or 0), item["app_name"].lower()))
             result[agent_id] = references
         return result
 

@@ -192,11 +192,6 @@
       "count": 1
     }
   },
-  "web/app/(commonLayout)/snippets/[snippetId]/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/(shareLayout)/components/authenticated-layout.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1

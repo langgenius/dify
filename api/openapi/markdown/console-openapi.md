@@ -382,7 +382,7 @@ Check if activation token is valid
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [UpdateAppPayload](#updateapppayload)<br> |
+|  Yes | **application/json**: [AgentAppUpdatePayload](#agentappupdatepayload)<br> |
 
 #### Responses
 
@@ -391,6 +391,58 @@ Check if activation token is valid
 | 200 | Agent app updated successfully | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
 | 400 | Invalid request parameters |  |
 | 403 | Insufficient permissions |  |
+
+### [GET] /agent/{agent_id}/chat-messages
+Get Agent App chat messages for a conversation with pagination
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+| conversation_id | query | Conversation ID | Yes | string |
+| first_id | query | First message ID for pagination | No | string |
+| limit | query | Number of messages to return (1-100) | No | integer, <br>**Default:** 20 |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MessageInfiniteScrollPaginationResponse](#messageinfinitescrollpaginationresponse)<br> |
+| 404 | Agent or conversation not found |  |
+
+### [GET] /agent/{agent_id}/chat-messages/{message_id}/suggested-questions
+Get suggested questions for an Agent App message
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+| message_id | path | Message ID | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Suggested questions retrieved successfully | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
+| 404 | Agent, message, or conversation not found |  |
+
+### [POST] /agent/{agent_id}/chat-messages/{task_id}/stop
+Stop a running Agent App chat message generation
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+| task_id | path | Task ID to stop | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /agent/{agent_id}/composer
 #### Parameters
@@ -527,6 +579,28 @@ Update an Agent App's presentation features (opener, follow-up, citations, ...)
 | 400 | Invalid configuration |  |
 | 404 | Agent not found |  |
 
+### [POST] /agent/{agent_id}/feedbacks
+Create or update Agent App message feedback
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [MessageFeedbackPayload](#messagefeedbackpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Feedback updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 404 | Agent or message not found |  |
+
 ### [DELETE] /agent/{agent_id}/files
 Delete one Agent App drive file by key
 
@@ -563,6 +637,23 @@ Commit an uploaded file into the Agent App drive under files/<name>
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File committed into the agent drive | **application/json**: [AgentDriveFileCommitResponse](#agentdrivefilecommitresponse)<br> |
+
+### [GET] /agent/{agent_id}/messages/{message_id}
+Get Agent App message details by ID
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+| message_id | path | Message ID | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Message retrieved successfully | **application/json**: [MessageDetailResponse](#messagedetailresponse)<br> |
+| 404 | Agent or message not found |  |
 
 ### [GET] /agent/{agent_id}/referencing-workflows
 List workflow apps that reference this Agent App's bound Agent (read-only)
@@ -11682,6 +11773,7 @@ Default namespace
 | icon_background | string | Icon background color | No |
 | icon_type | [IconType](#icontype) | Icon type | No |
 | name | string | Agent name | Yes |
+| role | string | Agent role | No |
 
 #### AgentAppFeaturesPayload
 
@@ -11699,6 +11791,19 @@ default (the config form sends the full desired feature state on save).
 | suggested_questions | [ string ] | Preset questions shown alongside the opener | No |
 | suggested_questions_after_answer | [AgentSuggestedQuestionsAfterAnswerFeatureConfig](#agentsuggestedquestionsafteranswerfeatureconfig) | Follow-up suggestions config, e.g. {'enabled': true} | No |
 | text_to_speech | [AgentTextToSpeechFeatureConfig](#agenttexttospeechfeatureconfig) | Text-to-speech config | No |
+
+#### AgentAppUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string | App description (max 400 chars) | No |
+| icon | string | Icon | No |
+| icon_background | string | Icon background color | No |
+| icon_type | [IconType](#icontype) | Icon type | No |
+| max_active_requests | integer | Maximum active requests | No |
+| name | string | App name | Yes |
+| role | string | Agent role | No |
+| use_icon_as_answer_icon | boolean | Use icon as answer icon | No |
 
 #### AgentCliToolAuthorizationStatus
 
@@ -12260,9 +12365,13 @@ the current roster/workflow APIs scoped to Dify Agent.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| app_icon | string |  | No |
+| app_icon_background | string |  | No |
+| app_icon_type | string |  | No |
 | app_id | string |  | Yes |
 | app_mode | string |  | Yes |
 | app_name | string |  | Yes |
+| app_updated_at | integer |  | No |
 | node_ids | [ string ] |  | No |
 | workflow_id | string |  | Yes |
 | workflow_version | string |  | Yes |
@@ -12271,11 +12380,16 @@ the current roster/workflow APIs scoped to Dify Agent.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| app_icon | string |  | No |
+| app_icon_background | string |  | No |
+| app_icon_type | string |  | No |
 | app_id | string |  | Yes |
 | app_mode | string |  | Yes |
 | app_name | string |  | Yes |
+| app_updated_at | integer |  | No |
 | node_ids | [ string ] |  | No |
 | workflow_id | string |  | Yes |
+| workflow_version | string |  | Yes |
 
 #### AgentReferencingWorkflowsResponse
 
@@ -12890,6 +13004,7 @@ Enum class for api provider schema type.
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
 | api_base_url | string |  | No |
+| app_id | string |  | No |
 | bound_agent_id | string |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
@@ -12906,6 +13021,7 @@ Enum class for api provider schema type.
 | mode | string |  | Yes |
 | model_config | [ModelConfig](#modelconfig) |  | No |
 | name | string |  | Yes |
+| role | string |  | No |
 | permission_keys | [ string ] |  | No |
 | site | [Site](#site) |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
@@ -13011,6 +13127,7 @@ AppMCPServer Status Enum
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
+| app_id | string |  | No |
 | author_name | string |  | No |
 | bound_agent_id | string |  | No |
 | create_user_name | string |  | No |
@@ -13028,6 +13145,7 @@ AppMCPServer Status Enum
 | mode | string |  | Yes |
 | model_config | [ModelConfigPartial](#modelconfigpartial) |  | No |
 | name | string |  | Yes |
+| role | string |  | No |
 | permission_keys | [ string ] |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | updated_at | integer |  | No |
