@@ -6,9 +6,11 @@ Dify API inner calls. Layers and Agenton providers do not own those clients, so
 these settings are process resource limits rather than per-run lifecycle knobs.
 Endpoint URLs and API keys stay service-specific. The Agent Stub also uses this
 settings model directly: the public Agent Stub URL, server secret, optional gRPC
-bind override, and optional Dify inner API file-request settings all live here
-under the longstanding ``DIFY_AGENT_...`` environment-variable namespace.
+bind override, and optional Dify inner API file/drive request settings all live
+here under the longstanding ``DIFY_AGENT_...`` environment-variable namespace.
 """
+
+import httpx
 
 from typing import ClassVar
 
@@ -16,6 +18,7 @@ from pydantic import AnyHttpUrl, Field, TypeAdapter, field_validator, model_vali
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from dify_agent.agent_stub.protocol.agent_stub import normalize_agent_stub_url, parse_agent_stub_endpoint
+from dify_agent.agent_stub.server.agent_stub_drive import DifyApiAgentStubDriveRequestHandler
 from dify_agent.agent_stub.server.agent_stub_files import DifyApiAgentStubFileRequestHandler
 from dify_agent.agent_stub.server.grpc_bind import normalize_agent_stub_grpc_bind_address
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec, decode_server_secret_key
@@ -143,6 +146,29 @@ class ServerSettings(BaseSettings):
         return DifyApiAgentStubFileRequestHandler(
             dify_api_base_url=self.dify_api_base_url,
             dify_api_inner_api_key=self.dify_api_inner_api_key,
+        )
+
+    def create_agent_stub_drive_request_handler(self) -> DifyApiAgentStubDriveRequestHandler | None:
+        """Return the Dify API drive bridge when both Dify API settings are configured.
+
+        Drive manifest and commit requests should honor the same outbound timeout
+        settings as the server's other trusted Dify API HTTP calls.
+        """
+        if self.dify_api_base_url is None or self.dify_api_inner_api_key is None:
+            return None
+        return DifyApiAgentStubDriveRequestHandler(
+            dify_api_base_url=self.dify_api_base_url,
+            dify_api_inner_api_key=self.dify_api_inner_api_key,
+            timeout=self.create_outbound_http_timeout(),
+        )
+
+    def create_outbound_http_timeout(self) -> httpx.Timeout:
+        """Build one shared outbound HTTP timeout object from server settings."""
+        return httpx.Timeout(
+            connect=self.outbound_http_connect_timeout,
+            read=self.outbound_http_read_timeout,
+            write=self.outbound_http_write_timeout,
+            pool=self.outbound_http_pool_timeout,
         )
 
 

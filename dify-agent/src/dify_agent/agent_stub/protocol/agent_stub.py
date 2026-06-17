@@ -115,6 +115,16 @@ def agent_stub_file_download_request_url(base_url: str) -> str:
     return f"{_require_http_base_url(base_url)}/files/download-request"
 
 
+def agent_stub_drive_manifest_url(base_url: str) -> str:
+    """Return the stable HTTP drive-manifest endpoint URL for one base URL."""
+    return f"{_require_http_base_url(base_url)}/drive/manifest"
+
+
+def agent_stub_drive_commit_url(base_url: str) -> str:
+    """Return the stable HTTP drive-commit endpoint URL for one base URL."""
+    return f"{_require_http_base_url(base_url)}/drive/commit"
+
+
 def is_canonical_dify_file_reference(reference: str) -> bool:
     """Return whether one string matches Dify's opaque file reference format."""
     prefix = "dify-file-ref:"
@@ -210,6 +220,65 @@ class AgentStubFileDownloadResponse(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
+class AgentStubDriveFileRef(BaseModel):
+    """Trusted file reference used by Agent Stub drive commit requests."""
+
+    kind: Literal["upload_file", "tool_file"]
+    id: str
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class AgentStubDriveCommitItem(BaseModel):
+    """One drive key to file binding committed through the Agent Stub."""
+
+    key: str
+    file_ref: AgentStubDriveFileRef
+    value_owned_by_drive: bool = True
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class AgentStubDriveCommitRequest(BaseModel):
+    """Request body for one Agent Stub drive commit batch."""
+
+    items: list[AgentStubDriveCommitItem]
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class AgentStubDriveItem(BaseModel):
+    """One manifest or commit item returned by the Agent Stub drive API."""
+
+    key: str
+    size: int | None = None
+    hash: str | None = None
+    mime_type: str | None = None
+    file_kind: Literal["upload_file", "tool_file"]
+    file_id: str
+    created_at: int | None = None
+    download_url: str | None = None
+    value_owned_by_drive: bool | None = None
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class AgentStubDriveManifestResponse(BaseModel):
+    """Response body for one Agent Stub drive manifest request."""
+
+    items: list[AgentStubDriveItem]
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class AgentStubDriveCommitResponse(BaseModel):
+    """Response body for one Agent Stub drive commit request."""
+
+    items: list[AgentStubDriveItem]
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
 def _require_http_base_url(base_url: str) -> str:
     endpoint = parse_agent_stub_endpoint(base_url)
     if not endpoint.is_http:
@@ -228,6 +297,12 @@ __all__ = [
     "AgentStubConnectRequest",
     "AgentStubConnectResponse",
     "AgentStubEndpoint",
+    "AgentStubDriveCommitItem",
+    "AgentStubDriveCommitRequest",
+    "AgentStubDriveCommitResponse",
+    "AgentStubDriveFileRef",
+    "AgentStubDriveItem",
+    "AgentStubDriveManifestResponse",
     "AgentStubFileDownloadRequest",
     "AgentStubFileDownloadResponse",
     "AgentStubFileMapping",
@@ -235,6 +310,8 @@ __all__ = [
     "AgentStubFileUploadResponse",
     "AgentStubURLScheme",
     "agent_stub_connections_url",
+    "agent_stub_drive_commit_url",
+    "agent_stub_drive_manifest_url",
     "agent_stub_file_download_request_url",
     "agent_stub_file_upload_request_url",
     "is_canonical_dify_file_reference",

@@ -8,11 +8,15 @@ from uuid import uuid4
 
 from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubConnectResponse,
+    AgentStubDriveCommitRequest,
+    AgentStubDriveCommitResponse,
+    AgentStubDriveManifestResponse,
     AgentStubFileDownloadRequest,
     AgentStubFileDownloadResponse,
     AgentStubFileUploadRequest,
     AgentStubFileUploadResponse,
 )
+from dify_agent.agent_stub.server.agent_stub_drive import AgentStubDriveRequestError, AgentStubDriveRequestHandler
 from dify_agent.agent_stub.server.agent_stub_files import AgentStubFileRequestError, AgentStubFileRequestHandler
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubPrincipal, AgentStubTokenCodec, AgentStubTokenError
 
@@ -43,11 +47,12 @@ class AgentStubControlPlaneService:
 
     HTTP and gRPC adapters validate or decode transport payloads before calling
     this service, so this layer focuses only on shared auth, connection-id
-    generation, and file-request delegation.
+    generation, plus file and drive request delegation.
     """
 
     token_codec: AgentStubTokenCodec | None
     file_request_handler: AgentStubFileRequestHandler | None = None
+    drive_request_handler: AgentStubDriveRequestHandler | None = None
     connection_id_factory: Callable[[], str] = field(default=lambda: str(uuid4()))
 
     async def connect(self, *, authorization: str | None) -> AgentStubConnectResponse:
@@ -83,6 +88,39 @@ class AgentStubControlPlaneService:
         except AgentStubFileRequestError as exc:
             raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
 
+    async def get_drive_manifest(
+        self,
+        *,
+        prefix: str,
+        include_download_url: bool,
+        authorization: str | None,
+    ) -> AgentStubDriveManifestResponse:
+        """Authenticate and delegate one drive manifest request."""
+        principal = self._authenticate(authorization)
+        handler = self._require_drive_request_handler()
+        try:
+            return await handler.get_manifest(
+                principal=principal,
+                prefix=prefix,
+                include_download_url=include_download_url,
+            )
+        except AgentStubDriveRequestError as exc:
+            raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
+
+    async def commit_drive(
+        self,
+        *,
+        request: AgentStubDriveCommitRequest,
+        authorization: str | None,
+    ) -> AgentStubDriveCommitResponse:
+        """Authenticate and delegate one drive commit request."""
+        principal = self._authenticate(authorization)
+        handler = self._require_drive_request_handler()
+        try:
+            return await handler.commit(principal=principal, request=request)
+        except AgentStubDriveRequestError as exc:
+            raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
+
     def _authenticate(self, authorization: str | None) -> AgentStubPrincipal:
         token_codec = self.token_codec
         if token_codec is None:
@@ -96,6 +134,11 @@ class AgentStubControlPlaneService:
         if self.file_request_handler is None:
             raise AgentStubConfigurationError(503, "Agent Stub file API is not configured")
         return self.file_request_handler
+
+    def _require_drive_request_handler(self) -> AgentStubDriveRequestHandler:
+        if self.drive_request_handler is None:
+            raise AgentStubConfigurationError(503, "Agent Stub drive API is not configured")
+        return self.drive_request_handler
 
 
 __all__ = [
