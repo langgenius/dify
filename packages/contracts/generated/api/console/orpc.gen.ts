@@ -11,6 +11,7 @@ import { app } from './app/orpc.gen'
 import { apps } from './apps/orpc.gen'
 import { auth } from './auth/orpc.gen'
 import { billing } from './billing/orpc.gen'
+import { clientMetadata } from './client-metadata/orpc.gen'
 import { codeBasedExtension } from './code-based-extension/orpc.gen'
 import { compliance } from './compliance/orpc.gen'
 import { dataSource } from './data-source/orpc.gen'
@@ -62,6 +63,7 @@ export const contract = {
   apps,
   auth,
   billing,
+  clientMetadata,
   codeBasedExtension,
   compliance,
   dataSource,

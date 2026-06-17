@@ -34,7 +34,7 @@ for module_name in RESOURCE_MODULES:
 # Import other controllers
 from . import (
     apikey,
-    client_country,
+    client_metadata,
     extension,
     feature,
     human_input_form,
@@ -168,7 +168,7 @@ __all__ = [
     "banner",
     "billing",
     "bp",
-    "client_country",
+    "client_metadata",
     "completion",
     "compliance",
     "console_ns",
