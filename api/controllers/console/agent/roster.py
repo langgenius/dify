@@ -2,7 +2,7 @@ from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -10,6 +10,7 @@ from controllers.console.app.app import (
     AppDetailWithSite,
     AppListQuery,
     AppPagination,
+    AppPartial,
     UpdateAppPayload,
     _normalize_app_list_query_args,
 )
@@ -63,6 +64,16 @@ class AgentAppUpdatePayload(UpdateAppPayload):
     role: str | None = Field(default=None, description="Agent role", max_length=255)
 
 
+class AgentAppPartial(AppPartial):
+    published_reference_count: int = 0
+    published_node_reference_count: int = 0
+    published_references: list[AgentPublishedReferenceResponse] = Field(default_factory=list)
+
+
+class AgentAppPagination(AppPagination):
+    data: list[AgentAppPartial] = Field(validation_alias=AliasChoices("items", "data"))
+
+
 register_schema_models(
     console_ns,
     AgentAppCreatePayload,
@@ -76,7 +87,7 @@ register_schema_models(
 register_response_schema_models(
     console_ns,
     AppDetailWithSite,
-    AppPagination,
+    AgentAppPagination,
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
     AgentInviteOptionsResponse,
@@ -122,6 +133,10 @@ def _serialize_agent_app_pagination(app_pagination, *, tenant_id: str) -> dict:
         tenant_id=tenant_id,
         agents=list(agents_by_app_id.values()),
     )
+    published_references_by_agent_id = roster_service.load_published_references_by_agent_id(
+        tenant_id=tenant_id,
+        agent_ids=[agent.id for agent in agents_by_app_id.values()],
+    )
     payload = AppPagination.model_validate(app_pagination, from_attributes=True).model_dump(mode="json")
     for item in payload["data"]:
         app_id = item["id"]
@@ -132,7 +147,16 @@ def _serialize_agent_app_pagination(app_pagination, *, tenant_id: str) -> dict:
             item["id"] = agent.id
             item["role"] = agent.role or ""
             item["active_config_is_published"] = active_config_is_published_by_agent_id.get(agent.id, False)
-    return payload
+            published_references = published_references_by_agent_id.get(agent.id, [])
+            item["published_reference_count"] = len(published_references)
+            item["published_node_reference_count"] = sum(
+                len(reference["node_ids"]) for reference in published_references
+            )
+            item["published_references"] = published_references
+    return AgentAppPagination.model_validate(payload).model_dump(
+        mode="json",
+        exclude={"data": {"__all__": {"bound_agent_id"}}},
+    )
 
 
 def _resolve_agent_app_model(*, tenant_id: str, agent_id: UUID):
@@ -142,7 +166,7 @@ def _resolve_agent_app_model(*, tenant_id: str, agent_id: UUID):
 @console_ns.route("/agent")
 class AgentAppListApi(Resource):
     @console_ns.doc(params=query_params_from_model(AppListQuery))
-    @console_ns.response(200, "Agent app list", console_ns.models[AppPagination.__name__])
+    @console_ns.response(200, "Agent app list", console_ns.models[AgentAppPagination.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -163,7 +187,7 @@ class AgentAppListApi(Resource):
 
         app_pagination = AppService().get_paginate_apps(current_user.id, current_tenant_id, params)
         if app_pagination is None:
-            empty = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
+            empty = AgentAppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
             return empty.model_dump(mode="json")
 
         return _serialize_agent_app_pagination(app_pagination, tenant_id=current_tenant_id)

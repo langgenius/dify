@@ -471,9 +471,25 @@ export const zModelConfigPartial = z.object({
 })
 
 /**
- * AppPartial
+ * AgentPublishedReferenceResponse
  */
-export const zAppPartial = z.object({
+export const zAgentPublishedReferenceResponse = z.object({
+  app_icon: z.string().nullish(),
+  app_icon_background: z.string().nullish(),
+  app_icon_type: z.string().nullish(),
+  app_id: z.string(),
+  app_mode: z.string(),
+  app_name: z.string(),
+  app_updated_at: z.int().nullish(),
+  node_ids: z.array(z.string()).optional(),
+  workflow_id: z.string(),
+  workflow_version: z.string(),
+})
+
+/**
+ * AgentAppPartial
+ */
+export const zAgentAppPartial = z.object({
   access_mode: z.string().nullish(),
   active_config_is_published: z.boolean().optional().default(false),
   app_id: z.string().nullish(),
@@ -494,6 +510,9 @@ export const zAppPartial = z.object({
   mode: z.string(),
   model_config: zModelConfigPartial.nullish(),
   name: z.string(),
+  published_node_reference_count: z.int().optional().default(0),
+  published_reference_count: z.int().optional().default(0),
+  published_references: z.array(zAgentPublishedReferenceResponse).optional(),
   role: z.string().nullish(),
   tags: z.array(zTag).optional(),
   updated_at: z.int().nullish(),
@@ -503,10 +522,10 @@ export const zAppPartial = z.object({
 })
 
 /**
- * AppPagination
+ * AgentAppPagination
  */
-export const zAppPagination = z.object({
-  data: z.array(zAppPartial),
+export const zAgentAppPagination = z.object({
+  data: z.array(zAgentAppPartial),
   has_more: z.boolean(),
   limit: z.int(),
   page: z.int(),
@@ -580,22 +599,6 @@ export const zAgentKind = z.enum(['dify_agent'])
  * Supported icon storage formats for Agent roster entries.
  */
 export const zAgentIconType = z.enum(['emoji', 'image', 'link'])
-
-/**
- * AgentPublishedReferenceResponse
- */
-export const zAgentPublishedReferenceResponse = z.object({
-  app_icon: z.string().nullish(),
-  app_icon_background: z.string().nullish(),
-  app_icon_type: z.string().nullish(),
-  app_id: z.string(),
-  app_mode: z.string(),
-  app_name: z.string(),
-  app_updated_at: z.int().nullish(),
-  node_ids: z.array(z.string()).optional(),
-  workflow_id: z.string(),
-  workflow_version: z.string(),
-})
 
 /**
  * AgentScope
@@ -1773,9 +1776,9 @@ export const zMessageInfiniteScrollPaginationResponse = z.object({
 })
 
 /**
- * AppPartial
+ * AgentAppPartial
  */
-export const zAppPartialWritable = z.object({
+export const zAgentAppPartialWritable = z.object({
   access_mode: z.string().nullish(),
   active_config_is_published: z.boolean().optional().default(false),
   app_id: z.string().nullish(),
@@ -1795,6 +1798,9 @@ export const zAppPartialWritable = z.object({
   mode: z.string(),
   model_config: zModelConfigPartial.nullish(),
   name: z.string(),
+  published_node_reference_count: z.int().optional().default(0),
+  published_reference_count: z.int().optional().default(0),
+  published_references: z.array(zAgentPublishedReferenceResponse).optional(),
   role: z.string().nullish(),
   tags: z.array(zTag).optional(),
   updated_at: z.int().nullish(),
@@ -1804,10 +1810,10 @@ export const zAppPartialWritable = z.object({
 })
 
 /**
- * AppPagination
+ * AgentAppPagination
  */
-export const zAppPaginationWritable = z.object({
-  data: z.array(zAppPartialWritable),
+export const zAgentAppPaginationWritable = z.object({
+  data: z.array(zAgentAppPartialWritable),
   has_more: z.boolean(),
   limit: z.int(),
   page: z.int(),
@@ -1895,7 +1901,7 @@ export const zGetAgentQuery = z.object({
 /**
  * Agent app list
  */
-export const zGetAgentResponse = zAppPagination
+export const zGetAgentResponse = zAgentAppPagination
 
 export const zPostAgentBody = zAgentAppCreatePayload
 
