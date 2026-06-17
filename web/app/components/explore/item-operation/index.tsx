@@ -1,4 +1,5 @@
 'use client'
+import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -6,52 +7,81 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import {
+  RiDeleteBinLine,
+  RiEditLine,
+  RiFolderLine,
+  RiFolderReduceLine,
+} from '@remixicon/react'
+import { useBoolean } from 'ahooks'
 import * as React from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pin02 } from '../../base/icons/src/vender/line/general'
 import s from './style.module.css'
 
 type IItemOperationProps = {
   className?: string
+  isItemHovering?: boolean
   isPinned: boolean
   isShowRenameConversation?: boolean
   onRenameConversation?: () => void
   isShowDelete: boolean
   togglePin: () => void
   onDelete: () => void
+  // folder-related actions (optional; only rendered when provided)
+  isInFolder?: boolean
+  onMoveToFolder?: () => void
+  onRemoveFromFolder?: () => void
 }
 
-function ItemOperation({
+const ItemOperation: FC<IItemOperationProps> = ({
   className,
+  isItemHovering,
   isPinned,
   togglePin,
   isShowRenameConversation,
   onRenameConversation,
   isShowDelete,
   onDelete,
-}: IItemOperationProps) {
+  isInFolder,
+  onMoveToFolder,
+  onRemoveFromFolder,
+}) => {
   const { t } = useTranslation('explore')
   const { t: tCommon } = useTranslation('common')
-
+  const [open, setOpen] = useState(false)
+  const [isHovering, { setTrue: setIsHovering, setFalse: setNotHovering }] = useBoolean(false)
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>
+    if (!isItemHovering && !isHovering) {
+      timer = setTimeout(() => setOpen(false), 150)
+    }
+    return () => clearTimeout(timer)
+  }, [isItemHovering, isHovering])
   return (
-    <DropdownMenu modal={false}>
+    <DropdownMenu
+      open={open}
+      onOpenChange={setOpen}
+    >
       <DropdownMenuTrigger
         data-testid="item-operation-trigger"
-        className={cn(
-          'group/operation flex size-6 items-center justify-center rounded-md border-none p-0 text-text-tertiary transition-colors group-focus-within:bg-components-actionbar-bg! group-hover:bg-components-actionbar-bg! hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-components-actionbar-bg! data-popup-open:shadow-none!',
-          className,
-        )}
+        className={cn(className, s.btn, 'h-6 w-6 rounded-md border-none py-1', (isItemHovering || open) && `${s.open} bg-components-actionbar-bg! shadow-none!`)}
         onClick={(e) => {
           e.stopPropagation()
         }}
       >
         <span className="sr-only">{tCommon('operation.more')}</span>
-        <span aria-hidden className="i-ri-more-fill size-4 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 group-focus-visible/operation:opacity-100 group-data-popup-open/operation:opacity-100" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-end"
         sideOffset={4}
         popupClassName="min-w-[120px]"
+        popupProps={{
+          onMouseEnter: setIsHovering,
+          onMouseLeave: setNotHovering,
+          onClick: e => e.stopPropagation(),
+        }}
       >
         <DropdownMenuItem
           className={cn(s.actionItem, 'gap-2 px-3')}
@@ -60,9 +90,35 @@ function ItemOperation({
             togglePin()
           }}
         >
-          <Pin02 className="size-4 shrink-0 text-text-secondary" />
+          <Pin02 className="h-4 w-4 shrink-0 text-text-secondary" />
           <span className={s.actionName}>{isPinned ? t('sidebar.action.unpin') : t('sidebar.action.pin')}</span>
         </DropdownMenuItem>
+        {/* Folder actions: show either "remove from folder" or "move to folder". */}
+        {isInFolder
+          ? (
+            <DropdownMenuItem
+              className={cn(s.actionItem, 'gap-2 px-3')}
+              onClick={(e) => {
+                e.stopPropagation()
+                onRemoveFromFolder?.()
+              }}
+            >
+              <RiFolderReduceLine className="h-4 w-4 shrink-0 text-text-secondary" />
+              <span className={s.actionName}>{t('sidebar.action.removeFromFolder')}</span>
+            </DropdownMenuItem>
+          )
+          : (
+            <DropdownMenuItem
+              className={cn(s.actionItem, 'gap-2 px-3')}
+              onClick={(e) => {
+                e.stopPropagation()
+                onMoveToFolder?.()
+              }}
+            >
+              <RiFolderLine className="h-4 w-4 shrink-0 text-text-secondary" />
+              <span className={s.actionName}>{t('sidebar.action.moveToFolder')}</span>
+            </DropdownMenuItem>
+          )}
         {isShowRenameConversation && (
           <DropdownMenuItem
             className={cn(s.actionItem, 'gap-2 px-3')}
@@ -71,7 +127,7 @@ function ItemOperation({
               onRenameConversation?.()
             }}
           >
-            <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-secondary" />
+            <RiEditLine className="h-4 w-4 shrink-0 text-text-secondary" />
             <span className={s.actionName}>{t('sidebar.action.rename')}</span>
           </DropdownMenuItem>
         )}
@@ -83,7 +139,7 @@ function ItemOperation({
               onDelete()
             }}
           >
-            <span aria-hidden className={cn(s.deleteActionItemChild, 'i-ri-delete-bin-line size-4 shrink-0 text-inherit')} />
+            <RiDeleteBinLine className={cn(s.deleteActionItemChild, 'h-4 w-4 shrink-0 stroke-current stroke-2 text-inherit')} />
             <span className={cn(s.actionName, s.deleteActionItemChild, 'text-inherit')}>{t('sidebar.action.delete')}</span>
           </DropdownMenuItem>
         )}
