@@ -61,6 +61,7 @@ class TestFeatureService:
                 },
                 "WebAppAuth": {"allowSso": True, "allowEmailCodeLogin": True, "allowEmailPasswordLogin": False},
                 "SSOEnforcedForWebProtocol": "oidc",
+                "EnableAppDeploy": True,
                 "License": {
                     "status": "active",
                     "expiredAt": "2025-12-31",
