@@ -129,12 +129,13 @@ def test_server_settings_normalizes_dify_api_base_url_from_env(monkeypatch: pyte
     assert settings.dify_api_inner_api_key == "inner-secret"
 
 
-def test_server_settings_requires_dify_api_base_url_and_key_together() -> None:
-    with pytest.raises(ValidationError, match="DIFY_AGENT_DIFY_API_BASE_URL"):
+def test_server_settings_requires_inner_api_key_when_dify_api_base_url_is_set() -> None:
+    with pytest.raises(ValidationError, match="DIFY_AGENT_DIFY_API_INNER_API_KEY"):
         _ = ServerSettings(dify_api_base_url="https://api.example.com")
 
-    with pytest.raises(ValidationError, match="DIFY_AGENT_DIFY_API_BASE_URL"):
-        _ = ServerSettings(dify_api_inner_api_key="inner-secret")
+    settings = ServerSettings(dify_api_inner_api_key="inner-secret")
+    assert settings.dify_api_inner_api_key == "inner-secret"
+    assert settings.dify_api_base_url is None
 
 
 def test_server_settings_rejects_dify_api_base_url_with_query_or_fragment() -> None:

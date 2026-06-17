@@ -12,14 +12,18 @@ import * as React from 'react'
 import { vi } from 'vitest'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
-import { useRouter, useSelectedLayoutSegment } from '@/next/navigation'
+import { useSelectedLayoutSegment } from '@/next/navigation'
 import { AppModeEnum } from '@/types/app'
 import Nav from '../index'
+
+const mockPush = vi.fn()
 
 // Mock next/navigation
 vi.mock('@/next/navigation', () => ({
   useSelectedLayoutSegment: vi.fn(),
-  useRouter: vi.fn(),
+  useRouter: () => ({
+    push: mockPush,
+  }),
 }))
 
 // Mock app store
@@ -56,7 +60,6 @@ describe('Nav Component', () => {
   const mockSetAppDetail = vi.fn()
   const mockOnCreate = vi.fn()
   const mockOnLoadMore = vi.fn()
-  const mockPush = vi.fn()
 
   const navigationItems: NavItem[] = [
     {
@@ -100,9 +103,6 @@ describe('Nav Component', () => {
     vi.mocked(useAppContext).mockReturnValue({
       isCurrentWorkspaceEditor: true,
     } as unknown as AppContextValue)
-    vi.mocked(useRouter).mockReturnValue({
-      push: mockPush,
-    } as unknown as ReturnType<typeof useRouter>)
   })
 
   describe('Rendering', () => {
@@ -139,9 +139,9 @@ describe('Nav Component', () => {
       )
 
       expect(screen.getByText('Nav Text')).toBeInTheDocument()
-      expect(screen.getByText('Nav Text')).toHaveClass('max-[1024px]:hidden')
+      expect(screen.getByText('Nav Text')).toHaveClass('max-[1120px]:hidden')
       expect(screen.getByRole('link', { name: 'SNIPPETS' })).toHaveAttribute('href', '/snippets')
-      expect(screen.getByRole('link', { name: 'SNIPPETS' })).not.toHaveClass('max-[1024px]:hidden')
+      expect(screen.getByRole('link', { name: 'SNIPPETS' })).not.toHaveClass('max-[1120px]:hidden')
     })
 
     it('should not show hover background if not activated', () => {
@@ -213,7 +213,7 @@ describe('Nav Component', () => {
       })
     })
 
-    it('should navigate when an item is selected', async () => {
+    it('should clear app detail and navigate when an item is selected', async () => {
       vi.mocked(useSelectedLayoutSegment).mockReturnValue('snippets')
       render(<Nav {...defaultProps} activeSegment={['apps', 'app', 'snippets']} curNav={curNav} />)
       const selectorButton = screen.getByRole('button', { name: /Item 1/i })
@@ -228,6 +228,7 @@ describe('Nav Component', () => {
         fireEvent.click(item2)
       })
 
+      expect(mockSetAppDetail).toHaveBeenCalled()
       expect(mockPush).toHaveBeenCalledWith('/item2')
     })
 
@@ -248,7 +249,7 @@ describe('Nav Component', () => {
         })
       }
 
-      expect(mockPush).not.toHaveBeenCalled()
+      expect(mockSetAppDetail).not.toHaveBeenCalled()
     })
 
     it('should call onCreate when create button is clicked', async () => {
