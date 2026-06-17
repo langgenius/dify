@@ -100,6 +100,24 @@ describe('@langgenius/dify-ui/toast', () => {
     expect(document.body.querySelector('[aria-hidden="true"].i-ri-information-2-fill')).not.toBeInTheDocument()
   })
 
+  it('should wrap long unbroken toast content within the card width', async () => {
+    const screen = await render(<ToastHost />)
+    const longTitle = 'operation error S3: PutObject, exceeded maximum number of attempts, 3, StatusCode: 0, RequestID: , HostID: , request send failed'
+    const longDescription = 'Put "https://plugin/assets/1bd032bb73218a5d141b80cab7111?x-id=PutObject": dial tcp 192.168.0.200:19000: connect: connection refused, icon small en_US failed to remap assets failed to store plugin asset'
+
+    toast.error(longTitle, {
+      description: longDescription,
+    })
+
+    await expect.element(screen.getByText(longTitle)).toBeInTheDocument()
+    await expect.element(screen.getByText(longDescription)).toBeInTheDocument()
+
+    const title = asHTMLElement(screen.getByText(longTitle).element())
+    const description = asHTMLElement(screen.getByText(longDescription).element())
+    expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth)
+    expect(description.scrollWidth).toBeLessThanOrEqual(description.clientWidth)
+  })
+
   it('should mark overflow toasts as limited when the stack exceeds the configured limit', async () => {
     const screen = await render(<ToastHost limit={1} />)
 
