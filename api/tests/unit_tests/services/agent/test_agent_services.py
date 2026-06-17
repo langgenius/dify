@@ -919,7 +919,9 @@ def test_agent_app_visible_versions_exclude_draft_saves():
 
 
 def test_app_list_all_excludes_agent_apps_by_default():
-    filters = AppService._build_app_list_filters("account-1", "tenant-1", AppListParams(mode="all"), FakeSession(scalar=None, scalars=None))
+    filters = AppService._build_app_list_filters(
+        "account-1", "tenant-1", AppListParams(mode="all"), FakeSession(scalar=None, scalars=None)
+    )
     sql = " ".join(str(filter_) for filter_ in filters)
 
     assert "apps.mode != :mode_1" in sql
