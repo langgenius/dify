@@ -97,7 +97,7 @@ function UserAccessPolicyRow({
           aria-label={t('accessRule.exceptionPermissionFor', { ns: 'permission', name: setting.account.account_name })}
           size="small"
           disabled={isPolicySelectDisabled}
-          className="w-fit max-w-full min-w-30.25"
+          className="w-36"
         >
           <SelectValue>
             {selectedPolicyId === DEFAULT_ACCESS_POLICY_ID
