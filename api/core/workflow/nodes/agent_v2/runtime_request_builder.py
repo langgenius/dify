@@ -42,6 +42,7 @@ from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
     AgentSoulConfig,
     DeclaredArrayItem,
+    DeclaredOutputChildConfig,
     DeclaredOutputConfig,
     DeclaredOutputType,
     WorkflowNodeJobConfig,
@@ -395,7 +396,11 @@ class WorkflowAgentRuntimeRequestBuilder:
 
     @staticmethod
     def _schema_for_declared_output(output: DeclaredOutputConfig) -> dict[str, Any]:
-        schema = WorkflowAgentRuntimeRequestBuilder._schema_for_type(output.type, array_item=output.array_item)
+        schema = WorkflowAgentRuntimeRequestBuilder._schema_for_type(
+            output.type,
+            array_item=output.array_item,
+            children=output.children,
+        )
         if output.description:
             schema["description"] = output.description
         return schema
@@ -405,6 +410,7 @@ class WorkflowAgentRuntimeRequestBuilder:
         output_type: DeclaredOutputType,
         *,
         array_item: DeclaredArrayItem | None = None,
+        children: Sequence[DeclaredOutputChildConfig] | None = None,
     ) -> dict[str, Any]:
         match output_type:
             case DeclaredOutputType.STRING:
@@ -414,18 +420,23 @@ class WorkflowAgentRuntimeRequestBuilder:
             case DeclaredOutputType.BOOLEAN:
                 return {"type": "boolean"}
             case DeclaredOutputType.OBJECT:
-                return {"type": "object"}
+                object_schema: dict[str, Any] = {"type": "object"}
+                WorkflowAgentRuntimeRequestBuilder._apply_child_properties(object_schema, children or [])
+                return object_schema
             case DeclaredOutputType.ARRAY:
                 # Stage 4 §4.2: items shape mirrors the declared array_item.
                 # Validator guarantees array_item is set when type is array.
                 item_type = array_item.type if array_item else DeclaredOutputType.OBJECT
-                schema: dict[str, Any] = {
+                array_schema: dict[str, Any] = {
                     "type": "array",
-                    "items": WorkflowAgentRuntimeRequestBuilder._schema_for_type(item_type),
+                    "items": WorkflowAgentRuntimeRequestBuilder._schema_for_type(
+                        item_type,
+                        children=array_item.children if array_item else None,
+                    ),
                 }
                 if array_item is not None and array_item.description:
-                    schema["items"]["description"] = array_item.description
-                return schema
+                    array_schema["items"]["description"] = array_item.description
+                return array_schema
             case DeclaredOutputType.FILE:
                 return {
                     "oneOf": [
@@ -468,6 +479,27 @@ class WorkflowAgentRuntimeRequestBuilder:
                     ],
                 }
         assert_never(output_type)
+
+    @staticmethod
+    def _apply_child_properties(schema: dict[str, Any], children: Sequence[DeclaredOutputChildConfig]) -> None:
+        if not children:
+            return
+        properties: dict[str, Any] = {}
+        required: list[str] = []
+        for child in children:
+            child_schema = WorkflowAgentRuntimeRequestBuilder._schema_for_type(
+                child.type,
+                array_item=child.array_item,
+                children=child.children,
+            )
+            if child.description:
+                child_schema["description"] = child.description
+            properties[child.name] = child_schema
+            if child.required:
+                required.append(child.name)
+        schema["properties"] = properties
+        if required:
+            schema["required"] = required
 
     @staticmethod
     def _normalize_credentials(credentials: Mapping[str, Any]) -> dict[str, str | int | float | bool | None]:
@@ -669,7 +701,13 @@ def _shell_secret_ref(item: object) -> DifyShellSecretRefConfig | None:
     name = _name_from_mapping(data)
     if name is None:
         return None
-    ref = data.get("ref") or data.get("id") or data.get("credential_id") or data.get("provider_credential_id")
+    ref = (
+        data.get("ref")
+        or data.get("value")
+        or data.get("id")
+        or data.get("credential_id")
+        or data.get("provider_credential_id")
+    )
     return DifyShellSecretRefConfig(name=name, ref=str(ref) if ref is not None else None)
 
 

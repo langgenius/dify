@@ -12190,6 +12190,7 @@ Supported icon storage formats for Agent roster entries.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| active_config_is_published | boolean |  | No |
 | active_config_snapshot | [AgentConfigSnapshotSummaryResponse](#agentconfigsnapshotsummaryresponse) |  | No |
 | active_config_snapshot_id | string |  | No |
 | agent_kind | [AgentKind](#agentkind) |  | Yes |
@@ -12411,6 +12412,7 @@ the current roster/workflow APIs scoped to Dify Agent.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| active_config_is_published | boolean |  | No |
 | active_config_snapshot | [AgentConfigSnapshotSummaryResponse](#agentconfigsnapshotsummaryresponse) |  | No |
 | active_config_snapshot_id | string |  | No |
 | agent_kind | [AgentKind](#agentkind) |  | Yes |
@@ -12476,6 +12478,7 @@ Visibility and lifecycle scope of an Agent record.
 | provider_credential_id | string |  | No |
 | ref | string |  | No |
 | type | string |  | No |
+| value | string |  | No |
 | variable | string |  | No |
 
 #### AgentSensitiveWordAvoidanceFeatureConfig
@@ -13003,6 +13006,7 @@ Enum class for api provider schema type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
+| active_config_is_published | boolean |  | No |
 | api_base_url | string |  | No |
 | app_id | string |  | No |
 | bound_agent_id | string |  | No |
@@ -13127,6 +13131,7 @@ AppMCPServer Status Enum
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
+| active_config_is_published | boolean |  | No |
 | app_id | string |  | No |
 | author_name | string |  | No |
 | bound_agent_id | string |  | No |
@@ -14695,6 +14700,7 @@ about. Stage 4 §4.2.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| children | [ { **"array_item"**: { **"children"**: [ object ], **"description"**: , **"type"**: string, <br>**Available values:** "array", "boolean", "file", "number", "object", "string" }, **"children"**: [ object ], **"description"**: , **"file"**: object, **"name"**: string, **"required"**: boolean, **"type"**: string, <br>**Available values:** "array", "boolean", "file", "number", "object", "string" } ] |  | No |
 | description | string |  | No |
 | type | [DeclaredOutputType](#declaredoutputtype) |  | Yes |
 
@@ -14723,6 +14729,7 @@ code can call ``output.failure_strategy.on_failure`` without None-guards.
 | ---- | ---- | ----------- | -------- |
 | array_item | [DeclaredArrayItem](#declaredarrayitem) |  | No |
 | check | [DeclaredOutputCheckConfig](#declaredoutputcheckconfig) |  | No |
+| children | [ { **"array_item"**: { **"children"**: [ object ], **"description"**: , **"type"**: string, <br>**Available values:** "array", "boolean", "file", "number", "object", "string" }, **"children"**: [ object ], **"description"**: , **"file"**: object, **"name"**: string, **"required"**: boolean, **"type"**: string, <br>**Available values:** "array", "boolean", "file", "number", "object", "string" } ] |  | No |
 | description | string |  | No |
 | failure_strategy | [DeclaredOutputFailureStrategy](#declaredoutputfailurestrategy) |  | No |
 | file | [DeclaredOutputFileConfig](#declaredoutputfileconfig) |  | No |

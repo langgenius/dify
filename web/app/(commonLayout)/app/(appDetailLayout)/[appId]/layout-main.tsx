@@ -14,7 +14,6 @@ import { usePathname, useRouter } from '@/next/navigation'
 import { fetchAppDetailDirect } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
-import s from './style.module.css'
 
 type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -122,9 +121,19 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     )
   }
 
+  const isWorkflowPage = pathname.endsWith('/workflow')
+
   return (
-    <div className={cn(s.app, 'relative ml-1 flex', 'overflow-hidden')}>
-      <div className="grow overflow-hidden bg-components-panel-bg">
+    <div className={cn(
+      'relative flex h-0 grow overflow-hidden',
+      !isWorkflowPage && 'pt-1 pr-1 pb-1',
+    )}
+    >
+      <div className={cn(
+        'grow overflow-hidden bg-components-panel-bg',
+        !isWorkflowPage && 'rounded-lg shadow-xs shadow-shadow-shadow-3',
+      )}
+      >
         {children}
       </div>
     </div>
