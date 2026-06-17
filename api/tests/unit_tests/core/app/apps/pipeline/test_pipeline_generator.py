@@ -233,9 +233,7 @@ def test_generate_published_pipeline_creates_documents_and_delay(generator, mock
     task_proxy.delay.assert_called_once()
 
 
-def test_generate_published_pipeline_rejects_when_document_creation_limits_exceeded(
-    generator, mocker: MockerFixture
-):
+def test_generate_published_pipeline_rejects_when_document_creation_limits_exceeded(generator, mocker: MockerFixture):
     pipeline = _build_pipeline()
     workflow = _build_workflow()
 
