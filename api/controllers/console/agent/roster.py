@@ -66,14 +66,30 @@ class AgentIdPath(BaseModel):
 class AgentAppCreatePayload(BaseModel):
     name: str = Field(..., min_length=1, description="Agent name")
     description: str | None = Field(default=None, description="Agent description (max 400 chars)", max_length=400)
-    role: str = Field(default="", description="Agent role", max_length=255)
+    role: str = Field(..., min_length=1, description="Agent role", max_length=255)
     icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
 
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, value: str) -> str:
+        role = value.strip()
+        if not role:
+            raise ValueError("Agent role is required.")
+        return role
+
 
 class AgentAppUpdatePayload(UpdateAppPayload):
-    role: str | None = Field(default=None, description="Agent role", max_length=255)
+    role: str = Field(..., min_length=1, description="Agent role", max_length=255)
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, value: str) -> str:
+        role = value.strip()
+        if not role:
+            raise ValueError("Agent role is required.")
+        return role
 
 
 class AgentAppPublishedReferenceResponse(BaseModel):
