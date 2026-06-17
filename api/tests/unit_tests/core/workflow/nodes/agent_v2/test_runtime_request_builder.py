@@ -21,6 +21,9 @@ from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
     AgentSoulConfig,
     AgentSoulModelConfig,
+    DeclaredArrayItem,
+    DeclaredOutputChildConfig,
+    DeclaredOutputConfig,
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
@@ -321,6 +324,7 @@ def test_build_shell_layer_config_accepts_legacy_fallback_keys():
                 "secret_refs": [
                     {"variable": "TOKEN", "credential_id": "credential-1"},
                     {"name": "API_KEY", "provider_credential_id": "credential-2"},
+                    {"name": "EDITABLE_TOKEN", "value": "credential-3"},
                     {"ref": "missing-name"},
                 ],
             },
@@ -341,6 +345,7 @@ def test_build_shell_layer_config_accepts_legacy_fallback_keys():
     assert config["secret_refs"] == [
         {"name": "TOKEN", "ref": "credential-1"},
         {"name": "API_KEY", "ref": "credential-2"},
+        {"name": "EDITABLE_TOKEN", "ref": "credential-3"},
     ]
     assert config["sandbox"] is None
 
@@ -628,6 +633,40 @@ def test_array_output_emits_typed_items_per_array_item():
     assert tags_schema["items"]["type"] == "string"
     assert tags_schema["items"]["description"] == "topic tag"
     assert output_schema["required"] == ["tags"]
+
+
+def test_nested_declared_output_emits_object_and_array_child_schema():
+    profile_output = DeclaredOutputConfig(
+        name="profile",
+        type=DeclaredOutputType.OBJECT,
+        children=[
+            DeclaredOutputChildConfig(name="email", type=DeclaredOutputType.STRING),
+            DeclaredOutputChildConfig(
+                name="nickname",
+                type=DeclaredOutputType.STRING,
+                required=False,
+                description="Optional display name",
+            ),
+            DeclaredOutputChildConfig(
+                name="addresses",
+                type=DeclaredOutputType.ARRAY,
+                array_item=DeclaredArrayItem(
+                    type=DeclaredOutputType.OBJECT,
+                    description="Address item",
+                    children=[DeclaredOutputChildConfig(name="city", type=DeclaredOutputType.STRING)],
+                ),
+            ),
+        ],
+    )
+
+    schema = WorkflowAgentRuntimeRequestBuilder._schema_for_declared_output(profile_output)
+
+    assert schema["properties"]["email"] == {"type": "string"}
+    assert schema["properties"]["nickname"] == {"type": "string", "description": "Optional display name"}
+    assert schema["properties"]["addresses"]["items"]["properties"]["city"] == {"type": "string"}
+    assert schema["properties"]["addresses"]["items"]["description"] == "Address item"
+    assert schema["properties"]["addresses"]["items"]["required"] == ["city"]
+    assert schema["required"] == ["email", "addresses"]
 
 
 def test_effective_declared_outputs_passthrough_when_user_declared():
