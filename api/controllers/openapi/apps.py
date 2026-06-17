@@ -9,6 +9,7 @@ from flask_restx import Resource
 from werkzeug.exceptions import Conflict, NotFound, UnprocessableEntity
 
 from controllers.common.fields import Parameters
+from controllers.common.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
 from controllers.openapi._input_schema import EMPTY_INPUT_SCHEMA, build_input_schema, resolve_app_config
@@ -21,7 +22,6 @@ from controllers.openapi._models import (
     AppListRow,
     TagItem,
 )
-from controllers.common.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData
 from controllers.service_api.app.error import AppUnavailableError
