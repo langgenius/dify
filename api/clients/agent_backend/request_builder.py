@@ -32,6 +32,7 @@ from dify_agent.layers.execution_context import (
     DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
     DifyExecutionContextLayerConfig,
 )
+from dify_agent.layers.knowledge import DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID, DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
 from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
 from dify_agent.protocol import (
@@ -55,6 +56,7 @@ AGENT_APP_USER_PROMPT_LAYER_ID = "agent_app_user_prompt"
 DIFY_EXECUTION_CONTEXT_LAYER_ID = "execution_context"
 DIFY_DRIVE_LAYER_ID = "drive"
 DIFY_PLUGIN_TOOLS_LAYER_ID = "tools"
+DIFY_KNOWLEDGE_BASE_LAYER_ID = "knowledge"
 DIFY_ASK_HUMAN_LAYER_ID = "ask_human"
 DIFY_SHELL_LAYER_ID = "shell"
 
@@ -139,6 +141,7 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
     idempotency_key: str | None = None
     output: AgentBackendOutputConfig | None = None
     tools: DifyPluginToolsLayerConfig | None = None
+    knowledge: DifyKnowledgeBaseLayerConfig | None = None
     # Drive Skills & Files declaration (dify.drive) — an index the agent pulls
     # through the back proxy, never inline content; see AGENT_DRIVE_MANIFEST_ENABLED.
     drive_config: DifyDriveLayerConfig | None = None
@@ -185,6 +188,7 @@ class AgentBackendAgentAppRunInput(BaseModel):
     idempotency_key: str | None = None
     output: AgentBackendOutputConfig | None = None
     tools: DifyPluginToolsLayerConfig | None = None
+    knowledge: DifyKnowledgeBaseLayerConfig | None = None
     # Drive Skills & Files declaration (dify.drive) — an index the agent pulls
     # through the back proxy, never inline content; see AGENT_DRIVE_MANIFEST_ENABLED.
     drive_config: DifyDriveLayerConfig | None = None
@@ -221,7 +225,7 @@ class AgentBackendRunRequestBuilder:
 
         Layer graph: optional Agent Soul system prompt → user prompt →
         execution context → optional history (multi-turn) → LLM → optional
-        plugin tools → optional structured output. Mirrors the workflow-node
+        plugin tools / knowledge search → optional structured output. Mirrors the workflow-node
         layer ordering minus the workflow-job / previous-node prompt.
         """
         layers: list[RunLayerSpec] = []
@@ -297,6 +301,17 @@ class AgentBackendRunRequestBuilder:
                     deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
                     metadata=run_input.metadata,
                     config=run_input.tools,
+                )
+            )
+
+        if run_input.knowledge is not None and run_input.knowledge.dataset_ids:
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_KNOWLEDGE_BASE_LAYER_ID,
+                    type=DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID,
+                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
+                    metadata=run_input.metadata,
+                    config=run_input.knowledge,
                 )
             )
 
@@ -398,7 +413,12 @@ class AgentBackendRunRequestBuilder:
         )
 
     def build_for_workflow_node(self, run_input: AgentBackendWorkflowNodeRunInput) -> CreateRunRequest:
-        """Build a workflow Agent Node run request without defining another wire schema."""
+        """Build a workflow Agent Node run request without defining another wire schema.
+
+        Layer graph mirrors the workflow surface: prompts → execution context →
+        optional drive/history → LLM → optional plugin tools / knowledge search
+        → optional auxiliary layers such as ask_human, shell, and structured output.
+        """
         layers: list[RunLayerSpec] = []
         if run_input.agent_soul_prompt:
             layers.append(
@@ -480,6 +500,17 @@ class AgentBackendRunRequestBuilder:
                     deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
                     metadata=run_input.metadata,
                     config=run_input.tools,
+                )
+            )
+
+        if run_input.knowledge is not None and run_input.knowledge.dataset_ids:
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_KNOWLEDGE_BASE_LAYER_ID,
+                    type=DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID,
+                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
+                    metadata=run_input.metadata,
+                    config=run_input.knowledge,
                 )
             )
 

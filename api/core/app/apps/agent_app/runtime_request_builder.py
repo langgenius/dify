@@ -2,8 +2,10 @@
 
 Mirrors the workflow ``WorkflowAgentRuntimeRequestBuilder`` but for the Agent
 App surface: the user prompt is the chat message (no workflow-node job / no
-previous-node context), and multi-turn continuity flows through the
-conversation-keyed ``session_snapshot`` plus the history layer.
+previous-node context), multi-turn continuity flows through the
+conversation-keyed ``session_snapshot`` plus the history layer, and Agent Soul
+knowledge config is mapped into the same fixed ``dify.knowledge_base`` layer
+used by workflow runs.
 """
 
 from __future__ import annotations
@@ -36,6 +38,7 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
     append_runtime_warnings,
     build_ask_human_layer_config,
     build_drive_layer_config,
+    build_knowledge_layer_config,
     build_shell_layer_config,
 )
 from models.agent_config_entities import AgentSoulConfig
@@ -123,6 +126,7 @@ class AgentAppRuntimeRequestBuilder:
         if dify_config.AGENT_DRIVE_MANIFEST_ENABLED:
             drive_config, drive_warnings = build_drive_layer_config(agent_soul, agent_id=context.agent_id)
             append_runtime_warnings(metadata, drive_warnings)
+        knowledge_config = build_knowledge_layer_config(agent_soul)
 
         request = self._request_builder.build_for_agent_app(
             AgentBackendAgentAppRunInput(
@@ -156,6 +160,7 @@ class AgentAppRuntimeRequestBuilder:
                 or None,
                 user_prompt=context.user_query,
                 tools=tools_layer,
+                knowledge=knowledge_config,
                 drive_config=drive_config,
                 ask_human_config=build_ask_human_layer_config(agent_soul),
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
