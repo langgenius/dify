@@ -916,14 +916,16 @@ def test_published_references_include_app_display_fields_and_sort_by_updated_at(
 
 
 def test_roster_update_archive_versions_and_detail(monkeypatch: pytest.MonkeyPatch):
-    listed_version = AgentConfigSnapshot(id="version-2", agent_id="agent-1", version=2)
+    listed_version = AgentConfigSnapshot(id="version-4", agent_id="agent-1", version=4)
     listed_version_created_at = datetime(2026, 1, 5, 3, 4, 5, tzinfo=UTC)
     listed_version.created_at = listed_version_created_at
+    older_listed_version = AgentConfigSnapshot(id="version-2", agent_id="agent-1", version=2)
+    older_listed_version.created_at = datetime(2026, 1, 4, 3, 4, 5, tzinfo=UTC)
     revision_created_at = datetime(2026, 1, 6, 3, 4, 5, tzinfo=UTC)
     revision = SimpleNamespace(
         id="revision-1",
         previous_snapshot_id=None,
-        current_snapshot_id="version-1",
+        current_snapshot_id="version-2",
         revision=1,
         operation=AgentConfigRevisionOperation.CREATE_VERSION,
         summary=None,
@@ -931,7 +933,10 @@ def test_roster_update_archive_versions_and_detail(monkeypatch: pytest.MonkeyPat
         created_by="account-1",
         created_at=revision_created_at,
     )
-    fake_session = FakeSession(scalar=["visible-revision"], scalars=[[listed_version], [revision]])
+    fake_session = FakeSession(
+        scalar=["visible-revision"],
+        scalars=[[listed_version, older_listed_version], [older_listed_version, listed_version], [revision]],
+    )
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -942,7 +947,7 @@ def test_roster_update_archive_versions_and_detail(monkeypatch: pytest.MonkeyPat
         source=AgentSource.AGENT_APP,
         status=AgentStatus.ACTIVE,
     )
-    version = AgentConfigSnapshot(id="version-1", agent_id="agent-1", version=1, config_snapshot='{"prompt":{}}')
+    version = AgentConfigSnapshot(id="version-2", agent_id="agent-1", version=2, config_snapshot='{"prompt":{}}')
     version.created_at = datetime(2026, 1, 4, 3, 4, 5, tzinfo=UTC)
 
     service = AgentRosterService(fake_session)
@@ -962,12 +967,21 @@ def test_roster_update_archive_versions_and_detail(monkeypatch: pytest.MonkeyPat
     )
     service.archive_roster_agent(tenant_id="tenant-1", agent_id="agent-1", account_id="account-1")
     versions = service.list_agent_versions(tenant_id="tenant-1", agent_id="agent-1")
-    detail = service.get_agent_version_detail(tenant_id="tenant-1", agent_id="agent-1", version_id="version-1")
+    detail = service.get_agent_version_detail(tenant_id="tenant-1", agent_id="agent-1", version_id="version-2")
 
     assert updated["description"] == "new"
     assert agent.status == AgentStatus.ARCHIVED
-    assert versions[0]["id"] == "version-2"
+    assert versions[0]["id"] == "version-4"
+    assert versions[0]["version"] == 2
+    assert versions[0]["display_version"] == 2
+    assert versions[0]["snapshot_version"] == 4
+    assert versions[1]["id"] == "version-2"
+    assert versions[1]["version"] == 1
+    assert versions[1]["snapshot_version"] == 2
     assert versions[0]["created_at"] == int(listed_version_created_at.timestamp())
+    assert detail["version"] == 1
+    assert detail["display_version"] == 1
+    assert detail["snapshot_version"] == 2
     assert detail["config_snapshot"] == {"prompt": {}}
     assert detail["created_at"] == int(version.created_at.timestamp())
     assert detail["revisions"][0]["created_at"] == int(revision_created_at.timestamp())

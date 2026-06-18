@@ -22,8 +22,10 @@ class AgentLogQueryParams:
     page: int = 1
     limit: int = 20
     keyword: str | None = None
-    status: str | None = None
-    source: str | None = None
+    statuses: tuple[str, ...] = ()
+    sources: tuple[str, ...] = ()
+    sort_by: str = "updated_at"
+    sort_order: str = "desc"
     start: datetime | None = None
     end: datetime | None = None
 
@@ -104,6 +106,18 @@ class AgentObservabilityService:
             )
         return AgentSourceFilter(kind="webapp", invoke_from=cls.resolve_source(source))
 
+    @classmethod
+    def resolve_source_filters(cls, sources: tuple[str, ...]) -> list[AgentSourceFilter]:
+        if not sources:
+            return [AgentSourceFilter(kind="all")]
+        filters: list[AgentSourceFilter] = []
+        for source in sources:
+            source_filter = cls.resolve_source_filter(source)
+            if source_filter.kind == "all":
+                return [source_filter]
+            filters.append(source_filter)
+        return filters
+
     @staticmethod
     def _message_status(message: Message) -> str:
         if message.error or message.status == MessageStatus.ERROR:
@@ -143,20 +157,24 @@ class AgentObservabilityService:
         }
 
     def list_logs(self, *, app: App, agent_id: str, params: AgentLogQueryParams) -> dict[str, Any]:
-        source_filter = self.resolve_source_filter(params.source)
+        source_filters = self.resolve_source_filters(params.sources)
         rows: list[dict[str, Any]] = []
-        if source_filter.kind in {"all", "webapp"}:
-            rows.extend(self._list_webapp_conversation_logs(app=app, params=params, source_filter=source_filter))
-        if source_filter.kind in {"all", "workflow"}:
-            rows.extend(
-                self._list_workflow_conversation_logs(
-                    app=app,
-                    agent_id=agent_id,
-                    params=params,
-                    source_filter=source_filter,
+        for source_filter in source_filters:
+            if source_filter.kind in {"all", "webapp"}:
+                rows.extend(self._list_webapp_conversation_logs(app=app, params=params, source_filter=source_filter))
+            if source_filter.kind in {"all", "workflow"}:
+                rows.extend(
+                    self._list_workflow_conversation_logs(
+                        app=app,
+                        agent_id=agent_id,
+                        params=params,
+                        source_filter=source_filter,
+                    )
                 )
-            )
-        rows.sort(key=lambda row: (row["updated_at"] or 0, row["id"]), reverse=True)
+        rows_by_scope = {(row["id"], row["source"]["id"] if row.get("source") else ""): row for row in rows}
+        rows = list(rows_by_scope.values())
+        sort_by = "created_at" if params.sort_by == "created_at" else "updated_at"
+        rows.sort(key=lambda row: (row[sort_by] or 0, row["id"]), reverse=params.sort_order != "asc")
 
         total = len(rows)
         start = (params.page - 1) * params.limit
@@ -172,30 +190,36 @@ class AgentObservabilityService:
     def list_log_messages(
         self, *, app: App, agent_id: str, conversation_id: str, params: AgentLogQueryParams
     ) -> dict[str, Any]:
-        source_filter = self.resolve_source_filter(params.source)
+        source_filters = self.resolve_source_filters(params.sources)
         rows: list[Message] = []
-        if source_filter.kind in {"all", "webapp"}:
-            rows.extend(
-                self._list_webapp_messages(
-                    app=app,
-                    conversation_id=conversation_id,
-                    params=params,
-                    source_filter=source_filter,
+        for source_filter in source_filters:
+            if source_filter.kind in {"all", "webapp"}:
+                rows.extend(
+                    self._list_webapp_messages(
+                        app=app,
+                        conversation_id=conversation_id,
+                        params=params,
+                        source_filter=source_filter,
+                    )
                 )
-            )
-        if source_filter.kind in {"all", "workflow"}:
-            rows.extend(
-                self._list_workflow_messages(
-                    app=app,
-                    agent_id=agent_id,
-                    conversation_id=conversation_id,
-                    params=params,
-                    source_filter=source_filter,
+            if source_filter.kind in {"all", "workflow"}:
+                rows.extend(
+                    self._list_workflow_messages(
+                        app=app,
+                        agent_id=agent_id,
+                        conversation_id=conversation_id,
+                        params=params,
+                        source_filter=source_filter,
+                    )
                 )
-            )
 
         deduped = {message.id: message for message in rows}
-        sorted_rows = sorted(deduped.values(), key=lambda message: (message.created_at, message.id), reverse=True)
+        sort_column = Message.created_at if params.sort_by == "created_at" else Message.updated_at
+        sorted_rows = sorted(
+            deduped.values(),
+            key=lambda message: (getattr(message, sort_column.key), message.id),
+            reverse=params.sort_order != "asc",
+        )
         total = len(sorted_rows)
         start = (params.page - 1) * params.limit
         end = start + params.limit
@@ -421,8 +445,8 @@ class AgentObservabilityService:
                     Message.answer.ilike(pattern, escape="\\"),
                 )
             )
-        if params.status:
-            stmt = cls._apply_status_filter(stmt, params.status)
+        if params.statuses:
+            stmt = cls._apply_status_filter(stmt, params.statuses)
         return stmt
 
     @staticmethod
@@ -444,15 +468,21 @@ class AgentObservabilityService:
         return stmt.where(Message.invoke_from == source)
 
     @staticmethod
-    def _apply_status_filter(stmt, status: str):
-        normalized = status.strip().lower()
-        if normalized in {"success", "normal"}:
-            return stmt.where(Message.error.is_(None), Message.status == MessageStatus.NORMAL)
-        if normalized in {"failed", "error"}:
-            return stmt.where(or_(Message.error.is_not(None), Message.status == MessageStatus.ERROR))
-        if normalized == "paused":
-            return stmt.where(Message.status == MessageStatus.PAUSED)
-        raise ValueError(f"Unsupported status: {status}")
+    def _apply_status_filter(stmt, statuses: tuple[str, ...]):
+        conditions = []
+        for status in statuses:
+            normalized = status.strip().lower()
+            if normalized in {"success", "normal"}:
+                conditions.append(and_(Message.error.is_(None), Message.status == MessageStatus.NORMAL))
+            elif normalized in {"failed", "error"}:
+                conditions.append(or_(Message.error.is_not(None), Message.status == MessageStatus.ERROR))
+            elif normalized == "paused":
+                conditions.append(Message.status == MessageStatus.PAUSED)
+            else:
+                raise ValueError(f"Unsupported status: {status}")
+        if not conditions:
+            return stmt
+        return stmt.where(or_(*conditions))
 
     @classmethod
     def _serialize_conversation_log(

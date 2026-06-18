@@ -281,8 +281,10 @@ export type AgentConfigSnapshotDetailResponse = {
   config_snapshot: AgentSoulConfig
   created_at?: number | null
   created_by?: string | null
+  display_version?: number | null
   id: string
   revisions?: Array<AgentConfigRevisionResponse>
+  snapshot_version?: number | null
   summary?: string | null
   version: number
   version_note?: string | null
@@ -414,7 +416,9 @@ export type AgentConfigSnapshotSummaryResponse = {
   agent_id?: string | null
   created_at?: number | null
   created_by?: string | null
+  display_version?: number | null
   id: string
+  snapshot_version?: number | null
   summary?: string | null
   version: number
   version_note?: string | null
@@ -1926,9 +1930,13 @@ export type GetAgentByAgentIdLogsData = {
     keyword?: string
     limit?: number
     page?: number
+    sort_by?: string
+    sort_order?: string
     source?: string
+    sources?: Array<string>
     start?: string
     status?: string
+    statuses?: Array<string>
   }
   url: '/agent/{agent_id}/logs'
 }
@@ -1951,9 +1959,13 @@ export type GetAgentByAgentIdLogsByConversationIdMessagesData = {
     keyword?: string
     limit?: number
     page?: number
+    sort_by?: string
+    sort_order?: string
     source?: string
+    sources?: Array<string>
     start?: string
     status?: string
+    statuses?: Array<string>
   }
   url: '/agent/{agent_id}/logs/{conversation_id}/messages'
 }
