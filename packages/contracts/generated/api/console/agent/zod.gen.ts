@@ -187,7 +187,9 @@ export const zAgentConfigSnapshotSummaryResponse = z.object({
   agent_id: z.string().nullish(),
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
+  display_version: z.int().nullish(),
   id: z.string(),
+  snapshot_version: z.int().nullish(),
   summary: z.string().nullish(),
   version: z.int(),
   version_note: z.string().nullish(),
@@ -1702,8 +1704,10 @@ export const zAgentConfigSnapshotDetailResponse = z.object({
   config_snapshot: zAgentSoulConfig,
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
+  display_version: z.int().nullish(),
   id: z.string(),
   revisions: z.array(zAgentConfigRevisionResponse).optional(),
+  snapshot_version: z.int().nullish(),
   summary: z.string().nullish(),
   version: z.int(),
   version_note: z.string().nullish(),
@@ -2356,9 +2360,13 @@ export const zGetAgentByAgentIdLogsQuery = z.object({
   keyword: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).optional().default(1),
+  sort_by: z.string().optional().default('updated_at'),
+  sort_order: z.string().optional().default('desc'),
   source: z.string().optional(),
+  sources: z.array(z.string()).optional(),
   start: z.string().optional(),
   status: z.string().optional(),
+  statuses: z.array(z.string()).optional(),
 })
 
 /**
@@ -2376,9 +2384,13 @@ export const zGetAgentByAgentIdLogsByConversationIdMessagesQuery = z.object({
   keyword: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).optional().default(1),
+  sort_by: z.string().optional().default('updated_at'),
+  sort_order: z.string().optional().default('desc'),
   source: z.string().optional(),
+  sources: z.array(z.string()).optional(),
   start: z.string().optional(),
   status: z.string().optional(),
+  statuses: z.array(z.string()).optional(),
 })
 
 /**

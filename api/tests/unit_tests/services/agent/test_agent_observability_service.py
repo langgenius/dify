@@ -41,9 +41,7 @@ def test_resolve_source_filter_accepts_structured_sources() -> None:
 
 
 def test_resolve_source_filters_accepts_multiple_structured_sources() -> None:
-    filters = AgentObservabilityService.resolve_source_filters(
-        ("webapp:app-1", "workflow:app-2:workflow-1:v1:node-1")
-    )
+    filters = AgentObservabilityService.resolve_source_filters(("webapp:app-1", "workflow:app-2:workflow-1:v1:node-1"))
 
     assert [source_filter.kind for source_filter in filters] == ["webapp", "workflow"]
     assert filters[0].app_id == "app-1"

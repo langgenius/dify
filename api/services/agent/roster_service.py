@@ -731,9 +731,7 @@ class AgentRosterService:
                 .order_by(AgentConfigSnapshot.version.asc())
             ).all()
         )
-        display_versions_by_id = {
-            version.id: index for index, version in enumerate(visible_versions, start=1)
-        }
+        display_versions_by_id = {version.id: index for index, version in enumerate(visible_versions, start=1)}
         if version_id not in display_versions_by_id:
             raise AgentVersionNotFoundError()
         version = self._get_version(tenant_id=tenant_id, agent_id=agent_id, version_id=version_id)
