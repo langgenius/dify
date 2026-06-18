@@ -1,3 +1,4 @@
+import pytest
 import logging
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
@@ -115,7 +116,7 @@ class TestTriggerPostLayer:
         repo.update.assert_called_once_with(trigger_log)
         session.commit.assert_called_once()
 
-    def test_on_event_handles_missing_trigger_log(self, caplog):
+    def test_on_event_handles_missing_trigger_log(self, caplog: pytest.LogCaptureFixture):
         runtime_state = SimpleNamespace(
             outputs={},
             variable_pool=VariablePool.from_bootstrap(

@@ -189,7 +189,7 @@ class TestCacheEmbeddingMultimodalDocuments:
             assert len(result) == 3
             assert result[0] == normalized_cached
 
-    def test_embed_multimodal_documents_nan_handling(self, mock_model_instance, caplog):
+    def test_embed_multimodal_documents_nan_handling(self, mock_model_instance, caplog: pytest.LogCaptureFixture):
         """Test handling of NaN values in multimodal embeddings."""
         cache_embedding = CacheEmbedding(mock_model_instance)
         documents = [{"file_id": "valid"}, {"file_id": "nan"}]
@@ -464,7 +464,7 @@ class TestCacheEmbeddingQueryErrors:
         model_instance.credentials = {"api_key": "test-key"}
         return model_instance
 
-    def test_embed_query_api_error_debug_mode(self, mock_model_instance, caplog):
+    def test_embed_query_api_error_debug_mode(self, mock_model_instance, caplog: pytest.LogCaptureFixture):
         """Test handling of API errors in debug mode."""
         cache_embedding = CacheEmbedding(mock_model_instance)
         query = "test query"
@@ -483,7 +483,7 @@ class TestCacheEmbeddingQueryErrors:
                     assert "API Error" in str(exc_info.value)
                     assert any(record.levelno == logging.ERROR for record in caplog.records)
 
-    def test_embed_query_redis_set_error_debug_mode(self, mock_model_instance, caplog):
+    def test_embed_query_redis_set_error_debug_mode(self, mock_model_instance, caplog: pytest.LogCaptureFixture):
         """Test handling of Redis set errors in debug mode."""
         cache_embedding = CacheEmbedding(mock_model_instance)
         query = "test query"
