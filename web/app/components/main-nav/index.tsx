@@ -15,7 +15,6 @@ import DatasetDetailTop from '@/app/components/app-sidebar/dataset-detail-top'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
-import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useAppContext } from '@/context/app-context'
 import { AgentDetailSection, AgentDetailTop } from '@/features/agent-v2/agent-detail/navigation'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
@@ -29,6 +28,7 @@ import MainNavLink from './components/nav-link'
 import { MainNavSearchButton } from './components/search-button'
 import WebAppsSection from './components/web-apps-section'
 import { WorkspaceCard } from './components/workspace-card'
+import { isMainNavRouteVisible, MAIN_NAV_ROUTES } from './routes'
 
 const DATASET_COLLECTION_ROUTES = new Set(['create', 'create-from-pipeline', 'connect'])
 const DATASET_DOCUMENT_CREATION_ROUTES = new Set(['create', 'create-from-pipeline'])
@@ -185,73 +185,20 @@ const MainNav = ({
     ignoreInputs: false,
   })
 
-  const navItems = useMemo<MainNavItem[]>(() => [
-    ...(!isCurrentWorkspaceDatasetOperator
-      ? [
-          {
-            href: '/',
-            label: t('mainNav.home', { ns: 'common' }),
-            active: (path: string) => path === '/' || path === '/explore/apps',
-            icon: 'i-custom-vender-main-nav-home',
-            activeIcon: 'i-custom-vender-main-nav-home-active',
-          },
-          {
-            href: '/apps',
-            label: t('menus.apps', { ns: 'common' }),
-            active: (path: string) => path.startsWith('/apps') || path.startsWith('/app/') || path.startsWith('/snippets'),
-            icon: 'i-custom-vender-main-nav-studio',
-            activeIcon: 'i-custom-vender-main-nav-studio-active',
-          },
-          ...(agentV2Enabled
-            ? [{
-                href: '/roster',
-                label: t('menus.roster', { ns: 'common' }),
-                active: (path: string) => path.startsWith('/roster'),
-                icon: 'i-custom-vender-main-nav-roster',
-                activeIcon: 'i-custom-vender-main-nav-roster-active',
-              }]
-            : []),
-        ]
-      : []),
-    ...((isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator)
-      ? [
-          {
-            href: '/datasets',
-            label: t('menus.datasets', { ns: 'common' }),
-            active: (path: string) => path.startsWith('/datasets'),
-            icon: 'i-custom-vender-main-nav-knowledge',
-            activeIcon: 'i-custom-vender-main-nav-knowledge-active',
-          },
-        ]
-      : []),
-    ...(!isCurrentWorkspaceDatasetOperator
-      ? [
-          {
-            href: buildIntegrationPath('provider'),
-            label: t('mainNav.integrations', { ns: 'common' }),
-            active: (path: string) => path.startsWith('/integrations') || path.startsWith('/tools'),
-            icon: 'i-custom-vender-main-nav-integrations',
-            activeIcon: 'i-custom-vender-main-nav-integrations-active',
-          },
-        ]
-      : []),
-    {
-      href: '/marketplace',
-      label: t('mainNav.marketplace', { ns: 'common' }),
-      active: path => path.startsWith('/marketplace') || path.startsWith('/plugins'),
-      icon: 'i-custom-vender-main-nav-marketplace',
-      activeIcon: 'i-custom-vender-main-nav-marketplace-active',
-    },
-    ...(canUseAppDeploy
-      ? [{
-          href: '/deployments',
-          label: t('menus.deployments', { ns: 'common' }),
-          active: (path: string) => path.startsWith('/deployments'),
-          icon: 'i-ri-rocket-line',
-          activeIcon: 'i-ri-rocket-fill',
-        }]
-      : []),
-  ], [agentV2Enabled, canUseAppDeploy, isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceEditor, t])
+  const navItems = useMemo<MainNavItem[]>(() => MAIN_NAV_ROUTES
+    .filter(route => isMainNavRouteVisible(route, {
+      agentV2Enabled,
+      canUseAppDeploy,
+      isCurrentWorkspaceDatasetOperator,
+      isCurrentWorkspaceEditor,
+    }))
+    .map(route => ({
+      href: route.href,
+      label: t(route.labelKey, { ns: 'common' }),
+      active: route.active,
+      icon: route.icon,
+      activeIcon: route.activeIcon,
+    })), [agentV2Enabled, canUseAppDeploy, isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceEditor, t])
 
   const renderLogo = () => {
     const appTitle = systemFeatures.branding.enabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'
