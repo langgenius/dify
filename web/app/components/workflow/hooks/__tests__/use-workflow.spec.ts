@@ -9,6 +9,7 @@ import {
   useIsNodeInIteration,
   useIsNodeInLoop,
   useNodesReadOnly,
+  useNodesReadOnlyByCanEdit,
   useWorkflow,
   useWorkflowReadOnly,
 } from '../use-workflow'
@@ -125,8 +126,41 @@ describe('useWorkflowReadOnly', () => {
 // ---------------------------------------------------------------------------
 
 describe('useNodesReadOnly', () => {
+  it('should use the default HooksStoreContext from the workflow test helper', () => {
+    const { result } = renderWorkflowHook(() => useNodesReadOnly())
+    expect(result.current.nodesReadOnly).toBe(false)
+    expect(result.current.getNodesReadOnly()).toBe(false)
+  })
+
+  it('should return true when explicit edit permission is denied before HooksStoreContext is available', () => {
+    const { result } = renderWorkflowHook(() => useNodesReadOnlyByCanEdit(false))
+    expect(result.current.nodesReadOnly).toBe(true)
+    expect(result.current.getNodesReadOnly()).toBe(true)
+  })
+
+  it('should return false when edit permission is allowed by HooksStoreContext', () => {
+    const { result } = renderWorkflowHook(() => useNodesReadOnly(), {
+      hooksStoreProps: {},
+    })
+    expect(result.current.nodesReadOnly).toBe(false)
+  })
+
+  it('should expose getNodesReadOnly that reads from store state', () => {
+    const { result, store } = renderWorkflowHook(() => useNodesReadOnly(), {
+      hooksStoreProps: {},
+    })
+
+    expect(result.current.getNodesReadOnly()).toBe(false)
+
+    act(() => {
+      store.setState({ isRestoring: true })
+    })
+    expect(result.current.getNodesReadOnly()).toBe(true)
+  })
+
   it('should return true when status is Running', () => {
     const { result } = renderWorkflowHook(() => useNodesReadOnly(), {
+      hooksStoreProps: {},
       initialStoreState: {
         workflowRunningData: baseRunningData(),
       },
@@ -136,6 +170,7 @@ describe('useNodesReadOnly', () => {
 
   it('should return true when status is Paused', () => {
     const { result } = renderWorkflowHook(() => useNodesReadOnly(), {
+      hooksStoreProps: {},
       initialStoreState: {
         workflowRunningData: baseRunningData({ result: { status: WorkflowRunningStatus.Paused } }),
       },
@@ -145,6 +180,7 @@ describe('useNodesReadOnly', () => {
 
   it('should return true when historyWorkflowData is present', () => {
     const { result } = renderWorkflowHook(() => useNodesReadOnly(), {
+      hooksStoreProps: {},
       initialStoreState: {
         historyWorkflowData: { id: 'run-1', status: 'succeeded' },
       },
@@ -154,6 +190,7 @@ describe('useNodesReadOnly', () => {
 
   it('should return true when isRestoring is true', () => {
     const { result } = renderWorkflowHook(() => useNodesReadOnly(), {
+      hooksStoreProps: {},
       initialStoreState: { isRestoring: true },
     })
     expect(result.current.nodesReadOnly).toBe(true)
@@ -170,18 +207,25 @@ describe('useNodesReadOnly', () => {
   })
 
   it('should return false when none of the conditions are met', () => {
-    const { result } = renderWorkflowHook(() => useNodesReadOnly())
+    const { result } = renderWorkflowHook(() => useNodesReadOnly(), {
+      hooksStoreProps: {},
+    })
     expect(result.current.nodesReadOnly).toBe(false)
   })
 
-  it('should expose getNodesReadOnly that reads from store state', () => {
-    const { result, store } = renderWorkflowHook(() => useNodesReadOnly())
-
-    expect(result.current.getNodesReadOnly()).toBe(false)
-
-    act(() => {
-      store.setState({ isRestoring: true })
+  it('should return true when edit permission is denied by HooksStoreContext', () => {
+    const { result } = renderWorkflowHook(() => useNodesReadOnly(), {
+      hooksStoreProps: {
+        accessControl: {
+          canEdit: false,
+          canComment: true,
+          canRun: true,
+          canImportExportDSL: true,
+          canReleaseAndVersion: true,
+        },
+      },
     })
+    expect(result.current.nodesReadOnly).toBe(true)
     expect(result.current.getNodesReadOnly()).toBe(true)
   })
 })

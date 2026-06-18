@@ -395,7 +395,11 @@ class IconType(StrEnum):
 
 class App(Base):
     __tablename__ = "apps"
-    __table_args__ = (sa.PrimaryKeyConstraint("id", name="app_pkey"), sa.Index("app_tenant_id_idx", "tenant_id"))
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="app_pkey"),
+        sa.Index("app_tenant_id_idx", "tenant_id"),
+        sa.Index("app_tenant_maintainer_idx", "tenant_id", "maintainer"),
+    )
 
     if TYPE_CHECKING:
         # Response-only attributes attached by app list/detail enrichers.
@@ -426,6 +430,7 @@ class App(Base):
     tracing = mapped_column(LongText, nullable=True)
     max_active_requests: Mapped[int | None]
     created_by = mapped_column(StringUUID, nullable=True)
+    maintainer: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(

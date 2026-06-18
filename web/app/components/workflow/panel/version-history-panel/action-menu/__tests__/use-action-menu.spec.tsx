@@ -6,6 +6,7 @@ describe('useActionMenu', () => {
   it('returns restore, edit, export, copy and delete operations for app workflows', () => {
     const { result } = renderWorkflowHook(() => useActionMenu({
       isNamedVersion: true,
+      canImportExportDSL: true,
       isShowDelete: false,
       open: false,
       setOpen: vi.fn(),
@@ -27,6 +28,7 @@ describe('useActionMenu', () => {
   it('omits export for pipelines and renames the edit action for unnamed versions', () => {
     const { result } = renderWorkflowHook(() => useActionMenu({
       isNamedVersion: false,
+      canImportExportDSL: true,
       isShowDelete: true,
       open: false,
       setOpen: vi.fn(),
@@ -50,6 +52,23 @@ describe('useActionMenu', () => {
         key: VersionHistoryContextMenuOptions.copyId,
         name: 'workflow.versionHistory.copyId',
       },
+    ])
+  })
+
+  it('omits export when import/export DSL permission is missing', () => {
+    const { result } = renderWorkflowHook(() => useActionMenu({
+      isNamedVersion: true,
+      canImportExportDSL: false,
+      isShowDelete: false,
+      open: false,
+      setOpen: vi.fn(),
+      handleClickActionMenuItem: vi.fn(),
+    }))
+
+    expect(result.current.options.map(item => item.key)).toEqual([
+      VersionHistoryContextMenuOptions.restore,
+      VersionHistoryContextMenuOptions.edit,
+      VersionHistoryContextMenuOptions.copyId,
     ])
   })
 })

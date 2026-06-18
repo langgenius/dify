@@ -71,7 +71,7 @@ const AppDetailNav = ({
       ref={sidebarRef}
       className={cn(
         'flex shrink-0 flex-col border-r border-divider-burn bg-background-default-subtle transition-all',
-        expand ? 'w-[216px]' : 'w-14',
+        expand ? 'w-55' : 'w-14',
       )}
     >
       <div

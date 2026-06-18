@@ -37,10 +37,12 @@ export type AppDetailWithSite = {
   icon_type?: string | null
   readonly icon_url: string | null
   id: string
+  maintainer?: string | null
   max_active_requests?: number | null
   mode: string
   model_config?: ModelConfig | null
   name: string
+  permission_keys?: Array<string>
   site?: Site | null
   tags?: Array<Tag>
   tracing?: JsonValue | null
@@ -69,6 +71,7 @@ export type Import = {
   error?: string
   id: string
   imported_dsl_version?: string
+  permission_keys?: Array<string>
   status: ImportStatus
 }
 
@@ -312,8 +315,10 @@ export type AppDetail = {
   icon?: string | null
   icon_background?: string | null
   id: string
+  maintainer?: string | null
   mode_compatible_with_agent: string
   name: string
+  permission_keys?: Array<string>
   tags?: Array<Tag>
   tracing?: JsonValue | null
   updated_at?: number | null
@@ -413,6 +418,7 @@ export type ConvertToWorkflowPayload = {
 
 export type NewAppResponse = {
   new_app_id: string
+  permission_keys?: Array<string>
 }
 
 export type CopyAppPayload = {
@@ -1163,10 +1169,12 @@ export type AppPartial = {
   readonly icon_url: string | null
   id: string
   is_starred?: boolean
+  maintainer?: string | null
   max_active_requests?: number | null
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
+  permission_keys?: Array<string>
   tags?: Array<Tag>
   updated_at?: number | null
   updated_by?: string | null
@@ -1616,6 +1624,9 @@ export type AccountWithRole = {
   last_login_at?: number | null
   name: string
   role: string
+  roles?: Array<{
+    [key: string]: string
+  }>
   status: string
 }
 
@@ -2592,10 +2603,12 @@ export type AppDetailWithSiteWritable = {
   icon_background?: string | null
   icon_type?: string | null
   id: string
+  maintainer?: string | null
   max_active_requests?: number | null
   mode: string
   model_config?: ModelConfig | null
   name: string
+  permission_keys?: Array<string>
   site?: SiteWritable | null
   tags?: Array<Tag>
   tracing?: JsonValue | null
@@ -2643,10 +2656,12 @@ export type AppPartialWritable = {
   icon_type?: string | null
   id: string
   is_starred?: boolean
+  maintainer?: string | null
   max_active_requests?: number | null
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
+  permission_keys?: Array<string>
   tags?: Array<Tag>
   updated_at?: number | null
   updated_by?: string | null

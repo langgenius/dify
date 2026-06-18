@@ -3,6 +3,12 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { ConfigurationMethodEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import AddCredentialInLoadBalancing from '../add-credential-in-load-balancing'
 
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: ['credential.use', 'credential.manage'],
+  }),
+}))
+
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-auth', () => ({
   Authorized: ({
     renderTrigger,

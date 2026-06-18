@@ -3,12 +3,12 @@ import type { FC } from 'react'
 import type { Plugin } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiArrowRightUpLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useTheme } from 'next-themes'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import usePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { getPluginLinkInMarketplace } from '@/app/components/plugins/marketplace/utils'
 import { useLocale } from '@/context/i18n'
@@ -35,6 +35,7 @@ const ProviderCardComponent: FC<Props> = ({
     setTrue: showInstallFromMarketplace,
     setFalse: hideInstallFromMarketplace,
   }] = useBoolean(false)
+  const { canInstallPlugin } = usePluginInstallPermission()
   const { org, label } = payload
   const locale = useLocale()
 
@@ -69,20 +70,22 @@ const ProviderCardComponent: FC<Props> = ({
       <div
         className="absolute inset-x-0 bottom-0 hidden items-center gap-2 rounded-xl bg-linear-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 pt-4 group-hover:flex"
       >
-        <Button
-          className="grow"
-          variant="primary"
-          onClick={showInstallFromMarketplace}
-        >
-          {t('detailPanel.operation.install', { ns: 'plugin' })}
-        </Button>
+        {canInstallPlugin && (
+          <Button
+            className="grow"
+            variant="primary"
+            onClick={showInstallFromMarketplace}
+          >
+            {t('detailPanel.operation.install', { ns: 'plugin' })}
+          </Button>
+        )}
         <Button
           className="grow"
           variant="secondary"
         >
           <a href={getPluginLinkInMarketplace(payload, marketplaceLinkParams)} target="_blank" className="flex items-center gap-0.5">
             {t('detailPanel.operation.detail', { ns: 'plugin' })}
-            <RiArrowRightUpLine className="size-4" />
+            <span className="i-ri-arrow-right-up-line size-4" />
           </a>
         </Button>
       </div>

@@ -805,6 +805,7 @@ Liveness payload for `GET /openapi/v1/_health` — no auth required.
 | error | string |  | No |
 | id | string |  | Yes |
 | imported_dsl_version | string |  | No |
+| permission_keys | [ string ] |  | No |
 | status | [ImportStatus](#importstatus) |  | Yes |
 
 #### ImportStatus

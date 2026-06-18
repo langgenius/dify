@@ -6,7 +6,7 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useDebounce } from 'ahooks'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAppContext } from '@/context/app-context'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import useDocumentTitle from '@/hooks/use-document-title'
 import dynamic from '@/next/dynamic'
@@ -15,6 +15,7 @@ import { useInfiniteSnippetList } from '@/service/use-snippets'
 import CreatorsFilter from '../apps/creators-filter'
 import Empty from '../apps/empty'
 import { StudioListHeader } from '../apps/studio-list-header'
+import { canAccessSnippets } from '../snippets/utils/permission'
 import SnippetCard from './components/snippet-card'
 import SnippetCreateButton from './components/snippet-create-button'
 import { SNIPPET_LIST_SEARCH_DEBOUNCE_MS } from './constants'
@@ -45,7 +46,8 @@ const SnippetCardSkeleton = ({ count }: SnippetCardSkeletonProps) => {
 
 const SnippetList = () => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
+  const isLoadingCurrentWorkspace = useAppContextWithSelector(state => state.isLoadingCurrentWorkspace)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
   const {
     query: { tagIDs, keywords, creatorIDs },
@@ -67,6 +69,7 @@ const SnippetList = () => {
     ...(tagIDs.length ? { tag_ids: tagIDs } : {}),
     ...(creatorIDs.length ? { creator_ids: creatorIDs } : {}),
   }), [creatorIDs, debouncedKeywords, tagIDs])
+  const canQuerySnippetList = canAccessSnippets(workspacePermissionKeys)
 
   const {
     data,
@@ -78,11 +81,11 @@ const SnippetList = () => {
     error,
     refetch,
   } = useInfiniteSnippetList(snippetListQuery, {
-    enabled: !isCurrentWorkspaceDatasetOperator,
+    enabled: canQuerySnippetList,
   })
 
   useEffect(() => {
-    if (isCurrentWorkspaceDatasetOperator)
+    if (!canQuerySnippetList)
       return
 
     const hasMore = hasNextPage ?? true
@@ -110,12 +113,12 @@ const SnippetList = () => {
     }
 
     return () => observer?.disconnect()
-  }, [error, fetchNextPage, hasNextPage, isCurrentWorkspaceDatasetOperator, isFetchingNextPage, isLoading])
+  }, [canQuerySnippetList, error, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading])
 
-  const pages = useMemo(() => data?.pages ?? [], [data?.pages])
+  const pages = useMemo(() => canQuerySnippetList ? data?.pages ?? [] : [], [canQuerySnippetList, data?.pages])
   const snippets = useMemo<SnippetListItem[]>(() => pages.flatMap(({ data: pageSnippets }) => pageSnippets), [pages])
   const hasAnySnippet = (pages[0]?.total ?? 0) > 0
-  const showSkeleton = isLoading || (isFetching && pages.length === 0)
+  const showSkeleton = isLoadingCurrentWorkspace || (canQuerySnippetList && (isLoading || (isFetching && pages.length === 0)))
 
   return (
     <div ref={containerRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
@@ -162,9 +165,7 @@ const SnippetList = () => {
               )}
             </div>
           </div>
-          {(isCurrentWorkspaceEditor || isLoadingCurrentWorkspace) && (
-            <SnippetCreateButton />
-          )}
+          <SnippetCreateButton />
         </div>
       </StudioListHeader>
       <div className={cn(

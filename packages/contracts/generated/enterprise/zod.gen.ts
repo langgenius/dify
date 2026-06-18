@@ -1492,6 +1492,21 @@ export const zPluginInstallationSettingsReply = z.object({
   restrictToMarketplaceOnly: z.boolean().optional(),
 })
 
+export const zRbacRole = z.object({
+  id: z.string().optional(),
+  type: z.string().optional(),
+  name: z.string().optional(),
+  description: z.string().optional(),
+  isBuiltin: z.boolean().optional(),
+  category: z.string().optional(),
+  permissionKeys: z.array(z.string()).optional(),
+})
+
+export const zGetMemberRbacRolesReply = z.object({
+  accountId: z.string().optional(),
+  roles: z.array(zRbacRole).optional(),
+})
+
 export const zResetMemberPasswordReply = z.object({
   id: z.string().optional(),
   password: z.string().optional(),
@@ -1942,6 +1957,16 @@ export const zUpdateMfaStatusReq = z.object({
 
 export const zUpdateMfaStatusRes = z.object({
   message: z.string().optional(),
+})
+
+export const zUpdateMemberRbacRolesReply = z.object({
+  accountId: z.string().optional(),
+  roles: z.array(zRbacRole).optional(),
+})
+
+export const zUpdateMemberRbacRolesReq = z.object({
+  id: z.string().optional(),
+  roleIds: z.array(z.string()).optional(),
 })
 
 export const zUpdateMemberReply = z.object({
