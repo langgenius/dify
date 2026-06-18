@@ -1,6 +1,6 @@
-import type { AgentSkill } from '../../agent-detail/configure/components/orchestrate/skills/item'
+import type { AgentSkill } from '../form-state'
 import type { DraftFieldUpdate } from './utils'
-import { atom, useAtom, useSetAtom } from 'jotai'
+import { atom, useSetAtom } from 'jotai'
 import { useCallback } from 'react'
 import { agentComposerDraftAtom } from '../store'
 import { resolveDraftFieldUpdate } from './utils'
@@ -17,17 +17,10 @@ export const agentComposerSkillsAtom = atom(
   },
 )
 
-export function useSkills() {
-  const [skills, setSkills] = useAtom(agentComposerSkillsAtom)
-  return [skills, setSkills] as const
-}
-
 export function useRemoveSkill() {
-  const setDraft = useSetAtom(agentComposerDraftAtom)
+  const setSkills = useSetAtom(agentComposerSkillsAtom)
+
   return useCallback((skillId: string) => {
-    setDraft(draft => ({
-      ...draft,
-      skills: draft.skills.filter(skill => skill.id !== skillId),
-    }))
-  }, [setDraft])
+    setSkills(skills => skills.filter(skill => skill.id !== skillId))
+  }, [setSkills])
 }

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
-import type { AgentTool } from '../orchestrate/tools/types'
 import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
+import type { AgentTool } from '@/features/agent-v2/agent-composer/form-state'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'

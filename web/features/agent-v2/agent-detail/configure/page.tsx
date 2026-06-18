@@ -2,19 +2,17 @@
 
 import type { AgentConfigSnapshotDetailResponse, AgentIconType, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import { skipToken, useQuery } from '@tanstack/react-query'
+import { useAtom, useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
+import { useHydrateAgentSoulConfigDraft } from '@/features/agent-v2/agent-composer/store'
+import { agentComposerAppFeaturesAtom } from '@/features/agent-v2/agent-composer/store-modules/app-features'
+import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { consoleQuery } from '@/service/client'
-import {
-  useAgentConfigureAppFeatures,
-  useAgentConfigureCurrentModel,
-  useAgentConfigureModel,
-  useHydrateAgentConfigureDraft,
-} from './atoms'
 import { AgentOrchestratePanel } from './components/orchestrate'
 import { AgentPreviewChat } from './components/preview/chat'
 import { AgentChatFeaturesPanel } from './components/preview/chat-features-panel'
@@ -85,7 +83,7 @@ function AgentConfigurePageLoadedContent({
   } = configureData
   const agentIconType = agentQuery.data?.icon_type as AgentIconType | null | undefined
 
-  useHydrateAgentConfigureDraft({
+  useHydrateAgentSoulConfigDraft({
     agentId,
     activeVersionId,
     config: agentSoulConfig,
@@ -175,7 +173,7 @@ function AgentPreviewChatWithDraftConfig({
 }: Omit<Parameters<typeof AgentPreviewChat>[0], 'agentSoulConfig'> & {
   agentSoulConfig?: AgentSoulConfig
 }) {
-  const draftAppFeatures = useAgentConfigureAppFeatures()
+  const draftAppFeatures = useAtomValue(agentComposerAppFeaturesAtom)
   const previewAgentSoulConfig = getPreviewAgentSoulConfig(agentSoulConfig, draftAppFeatures)
 
   return (
@@ -229,7 +227,7 @@ function useAgentConfigureData(agentId: string) {
 }
 
 function useAgentConfigureModelOptions() {
-  const [, setConfigureModel] = useAgentConfigureModel()
+  const [model, setModel] = useAtom(agentComposerModelAtom)
   const {
     data: defaultTextGenerationModel,
   } = useDefaultModel(ModelTypeEnum.textGeneration)
@@ -239,14 +237,14 @@ function useAgentConfigureModelOptions() {
         model: defaultTextGenerationModel.model,
       }
     : undefined
-  const currentModel = useAgentConfigureCurrentModel(defaultModel)
+  const currentModel = model ?? defaultModel
   const {
     textGenerationModelList,
   } = useTextGenerationCurrentProviderAndModelAndModelList(currentModel)
 
   return {
     currentModel,
-    setConfigureModel,
+    setConfigureModel: setModel,
     textGenerationModelList,
   }
 }

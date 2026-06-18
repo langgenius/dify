@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { AgentFileNode } from '../../data'
+import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   FileTreeFile,

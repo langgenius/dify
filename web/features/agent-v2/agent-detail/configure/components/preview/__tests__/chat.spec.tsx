@@ -1,5 +1,8 @@
 import type { ComponentProps } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { createStore, Provider as JotaiProvider } from 'jotai'
+import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
+import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { AgentPreviewChat } from '../chat'
 
 const handleSendMock = vi.hoisted(() => vi.fn())
@@ -60,17 +63,6 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
-vi.mock('@/features/agent-v2/agent-composer/store-modules/model', () => ({
-  useCurrentModel: () => ({
-    provider: 'openai',
-    model: 'gpt-4',
-  }),
-}))
-
-vi.mock('@/features/agent-v2/agent-composer/store-modules/prompt', () => ({
-  usePrompt: () => ['You are helpful.'],
-}))
-
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useTextGenerationCurrentProviderAndModelAndModelList: () => ({
     textGenerationModelList: [
@@ -110,13 +102,22 @@ vi.mock('@/service/client', () => ({
 }))
 
 function renderPreviewChat(props?: Partial<ComponentProps<typeof AgentPreviewChat>>) {
+  const store = createStore()
+  store.set(agentComposerModelAtom, {
+    provider: 'openai',
+    model: 'gpt-4',
+  })
+  store.set(agentComposerPromptAtom, 'You are helpful.')
+
   return render(
-    <AgentPreviewChat
-      agentId="agent-1"
-      clearChatList={false}
-      onClearChatListChange={vi.fn()}
-      {...props}
-    />,
+    <JotaiProvider store={store}>
+      <AgentPreviewChat
+        agentId="agent-1"
+        clearChatList={false}
+        onClearChatListChange={vi.fn()}
+        {...props}
+      />
+    </JotaiProvider>,
   )
 }
 

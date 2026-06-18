@@ -70,7 +70,7 @@ export function useHydrate({
   }, [defaultDraft, draft, instanceKey, originalConfig, setDraft, setOriginalConfig, setOriginalDraft, setPublishedDraft, waitForDraft])
 }
 
-export function useHydrateAgentSoulConfigFormState({
+export function useHydrateAgentSoulConfigDraft({
   agentId,
   activeVersionId,
   baseDraft = defaultAgentSoulConfigFormState,

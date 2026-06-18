@@ -2,7 +2,7 @@
 
 import type { FileResponse } from '@dify/contracts/api/console/files/types.gen'
 import type { FileTreeIconType } from '@langgenius/dify-ui/file-tree'
-import type { AgentFileNode } from '../../data'
+import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'

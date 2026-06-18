@@ -1,7 +1,7 @@
 'use client'
 
 import type { PostAgentByAgentIdSkillsUploadResponse } from '@dify/contracts/api/console/agent/types.gen'
-import type { AgentSkill } from './item'
+import type { AgentSkill } from '@/features/agent-v2/agent-composer/form-state'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'

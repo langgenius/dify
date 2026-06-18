@@ -1,7 +1,6 @@
 'use client'
 
-import type { EnvScope, EnvVariable } from '../../advanced/env'
-import type { AgentCliTool } from '../types'
+import type { AgentCliTool, EnvScope, EnvVariable } from '@/features/agent-v2/agent-composer/form-state'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { FieldControl, FieldDescription, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'

@@ -2,13 +2,13 @@
 
 import type { AgentKnowledgeDatasetConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
-import type { AgentKnowledgeRetrievalItem } from '../../data'
 import type {
   MetadataFilteringCondition,
   MetadataFilteringModeEnum,
   MultipleRetrievalConfig,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { ModelConfig } from '@/app/components/workflow/types'
+import type { AgentKnowledgeRetrievalItem } from '@/features/agent-v2/agent-composer/form-state'
 import type { DataSet, MetadataInDoc } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'

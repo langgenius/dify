@@ -1,8 +1,8 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { AgentFileNode } from '../../data'
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
+import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import {
   Dialog,
 } from '@langgenius/dify-ui/dialog'
@@ -10,9 +10,10 @@ import {
   FileTreeGuide,
 } from '@langgenius/dify-ui/file-tree'
 import { useQuery } from '@tanstack/react-query'
+import { useAtom } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useFiles } from '@/features/agent-v2/agent-composer/store-modules/files'
+import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { consoleQuery } from '@/service/client'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
@@ -113,7 +114,7 @@ function AgentFileItem({
 
 export function AgentFiles() {
   const { t } = useTranslation('agentV2')
-  const [files, setFiles] = useFiles()
+  const [files, setFiles] = useAtom(agentComposerFilesAtom)
   const filesTip = t('agentDetail.configure.files.tip')
   const filesTreeId = 'agent-configure-files-tree'
   const [isUploadOpen, setIsUploadOpen] = useState(false)

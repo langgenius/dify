@@ -1,5 +1,4 @@
-import type { AgentKnowledgeRetrievalItem } from '../agent-detail/configure/components/data'
-import type { AgentTool } from '../agent-detail/configure/components/orchestrate/tools/types'
+import type { AgentKnowledgeRetrievalItem, AgentTool } from './form-state'
 
 const getKnowledgeRetrievalName = (item: AgentKnowledgeRetrievalItem) => item.name ?? item.nameKey ?? item.id
 

@@ -1,9 +1,14 @@
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
-import type { AgentFileNode, AgentKnowledgeRetrievalItem } from '../agent-detail/configure/components/data'
-import type { EnvVariable } from '../agent-detail/configure/components/orchestrate/advanced/env'
-import type { AgentSkill } from '../agent-detail/configure/components/orchestrate/skills/item'
-import type { AgentCliTool, AgentProviderTool, AgentTool } from '../agent-detail/configure/components/orchestrate/tools/types'
-import type { AgentSoulConfigFormState } from './form-state'
+import type {
+  AgentCliTool,
+  AgentFileNode,
+  AgentKnowledgeRetrievalItem,
+  AgentProviderTool,
+  AgentSkill,
+  AgentSoulConfigFormState,
+  AgentTool,
+  EnvVariable,
+} from './form-state'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { checkKey } from '@/utils/var'
 import { defaultAgentSoulConfigFormState } from './form-state'

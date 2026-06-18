@@ -1,10 +1,11 @@
 'use client'
 
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
-import type { AgentSkill } from './item'
+import type { AgentSkill } from '@/features/agent-v2/agent-composer/form-state'
+import { useAtom } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useRemoveSkill, useSkills } from '@/features/agent-v2/agent-composer/store-modules/skills'
+import { agentComposerSkillsAtom, useRemoveSkill } from '@/features/agent-v2/agent-composer/store-modules/skills'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
@@ -18,7 +19,7 @@ export function AgentSkills({
   agentId: string
 }) {
   const { t } = useTranslation('agentV2')
-  const [skills, setSkills] = useSkills()
+  const [skills, setSkills] = useAtom(agentComposerSkillsAtom)
   const removeSkill = useRemoveSkill()
   const skillsTip = t('agentDetail.configure.skills.tip')
   const skillsListId = 'agent-configure-skills-list'

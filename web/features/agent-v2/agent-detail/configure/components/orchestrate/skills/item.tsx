@@ -1,6 +1,7 @@
 'use client'
 
 import type { AgentDriveItemResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentSkill } from '@/features/agent-v2/agent-composer/form-state'
 import {
   Dialog,
 } from '@langgenius/dify-ui/dialog'
@@ -10,19 +11,6 @@ import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { AgentSkillDetailDialog } from './detail-dialog'
-
-export type AgentSkill = {
-  description?: string
-  files?: string[]
-  fileId?: string
-  fullArchiveFileId?: string
-  fullArchiveKey?: string
-  id: string
-  name: string
-  path?: string
-  skillMdFileId?: string
-  skillMdKey?: string
-}
 
 const getSkillDrivePath = (skill: AgentSkill) => {
   const skillMdKeySlug = skill.skillMdKey?.split('/', 1)[0]

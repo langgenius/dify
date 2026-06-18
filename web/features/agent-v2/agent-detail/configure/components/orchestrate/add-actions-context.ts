@@ -1,6 +1,4 @@
-import type { AgentFileNode, AgentKnowledgeRetrievalItem } from '../data'
-import type { AgentSkill } from './skills/item'
-import type { AgentCliTool } from './tools/types'
+import type { AgentCliTool, AgentFileNode, AgentKnowledgeRetrievalItem, AgentSkill } from '@/features/agent-v2/agent-composer/form-state'
 import { createContext, use, useCallback, useEffect, useRef } from 'react'
 
 export type AgentOrchestrateAddActionKey = 'cli' | 'files' | 'knowledge' | 'skills'

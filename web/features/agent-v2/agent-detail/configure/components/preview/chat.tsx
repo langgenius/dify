@@ -12,6 +12,7 @@ import type { DefaultModel } from '@/app/components/header/account-setting/model
 import type { Inputs } from '@/models/debug'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
@@ -22,8 +23,8 @@ import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/comp
 import { InputVarType } from '@/app/components/workflow/types'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { useCurrentModel } from '@/features/agent-v2/agent-composer/store-modules/model'
-import { usePrompt } from '@/features/agent-v2/agent-composer/store-modules/prompt'
+import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
+import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { PromptMode } from '@/models/debug'
 import dynamic from '@/next/dynamic'
 import { consoleClient } from '@/service/client'
@@ -315,8 +316,8 @@ export function AgentPreviewChat({
   onSaveDraftBeforeRun?: () => Promise<void>
 }) {
   const { userProfile } = useAppContext()
-  const [prompt] = usePrompt()
-  const currentModel = useCurrentModel()
+  const prompt = useAtomValue(agentComposerPromptAtom)
+  const currentModel = useAtomValue(agentComposerModelAtom)
   const config = useMemo(() => buildChatConfig({
     agentSoulConfig,
     currentModel,

@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentFileNode } from '../../data'
+import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import {
   DialogCloseButton,
   DialogContent,

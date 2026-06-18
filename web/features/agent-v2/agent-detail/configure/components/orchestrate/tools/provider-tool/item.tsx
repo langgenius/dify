@@ -1,6 +1,7 @@
 'use client'
 
-import type { AgentProviderTool, AgentToolAction, ToolSettingTarget } from '../types'
+import type { ToolSettingTarget } from '../types'
+import type { AgentProviderTool, AgentToolAction } from '@/features/agent-v2/agent-composer/form-state'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {

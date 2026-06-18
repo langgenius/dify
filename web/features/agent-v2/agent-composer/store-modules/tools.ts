@@ -1,7 +1,6 @@
-import type { AgentTool } from '../../agent-detail/configure/components/orchestrate/tools/types'
-import type { AgentSoulConfigFormState } from '../form-state'
+import type { AgentSoulConfigFormState, AgentTool } from '../form-state'
 import type { DraftFieldUpdate } from './utils'
-import { atom, useAtom, useSetAtom } from 'jotai'
+import { atom, useSetAtom } from 'jotai'
 import { useCallback } from 'react'
 import { syncCliToolReferenceLabels } from '../reference-labels'
 import { agentComposerDraftAtom } from '../store'
@@ -36,16 +35,6 @@ export const agentComposerToolSettingsAtom = atom(
     })
   },
 )
-
-export function useTools() {
-  const [tools, setTools] = useAtom(agentComposerToolsAtom)
-  return [tools, setTools] as const
-}
-
-export function useToolSettings() {
-  const [toolSettings, setToolSettings] = useAtom(agentComposerToolSettingsAtom)
-  return [toolSettings, setToolSettings] as const
-}
 
 const omitToolSettings = (
   toolSettings: AgentSoulConfigFormState['toolSettings'],

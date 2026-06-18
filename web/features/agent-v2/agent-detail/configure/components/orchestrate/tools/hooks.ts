@@ -1,9 +1,11 @@
 'use client'
 
-import type { AgentCliTool, AgentProviderToolDefaultValue, AgentTool, ToolSettingTarget } from './types'
+import type { AgentProviderToolDefaultValue, ToolSettingTarget } from './types'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
+import type { AgentCliTool, AgentTool } from '@/features/agent-v2/agent-composer/form-state'
+import { useAtom } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
-import { useRemoveProviderTool, useRemoveProviderToolAction, useTools } from '@/features/agent-v2/agent-composer/store-modules/tools'
+import { agentComposerToolsAtom, useRemoveProviderTool, useRemoveProviderToolAction } from '@/features/agent-v2/agent-composer/store-modules/tools'
 
 const toSelectedToolValue = (tool: AgentTool): ToolValue[] => {
   if (tool.kind !== 'provider')
@@ -97,7 +99,7 @@ export const addProviderTools = (
 }
 
 export function useAgentToolsOperations() {
-  const [tools, setTools] = useTools()
+  const [tools, setTools] = useAtom(agentComposerToolsAtom)
   const removeProviderTool = useRemoveProviderTool()
   const removeProviderToolAction = useRemoveProviderToolAction()
   const [expandedToolIds, setExpandedToolIds] = useState<Set<string>>(() => new Set())

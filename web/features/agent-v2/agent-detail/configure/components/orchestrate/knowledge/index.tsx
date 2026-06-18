@@ -1,10 +1,11 @@
 'use client'
 
-import type { AgentKnowledgeRetrievalItem } from '../../data'
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
+import type { AgentKnowledgeRetrievalItem } from '@/features/agent-v2/agent-composer/form-state'
+import { useAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
+import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionConfigurableItem } from '../common/configurable-item'
@@ -46,7 +47,7 @@ function AgentKnowledgeRetrievalRow({
 
 export function AgentKnowledgeRetrieval() {
   const { t } = useTranslation('agentV2')
-  const [retrievals, setRetrievals] = useKnowledgeRetrievals()
+  const [retrievals, setRetrievals] = useAtom(agentComposerKnowledgeRetrievalsAtom)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [editingRetrieval, setEditingRetrieval] = useState<AgentKnowledgeRetrievalItem | null>(null)
   const knowledgeRetrievalTip = t('agentDetail.configure.knowledgeRetrieval.tip')

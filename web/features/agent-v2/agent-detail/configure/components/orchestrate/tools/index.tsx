@@ -1,9 +1,10 @@
 'use client'
 
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
-import type { AgentCliTool, AgentProviderTool, AgentProviderToolDefaultValue, AgentTool, ToolSettingTarget } from './types'
+import type { AgentProviderToolDefaultValue, ToolSettingTarget } from './types'
 import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { AgentCliTool, AgentProviderTool, AgentTool } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'

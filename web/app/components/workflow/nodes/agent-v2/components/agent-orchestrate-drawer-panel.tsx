@@ -3,12 +3,13 @@
 import type { AgentConfigSnapshotSummaryResponse, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { WorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps/types.gen'
 import { skipToken, useQuery } from '@tanstack/react-query'
+import { useAtom } from 'jotai'
 import Loading from '@/app/components/base/loading'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
-import { useHydrateAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/store'
-import { useAgentConfigureCurrentModel, useAgentConfigureModel } from '@/features/agent-v2/agent-detail/configure/atoms'
+import { useHydrateAgentSoulConfigDraft } from '@/features/agent-v2/agent-composer/store'
+import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { AgentOrchestratePanel } from '@/features/agent-v2/agent-detail/configure/components/orchestrate'
 import { consoleQuery } from '@/service/client'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
@@ -58,7 +59,7 @@ function AgentOrchestrateDrawerPanelContent({
     enabled: open && isInline && !!agentSoulConfig,
   })
 
-  useHydrateAgentSoulConfigFormState({
+  useHydrateAgentSoulConfigDraft({
     agentId: isInline ? `${nodeId}:${agentId}` : agentId,
     activeVersionId: activeConfigSnapshot?.id,
     config: agentSoulConfig as AgentSoulConfig | undefined,
@@ -95,7 +96,7 @@ function AgentOrchestrateDrawerPanelContent({
 }
 
 function useAgentOrchestrateModelOptions() {
-  const [, setConfigureModel] = useAgentConfigureModel()
+  const [model, setModel] = useAtom(agentComposerModelAtom)
   const {
     data: defaultTextGenerationModel,
   } = useDefaultModel(ModelTypeEnum.textGeneration)
@@ -105,14 +106,14 @@ function useAgentOrchestrateModelOptions() {
         model: defaultTextGenerationModel.model,
       }
     : undefined
-  const currentModel = useAgentConfigureCurrentModel(defaultModel)
+  const currentModel = model ?? defaultModel
   const {
     textGenerationModelList,
   } = useTextGenerationCurrentProviderAndModelAndModelList(currentModel)
 
   return {
     currentModel,
-    setConfigureModel,
+    setConfigureModel: setModel,
     textGenerationModelList,
   }
 }

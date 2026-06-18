@@ -1,6 +1,6 @@
-import type { EnvVariable } from '../../agent-detail/configure/components/orchestrate/advanced/env'
+import type { EnvVariable } from '../form-state'
 import type { DraftFieldUpdate } from './utils'
-import { atom, useAtom } from 'jotai'
+import { atom } from 'jotai'
 import { agentComposerDraftAtom } from '../store'
 import { resolveDraftFieldUpdate } from './utils'
 
@@ -15,8 +15,3 @@ export const agentComposerEnvVariablesAtom = atom(
     })
   },
 )
-
-export function useEnvVariables() {
-  const [envVariables, setEnvVariables] = useAtom(agentComposerEnvVariablesAtom)
-  return [envVariables, setEnvVariables] as const
-}

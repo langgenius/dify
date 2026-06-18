@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import type { AgentSoulConfigFormState } from './form-state'
 import { createStore, Provider as JotaiProvider } from 'jotai'
-import { useState } from 'react'
+import { useRef } from 'react'
 import { agentComposerDraftAtom, agentComposerOriginalDraftAtom } from './store'
 
 function createAgentComposerStore(initialDraft?: AgentSoulConfigFormState) {
@@ -24,7 +24,10 @@ export function AgentComposerProvider({
   children: ReactNode
   initialDraft?: AgentSoulConfigFormState
 }) {
-  const [store] = useState(() => createAgentComposerStore(initialDraft))
+  const storeRef = useRef<ReturnType<typeof createAgentComposerStore> | null>(null)
+  if (!storeRef.current)
+    storeRef.current = createAgentComposerStore(initialDraft)
+  const store = storeRef.current
 
   return (
     <JotaiProvider store={store}>

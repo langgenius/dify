@@ -1,25 +1,26 @@
 'use client'
 
-import type { KeyboardEvent, MouseEvent, PointerEvent } from 'react'
-import type { AgentTool } from '../tools/types'
+import type { KeyboardEvent, MouseEvent, PointerEvent as ReactPointerEvent } from 'react'
 import type { SlashMenuCategory, SlashMenuView } from './slash'
 import type { RosterReferenceToken } from '@/app/components/base/prompt-editor/plugins/roster-reference-block/utils'
+import type { AgentTool } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd } from '@langgenius/dify-ui/kbd'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useClipboard } from 'foxact/use-clipboard'
+import { useAtom, useAtomValue } from 'jotai'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useFiles } from '@/features/agent-v2/agent-composer/store-modules/files'
-import { useKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
-import { usePrompt } from '@/features/agent-v2/agent-composer/store-modules/prompt'
-import { useSkills } from '@/features/agent-v2/agent-composer/store-modules/skills'
-import { useTools } from '@/features/agent-v2/agent-composer/store-modules/tools'
+import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
+import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
+import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
+import { agentComposerSkillsAtom } from '@/features/agent-v2/agent-composer/store-modules/skills'
+import { agentComposerToolsAtom } from '@/features/agent-v2/agent-composer/store-modules/tools'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { useAgentOrchestrateAddActions } from '../add-actions-context'
@@ -149,11 +150,11 @@ const isSelectionAfterSlash = (rootElement: HTMLElement | null, fallbackValue: s
 export function AgentPromptEditor() {
   const { t } = useTranslation('agentV2')
   const readOnly = useAgentOrchestrateReadOnly()
-  const [value, onChange] = usePrompt()
-  const [skills] = useSkills()
-  const [files] = useFiles()
-  const [tools, setTools] = useTools()
-  const [retrievals] = useKnowledgeRetrievals()
+  const [value, setValue] = useAtom(agentComposerPromptAtom)
+  const skills = useAtomValue(agentComposerSkillsAtom)
+  const files = useAtomValue(agentComposerFilesAtom)
+  const [tools, setTools] = useAtom(agentComposerToolsAtom)
+  const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
   const addActions = useAgentOrchestrateAddActions()
   const isHydrated = useIsHydrated()
   const promptTip = t('agentDetail.configure.prompt.tip')
@@ -217,7 +218,7 @@ export function AgentPromptEditor() {
     window.requestAnimationFrame(syncSlashMenuWithSelection)
   }
 
-  const handleEditorPointerUp = (event: PointerEvent<HTMLDivElement>) => {
+  const handleEditorPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
     const target = event.target
     if (
       target instanceof Element
@@ -251,12 +252,12 @@ export function AgentPromptEditor() {
   }
 
   const handleSlashSelect = (token: string) => {
-    onChange(replaceTrailingSlashWithToken(value, token))
+    setValue(replaceTrailingSlashWithToken(value, token))
     closeSlashMenu()
   }
 
   const handleInsertSlash = () => {
-    onChange(`${value}/`)
+    setValue(`${value}/`)
     openSlashMenu()
   }
 
@@ -364,7 +365,7 @@ export function AgentPromptEditor() {
               placeholderClassName="top-0!"
               editable={!readOnly}
               value={value}
-              onChange={onChange}
+              onChange={setValue}
               variableBlock={{
                 show: true,
               }}

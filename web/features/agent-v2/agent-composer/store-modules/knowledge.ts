@@ -1,6 +1,6 @@
-import type { AgentKnowledgeRetrievalItem } from '../../agent-detail/configure/components/data'
+import type { AgentKnowledgeRetrievalItem } from '../form-state'
 import type { DraftFieldUpdate } from './utils'
-import { atom, useAtom } from 'jotai'
+import { atom } from 'jotai'
 import { syncKnowledgeReferenceLabels } from '../reference-labels'
 import { agentComposerDraftAtom } from '../store'
 import { resolveDraftFieldUpdate } from './utils'
@@ -22,8 +22,3 @@ export const agentComposerKnowledgeRetrievalsAtom = atom(
     })
   },
 )
-
-export function useKnowledgeRetrievals() {
-  const [knowledgeRetrievals, setKnowledgeRetrievals] = useAtom(agentComposerKnowledgeRetrievalsAtom)
-  return [knowledgeRetrievals, setKnowledgeRetrievals] as const
-}

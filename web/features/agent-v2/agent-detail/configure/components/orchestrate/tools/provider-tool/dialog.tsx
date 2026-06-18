@@ -1,12 +1,14 @@
 'use client'
 
-import type { AgentProviderTool, ToolSettingTarget } from '../types'
+import type { ToolSettingTarget } from '../types'
 import type { Tool } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { AgentProviderTool } from '@/features/agent-v2/agent-composer/form-state'
+import { useAtom } from 'jotai'
 import { useCallback, useMemo } from 'react'
 import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'
 import { CollectionType } from '@/app/components/tools/types'
-import { useToolSettings } from '@/features/agent-v2/agent-composer/store-modules/tools'
+import { agentComposerToolSettingsAtom } from '@/features/agent-v2/agent-composer/store-modules/tools'
 
 const localize = (value: string) => ({
   en_US: value,
@@ -49,7 +51,7 @@ export function ProviderToolSettingsDialog({
   collection?: ToolWithProvider
   onClose: () => void
 }) {
-  const [toolSettings, setToolSettings] = useToolSettings()
+  const [toolSettings, setToolSettings] = useAtom(agentComposerToolSettingsAtom)
   const toolCollection = useMemo(() => {
     if (!settingTarget)
       return null

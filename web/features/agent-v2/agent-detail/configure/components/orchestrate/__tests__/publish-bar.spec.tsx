@@ -5,7 +5,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { agentComposerDraftAtom, agentComposerOriginalDraftAtom, agentComposerPublishedDraftAtom } from '@/features/agent-v2/agent-composer/store'
-import { agentConfigurePromptAtom } from '../../../atoms'
+import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { AgentConfigurePublishBar } from '../publish-bar'
 
 type PublishHandler = NonNullable<ComponentProps<typeof AgentConfigurePublishBar>['onPublish']>
@@ -55,16 +55,16 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
       open?: boolean
       onOpenChange?: (open: boolean) => void
     }) => (
-      <PopoverContext.Provider value={{ open: !!open, onOpenChange }}>
+      <PopoverContext value={{ open: !!open, onOpenChange }}>
         {children}
-      </PopoverContext.Provider>
+      </PopoverContext>
     ),
     PopoverContent: ({
       children,
     }: {
       children: React.ReactNode
     }) => {
-      const context = React.useContext(PopoverContext)
+      const context = React.use(PopoverContext)
       if (!context.open)
         return null
 
@@ -74,15 +74,7 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
       render: trigger,
     }: {
       render: React.ReactElement
-    }) => {
-      if (!React.isValidElement(trigger))
-        return trigger
-
-      const triggerProps = trigger.props as React.HTMLAttributes<HTMLElement>
-      return React.cloneElement(trigger, {
-        onClick: triggerProps.onClick,
-      } as React.HTMLAttributes<HTMLElement>)
-    },
+    }) => trigger,
   }
 })
 
@@ -141,7 +133,7 @@ function renderPublishBar({
   setupStore?: (store: ReturnType<typeof createStore>) => void
 } = {}) {
   const store = createStore()
-  store.set(agentConfigurePromptAtom, prompt)
+  store.set(agentComposerPromptAtom, prompt)
   setupStore?.(store)
 
   render(

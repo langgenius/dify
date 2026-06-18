@@ -1,6 +1,6 @@
-import type { AgentFileNode } from '../../agent-detail/configure/components/data'
+import type { AgentFileNode } from '../form-state'
 import type { DraftFieldUpdate } from './utils'
-import { atom, useAtom } from 'jotai'
+import { atom } from 'jotai'
 import { agentComposerDraftAtom } from '../store'
 import { resolveDraftFieldUpdate } from './utils'
 
@@ -15,8 +15,3 @@ export const agentComposerFilesAtom = atom(
     })
   },
 )
-
-export function useFiles() {
-  const [files, setFiles] = useAtom(agentComposerFilesAtom)
-  return [files, setFiles] as const
-}

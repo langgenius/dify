@@ -1,5 +1,5 @@
 import type { DraftFieldUpdate } from './utils'
-import { atom, useAtom } from 'jotai'
+import { atom } from 'jotai'
 import { agentComposerDraftAtom } from '../store'
 import { resolveDraftFieldUpdate } from './utils'
 
@@ -14,8 +14,3 @@ export const agentComposerPromptAtom = atom(
     })
   },
 )
-
-export function usePrompt() {
-  const [prompt, setPrompt] = useAtom(agentComposerPromptAtom)
-  return [prompt, setPrompt] as const
-}

@@ -1,28 +1,20 @@
 'use client'
 
+import type { EnvScope, EnvVariable } from '@/features/agent-v2/agent-composer/form-state'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useAtom } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useEnvVariables } from '@/features/agent-v2/agent-composer/store-modules/env'
+import { agentComposerEnvVariablesAtom } from '@/features/agent-v2/agent-composer/store-modules/env'
 import { checkKeys } from '@/utils/var'
 import { ConfigureSection } from '../common/section'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { getEnvImportPlatform, parseEnvVariables } from './env-utils'
-
-export type EnvScope = 'secret' | 'plain'
-
-export type EnvVariable = {
-  id: string
-  key: string
-  value: string
-  scope: EnvScope
-  masked?: boolean
-}
 
 const scopeLabelKeys: Record<EnvScope, I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.advancedSettings.envEditor.'>> = {
   plain: 'agentDetail.configure.advancedSettings.envEditor.scopePlain',
@@ -417,8 +409,11 @@ export function EnvVariablesTable({
 export function AgentEnvEditor() {
   const { t } = useTranslation('agentV2')
   const readOnly = useAgentOrchestrateReadOnly()
-  const [envVariables, setEnvVariables] = useEnvVariables()
-  const [starterVariable] = useState(createEnvVariable)
+  const [envVariables, setEnvVariables] = useAtom(agentComposerEnvVariablesAtom)
+  const starterVariableRef = useRef<EnvVariable | undefined>(undefined)
+  if (!starterVariableRef.current)
+    starterVariableRef.current = createEnvVariable()
+  const starterVariable = starterVariableRef.current
   const [focusedVariable, setFocusedVariable] = useState<{ id: string, field: 'key' | 'value' }>()
   const envImportInputRef = useRef<HTMLInputElement>(null)
   const envEditorTip = t('agentDetail.configure.advancedSettings.envEditor.tip')
