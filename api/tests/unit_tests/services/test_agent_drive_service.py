@@ -66,6 +66,7 @@ def _tables() -> Generator[None, None, None]:
     yield
     with session_factory.create_session() as session:
         session.execute(delete(AgentDriveFile))
+        session.execute(delete(UploadFile))
         session.execute(delete(ToolFile))
         session.execute(delete(Agent))
         session.commit()
@@ -498,7 +499,7 @@ def test_download_url_signs_external_audience():
 
 def test_upload_file_download_url_uses_attachment_filename():
     upload_file_id = _seed_upload_file(name="report.pdf")
-    _commit_upload("report.pdf", upload_file_id)
+    _commit_upload("files/report.pdf", upload_file_id)
 
     with patch("services.agent_drive_service.DifyWorkflowFileRuntime") as runtime_cls:
         runtime_cls.return_value.resolve_upload_file_url.return_value = "https://files.example/report.pdf"
