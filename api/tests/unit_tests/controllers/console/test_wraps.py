@@ -2,24 +2,29 @@ from typing import override
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
+from flask import Flask, request
 from flask_login import LoginManager, UserMixin
 from pydantic import BaseModel
 from werkzeug.exceptions import HTTPException
 
+from controllers.common.wraps import _extract_resource_id
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 from controllers.console.workspace.error import AccountNotInitializedError
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     cloud_edition_billing_enabled,
     cloud_edition_billing_rate_limit_check,
     cloud_edition_billing_resource_check,
     cloud_utm_record,
     enterprise_license_required,
+    is_admin_or_owner_required,
     model_validate,
     only_edition_cloud,
     only_edition_enterprise,
     only_edition_self_hosted,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -163,6 +168,165 @@ class TestCurrentContextInjection:
 
         with patch("controllers.console.wraps.current_account_with_tenant", return_value=(current_user, "tenant-456")):
             assert Handler().get() == ("user-99", "tenant-456")
+
+
+class TestRbacPermissionRequired:
+    """Test enterprise RBAC decorator."""
+
+    def test_resource_scoped_check_uses_resource_id(self):
+        current_user = make_account("account-1")
+
+        @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_DELETE)
+        def protected_view(**kwargs):
+            return "ok"
+
+        with (
+            patch("controllers.common.wraps.dify_config.RBAC_ENABLED", True),
+            patch("controllers.common.wraps.current_account_with_tenant", return_value=(current_user, "tenant-1")),
+            patch("controllers.common.wraps._extract_resource_id", return_value="app-123") as mock_extract,
+            patch("controllers.common.wraps._is_resource_owned_by_current_user", return_value=False) as mock_owned,
+            patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=True) as mock_check,
+        ):
+            assert protected_view(app_id="app-123") == "ok"
+
+        mock_extract.assert_called_once_with("app", {"app_id": "app-123"})
+        mock_owned.assert_called_once_with("tenant-1", "account-1", "app", "app-123")
+        mock_check.assert_called_once_with(
+            "tenant-1",
+            "account-1",
+            scene="app_delete",
+            resource_type="app",
+            resource_id="app-123",
+        )
+
+    def test_workspace_scoped_check_skips_resource_id_extraction(self):
+        current_user = make_account("account-2")
+
+        @rbac_permission_required(
+            RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT, resource_required=False
+        )
+        def protected_view():
+            return "ok"
+
+        with (
+            patch("controllers.common.wraps.dify_config.RBAC_ENABLED", True),
+            patch("controllers.common.wraps.current_account_with_tenant", return_value=(current_user, "tenant-2")),
+            patch("controllers.common.wraps._extract_resource_id") as mock_extract,
+            patch("controllers.common.wraps._is_resource_owned_by_current_user", return_value=False) as mock_owned,
+            patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=True) as mock_check,
+        ):
+            assert protected_view() == "ok"
+
+        mock_extract.assert_not_called()
+        mock_owned.assert_not_called()
+        mock_check.assert_called_once_with(
+            "tenant-2",
+            "account-2",
+            scene="dataset_create_and_management",
+            resource_type="dataset",
+            resource_id=None,
+        )
+
+    def test_workspace_scene_omits_resource_type(self):
+        current_user = make_account("account-3")
+
+        @rbac_permission_required(
+            RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+        )
+        def protected_view():
+            return "ok"
+
+        with (
+            patch("controllers.common.wraps.dify_config.RBAC_ENABLED", True),
+            patch("controllers.common.wraps.current_account_with_tenant", return_value=(current_user, "tenant-3")),
+            patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=True) as mock_check,
+        ):
+            assert protected_view() == "ok"
+
+        mock_check.assert_called_once_with(
+            "tenant-3",
+            "account-3",
+            scene="workspace_role_manage",
+            resource_type=None,
+            resource_id=None,
+        )
+
+    def test_resource_owned_app_skips_rbac_check(self):
+        current_user = make_account("account-4")
+
+        @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_DELETE)
+        def protected_view(**kwargs):
+            return "ok"
+
+        with (
+            patch("controllers.common.wraps.dify_config.RBAC_ENABLED", True),
+            patch("controllers.common.wraps.current_account_with_tenant", return_value=(current_user, "tenant-4")),
+            patch("controllers.common.wraps._extract_resource_id", return_value="app-123"),
+            patch("controllers.common.wraps._is_resource_owned_by_current_user", return_value=True) as mock_owned,
+            patch("controllers.common.wraps.RBACService.CheckAccess.check") as mock_check,
+        ):
+            assert protected_view(app_id="app-123") == "ok"
+
+        mock_owned.assert_called_once_with("tenant-4", "account-4", "app", "app-123")
+        mock_check.assert_not_called()
+
+    def test_resource_owned_dataset_skips_rbac_check(self):
+        current_user = make_account("account-5")
+
+        @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+        def protected_view(**kwargs):
+            return "ok"
+
+        with (
+            patch("controllers.common.wraps.dify_config.RBAC_ENABLED", True),
+            patch("controllers.common.wraps.current_account_with_tenant", return_value=(current_user, "tenant-5")),
+            patch("controllers.common.wraps._extract_resource_id", return_value="dataset-123"),
+            patch("controllers.common.wraps._is_resource_owned_by_current_user", return_value=True) as mock_owned,
+            patch("controllers.common.wraps.RBACService.CheckAccess.check") as mock_check,
+        ):
+            assert protected_view(dataset_id="dataset-123") == "ok"
+
+        mock_owned.assert_called_once_with("tenant-5", "account-5", "dataset", "dataset-123")
+        mock_check.assert_not_called()
+
+    def test_extract_resource_id_prefers_path_args(self):
+        app = Flask(__name__)
+
+        with app.test_request_context("/"):
+            request.view_args = {"app_id": "view-app"}
+
+            assert _extract_resource_id("app", {"app_id": "path-app"}) == "path-app"
+
+    def test_extract_resource_id_falls_back_to_request_view_args(self):
+        app = Flask(__name__)
+
+        with app.test_request_context("/"):
+            request.view_args = {"app_id": "view-app"}
+
+            assert _extract_resource_id("app") == "view-app"
+
+    def test_extract_resource_id_supports_legacy_route_aliases(self):
+        app = Flask(__name__)
+
+        with app.test_request_context("/apps/app-1/api-keys"):
+            request.view_args = {"resource_id": "app-1"}
+            assert _extract_resource_id(RBACResourceScope.APP) == "app-1"
+
+        with app.test_request_context("/agent/agent-1/features"):
+            request.view_args = {"agent_id": "agent-1"}
+            assert _extract_resource_id(RBACResourceScope.APP) == "agent-1"
+
+        with app.test_request_context("/datasets/dataset-1/api-keys"):
+            request.view_args = {"resource_id": "dataset-1"}
+            assert _extract_resource_id(RBACResourceScope.DATASET) == "dataset-1"
+
+    def test_legacy_admin_decorator_noops_when_rbac_enabled(self):
+        @is_admin_or_owner_required
+        def protected_view():
+            return "ok"
+
+        with patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True):
+            assert protected_view() == "ok"
 
 
 class TestModelValidationInjection:

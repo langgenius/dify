@@ -2,12 +2,12 @@ import type { InvitationResult } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IS_CE_EDITION } from '@/config'
 import InvitationLink from './invitation-link'
 
 export type SuccessInvitationResult = Extract<InvitationResult, { status: 'success' }>
+type AlreadyMemberInvitationResult = Extract<InvitationResult, { status: 'already_member' }>
 type FailedInvitationResult = Extract<InvitationResult, { status: 'failed' }>
 
 type IInvitedModalProps = {
@@ -20,8 +20,17 @@ const InvitedModal = ({
 }: IInvitedModalProps) => {
   const { t } = useTranslation()
 
-  const successInvitationResults = useMemo<SuccessInvitationResult[]>(() => invitationResults?.filter(item => item.status === 'success') as SuccessInvitationResult[], [invitationResults])
-  const failedInvitationResults = useMemo<FailedInvitationResult[]>(() => invitationResults?.filter(item => item.status !== 'success') as FailedInvitationResult[], [invitationResults])
+  const successInvitationResults = invitationResults.filter(
+    (item): item is SuccessInvitationResult => item.status === 'success',
+  )
+  const alreadyMemberInvitationResults = invitationResults.filter(
+    (item): item is AlreadyMemberInvitationResult => item.status === 'already_member',
+  )
+  const failedInvitationResults = invitationResults.filter(
+    (item): item is FailedInvitationResult => item.status === 'failed',
+  )
+  const onlyAlreadyMembers = alreadyMemberInvitationResults.length > 0 && successInvitationResults.length === 0 && failedInvitationResults.length === 0
+  const description = t(onlyAlreadyMembers ? 'members.alreadyInTeamTip' : 'members.invitationSentTip', { ns: 'common' })
 
   return (
     <Dialog
@@ -46,16 +55,20 @@ const InvitedModal = ({
             <div className="i-heroicons-check-circle-solid h-[22px] w-[22px] text-[#039855]" />
           </div>
         </div>
-        <DialogTitle className="mb-1 text-xl font-semibold text-text-primary">{t('members.invitationSent', { ns: 'common' })}</DialogTitle>
+        <DialogTitle className="mb-1 text-xl font-semibold text-text-primary">
+          {t(onlyAlreadyMembers ? 'members.noNewInvitationsSent' : 'members.invitationSent', { ns: 'common' })}
+        </DialogTitle>
         {!IS_CE_EDITION && (
-          <div className="mb-10 text-sm text-text-tertiary">{t('members.invitationSentTip', { ns: 'common' })}</div>
+          <div className="mb-5 text-sm text-text-tertiary">{description}</div>
         )}
-        {IS_CE_EDITION && (
+        {(IS_CE_EDITION || !!alreadyMemberInvitationResults.length) && (
           <>
-            <div className="mb-5 text-sm text-text-tertiary">{t('members.invitationSentTip', { ns: 'common' })}</div>
+            {IS_CE_EDITION && (
+              <div className="mb-5 text-sm text-text-tertiary">{description}</div>
+            )}
             <div className="mb-9 flex flex-col gap-2">
               {
-                !!successInvitationResults.length
+                IS_CE_EDITION && !!successInvitationResults.length
                 && (
                   <>
                     <div className="py-2 text-sm font-medium text-text-primary">{t('members.invitationLink', { ns: 'common' })}</div>
@@ -65,7 +78,30 @@ const InvitedModal = ({
                 )
               }
               {
-                !!failedInvitationResults.length
+                !!alreadyMemberInvitationResults.length
+                && (
+                  <>
+                    <div className="py-2 text-sm font-medium text-text-primary">{t('members.alreadyInTeam', { ns: 'common' })}</div>
+                    {!onlyAlreadyMembers && (
+                      <div className="text-sm text-text-tertiary">{t('members.alreadyInTeamTip', { ns: 'common' })}</div>
+                    )}
+                    <div className="flex flex-wrap justify-between gap-y-1">
+                      {
+                        alreadyMemberInvitationResults.map(item => (
+                          <div
+                            key={item.email}
+                            className="flex justify-center rounded-md border border-components-panel-border bg-background-section-burn px-1 text-sm text-text-secondary"
+                          >
+                            {item.email}
+                          </div>
+                        ))
+                      }
+                    </div>
+                  </>
+                )
+              }
+              {
+                IS_CE_EDITION && !!failedInvitationResults.length
                 && (
                   <>
                     <div className="py-2 text-sm font-medium text-text-primary">{t('members.failedInvitationEmails', { ns: 'common' })}</div>

@@ -72,8 +72,12 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         query = query.replace("\x00", "")
         inputs = args["inputs"]
 
-        # Resolve the bound roster Agent + its published Agent Soul snapshot.
+        # Resolve the bound roster Agent + its current Agent Soul snapshot.
         agent, snapshot, agent_soul = self._resolve_agent(app_model)
+        runtime_session_snapshot_id = self._runtime_session_snapshot_id(
+            invoke_from=invoke_from,
+            snapshot_id=snapshot.id,
+        )
 
         conversation = None
         conversation_id = args.get("conversation_id")
@@ -120,6 +124,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             trace_manager=trace_manager,
             agent_id=agent.id,
             agent_config_snapshot_id=snapshot.id,
+            agent_runtime_session_snapshot_id=runtime_session_snapshot_id,
         )
 
         conversation, message = self._init_generate_records(application_generate_entity, conversation)
@@ -341,6 +346,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     message_id=message.id,
                     model_name=application_generate_entity.model_conf.model,
                     queue_manager=queue_manager,
+                    session_scope_snapshot_id=application_generate_entity.agent_runtime_session_snapshot_id,
                 )
             except GenerateTaskStoppedError:
                 pass
@@ -429,6 +435,21 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         return self._resolve_agent_by_id(
             tenant_id=app_model.tenant_id, agent_id=agent.id, snapshot_id=agent.active_config_snapshot_id
         )
+
+    @staticmethod
+    def _runtime_session_snapshot_id(*, invoke_from: InvokeFrom, snapshot_id: str) -> str | None:
+        """Return the session scope snapshot id for Agent App runtime state.
+
+        Console preview/debug chat is an editing workspace: saving Agent Soul
+        creates replacement snapshots, but the user expects the same preview
+        conversation to keep context while trying prompt changes. Use a stable
+        NULL snapshot scope for debugger runs so each turn can use the latest
+        Agent Soul while reusing the conversation history. Published/web/API
+        runs keep snapshot-scoped sessions for reproducible runtime state.
+        """
+        if invoke_from == InvokeFrom.DEBUGGER:
+            return None
+        return snapshot_id
 
     @staticmethod
     def _resolve_agent_by_id(

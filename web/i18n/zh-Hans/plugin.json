@@ -245,6 +245,7 @@
   "pluginInfoModal.title": "集成信息",
   "pluginPublishGuide": "集成发布指南",
   "privilege.admins": "管理员",
+  "privilege.configurePermissionsInSettings": "前往设置 > 角色与权限中配置插件权限。",
   "privilege.everyone": "所有人",
   "privilege.noDebugPermissionTooltip": "你没有调试集成的权限",
   "privilege.noInstallPermissionTooltip": "你没有安装和管理集成的权限",

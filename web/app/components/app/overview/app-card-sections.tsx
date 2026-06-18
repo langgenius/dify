@@ -226,7 +226,7 @@ export const AppCardUrlSection = ({
   isApp,
   accessibleUrl,
   showConfirmDelete,
-  isCurrentWorkspaceManager,
+  canRegenerateUrl,
   genLoading,
   onRegenerate,
   onShowRegenerateConfirm,
@@ -236,7 +236,7 @@ export const AppCardUrlSection = ({
   isApp: boolean
   accessibleUrl: string
   showConfirmDelete: boolean
-  isCurrentWorkspaceManager: boolean
+  canRegenerateUrl: boolean
   genLoading: boolean
   onRegenerate: () => void
   onShowRegenerateConfirm: () => void
@@ -277,7 +277,7 @@ export const AppCardUrlSection = ({
           </AlertDialogActions>
         </AlertDialogContent>
       </AlertDialog>
-      {isApp && isCurrentWorkspaceManager && (
+      {isApp && canRegenerateUrl && (
         <MaybeTooltip content={t('overview.appInfo.regenerate', { ns: 'appOverview' }) || ''}>
           <div
             className="size-6 cursor-pointer rounded-md hover:bg-state-base-hover"

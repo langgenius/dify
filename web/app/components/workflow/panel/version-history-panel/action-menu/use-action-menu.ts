@@ -9,6 +9,7 @@ import { VersionHistoryContextMenuOptions } from '../../../types'
 const useActionMenu = (props: ActionMenuProps) => {
   const {
     isNamedVersion,
+    canImportExportDSL,
   } = props
   const { t } = useTranslation()
   const pipelineId = useStore(s => s.pipelineId)
@@ -37,7 +38,7 @@ const useActionMenu = (props: ActionMenuProps) => {
             name: t('versionHistory.nameThisVersion', { ns: 'workflow' }),
           },
       // todo: pipeline support export specific version DSL
-      ...(!pipelineId
+      ...(canImportExportDSL && !pipelineId
         ? [{
             key: VersionHistoryContextMenuOptions.exportDSL,
             name: t('export', { ns: 'app' }),
@@ -49,7 +50,7 @@ const useActionMenu = (props: ActionMenuProps) => {
         name: t('versionHistory.copyId', { ns: 'workflow' }),
       },
     ]
-  }, [isNamedVersion, pipelineId, shouldShowUpgrade, t])
+  }, [canImportExportDSL, isNamedVersion, pipelineId, shouldShowUpgrade, shouldShowUpgrade, t])
 
   return {
     deleteOperation,

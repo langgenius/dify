@@ -13,7 +13,7 @@ import { Plan } from '@/app/components/billing/type'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/atoms'
 import { useGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useAppContext } from '@/context/app-context'
+import { useAppContext, useSelector as useAppContextSelector } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { usePathname, useRouter } from '@/next/navigation'
@@ -24,17 +24,23 @@ import MainNav from '../index'
 
 const activeEdgeClassName = 'before:pointer-events-none'
 
-const { mockSwitchWorkspace, mockToastSuccess, hotkeyRegistrations } = vi.hoisted(() => ({
+const { mockIsAgentV2Enabled, mockSwitchWorkspace, mockToastSuccess, hotkeyRegistrations } = vi.hoisted(() => ({
   mockSwitchWorkspace: vi.fn(),
   mockToastSuccess: vi.fn(),
+  mockIsAgentV2Enabled: vi.fn(() => true),
   hotkeyRegistrations: new Map<string, {
     handler: (event: { preventDefault: () => void }) => void
     options?: { ignoreInputs?: boolean }
   }>(),
 }))
 
+vi.mock('@/features/agent-v2/feature-flag', () => ({
+  isAgentV2Enabled: () => mockIsAgentV2Enabled(),
+}))
+
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
+  useSelector: vi.fn(),
 }))
 
 vi.mock('@/context/provider-context', () => ({
@@ -159,6 +165,15 @@ vi.mock('@/app/components/app-sidebar/dataset-detail-top', () => ({
   ),
 }))
 
+vi.mock('@/features/agent-v2/agent-detail/navigation', () => ({
+  AgentDetailSection: ({ expand }: { expand: boolean }) => <div data-testid="agent-detail-section" data-expand={expand} />,
+  AgentDetailTop: ({ expand, onToggle }: { expand: boolean, onToggle: () => void }) => (
+    <div data-testid="agent-detail-top" data-expand={expand}>
+      <button type="button" data-testid="agent-detail-toggle" onClick={onToggle}>Toggle</button>
+    </div>
+  ),
+}))
+
 vi.mock('@/features/deployments/detail/deployment-sidebar', () => ({
   DeploymentDetailSection: ({ expand }: { expand: boolean }) => <div data-testid="deployment-detail-section" data-expand={expand} />,
   DeploymentDetailTop: ({ expand, onToggle }: { expand: boolean, onToggle: () => void }) => (
@@ -190,6 +205,23 @@ let mockPathname = '/apps'
 let mockInstalledApps: InstalledApp[] = []
 let mockInstalledAppsPending = false
 let mockWorkspaces: IWorkspace[] = []
+
+const ownerWorkspacePermissionKeys = [
+  'workspace.member.manage',
+  'workspace.role.manage',
+  'app_library.access',
+  'app.create_and_management',
+  'dataset.create_and_management',
+  'dataset.external.connect',
+  'tool.manage',
+  'mcp.manage',
+]
+
+const datasetOperatorWorkspacePermissionKeys = [
+  'plugin.install',
+  'dataset.create_and_management',
+  'dataset.external.connect',
+]
 
 const createInstalledApp = (overrides: Partial<InstalledApp> = {}): InstalledApp => ({
   id: overrides.id ?? 'installed-1',
@@ -246,7 +278,9 @@ const appContextValue: AppContextValue = {
   },
   useSelector: vi.fn(),
   isLoadingCurrentWorkspace: false,
+  isLoadingWorkspacePermissionKeys: false,
   isValidatingCurrentWorkspace: false,
+  workspacePermissionKeys: ownerWorkspacePermissionKeys,
 }
 
 type MainNavSystemFeatures = NonNullable<Parameters<typeof renderWithSystemFeatures>[1]>['systemFeatures']
@@ -285,6 +319,7 @@ describe('MainNav', () => {
       { id: 'workspace-1', name: 'Solar Studio', plan: Plan.team, status: 'normal', created_at: 0, current: true },
       { id: 'workspace-2', name: 'Evan Workspace', plan: Plan.sandbox, status: 'normal', created_at: 0, current: false },
     ]
+    mockIsAgentV2Enabled.mockReturnValue(true)
 
     ;(usePathname as Mock).mockImplementation(() => mockPathname)
     ;(useRouter as Mock).mockReturnValue({
@@ -296,6 +331,7 @@ describe('MainNav', () => {
       refresh: vi.fn(),
     })
     ;(useAppContext as Mock).mockReturnValue(appContextValue)
+    ;(useAppContextSelector as Mock).mockImplementation((selector: (state: AppContextValue) => unknown) => selector((useAppContext as Mock)() as AppContextValue))
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
       isEducationAccount: false,
@@ -331,9 +367,18 @@ describe('MainNav', () => {
     expect(screen.getByRole('button', { name: 'common.account.account' })).not.toHaveTextContent(Plan.team)
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
+    expect(screen.getByRole('link', { name: /common.menus.roster/ })).toHaveAttribute('href', '/roster')
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')
     expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute('href', '/integrations/model-provider')
     expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute('href', '/marketplace')
+  })
+
+  it('hides the roster entry when Agent v2 is disabled', () => {
+    mockIsAgentV2Enabled.mockReturnValue(false)
+
+    renderMainNav()
+
+    expect(screen.queryByRole('link', { name: /common.menus.roster/ })).not.toBeInTheDocument()
   })
 
   it('renders deployments in primary navigation when app deploy is enabled', () => {
@@ -443,7 +488,7 @@ describe('MainNav', () => {
     expect(screen.getAllByText(Plan.team)).toHaveLength(1)
   })
 
-  it('hides app and tools entries for dataset operators', () => {
+  it('keeps unrestricted main routes visible for dataset operators while hiding roster', () => {
     ;(useAppContext as Mock).mockReturnValue({
       ...appContextValue,
       currentWorkspace: {
@@ -454,19 +499,22 @@ describe('MainNav', () => {
       isCurrentWorkspaceEditor: false,
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
+      workspacePermissionKeys: datasetOperatorWorkspacePermissionKeys,
     })
 
     renderMainNav()
 
-    expect(screen.queryByRole('link', { name: /common.mainNav.home/ })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: /common.menus.apps/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
+    expect(screen.queryByRole('link', { name: /common.menus.roster/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')
-    expect(screen.queryByRole('link', { name: /common.mainNav.integrations/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute('href', '/integrations/model-provider')
     expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute('href', '/marketplace')
+    expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'explore.sidebar.webApps' })).not.toBeInTheDocument()
   })
 
-  it('hides datasets for members without editor or dataset-operator access', () => {
+  it('keeps unrestricted main routes visible without route permission keys', () => {
     ;(useAppContext as Mock).mockReturnValue({
       ...appContextValue,
       currentWorkspace: {
@@ -477,13 +525,15 @@ describe('MainNav', () => {
       isCurrentWorkspaceEditor: false,
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
+      workspacePermissionKeys: ['app_library.access', 'tool.manage'],
     })
 
     renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })
 
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: /common.menus.datasets/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common.menus.roster/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toBeInTheDocument()
@@ -652,6 +702,33 @@ describe('MainNav', () => {
     expect(screen.getByTestId('dataset-detail-section')).toHaveAttribute('data-expand', 'true')
   })
 
+  it('replaces global navigation with agent detail navigation on roster detail routes', () => {
+    mockPathname = '/roster/agent/agent-1/configure'
+
+    renderMainNav()
+
+    expect(screen.getByTestId('agent-detail-top')).toBeInTheDocument()
+    expect(screen.getByTestId('agent-detail-section')).toBeInTheDocument()
+    expect(screen.getByTestId('agent-detail-top')).toHaveAttribute('data-expand', 'true')
+    expect(screen.getByTestId('agent-detail-section')).toHaveAttribute('data-expand', 'true')
+    expect(screen.getByRole('complementary')).toHaveClass('w-[248px]')
+    expect(screen.getByRole('complementary')).toHaveClass('p-1')
+    expect(screen.getByRole('complementary')).toHaveClass('bg-background-body')
+    expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /common.menus.roster/ })).not.toBeInTheDocument()
+  })
+
+  it('keeps roster detail navigation hidden when Agent v2 is disabled', () => {
+    mockIsAgentV2Enabled.mockReturnValue(false)
+    mockPathname = '/roster/agent/agent-1/configure'
+
+    renderMainNav()
+
+    expect(screen.queryByTestId('agent-detail-top')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('agent-detail-section')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /common.menus.roster/ })).not.toBeInTheDocument()
+  })
+
   it('replaces global navigation with deployment detail navigation on deployment routes', () => {
     mockPathname = '/deployments/app-instance-1/releases'
 
@@ -667,6 +744,19 @@ describe('MainNav', () => {
     expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.mainNav.home/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
+  })
+
+  it('collapses agent detail navigation from the top-right toggle', () => {
+    mockPathname = '/roster/agent/agent-1/configure'
+
+    renderMainNav()
+    fireEvent.click(screen.getByTestId('agent-detail-toggle'))
+
+    expect(screen.getByRole('complementary')).toHaveClass('w-16')
+    expect(screen.getByRole('complementary')).toHaveClass('p-1')
+    expect(screen.getByTestId('agent-detail-top')).toHaveAttribute('data-expand', 'false')
+    expect(screen.getByTestId('agent-detail-section')).toHaveAttribute('data-expand', 'false')
+    expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('collapse')
   })
 
   it('collapses deployment detail navigation from the top-right toggle', () => {
@@ -705,6 +795,21 @@ describe('MainNav', () => {
       expect.objectContaining({ ignoreInputs: false }),
     )
   })
+
+  it('shows agent detail navigation as a floating preview when hovering the collapsed top toggle', () => {
+    mockPathname = '/roster/agent/agent-1/configure'
+
+    renderMainNav()
+    fireEvent.click(screen.getByTestId('agent-detail-toggle'))
+    fireEvent.mouseEnter(screen.getByTestId('agent-detail-top').parentElement!)
+
+    expect(screen.getByRole('complementary')).toHaveClass('w-16', 'overflow-visible')
+    expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('collapse')
+    expect(screen.getAllByTestId('agent-detail-top')).toHaveLength(1)
+    expect(screen.getByTestId('agent-detail-top')).toHaveAttribute('data-expand', 'true')
+    expect(screen.getByTestId('agent-detail-section')).toHaveAttribute('data-expand', 'true')
+  })
+
   it.each([
     '/datasets/create',
     '/datasets/create-from-pipeline',
@@ -729,6 +834,16 @@ describe('MainNav', () => {
 
     const marketplaceLink = screen.getByRole('link', { name: /common.mainNav.marketplace/ })
     expect(marketplaceLink).toHaveClass(activeEdgeClassName)
+  })
+
+  it('marks roster active on roster routes', () => {
+    mockPathname = '/roster'
+
+    renderMainNav()
+
+    const rosterLink = screen.getByRole('link', { name: /common.menus.roster/ })
+    expect(rosterLink).toHaveClass(activeEdgeClassName)
+    expect(rosterLink).toHaveAttribute('aria-current', 'page')
   })
 
   it('applies the Figma glass active state to the Home route', () => {
@@ -868,7 +983,7 @@ describe('MainNav', () => {
     expect(mockSetShowAccountSettingModal).not.toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.BILLING })
   })
 
-  it('limits workspace settings and invite actions by role', async () => {
+  it('limits invite members by member management permission', async () => {
     ;(useAppContext as Mock).mockReturnValue({
       ...appContextValue,
       currentWorkspace: {
@@ -877,6 +992,7 @@ describe('MainNav', () => {
       },
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
+      workspacePermissionKeys: ownerWorkspacePermissionKeys.filter(key => key !== 'workspace.member.manage'),
     })
 
     renderMainNav()
@@ -887,7 +1003,7 @@ describe('MainNav', () => {
     expect(screen.queryByText('common.mainNav.workspace.inviteMembers')).not.toBeInTheDocument()
   })
 
-  it('hides workspace settings actions for dataset operators', () => {
+  it('keeps workspace settings visible and hides invite members without member management permission', () => {
     ;(useAppContext as Mock).mockReturnValue({
       ...appContextValue,
       currentWorkspace: {
@@ -898,13 +1014,14 @@ describe('MainNav', () => {
       isCurrentWorkspaceEditor: false,
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
+      workspacePermissionKeys: datasetOperatorWorkspacePermissionKeys,
     })
 
     renderMainNav()
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
 
-    expect(screen.queryByText('common.mainNav.workspace.settings')).not.toBeInTheDocument()
+    expect(screen.getByText('common.mainNav.workspace.settings')).toBeInTheDocument()
     expect(screen.queryByText('common.mainNav.workspace.inviteMembers')).not.toBeInTheDocument()
   })
 

@@ -269,6 +269,7 @@ export const ModalContextProvider = ({
           integrationSettingModalSection && (
             <IntegrationsSettingModal
               section={integrationSettingModalSection}
+              source={accountSettingCallbacksRef.current?.source}
               onCancel={handleCancelAccountSettingModal}
               onSectionChange={section => setUrlAccountModalState({ payload: section })}
             />
