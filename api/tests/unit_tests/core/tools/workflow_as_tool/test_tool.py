@@ -5,7 +5,6 @@ StubSession/StubScalars emulate SQLAlchemy session/scalars with minimal methods
 database access mocked and predictable in tests.
 """
 
-from models import Account
 import json
 from types import SimpleNamespace
 from typing import Any
@@ -26,6 +25,7 @@ from core.tools.entities.tool_entities import (
 from core.tools.errors import ToolInvokeError
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod, FileType
+from models import Account
 
 
 class StubScalars:
