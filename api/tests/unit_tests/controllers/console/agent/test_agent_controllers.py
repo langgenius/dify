@@ -274,7 +274,13 @@ def test_agent_app_list_and_create_use_agent_route(
 
     with app.test_request_context(
         "/console/api/agent",
-        json={"name": "Iris", "description": "Agent app", "icon_type": "emoji", "icon": "robot"},
+        json={
+            "name": "Iris",
+            "description": "Agent app",
+            "role": "Coordinator",
+            "icon_type": "emoji",
+            "icon": "robot",
+        },
     ):
         created, status = unwrap(AgentAppListApi.post)(AgentAppListApi(), "tenant-1", SimpleNamespace(id=account_id))
 
@@ -287,6 +293,23 @@ def test_agent_app_list_and_create_use_agent_route(
     create_call = cast(dict[str, object], captured["create"])
     create_params = cast(Any, create_call["params"])
     assert create_params.mode == "agent"
+    assert create_params.agent_role == "Coordinator"
+
+
+def test_agent_app_create_requires_role(app: Flask, account_id: str) -> None:
+    with app.test_request_context(
+        "/console/api/agent",
+        json={"name": "Iris", "description": "Agent app", "icon_type": "emoji", "icon": "robot"},
+    ):
+        with pytest.raises(ValueError, match="Field required"):
+            unwrap(AgentAppListApi.post)(AgentAppListApi(), "tenant-1", SimpleNamespace(id=account_id))
+
+    with app.test_request_context(
+        "/console/api/agent",
+        json={"name": "Iris", "description": "Agent app", "role": "   ", "icon_type": "emoji", "icon": "robot"},
+    ):
+        with pytest.raises(ValueError, match="Agent role is required"):
+            unwrap(AgentAppListApi.post)(AgentAppListApi(), "tenant-1", SimpleNamespace(id=account_id))
 
 
 def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
@@ -335,7 +358,7 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
 
     with app.test_request_context(
         "/console/api/agent/00000000-0000-0000-0000-000000000001",
-        json={"name": "Renamed", "description": "", "icon_type": "emoji", "icon": "R"},
+        json={"name": "Renamed", "description": "", "role": "Reviewer", "icon_type": "emoji", "icon": "R"},
     ):
         updated = unwrap(AgentAppApi.put)(AgentAppApi(), "tenant-1", agent_id)
 
@@ -347,6 +370,7 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
     assert "bound_agent_id" not in updated
     update_call = cast(dict[str, object], captured["update"])
     assert update_call["app"] is app_model
+    assert cast(dict[str, object], update_call["args"])["role"] == "Reviewer"
 
     deleted, status = unwrap(AgentAppApi.delete)(AgentAppApi(), "tenant-1", agent_id)
     assert (deleted, status) == ("", 204)
@@ -397,6 +421,45 @@ def test_agent_app_copy_uses_agent_id_and_returns_agent_detail(
         "icon": "sparkles",
         "icon_background": "#fff",
     }
+
+
+def test_agent_app_update_rejects_empty_role(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    agent_id = "00000000-0000-0000-0000-000000000001"
+    app_model = _app_detail_obj(id="app-1", bound_agent_id=agent_id)
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        roster_controller.AgentRosterService,
+        "get_agent_app_model",
+        lambda _self, **kwargs: app_model,
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentRosterService,
+        "get_app_backing_agent",
+        lambda _self, **kwargs: SimpleNamespace(id=agent_id, role="", active_config_snapshot_id=None),
+    )
+    monkeypatch.setattr(
+        roster_controller.FeatureService,
+        "get_system_features",
+        lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+    )
+
+    class FakeAppService:
+        def get_app(self, app_obj: object) -> object:
+            return app_obj
+
+        def update_app(self, app_obj: object, args: dict[str, object]) -> object:
+            captured["update"] = {"app": app_obj, "args": args}
+            return _app_detail_obj(id="app-1", name=args["name"], bound_agent_id=agent_id)
+
+    monkeypatch.setattr(roster_controller, "AppService", FakeAppService)
+
+    with app.test_request_context(
+        "/console/api/agent/00000000-0000-0000-0000-000000000001",
+        json={"name": "Renamed", "description": "", "role": "", "icon_type": "emoji", "icon": "R"},
+    ):
+        with pytest.raises(ValueError, match="String should have at least 1 character"):
+            unwrap(AgentAppApi.put)(AgentAppApi(), "tenant-1", agent_id)
 
 
 def test_invite_options_get_parses_app_id(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
