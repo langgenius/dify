@@ -12,3 +12,21 @@ root_packages =
     tasks
     services
 include_external_packages = True
+
+[importlinter:contract:lower_layers_do_not_import_controllers]
+name = Lower layers do not import HTTP controllers
+type = forbidden
+source_modules =
+    core
+    libs
+    services
+forbidden_modules =
+    controllers
+ignore_imports =
+    core.app.apps.advanced_chat.app_generator -> controllers.console.app.workflow
+    core.app.apps.workflow.app_generator -> controllers.console.app.workflow
+    libs.device_flow_security -> controllers.openapi._models
+    services.account_service -> controllers
+    services.account_service -> controllers.console.error
+    services.app_generate_service -> controllers.console.app.workflow
+    services.billing_service -> controllers.console.error
