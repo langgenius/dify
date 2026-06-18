@@ -31,28 +31,6 @@ const removeFileNode = (files: AgentFileNode[], fileId: string): AgentFileNode[]
     children: file.children ? removeFileNode(file.children, fileId) : undefined,
   }))
 
-const getSkillMdFileId = (files: AgentFileNode[]): string | undefined => {
-  for (const file of files) {
-    if (file.icon !== 'folder' && file.name === 'SKILL.md')
-      return file.id
-
-    const childFileId = file.children ? getSkillMdFileId(file.children) : undefined
-    if (childFileId)
-      return childFileId
-  }
-}
-
-const getFirstFileId = (files: AgentFileNode[]): string | undefined => {
-  for (const file of files) {
-    if (file.icon !== 'folder')
-      return file.id
-
-    const childFileId = file.children ? getFirstFileId(file.children) : undefined
-    if (childFileId)
-      return childFileId
-  }
-}
-
 function AgentFileItem({
   children,
   depth,
@@ -72,7 +50,7 @@ function AgentFileItem({
   const readOnly = useAgentOrchestrateReadOnly()
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [selectedFileId, setSelectedFileId] = useState<string>()
-  const previewFileId = selectedFileId ?? getSkillMdFileId(files) ?? getFirstFileId(files)
+  const previewFileId = selectedFileId ?? file.id
   const previewQuery = useQuery({
     ...consoleQuery.files.byFileId.preview.get.queryOptions({
       input: {
@@ -87,9 +65,9 @@ function AgentFileItem({
     onRemove(file.id)
   }, [file.id, onRemove])
   const handleOpenPreview = useCallback(() => {
-    setSelectedFileId(undefined)
+    setSelectedFileId(file.id)
     setIsPreviewOpen(true)
-  }, [])
+  }, [file.id])
 
   return (
     <li className="group/file-row relative min-w-0">

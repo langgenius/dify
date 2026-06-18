@@ -137,7 +137,7 @@ describe('AgentFiles', () => {
     expect(await within(dialog).findByText('Preview content for preview-image')).toBeInTheDocument()
   })
 
-  it('should default to SKILL.md when the preview dialog opens', async () => {
+  it('should preview the clicked file when SKILL.md also exists', async () => {
     renderAgentFiles(agentSkillFilesDraft)
 
     fireEvent.click(screen.getByRole('button', {
@@ -146,11 +146,11 @@ describe('AgentFiles', () => {
 
     const dialog = screen.getByRole('dialog')
 
-    expect(await within(dialog).findByText('Preview content for skill-md')).toBeInTheDocument()
+    expect(await within(dialog).findByText('Preview content for script')).toBeInTheDocument()
     expect(mocks.filePreviewQueryOptions).toHaveBeenCalledWith({
       input: {
         params: {
-          file_id: 'skill-md',
+          file_id: 'script',
         },
       },
     })
