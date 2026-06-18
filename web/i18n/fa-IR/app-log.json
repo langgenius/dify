@@ -42,6 +42,7 @@
   "filter.period.today": "امروز",
   "filter.period.yearToDate": "از ابتدای سال تاکنون",
   "filter.sortBy": "مرتب‌سازی بر اساس:",
+  "monitoring.description": "مانیتورینگ وضعیت اجرای برنامه را ثبت می‌کند، از جمله عملکرد، فعالیت کاربران و هزینه‌ها.",
   "promptLog": "لاگ درخواست",
   "runDetail.fileListDetail": "جزئیات",
   "runDetail.fileListLabel": "جزئیات فایل",

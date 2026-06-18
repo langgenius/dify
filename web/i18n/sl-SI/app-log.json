@@ -42,6 +42,7 @@
   "filter.period.today": "Danes",
   "filter.period.yearToDate": "Leto do danes",
   "filter.sortBy": "Razvrsti po:",
+  "monitoring.description": "Spremljanje beleži stanje delovanja aplikacije, vključno z zmogljivostjo, dejavnostjo uporabnikov in stroški.",
   "promptLog": "Dnevnik PROMPT-ov",
   "runDetail.fileListDetail": "Podrobnosti",
   "runDetail.fileListLabel": "Podrobnosti o datoteki",

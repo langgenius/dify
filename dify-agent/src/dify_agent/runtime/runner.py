@@ -19,7 +19,9 @@ publishes that deferred request through the normal ``run_succeeded`` event as
 ``deferred_tool_call`` instead of a final ``output``. Invalid structured outputs
 or invalid deferred-tool behavior still trigger normal retries/failures before
 Dify Agent emits success. Layers still never own the FastAPI lifespan-owned
-plugin daemon HTTP client.
+plugin daemon or Dify API inner HTTP clients. Successful terminal events contain
+both the JSON-safe final output or deferred tool call and the session snapshot;
+there are no separate output or snapshot events to correlate.
 """
 
 from collections.abc import AsyncIterable
@@ -38,6 +40,7 @@ from agenton.layers.types import PydanticAITool
 from dify_agent.layers.ask_human.layer import get_ask_human_layer, validate_ask_human_layer_composition
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
 from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
+from dify_agent.layers.knowledge.layer import DifyKnowledgeBaseLayer
 from dify_agent.protocol.schemas import (
     CreateRunRequest,
     DIFY_AGENT_MODEL_LAYER_ID,
@@ -91,6 +94,7 @@ class AgentRunRunner:
     run_id: str
     layer_providers: tuple[LayerProviderInput, ...]
     plugin_daemon_http_client: httpx.AsyncClient
+    dify_api_http_client: httpx.AsyncClient
 
     def __init__(
         self,
@@ -99,12 +103,14 @@ class AgentRunRunner:
         request: CreateRunRequest,
         run_id: str,
         plugin_daemon_http_client: httpx.AsyncClient,
+        dify_api_http_client: httpx.AsyncClient,
         layer_providers: tuple[LayerProviderInput, ...] | None = None,
     ) -> None:
         self.sink = sink
         self.request = request
         self.run_id = run_id
         self.plugin_daemon_http_client = plugin_daemon_http_client
+        self.dify_api_http_client = dify_api_http_client
         self.layer_providers = layer_providers if layer_providers is not None else create_default_layer_providers()
 
     async def run(self) -> None:
@@ -187,7 +193,11 @@ class AgentRunRunner:
                     ask_human_layer = get_ask_human_layer(run)
                     llm_layer = run.get_layer(DIFY_AGENT_MODEL_LAYER_ID, DifyPluginLLMLayer)
                     model = llm_layer.get_model(http_client=self.plugin_daemon_http_client)
-                    tools = await _resolve_run_tools(run, http_client=self.plugin_daemon_http_client)
+                    tools = await _resolve_run_tools(
+                        run,
+                        plugin_daemon_http_client=self.plugin_daemon_http_client,
+                        dify_api_http_client=self.dify_api_http_client,
+                    )
                 except (KeyError, TypeError, RuntimeError, ValueError) as exc:
                     raise AgentRunValidationError(str(exc)) from exc
 
@@ -266,14 +276,17 @@ def _resolve_deferred_tool_results(request: CreateRunRequest) -> DeferredToolRes
 async def _resolve_run_tools(
     run: Any,
     *,
-    http_client: httpx.AsyncClient,
+    plugin_daemon_http_client: httpx.AsyncClient,
+    dify_api_http_client: httpx.AsyncClient,
 ) -> list[PydanticAITool[object]]:
-    """Return the static compositor tools plus any Dify plugin runtime tools."""
+    """Return the static compositor tools plus any Dify runtime tools."""
     resolved_tools = list(cast(list[PydanticAITool[object]], run.tools))
     for slot in run.slots.values():
         layer = slot.layer
         if isinstance(layer, DifyPluginToolsLayer):
-            resolved_tools.extend(await layer.get_tools(http_client=http_client))
+            resolved_tools.extend(await layer.get_tools(http_client=plugin_daemon_http_client))
+        if isinstance(layer, DifyKnowledgeBaseLayer):
+            resolved_tools.extend(await layer.get_tools(http_client=dify_api_http_client))
     _validate_unique_tool_names(resolved_tools)
     return resolved_tools
 

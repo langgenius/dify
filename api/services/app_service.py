@@ -2,7 +2,7 @@ import json
 import logging
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any, Literal, TypedDict, cast, override
+from typing import Any, Literal, NotRequired, TypedDict, cast, override
 
 import sqlalchemy as sa
 from flask_sqlalchemy.pagination import Pagination
@@ -63,6 +63,7 @@ class CreateAppParams(BaseModel):
     name: str = Field(min_length=1)
     description: str | None = None
     mode: Literal["chat", "agent-chat", "agent", "advanced-chat", "workflow", "completion"]
+    agent_role: str = Field(default="", max_length=255)
     icon_type: str | None = None
     icon: str | None = None
     icon_background: str | None = None
@@ -74,7 +75,7 @@ class CreateAppParams(BaseModel):
 class AppService:
     @staticmethod
     def _build_app_list_filters(
-        user_id: str, tenant_id: str, params: AppListBaseParams
+        user_id: str, tenant_id: str, params: AppListBaseParams, session: scoped_session
     ) -> list[sa.ColumnElement[bool]]:
         filters = [App.tenant_id == tenant_id, App.is_universal == False]
 
@@ -90,6 +91,8 @@ class AppService:
             filters.append(App.mode == AppMode.AGENT_CHAT)
         elif params.mode == "agent":
             filters.append(App.mode == AppMode.AGENT)
+        elif params.mode == "all":
+            filters.append(App.mode != AppMode.AGENT)
 
         if isinstance(params, AppListParams):
             if params.status:
@@ -112,7 +115,7 @@ class AppService:
             escaped_name = escape_like_pattern(name)
             filters.append(App.name.ilike(f"%{escaped_name}%", escape="\\"))
         if params.tag_ids and len(params.tag_ids) > 0:
-            target_ids = TagService.get_target_ids_by_tag_ids("app", tenant_id, params.tag_ids, match_all=True)
+            target_ids = TagService.get_target_ids_by_tag_ids("app", tenant_id, params.tag_ids, session, match_all=True)
             if target_ids and len(target_ids) > 0:
                 filters.append(App.id.in_(target_ids))
             else:
@@ -194,7 +197,9 @@ class AppService:
             ).scalars()
         )
 
-    def get_paginate_apps(self, user_id: str, tenant_id: str, params: AppListParams) -> Pagination | None:
+    def get_paginate_apps(
+        self, user_id: str, tenant_id: str, params: AppListParams, session: scoped_session
+    ) -> Pagination | None:
         """
         Get app list with pagination, filters, and explicit sort order.
         :param user_id: user id
@@ -202,7 +207,7 @@ class AppService:
         :param params: query parameters
         :return:
         """
-        filters = self._build_app_list_filters(user_id, tenant_id, params)
+        filters = self._build_app_list_filters(user_id, tenant_id, params, session)
         if not filters:
             return None
 
@@ -228,12 +233,12 @@ class AppService:
         return app_models
 
     def get_paginate_starred_apps(
-        self, user_id: str, tenant_id: str, params: StarredAppListParams
+        self, user_id: str, tenant_id: str, params: StarredAppListParams, session: scoped_session
     ) -> Pagination | None:
         """
         Get apps starred by the current account with pagination, filters, and explicit sort order.
         """
-        filters = self._build_app_list_filters(user_id, tenant_id, params)
+        filters = self._build_app_list_filters(user_id, tenant_id, params, session)
         if not filters:
             return None
 
@@ -412,6 +417,7 @@ class AppService:
                 app_id=app.id,
                 name=params.name,
                 description=params.description or "",
+                role=params.agent_role,
                 icon_type=icon_type,
                 icon=params.icon,
                 icon_background=params.icon_background,
@@ -507,6 +513,7 @@ class AppService:
         icon_background: str
         use_icon_as_answer_icon: bool
         max_active_requests: int
+        role: NotRequired[str | None]
 
     @staticmethod
     def _get_backing_agent_for_update(app: App) -> Agent | None:
@@ -535,6 +542,7 @@ class AppService:
         *,
         name: str | None = None,
         description: str | None = None,
+        role: str | None = None,
         icon_type: IconType | str | None = None,
         icon: str | None = None,
         icon_background: str | None = None,
@@ -544,7 +552,11 @@ class AppService:
         """Keep the Roster identity aligned with its Agent App shell.
 
         Agent Soul remains versioned through Composer. This helper only mirrors
-        user-facing identity fields so Roster and Agent Console do not drift.
+        user-facing identity fields, including the roster role/persona label,
+        so Roster and Agent Console do not drift.
+
+        Role omission is intentional: ``role=None`` preserves the backing
+        Agent's current role, while ``role=""`` explicitly clears it.
         """
         agent = self._get_backing_agent_for_update(app)
         if agent is None:
@@ -554,6 +566,8 @@ class AppService:
             agent.name = name
         if description is not None:
             agent.description = description
+        if role is not None:
+            agent.role = role
         if icon_type is not None:
             agent.icon_type = self._to_agent_icon_type(icon_type)
         if icon is not None:
@@ -591,6 +605,9 @@ class AppService:
             app,
             name=app.name,
             description=app.description,
+            # Omitted role must stay omitted here: None means "preserve current
+            # backing-agent role", while an empty string is an explicit clear.
+            role=args.get("role"),
             icon_type=app.icon_type,
             icon=app.icon,
             icon_background=app.icon_background,

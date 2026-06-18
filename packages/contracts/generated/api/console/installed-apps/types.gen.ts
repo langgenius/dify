@@ -68,7 +68,16 @@ export type ConversationInfiniteScrollPagination = {
   limit: number
 }
 
-export type ConversationRenamePayload = {
+export type ConversationRenamePayload = (
+  | {
+    auto_generate: true
+    name?: string | null
+  }
+  | {
+    auto_generate?: false
+    name: string
+  }
+) & {
   auto_generate?: boolean
   name?: string | null
 }

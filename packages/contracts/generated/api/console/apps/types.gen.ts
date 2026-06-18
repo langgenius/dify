@@ -24,6 +24,7 @@ export type CreateAppPayload = {
 export type AppDetailWithSite = {
   access_mode?: string | null
   api_base_url?: string | null
+  app_id?: string | null
   bound_agent_id?: string | null
   created_at?: number | null
   created_by?: string | null
@@ -208,11 +209,6 @@ export type AgentLogResponse = {
   files?: Array<unknown>
   iterations: Array<AgentIterationLogResponse>
   meta: AgentLogMetaResponse
-}
-
-export type AgentSkillStandardizeResponse = {
-  manifest: SkillManifest
-  skill: AgentSkillRefConfig
 }
 
 export type AgentSkillUploadResponse = {
@@ -1153,6 +1149,7 @@ export type ApiKeyItem = {
 
 export type AppPartial = {
   access_mode?: string | null
+  app_id?: string | null
   author_name?: string | null
   bound_agent_id?: string | null
   create_user_name?: string | null
@@ -1756,6 +1753,26 @@ export type AgentComposerBindingResponse = {
 export type DeclaredOutputConfig = {
   array_item?: DeclaredArrayItem | null
   check?: DeclaredOutputCheckConfig | null
+  children?: Array<{
+    array_item?: {
+      children?: Array<{
+        [key: string]: unknown
+      }>
+      description?: string | null
+      type?: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
+      [key: string]: unknown
+    }
+    children?: Array<{
+      [key: string]: unknown
+    }>
+    description?: string | null
+    file?: {
+      [key: string]: unknown
+    }
+    name: string
+    required?: boolean
+    type: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
+  }>
   description?: string | null
   failure_strategy?: DeclaredOutputFailureStrategy
   file?: DeclaredOutputFileConfig | null
@@ -2099,6 +2116,26 @@ export type AgentSoulToolsConfig = {
 export type WorkflowAgentBindingType = 'inline_agent' | 'roster_agent'
 
 export type DeclaredArrayItem = {
+  children?: Array<{
+    array_item?: {
+      children?: Array<{
+        [key: string]: unknown
+      }>
+      description?: string | null
+      type?: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
+      [key: string]: unknown
+    }
+    children?: Array<{
+      [key: string]: unknown
+    }>
+    description?: string | null
+    file?: {
+      [key: string]: unknown
+    }
+    name: string
+    required?: boolean
+    type: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
+  }>
   description?: string | null
   type: DeclaredOutputType
 }
@@ -2301,6 +2338,7 @@ export type AgentSecretRefConfig = {
   provider_credential_id?: string | null
   ref?: string | null
   type?: string | null
+  value?: string | null
   variable?: string | null
   [key: string]: unknown
 }
@@ -2540,6 +2578,7 @@ export type AppPaginationWritable = {
 export type AppDetailWithSiteWritable = {
   access_mode?: string | null
   api_base_url?: string | null
+  app_id?: string | null
   bound_agent_id?: string | null
   created_at?: number | null
   created_by?: string | null
@@ -2589,6 +2628,7 @@ export type WorkflowCommentDetailWritable = {
 
 export type AppPartialWritable = {
   access_mode?: string | null
+  app_id?: string | null
   author_name?: string | null
   bound_agent_id?: string | null
   create_user_name?: string | null
@@ -3128,34 +3168,16 @@ export type GetAppsByAppIdAgentLogsResponses = {
 export type GetAppsByAppIdAgentLogsResponse
   = GetAppsByAppIdAgentLogsResponses[keyof GetAppsByAppIdAgentLogsResponses]
 
-export type PostAppsByAppIdAgentSkillsStandardizeData = {
-  body?: never
+export type PostAppsByAppIdAgentSkillsUploadData = {
+  body: {
+    file: Blob | File
+  }
   path: {
     app_id: string
   }
   query?: {
     node_id?: string
   }
-  url: '/apps/{app_id}/agent/skills/standardize'
-}
-
-export type PostAppsByAppIdAgentSkillsStandardizeErrors = {
-  400: unknown
-}
-
-export type PostAppsByAppIdAgentSkillsStandardizeResponses = {
-  201: AgentSkillStandardizeResponse
-}
-
-export type PostAppsByAppIdAgentSkillsStandardizeResponse
-  = PostAppsByAppIdAgentSkillsStandardizeResponses[keyof PostAppsByAppIdAgentSkillsStandardizeResponses]
-
-export type PostAppsByAppIdAgentSkillsUploadData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query?: never
   url: '/apps/{app_id}/agent/skills/upload'
 }
 

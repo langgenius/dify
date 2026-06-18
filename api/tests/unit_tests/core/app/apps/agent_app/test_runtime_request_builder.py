@@ -144,6 +144,40 @@ class TestAgentAppRuntimeRequestBuilder:
         assert result.redacted_request["composition"]["layers"][-1]["config"]["credentials"] == "[REDACTED]"
         assert result.metadata["conversation_id"] == "conv-1"
 
+    def test_build_maps_agent_soul_knowledge_to_knowledge_layer(self):
+        soul = AgentSoulConfig.model_validate(
+            {
+                "model": {
+                    "plugin_id": "langgenius/openai",
+                    "model_provider": "langgenius/openai/openai",
+                    "model": "gpt-4o-mini",
+                },
+                "knowledge": {
+                    "datasets": [{"id": "dataset-1"}, {"id": "dataset-2"}],
+                    "query_config": {
+                        "top_k": 3,
+                        "score_threshold": 0.5,
+                        "score_threshold_enabled": False,
+                    },
+                },
+            }
+        )
+        builder = AgentAppRuntimeRequestBuilder(
+            credentials_provider=_FakeCredentialsProvider(),
+            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(soul))
+
+        knowledge = next(layer for layer in result.request.composition.layers if layer.name == "knowledge")
+        assert knowledge.type == "dify.knowledge_base"
+        assert knowledge.deps == {"execution_context": "execution_context"}
+        dumped_config = knowledge.config.model_dump(mode="json", by_alias=True)
+        assert dumped_config["dataset_ids"] == ["dataset-1", "dataset-2"]
+        assert dumped_config["retrieval"]["mode"] == "multiple"
+        assert dumped_config["retrieval"]["top_k"] == 3
+        assert dumped_config["retrieval"]["score_threshold"] == 0.0
+
     def test_build_raises_when_model_missing(self):
         builder = AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),

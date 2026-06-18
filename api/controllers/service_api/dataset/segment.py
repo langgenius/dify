@@ -128,6 +128,18 @@ register_response_schema_models(
 class SegmentApi(DatasetApiResource):
     """Resource for segments."""
 
+    @service_api_ns.doc(
+        summary="Create Chunks",
+        description=(
+            "Create one or more chunks within a document. Each chunk can include optional keywords and an "
+            "answer field (for QA-mode documents)."
+        ),
+        tags=["Chunks"],
+        responses={
+            200: "Chunks created successfully.",
+            404: "`not_found` : Document is not completed or is disabled.",
+        },
+    )
     @service_api_ns.expect(service_api_ns.models[SegmentCreatePayload.__name__])
     @service_api_ns.doc("create_segments")
     @service_api_ns.doc(description="Create segments in a document")
@@ -209,6 +221,14 @@ class SegmentApi(DatasetApiResource):
         }
         return dump_response(SegmentCreateListResponse, response), 200
 
+    @service_api_ns.doc(
+        summary="List Chunks",
+        description="Returns a paginated list of chunks within a document. Supports filtering by keyword and status.",
+        tags=["Chunks"],
+        responses={
+            200: "List of chunks.",
+        },
+    )
     @service_api_ns.doc("list_segments")
     @service_api_ns.doc(description="List segments in a document")
     @service_api_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT)
@@ -294,6 +314,14 @@ class SegmentApi(DatasetApiResource):
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>")
 class DatasetSegmentApi(DatasetApiResource):
+    @service_api_ns.doc(
+        summary="Delete Chunk",
+        description="Permanently delete a chunk from the document.",
+        tags=["Chunks"],
+        responses={
+            204: "Success.",
+        },
+    )
     @service_api_ns.doc("delete_segment")
     @service_api_ns.doc(description="Delete a specific segment")
     @service_api_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_SEGMENT)
@@ -329,6 +357,14 @@ class DatasetSegmentApi(DatasetApiResource):
         SegmentService.delete_segment(segment, document, dataset)
         return "", 204
 
+    @service_api_ns.doc(
+        summary="Update Chunk",
+        description="Update a chunk's content, keywords, or answer. Re-triggers indexing for the modified chunk.",
+        tags=["Chunks"],
+        responses={
+            200: "Chunk updated successfully.",
+        },
+    )
     @service_api_ns.expect(service_api_ns.models[SegmentUpdatePayload.__name__])
     @service_api_ns.doc("update_segment")
     @service_api_ns.doc(description="Update a specific segment")
@@ -391,6 +427,17 @@ class DatasetSegmentApi(DatasetApiResource):
         }
         return dump_response(SegmentDetailResponse, response), 200
 
+    @service_api_ns.doc(
+        summary="Get Chunk",
+        description=(
+            "Retrieve detailed information about a specific chunk, including its content, keywords, and "
+            "indexing status."
+        ),
+        tags=["Chunks"],
+        responses={
+            200: "Chunk details.",
+        },
+    )
     @service_api_ns.doc("get_segment")
     @service_api_ns.doc(description="Get a specific segment by ID")
     @service_api_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_SEGMENT)
@@ -442,6 +489,15 @@ class DatasetSegmentApi(DatasetApiResource):
 class ChildChunkApi(DatasetApiResource):
     """Resource for child chunks."""
 
+    @service_api_ns.doc(
+        summary="Create Child Chunk",
+        description="Create a child chunk under the specified segment.",
+        tags=["Chunks"],
+        responses={
+            200: "Child chunk created successfully.",
+            400: "`invalid_param` : Create child chunk index failed.",
+        },
+    )
     @service_api_ns.expect(service_api_ns.models[ChildChunkCreatePayload.__name__])
     @service_api_ns.doc("create_child_chunk")
     @service_api_ns.doc(description="Create a new child chunk for a segment")
@@ -511,6 +567,14 @@ class ChildChunkApi(DatasetApiResource):
 
         return dump_response(ChildChunkDetailResponse, {"data": child_chunk}), 200
 
+    @service_api_ns.doc(
+        summary="List Child Chunks",
+        description="Returns a paginated list of child chunks under a specific parent chunk.",
+        tags=["Chunks"],
+        responses={
+            200: "List of child chunks.",
+        },
+    )
     @service_api_ns.doc("list_child_chunks")
     @service_api_ns.doc(description="List child chunks for a segment")
     @service_api_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_PARENT_SEGMENT)
@@ -576,6 +640,15 @@ class ChildChunkApi(DatasetApiResource):
 class DatasetChildChunkApi(DatasetApiResource):
     """Resource for updating child chunks."""
 
+    @service_api_ns.doc(
+        summary="Delete Child Chunk",
+        description="Permanently delete a child chunk from its parent chunk.",
+        tags=["Chunks"],
+        responses={
+            204: "Success.",
+            400: "`invalid_param` : Delete child chunk index failed.",
+        },
+    )
     @service_api_ns.doc("delete_child_chunk")
     @service_api_ns.doc(description="Delete a specific child chunk")
     @service_api_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_CHILD_CHUNK)
@@ -634,6 +707,15 @@ class DatasetChildChunkApi(DatasetApiResource):
 
         return "", 204
 
+    @service_api_ns.doc(
+        summary="Update Child Chunk",
+        description="Update the content of an existing child chunk.",
+        tags=["Chunks"],
+        responses={
+            200: "Child chunk updated successfully.",
+            400: "`invalid_param` : Update child chunk index failed.",
+        },
+    )
     @service_api_ns.expect(service_api_ns.models[ChildChunkUpdatePayload.__name__])
     @service_api_ns.doc("update_child_chunk")
     @service_api_ns.doc(description="Update a specific child chunk")

@@ -4,6 +4,8 @@ saved, using the deterministic fake backend client (no live stack)."""
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any, override
 from unittest.mock import MagicMock
@@ -11,7 +13,17 @@ from unittest.mock import MagicMock
 import pytest
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.ask_human import AskHumanToolResult
-from dify_agent.protocol import CancelRunRequest, CancelRunResponse, RuntimeLayerSpec
+from dify_agent.protocol import (
+    CancelRunRequest,
+    CancelRunResponse,
+    PydanticAIStreamRunEvent,
+    RunEvent,
+    RunStartedEvent,
+    RunSucceededEvent,
+    RunSucceededEventData,
+    RuntimeLayerSpec,
+)
+from pydantic_ai.messages import PartDeltaEvent, PartStartEvent, TextPart, TextPartDelta
 
 from clients.agent_backend import (
     AgentBackendError,
@@ -65,6 +77,58 @@ class _RecordingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
     def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
         self.cancelled_run_ids.append(run_id)
         return super().cancel_run(run_id, request=request)
+
+
+class _StreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    @override
+    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+        del after
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
+        yield PydanticAIStreamRunEvent(
+            id="2-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="hello ")),
+        )
+        yield PydanticAIStreamRunEvent(
+            id="3-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="agent")),
+        )
+        yield RunSucceededEvent(
+            id="4-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=RunSucceededEventData(
+                output={"text": "hello agent"},
+                session_snapshot=CompositorSessionSnapshot(layers=[]),
+            ),
+        )
+
+
+class _StreamingPartStartFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    @override
+    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+        del after
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
+        yield PydanticAIStreamRunEvent(
+            id="2-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=PartStartEvent(index=0, part=TextPart(content="hello")),
+        )
+        yield RunSucceededEvent(
+            id="3-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=RunSucceededEventData(
+                output={"text": "hello agent"},
+                session_snapshot=CompositorSessionSnapshot(layers=[]),
+            ),
+        )
 
 
 class _FakeSessionStore:
@@ -160,6 +224,20 @@ def _run(runner: AgentAppRunner, qm: _FakeQueueManager) -> None:
     )
 
 
+def _message_end(qm: _FakeQueueManager) -> QueueMessageEndEvent:
+    return next(e for e in qm.events if isinstance(e, QueueMessageEndEvent))
+
+
+def _saved_user_query(qm: _FakeQueueManager) -> str:
+    llm_result = _message_end(qm).llm_result
+    assert llm_result is not None
+    prompt_messages = llm_result.prompt_messages
+    assert len(prompt_messages) == 1
+    content = prompt_messages[0].content
+    assert isinstance(content, str)
+    return content
+
+
 def test_successful_turn_publishes_chunk_and_message_end_and_saves_session():
     client = FakeAgentBackendRunClient()  # SUCCESS: output {"text": "hello agent"}
     store = _FakeSessionStore()
@@ -175,6 +253,7 @@ def test_successful_turn_publishes_chunk_and_message_end_and_saves_session():
     assert chunk_events[0].chunk.delta.message.content == "hello agent"
     assert end_events[0].llm_result.message.content == "hello agent"
     assert end_events[0].llm_result.model == "gpt-4o-mini"
+    assert _saved_user_query(qm) == "hello"
     # The conversation session snapshot is persisted for multi-turn continuity.
     assert store.saved
     saved_scope, saved_run_id, saved_snapshot, saved_specs, pending_form_id, pending_tool_call_id = store.saved[0]
@@ -191,6 +270,35 @@ def test_successful_turn_publishes_chunk_and_message_end_and_saves_session():
         "execution_context",
         "history",
     ]
+
+
+def test_successful_turn_forwards_agent_backend_stream_text_deltas_without_duplicate_terminal_chunk():
+    client = _StreamingFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    qm = _FakeQueueManager()
+
+    _run(_runner(client, store), qm)
+
+    chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
+    end_events = [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
+    assert [event.chunk.delta.message.content for event in chunk_events] == ["hello ", "agent"]
+    assert len(end_events) == 1
+    assert end_events[0].llm_result.message.content == "hello agent"
+    assert store.saved
+
+
+def test_successful_turn_forwards_part_start_text_and_publishes_missing_terminal_suffix():
+    client = _StreamingPartStartFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    qm = _FakeQueueManager()
+
+    _run(_runner(client, store), qm)
+
+    chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
+    end_events = [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
+    assert [event.chunk.delta.message.content for event in chunk_events] == ["hello", " agent"]
+    assert len(end_events) == 1
+    assert end_events[0].llm_result.message.content == "hello agent"
 
 
 def test_prior_session_snapshot_is_threaded_into_request():
@@ -256,6 +364,7 @@ def test_ask_human_pauses_turn_creates_form_and_persists_correlation():
     assert created_params.conversation_id == "conv-1"
     assert created_params.workflow_execution_id is None
     assert [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
+    assert _saved_user_query(qm) == "hello"
     # The pause correlation is persisted so a form submission can resume the run.
     assert store.saved
     assert store.saved[0][4] == "form-1"

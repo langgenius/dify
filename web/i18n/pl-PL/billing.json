@@ -164,6 +164,8 @@
   "upgrade.uploadMultipleFiles.title": "Uaktualnij, aby odblokować przesyłanie dokumentów wsadowych",
   "upgrade.uploadMultiplePages.description": "Osiągnąłeś limit przesyłania — w ramach obecnego planu można wybrać i przesłać tylko jeden dokument naraz.",
   "upgrade.uploadMultiplePages.title": "Przejdź na wyższą wersję, aby przesyłać wiele dokumentów jednocześnie",
+  "upgrade.workflowRestore.description": "Przywracanie wersji przepływu pracy nie jest dostępne w obecnym planie.",
+  "upgrade.workflowRestore.title": "Ulepsz plan, aby przywracać wersje przepływu pracy",
   "upgradeBtn.encourage": "Ulepsz teraz",
   "upgradeBtn.encourageShort": "Ulepsz",
   "upgradeBtn.plain": "Ulepsz plan",

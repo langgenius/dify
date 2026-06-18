@@ -400,6 +400,8 @@ class AppPartial(ResponseModel):
     has_draft_trigger: bool | None = None
     # For Agent App type: the roster Agent backing this app (None otherwise).
     bound_agent_id: str | None = None
+    # For Agent App responses exposed through /agent.
+    app_id: str | None = None
     is_starred: bool = False
 
     @computed_field(return_type=str | None)  # type: ignore
@@ -451,6 +453,8 @@ class AppDetailWithSite(AppDetail):
     site: Site | None = None
     # For Agent App type: the roster Agent backing this app (None otherwise).
     bound_agent_id: str | None = None
+    # For Agent App responses exposed through /agent.
+    app_id: str | None = None
 
     @computed_field(return_type=str | None)  # type: ignore
     @property
@@ -533,10 +537,7 @@ register_schema_models(
     ModelConfig,
     Site,
     DeletedTool,
-    AppPartial,
     AppDetail,
-    AppDetailWithSite,
-    AppPagination,
     AppExportResponse,
     Segmentation,
     PreProcessingRule,
@@ -554,6 +555,13 @@ register_schema_models(
     RerankingModel,
     DataSource,
     LoadBalancingPayload,
+)
+
+register_response_schema_models(
+    console_ns,
+    AppPartial,
+    AppDetailWithSite,
+    AppPagination,
 )
 
 
@@ -586,7 +594,7 @@ class AppListApi(Resource):
 
         # get app list
         app_service = AppService()
-        app_pagination = app_service.get_paginate_apps(current_user_id, current_tenant_id, params)
+        app_pagination = app_service.get_paginate_apps(current_user_id, current_tenant_id, params, db.session)
         if not app_pagination:
             empty = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
             return empty.model_dump(mode="json"), 200
@@ -653,7 +661,7 @@ class StarredAppListApi(Resource):
             is_created_by_me=args.is_created_by_me,
         )
 
-        app_pagination = AppService().get_paginate_starred_apps(current_user_id, current_tenant_id, params)
+        app_pagination = AppService().get_paginate_starred_apps(current_user_id, current_tenant_id, params, db.session)
         if not app_pagination:
             empty = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
             return empty.model_dump(mode="json"), 200
