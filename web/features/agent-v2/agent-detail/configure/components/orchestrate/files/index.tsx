@@ -6,6 +6,7 @@ import type { AgentFileApiContext } from './api-context'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import {
   Dialog,
+  DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
 import {
   FileTreeGuide,
@@ -153,20 +154,24 @@ function AgentFileItem({
   const handleRemove = useCallback(() => {
     onRemove(file.id)
   }, [file.id, onRemove])
-  const handleOpenPreview = useCallback(() => {
-    setSelectedFileId(file.id)
-    setIsPreviewOpen(true)
+  const handlePreviewOpenChange = useCallback((open: boolean) => {
+    if (open)
+      setSelectedFileId(file.id)
+    setIsPreviewOpen(open)
   }, [file.id])
 
   return (
     <li className="group/file-row relative min-w-0">
-      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <button
-          type="button"
-          data-selected={selected || undefined}
-          aria-current={selected ? 'true' : undefined}
-          className="group/file-tree-row relative flex h-6 w-full min-w-0 cursor-pointer items-center rounded-md pr-7 pl-2 text-left outline-hidden select-none hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset data-[selected]:bg-state-base-active"
-          onClick={handleOpenPreview}
+      <Dialog open={isPreviewOpen} onOpenChange={handlePreviewOpenChange}>
+        <DialogTrigger
+          render={(
+            <button
+              type="button"
+              data-selected={selected || undefined}
+              aria-current={selected ? 'true' : undefined}
+              className="group/file-tree-row relative flex h-6 w-full min-w-0 cursor-pointer items-center rounded-md pr-7 pl-2 text-left outline-hidden select-none hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset data-[selected]:bg-state-base-active"
+            />
+          )}
         >
           {Array.from({ length: Math.max(depth - 1, 0) }, (_, index) => (
             <FileTreeGuide key={index} />
@@ -174,30 +179,28 @@ function AgentFileItem({
           <div className="flex min-w-0 flex-[1_0_0] items-center py-0.5">
             {children}
           </div>
-        </button>
-        {isPreviewOpen && (
-          <AgentSkillDetailDialog
-            skillName={file.name}
-            detail={{
-              description: t('agentDetail.configure.files.tip'),
-              files,
-              filePreview: {
-                binary: previewQuery.data?.binary,
-                content: previewQuery.data?.text ?? undefined,
-                downloadUrl: downloadQuery.data?.url,
-                fileName: selectedPreviewFile.name,
-                isDownloadError: downloadQuery.isError,
-                isDownloadLoading: shouldDownloadPreviewFile && downloadQuery.isPending,
-                isError: previewQuery.isError,
-                isImage: isImagePreviewFile,
-                isLoading: previewQuery.isPending,
-              },
-              onSelectFile: selectedFile => setSelectedFileId(selectedFile.id),
-              selectedFileId: selectedFileId ?? file.id,
-              sections: [],
-            }}
-          />
-        )}
+        </DialogTrigger>
+        <AgentSkillDetailDialog
+          skillName={file.name}
+          detail={{
+            description: t('agentDetail.configure.files.tip'),
+            files,
+            filePreview: {
+              binary: previewQuery.data?.binary,
+              content: previewQuery.data?.text ?? undefined,
+              downloadUrl: downloadQuery.data?.url,
+              fileName: selectedPreviewFile.name,
+              isDownloadError: downloadQuery.isError,
+              isDownloadLoading: shouldDownloadPreviewFile && downloadQuery.isPending,
+              isError: previewQuery.isError,
+              isImage: isImagePreviewFile,
+              isLoading: previewQuery.isPending,
+            },
+            onSelectFile: selectedFile => setSelectedFileId(selectedFile.id),
+            selectedFileId: selectedFileId ?? file.id,
+            sections: [],
+          }}
+        />
       </Dialog>
       {!readOnly && (
         <button
