@@ -44,6 +44,8 @@ describe('useReferenceSetting Hook', () => {
     vi.mocked(useAppContext).mockReturnValue({
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
+      langGeniusVersionInfo: { current_version: '1.0.0' },
+      workspacePermissionKeys: [],
     } as ReturnType<typeof useAppContext>)
 
     vi.mocked(usePluginAutoUpgradeSettings).mockReturnValue({
@@ -126,6 +128,8 @@ describe('useReferenceSetting Hook', () => {
       vi.mocked(useAppContext).mockReturnValue({
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: false,
+        langGeniusVersionInfo: { current_version: '1.0.0' },
+        workspacePermissionKeys: [],
       } as ReturnType<typeof useAppContext>)
 
       vi.mocked(usePluginPermissionSettings).mockReturnValue({
@@ -145,6 +149,8 @@ describe('useReferenceSetting Hook', () => {
       vi.mocked(useAppContext).mockReturnValue({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: true,
+        langGeniusVersionInfo: { current_version: '1.0.0' },
+        workspacePermissionKeys: [],
       } as ReturnType<typeof useAppContext>)
 
       vi.mocked(usePluginPermissionSettings).mockReturnValue({
@@ -164,6 +170,8 @@ describe('useReferenceSetting Hook', () => {
       vi.mocked(useAppContext).mockReturnValue({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: false,
+        langGeniusVersionInfo: { current_version: '1.0.0' },
+        workspacePermissionKeys: [],
       } as ReturnType<typeof useAppContext>)
 
       vi.mocked(usePluginPermissionSettings).mockReturnValue({
@@ -185,6 +193,8 @@ describe('useReferenceSetting Hook', () => {
       vi.mocked(useAppContext).mockReturnValue({
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: false,
+        langGeniusVersionInfo: { current_version: '1.0.0' },
+        workspacePermissionKeys: [],
       } as ReturnType<typeof useAppContext>)
 
       const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
@@ -196,6 +206,8 @@ describe('useReferenceSetting Hook', () => {
       vi.mocked(useAppContext).mockReturnValue({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: true,
+        langGeniusVersionInfo: { current_version: '1.0.0' },
+        workspacePermissionKeys: [],
       } as ReturnType<typeof useAppContext>)
 
       const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
@@ -207,6 +219,8 @@ describe('useReferenceSetting Hook', () => {
       vi.mocked(useAppContext).mockReturnValue({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: false,
+        langGeniusVersionInfo: { current_version: '1.0.0' },
+        workspacePermissionKeys: [],
       } as ReturnType<typeof useAppContext>)
 
       const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
@@ -292,6 +306,65 @@ describe('useReferenceSetting Hook', () => {
       expect(result.current.canDebugger).toBe(true)
     })
   })
+
+  describe('RBAC permissions', () => {
+    it('should use workspace permission keys when RBAC is enabled', () => {
+      vi.mocked(useAppContext).mockReturnValue({
+        isCurrentWorkspaceManager: false,
+        isCurrentWorkspaceOwner: false,
+        langGeniusVersionInfo: { current_version: '1.0.0' },
+        workspacePermissionKeys: [
+          'plugin.install',
+          'plugin.manage',
+          'plugin.debug',
+          'plugin.plugin_preferences',
+        ],
+      } as ReturnType<typeof useAppContext>)
+      vi.mocked(usePluginPermissionSettings).mockReturnValue({
+        data: {
+          install_permission: PermissionType.noOne,
+          debug_permission: PermissionType.noOne,
+        },
+      } as ReturnType<typeof usePluginPermissionSettings>)
+
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool), {
+        systemFeatures: { rbac_enabled: true },
+      })
+
+      expect(result.current.canInstallPlugin).toBe(true)
+      expect(result.current.canManagement).toBe(true)
+      expect(result.current.canUpdatePlugin).toBe(true)
+      expect(result.current.canViewInstalledPlugins).toBe(true)
+      expect(result.current.canManagePlugin).toBe(true)
+      expect(result.current.canDebugPlugin).toBe(true)
+      expect(result.current.canDebugger).toBe(true)
+      expect(result.current.canSetPermissions).toBe(false)
+      expect(result.current.canSetPluginPreferences).toBe(true)
+    })
+
+    it('should ignore legacy plugin permission settings when RBAC is enabled', () => {
+      vi.mocked(useAppContext).mockReturnValue({
+        isCurrentWorkspaceManager: true,
+        isCurrentWorkspaceOwner: false,
+        langGeniusVersionInfo: { current_version: '1.0.0' },
+        workspacePermissionKeys: [],
+      } as ReturnType<typeof useAppContext>)
+
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool), {
+        systemFeatures: { rbac_enabled: true },
+      })
+
+      expect(result.current.canInstallPlugin).toBe(false)
+      expect(result.current.canManagement).toBe(false)
+      expect(result.current.canUpdatePlugin).toBe(false)
+      expect(result.current.canViewInstalledPlugins).toBe(false)
+      expect(result.current.canManagePlugin).toBe(false)
+      expect(result.current.canDebugPlugin).toBe(false)
+      expect(result.current.canDebugger).toBe(false)
+      expect(result.current.canSetPermissions).toBe(false)
+      expect(result.current.canSetPluginPreferences).toBe(false)
+    })
+  })
 })
 
 describe('useCanInstallPluginFromMarketplace Hook', () => {
@@ -301,6 +374,8 @@ describe('useCanInstallPluginFromMarketplace Hook', () => {
     vi.mocked(useAppContext).mockReturnValue({
       isCurrentWorkspaceManager: true,
       isCurrentWorkspaceOwner: false,
+      langGeniusVersionInfo: { current_version: '1.0.0' },
+      workspacePermissionKeys: [],
     } as ReturnType<typeof useAppContext>)
 
     vi.mocked(usePluginPermissionSettings).mockReturnValue({
@@ -371,5 +446,29 @@ describe('useCanInstallPluginFromMarketplace Hook', () => {
 
     expect(usePluginPermissionSettings).toHaveBeenCalled()
     expect(usePluginAutoUpgradeSettings).not.toHaveBeenCalled()
+  })
+
+  it('should use plugin.install when marketplace and RBAC are enabled', () => {
+    vi.mocked(useAppContext).mockReturnValue({
+      isCurrentWorkspaceManager: false,
+      isCurrentWorkspaceOwner: false,
+      langGeniusVersionInfo: { current_version: '1.0.0' },
+      workspacePermissionKeys: ['plugin.install'],
+    } as ReturnType<typeof useAppContext>)
+    vi.mocked(usePluginPermissionSettings).mockReturnValue({
+      data: {
+        install_permission: PermissionType.noOne,
+        debug_permission: PermissionType.noOne,
+      },
+    } as ReturnType<typeof usePluginPermissionSettings>)
+
+    const { result } = renderHook(() => useCanInstallPluginFromMarketplace(), {
+      systemFeatures: {
+        enable_marketplace: true,
+        rbac_enabled: true,
+      },
+    })
+
+    expect(result.current.canInstallPluginFromMarketplace).toBe(true)
   })
 })

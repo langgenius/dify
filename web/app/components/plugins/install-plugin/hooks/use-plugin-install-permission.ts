@@ -33,6 +33,8 @@ export const createPluginInstallPermissionStore = (initProps?: Partial<PluginIns
   }))
 }
 
+const fallbackPluginInstallPermissionStore = createPluginInstallPermissionStore()
+
 export const PluginInstallPermissionContext = createContext<PluginInstallPermissionStore | null>(null)
 
 export const usePluginInstallPermissionStore = <T>(selector: (state: PluginInstallPermissionStoreState) => T): T => {
@@ -47,6 +49,19 @@ const usePluginInstallPermission = () => {
   const canInstallPlugin = usePluginInstallPermissionStore(state => state.canInstallPlugin)
   const canUpdatePlugin = usePluginInstallPermissionStore(state => state.canUpdatePlugin)
   const currentDifyVersion = usePluginInstallPermissionStore(state => state.currentDifyVersion)
+
+  return {
+    canInstallPlugin,
+    canUpdatePlugin,
+    currentDifyVersion,
+  }
+}
+
+export const useOptionalPluginInstallPermission = () => {
+  const store = use(PluginInstallPermissionContext) ?? fallbackPluginInstallPermissionStore
+  const canInstallPlugin = useStore(store, state => state.canInstallPlugin)
+  const canUpdatePlugin = useStore(store, state => state.canUpdatePlugin)
+  const currentDifyVersion = useStore(store, state => state.currentDifyVersion)
 
   return {
     canInstallPlugin,

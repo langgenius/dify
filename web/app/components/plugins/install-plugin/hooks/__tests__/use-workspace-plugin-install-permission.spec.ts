@@ -25,6 +25,8 @@ describe('useWorkspacePluginInstallPermission', () => {
     expect(result.current.canUpdatePlugin).toBe(true)
     expect(result.current.canViewInstalledPlugins).toBe(true)
     expect(result.current.canManagePlugin).toBe(false)
+    expect(result.current.canDebugPlugin).toBe(false)
+    expect(result.current.canSetPluginPreferences).toBe(false)
   })
 
   it('should grant update, view, and manage capabilities but not install with plugin.manage', () => {
@@ -36,6 +38,34 @@ describe('useWorkspacePluginInstallPermission', () => {
     expect(result.current.canUpdatePlugin).toBe(true)
     expect(result.current.canViewInstalledPlugins).toBe(true)
     expect(result.current.canManagePlugin).toBe(true)
+    expect(result.current.canDebugPlugin).toBe(false)
+    expect(result.current.canSetPluginPreferences).toBe(false)
+  })
+
+  it('should grant plugin debug capability with plugin.debug', () => {
+    mockWorkspacePermissionKeys = ['plugin.debug']
+
+    const { result } = renderHook(() => useWorkspacePluginInstallPermission())
+
+    expect(result.current.canInstallPlugin).toBe(false)
+    expect(result.current.canUpdatePlugin).toBe(false)
+    expect(result.current.canViewInstalledPlugins).toBe(false)
+    expect(result.current.canManagePlugin).toBe(false)
+    expect(result.current.canDebugPlugin).toBe(true)
+    expect(result.current.canSetPluginPreferences).toBe(false)
+  })
+
+  it('should grant plugin preference setting capability with plugin.plugin_preferences', () => {
+    mockWorkspacePermissionKeys = ['plugin.plugin_preferences']
+
+    const { result } = renderHook(() => useWorkspacePluginInstallPermission())
+
+    expect(result.current.canInstallPlugin).toBe(false)
+    expect(result.current.canUpdatePlugin).toBe(false)
+    expect(result.current.canViewInstalledPlugins).toBe(false)
+    expect(result.current.canManagePlugin).toBe(false)
+    expect(result.current.canDebugPlugin).toBe(false)
+    expect(result.current.canSetPluginPreferences).toBe(true)
   })
 
   it('should deny plugin capabilities without plugin install or manage permissions', () => {
@@ -45,5 +75,7 @@ describe('useWorkspacePluginInstallPermission', () => {
     expect(result.current.canUpdatePlugin).toBe(false)
     expect(result.current.canViewInstalledPlugins).toBe(false)
     expect(result.current.canManagePlugin).toBe(false)
+    expect(result.current.canDebugPlugin).toBe(false)
+    expect(result.current.canSetPluginPreferences).toBe(false)
   })
 })

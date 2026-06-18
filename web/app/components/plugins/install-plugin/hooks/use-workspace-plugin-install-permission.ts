@@ -23,11 +23,21 @@ const useWorkspacePluginInstallPermission = () => {
     return hasPermission(workspacePermissionKeys, 'plugin.manage')
   }, [workspacePermissionKeys])
 
+  const canDebugPlugin = useMemo(() => {
+    return hasPermission(workspacePermissionKeys, 'plugin.debug')
+  }, [workspacePermissionKeys])
+
+  const canSetPluginPreferences = useMemo(() => {
+    return hasPermission(workspacePermissionKeys, 'plugin.plugin_preferences')
+  }, [workspacePermissionKeys])
+
   return {
     canInstallPlugin,
     canUpdatePlugin,
     canViewInstalledPlugins,
     canManagePlugin,
+    canDebugPlugin,
+    canSetPluginPreferences,
     currentDifyVersion: langGeniusVersionInfo?.current_version,
   }
 }

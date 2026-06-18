@@ -10,7 +10,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
-import { useCanSetPluginSettings } from '@/app/components/plugins/plugin-page/use-reference-setting'
+import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -49,8 +49,9 @@ const ModelProviderPage = ({
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
   const { t } = useTranslation()
   const {
-    canSetPermissions,
-  } = useCanSetPluginSettings()
+    canSetPluginPreferences,
+    canViewInstalledPlugins,
+  } = usePluginSettingsAccess()
   const { data: textGenerationDefaultModel, isLoading: isTextGenerationDefaultModelLoading } = useDefaultModel(ModelTypeEnum.textGeneration)
   const { data: embeddingsDefaultModel, isLoading: isEmbeddingsDefaultModelLoading } = useDefaultModel(ModelTypeEnum.textEmbedding)
   const { data: rerankDefaultModel, isLoading: isRerankDefaultModelLoading } = useDefaultModel(ModelTypeEnum.rerank)
@@ -64,7 +65,7 @@ const ModelProviderPage = ({
   }, [providers])
   const { data: installedPlugins } = useQuery(consoleQuery.plugins.checkInstalled.queryOptions({
     input: { body: { plugin_ids: allPluginIds } },
-    enabled: allPluginIds.length > 0,
+    enabled: canViewInstalledPlugins && allPluginIds.length > 0,
     staleTime: 0,
   }))
   const enrichedPlugins = usePluginsWithLatestVersion(installedPlugins?.plugins)
@@ -188,7 +189,7 @@ const ModelProviderPage = ({
               </div>
             )
           : systemModelSelector('h-8 px-3 system-sm-medium')}
-        {canSetPermissions && (
+        {canSetPluginPreferences && (
           <UpdateSettingDialog
             category={PluginCategoryEnum.model}
           />

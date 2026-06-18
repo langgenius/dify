@@ -108,8 +108,11 @@ export default function IntegrationsPage({
   const canManageMCP = useCanManageMCP()
   const canManageTools = useCanManageTools()
   const {
-    canManagement,
     canDebugger,
+    canInstallPlugin,
+    canManagePlugin,
+    canUpdatePlugin,
+    canViewInstalledPlugins,
     handlePermissionChange,
     isPluginCategory,
     permission,
@@ -117,7 +120,7 @@ export default function IntegrationsPage({
     showPluginCategorySetting,
   } = useIntegrationPermissions(section)
   const [providerSearchText, setProviderSearchText] = useState('')
-  const showInstallAction = canManagement
+  const showInstallAction = canInstallPlugin
   const showUtilityActions = canDebugger || showPermissionQuickPanel
   const {
     activeItem,
@@ -225,7 +228,7 @@ export default function IntegrationsPage({
           </div>
           {showInstallAction && (
             <IntegrationSidebarActions
-              canManagement={canManagement}
+              canManagement={canInstallPlugin}
               installContextCategory={getPluginCategoryBySection(section)}
               onSwitchToMarketplace={handleSwitchToMarketplace}
             />
@@ -289,7 +292,10 @@ export default function IntegrationsPage({
                   providerSearchText={providerSearchText}
                   onProviderSearchTextChange={setProviderSearchText}
                   onSwitchToMarketplace={handleSwitchToMarketplace}
-                  canInstallPlugin={canManagement}
+                  canInstallPlugin={canInstallPlugin}
+                  canManagePlugin={canManagePlugin}
+                  canUpdatePlugin={canUpdatePlugin}
+                  canViewInstalledPlugins={canViewInstalledPlugins}
                   pluginCategoryToolbarAction={pluginSettingAction}
                 />
               </div>
@@ -312,7 +318,10 @@ export default function IntegrationsPage({
                   providerSearchText={providerSearchText}
                   onProviderSearchTextChange={setProviderSearchText}
                   onSwitchToMarketplace={handleSwitchToMarketplace}
-                  canInstallPlugin={canManagement}
+                  canInstallPlugin={canInstallPlugin}
+                  canManagePlugin={canManagePlugin}
+                  canUpdatePlugin={canUpdatePlugin}
+                  canViewInstalledPlugins={canViewInstalledPlugins}
                   pluginCategoryToolbarAction={pluginSettingAction}
                 />
               </ScrollArea>

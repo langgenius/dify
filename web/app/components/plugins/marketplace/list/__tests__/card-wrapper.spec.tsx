@@ -48,6 +48,7 @@ vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () =
 
 vi.mock('@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission', () => ({
   default: () => ({ canInstallPlugin: true }),
+  useOptionalPluginInstallPermission: () => ({ canInstallPlugin: true }),
 }))
 
 vi.mock('../../utils', () => ({

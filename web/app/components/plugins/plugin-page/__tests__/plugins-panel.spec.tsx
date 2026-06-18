@@ -275,7 +275,7 @@ describe('PluginsPanel', () => {
   it('loads the scoped plugin category list whenever an integrations category panel mounts', () => {
     render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.trigger} />)
 
-    expect(mockUseInstalledPluginList).toHaveBeenCalledWith(undefined, 100, {
+    expect(mockUseInstalledPluginList).toHaveBeenCalledWith(false, 100, {
       category: PluginCategoryEnum.trigger,
       refetchOnMount: 'always',
     })
@@ -285,7 +285,7 @@ describe('PluginsPanel', () => {
     render(<PluginsPanel contentInset="compact" fixedCategory={PluginCategoryEnum.tool} />)
 
     expect(screen.getByTestId('filter-management')).toHaveAttribute('data-hide-tag-filter', 'false')
-    expect(mockUseInstalledPluginList).toHaveBeenCalledWith(undefined, 100, {
+    expect(mockUseInstalledPluginList).toHaveBeenCalledWith(false, 100, {
       category: PluginCategoryEnum.tool,
       refetchOnMount: 'always',
     })

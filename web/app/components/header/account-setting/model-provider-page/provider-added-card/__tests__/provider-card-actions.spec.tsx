@@ -72,6 +72,10 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/operation-dropdown', () =>
 }))
 
 vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
+  usePluginSettingsAccess: () => ({
+    canManagePlugin: true,
+    canUpdatePlugin: true,
+  }),
   default: () => ({
     canUpdate: true,
   }),
