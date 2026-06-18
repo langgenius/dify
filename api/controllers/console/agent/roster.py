@@ -74,17 +74,33 @@ class AgentIdPath(BaseModel):
 class AgentAppCreatePayload(BaseModel):
     name: str = Field(..., min_length=1, description="Agent name")
     description: str | None = Field(default=None, description="Agent description (max 400 chars)", max_length=400)
-    role: str = Field(default="", description="Agent role", max_length=255)
+    role: str = Field(..., min_length=1, description="Agent role", max_length=255)
     icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, value: str) -> str:
+        role = value.strip()
+        if not role:
+            raise ValueError("Agent role is required.")
+        return role
 
 
 # Keep agent-app roster DTOs agent-specific instead of reusing the shared
 # /apps response/request models. The roster surface needs Agent-only fields such
 # as `role`, while the generic console/apps contracts must stay unchanged.
 class AgentAppUpdatePayload(GenericUpdateAppPayload):
-    role: str | None = Field(default=None, description="Agent role", max_length=255)
+    role: str = Field(..., min_length=1, description="Agent role", max_length=255)
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, value: str) -> str:
+        role = value.strip()
+        if not role:
+            raise ValueError("Agent role is required.")
+        return role
 
 
 class AgentAppPublishedReferenceResponse(BaseModel):
@@ -305,7 +321,7 @@ class AgentAppListApi(Resource):
             status="normal",
         )
 
-        app_pagination = AppService().get_paginate_apps(current_user.id, current_tenant_id, params)
+        app_pagination = AppService().get_paginate_apps(current_user.id, current_tenant_id, params, db.session)
         if app_pagination is None:
             empty = AgentAppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
             return empty.model_dump(mode="json")

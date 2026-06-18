@@ -1238,7 +1238,7 @@ export type CustomModelConfiguration = {
   current_credential_name?: string | null
   model: string
   model_type: ModelType
-  unadded_to_model_list?: boolean | null
+  unadded_to_model_list?: boolean
 }
 
 export type CredentialFormSchema = {

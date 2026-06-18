@@ -92,7 +92,7 @@ export const zAgentAppCreatePayload = z.object({
   icon_background: z.string().nullish(),
   icon_type: zIconType.nullish(),
   name: z.string().min(1),
-  role: z.string().max(255).optional().default(''),
+  role: z.string().min(1).max(255),
 })
 
 /**
@@ -105,7 +105,7 @@ export const zAgentAppUpdatePayload = z.object({
   icon_type: zIconType.nullish(),
   max_active_requests: z.int().nullish(),
   name: z.string().min(1),
-  role: z.string().max(255).nullish(),
+  role: z.string().min(1).max(255),
   use_icon_as_answer_icon: z.boolean().nullish(),
 })
 

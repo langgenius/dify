@@ -594,7 +594,7 @@ class AppListApi(Resource):
 
         # get app list
         app_service = AppService()
-        app_pagination = app_service.get_paginate_apps(current_user_id, current_tenant_id, params)
+        app_pagination = app_service.get_paginate_apps(current_user_id, current_tenant_id, params, db.session)
         if not app_pagination:
             empty = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
             return empty.model_dump(mode="json"), 200
@@ -661,7 +661,7 @@ class StarredAppListApi(Resource):
             is_created_by_me=args.is_created_by_me,
         )
 
-        app_pagination = AppService().get_paginate_starred_apps(current_user_id, current_tenant_id, params)
+        app_pagination = AppService().get_paginate_starred_apps(current_user_id, current_tenant_id, params, db.session)
         if not app_pagination:
             empty = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
             return empty.model_dump(mode="json"), 200

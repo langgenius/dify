@@ -182,14 +182,15 @@ register_response_schema_models(
 def _serialize_workflow_run(workflow_run: WorkflowRun) -> dict:
     status = _enum_value(workflow_run.status)
     raw_outputs = workflow_run.outputs_dict
-    if status == WorkflowExecutionStatus.PAUSED.value or raw_outputs is None:
-        outputs: dict = {}
-    elif isinstance(raw_outputs, dict):
-        outputs = raw_outputs
-    elif isinstance(raw_outputs, Mapping):
-        outputs = dict(raw_outputs)
-    else:
-        outputs = {}
+    match raw_outputs:
+        case _ if status == WorkflowExecutionStatus.PAUSED.value or raw_outputs is None:
+            outputs: dict = {}
+        case dict():
+            outputs = raw_outputs
+        case _ if isinstance(raw_outputs, Mapping):
+            outputs = dict(raw_outputs)
+        case _:
+            outputs = {}
     return WorkflowRunResponse.model_validate(
         {
             "id": workflow_run.id,
