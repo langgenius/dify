@@ -35,9 +35,8 @@ export async function runExportApp(opts: ExportAppOptions, deps: ExportAppDeps):
   const io = deps.io ?? nullStreams()
   const dslFactory = deps.dslFactory ?? ((h: HttpClient) => new AppDslClient(h))
 
-  // workspace is needed to satisfy the auth pipeline; resolving it here
-  // mirrors what other commands do even though the export endpoint does not
-  // take workspace_id as a query parameter (it loads tenant from app).
+  // workspace is resolved to satisfy the auth pipeline; the export endpoint itself
+  // takes no workspace_id query parameter (it loads tenant from the app).
   resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), active: deps.active })
 
   const client = dslFactory(deps.http)

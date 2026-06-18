@@ -206,17 +206,15 @@ describe('E2E / difyctl get app (list)', () => {
 
   // ── External SSO ──────────────────────────────────────────────────────────
 
-  itWithSso('[P0] external SSO user get app returns insufficient_scope error (3.24 / 3.25)', async () => {
-    // Spec 3.24: dfoe_ token → insufficient_scope; Spec 3.25: exit code is 1.
+  itWithSso('[P0] external SSO user can list permitted apps', async () => {
+    // A dfoe_ token lists apps via the permitted-external surface
+    // (apps:read:permitted-external scope), with no workspace scoping.
     // Uses DIFY_E2E_SSO_TOKEN (itWithSso skips when not configured).
     const { mkdir, writeFile } = await import('node:fs/promises')
     const { join } = await import('node:path')
     const ssoTmp = await withTempConfig()
     try {
       await mkdir(ssoTmp.configDir, { recursive: true })
-      // SSO (dfoe_) users have apps:run scope only, not apps:list.
-      // Inject a minimal hosts.yml without workspace so the CLI reaches the
-      // scope-check path rather than resolving the workspace successfully.
       const hostsYml = `${[
         `current_host: ${E.host}`,
         `token_storage: file`,
@@ -228,8 +226,8 @@ describe('E2E / difyctl get app (list)', () => {
       ].join('\n')}\n`
       await writeFile(join(ssoTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
       const result = await run(['get', 'app'], { configDir: ssoTmp.configDir })
-      expect(result.exitCode, 'SSO user get app should exit non-zero').not.toBe(0)
-      expect(result.stderr).toMatch(/insufficient_scope|scope|not_logged_in|auth/i)
+      assertExitCode(result, 0)
+      expect(result.stdout).toMatch(/NAME\s+ID\s+MODE/i)
     }
     finally {
       await ssoTmp.cleanup()

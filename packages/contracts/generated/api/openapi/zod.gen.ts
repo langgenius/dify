@@ -12,6 +12,19 @@ export const zAccountPayload = z.object({
 })
 
 /**
+ * AppDescribeInfo
+ */
+export const zAppDescribeInfo = z.object({
+  description: z.string().nullish(),
+  id: z.string(),
+  is_agent: z.boolean().optional().default(false),
+  mode: z.string(),
+  name: z.string(),
+  service_api_enabled: z.boolean(),
+  updated_at: z.string().nullish(),
+})
+
+/**
  * AppDescribeQuery
  *
  * `?fields=` allow-list for GET /apps/<id>/describe.
@@ -20,6 +33,15 @@ export const zAccountPayload = z.object({
  */
 export const zAppDescribeQuery = z.object({
   fields: z.string().optional(),
+})
+
+/**
+ * AppDescribeResponse
+ */
+export const zAppDescribeResponse = z.object({
+  info: zAppDescribeInfo.nullish(),
+  input_schema: z.record(z.string(), z.unknown()).nullish(),
+  parameters: z.record(z.string(), z.unknown()).nullish(),
 })
 
 /**
@@ -56,6 +78,16 @@ export const zAppDslImportPayload = z.object({
   name: z.string().nullish(),
   yaml_content: z.string().nullish(),
   yaml_url: z.string().nullish(),
+})
+
+/**
+ * AppInfo
+ */
+export const zAppInfo = z.object({
+  description: z.string().nullish(),
+  id: z.string(),
+  mode: z.string(),
+  name: z.string(),
 })
 
 /**
@@ -465,42 +497,6 @@ export const zTagItem = z.object({
 })
 
 /**
- * AppDescribeInfo
- */
-export const zAppDescribeInfo = z.object({
-  author: z.string().nullish(),
-  description: z.string().nullish(),
-  id: z.string(),
-  is_agent: z.boolean().optional().default(false),
-  mode: z.string(),
-  name: z.string(),
-  service_api_enabled: z.boolean(),
-  tags: z.array(zTagItem).optional().default([]),
-  updated_at: z.string().nullish(),
-})
-
-/**
- * AppDescribeResponse
- */
-export const zAppDescribeResponse = z.object({
-  info: zAppDescribeInfo.nullish(),
-  input_schema: z.record(z.string(), z.unknown()).nullish(),
-  parameters: z.record(z.string(), z.unknown()).nullish(),
-})
-
-/**
- * AppInfoResponse
- */
-export const zAppInfoResponse = z.object({
-  author: z.string().nullish(),
-  description: z.string().nullish(),
-  id: z.string(),
-  mode: z.string(),
-  name: z.string(),
-  tags: z.array(zTagItem).optional().default([]),
-})
-
-/**
  * AppListRow
  */
 export const zAppListRow = z.object({
@@ -894,6 +890,19 @@ export const zGetPermittedExternalAppsQuery = z.object({
  * Permitted external apps list
  */
 export const zGetPermittedExternalAppsResponse = zPermittedExternalAppsListResponse
+
+export const zGetPermittedExternalAppsByAppIdDescribePath = z.object({
+  app_id: z.string(),
+})
+
+export const zGetPermittedExternalAppsByAppIdDescribeQuery = z.object({
+  fields: z.string().optional(),
+})
+
+/**
+ * Permitted external app description
+ */
+export const zGetPermittedExternalAppsByAppIdDescribeResponse = zAppDescribeResponse
 
 /**
  * Workspace list

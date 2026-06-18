@@ -1,8 +1,9 @@
 import type { DifyMock } from '@test/fixtures/dify-mock/server'
 import type { ActiveContext } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
 import { startMock } from '@test/fixtures/dify-mock/server'
 import { testHttpClient } from '@test/fixtures/http-client'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { stringifyOutput, table } from '@/framework/output'
 import { AppListOutput } from './handlers.js'
 import { runGetApp } from './run.js'
@@ -25,6 +26,7 @@ describe('runGetApp', () => {
   })
 
   afterEach(async () => {
+    vi.restoreAllMocks()
     await mock.stop()
   })
 
@@ -137,5 +139,26 @@ describe('runGetApp', () => {
       ctx: { account: { email: 'x@x.com', name: 'X' } },
     }
     await expect(runGetApp({}, { active: minimal, http: http() })).rejects.toThrow(/no workspace/)
+  })
+
+  it('external login lists via permitted-external client without workspace', async () => {
+    const list = vi.fn().mockResolvedValue({ page: 1, limit: 20, total: 1, has_more: false, data: [{ id: 'x', name: 'X', description: null, mode: 'chat', tags: [], updated_at: null, created_by_name: null, workspace_id: 'w', workspace_name: 'W' }] })
+    const { PermittedExternalAppsClient } = await import('@/api/permitted-external-apps')
+    vi.spyOn(PermittedExternalAppsClient.prototype, 'list').mockImplementation(list)
+    const active: ActiveContext = { host: 'h', email: 'e', ctx: { account: { id: 'a', email: 'e', name: 'n' }, external_subject: { email: 'e', issuer: 'i' } } }
+    const http = { baseURL: 'https://x', request: vi.fn() } as unknown as HttpClient
+    const res = await runGetApp({}, { active, http })
+    expect(list).toHaveBeenCalled()
+    const firstCallArg = list.mock.calls[0]![0] as { workspaceId: string }
+    expect(firstCallArg.workspaceId).toBe('')
+    expect(res.data).toBeDefined()
+  })
+
+  it('--all-workspaces throws UsageInvalidFlag for external logins', async () => {
+    const active: ActiveContext = { host: 'h', email: 'e', ctx: { account: { id: 'a', email: 'e', name: 'n' }, external_subject: { email: 'e', issuer: 'i' } } }
+    const httpClient = { baseURL: 'https://x', request: vi.fn() } as unknown as HttpClient
+    await expect(runGetApp({ allWorkspaces: true }, { active, http: httpClient }))
+      .rejects
+      .toThrow(/--all-workspaces is not available for external logins/)
   })
 })

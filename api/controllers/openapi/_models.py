@@ -70,16 +70,14 @@ class PermittedExternalAppsListResponse(BaseModel):
     data: list[AppListRow]
 
 
-class AppInfoResponse(BaseModel):
+class AppInfo(BaseModel):
     id: str
     name: str
     description: str | None = None
     mode: str
-    author: str | None = None
-    tags: list[TagItem] = []
 
 
-class AppDescribeInfo(AppInfoResponse):
+class AppDescribeInfo(AppInfo):
     updated_at: str | None = None
     service_api_enabled: bool
     is_agent: bool = False

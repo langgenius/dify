@@ -8,14 +8,18 @@ EE blueprint chain so this module is unreachable there.
 from __future__ import annotations
 
 from flask_restx import Resource
+from werkzeug.exceptions import NotFound
 
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
 from controllers.openapi._models import (
+    AppDescribeQuery,
+    AppDescribeResponse,
     AppListRow,
     PermittedExternalAppsListQuery,
     PermittedExternalAppsListResponse,
 )
+from controllers.openapi.apps import build_app_describe_response
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData, Edition
 from extensions.ext_database import db
@@ -82,3 +86,20 @@ class PermittedExternalAppsListApi(Resource):
             data=items,
         )
         return env
+
+
+@openapi_ns.route("/permitted-external-apps/<string:app_id>/describe")
+class PermittedExternalAppDescribeApi(Resource):
+    @auth_router.guard(
+        scope=Scope.APPS_READ_PERMITTED_EXTERNAL,
+        allowed_token_types=frozenset({TokenType.OAUTH_EXTERNAL_SSO}),
+        edition=frozenset({Edition.EE}),
+    )
+    @returns(200, AppDescribeResponse, description="Permitted external app description")
+    @accepts(query=AppDescribeQuery)
+    def get(self, app_id: str, *, auth_data: AuthData, query: AppDescribeQuery):
+        # App already loaded and ACL-checked by the external_sso pipeline; project it.
+        app = auth_data.app
+        if app is None:
+            raise NotFound("app not found")
+        return build_app_describe_response(app, query.fields)

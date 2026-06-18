@@ -28,6 +28,7 @@ from core.app.app_config.common.parameters_mapping import get_parameters_from_fe
 from extensions.ext_database import db
 from libs.oauth_bearer import Scope, TokenType
 from models import App
+from models.model import AppMode
 from services.account_service import TenantService
 from services.app_service import AppListParams, AppService
 from services.tag_service import TagService
@@ -84,6 +85,42 @@ def parameters_payload(app: App) -> dict:
     return Parameters.model_validate(parameters).model_dump(mode="json")
 
 
+def build_app_describe_response(app: App, fields: list[str] | None) -> AppDescribeResponse:
+    """Public projection of an app (name / params / input schema) — never internal config."""
+    want_info = fields is None or "info" in fields
+    want_params = fields is None or "parameters" in fields
+    want_schema = fields is None or "input_schema" in fields
+
+    info = (
+        AppDescribeInfo(
+            id=str(app.id),
+            name=app.name,
+            mode=app.mode,
+            description=app.description,
+            updated_at=app.updated_at.isoformat() if app.updated_at else None,
+            service_api_enabled=bool(app.enable_api),
+            is_agent=app.mode in (AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT),
+        )
+        if want_info
+        else None
+    )
+
+    parameters: dict[str, Any] | None = None
+    input_schema: dict[str, Any] | None = None
+    if want_params:
+        try:
+            parameters = parameters_payload(app)
+        except AppUnavailableError:
+            parameters = dict(_EMPTY_PARAMETERS)
+    if want_schema:
+        try:
+            input_schema = build_input_schema(app)
+        except AppUnavailableError:
+            input_schema = dict(EMPTY_INPUT_SCHEMA)
+
+    return AppDescribeResponse(info=info, parameters=parameters, input_schema=input_schema)
+
+
 @openapi_ns.route("/apps/<string:app_id>/describe")
 class AppDescribeApi(AppReadResource):
     @auth_router.guard(scope=Scope.APPS_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
@@ -92,46 +129,7 @@ class AppDescribeApi(AppReadResource):
     def get(self, app_id: str, *, auth_data: AuthData, query: AppDescribeQuery):
         # describe is UUID-only (workspace_id query param dropped in #37212).
         app = self._load(app_id)
-
-        requested = query.fields
-        want_info = requested is None or "info" in requested
-        want_params = requested is None or "parameters" in requested
-        want_schema = requested is None or "input_schema" in requested
-
-        info = (
-            AppDescribeInfo(
-                id=str(app.id),
-                name=app.name,
-                mode=app.mode,
-                description=app.description,
-                tags=[TagItem(name=t.name) for t in app.tags],
-                author=app.author_name,
-                updated_at=app.updated_at.isoformat() if app.updated_at else None,
-                service_api_enabled=bool(app.enable_api),
-                is_agent=app.mode in ("agent-chat", "advanced-chat"),
-            )
-            if want_info
-            else None
-        )
-
-        parameters: dict[str, Any] | None = None
-        input_schema: dict[str, Any] | None = None
-        if want_params:
-            try:
-                parameters = parameters_payload(app)
-            except AppUnavailableError:
-                parameters = dict(_EMPTY_PARAMETERS)
-        if want_schema:
-            try:
-                input_schema = build_input_schema(app)
-            except AppUnavailableError:
-                input_schema = dict(EMPTY_INPUT_SCHEMA)
-
-        return AppDescribeResponse(
-            info=info,
-            parameters=parameters,
-            input_schema=input_schema,
-        )
+        return build_app_describe_response(app, query.fields)
 
 
 @openapi_ns.route("/apps")
