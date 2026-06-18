@@ -1,7 +1,7 @@
 'use client'
 
 import type { FileResponse } from '@dify/contracts/api/console/files/types.gen'
-import type { FileTreeIconType } from '@langgenius/dify-ui/file-tree'
+import type { AgentFileApiContext } from './api-context'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -14,59 +14,23 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { consoleQuery } from '@/service/client'
 import { formatFileSize } from '@/utils/format'
+import { getFileIconType } from './file-icon'
 
-const codeFileExtensions = new Set([
-  'css',
-  'go',
-  'html',
-  'js',
-  'jsx',
-  'py',
-  'rb',
-  'rs',
-  'scss',
-  'sh',
-  'ts',
-  'tsx',
-  'vue',
-  'yaml',
-  'yml',
-])
-const tableFileExtensions = new Set(['csv', 'xls', 'xlsx'])
-const archiveFileExtensions = new Set(['7z', 'gz', 'rar', 'tar', 'zip'])
-
-function getFileExtension(fileName: string) {
-  return fileName.split('.').pop()?.toLowerCase() ?? ''
+type AgentDriveFileCommit = {
+  file: {
+    drive_key: string
+    file_id: string
+    mime_type?: string | null
+    name: string
+  }
 }
 
-function getFileIconType(fileName: string, mimeType?: string | null): FileTreeIconType {
-  const extension = getFileExtension(fileName)
-
-  if (mimeType?.startsWith('image/'))
-    return 'image'
-  if (mimeType === 'application/pdf' || extension === 'pdf')
-    return 'pdf'
-  if (extension === 'md' || extension === 'markdown' || extension === 'mdx')
-    return 'markdown'
-  if (extension === 'json')
-    return 'json'
-  if (tableFileExtensions.has(extension))
-    return 'table'
-  if (archiveFileExtensions.has(extension))
-    return 'archive'
-  if (codeFileExtensions.has(extension))
-    return 'code'
-  if (mimeType?.startsWith('text/'))
-    return 'text'
-
-  return 'file'
-}
-
-function toAgentFileNode(uploadedFile: FileResponse): AgentFileNode {
+function toAgentFileNode(committedFile: AgentDriveFileCommit['file']): AgentFileNode {
   return {
-    id: uploadedFile.id,
-    name: uploadedFile.name,
-    icon: getFileIconType(uploadedFile.name, uploadedFile.mime_type),
+    id: committedFile.file_id,
+    name: committedFile.name,
+    icon: getFileIconType(committedFile.name, committedFile.mime_type),
+    driveKey: committedFile.drive_key,
   }
 }
 
@@ -168,10 +132,12 @@ function AgentFileUploader({
 }
 
 export function AgentFileUploadDialog({
+  apiContext,
   open,
   onOpenChange,
   onUploaded,
 }: {
+  apiContext: AgentFileApiContext
   open: boolean
   onOpenChange: (open: boolean) => void
   onUploaded: (file: AgentFileNode) => void
@@ -180,9 +146,43 @@ export function AgentFileUploadDialog({
   const { t: tCommon } = useTranslation('common')
   const [file, setFile] = useState<File>()
   const uploadFileMutation = useMutation(consoleQuery.files.upload.post.mutationOptions())
+  const commitAgentFileMutation = useMutation(consoleQuery.agent.byAgentId.files.post.mutationOptions())
+  const commitWorkflowAgentFileMutation = useMutation(consoleQuery.apps.byAppId.agent.files.post.mutationOptions())
+  const isUploading = uploadFileMutation.isPending
+    || commitAgentFileMutation.isPending
+    || commitWorkflowAgentFileMutation.isPending
+
+  const commitUploadedFile = (uploadedFile: FileResponse, options: {
+    onSuccess: (committedFile: AgentDriveFileCommit) => void
+    onError: () => void
+  }) => {
+    const body = {
+      upload_file_id: uploadedFile.id,
+    }
+
+    if (apiContext.workflow) {
+      commitWorkflowAgentFileMutation.mutate({
+        params: {
+          app_id: apiContext.workflow.appId,
+        },
+        query: {
+          node_id: apiContext.workflow.nodeId,
+        },
+        body,
+      }, options)
+      return
+    }
+
+    commitAgentFileMutation.mutate({
+      params: {
+        agent_id: apiContext.agentId,
+      },
+      body,
+    }, options)
+  }
 
   const handleUpload = () => {
-    if (!file || uploadFileMutation.isPending)
+    if (!file || isUploading)
       return
 
     uploadFileMutation.mutate({
@@ -191,10 +191,17 @@ export function AgentFileUploadDialog({
       },
     }, {
       onSuccess: (uploadedFile) => {
-        toast.success(t('agentDetail.configure.files.upload.success'))
-        onUploaded(toAgentFileNode(uploadedFile))
-        setFile(undefined)
-        onOpenChange(false)
+        commitUploadedFile(uploadedFile, {
+          onSuccess: (committedFile) => {
+            toast.success(t('agentDetail.configure.files.upload.success'))
+            onUploaded(toAgentFileNode(committedFile.file))
+            setFile(undefined)
+            onOpenChange(false)
+          },
+          onError: () => {
+            toast.error(t('agentDetail.configure.files.upload.failed'))
+          },
+        })
       },
       onError: () => {
         toast.error(t('agentDetail.configure.files.upload.failed'))
@@ -205,6 +212,8 @@ export function AgentFileUploadDialog({
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
       uploadFileMutation.reset()
+      commitAgentFileMutation.reset()
+      commitWorkflowAgentFileMutation.reset()
       setFile(undefined)
     }
     onOpenChange(nextOpen)
@@ -225,14 +234,14 @@ export function AgentFileUploadDialog({
           onChange={setFile}
         />
         <div className="flex justify-end gap-2 pt-6">
-          <Button type="button" onClick={() => handleOpenChange(false)} disabled={uploadFileMutation.isPending}>
+          <Button type="button" onClick={() => handleOpenChange(false)} disabled={isUploading}>
             {tCommon('operation.cancel')}
           </Button>
           <Button
             type="button"
             variant="primary"
             disabled={!file}
-            loading={uploadFileMutation.isPending}
+            loading={isUploading}
             onClick={handleUpload}
           >
             {t('agentDetail.configure.files.upload.action')}

@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse, AgentPublishedReferenceResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentConfigurePublishPayload } from './publish-bar'
 import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -20,6 +20,8 @@ import { AgentTools } from './tools'
 
 type AgentOrchestratePanelProps = {
   agentId: string
+  appId?: string
+  activeConfigIsPublished?: boolean
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentSoulConfig?: AgentConfigSnapshotDetailResponse['config_snapshot']
   agentName?: string | null
@@ -27,8 +29,6 @@ type AgentOrchestratePanelProps = {
   textGenerationModelList: Model[]
   draftSavedAt?: number
   isPublishing?: boolean
-  publishedReferenceCount?: number
-  publishedReferences?: AgentPublishedReferenceResponse[]
   className?: string
   readOnly?: boolean
   showHeader?: boolean
@@ -40,6 +40,8 @@ type AgentOrchestratePanelProps = {
 
 export function AgentOrchestratePanel({
   agentId,
+  appId,
+  activeConfigIsPublished,
   activeConfigSnapshot,
   agentSoulConfig,
   agentName,
@@ -47,8 +49,6 @@ export function AgentOrchestratePanel({
   textGenerationModelList,
   draftSavedAt,
   isPublishing,
-  publishedReferenceCount,
-  publishedReferences,
   className,
   readOnly = false,
   showHeader = true,
@@ -87,7 +87,10 @@ export function AgentOrchestratePanel({
               />
               <AgentPromptEditor />
               <AgentSkills agentId={agentId} />
-              <AgentFiles />
+              <AgentFiles
+                agentId={agentId}
+                appId={appId}
+              />
               <AgentTools />
               <AgentKnowledgeRetrieval />
               <AgentAdvancedSettings />
@@ -99,14 +102,13 @@ export function AgentOrchestratePanel({
       {showPublishBar && (
         <AgentConfigurePublishBar
           agentId={agentId}
+          activeConfigIsPublished={activeConfigIsPublished}
           activeConfigSnapshot={activeConfigSnapshot}
           agentSoulConfig={agentSoulConfig}
           agentName={agentName}
           currentModel={currentModel}
           draftSavedAt={draftSavedAt}
           isPublishing={isPublishing}
-          publishedReferenceCount={publishedReferenceCount}
-          publishedReferences={publishedReferences}
           onPublish={onPublish}
           onOpenVersions={onOpenVersions}
         />

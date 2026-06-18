@@ -16,6 +16,7 @@ import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
 
 type AgentOrchestrateDrawerPanelProps = {
   agentId: string
+  appId?: string
   inlineComposerState?: WorkflowAgentComposerResponse
   isInline: boolean
   nodeId: string
@@ -32,6 +33,7 @@ export function AgentOrchestrateDrawerPanel(props: AgentOrchestrateDrawerPanelPr
 
 function AgentOrchestrateDrawerPanelContent({
   agentId,
+  appId,
   inlineComposerState,
   isInline,
   nodeId,
@@ -76,6 +78,7 @@ function AgentOrchestrateDrawerPanelContent({
   return (
     <AgentOrchestratePanel
       agentId={agentId}
+      appId={isInline ? appId : undefined}
       activeConfigSnapshot={activeConfigSnapshot}
       agentSoulConfig={agentSoulConfig as AgentSoulConfig}
       agentName={composerState?.agent?.name}

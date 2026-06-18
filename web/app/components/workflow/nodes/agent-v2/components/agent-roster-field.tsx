@@ -87,6 +87,7 @@ function AgentRosterDrawer({
   mode = 'detail',
   open,
   portalContainerRef,
+  showAccessIcon = true,
   showConsoleLink = true,
   showDetailActions = true,
   onClose,
@@ -96,6 +97,7 @@ function AgentRosterDrawer({
   mode?: AgentRosterDrawerMode
   open: boolean
   portalContainerRef: RefObject<HTMLDivElement | null>
+  showAccessIcon?: boolean
   showConsoleLink?: boolean
   showDetailActions?: boolean
   onClose: () => void
@@ -144,7 +146,7 @@ function AgentRosterDrawer({
                         <DrawerTitle className={cn('truncate', isSetup ? 'system-xl-semibold text-text-primary' : 'system-sm-medium text-text-secondary')}>
                           {title}
                         </DrawerTitle>
-                        {!isSetup && <span aria-hidden className="i-ri-lock-line size-3 shrink-0 text-text-tertiary" />}
+                        {!isSetup && showAccessIcon && <span aria-hidden className="i-ri-lock-line size-3 shrink-0 text-text-tertiary" />}
                       </div>
                       {description && (
                         <p className={cn(isSetup ? 'min-w-full' : 'truncate', 'system-xs-regular text-text-tertiary')}>
@@ -341,6 +343,7 @@ export function AgentRosterField({
                       mode={panelMode}
                       open={panelOpen}
                       portalContainerRef={portalContainerRef}
+                      showAccessIcon={!isInlineSetup}
                       showDetailActions={showPanelDetailActions}
                       onClose={() => setPanelOpen(false)}
                     >

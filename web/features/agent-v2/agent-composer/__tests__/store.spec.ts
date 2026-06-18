@@ -22,6 +22,7 @@ describe('agent composer store conversions', () => {
             id: 'secret-1',
             key: 'OPENAI_API_KEY',
             ref: 'credential-1',
+            value: 'credential-1',
           },
         ],
       },
@@ -155,6 +156,7 @@ describe('agent composer store conversions', () => {
           key: 'OPENAI_API_KEY',
           masked: true,
           scope: 'secret',
+          value: 'credential-1',
         }),
       ],
     })
@@ -229,10 +231,34 @@ describe('agent composer store conversions', () => {
       secret_refs: [
         expect.objectContaining({
           key: 'OPENAI_API_KEY',
-          ref: 'secret-1',
+          value: 'credential-1',
         }),
       ],
     })
+  })
+
+  it('should hydrate legacy secret refs from ref when value is absent', () => {
+    const formState = agentSoulConfigToFormState({
+      env: {
+        secret_refs: [
+          {
+            id: 'secret-1',
+            key: 'OPENAI_API_KEY',
+            ref: 'credential-legacy',
+          },
+        ],
+      },
+    })
+
+    expect(formState.envVariables).toEqual([
+      {
+        id: 'secret-1',
+        key: 'OPENAI_API_KEY',
+        masked: true,
+        scope: 'secret',
+        value: 'credential-legacy',
+      },
+    ])
   })
 
   it('should keep unauthorized credential type when no-auth tool settings change', () => {
@@ -419,7 +445,7 @@ describe('agent composer store conversions', () => {
           id: 'valid-secret',
           key: 'OPENAI_API_KEY',
           name: 'OPENAI_API_KEY',
-          ref: 'valid-secret',
+          value: '********',
           variable: 'OPENAI_API_KEY',
         },
       ],

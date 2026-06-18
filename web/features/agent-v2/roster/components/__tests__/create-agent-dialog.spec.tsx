@@ -61,9 +61,10 @@ describe('CreateAgentDialog', () => {
         icon_background: '#F5F3FF',
       },
     }, expect.objectContaining({
-      onError: expect.any(Function),
       onSuccess: expect.any(Function),
     }))
+    const mutationOptions = mutationMock.mutate.mock.calls[0]?.[1]
+    expect(mutationOptions).not.toHaveProperty('onError')
   })
 
   it('shows a field error when creating with an empty name', async () => {

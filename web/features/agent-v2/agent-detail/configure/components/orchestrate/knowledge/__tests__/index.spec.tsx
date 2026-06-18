@@ -77,6 +77,32 @@ describe('AgentKnowledgeRetrieval', () => {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.remove:{"name":"agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne"}',
       })).not.toBeInTheDocument()
     })
+
+    it('should keep row actions focusable while visually hidden until hover or focus', () => {
+      renderKnowledgeRetrieval()
+
+      const editButton = screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.edit:{"name":"agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne"}',
+      })
+      const removeButton = screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.remove:{"name":"agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne"}',
+      })
+      const actionGroup = editButton.parentElement
+
+      expect(actionGroup).toHaveClass('flex')
+      expect(actionGroup).not.toHaveClass('hidden')
+      expect(actionGroup).toHaveClass(
+        'opacity-0',
+        'group-focus-within:opacity-100',
+        'group-hover:opacity-100',
+      )
+      expect(removeButton).toHaveClass(
+        'hover:bg-state-destructive-hover',
+        'hover:text-text-destructive',
+        'focus-visible:bg-state-destructive-hover',
+        'focus-visible:text-text-destructive',
+      )
+    })
   })
 
   describe('User Interactions', () => {
