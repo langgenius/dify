@@ -113,7 +113,7 @@ describe('EditAgentDialog', () => {
     }, expect.objectContaining({
       onSuccess: expect.any(Function),
     }))
-    const [, mutationOptions] = mutationMock.mutate.mock.calls[0]
+    const mutationOptions = mutationMock.mutate.mock.calls[0]?.[1]
     expect(mutationOptions).not.toHaveProperty('onError')
   })
 
@@ -141,7 +141,7 @@ describe('EditAgentDialog', () => {
     }, expect.objectContaining({
       onSuccess: expect.any(Function),
     }))
-    const [, mutationOptions] = mutationMock.mutate.mock.calls[0]
+    const mutationOptions = mutationMock.mutate.mock.calls[0]?.[1]
     expect(mutationOptions).not.toHaveProperty('onError')
   })
 
@@ -169,7 +169,7 @@ describe('EditAgentDialog', () => {
     }, expect.objectContaining({
       onSuccess: expect.any(Function),
     }))
-    const [, mutationOptions] = mutationMock.mutate.mock.calls[0]
+    const mutationOptions = mutationMock.mutate.mock.calls[0]?.[1]
     expect(mutationOptions).not.toHaveProperty('onError')
   })
 
