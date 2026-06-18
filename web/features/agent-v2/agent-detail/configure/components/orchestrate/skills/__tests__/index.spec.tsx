@@ -11,6 +11,7 @@ import { AgentSkills } from '../index'
 
 const mocks = vi.hoisted(() => ({
   driveFilesQueryOptions: vi.fn(),
+  driveFileDownloadQueryOptions: vi.fn(),
   driveFilePreviewQueryOptions: vi.fn(),
   uploadSkillMutationOptions: vi.fn(),
 }))
@@ -30,6 +31,11 @@ vi.mock('@/service/client', () => ({
           files: {
             get: {
               queryOptions: mocks.driveFilesQueryOptions,
+            },
+            download: {
+              get: {
+                queryOptions: mocks.driveFileDownloadQueryOptions,
+              },
             },
             preview: {
               get: {
@@ -139,6 +145,12 @@ describe('AgentSkills', () => {
       queryKey: ['agent-drive-file-preview', input],
       queryFn: async () => ({
         text: `Preview content for ${input.query.key}`,
+      }),
+    }))
+    mocks.driveFileDownloadQueryOptions.mockImplementation(({ input }) => ({
+      queryKey: ['agent-drive-file-download', input],
+      queryFn: async () => ({
+        url: `https://example.com/${input.query.key}`,
       }),
     }))
     mocks.uploadSkillMutationOptions.mockReturnValue({
