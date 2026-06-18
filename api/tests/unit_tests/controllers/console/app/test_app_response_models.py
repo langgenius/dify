@@ -849,6 +849,7 @@ def test_app_copy_api_attaches_permission_keys(app, app_module):
                 "get_system_features",
                 lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
             )
+            monkeypatch.setattr(app_module, "db", SimpleNamespace(engine=object()))
             monkeypatch.setattr(
                 app_module,
                 "Session",
