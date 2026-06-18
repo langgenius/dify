@@ -66,6 +66,16 @@ class TestGenerateGuards:
 
 
 class TestGenerateSuccess:
+    def test_runtime_session_snapshot_id_is_stable_for_debugger_only(self):
+        assert (
+            AgentAppGenerator._runtime_session_snapshot_id(invoke_from=InvokeFrom.DEBUGGER, snapshot_id="snap-1")
+            is None
+        )
+        assert (
+            AgentAppGenerator._runtime_session_snapshot_id(invoke_from=InvokeFrom.WEB_APP, snapshot_id="snap-1")
+            == "snap-1"
+        )
+
     def test_generate_orchestrates_and_starts_worker(self, generator, mocker: MockerFixture):
         app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent")
         user = DummyAccount("user")
@@ -201,12 +211,25 @@ class TestGenerateWorker:
         mocker.patch(f"{MODULE}.AgentAppRunner", return_value=runner)
         return runner
 
-    def _call(self, generator, mocker: MockerFixture, queue_manager, *, is_resume=False, query="query"):
+    def _call(
+        self,
+        generator,
+        mocker: MockerFixture,
+        queue_manager,
+        *,
+        is_resume=False,
+        query="query",
+        runtime_session_snapshot_id="s",
+    ):
         generator._generate_worker(
             flask_app=mocker.MagicMock(),
             context=mocker.MagicMock(),
             application_generate_entity=mocker.MagicMock(
-                agent_id="a", agent_config_snapshot_id="s", model_conf=mocker.MagicMock(model="m"), query=query
+                agent_id="a",
+                agent_config_snapshot_id="s",
+                agent_runtime_session_snapshot_id=runtime_session_snapshot_id,
+                model_conf=mocker.MagicMock(model="m"),
+                query=query,
             ),
             queue_manager=queue_manager,
             conversation_id="conv",
@@ -221,6 +244,15 @@ class TestGenerateWorker:
         self._call(generator, mocker, queue_manager)
         runner.run.assert_called_once()
         queue_manager.publish_error.assert_not_called()
+
+    def test_worker_passes_runtime_session_scope_to_runner(self, generator, mocker: MockerFixture):
+        runner = self._wire(generator, mocker)
+        queue_manager = mocker.MagicMock()
+
+        self._call(generator, mocker, queue_manager, runtime_session_snapshot_id=None)
+
+        assert runner.run.call_args.kwargs["agent_config_snapshot_id"] == "s"
+        assert runner.run.call_args.kwargs["session_scope_snapshot_id"] is None
 
     def test_input_guard_short_circuit_skips_backend(self, generator, mocker: MockerFixture):
         runner = self._wire(generator, mocker, handled=True)

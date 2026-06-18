@@ -139,6 +139,7 @@ class _FakeSessionStore:
     ) -> None:
         self.loaded = loaded
         self._loaded_session = loaded_session
+        self.loaded_scopes: list[AgentAppSessionScope] = []
         self.saved: list[
             tuple[
                 AgentAppSessionScope,
@@ -151,9 +152,11 @@ class _FakeSessionStore:
         ] = []
 
     def load_active_snapshot(self, scope: AgentAppSessionScope) -> CompositorSessionSnapshot | None:
+        self.loaded_scopes.append(scope)
         return self.loaded
 
     def load_active_session(self, scope: AgentAppSessionScope) -> StoredAgentAppSession | None:
+        self.loaded_scopes.append(scope)
         if self._loaded_session is not None:
             return self._loaded_session
         if self.loaded is None:
@@ -311,6 +314,31 @@ def test_prior_session_snapshot_is_threaded_into_request():
 
     assert client.request is not None
     assert client.request.session_snapshot is prior
+
+
+def test_debug_session_scope_can_reuse_conversation_across_config_snapshots():
+    prior = CompositorSessionSnapshot(layers=[])
+    client = FakeAgentBackendRunClient()
+    store = _FakeSessionStore(loaded=prior)
+    qm = _FakeQueueManager()
+
+    _runner(client, store).run(
+        dify_context=_dify_ctx(),
+        agent_id="agent-1",
+        agent_config_snapshot_id="snap-new",
+        agent_soul=_soul(),
+        conversation_id="conv-1",
+        query="hello",
+        message_id="msg-1",
+        model_name="gpt-4o-mini",
+        queue_manager=qm,  # type: ignore[arg-type]
+        session_scope_snapshot_id=None,
+    )
+
+    assert client.request is not None
+    assert client.request.session_snapshot is prior
+    assert store.loaded_scopes[0].agent_config_snapshot_id is None
+    assert store.saved[0][0].agent_config_snapshot_id is None
 
 
 def test_failed_run_raises_agent_backend_error():
