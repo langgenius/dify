@@ -2,10 +2,10 @@ from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field
-from extensions.ext_database import db
 
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.login import login_required
 from services.auth.api_key_auth_service import ApiKeyAuthService

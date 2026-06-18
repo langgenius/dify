@@ -100,10 +100,10 @@ class TestAuthIntegration:
         mock_encrypt.return_value = "encrypted_key"
 
         args1 = {"category": category, "provider": AuthType.FIRECRAWL, "credentials": firecrawl_credentials}
-        ApiKeyAuthService.create_provider_auth(tenant_id_1,db_session_with_containers, args1)
+        ApiKeyAuthService.create_provider_auth(tenant_id_1, db_session_with_containers, args1)
 
         args2 = {"category": category, "provider": AuthType.JINA, "credentials": jina_credentials}
-        ApiKeyAuthService.create_provider_auth(tenant_id_2,db_session_with_containers, args2)
+        ApiKeyAuthService.create_provider_auth(tenant_id_2, db_session_with_containers, args2)
 
         db_session_with_containers.expire_all()
 
@@ -160,7 +160,7 @@ class TestAuthIntegration:
                         "provider": AuthType.FIRECRAWL,
                         "credentials": {"auth_type": "bearer", "config": {"api_key": "fc_test_key_123"}},
                     }
-                    ApiKeyAuthService.create_provider_auth(tenant_id_1,db_session_with_containers, thread_args)
+                    ApiKeyAuthService.create_provider_auth(tenant_id_1, db_session_with_containers, thread_args)
                 results.append("success")
             except Exception as e:
                 exceptions.append(e)

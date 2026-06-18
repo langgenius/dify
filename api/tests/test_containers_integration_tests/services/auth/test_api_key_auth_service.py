@@ -199,7 +199,7 @@ class TestApiKeyAuthService:
         binding_id = binding.id
         db_session_with_containers.expire_all()
 
-        ApiKeyAuthService.delete_provider_auth(tenant_id, binding_id,db_session_with_containers)
+        ApiKeyAuthService.delete_provider_auth(tenant_id, binding_id, db_session_with_containers)
 
         db_session_with_containers.expire_all()
         remaining = db_session_with_containers.query(DataSourceApiKeyAuthBinding).filter_by(id=binding_id).first()
@@ -209,7 +209,7 @@ class TestApiKeyAuthService:
         self, flask_app_with_containers: Flask, db_session_with_containers: Session, tenant_id
     ):
         # Should not raise when binding not found
-        ApiKeyAuthService.delete_provider_auth(tenant_id, str(uuid4()),db_session_with_containers)
+        ApiKeyAuthService.delete_provider_auth(tenant_id, str(uuid4()), db_session_with_containers)
 
     def test_validate_api_key_auth_args_success(self, mock_args):
         ApiKeyAuthService.validate_api_key_auth_args(mock_args)
