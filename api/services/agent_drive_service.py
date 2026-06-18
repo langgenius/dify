@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import logging
 import re
+import urllib.parse
 from typing import Any, Literal
 
 from pydantic import BaseModel
@@ -386,7 +387,12 @@ class AgentDriveService:
 
     @staticmethod
     def _resolve_download_url(
-        *, tenant_id: str, file_kind: AgentDriveFileKind, file_id: str, for_external: bool = False
+        *,
+        tenant_id: str,
+        file_kind: AgentDriveFileKind,
+        file_id: str,
+        for_external: bool = False,
+        as_attachment: bool = False,
     ) -> str | None:
         """Signed URL for a drive value. ``for_external`` selects the audience:
         the inner manifest hands agents *internal* URLs, while the console
@@ -398,10 +404,22 @@ class AgentDriveService:
         controller = DatabaseFileAccessController()
         runtime = DifyWorkflowFileRuntime(file_access_controller=controller)
         try:
+            if file_kind == AgentDriveFileKind.UPLOAD_FILE:
+                return runtime.resolve_upload_file_url(
+                    upload_file_id=file_id,
+                    for_external=for_external,
+                    as_attachment=as_attachment,
+                )
             # No FileAccessScope bound -> drive-owned: the builders still filter by
             # tenant_id, so resolution is tenant-scoped without user-level checks.
             file = file_factory.build_from_mapping(mapping=mapping, tenant_id=tenant_id, access_controller=controller)
-            return runtime.resolve_file_url(file=file, for_external=for_external)
+            url = runtime.resolve_file_url(file=file, for_external=for_external)
+            if as_attachment and url:
+                parsed = urllib.parse.urlsplit(url)
+                query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+                query.append(("as_attachment", "true"))
+                return urllib.parse.urlunsplit(parsed._replace(query=urllib.parse.urlencode(query)))
+            return url
         except ValueError:
             return None
 
@@ -475,7 +493,11 @@ class AgentDriveService:
             self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
             row = self._require_row(session, tenant_id=tenant_id, agent_id=agent_id, key=key)
             url = self._resolve_download_url(
-                tenant_id=tenant_id, file_kind=row.file_kind, file_id=row.file_id, for_external=True
+                tenant_id=tenant_id,
+                file_kind=row.file_kind,
+                file_id=row.file_id,
+                for_external=True,
+                as_attachment=True,
             )
         if url is None:
             raise AgentDriveError("drive_key_not_found", "drive value cannot be resolved", status_code=404)

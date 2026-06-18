@@ -114,11 +114,21 @@ class AgentLogsQuery(BaseModel):
     page: int = Field(default=1, ge=1, description="Page number")
     limit: int = Field(default=20, ge=1, le=100, description="Page size")
     keyword: str | None = Field(default=None, description="Search query, answer, or conversation name")
-    status: str | None = Field(default=None, description="Filter by success, failed, or paused")
+    status: str | None = Field(default=None, description="Deprecated single status filter")
+    statuses: list[str] = Field(default_factory=list, description="Filter by one or more of success, failed, paused")
     source: str | None = Field(
         default=None,
-        description="Filter by all, console/explore, api/service-api, web-app, debugger, openapi, or trigger",
+        description="Deprecated single source filter",
     )
+    sources: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Filter by one or more source IDs, e.g. webapp:<app_id> "
+            "or workflow:<app_id>:<workflow_id>:<version>:<node_id>"
+        ),
+    )
+    sort_by: str = Field(default="updated_at", description="Sort by created_at or updated_at")
+    sort_order: str = Field(default="desc", description="Sort order: asc or desc")
     start: str | None = Field(default=None, description="Start date (YYYY-MM-DD HH:MM)")
     end: str | None = Field(default=None, description="End date (YYYY-MM-DD HH:MM)")
 
@@ -128,6 +138,33 @@ class AgentLogsQuery(BaseModel):
         if value == "":
             return None
         return value
+
+    @field_validator("statuses", "sources", mode="before")
+    @classmethod
+    def empty_list_values_to_list(cls, value: object) -> list[str]:
+        if value in (None, ""):
+            return []
+        if isinstance(value, str):
+            return [value]
+        if isinstance(value, list):
+            return [item for item in value if item]
+        return []
+
+    @field_validator("sort_by")
+    @classmethod
+    def validate_sort_by(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if normalized not in {"created_at", "updated_at"}:
+            raise ValueError("sort_by must be created_at or updated_at")
+        return normalized
+
+    @field_validator("sort_order")
+    @classmethod
+    def validate_sort_order(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if normalized not in {"asc", "desc"}:
+            raise ValueError("sort_order must be asc or desc")
+        return normalized
 
 
 class AgentStatisticsQuery(BaseModel):
@@ -298,6 +335,18 @@ def _parse_observability_time_range(start: str | None, end: str | None, account:
         abort(400, description=str(exc))
 
 
+def _multi_query_values(name: str, legacy_name: str | None = None) -> list[str]:
+    values: list[str] = []
+    for query_name in (name, f"{name}[]"):
+        values.extend(request.args.getlist(query_name))
+    if legacy_name:
+        values.extend(request.args.getlist(legacy_name))
+    parsed: list[str] = []
+    for value in values:
+        parsed.extend(item.strip() for item in value.split(",") if item.strip())
+    return parsed
+
+
 @console_ns.route("/agent")
 class AgentAppListApi(Resource):
     @console_ns.doc(params=query_params_from_model(AppListQuery))
@@ -463,7 +512,10 @@ class AgentLogsApi(Resource):
     @with_current_tenant_id
     def get(self, tenant_id: str, current_user: Account, agent_id: UUID):
         app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
-        query = AgentLogsQuery.model_validate(request.args.to_dict(flat=True))
+        query_data: dict[str, object] = dict(request.args.to_dict(flat=True))
+        query_data["sources"] = _multi_query_values("sources", "source")
+        query_data["statuses"] = _multi_query_values("statuses", "status")
+        query = AgentLogsQuery.model_validate(query_data)
         start, end = _parse_observability_time_range(query.start, query.end, current_user)
         try:
             payload = _agent_observability_service().list_logs(
@@ -473,8 +525,10 @@ class AgentLogsApi(Resource):
                     page=query.page,
                     limit=query.limit,
                     keyword=query.keyword,
-                    status=query.status,
-                    source=query.source,
+                    statuses=tuple(query.statuses),
+                    sources=tuple(query.sources),
+                    sort_by=query.sort_by,
+                    sort_order=query.sort_order,
                     start=start,
                     end=end,
                 ),
@@ -495,7 +549,10 @@ class AgentLogMessagesApi(Resource):
     @with_current_tenant_id
     def get(self, tenant_id: str, current_user: Account, agent_id: UUID, conversation_id: UUID):
         app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
-        query = AgentLogsQuery.model_validate(request.args.to_dict(flat=True))
+        query_data: dict[str, object] = dict(request.args.to_dict(flat=True))
+        query_data["sources"] = _multi_query_values("sources", "source")
+        query_data["statuses"] = _multi_query_values("statuses", "status")
+        query = AgentLogsQuery.model_validate(query_data)
         start, end = _parse_observability_time_range(query.start, query.end, current_user)
         try:
             payload = _agent_observability_service().list_log_messages(
@@ -506,8 +563,10 @@ class AgentLogMessagesApi(Resource):
                     page=query.page,
                     limit=query.limit,
                     keyword=query.keyword,
-                    status=query.status,
-                    source=query.source,
+                    statuses=tuple(query.statuses),
+                    sources=tuple(query.sources),
+                    sort_by=query.sort_by,
+                    sort_order=query.sort_order,
                     start=start,
                     end=end,
                 ),
