@@ -261,6 +261,10 @@ class TestDatasetApiKeyListResource:
         db_session_with_containers: Session,
     ) -> None:
         client, headers, dataset = setup_dataset
+        # Capture ids up front: the commit below expires these instances and the
+        # subsequent request teardown detaches them, so reading dataset.id afterwards
+        # would raise DetachedInstanceError.
+        dataset_id = dataset.id
         other_dataset = Dataset(
             tenant_id=dataset.tenant_id,
             name=f"Other Dataset {uuid4()}",
@@ -272,11 +276,12 @@ class TestDatasetApiKeyListResource:
         )
         db_session_with_containers.add(other_dataset)
         db_session_with_containers.commit()
+        other_dataset_id = other_dataset.id
 
-        other_resp = client.post(f"/console/api/datasets/{other_dataset.id}/api-keys", headers=headers)
+        other_resp = client.post(f"/console/api/datasets/{other_dataset_id}/api-keys", headers=headers)
         assert other_resp.status_code == 201
 
-        resp = client.get(f"/console/api/datasets/{dataset.id}/api-keys", headers=headers)
+        resp = client.get(f"/console/api/datasets/{dataset_id}/api-keys", headers=headers)
 
         assert resp.status_code == 200
         assert resp.json is not None

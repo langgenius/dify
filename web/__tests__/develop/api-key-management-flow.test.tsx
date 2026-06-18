@@ -69,6 +69,7 @@ vi.mock('@/service/use-apps', () => ({
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
   useDatasetApiKeys: () => ({ data: null, isLoading: false }),
+  useDatasetScopedApiKeys: () => ({ data: null, isLoading: false }),
   useInvalidateDatasetApiKeys: () => vi.fn(),
 }))
 
