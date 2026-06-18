@@ -325,7 +325,6 @@
   "roster.createAgentOptions": "创建智能体选项",
   "roster.createDialog.description": "在当前工作区 Roster 中创建一个可复用智能体。",
   "roster.createDialog.title": "创建智能体",
-  "roster.createFailed": "智能体创建失败。",
   "roster.createForm.changeIcon": "更换智能体图标",
   "roster.createForm.descriptionLabel": "描述",
   "roster.createForm.descriptionOptional": "（可选）",
@@ -379,7 +378,6 @@
   "roster.tabs.agent": "智能体",
   "roster.tabs.human": "人工成员",
   "roster.tabsLabel": "Roster 类型",
-  "roster.updateFailed": "智能体更新失败。请检查字段后重试。",
   "roster.updateSuccess": "智能体已更新。",
   "roster.usageStatus.draft": "草稿"
 }

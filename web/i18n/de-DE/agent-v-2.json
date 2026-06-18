@@ -325,7 +325,6 @@
   "roster.createAgentOptions": "Optionen zum Erstellen eines Agenten",
   "roster.createDialog.description": "Erstellen Sie einen wiederverwendbaren Agenten im Roster dieses Workspaces.",
   "roster.createDialog.title": "Agent erstellen",
-  "roster.createFailed": "Agent konnte nicht erstellt werden.",
   "roster.createForm.changeIcon": "Agenten-Symbol ändern",
   "roster.createForm.descriptionLabel": "Beschreibung",
   "roster.createForm.descriptionOptional": "(optional)",
@@ -379,7 +378,6 @@
   "roster.tabs.agent": "Agent",
   "roster.tabs.human": "Mensch",
   "roster.tabsLabel": "Roster-Typ",
-  "roster.updateFailed": "Agent konnte nicht aktualisiert werden. Bitte Felder überprüfen und erneut versuchen.",
   "roster.updateSuccess": "Agent aktualisiert.",
   "roster.usageStatus.draft": "Entwurf"
 }

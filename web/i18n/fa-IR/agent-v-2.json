@@ -325,7 +325,6 @@
   "roster.createAgentOptions": "گزینه‌های ایجاد عامل",
   "roster.createDialog.description": "یک عامل قابل استفاده مجدد در Roster این فضای کاری ایجاد کنید.",
   "roster.createDialog.title": "ایجاد عامل",
-  "roster.createFailed": "ایجاد عامل ناموفق بود.",
   "roster.createForm.changeIcon": "تغییر آیکون عامل",
   "roster.createForm.descriptionLabel": "توضیحات",
   "roster.createForm.descriptionOptional": "(اختیاری)",
@@ -379,7 +378,6 @@
   "roster.tabs.agent": "عامل",
   "roster.tabs.human": "انسان",
   "roster.tabsLabel": "نوع Roster",
-  "roster.updateFailed": "به‌روزرسانی عامل ناموفق بود. فیلدها را بررسی کنید و دوباره امتحان کنید.",
   "roster.updateSuccess": "عامل به‌روزرسانی شد.",
   "roster.usageStatus.draft": "پیش‌نویس"
 }

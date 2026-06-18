@@ -325,7 +325,6 @@
   "roster.createAgentOptions": "Opties voor agent aanmaken",
   "roster.createDialog.description": "Maak een herbruikbare agent in het roster van deze werkruimte.",
   "roster.createDialog.title": "Agent aanmaken",
-  "roster.createFailed": "Aanmaken van agent mislukt.",
   "roster.createForm.changeIcon": "Agentpictogram wijzigen",
   "roster.createForm.descriptionLabel": "Beschrijving",
   "roster.createForm.descriptionOptional": "(optioneel)",
@@ -379,7 +378,6 @@
   "roster.tabs.agent": "Agent",
   "roster.tabs.human": "Mens",
   "roster.tabsLabel": "Rostertype",
-  "roster.updateFailed": "Bijwerken van agent mislukt. Controleer de velden en probeer het opnieuw.",
   "roster.updateSuccess": "Agent bijgewerkt.",
   "roster.usageStatus.draft": "Concept"
 }

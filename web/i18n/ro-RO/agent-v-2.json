@@ -325,7 +325,6 @@
   "roster.createAgentOptions": "Opțiuni de creare agent",
   "roster.createDialog.description": "Creați un agent reutilizabil în roster-ul acestui workspace.",
   "roster.createDialog.title": "Creează agent",
-  "roster.createFailed": "Crearea agentului a eșuat.",
   "roster.createForm.changeIcon": "Schimbă pictograma agentului",
   "roster.createForm.descriptionLabel": "Descriere",
   "roster.createForm.descriptionOptional": "(opțional)",
@@ -379,7 +378,6 @@
   "roster.tabs.agent": "Agent",
   "roster.tabs.human": "Uman",
   "roster.tabsLabel": "Tip de roster",
-  "roster.updateFailed": "Actualizarea agentului a eșuat. Verificați câmpurile și încercați din nou.",
   "roster.updateSuccess": "Agent actualizat.",
   "roster.usageStatus.draft": "Ciornă"
 }

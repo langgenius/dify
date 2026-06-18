@@ -325,7 +325,6 @@
   "roster.createAgentOptions": "Opsi buat agen",
   "roster.createDialog.description": "Buat agen yang dapat digunakan kembali di Roster ruang kerja ini.",
   "roster.createDialog.title": "Buat agen",
-  "roster.createFailed": "Gagal membuat agen.",
   "roster.createForm.changeIcon": "Ubah ikon agen",
   "roster.createForm.descriptionLabel": "Deskripsi",
   "roster.createForm.descriptionOptional": "(opsional)",
@@ -379,7 +378,6 @@
   "roster.tabs.agent": "Agen",
   "roster.tabs.human": "Manusia",
   "roster.tabsLabel": "Tipe Roster",
-  "roster.updateFailed": "Gagal memperbarui agen. Periksa field dan coba lagi.",
   "roster.updateSuccess": "Agen diperbarui.",
   "roster.usageStatus.draft": "Draf"
 }

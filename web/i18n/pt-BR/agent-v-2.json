@@ -325,7 +325,6 @@
   "roster.createAgentOptions": "Opções de criação de agente",
   "roster.createDialog.description": "Crie um agente reutilizável no roster deste workspace.",
   "roster.createDialog.title": "Criar agente",
-  "roster.createFailed": "Falha ao criar o agente.",
   "roster.createForm.changeIcon": "Alterar ícone do agente",
   "roster.createForm.descriptionLabel": "Descrição",
   "roster.createForm.descriptionOptional": "(opcional)",
@@ -379,7 +378,6 @@
   "roster.tabs.agent": "Agente",
   "roster.tabs.human": "Humano",
   "roster.tabsLabel": "Tipo de roster",
-  "roster.updateFailed": "Falha ao atualizar o agente. Verifique os campos e tente novamente.",
   "roster.updateSuccess": "Agente atualizado.",
   "roster.usageStatus.draft": "Rascunho"
 }

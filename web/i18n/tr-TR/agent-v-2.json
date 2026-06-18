@@ -325,7 +325,6 @@
   "roster.createAgentOptions": "Ajan oluşturma seçenekleri",
   "roster.createDialog.description": "Bu çalışma alanı Roster'ında yeniden kullanılabilir bir ajan oluşturun.",
   "roster.createDialog.title": "Ajan oluştur",
-  "roster.createFailed": "Ajan oluşturulamadı.",
   "roster.createForm.changeIcon": "Ajan simgesini değiştir",
   "roster.createForm.descriptionLabel": "Açıklama",
   "roster.createForm.descriptionOptional": "(isteğe bağlı)",
@@ -379,7 +378,6 @@
   "roster.tabs.agent": "Ajan",
   "roster.tabs.human": "İnsan",
   "roster.tabsLabel": "Roster türü",
-  "roster.updateFailed": "Ajan güncellenemedi. Alanları kontrol edip tekrar deneyin.",
   "roster.updateSuccess": "Ajan güncellendi.",
   "roster.usageStatus.draft": "Taslak"
 }

@@ -325,7 +325,6 @@
   "roster.createAgentOptions": "에이전트 만들기 옵션",
   "roster.createDialog.description": "이 워크스페이스 Roster 에 재사용 가능한 에이전트를 만듭니다.",
   "roster.createDialog.title": "에이전트 만들기",
-  "roster.createFailed": "에이전트 생성에 실패했습니다.",
   "roster.createForm.changeIcon": "에이전트 아이콘 변경",
   "roster.createForm.descriptionLabel": "설명",
   "roster.createForm.descriptionOptional": "(선택 사항)",
@@ -379,7 +378,6 @@
   "roster.tabs.agent": "에이전트",
   "roster.tabs.human": "사람",
   "roster.tabsLabel": "Roster 유형",
-  "roster.updateFailed": "에이전트 업데이트에 실패했습니다. 필드를 확인 후 다시 시도하세요.",
   "roster.updateSuccess": "에이전트가 업데이트되었습니다.",
   "roster.usageStatus.draft": "초안"
 }

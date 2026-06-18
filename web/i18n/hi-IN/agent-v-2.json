@@ -325,7 +325,6 @@
   "roster.createAgentOptions": "एजेंट बनाने के विकल्प",
   "roster.createDialog.description": "इस कार्यक्षेत्र Roster में एक पुनः उपयोग योग्य एजेंट बनाएँ।",
   "roster.createDialog.title": "एजेंट बनाएँ",
-  "roster.createFailed": "एजेंट बनाने में विफल।",
   "roster.createForm.changeIcon": "एजेंट आइकन बदलें",
   "roster.createForm.descriptionLabel": "विवरण",
   "roster.createForm.descriptionOptional": "(वैकल्पिक)",
@@ -379,7 +378,6 @@
   "roster.tabs.agent": "एजेंट",
   "roster.tabs.human": "मानव",
   "roster.tabsLabel": "Roster प्रकार",
-  "roster.updateFailed": "एजेंट अपडेट करने में विफल। फ़ील्ड जाँचें और पुनः प्रयास करें।",
   "roster.updateSuccess": "एजेंट अपडेट हो गया।",
   "roster.usageStatus.draft": "ड्राफ्ट"
 }

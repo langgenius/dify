@@ -325,7 +325,6 @@
   "roster.createAgentOptions": "Možnosti ustvarjanja agenta",
   "roster.createDialog.description": "Ustvarite ponovno uporabnega agenta v Roster tega delovnega prostora.",
   "roster.createDialog.title": "Ustvari agenta",
-  "roster.createFailed": "Agenta ni bilo mogoče ustvariti.",
   "roster.createForm.changeIcon": "Spremeni ikono agenta",
   "roster.createForm.descriptionLabel": "Opis",
   "roster.createForm.descriptionOptional": "(neobvezno)",
@@ -379,7 +378,6 @@
   "roster.tabs.agent": "Agent",
   "roster.tabs.human": "Človek",
   "roster.tabsLabel": "Tip Roster",
-  "roster.updateFailed": "Agenta ni bilo mogoče posodobiti. Preverite polja in poskusite znova.",
   "roster.updateSuccess": "Agent posodobljen.",
   "roster.usageStatus.draft": "Osnutek"
 }

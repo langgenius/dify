@@ -325,7 +325,6 @@
   "roster.createAgentOptions": "ตัวเลือกการสร้างตัวแทน",
   "roster.createDialog.description": "สร้างตัวแทนที่นำกลับมาใช้ใหม่ได้ใน Roster ของเวิร์กสเปซนี้",
   "roster.createDialog.title": "สร้างตัวแทน",
-  "roster.createFailed": "สร้างตัวแทนไม่สำเร็จ",
   "roster.createForm.changeIcon": "เปลี่ยนไอคอนตัวแทน",
   "roster.createForm.descriptionLabel": "คำอธิบาย",
   "roster.createForm.descriptionOptional": "(ตัวเลือก)",
@@ -379,7 +378,6 @@
   "roster.tabs.agent": "ตัวแทน",
   "roster.tabs.human": "บุคคล",
   "roster.tabsLabel": "ประเภท Roster",
-  "roster.updateFailed": "อัปเดตตัวแทนไม่สำเร็จ ตรวจสอบฟิลด์และลองอีกครั้ง",
   "roster.updateSuccess": "อัปเดตตัวแทนแล้ว",
   "roster.usageStatus.draft": "ฉบับร่าง"
 }

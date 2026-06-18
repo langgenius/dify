@@ -325,7 +325,6 @@
   "roster.createAgentOptions": "Варианты создания агента",
   "roster.createDialog.description": "Создайте переиспользуемого агента в Roster этого рабочего пространства.",
   "roster.createDialog.title": "Создать агента",
-  "roster.createFailed": "Не удалось создать агента.",
   "roster.createForm.changeIcon": "Сменить иконку агента",
   "roster.createForm.descriptionLabel": "Описание",
   "roster.createForm.descriptionOptional": "(необязательно)",
@@ -379,7 +378,6 @@
   "roster.tabs.agent": "Агент",
   "roster.tabs.human": "Человек",
   "roster.tabsLabel": "Тип Roster",
-  "roster.updateFailed": "Не удалось обновить агента. Проверьте поля и попробуйте снова.",
   "roster.updateSuccess": "Агент обновлён.",
   "roster.usageStatus.draft": "Черновик"
 }

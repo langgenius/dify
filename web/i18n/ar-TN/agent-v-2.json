@@ -325,7 +325,6 @@
   "roster.createAgentOptions": "خيارات إنشاء الوكيل",
   "roster.createDialog.description": "أنشئ وكيلاً قابلاً لإعادة الاستخدام في Roster مساحة العمل هذه.",
   "roster.createDialog.title": "إنشاء وكيل",
-  "roster.createFailed": "فشل إنشاء الوكيل.",
   "roster.createForm.changeIcon": "تغيير أيقونة الوكيل",
   "roster.createForm.descriptionLabel": "الوصف",
   "roster.createForm.descriptionOptional": "(اختياري)",
@@ -379,7 +378,6 @@
   "roster.tabs.agent": "وكيل",
   "roster.tabs.human": "إنسان",
   "roster.tabsLabel": "نوع Roster",
-  "roster.updateFailed": "فشل تحديث الوكيل. تحقق من الحقول وحاول مرة أخرى.",
   "roster.updateSuccess": "تم تحديث الوكيل.",
   "roster.usageStatus.draft": "مسودة"
 }
