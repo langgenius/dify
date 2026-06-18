@@ -296,6 +296,12 @@ def test_validate_top_k_uses_default_only_when_missing(oracle_module):
     assert oracle_module.validate_top_k("8", 4) == 8
 
 
+def test_oracle_text_query_keeps_split_safe_tokens(oracle_module):
+    assert oracle_module.build_oracle_text_query(["AI/SQL", "vector-search"]) == (
+        "AI ACCUM SQL ACCUM vector ACCUM search"
+    )
+
+
 def test_add_texts_batch_upserts_by_id(oracle_module):
     vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
     vector.table_name = "embedding_collection_1"

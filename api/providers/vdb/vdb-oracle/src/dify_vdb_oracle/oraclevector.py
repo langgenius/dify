@@ -189,28 +189,27 @@ def validate_document_embeddings(documents: list[Document], embeddings: list[lis
     return dimension
 
 
-def sanitize_oracle_text_token(token: str) -> str | None:
+def sanitize_oracle_text_token(token: str) -> list[str]:
     parts = ORACLE_TEXT_SAFE_TOKEN.findall(str(token))
     if not parts:
-        return None
-    sanitized = "".join(parts)
-    if sanitized.upper() in ORACLE_TEXT_RESERVED_TOKENS:
-        return None
-    return sanitized
+        return []
+    return [
+        part
+        for part in parts
+        if part.upper() not in ORACLE_TEXT_RESERVED_TOKENS
+    ]
 
 
 def build_oracle_text_query(tokens: list[str]) -> str | None:
     safe_tokens = []
     seen = set()
     for token in tokens:
-        sanitized = sanitize_oracle_text_token(token)
-        if not sanitized:
-            continue
-        normalized = sanitized.casefold()
-        if normalized in seen:
-            continue
-        seen.add(normalized)
-        safe_tokens.append(sanitized)
+        for sanitized in sanitize_oracle_text_token(token):
+            normalized = sanitized.casefold()
+            if normalized in seen:
+                continue
+            seen.add(normalized)
+            safe_tokens.append(sanitized)
 
     if not safe_tokens:
         return None
