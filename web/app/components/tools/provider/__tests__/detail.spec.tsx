@@ -13,9 +13,15 @@ vi.mock('@/i18n-config/language', () => ({
 }))
 
 const mockIsCurrentWorkspaceManager = vi.fn(() => true)
+const mockAppContextState = vi.hoisted(() => ({
+  workspacePermissionKeys: ['tool.manage'] as string[],
+}))
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
+  }),
+  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+    workspacePermissionKeys: mockAppContextState.workspacePermissionKeys,
   }),
 }))
 
@@ -167,6 +173,7 @@ describe('ProviderDetail', () => {
     ])
     mockFetchCustomToolList.mockResolvedValue([])
     mockFetchModelToolList.mockResolvedValue([])
+    mockAppContextState.workspacePermissionKeys = ['tool.manage']
   })
 
   afterEach(() => {
@@ -330,6 +337,24 @@ describe('ProviderDetail', () => {
 
       expect(configureButton.querySelector('.i-ri-equalizer-2-line')).toBeInTheDocument()
     })
+
+    it('does not fetch or enable custom tool management without tool.manage', async () => {
+      mockAppContextState.workspacePermissionKeys = []
+
+      render(
+        <ProviderDetail
+          collection={createMockCollection({ type: CollectionType.custom })}
+          onHide={mockOnHide}
+          onRefreshData={mockOnRefreshData}
+        />,
+      )
+
+      const configureButton = (await screen.findByText('tools.createTool.editAction')).closest('button')!
+
+      expect(mockFetchCustomCollection).not.toHaveBeenCalled()
+      expect(mockFetchCustomToolList).not.toHaveBeenCalled()
+      expect(configureButton).toBeDisabled()
+    })
   })
 
   describe('Workflow Collection', () => {
@@ -394,6 +419,22 @@ describe('ProviderDetail', () => {
       const actions = (await screen.findByText('tools.openInStudio')).closest('.border-b-\\[0\\.5px\\]')!
 
       expect(actions).toHaveClass('-mx-4', 'px-4', 'border-b-[0.5px]', 'border-divider-subtle')
+    })
+
+    it('does not fetch or show workflow tool edit actions without tool.manage', () => {
+      mockAppContextState.workspacePermissionKeys = []
+
+      render(
+        <ProviderDetail
+          collection={createMockCollection({ type: CollectionType.workflow })}
+          onHide={mockOnHide}
+          onRefreshData={mockOnRefreshData}
+        />,
+      )
+
+      expect(mockFetchWorkflowToolDetail).not.toHaveBeenCalled()
+      expect(screen.queryByText('tools.openInStudio')).not.toBeInTheDocument()
+      expect(screen.queryByText('tools.createTool.editAction')).not.toBeInTheDocument()
     })
   })
 

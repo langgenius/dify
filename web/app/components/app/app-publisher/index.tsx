@@ -26,6 +26,7 @@ import EmbeddedModal from '@/app/components/app/overview/embedded'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
+import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
 import { useConfigureButton } from '@/app/components/tools/workflow-tool/hooks/use-configure-button'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
@@ -127,6 +128,7 @@ export function AppPublisher({
 
   const workflowStore = use(WorkflowContext)
   const appDetail = useAppStore(state => state.appDetail)
+  const canManageTools = useCanManageTools()
   const queryClient = useQueryClient()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { formatTimeFromNow } = useFormatTimeFromNow()
@@ -319,10 +321,11 @@ export function AppPublisher({
   }, [appDetail?.id, invalidateAppWorkflow, workflowStore])
 
   const hasPublishedVersion = !!publishedAt
+  const workflowToolVisible = appDetail?.mode === AppModeEnum.WORKFLOW && !hasHumanInputNode && !hasTriggerNode
+  const workflowToolAvailableForUser = workflowToolAvailable && canManageTools
   const workflowToolMessage = !hasPublishedVersion || !workflowToolAvailable
     ? t('common.workflowAsToolDisabledHint', { ns: 'workflow' })
     : undefined
-  const workflowToolVisible = appDetail?.mode === AppModeEnum.WORKFLOW && !hasHumanInputNode && !hasTriggerNode
   const workflowToolPublished = !!toolPublished
   function closeWorkflowToolDrawer() {
     setWorkflowToolDrawerOpen(false)
@@ -332,7 +335,7 @@ export function AppPublisher({
     background: (appDetail?.icon_type === 'image' ? appDefaultIconBackground : appDetail?.icon_background) || appDefaultIconBackground,
   }
   const workflowTool = useConfigureButton({
-    enabled: workflowToolVisible,
+    enabled: workflowToolVisible && canManageTools,
     published: workflowToolPublished,
     detailNeedUpdate: workflowToolPublished && published,
     workflowAppId: appDetail?.id ?? '',
@@ -346,6 +349,9 @@ export function AppPublisher({
     onConfigured: closeWorkflowToolDrawer,
   })
   function openWorkflowToolDrawer() {
+    if (!canManageTools)
+      return
+
     handleOpenChange(false)
     setWorkflowToolDrawerOpen(true)
   }
@@ -429,7 +435,7 @@ export function AppPublisher({
               showBatchRunConfig={hiddenLaunchVariables.length > 0 && (appDetail?.mode === AppModeEnum.WORKFLOW || appDetail?.mode === AppModeEnum.COMPLETION)}
               showRunConfig={hiddenLaunchVariables.length > 0}
               toolPublished={toolPublished}
-              workflowToolAvailable={workflowToolAvailable}
+              workflowToolAvailable={workflowToolAvailableForUser}
               workflowToolIsLoading={workflowTool.isLoading}
               workflowToolOutdated={workflowTool.outdated}
               workflowToolMessage={workflowToolMessage}
@@ -470,7 +476,7 @@ export function AppPublisher({
           onSubmit={handleWorkflowLaunchConfirm}
         />
       </Popover>
-      {workflowToolDrawerOpen && (
+      {workflowToolDrawerOpen && canManageTools && (
         <WorkflowToolDrawer
           isAdd={!workflowToolPublished}
           payload={workflowTool.payload}

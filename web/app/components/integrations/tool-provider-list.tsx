@@ -20,6 +20,7 @@ import Empty from '@/app/components/plugins/marketplace/empty'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
 import { useCanSetPluginSettings } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from '@/app/components/tools/content-inset'
+import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import Marketplace from '@/app/components/tools/marketplace'
 import MCPList from '@/app/components/tools/mcp'
 import ProviderDetail from '@/app/components/tools/provider/detail'
@@ -89,6 +90,7 @@ const ProviderList = ({
   const {
     canSetPermissions,
   } = useCanSetPluginSettings()
+  const canManageTools = useCanManageTools()
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
@@ -98,10 +100,16 @@ const ProviderList = ({
   const toolListFrameClassName = cn(contentPaddingClassName, toolsUnifiedContentFrameClassName)
   const showToolsUpdateSetting = activeTab === 'builtin' && canSetPermissions
   const showLabelFilter = activeTab === 'builtin'
+  const isToolManageTab = activeTab === 'api' || activeTab === 'workflow'
+  const canReadActiveTab = !isToolManageTab || canManageTools
   const options = [
     { value: 'builtin', text: t('type.builtIn', { ns: 'tools' }) },
-    { value: 'api', text: t('type.custom', { ns: 'tools' }) },
-    { value: 'workflow', text: t('type.workflow', { ns: 'tools' }) },
+    ...(canManageTools
+      ? [
+          { value: 'api', text: t('type.custom', { ns: 'tools' }) },
+          { value: 'workflow', text: t('type.workflow', { ns: 'tools' }) },
+        ]
+      : []),
     { value: 'mcp', text: 'MCP' },
   ]
   const [tagFilterValue, setTagFilterValue] = useState<string[]>([])
@@ -119,16 +127,19 @@ const ProviderList = ({
   const handleCreatedMCPProviderHandled = useCallback(() => {
     setCreatedMCPProviderId(undefined)
   }, [])
-  const { data: collectionList = [], isLoading: isCollectionListLoading, refetch } = useAllToolProviders()
+  const { data: collectionList = [], isLoading: isCollectionListLoading, refetch } = useAllToolProviders(canReadActiveTab)
   const activeTabCollectionList = useMemo(() => {
+    if (!canReadActiveTab)
+      return []
+
     return collectionList.filter(collection => collection.type === activeTab)
-  }, [activeTab, collectionList])
+  }, [activeTab, canReadActiveTab, collectionList])
   const hasCategoryCollections = activeTabCollectionList.length > 0
-  const shouldShowCustomToolCreateCard = !(activeTab === 'api' && !isCollectionListLoading && hasCategoryCollections)
+  const shouldShowCustomToolCreateCard = canManageTools && !(activeTab === 'api' && !isCollectionListLoading && hasCategoryCollections)
   const shouldShowMCPCreateCard = !(activeTab === 'mcp' && hasCategoryCollections)
   const shouldShowToolbarCreateAction
     = (activeTab === 'mcp' && hasCategoryCollections)
-      || (activeTab === 'api' && !isCollectionListLoading && hasCategoryCollections)
+      || (activeTab === 'api' && canManageTools && !isCollectionListLoading && hasCategoryCollections)
   const filteredCollectionList = useMemo(() => {
     return activeTabCollectionList.filter((collection) => {
       if (showLabelFilter && tagFilterValue.length > 0 && (!collection.labels || collection.labels.every(label => !tagFilterValue.includes(label))))

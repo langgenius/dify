@@ -19,6 +19,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
+import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import AllTools from '@/app/components/workflow/block-selector/all-tools'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import {
@@ -68,6 +69,7 @@ const ToolPicker: FC<Props> = ({
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
   const [tags, setTags] = useState<string[]>([])
+  const canManageTools = useCanManageTools()
   const sideOffset = typeof offset === 'number' ? offset : (typeof offset === 'function' ? 0 : (offset?.mainAxis ?? 0))
   const alignOffset = typeof offset === 'number' ? 0 : (typeof offset === 'function' ? 0 : (offset?.crossAxis ?? 0))
 
@@ -76,9 +78,11 @@ const ToolPicker: FC<Props> = ({
     select: s => s.enable_marketplace,
   })
   const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
+  const shouldFetchCustomTools = scope !== 'plugins' && scope !== 'workflow'
+  const { data: customTools } = useAllCustomTools(shouldFetchCustomTools)
   const invalidateCustomTools = useInvalidateAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
+  const shouldFetchWorkflowTools = scope !== 'plugins' && scope !== 'custom'
+  const { data: workflowTools } = useAllWorkflowTools(shouldFetchWorkflowTools)
   const { data: mcpTools } = useAllMCPTools()
   const invalidateBuiltInTools = useInvalidateAllBuiltInTools()
   const invalidateWorkflowTools = useInvalidateAllWorkflowTools()
@@ -140,13 +144,16 @@ const ToolPicker: FC<Props> = ({
   }] = useBoolean(false)
 
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
+    if (!canManageTools)
+      return
+
     await createCustomCollection(data)
     toast.success(t('api.actionSuccess', { ns: 'common' }))
     hideEditCustomCollectionModal()
     handleAddedCustomTool()
   }
 
-  if (isShowEditCollectionToolModal) {
+  if (isShowEditCollectionToolModal && canManageTools) {
     return (
       <EditCustomToolModal
         dialogClassName="bg-background-overlay"
@@ -183,7 +190,7 @@ const ToolPicker: FC<Props> = ({
               tags={tags}
               onTagsChange={setTags}
               placeholder={t('searchTools', { ns: 'plugin' })!}
-              supportAddCustomTool={supportAddCustomTool}
+              supportAddCustomTool={supportAddCustomTool && canManageTools}
               onAddedCustomTool={handleAddedCustomTool}
               onShowAddCustomCollectionModal={showEditCustomCollectionModal}
               inputClassName="grow"

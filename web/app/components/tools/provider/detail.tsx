@@ -36,6 +36,7 @@ import Description from '@/app/components/plugins/card/base/description'
 import OrgInfo from '@/app/components/plugins/card/base/org-info'
 import Title from '@/app/components/plugins/card/base/title'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
+import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
 import { useAppContext } from '@/context/app-context'
@@ -82,6 +83,7 @@ const ProviderDetail = ({
   const isBuiltIn = collection.type === CollectionType.builtIn
   const isModel = collection.type === CollectionType.model
   const { isCurrentWorkspaceManager } = useAppContext()
+  const canManageTools = useCanManageTools()
   const invalidateAllWorkflowTools = useInvalidateAllWorkflowTools()
   const [isDetailLoading, setIsDetailLoading] = useState(false)
 
@@ -116,6 +118,9 @@ const ProviderDetail = ({
   const [deleteAction, setDeleteAction] = useState('')
 
   const getCustomProvider = useCallback(async () => {
+    if (!canManageTools)
+      return
+
     setIsDetailLoading(true)
     const res = await fetchCustomCollection(collection.name)
     if (res.credentials.auth_type === AuthType.apiKey && !res.credentials.api_key_header_prefix) {
@@ -128,9 +133,12 @@ const ProviderDetail = ({
       provider: collection.name,
     })
     setIsDetailLoading(false)
-  }, [collection.labels, collection.name])
+  }, [canManageTools, collection.labels, collection.name])
 
   const doUpdateCustomToolCollection = async (data: CustomCollectionBackend) => {
+    if (!canManageTools)
+      return
+
     await updateCustomCollection(data)
     onRefreshData()
     await getCustomProvider()
@@ -140,6 +148,9 @@ const ProviderDetail = ({
     setIsShowEditCustomCollectionModal(false)
   }
   const doRemoveCustomToolCollection = async () => {
+    if (!canManageTools)
+      return
+
     await removeCustomCollection(collection?.name as string)
     onRefreshData()
     toast.success(t('api.actionSuccess', { ns: 'common' }))
@@ -148,6 +159,9 @@ const ProviderDetail = ({
   // workflow provider
   const [workflowToolDrawerOpen, setWorkflowToolDrawerOpen] = useState(false)
   const getWorkflowToolProvider = useCallback(async () => {
+    if (!canManageTools)
+      return
+
     setIsDetailLoading(true)
     const res = await fetchWorkflowToolDetail(collection.id)
     const payload = {
@@ -165,8 +179,11 @@ const ProviderDetail = ({
     }
     setCustomCollection(payload)
     setIsDetailLoading(false)
-  }, [collection.id])
+  }, [canManageTools, collection.id])
   const removeWorkflowToolProvider = async () => {
+    if (!canManageTools)
+      return
+
     await deleteWorkflowTool(collection.id)
     onRefreshData()
     toast.success(t('api.actionSuccess', { ns: 'common' }))
@@ -176,6 +193,9 @@ const ProviderDetail = ({
     workflow_app_id: string
     workflow_tool_id: string
   }>) => {
+    if (!canManageTools)
+      return
+
     await saveWorkflowToolProvider(data)
     invalidateAllWorkflowTools()
     onRefreshData()
@@ -218,21 +238,27 @@ const ProviderDetail = ({
         setToolList([])
       }
       else {
+        if (!canManageTools) {
+          setToolList([])
+          setIsDetailLoading(false)
+          return
+        }
+
         const list = await fetchCustomToolList(collection.name)
         setToolList(list)
       }
     }
     catch { }
     setIsDetailLoading(false)
-  }, [collection.name, collection.type])
+  }, [canManageTools, collection.name, collection.type])
 
   useEffect(() => {
-    if (collection.type === CollectionType.custom)
+    if (collection.type === CollectionType.custom && canManageTools)
       getCustomProvider()
-    if (collection.type === CollectionType.workflow)
+    if (collection.type === CollectionType.workflow && canManageTools)
       getWorkflowToolProvider()
     getProviderToolList()
-  }, [collection.name, collection.type, getCustomProvider, getProviderToolList, getWorkflowToolProvider])
+  }, [canManageTools, collection.name, collection.type, getCustomProvider, getProviderToolList, getWorkflowToolProvider])
 
   return (
     <Drawer
@@ -288,6 +314,7 @@ const ProviderDetail = ({
                     <Button
                       className={cn('my-3 w-full shrink-0')}
                       onClick={() => setIsShowEditCustomCollectionModal(true)}
+                      disabled={!canManageTools}
                     >
                       <span aria-hidden className="mr-1 i-ri-equalizer-2-line size-4 text-components-button-secondary-text" />
                       <div className="system-sm-medium text-text-secondary">{t('createTool.editAction', { ns: 'tools' })}</div>
@@ -308,7 +335,7 @@ const ProviderDetail = ({
                         variant="secondary"
                         className={cn('my-3 h-8 min-w-0 flex-1 rounded-lg px-3 py-2')}
                         onClick={() => setWorkflowToolDrawerOpen(true)}
-                        disabled={!isCurrentWorkspaceManager}
+                        disabled={!canManageTools}
                       >
                         <span aria-hidden className="i-ri-equalizer-2-line size-4 shrink-0 text-components-button-secondary-text" />
                         <span className="min-w-0 truncate px-0.5 system-sm-medium text-components-button-secondary-text">{t('createTool.editAction', { ns: 'tools' })}</span>
@@ -414,7 +441,7 @@ const ProviderDetail = ({
                     }}
                   />
                 )}
-                {isShowEditCollectionToolModal && (
+                {isShowEditCollectionToolModal && canManageTools && (
                   <EditCustomToolModal
                     payload={customCollection}
                     onHide={() => setIsShowEditCustomCollectionModal(false)}
@@ -422,7 +449,7 @@ const ProviderDetail = ({
                     onRemove={onClickCustomToolDelete}
                   />
                 )}
-                {workflowToolDrawerOpen && (
+                {workflowToolDrawerOpen && canManageTools && (
                   <WorkflowToolDrawer
                     payload={customCollection as unknown as WorkflowToolDrawerPayload}
                     onHide={() => setWorkflowToolDrawerOpen(false)}
