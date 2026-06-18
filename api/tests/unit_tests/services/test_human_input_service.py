@@ -693,7 +693,9 @@ def test_enqueue_resume_app_not_found(mocker: MockerFixture, mock_session_factor
     logger_spy.error.assert_called_once()
 
 
-def test_is_globally_expired_zero_timeout(monkeypatch: pytest.MonkeyPatch, sample_form_record: HumanInputFormRecord, mock_session_factory):
+def test_is_globally_expired_zero_timeout(
+    monkeypatch: pytest.MonkeyPatch, sample_form_record: HumanInputFormRecord, mock_session_factory
+):
     session_factory, _ = mock_session_factory
     service = HumanInputService(session_factory)
 
