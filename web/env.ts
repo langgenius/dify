@@ -255,7 +255,7 @@ type ClientEnvKey = keyof typeof clientSchema
 type DatasetKey = CamelCase<Replace<ClientEnvKey, typeof CLIENT_ENV_PREFIX>>
 
 function getDatasetAttributeName(envKey: ClientEnvKey) {
-  const datasetName = kebabCase(slice(envKey, length(CLIENT_ENV_PREFIX))).replace(/-([0-9])/g, '$1')
+  const datasetName = kebabCase(slice(envKey, length(CLIENT_ENV_PREFIX))).replace(/-(\d)/g, '$1')
   return concat('data-', datasetName)
 }
 
