@@ -405,7 +405,9 @@ class TestParagraphIndexProcessor:
             ),
         ):
             mock_provider_manager.return_value.get_provider_model_bundle.return_value = Mock()
-            with caplog.at_level(logging.WARNING, logger="core.rag.index_processor.processor.paragraph_index_processor"):
+            with caplog.at_level(
+                logging.WARNING, logger="core.rag.index_processor.processor.paragraph_index_processor"
+            ):
                 summary, usage = ParagraphIndexProcessor.generate_summary(
                     "tenant-1",
                     "text content",
@@ -416,10 +418,7 @@ class TestParagraphIndexProcessor:
         assert summary == "text summary"
         assert isinstance(usage, LLMUsage)
         assert sum(1 for r in caplog.records if r.levelno == logging.WARNING) == 1
-        assert any(
-            "Failed to deduct quota for summary generation" in record.message
-            for record in caplog.records
-        )
+        assert any("Failed to deduct quota for summary generation" in record.message for record in caplog.records)
 
     def test_generate_summary_handles_vision_and_image_conversion(self) -> None:
         model_instance = Mock()
@@ -490,7 +489,9 @@ class TestParagraphIndexProcessor:
         ):
             mock_provider_manager.return_value.get_provider_model_bundle.return_value = Mock()
             with pytest.raises(ValueError, match="Expected LLMResult"):
-                with caplog.at_level(logging.WARNING, logger="core.rag.index_processor.processor.paragraph_index_processor"):
+                with caplog.at_level(
+                    logging.WARNING, logger="core.rag.index_processor.processor.paragraph_index_processor"
+                ):
                     ParagraphIndexProcessor.generate_summary(
                         "tenant-1",
                         "text content",
@@ -499,8 +500,7 @@ class TestParagraphIndexProcessor:
 
         assert sum(1 for r in caplog.records if r.levelno == logging.WARNING) == 1
         assert any(
-            "Failed to convert image file to prompt message content" in record.message
-            for record in caplog.records
+            "Failed to convert image file to prompt message content" in record.message for record in caplog.records
         )
 
     def test_extract_images_from_text_handles_patterns_and_build_errors(self, caplog) -> None:
@@ -538,7 +538,9 @@ class TestParagraphIndexProcessor:
             "core.rag.index_processor.processor.paragraph_index_processor.build_from_mapping",
             return_value=SimpleNamespace(id="file-1"),
         ) as mock_builder:
-            with caplog.at_level(logging.WARNING, logger="core.rag.index_processor.processor.paragraph_index_processor"):
+            with caplog.at_level(
+                logging.WARNING, logger="core.rag.index_processor.processor.paragraph_index_processor"
+            ):
                 files = ParagraphIndexProcessor._extract_images_from_text("tenant-1", text, session)
 
         assert len(files) == 1
@@ -573,7 +575,9 @@ class TestParagraphIndexProcessor:
             "core.rag.index_processor.processor.paragraph_index_processor.build_from_mapping",
             side_effect=RuntimeError("build failed"),
         ):
-            with caplog.at_level(logging.WARNING, logger="core.rag.index_processor.processor.paragraph_index_processor"):
+            with caplog.at_level(
+                logging.WARNING, logger="core.rag.index_processor.processor.paragraph_index_processor"
+            ):
                 files = ParagraphIndexProcessor._extract_images_from_text("tenant-1", text, session)
 
         assert files == []

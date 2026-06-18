@@ -43,9 +43,8 @@ All tests use mocking to avoid external dependencies and ensure fast, reliable e
 Tests follow the Arrange-Act-Assert pattern for clarity.
 """
 
-import logging
-
 import base64
+import logging
 from decimal import Decimal
 from unittest.mock import Mock, patch
 
@@ -464,10 +463,7 @@ class TestCacheEmbeddingDocuments:
 
                 # Verify warning was logged
                 assert sum(1 for r in caplog.records if r.levelno == logging.WARNING) >= 1
-                assert any(
-                    "Normalized embedding is nan" in record.message
-                    for record in caplog.records
-                )
+                assert any("Normalized embedding is nan" in record.message for record in caplog.records)
 
     def test_embed_documents_api_connection_error(self, mock_model_instance):
         """Test handling of API connection errors during embedding.
