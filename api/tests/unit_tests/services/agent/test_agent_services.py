@@ -100,7 +100,7 @@ def test_agent_soul_has_model():
     assert agent_soul_has_model(AgentSoulConfig()) is False
 
 
-def test_load_workflow_composer_returns_empty_state(monkeypatch):
+def test_load_workflow_composer_returns_empty_state(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: None)
 
@@ -118,7 +118,7 @@ def test_load_workflow_composer_returns_empty_state(monkeypatch):
     assert files_output["array_item"] == {"type": "file", "description": None, "children": []}
 
 
-def test_load_workflow_composer_serializes_existing_binding(monkeypatch):
+def test_load_workflow_composer_serializes_existing_binding(monkeypatch: pytest.MonkeyPatch):
     binding = SimpleNamespace(
         agent_id="agent-1",
         binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
@@ -220,7 +220,7 @@ def test_save_workflow_composer_rejects_agent_app_variant():
         )
 
 
-def test_save_agent_app_composer_creates_agent_when_missing(monkeypatch):
+def test_save_agent_app_composer_creates_agent_when_missing(monkeypatch: pytest.MonkeyPatch):
     fake_session = FakeSession(scalar=[None])
     created_version = SimpleNamespace(id="version-1")
 
@@ -249,7 +249,7 @@ def test_save_agent_app_composer_creates_agent_when_missing(monkeypatch):
     assert fake_session.commits == 1
 
 
-def test_save_agent_app_composer_updates_current_version(monkeypatch):
+def test_save_agent_app_composer_updates_current_version(monkeypatch: pytest.MonkeyPatch):
     agent = SimpleNamespace(id="agent-1", active_config_snapshot_id="version-1", updated_by=None)
     fake_session = FakeSession(scalar=[agent])
     updated = {}
@@ -283,7 +283,7 @@ def test_save_agent_app_composer_updates_current_version(monkeypatch):
     assert fake_session.commits == 1
 
 
-def test_agent_app_composer_candidates_and_impact(monkeypatch):
+def test_agent_app_composer_candidates_and_impact(monkeypatch: pytest.MonkeyPatch):
     bindings = [
         SimpleNamespace(app_id="app-1", workflow_id="workflow-1", node_id="node-1"),
         SimpleNamespace(app_id="app-1", workflow_id="workflow-1", node_id="node-2"),
@@ -316,7 +316,7 @@ def test_agent_app_composer_candidates_and_impact(monkeypatch):
     assert impact["bindings"][1]["node_id"] == "node-2"
 
 
-def test_serialize_workflow_state_changes_lock_and_save_options(monkeypatch):
+def test_serialize_workflow_state_changes_lock_and_save_options(monkeypatch: pytest.MonkeyPatch):
     binding = WorkflowAgentNodeBinding(
         id="binding-1",
         tenant_id="tenant-1",
@@ -342,7 +342,7 @@ def test_serialize_workflow_state_changes_lock_and_save_options(monkeypatch):
     assert effective_names == ["text", "files", "json"]
 
 
-def test_serialize_workflow_state_passes_user_declared_outputs_through_effective(monkeypatch):
+def test_serialize_workflow_state_passes_user_declared_outputs_through_effective(monkeypatch: pytest.MonkeyPatch):
     binding = WorkflowAgentNodeBinding(
         id="binding-1",
         tenant_id="tenant-1",
@@ -369,7 +369,7 @@ def test_serialize_workflow_state_passes_user_declared_outputs_through_effective
     assert effective[0]["required"] is True
 
 
-def test_composer_save_helpers_create_and_rebind_agents(monkeypatch):
+def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.MonkeyPatch):
     fake_session = FakeSession()
     monkeypatch.setattr(composer_service.db, "session", fake_session)
     workflow_agent = SimpleNamespace(id="inline-agent-1", active_config_snapshot_id="inline-version-1")
@@ -611,7 +611,7 @@ def test_composer_create_agents_syncs_active_config_has_model(monkeypatch):
     assert roster_agent.active_config_has_model is True
 
 
-def test_composer_version_helpers_and_lookup_errors(monkeypatch):
+def test_composer_version_helpers_and_lookup_errors(monkeypatch: pytest.MonkeyPatch):
     fake_session = FakeSession(
         scalar=[
             1,
@@ -670,7 +670,7 @@ def test_composer_version_helpers_and_lookup_errors(monkeypatch):
     assert workflow.id == "workflow-1"
 
 
-def test_composer_current_version_and_error_paths(monkeypatch):
+def test_composer_current_version_and_error_paths(monkeypatch: pytest.MonkeyPatch):
     fake_session = FakeSession(scalar=[2])
     monkeypatch.setattr(composer_service.db, "session", fake_session)
     payload = ComposerSavePayload.model_validate(
@@ -717,7 +717,7 @@ def test_composer_current_version_and_error_paths(monkeypatch):
         )
 
 
-def test_roster_list_and_invite_options(monkeypatch):
+def test_roster_list_and_invite_options(monkeypatch: pytest.MonkeyPatch):
     created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
     updated_at = datetime(2026, 1, 3, 3, 4, 5, tzinfo=UTC)
     version_created_at = datetime(2026, 1, 4, 3, 4, 5, tzinfo=UTC)
@@ -790,7 +790,7 @@ def test_roster_list_and_invite_options(monkeypatch):
     assert invited["data"][0]["existing_node_ids"] == ["node-1"]
 
 
-def test_invite_options_uses_db_filtered_pagination(monkeypatch):
+def test_invite_options_uses_db_filtered_pagination(monkeypatch: pytest.MonkeyPatch):
     configured_agent = Agent(
         id="agent-2",
         tenant_id="tenant-1",
@@ -915,7 +915,7 @@ def test_published_references_include_app_display_fields_and_sort_by_updated_at(
     assert references[0]["workflow_version"] == "published-recent"
 
 
-def test_roster_update_archive_versions_and_detail(monkeypatch):
+def test_roster_update_archive_versions_and_detail(monkeypatch: pytest.MonkeyPatch):
     listed_version = AgentConfigSnapshot(id="version-2", agent_id="agent-1", version=2)
     listed_version_created_at = datetime(2026, 1, 5, 3, 4, 5, tzinfo=UTC)
     listed_version.created_at = listed_version_created_at
@@ -973,7 +973,7 @@ def test_roster_update_archive_versions_and_detail(monkeypatch):
     assert detail["revisions"][0]["created_at"] == int(revision_created_at.timestamp())
 
 
-def test_roster_create_detail_and_lookup_helpers(monkeypatch):
+def test_roster_create_detail_and_lookup_helpers(monkeypatch: pytest.MonkeyPatch):
     fake_session = FakeSession(
         scalar=[
             SimpleNamespace(id="agent-1"),
@@ -1040,9 +1040,7 @@ def test_agent_app_visible_versions_exclude_draft_saves():
 
 def test_app_list_all_excludes_agent_apps_by_default():
     filters = AppService._build_app_list_filters(
-        "account-1",
-        "tenant-1",
-        AppListParams(mode="all"),
+        "account-1", "tenant-1", AppListParams(mode="all"), FakeSession(scalar=None, scalars=None)
     )
     sql = " ".join(str(filter_) for filter_ in filters)
 
@@ -2173,7 +2171,7 @@ class TestWorkflowAgentDraftBindingSync:
         assert session.deleted == [stale_binding]
 
 
-def test_dataset_rows_filters_malformed_ids(monkeypatch):
+def test_dataset_rows_filters_malformed_ids(monkeypatch: pytest.MonkeyPatch):
     """Mention ids are user-editable text: a non-UUID id must read as missing
     (placeholder semantics), never reach the UUID-typed dataset query (E2E 500)."""
     captured = {}
@@ -2197,7 +2195,7 @@ def test_dataset_rows_filters_malformed_ids(monkeypatch):
     assert captured == {}
 
 
-def test_workspace_dify_tools_returns_provider_and_tool_granularities(monkeypatch):
+def test_workspace_dify_tools_returns_provider_and_tool_granularities(monkeypatch: pytest.MonkeyPatch):
     """The slash-menu Tools tab needs both selection granularities: a provider
     hosts many tools (like an MCP server), so candidates return one
     provider-level entry (id = <provider>/*, = all tools) plus one per tool."""
@@ -2268,7 +2266,7 @@ def _patch_drive_keys(monkeypatch, existing_keys):
     return captured
 
 
-def test_drive_ref_findings_reports_missing_keys(monkeypatch):
+def test_drive_ref_findings_reports_missing_keys(monkeypatch: pytest.MonkeyPatch):
     _patch_drive_keys(monkeypatch, existing_keys=["tender-analyzer/SKILL.md"])
 
     findings = AgentComposerService._drive_ref_findings(
@@ -2279,7 +2277,7 @@ def test_drive_ref_findings_reports_missing_keys(monkeypatch):
     assert str(findings[0]["message"]).startswith("file_ref_dangling: ")
 
 
-def test_drive_ref_findings_clean_when_all_keys_exist(monkeypatch):
+def test_drive_ref_findings_clean_when_all_keys_exist(monkeypatch: pytest.MonkeyPatch):
     _patch_drive_keys(monkeypatch, existing_keys=["tender-analyzer/SKILL.md", "files/sample.pdf"])
 
     assert (
@@ -2288,7 +2286,7 @@ def test_drive_ref_findings_clean_when_all_keys_exist(monkeypatch):
     )
 
 
-def test_drive_ref_findings_skips_refs_without_drive_keys(monkeypatch):
+def test_drive_ref_findings_skips_refs_without_drive_keys(monkeypatch: pytest.MonkeyPatch):
     # No drive-backed ref at all -> no DB roundtrip, no findings.
     soul = _drive_soul(
         skills_files={"skills": [{"id": "legacy", "name": "Legacy"}], "files": [{"name": "u.pdf", "file_id": "u-1"}]}
@@ -2297,7 +2295,7 @@ def test_drive_ref_findings_skips_refs_without_drive_keys(monkeypatch):
     assert findings == []
 
 
-def test_require_drive_refs_resolved_raises_with_stable_code(monkeypatch):
+def test_require_drive_refs_resolved_raises_with_stable_code(monkeypatch: pytest.MonkeyPatch):
     from services.agent.errors import InvalidComposerConfigError
 
     _patch_drive_keys(monkeypatch, existing_keys=[])
@@ -2308,7 +2306,7 @@ def test_require_drive_refs_resolved_raises_with_stable_code(monkeypatch):
         )
 
 
-def test_collect_validation_findings_appends_drive_findings_with_agent_context(monkeypatch):
+def test_collect_validation_findings_appends_drive_findings_with_agent_context(monkeypatch: pytest.MonkeyPatch):
     from services.entities.agent_entities import ComposerSavePayload
 
     _patch_drive_keys(monkeypatch, existing_keys=[])
@@ -2334,7 +2332,7 @@ def test_collect_validation_findings_appends_drive_findings_with_agent_context(m
 # ── ENG-625 D5: soul-first ref removal ───────────────────────────────────────
 
 
-def _patch_remove_drive_refs_env(monkeypatch, *, soul_dict):
+def _patch_remove_drive_refs_env(monkeypatch: pytest.MonkeyPatch, *, soul_dict):
     """Wire the classmethod's collaborators so soul editing + versioning is observable."""
     from types import SimpleNamespace
 
@@ -2359,7 +2357,7 @@ def _patch_remove_drive_refs_env(monkeypatch, *, soul_dict):
     return agent, captured, committed
 
 
-def test_remove_drive_refs_drops_skill_by_slug_and_versions(monkeypatch):
+def test_remove_drive_refs_drops_skill_by_slug_and_versions(monkeypatch: pytest.MonkeyPatch):
     soul_dict = {
         "skills_files": {
             "skills": [
@@ -2383,7 +2381,7 @@ def test_remove_drive_refs_drops_skill_by_slug_and_versions(monkeypatch):
     assert committed.get("committed") is True
 
 
-def test_remove_drive_refs_is_noop_when_ref_absent(monkeypatch):
+def test_remove_drive_refs_is_noop_when_ref_absent(monkeypatch: pytest.MonkeyPatch):
     soul_dict = {"skills_files": {"skills": [], "files": []}}
     agent, captured, committed = _patch_remove_drive_refs_env(monkeypatch, soul_dict=soul_dict)
 
@@ -2397,7 +2395,7 @@ def test_remove_drive_refs_is_noop_when_ref_absent(monkeypatch):
     assert committed == {}
 
 
-def test_remove_drive_refs_drops_file_by_key(monkeypatch):
+def test_remove_drive_refs_drops_file_by_key(monkeypatch: pytest.MonkeyPatch):
     soul_dict = {
         "skills_files": {
             "skills": [],
@@ -2417,7 +2415,7 @@ def test_remove_drive_refs_drops_file_by_key(monkeypatch):
     assert [f.drive_key for f in captured["agent_soul"].skills_files.files] == ["files/keep.pdf"]
 
 
-def test_add_drive_file_ref_adds_or_replaces_file_and_versions(monkeypatch):
+def test_add_drive_file_ref_adds_or_replaces_file_and_versions(monkeypatch: pytest.MonkeyPatch):
     soul_dict = {
         "skills_files": {
             "skills": [],
@@ -2444,7 +2442,7 @@ def test_add_drive_file_ref_adds_or_replaces_file_and_versions(monkeypatch):
     assert committed.get("committed") is True
 
 
-def test_add_drive_file_ref_syncs_workflow_binding_snapshot(monkeypatch):
+def test_add_drive_file_ref_syncs_workflow_binding_snapshot(monkeypatch: pytest.MonkeyPatch):
     binding = SimpleNamespace(agent_id="agent-1", current_snapshot_id="snap-1", updated_by=None)
     _patch_remove_drive_refs_env(monkeypatch, soul_dict={"skills_files": {"skills": [], "files": []}})
     monkeypatch.setattr(
@@ -2473,7 +2471,7 @@ def test_remove_drive_refs_requires_exactly_one_scope():
 # ── ENG-623/625: resolver helpers + save-path drive guard ────────────────────
 
 
-def test_resolve_bound_agent_id_queries_active_roster_agent(monkeypatch):
+def test_resolve_bound_agent_id_queries_active_roster_agent(monkeypatch: pytest.MonkeyPatch):
     from types import SimpleNamespace
 
     import services.agent.composer_service as module
@@ -2482,7 +2480,7 @@ def test_resolve_bound_agent_id_queries_active_roster_agent(monkeypatch):
     assert AgentComposerService.resolve_bound_agent_id(tenant_id="t-1", app_id="app-1") == "agent-9"
 
 
-def test_resolve_workflow_node_agent_id_degrades_without_workflow_or_binding(monkeypatch):
+def test_resolve_workflow_node_agent_id_degrades_without_workflow_or_binding(monkeypatch: pytest.MonkeyPatch):
     from types import SimpleNamespace
 
     def boom(cls, **kwargs):
@@ -2505,7 +2503,7 @@ def test_resolve_workflow_node_agent_id_degrades_without_workflow_or_binding(mon
     assert AgentComposerService.resolve_workflow_node_agent_id(tenant_id="t", app_id="a", node_id="n") == "agent-7"
 
 
-def test_remove_drive_refs_returns_none_without_agent_or_snapshot(monkeypatch):
+def test_remove_drive_refs_returns_none_without_agent_or_snapshot(monkeypatch: pytest.MonkeyPatch):
     from types import SimpleNamespace
 
     import services.agent.composer_service as module
@@ -2518,7 +2516,7 @@ def test_remove_drive_refs_returns_none_without_agent_or_snapshot(monkeypatch):
     assert AgentComposerService.remove_drive_refs(tenant_id="t", agent_id="a", account_id="u", skill_slug="s") is None
 
 
-def test_save_workflow_composer_guards_drive_refs_for_existing_agent_strategies(monkeypatch):
+def test_save_workflow_composer_guards_drive_refs_for_existing_agent_strategies(monkeypatch: pytest.MonkeyPatch):
     from types import SimpleNamespace
 
     from services.entities.agent_entities import ComposerSavePayload

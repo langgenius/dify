@@ -75,7 +75,7 @@ class CreateAppParams(BaseModel):
 class AppService:
     @staticmethod
     def _build_app_list_filters(
-        user_id: str, tenant_id: str, params: AppListBaseParams
+        user_id: str, tenant_id: str, params: AppListBaseParams, session: scoped_session
     ) -> list[sa.ColumnElement[bool]]:
         filters = [App.tenant_id == tenant_id, App.is_universal == False]
 
@@ -115,7 +115,7 @@ class AppService:
             escaped_name = escape_like_pattern(name)
             filters.append(App.name.ilike(f"%{escaped_name}%", escape="\\"))
         if params.tag_ids and len(params.tag_ids) > 0:
-            target_ids = TagService.get_target_ids_by_tag_ids("app", tenant_id, params.tag_ids, match_all=True)
+            target_ids = TagService.get_target_ids_by_tag_ids("app", tenant_id, params.tag_ids, session, match_all=True)
             if target_ids and len(target_ids) > 0:
                 filters.append(App.id.in_(target_ids))
             else:
@@ -197,7 +197,9 @@ class AppService:
             ).scalars()
         )
 
-    def get_paginate_apps(self, user_id: str, tenant_id: str, params: AppListParams) -> Pagination | None:
+    def get_paginate_apps(
+        self, user_id: str, tenant_id: str, params: AppListParams, session: scoped_session
+    ) -> Pagination | None:
         """
         Get app list with pagination, filters, and explicit sort order.
         :param user_id: user id
@@ -205,7 +207,7 @@ class AppService:
         :param params: query parameters
         :return:
         """
-        filters = self._build_app_list_filters(user_id, tenant_id, params)
+        filters = self._build_app_list_filters(user_id, tenant_id, params, session)
         if not filters:
             return None
 
@@ -231,12 +233,12 @@ class AppService:
         return app_models
 
     def get_paginate_starred_apps(
-        self, user_id: str, tenant_id: str, params: StarredAppListParams
+        self, user_id: str, tenant_id: str, params: StarredAppListParams, session: scoped_session
     ) -> Pagination | None:
         """
         Get apps starred by the current account with pagination, filters, and explicit sort order.
         """
-        filters = self._build_app_list_filters(user_id, tenant_id, params)
+        filters = self._build_app_list_filters(user_id, tenant_id, params, session)
         if not filters:
             return None
 
