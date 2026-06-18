@@ -57,7 +57,7 @@ const agentSkillsDraft = {
       id: 'tender-analyzer',
       name: 'Tender Analyzer',
       description: 'Extracts tender requirements and scoring criteria.',
-      files: ['SKILL.md', 'schema.json'],
+      files: ['__MACOSX/._hatch-pet', 'SKILL.md', 'schema.json'],
       path: 'tender-analyzer',
       skillMdKey: 'tender-analyzer/SKILL.md',
     },
@@ -170,6 +170,7 @@ describe('AgentSkills', () => {
     })
     expect(within(dialog).getByText('Tender Analyzer')).toBeInTheDocument()
     expect(within(dialog).getByText('Extracts tender requirements and scoring criteria.')).toBeInTheDocument()
+    expect(within(dialog).queryByText('__MACOSX/._hatch-pet')).not.toBeInTheDocument()
     expect(await within(dialog).findByText('scripts/extract.py')).toBeInTheDocument()
     expect(within(dialog).getByText('SKILL.md')).toBeInTheDocument()
     expect(await within(dialog).findByText('Preview content for tender-analyzer/SKILL.md')).toBeInTheDocument()
@@ -180,6 +181,16 @@ describe('AgentSkills', () => {
         },
         query: {
           key: 'tender-analyzer/SKILL.md',
+        },
+      },
+    })
+    expect(mocks.driveFilePreviewQueryOptions).not.toHaveBeenCalledWith({
+      input: {
+        params: {
+          agent_id: 'agent-1',
+        },
+        query: {
+          key: 'tender-analyzer/__MACOSX/._hatch-pet',
         },
       },
     })

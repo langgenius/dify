@@ -69,7 +69,6 @@ export function AgentSkillItem({
     setSelectedFileId(undefined)
     setIsPreviewOpen(true)
   }, [])
-  const skillFiles = skill.files ?? []
   const skillDrivePath = getSkillDrivePath(skill)
   const driveFilesQuery = useQuery({
     ...consoleQuery.agent.byAgentId.drive.files.get.queryOptions({
@@ -86,12 +85,10 @@ export function AgentSkillItem({
   })
   const detailFiles = driveFilesQuery.isSuccess
     ? (driveFilesQuery.data.items ?? []).map(item => toSkillFileNode(item, skillDrivePath))
-    : skillFiles.map(file => ({
-        icon: 'file' as const,
-        id: `${skillDrivePath}/${file}`,
-        name: file,
-      }))
-  const previewFileId = selectedFileId ?? getSkillMdFileId(detailFiles) ?? getFirstSkillFileId(detailFiles)
+    : []
+  const previewFileId = selectedFileId
+    ?? skill.skillMdKey
+    ?? (driveFilesQuery.isSuccess ? getSkillMdFileId(detailFiles) ?? getFirstSkillFileId(detailFiles) : undefined)
   const previewQuery = useQuery({
     ...consoleQuery.agent.byAgentId.drive.files.preview.get.queryOptions({
       input: {
