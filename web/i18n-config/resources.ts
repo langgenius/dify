@@ -1,3 +1,4 @@
+import type agentV2 from '../i18n/en-US/agent-v-2.json'
 import type appAnnotation from '../i18n/en-US/app-annotation.json'
 import type appApi from '../i18n/en-US/app-api.json'
 import type appDebug from '../i18n/en-US/app-debug.json'
@@ -39,6 +40,7 @@ export type Resources = {
   appDebug: typeof appDebug
   appLog: typeof appLog
   appOverview: typeof appOverview
+  agentV2: typeof agentV2
   billing: typeof billing
   common: typeof common
   custom: typeof custom
@@ -74,6 +76,7 @@ export const namespaces = [
   'appDebug',
   'appLog',
   'appOverview',
+  'agentV2',
   'billing',
   'common',
   'custom',

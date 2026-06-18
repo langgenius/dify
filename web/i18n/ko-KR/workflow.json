@@ -1,5 +1,6 @@
 {
-  "blocks.agent": "에이전트",
+  "blocks.agent": "Agent",
+  "blocks.agent-v2": "Agent",
   "blocks.answer": "답변",
   "blocks.assigner": "변수 할당자",
   "blocks.code": "코드",
@@ -33,6 +34,7 @@
   "blocks.variable-aggregator": "변수 집계자",
   "blocks.variable-assigner": "변수 할당자",
   "blocksAbout.agent": "질문에 답하거나 자연어를 처리하기 위해 대규모 언어 모델을 호출하는 경우",
+  "blocksAbout.agent-v2": "질문에 답하거나 자연어를 처리하기 위해 대규모 언어 모델을 호출하는 경우",
   "blocksAbout.answer": "대화의 답변 내용을 정의합니다",
   "blocksAbout.assigner": "변수 할당 노드는 쓰기 가능한 변수 (대화 변수 등) 에 값을 할당하는 데 사용됩니다.",
   "blocksAbout.code": "사용자 정의 논리를 구현하기 위해 Python 또는 NodeJS 코드를 실행합니다",
@@ -414,6 +416,7 @@
   "nodes.agent.pluginNotFoundDesc": "이 통합은 GitHub 에서 설치됩니다. 통합으로 이동하여 다시 설치하십시오.",
   "nodes.agent.pluginNotInstalled": "이 통합은 설치되어 있지 않습니다.",
   "nodes.agent.pluginNotInstalledDesc": "이 통합은 GitHub 에서 설치됩니다. 통합으로 이동하여 다시 설치하십시오.",
+  "nodes.agent.roster.label": "에이전트",
   "nodes.agent.strategy.configureTip": "에이전트 전략을 구성하세요.",
   "nodes.agent.strategy.configureTipDesc": "에이전트 전략을 구성한 후 이 노드는 나머지 구성을 자동으로 로드합니다. 이 전략은 다단계 도구 추론의 메커니즘에 영향을 미칩니다.",
   "nodes.agent.strategy.label": "에이전트 전략",

@@ -1,5 +1,6 @@
 {
   "blocks.agent": "Agent",
+  "blocks.agent-v2": "Agent",
   "blocks.answer": "Odgovor",
   "blocks.assigner": "Dodeljevalec spremenljivk",
   "blocks.code": "Koda",
@@ -33,6 +34,7 @@
   "blocks.variable-aggregator": "Spremenljivka agregator",
   "blocks.variable-assigner": "Spremenljivka agregator",
   "blocksAbout.agent": "Uporaba velikih jezikovnih modelov za odgovarjanje na vprašanja ali obdelavo naravnega jezika",
+  "blocksAbout.agent-v2": "Uporaba velikih jezikovnih modelov za odgovarjanje na vprašanja ali obdelavo naravnega jezika",
   "blocksAbout.answer": "Določi vsebino odgovora v pogovoru.",
   "blocksAbout.assigner": "Vožnji vozlišča za dodelitev spremenljivk se uporablja za dodeljevanje vrednosti spremenljivkam, ki jih je mogoče zapisati (kot so spremenljivke za pogovor).",
   "blocksAbout.code": "Izvedite kos Python ali NodeJS kode za izvajanje prilagojene logike.",
@@ -414,6 +416,7 @@
   "nodes.agent.pluginNotFoundDesc": "Ta integracija je nameščen iz GitHuba. Prosimo, da greste v integracijae in ga ponovo namestite.",
   "nodes.agent.pluginNotInstalled": "Ta integracija ni nameščen",
   "nodes.agent.pluginNotInstalledDesc": "Ta integracija je nameščen iz GitHuba. Prosimo, da greste v integracijae in ga ponovo namestite.",
+  "nodes.agent.roster.label": "Agent",
   "nodes.agent.strategy.configureTip": "Prosimo, konfigurirajte agentno strategijo.",
   "nodes.agent.strategy.configureTipDesc": "Po nastavitvi agentne strategije bo ta vozlišče samodejno naložilo preostale nastavitve. Strategija bo vplivala na mehanizem večstopenjskega razmišljanja o orodju.",
   "nodes.agent.strategy.label": "Agentična strategija",

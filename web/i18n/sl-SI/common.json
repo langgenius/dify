@@ -318,6 +318,7 @@
   "menus.newDataset": "Ustvari znanje",
   "menus.plugins": "Integracije",
   "menus.pluginsTips": "Integrirajte integracijae tretjih oseb ali ustvarite integracijae, združljive s ChatGPT.",
+  "menus.roster": "Seznam agentov",
   "menus.status": "beta",
   "menus.tools": "Orodja",
   "model.addMoreModel": "Pojdite v nastavitve, da dodate več modelov",

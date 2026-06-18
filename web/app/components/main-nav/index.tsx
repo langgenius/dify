@@ -17,6 +17,8 @@ import DifyLogo from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useAppContext } from '@/context/app-context'
+import { AgentDetailSection, AgentDetailTop } from '@/features/agent-v2/agent-detail/navigation'
+import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { DeploymentDetailSection, DeploymentDetailTop } from '@/features/deployments/detail/deployment-sidebar'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
@@ -62,6 +64,12 @@ const isDatasetDetailPathname = (pathname: string) => {
   return true
 }
 
+const isAgentDetailPathname = (pathname: string) => {
+  const [section, type, agentId] = pathname.split('/').filter(Boolean)
+
+  return section === 'roster' && type === 'agent' && !!agentId
+}
+
 const isDeploymentDetailPathname = (pathname: string) => {
   const [section, appInstanceId] = pathname.split('/').filter(Boolean)
 
@@ -81,13 +89,15 @@ const MainNav = ({
   const pathname = usePathname()
   const { langGeniusVersionInfo, isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceEditor } = useAppContext()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const agentV2Enabled = isAgentV2Enabled()
   const showEnvTag = langGeniusVersionInfo.current_env === 'TESTING' || langGeniusVersionInfo.current_env === 'DEVELOPMENT'
   const canUseAppDeploy = isCurrentWorkspaceEditor && systemFeatures.enable_app_deploy
   const showAppDetailNavigation = !isCurrentWorkspaceDatasetOperator && pathname.startsWith('/app/')
   const showDatasetDetailNavigation = isDatasetDetailPathname(pathname)
+  const showAgentDetailNavigation = agentV2Enabled && !isCurrentWorkspaceDatasetOperator && isAgentDetailPathname(pathname)
   const showDeploymentDetailNavigation = canUseAppDeploy && !isCurrentWorkspaceDatasetOperator && isDeploymentDetailPathname(pathname)
   const showSnippetDetailBottomNavigation = isSnippetDetailPathname(pathname)
-  const showDetailNavigation = showAppDetailNavigation || showDatasetDetailNavigation || showDeploymentDetailNavigation
+  const showDetailNavigation = showAppDetailNavigation || showDatasetDetailNavigation || showAgentDetailNavigation || showDeploymentDetailNavigation
   const { hasAppDetail, appSidebarExpand, setAppDetail, setAppSidebarExpand } = useAppStore(useShallow(state => ({
     hasAppDetail: !!state.appDetail,
     appSidebarExpand: state.appSidebarExpand,
@@ -192,6 +202,15 @@ const MainNav = ({
             icon: 'i-custom-vender-main-nav-studio',
             activeIcon: 'i-custom-vender-main-nav-studio-active',
           },
+          ...(agentV2Enabled
+            ? [{
+                href: '/roster',
+                label: t('menus.roster', { ns: 'common' }),
+                active: (path: string) => path.startsWith('/roster'),
+                icon: 'i-custom-vender-main-nav-roster',
+                activeIcon: 'i-custom-vender-main-nav-roster-active',
+              }]
+            : []),
         ]
       : []),
     ...((isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator)
@@ -232,25 +251,29 @@ const MainNav = ({
           activeIcon: 'i-ri-rocket-fill',
         }]
       : []),
-  ], [canUseAppDeploy, isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceEditor, t])
+  ], [agentV2Enabled, canUseAppDeploy, isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceEditor, t])
 
-  const renderLogo = () => (
-    <Link
-      href="/"
-      className="flex h-8 shrink-0 items-center overflow-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-      aria-label={systemFeatures.branding.enabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'}
-    >
-      {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
-        ? (
-            <img
-              src={systemFeatures.branding.workspace_logo}
-              className="block h-5.5 w-auto object-contain"
-              alt=""
-            />
-          )
-        : <DifyLogo alt="" />}
-    </Link>
-  )
+  const renderLogo = () => {
+    const appTitle = systemFeatures.branding.enabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'
+
+    return (
+      <Link
+        href="/"
+        className="flex h-8 shrink-0 items-center overflow-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+        aria-label={appTitle}
+      >
+        {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
+          ? (
+              <img
+                src={systemFeatures.branding.workspace_logo}
+                className="block h-5.5 w-auto object-contain"
+                alt=""
+              />
+            )
+          : <DifyLogo alt="" />}
+      </Link>
+    )
+  }
 
   return (
     <aside
@@ -298,12 +321,19 @@ const MainNav = ({
                       onToggle={handleToggleDetailNavigation}
                     />
                   )
-                : (
-                    <DeploymentDetailTop
-                      expand={detailNavigationVisibleExpanded}
-                      onToggle={handleToggleDetailNavigation}
-                    />
-                  )
+                : showAgentDetailNavigation
+                  ? (
+                      <AgentDetailTop
+                        expand={detailNavigationVisibleExpanded}
+                        onToggle={handleToggleDetailNavigation}
+                      />
+                    )
+                  : (
+                      <DeploymentDetailTop
+                        expand={detailNavigationVisibleExpanded}
+                        onToggle={handleToggleDetailNavigation}
+                      />
+                    )
             : showSnippetDetailBottomNavigation
               ? null
               : (
@@ -322,7 +352,9 @@ const MainNav = ({
               ? <AppDetailSection expand={detailNavigationVisibleExpanded} />
               : showDatasetDetailNavigation
                 ? <DatasetDetailSection expand={detailNavigationVisibleExpanded} />
-                : <DeploymentDetailSection expand={detailNavigationVisibleExpanded} />
+                : showAgentDetailNavigation
+                  ? <AgentDetailSection expand={detailNavigationVisibleExpanded} />
+                  : <DeploymentDetailSection expand={detailNavigationVisibleExpanded} />
             : showSnippetDetailBottomNavigation
               ? null
               : (

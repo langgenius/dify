@@ -11,6 +11,15 @@ import ModelSelectorTrigger from './model-selector-trigger'
 import Popup from './popup'
 import { getModelSelectorValueLabel, isSameModelSelectorValue } from './types'
 
+const getModelProviderPluginId = (provider: string) => {
+  const [organization, pluginName] = provider.split('/').filter(Boolean)
+
+  if (organization && pluginName)
+    return `${organization}/${pluginName}`
+
+  return provider ? `langgenius/${provider}` : ''
+}
+
 type ModelSelectorProps = {
   defaultModel?: DefaultModel
   modelList: Model[]
@@ -24,6 +33,7 @@ type ModelSelectorProps = {
   showDeprecatedWarnIcon?: boolean
   hideProviderSettingsFooter?: boolean
   onConfigureEmptyState?: () => void
+  providerSettingsSource?: 'agent'
   showModelMeta?: boolean
 }
 function ModelSelector({
@@ -39,6 +49,7 @@ function ModelSelector({
   showDeprecatedWarnIcon = true,
   hideProviderSettingsFooter,
   onConfigureEmptyState,
+  providerSettingsSource,
   showModelMeta,
 }: ModelSelectorProps) {
   const { t } = useTranslation()
@@ -74,8 +85,13 @@ function ModelSelector({
     setOpen(false)
     setInputValue('')
 
-    if (onSelect)
-      onSelect({ provider, model: model.model })
+    if (onSelect) {
+      onSelect({
+        provider,
+        model: model.model,
+        plugin_id: getModelProviderPluginId(provider),
+      })
+    }
   }, [onSelect])
 
   const handleValueChange = useCallback((value: ModelSelectorValue | null) => {
@@ -150,6 +166,7 @@ function ModelSelector({
           modelList={modelList}
           scopeFeatures={scopeFeatures}
           hideProviderSettingsFooter={hideProviderSettingsFooter}
+          providerSettingsSource={providerSettingsSource}
           onConfigureEmptyState={onConfigureEmptyState ? handleConfigureEmptyState : undefined}
           onInputValueChange={setInputValue}
           onHide={handleHide}

@@ -1,5 +1,6 @@
 {
   "blocks.agent": "Agent",
+  "blocks.agent-v2": "Agent",
   "blocks.answer": "Réponse",
   "blocks.assigner": "Assignateur de Variables",
   "blocks.code": "Code",
@@ -33,6 +34,7 @@
   "blocks.variable-aggregator": "Agrégateur de variables",
   "blocks.variable-assigner": "Assigneur de variables",
   "blocksAbout.agent": "Appel de grands modèles de langage pour répondre à des questions ou traiter le langage naturel",
+  "blocksAbout.agent-v2": "Appel de grands modèles de langage pour répondre à des questions ou traiter le langage naturel",
   "blocksAbout.answer": "Définir le contenu de la réponse d'une conversation",
   "blocksAbout.assigner": "Le nœud d'assignation de variables est utilisé pour attribuer des valeurs aux variables modifiables (comme les variables de conversation).",
   "blocksAbout.code": "Exécuter un morceau de code Python ou NodeJS pour implémenter une logique personnalisée",
@@ -414,6 +416,7 @@
   "nodes.agent.pluginNotFoundDesc": "Ce intégration est installé à partir de GitHub. Veuillez aller dans Intégrations pour réinstaller",
   "nodes.agent.pluginNotInstalled": "Ce intégration n’est pas installé",
   "nodes.agent.pluginNotInstalledDesc": "Ce intégration est installé à partir de GitHub. Veuillez aller dans Intégrations pour réinstaller",
+  "nodes.agent.roster.label": "Agent",
   "nodes.agent.strategy.configureTip": "Veuillez configurer la stratégie agentique.",
   "nodes.agent.strategy.configureTipDesc": "Après avoir configuré la stratégie agentique, ce nœud chargera automatiquement les configurations restantes. La stratégie affectera le mécanisme du raisonnement à l’outil en plusieurs étapes.",
   "nodes.agent.strategy.label": "Stratégie agentique",

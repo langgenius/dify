@@ -1,5 +1,6 @@
 {
-  "blocks.agent": "وكيل",
+  "blocks.agent": "Agent",
+  "blocks.agent-v2": "Agent",
   "blocks.answer": "إجابة",
   "blocks.assigner": "معين المتغيرات",
   "blocks.code": "كود",
@@ -33,6 +34,7 @@
   "blocks.variable-aggregator": "مجمع المتغيرات",
   "blocks.variable-assigner": "مجمع المتغيرات",
   "blocksAbout.agent": "استدعاء نماذج اللغة الكبيرة للإجابة على الأسئلة أو معالجة اللغة الطبيعية",
+  "blocksAbout.agent-v2": "استدعاء نماذج اللغة الكبيرة للإجابة على الأسئلة أو معالجة اللغة الطبيعية",
   "blocksAbout.answer": "تحديد محتوى الرد لمحادثة الدردشة",
   "blocksAbout.assigner": "تُستخدم عقدة تعيين المتغير لتعيين قيم للمتغيرات القابلة للكتابة (مثل متغيرات المحادثة).",
   "blocksAbout.code": "تنفيذ قطعة من كود Python أو NodeJS لتنفيذ منطق مخصص",
@@ -414,6 +416,7 @@
   "nodes.agent.pluginNotFoundDesc": "تم تثبيت هذا الملحق من GitHub. يرجى الانتقال إلى الملحقات لإعادة التثبيت",
   "nodes.agent.pluginNotInstalled": "هذا الملحق غير مثبت",
   "nodes.agent.pluginNotInstalledDesc": "تم تثبيت هذا الملحق من GitHub. يرجى الانتقال إلى الملحقات لإعادة التثبيت",
+  "nodes.agent.roster.label": "وكيل",
   "nodes.agent.strategy.configureTip": "يرجى تكوين استراتيجية الوكيل.",
   "nodes.agent.strategy.configureTipDesc": "بعد تكوين استراتيجية الوكيل، ستقوم هذه العقدة تلقائيًا بتحميل التكوينات المتبقية. ستؤثر الاستراتيجية على آلية التفكير في الأدوات متعددة الخطوات. ",
   "nodes.agent.strategy.label": "استراتيجية الوكيل",

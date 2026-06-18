@@ -318,6 +318,7 @@
   "menus.newDataset": "ज्ञान बनाएं",
   "menus.plugins": "एकीकरण",
   "menus.pluginsTips": "थर्ड-पार्टी एकीकरण को एकीकृत करें या ChatGPT-संगत AI-Integrations बनाएं।",
+  "menus.roster": "एजेंट सूची",
   "menus.status": "बीटा",
   "menus.tools": "उपकरण",
   "model.addMoreModel": "अधिक मॉडल जोड़ने के लिए सेटिंग्स पर जाएं",

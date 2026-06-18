@@ -318,6 +318,7 @@
   "menus.newDataset": "Bilgi Oluştur",
   "menus.plugins": "Entegrasyonlar",
   "menus.pluginsTips": "Üçüncü taraf entegrasyonlari entegre edin veya ChatGPT uyumlu AI-Entegrasyonlari oluşturun.",
+  "menus.roster": "Ajan listesi",
   "menus.status": "beta",
   "menus.tools": "Araçlar",
   "model.addMoreModel": "Daha fazla model eklemek için ayarlara gidin",

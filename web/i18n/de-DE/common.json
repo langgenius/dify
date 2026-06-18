@@ -318,6 +318,7 @@
   "menus.newDataset": "Wissen erstellen",
   "menus.plugins": "Integrationen",
   "menus.pluginsTips": "Integrieren Sie Integrationen von Drittanbietern oder erstellen Sie ChatGPT-kompatible KI-Integrationen.",
+  "menus.roster": "Agent-Verzeichnis",
   "menus.status": "Beta",
   "menus.tools": "Werkzeuge",
   "model.addMoreModel": "Gehen Sie zu den Einstellungen, um mehr Modelle hinzuzufügen",

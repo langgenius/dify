@@ -323,7 +323,7 @@ Check if activation token is valid
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Agent app created successfully | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
+| 201 | Agent app created successfully | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
 | 400 | Invalid request parameters |  |
 | 403 | Insufficient permissions |  |
 
@@ -368,7 +368,7 @@ Check if activation token is valid
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent app detail | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
+| 200 | Agent app detail | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
 
 ### [PUT] /agent/{agent_id}
 #### Parameters
@@ -387,7 +387,7 @@ Check if activation token is valid
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent app updated successfully | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
+| 200 | Agent app updated successfully | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
 | 400 | Invalid request parameters |  |
 | 403 | Insufficient permissions |  |
 
@@ -524,7 +524,7 @@ Stop a running Agent App chat message generation
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Agent app copied successfully | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
+| 201 | Agent app copied successfully | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
 | 400 | Invalid request parameters |  |
 | 403 | Insufficient permissions |  |
 
@@ -800,24 +800,8 @@ Upload one Agent App sandbox file as a Dify ToolFile mapping
 | ---- | ----------- | ------ |
 | 200 | Uploaded | **application/json**: [SandboxUploadResponse](#sandboxuploadresponse)<br> |
 
-### [POST] /agent/{agent_id}/skills/standardize
-Validate + standardize a Skill into an Agent App drive
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Skill standardized into drive | **application/json**: [AgentSkillStandardizeResponse](#agentskillstandardizeresponse)<br> |
-| 400 | Invalid skill package or no bound agent |  |
-
 ### [POST] /agent/{agent_id}/skills/upload
-Upload + validate a Skill package for an Agent App
+Upload + standardize a Skill into an Agent App drive
 
 #### Parameters
 
@@ -825,12 +809,18 @@ Upload + validate a Skill package for an Agent App
 | ---- | ---------- | ----------- | -------- | ------ |
 | agent_id | path | Agent ID | Yes | string (uuid) |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Skill validated | **application/json**: [AgentSkillUploadResponse](#agentskilluploadresponse)<br> |
-| 400 | Invalid skill package |  |
+| 201 | Skill uploaded into drive | **application/json**: [AgentSkillUploadResponse](#agentskilluploadresponse)<br> |
+| 400 | Invalid skill package or no bound agent |  |
 
 ### [DELETE] /agent/{agent_id}/skills/{slug}
 Delete a standardized skill from an Agent App drive
@@ -1517,10 +1507,10 @@ Get agent execution logs for an application
 | 200 | Agent logs retrieved successfully | **application/json**: [AgentLogResponse](#agentlogresponse)<br> |
 | 400 | Invalid request parameters |  |
 
-### [POST] /apps/{app_id}/agent/skills/standardize
-**Upload a Skill, validate it, and standardize it into the app agent's drive**
+### [POST] /apps/{app_id}/agent/skills/upload
+**Upload a Skill, validate it, and commit drive-backed skill files**
 
-Validate + standardize a Skill into the agent drive (ENG-594)
+Upload + standardize a Skill into the agent drive
 
 #### Parameters
 
@@ -1529,32 +1519,18 @@ Validate + standardize a Skill into the agent drive (ENG-594)
 | app_id | path | Application ID | Yes | string (uuid) |
 | node_id | query | Workflow node ID (workflow composer variant) | No | string |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Skill standardized into drive | **application/json**: [AgentSkillStandardizeResponse](#agentskillstandardizeresponse)<br> |
+| 201 | Skill uploaded into drive | **application/json**: [AgentSkillUploadResponse](#agentskilluploadresponse)<br> |
 | 400 | Invalid skill package or no bound agent |  |
-
-### [POST] /apps/{app_id}/agent/skills/upload
-**Validate an uploaded Skill package and persist the archive**
-
-Upload + validate a Skill package (.zip/.skill) and extract its manifest
-Returns a validated skill ref (to bind into the Agent soul config on save)
-plus its manifest. Standardizing into the agent drive is ENG-594.
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Skill validated | **application/json**: [AgentSkillUploadResponse](#agentskilluploadresponse)<br> |
-| 400 | Invalid skill package |  |
 
 ### [DELETE] /apps/{app_id}/agent/skills/{slug}
 Delete a standardized skill: soul ref first, then the <slug>/ drive prefix (ENG-625 D5)
@@ -11378,6 +11354,39 @@ Default namespace
 | name | string | Agent name | Yes |
 | role | string | Agent role | Yes |
 
+#### AgentAppDetailWithSite
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_mode | string |  | No |
+| active_config_is_published | boolean |  | No |
+| api_base_url | string |  | No |
+| app_id | string |  | No |
+| bound_agent_id | string |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| deleted_tools | [ [DeletedTool](#deletedtool) ] |  | No |
+| description | string |  | No |
+| enable_api | boolean |  | Yes |
+| enable_site | boolean |  | Yes |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| icon_url | string |  | Yes |
+| id | string |  | Yes |
+| max_active_requests | integer |  | No |
+| mode | string |  | Yes |
+| model_config | [ModelConfig](#modelconfig) |  | No |
+| name | string |  | Yes |
+| role | string |  | No |
+| site | [Site](#site) |  | No |
+| tags | [ [Tag](#tag) ] |  | No |
+| tracing | [JSONValue](#jsonvalue) |  | No |
+| updated_at | integer |  | No |
+| updated_by | string |  | No |
+| use_icon_as_answer_icon | boolean |  | No |
+| workflow | [WorkflowPartial](#workflowpartial) |  | No |
+
 #### AgentAppFeaturesPayload
 
 Presentation features configurable on an Agent App.
@@ -12296,13 +12305,6 @@ Visibility and lifecycle scope of an Agent record.
 | skill_md_file_id | string |  | No |
 | skill_md_key | string |  | No |
 
-#### AgentSkillStandardizeResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| manifest | [SkillManifest](#skillmanifest) |  | Yes |
-| skill | [AgentSkillRefConfig](#agentskillrefconfig) |  | Yes |
-
 #### AgentSkillUploadResponse
 
 | Name | Type | Description | Required |
@@ -12864,7 +12866,6 @@ Enum class for api provider schema type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
-| active_config_is_published | boolean |  | No |
 | api_base_url | string |  | No |
 | app_id | string |  | No |
 | bound_agent_id | string |  | No |
@@ -12883,7 +12884,6 @@ Enum class for api provider schema type.
 | mode | string |  | Yes |
 | model_config | [ModelConfig](#modelconfig) |  | No |
 | name | string |  | Yes |
-| role | string |  | No |
 | site | [Site](#site) |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | tracing | [JSONValue](#jsonvalue) |  | No |
@@ -12977,10 +12977,10 @@ AppMCPServer Status Enum
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| has_next | boolean |  | Yes |
-| items | [ [AppPartial](#apppartial) ] |  | Yes |
+| data | [ [AppPartial](#apppartial) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
 | page | integer |  | Yes |
-| per_page | integer |  | Yes |
 | total | integer |  | Yes |
 
 #### AppPartial
@@ -12988,25 +12988,24 @@ AppMCPServer Status Enum
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
-| active_config_is_published | boolean |  | No |
 | app_id | string |  | No |
-| app_model_config | [ModelConfigPartial](#modelconfigpartial) |  | No |
 | author_name | string |  | No |
 | bound_agent_id | string |  | No |
 | create_user_name | string |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
-| desc_or_prompt | string |  | No |
+| description | string |  | No |
 | has_draft_trigger | boolean |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
+| icon_url | string |  | Yes |
 | id | string |  | Yes |
 | is_starred | boolean |  | No |
 | max_active_requests | integer |  | No |
-| mode_compatible_with_agent | string |  | Yes |
+| mode | string |  | Yes |
+| model_config | [ModelConfigPartial](#modelconfigpartial) |  | No |
 | name | string |  | Yes |
-| role | string |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
