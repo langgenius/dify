@@ -12,7 +12,7 @@ from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus, Workflo
 from graphon.node_events import NodeRunResult
 
 
-def _build_layer() -> WorkflowPersistenceLayer:
+def _build_layer(secret_values: tuple[str, ...] = ()) -> WorkflowPersistenceLayer:
     application_generate_entity = Mock()
     application_generate_entity.inputs = {}
 
@@ -23,6 +23,7 @@ def _build_layer() -> WorkflowPersistenceLayer:
             workflow_type=WorkflowType.WORKFLOW,
             version="1",
             graph_data={},
+            secret_values=secret_values,
         ),
         workflow_execution_repository=Mock(),
         workflow_node_execution_repository=Mock(),
@@ -97,3 +98,37 @@ def test_update_node_execution_projects_start_outputs() -> None:
         outputs={"question": "hello"},
         metadata={},
     )
+
+
+def test_update_node_execution_masks_code_outputs_when_inputs_contain_secret() -> None:
+    layer = _build_layer(secret_values=("sk-secret",))
+    node_execution = Mock()
+    node_execution.id = "node-exec-3"
+    node_execution.node_type = BuiltinNodeTypes.CODE
+    node_execution.created_at = datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC).replace(tzinfo=None)
+    node_execution.update_from_mapping = Mock()
+    node_execution.error = None
+
+    layer._update_node_execution(
+        node_execution,
+        NodeRunResult(
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            inputs={"api_key": "sk-secret"},
+            outputs={
+                "encoded": "c2stc2VjcmV0",
+                "pieces": ["sk", "secret"],
+            },
+        ),
+        WorkflowNodeExecutionStatus.SUCCEEDED,
+    )
+
+    node_execution.update_from_mapping.assert_called_once_with(
+        inputs={"api_key": "[SECRET_REDACTED]"},
+        process_data={},
+        outputs={
+            "encoded": "[SECRET_REDACTED]",
+            "pieces": ["[SECRET_REDACTED]", "[SECRET_REDACTED]"],
+        },
+        metadata={},
+    )
+    assert layer._redact_for_persistence({"final": "c2stc2VjcmV0"}) == {"final": "[SECRET_REDACTED]"}

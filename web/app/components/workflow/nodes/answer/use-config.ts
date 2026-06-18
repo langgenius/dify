@@ -26,7 +26,7 @@ const useConfig = (id: string, payload: AnswerNodeType) => {
   }, [inputs, setInputs])
 
   const filterVar = useCallback((varPayload: Var) => {
-    return varPayload.type !== VarType.arrayObject
+    return varPayload.type !== VarType.arrayObject && varPayload.type !== VarType.secret
   }, [])
   return {
     readOnly,

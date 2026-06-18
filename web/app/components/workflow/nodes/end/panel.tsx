@@ -20,6 +20,7 @@ const Panel: FC<NodePanelProps<EndNodeType>> = ({
     inputs,
     handleVarListChange,
     handleAddVariable,
+    filterVar,
   } = useConfig(id, data)
 
   const outputs = inputs.outputs
@@ -50,6 +51,7 @@ const Panel: FC<NodePanelProps<EndNodeType>> = ({
             readonly={readOnly}
             list={outputs}
             onChange={handleVarListChange}
+            filterVar={filterVar}
           />
         </Field>
       </div>
