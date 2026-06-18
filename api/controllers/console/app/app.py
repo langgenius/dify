@@ -617,7 +617,9 @@ class AppListApi(Resource):
                 current_user_id,
             )
             can_manage_own_apps = "app.create_and_management" in permissions.workspace.permission_keys
-            has_default_preview = _has_app_list_permission(permissions.app.default_permission_keys)
+            has_default_preview = _has_app_list_permission(
+                permissions.app.default_permission_keys
+            ) or _has_app_list_permission(permissions.workspace.permission_keys)
             permission_app_ids: set[str] | None = None
             if not has_default_preview:
                 permission_app_ids = {

@@ -425,7 +425,9 @@ class DatasetListApi(Resource):
                 str(current_tenant_id),
                 current_user.id,
             )
-            has_default_readonly = _has_dataset_list_permission(permissions.dataset.default_permission_keys)
+            has_default_readonly = _has_dataset_list_permission(
+                permissions.dataset.default_permission_keys
+            ) or _has_dataset_list_permission(permissions.workspace.permission_keys)
             permission_dataset_ids: set[str] | None = None
             if not has_default_readonly:
                 permission_dataset_ids = {
