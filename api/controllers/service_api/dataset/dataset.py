@@ -1,8 +1,8 @@
-from typing import Any, Literal
+from typing import Any, Literal, override
 from uuid import UUID
 
 from flask import request
-from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, GetJsonSchemaHandler, RootModel, field_validator, model_validator
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -79,6 +79,13 @@ class DocumentStatusPayload(BaseModel):
     document_ids: list[str] = Field(default_factory=list, description="Document IDs to update")
 
 
+DOCUMENT_STATUS_ACTION_PARAM = {
+    "description": "Action to perform: 'enable', 'disable', 'archive', or 'un_archive'",
+    "enum": ["enable", "disable", "archive", "un_archive"],
+    "type": "string",
+}
+
+
 class TagNamePayload(BaseModel):
     name: str = Field(..., min_length=1, max_length=50)
 
@@ -113,6 +120,45 @@ class TagUnbindingPayload(BaseModel):
     tag_ids: list[str] = Field(default_factory=list)
     tag_id: str | None = None
     target_id: str
+
+    @classmethod
+    @override
+    def __get_pydantic_json_schema__(cls, _core_schema: object, _handler: GetJsonSchemaHandler) -> dict[str, object]:
+        tag_id_property = {
+            "description": "Legacy single tag ID accepted by the Service API.",
+            "type": "string",
+        }
+        tag_ids_property = {
+            "description": "Tag IDs to unbind. Use this for new integrations.",
+            "items": {"type": "string"},
+            "minItems": 1,
+            "type": "array",
+        }
+        target_id_property = {"title": "Target Id", "type": "string"}
+        return {
+            "anyOf": [
+                {
+                    "properties": {
+                        "tag_id": tag_id_property,
+                        "tag_ids": tag_ids_property,
+                        "target_id": target_id_property,
+                    },
+                    "required": ["tag_id", "target_id"],
+                    "type": "object",
+                },
+                {
+                    "properties": {
+                        "tag_id": {**tag_id_property, "nullable": True},
+                        "tag_ids": tag_ids_property,
+                        "target_id": target_id_property,
+                    },
+                    "required": ["tag_ids", "target_id"],
+                    "type": "object",
+                },
+            ],
+            "description": "Accepts either the legacy tag_id payload or the normalized tag_ids payload.",
+            "title": cls.__name__,
+        }
 
     @model_validator(mode="before")
     @classmethod
@@ -204,6 +250,14 @@ register_response_schema_models(
 class DatasetListApi(DatasetApiResource):
     """Resource for datasets."""
 
+    @service_api_ns.doc(
+        summary="List Knowledge Bases",
+        description="Returns a paginated list of knowledge bases. Supports filtering by keyword and tags.",
+        tags=["Knowledge Bases"],
+        responses={
+            200: "List of knowledge bases.",
+        },
+    )
     @service_api_ns.doc("list_datasets")
     @service_api_ns.doc(description="List all datasets")
     @service_api_ns.doc(
@@ -262,6 +316,19 @@ class DatasetListApi(DatasetApiResource):
         }
         return dump_response(DatasetListResponse, response), 200
 
+    @service_api_ns.doc(
+        summary="Create an Empty Knowledge Base",
+        description=(
+            "Create a new empty knowledge base. After creation, use [Create Document by "
+            "Text](/api-reference/documents/create-document-by-text) or [Create Document by "
+            "File](/api-reference/documents/create-document-by-file) to add documents."
+        ),
+        tags=["Knowledge Bases"],
+        responses={
+            200: "Knowledge base created successfully.",
+            409: "`dataset_name_duplicate` : The dataset name already exists. Please modify your dataset name.",
+        },
+    )
     @service_api_ns.expect(service_api_ns.models[DatasetCreatePayload.__name__])
     @service_api_ns.doc("create_dataset")
     @service_api_ns.doc(description="Create a new dataset")
@@ -327,6 +394,19 @@ class DatasetListApi(DatasetApiResource):
 class DatasetApi(DatasetApiResource):
     """Resource for dataset."""
 
+    @service_api_ns.doc(
+        summary="Get Knowledge Base",
+        description=(
+            "Retrieve detailed information about a specific knowledge base, including its embedding "
+            "model, retrieval configuration, and document statistics."
+        ),
+        tags=["Knowledge Bases"],
+        responses={
+            200: "Knowledge base details.",
+            403: "`forbidden` : Insufficient permissions to access this knowledge base.",
+            404: "`not_found` : Dataset not found.",
+        },
+    )
     @service_api_ns.doc("get_dataset")
     @service_api_ns.doc(description="Get a specific dataset by ID")
     @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
@@ -392,6 +472,19 @@ class DatasetApi(DatasetApiResource):
             200,
         )
 
+    @service_api_ns.doc(
+        summary="Update Knowledge Base",
+        description=(
+            "Update the name, description, permissions, or retrieval settings of an existing knowledge "
+            "base. Only the fields provided in the request body are updated."
+        ),
+        tags=["Knowledge Bases"],
+        responses={
+            200: "Knowledge base updated successfully.",
+            403: "`forbidden` : Insufficient permissions to access this knowledge base.",
+            404: "`not_found` : Dataset not found.",
+        },
+    )
     @service_api_ns.expect(service_api_ns.models[DatasetUpdatePayload.__name__])
     @service_api_ns.doc("update_dataset")
     @service_api_ns.doc(description="Update an existing dataset")
@@ -474,6 +567,22 @@ class DatasetApi(DatasetApiResource):
 
         return DatasetDetailWithPartialMembersResponse.model_validate(result_data).model_dump(mode="json"), 200
 
+    @service_api_ns.doc(
+        summary="Delete Knowledge Base",
+        description=(
+            "Permanently delete a knowledge base and all its documents. The knowledge base must not be "
+            "in use by any application."
+        ),
+        tags=["Knowledge Bases"],
+        responses={
+            204: "Success.",
+            404: "`not_found` : Dataset not found.",
+            409: (
+                "`dataset_in_use` : The knowledge base is being used by some apps. Please remove it from the "
+                "apps before deleting."
+            ),
+        },
+    )
     @service_api_ns.doc("delete_dataset")
     @service_api_ns.doc(description="Delete a dataset")
     @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
@@ -519,6 +628,17 @@ class DatasetApi(DatasetApiResource):
 class DocumentStatusApi(DatasetApiResource):
     """Resource for batch document status operations."""
 
+    @service_api_ns.doc(
+        summary="Update Document Status in Batch",
+        description="Enable, disable, archive, or unarchive multiple documents at once.",
+        tags=["Documents"],
+        responses={
+            200: "Documents updated successfully.",
+            400: "`invalid_action` : Invalid action.",
+            403: "`forbidden` : Insufficient permissions.",
+            404: "`not_found` : Knowledge base not found.",
+        },
+    )
     @service_api_ns.response(
         200,
         "Document status updated successfully",
@@ -529,7 +649,7 @@ class DocumentStatusApi(DatasetApiResource):
     @service_api_ns.doc(
         params={
             "dataset_id": "Dataset ID",
-            "action": "Action to perform: 'enable', 'disable', 'archive', or 'un_archive'",
+            "action": DOCUMENT_STATUS_ACTION_PARAM,
         }
     )
     @service_api_ns.doc(
@@ -591,6 +711,14 @@ class DocumentStatusApi(DatasetApiResource):
 
 @service_api_ns.route("/datasets/tags")
 class DatasetTagsApi(DatasetApiResource):
+    @service_api_ns.doc(
+        summary="List Knowledge Tags",
+        description="Returns the list of all knowledge base tags in the workspace.",
+        tags=["Tags"],
+        responses={
+            200: "List of tags.",
+        },
+    )
     @service_api_ns.doc("list_dataset_tags")
     @service_api_ns.doc(description="Get all knowledge type tags")
     @service_api_ns.doc(
@@ -612,6 +740,14 @@ class DatasetTagsApi(DatasetApiResource):
         tags = TagService.get_tags(db.session(), "knowledge", cid)
         return dump_response(KnowledgeTagListResponse, tags), 200
 
+    @service_api_ns.doc(
+        summary="Create Knowledge Tag",
+        description="Create a new tag for organizing knowledge bases.",
+        tags=["Tags"],
+        responses={
+            200: "Tag created successfully.",
+        },
+    )
     @service_api_ns.expect(service_api_ns.models[TagCreatePayload.__name__])
     @service_api_ns.doc("create_dataset_tag")
     @service_api_ns.doc(description="Add a knowledge type tag")
@@ -642,6 +778,14 @@ class DatasetTagsApi(DatasetApiResource):
         )
         return response, 200
 
+    @service_api_ns.doc(
+        summary="Update Knowledge Tag",
+        description="Rename an existing knowledge base tag.",
+        tags=["Tags"],
+        responses={
+            200: "Tag updated successfully.",
+        },
+    )
     @service_api_ns.expect(service_api_ns.models[TagUpdatePayload.__name__])
     @service_api_ns.doc("update_dataset_tag")
     @service_api_ns.doc(description="Update a knowledge type tag")
@@ -674,6 +818,14 @@ class DatasetTagsApi(DatasetApiResource):
         )
         return response, 200
 
+    @service_api_ns.doc(
+        summary="Delete Knowledge Tag",
+        description="Permanently delete a knowledge base tag. Does not delete the knowledge bases that were tagged.",
+        tags=["Tags"],
+        responses={
+            204: "Success.",
+        },
+    )
     @service_api_ns.expect(service_api_ns.models[TagDeletePayload.__name__])
     @service_api_ns.doc("delete_dataset_tag")
     @service_api_ns.doc(description="Delete a knowledge type tag")
@@ -695,6 +847,14 @@ class DatasetTagsApi(DatasetApiResource):
 
 @service_api_ns.route("/datasets/tags/binding")
 class DatasetTagBindingApi(DatasetApiResource):
+    @service_api_ns.doc(
+        summary="Create Tag Binding",
+        description="Bind one or more tags to a knowledge base. A knowledge base can have multiple tags.",
+        tags=["Tags"],
+        responses={
+            204: "Success.",
+        },
+    )
     @service_api_ns.expect(service_api_ns.models[TagBindingPayload.__name__])
     @service_api_ns.doc("bind_dataset_tags")
     @service_api_ns.doc(description="Bind tags to a dataset")
@@ -722,6 +882,14 @@ class DatasetTagBindingApi(DatasetApiResource):
 
 @service_api_ns.route("/datasets/tags/unbinding")
 class DatasetTagUnbindingApi(DatasetApiResource):
+    @service_api_ns.doc(
+        summary="Delete Tag Binding",
+        description="Remove one or more tags from a knowledge base.",
+        tags=["Tags"],
+        responses={
+            204: "Success.",
+        },
+    )
     @service_api_ns.expect(service_api_ns.models[TagUnbindingPayload.__name__])
     @service_api_ns.doc("unbind_dataset_tags")
     @service_api_ns.doc(description="Unbind tags from a dataset")
@@ -749,6 +917,14 @@ class DatasetTagUnbindingApi(DatasetApiResource):
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/tags")
 class DatasetTagsBindingStatusApi(DatasetApiResource):
+    @service_api_ns.doc(
+        summary="Get Knowledge Base Tags",
+        description="Returns the list of tags bound to a specific knowledge base.",
+        tags=["Tags"],
+        responses={
+            200: "Tags bound to the knowledge base.",
+        },
+    )
     @service_api_ns.doc("get_dataset_tags_binding_status")
     @service_api_ns.doc(description="Get tags bound to a specific dataset")
     @service_api_ns.doc(params={"dataset_id": "Dataset ID"})

@@ -15,6 +15,8 @@ const config: KnipConfig = {
   ],
   ignoreBinaries: [
     'only-allow',
+    'pbcopy',
+    'which',
   ],
   ignoreDependencies: [
     '@iconify-json/*',

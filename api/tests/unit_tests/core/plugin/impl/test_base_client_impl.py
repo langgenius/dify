@@ -7,6 +7,7 @@ from pytest_mock import MockerFixture
 from core.plugin.endpoint.exc import EndpointSetupFailedError
 from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
 from core.plugin.impl.base import PLUGIN_DAEMON_MAX_PATH_LENGTH, BasePluginClient
+from core.plugin.impl.exc import PluginLLMPollingUnsupportedError
 from core.trigger.errors import (
     EventIgnoreError,
     TriggerInvokeError,
@@ -166,4 +167,11 @@ class TestBasePluginClientImpl:
         message = json.dumps({"error_type": error_type, "message": "m"})
 
         with pytest.raises(expected):
+            client._handle_plugin_daemon_error("PluginInvokeError", message)
+
+    def test_handle_plugin_daemon_error_maps_unsupported_polling_to_typed_exception(self):
+        client = BasePluginClient()
+        message = json.dumps({"error_type": PluginLLMPollingUnsupportedError.__name__, "message": "m"})
+
+        with pytest.raises(PluginLLMPollingUnsupportedError):
             client._handle_plugin_daemon_error("PluginInvokeError", message)

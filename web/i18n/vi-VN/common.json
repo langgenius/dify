@@ -311,6 +311,7 @@
   "menus.apps": "Studio",
   "menus.datasets": "Kiến thức",
   "menus.datasetsTips": "SẮP RA MẮT: Nhập dữ liệu văn bản của bạn hoặc cập nhật dữ liệu theo thời gian thực thông qua Webhook để cải thiện ngữ cảnh LLM.",
+  "menus.deployments": "Triển khai",
   "menus.explore": "Khám phá",
   "menus.exploreMarketplace": "Khám phá Marketplace",
   "menus.newApp": "Ứng dụng mới",

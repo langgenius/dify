@@ -4,8 +4,8 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
-export type AppPagination = {
-  data: Array<AppPartial>
+export type AgentAppPagination = {
+  data: Array<AgentAppPartial>
   has_more: boolean
   limit: number
   page: number
@@ -18,7 +18,7 @@ export type AgentAppCreatePayload = {
   icon_background?: string | null
   icon_type?: IconType | null
   name: string
-  role?: string
+  role: string
 }
 
 export type AppDetailWithSite = {
@@ -67,7 +67,7 @@ export type AgentAppUpdatePayload = {
   icon_type?: IconType | null
   max_active_requests?: number | null
   name: string
-  role?: string | null
+  role: string
   use_icon_as_answer_icon?: boolean | null
 }
 
@@ -122,6 +122,14 @@ export type AgentComposerValidateResponse = {
   warnings?: Array<ComposerValidationWarningResponse>
 }
 
+export type CopyAppPayload = {
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: IconType | null
+  name?: string | null
+}
+
 export type AgentDriveListResponse = {
   items?: Array<AgentDriveItemResponse>
 }
@@ -167,6 +175,27 @@ export type AgentDriveFilePayload = {
 export type AgentDriveFileCommitResponse = {
   config_version_id?: string | null
   file: AgentDriveFileResponse
+}
+
+export type AgentLogSourceListResponse = {
+  data: Array<AgentLogSourceResponse>
+  groups: Array<AgentLogSourceGroupResponse>
+}
+
+export type AgentLogListResponse = {
+  data: Array<AgentLogConversationItemResponse>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
+}
+
+export type AgentLogMessageListResponse = {
+  data: Array<AgentLogMessageItemResponse>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
 }
 
 export type MessageDetailResponse = {
@@ -242,6 +271,12 @@ export type SkillToolInferenceResult = {
   reason?: string | null
 }
 
+export type AgentStatisticSummaryEnvelopeResponse = {
+  charts: AgentStatisticChartsResponse
+  source: string
+  summary: AgentStatisticSummaryResponse
+}
+
 export type AgentConfigSnapshotListResponse = {
   data: Array<AgentConfigSnapshotSummaryResponse>
 }
@@ -258,7 +293,7 @@ export type AgentConfigSnapshotDetailResponse = {
   version_note?: string | null
 }
 
-export type AppPartial = {
+export type AgentAppPartial = {
   access_mode?: string | null
   active_config_is_published?: boolean
   app_id?: string | null
@@ -279,6 +314,8 @@ export type AppPartial = {
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
+  published_reference_count?: number
+  published_references?: Array<AgentAppPublishedReferenceResponse>
   role?: string | null
   tags?: Array<Tag>
   updated_at?: number | null
@@ -530,6 +567,60 @@ export type AgentDriveFileResponse = {
   size?: number | null
 }
 
+export type AgentLogSourceResponse = {
+  app_icon?: string | null
+  app_icon_background?: string | null
+  app_icon_type?: string | null
+  app_id: string
+  app_name: string
+  id: string
+  node_id?: string | null
+  type: 'webapp' | 'workflow'
+  workflow_id?: string | null
+  workflow_version?: string | null
+}
+
+export type AgentLogSourceGroupResponse = {
+  label: string
+  sources?: Array<AgentLogSourceResponse>
+  type: 'webapp' | 'workflow'
+}
+
+export type AgentLogConversationItemResponse = {
+  conversation_id: string
+  created_at?: number | null
+  end_user_id?: string | null
+  id: string
+  message_count: number
+  operation_rate?: number | null
+  source?: AgentLogSourceResponse | null
+  status: 'failed' | 'paused' | 'success'
+  title?: string | null
+  unread: boolean
+  updated_at?: number | null
+  user_rate?: number | null
+}
+
+export type AgentLogMessageItemResponse = {
+  answer: string
+  answer_tokens: number
+  conversation_id: string
+  created_at?: number | null
+  currency: string
+  error?: string | null
+  from_account_id?: string | null
+  from_end_user_id?: string | null
+  id: string
+  latency: number
+  message_id: string
+  message_tokens: number
+  query: string
+  status: string
+  total_price: string
+  total_tokens: number
+  updated_at?: number | null
+}
+
 export type AgentThought = {
   chain_id?: string | null
   created_at?: number | null
@@ -644,6 +735,30 @@ export type CliToolSuggestion = {
   name: string
 }
 
+export type AgentStatisticChartsResponse = {
+  average_response_time?: Array<AgentAverageResponseTimeStatisticResponse>
+  average_session_interactions?: Array<AgentAverageSessionInteractionStatisticResponse>
+  daily_conversations?: Array<AgentDailyConversationStatisticResponse>
+  daily_end_users?: Array<AgentDailyEndUserStatisticResponse>
+  daily_messages?: Array<AgentDailyMessageStatisticResponse>
+  token_usage?: Array<AgentTokenUsageStatisticResponse>
+  tokens_per_second?: Array<AgentTokensPerSecondStatisticResponse>
+  user_satisfaction_rate?: Array<AgentUserSatisfactionRateStatisticResponse>
+}
+
+export type AgentStatisticSummaryResponse = {
+  average_response_time: number
+  average_session_interactions: number
+  currency: string
+  tokens_per_second: number
+  total_conversations: number
+  total_end_users: number
+  total_messages: number
+  total_price: string
+  total_tokens: number
+  user_satisfaction_rate: number
+}
+
 export type AgentConfigRevisionResponse = {
   created_at?: number | null
   created_by?: string | null
@@ -663,6 +778,14 @@ export type ModelConfigPartial = {
   pre_prompt?: string | null
   updated_at?: number | null
   updated_by?: string | null
+}
+
+export type AgentAppPublishedReferenceResponse = {
+  app_icon?: string | null
+  app_icon_background?: string | null
+  app_icon_type?: string | null
+  app_id: string
+  app_name: string
 }
 
 export type LlmMode = 'chat' | 'completion'
@@ -951,6 +1074,48 @@ export type EnvSuggestion = {
   key: string
   reason?: string
   secret_likely?: boolean
+}
+
+export type AgentAverageResponseTimeStatisticResponse = {
+  date: string
+  latency: number
+}
+
+export type AgentAverageSessionInteractionStatisticResponse = {
+  date: string
+  interactions: number
+}
+
+export type AgentDailyConversationStatisticResponse = {
+  conversation_count: number
+  date: string
+}
+
+export type AgentDailyEndUserStatisticResponse = {
+  date: string
+  terminal_count: number
+}
+
+export type AgentDailyMessageStatisticResponse = {
+  date: string
+  message_count: number
+}
+
+export type AgentTokenUsageStatisticResponse = {
+  currency: string
+  date: string
+  token_count: number
+  total_price: string
+}
+
+export type AgentTokensPerSecondStatisticResponse = {
+  date: string
+  tps: number
+}
+
+export type AgentUserSatisfactionRateStatisticResponse = {
+  date: string
+  rate: number
 }
 
 export type AgentConfigRevisionOperation
@@ -1258,8 +1423,8 @@ export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url'
 
 export type ValueSourceType = 'constant' | 'variable'
 
-export type AppPaginationWritable = {
-  data: Array<AppPartialWritable>
+export type AgentAppPaginationWritable = {
+  data: Array<AgentAppPartialWritable>
   has_more: boolean
   limit: number
   page: number
@@ -1296,7 +1461,7 @@ export type AppDetailWithSiteWritable = {
   workflow?: WorkflowPartial | null
 }
 
-export type AppPartialWritable = {
+export type AgentAppPartialWritable = {
   access_mode?: string | null
   active_config_is_published?: boolean
   app_id?: string | null
@@ -1316,6 +1481,8 @@ export type AppPartialWritable = {
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
+  published_reference_count?: number
+  published_references?: Array<AgentAppPublishedReferenceResponse>
   role?: string | null
   tags?: Array<Tag>
   updated_at?: number | null
@@ -1365,7 +1532,7 @@ export type GetAgentData = {
 }
 
 export type GetAgentResponses = {
-  200: AppPagination
+  200: AgentAppPagination
 }
 
 export type GetAgentResponse = GetAgentResponses[keyof GetAgentResponses]
@@ -1588,6 +1755,27 @@ export type PostAgentByAgentIdComposerValidateResponses = {
 export type PostAgentByAgentIdComposerValidateResponse
   = PostAgentByAgentIdComposerValidateResponses[keyof PostAgentByAgentIdComposerValidateResponses]
 
+export type PostAgentByAgentIdCopyData = {
+  body: CopyAppPayload
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/copy'
+}
+
+export type PostAgentByAgentIdCopyErrors = {
+  400: unknown
+  403: unknown
+}
+
+export type PostAgentByAgentIdCopyResponses = {
+  201: AppDetailWithSite
+}
+
+export type PostAgentByAgentIdCopyResponse
+  = PostAgentByAgentIdCopyResponses[keyof PostAgentByAgentIdCopyResponses]
+
 export type GetAgentByAgentIdDriveFilesData = {
   body?: never
   path: {
@@ -1716,6 +1904,71 @@ export type PostAgentByAgentIdFilesResponses = {
 
 export type PostAgentByAgentIdFilesResponse
   = PostAgentByAgentIdFilesResponses[keyof PostAgentByAgentIdFilesResponses]
+
+export type GetAgentByAgentIdLogSourcesData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/log-sources'
+}
+
+export type GetAgentByAgentIdLogSourcesResponses = {
+  200: AgentLogSourceListResponse
+}
+
+export type GetAgentByAgentIdLogSourcesResponse
+  = GetAgentByAgentIdLogSourcesResponses[keyof GetAgentByAgentIdLogSourcesResponses]
+
+export type GetAgentByAgentIdLogsData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: {
+    end?: string
+    keyword?: string
+    limit?: number
+    page?: number
+    source?: string
+    start?: string
+    status?: string
+  }
+  url: '/agent/{agent_id}/logs'
+}
+
+export type GetAgentByAgentIdLogsResponses = {
+  200: AgentLogListResponse
+}
+
+export type GetAgentByAgentIdLogsResponse
+  = GetAgentByAgentIdLogsResponses[keyof GetAgentByAgentIdLogsResponses]
+
+export type GetAgentByAgentIdLogsByConversationIdMessagesData = {
+  body?: never
+  path: {
+    agent_id: string
+    conversation_id: string
+  }
+  query?: {
+    end?: string
+    keyword?: string
+    limit?: number
+    page?: number
+    source?: string
+    start?: string
+    status?: string
+  }
+  url: '/agent/{agent_id}/logs/{conversation_id}/messages'
+}
+
+export type GetAgentByAgentIdLogsByConversationIdMessagesResponses = {
+  200: AgentLogMessageListResponse
+}
+
+export type GetAgentByAgentIdLogsByConversationIdMessagesResponse
+  = GetAgentByAgentIdLogsByConversationIdMessagesResponses[keyof GetAgentByAgentIdLogsByConversationIdMessagesResponses]
 
 export type GetAgentByAgentIdMessagesByMessageIdData = {
   body?: never
@@ -1885,6 +2138,26 @@ export type PostAgentByAgentIdSkillsBySlugInferToolsResponses = {
 
 export type PostAgentByAgentIdSkillsBySlugInferToolsResponse
   = PostAgentByAgentIdSkillsBySlugInferToolsResponses[keyof PostAgentByAgentIdSkillsBySlugInferToolsResponses]
+
+export type GetAgentByAgentIdStatisticsSummaryData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: {
+    end?: string
+    source?: string
+    start?: string
+  }
+  url: '/agent/{agent_id}/statistics/summary'
+}
+
+export type GetAgentByAgentIdStatisticsSummaryResponses = {
+  200: AgentStatisticSummaryEnvelopeResponse
+}
+
+export type GetAgentByAgentIdStatisticsSummaryResponse
+  = GetAgentByAgentIdStatisticsSummaryResponses[keyof GetAgentByAgentIdStatisticsSummaryResponses]
 
 export type GetAgentByAgentIdVersionsData = {
   body?: never

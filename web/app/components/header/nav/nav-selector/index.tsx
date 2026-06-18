@@ -53,14 +53,14 @@ type AppCreateMenuProps = {
   onCreate: (state: string) => void
 }
 
-const AppCreateMenu = ({
+function AppCreateMenu({
   createText,
   startFromBlankText,
   startFromTemplateText,
   importDSLText,
   onCreate,
-}: AppCreateMenuProps) => {
-  const handleCreate = (state: string) => {
+}: AppCreateMenuProps) {
+  function handleCreate(state: string) {
     onCreate(state)
   }
 
@@ -111,9 +111,65 @@ const AppCreateMenu = ({
   )
 }
 
-const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onLoadMore, isLoadingMore }: INavSelectorProps) => {
-  const { t } = useTranslation()
+function NavSelectorItemContent({ nav }: {
+  nav: NavItem
+}) {
+  return (
+    <>
+      <div className="relative mr-2 size-6 shrink-0 rounded-md">
+        <AppIcon
+          size="tiny"
+          iconType={nav.icon_type}
+          icon={nav.icon}
+          background={nav.icon_background}
+          imageUrl={nav.icon_url}
+        />
+        {!!nav.mode && (
+          <AppTypeIcon type={nav.mode} wrapperClassName="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 shadow-sm" className="size-2.5" />
+        )}
+      </div>
+      <div className="min-w-0 truncate">
+        {nav.name}
+      </div>
+    </>
+  )
+}
+
+function NavSelectorRouteItem({ nav, isCurrent, onBeforeNavigate }: {
+  nav: NavItem
+  isCurrent: boolean
+  onBeforeNavigate: () => void
+}) {
   const router = useRouter()
+  const className = 'h-auto truncate px-3 py-[6px] text-[14px] font-normal text-text-secondary'
+
+  function handleNavigate() {
+    onBeforeNavigate()
+    router.push(nav.link)
+  }
+
+  if (isCurrent) {
+    return (
+      <DropdownMenuItem
+        className={className}
+      >
+        <NavSelectorItemContent nav={nav} />
+      </DropdownMenuItem>
+    )
+  }
+
+  return (
+    <DropdownMenuItem
+      className={className}
+      onClick={handleNavigate}
+    >
+      <NavSelectorItemContent nav={nav} />
+    </DropdownMenuItem>
+  )
+}
+
+export function NavSelector({ curNav, navigationItems, createText, isApp, onCreate, onLoadMore, isLoadingMore }: INavSelectorProps) {
+  const { t } = useTranslation()
   const { isCurrentWorkspaceEditor } = useAppContext()
   const setAppDetail = useAppStore(state => state.setAppDetail)
 
@@ -130,11 +186,11 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger
         className={cn(
-          'hover:hover:bg-components-main-nav-nav-button-bg-active-hover group inline-flex h-7 items-center justify-center rounded-[10px] pr-2.5 pl-2 text-[14px] font-semibold text-components-main-nav-nav-button-text-active outline-hidden',
+          'hover:hover:bg-components-main-nav-nav-button-bg-active-hover group inline-flex h-7 min-w-0 items-center justify-center rounded-[10px] pr-2.5 pl-2 text-[14px] font-semibold text-components-main-nav-nav-button-text-active outline-hidden',
           'focus-visible:bg-components-main-nav-nav-button-bg-active focus-visible:ring-1 focus-visible:ring-components-input-border-hover data-popup-open:bg-components-main-nav-nav-button-bg-active',
         )}
       >
-        <div className="max-w-[157px] truncate" title={curNav?.name}>{curNav?.name}</div>
+        <div className="max-w-[157px] min-w-0 truncate">{curNav?.name}</div>
         <RiArrowDownSLine
           className="ml-1 size-3 shrink-0 opacity-50 group-hover:opacity-100 group-data-popup-open:opacity-100"
           aria-hidden="true"
@@ -148,33 +204,12 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
         <div className="max-h-[50vh] overflow-auto px-1 py-1" onScroll={handleScroll}>
           {
             navigationItems.map(nav => (
-              <DropdownMenuItem
+              <NavSelectorRouteItem
                 key={nav.id}
-                className="h-auto truncate px-3 py-[6px] text-[14px] font-normal text-text-secondary"
-                onClick={() => {
-                  if (curNav?.id === nav.id)
-                    return
-                  setAppDetail()
-                  router.push(nav.link)
-                }}
-                title={nav.name}
-              >
-                <div className="relative mr-2 size-6 shrink-0 rounded-md">
-                  <AppIcon
-                    size="tiny"
-                    iconType={nav.icon_type}
-                    icon={nav.icon}
-                    background={nav.icon_background}
-                    imageUrl={nav.icon_url}
-                  />
-                  {!!nav.mode && (
-                    <AppTypeIcon type={nav.mode} wrapperClassName="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 shadow-sm" className="size-2.5" />
-                  )}
-                </div>
-                <div className="min-w-0 truncate">
-                  {nav.name}
-                </div>
-              </DropdownMenuItem>
+                nav={nav}
+                isCurrent={curNav?.id === nav.id}
+                onBeforeNavigate={setAppDetail}
+              />
             ))
           }
           {isLoadingMore && (
@@ -209,5 +244,3 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
     </DropdownMenu>
   )
 }
-
-export default NavSelector

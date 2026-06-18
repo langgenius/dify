@@ -16,7 +16,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
-import AppPublisher from '@/app/components/app/app-publisher'
+import { AppPublisher } from '@/app/components/app/app-publisher'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { Plan } from '@/app/components/billing/type'

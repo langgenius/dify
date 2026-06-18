@@ -311,6 +311,7 @@
   "menus.apps": "स्टूडियो",
   "menus.datasets": "ज्ञान",
   "menus.datasetsTips": "जल्द आ रहा है: अपने स्वयं के टेक्स्ट डेटा आयात करें या LLM संदर्भ संवर्धन के लिए रियल-टाइम में वेबहुक के माध्यम से डेटा लिखें।",
+  "menus.deployments": "डिप्लॉयमेंट",
   "menus.explore": "अन्वेषण करें",
   "menus.exploreMarketplace": "मार्केटप्लेस का अन्वेषण करें",
   "menus.newApp": "नया ऐप",

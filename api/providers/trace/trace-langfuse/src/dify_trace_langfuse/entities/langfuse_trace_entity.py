@@ -18,24 +18,25 @@ def validate_input_output(v, field_name):
     """
     if v == {} or v is None:
         return v
-    if isinstance(v, str):
-        return [
-            {
-                "role": "assistant" if field_name == "output" else "user",
-                "content": v,
-            }
-        ]
-    elif isinstance(v, list):
-        if len(v) > 0 and isinstance(v[0], dict):
-            v = replace_text_with_content(data=v)
-            return v
-        else:
+    match v:
+        case str():
             return [
                 {
                     "role": "assistant" if field_name == "output" else "user",
-                    "content": str(v),
+                    "content": v,
                 }
             ]
+        case list():
+            if len(v) > 0 and isinstance(v[0], dict):
+                v = replace_text_with_content(data=v)
+                return v
+            else:
+                return [
+                    {
+                        "role": "assistant" if field_name == "output" else "user",
+                        "content": str(v),
+                    }
+                ]
 
     return v
 

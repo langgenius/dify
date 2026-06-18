@@ -146,7 +146,16 @@ export type ConversationListQuery = {
   sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
 }
 
-export type ConversationRenamePayload = {
+export type ConversationRenamePayload = (
+  | {
+    auto_generate: true
+    name?: string | null
+  }
+  | {
+    auto_generate?: false
+    name: string
+  }
+) & {
   auto_generate?: boolean
   name?: string | null
 }
@@ -540,6 +549,7 @@ export type SuggestedQuestionsResponse = {
 
 export type SystemFeatureModel = {
   branding: BrandingModel
+  enable_app_deploy: boolean
   enable_change_email: boolean
   enable_collaboration_mode: boolean
   enable_creators_platform: boolean

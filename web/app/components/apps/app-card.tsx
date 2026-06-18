@@ -1,5 +1,6 @@
 'use client'
 
+import type { FormEvent, FormEventHandler, MouseEvent } from 'react'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
@@ -31,7 +32,6 @@ import {
 } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useSetLocalStorage } from 'foxact/use-local-storage'
-import * as React from 'react'
 import { useCallback, useId, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
@@ -72,7 +72,7 @@ const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-mod
 const DSLExportConfirmModal = dynamic(() => import('@/app/components/workflow/dsl-export-confirm-modal'), {
   ssr: false,
 })
-const AccessControl = dynamic(() => import('@/app/components/app/app-access-control'), {
+const AccessControl = dynamic(() => import('@/app/components/app/app-access-control').then(mod => mod.AccessControl), {
   ssr: false,
 })
 
@@ -140,7 +140,7 @@ type AppCardOperationsMenuProps = {
   onAccessControl: () => void
 }
 
-const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
+function AppCardOperationsMenu({
   app,
   shouldShowSwitchOption,
   shouldShowOpenInExploreOption,
@@ -151,17 +151,17 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
   onSwitch,
   onDelete,
   onAccessControl,
-}) => {
+}: AppCardOperationsMenuProps) {
   const { t } = useTranslation()
   const openAsyncWindow = useAsyncWindowOpen()
 
-  const handleMenuAction = useCallback((e: React.MouseEvent<HTMLElement>, action: () => void) => {
+  function handleMenuAction(e: MouseEvent<HTMLElement>, action: () => void) {
     e.stopPropagation()
     e.preventDefault()
     action()
-  }, [])
+  }
 
-  const handleOpenInstalledApp = useCallback(async (e: React.MouseEvent<HTMLElement>) => {
+  async function handleOpenInstalledApp(e: MouseEvent<HTMLElement>) {
     e.stopPropagation()
     e.preventDefault()
     try {
@@ -180,7 +180,7 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
       const message = e instanceof Error ? e.message : `${e}`
       toast.error(message)
     }
-  }, [app.id, openAsyncWindow])
+  }
 
   return (
     <>
@@ -234,7 +234,7 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
 
 type AppCardOperationsMenuContentProps = Omit<AppCardOperationsMenuProps, 'shouldShowOpenInExploreOption'>
 
-const AppCardOperationsMenuContent: React.FC<AppCardOperationsMenuContentProps> = (props) => {
+function AppCardOperationsMenuContent(props: AppCardOperationsMenuContentProps) {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp } = useGetUserCanAccessApp({
     appId: props.app.id,
@@ -260,7 +260,7 @@ type AppCardActionBarProps = {
   onRefresh?: () => void
 }
 
-export const AppCardActionBar: React.FC<AppCardActionBarProps> = ({ app, onRefresh }) => {
+export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isCurrentWorkspaceEditor } = useAppContext()
@@ -304,7 +304,7 @@ export const AppCardActionBar: React.FC<AppCardActionBarProps> = ({ app, onRefre
 
   const isDeleteConfirmDisabled = isDeleting || confirmDeleteInput !== app.name
 
-  const onDeleteDialogSubmit: React.FormEventHandler<HTMLFormElement> = useCallback((e) => {
+  const onDeleteDialogSubmit: FormEventHandler<HTMLFormElement> = useCallback((e) => {
     e.preventDefault()
     if (isDeleteConfirmDisabled)
       return
@@ -442,7 +442,7 @@ export const AppCardActionBar: React.FC<AppCardActionBarProps> = ({ app, onRefre
     setShowAccessControl(false)
   }, [onRefresh, setShowAccessControl])
 
-  const handleToggleStar = useCallback(async (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleToggleStar = useCallback(async (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
     e.preventDefault()
 
@@ -651,7 +651,7 @@ export const AppCardActionBar: React.FC<AppCardActionBarProps> = ({ app, onRefre
   )
 }
 
-const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () => { } }: AppCardProps) => {
+export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () => {} }: AppCardProps) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isCurrentWorkspaceEditor } = useAppContext()
@@ -670,7 +670,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
   const { mutateAsync: mutateToggleAppStar, isPending: isTogglingStar } = useToggleAppStarMutation()
   const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
 
-  const onConfirmDelete = useCallback(async () => {
+  async function onConfirmDelete() {
     try {
       await mutateDeleteApp(app.id)
       toast.success(t('appDeleted', { ns: 'app' }))
@@ -682,63 +682,63 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
       const message = e instanceof Error ? e.message : ''
       toast.error(`${t('appDeleteFailed', { ns: 'app' })}${message ? `: ${message}` : ''}`)
     }
-  }, [app.id, mutateDeleteApp, onPlanInfoChanged, t])
+  }
 
-  const onDeleteDialogOpenChange = useCallback((open: boolean) => {
+  function onDeleteDialogOpenChange(open: boolean) {
     if (isDeleting)
       return
 
     setShowConfirmDelete(open)
     if (!open)
       setConfirmDeleteInput('')
-  }, [isDeleting])
+  }
 
   const isDeleteConfirmDisabled = isDeleting || confirmDeleteInput !== app.name
 
-  const onDeleteDialogSubmit: React.FormEventHandler<HTMLFormElement> = useCallback((e) => {
-    e.preventDefault()
+  function onDeleteDialogSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
     if (isDeleteConfirmDisabled)
       return
 
     void onConfirmDelete()
-  }, [isDeleteConfirmDisabled, onConfirmDelete])
+  }
 
-  const handleShowEditModal = useCallback(() => {
+  function handleShowEditModal() {
     setIsOperationsMenuOpen(false)
     queueMicrotask(() => {
       setShowEditModal(true)
     })
-  }, [])
+  }
 
-  const handleShowDuplicateModal = useCallback(() => {
+  function handleShowDuplicateModal() {
     setIsOperationsMenuOpen(false)
     queueMicrotask(() => {
       setShowDuplicateModal(true)
     })
-  }, [])
+  }
 
-  const handleShowSwitchModal = useCallback(() => {
+  function handleShowSwitchModal() {
     setIsOperationsMenuOpen(false)
     queueMicrotask(() => {
       setShowSwitchModal(true)
     })
-  }, [])
+  }
 
-  const handleShowDeleteConfirm = useCallback(() => {
+  function handleShowDeleteConfirm() {
     setIsOperationsMenuOpen(false)
     queueMicrotask(() => {
       setShowConfirmDelete(true)
     })
-  }, [])
+  }
 
-  const handleShowAccessControl = useCallback(() => {
+  function handleShowAccessControl() {
     setIsOperationsMenuOpen(false)
     queueMicrotask(() => {
       setShowAccessControl(true)
     })
-  }, [])
+  }
 
-  const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
+  const onEdit: CreateAppModalProps['onConfirm'] = async ({
     name,
     icon_type,
     icon,
@@ -766,7 +766,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
     catch (e) {
       toast.error(e instanceof Error ? e.message : t('editFailed', { ns: 'app' }))
     }
-  }, [app.id, onRefresh, t])
+  }
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon_type, icon, icon_background }) => {
     try {
@@ -831,11 +831,11 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
     setShowSwitchModal(false)
   }
 
-  const onUpdateAccessControl = useCallback(() => {
+  function onUpdateAccessControl() {
     if (onRefresh)
       onRefresh()
     setShowAccessControl(false)
-  }, [onRefresh, setShowAccessControl])
+  }
 
   const handleToggleStar = useCallback(async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
@@ -1163,5 +1163,3 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
     </>
   )
 }
-
-export default React.memo(AppCard)
