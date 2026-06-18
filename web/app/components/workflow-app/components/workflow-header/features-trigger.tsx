@@ -9,7 +9,6 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
-import { useQueryClient } from '@tanstack/react-query'
 import {
   memo,
   useCallback,
@@ -29,8 +28,8 @@ import {
   useNodesSyncDraft,
   // useWorkflowRunValidation,
 } from '@/app/components/workflow/hooks'
-import { hasValidRosterAgentBinding, isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { hasValidRosterAgentBinding, isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
 import {
   useStore,
   useWorkflowStore,
@@ -43,8 +42,8 @@ import {
 } from '@/app/components/workflow/types'
 import { useProviderContext } from '@/context/provider-context'
 import useTheme from '@/hooks/use-theme'
-import { appDetailQueryKeyPrefix } from '@/service/use-apps'
 import { consoleQuery } from '@/service/client'
+import { appDetailQueryKeyPrefix } from '@/service/use-apps'
 import { useInvalidateAppTriggers } from '@/service/use-tools'
 import { useInvalidateAppWorkflow, usePublishWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
 
@@ -56,7 +55,6 @@ const FeaturesTrigger = () => {
   const queryClient = useQueryClient()
   const appDetail = useAppStore(s => s.appDetail)
   const appID = appDetail?.id
-  const queryClient = useQueryClient()
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
   const canReleaseAndVersion = useHooksStore(s => s.accessControl.canReleaseAndVersion)
   const { plan, isFetchedPlan } = useProviderContext()
