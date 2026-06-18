@@ -45,7 +45,7 @@ class AgentAppSessionScope:
     app_id: str
     conversation_id: str
     agent_id: str
-    agent_config_snapshot_id: str
+    agent_config_snapshot_id: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -194,13 +194,15 @@ class AgentAppRuntimeSessionStore:
 
     @staticmethod
     def _scope_stmt(scope: AgentAppSessionScope):
-        return select(AgentRuntimeSession).where(
+        stmt = select(AgentRuntimeSession).where(
             AgentRuntimeSession.owner_type == AgentRuntimeSessionOwnerType.CONVERSATION,
             AgentRuntimeSession.tenant_id == scope.tenant_id,
             AgentRuntimeSession.conversation_id == scope.conversation_id,
             AgentRuntimeSession.agent_id == scope.agent_id,
-            AgentRuntimeSession.agent_config_snapshot_id == scope.agent_config_snapshot_id,
         )
+        if scope.agent_config_snapshot_id is None:
+            return stmt.where(AgentRuntimeSession.agent_config_snapshot_id.is_(None))
+        return stmt.where(AgentRuntimeSession.agent_config_snapshot_id == scope.agent_config_snapshot_id)
 
     @classmethod
     def _active_stmt(cls, scope: AgentAppSessionScope):
