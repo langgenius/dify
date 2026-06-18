@@ -1,18 +1,19 @@
 'use client'
 
 import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useConfigPublishPayload, useHasAgentComposerUnpublishedChanges } from '@/features/agent-v2/agent-composer/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AgentPublishImpactPopover } from './publish-impact-popover'
 
-const PUBLISH_AGENT_HOTKEY = 'Mod+Shift+P'
+const PUBLISH_AGENT_HOTKEY = 'Mod+Shift+P' satisfies RegisterableHotkey
 const PUBLISH_IMPACT_BAR_HIDE_DELAY = 160
 
 export type AgentConfigurePublishPayload = {
@@ -122,14 +123,6 @@ export function AgentConfigurePublishBar({
     void onPublish?.(publishPayload)
   }
 
-  useHotkey(PUBLISH_AGENT_HOTKEY, (event) => {
-    event.preventDefault()
-    handlePublish()
-  }, {
-    enabled: canPublish,
-    ignoreInputs: false,
-  })
-
   useEffect(() => {
     return () => {
       if (hidePublishBarTimerRef.current)
@@ -220,6 +213,7 @@ export function AgentConfigurePublishBar({
         <AgentPublishImpactPopover
           actionLabel={currentStateMeta.actionLabel}
           actionShortcut={currentStateMeta.showShortcut ? <PublishShortcut /> : null}
+          hotkey={PUBLISH_AGENT_HOTKEY}
           agentId={agentId}
           agentName={agentName}
           disabled={!canPublish}

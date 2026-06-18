@@ -2,7 +2,7 @@ import type { AgentConfigSnapshotSummaryResponse, AgentReferencingWorkflowRespon
 import type { ComponentProps } from 'react'
 import type { Mock } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { agentComposerDraftAtom, agentComposerOriginalDraftAtom, agentComposerPublishedDraftAtom } from '@/features/agent-v2/agent-composer/store'
@@ -385,6 +385,30 @@ describe('AgentConfigurePublishBar', () => {
     fireEvent.click(within(await screen.findByTestId('publish-impact-popover')).getByRole('button', {
       name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
     }))
+
+    expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
+      agent_id: 'agent-1',
+    }))
+  })
+
+  it('should open the affected workflow popover from the publish shortcut before publishing', async () => {
+    const { onPublish } = renderPublishBar({
+      activeConfigSnapshot,
+      prompt: 'Updated system prompt',
+      usedByAppReferences: publishedReferences,
+    })
+    const publishShortcut = hotkeyRegistrations.get('Mod+Shift+P')
+
+    await act(async () => {
+      await publishShortcut?.callback({ preventDefault: vi.fn() })
+    })
+
+    expect(onPublish).not.toHaveBeenCalled()
+    expect(await screen.findByTestId('publish-impact-popover')).toBeInTheDocument()
+
+    await act(async () => {
+      await hotkeyRegistrations.get('Mod+Shift+P')?.callback({ preventDefault: vi.fn() })
+    })
 
     expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
       agent_id: 'agent-1',

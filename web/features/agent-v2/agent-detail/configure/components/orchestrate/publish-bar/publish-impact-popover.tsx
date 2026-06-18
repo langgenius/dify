@@ -1,9 +1,11 @@
 'use client'
 
 import type { AgentIconType, AgentReferencingWorkflowResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
 import type { MouseEvent, ReactElement, ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useHotkey } from '@tanstack/react-hotkeys'
 import { useQuery } from '@tanstack/react-query'
 import { cloneElement, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,6 +16,7 @@ import { consoleQuery } from '@/service/client'
 type AgentPublishImpactPopoverProps = {
   actionLabel: string
   actionShortcut?: ReactNode
+  hotkey: RegisterableHotkey
   agentId: string
   agentName?: string | null
   disabled?: boolean
@@ -29,6 +32,7 @@ const getWorkflowReferenceHref = (reference: AgentReferencingWorkflowResponse) =
 export function AgentPublishImpactPopover({
   actionLabel,
   actionShortcut,
+  hotkey,
   agentId,
   agentName,
   disabled = false,
@@ -51,41 +55,58 @@ export function AgentPublishImpactPopover({
   })
   const publishedReferences = workflowReferencesQuery.data?.data ?? []
 
-  if (disabled)
-    return trigger
-
   const updateOpen = (nextOpen: boolean) => {
     setOpen(nextOpen)
     onOpenChange?.(nextOpen)
   }
 
-  const triggerWithImpact = cloneElement(trigger, {
-    onClick: async (event: MouseEvent<HTMLElement>) => {
-      event.preventDefault()
-      if (isCheckingReferences)
-        return
-
-      setIsCheckingReferences(true)
-      try {
-        const result = await workflowReferencesQuery.refetch()
-        const references = result.data?.data ?? []
-        if (references.length > 0) {
-          updateOpen(true)
-          return
-        }
-
-        onPublish()
-      }
-      finally {
-        setIsCheckingReferences(false)
-      }
-    },
-  })
-
   const handlePublish = () => {
     updateOpen(false)
     onPublish()
   }
+
+  const handlePublishRequest = async () => {
+    if (disabled || isCheckingReferences)
+      return
+
+    if (open) {
+      handlePublish()
+      return
+    }
+
+    setIsCheckingReferences(true)
+    try {
+      const result = await workflowReferencesQuery.refetch()
+      const references = result.data?.data ?? []
+      if (references.length > 0) {
+        updateOpen(true)
+        return
+      }
+
+      onPublish()
+    }
+    finally {
+      setIsCheckingReferences(false)
+    }
+  }
+
+  useHotkey(hotkey, (event) => {
+    event.preventDefault()
+    void handlePublishRequest()
+  }, {
+    enabled: !disabled,
+    ignoreInputs: false,
+  })
+
+  if (disabled)
+    return trigger
+
+  const triggerWithImpact = cloneElement(trigger, {
+    onClick: async (event: MouseEvent<HTMLElement>) => {
+      event.preventDefault()
+      await handlePublishRequest()
+    },
+  })
 
   return (
     <Popover open={open} onOpenChange={updateOpen}>
