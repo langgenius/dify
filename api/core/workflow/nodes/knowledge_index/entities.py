@@ -17,7 +17,7 @@ class RetrievalSetting(BaseModel):
 
     search_method: RetrievalMethod
     top_k: int
-    score_threshold: float | None = 0.5
+    score_threshold: float = 0.5
     score_threshold_enabled: bool = False
     reranking_mode: str = "reranking_model"
     reranking_enable: bool = True
