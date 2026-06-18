@@ -1,5 +1,6 @@
 'use client'
 
+import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -7,10 +8,12 @@ import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useQuery } from '@tanstack/react-query'
 import { useClipboard } from 'foxact/use-clipboard'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
+import { consoleQuery } from '@/service/client'
 import { WorkflowReferencesTable } from './components/workflow-references-table'
 
 type AgentAccessPageProps = {
@@ -18,6 +21,12 @@ type AgentAccessPageProps = {
 }
 
 const serviceApiEndpoint = 'https://api.dify.ai/v1'
+
+type AgentWebAppSite = NonNullable<AgentAppDetailWithSite['site']> & {
+  access_token?: string | null
+  app_base_url?: string | null
+  code?: string | null
+}
 
 type AccessSurfaceCardProps = {
   title: string
@@ -33,14 +42,31 @@ type AccessSurfaceCardProps = {
   onUnavailableAction: () => void
 }
 
+const getAgentWebAppUrl = (agent?: AgentAppDetailWithSite) => {
+  const site = agent?.site as AgentWebAppSite | null | undefined
+  const token = site?.access_token ?? site?.code
+  if (!token)
+    return ''
+
+  const baseUrl = site?.app_base_url || (typeof window === 'undefined' ? '' : window.location.origin)
+  return `${baseUrl.replace(/\/$/, '')}/agent/${token}`
+}
+
 export function AgentAccessPage({
   agentId,
 }: AgentAccessPageProps) {
   const { t } = useTranslation('agentV2')
   const docLink = useDocLink()
+  const agentQuery = useQuery(consoleQuery.agent.byAgentId.get.queryOptions({
+    input: {
+      params: {
+        agent_id: agentId,
+      },
+    },
+  }))
   const [isWebAppEnabled, setIsWebAppEnabled] = useState(true)
   const [isServiceApiEnabled, setIsServiceApiEnabled] = useState(true)
-  const webAppUrl = `https://udify.app/workflow/${agentId}`
+  const webAppUrl = getAgentWebAppUrl(agentQuery.data)
   const handleUnavailableAction = () => {
     toast.info(t('agentDetail.access.actionUnavailable'))
   }
