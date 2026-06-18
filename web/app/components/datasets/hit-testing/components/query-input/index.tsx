@@ -3,6 +3,7 @@ import type { ChangeEvent } from 'react'
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
 import type {
   Attachment,
+  DataSet,
   ExternalKnowledgeBaseHitTestingRequest,
   ExternalKnowledgeBaseHitTestingResponse,
   HitTestingRequest,
@@ -17,7 +18,7 @@ import {
   RiPlayCircleLine,
 } from '@remixicon/react'
 import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
 import ImageUploaderInRetrievalTesting from '@/app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing'
@@ -37,6 +38,7 @@ type QueryInputProps = {
   isExternal?: boolean
   onClickRetrievalMethod: () => void
   retrievalConfig: RetrievalConfig
+  externalRetrievalModel?: DataSet['external_retrieval_model']
   isEconomy: boolean
   onSubmit?: () => void
   hitTestingMutation: UseMutateAsyncFunction<HitTestingResponse, Error, HitTestingRequest, unknown>
@@ -58,6 +60,7 @@ const QueryInput = ({
   isExternal = false,
   onClickRetrievalMethod,
   retrievalConfig,
+  externalRetrievalModel,
   isEconomy,
   onSubmit: _onSubmit,
   hitTestingMutation,
@@ -67,10 +70,21 @@ const QueryInput = ({
   const isMultimodal = useDatasetDetailContextWithSelector(s => !!s.dataset?.is_multimodal)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [externalRetrievalSettings, setExternalRetrievalSettings] = useState({
-    top_k: 4,
-    score_threshold: 0.5,
-    score_threshold_enabled: false,
+    top_k: externalRetrievalModel?.top_k ?? 4,
+    score_threshold: externalRetrievalModel?.score_threshold ?? 0.5,
+    score_threshold_enabled: externalRetrievalModel?.score_threshold_enabled ?? false,
   })
+
+  useEffect(() => {
+    if (!externalRetrievalModel)
+      return
+
+    setExternalRetrievalSettings({
+      top_k: externalRetrievalModel.top_k,
+      score_threshold: externalRetrievalModel.score_threshold,
+      score_threshold_enabled: externalRetrievalModel.score_threshold_enabled,
+    })
+  }, [externalRetrievalModel])
 
   const text = useMemo(() => {
     return queries.find(query => query.content_type === 'text_query')?.content ?? ''
