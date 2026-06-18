@@ -5,6 +5,7 @@ StubSession/StubScalars emulate SQLAlchemy session/scalars with minimal methods
 database access mocked and predictable in tests.
 """
 
+from models import Account
 import json
 from types import SimpleNamespace
 from typing import Any
@@ -557,7 +558,7 @@ def test_invoke_raises_when_user_not_found(monkeypatch: pytest.MonkeyPatch):
 def test_resolve_user_from_database_returns_account(monkeypatch: pytest.MonkeyPatch):
     """Resolve Account and set tenant in worker context."""
     tenant = SimpleNamespace(id="tenant_id")
-    account = SimpleNamespace(id="account_id", current_tenant=None)
+    account = Account(id="account_id", _current_tenant=None)
     session = StubSession(scalar_results=[tenant, account])
 
     monkeypatch.setattr("core.tools.workflow_as_tool.tool.session_factory.create_session", lambda: session)
