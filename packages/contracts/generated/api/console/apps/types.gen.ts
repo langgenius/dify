@@ -5,10 +5,10 @@ export type ClientOptions = {
 }
 
 export type AppPagination = {
-  has_next: boolean
-  items: Array<AppPartial>
+  data: Array<AppPartial>
+  has_more: boolean
+  limit: number
   page: number
-  per_page: number
   total: number
 }
 
@@ -23,7 +23,6 @@ export type CreateAppPayload = {
 
 export type AppDetailWithSite = {
   access_mode?: string | null
-  active_config_is_published?: boolean
   api_base_url?: string | null
   app_id?: string | null
   bound_agent_id?: string | null
@@ -42,7 +41,6 @@ export type AppDetailWithSite = {
   mode: string
   model_config?: ModelConfig | null
   name: string
-  role?: string | null
   site?: Site | null
   tags?: Array<Tag>
   tracing?: JsonValue | null
@@ -211,11 +209,6 @@ export type AgentLogResponse = {
   files?: Array<unknown>
   iterations: Array<AgentIterationLogResponse>
   meta: AgentLogMetaResponse
-}
-
-export type AgentSkillStandardizeResponse = {
-  manifest: SkillManifest
-  skill: AgentSkillRefConfig
 }
 
 export type AgentSkillUploadResponse = {
@@ -1156,25 +1149,24 @@ export type ApiKeyItem = {
 
 export type AppPartial = {
   access_mode?: string | null
-  active_config_is_published?: boolean
   app_id?: string | null
-  app_model_config?: ModelConfigPartial | null
   author_name?: string | null
   bound_agent_id?: string | null
   create_user_name?: string | null
   created_at?: number | null
   created_by?: string | null
-  desc_or_prompt?: string | null
+  description?: string | null
   has_draft_trigger?: boolean | null
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
+  readonly icon_url: string | null
   id: string
   is_starred?: boolean
   max_active_requests?: number | null
-  mode_compatible_with_agent: string
+  mode: string
+  model_config?: ModelConfigPartial | null
   name: string
-  role?: string | null
   tags?: Array<Tag>
   updated_at?: number | null
   updated_by?: string | null
@@ -2575,9 +2567,16 @@ export type AgentModerationIoConfig = {
 
 export type ValueSourceType = 'constant' | 'variable'
 
+export type AppPaginationWritable = {
+  data: Array<AppPartialWritable>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
+}
+
 export type AppDetailWithSiteWritable = {
   access_mode?: string | null
-  active_config_is_published?: boolean
   api_base_url?: string | null
   app_id?: string | null
   bound_agent_id?: string | null
@@ -2595,7 +2594,6 @@ export type AppDetailWithSiteWritable = {
   mode: string
   model_config?: ModelConfig | null
   name: string
-  role?: string | null
   site?: SiteWritable | null
   tags?: Array<Tag>
   tracing?: JsonValue | null
@@ -2626,6 +2624,32 @@ export type WorkflowCommentDetailWritable = {
   resolved_by?: string | null
   resolved_by_account?: WorkflowCommentAccountWritable | null
   updated_at?: number | null
+}
+
+export type AppPartialWritable = {
+  access_mode?: string | null
+  app_id?: string | null
+  author_name?: string | null
+  bound_agent_id?: string | null
+  create_user_name?: string | null
+  created_at?: number | null
+  created_by?: string | null
+  description?: string | null
+  has_draft_trigger?: boolean | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  id: string
+  is_starred?: boolean
+  max_active_requests?: number | null
+  mode: string
+  model_config?: ModelConfigPartial | null
+  name: string
+  tags?: Array<Tag>
+  updated_at?: number | null
+  updated_by?: string | null
+  use_icon_as_answer_icon?: boolean | null
+  workflow?: WorkflowPartial | null
 }
 
 export type SiteWritable = {
@@ -3144,34 +3168,16 @@ export type GetAppsByAppIdAgentLogsResponses = {
 export type GetAppsByAppIdAgentLogsResponse
   = GetAppsByAppIdAgentLogsResponses[keyof GetAppsByAppIdAgentLogsResponses]
 
-export type PostAppsByAppIdAgentSkillsStandardizeData = {
-  body?: never
+export type PostAppsByAppIdAgentSkillsUploadData = {
+  body: {
+    file: Blob | File
+  }
   path: {
     app_id: string
   }
   query?: {
     node_id?: string
   }
-  url: '/apps/{app_id}/agent/skills/standardize'
-}
-
-export type PostAppsByAppIdAgentSkillsStandardizeErrors = {
-  400: unknown
-}
-
-export type PostAppsByAppIdAgentSkillsStandardizeResponses = {
-  201: AgentSkillStandardizeResponse
-}
-
-export type PostAppsByAppIdAgentSkillsStandardizeResponse
-  = PostAppsByAppIdAgentSkillsStandardizeResponses[keyof PostAppsByAppIdAgentSkillsStandardizeResponses]
-
-export type PostAppsByAppIdAgentSkillsUploadData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query?: never
   url: '/apps/{app_id}/agent/skills/upload'
 }
 

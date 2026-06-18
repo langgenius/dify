@@ -24,12 +24,17 @@ from dify_agent.agent_stub.client._errors import (
 from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubConnectRequest,
     AgentStubConnectResponse,
+    AgentStubDriveCommitRequest,
+    AgentStubDriveCommitResponse,
+    AgentStubDriveManifestResponse,
     AgentStubFileDownloadRequest,
     AgentStubFileDownloadResponse,
     AgentStubFileMapping,
     AgentStubFileUploadRequest,
     AgentStubFileUploadResponse,
     agent_stub_connections_url,
+    agent_stub_drive_commit_url,
+    agent_stub_drive_manifest_url,
     agent_stub_file_download_request_url,
     agent_stub_file_upload_request_url,
 )
@@ -122,6 +127,56 @@ def request_agent_stub_file_download_http_sync(
         response_model=AgentStubFileDownloadResponse,
         label="file download",
     )
+
+
+def request_agent_stub_drive_manifest_http_sync(
+    *,
+    base_url: str,
+    auth_jwe: str,
+    prefix: str,
+    include_download_url: bool,
+    timeout: float | httpx.Timeout = 30.0,
+    sync_http_client: httpx.Client | None = None,
+) -> AgentStubDriveManifestResponse:
+    """Request one drive manifest from the HTTP Agent Stub endpoint."""
+
+    response = _get_agent_stub_json(
+        base_url=base_url,
+        auth_jwe=auth_jwe,
+        endpoint_name="drive manifest request",
+        endpoint_url_factory=agent_stub_drive_manifest_url,
+        params={
+            "prefix": prefix,
+            "include_download_url": str(include_download_url).lower(),
+        },
+        timeout=timeout,
+        sync_http_client=sync_http_client,
+    )
+    return _parse_success_response(
+        response=response, response_model=AgentStubDriveManifestResponse, label="drive manifest"
+    )
+
+
+def request_agent_stub_drive_commit_http_sync(
+    *,
+    base_url: str,
+    auth_jwe: str,
+    request: AgentStubDriveCommitRequest,
+    timeout: float | httpx.Timeout = 30.0,
+    sync_http_client: httpx.Client | None = None,
+) -> AgentStubDriveCommitResponse:
+    """Commit one drive batch through the HTTP Agent Stub endpoint."""
+
+    response = _post_agent_stub_json(
+        base_url=base_url,
+        auth_jwe=auth_jwe,
+        endpoint_name="drive commit request",
+        endpoint_url_factory=agent_stub_drive_commit_url,
+        request_body=request.model_dump_json(exclude_none=True),
+        timeout=timeout,
+        sync_http_client=sync_http_client,
+    )
+    return _parse_success_response(response=response, response_model=AgentStubDriveCommitResponse, label="drive commit")
 
 
 def upload_file_to_signed_url_sync(
@@ -229,6 +284,38 @@ def _post_agent_stub_json(
             client.close()
 
 
+def _get_agent_stub_json(
+    *,
+    base_url: str,
+    auth_jwe: str,
+    endpoint_name: str,
+    endpoint_url_factory: Callable[[str], str],
+    params: dict[str, str],
+    timeout: float | httpx.Timeout,
+    sync_http_client: httpx.Client | None,
+) -> httpx.Response:
+    try:
+        endpoint_url = endpoint_url_factory(base_url)
+    except ValueError as exc:
+        raise AgentStubValidationError("invalid Agent Stub base URL") from exc
+    owns_client = sync_http_client is None
+    client = sync_http_client or httpx.Client(timeout=timeout, follow_redirects=True)
+    try:
+        return client.get(
+            endpoint_url,
+            params=params,
+            headers={"Authorization": f"Bearer {auth_jwe}"},
+            timeout=timeout,
+        )
+    except httpx.TimeoutException as exc:
+        raise AgentStubClientError(f"Agent Stub {endpoint_name} timed out") from exc
+    except httpx.RequestError as exc:
+        raise AgentStubClientError(f"Agent Stub {endpoint_name} request failed: {exc}") from exc
+    finally:
+        if owns_client:
+            client.close()
+
+
 def _parse_success_response[T: BaseModel](
     *,
     response: httpx.Response,
@@ -257,6 +344,8 @@ def _parse_json_payload(response: httpx.Response, *, invalid_json_message: str) 
 __all__ = [
     "connect_agent_stub_http_sync",
     "download_file_bytes_from_signed_url_sync",
+    "request_agent_stub_drive_commit_http_sync",
+    "request_agent_stub_drive_manifest_http_sync",
     "request_agent_stub_file_download_http_sync",
     "request_agent_stub_file_upload_http_sync",
     "upload_file_to_signed_url_sync",
