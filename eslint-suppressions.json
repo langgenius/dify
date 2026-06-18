@@ -192,11 +192,6 @@
       "count": 1
     }
   },
-  "web/app/(commonLayout)/snippets/[snippetId]/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/(shareLayout)/components/authenticated-layout.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -489,14 +484,6 @@
       "count": 5
     },
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/app-access-control/access-control-item.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
       "count": 1
     }
   },
@@ -7654,11 +7641,6 @@
       "count": 1
     }
   },
-  "web/models/access-control.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
-    }
-  },
   "web/models/app.ts": {
     "erasable-syntax-only/enums": {
       "count": 2
@@ -8054,11 +8036,6 @@
   "web/types/workflow.ts": {
     "ts/no-explicit-any": {
       "count": 17
-    }
-  },
-  "web/utils/clipboard.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "web/utils/completion-params.spec.ts": {

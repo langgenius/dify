@@ -246,6 +246,8 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 "conversation_id": conversation.id,
                 "message_id": message.id,
                 "user_from": UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER,
+                # Resume continues a paused agent run; skip input guards (see _generate_worker).
+                "is_resume": True,
             },
         )
         worker_thread.start()
@@ -270,6 +272,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         conversation_id: str,
         message_id: str,
         user_from: UserFrom,
+        is_resume: bool = False,
     ) -> None:
         from libs.flask_utils import preserve_flask_contexts
 
@@ -279,20 +282,30 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 message = self._get_message(message_id)
                 app_config = application_generate_entity.app_config
 
-                # Apply app-level input guards (content moderation + annotation
-                # reply) before reaching the Agent backend, mirroring the EasyUI
-                # chat / agent-chat runners. These can short-circuit the turn.
-                app_model = db.session.get(App, app_config.app_id)
-                if app_model is None:
-                    raise AgentAppGeneratorError("App not found")
-                handled, query = self._run_input_guards(
-                    application_generate_entity=application_generate_entity,
-                    app_model=app_model,
-                    message=message,
-                    queue_manager=queue_manager,
-                )
-                if handled:
-                    return
+                if is_resume:
+                    # ENG-638: a resume continues a paused agent run; the human's
+                    # reply is threaded in by the runner as deferred_tool_results.
+                    # The query is the replayed paused-turn message, kept only to
+                    # match the suspended snapshot's layers — it is NOT new
+                    # end-user input, so input guards must NOT run. Moderation or an
+                    # annotation match on the replayed query would short-circuit the
+                    # turn and drop the human reply, stranding the ask_human session.
+                    query = application_generate_entity.query or ""
+                else:
+                    # Apply app-level input guards (content moderation + annotation
+                    # reply) before reaching the Agent backend, mirroring the EasyUI
+                    # chat / agent-chat runners. These can short-circuit the turn.
+                    app_model = db.session.get(App, app_config.app_id)
+                    if app_model is None:
+                        raise AgentAppGeneratorError("App not found")
+                    handled, query = self._run_input_guards(
+                        application_generate_entity=application_generate_entity,
+                        app_model=app_model,
+                        message=message,
+                        queue_manager=queue_manager,
+                    )
+                    if handled:
+                        return
 
                 dify_context = DifyRunContext(
                     tenant_id=app_config.tenant_id,
@@ -360,7 +373,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
 
         app_config = application_generate_entity.app_config
         model_name = application_generate_entity.model_conf.model
-        query = application_generate_entity.query
+        query = application_generate_entity.query or ""
 
         # content moderation (sensitive_word_avoidance); a blocked input yields a
         # preset answer, an "overridden" action returns a sanitized query.
@@ -375,7 +388,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 trace_manager=application_generate_entity.trace_manager,
             )
         except ModerationError as e:
-            publish_text_answer(queue_manager=queue_manager, model_name=model_name, answer=str(e))
+            publish_text_answer(queue_manager=queue_manager, model_name=model_name, answer=str(e), user_query=query)
             return True, query
 
         # annotation reply: a matching annotation answers the turn deterministically.
@@ -392,7 +405,12 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     QueueAnnotationReplyEvent(message_annotation_id=annotation_reply.id),
                     PublishFrom.APPLICATION_MANAGER,
                 )
-                publish_text_answer(queue_manager=queue_manager, model_name=model_name, answer=annotation_reply.content)
+                publish_text_answer(
+                    queue_manager=queue_manager,
+                    model_name=model_name,
+                    answer=annotation_reply.content,
+                    user_query=query,
+                )
                 return True, query
 
         return False, query

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
+import { expect, fn } from 'storybook/test'
 
 import { Button } from '.'
 
@@ -90,7 +91,20 @@ export const Loading: Story = {
   args: {
     variant: 'primary',
     loading: true,
+    onClick: fn(),
     children: 'Loading Button',
+  },
+  play: async ({ args, canvas, userEvent }) => {
+    const button = canvas.getByRole('button', { name: 'Loading Button' })
+
+    await expect(button).toHaveAttribute('aria-disabled', 'true')
+    await expect(button).toHaveAttribute('aria-busy', 'true')
+
+    button.focus()
+    await expect(button).toHaveFocus()
+
+    await userEvent.click(button)
+    await expect(args.onClick).not.toHaveBeenCalled()
   },
   parameters: {
     docs: {

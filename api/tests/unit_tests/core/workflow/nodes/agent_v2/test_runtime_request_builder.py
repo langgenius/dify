@@ -21,6 +21,9 @@ from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
     AgentSoulConfig,
     AgentSoulModelConfig,
+    DeclaredArrayItem,
+    DeclaredOutputChildConfig,
+    DeclaredOutputConfig,
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
@@ -321,6 +324,7 @@ def test_build_shell_layer_config_accepts_legacy_fallback_keys():
                 "secret_refs": [
                     {"variable": "TOKEN", "credential_id": "credential-1"},
                     {"name": "API_KEY", "provider_credential_id": "credential-2"},
+                    {"name": "EDITABLE_TOKEN", "value": "credential-3"},
                     {"ref": "missing-name"},
                 ],
             },
@@ -341,6 +345,7 @@ def test_build_shell_layer_config_accepts_legacy_fallback_keys():
     assert config["secret_refs"] == [
         {"name": "TOKEN", "ref": "credential-1"},
         {"name": "API_KEY", "ref": "credential-2"},
+        {"name": "EDITABLE_TOKEN", "ref": "credential-3"},
     ]
     assert config["sandbox"] is None
 
@@ -491,6 +496,119 @@ def test_builds_workflow_run_request_with_dify_plugin_tools_layer():
     assert plugin_tools_builder.last_invoke_from == context.dify_context.invoke_from
 
 
+def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():
+    context = _context()
+    snapshot = AgentConfigSnapshot(
+        id="snapshot-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version=1,
+        config_snapshot=AgentSoulConfig.model_validate(
+            {
+                "prompt": {"system_prompt": "You are careful."},
+                "model": {
+                    "plugin_id": "langgenius/openai",
+                    "model_provider": "openai",
+                    "model": "gpt-test",
+                },
+                "knowledge": {
+                    "datasets": [{"id": "dataset-1"}, {"id": "  "}, {"id": "dataset-2"}],
+                    "query_config": {
+                        "top_k": 6,
+                        "score_threshold": 0.4,
+                        "score_threshold_enabled": True,
+                    },
+                },
+            }
+        ),
+    )
+    context = replace(context, snapshot=snapshot)
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    dumped = result.request.model_dump(mode="json")
+    layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
+    knowledge_layer = layers["knowledge"]
+    assert knowledge_layer["type"] == "dify.knowledge_base"
+    assert knowledge_layer["deps"] == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+    assert knowledge_layer["config"] == {
+        "dataset_ids": ["dataset-1", "dataset-2"],
+        "retrieval": {
+            "mode": "multiple",
+            "top_k": 6,
+            "score_threshold": 0.4,
+            "reranking_mode": "reranking_model",
+            "reranking_enable": True,
+            "reranking_model": None,
+            "weights": None,
+            "model": None,
+        },
+        "metadata_filtering": {"mode": "disabled", "metadata_model_config": None, "conditions": None},
+        "max_result_content_chars": 2000,
+        "max_observation_chars": 12000,
+    }
+
+
+def test_build_knowledge_layer_uses_stable_default_top_k_when_query_config_omits_it():
+    context = _context()
+    snapshot = AgentConfigSnapshot(
+        id="snapshot-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version=1,
+        config_snapshot=AgentSoulConfig.model_validate(
+            {
+                "prompt": {"system_prompt": "You are careful."},
+                "model": {
+                    "plugin_id": "langgenius/openai",
+                    "model_provider": "openai",
+                    "model": "gpt-test",
+                },
+                "knowledge": {
+                    "datasets": [{"id": "dataset-1"}],
+                    "query_config": {},
+                },
+            }
+        ),
+    )
+    context = replace(context, snapshot=snapshot)
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    dumped = result.request.model_dump(mode="json")
+    knowledge_layer = next(layer for layer in dumped["composition"]["layers"] if layer["name"] == "knowledge")
+    assert knowledge_layer["config"]["retrieval"]["top_k"] == 4
+
+
+def test_build_skips_knowledge_layer_when_agent_soul_has_no_valid_dataset_ids():
+    context = _context()
+    snapshot = AgentConfigSnapshot(
+        id="snapshot-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version=1,
+        config_snapshot=AgentSoulConfig.model_validate(
+            {
+                "prompt": {"system_prompt": "You are careful."},
+                "model": {
+                    "plugin_id": "langgenius/openai",
+                    "model_provider": "openai",
+                    "model": "gpt-test",
+                },
+                "knowledge": {
+                    "datasets": [{"id": "  "}, {}],
+                },
+            }
+        ),
+    )
+    context = replace(context, snapshot=snapshot)
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    dumped = result.request.model_dump(mode="json")
+    assert all(layer["name"] != "knowledge" for layer in dumped["composition"]["layers"])
+
+
 def test_build_passes_saved_session_snapshot_to_agent_backend_request():
     session_snapshot = CompositorSessionSnapshot(layers=[])
     context = replace(_context(), session_snapshot=session_snapshot)
@@ -628,6 +746,40 @@ def test_array_output_emits_typed_items_per_array_item():
     assert tags_schema["items"]["type"] == "string"
     assert tags_schema["items"]["description"] == "topic tag"
     assert output_schema["required"] == ["tags"]
+
+
+def test_nested_declared_output_emits_object_and_array_child_schema():
+    profile_output = DeclaredOutputConfig(
+        name="profile",
+        type=DeclaredOutputType.OBJECT,
+        children=[
+            DeclaredOutputChildConfig(name="email", type=DeclaredOutputType.STRING),
+            DeclaredOutputChildConfig(
+                name="nickname",
+                type=DeclaredOutputType.STRING,
+                required=False,
+                description="Optional display name",
+            ),
+            DeclaredOutputChildConfig(
+                name="addresses",
+                type=DeclaredOutputType.ARRAY,
+                array_item=DeclaredArrayItem(
+                    type=DeclaredOutputType.OBJECT,
+                    description="Address item",
+                    children=[DeclaredOutputChildConfig(name="city", type=DeclaredOutputType.STRING)],
+                ),
+            ),
+        ],
+    )
+
+    schema = WorkflowAgentRuntimeRequestBuilder._schema_for_declared_output(profile_output)
+
+    assert schema["properties"]["email"] == {"type": "string"}
+    assert schema["properties"]["nickname"] == {"type": "string", "description": "Optional display name"}
+    assert schema["properties"]["addresses"]["items"]["properties"]["city"] == {"type": "string"}
+    assert schema["properties"]["addresses"]["items"]["description"] == "Address item"
+    assert schema["properties"]["addresses"]["items"]["required"] == ["city"]
+    assert schema["required"] == ["email", "addresses"]
 
 
 def test_effective_declared_outputs_passthrough_when_user_declared():
@@ -829,3 +981,36 @@ def test_feature_manifest_marks_human_supported_when_configured():
     assert manifest["reserved_status"]["human"] == "supported_by_ask_human_hitl"
     # configured human no longer produces a "not executed" warning
     assert all("human" not in w["section"] for w in manifest["unsupported_runtime_warnings"])
+
+
+def test_feature_manifest_marks_knowledge_supported_without_warning_when_configured():
+    from core.workflow.nodes.agent_v2.runtime_feature_manifest import build_runtime_feature_manifest
+
+    soul = AgentSoulConfig.model_validate(
+        {
+            "knowledge": {
+                "datasets": [{"id": "dataset-1", "name": "Product Docs"}],
+            }
+        }
+    )
+
+    manifest = build_runtime_feature_manifest(soul)
+    assert "knowledge" in manifest["supported"]
+    assert "knowledge" not in manifest["reserved"]
+    assert manifest["reserved_status"]["knowledge"] == "supported_by_knowledge_layer"
+    assert all("knowledge" not in w["section"] for w in manifest["unsupported_runtime_warnings"])
+
+
+def test_feature_manifest_treats_blank_knowledge_dataset_ids_as_not_configured():
+    from core.workflow.nodes.agent_v2.runtime_feature_manifest import build_runtime_feature_manifest
+
+    soul = AgentSoulConfig.model_validate(
+        {
+            "knowledge": {
+                "datasets": [{"id": "  "}, {}],
+            }
+        }
+    )
+
+    manifest = build_runtime_feature_manifest(soul)
+    assert manifest["reserved_status"]["knowledge"] == "not_configured"

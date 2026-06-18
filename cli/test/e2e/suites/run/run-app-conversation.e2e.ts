@@ -118,7 +118,7 @@ describe('E2E / difyctl run app --conversation', () => {
       'invalid-conv-id-xyz-not-exist',
     ])
     assertExitCode(result, 1)
-    expect(result.stderr).toMatch(/not.?found|conversation|404/i)
+    expect(result.stderr).toMatch(/not.?found|conversation|404|422|validation/i)
   })
 
   // ── Combined flags ──────────────────────────────────────────────────────

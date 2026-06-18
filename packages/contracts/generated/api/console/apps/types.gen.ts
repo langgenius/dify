@@ -5,10 +5,10 @@ export type ClientOptions = {
 }
 
 export type AppPagination = {
-  data: Array<AppPartial>
-  has_more: boolean
-  limit: number
+  has_next: boolean
+  items: Array<AppPartial>
   page: number
+  per_page: number
   total: number
 }
 
@@ -23,7 +23,9 @@ export type CreateAppPayload = {
 
 export type AppDetailWithSite = {
   access_mode?: string | null
+  active_config_is_published?: boolean
   api_base_url?: string | null
+  app_id?: string | null
   bound_agent_id?: string | null
   created_at?: number | null
   created_by?: string | null
@@ -40,6 +42,7 @@ export type AppDetailWithSite = {
   mode: string
   model_config?: ModelConfig | null
   name: string
+  role?: string | null
   site?: Site | null
   tags?: Array<Tag>
   tracing?: JsonValue | null
@@ -1153,23 +1156,25 @@ export type ApiKeyItem = {
 
 export type AppPartial = {
   access_mode?: string | null
+  active_config_is_published?: boolean
+  app_id?: string | null
+  app_model_config?: ModelConfigPartial | null
   author_name?: string | null
   bound_agent_id?: string | null
   create_user_name?: string | null
   created_at?: number | null
   created_by?: string | null
-  description?: string | null
+  desc_or_prompt?: string | null
   has_draft_trigger?: boolean | null
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
-  readonly icon_url: string | null
   id: string
   is_starred?: boolean
   max_active_requests?: number | null
-  mode: string
-  model_config?: ModelConfigPartial | null
+  mode_compatible_with_agent: string
   name: string
+  role?: string | null
   tags?: Array<Tag>
   updated_at?: number | null
   updated_by?: string | null
@@ -1756,6 +1761,26 @@ export type AgentComposerBindingResponse = {
 export type DeclaredOutputConfig = {
   array_item?: DeclaredArrayItem | null
   check?: DeclaredOutputCheckConfig | null
+  children?: Array<{
+    array_item?: {
+      children?: Array<{
+        [key: string]: unknown
+      }>
+      description?: string | null
+      type?: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
+      [key: string]: unknown
+    }
+    children?: Array<{
+      [key: string]: unknown
+    }>
+    description?: string | null
+    file?: {
+      [key: string]: unknown
+    }
+    name: string
+    required?: boolean
+    type: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
+  }>
   description?: string | null
   failure_strategy?: DeclaredOutputFailureStrategy
   file?: DeclaredOutputFileConfig | null
@@ -2099,6 +2124,26 @@ export type AgentSoulToolsConfig = {
 export type WorkflowAgentBindingType = 'inline_agent' | 'roster_agent'
 
 export type DeclaredArrayItem = {
+  children?: Array<{
+    array_item?: {
+      children?: Array<{
+        [key: string]: unknown
+      }>
+      description?: string | null
+      type?: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
+      [key: string]: unknown
+    }
+    children?: Array<{
+      [key: string]: unknown
+    }>
+    description?: string | null
+    file?: {
+      [key: string]: unknown
+    }
+    name: string
+    required?: boolean
+    type: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
+  }>
   description?: string | null
   type: DeclaredOutputType
 }
@@ -2301,6 +2346,7 @@ export type AgentSecretRefConfig = {
   provider_credential_id?: string | null
   ref?: string | null
   type?: string | null
+  value?: string | null
   variable?: string | null
   [key: string]: unknown
 }
@@ -2529,17 +2575,11 @@ export type AgentModerationIoConfig = {
 
 export type ValueSourceType = 'constant' | 'variable'
 
-export type AppPaginationWritable = {
-  data: Array<AppPartialWritable>
-  has_more: boolean
-  limit: number
-  page: number
-  total: number
-}
-
 export type AppDetailWithSiteWritable = {
   access_mode?: string | null
+  active_config_is_published?: boolean
   api_base_url?: string | null
+  app_id?: string | null
   bound_agent_id?: string | null
   created_at?: number | null
   created_by?: string | null
@@ -2555,6 +2595,7 @@ export type AppDetailWithSiteWritable = {
   mode: string
   model_config?: ModelConfig | null
   name: string
+  role?: string | null
   site?: SiteWritable | null
   tags?: Array<Tag>
   tracing?: JsonValue | null
@@ -2585,31 +2626,6 @@ export type WorkflowCommentDetailWritable = {
   resolved_by?: string | null
   resolved_by_account?: WorkflowCommentAccountWritable | null
   updated_at?: number | null
-}
-
-export type AppPartialWritable = {
-  access_mode?: string | null
-  author_name?: string | null
-  bound_agent_id?: string | null
-  create_user_name?: string | null
-  created_at?: number | null
-  created_by?: string | null
-  description?: string | null
-  has_draft_trigger?: boolean | null
-  icon?: string | null
-  icon_background?: string | null
-  icon_type?: string | null
-  id: string
-  is_starred?: boolean
-  max_active_requests?: number | null
-  mode: string
-  model_config?: ModelConfigPartial | null
-  name: string
-  tags?: Array<Tag>
-  updated_at?: number | null
-  updated_by?: string | null
-  use_icon_as_answer_icon?: boolean | null
-  workflow?: WorkflowPartial | null
 }
 
 export type SiteWritable = {

@@ -22,6 +22,7 @@ from services.entities.external_knowledge_entities.external_knowledge_entities i
     ExternalKnowledgeApiSetting,
 )
 from services.errors.dataset import DatasetNameDuplicateError
+from services.errors.knowledge_retrieval import ExternalKnowledgeRetrievalError
 
 
 class ExternalDatasetService:
@@ -309,13 +310,22 @@ class ExternalDatasetService:
         external_retrieval_parameters: dict[str, Any],
         metadata_condition: MetadataFilteringCondition | None = None,
     ):
+        """Fetch retrieval records from an external knowledge provider.
+
+        Success requires a tenant-scoped binding plus API template and a ``200``
+        response body shaped like ``{"records": [...]}``. All dependency
+        failures, non-200 responses, and malformed success payloads must be
+        normalized to ``ExternalKnowledgeRetrievalError`` so callers—especially
+        the inner knowledge retrieval API—can consistently expose
+        ``502 external_knowledge_failed``.
+        """
         external_knowledge_binding = db.session.scalar(
             select(ExternalKnowledgeBindings)
             .where(ExternalKnowledgeBindings.dataset_id == dataset_id, ExternalKnowledgeBindings.tenant_id == tenant_id)
             .limit(1)
         )
         if not external_knowledge_binding:
-            raise ValueError("external knowledge binding not found")
+            raise ExternalKnowledgeRetrievalError("external knowledge binding not found")
 
         external_knowledge_api = db.session.scalar(
             select(ExternalKnowledgeApis)
@@ -326,7 +336,7 @@ class ExternalDatasetService:
             .limit(1)
         )
         if external_knowledge_api is None or external_knowledge_api.settings is None:
-            raise ValueError("external api template not found")
+            raise ExternalKnowledgeRetrievalError("external api template not found")
 
         settings = json.loads(external_knowledge_api.settings)
         headers = {"Content-Type": "application/json"}
@@ -344,16 +354,34 @@ class ExternalDatasetService:
             "metadata_condition": metadata_condition.model_dump() if metadata_condition else None,
         }
 
-        response = ExternalDatasetService.process_external_api(
-            ExternalKnowledgeApiSetting(
-                url=f"{settings.get('endpoint')}/retrieval",
-                request_method="post",
-                headers=headers,
-                params=request_params,
-            ),
-            None,
-        )
+        try:
+            response = ExternalDatasetService.process_external_api(
+                ExternalKnowledgeApiSetting(
+                    url=f"{settings.get('endpoint')}/retrieval",
+                    request_method="post",
+                    headers=headers,
+                    params=request_params,
+                ),
+                None,
+            )
+        except ExternalKnowledgeRetrievalError:
+            raise
+        except Exception as exc:
+            raise ExternalKnowledgeRetrievalError(str(exc)) from exc
+
         if response.status_code == 200:
-            return cast(list[Any], response.json().get("records", []))
+            try:
+                response_payload = response.json()
+            except Exception as exc:
+                raise ExternalKnowledgeRetrievalError("invalid external knowledge response") from exc
+
+            if not isinstance(response_payload, dict):
+                raise ExternalKnowledgeRetrievalError("invalid external knowledge response")
+
+            records = response_payload.get("records", [])
+            if not isinstance(records, list):
+                raise ExternalKnowledgeRetrievalError("invalid external knowledge response")
+
+            return cast(list[Any], records)
         else:
-            raise ValueError(response.text)
+            raise ExternalKnowledgeRetrievalError(response.text)

@@ -42,6 +42,7 @@
   "filter.period.today": "Hari Ini",
   "filter.period.yearToDate": "Tahun hingga saat ini",
   "filter.sortBy": "Urutkan berdasarkan",
+  "monitoring.description": "Monitoring mencatat status berjalan aplikasi, termasuk performa, aktivitas pengguna, dan biaya.",
   "promptLog": "Prompt Log",
   "runDetail.fileListDetail": "Detail",
   "runDetail.fileListLabel": "Rincian File",

@@ -14,7 +14,7 @@ export type TokenStore = {
 
 const DOC_VERSION = 1
 
-type TokenDoc = {
+export type TokenDoc = {
   version?: number
   tokens?: Record<string, Record<string, string>>
 }
