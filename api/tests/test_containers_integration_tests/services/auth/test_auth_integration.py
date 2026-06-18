@@ -56,7 +56,7 @@ class TestAuthIntegration:
         mock_encrypt.return_value = "encrypted_fc_test_key_123"
 
         args = {"category": category, "provider": AuthType.FIRECRAWL, "credentials": firecrawl_credentials}
-        ApiKeyAuthService.create_provider_auth(tenant_id_1, args)
+        ApiKeyAuthService.create_provider_auth(tenant_id_1, db_session_with_containers, args)
 
         mock_http.assert_called_once()
         call_args = mock_http.call_args
@@ -100,15 +100,15 @@ class TestAuthIntegration:
         mock_encrypt.return_value = "encrypted_key"
 
         args1 = {"category": category, "provider": AuthType.FIRECRAWL, "credentials": firecrawl_credentials}
-        ApiKeyAuthService.create_provider_auth(tenant_id_1, args1)
+        ApiKeyAuthService.create_provider_auth(tenant_id_1,db_session_with_containers, args1)
 
         args2 = {"category": category, "provider": AuthType.JINA, "credentials": jina_credentials}
-        ApiKeyAuthService.create_provider_auth(tenant_id_2, args2)
+        ApiKeyAuthService.create_provider_auth(tenant_id_2,db_session_with_containers, args2)
 
         db_session_with_containers.expire_all()
 
-        result1 = ApiKeyAuthService.get_provider_auth_list(tenant_id_1)
-        result2 = ApiKeyAuthService.get_provider_auth_list(tenant_id_2)
+        result1 = ApiKeyAuthService.get_provider_auth_list(tenant_id_1, db_session_with_containers)
+        result2 = ApiKeyAuthService.get_provider_auth_list(tenant_id_2, db_session_with_containers)
 
         assert len(result1) == 1
         assert result1[0].tenant_id == tenant_id_1
@@ -160,7 +160,7 @@ class TestAuthIntegration:
                         "provider": AuthType.FIRECRAWL,
                         "credentials": {"auth_type": "bearer", "config": {"api_key": "fc_test_key_123"}},
                     }
-                    ApiKeyAuthService.create_provider_auth(tenant_id_1, thread_args)
+                    ApiKeyAuthService.create_provider_auth(tenant_id_1,db_session_with_containers, thread_args)
                 results.append("success")
             except Exception as e:
                 exceptions.append(e)
@@ -213,7 +213,7 @@ class TestAuthIntegration:
         args = {"category": category, "provider": AuthType.FIRECRAWL, "credentials": firecrawl_credentials}
 
         with pytest.raises(httpx.RequestError):
-            ApiKeyAuthService.create_provider_auth(tenant_id_1, args)
+            ApiKeyAuthService.create_provider_auth(tenant_id_1, db_session_with_containers, args)
 
         db_session_with_containers.expire_all()
         bindings = db_session_with_containers.query(DataSourceApiKeyAuthBinding).filter_by(tenant_id=tenant_id_1).all()
@@ -250,7 +250,7 @@ class TestAuthIntegration:
         mock_encrypt.return_value = "encrypted_key"
 
         args = {"category": category, "provider": AuthType.FIRECRAWL, "credentials": firecrawl_credentials}
-        ApiKeyAuthService.create_provider_auth(tenant_id_1, args)
+        ApiKeyAuthService.create_provider_auth(tenant_id_1, db_session_with_containers, args)
 
         db_session_with_containers.expire_all()
 
