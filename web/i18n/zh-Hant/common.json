@@ -707,7 +707,7 @@
   "settings.plugin": "集成",
   "settings.preferences": "偏好設定",
   "settings.provider": "模型供應商",
-  "settings.resourceAccess": "訪問權限規則",
+  "settings.resourceAccess": "訪問權限",
   "settings.resourceAccessDescription": "配置應用和知識庫可使用的權限規則。權限規則可在具體資源訪問配置中分配給成員。",
   "settings.rolesAndPermissions": "角色與權限",
   "settings.settings": "設定",

@@ -92,8 +92,8 @@ export default function AccessRulesEditor({
       </div>
       <section className="overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg">
         <div className={cn('grid items-center gap-4 border-b border-divider-deep px-10 py-4 system-sm-semibold text-text-tertiary', ACCESS_RULE_TABLE_GRID)}>
-          <div>{t('accessRule.collaborator', { ns: 'permission' })}</div>
-          <div>{t('accessRule.exceptionPermission', { ns: 'permission' })}</div>
+          <div>{t('accessRule.member', { ns: 'permission' })}</div>
+          <div>{t('accessRule.permission', { ns: 'permission' })}</div>
           <div>{t('accessRule.actions', { ns: 'permission' })}</div>
         </div>
         {isLoading
