@@ -247,7 +247,7 @@ const appContextValue: AppContextValue = {
   useSelector: vi.fn(),
   isLoadingCurrentWorkspace: false,
   isValidatingCurrentWorkspace: false,
-  workspacePermissionKeys: ['app_library.access'],
+  workspacePermissionKeys: ['app_library.access', 'workspace.member.manage'],
 }
 
 type MainNavSystemFeatures = NonNullable<Parameters<typeof renderWithSystemFeatures>[1]>['systemFeatures']
@@ -444,7 +444,7 @@ describe('MainNav', () => {
     expect(screen.getAllByText(Plan.team)).toHaveLength(1)
   })
 
-  it('hides app and tools entries for dataset operators without hiding RBAC-permitted installed web apps', () => {
+  it('renders primary navigation entries for dataset operators', () => {
     mockInstalledApps = [createInstalledApp()]
     ;(useAppContext as Mock).mockReturnValue({
       ...appContextValue,
@@ -460,10 +460,10 @@ describe('MainNav', () => {
 
     renderMainNav()
 
-    expect(screen.queryByRole('link', { name: /common.mainNav.home/ })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: /common.menus.apps/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')
-    expect(screen.queryByRole('link', { name: /common.mainNav.integrations/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute('href', '/integrations/model-provider')
     expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute('href', '/marketplace')
     expect(screen.getByRole('button', { name: 'explore.sidebar.webApps' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Alpha App' })).toHaveAttribute('href', '/installed/installed-1')
@@ -484,7 +484,7 @@ describe('MainNav', () => {
     expect(useGetInstalledApps).not.toHaveBeenCalled()
   })
 
-  it('hides datasets for members without editor or dataset-operator access', () => {
+  it('renders datasets for members without editor or dataset-operator access', () => {
     ;(useAppContext as Mock).mockReturnValue({
       ...appContextValue,
       currentWorkspace: {
@@ -501,7 +501,7 @@ describe('MainNav', () => {
 
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: /common.menus.datasets/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')
     expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toBeInTheDocument()
@@ -561,6 +561,27 @@ describe('MainNav', () => {
     expect(screen.queryByRole('link', { name: /common.mainNav.home/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.menus.apps/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'explore.sidebar.webApps' })).not.toBeInTheDocument()
+  })
+
+  it('renders app detail navigation for dataset operators on app routes', () => {
+    mockPathname = '/app/app-1/overview'
+    ;(useAppContext as Mock).mockReturnValue({
+      ...appContextValue,
+      currentWorkspace: {
+        ...appContextValue.currentWorkspace,
+        role: 'dataset_operator',
+      },
+      isCurrentWorkspaceDatasetOperator: true,
+      isCurrentWorkspaceEditor: false,
+      isCurrentWorkspaceManager: false,
+      isCurrentWorkspaceOwner: false,
+    })
+
+    renderMainNav()
+
+    expect(screen.getByTestId('app-detail-top')).toBeInTheDocument()
+    expect(screen.getByTestId('app-detail-section')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /common.mainNav.home/ })).not.toBeInTheDocument()
   })
 
   it('keeps app detail store when rendering app detail navigation', () => {
@@ -685,6 +706,27 @@ describe('MainNav', () => {
     expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.mainNav.home/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
+  })
+
+  it('renders deployment detail navigation for dataset operators on deployment routes', () => {
+    mockPathname = '/deployments/app-instance-1/releases'
+    ;(useAppContext as Mock).mockReturnValue({
+      ...appContextValue,
+      currentWorkspace: {
+        ...appContextValue.currentWorkspace,
+        role: 'dataset_operator',
+      },
+      isCurrentWorkspaceDatasetOperator: true,
+      isCurrentWorkspaceEditor: true,
+      isCurrentWorkspaceManager: false,
+      isCurrentWorkspaceOwner: false,
+    })
+
+    renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })
+
+    expect(screen.getByTestId('deployment-detail-top')).toBeInTheDocument()
+    expect(screen.getByTestId('deployment-detail-section')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /common.mainNav.home/ })).not.toBeInTheDocument()
   })
 
   it('collapses deployment detail navigation from the top-right toggle', () => {
@@ -889,6 +931,7 @@ describe('MainNav', () => {
   it('limits workspace settings and invite actions by role', async () => {
     ;(useAppContext as Mock).mockReturnValue({
       ...appContextValue,
+      workspacePermissionKeys: [],
       currentWorkspace: {
         ...appContextValue.currentWorkspace,
         role: 'normal',
@@ -905,9 +948,10 @@ describe('MainNav', () => {
     expect(screen.queryByText('common.mainNav.workspace.inviteMembers')).not.toBeInTheDocument()
   })
 
-  it('hides workspace settings actions for dataset operators', () => {
+  it('keeps workspace settings visible for dataset operators without member management permission', () => {
     ;(useAppContext as Mock).mockReturnValue({
       ...appContextValue,
+      workspacePermissionKeys: [],
       currentWorkspace: {
         ...appContextValue.currentWorkspace,
         role: 'dataset_operator',
@@ -922,7 +966,7 @@ describe('MainNav', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
 
-    expect(screen.queryByText('common.mainNav.workspace.settings')).not.toBeInTheDocument()
+    expect(screen.getByText('common.mainNav.workspace.settings')).toBeInTheDocument()
     expect(screen.queryByText('common.mainNav.workspace.inviteMembers')).not.toBeInTheDocument()
   })
 

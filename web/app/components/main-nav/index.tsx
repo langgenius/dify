@@ -79,13 +79,13 @@ const MainNav = ({
 }: MainNavProps) => {
   const { t } = useTranslation()
   const pathname = usePathname()
-  const { langGeniusVersionInfo, isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceEditor } = useAppContext()
+  const { langGeniusVersionInfo, isCurrentWorkspaceEditor } = useAppContext()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const showEnvTag = langGeniusVersionInfo.current_env === 'TESTING' || langGeniusVersionInfo.current_env === 'DEVELOPMENT'
   const canUseAppDeploy = isCurrentWorkspaceEditor && systemFeatures.enable_app_deploy
-  const showAppDetailNavigation = !isCurrentWorkspaceDatasetOperator && pathname.startsWith('/app/')
+  const showAppDetailNavigation = pathname.startsWith('/app/')
   const showDatasetDetailNavigation = isDatasetDetailPathname(pathname)
-  const showDeploymentDetailNavigation = canUseAppDeploy && !isCurrentWorkspaceDatasetOperator && isDeploymentDetailPathname(pathname)
+  const showDeploymentDetailNavigation = canUseAppDeploy && isDeploymentDetailPathname(pathname)
   const showSnippetDetailBottomNavigation = isSnippetDetailPathname(pathname)
   const showDetailNavigation = showAppDetailNavigation || showDatasetDetailNavigation || showDeploymentDetailNavigation
   const { hasAppDetail, appSidebarExpand, setAppDetail, setAppSidebarExpand } = useAppStore(useShallow(state => ({
@@ -176,46 +176,34 @@ const MainNav = ({
   })
 
   const navItems = useMemo<MainNavItem[]>(() => [
-    ...(!isCurrentWorkspaceDatasetOperator
-      ? [
-          {
-            href: '/',
-            label: t('mainNav.home', { ns: 'common' }),
-            active: (path: string) => path === '/' || path === '/explore/apps',
-            icon: 'i-custom-vender-main-nav-home',
-            activeIcon: 'i-custom-vender-main-nav-home-active',
-          },
-          {
-            href: '/apps',
-            label: t('menus.apps', { ns: 'common' }),
-            active: (path: string) => path.startsWith('/apps') || path.startsWith('/app/') || path.startsWith('/snippets'),
-            icon: 'i-custom-vender-main-nav-studio',
-            activeIcon: 'i-custom-vender-main-nav-studio-active',
-          },
-        ]
-      : []),
-    ...((isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator)
-      ? [
-          {
-            href: '/datasets',
-            label: t('menus.datasets', { ns: 'common' }),
-            active: (path: string) => path.startsWith('/datasets'),
-            icon: 'i-custom-vender-main-nav-knowledge',
-            activeIcon: 'i-custom-vender-main-nav-knowledge-active',
-          },
-        ]
-      : []),
-    ...(!isCurrentWorkspaceDatasetOperator
-      ? [
-          {
-            href: buildIntegrationPath('provider'),
-            label: t('mainNav.integrations', { ns: 'common' }),
-            active: (path: string) => path.startsWith('/integrations') || path.startsWith('/tools'),
-            icon: 'i-custom-vender-main-nav-integrations',
-            activeIcon: 'i-custom-vender-main-nav-integrations-active',
-          },
-        ]
-      : []),
+    {
+      href: '/',
+      label: t('mainNav.home', { ns: 'common' }),
+      active: (path: string) => path === '/' || path === '/explore/apps',
+      icon: 'i-custom-vender-main-nav-home',
+      activeIcon: 'i-custom-vender-main-nav-home-active',
+    },
+    {
+      href: '/apps',
+      label: t('menus.apps', { ns: 'common' }),
+      active: (path: string) => path.startsWith('/apps') || path.startsWith('/app/') || path.startsWith('/snippets'),
+      icon: 'i-custom-vender-main-nav-studio',
+      activeIcon: 'i-custom-vender-main-nav-studio-active',
+    },
+    {
+      href: '/datasets',
+      label: t('menus.datasets', { ns: 'common' }),
+      active: (path: string) => path.startsWith('/datasets'),
+      icon: 'i-custom-vender-main-nav-knowledge',
+      activeIcon: 'i-custom-vender-main-nav-knowledge-active',
+    },
+    {
+      href: buildIntegrationPath('provider'),
+      label: t('mainNav.integrations', { ns: 'common' }),
+      active: (path: string) => path.startsWith('/integrations') || path.startsWith('/tools'),
+      icon: 'i-custom-vender-main-nav-integrations',
+      activeIcon: 'i-custom-vender-main-nav-integrations-active',
+    },
     {
       href: '/marketplace',
       label: t('mainNav.marketplace', { ns: 'common' }),
@@ -232,7 +220,7 @@ const MainNav = ({
           activeIcon: 'i-ri-rocket-fill',
         }]
       : []),
-  ], [canUseAppDeploy, isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceEditor, t])
+  ], [canUseAppDeploy, t])
 
   const renderLogo = () => (
     <Link
