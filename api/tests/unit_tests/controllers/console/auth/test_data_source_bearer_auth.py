@@ -1,3 +1,4 @@
+from unittest.mock import _ANY
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -40,7 +41,7 @@ def test_list_data_source_auth_uses_injected_tenant_id() -> None:
     ) as get_provider_auth_list:
         result = method(api, "tenant-1")
 
-    get_provider_auth_list.assert_called_once_with("tenant-1")
+    get_provider_auth_list.assert_called_once_with("tenant-1", _ANY)
     assert result["sources"][0]["id"] == "binding-1"
     assert result["sources"][0]["provider"] == "custom"
 
@@ -61,7 +62,7 @@ def test_create_data_source_auth_binding_uses_injected_tenant_id() -> None:
     ):
         result, status = method(api, "tenant-1")
 
-    create_auth.assert_called_once_with("tenant-1", payload)
+    create_auth.assert_called_once_with("tenant-1", _ANY, payload)
     assert result == {"result": "success"}
     assert status == 200
 
@@ -75,6 +76,6 @@ def test_delete_data_source_auth_binding_uses_injected_tenant_id() -> None:
     ) as delete_provider_auth:
         result, status = method(api, "tenant-1", "binding-1")
 
-    delete_provider_auth.assert_called_once_with("tenant-1", "binding-1")
+    delete_provider_auth.assert_called_once_with("tenant-1", "binding-1", _ANY)
     assert result == ""
     assert status == 204
