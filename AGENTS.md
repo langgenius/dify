@@ -36,7 +36,6 @@ The codebase is split into:
 ## General Practices
 
 - Prefer editing existing files; add new documentation only when requested.
-- Do not manually edit generated code or generated documentation. Update the source contract/schema/configuration and run the appropriate code generation tool instead.
 - Inject dependencies through constructors and preserve clean architecture boundaries.
 - Handle errors with domain-specific exceptions at the correct layer.
 
@@ -45,21 +44,3 @@ The codebase is split into:
 - Backend architecture adheres to DDD and Clean Architecture principles.
 - Async work runs through Celery with Redis as the broker.
 - Frontend user-facing strings must use `web/i18n/en-US/`; avoid hardcoded text.
-
-## Agent V2 Frontend Constraints
-
-- Treat workflow Agent and Agent v2 as separate product surfaces. The existing workflow `agent` node is the legacy Old Agent and should keep its current strategy/plugin-based behavior. Do not refactor legacy Agent code to support Agent v2 unless explicitly requested.
-- New Agent work must use the Agent v2 surface and code path: `web/features/agent-v2`, `web/app/components/workflow/nodes/agent-v2`, `BlockEnum.AgentV2`, and the `agentV2` i18n namespace where applicable. Do not add new Agent behavior to legacy `web/app/components/workflow/nodes/agent`.
-- Do not mix, alias, or compatibility-bridge Old Agent and Agent v2 data shapes. Keep fields such as `agent_strategy_*` on legacy Agent only, and fields such as `agent_roster`, `agent_task`, and Agent v2 backend bindings on Agent v2 only.
-- Shared workflow utilities may branch on the explicit node type/discriminator when necessary, but they must preserve the boundary: legacy Agent behavior must not depend on Agent v2 data, and Agent v2 behavior must not fall back to legacy Agent strategy/plugin behavior.
-- For Agent v2 frontend work under `web/features/agent-v2`, use generated contracts and `consoleQuery` from `@/service/client` for all Agent v2 backend APIs. Do not add ad hoc REST helpers, mock data, compatibility shims, or handwritten API types for new Agent v2 interfaces.
-- Keep Agent v2 composer state split by responsibility: TanStack Query is the server source of truth, Jotai atoms hold only the editable composer draft, and local component state owns transient UI such as menus, dialogs, and expanded panels.
-- Wrap editable Agent v2 composer surfaces in an instance-level `AgentComposerProvider`. The provider is an editing-session boundary, not a data-fetching layer; use one store per agent/configure page or workflow node composer instance to avoid draft leakage.
-- Hydrate composer atoms from generated contract data by mapping the response into both `originalDraft` and `draft`. Compute dirty state from `draft` vs `originalDraft`; do not compare editable draft directly against live TanStack Query cache.
-- Keep mock or transitional composer defaults at the owning surface boundary, such as the configure page. Do not put page-specific mock data into shared `agent-composer` store defaults.
-- Use existing `@langgenius/dify-ui/*` primitives before adding feature-local UI chrome. Prefer primitive default styles; add call-site CSS only for real design deltas.
-- Prefer primitive data/CSS selectors for visual states instead of mirroring state in React only to choose classes.
-- Avoid arbitrary Tailwind values when an existing project utility or token class expresses the same value. Keep arbitrary values only for design-system exceptions without a native utility.
-- Preserve keyboard accessibility in Agent v2 pages: visible focus rings must not be clipped, and inert layout regions should not become keyboard focus targets.
-- Keep Agent v2 i18n scoped to the explicitly maintained locales unless the supported-locale scope changes.
-- Keep Agent v2 module copy in the `agentV2` namespace; use shared namespaces such as `common` only for genuinely shared operation labels.
