@@ -85,7 +85,7 @@ def parameters_payload(app: App) -> dict:
     return Parameters.model_validate(parameters).model_dump(mode="json")
 
 
-def build_app_describe_response(app: App, fields: list[str] | None) -> AppDescribeResponse:
+def build_app_describe_response(app: App, fields: set[str] | None) -> AppDescribeResponse:
     """Public projection of an app (name / params / input schema) — never internal config."""
     want_info = fields is None or "info" in fields
     want_params = fields is None or "parameters" in fields
