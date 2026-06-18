@@ -232,7 +232,11 @@ class MemberInviteEmailApi(Resource):
                     )
                 except AccountAlreadyInTenantError:
                     invitation_results.append(
-                        {"status": "success", "email": invitee_email, "url": f"{console_web_url}/signin"}
+                        {
+                            "status": "already_member",
+                            "email": invitee_email,
+                            "message": "Account already in workspace.",
+                        }
                     )
                 except Exception as e:
                     invitation_results.append({"status": "failed", "email": invitee_email, "message": str(e)})

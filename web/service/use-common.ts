@@ -248,7 +248,7 @@ export const useInvitationCheck = (params?: { workspace_id?: string, email?: str
     queryKey: commonQueryKeys.invitationCheck(params),
     queryFn: () => get<{
       is_valid: boolean
-      data: { workspace_name: string, email: string, workspace_id: string }
+      data: { workspace_name: string, email: string, workspace_id: string, account_status?: string, requires_setup?: boolean }
       result: string
     }>('/activate/check', { params }),
     enabled: enabled ?? !!params?.token,
