@@ -331,6 +331,22 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /permitted-external-apps/{app_id}/describe
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| fields | query |  | No | string |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Permitted external app description | **application/json**: [AppDescribeResponse](#appdescriberesponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [GET] /workspaces
 #### Responses
 
@@ -507,14 +523,12 @@ Upload a file to use as an input variable when running the app
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| author | string |  | No |
 | description | string |  | No |
 | id | string |  | Yes |
 | is_agent | boolean |  | No |
 | mode | string |  | Yes |
 | name | string |  | Yes |
 | service_api_enabled | boolean |  | Yes |
-| tags | [ [TagItem](#tagitem) ], <br>**Default:**  |  | No |
 | updated_at | string |  | No |
 
 #### AppDescribeQuery
@@ -568,16 +582,14 @@ Request body for POST /workspaces/<workspace_id>/apps/imports.
 | yaml_content | string | Inline YAML DSL string (required when mode is yaml-content) | No |
 | yaml_url | string | Remote URL to fetch YAML from (required when mode is yaml-url) | No |
 
-#### AppInfoResponse
+#### AppInfo
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| author | string |  | No |
 | description | string |  | No |
 | id | string |  | Yes |
 | mode | string |  | Yes |
 | name | string |  | Yes |
-| tags | [ [TagItem](#tagitem) ], <br>**Default:**  |  | No |
 
 #### AppListQuery
 
