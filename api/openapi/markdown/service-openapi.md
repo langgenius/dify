@@ -485,8 +485,8 @@ Retrieve paginated workflow execution logs with filtering options.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| created_at__after | query | Filter logs created after this ISO 8601 timestamp. | No | string |
-| created_at__before | query | Filter logs created before this ISO 8601 timestamp. | No | string |
+| created_at__after | query | Filter logs created after this ISO 8601 timestamp. | No | dateTime |
+| created_at__before | query | Filter logs created before this ISO 8601 timestamp. | No | dateTime |
 | created_by_account | query | Filter by account ID. | No | string |
 | created_by_end_user_session_id | query | Filter by end user session ID. | No | string |
 | keyword | query | Keyword to search in logs. | No | string |
@@ -2190,8 +2190,8 @@ Retrieve paginated workflow execution logs with filtering options.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| created_at__after | query | Filter logs created after this ISO 8601 timestamp. | No | string |
-| created_at__before | query | Filter logs created before this ISO 8601 timestamp. | No | string |
+| created_at__after | query | Filter logs created after this ISO 8601 timestamp. | No | dateTime |
+| created_at__before | query | Filter logs created before this ISO 8601 timestamp. | No | dateTime |
 | created_by_account | query | Filter by account ID. | No | string |
 | created_by_end_user_session_id | query | Filter by end user session ID. | No | string |
 | keyword | query | Keyword to search in logs. | No | string |
@@ -2396,7 +2396,7 @@ Retrieve the list of available models by type. Primarily used to query `text-emb
 | ---- | ---- | ----------- | -------- |
 | embedding_model_name | string | Name of the embedding model to use for annotation matching. | Yes |
 | embedding_provider_name | string | Name of the embedding model provider. | Yes |
-| score_threshold | number | Minimum similarity score for an annotation to be considered a match. | Yes |
+| score_threshold | float | Minimum similarity score for an annotation to be considered a match. | Yes |
 
 #### AppFeedbackListResponse
 

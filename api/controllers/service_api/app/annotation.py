@@ -28,7 +28,10 @@ class AnnotationCreatePayload(BaseModel):
 
 
 class AnnotationReplyActionPayload(BaseModel):
-    score_threshold: float = Field(description="Minimum similarity score for an annotation to be considered a match.")
+    score_threshold: float = Field(
+        description="Minimum similarity score for an annotation to be considered a match.",
+        json_schema_extra={"format": "float"},
+    )
     embedding_provider_name: str = Field(description="Name of the embedding model provider.")
     embedding_model_name: str = Field(description="Name of the embedding model to use for annotation matching.")
 

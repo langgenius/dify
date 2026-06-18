@@ -1835,7 +1835,7 @@ export const zTagUpdatePayload = z.object({
  * TextToAudioPayload
  */
 export const zTextToAudioPayload = z.object({
-  message_id: z.string().nullish(),
+  message_id: z.uuid().nullish(),
   streaming: z.boolean().nullish(),
   text: z.string().nullish(),
   voice: z.string().nullish(),
@@ -1845,7 +1845,7 @@ export const zTextToAudioPayload = z.object({
  * TextToAudioPayload
  */
 export const zTextToAudioPayloadWithUser = z.object({
-  message_id: z.string().nullish(),
+  message_id: z.uuid().nullish(),
   streaming: z.boolean().nullish(),
   text: z.string().nullish(),
   user: z.string().optional(),
@@ -3223,8 +3223,8 @@ export const zGetWorkflowByTaskIdEventsQuery = z.object({
 export const zGetWorkflowByTaskIdEventsResponse = zEventStreamResponse
 
 export const zGetWorkflowsLogsQuery = z.object({
-  created_at__after: z.string().optional(),
-  created_at__before: z.string().optional(),
+  created_at__after: z.iso.datetime().optional(),
+  created_at__before: z.iso.datetime().optional(),
   created_by_account: z.string().optional(),
   created_by_end_user_session_id: z.string().optional(),
   keyword: z.string().optional(),

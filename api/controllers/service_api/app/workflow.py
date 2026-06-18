@@ -80,10 +80,12 @@ class WorkflowLogQuery(BaseModel):
     created_at__before: str | None = Field(
         default=None,
         description="Filter logs created before this ISO 8601 timestamp.",
+        json_schema_extra={"format": "date-time"},
     )
     created_at__after: str | None = Field(
         default=None,
         description="Filter logs created after this ISO 8601 timestamp.",
+        json_schema_extra={"format": "date-time"},
     )
     created_by_end_user_session_id: str | None = Field(
         default=None,

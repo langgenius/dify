@@ -128,7 +128,7 @@ export const zSavedMessageCreatePayload = z.object({
  * TextToAudioPayload
  */
 export const zTextToAudioPayload = z.object({
-  message_id: z.string().nullish(),
+  message_id: z.uuid().nullish(),
   streaming: z.boolean().nullish(),
   text: z.string().nullish(),
   voice: z.string().nullish(),

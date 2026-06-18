@@ -203,8 +203,11 @@ class MetadataUpdatePayload(BaseModel):
 # --- Audio schemas ---
 
 
+UUIDString = Annotated[str, WithJsonSchema({"format": "uuid", "type": "string"})]
+
+
 class TextToAudioPayload(BaseModel):
-    message_id: str | None = Field(
+    message_id: UUIDString | None = Field(
         default=None,
         description="Message ID. Takes priority over `text` when both are provided.",
     )
