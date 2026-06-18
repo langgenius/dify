@@ -1,10 +1,9 @@
-from unittest.mock import _ANY
 from __future__ import annotations
 
 from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import PropertyMock, patch
+from unittest.mock import _ANY, PropertyMock, patch
 
 from controllers.console import console_ns
 from controllers.console.auth.data_source_bearer_auth import (
