@@ -58,13 +58,13 @@ import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 import { NodeActionsDropdown } from '@/app/components/workflow/node-actions-menu'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
-import { isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
 import { useLogs } from '@/app/components/workflow/run/hooks'
 import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import {
   canRunBySingle,
+  getNodeCatalogType,
   hasErrorHandleNode,
   hasRetryNode,
   isSupportCustomRunForm,
@@ -210,7 +210,7 @@ const BasePanel: FC<BasePanelProps> = ({
 
   const { handleNodeSelect } = useNodesInteractions()
   const { nodesReadOnly } = useNodesReadOnly()
-  const { availableNextBlocks } = useAvailableBlocks(data.type, data.isInIteration || data.isInLoop)
+  const { availableNextBlocks } = useAvailableBlocks(getNodeCatalogType(data), data.isInIteration || data.isInLoop)
   const toolIcon = useToolIcon(data)
 
   const { saveStateToHistory } = useWorkflowHistory()
@@ -230,7 +230,7 @@ const BasePanel: FC<BasePanelProps> = ({
   }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
 
   const isChildNode = !!(data.isInIteration || data.isInLoop)
-  const nodeMetaType = isAgentV2NodeData(data) ? BlockEnum.AgentV2 : data.type
+  const nodeMetaType = getNodeCatalogType(data)
   const isSupportSingleRun = canRunBySingle(data.type, isChildNode)
   const appDetail = useAppStore(state => state.appDetail)
 

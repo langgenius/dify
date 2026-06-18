@@ -1,6 +1,7 @@
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { LoopNodeType } from '../nodes/loop/types'
 import type {
+  CommonNodeType,
   Node,
 } from '../types'
 import {
@@ -14,11 +15,16 @@ import {
   LOOP_CHILDREN_Z_INDEX,
   LOOP_NODE_Z_INDEX,
 } from '../constants'
+import { isAgentV2NodeData } from '../nodes/agent-v2/types'
 import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
 import {
   BlockEnum,
 } from '../types'
+
+export function getNodeCatalogType(data: CommonNodeType): BlockEnum {
+  return isAgentV2NodeData(data) ? BlockEnum.AgentV2 : data.type
+}
 
 export function generateNewNode({ data, position, id, zIndex, type, ...rest }: Omit<Node, 'id'> & { id?: string }): {
   newNode: Node
