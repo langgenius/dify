@@ -25,7 +25,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
 from services.metadata_service import MetadataService
 
 BUILT_IN_METADATA_ACTION_PARAM = {
-    "description": "Action to perform: 'enable' or 'disable'",
+    "description": "`enable` to activate built-in metadata fields, `disable` to deactivate them.",
     "enum": ["enable", "disable"],
     "type": "string",
 }
@@ -63,7 +63,7 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
     @service_api_ns.expect(service_api_ns.models[MetadataArgs.__name__])
     @service_api_ns.doc("create_dataset_metadata")
     @service_api_ns.doc(description="Create metadata for a dataset")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID."})
     @service_api_ns.doc(
         responses={
             201: "Metadata created successfully",
@@ -101,7 +101,7 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
     )
     @service_api_ns.doc("get_dataset_metadata")
     @service_api_ns.doc(description="Get all metadata for a dataset")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID."})
     @service_api_ns.doc(
         responses={
             200: "Metadata retrieved successfully",
@@ -135,7 +135,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
     @service_api_ns.expect(service_api_ns.models[MetadataUpdatePayload.__name__])
     @service_api_ns.doc("update_dataset_metadata")
     @service_api_ns.doc(description="Update metadata name")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID", "metadata_id": "Metadata ID"})
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID.", "metadata_id": "Metadata field ID."})
     @service_api_ns.doc(
         responses={
             200: "Metadata updated successfully",
@@ -174,7 +174,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
     )
     @service_api_ns.doc("delete_dataset_metadata")
     @service_api_ns.doc(description="Delete metadata")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID", "metadata_id": "Metadata ID"})
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID.", "metadata_id": "Metadata field ID."})
     @service_api_ns.doc(
         responses={
             204: "Metadata deleted successfully",
@@ -211,6 +211,7 @@ class DatasetMetadataBuiltInFieldServiceApi(DatasetApiResource):
     )
     @service_api_ns.doc("get_built_in_fields")
     @service_api_ns.doc(description="Get all built-in metadata fields")
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID."})
     @service_api_ns.doc(
         responses={
             200: "Built-in fields retrieved successfully",
@@ -240,7 +241,7 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
     )
     @service_api_ns.doc("toggle_built_in_field")
     @service_api_ns.doc(description="Enable or disable built-in metadata field")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID", "action": BUILT_IN_METADATA_ACTION_PARAM})
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID.", "action": BUILT_IN_METADATA_ACTION_PARAM})
     @service_api_ns.doc(
         responses={
             200: "Action completed successfully",
@@ -284,7 +285,7 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
     @service_api_ns.expect(service_api_ns.models[MetadataOperationData.__name__])
     @service_api_ns.doc("update_documents_metadata")
     @service_api_ns.doc(description="Update metadata for multiple documents")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID."})
     @service_api_ns.doc(
         responses={
             200: "Documents metadata updated successfully",

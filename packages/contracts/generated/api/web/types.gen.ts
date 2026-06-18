@@ -640,7 +640,10 @@ export type WebMessageListItem = {
 
 export type WorkflowRunPayload = {
   files?: Array<{
-    [key: string]: unknown
+    transfer_method: 'local_file' | 'remote_url'
+    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+    upload_file_id?: string
+    url?: string
   }> | null
   inputs: {
     [key: string]: unknown
