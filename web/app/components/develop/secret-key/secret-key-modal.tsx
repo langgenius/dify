@@ -157,20 +157,20 @@ const SecretKeyModal = ({
             !!apiKeysList?.data?.length && (
               <div className="mt-4 flex grow flex-col overflow-hidden">
                 <div className="flex h-9 shrink-0 items-center border-b border-divider-regular text-xs font-semibold text-text-tertiary">
-                  <div className="w-64 shrink-0 px-3">{t('apiKeyModal.secretKey', { ns: 'appApi' })}</div>
-                  {!appId && <div className="w-[180px] shrink-0 px-3">{t('apiKeyModal.scope', { ns: 'appApi' })}</div>}
-                  <div className="w-[200px] shrink-0 px-3">{t('apiKeyModal.created', { ns: 'appApi' })}</div>
-                  <div className="w-[200px] shrink-0 px-3">{t('apiKeyModal.lastUsed', { ns: 'appApi' })}</div>
-                  <div className="grow px-3"></div>
+                  <div className="min-w-0 flex-[1.8] truncate px-3">{t('apiKeyModal.secretKey', { ns: 'appApi' })}</div>
+                  {!appId && <div className="min-w-0 flex-[1.3] truncate px-3">{t('apiKeyModal.scope', { ns: 'appApi' })}</div>}
+                  <div className="min-w-0 flex-[1.8] truncate px-3">{t('apiKeyModal.created', { ns: 'appApi' })}</div>
+                  <div className="min-w-0 flex-[1.8] truncate px-3">{t('apiKeyModal.lastUsed', { ns: 'appApi' })}</div>
+                  <div className="w-20 shrink-0 px-3"></div>
                 </div>
-                <div className="grow overflow-auto">
+                <div className="grow overflow-x-hidden overflow-y-auto">
                   {apiKeysList.data.map(api => (
                     <div className="flex h-9 items-center border-b border-divider-regular text-sm font-normal text-text-secondary" key={api.id}>
-                      <div className="w-64 shrink-0 truncate px-3 font-mono">{generateToken(api.token)}</div>
-                      {!appId && <div className="w-[180px] shrink-0 truncate px-3">{getScopeLabel(api.dataset_id)}</div>}
-                      <div className="w-[200px] shrink-0 truncate px-3">{formatTime(Number(api.created_at), t('dateTimeFormat', { ns: 'appLog' }) as string)}</div>
-                      <div className="w-[200px] shrink-0 truncate px-3">{api.last_used_at ? formatTime(Number(api.last_used_at), t('dateTimeFormat', { ns: 'appLog' }) as string) : t('never', { ns: 'appApi' })}</div>
-                      <div className="flex grow space-x-2 px-3">
+                      <div className="min-w-0 flex-[1.8] truncate px-3 font-mono">{generateToken(api.token)}</div>
+                      {!appId && <div className="min-w-0 flex-[1.3] truncate px-3" title={getScopeLabel(api.dataset_id)}>{getScopeLabel(api.dataset_id)}</div>}
+                      <div className="min-w-0 flex-[1.8] truncate px-3">{formatTime(Number(api.created_at), t('dateTimeFormat', { ns: 'appLog' }) as string)}</div>
+                      <div className="min-w-0 flex-[1.8] truncate px-3">{api.last_used_at ? formatTime(Number(api.last_used_at), t('dateTimeFormat', { ns: 'appLog' }) as string) : t('never', { ns: 'appApi' })}</div>
+                      <div className="flex w-20 shrink-0 space-x-2 px-3">
                         <CopyFeedback content={api.token} />
                         {isCurrentWorkspaceManager && (
                           <ActionButton
