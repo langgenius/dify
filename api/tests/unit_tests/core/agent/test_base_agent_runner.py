@@ -21,7 +21,7 @@ def mock_db_session(mocker: MockerFixture):
 
 
 @pytest.fixture
-def runner(mocker, mock_db_session):
+def runner(mocker: MockerFixture, mock_db_session):
     r = BaseAgentRunner.__new__(BaseAgentRunner)
     r.tenant_id = "tenant"
     r.user_id = "user"

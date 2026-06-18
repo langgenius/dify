@@ -460,7 +460,7 @@ def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.Monk
     assert new_version_binding.current_snapshot_id == "new-version-1"
 
 
-def test_node_job_only_updates_inline_agent_soul(monkeypatch):
+def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch):
     fake_session = FakeSession()
     monkeypatch.setattr(composer_service.db, "session", fake_session)
     inline_agent = SimpleNamespace(
@@ -532,7 +532,7 @@ def test_node_job_only_updates_inline_agent_soul(monkeypatch):
     assert inline_agent.updated_by == "account-1"
 
 
-def test_node_job_only_rejects_inline_binding_pointing_to_roster_agent(monkeypatch):
+def test_node_job_only_rejects_inline_binding_pointing_to_roster_agent(monkeypatch: pytest.MonkeyPatch):
     fake_session = FakeSession()
     monkeypatch.setattr(composer_service.db, "session", fake_session)
     current_snapshot = AgentConfigSnapshot(
@@ -579,7 +579,7 @@ def test_node_job_only_rejects_inline_binding_pointing_to_roster_agent(monkeypat
         )
 
 
-def test_composer_create_agents_syncs_active_config_has_model(monkeypatch):
+def test_composer_create_agents_syncs_active_config_has_model(monkeypatch: pytest.MonkeyPatch):
     fake_session = FakeSession()
     monkeypatch.setattr(composer_service.db, "session", fake_session)
     monkeypatch.setattr(
@@ -2570,7 +2570,7 @@ def test_save_workflow_composer_guards_drive_refs_for_existing_agent_strategies(
     assert guarded["agent_id"] == "agent-1"
 
 
-def test_save_workflow_composer_guards_drive_refs_for_inline_node_job_only(monkeypatch):
+def test_save_workflow_composer_guards_drive_refs_for_inline_node_job_only(monkeypatch: pytest.MonkeyPatch):
     payload = ComposerSavePayload.model_validate(
         {
             "variant": "workflow",
@@ -2627,7 +2627,7 @@ def test_save_workflow_composer_guards_drive_refs_for_inline_node_job_only(monke
     assert guarded == {"tenant_id": "t-1", "agent_id": "agent-1"}
 
 
-def test_save_workflow_composer_skips_drive_refs_for_roster_node_job_only(monkeypatch):
+def test_save_workflow_composer_skips_drive_refs_for_roster_node_job_only(monkeypatch: pytest.MonkeyPatch):
     payload = ComposerSavePayload.model_validate(
         {
             "variant": "workflow",
@@ -2681,7 +2681,7 @@ def test_save_workflow_composer_skips_drive_refs_for_roster_node_job_only(monkey
     assert result == {"state": "ok", "validation": {"warnings": []}}
 
 
-def test_remove_drive_refs_noop_when_skill_slug_unmatched(monkeypatch):
+def test_remove_drive_refs_noop_when_skill_slug_unmatched(monkeypatch: pytest.MonkeyPatch):
     soul_dict = {"skills_files": {"skills": [{"name": "Other", "skill_md_key": "other/SKILL.md"}], "files": []}}
     _, captured, committed = _patch_remove_drive_refs_env(monkeypatch, soul_dict=soul_dict)
     assert (

@@ -1,4 +1,5 @@
 from contextlib import nullcontext
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -24,12 +25,6 @@ from controllers.console.workspace.members import (
     SendOwnerTransferEmailApi,
 )
 from services.errors.account import AccountAlreadyInTenantError
-
-
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 class TestMemberListApi:

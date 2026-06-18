@@ -84,7 +84,7 @@ def test_system_variables_returns_empty_list(app):
     assert result == WorkflowDraftVariableList(variables=[])
 
 
-def test_delete_variable_collection_deletes_current_user_variables(app, monkeypatch):
+def test_delete_variable_collection_deletes_current_user_variables(app: Flask, monkeypatch: pytest.MonkeyPatch):
     draft_var_service = SimpleNamespace(delete_user_workflow_variables=Mock())
     monkeypatch.setattr(module, "WorkflowDraftVariableService", Mock(return_value=draft_var_service))
     db_session = Mock()
@@ -101,7 +101,7 @@ def test_delete_variable_collection_deletes_current_user_variables(app, monkeypa
     db_session.commit.assert_called_once()
 
 
-def test_variable_collection_get_raises_when_draft_workflow_missing(app, monkeypatch):
+def test_variable_collection_get_raises_when_draft_workflow_missing(app: Flask, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         module,
         "SnippetService",
@@ -116,7 +116,7 @@ def test_variable_collection_get_raises_when_draft_workflow_missing(app, monkeyp
             handler(api, _make_account(), snippet=SimpleNamespace(id="snippet-1"))
 
 
-def test_node_variable_collection_get_lists_node_variables(app, monkeypatch):
+def test_node_variable_collection_get_lists_node_variables(app: Flask, monkeypatch: pytest.MonkeyPatch):
     variables = WorkflowDraftVariableList(variables=[SimpleNamespace(id="var-1")])
     list_node_variables = Mock(return_value=variables)
 
@@ -149,7 +149,7 @@ def test_node_variable_collection_get_lists_node_variables(app, monkeypatch):
     list_node_variables.assert_called_once_with("snippet-1", "llm-1", user_id="user-1")
 
 
-def test_node_variable_collection_delete_deletes_node_variables(app, monkeypatch):
+def test_node_variable_collection_delete_deletes_node_variables(app: Flask, monkeypatch: pytest.MonkeyPatch):
     delete_node_variables = Mock()
     draft_var_service = SimpleNamespace(delete_node_variables=delete_node_variables)
     monkeypatch.setattr(module, "WorkflowDraftVariableService", Mock(return_value=draft_var_service))
@@ -168,7 +168,7 @@ def test_node_variable_collection_delete_deletes_node_variables(app, monkeypatch
     db_session.commit.assert_called_once()
 
 
-def test_variable_patch_returns_variable_when_no_changes(app, monkeypatch):
+def test_variable_patch_returns_variable_when_no_changes(app: Flask, monkeypatch: pytest.MonkeyPatch):
     variable = SimpleNamespace(id="var-1", app_id="snippet-1", user_id="user-1", node_id="llm-1")
     draft_var_service = SimpleNamespace(get_variable=Mock(return_value=variable), update_variable=Mock())
     db_session = Mock()
@@ -192,7 +192,7 @@ def test_variable_patch_returns_variable_when_no_changes(app, monkeypatch):
     db_session.commit.assert_not_called()
 
 
-def test_variable_delete_deletes_variable(app, monkeypatch):
+def test_variable_delete_deletes_variable(app: Flask, monkeypatch: pytest.MonkeyPatch):
     variable = SimpleNamespace(id="var-1", app_id="snippet-1", user_id="user-1", node_id="llm-1")
     delete_variable = Mock()
     draft_var_service = SimpleNamespace(get_variable=Mock(return_value=variable), delete_variable=delete_variable)
@@ -212,7 +212,7 @@ def test_variable_delete_deletes_variable(app, monkeypatch):
     db_session.commit.assert_called_once()
 
 
-def test_variable_reset_returns_no_content_when_reset_result_is_none(app, monkeypatch):
+def test_variable_reset_returns_no_content_when_reset_result_is_none(app: Flask, monkeypatch: pytest.MonkeyPatch):
     variable = SimpleNamespace(id="var-1", app_id="snippet-1", user_id="user-1", node_id="llm-1")
     draft_workflow = SimpleNamespace(id="workflow-1")
     draft_var_service = SimpleNamespace(
@@ -240,7 +240,7 @@ def test_variable_reset_returns_no_content_when_reset_result_is_none(app, monkey
     db_session.commit.assert_called_once()
 
 
-def test_environment_variables_returns_workflow_environment_variables(app, monkeypatch):
+def test_environment_variables_returns_workflow_environment_variables(app: Flask, monkeypatch: pytest.MonkeyPatch):
     env_var = SimpleNamespace(
         id="env-1",
         name="API_KEY",
