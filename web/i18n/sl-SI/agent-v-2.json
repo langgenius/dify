@@ -82,6 +82,7 @@
   "agentDetail.configure.files.label": "Datoteke",
   "agentDetail.configure.files.preview.empty": "Ni vsebine za predogled.",
   "agentDetail.configure.files.preview.failed": "Predogleda ni bilo mogoče naložiti.",
+  "agentDetail.configure.files.preview.unsupported": "Ta datoteka ne podpira predogleda.",
   "agentDetail.configure.files.remove": "Odstrani {{name}}",
   "agentDetail.configure.files.tip": "Datoteke, ki jih ta agent lahko uporablja pri izvajanju opravil.",
   "agentDetail.configure.files.toggle": "Preklopi datoteke",

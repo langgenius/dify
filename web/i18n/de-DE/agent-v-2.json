@@ -82,6 +82,7 @@
   "agentDetail.configure.files.label": "Dateien",
   "agentDetail.configure.files.preview.empty": "Kein Vorschauinhalt.",
   "agentDetail.configure.files.preview.failed": "Vorschau konnte nicht geladen werden.",
+  "agentDetail.configure.files.preview.unsupported": "Für diese Datei wird keine Vorschau unterstützt.",
   "agentDetail.configure.files.remove": "{{name}} entfernen",
   "agentDetail.configure.files.tip": "Dateien, die dieser Agent bei der Orchestrierung von Aufgaben verwenden kann.",
   "agentDetail.configure.files.toggle": "Dateien umschalten",

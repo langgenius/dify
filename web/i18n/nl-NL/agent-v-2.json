@@ -82,6 +82,7 @@
   "agentDetail.configure.files.label": "Bestanden",
   "agentDetail.configure.files.preview.empty": "Geen voorbeeldinhoud.",
   "agentDetail.configure.files.preview.failed": "Laden van voorbeeld mislukt.",
+  "agentDetail.configure.files.preview.unsupported": "Dit bestand ondersteunt geen voorbeeldweergave.",
   "agentDetail.configure.files.remove": "{{name}} verwijderen",
   "agentDetail.configure.files.tip": "Bestanden die deze agent kan gebruiken tijdens het orkestreren van taken.",
   "agentDetail.configure.files.toggle": "Bestanden in/uit",

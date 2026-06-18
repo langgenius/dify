@@ -82,6 +82,7 @@
   "agentDetail.configure.files.label": "檔案",
   "agentDetail.configure.files.preview.empty": "暫無預覽內容。",
   "agentDetail.configure.files.preview.failed": "預覽載入失敗。",
+  "agentDetail.configure.files.preview.unsupported": "此檔案不支援預覽。",
   "agentDetail.configure.files.remove": "移除 {{name}}",
   "agentDetail.configure.files.tip": "此智能體在編排任務時可使用的檔案。",
   "agentDetail.configure.files.toggle": "展開或收合檔案",

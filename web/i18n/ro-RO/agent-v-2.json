@@ -82,6 +82,7 @@
   "agentDetail.configure.files.label": "Fișiere",
   "agentDetail.configure.files.preview.empty": "Niciun conținut de previzualizat.",
   "agentDetail.configure.files.preview.failed": "Încărcarea previzualizării a eșuat.",
+  "agentDetail.configure.files.preview.unsupported": "Acest fișier nu acceptă previzualizarea.",
   "agentDetail.configure.files.remove": "Elimină {{name}}",
   "agentDetail.configure.files.tip": "Fișiere pe care acest agent le poate folosi în timpul orchestrării sarcinilor.",
   "agentDetail.configure.files.toggle": "Comută fișierele",

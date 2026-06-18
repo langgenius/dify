@@ -394,8 +394,9 @@ describe('AgentFiles', () => {
       name: 'brief.md',
     }))
 
-    const link = await screen.findByRole('link', { name: /common\.operation\.download.*brief\.md/ })
+    const link = await screen.findByRole('link', { name: 'common.operation.download' })
 
+    expect(screen.getByText('agentV2.agentDetail.configure.files.preview.unsupported')).toBeInTheDocument()
     expect(link).toHaveAttribute('href', 'https://signed.example/files/brief.md')
     expect(screen.queryByText('Preview content for files/brief.md')).not.toBeInTheDocument()
   })

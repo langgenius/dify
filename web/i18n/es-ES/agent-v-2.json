@@ -82,6 +82,7 @@
   "agentDetail.configure.files.label": "Archivos",
   "agentDetail.configure.files.preview.empty": "Sin contenido de vista previa.",
   "agentDetail.configure.files.preview.failed": "Error al cargar la vista previa.",
+  "agentDetail.configure.files.preview.unsupported": "Este archivo no admite vista previa.",
   "agentDetail.configure.files.remove": "Eliminar {{name}}",
   "agentDetail.configure.files.tip": "Archivos que este agente puede usar al orquestar tareas.",
   "agentDetail.configure.files.toggle": "Alternar archivos",

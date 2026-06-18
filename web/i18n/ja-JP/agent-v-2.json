@@ -82,6 +82,7 @@
   "agentDetail.configure.files.label": "ファイル",
   "agentDetail.configure.files.preview.empty": "プレビュー内容はありません。",
   "agentDetail.configure.files.preview.failed": "プレビューの読み込みに失敗しました。",
+  "agentDetail.configure.files.preview.unsupported": "ファイルはプレビューに対応していません。",
   "agentDetail.configure.files.remove": "{{name}} を削除",
   "agentDetail.configure.files.tip": "このエージェントがタスクのオーケストレーション中に利用できるファイル。",
   "agentDetail.configure.files.toggle": "ファイルの表示を切り替え",

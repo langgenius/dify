@@ -82,6 +82,7 @@
   "agentDetail.configure.files.label": "Fichiers",
   "agentDetail.configure.files.preview.empty": "Aucun contenu d’aperçu.",
   "agentDetail.configure.files.preview.failed": "Échec du chargement de l’aperçu.",
+  "agentDetail.configure.files.preview.unsupported": "Ce fichier ne prend pas en charge l’aperçu.",
   "agentDetail.configure.files.remove": "Supprimer {{name}}",
   "agentDetail.configure.files.tip": "Fichiers que cet agent peut utiliser lors de l’orchestration des tâches.",
   "agentDetail.configure.files.toggle": "Basculer les fichiers",

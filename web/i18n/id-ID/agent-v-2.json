@@ -82,6 +82,7 @@
   "agentDetail.configure.files.label": "File",
   "agentDetail.configure.files.preview.empty": "Tidak ada konten pratinjau.",
   "agentDetail.configure.files.preview.failed": "Gagal memuat pratinjau.",
+  "agentDetail.configure.files.preview.unsupported": "File ini tidak mendukung pratinjau.",
   "agentDetail.configure.files.remove": "Hapus {{name}}",
   "agentDetail.configure.files.tip": "File yang dapat digunakan agen ini saat mengorkestrasi tugas.",
   "agentDetail.configure.files.toggle": "Alihkan file",

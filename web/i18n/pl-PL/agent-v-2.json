@@ -82,6 +82,7 @@
   "agentDetail.configure.files.label": "Pliki",
   "agentDetail.configure.files.preview.empty": "Brak treści podglądu.",
   "agentDetail.configure.files.preview.failed": "Nie udało się załadować podglądu.",
+  "agentDetail.configure.files.preview.unsupported": "Ten plik nie obsługuje podglądu.",
   "agentDetail.configure.files.remove": "Usuń {{name}}",
   "agentDetail.configure.files.tip": "Pliki, których ten agent może używać podczas wykonywania zadań.",
   "agentDetail.configure.files.toggle": "Przełącz pliki",

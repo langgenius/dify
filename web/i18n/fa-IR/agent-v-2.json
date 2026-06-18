@@ -82,6 +82,7 @@
   "agentDetail.configure.files.label": "فایل‌ها",
   "agentDetail.configure.files.preview.empty": "محتوای پیش‌نمایش وجود ندارد.",
   "agentDetail.configure.files.preview.failed": "بارگذاری پیش‌نمایش ناموفق بود.",
+  "agentDetail.configure.files.preview.unsupported": "این فایل از پیش‌نمایش پشتیبانی نمی‌کند.",
   "agentDetail.configure.files.remove": "حذف {{name}}",
   "agentDetail.configure.files.tip": "فایل‌هایی که این عامل هنگام هماهنگی وظایف می‌تواند استفاده کند.",
   "agentDetail.configure.files.toggle": "تغییر فایل‌ها",

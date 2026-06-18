@@ -82,6 +82,7 @@
   "agentDetail.configure.files.label": "ไฟล์",
   "agentDetail.configure.files.preview.empty": "ไม่มีเนื้อหาสำหรับแสดงตัวอย่าง",
   "agentDetail.configure.files.preview.failed": "โหลดตัวอย่างไม่สำเร็จ",
+  "agentDetail.configure.files.preview.unsupported": "ไฟล์นี้ไม่รองรับการแสดงตัวอย่าง",
   "agentDetail.configure.files.remove": "ลบ {{name}}",
   "agentDetail.configure.files.tip": "ไฟล์ที่ตัวแทนนี้สามารถใช้ได้ขณะจัดการงาน",
   "agentDetail.configure.files.toggle": "สลับไฟล์",

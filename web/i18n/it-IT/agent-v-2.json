@@ -82,6 +82,7 @@
   "agentDetail.configure.files.label": "File",
   "agentDetail.configure.files.preview.empty": "Nessun contenuto in anteprima.",
   "agentDetail.configure.files.preview.failed": "Impossibile caricare l’anteprima.",
+  "agentDetail.configure.files.preview.unsupported": "Questo file non supporta l’anteprima.",
   "agentDetail.configure.files.remove": "Rimuovi {{name}}",
   "agentDetail.configure.files.tip": "File che questo agente può utilizzare durante l’orchestrazione delle attività.",
   "agentDetail.configure.files.toggle": "Attiva/disattiva file",

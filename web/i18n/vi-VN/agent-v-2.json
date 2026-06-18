@@ -82,6 +82,7 @@
   "agentDetail.configure.files.label": "Tệp",
   "agentDetail.configure.files.preview.empty": "Không có nội dung xem trước.",
   "agentDetail.configure.files.preview.failed": "Tải xem trước thất bại.",
+  "agentDetail.configure.files.preview.unsupported": "Tệp này không hỗ trợ xem trước.",
   "agentDetail.configure.files.remove": "Xóa {{name}}",
   "agentDetail.configure.files.tip": "Các tệp mà tác nhân này có thể sử dụng khi điều phối tác vụ.",
   "agentDetail.configure.files.toggle": "Bật/tắt tệp",

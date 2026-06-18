@@ -82,6 +82,7 @@
   "agentDetail.configure.files.label": "Файлы",
   "agentDetail.configure.files.preview.empty": "Нет содержимого для предпросмотра.",
   "agentDetail.configure.files.preview.failed": "Не удалось загрузить предпросмотр.",
+  "agentDetail.configure.files.preview.unsupported": "Этот файл не поддерживает предварительный просмотр.",
   "agentDetail.configure.files.remove": "Удалить {{name}}",
   "agentDetail.configure.files.tip": "Файлы, которые этот агент может использовать при выполнении задач.",
   "agentDetail.configure.files.toggle": "Переключить файлы",

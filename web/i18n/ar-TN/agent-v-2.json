@@ -82,6 +82,7 @@
   "agentDetail.configure.files.label": "الملفات",
   "agentDetail.configure.files.preview.empty": "لا يوجد محتوى معاينة.",
   "agentDetail.configure.files.preview.failed": "فشل تحميل المعاينة.",
+  "agentDetail.configure.files.preview.unsupported": "هذا الملف لا يدعم المعاينة.",
   "agentDetail.configure.files.remove": "إزالة {{name}}",
   "agentDetail.configure.files.tip": "الملفات التي يمكن لهذا الوكيل استخدامها أثناء تنسيق المهام.",
   "agentDetail.configure.files.toggle": "تبديل الملفات",

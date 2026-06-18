@@ -82,6 +82,7 @@
   "agentDetail.configure.files.label": "Файли",
   "agentDetail.configure.files.preview.empty": "Немає вмісту для перегляду.",
   "agentDetail.configure.files.preview.failed": "Не вдалося завантажити перегляд.",
+  "agentDetail.configure.files.preview.unsupported": "Попередній перегляд цього файлу не підтримується.",
   "agentDetail.configure.files.remove": "Видалити {{name}}",
   "agentDetail.configure.files.tip": "Файли, які цей агент може використовувати під час оркестрації задач.",
   "agentDetail.configure.files.toggle": "Перемкнути файли",

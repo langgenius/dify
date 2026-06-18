@@ -82,6 +82,7 @@
   "agentDetail.configure.files.label": "Dosyalar",
   "agentDetail.configure.files.preview.empty": "Önizleme içeriği yok.",
   "agentDetail.configure.files.preview.failed": "Önizleme yüklenemedi.",
+  "agentDetail.configure.files.preview.unsupported": "Bu dosya önizlemeyi desteklemiyor.",
   "agentDetail.configure.files.remove": "{{name}} kaldır",
   "agentDetail.configure.files.tip": "Bu ajanın görevleri koordine ederken kullanabileceği dosyalar.",
   "agentDetail.configure.files.toggle": "Dosyaları değiştir",

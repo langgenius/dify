@@ -82,6 +82,7 @@
   "agentDetail.configure.files.label": "Arquivos",
   "agentDetail.configure.files.preview.empty": "Sem conteúdo de pré-visualização.",
   "agentDetail.configure.files.preview.failed": "Falha ao carregar a pré-visualização.",
+  "agentDetail.configure.files.preview.unsupported": "Este arquivo não oferece suporte à pré-visualização.",
   "agentDetail.configure.files.remove": "Remover {{name}}",
   "agentDetail.configure.files.tip": "Arquivos que este agente pode usar ao orquestrar tarefas.",
   "agentDetail.configure.files.toggle": "Alternar arquivos",

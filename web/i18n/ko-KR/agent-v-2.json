@@ -82,6 +82,7 @@
   "agentDetail.configure.files.label": "파일",
   "agentDetail.configure.files.preview.empty": "미리보기 내용이 없습니다.",
   "agentDetail.configure.files.preview.failed": "미리보기를 불러오지 못했습니다.",
+  "agentDetail.configure.files.preview.unsupported": "이 파일은 미리보기를 지원하지 않습니다.",
   "agentDetail.configure.files.remove": "{{name}} 제거",
   "agentDetail.configure.files.tip": "이 에이전트가 작업을 오케스트레이션할 때 사용할 수 있는 파일입니다.",
   "agentDetail.configure.files.toggle": "파일 전환",

@@ -82,6 +82,7 @@
   "agentDetail.configure.files.label": "फ़ाइलें",
   "agentDetail.configure.files.preview.empty": "कोई पूर्वावलोकन सामग्री नहीं।",
   "agentDetail.configure.files.preview.failed": "पूर्वावलोकन लोड करने में विफल।",
+  "agentDetail.configure.files.preview.unsupported": "यह फ़ाइल पूर्वावलोकन का समर्थन नहीं करती।",
   "agentDetail.configure.files.remove": "{{name}} हटाएँ",
   "agentDetail.configure.files.tip": "इस एजेंट द्वारा कार्यों को व्यवस्थित करते समय उपयोग की जा सकने वाली फ़ाइलें।",
   "agentDetail.configure.files.toggle": "फ़ाइलें टॉगल करें",
