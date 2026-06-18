@@ -1,6 +1,5 @@
 """Unit tests for skill → CLI tool inference (ENG-371)."""
 
-import pytest
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch

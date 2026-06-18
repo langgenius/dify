@@ -7,10 +7,11 @@ answer, or pass through a possibly moderation-sanitized query.
 """
 
 from __future__ import annotations
-import pytest
 
 from types import SimpleNamespace
 from typing import Any
+
+import pytest
 
 import core.app.features.annotation_reply.annotation_reply as annotation_mod
 import core.moderation.input_moderation as input_moderation_mod
