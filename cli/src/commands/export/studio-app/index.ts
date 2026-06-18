@@ -1,6 +1,7 @@
 import { DifyCommand } from '@/commands/_shared/dify-command'
 import { httpRetryFlag } from '@/commands/_shared/global-flags'
 import { Args, Flags } from '@/framework/flags'
+import { agentGuide } from './guide'
 import { runExportApp } from './run'
 
 export default class ExportStudioApp extends DifyCommand {
@@ -41,5 +42,9 @@ export default class ExportStudioApp extends DifyCommand {
       if (!result.yaml.endsWith('\n'))
         ctx.io.out.write('\n')
     }
+  }
+
+  override agentGuide(): string {
+    return agentGuide
   }
 }

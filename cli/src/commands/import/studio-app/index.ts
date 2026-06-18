@@ -1,6 +1,7 @@
 import { DifyCommand } from '@/commands/_shared/dify-command'
 import { httpRetryFlag } from '@/commands/_shared/global-flags'
 import { Flags } from '@/framework/flags'
+import { agentGuide } from './guide'
 import { pluginDependencyLabel, runImportApp } from './run'
 
 export default class ImportStudioApp extends DifyCommand {
@@ -56,5 +57,9 @@ export default class ImportStudioApp extends DifyCommand {
       for (const dep of leakedDependencies)
         ctx.io.err.write(`  - ${pluginDependencyLabel(dep)}\n`)
     }
+  }
+
+  override agentGuide(): string {
+    return agentGuide
   }
 }
