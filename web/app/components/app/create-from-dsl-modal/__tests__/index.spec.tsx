@@ -245,8 +245,7 @@ describe('CreateFromDSLModal', () => {
     expect(mockInvalidateAppList).toHaveBeenCalledTimes(1)
     expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('app-1')
     expect(mockGetRedirection).toHaveBeenCalledWith(
-      true,
-      { id: 'app-1', mode: 'chat' },
+      { id: 'app-1', mode: 'chat', permission_keys: ['app.acl.view_layout'] },
       mockPush,
     )
   })
@@ -453,6 +452,7 @@ describe('CreateFromDSLModal', () => {
       status: DSLImportStatus
       app_id: string
       app_mode: string
+      permission_keys?: string[]
     }) => void
     mockImportDSL.mockImplementationOnce(
       () =>

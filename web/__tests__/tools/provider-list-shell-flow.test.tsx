@@ -21,9 +21,14 @@ vi.mock('@/app/components/plugins/hooks', () => ({
 }))
 
 vi.mock('@/context/app-context', () => ({
+  useAppContext: () => ({
+    userProfile: { id: 'user-1', timezone: 'UTC' },
+    workspacePermissionKeys: ['tool.manage', 'mcp.manage', 'plugin.install', 'plugin.manage', 'plugin.plugin_preferences'],
+    langGeniusVersionInfo: { current_version: '1.0.0' },
+  }),
   useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) =>
     selector({
-      workspacePermissionKeys: ['tool.manage', 'mcp.manage'],
+      workspacePermissionKeys: ['tool.manage', 'mcp.manage', 'plugin.install', 'plugin.manage', 'plugin.plugin_preferences'],
     }),
 }))
 
@@ -76,6 +81,8 @@ vi.mock('@/service/use-plugins', () => ({
       : null,
   }),
   useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
+  useMutationPluginPermissionSettings: () => ({ mutate: vi.fn(), isPending: false }),
+  usePluginPermissionSettings: () => ({ data: undefined, isLoading: false, isFetching: false, error: null }),
 }))
 
 vi.mock('@/app/components/tools/labels/filter', () => ({
@@ -157,6 +164,10 @@ vi.mock('@/app/components/tools/marketplace/hooks', () => ({
 
 vi.mock('@/app/components/tools/mcp', () => ({
   default: ({ searchText }: { searchText: string }) => <div data-testid="mcp-list">{searchText}</div>,
+}))
+
+vi.mock('@/app/components/header/account-setting/update-setting-dialog', () => ({
+  default: () => null,
 }))
 
 const renderProviderList = (searchParams = '') => {

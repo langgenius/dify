@@ -579,7 +579,7 @@ describe('Popup', () => {
       { target: { value: 'openai' } },
     )
 
-    expect(screen.getByText('No model found for \u201Copenai\u201D'))!.toBeInTheDocument()
+    expect(screen.getByText(/common\.modelProvider\.selector\.noModelFoundForSearch.*openai/))!.toBeInTheDocument()
     expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
     expect(screen.queryByText('gpt-4-tool')).not.toBeInTheDocument()
   })
@@ -610,7 +610,7 @@ describe('Popup', () => {
     expect(screen.getByText('anthropic')).toBeInTheDocument()
     expect(screen.getByText('claude-3')).toBeInTheDocument()
     expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
-    expect(screen.queryByText('No model found for \u201Cclaude\u201D')).not.toBeInTheDocument()
+    expect(screen.queryByText(/common\.modelProvider\.selector\.noModelFoundForSearch.*claude/)).not.toBeInTheDocument()
   })
 
   it('should show empty search placeholder when no provider or model name matches', () => {
@@ -633,7 +633,7 @@ describe('Popup', () => {
       { target: { value: 'mistral' } },
     )
 
-    expect(screen.getByText('No model found for \u201Cmistral\u201D'))!.toBeInTheDocument()
+    expect(screen.getByText(/common\.modelProvider\.selector\.noModelFoundForSearch.*mistral/))!.toBeInTheDocument()
     expect(screen.queryByText('openai')).not.toBeInTheDocument()
     expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
   })

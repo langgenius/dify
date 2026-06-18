@@ -71,6 +71,12 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () 
   }),
 }))
 
+vi.mock('@/context/app-context', () => ({
+  useAppContext: () => ({
+    langGeniusVersionInfo: mockLangGeniusVersionInfo,
+  }),
+}))
+
 // Mock service hooks
 vi.mock('@/service/use-plugins', () => ({
   useInstallPackageFromMarketPlace: () => ({

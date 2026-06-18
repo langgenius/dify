@@ -104,6 +104,7 @@ export function ApiBasedExtensionPage({
       />
       <Button
         variant="secondary"
+        disabled={!canManage}
         onClick={handleOpenApiBasedExtensionModal}
       >
         <span className="mr-1 i-ri-add-line size-4" aria-hidden="true" />

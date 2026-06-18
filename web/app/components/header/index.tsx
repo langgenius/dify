@@ -3,7 +3,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import WorkplaceSelector from '@/app/components/header/account-dropdown/workplace-selector'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { useAppContext, useSelector as useAppContextSelector } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { DeploymentsNav } from '@/features/deployments/nav'
@@ -32,6 +32,7 @@ export function Header() {
   const workspacePermissionKeys = useAppContextSelector(s => s.workspacePermissionKeys)
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
+  const { isCurrentWorkspaceEditor } = useAppContext()
   const { enableBilling, plan } = useProviderContext()
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())

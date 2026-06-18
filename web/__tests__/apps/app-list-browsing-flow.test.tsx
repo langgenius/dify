@@ -311,7 +311,7 @@ describe('App List Browsing Flow', () => {
       expect(screen.getByRole('button', { name: 'common.operation.create' })).toBeInTheDocument()
     })
 
-    it('should show disabled the create menu when user lacks app creation permission', () => {
+    it('should hide the create menu when user lacks app creation permission', () => {
       mockIsCurrentWorkspaceEditor = false
       mockWorkspacePermissionKeys = []
       mockPages = [createPage([
@@ -320,10 +320,10 @@ describe('App List Browsing Flow', () => {
 
       renderList()
 
-      expect(screen.getByRole('button', { name: 'common.operation.create' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'app.newApp.startFromBlank' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: 'app.newApp.startFromTemplate' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: 'app.importDSL' })).toBeDisabled()
+      expect(screen.queryByRole('button', { name: 'common.operation.create' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'app.newApp.startFromBlank' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'app.newApp.startFromTemplate' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'app.importDSL' })).not.toBeInTheDocument()
     })
   })
 

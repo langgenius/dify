@@ -70,6 +70,7 @@ describe('ActionMenu', () => {
       <ActionMenu
         isNamedVersion
         isShowDelete
+        canImportExportDSL
         open
         setOpen={vi.fn()}
         handleClickActionMenuItem={handleClickActionMenuItem}

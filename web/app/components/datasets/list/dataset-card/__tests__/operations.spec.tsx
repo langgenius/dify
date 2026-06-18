@@ -86,7 +86,7 @@ describe('Operations', () => {
       const openAccessConfig = vi.fn()
       renderInMenu(<Operations {...defaultProps} showAccessConfig openAccessConfig={openAccessConfig} />)
 
-      fireEvent.click(screen.getByText(/knowledgeBaseAccess/))
+      fireEvent.click(screen.getByText(/settings\.resourceAccess/))
       expect(openAccessConfig).toHaveBeenCalledTimes(1)
     })
   })

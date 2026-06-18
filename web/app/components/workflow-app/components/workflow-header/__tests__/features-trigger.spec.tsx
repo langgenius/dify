@@ -491,15 +491,14 @@ describe('FeaturesTrigger', () => {
           },
         },
       ])
-      const { queryClient } = renderWithToast(<FeaturesTrigger />)
-      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+      renderWithToast(<FeaturesTrigger />)
 
       // Act
       await user.click(screen.getByRole('button', { name: 'publisher-publish' }))
 
       // Assert
       await waitFor(() => {
-        expect(invalidateQueries).toHaveBeenCalledWith({
+        expect(mockInvalidateQueries).toHaveBeenCalledWith({
           queryKey: consoleQuery.agent.get.key(),
         })
       })
@@ -524,8 +523,7 @@ describe('FeaturesTrigger', () => {
           },
         },
       ])
-      const { queryClient } = renderWithToast(<FeaturesTrigger />)
-      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+      renderWithToast(<FeaturesTrigger />)
 
       // Act
       await user.click(screen.getByRole('button', { name: 'publisher-publish' }))
@@ -534,7 +532,7 @@ describe('FeaturesTrigger', () => {
       await waitFor(() => {
         expect(mockPublishWorkflow).toHaveBeenCalled()
       })
-      expect(invalidateQueries).not.toHaveBeenCalledWith({
+      expect(mockInvalidateQueries).not.toHaveBeenCalledWith({
         queryKey: consoleQuery.agent.get.key(),
       })
     })

@@ -1,14 +1,12 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider, queryOptions } from '@tanstack/react-query'
-import { act, renderHook, waitFor } from '@testing-library/react'
-import { AccessMode } from '@/models/access-control'
-import { get, post } from '@/service/base'
+import { renderHook, waitFor } from '@testing-library/react'
+import { get } from '@/service/base'
 import { getUserCanAccess } from '@/service/share'
 import {
   useAppWhiteListSubjects,
   useGetUserCanAccessApp,
   useSearchForWhiteListCandidates,
-  useUpdateAccessMode,
 } from '../use-app-access-control'
 
 const mockSystemFeatures = vi.hoisted(() => ({
@@ -17,7 +15,6 @@ const mockSystemFeatures = vi.hoisted(() => ({
 
 vi.mock('@/service/base', () => ({
   get: vi.fn(),
-  post: vi.fn(),
   request: vi.fn(),
 }))
 
@@ -54,7 +51,6 @@ describe('use-app-access-control', () => {
     vi.clearAllMocks()
     mockSystemFeatures.webappAuthEnabled = false
     vi.mocked(get).mockResolvedValue({ groups: [], members: [] })
-    vi.mocked(post).mockResolvedValue({})
     vi.mocked(getUserCanAccess).mockResolvedValue({ result: true })
   })
 
@@ -110,26 +106,4 @@ describe('use-app-access-control', () => {
     })
   })
 
-  // Mutations submit access mode changes through the enterprise access-mode route.
-  describe('Mutations', () => {
-    it('should update access mode with selected subjects', async () => {
-      const { result } = renderHook(() => useUpdateAccessMode(), { wrapper: createWrapper() })
-
-      await act(async () => {
-        await result.current.mutateAsync({
-          appId: 'app-1',
-          accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
-          subjects: [{ subjectId: 'account-1', subjectType: 'account' }],
-        })
-      })
-
-      expect(post).toHaveBeenCalledWith('/enterprise/webapp/app/access-mode', {
-        body: {
-          appId: 'app-1',
-          accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
-          subjects: [{ subjectId: 'account-1', subjectType: 'account' }],
-        },
-      })
-    })
-  })
 })
