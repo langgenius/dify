@@ -105,5 +105,4 @@ describe('use-app-access-control', () => {
       })
     })
   })
-
 })
