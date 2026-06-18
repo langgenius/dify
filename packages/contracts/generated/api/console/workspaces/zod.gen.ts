@@ -1531,7 +1531,7 @@ export const zCustomModelConfiguration = z.object({
   current_credential_name: z.string().nullish(),
   model: z.string(),
   model_type: zModelType,
-  unadded_to_model_list: z.boolean().nullish().default(false),
+  unadded_to_model_list: z.boolean().optional().default(false),
 })
 
 /**
