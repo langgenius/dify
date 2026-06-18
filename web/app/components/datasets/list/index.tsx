@@ -48,7 +48,6 @@ const List = () => {
     handleTagsUpdate()
   }
 
-  const isCurrentWorkspaceManager = useAppContextSelector(state => state.isCurrentWorkspaceManager)
   const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
   const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
   const canConnectExternalDataset = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
@@ -77,7 +76,6 @@ const List = () => {
                 canConnectExternalDataset={canConnectExternalDataset}
                 canCreateDataset={canCreateDataset}
                 includeAll={includeAll}
-                isCurrentWorkspaceManager={isCurrentWorkspaceManager}
                 isCurrentWorkspaceOwner={isCurrentWorkspaceOwner}
                 keywords={keywords}
                 tagFilterValue={tagFilterValue}
@@ -103,7 +101,6 @@ const List = () => {
                 canConnectExternalDataset={canConnectExternalDataset}
                 canCreateDataset={canCreateDataset}
                 includeAll={includeAll}
-                isCurrentWorkspaceManager={isCurrentWorkspaceManager}
                 isCurrentWorkspaceOwner={isCurrentWorkspaceOwner}
                 keywords={keywords}
                 tagFilterValue={tagFilterValue}

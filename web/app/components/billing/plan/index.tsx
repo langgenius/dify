@@ -21,6 +21,7 @@ import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useEducationVerify } from '@/service/use-education'
+import { BillingPermission, hasPermission } from '@/utils/permission'
 import { getDaysUntilEndOfMonth } from '@/utils/time'
 import { Loading } from '../../base/icons/src/public/thought'
 import { NUM_INFINITE } from '../config'
@@ -41,7 +42,7 @@ const PlanComp: FC<Props> = ({
   const { t } = useTranslation()
   const router = useRouter()
   const path = usePathname()
-  const { userProfile, isCurrentWorkspaceManager } = useAppContext()
+  const { userProfile, workspacePermissionKeys } = useAppContext()
   const { plan, enableEducationPlan, allowRefreshEducationVerify, isEducationAccount } = useProviderContext()
   const isAboutToExpire = allowRefreshEducationVerify
   const {
@@ -69,6 +70,7 @@ const PlanComp: FC<Props> = ({
 
   const [showModal, setShowModal] = React.useState(false)
   const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
+  const canManageBilling = hasPermission(workspacePermissionKeys, BillingPermission.Manage)
   const { mutateAsync, isPending } = useEducationVerify()
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   const setEducationVerifying = useSetLocalStorage<string>(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, { raw: true })
@@ -120,7 +122,7 @@ const PlanComp: FC<Props> = ({
                 {isPending && <Loading className="ml-1 animate-spin-slow" />}
               </Button>
             )}
-            {IS_CLOUD_EDITION && enableEducationPlan && isEducationAccount && type === Plan.sandbox && isCurrentWorkspaceManager && (
+            {IS_CLOUD_EDITION && enableEducationPlan && isEducationAccount && type === Plan.sandbox && canManageBilling && (
               <Button variant="ghost" onClick={handleEducationDiscount} disabled={isEducationDiscountLoading}>
                 <span className="mr-1 i-ri-graduation-cap-line size-4" />
                 {t('useEducationDiscount', { ns: 'education' })}

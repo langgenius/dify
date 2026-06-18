@@ -328,12 +328,11 @@ describe('AccountSetting', () => {
       expect(screen.queryByText('common.settings.provider')).not.toBeInTheDocument()
     })
 
-    it('should hide workspace menu items for dataset operators', () => {
+    it('should not hide workspace menu items solely for dataset operators', () => {
       // Arrange
       const datasetOperatorContext = {
         ...baseAppContextValue,
         isCurrentWorkspaceDatasetOperator: true,
-        workspacePermissionKeys: [],
       }
       vi.mocked(useAppContext).mockReturnValue(datasetOperatorContext)
       mockAppContextState.current = datasetOperatorContext
@@ -342,13 +341,11 @@ describe('AccountSetting', () => {
       renderAccountSetting()
 
       // Assert
-      expect(screen.queryByRole('button', { name: 'common.settings.members' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'common.settings.rolesAndPermissions' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'common.settings.resourceAccess' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'common.settings.billing' })).not.toBeInTheDocument()
-      expect(screen.queryByText('common.settings.dataSource')).not.toBeInTheDocument()
-      expect(screen.queryByText('common.settings.customEndpoint')).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'custom.custom' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.settings.members' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.settings.rolesAndPermissions' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.settings.resourceAccess' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.settings.billing' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'custom.custom' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.settings.preferences' })).toBeInTheDocument()
     })
 

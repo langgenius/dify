@@ -34,7 +34,6 @@ const defaultProps = {
   canConnectExternalDataset: true,
   canCreateDataset: true,
   includeAll: false,
-  isCurrentWorkspaceManager: true,
   isCurrentWorkspaceOwner: true,
   keywords: '',
   tagFilterValue: [],

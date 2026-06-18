@@ -40,9 +40,14 @@ const DatasetDetailSection = ({
   const { t } = useTranslation()
   const pathname = usePathname()
   const datasetId = getDatasetIdFromPathname(pathname)
-  const { isCurrentWorkspaceDatasetOperator, userProfile, workspacePermissionKeys } = useAppContext()
+  const { userProfile, workspacePermissionKeys } = useAppContext()
   const { data: datasetRes, refetch: mutateDatasetRes } = useDatasetDetail(datasetId ?? '')
   const { data: relatedApps } = useDatasetRelatedApps(datasetId ?? '', { enabled: !!datasetId && !!datasetRes })
+  const datasetACLCapabilities = useMemo(() => getDatasetACLCapabilities(datasetRes?.permission_keys, {
+    currentUserId: userProfile?.id,
+    resourceMaintainer: datasetRes?.maintainer,
+    workspacePermissionKeys,
+  }), [datasetRes?.maintainer, datasetRes?.permission_keys, userProfile?.id, workspacePermissionKeys])
 
   const isButtonDisabledWithPipeline = useMemo(() => {
     if (!datasetRes)
@@ -58,11 +63,6 @@ const DatasetDetailSection = ({
     if (!datasetId)
       return []
 
-    const datasetACLCapabilities = getDatasetACLCapabilities(datasetRes?.permission_keys, {
-      currentUserId: userProfile?.id,
-      resourceMaintainer: datasetRes?.maintainer,
-      workspacePermissionKeys,
-    })
     const baseNavigation = [
       {
         name: t('datasetMenus.hitTesting', { ns: 'common' }),
@@ -108,7 +108,7 @@ const DatasetDetailSection = ({
     }
 
     return baseNavigation
-  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider, datasetRes?.permission_keys, datasetRes?.maintainer, userProfile?.id, workspacePermissionKeys])
+  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider, datasetACLCapabilities])
 
   if (!datasetRes)
     return null
@@ -146,7 +146,7 @@ const DatasetDetailSection = ({
             />
           ))}
         </nav>
-        {!isCurrentWorkspaceDatasetOperator && (
+        {datasetACLCapabilities.canEdit && (
           <div className="mt-auto shrink-0">
             <ExtraInfo
               relatedApps={relatedApps}

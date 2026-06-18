@@ -51,7 +51,7 @@ export default function AccountSetting({
   const resetModelProviderListExpanded = useResetModelProviderListExpanded()
   const { t } = useTranslation()
   const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
-  const { isCurrentWorkspaceDatasetOperator, workspacePermissionKeys } = useAppContext()
+  const { workspacePermissionKeys } = useAppContext()
   const canManageWorkspaceRoles = hasPermission(workspacePermissionKeys, 'workspace.role.manage')
   const canViewBilling = enableBilling && hasPermission(workspacePermissionKeys, BillingPermission.View)
   const activeMenu = activeTab === ACCOUNT_SETTING_TAB.BILLING && !canViewBilling
@@ -121,9 +121,6 @@ export default function AccountSetting({
   const activeItem = settingItems.find(item => item.key === activeMenu)
 
   const visibleSettingItems: GroupItem[] = (() => {
-    if (isCurrentWorkspaceDatasetOperator)
-      return []
-
     const visibleTabs: AccountSettingTab[] = []
 
     visibleTabs.push(ACCOUNT_SETTING_TAB.MEMBERS)

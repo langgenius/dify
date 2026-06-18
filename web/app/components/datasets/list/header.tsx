@@ -13,7 +13,6 @@ type Props = {
   canConnectExternalDataset: boolean
   canCreateDataset: boolean
   includeAll: boolean
-  isCurrentWorkspaceManager: boolean
   isCurrentWorkspaceOwner: boolean
   keywords: string
   tagFilterValue: string[]
@@ -32,7 +31,6 @@ const DatasetListHeader = ({
   canConnectExternalDataset,
   canCreateDataset,
   includeAll,
-  isCurrentWorkspaceManager,
   isCurrentWorkspaceOwner,
   keywords,
   tagFilterValue,
@@ -63,9 +61,7 @@ const DatasetListHeader = ({
               <span className="px-0.5 system-xs-medium">{t('externalAPIPanelTitle', { ns: 'dataset' })}</span>
             </button>
           )}
-          {isCurrentWorkspaceManager && (
-            <ServiceApi apiBaseUrl={apiBaseUrl} />
-          )}
+          <ServiceApi apiBaseUrl={apiBaseUrl} />
         </div>
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">

@@ -42,6 +42,7 @@ import { PermissionType, PluginCategoryEnum, TaskStatus } from '@/app/components
 import { useAppContext } from '@/context/app-context'
 import { fetchModelProviderModelList } from '@/service/common'
 import { fetchPluginInfoFromMarketPlace, uninstallPlugin } from '@/service/plugins'
+import { hasPermission } from '@/utils/permission'
 // eslint-disable-next-line no-restricted-imports
 import { get, getMarketplace, post, postMarketplace } from './base'
 import { consoleQuery } from './client'
@@ -811,12 +812,8 @@ export const useFetchPluginsInMarketPlaceByInfo = (infos: MarketplacePluginInfoR
 export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
   const initializedRef = useRef(false)
   const queryClient = useQueryClient()
-  const { isCurrentWorkspaceManager, isCurrentWorkspaceOwner } = useAppContext()
-  const { data: permissions } = usePluginPermissionSettings()
-  const canManagement = hasPluginPermission(
-    permissions?.install_permission,
-    isCurrentWorkspaceManager || isCurrentWorkspaceOwner,
-  )
+  const { workspacePermissionKeys } = useAppContext()
+  const canManagement = hasPermission(workspacePermissionKeys, 'plugin.install')
   const { refreshPluginList } = useRefreshPluginList()
   const query = useQuery<PluginTaskListResponse>({
     enabled: canManagement,

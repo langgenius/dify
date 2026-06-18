@@ -4,7 +4,6 @@ import { DatasetACLPermission } from '@/utils/permission'
 import DatasetDetailSection from '../dataset-detail-section'
 
 let mockPathname = '/datasets/dataset-1/documents'
-let mockIsDatasetOperator = false
 let mockDataset: DataSet | undefined
 let mockRelatedApps: RelatedAppResponse | undefined
 
@@ -14,7 +13,6 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
-    isCurrentWorkspaceDatasetOperator: mockIsDatasetOperator,
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: [],
   }),
@@ -71,6 +69,7 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
     score_threshold: 0,
   },
   enable_api: true,
+  permission_keys: [DatasetACLPermission.Edit],
   ...overrides,
 } as DataSet)
 
@@ -78,7 +77,6 @@ describe('DatasetDetailSection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPathname = '/datasets/dataset-1/documents'
-    mockIsDatasetOperator = false
     mockDataset = createDataset()
     mockRelatedApps = {
       data: [],
@@ -94,6 +92,16 @@ describe('DatasetDetailSection', () => {
     expect(extraInfo).toHaveAttribute('data-expand', 'true')
     expect(extraInfo).toHaveAttribute('data-document-count', '120')
     expect(extraInfo.parentElement).toHaveClass('mt-auto', 'shrink-0')
+  })
+
+  it('should hide dataset stats and API access when dataset edit permission is missing', () => {
+    mockDataset = createDataset({
+      permission_keys: [DatasetACLPermission.Readonly],
+    })
+
+    render(<DatasetDetailSection expand />)
+
+    expect(screen.queryByTestId('extra-info')).not.toBeInTheDocument()
   })
 
   it('should render resource access navigation when dataset access config permission is granted', () => {

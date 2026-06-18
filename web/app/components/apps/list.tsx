@@ -41,7 +41,7 @@ function List({
 }: Props) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { isCurrentWorkspaceDatasetOperator, workspacePermissionKeys } = useAppContext()
+  const { workspacePermissionKeys } = useAppContext()
   const { onPlanInfoChanged } = useProviderContext()
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -121,7 +121,6 @@ function List({
       initialPageParam: 1,
       placeholderData: keepPreviousData,
     }),
-    enabled: !isCurrentWorkspaceDatasetOperator,
     refetchInterval: systemFeatures.enable_collaboration_mode ? 10000 : false,
   })
 
@@ -140,7 +139,6 @@ function List({
         query: starredAppListQuery,
       },
     }),
-    enabled: !isCurrentWorkspaceDatasetOperator,
   })
 
   const refreshAppLists = useCallback(() => {
@@ -163,8 +161,6 @@ function List({
   }, [needsRefreshAppList, refetch, setNeedsRefreshAppList])
 
   useEffect(() => {
-    if (isCurrentWorkspaceDatasetOperator)
-      return
     const hasMore = hasNextPage ?? true
     let observer: IntersectionObserver | undefined
 
@@ -189,7 +185,7 @@ function List({
       observer.observe(anchorRef.current)
     }
     return () => observer?.disconnect()
-  }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage, isCurrentWorkspaceDatasetOperator])
+  }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage])
 
   const pages = useMemo(() => data?.pages ?? [], [data?.pages])
   const apps = useMemo(() => pages.flatMap(({ data: pageApps }) => pageApps), [pages])
