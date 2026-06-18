@@ -82,7 +82,7 @@ def _dump_dataset_detail(payload):
     return DatasetDetailResponse.model_validate(payload).model_dump(mode="json")
 
 
-def test_dataset_detail_expands_legacy_null_nested_fields():
+def test_dataset_detail_defaults_legacy_null_summary_index_setting_to_disabled():
     response = _dump_dataset_detail(
         _dataset_detail_payload(
             summary_index_setting=None,
@@ -92,7 +92,7 @@ def test_dataset_detail_expands_legacy_null_nested_fields():
     )
 
     assert response["summary_index_setting"] == {
-        "enable": None,
+        "enable": False,
         "model_name": None,
         "model_provider_name": None,
         "summary_prompt": None,

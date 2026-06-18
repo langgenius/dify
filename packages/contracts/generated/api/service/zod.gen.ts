@@ -529,7 +529,7 @@ export const zDatasetRerankingModelResponse = z.object({
  * DatasetSummaryIndexSettingResponse
  */
 export const zDatasetSummaryIndexSettingResponse = z.object({
-  enable: z.boolean().nullish(),
+  enable: z.boolean().optional().default(false),
   model_name: z.string().nullish(),
   model_provider_name: z.string().nullish(),
   summary_prompt: z.string().nullish(),
