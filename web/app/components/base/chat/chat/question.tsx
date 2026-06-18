@@ -25,6 +25,11 @@ import { CssTransform } from '../embedded-chatbot/theme/utils'
 import ContentSwitch from './content-switch'
 import { useChatContext } from './context'
 
+// Prevent HTML elements that are specifically intended for LLM-generated content
+// (interactive widgets, think-blocks, variable references) from being rendered
+// when displaying user-authored questions. See: langgenius/dify#37414
+const QUESTION_DISALLOWED_ELEMENTS = ['button', 'form', 'input', 'textarea', 'label', 'details', 'variable', 'section']
+
 type QuestionProps = {
   item: ChatItem
   questionIcon?: ReactNode
@@ -206,7 +211,7 @@ const Question: FC<QuestionProps> = ({
             )
           }
           {!isEditing
-            ? <Markdown content={content} />
+            ? <Markdown content={content} customDisallowedElements={QUESTION_DISALLOWED_ELEMENTS} />
             : (
                 <div className="flex flex-col gap-4">
                   <div className="max-h-[158px] overflow-x-hidden overflow-y-auto pr-1">
