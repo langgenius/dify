@@ -21,7 +21,7 @@ import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Icon from '@/app/components/plugins/card/base/card-icon'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import {
   useAuthorizeMCP,
@@ -32,7 +32,6 @@ import {
   useUpdateMCP,
   useUpdateMCPTools,
 } from '@/service/use-tools'
-import { hasPermission } from '@/utils/permission'
 import MCPModal from '../modal'
 import ListLoading from './list-loading'
 import OperationDropdown from './operation-dropdown'
@@ -59,8 +58,7 @@ const MCPDetailContent: FC<Props> = ({
   onFirstCreate,
 }) => {
   const { t } = useTranslation()
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const canManageMCP = hasPermission(workspacePermissionKeys, 'mcp.manage')
+  const canManageMCP = useCanManageMCP()
 
   const { data, isFetching: isGettingTools } = useMCPTools(canManageMCP && detail.is_team_authorization ? detail.id : '')
   const invalidateMCPTools = useInvalidateMCPTools()
@@ -216,7 +214,7 @@ const MCPDetailContent: FC<Props> = ({
             </div>
           </div>
           <div className="flex gap-1">
-            {isCurrentWorkspaceManager && (
+            {canManageMCP && (
               <OperationDropdown
                 onEdit={showUpdateModal}
                 onRemove={showDeleteConfirm}

@@ -20,7 +20,7 @@ import Empty from '@/app/components/plugins/marketplace/empty'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
 import { useCanSetPluginSettings } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from '@/app/components/tools/content-inset'
-import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
+import { useCanManageMCP, useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import Marketplace from '@/app/components/tools/marketplace'
 import MCPList from '@/app/components/tools/mcp'
 import ProviderDetail from '@/app/components/tools/provider/detail'
@@ -91,6 +91,7 @@ const ProviderList = ({
     canSetPermissions,
   } = useCanSetPluginSettings()
   const canManageTools = useCanManageTools()
+  const canManageMCP = useCanManageMCP()
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
@@ -101,7 +102,8 @@ const ProviderList = ({
   const showToolsUpdateSetting = activeTab === 'builtin' && canSetPermissions
   const showLabelFilter = activeTab === 'builtin'
   const isToolManageTab = activeTab === 'api' || activeTab === 'workflow'
-  const canReadActiveTab = !isToolManageTab || canManageTools
+  const isMCPManageTab = activeTab === 'mcp'
+  const canReadActiveTab = isMCPManageTab ? canManageMCP : !isToolManageTab || canManageTools
   const options = [
     { value: 'builtin', text: t('type.builtIn', { ns: 'tools' }) },
     ...(canManageTools
@@ -110,7 +112,11 @@ const ProviderList = ({
           { value: 'workflow', text: t('type.workflow', { ns: 'tools' }) },
         ]
       : []),
-    { value: 'mcp', text: 'MCP' },
+    ...(canManageMCP
+      ? [
+          { value: 'mcp', text: 'MCP' },
+        ]
+      : []),
   ]
   const [tagFilterValue, setTagFilterValue] = useState<string[]>([])
   const handleTagsChange = (value: string[]) => {
@@ -136,9 +142,9 @@ const ProviderList = ({
   }, [activeTab, canReadActiveTab, collectionList])
   const hasCategoryCollections = activeTabCollectionList.length > 0
   const shouldShowCustomToolCreateCard = canManageTools && !(activeTab === 'api' && !isCollectionListLoading && hasCategoryCollections)
-  const shouldShowMCPCreateCard = !(activeTab === 'mcp' && hasCategoryCollections)
+  const shouldShowMCPCreateCard = canManageMCP && !(activeTab === 'mcp' && hasCategoryCollections)
   const shouldShowToolbarCreateAction
-    = (activeTab === 'mcp' && hasCategoryCollections)
+    = (activeTab === 'mcp' && canManageMCP && hasCategoryCollections)
       || (activeTab === 'api' && canManageTools && !isCollectionListLoading && hasCategoryCollections)
   const filteredCollectionList = useMemo(() => {
     return activeTabCollectionList.filter((collection) => {
@@ -240,7 +246,7 @@ const ProviderList = ({
                   tagFilterValue={tagFilterValue}
                 />
               )}
-              {activeTab === 'mcp' && (
+              {activeTab === 'mcp' && canManageMCP && (
                 <MCPList
                   searchText={keywords}
                   contentInset={contentInset}

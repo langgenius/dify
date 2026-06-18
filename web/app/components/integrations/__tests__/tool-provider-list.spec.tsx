@@ -95,7 +95,7 @@ vi.mock('@/service/use-tools', () => ({
 }))
 
 const mockAppContextState = vi.hoisted(() => ({
-  workspacePermissionKeys: ['tool.manage'] as string[],
+  workspacePermissionKeys: ['tool.manage', 'mcp.manage'] as string[],
 }))
 vi.mock('@/context/app-context', () => ({
   useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
@@ -322,7 +322,7 @@ describe('ProviderList', () => {
     mockEnableMarketplace = false
     mockCollectionData = createDefaultCollections()
     mockIsLoadingToolProviders = false
-    mockAppContextState.workspacePermissionKeys = ['tool.manage']
+    mockAppContextState.workspacePermissionKeys = ['tool.manage', 'mcp.manage']
     mockUseAllToolProviders.mockImplementation((enabled = true) => ({
       data: enabled ? mockCollectionData : [],
       isLoading: enabled ? mockIsLoadingToolProviders : false,
@@ -359,8 +359,8 @@ describe('ProviderList', () => {
       expect(screen.getByText('MCP')).toBeInTheDocument()
     })
 
-    it('hides custom and workflow tabs without tool.manage', () => {
-      mockAppContextState.workspacePermissionKeys = []
+    it('hides custom and workflow tabs without tool.manage while keeping MCP with mcp.manage', () => {
+      mockAppContextState.workspacePermissionKeys = ['mcp.manage']
 
       renderProviderList()
 
@@ -368,6 +368,17 @@ describe('ProviderList', () => {
       expect(screen.queryByText('tools.type.custom')).not.toBeInTheDocument()
       expect(screen.queryByText('tools.type.workflow')).not.toBeInTheDocument()
       expect(screen.getByText('MCP')).toBeInTheDocument()
+    })
+
+    it('hides MCP tab without mcp.manage', () => {
+      mockAppContextState.workspacePermissionKeys = ['tool.manage']
+
+      renderProviderList()
+
+      expect(screen.getByText('tools.type.builtIn')).toBeInTheDocument()
+      expect(screen.getByText('tools.type.custom')).toBeInTheDocument()
+      expect(screen.getByText('tools.type.workflow')).toBeInTheDocument()
+      expect(screen.queryByText('MCP')).not.toBeInTheDocument()
     })
 
     it.each([
@@ -781,6 +792,16 @@ describe('ProviderList', () => {
     it('renders MCPList component', () => {
       renderProviderList({ category: 'mcp' })
       expect(screen.getByTestId('mcp-list')).toBeInTheDocument()
+    })
+
+    it('does not render or query MCP management list without mcp.manage', () => {
+      mockAppContextState.workspacePermissionKeys = ['tool.manage']
+
+      renderProviderList({ category: 'mcp' })
+
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith(false)
+      expect(screen.queryByTestId('mcp-list')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('toolbar-add-mcp')).not.toBeInTheDocument()
     })
 
     it('keeps MCP creation in the empty card when there are no MCP servers', () => {

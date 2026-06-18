@@ -159,8 +159,8 @@ describe('NewMCPCard', () => {
       expect(screen.queryByText('tools.mcp.create.cardTitle')).not.toBeInTheDocument()
     })
 
-    it('should not render toolbar button when user is not workspace manager', () => {
-      mockIsCurrentWorkspaceManager = false
+    it('should not render toolbar button when user lacks mcp.manage', () => {
+      mockWorkspacePermissionKeys = []
 
       render(<NewMCPButton {...defaultProps} />, { wrapper: createWrapper() })
 
