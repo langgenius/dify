@@ -78,11 +78,15 @@ def drive_list(
 
 @drive_app.command("pull")
 def drive_pull(
-    path_prefix: str = typer.Argument("", metavar="PATH_PREFIX"),
+    targets: list[str] = typer.Argument(None, metavar="TARGET"),
     drive_base: str = typer.Option("/mnt/drive", "--drive-base", help="Local base directory for pulled drive files."),
 ) -> None:
-    """Pull drive files into one local directory tree."""
-    _run_drive_pull(path_prefix=path_prefix, drive_base=drive_base)
+    """Pull one or more drive keys/prefixes into one local directory tree.
+
+    Passing no ``TARGET`` preserves the historical whole-drive behavior by
+    pulling from the empty prefix.
+    """
+    _run_drive_pull(targets=targets, drive_base=drive_base)
 
 
 @drive_app.command("push")
@@ -207,9 +211,9 @@ def _run_drive_list(*, path_prefix: str, json_output: bool) -> None:
     typer.echo(response)
 
 
-def _run_drive_pull(*, path_prefix: str, drive_base: str) -> None:
+def _run_drive_pull(*, targets: list[str] | None, drive_base: str) -> None:
     try:
-        response = pull_drive_from_environment(prefix=path_prefix, drive_base=drive_base)
+        response = pull_drive_from_environment(targets=targets, drive_base=drive_base)
     except MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from exc

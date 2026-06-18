@@ -18,6 +18,8 @@ from controllers.console.app.agent_drive_inspector import (
     AgentDriveDownloadByAgentApi,
     AgentDriveListApi,
     AgentDriveListByAgentApi,
+    AgentDriveSkillListApi,
+    AgentDriveSkillListByAgentApi,
     AgentDrivePreviewApi,
     AgentDrivePreviewByAgentApi,
 )
@@ -82,6 +84,39 @@ def test_list_by_agent_filters_value_pointers_out_of_console_payload():
     assert drive.return_value.manifest.call_args.kwargs["agent_id"] == "agent-1"
 
 
+def test_skill_list_by_agent_calls_list_skills_and_returns_catalog_shape():
+    raw = _raw(AgentDriveSkillListByAgentApi.get)
+    with app.test_request_context("/"):
+        with (
+            patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP) as resolve_app,
+            patch(f"{_MOD}.AgentDriveService") as drive,
+        ):
+            drive.return_value.list_skills.return_value = [
+                {
+                    "path": "tender-analyzer",
+                    "skill_md_key": "tender-analyzer/SKILL.md",
+                    "archive_key": "tender-analyzer/.DIFY-SKILL-FULL.zip",
+                    "name": "Tender Analyzer",
+                    "description": "Parses RFPs.",
+                }
+            ]
+            body = raw(AgentDriveSkillListByAgentApi(), "tenant-1", "agent-1")
+
+    assert body == {
+        "items": [
+            {
+                "path": "tender-analyzer",
+                "skill_md_key": "tender-analyzer/SKILL.md",
+                "archive_key": "tender-analyzer/.DIFY-SKILL-FULL.zip",
+                "name": "Tender Analyzer",
+                "description": "Parses RFPs.",
+            }
+        ]
+    }
+    resolve_app.assert_called_once_with(tenant_id="tenant-1", agent_id="agent-1")
+    assert drive.return_value.list_skills.call_args.kwargs == {"tenant_id": "tenant-1", "agent_id": "agent-1"}
+
+
 def test_list_resolves_workflow_node_binding_agent():
     raw = _raw(AgentDriveListApi.get)
     with app.test_request_context("/?node_id=agent-node-1"):
@@ -94,6 +129,21 @@ def test_list_resolves_workflow_node_binding_agent():
             raw(AgentDriveListApi(), _APP)
 
     assert drive.return_value.manifest.call_args.kwargs["agent_id"] == "wf-agent-9"
+    assert composer.resolve_workflow_node_agent_id.call_args.kwargs["node_id"] == "agent-node-1"
+
+
+def test_skill_list_resolves_workflow_node_binding_agent():
+    raw = _raw(AgentDriveSkillListApi.get)
+    with app.test_request_context("/?node_id=agent-node-1"):
+        with (
+            patch(f"{_MOD}.AgentComposerService") as composer,
+            patch(f"{_MOD}.AgentDriveService") as drive,
+        ):
+            composer.resolve_workflow_node_agent_id.return_value = "wf-agent-9"
+            drive.return_value.list_skills.return_value = []
+            raw(AgentDriveSkillListApi(), _APP)
+
+    assert drive.return_value.list_skills.call_args.kwargs["agent_id"] == "wf-agent-9"
     assert composer.resolve_workflow_node_agent_id.call_args.kwargs["node_id"] == "agent-node-1"
 
 

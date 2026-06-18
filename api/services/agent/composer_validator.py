@@ -191,6 +191,8 @@ class ComposerConfigValidator:
                             }
                         )
                     continue
+                if mention.kind in {MentionKind.SKILL, MentionKind.FILE}:
+                    continue
                 if resolved is None:
                     warnings.append(
                         {

@@ -1,10 +1,10 @@
-"""Inner API for the agent drive (agent 网盘) control plane — ENG-591.
+"""Inner API for the agent drive (agent 网盘) control plane.
 
-Two endpoints, called by the dify-agent server (not the sandbox) with the inner
-API key. The drive ref is the URL segment ``agent-<agent_id>``; the path-like
-file key travels in the query/body, never as a URL path segment (so its ``/``
-characters do not collide with routing). Drive-owned semantics: tenant scoped,
-no user-level FileAccessScope.
+These endpoints are called by the dify-agent server (not the sandbox) with the
+inner API key. The drive ref is the URL segment ``agent-<agent_id>``; the
+path-like file key travels in the query/body, never as a URL path segment (so
+its ``/`` characters do not collide with routing). Drive-owned semantics:
+tenant scoped, no user-level FileAccessScope.
 """
 
 from flask import request
@@ -51,6 +51,24 @@ class AgentDriveManifestApi(Resource):
                 prefix=request.args.get("prefix", ""),
                 include_download_url=include_download_url,
             )
+        except AgentDriveError as exc:
+            return _error_response(exc)
+        return {"items": items}
+
+
+@inner_api_ns.route("/drive/<string:drive_ref>/skills")
+class AgentDriveSkillsApi(Resource):
+    @setup_required
+    @plugin_inner_api_only
+    @inner_api_ns.doc("agent_drive_skills")
+    @inner_api_ns.doc(description="List the skill catalog of an agent drive")
+    def get(self, drive_ref: str):
+        try:
+            agent_id = parse_agent_drive_ref(drive_ref)
+            tenant_id = (request.args.get("tenant_id") or "").strip()
+            if not tenant_id:
+                raise AgentDriveError("missing_tenant_id", "tenant_id is required", status_code=400)
+            items = AgentDriveService().list_skills(tenant_id=tenant_id, agent_id=agent_id)
         except AgentDriveError as exc:
             return _error_response(exc)
         return {"items": items}

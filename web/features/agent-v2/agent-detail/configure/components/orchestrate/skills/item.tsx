@@ -9,6 +9,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
+import type { AgentDriveApiContext } from '../drive-context'
 import { getDriveFileIconType } from '../files/file-icon'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { AgentSkillDetailDialog } from './detail-dialog'
@@ -55,11 +56,11 @@ const getFirstSkillFileId = (files: AgentFileNode[]): string | undefined => {
 }
 
 export function AgentSkillItem({
-  agentId,
+  apiContext,
   skill,
   onRemove,
 }: {
-  agentId: string
+  apiContext: AgentDriveApiContext
   skill: AgentSkill
   onRemove: (skillId: string) => void
 }) {
@@ -75,53 +76,106 @@ export function AgentSkillItem({
     setIsPreviewOpen(true)
   }, [])
   const skillDrivePath = getSkillDrivePath(skill)
-  const driveFilesQuery = useQuery({
+  const agentDriveFilesQuery = useQuery({
     ...consoleQuery.agent.byAgentId.drive.files.get.queryOptions({
       input: {
         params: {
-          agent_id: agentId,
+          agent_id: apiContext.agentId,
         },
         query: {
           prefix: `${skillDrivePath}/`,
         },
       },
     }),
-    enabled: isPreviewOpen,
+    enabled: isPreviewOpen && !apiContext.workflow,
   })
-  const detailFiles = driveFilesQuery.isSuccess
-    ? (driveFilesQuery.data.items ?? []).map(item => toSkillFileNode(item, skillDrivePath))
+  const workflowDriveFilesQuery = useQuery({
+    ...consoleQuery.apps.byAppId.agent.drive.files.get.queryOptions({
+      input: {
+        params: {
+          app_id: apiContext.workflow?.appId ?? '',
+        },
+        query: {
+          node_id: apiContext.workflow?.nodeId,
+          prefix: `${skillDrivePath}/`,
+        },
+      },
+    }),
+    enabled: isPreviewOpen && !!apiContext.workflow,
+  })
+  const activeDriveFilesQuery = apiContext.workflow ? workflowDriveFilesQuery : agentDriveFilesQuery
+  const detailFiles = activeDriveFilesQuery.isSuccess
+    ? (activeDriveFilesQuery.data.items ?? []).map(item => toSkillFileNode(item, skillDrivePath))
     : []
   const previewFileId = selectedFileId
     ?? skill.skillMdKey
-    ?? (driveFilesQuery.isSuccess ? getSkillMdFileId(detailFiles) ?? getFirstSkillFileId(detailFiles) : undefined)
-  const previewQuery = useQuery({
+    ?? (activeDriveFilesQuery.isSuccess ? getSkillMdFileId(detailFiles) ?? getFirstSkillFileId(detailFiles) : undefined)
+  const agentPreviewQuery = useQuery({
     ...consoleQuery.agent.byAgentId.drive.files.preview.get.queryOptions({
       input: {
         params: {
-          agent_id: agentId,
+          agent_id: apiContext.agentId,
         },
         query: {
           key: previewFileId ?? '',
         },
       },
     }),
-    enabled: isPreviewOpen && !!previewFileId,
+    enabled: isPreviewOpen && !!previewFileId && !apiContext.workflow,
   })
+  const workflowPreviewQuery = useQuery({
+    ...consoleQuery.apps.byAppId.agent.drive.files.preview.get.queryOptions({
+      input: {
+        params: {
+          app_id: apiContext.workflow?.appId ?? '',
+        },
+        query: {
+          node_id: apiContext.workflow?.nodeId,
+          key: previewFileId ?? '',
+        },
+      },
+    }),
+    enabled: isPreviewOpen && !!previewFileId && !!apiContext.workflow,
+  })
+  const previewQuery = apiContext.workflow ? workflowPreviewQuery : agentPreviewQuery
   const selectedFile = detailFiles.find(file => file.id === previewFileId)
   const isImagePreviewFile = selectedFile?.icon === 'image'
-  const downloadQuery = useQuery({
+  const agentDownloadQuery = useQuery({
     ...consoleQuery.agent.byAgentId.drive.files.download.get.queryOptions({
       input: {
         params: {
-          agent_id: agentId,
+          agent_id: apiContext.agentId,
         },
         query: {
           key: previewFileId ?? '',
         },
       },
     }),
-    enabled: isPreviewOpen && !!previewFileId && (isImagePreviewFile || !!previewQuery.data?.binary),
+    enabled:
+      isPreviewOpen
+      && !!previewFileId
+      && (isImagePreviewFile || !!previewQuery.data?.binary)
+      && !apiContext.workflow,
   })
+  const workflowDownloadQuery = useQuery({
+    ...consoleQuery.apps.byAppId.agent.drive.files.download.get.queryOptions({
+      input: {
+        params: {
+          app_id: apiContext.workflow?.appId ?? '',
+        },
+        query: {
+          node_id: apiContext.workflow?.nodeId,
+          key: previewFileId ?? '',
+        },
+      },
+    }),
+    enabled:
+      isPreviewOpen
+      && !!previewFileId
+      && (isImagePreviewFile || !!previewQuery.data?.binary)
+      && !!apiContext.workflow,
+  })
+  const downloadQuery = apiContext.workflow ? workflowDownloadQuery : agentDownloadQuery
 
   return (
     <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>

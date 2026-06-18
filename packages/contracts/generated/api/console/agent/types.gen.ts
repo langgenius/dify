@@ -257,9 +257,17 @@ export type SandboxUploadResponse = {
   path: string
 }
 
+export type AgentUploadedSkillResponse = {
+  archive_key?: string | null
+  description: string
+  name: string
+  path: string
+  skill_md_key: string
+}
+
 export type AgentSkillUploadResponse = {
   manifest: SkillManifest
-  skill: AgentSkillRefConfig
+  skill: AgentUploadedSkillResponse
 }
 
 export type SkillToolInferenceResult = {
@@ -449,7 +457,6 @@ export type AgentSoulConfig = {
   prompt?: AgentSoulPromptConfig
   sandbox?: AgentSoulSandboxConfig
   schema_version?: number
-  skills_files?: AgentSoulSkillsFilesConfig
   tools?: AgentSoulToolsConfig
 }
 
@@ -499,14 +506,6 @@ export type AgentComposerSoulCandidatesResponse = {
   dify_tools?: Array<AgentComposerDifyToolCandidateResponse>
   human_contacts?: Array<AgentHumanContactConfig>
   knowledge_datasets?: Array<AgentKnowledgeDatasetConfig>
-  skills_files?: Array<
-    | ({
-      kind: 'skill'
-    } & AgentComposerSkillCandidateResponse)
-    | ({
-      kind: 'file'
-    } & AgentComposerFileCandidateResponse)
-  >
 }
 
 export type ComposerCandidateCapabilities = {
@@ -873,11 +872,6 @@ export type AgentSoulSandboxConfig = {
   provider?: string | null
 }
 
-export type AgentSoulSkillsFilesConfig = {
-  files?: Array<AgentFileRefConfig>
-  skills?: Array<AgentSkillRefConfig>
-}
-
 export type AgentSoulToolsConfig = {
   cli_tools?: Array<AgentCliToolConfig>
   dify_tools?: Array<AgentSoulDifyToolConfig>
@@ -997,37 +991,6 @@ export type AgentKnowledgeDatasetConfig = {
   description?: string | null
   id?: string | null
   name?: string | null
-  [key: string]: unknown
-}
-
-export type AgentComposerSkillCandidateResponse = {
-  description?: string | null
-  file_id?: string | null
-  full_archive_file_id?: string | null
-  full_archive_key?: string | null
-  id?: string | null
-  kind?: 'skill'
-  manifest_files?: Array<string> | null
-  name?: string | null
-  path?: string | null
-  skill_md_file_id?: string | null
-  skill_md_key?: string | null
-  [key: string]: unknown
-}
-
-export type AgentComposerFileCandidateResponse = {
-  drive_key?: string | null
-  file_id?: string | null
-  id?: string | null
-  kind?: 'file'
-  name?: string | null
-  reference?: string | null
-  remote_url?: string | null
-  tenant_id?: string | null
-  transfer_method?: string | null
-  type?: string | null
-  upload_file_id?: string | null
-  url?: string | null
   [key: string]: unknown
 }
 

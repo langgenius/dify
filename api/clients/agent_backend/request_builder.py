@@ -263,6 +263,7 @@ class AgentBackendRunRequestBuilder:
                 RunLayerSpec(
                     name=DIFY_DRIVE_LAYER_ID,
                     type=DIFY_DRIVE_LAYER_TYPE_ID,
+                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
                     metadata=run_input.metadata,
                     config=run_input.drive_config,
                 )
@@ -460,6 +461,7 @@ class AgentBackendRunRequestBuilder:
                 RunLayerSpec(
                     name=DIFY_DRIVE_LAYER_ID,
                     type=DIFY_DRIVE_LAYER_TYPE_ID,
+                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
                     metadata=run_input.metadata,
                     config=run_input.drive_config,
                 )

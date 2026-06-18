@@ -252,7 +252,10 @@ def test_cli_drive_pull_prints_downloaded_paths(
 ) -> None:
     monkeypatch.setattr(
         "dify_agent.agent_stub.cli.main.pull_drive_from_environment",
-        lambda *, prefix, drive_base: [Path(drive_base) / prefix / "SKILL.md", Path(drive_base) / prefix / "helper.py"],
+        lambda *, targets, drive_base: [
+            Path(drive_base) / targets[0] / "SKILL.md",
+            Path(drive_base) / targets[0] / "helper.py",
+        ],
     )
 
     with pytest.raises(SystemExit) as exc_info:
@@ -264,6 +267,31 @@ def test_cli_drive_pull_prints_downloaded_paths(
         "/tmp/drive/skills/example/SKILL.md",
         "/tmp/drive/skills/example/helper.py",
     ]
+
+
+def test_cli_drive_pull_forwards_multiple_targets(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    captured_kwargs: dict[str, object] = {}
+
+    def fake_pull_drive_from_environment(*, targets, drive_base):
+        captured_kwargs["targets"] = targets
+        captured_kwargs["drive_base"] = drive_base
+        return [Path(drive_base) / "skills" / "foo" / "SKILL.md"]
+
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli.main.pull_drive_from_environment",
+        fake_pull_drive_from_environment,
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["drive", "pull", "skills/foo", "files/a.txt", "--drive-base", "/tmp/drive"])
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert captured_kwargs == {"targets": ["skills/foo", "files/a.txt"], "drive_base": "/tmp/drive"}
+    assert captured.out.strip() == "/tmp/drive/skills/foo/SKILL.md"
 
 
 def test_cli_drive_push_prints_commit_json(

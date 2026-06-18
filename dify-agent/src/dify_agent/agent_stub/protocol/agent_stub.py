@@ -233,8 +233,10 @@ class AgentStubDriveCommitItem(BaseModel):
     """One drive key to file binding committed through the Agent Stub."""
 
     key: str
-    file_ref: AgentStubDriveFileRef
+    file_ref: AgentStubDriveFileRef | None = None
     value_owned_by_drive: bool = True
+    is_skill: bool = False
+    skill_metadata: dict[str, str] | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -254,11 +256,14 @@ class AgentStubDriveItem(BaseModel):
     size: int | None = None
     hash: str | None = None
     mime_type: str | None = None
-    file_kind: Literal["upload_file", "tool_file"]
-    file_id: str
+    file_kind: Literal["upload_file", "tool_file"] | None = None
+    file_id: str | None = None
     created_at: int | None = None
     download_url: str | None = None
     value_owned_by_drive: bool | None = None
+    removed: bool | None = None
+    is_skill: bool | None = None
+    skill_metadata: str | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 

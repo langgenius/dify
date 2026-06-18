@@ -1,7 +1,6 @@
 'use client'
 
 import type { FileResponse } from '@dify/contracts/api/console/files/types.gen'
-import type { AgentFileApiContext } from './api-context'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -14,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { consoleQuery } from '@/service/client'
 import { formatFileSize } from '@/utils/format'
+import type { AgentDriveApiContext } from '../drive-context'
 import { getFileIconType } from './file-icon'
 
 type AgentDriveFileCommit = {
@@ -137,7 +137,7 @@ export function AgentFileUploadDialog({
   onOpenChange,
   onUploaded,
 }: {
-  apiContext: AgentFileApiContext
+  apiContext: AgentDriveApiContext
   open: boolean
   onOpenChange: (open: boolean) => void
   onUploaded: (file: AgentFileNode) => void

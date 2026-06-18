@@ -13,7 +13,7 @@ from unittest.mock import patch
 import pytest
 from flask import Flask
 
-from controllers.inner_api.plugin.agent_drive import AgentDriveCommitApi, AgentDriveManifestApi
+from controllers.inner_api.plugin.agent_drive import AgentDriveCommitApi, AgentDriveManifestApi, AgentDriveSkillsApi
 from services.agent_drive_service import AgentDriveError
 
 _MOD = "controllers.inner_api.plugin.agent_drive"
@@ -50,6 +50,41 @@ def test_manifest_bad_drive_ref_is_400():
         body, status = raw(AgentDriveManifestApi(), "not-an-agent-ref")
     assert status == 400
     assert body["code"] == "invalid_drive_ref"
+
+
+def test_skills_requires_tenant_id_and_returns_items():
+    raw = _raw(AgentDriveSkillsApi.get)
+
+    with app.test_request_context("/"):
+        body, status = raw(AgentDriveSkillsApi(), "agent-agent-1")
+    assert status == 400
+    assert body["code"] == "missing_tenant_id"
+
+    with app.test_request_context("/?tenant_id=tenant-1"):
+        with patch(f"{_MOD}.AgentDriveService") as svc:
+            svc.return_value.list_skills.return_value = [
+                {
+                    "path": "tender-analyzer",
+                    "skill_md_key": "tender-analyzer/SKILL.md",
+                    "archive_key": None,
+                    "name": "Tender Analyzer",
+                    "description": "Parses RFPs.",
+                }
+            ]
+            result = raw(AgentDriveSkillsApi(), "agent-agent-1")
+
+    assert result == {
+        "items": [
+            {
+                "path": "tender-analyzer",
+                "skill_md_key": "tender-analyzer/SKILL.md",
+                "archive_key": None,
+                "name": "Tender Analyzer",
+                "description": "Parses RFPs.",
+            }
+        ]
+    }
+    assert svc.return_value.list_skills.call_args.kwargs == {"tenant_id": "tenant-1", "agent_id": "agent-1"}
 
 
 def test_commit_parses_body_and_returns_items():
@@ -90,6 +125,6 @@ def test_commit_maps_service_error():
     assert body["code"] == "source_not_found"
 
 
-@pytest.mark.parametrize("api_cls", [AgentDriveManifestApi, AgentDriveCommitApi])
+@pytest.mark.parametrize("api_cls", [AgentDriveManifestApi, AgentDriveSkillsApi, AgentDriveCommitApi])
 def test_endpoints_have_handlers(api_cls):
     assert callable(getattr(api_cls(), "get", None) or getattr(api_cls(), "post", None))

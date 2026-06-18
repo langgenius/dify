@@ -111,11 +111,12 @@ const activeConfigSnapshot: AgentConfigSnapshotSummaryResponse = {
 
 const originalDraftWithFile = {
   ...defaultAgentSoulConfigFormState,
-  files: [
+  tools: [
     {
-      id: 'preview-image',
-      name: 'agent-roster-skill-detail-dialog-preview-image.png',
-      icon: 'image',
+      id: 'cli-1',
+      kind: 'cli',
+      name: 'Run tests',
+      installCommand: 'pnpm test',
     },
   ],
 } satisfies typeof defaultAgentSoulConfigFormState
@@ -299,7 +300,7 @@ describe('AgentConfigurePublishBar', () => {
         store.set(agentComposerOriginalDraftAtom, originalDraftWithFile)
         store.set(agentComposerDraftAtom, {
           ...originalDraftWithFile,
-          files: [],
+          tools: [],
         })
       },
     })

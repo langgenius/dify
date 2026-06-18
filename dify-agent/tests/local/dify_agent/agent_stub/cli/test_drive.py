@@ -128,7 +128,7 @@ def test_pull_drive_from_environment_writes_files_under_drive_base(
         lambda **_kwargs: b"hello world",
     )
 
-    results = pull_drive_from_environment(prefix="skills/", drive_base=str(tmp_path))
+    results = pull_drive_from_environment(targets=["skills/"], drive_base=str(tmp_path))
 
     assert results == [tmp_path / "skills" / "example" / "SKILL.md"]
     assert results[0].read_bytes() == b"hello world"
@@ -169,7 +169,7 @@ def test_pull_drive_from_environment_auto_extracts_skill_archive(
         lambda **_kwargs: archive_bytes,
     )
 
-    results = pull_drive_from_environment(prefix="skills/foo", drive_base=str(tmp_path))
+    results = pull_drive_from_environment(targets=["skills/foo"], drive_base=str(tmp_path))
 
     archive_path = tmp_path / "skills" / "foo" / ".DIFY-SKILL-FULL.zip"
     assert results == [archive_path]
@@ -202,7 +202,7 @@ def test_pull_drive_from_environment_rejects_traversal_keys(
     )
 
     with pytest.raises(AgentStubValidationError, match="outside the drive base"):
-        _ = pull_drive_from_environment(prefix="", drive_base=str(tmp_path))
+        _ = pull_drive_from_environment(targets=[""], drive_base=str(tmp_path))
 
 
 def test_pull_drive_from_environment_rejects_skill_archive_path_traversal(
@@ -239,7 +239,7 @@ def test_pull_drive_from_environment_rejects_skill_archive_path_traversal(
     )
 
     with pytest.raises(AgentStubValidationError, match="path traversal"):
-        _ = pull_drive_from_environment(prefix="skills/foo", drive_base=str(tmp_path))
+        _ = pull_drive_from_environment(targets=["skills/foo"], drive_base=str(tmp_path))
     assert not (tmp_path / "skills" / "foo" / "SKILL.md").exists()
 
 
@@ -276,7 +276,7 @@ def test_pull_drive_from_environment_rejects_skill_archive_absolute_entry(
     )
 
     with pytest.raises(AgentStubValidationError, match="absolute path"):
-        _ = pull_drive_from_environment(prefix="skills/foo", drive_base=str(tmp_path))
+        _ = pull_drive_from_environment(targets=["skills/foo"], drive_base=str(tmp_path))
 
 
 def test_pull_drive_from_environment_rejects_skill_archive_symlink_entry(
@@ -314,7 +314,7 @@ def test_pull_drive_from_environment_rejects_skill_archive_symlink_entry(
     )
 
     with pytest.raises(AgentStubValidationError, match="symlink entry"):
-        _ = pull_drive_from_environment(prefix="skills/foo", drive_base=str(tmp_path))
+        _ = pull_drive_from_environment(targets=["skills/foo"], drive_base=str(tmp_path))
 
 
 def test_pull_drive_from_environment_rejects_invalid_skill_archive(
@@ -347,7 +347,7 @@ def test_pull_drive_from_environment_rejects_invalid_skill_archive(
     )
 
     with pytest.raises(AgentStubTransferError, match="downloaded skill archive is invalid"):
-        _ = pull_drive_from_environment(prefix="skills/foo", drive_base=str(tmp_path))
+        _ = pull_drive_from_environment(targets=["skills/foo"], drive_base=str(tmp_path))
 
 
 def test_pull_drive_from_environment_rejects_missing_download_url(
@@ -373,7 +373,7 @@ def test_pull_drive_from_environment_rejects_missing_download_url(
     )
 
     with pytest.raises(AgentStubValidationError, match="missing download_url"):
-        _ = pull_drive_from_environment(prefix="skills/", drive_base=str(tmp_path))
+        _ = pull_drive_from_environment(targets=["skills/"], drive_base=str(tmp_path))
 
 
 def test_pull_drive_from_environment_rejects_size_mismatch(
@@ -404,7 +404,84 @@ def test_pull_drive_from_environment_rejects_size_mismatch(
     )
 
     with pytest.raises(AgentStubTransferError, match="size mismatch"):
-        _ = pull_drive_from_environment(prefix="skills/", drive_base=str(tmp_path))
+        _ = pull_drive_from_environment(targets=["skills/"], drive_base=str(tmp_path))
+
+
+def test_pull_drive_from_environment_requests_multiple_targets_and_deduplicates_overlaps(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
+    captured_prefixes: list[str] = []
+
+    def fake_manifest(**kwargs):
+        captured_prefixes.append(kwargs["prefix"])
+        if kwargs["prefix"] == "skills/foo":
+            return AgentStubDriveManifestResponse(
+                items=[
+                    AgentStubDriveItem(
+                        key="skills/foo/SKILL.md",
+                        size=5,
+                        hash=None,
+                        mime_type="text/markdown",
+                        file_kind="tool_file",
+                        file_id="tool-file-1",
+                        download_url="https://files.example.com/skill-md",
+                    )
+                ]
+            )
+        return AgentStubDriveManifestResponse(
+            items=[
+                AgentStubDriveItem(
+                    key="skills/foo/SKILL.md",
+                    size=5,
+                    hash=None,
+                    mime_type="text/markdown",
+                    file_kind="tool_file",
+                    file_id="tool-file-1",
+                    download_url="https://files.example.com/skill-md",
+                ),
+                AgentStubDriveItem(
+                    key="files/a.txt",
+                    size=1,
+                    hash=None,
+                    mime_type="text/plain",
+                    file_kind="tool_file",
+                    file_id="tool-file-2",
+                    download_url="https://files.example.com/a-txt",
+                ),
+            ]
+        )
+
+    downloaded_urls: list[str] = []
+    monkeypatch.setattr("dify_agent.agent_stub.cli._drive.request_agent_stub_drive_manifest_sync", fake_manifest)
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli._drive.download_file_bytes_from_signed_url_sync",
+        lambda *, download_url: downloaded_urls.append(download_url) or (b"hello" if download_url.endswith("skill-md") else b"a"),
+    )
+
+    results = pull_drive_from_environment(targets=["skills/foo", "files/a.txt"], drive_base=str(tmp_path))
+
+    assert captured_prefixes == ["skills/foo", "files/a.txt"]
+    assert results == [tmp_path / "files" / "a.txt", tmp_path / "skills" / "foo" / "SKILL.md"]
+    assert downloaded_urls == ["https://files.example.com/a-txt", "https://files.example.com/skill-md"]
+
+
+def test_pull_drive_from_environment_without_targets_preserves_whole_drive_pull(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
+    captured_prefixes: list[str] = []
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli._drive.request_agent_stub_drive_manifest_sync",
+        lambda **kwargs: captured_prefixes.append(kwargs["prefix"]) or AgentStubDriveManifestResponse(items=[]),
+    )
+
+    assert pull_drive_from_environment(drive_base=str(tmp_path)) == []
+    assert captured_prefixes == [""]
 
 
 def test_push_drive_from_environment_commits_single_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -448,6 +525,8 @@ def test_push_drive_from_environment_commits_single_file(monkeypatch: pytest.Mon
         "key": "files/report.pdf",
         "file_ref": {"kind": "tool_file", "id": "tool-file-1"},
         "value_owned_by_drive": True,
+        "is_skill": False,
+        "skill_metadata": None,
     }
 
 

@@ -87,6 +87,7 @@ import {
   workflowDraftUpdateEnvironmentVariablesContract,
   workflowDraftUpdateFeaturesContract,
 } from './console/workflow'
+import { agentDriveContracts } from './console/agent-drive'
 import { workflowCommentContracts } from './console/workflow-comment'
 import { workspacesGetContract, workspaceSwitchContract } from './console/workspaces'
 import { collectionPluginsContract, collectionsContract, downloadPluginContract, searchAdvancedContract, templateDetailContract } from './marketplace'
@@ -114,9 +115,26 @@ export const consoleRouterContract = {
     workflowOnlineUsers: workflowOnlineUsersContract,
     byAppId: {
       ...communityContract.apps.byAppId,
+      agent: {
+        ...communityContract.apps.byAppId.agent,
+        ...agentDriveContracts.byAppId.agent,
+        drive: {
+          ...communityContract.apps.byAppId.agent.drive,
+          ...agentDriveContracts.byAppId.agent.drive,
+        },
+      },
     },
   },
-  agent: communityContract.agent,
+  agent: {
+    ...communityContract.agent,
+    byAgentId: {
+      ...communityContract.agent.byAgentId,
+      drive: {
+        ...communityContract.agent.byAgentId.drive,
+        ...agentDriveContracts.byAgentId.drive,
+      },
+    },
+  },
   explore: {
     ...communityContract.explore,
     apps: exploreAppsContract,

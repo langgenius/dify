@@ -56,10 +56,28 @@ class AgentDriveItemResponse(ResponseModel):
     hash: str | None = None
     file_kind: str
     created_at: int | None = None
+    is_skill: bool | None = None
+    skill_metadata: str | None = None
 
 
 class AgentDriveListResponse(ResponseModel):
     items: list[AgentDriveItemResponse] = Field(default_factory=list)
+
+
+class AgentDriveSkillItemResponse(ResponseModel):
+    path: str
+    skill_md_key: str
+    archive_key: str | None = None
+    name: str
+    description: str
+    size: int | None = None
+    mime_type: str | None = None
+    hash: str | None = None
+    created_at: int | None = None
+
+
+class AgentDriveSkillListResponse(ResponseModel):
+    items: list[AgentDriveSkillItemResponse] = Field(default_factory=list)
 
 
 class AgentDrivePreviewResponse(ResponseModel):
@@ -75,7 +93,11 @@ class AgentDriveDownloadResponse(ResponseModel):
 
 
 register_response_schema_models(
-    console_ns, AgentDriveListResponse, AgentDrivePreviewResponse, AgentDriveDownloadResponse
+    console_ns,
+    AgentDriveDownloadResponse,
+    AgentDriveListResponse,
+    AgentDrivePreviewResponse,
+    AgentDriveSkillListResponse,
 )
 
 
@@ -117,6 +139,25 @@ class AgentDriveListByAgentApi(Resource):
         except AgentDriveError as exc:
             return _handle(exc)
         return {"items": [{k: v for k, v in item.items() if k != "file_id"} for item in items]}
+
+
+@console_ns.route("/agent/<uuid:agent_id>/drive/skills")
+class AgentDriveSkillListByAgentApi(Resource):
+    @console_ns.doc("list_agent_drive_skills_by_agent")
+    @console_ns.doc(description="List drive-backed skills for an Agent App")
+    @console_ns.doc(params={"agent_id": "Agent ID"})
+    @console_ns.response(200, "Drive skills", console_ns.models[AgentDriveSkillListResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_tenant_id
+    def get(self, tenant_id: str, agent_id: UUID):
+        resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        try:
+            items = AgentDriveService().list_skills(tenant_id=tenant_id, agent_id=str(agent_id))
+        except AgentDriveError as exc:
+            return _handle(exc)
+        return {"items": items}
 
 
 @console_ns.route("/agent/<uuid:agent_id>/drive/files/preview")
@@ -182,6 +223,28 @@ class AgentDriveListApi(Resource):
         return {"items": [{k: v for k, v in item.items() if k != "file_id"} for item in items]}
 
 
+@console_ns.route("/apps/<uuid:app_id>/agent/drive/skills")
+class AgentDriveSkillListApi(Resource):
+    @console_ns.doc("list_agent_drive_skills")
+    @console_ns.doc(description="List drive-backed skills for the bound agent")
+    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentDriveListQuery)})
+    @console_ns.response(200, "Drive skills", console_ns.models[AgentDriveSkillListResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=_WORKFLOW_APP_MODES)
+    def get(self, app_model: App):
+        query = query_params_from_request(AgentDriveListQuery)
+        agent_id = _resolve_agent_id(app_model, query.node_id)
+        if not agent_id:
+            return _agent_not_bound()
+        try:
+            items = AgentDriveService().list_skills(tenant_id=app_model.tenant_id, agent_id=agent_id)
+        except AgentDriveError as exc:
+            return _handle(exc)
+        return {"items": items}
+
+
 @console_ns.route("/apps/<uuid:app_id>/agent/drive/files/preview")
 class AgentDrivePreviewApi(Resource):
     @console_ns.doc("preview_agent_drive_file")
@@ -230,6 +293,8 @@ __all__ = [
     "AgentDriveDownloadByAgentApi",
     "AgentDriveListApi",
     "AgentDriveListByAgentApi",
+    "AgentDriveSkillListApi",
+    "AgentDriveSkillListByAgentApi",
     "AgentDrivePreviewApi",
     "AgentDrivePreviewByAgentApi",
 ]
