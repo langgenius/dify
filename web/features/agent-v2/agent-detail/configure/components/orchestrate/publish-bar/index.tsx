@@ -22,6 +22,7 @@ type AgentConfigurePublishState = 'draft' | 'publishing' | 'published' | 'unpubl
 
 type AgentConfigurePublishBarProps = {
   agentId: string
+  activeConfigIsPublished?: boolean
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentSoulConfig?: AgentConfigSnapshotDetailResponse['config_snapshot']
   agentName?: string | null
@@ -38,10 +39,12 @@ type AgentConfigurePublishBarProps = {
 }
 
 function getPublishState({
+  activeConfigIsPublished,
   activeConfigSnapshot,
   isDirty,
   isPublishing,
 }: {
+  activeConfigIsPublished?: boolean
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   isDirty: boolean
   isPublishing: boolean
@@ -52,7 +55,7 @@ function getPublishState({
   if (!activeConfigSnapshot)
     return 'draft'
 
-  if (isDirty)
+  if (!activeConfigIsPublished || isDirty)
     return 'unpublished'
 
   return 'published'
@@ -70,6 +73,7 @@ function PublishShortcut() {
 
 export function AgentConfigurePublishBar({
   agentId,
+  activeConfigIsPublished,
   activeConfigSnapshot,
   agentSoulConfig,
   agentName,
@@ -90,6 +94,7 @@ export function AgentConfigurePublishBar({
     currentModel,
   })
   const publishState = getPublishState({
+    activeConfigIsPublished,
     activeConfigSnapshot,
     isDirty: hasUnpublishedChanges,
     isPublishing,

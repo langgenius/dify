@@ -21,6 +21,7 @@ import { AgentTools } from './tools'
 type AgentOrchestratePanelProps = {
   agentId: string
   appId?: string
+  activeConfigIsPublished?: boolean
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentSoulConfig?: AgentConfigSnapshotDetailResponse['config_snapshot']
   agentName?: string | null
@@ -42,6 +43,7 @@ type AgentOrchestratePanelProps = {
 export function AgentOrchestratePanel({
   agentId,
   appId,
+  activeConfigIsPublished,
   activeConfigSnapshot,
   agentSoulConfig,
   agentName,
@@ -104,6 +106,7 @@ export function AgentOrchestratePanel({
       {showPublishBar && (
         <AgentConfigurePublishBar
           agentId={agentId}
+          activeConfigIsPublished={activeConfigIsPublished}
           activeConfigSnapshot={activeConfigSnapshot}
           agentSoulConfig={agentSoulConfig}
           agentName={agentName}

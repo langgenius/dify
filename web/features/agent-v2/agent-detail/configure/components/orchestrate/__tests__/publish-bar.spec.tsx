@@ -114,6 +114,7 @@ const publishedReferences: AgentPublishedReferenceResponse[] = [
 ]
 
 function renderPublishBar({
+  activeConfigIsPublished,
   activeConfigSnapshot,
   draftSavedAt,
   isPublishing,
@@ -123,6 +124,7 @@ function renderPublishBar({
   publishedReferences,
   setupStore,
 }: {
+  activeConfigIsPublished?: boolean
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   draftSavedAt?: number
   isPublishing?: boolean
@@ -140,6 +142,7 @@ function renderPublishBar({
     <JotaiProvider store={store}>
       <AgentConfigurePublishBar
         agentId="agent-1"
+        activeConfigIsPublished={activeConfigIsPublished}
         activeConfigSnapshot={activeConfigSnapshot}
         draftSavedAt={draftSavedAt}
         agentName="Iris"
@@ -191,7 +194,10 @@ describe('AgentConfigurePublishBar', () => {
   })
 
   it('should render published state from the active snapshot and disable publish logic', () => {
-    const { onPublish } = renderPublishBar({ activeConfigSnapshot })
+    const { onPublish } = renderPublishBar({
+      activeConfigIsPublished: true,
+      activeConfigSnapshot,
+    })
 
     expect(screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate')).toBeInTheDocument()
     expect(screen.getByText(/agentV2\.agentDetail\.configure\.publishBar\.publishedAt/)).toBeInTheDocument()
@@ -205,6 +211,25 @@ describe('AgentConfigurePublishBar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' }))
 
     expect(onPublish).not.toHaveBeenCalled()
+  })
+
+  it('should initialize unpublished state when active config is not published', () => {
+    const { onPublish } = renderPublishBar({
+      activeConfigIsPublished: false,
+      activeConfigSnapshot,
+    })
+
+    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.unpublishedChanges')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ })).toBeInTheDocument()
+    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
+      expect.objectContaining({ enabled: true, ignoreInputs: false }),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
+
+    expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
+      agent_id: 'agent-1',
+    }))
   })
 
   it('should publish the current draft payload from the unpublished changes state', () => {
