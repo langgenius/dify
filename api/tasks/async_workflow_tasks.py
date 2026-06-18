@@ -10,10 +10,6 @@ from datetime import UTC, datetime
 from typing import Any, NotRequired
 
 from celery import shared_task
-from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
-from typing_extensions import TypedDict
-
 from configs import dify_config
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
@@ -23,7 +19,6 @@ from core.app.layers.trigger_post_layer import TriggerPostLayer
 from core.db.session_factory import session_factory
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
-from graphon.runtime import GraphRuntimeState
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom, WorkflowTriggerStatus
 from models.model import App, EndUser, Tenant
@@ -37,6 +32,11 @@ from services.workflow.entities import (
     WorkflowResumeTaskData,
     WorkflowTaskData,
 )
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
+from typing_extensions import TypedDict
+
+from graphon.runtime import GraphRuntimeState
 from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntity, AsyncWorkflowCFSPlanScheduler
 from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue, AsyncWorkflowSystemStrategy
 
