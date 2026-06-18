@@ -85,6 +85,7 @@ def test_normalize_terminal_events_defaults():
     assert _normalize_terminal_events(None) == {
         StreamEvent.WORKFLOW_FINISHED.value,
         StreamEvent.WORKFLOW_PAUSED.value,
+        StreamEvent.ERROR.value,
     }
 
 
