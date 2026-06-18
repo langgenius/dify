@@ -1,4 +1,4 @@
-from typing import Any, Self, override
+from typing import Any, override
 
 from core.entities.mcp_provider import IdentityMode, MCPProviderEntity
 from core.mcp.types import Tool as RemoteMCPTool
