@@ -198,9 +198,14 @@ export type KnowledgeConfig = {
   original_document_id?: string | null
   process_rule?: ProcessRule | null
   retrieval_model?: RetrievalModel | null
-  summary_index_setting?: {
+  summary_index_setting?: ({
     [key: string]: unknown
-  } | null
+  } | null) & {
+    enable?: boolean
+    model_name?: string
+    model_provider_name?: string
+    summary_prompt?: string
+  }
 }
 
 export type DatasetAndDocumentResponse = {
@@ -481,9 +486,13 @@ export type ExternalRetrievalTestResponse
 
 export type HitTestingPayload = {
   attachment_ids?: Array<string> | null
-  external_retrieval_model?: {
+  external_retrieval_model?: ({
     [key: string]: unknown
-  } | null
+  } | null) & {
+    score_threshold?: number
+    score_threshold_enabled?: boolean
+    top_k?: number
+  }
   query: string
   retrieval_model?: RetrievalModel | null
 }

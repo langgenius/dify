@@ -317,9 +317,14 @@ export type DatasetCreatePayload = {
   permission?: PermissionEnum | null
   provider?: string
   retrieval_model?: RetrievalModel | null
-  summary_index_setting?: {
+  summary_index_setting?: ({
     [key: string]: unknown
-  } | null
+  } | null) & {
+    enable?: boolean
+    model_name?: string
+    model_provider_name?: string
+    summary_prompt?: string
+  }
 }
 
 export type DatasetDetailResponse = {
@@ -511,9 +516,13 @@ export type DatasetUpdatePayload = {
   embedding_model_provider?: string | null
   external_knowledge_api_id?: string | null
   external_knowledge_id?: string | null
-  external_retrieval_model?: {
+  external_retrieval_model?: ({
     [key: string]: unknown
-  } | null
+  } | null) & {
+    score_threshold?: number
+    score_threshold_enabled?: boolean
+    top_k?: number
+  }
   indexing_technique?: 'economy' | 'high_quality' | null
   name?: string | null
   partial_member_list?: Array<{
@@ -848,9 +857,13 @@ export type HitTestingFile = {
 
 export type HitTestingPayload = {
   attachment_ids?: Array<string> | null
-  external_retrieval_model?: {
+  external_retrieval_model?: ({
     [key: string]: unknown
-  } | null
+  } | null) & {
+    score_threshold?: number
+    score_threshold_enabled?: boolean
+    top_k?: number
+  }
   query: string
   retrieval_model?: RetrievalModel | null
 }
@@ -1147,7 +1160,20 @@ export type PermissionEnum = 'all_team_members' | 'only_me' | 'partial_members'
 
 export type PipelineRunApiEntity = {
   datasource_info_list: Array<{
-    [key: string]: unknown
+    bucket?: string
+    credential_id?: string
+    id?: string
+    name?: string
+    page?: {
+      page_id?: string
+      page_name?: string
+      type?: string
+    }
+    reference?: string
+    title?: string
+    type?: string
+    url?: string
+    workspace_id?: string
   }>
   datasource_type: string
   inputs: {

@@ -1337,7 +1337,26 @@ export const zPermissionEnum = z.enum(['all_team_members', 'only_me', 'partial_m
  * PipelineRunApiEntity
  */
 export const zPipelineRunApiEntity = z.object({
-  datasource_info_list: z.array(z.record(z.string(), z.unknown())),
+  datasource_info_list: z.array(
+    z.object({
+      bucket: z.string().optional(),
+      credential_id: z.string().optional(),
+      id: z.string().optional(),
+      name: z.string().optional(),
+      page: z
+        .object({
+          page_id: z.string().optional(),
+          page_name: z.string().optional(),
+          type: z.string().optional(),
+        })
+        .optional(),
+      reference: z.string().optional(),
+      title: z.string().optional(),
+      type: z.string().optional(),
+      url: z.string().optional(),
+      workspace_id: z.string().optional(),
+    }),
+  ),
   datasource_type: z.string(),
   inputs: z.record(z.string(), z.unknown()),
   is_published: z.boolean(),
@@ -1979,7 +1998,17 @@ export const zDatasetCreatePayload = z.object({
   permission: zPermissionEnum.nullish().default('only_me'),
   provider: z.string().optional().default('vendor'),
   retrieval_model: zRetrievalModel.nullish(),
-  summary_index_setting: z.record(z.string(), z.unknown()).nullish(),
+  summary_index_setting: z
+    .intersection(
+      z.record(z.string(), z.unknown()),
+      z.object({
+        enable: z.boolean().optional(),
+        model_name: z.string().optional(),
+        model_provider_name: z.string().optional(),
+        summary_prompt: z.string().optional(),
+      }),
+    )
+    .nullish(),
 })
 
 /**
@@ -1991,7 +2020,16 @@ export const zDatasetUpdatePayload = z.object({
   embedding_model_provider: z.string().nullish(),
   external_knowledge_api_id: z.string().nullish(),
   external_knowledge_id: z.string().nullish(),
-  external_retrieval_model: z.record(z.string(), z.unknown()).nullish(),
+  external_retrieval_model: z
+    .intersection(
+      z.record(z.string(), z.unknown()),
+      z.object({
+        score_threshold: z.number().optional(),
+        score_threshold_enabled: z.boolean().optional(),
+        top_k: z.int().optional(),
+      }),
+    )
+    .nullish(),
   indexing_technique: z.enum(['economy', 'high_quality']).nullish(),
   name: z.string().min(1).max(40).nullish(),
   partial_member_list: z.array(z.record(z.string(), z.string())).nullish(),
@@ -2049,7 +2087,16 @@ export const zDocumentTextUpdate = z.intersection(
  */
 export const zHitTestingPayload = z.object({
   attachment_ids: z.array(z.string()).nullish(),
-  external_retrieval_model: z.record(z.string(), z.unknown()).nullish(),
+  external_retrieval_model: z
+    .intersection(
+      z.record(z.string(), z.unknown()),
+      z.object({
+        score_threshold: z.number().optional(),
+        score_threshold_enabled: z.boolean().optional(),
+        top_k: z.int().optional(),
+      }),
+    )
+    .nullish(),
   query: z.string().max(250),
   retrieval_model: zRetrievalModel.nullish(),
 })

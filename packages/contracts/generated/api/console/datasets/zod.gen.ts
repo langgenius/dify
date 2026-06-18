@@ -1291,7 +1291,16 @@ export const zRetrievalModel = z.object({
  */
 export const zHitTestingPayload = z.object({
   attachment_ids: z.array(z.string()).nullish(),
-  external_retrieval_model: z.record(z.string(), z.unknown()).nullish(),
+  external_retrieval_model: z
+    .intersection(
+      z.record(z.string(), z.unknown()),
+      z.object({
+        score_threshold: z.number().optional(),
+        score_threshold_enabled: z.boolean().optional(),
+        top_k: z.int().optional(),
+      }),
+    )
+    .nullish(),
   query: z.string().max(250),
   retrieval_model: zRetrievalModel.nullish(),
 })
@@ -1462,7 +1471,17 @@ export const zKnowledgeConfig = z.object({
   original_document_id: z.string().nullish(),
   process_rule: zProcessRule.nullish(),
   retrieval_model: zRetrievalModel.nullish(),
-  summary_index_setting: z.record(z.string(), z.unknown()).nullish(),
+  summary_index_setting: z
+    .intersection(
+      z.record(z.string(), z.unknown()),
+      z.object({
+        enable: z.boolean().optional(),
+        model_name: z.string().optional(),
+        model_provider_name: z.string().optional(),
+        summary_prompt: z.string().optional(),
+      }),
+    )
+    .nullish(),
 })
 
 export const zGetDatasetsQuery = z.object({
