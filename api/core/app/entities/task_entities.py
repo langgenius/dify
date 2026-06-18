@@ -241,7 +241,7 @@ class WorkflowFinishStreamResponse(StreamResponse):
         created_by: Mapping[str, object] = Field(default_factory=dict)
         created_at: int
         finished_at: int | None
-        exceptions_count: int | None = 0
+        exceptions_count: int = 0
         files: Sequence[Mapping[str, Any]] | None = []
 
     event: StreamEvent = StreamEvent.WORKFLOW_FINISHED
