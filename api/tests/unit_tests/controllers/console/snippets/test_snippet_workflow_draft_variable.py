@@ -7,7 +7,6 @@ from flask import Flask
 from controllers.console.snippets import snippet_workflow_draft_variable as module
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from models.account import Account, AccountStatus
-from models.workflow import WorkflowDraftVariable
 from services.workflow_draft_variable_service import WorkflowDraftVariableList
 
 
