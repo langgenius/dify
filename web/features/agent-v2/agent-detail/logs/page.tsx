@@ -1,73 +1,87 @@
 'use client'
 
-import type { TdHTMLAttributes, ThHTMLAttributes } from 'react'
-import type {
-  PeriodKey,
-  SourceKey,
-} from './mock-data'
-import { cn } from '@langgenius/dify-ui/cn'
+import type { SourceFilterValue } from './components/source-picker'
 import { Pagination } from '@langgenius/dify-ui/pagination'
-import {
-  ScrollAreaContent,
-  ScrollAreaRoot,
-  ScrollAreaScrollbar,
-  ScrollAreaThumb,
-  ScrollAreaViewport,
-} from '@langgenius/dify-ui/scroll-area'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { useQuery } from '@tanstack/react-query'
+import dayjs from 'dayjs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Chip from '@/app/components/base/chip'
 import { SearchInput } from '@/app/components/base/search-input'
 import Sort from '@/app/components/base/sort'
 import { useDocLink } from '@/context/i18n'
-import {
-  getAgentLogRowsView,
-  getOption,
-  getSortParts,
-  periodOptions,
-  sourceOptions,
-} from './mock-data'
+import { consoleQuery } from '@/service/client'
+import { AgentLogsTable } from './components/logs-table'
+import { AgentLogSourcePicker } from './components/source-picker'
 
-export function AgentLogsPage() {
+type PeriodKey = 'last7days' | 'last30days' | 'allTime'
+
+type AgentLogsPageProps = {
+  agentId: string
+}
+
+const queryDateFormat = 'YYYY-MM-DD HH:mm'
+
+const periodOptions: Array<{
+  value: PeriodKey
+  labelKey: 'agentDetail.logs.filters.period.last7days' | 'agentDetail.logs.filters.period.last30days' | 'agentDetail.logs.filters.period.allTime'
+}> = [
+  { value: 'last7days', labelKey: 'agentDetail.logs.filters.period.last7days' },
+  { value: 'last30days', labelKey: 'agentDetail.logs.filters.period.last30days' },
+  { value: 'allTime', labelKey: 'agentDetail.logs.filters.period.allTime' },
+]
+
+const getPeriodQuery = (period: PeriodKey) => {
+  if (period === 'allTime')
+    return {}
+
+  const days = period === 'last7days' ? 7 : 30
+  return {
+    start: dayjs().subtract(days, 'day').format(queryDateFormat),
+    end: dayjs().add(1, 'minute').format(queryDateFormat),
+  }
+}
+
+export function AgentLogsPage({
+  agentId,
+}: AgentLogsPageProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
   const docLink = useDocLink()
   const [period, setPeriod] = useState<PeriodKey>('last7days')
-  const [source, setSource] = useState<SourceKey>('all')
+  const [source, setSource] = useState<SourceFilterValue>([])
   const [keyword, setKeyword] = useState('')
-  const [sortBy, setSortBy] = useState('-created_at')
-  const [page, setPage] = useState(2)
+  const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(25)
-
-  const selectedSource = getOption(sourceOptions, source)
-  const { sortOrder, sortValue } = getSortParts(sortBy)
-  const tableHeaderLabels = {
-    unread: t('agentDetail.logs.table.unread'),
-    title: t('agentDetail.logs.table.title'),
-    endUser: t('agentDetail.logs.table.endUser'),
-    messageCount: t('agentDetail.logs.table.messageCount'),
-    userRate: t('agentDetail.logs.table.userRate'),
-    operationRate: t('agentDetail.logs.table.operationRate'),
-    updatedTime: t('agentDetail.logs.table.updatedTime'),
-    createdTime: t('agentDetail.logs.table.createdTime'),
-  }
   const periodItems = periodOptions.map(option => ({
     value: option.value,
     name: t(option.labelKey),
   }))
-  const {
-    currentPage,
-    totalPages,
-    rows,
-  } = getAgentLogRowsView({
-    period,
-    source,
-    keyword,
-    sortBy,
-    page,
-    limit,
-  })
+  const logSourcesQuery = useQuery(consoleQuery.agent.byAgentId.logSources.get.queryOptions({
+    input: {
+      params: {
+        agent_id: agentId,
+      },
+    },
+  }))
+  const logsQuery = useQuery(consoleQuery.agent.byAgentId.logs.get.queryOptions({
+    input: {
+      params: {
+        agent_id: agentId,
+      },
+      query: {
+        ...getPeriodQuery(period),
+        page,
+        limit,
+        keyword: keyword.trim() || undefined,
+        // TODO: Send multiple source ids after the backend contract supports multi-source filtering.
+        source: source.length === 1 ? source[0] : undefined,
+      },
+    },
+  }))
+  const logs = logsQuery.data?.data ?? []
+  const totalPages = Math.max(Math.ceil((logsQuery.data?.total ?? 0) / limit), 1)
+  const currentPage = logsQuery.data?.page ?? page
 
   return (
     <section
@@ -110,30 +124,19 @@ export function AgentLogsPage() {
               }}
             />
 
-            <Select
+            <AgentLogSourcePicker
               value={source}
-              onValueChange={(nextValue) => {
-                if (nextValue) {
-                  setPage(1)
-                  setSource(nextValue as SourceKey)
-                }
+              groups={logSourcesQuery.data?.groups ?? []}
+              isLoading={logSourcesQuery.isPending}
+              isError={logSourcesQuery.isError}
+              onRetry={() => {
+                void logSourcesQuery.refetch()
               }}
-            >
-              <SelectTrigger
-                aria-label={t('agentDetail.logs.filters.source.label')}
-                className="mt-0 w-fit max-w-full min-w-22"
-              >
-                {t(selectedSource.labelKey)}
-              </SelectTrigger>
-              <SelectContent popupClassName="w-80">
-                {sourceOptions.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    <SelectItemText>{t(option.labelKey)}</SelectItemText>
-                    <SelectItemIndicator />
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              onChange={(nextSource) => {
+                setPage(1)
+                setSource(nextSource)
+              }}
+            />
 
             <SearchInput
               aria-label={t('agentDetail.logs.filters.search.label')}
@@ -148,93 +151,27 @@ export function AgentLogsPage() {
           </div>
 
           <Sort
-            order={sortOrder}
-            value={sortValue}
+            order="desc"
+            value="updated_at"
             items={[
               { value: 'created_at', name: t('agentDetail.logs.filters.sort.lastCreatedTime') },
               { value: 'updated_at', name: t('agentDetail.logs.filters.sort.lastUpdatedTime') },
             ]}
-            onSelect={(value) => {
-              setPage(1)
-              setSortBy(value)
-            }}
+            onSelect={() => {}}
           />
         </div>
       </header>
 
       <div className="min-h-0 flex-1 px-6 pt-2 pb-3">
-        <div className="flex h-full min-w-0 flex-col overflow-x-auto">
-          <div className="min-w-[1212px] shrink-0">
-            <table aria-hidden="true" className="w-full table-fixed border-collapse">
-              <LogsTableColGroup />
-              <LogsTableHeader labels={tableHeaderLabels} />
-            </table>
-          </div>
-
-          <ScrollAreaRoot className="relative min-h-0 min-w-[1212px] flex-1 overflow-hidden">
-            <ScrollAreaViewport
-              aria-label={t('agentDetail.logs.title')}
-              role="region"
-              tabIndex={-1}
-              className="overscroll-contain"
-            >
-              <ScrollAreaContent>
-                <table className="w-full table-fixed border-collapse">
-                  <LogsTableColGroup />
-                  <LogsTableHeader labels={tableHeaderLabels} rowClassName="sr-only" />
-                  <tbody className="system-sm-regular text-text-secondary">
-                    {rows.length > 0
-                      ? rows.map(log => (
-                          <tr
-                            key={log.id}
-                            className="h-10 border-b border-divider-subtle hover:bg-background-default-hover"
-                          >
-                            <td className="px-0">
-                              <span className={cn(
-                                'mx-auto block size-1.5 rounded-full',
-                                log.unread ? 'bg-util-colors-blue-blue-500' : 'bg-transparent',
-                              )}
-                              />
-                            </td>
-                            <TableCell className="system-sm-medium text-text-secondary">
-                              {log.title}
-                            </TableCell>
-                            <TableCell translate="no">
-                              {log.endUser}
-                            </TableCell>
-                            <TableCell>
-                              {log.messageCount}
-                            </TableCell>
-                            <TableCell className="text-text-quaternary">
-                              {log.userRate}
-                            </TableCell>
-                            <TableCell className="text-text-quaternary">
-                              {log.operationRate}
-                            </TableCell>
-                            <TableCell>
-                              {log.updatedTime}
-                            </TableCell>
-                            <TableCell>
-                              {log.createdTime}
-                            </TableCell>
-                          </tr>
-                        ))
-                      : (
-                          <tr className="h-20 border-b border-divider-subtle">
-                            <td colSpan={8} className="px-3 text-center text-text-tertiary">
-                              {t('agentDetail.logs.empty')}
-                            </td>
-                          </tr>
-                        )}
-                  </tbody>
-                </table>
-              </ScrollAreaContent>
-            </ScrollAreaViewport>
-            <ScrollAreaScrollbar className="data-[orientation=vertical]:translate-x-1">
-              <ScrollAreaThumb />
-            </ScrollAreaScrollbar>
-          </ScrollAreaRoot>
-        </div>
+        <AgentLogsTable
+          logs={logs}
+          isPending={logsQuery.isPending}
+          isError={logsQuery.isError}
+          isSuccess={logsQuery.isSuccess}
+          onRetry={() => {
+            void logsQuery.refetch()
+          }}
+        />
       </div>
 
       <Pagination
@@ -260,86 +197,5 @@ export function AgentLogsPage() {
         }}
       />
     </section>
-  )
-}
-
-type LogsTableHeaderLabels = {
-  unread: string
-  title: string
-  endUser: string
-  messageCount: string
-  userRate: string
-  operationRate: string
-  updatedTime: string
-  createdTime: string
-}
-
-function LogsTableHeader({
-  labels,
-  rowClassName,
-}: {
-  labels: LogsTableHeaderLabels
-  rowClassName?: string
-}) {
-  return (
-    <thead>
-      <tr className={cn('h-7 bg-background-section-burn text-left system-xs-medium-uppercase text-text-tertiary', rowClassName)}>
-        <th scope="col" className="rounded-l-lg px-0">
-          <span className="sr-only">{labels.unread}</span>
-        </th>
-        <TableHead>{labels.title}</TableHead>
-        <TableHead>{labels.endUser}</TableHead>
-        <TableHead>{labels.messageCount}</TableHead>
-        <TableHead>{labels.userRate}</TableHead>
-        <TableHead>{labels.operationRate}</TableHead>
-        <TableHead>{labels.updatedTime}</TableHead>
-        <TableHead className="rounded-r-lg">{labels.createdTime}</TableHead>
-      </tr>
-    </thead>
-  )
-}
-
-function LogsTableColGroup() {
-  return (
-    <colgroup>
-      <col className="w-5" />
-      <col className="w-[42%]" />
-      <col className="w-[14%]" />
-      <col className="w-24" />
-      <col className="w-20" />
-      <col className="w-18" />
-      <col className="w-34" />
-      <col className="w-34" />
-    </colgroup>
-  )
-}
-
-function TableHead({
-  className,
-  ...props
-}: ThHTMLAttributes<HTMLTableCellElement>) {
-  return (
-    <th
-      scope="col"
-      className={cn('px-3 text-left whitespace-nowrap', className)}
-      {...props}
-    />
-  )
-}
-
-function TableCell({
-  children,
-  className,
-  ...props
-}: TdHTMLAttributes<HTMLTableCellElement>) {
-  return (
-    <td
-      className={cn('min-w-0 px-3 whitespace-nowrap', className)}
-      {...props}
-    >
-      <div className="truncate">
-        {children}
-      </div>
-    </td>
   )
 }
