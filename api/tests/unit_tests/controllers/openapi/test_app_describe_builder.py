@@ -11,6 +11,7 @@ class _FakeApp(SimpleNamespace):
 
 def _app() -> _FakeApp:
     from datetime import datetime
+
     return _FakeApp(
         id="11111111-1111-1111-1111-111111111111",
         name="Demo",

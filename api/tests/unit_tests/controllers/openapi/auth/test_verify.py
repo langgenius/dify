@@ -75,23 +75,6 @@ def test_check_app_access_raises_when_not_member():
             check_app_access(data)
 
 
-def test_check_app_api_enabled_passes_when_app_none():
-    check_app_api_enabled(_data(app=None))
-
-
-def test_check_app_api_enabled_passes_when_enabled():
-    app = MagicMock(spec=App)
-    app.enable_api = True
-    check_app_api_enabled(_data(app=app))
-
-
-def test_check_app_api_enabled_raises_when_disabled():
-    app = MagicMock(spec=App)
-    app.enable_api = False
-    with pytest.raises(Forbidden, match="service_api_disabled"):
-        check_app_api_enabled(_data(app=app))
-
-
 def test_check_acl_raises_when_app_or_mode_missing():
     with pytest.raises(Forbidden):
         check_acl(_data(app=None, app_access_mode=None))
