@@ -8,14 +8,21 @@ import dataSourceDefault from '@/app/components/workflow/nodes/data-source/defau
 import knowledgeBaseDefault from '@/app/components/workflow/nodes/knowledge-base/default'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
+import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 
 export const useAvailableNodesMetaData = () => {
   const { t } = useTranslation()
   const docLink = useDocLink()
+  const agentV2Enabled = isAgentV2Enabled()
 
   const mergedNodesMetaData = useMemo(() => [
-    // RAG pipeline doesn't support human-input node temporarily
-    ...WORKFLOW_COMMON_NODES.filter(node => node.metaData.type !== BlockEnum.HumanInput),
+    ...WORKFLOW_COMMON_NODES.filter(node =>
+      node.metaData.type !== BlockEnum.HumanInput
+      && (
+        agentV2Enabled
+          ? node.metaData.type !== BlockEnum.Agent
+          : node.metaData.type !== BlockEnum.AgentV2
+      )),
     {
       ...dataSourceDefault,
       defaultValue: {
@@ -25,7 +32,7 @@ export const useAvailableNodesMetaData = () => {
     },
     knowledgeBaseDefault,
     dataSourceEmptyDefault,
-  ], [])
+  ], [agentV2Enabled])
 
   const helpLinkUri = useMemo(() => docLink(
     '/use-dify/knowledge/knowledge-pipeline/knowledge-pipeline-orchestration',

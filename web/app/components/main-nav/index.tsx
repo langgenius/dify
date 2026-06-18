@@ -18,11 +18,11 @@ import EnvNav from '@/app/components/header/env-nav'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useAppContext } from '@/context/app-context'
 import { AgentDetailSection, AgentDetailTop } from '@/features/agent-v2/agent-detail/navigation'
+import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { DeploymentDetailSection, DeploymentDetailTop } from '@/features/deployments/detail/deployment-sidebar'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
-import { isAgentV2Enabled } from '@/utils/features'
 import AccountSection from './components/account-section'
 import HelpMenu from './components/help-menu'
 import MainNavLink from './components/nav-link'
@@ -322,18 +322,18 @@ const MainNav = ({
                     />
                   )
                 : showAgentDetailNavigation
-                ? (
-                    <AgentDetailTop
-                      expand={detailNavigationVisibleExpanded}
-                      onToggle={handleToggleDetailNavigation}
-                    />
-                  )
-                : (
-                    <DeploymentDetailTop
-                      expand={detailNavigationVisibleExpanded}
-                      onToggle={handleToggleDetailNavigation}
-                    />
-                  )
+                  ? (
+                      <AgentDetailTop
+                        expand={detailNavigationVisibleExpanded}
+                        onToggle={handleToggleDetailNavigation}
+                      />
+                    )
+                  : (
+                      <DeploymentDetailTop
+                        expand={detailNavigationVisibleExpanded}
+                        onToggle={handleToggleDetailNavigation}
+                      />
+                    )
             : showSnippetDetailBottomNavigation
               ? null
               : (
@@ -354,7 +354,7 @@ const MainNav = ({
                 ? <DatasetDetailSection expand={detailNavigationVisibleExpanded} />
                 : showAgentDetailNavigation
                   ? <AgentDetailSection expand={detailNavigationVisibleExpanded} />
-                : <DeploymentDetailSection expand={detailNavigationVisibleExpanded} />
+                  : <DeploymentDetailSection expand={detailNavigationVisibleExpanded} />
             : showSnippetDetailBottomNavigation
               ? null
               : (

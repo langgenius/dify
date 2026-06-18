@@ -4,14 +4,12 @@ import {
 } from 'react'
 import { useHooksStore } from '@/app/components/workflow/hooks-store/store'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { isAgentV2Enabled } from '@/utils/features'
 import { useStore } from '../store'
 import NodeSelector from './main'
 
 const NodeSelectorWrapper = (props: NodeSelectorProps) => {
   const availableNodesMetaData = useHooksStore(s => s.availableNodesMetaData)
   const dataSourceList = useStore(s => s.dataSourceList)
-  const agentV2Enabled = isAgentV2Enabled()
 
   const blocks = useMemo(() => {
     const result = availableNodesMetaData?.nodes || []
@@ -38,12 +36,9 @@ const NodeSelectorWrapper = (props: NodeSelectorProps) => {
       if (block.metaData.type === BlockEnum.DataSourceEmpty)
         return false
 
-      if (block.metaData.type === BlockEnum.AgentV2 && !agentV2Enabled)
-        return false
-
       return true
     })
-  }, [agentV2Enabled, availableNodesMetaData?.nodes])
+  }, [availableNodesMetaData?.nodes])
 
   return (
     <NodeSelector

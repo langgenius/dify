@@ -1,12 +1,16 @@
 const mocks = vi.hoisted(() => ({
-  isAgentV2Enabled: vi.fn(),
+  agentV2Enabled: true,
   notFound: vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND')
   }),
 }))
 
-vi.mock('@/utils/features', () => ({
-  isAgentV2Enabled: () => mocks.isAgentV2Enabled(),
+vi.mock('@/env', () => ({
+  env: {
+    get NEXT_PUBLIC_ENABLE_AGENT_V2() {
+      return mocks.agentV2Enabled
+    },
+  },
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -16,7 +20,7 @@ vi.mock('@/next/navigation', () => ({
 describe('guardAgentV2Route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.isAgentV2Enabled.mockReturnValue(true)
+    mocks.agentV2Enabled = true
   })
 
   it('should allow roster routes when Agent v2 is enabled', async () => {
@@ -27,7 +31,7 @@ describe('guardAgentV2Route', () => {
   })
 
   it('should throw notFound when Agent v2 is disabled', async () => {
-    mocks.isAgentV2Enabled.mockReturnValue(false)
+    mocks.agentV2Enabled = false
 
     const { guardAgentV2Route } = await import('../feature-guard')
 
