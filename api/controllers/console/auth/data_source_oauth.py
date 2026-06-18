@@ -82,7 +82,9 @@ class OAuthDataSource(Resource):
     @console_ns.response(400, "Invalid provider")
     @console_ns.response(403, "Admin privileges required")
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.DATA_SOURCE_MANAGE, resource_required=False)
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False
+    )
     def get(self, provider: str):
         # The role of the current user in the table must be admin or owner
         OAUTH_DATASOURCE_PROVIDERS = get_oauth_providers()

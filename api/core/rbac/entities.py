@@ -39,7 +39,6 @@ class RBACPermission(StrEnum):
     DATASET_IMPORT_EXPORT_DSL = "dataset_import_export_dsl"
 
     WORKSPACE_ROLE_MANAGE = "workspace_role_manage"
-    DATA_SOURCE_MANAGE = "data_source_manage"
 
     SNIPPETS_CREATE_AND_MODIFY = "snippets_create_and_modify"
     SNIPPETS_MANAGE = "snippets_management"
