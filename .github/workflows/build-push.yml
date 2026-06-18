@@ -21,6 +21,7 @@ env:
   DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
   DIFY_WEB_IMAGE_NAME: ${{ vars.DIFY_WEB_IMAGE_NAME || 'langgenius/dify-web' }}
   DIFY_API_IMAGE_NAME: ${{ vars.DIFY_API_IMAGE_NAME || 'langgenius/dify-api' }}
+  DIFY_AGENT_IMAGE_NAME: ${{ vars.DIFY_AGENT_IMAGE_NAME || 'langgenius/dify-agent-backend' }}
 
 jobs:
   build:
@@ -58,6 +59,20 @@ jobs:
             artifact_context: "web"
             build_context: "{{defaultContext}}"
             file: "web/Dockerfile"
+            platform: linux/arm64
+            runs_on: depot-ubuntu-24.04-4
+          - service_name: "build-agent-amd64"
+            image_name_env: "DIFY_AGENT_IMAGE_NAME"
+            artifact_context: "agent"
+            build_context: "{{defaultContext}}"
+            file: "dify-agent/Dockerfile"
+            platform: linux/amd64
+            runs_on: depot-ubuntu-24.04-4
+          - service_name: "build-agent-arm64"
+            image_name_env: "DIFY_AGENT_IMAGE_NAME"
+            artifact_context: "agent"
+            build_context: "{{defaultContext}}"
+            file: "dify-agent/Dockerfile"
             platform: linux/arm64
             runs_on: depot-ubuntu-24.04-4
 
@@ -122,6 +137,9 @@ jobs:
           - service_name: "validate-web-amd64"
             build_context: "{{defaultContext}}"
             file: "web/Dockerfile"
+          - service_name: "validate-agent-amd64"
+            build_context: "{{defaultContext}}"
+            file: "dify-agent/Dockerfile"
     steps:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
@@ -147,6 +165,9 @@ jobs:
           - service_name: "merge-web-images"
             image_name_env: "DIFY_WEB_IMAGE_NAME"
             context: "web"
+          - service_name: "merge-agent-images"
+            image_name_env: "DIFY_AGENT_IMAGE_NAME"
+            context: "agent"
     steps:
       - name: Download digests
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
