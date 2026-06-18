@@ -114,7 +114,7 @@ def _make_recommended_plugin(plugin_id: str) -> PipelineRecommendedPlugin:
     return PipelineRecommendedPlugin(plugin_id=plugin_id, provider_name=plugin_id, type="tool", position=0, active=True)
 
 
-def test_get_pipeline_templates_fallbacks_to_builtin_for_non_english_empty_result(mocker) -> None:
+def test_get_pipeline_templates_fallbacks_to_builtin_for_non_english_empty_result(mocker: MockerFixture) -> None:
     mocker.patch("services.rag_pipeline.rag_pipeline.dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE", "remote")
 
     remote_retrieval = mocker.Mock()
@@ -133,7 +133,7 @@ def test_get_pipeline_templates_fallbacks_to_builtin_for_non_english_empty_resul
     builtin_retrieval.fetch_pipeline_templates_from_builtin.assert_called_once_with("en-US")
 
 
-def test_get_pipeline_templates_customized_mode_uses_customized_factory(mocker) -> None:
+def test_get_pipeline_templates_customized_mode_uses_customized_factory(mocker: MockerFixture) -> None:
     retrieval = mocker.Mock()
     retrieval.get_pipeline_templates.return_value = {"pipeline_templates": [{"id": "custom-1"}]}
 
@@ -1756,7 +1756,7 @@ def test_get_pipeline_raises_when_pipeline_missing(
         rag_pipeline_service.get_pipeline("t1", "d1")
 
 
-def test_init_uses_default_sessionmaker_when_none(mocker) -> None:
+def test_init_uses_default_sessionmaker_when_none(mocker: MockerFixture) -> None:
     default_session_maker = mocker.Mock()
     mocker.patch("services.rag_pipeline.rag_pipeline.sessionmaker", return_value=default_session_maker)
     mocker.patch("services.rag_pipeline.rag_pipeline.db", SimpleNamespace(engine=mocker.Mock()))
@@ -1773,7 +1773,7 @@ def test_init_uses_default_sessionmaker_when_none(mocker) -> None:
     create_run_repo.assert_called_once_with(default_session_maker)
 
 
-def test_get_pipeline_templates_builtin_en_us_no_fallback(mocker) -> None:
+def test_get_pipeline_templates_builtin_en_us_no_fallback(mocker: MockerFixture) -> None:
     mocker.patch("services.rag_pipeline.rag_pipeline.dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE", "remote")
     retrieval = mocker.Mock()
     retrieval.get_pipeline_templates.return_value = {"pipeline_templates": []}
@@ -1787,7 +1787,7 @@ def test_get_pipeline_templates_builtin_en_us_no_fallback(mocker) -> None:
     builtin.fetch_pipeline_templates_from_builtin.assert_not_called()
 
 
-def test_update_customized_pipeline_template_commits_when_name_empty(mocker) -> None:
+def test_update_customized_pipeline_template_commits_when_name_empty(mocker: MockerFixture) -> None:
     template = _make_customized_template()
     mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", return_value=template)
     commit = mocker.patch("services.rag_pipeline.rag_pipeline.db.session.commit")

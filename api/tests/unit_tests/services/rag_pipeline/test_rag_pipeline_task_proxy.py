@@ -23,7 +23,7 @@ def proxy(mocker: MockerFixture):
 # --- delay ---
 
 
-def test_delay_with_empty_entities_logs_warning_and_returns(mocker) -> None:
+def test_delay_with_empty_entities_logs_warning_and_returns(mocker: MockerFixture) -> None:
     mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.TenantIsolatedTaskQueue")
     proxy = RagPipelineTaskProxy(
         dataset_tenant_id="tenant-1",
