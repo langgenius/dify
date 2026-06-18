@@ -1,12 +1,81 @@
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, WithJsonSchema, field_validator
 
 from core.rag.entities import Rule
 from core.rag.entities.metadata_entities import MetadataFilteringCondition
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from models.enums import ProcessRuleMode
+
+DocForm = Annotated[
+    str,
+    WithJsonSchema({"enum": ["text_model", "hierarchical_model", "qa_model"], "type": "string"}),
+]
+IndexingTechnique = Annotated[
+    str | None,
+    WithJsonSchema({"anyOf": [{"enum": ["high_quality", "economy"], "type": "string"}, {"type": "null"}]}),
+]
+KnowledgeProvider = Annotated[
+    str,
+    WithJsonSchema({"enum": ["vendor", "external"], "type": "string"}),
+]
+RerankingMode = Annotated[
+    str | None,
+    WithJsonSchema({"anyOf": [{"enum": ["reranking_model", "weighted_score"], "type": "string"}, {"type": "null"}]}),
+]
+SummaryIndexSetting = Annotated[
+    dict[str, Any] | None,
+    WithJsonSchema(
+        {
+            "anyOf": [
+                {
+                    "properties": {
+                        "enable": {"description": "Whether to enable summary indexing.", "type": "boolean"},
+                        "model_name": {
+                            "description": "Name of the model used for generating summaries.",
+                            "type": "string",
+                        },
+                        "model_provider_name": {
+                            "description": "Provider of the summary generation model.",
+                            "type": "string",
+                        },
+                        "summary_prompt": {
+                            "description": "Custom prompt template for summary generation.",
+                            "type": "string",
+                        },
+                    },
+                    "type": "object",
+                },
+                {"type": "null"},
+            ]
+        }
+    ),
+]
+ExternalRetrievalModel = Annotated[
+    dict[str, Any] | None,
+    WithJsonSchema(
+        {
+            "anyOf": [
+                {
+                    "properties": {
+                        "top_k": {"description": "Maximum number of results to return.", "type": "integer"},
+                        "score_threshold": {
+                            "description": "Minimum similarity score threshold for filtering results.",
+                            "type": "number",
+                        },
+                        "score_threshold_enabled": {
+                            "description": "Whether score threshold filtering is enabled.",
+                            "type": "boolean",
+                        },
+                    },
+                    "type": "object",
+                },
+                {"type": "null"},
+            ]
+        }
+    ),
+]
 
 
 class RerankingModel(BaseModel):
@@ -88,7 +157,7 @@ class RetrievalModel(BaseModel):
     search_method: RetrievalMethod = Field(description="Search method used for retrieval.")
     reranking_enable: bool = Field(description="Whether reranking is enabled.")
     reranking_model: RerankingModel | None = Field(default=None, description="Reranking model configuration.")
-    reranking_mode: str | None = Field(
+    reranking_mode: RerankingMode = Field(
         default=None,
         description="Reranking mode. Required when `reranking_enable` is `true`.",
     )
@@ -125,26 +194,11 @@ class KnowledgeConfig(BaseModel):
         default=None,
         description="Retrieval model configuration. Controls how chunks are searched and ranked.",
     )
-    summary_index_setting: dict[str, Any] | None = Field(
+    summary_index_setting: SummaryIndexSetting = Field(
         default=None,
         description="Summary index configuration.",
-        json_schema_extra={
-            "properties": {
-                "enable": {"description": "Whether to enable summary indexing.", "type": "boolean"},
-                "model_name": {"description": "Name of the model used for generating summaries.", "type": "string"},
-                "model_provider_name": {
-                    "description": "Provider of the summary generation model.",
-                    "type": "string",
-                },
-                "summary_prompt": {
-                    "description": "Custom prompt template for summary generation.",
-                    "type": "string",
-                },
-            },
-            "type": "object",
-        },
     )
-    doc_form: str = Field(
+    doc_form: DocForm = Field(
         default="text_model",
         description=(
             "`text_model` for standard text chunking, `hierarchical_model` for parent-child chunk structure, "

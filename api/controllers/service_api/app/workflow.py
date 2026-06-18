@@ -7,6 +7,7 @@ from dateutil.parser import isoparse
 from flask import request
 from flask_restx import Resource, fields
 from pydantic import BaseModel, Field, field_validator
+from pydantic.json_schema import SkipJsonSchema
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
@@ -65,7 +66,9 @@ class WorkflowRunPayload(WorkflowRunPayloadBase):
             "When omitted, the request runs in blocking mode."
         ),
     )
-    trace_session_id: str | None = Field(default=None, description="Trace session ID for observability grouping")
+    trace_session_id: SkipJsonSchema[str | None] = Field(
+        default=None, description="Trace session ID for observability grouping"
+    )
 
 
 class WorkflowLogQuery(BaseModel):

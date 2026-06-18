@@ -127,10 +127,7 @@ class AnnotationReplyActionStatusApi(Resource):
     @service_api_ns.doc(description="Get the status of an annotation reply action job")
     @service_api_ns.doc(
         params={
-            "action": (
-                "Action type, must match the "
-                "[Configure Annotation Reply](/api-reference/annotations/configure-annotation-reply) call."
-            ),
+            "action": ANNOTATION_REPLY_ACTION_PARAM,
             "job_id": (
                 "Job ID returned by "
                 "[Configure Annotation Reply](/api-reference/annotations/configure-annotation-reply)."

@@ -1,8 +1,8 @@
 from copy import deepcopy
-from typing import Any, Literal, override
+from typing import Annotated, Any, Literal, override
 from uuid import UUID
 
-from pydantic import BaseModel, Field, GetJsonSchemaHandler, model_validator
+from pydantic import BaseModel, Field, GetJsonSchemaHandler, WithJsonSchema, model_validator
 
 from libs.helper import UUIDStrOrEmpty
 
@@ -108,6 +108,36 @@ class SavedMessageCreatePayload(BaseModel):
 
 # --- Workflow schemas ---
 
+WORKFLOW_INPUT_FILE_ITEM_SCHEMA: dict[str, object] = {
+    "type": "object",
+    "required": ["type", "transfer_method"],
+    "properties": {
+        "type": {
+            "description": "File type.",
+            "enum": ["document", "image", "audio", "video", "custom"],
+            "type": "string",
+        },
+        "transfer_method": {
+            "description": "Transfer method: `remote_url` for file URL, `local_file` for uploaded file.",
+            "enum": ["remote_url", "local_file"],
+            "type": "string",
+        },
+        "url": {
+            "description": "File URL when `transfer_method` is `remote_url`.",
+            "format": "url",
+            "type": "string",
+        },
+        "upload_file_id": {
+            "description": "Uploaded file ID when `transfer_method` is `local_file`.",
+            "type": "string",
+        },
+    },
+}
+WORKFLOW_INPUT_FILE_LIST_SCHEMA: dict[str, object] = {
+    "anyOf": [{"items": WORKFLOW_INPUT_FILE_ITEM_SCHEMA, "type": "array"}, {"type": "null"}]
+}
+WorkflowInputFileList = Annotated[list[dict[str, Any]] | None, WithJsonSchema(WORKFLOW_INPUT_FILE_LIST_SCHEMA)]
+
 
 class DefaultBlockConfigQuery(BaseModel):
     q: str | None = None
@@ -127,29 +157,12 @@ class WorkflowRunPayload(BaseModel):
             "file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`."
         )
     )
-    files: list[dict[str, Any]] | None = Field(
+    files: WorkflowInputFileList = Field(
         default=None,
         description=(
             "File list. Suitable when files need to be combined with text for input and available only when the "
             "model supports vision capability."
         ),
-        json_schema_extra={
-            "items": {
-                "type": "object",
-                "properties": {
-                    "type": {"description": "File type.", "type": "string"},
-                    "transfer_method": {
-                        "description": "Transfer method: `remote_url` for file URL, `local_file` for uploaded file.",
-                        "type": "string",
-                    },
-                    "url": {"description": "File URL when `transfer_method` is `remote_url`.", "type": "string"},
-                    "upload_file_id": {
-                        "description": "Uploaded file ID when `transfer_method` is `local_file`.",
-                        "type": "string",
-                    },
-                },
-            }
-        },
     )
 
 

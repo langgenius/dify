@@ -23,7 +23,7 @@ from libs.login import resolve_account_fallback
 from models.account import Account
 from models.dataset import Dataset
 from services.dataset_service import DatasetService
-from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
+from services.entities.knowledge_entities.knowledge_entities import ExternalRetrievalModel, RetrievalModel
 from services.hit_testing_service import HitTestingService
 
 logger = logging.getLogger(__name__)
@@ -35,23 +35,9 @@ class HitTestingPayload(BaseModel):
         default=None,
         description="Retrieval model configuration. Controls how chunks are searched and ranked.",
     )
-    external_retrieval_model: dict[str, Any] | None = Field(
+    external_retrieval_model: ExternalRetrievalModel = Field(
         default=None,
         description="Retrieval settings for external knowledge bases.",
-        json_schema_extra={
-            "properties": {
-                "top_k": {"description": "Maximum number of results to return.", "type": "integer"},
-                "score_threshold": {
-                    "description": "Minimum similarity score threshold for filtering results.",
-                    "type": "number",
-                },
-                "score_threshold_enabled": {
-                    "description": "Whether score threshold filtering is enabled.",
-                    "type": "boolean",
-                },
-            },
-            "type": "object",
-        },
     )
     attachment_ids: list[str] | None = Field(
         default=None,

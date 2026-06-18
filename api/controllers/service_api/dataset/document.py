@@ -9,11 +9,11 @@ import json
 from collections.abc import Mapping
 from contextlib import ExitStack
 from copy import deepcopy
-from typing import Any, Literal, Self, override
+from typing import Annotated, Any, Literal, Self, override
 from uuid import UUID
 
 from flask import request, send_file
-from pydantic import BaseModel, Field, GetJsonSchemaHandler, field_validator, model_validator
+from pydantic import BaseModel, Field, GetJsonSchemaHandler, WithJsonSchema, field_validator, model_validator
 from sqlalchemy import desc, func, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -63,6 +63,8 @@ from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import SegmentStatus
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
+    DocForm,
+    IndexingTechnique,
     KnowledgeConfig,
     ProcessRule,
     RetrievalModel,
@@ -76,7 +78,7 @@ class DocumentTextCreatePayload(BaseModel):
     text: str = Field(description="Document text content.")
     process_rule: ProcessRule | None = Field(default=None, description="Processing rules for chunking.")
     original_document_id: str | None = Field(default=None, description="Original document ID for replacement.")
-    doc_form: str = Field(
+    doc_form: DocForm = Field(
         default="text_model",
         description=(
             "`text_model` for standard text chunking, `hierarchical_model` for parent-child chunk structure, "
@@ -84,7 +86,7 @@ class DocumentTextCreatePayload(BaseModel):
         ),
     )
     doc_language: str = Field(default="English", description="Language of the document for processing optimization.")
-    indexing_technique: str | None = Field(
+    indexing_technique: IndexingTechnique = Field(
         default=None,
         description="`high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing.",
     )
@@ -107,7 +109,7 @@ class DocumentTextUpdate(BaseModel):
     name: str | None = Field(default=None, description="Document name. Required when `text` is provided.")
     text: str | None = Field(default=None, description="Document text content.")
     process_rule: ProcessRule | None = Field(default=None, description="Processing rules for chunking.")
-    doc_form: str = Field(
+    doc_form: DocForm = Field(
         default="text_model",
         description=(
             "`text_model` for standard text chunking, `hierarchical_model` for parent-child chunk structure, "
@@ -182,11 +184,27 @@ def _non_null_property_schema(property_schema: object) -> dict[str, Any]:
     return deepcopy(property_schema)
 
 
+DocumentDisplayStatus = Annotated[
+    str | None,
+    WithJsonSchema(
+        {
+            "anyOf": [
+                {
+                    "enum": ["queuing", "indexing", "paused", "error", "available", "disabled", "archived"],
+                    "type": "string",
+                },
+                {"type": "null"},
+            ]
+        }
+    ),
+]
+
+
 class DocumentListQuery(BaseModel):
     page: int = Field(default=1, description="Page number to retrieve.")
     limit: int = Field(default=20, description="Number of items per page. Server caps at `100`.")
     keyword: str | None = Field(default=None, description="Search keyword to filter by document name.")
-    status: str | None = Field(default=None, description="Filter by display status.")
+    status: DocumentDisplayStatus = Field(default=None, description="Filter by display status.")
 
 
 class DocumentGetQuery(BaseModel):

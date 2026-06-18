@@ -5,6 +5,7 @@ from uuid import UUID
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from pydantic.json_schema import SkipJsonSchema
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
@@ -21,7 +22,7 @@ from controllers.service_api.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.service_api.schema import (
-    INPUT_FILE_ITEM_SCHEMA,
+    InputFileList,
     expect_user_json,
     expect_with_user,
     json_or_event_stream_response,
@@ -65,13 +66,12 @@ class CompletionRequestPayload(BaseModel):
         )
     )
     query: str = Field(default="", description="User input or prompt content.")
-    files: list[dict[str, Any]] | None = Field(
+    files: InputFileList = Field(
         default=None,
         description=(
             "File list for multimodal understanding. To attach a local file, first upload it via "
             "[Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id`."
         ),
-        json_schema_extra={"items": INPUT_FILE_ITEM_SCHEMA},
     )
     response_mode: Literal["blocking", "streaming"] | None = Field(
         default=None,
@@ -80,8 +80,10 @@ class CompletionRequestPayload(BaseModel):
             "the request runs in blocking mode."
         ),
     )
-    retriever_from: str = Field(default="dev")
-    trace_session_id: str | None = Field(default=None, description="Trace session ID for observability grouping")
+    retriever_from: SkipJsonSchema[str] = Field(default="dev")
+    trace_session_id: SkipJsonSchema[str | None] = Field(
+        default=None, description="Trace session ID for observability grouping"
+    )
 
 
 class ChatRequestPayload(BaseModel):
@@ -93,13 +95,12 @@ class ChatRequestPayload(BaseModel):
         )
     )
     query: str = Field(description="User input or question content.")
-    files: list[dict[str, Any]] | None = Field(
+    files: InputFileList = Field(
         default=None,
         description=(
             "File list for multimodal understanding. To attach a local file, first upload it via "
             "[Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id`."
         ),
-        json_schema_extra={"items": INPUT_FILE_ITEM_SCHEMA},
     )
     response_mode: Literal["blocking", "streaming"] | None = Field(
         default=None,
@@ -115,7 +116,7 @@ class ChatRequestPayload(BaseModel):
             "conversation, then pass the returned `conversation_id` in subsequent requests."
         ),
     )
-    retriever_from: str = Field(default="dev")
+    retriever_from: SkipJsonSchema[str] = Field(default="dev")
     auto_generate_name: bool = Field(
         default=True,
         description=(
@@ -124,7 +125,9 @@ class ChatRequestPayload(BaseModel):
         ),
     )
     workflow_id: str | None = Field(default=None, description="Workflow ID for advanced chat")
-    trace_session_id: str | None = Field(default=None, description="Trace session ID for observability grouping")
+    trace_session_id: SkipJsonSchema[str | None] = Field(
+        default=None, description="Trace session ID for observability grouping"
+    )
 
     @field_validator("conversation_id", mode="before")
     @classmethod

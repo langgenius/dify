@@ -1,8 +1,17 @@
-from typing import Any, Literal, override
+from typing import Annotated, Literal, override
 from uuid import UUID
 
 from flask import request
-from pydantic import BaseModel, ConfigDict, Field, GetJsonSchemaHandler, RootModel, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    GetJsonSchemaHandler,
+    RootModel,
+    WithJsonSchema,
+    field_validator,
+    model_validator,
+)
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -33,7 +42,12 @@ from models.dataset import DatasetPermissionEnum
 from models.enums import TagType
 from models.provider_ids import ModelProviderID
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
-from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
+from services.entities.knowledge_entities.knowledge_entities import (
+    ExternalRetrievalModel,
+    KnowledgeProvider,
+    RetrievalModel,
+    SummaryIndexSetting,
+)
 from services.tag_service import (
     SaveTagPayload,
     TagBindingCreatePayload,
@@ -45,6 +59,29 @@ from services.tag_service import (
 )
 
 register_enum_models(service_api_ns, DatasetPermissionEnum)
+
+PartialMemberList = Annotated[
+    list[dict[str, str]] | None,
+    WithJsonSchema(
+        {
+            "anyOf": [
+                {
+                    "items": {
+                        "properties": {
+                            "user_id": {
+                                "description": "ID of the team member to grant access.",
+                                "type": "string",
+                            }
+                        },
+                        "type": "object",
+                    },
+                    "type": "array",
+                },
+                {"type": "null"},
+            ]
+        }
+    ),
+]
 
 
 class DatasetCreatePayload(BaseModel):
@@ -63,7 +100,7 @@ class DatasetCreatePayload(BaseModel):
         ),
     )
     external_knowledge_api_id: str | None = Field(default=None, description="ID of the external knowledge API.")
-    provider: str = Field(default="vendor", description="Knowledge base provider.")
+    provider: KnowledgeProvider = Field(default="vendor", description="Knowledge base provider.")
     external_knowledge_id: str | None = Field(default=None, description="ID of the external knowledge base.")
     retrieval_model: RetrievalModel | None = Field(
         default=None,
@@ -71,24 +108,9 @@ class DatasetCreatePayload(BaseModel):
     )
     embedding_model: str | None = Field(default=None, description="Embedding model name.")
     embedding_model_provider: str | None = Field(default=None, description="Embedding model provider.")
-    summary_index_setting: dict | None = Field(
+    summary_index_setting: SummaryIndexSetting = Field(
         default=None,
         description="Summary index configuration.",
-        json_schema_extra={
-            "properties": {
-                "enable": {"description": "Whether to enable summary indexing.", "type": "boolean"},
-                "model_name": {"description": "Name of the model used for generating summaries.", "type": "string"},
-                "model_provider_name": {
-                    "description": "Provider of the summary generation model.",
-                    "type": "string",
-                },
-                "summary_prompt": {
-                    "description": "Custom prompt template for summary generation.",
-                    "type": "string",
-                },
-            },
-            "type": "object",
-        },
     )
 
 
@@ -109,33 +131,13 @@ class DatasetUpdatePayload(BaseModel):
         default=None,
         description="Retrieval model configuration. Controls how chunks are searched and ranked.",
     )
-    partial_member_list: list[dict[str, str]] | None = Field(
+    partial_member_list: PartialMemberList = Field(
         default=None,
         description="List of team members with access when `permission` is `partial_members`.",
-        json_schema_extra={
-            "items": {
-                "type": "object",
-                "properties": {"user_id": {"description": "ID of the team member to grant access.", "type": "string"}},
-            }
-        },
     )
-    external_retrieval_model: dict[str, Any] | None = Field(
+    external_retrieval_model: ExternalRetrievalModel = Field(
         default=None,
         description="Retrieval settings for external knowledge bases.",
-        json_schema_extra={
-            "properties": {
-                "top_k": {"description": "Maximum number of results to return.", "type": "integer"},
-                "score_threshold": {
-                    "description": "Minimum similarity score threshold for filtering results.",
-                    "type": "number",
-                },
-                "score_threshold_enabled": {
-                    "description": "Whether score threshold filtering is enabled.",
-                    "type": "boolean",
-                },
-            },
-            "type": "object",
-        },
     )
     external_knowledge_id: str | None = Field(default=None, description="ID of the external knowledge base.")
     external_knowledge_api_id: str | None = Field(default=None, description="ID of the external knowledge API.")

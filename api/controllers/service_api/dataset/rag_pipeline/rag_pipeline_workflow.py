@@ -37,6 +37,7 @@ from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
 from services.file_service import FileService
 from services.rag_pipeline.entity.pipeline_service_api_entities import (
     DatasourceNodeRunApiEntity,
+    DatasourceType,
     PipelineRunApiEntity,
 )
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
@@ -45,7 +46,7 @@ from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 class DatasourceNodeRunPayload(BaseModel):
     inputs: dict[str, Any] = Field(description="Input values for the datasource node.")
-    datasource_type: str = Field(description="Datasource type for the node.")
+    datasource_type: DatasourceType = Field(description="Datasource type for the node.")
     credential_id: str | None = Field(
         default=None, description="Datasource credential ID. Uses the default if omitted."
     )

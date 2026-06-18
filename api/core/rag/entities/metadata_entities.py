@@ -1,7 +1,7 @@
 from collections.abc import Sequence
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, WithJsonSchema
 
 SupportedComparisonOperator = Literal[
     # for string or array
@@ -26,6 +26,19 @@ SupportedComparisonOperator = Literal[
     "before",
     "after",
 ]
+ConditionValue = Annotated[
+    str | Sequence[str] | None | int | float,
+    WithJsonSchema(
+        {
+            "anyOf": [
+                {"type": "string"},
+                {"items": {"type": "string"}, "type": "array"},
+                {"type": "number"},
+                {"type": "null"},
+            ]
+        }
+    ),
+]
 
 
 class Condition(BaseModel):
@@ -40,7 +53,7 @@ class Condition(BaseModel):
             "number metadata; time operators act on time metadata."
         )
     )
-    value: str | Sequence[str] | None | int | float = Field(
+    value: ConditionValue = Field(
         default=None,
         description="Value to compare against. Type depends on `comparison_operator`.",
     )

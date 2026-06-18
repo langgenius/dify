@@ -8,10 +8,10 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from copy import deepcopy
-from typing import cast
+from typing import Annotated, Any, cast
 
 from flask_restx import Namespace
-from pydantic import BaseModel
+from pydantic import BaseModel, WithJsonSchema
 
 USER_DESCRIPTION = (
     "User identifier, unique within the application. This identifier scopes data access; resources created with "
@@ -40,13 +40,23 @@ JSON_USER_FETCH_FROM = "JSON"
 
 INPUT_FILE_ITEM_SCHEMA: dict[str, object] = {
     "type": "object",
+    "required": ["type", "transfer_method"],
     "properties": {
-        "type": {"description": "File type.", "type": "string"},
-        "transfer_method": {
-            "description": "Transfer method: `remote_url` for file URL, `local_file` for uploaded file.",
+        "type": {
+            "description": "File type.",
+            "enum": ["document", "image", "audio", "video", "custom"],
             "type": "string",
         },
-        "url": {"description": "File URL when `transfer_method` is `remote_url`.", "type": "string"},
+        "transfer_method": {
+            "description": "Transfer method: `remote_url` for file URL, `local_file` for uploaded file.",
+            "enum": ["remote_url", "local_file"],
+            "type": "string",
+        },
+        "url": {
+            "description": "File URL when `transfer_method` is `remote_url`.",
+            "format": "url",
+            "type": "string",
+        },
         "upload_file_id": {
             "description": (
                 "Uploaded file ID obtained from the [Upload File](/api-reference/files/upload-file) API when "
@@ -56,6 +66,10 @@ INPUT_FILE_ITEM_SCHEMA: dict[str, object] = {
         },
     },
 }
+INPUT_FILE_LIST_SCHEMA: dict[str, object] = {
+    "anyOf": [{"items": INPUT_FILE_ITEM_SCHEMA, "type": "array"}, {"type": "null"}]
+}
+InputFileList = Annotated[list[dict[str, Any]] | None, WithJsonSchema(INPUT_FILE_LIST_SCHEMA)]
 
 
 def expect_with_user(namespace: Namespace, model: type[BaseModel]):
