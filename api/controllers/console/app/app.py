@@ -701,7 +701,7 @@ class AppListApi(Resource):
             current_user.id,
             [str(app.id)],
         )
-        app_detail = AppDetail.model_validate(app, from_attributes=True).model_copy(
+        app_detail = AppDetailWithSite.model_validate(app, from_attributes=True).model_copy(
             update={"permission_keys": permission_keys_map.get(str(app.id), [])}
         )
         return app_detail.model_dump(mode="json"), 201
