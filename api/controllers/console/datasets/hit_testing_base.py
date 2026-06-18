@@ -30,10 +30,33 @@ logger = logging.getLogger(__name__)
 
 
 class HitTestingPayload(BaseModel):
-    query: str = Field(max_length=250)
-    retrieval_model: RetrievalModel | None = None
-    external_retrieval_model: dict[str, Any] | None = Field(default=None)
-    attachment_ids: list[str] | None = None
+    query: str = Field(description="Search query text.", max_length=250)
+    retrieval_model: RetrievalModel | None = Field(
+        default=None,
+        description="Retrieval model configuration. Controls how chunks are searched and ranked.",
+    )
+    external_retrieval_model: dict[str, Any] | None = Field(
+        default=None,
+        description="Retrieval settings for external knowledge bases.",
+        json_schema_extra={
+            "properties": {
+                "top_k": {"description": "Maximum number of results to return.", "type": "integer"},
+                "score_threshold": {
+                    "description": "Minimum similarity score threshold for filtering results.",
+                    "type": "number",
+                },
+                "score_threshold_enabled": {
+                    "description": "Whether score threshold filtering is enabled.",
+                    "type": "boolean",
+                },
+            },
+            "type": "object",
+        },
+    )
+    attachment_ids: list[str] | None = Field(
+        default=None,
+        description="List of attachment IDs to include in the retrieval context.",
+    )
 
 
 class DatasetsHitTestingBase:

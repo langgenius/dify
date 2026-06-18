@@ -10,8 +10,14 @@ from libs.helper import UUIDStrOrEmpty
 
 
 class ConversationRenamePayload(BaseModel):
-    name: str | None = None
-    auto_generate: bool = False
+    name: str | None = Field(
+        default=None,
+        description="Conversation name. Required when `auto_generate` is `false`.",
+    )
+    auto_generate: bool = Field(
+        default=False,
+        description="Automatically generate the conversation name. When `true`, the `name` field is ignored.",
+    )
 
     @classmethod
     @override
@@ -64,14 +70,28 @@ class ConversationRenamePayload(BaseModel):
 
 
 class MessageListQuery(BaseModel):
-    conversation_id: UUIDStrOrEmpty = Field(description="Conversation UUID")
-    first_id: UUIDStrOrEmpty | None = Field(default=None, description="First message ID for pagination")
-    limit: int = Field(default=20, ge=1, le=100, description="Number of messages to return (1-100)")
+    conversation_id: UUIDStrOrEmpty = Field(description="Conversation ID.")
+    first_id: UUIDStrOrEmpty | None = Field(
+        default=None,
+        description=(
+            "The ID of the first chat record on the current page. Omit this value to fetch the latest messages; "
+            "for subsequent pages, use the first message ID from the current list to fetch older messages."
+        ),
+    )
+    limit: int = Field(
+        default=20,
+        ge=1,
+        le=100,
+        description="Number of chat history messages to return per request.",
+    )
 
 
 class MessageFeedbackPayload(BaseModel):
-    rating: Literal["like", "dislike"] | None = None
-    content: str | None = None
+    rating: Literal["like", "dislike"] | None = Field(
+        default=None,
+        description="Feedback rating. Set to `null` to revoke previously submitted feedback.",
+    )
+    content: str | None = Field(default=None, description="Optional text feedback providing additional detail.")
 
 
 # --- Saved message schemas ---
@@ -101,8 +121,36 @@ class WorkflowListQuery(BaseModel):
 
 
 class WorkflowRunPayload(BaseModel):
-    inputs: dict[str, Any]
-    files: list[dict[str, Any]] | None = Field(default=None)
+    inputs: dict[str, Any] = Field(
+        description=(
+            "Key-value pairs for workflow input variables. Values for file-type variables should be arrays of "
+            "file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`."
+        )
+    )
+    files: list[dict[str, Any]] | None = Field(
+        default=None,
+        description=(
+            "File list. Suitable when files need to be combined with text for input and available only when the "
+            "model supports vision capability."
+        ),
+        json_schema_extra={
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {"description": "File type.", "type": "string"},
+                    "transfer_method": {
+                        "description": "Transfer method: `remote_url` for file URL, `local_file` for uploaded file.",
+                        "type": "string",
+                    },
+                    "url": {"description": "File URL when `transfer_method` is `remote_url`.", "type": "string"},
+                    "upload_file_id": {
+                        "description": "Uploaded file ID when `transfer_method` is `local_file`.",
+                        "type": "string",
+                    },
+                },
+            }
+        },
+    )
 
 
 class WorkflowUpdatePayload(BaseModel):
@@ -117,30 +165,43 @@ DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS = 100
 
 
 class ChildChunkCreatePayload(BaseModel):
-    content: str
+    content: str = Field(description="Child chunk text content.")
 
 
 class ChildChunkUpdatePayload(BaseModel):
-    content: str
+    content: str = Field(description="Child chunk text content.")
 
 
 class DocumentBatchDownloadZipPayload(BaseModel):
     """Request payload for bulk downloading documents as a zip archive."""
 
-    document_ids: list[UUID] = Field(..., min_length=1, max_length=DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS)
+    document_ids: list[UUID] = Field(
+        ...,
+        min_length=1,
+        max_length=DOCUMENT_BATCH_DOWNLOAD_ZIP_MAX_DOCS,
+        description="List of document IDs to include in the ZIP download.",
+    )
 
 
 class MetadataUpdatePayload(BaseModel):
-    name: str
+    name: str = Field(description="New metadata field name.")
 
 
 # --- Audio schemas ---
 
 
 class TextToAudioPayload(BaseModel):
-    message_id: str | None = Field(default=None, description="Message ID")
-    voice: str | None = Field(default=None, description="Voice to use for TTS")
-    text: str | None = Field(default=None, description="Text to convert to audio")
+    message_id: str | None = Field(
+        default=None,
+        description="Message ID. Takes priority over `text` when both are provided.",
+    )
+    voice: str | None = Field(
+        default=None,
+        description=(
+            "Voice to use for text-to-speech. Available voices depend on the TTS provider configured for this app."
+        ),
+    )
+    text: str | None = Field(default=None, description="Speech content to convert.")
     streaming: bool | None = Field(
         default=None,
         description="Reserved for compatibility; TTS response streaming is determined by the provider output.",

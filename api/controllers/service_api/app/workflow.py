@@ -58,19 +58,37 @@ logger = logging.getLogger(__name__)
 
 
 class WorkflowRunPayload(WorkflowRunPayloadBase):
-    response_mode: Literal["blocking", "streaming"] | None = None
+    response_mode: Literal["blocking", "streaming"] | None = Field(
+        default=None,
+        description=(
+            "Response mode. Use `blocking` for synchronous responses or `streaming` for Server-Sent Events. "
+            "When omitted, the request runs in blocking mode."
+        ),
+    )
     trace_session_id: str | None = Field(default=None, description="Trace session ID for observability grouping")
 
 
 class WorkflowLogQuery(BaseModel):
-    keyword: str | None = None
-    status: Literal["succeeded", "failed", "stopped"] | None = None
-    created_at__before: str | None = None
-    created_at__after: str | None = None
-    created_by_end_user_session_id: str | None = None
-    created_by_account: str | None = None
-    page: int = Field(default=1, ge=1, le=99999)
-    limit: int = Field(default=20, ge=1, le=100)
+    keyword: str | None = Field(default=None, description="Keyword to search in logs.")
+    status: Literal["succeeded", "failed", "stopped"] | None = Field(
+        default=None,
+        description="Filter by execution status.",
+    )
+    created_at__before: str | None = Field(
+        default=None,
+        description="Filter logs created before this ISO 8601 timestamp.",
+    )
+    created_at__after: str | None = Field(
+        default=None,
+        description="Filter logs created after this ISO 8601 timestamp.",
+    )
+    created_by_end_user_session_id: str | None = Field(
+        default=None,
+        description="Filter by end user session ID.",
+    )
+    created_by_account: str | None = Field(default=None, description="Filter by account ID.")
+    page: int = Field(default=1, ge=1, le=99999, description="Page number for pagination.")
+    limit: int = Field(default=20, ge=1, le=100, description="Number of items per page.")
 
 
 register_schema_models(service_api_ns, WorkflowRunPayload, WorkflowLogQuery)
@@ -226,7 +244,11 @@ class WorkflowRunDetailApi(Resource):
     )
     @service_api_ns.doc("get_workflow_run_detail")
     @service_api_ns.doc(description="Get workflow run details")
-    @service_api_ns.doc(params={"workflow_run_id": "Workflow run ID"})
+    @service_api_ns.doc(
+        params={
+            "workflow_run_id": "Workflow run ID, obtained from the workflow execution response or streaming events."
+        }
+    )
     @service_api_ns.doc(
         responses={
             200: "Workflow run details retrieved successfully",
@@ -397,7 +419,14 @@ class WorkflowRunByIdApi(Resource):
     @json_or_event_stream_response(service_api_ns)
     @service_api_ns.doc("run_workflow_by_id")
     @service_api_ns.doc(description="Execute a specific workflow by ID")
-    @service_api_ns.doc(params={"workflow_id": "Workflow ID to execute"})
+    @service_api_ns.doc(
+        params={
+            "workflow_id": (
+                "Workflow ID of the specific version to execute. This value is returned in the `workflow_id` field "
+                "of workflow run responses."
+            )
+        }
+    )
     @service_api_ns.doc(
         responses={
             200: "Workflow executed successfully",
@@ -482,7 +511,9 @@ class WorkflowTaskStopApi(Resource):
     @expect_user_json(service_api_ns)
     @service_api_ns.doc("stop_workflow_task")
     @service_api_ns.doc(description="Stop a running workflow task")
-    @service_api_ns.doc(params={"task_id": "Task ID to stop"})
+    @service_api_ns.doc(
+        params={"task_id": "Task ID, obtained from the streaming chunk returned by the Run Workflow API."}
+    )
     @service_api_ns.doc(
         responses={
             200: "Task stopped successfully",

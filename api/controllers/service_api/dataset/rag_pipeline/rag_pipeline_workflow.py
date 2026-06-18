@@ -44,14 +44,16 @@ from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 
 class DatasourceNodeRunPayload(BaseModel):
-    inputs: dict[str, Any]
-    datasource_type: str
-    credential_id: str | None = None
-    is_published: bool
+    inputs: dict[str, Any] = Field(description="Input values for the datasource node.")
+    datasource_type: str = Field(description="Datasource type for the node.")
+    credential_id: str | None = Field(
+        default=None, description="Datasource credential ID. Uses the default if omitted."
+    )
+    is_published: bool = Field(description="Whether to run the published pipeline or the draft pipeline.")
 
 
 class DatasourcePluginsQuery(BaseModel):
-    is_published: bool = True
+    is_published: bool = Field(default=True, description="Whether to list plugins from the published pipeline.")
 
 
 class DatasourceCredentialInfoResponse(ResponseModel):
@@ -114,11 +116,7 @@ class DatasourcePluginsApi(DatasetApiResource):
     )
     @service_api_ns.doc(shortcut="list_rag_pipeline_datasource_plugins")
     @service_api_ns.doc(description="List all datasource plugins for a rag pipeline")
-    @service_api_ns.doc(
-        path={
-            "dataset_id": "Dataset ID",
-        }
-    )
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID."})
     @service_api_ns.doc(params=query_params_from_model(DatasourcePluginsQuery))
     @service_api_ns.doc(
         responses={
@@ -169,11 +167,7 @@ class DatasourceNodeRunApi(DatasetApiResource):
     @event_stream_response(service_api_ns)
     @service_api_ns.doc(shortcut="pipeline_datasource_node_run")
     @service_api_ns.doc(description="Run a datasource node for a rag pipeline")
-    @service_api_ns.doc(
-        path={
-            "dataset_id": "Dataset ID",
-        }
-    )
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID.", "node_id": "ID of the datasource node to execute."})
     @service_api_ns.doc(
         responses={
             200: "Datasource node run successfully",
@@ -245,11 +239,7 @@ class PipelineRunApi(DatasetApiResource):
     @json_or_event_stream_response(service_api_ns)
     @service_api_ns.doc(shortcut="pipeline_datasource_node_run")
     @service_api_ns.doc(description="Run a datasource node for a rag pipeline")
-    @service_api_ns.doc(
-        path={
-            "dataset_id": "Dataset ID",
-        }
-    )
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID."})
     @service_api_ns.doc(
         responses={
             200: "Pipeline run successfully",
