@@ -566,11 +566,11 @@ export type StrategyDetail = {
   features: AgentFeature[]
 }
 
-export const AgentFeature = {
+const AgentFeature = {
   HISTORY_MESSAGES: 'history-messages',
 } as const
 
-export type AgentFeature = typeof AgentFeature[keyof typeof AgentFeature]
+type AgentFeature = typeof AgentFeature[keyof typeof AgentFeature]
 
 type Identity = {
   author: string

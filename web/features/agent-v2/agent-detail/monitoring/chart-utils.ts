@@ -93,6 +93,10 @@ export const getChartValueField = (
   return Object.keys(rows[0] ?? {}).find(name => name.includes('count')) ?? 'count'
 }
 
+/**
+ * @public
+ */
+// TODO: Remove this marker after summary values are wired to monitoring cards.
 export const getSummaryValue = ({
   chartType,
   rows,

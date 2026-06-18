@@ -82,7 +82,7 @@ export type AgentRosterNodeData = Pick<
   'description' | 'icon' | 'icon_background' | 'icon_type' | 'id' | 'name' | 'role'
 >
 
-export type AgentRosterBinding = {
+type AgentRosterBinding = {
   binding_type: 'roster_agent'
   agent_id: string
 }
@@ -95,7 +95,7 @@ export type AgentInlineBinding = {
 
 export type AgentBinding = AgentRosterBinding | AgentInlineBinding
 
-export type AgentDefaultValue = {
+type AgentDefaultValue = {
   agent_binding: AgentBinding
   agent_node_kind: 'dify_agent'
   version: '2'

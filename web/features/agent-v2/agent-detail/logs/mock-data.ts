@@ -8,7 +8,7 @@ export type FilterOption<T extends string> = {
   labelKey: I18nKeysWithPrefix<'agentV2', 'agentDetail.logs.'>
 }
 
-export type AgentLogRow = {
+type AgentLogRow = {
   id: string
   title: string
   endUser: string

@@ -1,6 +1,6 @@
 import type { FileTreeIconType } from '@langgenius/dify-ui/file-tree'
 
-export type RosterReferenceKind = 'skill' | 'file' | 'tool-all' | 'tool' | 'cli_tool' | 'knowledge'
+type RosterReferenceKind = 'skill' | 'file' | 'tool-all' | 'tool' | 'cli_tool' | 'knowledge'
 
 export type RosterReferenceToken = {
   kind: RosterReferenceKind

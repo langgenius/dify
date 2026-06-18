@@ -60,6 +60,10 @@ export function getAgentV2DeclaredOutputs(data: AgentV2NodeType) {
     : defaultAgentV2DeclaredOutputs
 }
 
+/**
+ * @public
+ */
+// TODO: Remove this marker after the output type label consumer is wired.
 export function getDeclaredOutputTypeLabel(output: DeclaredOutputConfig) {
   if (output.type === 'array')
     return `Array[${output.array_item ? outputTypeLabels[output.array_item.type] : 'Object'}]`

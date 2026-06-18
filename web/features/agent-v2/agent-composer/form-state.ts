@@ -57,7 +57,7 @@ export type AgentKnowledgeRetrievalItem = {
   metadataModelConfig?: ModelConfig
 }
 
-export type AgentToolBase = {
+type AgentToolBase = {
   id: string
   name: string
 }
@@ -69,7 +69,7 @@ export type AgentToolAction = {
   description: string
 }
 
-export type AgentProviderToolCredentialType = 'api-key' | 'oauth2' | 'unauthorized'
+type AgentProviderToolCredentialType = 'api-key' | 'oauth2' | 'unauthorized'
 
 export type AgentProviderTool = AgentToolBase & {
   kind: 'provider'

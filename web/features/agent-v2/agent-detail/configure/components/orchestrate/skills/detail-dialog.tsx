@@ -13,9 +13,9 @@ import Loading from '@/app/components/base/loading'
 import { AgentFileTree } from '../files/tree'
 import { countAgentFileNodes } from '../utils'
 
-export type AgentSkillFileNode = AgentFileNode
+type AgentSkillFileNode = AgentFileNode
 
-export type AgentSkillDetailSection = {
+type AgentSkillDetailSection = {
   id: string
   title: string
   paragraphs?: string[]

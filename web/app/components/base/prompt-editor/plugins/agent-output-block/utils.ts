@@ -15,11 +15,11 @@ export type AgentOutputTypeOption = {
   arrayItemType?: DeclaredOutputType
 }
 
-export const AGENT_OUTPUT_TOKEN_REGEX = /\[§output:([^:§\]]+):([^:§\]]+)§\]/
-export const LEGACY_AGENT_OUTPUT_TOKEN_REGEX = /§output:([^:§\]]+):([^:§\]]+)§/
+const AGENT_OUTPUT_TOKEN_REGEX = /\[§output:([^:§\]]+):([^:§\]]+)§\]/
+const LEGACY_AGENT_OUTPUT_TOKEN_REGEX = /§output:([^:§\]]+):([^:§\]]+)§/
 export const AGENT_OUTPUT_NAME_PATTERN = /^[a-z_][\w.-]*$/i
-export const AGENT_OUTPUT_FILE_NAME_PATTERN = /^[^.][^/\\:*?"<>|\n\r]*\.([a-z0-9]{1,16})$/i
-export const AGENT_OUTPUT_FILE_EXTENSION_WHITELIST = new Set([
+const AGENT_OUTPUT_FILE_NAME_PATTERN = /^[^.][^/\\:*?"<>|\n\r]*\.([a-z0-9]{1,16})$/i
+const AGENT_OUTPUT_FILE_EXTENSION_WHITELIST = new Set([
   'amr',
   'csv',
   'doc',
@@ -114,7 +114,7 @@ export function getAgentOutputTypeOption(value: AgentOutputTypeOptionValue) {
   return AGENT_OUTPUT_TYPE_OPTIONS.find(option => option.value === value) || AGENT_OUTPUT_TYPE_OPTIONS[0]!
 }
 
-export function isSupportedAgentOutputFileName(name: string) {
+function isSupportedAgentOutputFileName(name: string) {
   const match = AGENT_OUTPUT_FILE_NAME_PATTERN.exec(name.trim())
   if (!match)
     return false

@@ -19,14 +19,14 @@ export const isAgentComposerDirtyAtom = atom((get) => {
   return !isEqual(draft, originalDraft ?? defaultAgentSoulConfigFormState)
 })
 
-export const hasAgentComposerUnpublishedChangesAtom = atom((get) => {
+const hasAgentComposerUnpublishedChangesAtom = atom((get) => {
   const publishedDraft = get(agentComposerPublishedDraftAtom)
   const draft = get(agentComposerDraftAtom)
 
   return !isEqual(draft, publishedDraft ?? defaultAgentSoulConfigFormState)
 })
 
-export function useHydrate({
+function useHydrate({
   defaultDraft = defaultAgentSoulConfigFormState,
   instanceKey,
   draft,

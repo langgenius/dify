@@ -1,3 +1,7 @@
+/**
+ * @public
+ */
+// TODO: Remove this marker after prompt option menus are wired.
 export type AgentPromptOptionLabelKey
   = | 'agentDetail.configure.prompt.insert.tenders'
     | 'agentDetail.configure.prompt.insert.question'
@@ -5,6 +9,10 @@ export type AgentPromptOptionLabelKey
     | 'agentDetail.configure.prompt.mention.davidHayes'
     | 'agentDetail.configure.prompt.mention.priyaRamanathan'
 
+/**
+ * @public
+ */
+// TODO: Remove this marker after prompt option menus are wired.
 export type InsertOption = {
   key: string
   labelKey: AgentPromptOptionLabelKey
@@ -12,6 +20,10 @@ export type InsertOption = {
   icon: string
 }
 
+/**
+ * @public
+ */
+// TODO: Remove this marker after prompt option menus are wired.
 export const insertOptions: InsertOption[] = [
   {
     key: 'tenders',
@@ -33,6 +45,10 @@ export const insertOptions: InsertOption[] = [
   },
 ]
 
+/**
+ * @public
+ */
+// TODO: Remove this marker after prompt option menus are wired.
 export const mentionOptions: InsertOption[] = [
   {
     key: 'davidHayes',
@@ -48,7 +64,7 @@ export const mentionOptions: InsertOption[] = [
   },
 ]
 
-export const appendToken = (value: string, token: string) => {
+const appendToken = (value: string, token: string) => {
   if (!value)
     return token
 
