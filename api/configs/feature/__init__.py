@@ -1482,7 +1482,7 @@ class SandboxExpiredRecordsCleanConfig(BaseSettings):
     )
     SANDBOX_EXPIRED_RECORDS_CLEAN_SCAN_STRATEGY: str = Field(
         description="Message cleanup scan strategy: auto, global, or eligible_apps",
-        default="auto",
+        default="global",
     )
     SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_MAX_INTERVAL: PositiveInt = Field(
         description="Maximum interval in milliseconds between batches",
