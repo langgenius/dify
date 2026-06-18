@@ -61,6 +61,7 @@ vi.mock('@/service/client', () => ({
 
 vi.mock('@langgenius/dify-ui/popover', async () => {
   const React = await import('react')
+  const ReactDOM = await import('react-dom')
   const PopoverContext = React.createContext<{
     open: boolean
     onOpenChange?: (open: boolean) => void
@@ -91,7 +92,7 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
       if (!context.open)
         return null
 
-      return <div data-testid="publish-impact-popover">{children}</div>
+      return ReactDOM.createPortal(<div data-testid="publish-impact-popover">{children}</div>, document.body)
     },
     PopoverTrigger: ({
       render: trigger,
@@ -348,11 +349,19 @@ describe('AgentConfigurePublishBar', () => {
     })
 
     expect(screen.queryByTestId('publish-impact-popover')).not.toBeInTheDocument()
+    const publishBar = screen.getByText('agentV2.agentDetail.configure.publishBar.unpublishedChanges').closest('[aria-hidden]')
+    expect(publishBar).toHaveAttribute('aria-hidden', 'false')
 
     fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
 
     expect(onPublish).not.toHaveBeenCalled()
-    expect(await screen.findByTestId('publish-impact-popover')).toBeInTheDocument()
+    const impactPopover = await screen.findByTestId('publish-impact-popover')
+    expect(impactPopover).toBeInTheDocument()
+    expect(publishBar).toHaveAttribute('aria-hidden', 'false')
+    await waitFor(() => {
+      expect(publishBar).toHaveAttribute('aria-hidden', 'true')
+      expect(publishBar).toHaveClass('opacity-0')
+    })
     expect(screen.getByText(/agentV2\.agentDetail\.configure\.publishImpact\.title/)).toBeInTheDocument()
     expect(screen.getByText(/agentV2\.agentDetail\.configure\.publishImpact\.descriptionPrefix/)).toBeInTheDocument()
     expect(screen.getByText(/agentV2\.agentDetail\.configure\.publishImpact\.workflowCount/)).toBeInTheDocument()
@@ -360,6 +369,9 @@ describe('AgentConfigurePublishBar', () => {
     expect(screen.getByText('Translation Workflow')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Python bug fixer' })).toHaveAttribute('target', '_blank')
     expect(screen.getByRole('link', { name: 'Python bug fixer' })).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(within(impactPopover).getByText('display:Mod')).toBeInTheDocument()
+    expect(within(impactPopover).getByText('display:Shift')).toBeInTheDocument()
+    expect(within(impactPopover).getByText('display:P')).toBeInTheDocument()
   })
 
   it('should publish from the affected workflow popover action', async () => {

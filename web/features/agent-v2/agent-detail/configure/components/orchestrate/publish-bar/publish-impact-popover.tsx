@@ -1,7 +1,7 @@
 'use client'
 
 import type { AgentIconType, AgentReferencingWorkflowResponse } from '@dify/contracts/api/console/agent/types.gen'
-import type { MouseEvent, ReactElement } from 'react'
+import type { MouseEvent, ReactElement, ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useQuery } from '@tanstack/react-query'
@@ -13,12 +13,14 @@ import { consoleQuery } from '@/service/client'
 
 type AgentPublishImpactPopoverProps = {
   actionLabel: string
+  actionShortcut?: ReactNode
   agentId: string
   agentName?: string | null
   disabled?: boolean
   trigger: ReactElement<{
     onClick?: (event: MouseEvent<HTMLElement>) => void
   }>
+  onOpenChange?: (open: boolean) => void
   onPublish: () => void
 }
 
@@ -26,10 +28,12 @@ const getWorkflowReferenceHref = (reference: AgentReferencingWorkflowResponse) =
 
 export function AgentPublishImpactPopover({
   actionLabel,
+  actionShortcut,
   agentId,
   agentName,
   disabled = false,
   trigger,
+  onOpenChange,
   onPublish,
 }: AgentPublishImpactPopoverProps) {
   const { t } = useTranslation('agentV2')
@@ -50,6 +54,11 @@ export function AgentPublishImpactPopover({
   if (disabled)
     return trigger
 
+  const updateOpen = (nextOpen: boolean) => {
+    setOpen(nextOpen)
+    onOpenChange?.(nextOpen)
+  }
+
   const triggerWithImpact = cloneElement(trigger, {
     onClick: async (event: MouseEvent<HTMLElement>) => {
       event.preventDefault()
@@ -61,7 +70,7 @@ export function AgentPublishImpactPopover({
         const result = await workflowReferencesQuery.refetch()
         const references = result.data?.data ?? []
         if (references.length > 0) {
-          setOpen(true)
+          updateOpen(true)
           return
         }
 
@@ -74,19 +83,19 @@ export function AgentPublishImpactPopover({
   })
 
   const handlePublish = () => {
-    setOpen(false)
+    updateOpen(false)
     onPublish()
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={updateOpen}>
       <PopoverTrigger
         render={triggerWithImpact}
       />
       <PopoverContent
         placement="top-end"
-        sideOffset={-40}
-        popupClassName="w-96 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]"
+        sideOffset={-32}
+        popupClassName="w-96 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px] transition-[transform,scale,opacity] duration-150 ease-out data-starting-style:translate-y-5 data-ending-style:translate-y-5 motion-reduce:transition-none motion-reduce:data-starting-style:translate-y-0 motion-reduce:data-ending-style:translate-y-0"
       >
         <div className="flex flex-col gap-0">
           <div className="flex flex-col gap-0.5 px-3 pt-3.5 pb-1">
@@ -122,17 +131,18 @@ export function AgentPublishImpactPopover({
               type="button"
               variant="secondary"
               className="h-8 min-w-18 rounded-lg px-3"
-              onClick={() => setOpen(false)}
+              onClick={() => updateOpen(false)}
             >
               {t('agentDetail.configure.publishImpact.cancel')}
             </Button>
             <Button
               type="button"
               variant="primary"
-              className="h-8 min-w-18 rounded-lg px-3"
+              className="h-8 min-w-18 gap-1 rounded-lg px-3"
               onClick={handlePublish}
             >
-              {actionLabel}
+              <span className="shrink-0">{actionLabel}</span>
+              {actionShortcut}
             </Button>
           </div>
         </div>
