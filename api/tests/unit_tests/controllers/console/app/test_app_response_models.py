@@ -700,7 +700,7 @@ def test_app_list_api_limits_to_preview_overrides_without_manage_own_permission(
                             app_module.enterprise_rbac_service.ResourcePermissionKeys(
                                 resource_id="app-shared",
                                 permission_keys=["app.preview"],
-                            )
+                            ),
                         ]
                     )
                 ),

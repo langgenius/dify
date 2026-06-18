@@ -1282,9 +1282,7 @@ class TenantService:
             tenant = TenantService.create_tenant(name=f"{account.name}'s Workspace", is_setup=is_setup)
         TenantService.create_tenant_member(tenant, account, role="owner")
         if dify_config.RBAC_ENABLED:
-            owner_role_id = AccountService._resolve_legacy_role_id(
-                str(tenant.id), account.id, TenantAccountRole.OWNER
-            )
+            owner_role_id = AccountService._resolve_legacy_role_id(str(tenant.id), account.id, TenantAccountRole.OWNER)
             RBACService.MemberRoles.replace(
                 tenant_id=str(tenant.id),
                 account_id=account.id,
