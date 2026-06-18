@@ -8,11 +8,7 @@ from controllers.console.workspace.agent_providers import (
 )
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
-
+from inspect import unwrap
 
 class TestAgentProviderListApi:
     def test_get_success(self, app: Flask):

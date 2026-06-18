@@ -19,11 +19,7 @@ from graphon.variables.types import SegmentType
 from models.account import Account, TenantAccountRole
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
-
+from inspect import unwrap
 
 @pytest.fixture
 def fake_db():

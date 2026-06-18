@@ -7,11 +7,7 @@ from werkzeug.exceptions import NotFound
 import controllers.files.image_preview as module
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
-
+from inspect import unwrap
 
 @pytest.fixture(autouse=True)
 def mock_db():

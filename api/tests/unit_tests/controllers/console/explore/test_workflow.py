@@ -14,11 +14,7 @@ from models.model import AppMode
 from services.errors.llm import InvokeRateLimitError
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
-
+from inspect import unwrap
 
 @pytest.fixture
 def app():

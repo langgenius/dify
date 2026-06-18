@@ -5,13 +5,7 @@ import pytest
 from werkzeug.exceptions import Forbidden, NotFound
 
 import controllers.files.tool_files as module
-
-
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
-
+from inspect import unwrap
 
 def fake_request(args: dict):
     return types.SimpleNamespace(args=types.SimpleNamespace(to_dict=lambda flat=True: args))

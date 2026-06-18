@@ -11,11 +11,7 @@ from models import Account
 from models.dataset import Pipeline
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
-
+from inspect import unwrap
 
 def make_account() -> Account:
     account = Account(name="Test User", email="user@example.com")

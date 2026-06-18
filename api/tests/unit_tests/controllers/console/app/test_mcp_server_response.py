@@ -8,11 +8,7 @@ from controllers.console import console_ns
 from controllers.console.app.mcp_server import AppMCPServerController, AppMCPServerResponse
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
-
+from inspect import unwrap
 
 class _ValidatedResponse:
     def __init__(self, payload):

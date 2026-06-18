@@ -26,11 +26,7 @@ from controllers.console.workspace.members import (
 from services.errors.account import AccountAlreadyInTenantError
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
-
+from inspect import unwrap
 
 class TestMemberListApi:
     def test_get_success(self, app: Flask):

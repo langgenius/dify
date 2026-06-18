@@ -7,11 +7,7 @@ from controllers.console.app.error import AppUnavailableError
 from models.model import AppMode
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
-
+from inspect import unwrap
 
 class TestAppParameterApi:
     def test_get_app_none(self):

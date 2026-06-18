@@ -13,11 +13,7 @@ type Payload = dict[str, object]
 type PayloadPatch = Callable[[Payload], AbstractContextManager[object]]
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
-
+from inspect import unwrap
 
 @pytest.fixture
 def tenant_id() -> str:

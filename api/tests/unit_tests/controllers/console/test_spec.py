@@ -3,11 +3,7 @@ from unittest.mock import patch
 import controllers.console.spec as spec_module
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
-
+from inspect import unwrap
 
 class TestSpecSchemaDefinitionsApi:
     def test_get_success(self):

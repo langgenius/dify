@@ -18,11 +18,7 @@ from controllers.console.explore.wraps import (
 )
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
-
+from inspect import unwrap
 
 def test_installed_app_required_not_found():
     @installed_app_required

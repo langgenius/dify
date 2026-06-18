@@ -9,11 +9,7 @@ import controllers.files.upload as module
 from core.workflow.file_reference import build_file_reference
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
-
+from inspect import unwrap
 
 def fake_request(args: dict, file=None):
     return types.SimpleNamespace(

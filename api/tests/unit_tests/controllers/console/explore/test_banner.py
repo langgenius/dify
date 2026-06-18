@@ -7,11 +7,7 @@ import controllers.console.explore.banner as banner_module
 from models.enums import BannerStatus
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
-
+from inspect import unwrap
 
 class TestBannerApi:
     def test_get_banners_with_requested_language(self, app: Flask):

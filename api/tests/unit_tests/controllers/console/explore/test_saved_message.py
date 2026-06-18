@@ -10,11 +10,7 @@ from controllers.console.explore.error import NotCompletionAppError
 from services.errors.message import MessageNotExistsError
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
-
+from inspect import unwrap
 
 def make_saved_message():
     msg = MagicMock()
