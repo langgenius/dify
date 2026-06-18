@@ -294,6 +294,7 @@ class TestResourceAccess:
 
     def test_app_user_access_policies(self, mock_send: MagicMock):
         mock_send.return_value = {
+            "scope": "app",
             "data": [
                 {
                     "account": {"account_id": "acct-1", "account_name": "Alice"},
@@ -313,7 +314,7 @@ class TestResourceAccess:
                         }
                     ],
                 }
-            ]
+            ],
         }
 
         out = svc.RBACService.AppAccess.user_access_policies("tenant-1", "acct-1", "app-1")
