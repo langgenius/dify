@@ -738,9 +738,8 @@ class MessagesCleanService:
             stats["batches"] += 1
             batch_start = time.monotonic()
 
-            with session_factory.begin() as session:
-                fetch_start = time.monotonic()
-                scan_batch = scanner.fetch_batch(session, target_message_count=self._delete_batch_size)
+            fetch_start = time.monotonic()
+            scan_batch = scanner.fetch_batch(session_factory, target_message_count=self._delete_batch_size)
 
             batch_scanned_messages = len(scan_batch.messages)
             stats["total_messages"] += batch_scanned_messages

@@ -943,6 +943,19 @@ class TestMessagesCleanServiceBatchHelpers:
             def execute(self, _stmt: object) -> ExecuteResult:
                 return ExecuteResult(self.rows_by_call.pop(0))
 
+            def __enter__(self) -> "FakeSession":
+                return self
+
+            def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
+                return None
+
+        class FakeSessionFactory:
+            def __init__(self) -> None:
+                self.session = FakeSession()
+
+            def __call__(self) -> FakeSession:
+                return self.session
+
         plan_provider = make_plan_provider(
             {
                 "tenant1": {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
@@ -959,7 +972,7 @@ class TestMessagesCleanServiceBatchHelpers:
             per_app_batch_size=1,
         )
 
-        batch = scanner.fetch_batch(FakeSession(), target_message_count=2)  # type: ignore[arg-type]
+        batch = scanner.fetch_batch(FakeSessionFactory(), target_message_count=2)  # type: ignore[arg-type]
 
         assert [message.id for message in batch.messages] == ["msg1", "msg2"]
         assert batch.app_to_tenant == {"app1": "tenant1", "app2": "tenant2"}
@@ -1054,15 +1067,7 @@ class TestMessagesCleanServiceRun:
 
     def test_eligible_app_strategy_revalidates_before_dry_run_counting(self):
         class FakeSessionFactory:
-            class BeginContext:
-                def __enter__(self) -> object:
-                    return object()
-
-                def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
-                    return None
-
-            def begin(self) -> "FakeSessionFactory.BeginContext":
-                return self.BeginContext()
+            pass
 
         class FakeScanner:
             scanned_apps = 2
@@ -1072,7 +1077,7 @@ class TestMessagesCleanServiceRun:
             def __init__(self, **_kwargs: object) -> None:
                 self.call_count = 0
 
-            def fetch_batch(self, _session: object, *, target_message_count: int) -> EligibleAppScanBatch:
+            def fetch_batch(self, _session_factory: object, *, target_message_count: int) -> EligibleAppScanBatch:
                 del target_message_count
                 self.call_count += 1
                 if self.call_count == 1:

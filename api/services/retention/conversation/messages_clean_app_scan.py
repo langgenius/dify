@@ -6,7 +6,7 @@ from typing import cast
 
 import sqlalchemy as sa
 from sqlalchemy import select, tuple_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from models.model import App, Message
 from services.retention.conversation.messages_clean_policy import (
@@ -72,16 +72,22 @@ class EligibleAppRoundRobinScanner:
         self.eligible_apps = 0
         self.empty_apps = 0
 
-    def fetch_batch(self, session: Session, *, target_message_count: int) -> EligibleAppScanBatch:
+    def fetch_batch(
+        self,
+        session_factory: sessionmaker[Session],
+        *,
+        target_message_count: int,
+    ) -> EligibleAppScanBatch:
         messages: list[SimpleMessage] = []
         app_to_tenant: dict[str, str] = {}
         app_fetches = 0
         exhausted_apps = 0
 
-        while len(messages) < target_message_count and self._ensure_app_queue(session):
+        while len(messages) < target_message_count and self._ensure_app_queue(session_factory):
             app_state = self._app_queue.popleft()
             fetch_limit = min(self._per_app_batch_size, target_message_count - len(messages))
-            fetched_messages = self._fetch_messages_for_app(session, app_state, limit=fetch_limit)
+            with session_factory() as session:
+                fetched_messages = self._fetch_messages_for_app(session, app_state, limit=fetch_limit)
             app_fetches += 1
 
             if not fetched_messages:
@@ -105,23 +111,30 @@ class EligibleAppRoundRobinScanner:
             exhausted_apps=exhausted_apps,
         )
 
-    def _ensure_app_queue(self, session: Session) -> bool:
+    def _ensure_app_queue(self, session_factory: sessionmaker[Session]) -> bool:
         while not self._app_queue and not self._app_pages_exhausted:
-            self._load_next_eligible_app_page(session)
+            rows = self._fetch_next_app_page(session_factory)
+            if rows:
+                self._enqueue_eligible_apps(rows)
         return bool(self._app_queue)
 
-    def _load_next_eligible_app_page(self, session: Session) -> None:
+    def _fetch_next_app_page(self, session_factory: sessionmaker[Session]) -> list[tuple[str, str]]:
         app_stmt = select(App.id, App.tenant_id).order_by(App.id).limit(self._app_page_size)
         if self._last_seen_app_id is not None:
             app_stmt = app_stmt.where(App.id > self._last_seen_app_id)
 
-        rows = cast(list[tuple[str, str]], list(session.execute(app_stmt).all()))
+        with session_factory() as session:
+            rows = cast(list[tuple[str, str]], list(session.execute(app_stmt).all()))
+
         if not rows:
             self._app_pages_exhausted = True
-            return
+            return []
 
         self._last_seen_app_id = rows[-1][0]
         self.scanned_apps += len(rows)
+        return rows
+
+    def _enqueue_eligible_apps(self, rows: Sequence[tuple[str, str]]) -> None:
         app_to_tenant: dict[str, str] = dict(rows)
         eligible_app_to_tenant = self._policy.filter_app_to_tenant(app_to_tenant)
         self.eligible_apps += len(eligible_app_to_tenant)
