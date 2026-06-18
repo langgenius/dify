@@ -558,6 +558,7 @@ def test_refresh_oauth_token_should_refresh_and_persist_new_credentials(
         return_value=(cred_enc, cache),
     )
     mocker.patch.object(TriggerProviderService, "get_oauth_client", return_value={"client_id": "id"})
+    mock_delete_cache = mocker.patch("services.trigger.trigger_provider_service.delete_cache_for_subscription")
     refreshed = SimpleNamespace(credentials={"access_token": "new"}, expires_at=12345)
     oauth_handler = MagicMock()
     oauth_handler.refresh_credentials.return_value = refreshed
@@ -571,7 +572,12 @@ def test_refresh_oauth_token_should_refresh_and_persist_new_credentials(
     assert subscription.credentials == {"access_token": "new"}
     assert subscription.credential_expires_at == 12345
 
-    cache.delete.assert_called_once()
+    cache.delete.assert_not_called()
+    mock_delete_cache.assert_called_once_with(
+        tenant_id="tenant-1",
+        provider_id=str(provider_id),
+        subscription_id="sub-1",
+    )
 
 
 def test_refresh_subscription_should_raise_error_when_subscription_missing(

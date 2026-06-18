@@ -475,7 +475,7 @@ class TriggerProviderService:
                 tenant_id=tenant_id, provider_id=provider_id
             )
             # Create encrypter
-            encrypter, cache = create_provider_encrypter(
+            encrypter, _ = create_provider_encrypter(
                 tenant_id=tenant_id,
                 config=[x.to_basic_provider_config() for x in provider_controller.get_oauth_client_schema()],
                 cache=NoOpProviderCredentialCache(),
@@ -506,13 +506,19 @@ class TriggerProviderService:
             subscription.credentials = dict(encrypter.encrypt(dict(refreshed_credentials.credentials)))
             subscription.credential_expires_at = refreshed_credentials.expires_at
 
-            # Clear cache
-            cache.delete()
-
-            return {
+            provider_id_value = subscription.provider_id
+            result = {
                 "result": "success",
                 "expires_at": refreshed_credentials.expires_at,
             }
+
+        # Clear the trigger runtime credential cache after the DB commit so dispatch uses the refreshed token.
+        delete_cache_for_subscription(
+            tenant_id=tenant_id,
+            provider_id=provider_id_value,
+            subscription_id=subscription_id,
+        )
+        return result
 
     @classmethod
     def refresh_subscription(
