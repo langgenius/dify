@@ -36,7 +36,13 @@ from services.entities.agent_entities import (
 class AgentConfigSnapshotSummaryResponse(ResponseModel):
     id: str
     agent_id: str | None = None
+    # User-facing version number among visible published versions.
     version: int
+    # Alias for the user-facing version number; kept explicit for clients that
+    # want to distinguish it from the immutable snapshot sequence.
+    display_version: int | None = None
+    # Immutable snapshot sequence number used internally for audit/history.
+    snapshot_version: int | None = None
     summary: str | None = None
     version_note: str | None = None
     created_by: str | None = None

@@ -680,9 +680,13 @@ Commit an uploaded file into the Agent App drive under files/<name>
 | keyword | query | Search query, answer, or conversation name | No | string |
 | limit | query | Page size | No | integer, <br>**Default:** 20 |
 | page | query | Page number | No | integer, <br>**Default:** 1 |
-| source | query | Filter by all, console/explore, api/service-api, web-app, debugger, openapi, or trigger | No | string |
+| sort_by | query | Sort by created_at or updated_at | No | string, <br>**Default:** updated_at |
+| sort_order | query | Sort order: asc or desc | No | string, <br>**Default:** desc |
+| source | query | Deprecated single source filter | No | string |
+| sources | query | Filter by one or more source IDs, e.g. webapp:<app_id> or workflow:<app_id>:<workflow_id>:<version>:<node_id> | No | [ string ] |
 | start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
-| status | query | Filter by success, failed, or paused | No | string |
+| status | query | Deprecated single status filter | No | string |
+| statuses | query | Filter by one or more of success, failed, paused | No | [ string ] |
 | agent_id | path |  | Yes | string (uuid) |
 
 #### Responses
@@ -700,9 +704,13 @@ Commit an uploaded file into the Agent App drive under files/<name>
 | keyword | query | Search query, answer, or conversation name | No | string |
 | limit | query | Page size | No | integer, <br>**Default:** 20 |
 | page | query | Page number | No | integer, <br>**Default:** 1 |
-| source | query | Filter by all, console/explore, api/service-api, web-app, debugger, openapi, or trigger | No | string |
+| sort_by | query | Sort by created_at or updated_at | No | string, <br>**Default:** updated_at |
+| sort_order | query | Sort order: asc or desc | No | string, <br>**Default:** desc |
+| source | query | Deprecated single source filter | No | string |
+| sources | query | Filter by one or more source IDs, e.g. webapp:<app_id> or workflow:<app_id>:<workflow_id>:<version>:<node_id> | No | [ string ] |
 | start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
-| status | query | Filter by success, failed, or paused | No | string |
+| status | query | Deprecated single status filter | No | string |
+| statuses | query | Filter by one or more of success, failed, paused | No | [ string ] |
 | agent_id | path |  | Yes | string (uuid) |
 | conversation_id | path |  | Yes | string (uuid) |
 
@@ -11702,8 +11710,10 @@ Audit operation recorded for Agent Soul version/revision changes.
 | config_snapshot | [AgentSoulConfig](#agentsoulconfig) |  | Yes |
 | created_at | integer |  | No |
 | created_by | string |  | No |
+| display_version | integer |  | No |
 | id | string |  | Yes |
 | revisions | [ [AgentConfigRevisionResponse](#agentconfigrevisionresponse) ] |  | No |
+| snapshot_version | integer |  | No |
 | summary | string |  | No |
 | version | integer |  | Yes |
 | version_note | string |  | No |
@@ -11721,7 +11731,9 @@ Audit operation recorded for Agent Soul version/revision changes.
 | agent_id | string |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
+| display_version | integer |  | No |
 | id | string |  | Yes |
+| snapshot_version | integer |  | No |
 | summary | string |  | No |
 | version | integer |  | Yes |
 | version_note | string |  | No |
@@ -12110,9 +12122,13 @@ the current roster/workflow APIs scoped to Dify Agent.
 | keyword | string | Search query, answer, or conversation name | No |
 | limit | integer, <br>**Default:** 20 | Page size | No |
 | page | integer, <br>**Default:** 1 | Page number | No |
-| source | string | Filter by all, console/explore, api/service-api, web-app, debugger, openapi, or trigger | No |
+| sort_by | string, <br>**Default:** updated_at | Sort by created_at or updated_at | No |
+| sort_order | string, <br>**Default:** desc | Sort order: asc or desc | No |
+| source | string | Deprecated single source filter | No |
+| sources | [ string ] | Filter by one or more source IDs, e.g. webapp:<app_id> or workflow:<app_id>:<workflow_id>:<version>:<node_id> | No |
 | start | string | Start date (YYYY-MM-DD HH:MM) | No |
-| status | string | Filter by success, failed, or paused | No |
+| status | string | Deprecated single status filter | No |
+| statuses | [ string ] | Filter by one or more of success, failed, paused | No |
 
 #### AgentMemoryArtifactConfig
 
