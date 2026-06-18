@@ -8,12 +8,13 @@ from pathlib import Path
 
 def _walk_values(value):
     yield value
-    if isinstance(value, dict):
-        for child in value.values():
-            yield from _walk_values(child)
-    elif isinstance(value, list):
-        for child in value:
-            yield from _walk_values(child)
+    match value:
+        case dict():
+            for child in value.values():
+                yield from _walk_values(child)
+        case list():
+            for child in value:
+                yield from _walk_values(child)
 
 
 def _load_generate_swagger_specs_module():
