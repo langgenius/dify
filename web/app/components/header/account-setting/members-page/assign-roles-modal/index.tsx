@@ -31,8 +31,12 @@ const AssignRolesModalBody = ({
   const { t } = useTranslation()
   const [selected, setSelected] = useState(selectedRoles)
   const selectedRoleIds = selected.map(role => role.id)
+  const isConfirmDisabled = selected.length === 0
 
   const handleConfirm = () => {
+    if (isConfirmDisabled)
+      return
+
     onSubmit(selected)
     onClose()
   }
@@ -76,7 +80,7 @@ const AssignRolesModalBody = ({
           <Button variant="secondary" onClick={onClose}>
             {t('operation.cancel', { ns: 'common' })}
           </Button>
-          <Button variant="primary" onClick={handleConfirm}>
+          <Button variant="primary" disabled={isConfirmDisabled} onClick={handleConfirm}>
             {t('operation.confirm', { ns: 'common' })}
           </Button>
         </div>
