@@ -1,0 +1,281 @@
+"""
+Datadog trace orchestrator for Dify ops tracing.
+
+This module coordinates trace-info dispatch, workflow node loading, and span
+creation. Span payload construction lives in `span_builder.py`, while transport
+and parent-child correlation live in `client.py`.
+"""
+
+import logging
+from collections.abc import Sequence
+from datetime import datetime
+
+from opentelemetry.trace import Status, StatusCode
+from sqlalchemy.orm import sessionmaker
+
+from core.ops.base_trace_instance import BaseTraceInstance
+from core.ops.entities.trace_entity import (
+    BaseTraceInfo,
+    DatasetRetrievalTraceInfo,
+    GenerateNameTraceInfo,
+    MessageTraceInfo,
+    ModerationTraceInfo,
+    SuggestedQuestionTraceInfo,
+    ToolTraceInfo,
+    WorkflowTraceInfo,
+)
+from core.repositories import DifyCoreRepositoryFactory
+from dify_trace_datadog import semconv, span_builder
+from dify_trace_datadog.client import DatadogTraceClient
+from dify_trace_datadog.config import DatadogConfig
+from extensions.ext_database import db
+from graphon.entities.workflow_node_execution import WorkflowNodeExecution
+from graphon.enums import WorkflowNodeExecutionStatus
+from models import WorkflowNodeExecutionTriggeredFrom
+
+logger = logging.getLogger(__name__)
+
+
+def _datetime_to_ns(dt: datetime | None) -> int:
+    if dt is None:
+        dt = datetime.now()
+    return int(dt.timestamp() * 1_000_000_000)
+
+
+def _status_from_error(error: str | None) -> Status:
+    if error:
+        return Status(StatusCode.ERROR, error)
+    return Status(StatusCode.OK)
+
+
+def _workflow_node_status_to_otel_status(node_execution: WorkflowNodeExecution) -> Status:
+    if node_execution.status == WorkflowNodeExecutionStatus.SUCCEEDED:
+        return Status(StatusCode.OK)
+    if node_execution.status in (WorkflowNodeExecutionStatus.FAILED, WorkflowNodeExecutionStatus.EXCEPTION):
+        return Status(StatusCode.ERROR, str(node_execution.error or "workflow node failed"))
+    return Status(StatusCode.UNSET)
+
+
+def _message_key(message_id: str | None) -> str:
+    return f"message:{message_id}"
+
+
+def _workflow_key(workflow_run_id: str) -> str:
+    return f"workflow:{workflow_run_id}"
+
+
+def _node_key(node_execution_id: str) -> str:
+    return f"node:{node_execution_id}"
+
+
+def _datetime_key(dt: datetime | None) -> str:
+    if dt is None:
+        return "none"
+    return str(int(dt.timestamp() * 1_000_000_000))
+
+
+def _tool_key(trace_info: ToolTraceInfo) -> str:
+    return f"tool:{trace_info.message_id}:{trace_info.tool_name}:{_datetime_key(trace_info.start_time)}"
+
+
+def _retrieval_key(trace_info: DatasetRetrievalTraceInfo) -> str:
+    return f"retrieval:{trace_info.message_id}:{_datetime_key(trace_info.start_time)}"
+
+
+def _trace_key(trace_info: BaseTraceInfo) -> str:
+    if trace_info.trace_id:
+        return f"trace:{trace_info.trace_id}"
+
+    parent_trace_id, _ = trace_info.resolved_parent_context
+    if parent_trace_id:
+        return _workflow_key(parent_trace_id)
+
+    if trace_info.message_id:
+        return _message_key(trace_info.message_id)
+
+    if workflow_run_id := getattr(trace_info, "workflow_run_id", None):
+        return _workflow_key(workflow_run_id)
+
+    return _message_key(trace_info.message_id)
+
+
+def _workflow_parent_key(trace_info: WorkflowTraceInfo) -> str | None:
+    _, parent_node_id = trace_info.resolved_parent_context
+    if parent_node_id:
+        return _node_key(parent_node_id)
+    if trace_info.message_id:
+        return _message_key(trace_info.message_id)
+    return None
+
+
+class DatadogDataTrace(BaseTraceInstance):
+    """
+    Datadog trace coordinator that converts Dify trace_info payloads into spans.
+    """
+
+    trace_client: DatadogTraceClient
+
+    def __init__(self, datadog_config: DatadogConfig):
+        super().__init__(datadog_config)
+        self.trace_client = DatadogTraceClient(
+            api_key=datadog_config.api_key,
+            site=datadog_config.site,
+            service_name=datadog_config.service_name,
+        )
+        self._session_factory: sessionmaker | None = None
+
+    def trace(self, trace_info: BaseTraceInfo) -> None:
+        match trace_info:
+            case WorkflowTraceInfo():
+                self.workflow_trace(trace_info)
+            case MessageTraceInfo():
+                self.message_trace(trace_info)
+            case DatasetRetrievalTraceInfo():
+                self.dataset_retrieval_trace(trace_info)
+            case ToolTraceInfo():
+                self.tool_trace(trace_info)
+            case ModerationTraceInfo() | SuggestedQuestionTraceInfo() | GenerateNameTraceInfo():
+                return
+            case _:
+                return
+
+        if self.trace_client.span_processor is not None:
+            self.trace_client.span_processor.force_flush(timeout_millis=10000)
+
+    def workflow_trace(self, trace_info: WorkflowTraceInfo) -> None:
+        try:
+            attrs = span_builder.build_workflow_attrs(trace_info)
+
+            trace_key = _trace_key(trace_info)
+            trace_id = DatadogTraceClient.compute_trace_id(trace_key)
+            workflow_store_key = _workflow_key(trace_info.workflow_run_id)
+            self.trace_client.add_span(
+                name="workflow",
+                attributes=attrs,
+                start_time_ns=_datetime_to_ns(trace_info.start_time),
+                end_time_ns=_datetime_to_ns(trace_info.end_time),
+                trace_id=trace_id,
+                store_key=workflow_store_key,
+                parent_key=_workflow_parent_key(trace_info),
+                status=_status_from_error(trace_info.error),
+            )
+
+            self._process_workflow_nodes(trace_info, workflow_store_key, trace_id)
+        except Exception:
+            logger.exception("[Datadog] Failed to process workflow trace")
+
+    def message_trace(self, trace_info: MessageTraceInfo) -> None:
+        try:
+            attrs = span_builder.build_message_attrs(trace_info)
+            trace_key = _trace_key(trace_info)
+            self.trace_client.add_span(
+                name=str(attrs.get(semconv.OPERATION_NAME, "chat")),
+                attributes=attrs,
+                start_time_ns=_datetime_to_ns(trace_info.start_time),
+                end_time_ns=_datetime_to_ns(trace_info.end_time),
+                trace_id=DatadogTraceClient.compute_trace_id(trace_key),
+                store_key=_message_key(trace_info.message_id),
+                status=_status_from_error(trace_info.error),
+            )
+        except Exception:
+            logger.exception("[Datadog] Failed to process message trace")
+
+    def tool_trace(self, trace_info: ToolTraceInfo) -> None:
+        try:
+            if not trace_info.message_id:
+                return
+
+            attrs = span_builder.build_tool_attrs(trace_info)
+            trace_key = _trace_key(trace_info)
+            self.trace_client.add_span(
+                name=trace_info.tool_name,
+                attributes=attrs,
+                start_time_ns=_datetime_to_ns(trace_info.start_time),
+                end_time_ns=_datetime_to_ns(trace_info.end_time),
+                trace_id=DatadogTraceClient.compute_trace_id(trace_key),
+                span_key=_tool_key(trace_info),
+                parent_key=_message_key(trace_info.message_id),
+                status=_status_from_error(trace_info.error),
+            )
+        except Exception:
+            logger.exception("[Datadog] Failed to process tool trace")
+
+    def dataset_retrieval_trace(self, trace_info: DatasetRetrievalTraceInfo) -> None:
+        try:
+            if not trace_info.message_id:
+                return
+
+            attrs = span_builder.build_retrieval_attrs(trace_info)
+            trace_key = _trace_key(trace_info)
+            self.trace_client.add_span(
+                name="retrieval",
+                attributes=attrs,
+                start_time_ns=_datetime_to_ns(trace_info.start_time),
+                end_time_ns=_datetime_to_ns(trace_info.end_time),
+                trace_id=DatadogTraceClient.compute_trace_id(trace_key),
+                span_key=_retrieval_key(trace_info),
+                parent_key=_message_key(trace_info.message_id),
+                status=_status_from_error(trace_info.error),
+            )
+        except Exception:
+            logger.exception("[Datadog] Failed to process dataset retrieval trace")
+
+    def _process_workflow_nodes(
+        self, trace_info: WorkflowTraceInfo, workflow_store_key: str, trace_id: int
+    ) -> None:
+        try:
+            node_executions = self._get_workflow_node_executions(trace_info)
+
+            for node_execution in node_executions:
+                try:
+                    attrs = span_builder.build_workflow_node_attrs(node_execution, trace_info)
+                    self.trace_client.add_span(
+                        name=node_execution.title or node_execution.node_type,
+                        attributes=attrs,
+                        start_time_ns=_datetime_to_ns(node_execution.created_at),
+                        end_time_ns=_datetime_to_ns(node_execution.finished_at),
+                        trace_id=trace_id,
+                        store_key=_node_key(node_execution.id),
+                        parent_key=workflow_store_key,
+                        status=_workflow_node_status_to_otel_status(node_execution),
+                    )
+                except Exception:
+                    logger.exception("[Datadog] Failed to process workflow node execution: %s", node_execution.id)
+        except Exception:
+            logger.exception("[Datadog] Failed to process workflow nodes")
+
+    def _get_workflow_node_executions(self, trace_info: WorkflowTraceInfo) -> Sequence[WorkflowNodeExecution]:
+        app_id = trace_info.metadata.get("app_id")
+        if not app_id:
+            raise ValueError("No app_id found in trace_info metadata")
+
+        if self._session_factory is None:
+            self._session_factory = sessionmaker(bind=db.engine)
+
+        service_account = self.get_service_account_with_tenant(app_id)
+        repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+            session_factory=self._session_factory,
+            user=service_account,
+            app_id=app_id,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        )
+        return repository.get_by_workflow_execution(workflow_execution_id=trace_info.workflow_run_id)
+
+    def api_check(self) -> bool:
+        return self.trace_client.api_check()
+
+    def get_project_url(self) -> str:
+        return self.trace_client.get_project_url()
+
+    def shutdown(self) -> None:
+        try:
+            if hasattr(self, "trace_client"):
+                self.trace_client.shutdown()
+        except Exception:
+            logger.exception("[Datadog] Failed to shutdown trace client")
+
+    def __del__(self):
+        try:
+            self.shutdown()
+        except Exception:
+            logger.debug("[Datadog] Failed to shutdown in __del__", exc_info=True)
