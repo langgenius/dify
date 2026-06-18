@@ -995,7 +995,7 @@ class TestTenantService:
             patch("services.account_service.TenantService.create_tenant", return_value=mock_tenant),
             patch("services.account_service.TenantService.create_tenant_member"),
             patch(
-                "services.account_service.AccountService.resolve_workspace_rbac_role_id",
+                "services.account_service.AccountService._resolve_legacy_role_id",
                 return_value="rbac-owner-id",
             ),
             patch("services.account_service.RBACService") as mock_rbac_service,
@@ -1201,7 +1201,7 @@ class TestTenantService:
 
         with (
             patch(
-                "services.account_service.AccountService.resolve_workspace_rbac_role_id",
+                "services.account_service.AccountService._resolve_legacy_role_id",
                 return_value="owner-role-id",
             ),
             patch("services.account_service.RBACService.Roles", mock_rbac_roles),
@@ -2030,10 +2030,6 @@ class TestRegisterService:
                 patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
                 patch("services.account_service.TenantService.switch_tenant"),
                 patch("services.account_service.RegisterService.generate_invite_token", return_value="rbac-token"),
-                patch(
-                    "services.account_service.AccountService.resolve_workspace_rbac_role_id",
-                    return_value="rbac-role-id-123",
-                ),
                 patch("services.account_service.RBACService") as mock_rbac_service,
             ):
                 mock_register.return_value = mock_new_account
@@ -2081,10 +2077,6 @@ class TestRegisterService:
                 patch("services.account_service.TenantService.check_member_permission"),
                 patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
                 patch("services.account_service.RegisterService.generate_invite_token", return_value="rbac-token"),
-                patch(
-                    "services.account_service.AccountService.resolve_workspace_rbac_role_id",
-                    return_value="rbac-role-id-456",
-                ),
                 patch("services.account_service.RBACService") as mock_rbac_service,
             ):
                 result = RegisterService.invite_new_member(
@@ -2129,10 +2121,6 @@ class TestRegisterService:
             with (
                 patch("services.account_service.TenantService.check_member_permission"),
                 patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
-                patch(
-                    "services.account_service.AccountService.resolve_workspace_rbac_role_id",
-                    return_value="rbac-role-id-456",
-                ),
                 patch("services.account_service.RBACService") as mock_rbac_service,
             ):
                 with pytest.raises(AccountAlreadyInTenantError):
