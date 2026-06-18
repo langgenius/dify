@@ -1,4 +1,4 @@
-from typing import Annotated, Literal, override
+from typing import Annotated, Any, Literal, override
 from uuid import UUID
 
 from flask import request
