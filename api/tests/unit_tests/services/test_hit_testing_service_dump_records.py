@@ -1,6 +1,7 @@
-import pytest
 from datetime import datetime
 from unittest.mock import Mock, patch
+
+import pytest
 
 from services.hit_testing_service import HitTestingService
 

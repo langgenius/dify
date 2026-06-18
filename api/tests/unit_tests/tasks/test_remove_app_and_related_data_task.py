@@ -114,7 +114,9 @@ class TestDeleteAppStars:
 
 class TestDeleteArchivedWorkflowRunFiles:
     @patch("tasks.remove_app_and_related_data_task.get_archive_storage")
-    def test_delete_archived_workflow_run_files_not_configured(self, mock_get_storage, caplog: pytest.LogCaptureFixture):
+    def test_delete_archived_workflow_run_files_not_configured(
+        self, mock_get_storage, caplog: pytest.LogCaptureFixture
+    ):
         mock_get_storage.side_effect = ArchiveStorageNotConfiguredError("missing config")
 
         with caplog.at_level(logging.INFO, logger="tasks.remove_app_and_related_data_task"):

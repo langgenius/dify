@@ -1,7 +1,8 @@
-import pytest
 import logging
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
+
+import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature

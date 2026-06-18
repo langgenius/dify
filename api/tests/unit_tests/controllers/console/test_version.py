@@ -1,6 +1,7 @@
-import pytest
 import logging
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 import controllers.console.version as version_module
 
