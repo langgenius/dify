@@ -162,20 +162,21 @@ class AccountService:
         roles = RBACService.Roles.list(tenant_id, account_id, options=options).data
 
         normalized_identifier = role_identifier.strip().lower()
-        expected_builtin_name = {
-            TenantAccountRole.OWNER.value: "所有者",
-            TenantAccountRole.ADMIN.value: "管理者",
-            TenantAccountRole.EDITOR.value: "编辑者",
-            TenantAccountRole.NORMAL.value: "普通用户",
-            TenantAccountRole.DATASET_OPERATOR.value: "知识库操作员",
+        expected_builtin_tag = {
+            TenantAccountRole.OWNER.value: "owner",
+            TenantAccountRole.ADMIN.value: "admin",
+            TenantAccountRole.EDITOR.value: "editor",
+            TenantAccountRole.NORMAL.value: "normal",
+            TenantAccountRole.DATASET_OPERATOR.value: "dataset_operator",
         }.get(normalized_identifier)
         for role in roles:
             role_id = str(role.id)
             role_name = str(role.name)
+            role_tag = str(role.role_tag)
             if role_id == role_identifier:
                 return role_id
-            if expected_builtin_name and role.is_builtin and role.category == "global_system_default":
-                if role_name == expected_builtin_name:
+            if expected_builtin_tag and role.is_builtin and role.category == "global_system_default":
+                if role_tag == expected_builtin_tag:
                     return role_id
             if role_name.strip().lower() == normalized_identifier:
                 return role_id
@@ -230,7 +231,7 @@ class AccountService:
             member_account_id=member_account_id,
         ).roles
         return any(
-            role.is_builtin and role.category == "global_system_default" and role.name in {"所有者", "owner"}
+            role.is_builtin and role.category == "global_system_default" and role.role_tag == "owner"
             for role in roles
         )
 
@@ -1309,7 +1310,7 @@ class TenantService:
                 tenant_id=str(tenant.id),
                 actor_account_id=account.id,
                 member_account_id=account.id,
-                role_identifier="所有者",
+                role_identifier=TenantAccountRole.OWNER.value,
             )
         account.current_tenant = tenant
         db.session.commit()
