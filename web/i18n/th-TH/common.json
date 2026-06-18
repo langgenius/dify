@@ -318,6 +318,7 @@
   "menus.newDataset": "สร้างความรู้",
   "menus.plugins": "การผสานรวม",
   "menus.pluginsTips": "รวมการผสานรวมของบุคคลที่สามหรือสร้างการผสานรวม AI ที่เข้ากันได้กับ ChatGPT",
+  "menus.roster": "รายชื่อตัวแทน",
   "menus.status": "Beta",
   "menus.tools": "เครื่อง มือ",
   "model.addMoreModel": "ไปที่การตั้งค่าเพื่อเพิ่มรุ่นเพิ่มเติม",

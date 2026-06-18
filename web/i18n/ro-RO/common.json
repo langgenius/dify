@@ -318,6 +318,7 @@
   "menus.newDataset": "Creează Cunoștințe",
   "menus.plugins": "Integrare-uri",
   "menus.pluginsTips": "Integrați integrare-uri terțe părți sau creați AI-Integrare-uri compatibile cu ChatGPT.",
+  "menus.roster": "Listă agenți",
   "menus.status": "beta",
   "menus.tools": "Instrumente",
   "model.addMoreModel": "Mergeți la setări pentru a adăuga mai multe modele",

@@ -318,6 +318,7 @@
   "menus.newDataset": "ナレッジの作成",
   "menus.plugins": "インテグレーション",
   "menus.pluginsTips": "サードパーティのインテグレーションを統合するか、ChatGPT 互換の AI インテグレーションを作成します。",
+  "menus.roster": "エージェント名簿",
   "menus.status": "ベータ版",
   "menus.tools": "ツール",
   "model.addMoreModel": "設定画面から他のモデルを追加してください",

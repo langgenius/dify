@@ -318,6 +318,7 @@
   "menus.newDataset": "建立知識庫",
   "menus.plugins": "集成",
   "menus.pluginsTips": "集成第三方服務或建立與 ChatGPT 相容的 AI 集成。",
+  "menus.roster": "智能體名冊",
   "menus.status": "beta",
   "menus.tools": "工具",
   "model.addMoreModel": "新增更多模型",

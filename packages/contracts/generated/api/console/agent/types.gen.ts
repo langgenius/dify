@@ -21,7 +21,7 @@ export type AgentAppCreatePayload = {
   role: string
 }
 
-export type AppDetailWithSite = {
+export type AgentAppDetailWithSite = {
   access_mode?: string | null
   active_config_is_published?: boolean
   api_base_url?: string | null
@@ -253,11 +253,6 @@ export type AgentSandboxUploadPayload = {
 export type SandboxUploadResponse = {
   file: SandboxToolFileResponse
   path: string
-}
-
-export type AgentSkillStandardizeResponse = {
-  manifest: SkillManifest
-  skill: AgentSkillRefConfig
 }
 
 export type AgentSkillUploadResponse = {
@@ -1431,7 +1426,7 @@ export type AgentAppPaginationWritable = {
   total: number
 }
 
-export type AppDetailWithSiteWritable = {
+export type AgentAppDetailWithSiteWritable = {
   access_mode?: string | null
   active_config_is_published?: boolean
   api_base_url?: string | null
@@ -1550,7 +1545,7 @@ export type PostAgentErrors = {
 }
 
 export type PostAgentResponses = {
-  201: AppDetailWithSite
+  201: AgentAppDetailWithSite
 }
 
 export type PostAgentResponse = PostAgentResponses[keyof PostAgentResponses]
@@ -1604,7 +1599,7 @@ export type GetAgentByAgentIdData = {
 }
 
 export type GetAgentByAgentIdResponses = {
-  200: AppDetailWithSite
+  200: AgentAppDetailWithSite
 }
 
 export type GetAgentByAgentIdResponse = GetAgentByAgentIdResponses[keyof GetAgentByAgentIdResponses]
@@ -1624,7 +1619,7 @@ export type PutAgentByAgentIdErrors = {
 }
 
 export type PutAgentByAgentIdResponses = {
-  200: AppDetailWithSite
+  200: AgentAppDetailWithSite
 }
 
 export type PutAgentByAgentIdResponse = PutAgentByAgentIdResponses[keyof PutAgentByAgentIdResponses]
@@ -1770,7 +1765,7 @@ export type PostAgentByAgentIdCopyErrors = {
 }
 
 export type PostAgentByAgentIdCopyResponses = {
-  201: AppDetailWithSite
+  201: AgentAppDetailWithSite
 }
 
 export type PostAgentByAgentIdCopyResponse
@@ -2065,28 +2060,10 @@ export type PostAgentByAgentIdSandboxFilesUploadResponses = {
 export type PostAgentByAgentIdSandboxFilesUploadResponse
   = PostAgentByAgentIdSandboxFilesUploadResponses[keyof PostAgentByAgentIdSandboxFilesUploadResponses]
 
-export type PostAgentByAgentIdSkillsStandardizeData = {
-  body?: never
-  path: {
-    agent_id: string
-  }
-  query?: never
-  url: '/agent/{agent_id}/skills/standardize'
-}
-
-export type PostAgentByAgentIdSkillsStandardizeErrors = {
-  400: unknown
-}
-
-export type PostAgentByAgentIdSkillsStandardizeResponses = {
-  201: AgentSkillStandardizeResponse
-}
-
-export type PostAgentByAgentIdSkillsStandardizeResponse
-  = PostAgentByAgentIdSkillsStandardizeResponses[keyof PostAgentByAgentIdSkillsStandardizeResponses]
-
 export type PostAgentByAgentIdSkillsUploadData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path: {
     agent_id: string
   }

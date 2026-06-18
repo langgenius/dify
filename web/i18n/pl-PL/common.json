@@ -318,6 +318,7 @@
   "menus.newDataset": "Utwórz Wiedzę",
   "menus.plugins": "Integracjay",
   "menus.pluginsTips": "Integruj integracjay stron trzecich lub twórz integracjay AI kompatybilne z ChatGPT.",
+  "menus.roster": "Lista agentów",
   "menus.status": "beta",
   "menus.tools": "Narzędzia",
   "model.addMoreModel": "Przejdź do ustawień, aby dodać więcej modeli",

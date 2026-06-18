@@ -7,7 +7,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { redirect, usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 
-const datasetOperatorRedirectRoutes = ['/', '/apps', '/app', '/deployments', '/snippets', '/explore', '/tools', '/integrations'] as const
+const datasetOperatorRedirectRoutes = ['/', '/apps', '/app', '/deployments', '/snippets', '/roster', '/explore', '/tools', '/integrations'] as const
 
 function isPathUnderRoute(pathname: string, route: string) {
   return pathname === route || pathname.startsWith(`${route}/`)

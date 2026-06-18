@@ -318,6 +318,7 @@
   "menus.newDataset": "Ciptakan Pengetahuan",
   "menus.plugins": "Integrasi",
   "menus.pluginsTips": "Integrasikan integrasi pihak ketiga atau buat AI-Integrasi yang kompatibel dengan ChatGPT.",
+  "menus.roster": "Daftar Agen",
   "menus.status": "beta",
   "menus.tools": "Perkakas",
   "model.addMoreModel": "Buka pengaturan untuk menambahkan lebih banyak model",

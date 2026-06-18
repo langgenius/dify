@@ -18,6 +18,8 @@ export type NodeSliceShape = {
   setNodeAnimation: (nodeAnimation: boolean) => void
   candidateNode?: Node
   setCandidateNode: (candidateNode?: Node) => void
+  openInlineAgentPanelNodeId?: string
+  setOpenInlineAgentPanelNodeId: (nodeId?: string) => void
   showAssignVariablePopup?: {
     nodeId: string
     nodeData: Node['data']
@@ -59,6 +61,8 @@ export const createNodeSlice: StateCreator<NodeSliceShape> = set => ({
   setNodeAnimation: nodeAnimation => set(() => ({ nodeAnimation })),
   candidateNode: undefined,
   setCandidateNode: candidateNode => set(() => ({ candidateNode })),
+  openInlineAgentPanelNodeId: undefined,
+  setOpenInlineAgentPanelNodeId: nodeId => set(() => ({ openInlineAgentPanelNodeId: nodeId })),
   showAssignVariablePopup: undefined,
   setShowAssignVariablePopup: showAssignVariablePopup => set(() => ({ showAssignVariablePopup })),
   hoveringAssignVariableGroupId: undefined,

@@ -1,11 +1,13 @@
 import type { ReactElement } from 'react'
 import type { AppPublisherProps } from '@/app/components/app/app-publisher'
 import type { App } from '@/types/app'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { Plan } from '@/app/components/billing/type'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/client'
 import FeaturesTrigger from '../features-trigger'
 
 const mockUseIsChatMode = vi.fn()
@@ -167,7 +169,15 @@ const createProviderContext = ({
 })
 
 const renderWithToast = (ui: ReactElement) => {
-  return render(ui)
+  const queryClient = new QueryClient()
+  return {
+    queryClient,
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        {ui}
+      </QueryClientProvider>,
+    ),
+  }
 }
 
 describe('FeaturesTrigger', () => {
@@ -439,6 +449,72 @@ describe('FeaturesTrigger', () => {
         expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'common.api.actionSuccess' })
         expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-id' })
         expect(useAppStore.getState().appDetail).toBeDefined()
+      })
+    })
+
+    it('should invalidate roster list after publishing a workflow with a roster Agent v2 node', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      mockUseNodes.mockReturnValue([
+        { id: 'start', data: { type: BlockEnum.Start } },
+        {
+          id: 'agent-v2',
+          data: {
+            type: BlockEnum.AgentV2,
+            version: '2',
+            agent_node_kind: 'dify_agent',
+            agent_binding: {
+              binding_type: 'roster_agent',
+              agent_id: 'agent-1',
+            },
+          },
+        },
+      ])
+      const { queryClient } = renderWithToast(<FeaturesTrigger />)
+      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+
+      // Act
+      await user.click(screen.getByRole('button', { name: 'publisher-publish' }))
+
+      // Assert
+      await waitFor(() => {
+        expect(invalidateQueries).toHaveBeenCalledWith({
+          queryKey: consoleQuery.agent.get.key(),
+        })
+      })
+    })
+
+    it('should keep roster list cache stable after publishing a workflow without roster Agent v2 nodes', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      mockUseNodes.mockReturnValue([
+        { id: 'start', data: { type: BlockEnum.Start } },
+        {
+          id: 'inline-agent-v2',
+          data: {
+            type: BlockEnum.AgentV2,
+            version: '2',
+            agent_node_kind: 'dify_agent',
+            agent_binding: {
+              binding_type: 'inline_agent',
+              agent_id: 'agent-1',
+              current_snapshot_id: 'snapshot-1',
+            },
+          },
+        },
+      ])
+      const { queryClient } = renderWithToast(<FeaturesTrigger />)
+      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+
+      // Act
+      await user.click(screen.getByRole('button', { name: 'publisher-publish' }))
+
+      // Assert
+      await waitFor(() => {
+        expect(mockPublishWorkflow).toHaveBeenCalled()
+      })
+      expect(invalidateQueries).not.toHaveBeenCalledWith({
+        queryKey: consoleQuery.agent.get.key(),
       })
     })
 

@@ -1247,6 +1247,7 @@ class TestAgentAppBackingAgent:
             app_id="app-1",
             name="Iris",
             description="clarifier",
+            role="research assistant",
         )
 
         # Agent is bound to the app and is a roster/agent_app entry.
@@ -1256,6 +1257,7 @@ class TestAgentAppBackingAgent:
         assert agent.status == AgentStatus.ACTIVE
         assert agent.agent_kind == AgentKind.DIFY_AGENT
         assert agent.name == "Iris"
+        assert agent.role == "research assistant"
         # A v1 snapshot + revision are seeded and wired as the active version.
         snapshots = [a for a in session.added if isinstance(a, AgentConfigSnapshot)]
         assert len(snapshots) == 1

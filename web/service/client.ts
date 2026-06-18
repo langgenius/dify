@@ -1,3 +1,4 @@
+import type { AgentAppPagination } from '@dify/contracts/api/console/agent/types.gen'
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type {
   GetReleaseResponse,
@@ -7,7 +8,7 @@ import type {
 import type { ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
 import type { RouterUtils } from '@orpc/tanstack-query'
-import type { QueryClient, QueryKey } from '@tanstack/react-query'
+import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import type { Tag } from '@/contract/console/tags'
 import { createORPCClient, onError } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
@@ -23,6 +24,7 @@ import {
   marketplaceRouterContract,
 } from '@/contract/router'
 import { isClient } from '@/utils/client'
+// eslint-disable-next-line no-restricted-imports
 import { request } from './base'
 
 function getMarketplaceHeaders() {
@@ -345,6 +347,142 @@ export const consoleClient: JsonifiedClient<ContractRouterClient<typeof consoleR
 export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQueryUtils(consoleClient, {
   path: ['console'],
   experimental_defaults: {
+    agent: {
+      post: {
+        mutationOptions: {
+          onSuccess: (_createdAgent, _variables, _onMutateResult, context) => {
+            context.client.invalidateQueries({
+              queryKey: consoleQuery.agent.get.key(),
+            })
+            context.client.invalidateQueries({
+              queryKey: consoleQuery.agent.inviteOptions.get.key(),
+            })
+          },
+        },
+      },
+      byAgentId: {
+        put: {
+          mutationOptions: {
+            onSuccess: (updatedAgent, variables, _onMutateResult, context) => {
+              context.client.setQueriesData(
+                {
+                  queryKey: consoleQuery.agent.get.key({ type: 'query' }),
+                },
+                (oldList: AgentAppPagination | undefined) => {
+                  if (!oldList?.data.some(item => item.id === updatedAgent.id))
+                    return oldList
+
+                  return {
+                    ...oldList,
+                    data: oldList.data.map(item => item.id === updatedAgent.id ? updatedAgent : item),
+                  }
+                },
+              )
+              context.client.setQueriesData(
+                {
+                  queryKey: consoleQuery.agent.get.key({ type: 'infinite' }),
+                },
+                (oldList: InfiniteData<AgentAppPagination, unknown> | undefined) => {
+                  if (!oldList?.pages.some(page => page.data.some(item => item.id === updatedAgent.id)))
+                    return oldList
+
+                  return {
+                    ...oldList,
+                    pages: oldList.pages.map(page => ({
+                      ...page,
+                      data: page.data.map(item => item.id === updatedAgent.id ? updatedAgent : item),
+                    })),
+                  }
+                },
+              )
+              context.client.setQueryData(
+                consoleQuery.agent.byAgentId.get.queryKey({
+                  input: {
+                    params: {
+                      agent_id: variables.params.agent_id,
+                    },
+                  },
+                }),
+                updatedAgent,
+              )
+              context.client.invalidateQueries({
+                queryKey: consoleQuery.agent.inviteOptions.get.key(),
+              })
+            },
+          },
+        },
+        composer: {
+          put: {
+            mutationOptions: {
+              onSuccess: (_composerState, variables, _onMutateResult, context) => {
+                if (variables.body.save_strategy !== 'save_as_new_version')
+                  return
+
+                context.client.invalidateQueries({
+                  queryKey: consoleQuery.agent.get.key(),
+                })
+                context.client.invalidateQueries({
+                  queryKey: consoleQuery.agent.inviteOptions.get.key(),
+                })
+                context.client.removeQueries({
+                  queryKey: consoleQuery.agent.inviteOptions.get.key(),
+                })
+              },
+            },
+          },
+        },
+        delete: {
+          mutationOptions: {
+            onSuccess: (_data, variables, _onMutateResult, context) => {
+              context.client.setQueriesData(
+                {
+                  queryKey: consoleQuery.agent.get.key({ type: 'query' }),
+                },
+                (oldList: AgentAppPagination | undefined) => {
+                  if (!oldList?.data.some(item => item.id === variables.params.agent_id))
+                    return oldList
+
+                  return {
+                    ...oldList,
+                    data: oldList.data.filter(item => item.id !== variables.params.agent_id),
+                    total: Math.max(0, oldList.total - 1),
+                  }
+                },
+              )
+              context.client.setQueriesData(
+                {
+                  queryKey: consoleQuery.agent.get.key({ type: 'infinite' }),
+                },
+                (oldList: InfiniteData<AgentAppPagination, unknown> | undefined) => {
+                  if (!oldList?.pages.some(page => page.data.some(item => item.id === variables.params.agent_id)))
+                    return oldList
+
+                  return {
+                    ...oldList,
+                    pages: oldList.pages.map((page) => {
+                      const total = Math.max(0, page.total - 1)
+
+                      return {
+                        ...page,
+                        data: page.data.filter(item => item.id !== variables.params.agent_id),
+                        has_more: page.page * page.limit < total,
+                        total,
+                      }
+                    }),
+                  }
+                },
+              )
+              context.client.invalidateQueries({
+                queryKey: consoleQuery.agent.get.key(),
+              })
+              context.client.invalidateQueries({
+                queryKey: consoleQuery.agent.inviteOptions.get.key(),
+              })
+            },
+          },
+        },
+      },
+    },
     explore: {
       updateAppAccessMode: {
         mutationOptions: {
