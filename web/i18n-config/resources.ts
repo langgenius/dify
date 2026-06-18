@@ -1,3 +1,4 @@
+import type agentV2 from '../i18n/en-US/agent-v-2.json'
 import type appAnnotation from '../i18n/en-US/app-annotation.json'
 import type appApi from '../i18n/en-US/app-api.json'
 import type appDebug from '../i18n/en-US/app-debug.json'
@@ -13,6 +14,7 @@ import type datasetHitTesting from '../i18n/en-US/dataset-hit-testing.json'
 import type datasetPipeline from '../i18n/en-US/dataset-pipeline.json'
 import type datasetSettings from '../i18n/en-US/dataset-settings.json'
 import type dataset from '../i18n/en-US/dataset.json'
+import type deployments from '../i18n/en-US/deployments.json'
 import type education from '../i18n/en-US/education.json'
 import type explore from '../i18n/en-US/explore.json'
 import type layout from '../i18n/en-US/layout.json'
@@ -38,6 +40,7 @@ export type Resources = {
   appDebug: typeof appDebug
   appLog: typeof appLog
   appOverview: typeof appOverview
+  agentV2: typeof agentV2
   billing: typeof billing
   common: typeof common
   custom: typeof custom
@@ -47,6 +50,7 @@ export type Resources = {
   datasetHitTesting: typeof datasetHitTesting
   datasetPipeline: typeof datasetPipeline
   datasetSettings: typeof datasetSettings
+  deployments: typeof deployments
   education: typeof education
   explore: typeof explore
   layout: typeof layout
@@ -72,6 +76,7 @@ export const namespaces = [
   'appDebug',
   'appLog',
   'appOverview',
+  'agentV2',
   'billing',
   'common',
   'custom',
@@ -81,6 +86,7 @@ export const namespaces = [
   'datasetHitTesting',
   'datasetPipeline',
   'datasetSettings',
+  'deployments',
   'education',
   'explore',
   'layout',

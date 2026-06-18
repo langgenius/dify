@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import re
 from enum import StrEnum
-from typing import Any, Final, Literal
+from typing import Annotated, Any, Final, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, WithJsonSchema, field_validator, model_validator
 
 from core.workflow.file_reference import is_canonical_file_reference
 from graphon.file import FileTransferMethod
@@ -27,6 +27,44 @@ class DeclaredOutputType(StrEnum):
     ARRAY = "array"
     BOOLEAN = "boolean"
     FILE = "file"
+
+
+_DECLARED_OUTPUT_CHILDREN_JSON_SCHEMA = {
+    "type": "array",
+    "items": {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "name": {"type": "string"},
+            "type": {
+                "type": "string",
+                "enum": [item.value for item in DeclaredOutputType],
+            },
+            "description": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+            "required": {"type": "boolean"},
+            "file": {"type": "object", "additionalProperties": True},
+            "array_item": {
+                "type": "object",
+                "additionalProperties": True,
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [item.value for item in DeclaredOutputType],
+                    },
+                    "description": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                    "children": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+                },
+            },
+            "children": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+        },
+        "required": ["name", "type"],
+    },
+}
+
+DeclaredOutputChildren = Annotated[
+    list["DeclaredOutputChildConfig"],
+    WithJsonSchema(_DECLARED_OUTPUT_CHILDREN_JSON_SCHEMA),
+]
 
 
 class AgentCliToolAuthorizationStatus(StrEnum):
@@ -148,6 +186,9 @@ class AgentSecretRefConfig(AgentFlexibleConfig):
     env_name: str | None = Field(default=None, max_length=255)
     variable: str | None = Field(default=None, max_length=255)
     type: str | None = Field(default=None, max_length=64)
+    # UI-facing selected secret reference. This is a credential/ref id, not the
+    # plaintext secret value; runtime maps it to the shell-layer ``ref``.
+    value: str | None = Field(default=None, max_length=255)
     id: str | None = Field(default=None, max_length=255)
     ref: str | None = Field(default=None, max_length=255)
     credential_id: str | None = Field(default=None, max_length=255)
@@ -507,11 +548,55 @@ class DeclaredArrayItem(BaseModel):
 
     type: DeclaredOutputType
     description: str | None = None
+    children: DeclaredOutputChildren = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _reject_nested_array(self) -> DeclaredArrayItem:
         if self.type == DeclaredOutputType.ARRAY:
             raise ValueError("nested arrays are not supported as array_item.type")
+        if self.children and self.type != DeclaredOutputType.OBJECT:
+            raise ValueError("array_item.children is only allowed when array_item.type is object")
+        return self
+
+
+class DeclaredOutputChildConfig(BaseModel):
+    """Nested field under an object-shaped declared output.
+
+    The first backend version keeps child fields lightweight: they describe the
+    variable-picker/schema tree but do not own independent retry/check behavior.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=255)
+    type: DeclaredOutputType
+    description: str | None = None
+    required: bool = True
+    file: DeclaredOutputFileConfig | None = None
+    array_item: DeclaredArrayItem | None = None
+    children: DeclaredOutputChildren = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _validate_shape(self) -> DeclaredOutputChildConfig:
+        if not _OUTPUT_NAME_PATTERN.fullmatch(self.name):
+            raise ValueError(
+                f"output child name {self.name!r} must match {_OUTPUT_NAME_PATTERN.pattern} "
+                "(JSON-schema-friendly identifier)"
+            )
+        if self.type == DeclaredOutputType.FILE:
+            if self.file is None:
+                self.file = DeclaredOutputFileConfig()
+        elif self.file is not None:
+            raise ValueError("file metadata is only allowed for file output children")
+
+        if self.type == DeclaredOutputType.ARRAY:
+            if self.array_item is None:
+                self.array_item = DeclaredArrayItem(type=DeclaredOutputType.OBJECT)
+        elif self.array_item is not None:
+            raise ValueError("array_item is only allowed when child type is array")
+
+        if self.children and self.type != DeclaredOutputType.OBJECT:
+            raise ValueError("children is only allowed for object output children")
         return self
 
 
@@ -592,6 +677,7 @@ class DeclaredOutputConfig(BaseModel):
     required: bool = True
     file: DeclaredOutputFileConfig | None = None
     array_item: DeclaredArrayItem | None = None
+    children: DeclaredOutputChildren = Field(default_factory=list)
     check: DeclaredOutputCheckConfig | None = None
     failure_strategy: DeclaredOutputFailureStrategy = Field(default_factory=DeclaredOutputFailureStrategy)
 
@@ -624,6 +710,9 @@ class DeclaredOutputConfig(BaseModel):
                 self.array_item = DeclaredArrayItem(type=DeclaredOutputType.OBJECT)
         elif self.array_item is not None:
             raise ValueError("array_item is only allowed when type is array")
+
+        if self.children and self.type != DeclaredOutputType.OBJECT:
+            raise ValueError("children is only allowed for object outputs")
 
         # Per PRD §OUTPUT 配置框: output check is file-only.
         if self.check is not None and self.check.enabled and self.type != DeclaredOutputType.FILE:

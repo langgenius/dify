@@ -19,6 +19,7 @@ import { useInfiniteDatasets } from '@/service/knowledge/use-dataset'
 
 type ISelectDataSetProps = {
   isShow: boolean
+  modal?: boolean
   onClose: () => void
   selectedIds: string[]
   onSelect: (dataSet: DataSet[]) => void
@@ -26,6 +27,7 @@ type ISelectDataSetProps = {
 
 const SelectDataSet: FC<ISelectDataSetProps> = ({
   isShow,
+  modal,
   onClose,
   selectedIds,
   onSelect,
@@ -90,8 +92,8 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   }, [handleClose])
 
   return (
-    <Dialog open={isShow} onOpenChange={handleOpenChange}>
-      <DialogContent className="w-100 overflow-hidden">
+    <Dialog modal={modal} open={isShow} onOpenChange={handleOpenChange}>
+      <DialogContent backdropProps={{ forceRender: true }} className="w-100 overflow-hidden">
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t('feature.dataSet.selectTitle', { ns: 'appDebug' })}
         </DialogTitle>

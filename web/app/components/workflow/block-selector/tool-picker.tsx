@@ -1,7 +1,7 @@
 'use client'
 import type { OffsetOptions } from '@floating-ui/react'
 import type { Placement } from '@langgenius/dify-ui/popover'
-import type { FC } from 'react'
+import type { ReactNode } from 'react'
 import type { ToolDefaultValue, ToolValue } from './types'
 import type { CustomCollectionBackend } from '@/app/components/tools/types'
 import type { BlockEnum, OnSelectBlock } from '@/app/components/workflow/types'
@@ -14,7 +14,6 @@ import {
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
-import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
@@ -37,13 +36,17 @@ import {
 } from '@/service/use-tools'
 
 type Props = Readonly<{
-  panelClassName?: string
   disabled: boolean
-  trigger: React.ReactNode
+  trigger: ReactNode
   placement?: Placement
   offset?: OffsetOptions
   isShow: boolean
   onShowChange: (isShow: boolean) => void
+}> & ToolPickerContentProps
+
+export type ToolPickerContentProps = Readonly<{
+  focusSearchOnMount?: boolean
+  panelClassName?: string
   onSelect: (tool: ToolDefaultValue) => void
   onSelectMultiple: (tools: ToolDefaultValue[]) => void
   supportAddCustomTool?: boolean
@@ -51,25 +54,18 @@ type Props = Readonly<{
   selectedTools?: ToolValue[]
 }>
 
-const ToolPicker: FC<Props> = ({
-  disabled,
-  trigger,
-  placement = 'right-start',
-  offset = 0,
-  isShow,
-  onShowChange,
+export function ToolPickerContent({
+  focusSearchOnMount = false,
   onSelect,
   onSelectMultiple,
   supportAddCustomTool,
   scope = 'all',
   selectedTools,
   panelClassName,
-}) => {
+}: ToolPickerContentProps) {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
   const [tags, setTags] = useState<string[]>([])
-  const sideOffset = typeof offset === 'number' ? offset : (typeof offset === 'function' ? 0 : (offset?.mainAxis ?? 0))
-  const alignOffset = typeof offset === 'number' ? 0 : (typeof offset === 'function' ? 0 : (offset?.crossAxis ?? 0))
 
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -120,12 +116,6 @@ const ToolPicker: FC<Props> = ({
 
   const handleAddedCustomTool = invalidateCustomTools
 
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (nextOpen && disabled)
-      return
-    onShowChange(nextOpen)
-  }
-
   const handleSelect = (_type: BlockEnum, tool?: ToolDefaultValue) => {
     onSelect(tool!)
   }
@@ -158,6 +148,70 @@ const ToolPicker: FC<Props> = ({
   }
 
   return (
+    <div className={cn('relative min-h-20 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs', panelClassName)}>
+      <div className="p-2 pb-1">
+        <SearchBox
+          search={searchText}
+          onSearchChange={setSearchText}
+          tags={tags}
+          onTagsChange={setTags}
+          placeholder={t('searchTools', { ns: 'plugin' })!}
+          supportAddCustomTool={supportAddCustomTool}
+          onAddedCustomTool={handleAddedCustomTool}
+          onShowAddCustomCollectionModal={showEditCustomCollectionModal}
+          // The picker replaces the focused menu item inside an already-open popover.
+          // Focusing search keeps keyboard users in the same add-tool workflow.
+          /* eslint-disable-next-line jsx-a11y/no-autofocus */
+          autoFocus={focusSearchOnMount}
+          inputClassName="grow"
+        />
+      </div>
+      <AllTools
+        className="mt-1"
+        toolContentClassName="max-w-full"
+        tags={tags}
+        searchText={searchText}
+        onSelect={handleSelect as OnSelectBlock}
+        onSelectMultiple={handleSelectMultiple}
+        buildInTools={builtinToolList || []}
+        customTools={customToolList || []}
+        workflowTools={workflowToolList || []}
+        mcpTools={mcpTools || []}
+        selectedTools={selectedTools}
+        onTagsChange={setTags}
+        featuredPlugins={featuredPlugins}
+        featuredLoading={isFeaturedLoading}
+        showFeatured={scope === 'all' && enable_marketplace}
+        onFeaturedInstallSuccess={async () => {
+          invalidateBuiltInTools()
+          invalidateCustomTools()
+          invalidateWorkflowTools()
+          invalidateMcpTools()
+        }}
+      />
+    </div>
+  )
+}
+
+function ToolPicker({
+  disabled,
+  trigger,
+  placement = 'right-start',
+  offset = 0,
+  isShow,
+  onShowChange,
+  ...contentProps
+}: Props) {
+  const sideOffset = typeof offset === 'number' ? offset : (typeof offset === 'function' ? 0 : (offset?.mainAxis ?? 0))
+  const alignOffset = typeof offset === 'number' ? 0 : (typeof offset === 'function' ? 0 : (offset?.crossAxis ?? 0))
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen && disabled)
+      return
+    onShowChange(nextOpen)
+  }
+
+  return (
     <Popover
       open={isShow}
       onOpenChange={handleOpenChange}
@@ -175,47 +229,10 @@ const ToolPicker: FC<Props> = ({
         alignOffset={alignOffset}
         popupClassName="border-none bg-transparent shadow-none"
       >
-        <div className={cn('relative min-h-20 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs', panelClassName)}>
-          <div className="p-2 pb-1">
-            <SearchBox
-              search={searchText}
-              onSearchChange={setSearchText}
-              tags={tags}
-              onTagsChange={setTags}
-              placeholder={t('searchTools', { ns: 'plugin' })!}
-              supportAddCustomTool={supportAddCustomTool}
-              onAddedCustomTool={handleAddedCustomTool}
-              onShowAddCustomCollectionModal={showEditCustomCollectionModal}
-              inputClassName="grow"
-            />
-          </div>
-          <AllTools
-            className="mt-1"
-            toolContentClassName="max-w-full"
-            tags={tags}
-            searchText={searchText}
-            onSelect={handleSelect as OnSelectBlock}
-            onSelectMultiple={handleSelectMultiple}
-            buildInTools={builtinToolList || []}
-            customTools={customToolList || []}
-            workflowTools={workflowToolList || []}
-            mcpTools={mcpTools || []}
-            selectedTools={selectedTools}
-            onTagsChange={setTags}
-            featuredPlugins={featuredPlugins}
-            featuredLoading={isFeaturedLoading}
-            showFeatured={scope === 'all' && enable_marketplace}
-            onFeaturedInstallSuccess={async () => {
-              invalidateBuiltInTools()
-              invalidateCustomTools()
-              invalidateWorkflowTools()
-              invalidateMcpTools()
-            }}
-          />
-        </div>
+        <ToolPickerContent {...contentProps} />
       </PopoverContent>
     </Popover>
   )
 }
 
-export default React.memo(ToolPicker)
+export default ToolPicker

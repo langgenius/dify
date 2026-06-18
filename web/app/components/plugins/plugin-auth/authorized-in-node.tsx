@@ -10,6 +10,7 @@ import { RiArrowDownSLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
+  useEffect,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -22,11 +23,13 @@ type AuthorizedInNodeProps = {
   pluginPayload: PluginPayload
   onAuthorizationItemClick: (id: string) => void
   credentialId?: string
+  onDefaultCredentialChange?: (id?: string) => void
 }
 const AuthorizedInNode = ({
   pluginPayload,
   onAuthorizationItemClick,
   credentialId,
+  onDefaultCredentialChange,
 }: AuthorizedInNodeProps) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
@@ -38,6 +41,12 @@ const AuthorizedInNode = ({
     invalidPluginCredentialInfo,
     notAllowCustomCredential,
   } = usePluginAuth(pluginPayload, true, credentialId ? [credentialId] : undefined)
+  const defaultCredentialId = credentials.find(c => c.is_default)?.id
+
+  useEffect(() => {
+    onDefaultCredentialChange?.(defaultCredentialId)
+  }, [defaultCredentialId, onDefaultCredentialChange])
+
   const renderTrigger = useCallback((open?: boolean) => {
     let label = ''
     let removed = false
@@ -108,9 +117,15 @@ const AuthorizedInNode = ({
     },
   ]
   const handleAuthorizationItemClick = useCallback((id: string) => {
-    onAuthorizationItemClick(id)
+    onAuthorizationItemClick(
+      id === '__workspace_default__' && onDefaultCredentialChange
+        ? defaultCredentialId || id
+        : id,
+    )
     setIsOpen(false)
   }, [
+    defaultCredentialId,
+    onDefaultCredentialChange,
     onAuthorizationItemClick,
     setIsOpen,
   ])

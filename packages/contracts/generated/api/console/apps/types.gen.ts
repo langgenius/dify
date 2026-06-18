@@ -41,7 +41,6 @@ export type AppDetailWithSite = {
   mode: string
   model_config?: ModelConfig | null
   name: string
-  role?: string | null
   site?: Site | null
   tags?: Array<Tag>
   tracing?: JsonValue | null
@@ -210,11 +209,6 @@ export type AgentLogResponse = {
   files?: Array<unknown>
   iterations: Array<AgentIterationLogResponse>
   meta: AgentLogMetaResponse
-}
-
-export type AgentSkillStandardizeResponse = {
-  manifest: SkillManifest
-  skill: AgentSkillRefConfig
 }
 
 export type AgentSkillUploadResponse = {
@@ -1173,7 +1167,6 @@ export type AppPartial = {
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
-  role?: string | null
   tags?: Array<Tag>
   updated_at?: number | null
   updated_by?: string | null
@@ -1760,6 +1753,26 @@ export type AgentComposerBindingResponse = {
 export type DeclaredOutputConfig = {
   array_item?: DeclaredArrayItem | null
   check?: DeclaredOutputCheckConfig | null
+  children?: Array<{
+    array_item?: {
+      children?: Array<{
+        [key: string]: unknown
+      }>
+      description?: string | null
+      type?: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
+      [key: string]: unknown
+    }
+    children?: Array<{
+      [key: string]: unknown
+    }>
+    description?: string | null
+    file?: {
+      [key: string]: unknown
+    }
+    name: string
+    required?: boolean
+    type: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
+  }>
   description?: string | null
   failure_strategy?: DeclaredOutputFailureStrategy
   file?: DeclaredOutputFileConfig | null
@@ -2103,6 +2116,26 @@ export type AgentSoulToolsConfig = {
 export type WorkflowAgentBindingType = 'inline_agent' | 'roster_agent'
 
 export type DeclaredArrayItem = {
+  children?: Array<{
+    array_item?: {
+      children?: Array<{
+        [key: string]: unknown
+      }>
+      description?: string | null
+      type?: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
+      [key: string]: unknown
+    }
+    children?: Array<{
+      [key: string]: unknown
+    }>
+    description?: string | null
+    file?: {
+      [key: string]: unknown
+    }
+    name: string
+    required?: boolean
+    type: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
+  }>
   description?: string | null
   type: DeclaredOutputType
 }
@@ -2305,6 +2338,7 @@ export type AgentSecretRefConfig = {
   provider_credential_id?: string | null
   ref?: string | null
   type?: string | null
+  value?: string | null
   variable?: string | null
   [key: string]: unknown
 }
@@ -2560,7 +2594,6 @@ export type AppDetailWithSiteWritable = {
   mode: string
   model_config?: ModelConfig | null
   name: string
-  role?: string | null
   site?: SiteWritable | null
   tags?: Array<Tag>
   tracing?: JsonValue | null
@@ -2612,7 +2645,6 @@ export type AppPartialWritable = {
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
-  role?: string | null
   tags?: Array<Tag>
   updated_at?: number | null
   updated_by?: string | null
@@ -3136,34 +3168,16 @@ export type GetAppsByAppIdAgentLogsResponses = {
 export type GetAppsByAppIdAgentLogsResponse
   = GetAppsByAppIdAgentLogsResponses[keyof GetAppsByAppIdAgentLogsResponses]
 
-export type PostAppsByAppIdAgentSkillsStandardizeData = {
-  body?: never
+export type PostAppsByAppIdAgentSkillsUploadData = {
+  body: {
+    file: Blob | File
+  }
   path: {
     app_id: string
   }
   query?: {
     node_id?: string
   }
-  url: '/apps/{app_id}/agent/skills/standardize'
-}
-
-export type PostAppsByAppIdAgentSkillsStandardizeErrors = {
-  400: unknown
-}
-
-export type PostAppsByAppIdAgentSkillsStandardizeResponses = {
-  201: AgentSkillStandardizeResponse
-}
-
-export type PostAppsByAppIdAgentSkillsStandardizeResponse
-  = PostAppsByAppIdAgentSkillsStandardizeResponses[keyof PostAppsByAppIdAgentSkillsStandardizeResponses]
-
-export type PostAppsByAppIdAgentSkillsUploadData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query?: never
   url: '/apps/{app_id}/agent/skills/upload'
 }
 

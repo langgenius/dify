@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { Virtualizer } from '@tanstack/react-virtual'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import * as React from 'react'
+import { expect } from 'storybook/test'
 import {
   Combobox,
   ComboboxChip,
@@ -768,6 +769,15 @@ const MultipleChipsDemo = () => {
 
 export const MultipleChips: Story = {
   render: () => <MultipleChipsDemo />,
+  play: async ({ canvas, userEvent }) => {
+    await expect(canvas.getByText('Maya Chen')).toBeVisible()
+    await expect(canvas.getByText('Liam Brooks')).toBeVisible()
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Remove Maya Chen' }))
+
+    await expect(canvas.queryByText('Maya Chen')).not.toBeInTheDocument()
+    await expect(canvas.getByText('Liam Brooks')).toBeVisible()
+  },
 }
 
 export const VirtualizedLongList: Story = {

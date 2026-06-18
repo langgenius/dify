@@ -1,11 +1,26 @@
-acl localnet src 0.0.0.1-0.255.255.255	# RFC 1122 "this" network (LAN)
-acl localnet src 10.0.0.0/8		# RFC 1918 local private network (LAN)
-acl localnet src 100.64.0.0/10		# RFC 6598 shared address space (CGN)
-acl localnet src 169.254.0.0/16 	# RFC 3927 link-local (directly plugged) machines
-acl localnet src 172.16.0.0/12		# RFC 1918 local private network (LAN)
-acl localnet src 192.168.0.0/16		# RFC 1918 local private network (LAN)
-acl localnet src fc00::/7       	# RFC 4193 local private network range
-acl localnet src fe80::/10      	# RFC 4291 link-local (directly plugged) machines
+acl client_localnet src 0.0.0.1-0.255.255.255	# RFC 1122 "this" network (LAN)
+acl client_localnet src 10.0.0.0/8		# RFC 1918 local private network (LAN)
+acl client_localnet src 100.64.0.0/10		# RFC 6598 shared address space (CGN)
+acl client_localnet src 169.254.0.0/16 	# RFC 3927 link-local (directly plugged) machines
+acl client_localnet src 172.16.0.0/12		# RFC 1918 local private network (LAN)
+acl client_localnet src 192.168.0.0/16		# RFC 1918 local private network (LAN)
+acl client_localnet src fc00::/7       	# RFC 4193 local private network range
+acl client_localnet src fe80::/10      	# RFC 4291 link-local (directly plugged) machines
+acl to_private_networks dst 0.0.0.0/8
+acl to_private_networks dst 10.0.0.0/8
+acl to_private_networks dst 100.64.0.0/10
+acl to_private_networks dst 127.0.0.0/8
+acl to_private_networks dst 169.254.0.0/16
+acl to_private_networks dst 172.16.0.0/12
+acl to_private_networks dst 192.168.0.0/16
+acl to_private_networks dst 224.0.0.0/4
+acl to_private_networks dst 240.0.0.0/4
+acl to_private_networks dst ::/128
+acl to_private_networks dst ::1/128
+acl to_private_networks dst ::ffff:0:0/96    # IPv4-mapped
+acl to_private_networks dst ::/96            # deprecated IPv4-compatible
+acl to_private_networks dst fc00::/7
+acl to_private_networks dst fe80::/10
 acl SSL_ports port 443
 # acl SSL_ports port 1025-65535   # Enable the configuration to resolve this issue: https://github.com/langgenius/dify/issues/12792
 acl Safe_ports port 80		# http
@@ -20,18 +35,23 @@ acl Safe_ports port 591		# filemaker
 acl Safe_ports port 777		# multiling http
 acl CONNECT method CONNECT
 acl allowed_domains dstdomain .marketplace.dify.ai
-http_access allow allowed_domains
+
+http_port ${HTTP_PORT}
+
 http_access deny !Safe_ports
 http_access deny CONNECT !SSL_ports
 http_access allow localhost manager
 http_access deny manager
+include /etc/squid/dify_sandbox_proxy.conf
+include /etc/squid/dify_allow_private.conf
+http_access deny to_private_networks
+http_access allow allowed_domains
+http_access allow client_localnet
 http_access allow localhost
-include /etc/squid/conf.d/*.conf
 http_access deny all
 tcp_outgoing_address 0.0.0.0
 
 ################################## Proxy Server ################################
-http_port ${HTTP_PORT}
 coredump_dir ${COREDUMP_DIR}
 refresh_pattern ^ftp:		1440	20%	10080
 refresh_pattern ^gopher:	1440	0%	1440
@@ -47,11 +67,7 @@ refresh_pattern .		0	20%	4320
 # upstream proxy, set to your own upstream proxy IP to avoid SSRF attacks
 # cache_peer 172.1.1.1 parent 3128 0 no-query no-digest no-netdb-exchange default
 
-################################## Reverse Proxy To Sandbox ################################
-http_port ${REVERSE_PROXY_PORT} accel vhost
-cache_peer ${SANDBOX_HOST} parent ${SANDBOX_PORT} 0 no-query originserver
-acl src_all src all
-http_access allow src_all
+################################## Request Buffer ################################
 
 # Unless the option's size is increased, an error will occur when uploading more than two files.
 client_request_buffer_max_size 100 MB
@@ -103,4 +119,3 @@ access_log daemon:/var/log/squid/access.log dify_log
 
 # Access log to track concurrent requests and timeouts
 logfile_rotate 10
-
