@@ -53,6 +53,12 @@ from services.enterprise import rbac_service as enterprise_rbac_service
 
 register_response_schema_models(console_ns, ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse)
 
+DATASET_LIST_PERMISSION_KEYS = frozenset({"dataset.preview", "dataset.acl.preview", "dataset.full_access"})
+
+
+def _has_dataset_list_permission(permission_keys: list[str]) -> bool:
+    return any(permission_key in DATASET_LIST_PERMISSION_KEYS for permission_key in permission_keys)
+
 
 def _validate_indexing_technique(value: str | None) -> str | None:
     if value is None:
@@ -419,20 +425,22 @@ class DatasetListApi(Resource):
                 str(current_tenant_id),
                 current_user.id,
             )
-            has_default_readonly = "dataset.preview" in permissions.dataset.default_permission_keys
+            has_default_readonly = _has_dataset_list_permission(permissions.dataset.default_permission_keys)
             permission_dataset_ids: set[str] | None = None
             if not has_default_readonly:
                 permission_dataset_ids = {
                     override.resource_id
                     for override in permissions.dataset.overrides
-                    if "dataset.preview" in override.permission_keys
+                    if _has_dataset_list_permission(override.permission_keys)
                 }
             if getattr(whitelist_scope, "unrestricted", False):
                 filtered_dataset_ids = permission_dataset_ids
             else:
                 filtered_dataset_ids = set(whitelist_scope.resource_ids)
                 if permission_dataset_ids is not None:
-                    filtered_dataset_ids &= permission_dataset_ids
+                    filtered_dataset_ids |= permission_dataset_ids
+                elif has_default_readonly:
+                    filtered_dataset_ids = None
             if filtered_dataset_ids is not None:
                 accessible_dataset_ids = sorted(filtered_dataset_ids)
             include_own_datasets = "dataset.create_and_management" in permissions.workspace.permission_keys

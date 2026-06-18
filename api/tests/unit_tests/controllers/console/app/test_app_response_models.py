@@ -665,7 +665,10 @@ def test_app_list_api_limits_to_apps_created_by_current_user_without_view_permis
 
     assert status == 200
     assert resp["data"] == []
-    assert get_paginate_apps.call_args.args[2].is_created_by_me is True
+    params = get_paginate_apps.call_args.args[2]
+    assert params.accessible_app_ids == ["app-not-permitted", "app-shared"]
+    assert params.include_own_apps is True
+    assert params.is_created_by_me is None
 
 
 def test_app_list_api_limits_to_preview_overrides_without_manage_own_permission(app, app_module):
@@ -687,6 +690,14 @@ def test_app_list_api_limits_to_preview_overrides_without_manage_own_permission(
                     app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
                         overrides=[
                             app_module.enterprise_rbac_service.ResourcePermissionKeys(
+                                resource_id="app-acl-shared",
+                                permission_keys=["app.acl.preview"],
+                            ),
+                            app_module.enterprise_rbac_service.ResourcePermissionKeys(
+                                resource_id="app-full",
+                                permission_keys=["app.full_access"],
+                            ),
+                            app_module.enterprise_rbac_service.ResourcePermissionKeys(
                                 resource_id="app-shared",
                                 permission_keys=["app.preview"],
                             )
@@ -697,7 +708,9 @@ def test_app_list_api_limits_to_preview_overrides_without_manage_own_permission(
             monkeypatch.setattr(
                 app_module.enterprise_rbac_service.RBACService.AppAccess,
                 "whitelist_resources",
-                lambda tenant_id, account_id: SimpleNamespace(resource_ids=["app-shared", "app-whitelist-only"]),
+                lambda tenant_id, account_id: SimpleNamespace(
+                    resource_ids=["app-shared", "app-acl-shared", "app-full", "app-whitelist-only"]
+                ),
             )
             monkeypatch.setattr(
                 app_module.FeatureService,
@@ -709,7 +722,7 @@ def test_app_list_api_limits_to_preview_overrides_without_manage_own_permission(
             method(app_module.AppListApi(), "tenant-1", "acct-1", session)
 
     params = get_paginate_apps.call_args.args[2]
-    assert params.accessible_app_ids == ["app-shared"]
+    assert params.accessible_app_ids == ["app-acl-shared", "app-full", "app-shared", "app-whitelist-only"]
     assert params.include_own_apps is False
     assert params.is_created_by_me is None
 
@@ -746,7 +759,7 @@ def test_app_list_api_returns_no_apps_without_workspace_or_resource_view_permiss
             method(app_module.AppListApi(), "tenant-1", "acct-1", session)
 
     params = get_paginate_apps.call_args.args[2]
-    assert params.accessible_app_ids == []
+    assert params.accessible_app_ids == ["app-not-permitted"]
     assert params.include_own_apps is False
     assert params.is_created_by_me is None
 

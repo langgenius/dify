@@ -320,6 +320,14 @@ class TestDatasetList:
             dataset=enterprise_rbac_service.ResourcePermissionSnapshot(
                 overrides=[
                     enterprise_rbac_service.ResourcePermissionKeys(
+                        resource_id="dataset-acl-shared",
+                        permission_keys=["dataset.acl.preview"],
+                    ),
+                    enterprise_rbac_service.ResourcePermissionKeys(
+                        resource_id="dataset-full",
+                        permission_keys=["dataset.full_access"],
+                    ),
+                    enterprise_rbac_service.ResourcePermissionKeys(
                         resource_id="dataset-shared",
                         permission_keys=["dataset.preview"],
                     ),
@@ -341,7 +349,14 @@ class TestDatasetList:
                 ),
                 patch(
                     "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.DatasetAccess.whitelist_resources",
-                    return_value=SimpleNamespace(resource_ids=["dataset-shared", "dataset-whitelist-only"]),
+                    return_value=SimpleNamespace(
+                        resource_ids=[
+                            "dataset-shared",
+                            "dataset-acl-shared",
+                            "dataset-full",
+                            "dataset-whitelist-only",
+                        ]
+                    ),
                 ),
                 patch.object(
                     ProviderManager,
@@ -351,7 +366,12 @@ class TestDatasetList:
             ):
                 method(api, "tenant-1", current_user)
 
-        assert get_datasets.call_args.kwargs["accessible_dataset_ids"] == ["dataset-shared"]
+        assert get_datasets.call_args.kwargs["accessible_dataset_ids"] == [
+            "dataset-acl-shared",
+            "dataset-full",
+            "dataset-shared",
+            "dataset-whitelist-only",
+        ]
         assert get_datasets.call_args.kwargs["include_own_datasets"] is False
 
     def test_get_with_ids_applies_dataset_visibility(self, app: Flask):
