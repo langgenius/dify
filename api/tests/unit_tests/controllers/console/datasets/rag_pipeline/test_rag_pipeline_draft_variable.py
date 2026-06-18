@@ -1,3 +1,4 @@
+from inspect import unwrap
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -17,12 +18,6 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable impor
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from graphon.variables.types import SegmentType
 from models.account import Account, TenantAccountRole
-
-
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 @pytest.fixture

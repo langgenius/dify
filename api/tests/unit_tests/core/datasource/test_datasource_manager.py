@@ -89,7 +89,9 @@ def test_get_datasource_runtime_delegates_to_provider_controller(mocker: MockerF
         ),
     ],
 )
-def test_get_datasource_plugin_provider_creates_controller_and_caches(mocker, datasource_type, controller_path):
+def test_get_datasource_plugin_provider_creates_controller_and_caches(
+    mocker: MockerFixture, datasource_type, controller_path
+):
     _invalidate_recyclable_contextvars()
 
     provider_entity = types.SimpleNamespace(declaration=object(), plugin_id="plugin", plugin_unique_identifier="uniq")
