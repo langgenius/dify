@@ -46,7 +46,23 @@ const agentFilesDraft = {
   ],
 } satisfies typeof defaultAgentSoulConfigFormState
 
-function renderAgentFiles() {
+const agentSkillFilesDraft = {
+  ...defaultAgentSoulConfigFormState,
+  files: [
+    {
+      id: 'script',
+      name: 'run.py',
+      icon: 'file',
+    },
+    {
+      id: 'skill-md',
+      name: 'SKILL.md',
+      icon: 'markdown',
+    },
+  ],
+} satisfies typeof defaultAgentSoulConfigFormState
+
+function renderAgentFiles(initialDraft = agentFilesDraft) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -57,7 +73,7 @@ function renderAgentFiles() {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <AgentComposerProvider initialDraft={agentFilesDraft}>
+      <AgentComposerProvider initialDraft={initialDraft}>
         <AgentFiles />
       </AgentComposerProvider>
     </QueryClientProvider>,
@@ -119,6 +135,52 @@ describe('AgentFiles', () => {
       },
     })
     expect(await within(dialog).findByText('Preview content for preview-image')).toBeInTheDocument()
+  })
+
+  it('should default to SKILL.md when the preview dialog opens', async () => {
+    renderAgentFiles(agentSkillFilesDraft)
+
+    fireEvent.click(screen.getByRole('button', {
+      name: 'run.py',
+    }))
+
+    const dialog = screen.getByRole('dialog')
+
+    expect(await within(dialog).findByText('Preview content for skill-md')).toBeInTheDocument()
+    expect(mocks.filePreviewQueryOptions).toHaveBeenCalledWith({
+      input: {
+        params: {
+          file_id: 'skill-md',
+        },
+      },
+    })
+  })
+
+  it('should preview the selected file from the detail file tree', async () => {
+    renderAgentFiles(agentSkillFilesDraft)
+
+    fireEvent.click(screen.getByRole('button', {
+      name: 'run.py',
+    }))
+
+    const dialog = screen.getByRole('dialog')
+    const skillFile = within(dialog).getByRole('button', { name: 'SKILL.md' })
+    fireEvent.click(skillFile)
+
+    expect(await within(dialog).findByText('Preview content for skill-md')).toBeInTheDocument()
+
+    const scriptFile = within(dialog).getAllByRole('button', { name: 'run.py' }).at(-1)
+    expect(scriptFile).toBeDefined()
+    fireEvent.click(scriptFile!)
+
+    expect(await within(dialog).findByText('Preview content for script')).toBeInTheDocument()
+    expect(mocks.filePreviewQueryOptions).toHaveBeenCalledWith({
+      input: {
+        params: {
+          file_id: 'script',
+        },
+      },
+    })
   })
 
   // File rows expose a hover/focus remove action that updates the composer draft.

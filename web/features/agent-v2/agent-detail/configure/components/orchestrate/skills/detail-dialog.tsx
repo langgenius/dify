@@ -7,6 +7,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { FileTreeFile } from '@langgenius/dify-ui/file-tree'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -31,6 +32,7 @@ export type AgentSkillDetail = {
     isError?: boolean
     isLoading?: boolean
   }
+  onSelectFile?: (file: AgentSkillFileNode) => void
   selectedFileId?: string
   sections: AgentSkillDetailSection[]
 }
@@ -38,10 +40,12 @@ export type AgentSkillDetail = {
 function AgentSkillFileList({
   files,
   fileCount,
+  onSelectFile,
   selectedFileId,
 }: {
   files: AgentSkillFileNode[]
   fileCount: number
+  onSelectFile?: (file: AgentSkillFileNode) => void
   selectedFileId?: string
 }) {
   const { t } = useTranslation('agentV2')
@@ -52,6 +56,13 @@ function AgentSkillFileList({
       selectedFileId={selectedFileId}
       labelledBy="agent-skill-detail-files-heading"
       className="h-[258px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3"
+      renderFile={onSelectFile
+        ? ({ file, selected, children }) => (
+            <FileTreeFile selected={selected} onClick={() => onSelectFile(file)}>
+              {children}
+            </FileTreeFile>
+          )
+        : undefined}
       header={(
         <>
           <h3 id="agent-skill-detail-files-heading" className="sr-only">
@@ -181,7 +192,12 @@ export function AgentSkillDetailDialog({
           ))}
         </ScrollArea>
         <div className="flex w-56 max-w-56 min-w-0 shrink-0 items-start justify-center p-4 pl-2">
-          <AgentSkillFileList files={detail.files} fileCount={fileCount} selectedFileId={detail.selectedFileId} />
+          <AgentSkillFileList
+            files={detail.files}
+            fileCount={fileCount}
+            selectedFileId={detail.selectedFileId}
+            onSelectFile={detail.onSelectFile}
+          />
         </div>
       </div>
     </DialogContent>

@@ -11,6 +11,7 @@ import { AgentSkills } from '../index'
 
 const mocks = vi.hoisted(() => ({
   driveFilesQueryOptions: vi.fn(),
+  driveFilePreviewQueryOptions: vi.fn(),
   uploadSkillMutationOptions: vi.fn(),
 }))
 
@@ -29,6 +30,11 @@ vi.mock('@/service/client', () => ({
           files: {
             get: {
               queryOptions: mocks.driveFilesQueryOptions,
+            },
+            preview: {
+              get: {
+                queryOptions: mocks.driveFilePreviewQueryOptions,
+              },
             },
           },
         },
@@ -129,6 +135,12 @@ describe('AgentSkills', () => {
         ],
       }),
     }))
+    mocks.driveFilePreviewQueryOptions.mockImplementation(({ input }) => ({
+      queryKey: ['agent-drive-file-preview', input],
+      queryFn: async () => ({
+        text: `Preview content for ${input.query.key}`,
+      }),
+    }))
     mocks.uploadSkillMutationOptions.mockReturnValue({
       mutationFn: vi.fn(),
       mutationKey: ['upload-skill'],
@@ -152,7 +164,7 @@ describe('AgentSkills', () => {
           agent_id: 'agent-1',
         },
         query: {
-          prefix: 'tender-analyzer',
+          prefix: 'tender-analyzer/',
         },
       },
     })
@@ -160,6 +172,41 @@ describe('AgentSkills', () => {
     expect(within(dialog).getByText('Extracts tender requirements and scoring criteria.')).toBeInTheDocument()
     expect(await within(dialog).findByText('scripts/extract.py')).toBeInTheDocument()
     expect(within(dialog).getByText('SKILL.md')).toBeInTheDocument()
+    expect(await within(dialog).findByText('Preview content for tender-analyzer/SKILL.md')).toBeInTheDocument()
+    expect(mocks.driveFilePreviewQueryOptions).toHaveBeenCalledWith({
+      input: {
+        params: {
+          agent_id: 'agent-1',
+        },
+        query: {
+          key: 'tender-analyzer/SKILL.md',
+        },
+      },
+    })
+  })
+
+  it('should preview the selected skill file from the detail file tree', async () => {
+    renderAgentSkills()
+
+    fireEvent.click(screen.getByRole('button', {
+      name: 'Tender Analyzer',
+    }))
+
+    const dialog = screen.getByRole('dialog')
+    const scriptFile = await within(dialog).findByRole('button', { name: 'scripts/extract.py' })
+    fireEvent.click(scriptFile)
+
+    expect(await within(dialog).findByText('Preview content for tender-analyzer/scripts/extract.py')).toBeInTheDocument()
+    expect(mocks.driveFilePreviewQueryOptions).toHaveBeenCalledWith({
+      input: {
+        params: {
+          agent_id: 'agent-1',
+        },
+        query: {
+          key: 'tender-analyzer/scripts/extract.py',
+        },
+      },
+    })
   })
 
   // The hover/focus remove action updates the composer draft without opening preview.
@@ -235,7 +282,7 @@ describe('AgentSkills', () => {
           agent_id: 'agent-1',
         },
         query: {
-          prefix: 'invoice-helper',
+          prefix: 'invoice-helper/',
         },
       },
     })

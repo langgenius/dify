@@ -31,6 +31,28 @@ const removeFileNode = (files: AgentFileNode[], fileId: string): AgentFileNode[]
     children: file.children ? removeFileNode(file.children, fileId) : undefined,
   }))
 
+const getSkillMdFileId = (files: AgentFileNode[]): string | undefined => {
+  for (const file of files) {
+    if (file.icon !== 'folder' && file.name === 'SKILL.md')
+      return file.id
+
+    const childFileId = file.children ? getSkillMdFileId(file.children) : undefined
+    if (childFileId)
+      return childFileId
+  }
+}
+
+const getFirstFileId = (files: AgentFileNode[]): string | undefined => {
+  for (const file of files) {
+    if (file.icon !== 'folder')
+      return file.id
+
+    const childFileId = file.children ? getFirstFileId(file.children) : undefined
+    if (childFileId)
+      return childFileId
+  }
+}
+
 function AgentFileItem({
   children,
   depth,
@@ -49,19 +71,25 @@ function AgentFileItem({
   const { t } = useTranslation('agentV2')
   const readOnly = useAgentOrchestrateReadOnly()
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const [selectedFileId, setSelectedFileId] = useState<string>()
+  const previewFileId = selectedFileId ?? getSkillMdFileId(files) ?? getFirstFileId(files)
   const previewQuery = useQuery({
     ...consoleQuery.files.byFileId.preview.get.queryOptions({
       input: {
         params: {
-          file_id: file.id,
+          file_id: previewFileId ?? '',
         },
       },
     }),
-    enabled: isPreviewOpen,
+    enabled: isPreviewOpen && !!previewFileId,
   })
   const handleRemove = useCallback(() => {
     onRemove(file.id)
   }, [file.id, onRemove])
+  const handleOpenPreview = useCallback(() => {
+    setSelectedFileId(undefined)
+    setIsPreviewOpen(true)
+  }, [])
 
   return (
     <li className="group/file-row relative min-w-0">
@@ -71,7 +99,7 @@ function AgentFileItem({
           data-selected={selected || undefined}
           aria-current={selected ? 'true' : undefined}
           className="group/file-tree-row relative flex h-6 w-full min-w-0 cursor-pointer items-center rounded-md pr-7 pl-2 text-left outline-hidden select-none hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-[selected]:bg-state-base-active"
-          onClick={() => setIsPreviewOpen(true)}
+          onClick={handleOpenPreview}
         >
           {Array.from({ length: Math.max(depth - 1, 0) }, (_, index) => (
             <FileTreeGuide key={index} />
@@ -91,7 +119,8 @@ function AgentFileItem({
                 isError: previewQuery.isError,
                 isLoading: previewQuery.isPending,
               },
-              selectedFileId: file.id,
+              onSelectFile: selectedFile => setSelectedFileId(selectedFile.id),
+              selectedFileId: previewFileId,
               sections: [],
             }}
           />
