@@ -27,9 +27,9 @@ class DatasourceErrorEvent(BaseDatasourceEvent):
 class DatasourceCompletedEvent(BaseDatasourceEvent):
     event: DatasourceStreamEvent = DatasourceStreamEvent.COMPLETED
     data: Mapping[str, Any] | list = Field(..., description="result")
-    total: int | None = Field(default=0, description="total")
-    completed: int | None = Field(default=0, description="completed")
-    time_consuming: float | None = Field(default=0.0, description="time consuming")
+    total: int = Field(default=0, description="total")
+    completed: int = Field(default=0, description="completed")
+    time_consuming: float = Field(default=0.0, description="time consuming")
 
 
 class DatasourceProcessingEvent(BaseDatasourceEvent):

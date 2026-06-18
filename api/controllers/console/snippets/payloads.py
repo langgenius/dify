@@ -77,7 +77,7 @@ class CreateSnippetPayload(BaseModel):
     type: Literal["node", "group"] = "node"
     icon_info: IconInfo | None = None
     graph: dict[str, Any] | None = Field(default=None)
-    input_fields: list[InputFieldDefinition] | None = Field(default_factory=list)
+    input_fields: list[InputFieldDefinition] = Field(default_factory=list)
 
 
 class UpdateSnippetPayload(BaseModel):

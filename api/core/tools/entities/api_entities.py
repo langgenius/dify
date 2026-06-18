@@ -38,14 +38,14 @@ class ToolProviderApiEntity(BaseModel):
     original_credentials: Mapping[str, object] = Field(default_factory=dict)
     is_team_authorization: bool = False
     allow_delete: bool = True
-    plugin_id: str | None = Field(default="", description="The plugin id of the tool")
-    plugin_unique_identifier: str | None = Field(default="", description="The unique identifier of the tool")
+    plugin_id: str = Field(default="", description="The plugin id of the tool")
+    plugin_unique_identifier: str = Field(default="", description="The unique identifier of the tool")
     tools: list[ToolApiEntity] = Field(default_factory=list[ToolApiEntity])
     labels: list[str] = Field(default_factory=list)
     # MCP
-    server_url: str | None = Field(default="", description="The server url of the tool")
+    server_url: str = Field(default="", description="The server url of the tool")
     updated_at: int = Field(default_factory=lambda: int(datetime.now().timestamp()))
-    server_identifier: str | None = Field(default="", description="The server identifier of the MCP tool")
+    server_identifier: str = Field(default="", description="The server identifier of the MCP tool")
 
     masked_headers: dict[str, str] | None = Field(default=None, description="The masked headers of the MCP tool")
     original_headers: dict[str, str] | None = Field(default=None, description="The original headers of the MCP tool")

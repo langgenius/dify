@@ -31,12 +31,12 @@ class SourceMetadata(BaseModel):
     retriever_from: str = Field(default="workflow", description="Retriever source context")
     score: float = Field(default=0.0, description="Retrieval relevance score")
     child_chunks: list[SourceChildChunk] = Field(default_factory=list, description="List of child chunks")
-    segment_hit_count: int | None = Field(default=0, description="Number of times segment was retrieved")
-    segment_word_count: int | None = Field(default=0, description="Word count of the segment")
-    segment_position: int | None = Field(default=0, description="Position of segment in document")
+    segment_hit_count: int = Field(default=0, description="Number of times segment was retrieved")
+    segment_word_count: int = Field(default=0, description="Word count of the segment")
+    segment_position: int = Field(default=0, description="Position of segment in document")
     segment_index_node_hash: str | None = Field(default=None, description="Hash of index node for the segment")
     doc_metadata: dict[str, Any] | None = Field(default=None, description="Additional document metadata")
-    position: int | None = Field(default=0, description="Position of the document in the dataset")
+    position: int = Field(default=0, description="Position of the document in the dataset")
 
     class Config:
         populate_by_name = True

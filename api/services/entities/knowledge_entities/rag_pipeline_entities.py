@@ -11,8 +11,8 @@ class RerankingModelConfig(BaseModel):
     Reranking Model Config.
     """
 
-    reranking_provider_name: str | None = ""
-    reranking_model_name: str | None = ""
+    reranking_provider_name: str = ""
+    reranking_model_name: str = ""
 
 
 class WeightedScoreConfig(BaseModel):

@@ -71,9 +71,9 @@ class RequestInvokeLLM(BaseRequestInvokeModel):
     mode: str
     completion_params: dict[str, Any] = Field(default_factory=dict)
     prompt_messages: list[PromptMessage] = Field(default_factory=list)
-    tools: list[PromptMessageTool] | None = Field(default_factory=list[PromptMessageTool])
-    stop: list[str] | None = Field(default_factory=list[str])
-    stream: bool | None = False
+    tools: list[PromptMessageTool] = Field(default_factory=list[PromptMessageTool])
+    stop: list[str] = Field(default_factory=list[str])
+    stream: bool = False
 
     model_config = ConfigDict(protected_namespaces=())
 
