@@ -170,10 +170,11 @@ class AccountService:
         for role in roles:
             role_id = str(role.id)
             role_name = str(role.name)
+            role_tag = str(role.role_tag)
             if role_id == role_identifier:
                 return role_id
             if expected_builtin_tag and role.is_builtin and role.category == "global_system_default":
-                if role_name == expected_builtin_tag:
+                if role_tag == expected_builtin_tag:
                     return role_id
             if role_name.strip().lower() == normalized_identifier:
                 return role_id
@@ -1307,7 +1308,7 @@ class TenantService:
                 tenant_id=str(tenant.id),
                 actor_account_id=account.id,
                 member_account_id=account.id,
-                role_identifier=TenantAccountRole.ADMIN.value,
+                role_identifier=TenantAccountRole.OWNER.value,
             )
         account.current_tenant = tenant
         db.session.commit()
