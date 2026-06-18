@@ -1,5 +1,6 @@
 import io
 import types
+from inspect import unwrap
 from unittest.mock import patch
 
 import pytest
@@ -8,8 +9,6 @@ from werkzeug.exceptions import Forbidden
 import controllers.files.upload as module
 from core.workflow.file_reference import build_file_reference
 
-
-from inspect import unwrap
 
 def fake_request(args: dict, file=None):
     return types.SimpleNamespace(

@@ -1,3 +1,4 @@
+from inspect import unwrap
 from unittest.mock import MagicMock, patch
 
 from flask import Flask
@@ -7,8 +8,6 @@ from controllers.console.workspace.agent_providers import (
     AgentProviderListApi,
 )
 
-
-from inspect import unwrap
 
 class TestAgentProviderListApi:
     def test_get_success(self, app: Flask):

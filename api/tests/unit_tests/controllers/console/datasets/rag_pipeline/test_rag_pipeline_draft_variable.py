@@ -1,3 +1,4 @@
+from inspect import unwrap
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -18,8 +19,6 @@ from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from graphon.variables.types import SegmentType
 from models.account import Account, TenantAccountRole
 
-
-from inspect import unwrap
 
 @pytest.fixture
 def fake_db():

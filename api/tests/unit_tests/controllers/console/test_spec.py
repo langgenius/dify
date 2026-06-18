@@ -1,9 +1,8 @@
+from inspect import unwrap
 from unittest.mock import patch
 
 import controllers.console.spec as spec_module
 
-
-from inspect import unwrap
 
 class TestSpecSchemaDefinitionsApi:
     def test_get_success(self):

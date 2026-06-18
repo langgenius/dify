@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import types
+from inspect import unwrap
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -12,8 +13,6 @@ from pydantic import ValidationError
 
 import controllers.mcp.mcp as module
 
-
-from inspect import unwrap
 
 @pytest.fixture(autouse=True)
 def mock_mcp_ns():

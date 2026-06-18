@@ -1,4 +1,5 @@
 from datetime import datetime
+from inspect import unwrap
 from unittest.mock import MagicMock, patch
 
 from flask import Flask
@@ -6,8 +7,6 @@ from flask import Flask
 import controllers.console.explore.banner as banner_module
 from models.enums import BannerStatus
 
-
-from inspect import unwrap
 
 class TestBannerApi:
     def test_get_banners_with_requested_language(self, app: Flask):

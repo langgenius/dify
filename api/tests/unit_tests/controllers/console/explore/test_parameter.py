@@ -1,3 +1,4 @@
+from inspect import unwrap
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -6,8 +7,6 @@ import controllers.console.explore.parameter as module
 from controllers.console.app.error import AppUnavailableError
 from models.model import AppMode
 
-
-from inspect import unwrap
 
 class TestAppParameterApi:
     def test_get_app_none(self):

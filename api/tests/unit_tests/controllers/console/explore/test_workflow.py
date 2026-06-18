@@ -1,3 +1,4 @@
+from inspect import unwrap
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,8 +14,6 @@ from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpErr
 from models.model import AppMode
 from services.errors.llm import InvokeRateLimitError
 
-
-from inspect import unwrap
 
 @pytest.fixture
 def app():

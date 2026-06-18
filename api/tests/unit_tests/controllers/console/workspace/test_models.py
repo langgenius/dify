@@ -1,3 +1,4 @@
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -18,8 +19,6 @@ from controllers.console.workspace.models import (
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 
-
-from inspect import unwrap
 
 class TestDefaultModelApi:
     def test_get_success(self, app: Flask):

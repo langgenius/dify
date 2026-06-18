@@ -1,4 +1,5 @@
 import types
+from inspect import unwrap
 from unittest.mock import patch
 
 import pytest
@@ -6,8 +7,6 @@ from werkzeug.exceptions import NotFound
 
 import controllers.files.image_preview as module
 
-
-from inspect import unwrap
 
 @pytest.fixture(autouse=True)
 def mock_db():

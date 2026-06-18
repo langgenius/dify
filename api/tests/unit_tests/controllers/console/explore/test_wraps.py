@@ -18,8 +18,6 @@ from controllers.console.explore.wraps import (
 )
 
 
-from inspect import unwrap
-
 def test_installed_app_required_not_found():
     @installed_app_required
     def view(installed_app):

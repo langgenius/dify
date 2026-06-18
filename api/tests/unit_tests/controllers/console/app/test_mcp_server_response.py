@@ -1,4 +1,5 @@
 import datetime
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import PropertyMock, patch
 
@@ -7,8 +8,6 @@ from flask import Flask
 from controllers.console import console_ns
 from controllers.console.app.mcp_server import AppMCPServerController, AppMCPServerResponse
 
-
-from inspect import unwrap
 
 class _ValidatedResponse:
     def __init__(self, payload):

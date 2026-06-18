@@ -1,3 +1,4 @@
+from inspect import unwrap
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,8 +11,6 @@ from controllers.console.datasets.rag_pipeline.datasource_content_preview import
 from models import Account
 from models.dataset import Pipeline
 
-
-from inspect import unwrap
 
 def make_account() -> Account:
     account = Account(name="Test User", email="user@example.com")

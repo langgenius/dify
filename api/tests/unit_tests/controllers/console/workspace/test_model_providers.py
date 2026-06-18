@@ -22,6 +22,7 @@ INVALID_UUID = "123"
 
 from inspect import unwrap
 
+
 class TestModelProviderListApi:
     def test_get_success(self, app: Flask):
         api = ModelProviderListApi()

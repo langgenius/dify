@@ -1,4 +1,5 @@
 from contextlib import nullcontext
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -25,8 +26,6 @@ from controllers.console.workspace.members import (
 )
 from services.errors.account import AccountAlreadyInTenantError
 
-
-from inspect import unwrap
 
 class TestMemberListApi:
     def test_get_success(self, app: Flask):

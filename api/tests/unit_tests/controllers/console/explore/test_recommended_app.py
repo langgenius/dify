@@ -1,3 +1,4 @@
+from inspect import unwrap
 from unittest.mock import ANY, patch
 
 from flask import Flask
@@ -6,8 +7,6 @@ import controllers.console.explore.recommended_app as module
 from models import Account
 from models.model import AppMode, IconType
 
-
-from inspect import unwrap
 
 def make_account(interface_language: str | None) -> Account:
     account = Account(name="Test User", email="user@example.com")

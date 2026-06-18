@@ -15,6 +15,7 @@ type PayloadPatch = Callable[[Payload], AbstractContextManager[object]]
 
 from inspect import unwrap
 
+
 @pytest.fixture
 def tenant_id() -> str:
     return "t1"
