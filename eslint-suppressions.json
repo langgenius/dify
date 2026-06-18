@@ -7445,22 +7445,9 @@
       "count": 1
     }
   },
-  "web/app/signin/invite-settings/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/signin/layout.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/app/signin/normal-form.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 2
     }
   },
   "web/app/signin/one-more-step.tsx": {
@@ -7695,7 +7682,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 27
+      "count": 26
     }
   },
   "web/service/datasets.ts": {

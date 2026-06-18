@@ -30,7 +30,7 @@ export function RoleRouteGuard({ children }: { children: ReactNode }) {
     return <Loading type="app" />
 
   if (shouldRedirectAppDeploy)
-    redirect('/apps')
+    redirect('/')
 
   if (shouldRedirectDatasetOperator)
     redirect('/datasets')
