@@ -1,5 +1,6 @@
 {
-  "blocks.agent": "عامل",
+  "blocks.agent": "Agent",
+  "blocks.agent-v2": "Agent",
   "blocks.answer": "پاسخ",
   "blocks.assigner": "تخصیص‌دهنده متغیر",
   "blocks.code": "کد",
@@ -33,6 +34,7 @@
   "blocks.variable-aggregator": "تجمیع‌کننده متغیر",
   "blocks.variable-assigner": "تخصیص‌دهنده متغیر",
   "blocksAbout.agent": "فراخوانی مدل‌های زبانی بزرگ برای پاسخ به سؤالات یا پردازش زبان طبیعی",
+  "blocksAbout.agent-v2": "فراخوانی مدل‌های زبانی بزرگ برای پاسخ به سؤالات یا پردازش زبان طبیعی",
   "blocksAbout.answer": "تعریف محتوای پاسخ در مکالمه چت",
   "blocksAbout.assigner": "گره تخصیص متغیر برای مقداردهی به متغیرهای قابل‌نوشتن (مانند متغیرهای مکالمه) استفاده می‌شود.",
   "blocksAbout.code": "اجرای کد Python یا NodeJS برای پیاده‌سازی منطق سفارشی",
@@ -414,6 +416,7 @@
   "nodes.agent.pluginNotFoundDesc": "این یکپارچه‌سازی از GitHub نصب شده. برای نصب مجدد به بخش یکپارچه‌سازی‌ها بروید.",
   "nodes.agent.pluginNotInstalled": "این یکپارچه‌سازی نصب نشده است",
   "nodes.agent.pluginNotInstalledDesc": "این یکپارچه‌سازی از GitHub نصب شده. برای نصب مجدد به بخش یکپارچه‌سازی‌ها بروید.",
+  "nodes.agent.roster.label": "عامل",
   "nodes.agent.strategy.configureTip": "لطفاً استراتژی عامل را پیکربندی کنید.",
   "nodes.agent.strategy.configureTipDesc": "پس از انتخاب استراتژی عامل، تنظیمات مربوطه به‌طور خودکار بارگذاری می‌شوند. این استراتژی بر مکانیسم استدلال چندمرحله‌ای ابزار تأثیر می‌گذارد.",
   "nodes.agent.strategy.label": "استراتژی عامل",

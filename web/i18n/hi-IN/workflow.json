@@ -1,5 +1,6 @@
 {
-  "blocks.agent": "एजेंट",
+  "blocks.agent": "Agent",
+  "blocks.agent-v2": "Agent",
   "blocks.answer": "उत्तर",
   "blocks.assigner": "चर असाइनर",
   "blocks.code": "कोड",
@@ -33,6 +34,7 @@
   "blocks.variable-aggregator": "वेरिएबल एग्रीगेटर",
   "blocks.variable-assigner": "वेरिएबल एग्रीगेटर",
   "blocksAbout.agent": "प्रश्नों का उत्तर देने या प्राकृतिक भाषा को संसाधित करने के लिए बड़े भाषा मॉडलों को आमंत्रित करना",
+  "blocksAbout.agent-v2": "प्रश्नों का उत्तर देने या प्राकृतिक भाषा को संसाधित करने के लिए बड़े भाषा मॉडलों को आमंत्रित करना",
   "blocksAbout.answer": "चैट संवाद के उत्तर सामग्री को परिभाषित करें",
   "blocksAbout.assigner": "चर असाइनमेंट नोड का उपयोग लिखने योग्य चर (जैसे वार्तालाप चर) को मान असाइन करने के लिए किया जाता है।",
   "blocksAbout.code": "कस्टम लॉजिक को लागू करने के लिए एक टुकड़ा Python या NodeJS कोड निष्पादित करें",
@@ -414,6 +416,7 @@
   "nodes.agent.pluginNotFoundDesc": "यह एकीकरण गिटहब से स्थापित किया गया है। कृपया पुनः स्थापित करने के लिए एकीकरण पर जाएं।",
   "nodes.agent.pluginNotInstalled": "यह एकीकरण स्थापित नहीं है",
   "nodes.agent.pluginNotInstalledDesc": "यह एकीकरण गिटहब से स्थापित किया गया है। कृपया पुनः स्थापित करने के लिए एकीकरण पर जाएं।",
+  "nodes.agent.roster.label": "एजेंट",
   "nodes.agent.strategy.configureTip": "कृपया एजेंटिक रणनीति को कॉन्फ़िगर करें।",
   "nodes.agent.strategy.configureTipDesc": "एजेंटिक रणनीति को कॉन्फ़िगर करने के बाद, यह नोड स्वचालित रूप से शेष कॉन्फ़िगरेशन लोड करेगा। यह रणनीति बहु-चरण उपकरण तर्क के तंत्र को प्रभावित करेगी।",
   "nodes.agent.strategy.label": "एजेंटिक रणनीति",

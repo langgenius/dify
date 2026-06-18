@@ -1,5 +1,6 @@
 {
-  "blocks.agent": "代理",
+  "blocks.agent": "Agent",
+  "blocks.agent-v2": "Agent",
   "blocks.answer": "直接回覆",
   "blocks.assigner": "變數分配器",
   "blocks.code": "程式碼執行",
@@ -33,6 +34,7 @@
   "blocks.variable-aggregator": "變數聚合器",
   "blocks.variable-assigner": "變數聚合器",
   "blocksAbout.agent": "調用大型語言模型來回答問題或處理自然語言",
+  "blocksAbout.agent-v2": "調用大型語言模型來回答問題或處理自然語言",
   "blocksAbout.answer": "定義一個聊天對話的回覆內容",
   "blocksAbout.assigner": "變數分配節點用於為可寫入的變數（如對話變數）分配值。",
   "blocksAbout.code": "執行一段 Python 或 NodeJS 程式碼實現自定義邏輯",
@@ -414,6 +416,7 @@
   "nodes.agent.pluginNotFoundDesc": "此集成安裝自 GitHub。請前往集成重新安裝",
   "nodes.agent.pluginNotInstalled": "此集成未安裝",
   "nodes.agent.pluginNotInstalledDesc": "此集成安裝自 GitHub。請前往集成重新安裝",
+  "nodes.agent.roster.label": "智能體",
   "nodes.agent.strategy.configureTip": "請配置 agentic 策略。",
   "nodes.agent.strategy.configureTipDesc": "配置代理策略后，該節點將自動載入剩餘的配置。該策略將影響多步驟工具推理的機制。",
   "nodes.agent.strategy.label": "代理策略",

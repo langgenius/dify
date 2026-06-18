@@ -318,6 +318,7 @@
   "menus.newDataset": "지식 만들기",
   "menus.plugins": "통합",
   "menus.pluginsTips": "타사 통합을 통합하거나 ChatGPT 호환 AI 통합을 작성합니다.",
+  "menus.roster": "에이전트 명단",
   "menus.status": "베타 버전",
   "menus.tools": "도구",
   "model.addMoreModel": "설정에서 다른 모델을 추가하세요",

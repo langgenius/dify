@@ -3,6 +3,7 @@ import type { Node } from '@/app/components/workflow/types'
 import { useMemo } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useGetLanguage } from '@/context/i18n'
@@ -32,7 +33,7 @@ export const useNodeMetaData = (node: Node) => {
   const dataSourceList = useStore(s => s.dataSourceList)
   const availableNodesMetaData = useNodesMetaData()
   const { data } = node
-  const nodeMetaData = availableNodesMetaData.nodesMap?.[data.type]
+  const nodeMetaData = availableNodesMetaData.nodesMap?.[isAgentV2NodeData(data) ? BlockEnum.AgentV2 : data.type]
   const author = useMemo(() => {
     if (data.type === BlockEnum.DataSource)
       return dataSourceList?.find(dataSource => dataSource.plugin_id === data.plugin_id)?.author

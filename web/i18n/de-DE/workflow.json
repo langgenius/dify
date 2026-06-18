@@ -1,5 +1,6 @@
 {
   "blocks.agent": "Agent",
+  "blocks.agent-v2": "Agent",
   "blocks.answer": "Antwort",
   "blocks.assigner": "Variablenzuweiser",
   "blocks.code": "Code",
@@ -33,6 +34,7 @@
   "blocks.variable-aggregator": "Variablen-Aggregator",
   "blocks.variable-assigner": "Variablen-Zuweiser",
   "blocksAbout.agent": "Aufruf großer Sprachmodelle zur Beantwortung von Fragen oder zur Verarbeitung natürlicher Sprache",
+  "blocksAbout.agent-v2": "Aufruf großer Sprachmodelle zur Beantwortung von Fragen oder zur Verarbeitung natürlicher Sprache",
   "blocksAbout.answer": "Definieren Sie den Antwortinhalt einer Chat-Konversation",
   "blocksAbout.assigner": "Der Variablenzuweisungsknoten wird verwendet, um beschreibbaren Variablen (wie Gesprächsvariablen) Werte zuzuweisen.",
   "blocksAbout.code": "Ein Stück Python- oder NodeJS-Code ausführen, um benutzerdefinierte Logik zu implementieren",
@@ -414,6 +416,7 @@
   "nodes.agent.pluginNotFoundDesc": "Dieses Integration wird von GitHub installiert. Bitte gehen Sie zu Integrationen, um sie neu zu installieren",
   "nodes.agent.pluginNotInstalled": "Dieses Integration ist nicht installiert",
   "nodes.agent.pluginNotInstalledDesc": "Dieses Integration wird von GitHub installiert. Bitte gehen Sie zu Integrationen, um sie neu zu installieren",
+  "nodes.agent.roster.label": "Agent",
   "nodes.agent.strategy.configureTip": "Bitte konfigurieren Sie die Agentenstrategie.",
   "nodes.agent.strategy.configureTipDesc": "Nach der Konfiguration der agentischen Strategie lädt dieser Knoten automatisch die verbleibenden Konfigurationen. Die Strategie wirkt sich auf den Mechanismus des mehrstufigen Tool-Reasoning aus.",
   "nodes.agent.strategy.label": "Agentische Strategie",

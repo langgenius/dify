@@ -1,5 +1,6 @@
 {
   "blocks.agent": "Agent",
+  "blocks.agent-v2": "Agent",
   "blocks.answer": "Răspuns",
   "blocks.assigner": "Asignator de Variabile",
   "blocks.code": "Cod",
@@ -33,6 +34,7 @@
   "blocks.variable-aggregator": "Agregator de variabile",
   "blocks.variable-assigner": "Asignator de variabile",
   "blocksAbout.agent": "Invocarea modelelor lingvistice mari pentru a răspunde la întrebări sau pentru a procesa limbajul natural",
+  "blocksAbout.agent-v2": "Invocarea modelelor lingvistice mari pentru a răspunde la întrebări sau pentru a procesa limbajul natural",
   "blocksAbout.answer": "Definiți conținutul răspunsului unei conversații",
   "blocksAbout.assigner": "Nodul de atribuire a variabilelor este utilizat pentru a atribui valori variabilelor inscriptibile (precum variabilele de conversație).",
   "blocksAbout.code": "Executați un fragment de cod Python sau NodeJS pentru a implementa logică personalizată",
@@ -414,6 +416,7 @@
   "nodes.agent.pluginNotFoundDesc": "Acest integrare este instalat de pe GitHub. Vă rugăm să accesați Integrări pentru a reinstala",
   "nodes.agent.pluginNotInstalled": "Acest integrare nu este instalat",
   "nodes.agent.pluginNotInstalledDesc": "Acest integrare este instalat de pe GitHub. Vă rugăm să accesați Integrări pentru a reinstala",
+  "nodes.agent.roster.label": "Agent",
   "nodes.agent.strategy.configureTip": "Vă rugăm să configurați strategia agentică.",
   "nodes.agent.strategy.configureTipDesc": "După configurarea strategiei agentice, acest nod va încărca automat configurațiile rămase. Strategia va afecta mecanismul raționamentului instrumentelor în mai mulți pași.",
   "nodes.agent.strategy.label": "Strategia agentică",

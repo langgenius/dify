@@ -1,5 +1,6 @@
 {
-  "blocks.agent": "Agente",
+  "blocks.agent": "Agent",
+  "blocks.agent-v2": "Agent",
   "blocks.answer": "Risposta",
   "blocks.assigner": "Assegnatore di Variabili",
   "blocks.code": "Codice",
@@ -33,6 +34,7 @@
   "blocks.variable-aggregator": "Aggregatore Variabili",
   "blocks.variable-assigner": "Assegnatore Variabili",
   "blocksAbout.agent": "Richiamo di modelli linguistici di grandi dimensioni per rispondere a domande o elaborare il linguaggio naturale",
+  "blocksAbout.agent-v2": "Richiamo di modelli linguistici di grandi dimensioni per rispondere a domande o elaborare il linguaggio naturale",
   "blocksAbout.answer": "Definisci il contenuto della risposta di una conversazione chat",
   "blocksAbout.assigner": "Il nodo di assegnazione delle variabili è utilizzato per assegnare valori a variabili scrivibili (come le variabili di conversazione).",
   "blocksAbout.code": "Esegui un pezzo di codice Python o NodeJS per implementare la logica personalizzata",
@@ -414,6 +416,7 @@
   "nodes.agent.pluginNotFoundDesc": "Questo integrazione viene installato da GitHub. Vai su Integrazione per reinstallare",
   "nodes.agent.pluginNotInstalled": "Questo integrazione non è installato",
   "nodes.agent.pluginNotInstalledDesc": "Questo integrazione viene installato da GitHub. Vai su Integrazione per reinstallare",
+  "nodes.agent.roster.label": "Agente",
   "nodes.agent.strategy.configureTip": "Configurare la strategia agentic.",
   "nodes.agent.strategy.configureTipDesc": "Dopo aver configurato la strategia agentic, questo nodo caricherà automaticamente le configurazioni rimanenti. La strategia influenzerà il meccanismo del ragionamento con strumenti a più fasi.",
   "nodes.agent.strategy.label": "Strategia agentica",

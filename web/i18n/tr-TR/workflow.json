@@ -1,5 +1,6 @@
 {
-  "blocks.agent": "Aracı",
+  "blocks.agent": "Agent",
+  "blocks.agent-v2": "Agent",
   "blocks.answer": "Yanıt",
   "blocks.assigner": "Değişken Atayıcı",
   "blocks.code": "Kod",
@@ -33,6 +34,7 @@
   "blocks.variable-aggregator": "Değişken Toplayıcı",
   "blocks.variable-assigner": "Değişken Ata",
   "blocksAbout.agent": "Soruları yanıtlamak veya doğal dili işlemek için büyük dil modellerini çağırma",
+  "blocksAbout.agent-v2": "Soruları yanıtlamak veya doğal dili işlemek için büyük dil modellerini çağırma",
   "blocksAbout.answer": "Bir sohbet konuşmasının yanıt içeriğini tanımlayın",
   "blocksAbout.assigner": "Değişken atama düğümü, yazılabilir değişkenlere (konuşma değişkenleri gibi) değer atamak için kullanılır.",
   "blocksAbout.code": "Özel mantığı uygulamak için bir Python veya NodeJS kod parçası yürütün",
@@ -414,6 +416,7 @@
   "nodes.agent.pluginNotFoundDesc": "Bu entegrasyon GitHub'dan yüklenmiştir. Lütfen şuraya gidin: Entegrasyonlar yeniden yüklemek için",
   "nodes.agent.pluginNotInstalled": "Bu entegrasyon yüklü değil",
   "nodes.agent.pluginNotInstalledDesc": "Bu entegrasyon GitHub'dan yüklenmiştir. Lütfen şuraya gidin: Entegrasyonlar yeniden yüklemek için",
+  "nodes.agent.roster.label": "Ajan",
   "nodes.agent.strategy.configureTip": "Lütfen ajan stratejisini yapılandırın.",
   "nodes.agent.strategy.configureTipDesc": "Aracı stratejiyi yapılandırdıktan sonra, bu düğüm kalan yapılandırmaları otomatik olarak yükleyecektir. Strateji, çok adımlı araç akıl yürütme mekanizmasını etkileyecektir.",
   "nodes.agent.strategy.label": "Ajan Stratejisi",

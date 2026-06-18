@@ -318,6 +318,7 @@
   "menus.newDataset": "إنشاء معرفة",
   "menus.plugins": "الإضافات",
   "menus.pluginsTips": "ادمج الإضافات الخارجية أو أنشئ إضافات AI متوافقة مع ChatGPT.",
+  "menus.roster": "قائمة الوكلاء",
   "menus.status": "بيتا",
   "menus.tools": "الأدوات",
   "model.addMoreModel": "انتقل إلى الإعدادات لإضافة المزيد من النماذج",

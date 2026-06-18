@@ -318,6 +318,7 @@
   "menus.newDataset": "Tạo Kiến thức",
   "menus.plugins": "Tích hợp",
   "menus.pluginsTips": "Tích hợp các tích hợp bên thứ ba hoặc tạo ra các AI-Tích hợp tương thích với ChatGPT.",
+  "menus.roster": "Danh sách tác nhân",
   "menus.status": "beta",
   "menus.tools": "Công cụ",
   "model.addMoreModel": "Điều chỉnh cài đặt để thêm mô hình",
