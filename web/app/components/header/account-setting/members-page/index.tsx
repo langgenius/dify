@@ -164,7 +164,6 @@ const MembersPage = () => {
                 canTransferOwnership={isCurrentWorkspaceOwner && isAllowTransferWorkspace}
                 allowMultipleRoles={systemFeatures.rbac_enabled}
                 onOpenDetails={handleOpenDetails}
-                onOperate={refetch}
                 onTransferOwnership={handleTransferOwnership}
               />
             ))}

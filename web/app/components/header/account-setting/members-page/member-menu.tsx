@@ -10,11 +10,13 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useQueryClient } from '@tanstack/react-query'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { deleteMemberOrCancelInvitation } from '@/service/common'
+import { commonQueryKeys } from '@/service/use-common'
 import AssignRolesModal from './assign-roles-modal'
 
 type MemberMenuProps = {
@@ -22,7 +24,6 @@ type MemberMenuProps = {
   isCurrentUser: boolean
   canTransferOwnership?: boolean
   allowMultipleRoles?: boolean
-  onOperate: () => void
   onTransferOwnership?: () => void
 }
 
@@ -31,10 +32,10 @@ const MemberMenu = ({
   isCurrentUser,
   canTransferOwnership = false,
   allowMultipleRoles = true,
-  onOperate,
   onTransferOwnership,
 }: MemberMenuProps) => {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [assignModalOpen, setAssignModalOpen] = useState(false)
 
@@ -63,21 +64,20 @@ const MemberMenu = ({
     }, {
       onSuccess: () => {
         toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
-        onOperate()
       },
     })
-  }, [allowMultipleRoles, member.id, onOperate, t, updateRolesOfMember])
+  }, [allowMultipleRoles, member.id, t, updateRolesOfMember])
 
   const handleRemove = useCallback(async () => {
     setOpen(false)
     try {
       await deleteMemberOrCancelInvitation({ url: `/workspaces/current/members/${member.id}` })
-      onOperate()
+      void queryClient.invalidateQueries({ queryKey: commonQueryKeys.members })
       toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
     }
     catch {
     }
-  }, [member.id, onOperate, t])
+  }, [member.id, queryClient, t])
 
   const handleTransferOwnership = useCallback(() => {
     setOpen(false)
@@ -97,7 +97,7 @@ const MemberMenu = ({
     return null
 
   return (
-    <div onClick={stopPropagationOnClick} onKeyDown={stopPropagationOnKeyDown}>
+    <div role="presentation" onClick={stopPropagationOnClick} onKeyDown={stopPropagationOnKeyDown}>
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
           render={(

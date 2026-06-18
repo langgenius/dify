@@ -1,11 +1,13 @@
 import type { InvitationResponse } from '@/models/common'
 import { toast } from '@langgenius/dify-ui/toast'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 import { inviteMember } from '@/service/common'
+import { commonQueryKeys } from '@/service/use-common'
 import InviteModal from '../index'
 
 const { mockToastError } = vi.hoisted(() => ({
@@ -48,6 +50,18 @@ describe('InviteModal', () => {
   const mockOnCancel = vi.fn()
   const mockOnSend = vi.fn()
   const mockRefreshLicenseLimit = vi.fn()
+
+  const createQueryClient = () => new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        staleTime: Infinity,
+      },
+      mutations: {
+        retry: false,
+      },
+    },
+  })
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -101,9 +115,14 @@ describe('InviteModal', () => {
     } as unknown as Parameters<typeof selector>[0]))
   })
 
-  const renderModal = (isEmailSetup = true) => render(
-    <InviteModal isEmailSetup={isEmailSetup} onCancel={mockOnCancel} onSend={mockOnSend} />,
-  )
+  const renderModal = (isEmailSetup = true, queryClient = createQueryClient()) => ({
+    queryClient,
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        <InviteModal isEmailSetup={isEmailSetup} onCancel={mockOnCancel} onSend={mockOnSend} />
+      </QueryClientProvider>,
+    ),
+  })
   const fillEmails = (value: string) => {
     fireEvent.change(screen.getByTestId('mock-email-input'), { target: { value } })
   }
@@ -197,6 +216,27 @@ describe('InviteModal', () => {
           language: 'en-US',
         },
       })
+    })
+  })
+
+  it('should invalidate members after successful submission', async () => {
+    const user = userEvent.setup()
+    const queryClient = createQueryClient()
+    const membersQueryKey = [...commonQueryKeys.members, 'en-US']
+    queryClient.setQueryData(membersQueryKey, { accounts: [] })
+    vi.mocked(inviteMember).mockResolvedValue({
+      result: 'success',
+      invitation_results: [],
+    } as InvitationResponse)
+
+    renderModal(true, queryClient)
+
+    fillEmails('user@example.com')
+    await selectAdminRole(user)
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+
+    await waitFor(() => {
+      expect(queryClient.getQueryState(membersQueryKey)?.isInvalidated).toBe(true)
     })
   })
 

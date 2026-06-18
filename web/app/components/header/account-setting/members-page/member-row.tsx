@@ -19,7 +19,6 @@ type MemberRowProps = {
   canTransferOwnership: boolean
   allowMultipleRoles: boolean
   onOpenDetails: (member: Member) => void
-  onOperate: () => void
   onTransferOwnership: () => void
 }
 
@@ -31,7 +30,6 @@ const MemberRow = ({
   canTransferOwnership,
   allowMultipleRoles,
   onOpenDetails,
-  onOperate,
   onTransferOwnership,
 }: MemberRowProps) => {
   const { t } = useTranslation()
@@ -100,7 +98,6 @@ const MemberRow = ({
             isCurrentUser={isCurrentUser}
             canTransferOwnership={canTransferOwnership}
             allowMultipleRoles={allowMultipleRoles}
-            onOperate={onOperate}
             onTransferOwnership={onTransferOwnership}
           />
         )}
