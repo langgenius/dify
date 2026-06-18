@@ -720,11 +720,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/configuration/dataset-config/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/app/configuration/dataset-config/params-config/__tests__/config-content.spec.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -965,11 +960,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/overview/trigger-card.tsx": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/app/overview/workflow-hidden-input-fields.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -1033,6 +1023,11 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
+    }
+  },
+  "web/app/components/apps/new-app-card.tsx": {
+    "react/set-state-in-effect": {
+      "count": 3
     }
   },
   "web/app/components/base/action-button/index.tsx": {
@@ -1921,7 +1916,7 @@
   },
   "web/app/components/base/icons/src/vender/solid/arrows/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 3
+      "count": 1
     }
   },
   "web/app/components/base/icons/src/vender/solid/communication/index.ts": {
@@ -2639,11 +2634,6 @@
       "count": 4
     }
   },
-  "web/app/components/billing/billing-page/__tests__/index.spec.tsx": {
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
   "web/app/components/billing/header-billing-btn/index.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -2929,14 +2919,6 @@
       "count": 3
     }
   },
-  "web/app/components/datasets/create/step-two/index.tsx": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 1
-    },
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/create/step-two/preview-item/index.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -3006,14 +2988,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/documents/components/document-list/components/document-table-row.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 2
-    }
-  },
   "web/app/components/datasets/documents/components/document-list/components/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
@@ -3030,14 +3004,6 @@
     }
   },
   "web/app/components/datasets/documents/components/list.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/documents/components/operations.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
     },
@@ -3294,10 +3260,10 @@
   },
   "web/app/components/datasets/documents/detail/metadata/hooks/use-metadata-state.ts": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 4
+      "count": 6
     },
     "react/set-state-in-effect": {
-      "count": 4
+      "count": 6
     }
   },
   "web/app/components/datasets/documents/detail/metadata/index.tsx": {
@@ -3406,11 +3372,6 @@
   },
   "web/app/components/datasets/hit-testing/index.tsx": {
     "react/unsupported-syntax": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/list/__tests__/header.spec.tsx": {
-    "jsx-a11y/label-has-associated-control": {
       "count": 1
     }
   },
@@ -3526,11 +3487,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/settings/permission-selector/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/settings/permission-selector/member-item.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -3566,6 +3522,14 @@
     },
     "ts/no-explicit-any": {
       "count": 2
+    }
+  },
+  "web/app/components/develop/secret-key/secret-key-modal.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
     }
   },
   "web/app/components/explore/banner/__tests__/indicator-button.spec.tsx": {
@@ -3803,11 +3767,6 @@
       "count": 1
     }
   },
-  "web/app/components/header/account-setting/model-provider-page/model-auth/add-credential-in-load-balancing.tsx": {
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
   "web/app/components/header/account-setting/model-provider-page/model-auth/add-custom-model.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 2
@@ -3829,9 +3788,6 @@
       "count": 1
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    },
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -3874,11 +3830,6 @@
   "web/app/components/header/account-setting/model-provider-page/model-auth/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 7
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/model-auth/switch-credential-in-load-balancing.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "web/app/components/header/account-setting/model-provider-page/model-modal/Input.tsx": {
@@ -3981,12 +3932,7 @@
       "count": 2
     }
   },
-  "web/app/components/header/account-setting/plugin-page/utils.ts": {
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
-  "web/app/components/header/nav/index.tsx": {
+  "web/app/components/header/account-setting/permission-group-list.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
     },
@@ -3994,8 +3940,16 @@
       "count": 1
     }
   },
-  "web/app/components/main-nav/components/web-apps-section.tsx": {
-    "jsx-a11y/no-autofocus": {
+  "web/app/components/header/index.tsx": {
+    "tailwindcss/no-duplicate-classes": {
+      "count": 1
+    }
+  },
+  "web/app/components/header/nav/index.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
       "count": 1
     }
   },
@@ -4222,11 +4176,6 @@
       "count": 1
     }
   },
-  "web/app/components/plugins/plugin-detail-panel/operation-dropdown.tsx": {
-    "jsx-a11y/anchor-has-content": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/plugin-detail-panel/strategy-detail.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -4310,10 +4259,10 @@
   },
   "web/app/components/plugins/plugin-detail-panel/tool-selector/__tests__/index.spec.tsx": {
     "jsx-a11y/click-events-have-key-events": {
-      "count": 4
+      "count": 5
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 4
+      "count": 5
     }
   },
   "web/app/components/plugins/plugin-detail-panel/tool-selector/components/index.ts": {
@@ -4820,28 +4769,9 @@
       "count": 1
     }
   },
-  "web/app/components/tools/mcp/__tests__/index.spec.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 2
-    }
-  },
   "web/app/components/tools/mcp/mcp-server-param-item.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/app/components/tools/mcp/provider-card.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 3
     }
   },
   "web/app/components/tools/provider/detail.tsx": {
@@ -5028,11 +4958,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/block-selector/market-place-plugin/item.tsx": {
-    "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/block-selector/market-place-plugin/list.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -5170,14 +5095,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 2
-    }
-  },
-  "web/app/components/workflow/header/run-and-history.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/workflow/header/scroll-to-selected-node-button.tsx": {
@@ -7630,10 +7547,62 @@
       "count": 1
     }
   },
-  "web/service/access-control.ts": {
-    "@tanstack/query/exhaustive-deps": {
+  "web/service/__tests__/use-tools.spec.tsx": {
+    "no-restricted-imports": {
       "count": 1
-    },
+    }
+  },
+  "web/service/access-control/__tests__/use-app-access-control.spec.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/service/access-control/__tests__/use-member-roles.spec.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/service/access-control/__tests__/use-permission-catalog.spec.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/service/access-control/__tests__/use-permission-keys.spec.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/service/access-control/__tests__/use-workspace-access-rules.spec.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/service/access-control/use-app-access-control.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/service/access-control/use-member-roles.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/service/access-control/use-permission-catalog.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/service/access-control/use-permission-keys.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/service/access-control/use-workspace-access-rules.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/service/access-control/use-workspace-roles.ts": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -7885,9 +7854,6 @@
   },
   "web/service/use-tools.ts": {
     "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
       "count": 1
     }
   },

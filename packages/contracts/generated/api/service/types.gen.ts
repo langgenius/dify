@@ -352,8 +352,10 @@ export type DatasetDetailResponse = {
   indexing_technique: string | null
   is_multimodal: boolean
   is_published: boolean
+  maintainer?: string | null
   name: string
   permission: string
+  permission_keys?: Array<string>
   pipeline_id: string | null
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse
@@ -390,9 +392,11 @@ export type DatasetDetailWithPartialMembersResponse = {
   indexing_technique: string | null
   is_multimodal: boolean
   is_published: boolean
+  maintainer?: string | null
   name: string
   partial_member_list?: Array<string> | null
   permission: string
+  permission_keys?: Array<string>
   pipeline_id: string | null
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse

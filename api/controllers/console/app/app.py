@@ -3,7 +3,7 @@ import re
 import uuid
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any, Literal, cast
+from typing import Any, Literal
 
 from flask import request
 from flask_restx import Resource
@@ -11,8 +11,9 @@ from pydantic import AliasChoices, BaseModel, Field, computed_field, field_valid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import MultiDict
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, NotFound
 
+from configs import dify_config
 from controllers.common.fields import RedirectUrlResponse, SimpleResultResponse
 from controllers.common.helpers import FileInfo
 from controllers.common.schema import (
@@ -25,11 +26,14 @@ from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model, with_session
 from controllers.console.workspace.models import LoadBalancingPayload
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     cloud_edition_billing_resource_check,
     edit_permission_required,
     enterprise_license_required,
     is_admin_or_owner_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -48,6 +52,7 @@ from models import Account, App, DatasetPermissionEnum, Workflow
 from models.model import IconType
 from services.app_dsl_service import AppDslService
 from services.app_service import AppListParams, AppListSortBy, AppService, CreateAppParams, StarredAppListParams
+from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import ImportMode, ImportStatus
 from services.entities.knowledge_entities.knowledge_entities import (
@@ -72,12 +77,14 @@ _logger = logging.getLogger(__name__)
 _TAG_IDS_BRACKET_PATTERN = re.compile(r"^tag_ids\[(\d+)\]$")
 _CREATOR_IDS_BRACKET_PATTERN = re.compile(r"^creator_ids\[(\d+)\]$")
 AppListMode = Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"]
+DEFAULT_APP_LIST_MODE: AppListMode = "all"
+APP_LIST_PERMISSION_KEYS = frozenset({"app.preview", "app.acl.preview", "app.full_access"})
 
 
 class AppListBaseQuery(BaseModel):
     page: int = Field(default=1, ge=1, le=99999, description="Page number (1-99999)")
     limit: int = Field(default=20, ge=1, le=100, description="Page size (1-100)")
-    mode: AppListMode = Field(default=cast(AppListMode, "all"), description="App mode filter")
+    mode: AppListMode = Field(default=DEFAULT_APP_LIST_MODE, description="App mode filter")
     sort_by: AppListSortBy = Field(
         default="last_modified",
         description="Sort apps by last modified, recently created, or earliest created",
@@ -158,6 +165,10 @@ def _normalize_app_list_query_args(query_args: MultiDict[str, str]) -> dict[str,
         normalized["creator_ids"] = [value for _, value in sorted(indexed_creator_ids)]
 
     return normalized
+
+
+def _has_app_list_permission(permission_keys: Sequence[str]) -> bool:
+    return any(permission_key in APP_LIST_PERMISSION_KEYS for permission_key in permission_keys)
 
 
 class CreateAppPayload(BaseModel):
@@ -398,11 +409,13 @@ class AppPartial(ResponseModel):
     create_user_name: str | None = None
     author_name: str | None = None
     has_draft_trigger: bool | None = None
+    permission_keys: list[str] = Field(default_factory=list)
     # For Agent App type: the roster Agent backing this app (None otherwise).
     bound_agent_id: str | None = None
     # For Agent App responses exposed through /agent.
     app_id: str | None = None
     is_starred: bool = False
+    maintainer: str | None = None
 
     @computed_field(return_type=str | None)  # type: ignore
     @property
@@ -438,6 +451,8 @@ class AppDetail(ResponseModel):
     updated_at: int | None = None
     access_mode: str | None = None
     tags: list[Tag] = Field(default_factory=list)
+    permission_keys: list[str] = Field(default_factory=list)
+    maintainer: str | None = None
 
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
@@ -592,6 +607,44 @@ class AppListApi(Resource):
             is_created_by_me=args.is_created_by_me,
         )
 
+        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
+            str(current_tenant_id),
+            current_user_id,
+        )
+        if dify_config.RBAC_ENABLED:
+            whitelist_scope = enterprise_rbac_service.RBACService.AppAccess.whitelist_resources(
+                str(current_tenant_id),
+                current_user_id,
+            )
+            can_manage_own_apps = "app.create_and_management" in permissions.workspace.permission_keys
+            has_default_preview = _has_app_list_permission(
+                permissions.app.default_permission_keys
+            ) or _has_app_list_permission(permissions.workspace.permission_keys)
+            permission_app_ids: set[str] | None = None
+            if not has_default_preview:
+                permission_app_ids = {
+                    override.resource_id
+                    for override in permissions.app.overrides
+                    if _has_app_list_permission(override.permission_keys)
+                }
+
+            if getattr(whitelist_scope, "unrestricted", False):
+                accessible_app_ids = permission_app_ids
+            else:
+                accessible_app_ids = set(whitelist_scope.resource_ids)
+                if permission_app_ids is not None:
+                    accessible_app_ids |= permission_app_ids
+                elif has_default_preview:
+                    accessible_app_ids = None
+
+            if accessible_app_ids:
+                params.accessible_app_ids = sorted(accessible_app_ids)
+                params.include_own_apps = can_manage_own_apps
+            elif accessible_app_ids is not None and can_manage_own_apps:
+                params.is_created_by_me = True
+            elif accessible_app_ids is not None:
+                params.accessible_app_ids = []
+
         # get app list
         app_service = AppService()
         app_pagination = app_service.get_paginate_apps(current_user_id, current_tenant_id, params, db.session)
@@ -599,9 +652,20 @@ class AppListApi(Resource):
             empty = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
             return empty.model_dump(mode="json"), 200
 
+        app_ids = [str(app.id) for app in app_pagination.items]
+        permission_keys_map = permissions.app.permission_keys_by_resource_ids(app_ids)
         _enrich_app_list_items(session, apps=app_pagination.items, tenant_id=current_tenant_id)
 
         pagination_model = AppPagination.model_validate(app_pagination, from_attributes=True)
+        if app_pagination.items:
+            pagination_model = pagination_model.model_copy(
+                update={
+                    "data": [
+                        item.model_copy(update={"permission_keys": permission_keys_map.get(str(item.id), [])})
+                        for item in pagination_model.data
+                    ]
+                }
+            )
         return pagination_model.model_dump(mode="json"), 200
 
     @console_ns.doc("create_app")
@@ -613,6 +677,7 @@ class AppListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT, resource_required=False)
     @cloud_edition_billing_resource_check("apps")
     @edit_permission_required
     @with_current_user
@@ -631,7 +696,14 @@ class AppListApi(Resource):
 
         app_service = AppService()
         app = app_service.create_app(current_tenant_id, params, current_user)
-        app_detail = AppDetailWithSite.model_validate(app, from_attributes=True)
+        permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
+            str(current_tenant_id),
+            current_user.id,
+            [str(app.id)],
+        )
+        app_detail = AppDetailWithSite.model_validate(app, from_attributes=True).model_copy(
+            update={"permission_keys": permission_keys_map.get(str(app.id), [])}
+        )
         return app_detail.model_dump(mode="json"), 201
 
 
@@ -717,8 +789,11 @@ class AppApi(Resource):
     @login_required
     @account_initialization_required
     @enterprise_license_required
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=None)
-    def get(self, app_model: App):
+    def get(self, current_tenant_id: str, current_user: Account, app_model: App):
         """Get app detail"""
         app_service = AppService()
 
@@ -728,7 +803,16 @@ class AppApi(Resource):
             app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
             app_model.access_mode = app_setting.access_mode
 
-        response_model = AppDetailWithSite.model_validate(app_model, from_attributes=True)
+        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
+            str(current_tenant_id),
+            current_user.id,
+            app_id=str(app_model.id),
+        )
+        permission_keys_map = permissions.app.permission_keys_by_resource_ids([str(app_model.id)])
+
+        response_model = AppDetailWithSite.model_validate(app_model, from_attributes=True).model_copy(
+            update={"permission_keys": permission_keys_map.get(str(app_model.id), [])}
+        )
         return response_model.model_dump(mode="json")
 
     @console_ns.doc("update_app")
@@ -741,8 +825,9 @@ class AppApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=None)
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @get_app_model(mode=None)
     def put(self, app_model: App):
         """Update app"""
         args = UpdateAppPayload.model_validate(console_ns.payload)
@@ -767,11 +852,12 @@ class AppApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.response(204, "App deleted successfully")
     @console_ns.response(403, "Insufficient permissions")
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_DELETE)
+    @get_app_model
     def delete(self, app_model: App):
         """Delete app"""
         app_service = AppService()
@@ -791,10 +877,12 @@ class AppCopyApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=None)
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @with_current_user
-    def post(self, current_user: Account, app_model: App):
+    @with_current_tenant_id
+    @get_app_model(mode=None)
+    def post(self, current_tenant_id: str, current_user: Account, app_model: App):
         """Copy app"""
         # The role of the current user in the ta table must be admin, owner, or editor
         args = CopyAppPayload.model_validate(console_ns.payload or {})
@@ -836,7 +924,17 @@ class AppCopyApi(Resource):
             stmt = select(App).where(App.id == result.app_id)
             app = session.scalar(stmt)
 
-        response_model = AppDetailWithSite.model_validate(app, from_attributes=True)
+        if not app:
+            raise NotFound("App not found")
+
+        permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
+            str(current_tenant_id),
+            current_user.id,
+            [str(app.id)],
+        )
+        response_model = AppDetailWithSite.model_validate(app, from_attributes=True).model_copy(
+            update={"permission_keys": permission_keys_map.get(str(app.id), [])}
+        )
         return response_model.model_dump(mode="json"), 201
 
 
@@ -848,11 +946,12 @@ class AppExportApi(Resource):
     @console_ns.doc(params=query_params_from_model(AppExportQuery))
     @console_ns.response(200, "App exported successfully", console_ns.models[AppExportResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL)
+    @get_app_model
     def get(self, app_model: App):
         """Export app"""
         args = AppExportQuery.model_validate(request.args.to_dict(flat=True))
@@ -873,12 +972,12 @@ class AppPublishToCreatorsPlatformApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=None)
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL)
     @with_current_user_id
+    @get_app_model(mode=None)
     def post(self, current_user_id: str, app_model: App):
         """Publish app to Creators Platform"""
-        from configs import dify_config
         from core.helper.creators import get_redirect_url, upload_dsl
 
         if not dify_config.CREATORS_PLATFORM_FEATURES_ENABLED:
@@ -903,8 +1002,9 @@ class AppNameApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=None)
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @get_app_model(mode=None)
     def post(self, app_model: App):
         args = AppNamePayload.model_validate(console_ns.payload)
 
@@ -925,8 +1025,9 @@ class AppIconApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=None)
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @get_app_model(mode=None)
     def post(self, app_model: App):
         args = AppIconPayload.model_validate(console_ns.payload or {})
 
@@ -952,8 +1053,9 @@ class AppSiteStatus(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=None)
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
+    @get_app_model(mode=None)
     def post(self, app_model: App):
         args = AppSiteStatusPayload.model_validate(console_ns.payload)
 
@@ -975,6 +1077,7 @@ class AppApiStatus(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
     @get_app_model(mode=None)
     def post(self, app_model: App):
         args = AppApiStatusPayload.model_validate(console_ns.payload)
@@ -999,6 +1102,7 @@ class AppTraceApi(Resource):
     @login_required
     @account_initialization_required
     @with_session
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model
     def get(self, session: Session, app_model: App):
         """Get app trace"""
@@ -1020,6 +1124,7 @@ class AppTraceApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
     def post(self, app_model: App):
         # add app trace

@@ -9,6 +9,7 @@ import CreateResourceCard, {
   createResourceCardActionClassName,
   createResourceCardActionIconClassName,
 } from '@/app/components/base/create-resource-card'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import AppListContext from '@/context/app-list-context'
 import { useProviderContext } from '@/context/provider-context'
 import dynamic from '@/next/dynamic'
@@ -17,6 +18,7 @@ import {
   useSearchParams,
 } from '@/next/navigation'
 import { AppModeEnum } from '@/types/app'
+import { hasPermission } from '@/utils/permission'
 
 const CreateAppModal = dynamic(() => import('@/app/components/app/create-app-modal'), {
   ssr: false,
@@ -48,10 +50,12 @@ const CreateAppCard = ({
   const searchParams = useSearchParams()
   const { replace } = useRouter()
   const dslUrl = searchParams.get('remoteInstallUrl') || undefined
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
 
   const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
   const [showNewAppModal, setShowNewAppModal] = useState(false)
-  const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(!!dslUrl)
+  const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(canCreateApp && !!dslUrl)
 
   const activeTab = useMemo(() => {
     if (dslUrl)
@@ -85,6 +89,18 @@ const CreateAppCard = ({
       cancelled = true
     }
   }, [controlHideCreateFromTemplatePanel])
+
+  useEffect(() => {
+    if (canCreateApp)
+      return
+
+    setShowNewAppModal(false)
+    setShowNewAppTemplateDialog(false)
+    setShowCreateFromDSLModal(false)
+  }, [canCreateApp])
+
+  if (!canCreateApp)
+    return null
 
   return (
     <>

@@ -3,6 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import NewDatasetCard from '../index'
 import Option from '../option'
 
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
+  }),
+}))
+
 describe('New Dataset Card Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()

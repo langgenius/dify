@@ -8,10 +8,10 @@ import {
   DataSourceType,
 } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
+import { DatasetACLPermission } from '@/utils/permission'
 import Dropdown from '../dropdown'
 
 let mockDataset: DataSet
-let mockIsDatasetOperator = false
 const mockReplace = vi.fn()
 const mockInvalidDatasetList = vi.fn()
 const mockInvalidDatasetDetail = vi.fn()
@@ -78,6 +78,11 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   runtime_mode: 'rag_pipeline',
   enable_api: false,
   is_multimodal: false,
+  permission_keys: [
+    DatasetACLPermission.Edit,
+    DatasetACLPermission.Delete,
+    DatasetACLPermission.ImportExportDSL,
+  ],
   ...overrides,
 })
 
@@ -87,11 +92,6 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (selector: (state: { dataset?: DataSet }) => unknown) => selector({ dataset: mockDataset }),
-}))
-
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { isCurrentWorkspaceDatasetOperator: boolean }) => unknown) =>
-    selector({ isCurrentWorkspaceDatasetOperator: mockIsDatasetOperator }),
 }))
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
@@ -143,7 +143,6 @@ describe('Dropdown callback coverage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDataset = createDataset({ pipeline_id: 'pipeline-1', runtime_mode: 'rag_pipeline' })
-    mockIsDatasetOperator = false
     mockExportPipeline.mockResolvedValue({ data: 'pipeline-content' })
     mockCheckIsUsedInApp.mockResolvedValue({ is_using: false })
     mockDeleteDataset.mockResolvedValue({})

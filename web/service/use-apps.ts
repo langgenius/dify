@@ -25,6 +25,7 @@ type DateRangeParams = {
   end?: string
 }
 
+export const appDetailQueryKeyPrefix = [NAME_SPACE, 'detail']
 const useAppFullListKey = [NAME_SPACE, 'full-list']
 
 export const useGenerateRuleTemplate = (type: GeneratorType, disabled?: boolean) => {
@@ -42,9 +43,10 @@ export const useGenerateRuleTemplate = (type: GeneratorType, disabled?: boolean)
 
 export const useAppDetail = (appID: string) => {
   return useQuery<App>({
-    queryKey: [NAME_SPACE, 'detail', appID],
+    queryKey: [...appDetailQueryKeyPrefix, appID],
     queryFn: () => get<App>(`/apps/${appID}`),
     enabled: !!appID,
+    gcTime: 0,
   })
 }
 

@@ -22,6 +22,7 @@ from .plugin import (
     setup_system_trigger_oauth_client,
     transform_datasource_credentials,
 )
+from .rbac import migrate_member_roles_to_rbac
 from .retention import (
     archive_workflow_runs,
     clean_expired_messages,
@@ -74,6 +75,7 @@ __all__ = [
     "migrate_annotation_vector_database",
     "migrate_data_for_plugin",
     "migrate_knowledge_vector_database",
+    "migrate_member_roles_to_rbac",
     "migrate_oss",
     "migration_data_wizard",
     "old_metadata_migration",

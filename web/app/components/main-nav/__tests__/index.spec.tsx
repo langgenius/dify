@@ -13,7 +13,7 @@ import { Plan } from '@/app/components/billing/type'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/atoms'
 import { useGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useAppContext } from '@/context/app-context'
+import { useAppContext, useSelector as useAppContextSelector } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { usePathname, useRouter } from '@/next/navigation'
@@ -40,6 +40,7 @@ vi.mock('@/features/agent-v2/feature-flag', () => ({
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
+  useSelector: vi.fn(),
 }))
 
 vi.mock('@/context/provider-context', () => ({
@@ -205,6 +206,23 @@ let mockInstalledApps: InstalledApp[] = []
 let mockInstalledAppsPending = false
 let mockWorkspaces: IWorkspace[] = []
 
+const ownerWorkspacePermissionKeys = [
+  'workspace.member.manage',
+  'workspace.role.manage',
+  'app_library.access',
+  'app.create_and_management',
+  'dataset.create_and_management',
+  'dataset.external.connect',
+  'tool.manage',
+  'mcp.manage',
+]
+
+const datasetOperatorWorkspacePermissionKeys = [
+  'plugin.install',
+  'dataset.create_and_management',
+  'dataset.external.connect',
+]
+
 const createInstalledApp = (overrides: Partial<InstalledApp> = {}): InstalledApp => ({
   id: overrides.id ?? 'installed-1',
   uninstallable: overrides.uninstallable ?? false,
@@ -260,7 +278,9 @@ const appContextValue: AppContextValue = {
   },
   useSelector: vi.fn(),
   isLoadingCurrentWorkspace: false,
+  isLoadingWorkspacePermissionKeys: false,
   isValidatingCurrentWorkspace: false,
+  workspacePermissionKeys: ownerWorkspacePermissionKeys,
 }
 
 type MainNavSystemFeatures = NonNullable<Parameters<typeof renderWithSystemFeatures>[1]>['systemFeatures']
@@ -311,6 +331,7 @@ describe('MainNav', () => {
       refresh: vi.fn(),
     })
     ;(useAppContext as Mock).mockReturnValue(appContextValue)
+    ;(useAppContextSelector as Mock).mockImplementation((selector: (state: AppContextValue) => unknown) => selector((useAppContext as Mock)() as AppContextValue))
     ;(useProviderContext as Mock).mockReturnValue({
       enableBilling: true,
       isEducationAccount: false,
@@ -467,7 +488,7 @@ describe('MainNav', () => {
     expect(screen.getAllByText(Plan.team)).toHaveLength(1)
   })
 
-  it('hides app and tools entries for dataset operators', () => {
+  it('keeps unrestricted main routes visible for dataset operators while hiding roster', () => {
     ;(useAppContext as Mock).mockReturnValue({
       ...appContextValue,
       currentWorkspace: {
@@ -478,20 +499,22 @@ describe('MainNav', () => {
       isCurrentWorkspaceEditor: false,
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
+      workspacePermissionKeys: datasetOperatorWorkspacePermissionKeys,
     })
 
     renderMainNav()
 
-    expect(screen.queryByRole('link', { name: /common.mainNav.home/ })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: /common.menus.apps/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
     expect(screen.queryByRole('link', { name: /common.menus.roster/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')
-    expect(screen.queryByRole('link', { name: /common.mainNav.integrations/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute('href', '/integrations/model-provider')
     expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute('href', '/marketplace')
+    expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'explore.sidebar.webApps' })).not.toBeInTheDocument()
   })
 
-  it('hides datasets for members without editor or dataset-operator access', () => {
+  it('keeps unrestricted main routes visible without route permission keys', () => {
     ;(useAppContext as Mock).mockReturnValue({
       ...appContextValue,
       currentWorkspace: {
@@ -502,6 +525,7 @@ describe('MainNav', () => {
       isCurrentWorkspaceEditor: false,
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
+      workspacePermissionKeys: ['app_library.access', 'tool.manage'],
     })
 
     renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })
@@ -509,7 +533,7 @@ describe('MainNav', () => {
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.roster/ })).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: /common.menus.datasets/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toBeInTheDocument()
@@ -959,7 +983,7 @@ describe('MainNav', () => {
     expect(mockSetShowAccountSettingModal).not.toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.BILLING })
   })
 
-  it('limits workspace settings and invite actions by role', async () => {
+  it('limits invite members by member management permission', async () => {
     ;(useAppContext as Mock).mockReturnValue({
       ...appContextValue,
       currentWorkspace: {
@@ -968,6 +992,7 @@ describe('MainNav', () => {
       },
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
+      workspacePermissionKeys: ownerWorkspacePermissionKeys.filter(key => key !== 'workspace.member.manage'),
     })
 
     renderMainNav()
@@ -978,7 +1003,7 @@ describe('MainNav', () => {
     expect(screen.queryByText('common.mainNav.workspace.inviteMembers')).not.toBeInTheDocument()
   })
 
-  it('hides workspace settings actions for dataset operators', () => {
+  it('keeps workspace settings visible and hides invite members without member management permission', () => {
     ;(useAppContext as Mock).mockReturnValue({
       ...appContextValue,
       currentWorkspace: {
@@ -989,13 +1014,14 @@ describe('MainNav', () => {
       isCurrentWorkspaceEditor: false,
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
+      workspacePermissionKeys: datasetOperatorWorkspacePermissionKeys,
     })
 
     renderMainNav()
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
 
-    expect(screen.queryByText('common.mainNav.workspace.settings')).not.toBeInTheDocument()
+    expect(screen.getByText('common.mainNav.workspace.settings')).toBeInTheDocument()
     expect(screen.queryByText('common.mainNav.workspace.inviteMembers')).not.toBeInTheDocument()
   })
 

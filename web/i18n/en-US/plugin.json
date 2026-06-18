@@ -245,6 +245,7 @@
   "pluginInfoModal.title": "Integration info",
   "pluginPublishGuide": "Integration publishing guide",
   "privilege.admins": "Admins",
+  "privilege.configurePermissionsInSettings": "Go to Settings > Roles & Permissions to configure plugin permissions.",
   "privilege.everyone": "Everyone",
   "privilege.noDebugPermissionTooltip": "You don't have permission to debug integrations",
   "privilege.noInstallPermissionTooltip": "You don't have permission to install and manage integrations",

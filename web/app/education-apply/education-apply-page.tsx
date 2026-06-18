@@ -27,6 +27,7 @@ import {
   useEducationAdd,
   useInvalidateEducationStatus,
 } from '@/service/use-education'
+import { BillingPermission, hasPermission } from '@/utils/permission'
 import DifyLogo from '../components/base/logo/dify-logo'
 import AppliedEducationContent from './applied-education-content'
 import RoleSelector from './role-selector'
@@ -52,7 +53,7 @@ const EducationApplyAgeContent = () => {
     mutateAsync: educationAdd,
   } = useEducationAdd({ onSuccess: noop })
   const { onPlanInfoChanged, isEducationAccount, plan } = useProviderContext()
-  const { currentWorkspace, isCurrentWorkspaceManager } = useAppContext()
+  const { currentWorkspace, workspacePermissionKeys } = useAppContext()
   const updateEducationStatus = useInvalidateEducationStatus()
   const docLink = useDocLink()
   const { handleEducationDiscount } = useEducationDiscount()
@@ -64,8 +65,9 @@ const EducationApplyAgeContent = () => {
 
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
+  const canManageBilling = hasPermission(workspacePermissionKeys, BillingPermission.Manage)
   const appliedEducationCase = (() => {
-    if (!isCurrentWorkspaceManager)
+    if (!canManageBilling)
       return AppliedEducationCase.noPaymentPermission
 
     if (plan.type === Plan.sandbox)

@@ -5,20 +5,29 @@ import type { TracingStatus } from '@/models/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
-import {
-  RiArrowDownDoubleLine,
-  RiEqualizer2Line,
-} from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import Divider from '@/app/components/base/divider'
-import { AliyunIcon, ArizeIcon, DatabricksIcon, LangfuseIcon, LangsmithIcon, MlflowIcon, OpikIcon, PhoenixIcon, TencentIcon, WeaveIcon } from '@/app/components/base/icons/src/public/tracing'
+import {
+  AliyunIcon,
+  ArizeIcon,
+  DatabricksIcon,
+  LangfuseIcon,
+  LangsmithIcon,
+  MlflowIcon,
+  OpikIcon,
+  PhoenixIcon,
+  TencentIcon,
+  WeaveIcon,
+} from '@/app/components/base/icons/src/public/tracing'
 import Loading from '@/app/components/base/loading'
-import { useAppContext } from '@/context/app-context'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { usePathname } from '@/next/navigation'
 import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
+import { getAppACLCapabilities } from '@/utils/permission'
 import ConfigButton from './config-button'
 import TracingIcon from './tracing-icon'
 import { TracingProvider } from './type'
@@ -30,8 +39,16 @@ const Panel: FC = () => {
   const pathname = usePathname()
   const matched = /\/app\/([^/]+)/.exec(pathname)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
-  const { isCurrentWorkspaceEditor } = useAppContext()
-  const readOnly = !isCurrentWorkspaceEditor
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const appDetail = useAppStore(s => s.appDetail)
+  const appACLCapabilities = React.useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
+    currentUserId,
+    resourceMaintainer: appDetail?.maintainer,
+    workspacePermissionKeys,
+  }), [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys])
+  const canConfigTracing = appACLCapabilities.canMonitor
+  const readOnly = !canConfigTracing
 
   const [isLoaded, {
     setTrue: setLoaded,
@@ -253,11 +270,11 @@ const Panel: FC = () => {
             <TracingIcon size="md" />
             <div className="mx-2 system-sm-semibold text-text-secondary">{t(`${I18N_PREFIX}.title`, { ns: 'app' })}</div>
             <div className="rounded-md p-1">
-              <RiEqualizer2Line className="size-4 text-text-tertiary" />
+              <span className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
             </div>
             <Divider type="vertical" className="h-3.5" />
             <div className="rounded-md p-1">
-              <RiArrowDownDoubleLine className="size-4 text-text-tertiary" />
+              <span className="i-ri-arrow-down-double-line size-4 text-text-tertiary" />
             </div>
           </div>
         </ConfigButton>
@@ -297,7 +314,7 @@ const Panel: FC = () => {
             </div>
             {InUseProviderIcon && <InUseProviderIcon className="ml-1 h-4" />}
             <div className="ml-2 rounded-md p-1">
-              <RiEqualizer2Line className="size-4 text-text-tertiary" />
+              <span className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
             </div>
             <Divider type="vertical" className="h-3.5" />
           </div>

@@ -34,6 +34,8 @@ import { HeaderModals, PluginSourceBadge } from './components'
 import { useDetailHeaderState, usePluginOperations } from './hooks'
 
 type Props = Readonly<{
+  canManagePlugin?: boolean
+  canUpdatePlugin?: boolean
   detail: PluginDetail
   isReadmeView?: boolean
   onHide?: () => void
@@ -69,6 +71,8 @@ const getDetailUrl = (
 }
 
 const DetailHeader = ({
+  canManagePlugin = true,
+  canUpdatePlugin = true,
   detail,
   isReadmeView = false,
   onHide,
@@ -119,6 +123,8 @@ const DetailHeader = ({
     modalStates,
     versionPicker,
     isFromMarketplace,
+    canManagePlugin,
+    canUpdatePlugin,
     onUpdate,
   })
 
@@ -174,7 +180,7 @@ const DetailHeader = ({
             {/* Version Picker */}
             {!!version && (
               <PluginVersionPicker
-                disabled={!isFromMarketplace || isReadmeView}
+                disabled={!canUpdatePlugin || !isFromMarketplace || isReadmeView}
                 isShow={versionPicker.isShow}
                 onShowChange={versionPicker.setIsShow}
                 pluginID={plugin_id}
@@ -185,13 +191,13 @@ const DetailHeader = ({
                     className={cn(
                       'mx-1',
                       versionPicker.isShow && 'bg-state-base-hover',
-                      (versionPicker.isShow || isFromMarketplace) && 'hover:bg-state-base-hover',
+                      (versionPicker.isShow || (canUpdatePlugin && isFromMarketplace)) && 'hover:bg-state-base-hover',
                     )}
                     uppercase={false}
                     text={(
                       <>
                         <div>{isFromGitHub ? (meta?.version ?? version ?? '') : version}</div>
-                        {isFromMarketplace && !isReadmeView && <span aria-hidden className="ml-1 i-ri-arrow-left-right-line size-3 text-text-tertiary" />}
+                        {canUpdatePlugin && isFromMarketplace && !isReadmeView && <span aria-hidden className="ml-1 i-ri-arrow-left-right-line size-3 text-text-tertiary" />}
                       </>
                     )}
                     hasRedCornerMark={hasNewVersion}
@@ -219,7 +225,7 @@ const DetailHeader = ({
             )}
 
             {/* Update Button */}
-            {(hasNewVersion || isFromGitHub) && (
+            {canUpdatePlugin && (hasNewVersion || isFromGitHub) && (
               <Tooltip>
                 <TooltipTrigger
                   delay={300}
@@ -264,6 +270,8 @@ const DetailHeader = ({
               onRemove={modalStates.showDeleteConfirm}
               onViewReadme={canViewReadme ? handleViewReadme : undefined}
               detailUrl={detailUrl}
+              showCheckVersion={canUpdatePlugin}
+              showRemove={canManagePlugin}
             />
             <ActionButton onClick={onHide}>
               <span aria-hidden className="i-ri-close-line size-4" />

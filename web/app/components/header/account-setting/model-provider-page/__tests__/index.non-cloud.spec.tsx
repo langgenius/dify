@@ -62,9 +62,12 @@ vi.mock('../install-from-marketplace', () => ({
 vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   useCanSetPluginSettings: () => ({
     canSetPermissions: true,
+    canSetPluginPreferences: true,
   }),
   usePluginSettingsAccess: () => ({
     canSetPermissions: true,
+    canSetPluginPreferences: true,
+    canViewInstalledPlugins: true,
   }),
   default: () => ({
     referenceSetting: {

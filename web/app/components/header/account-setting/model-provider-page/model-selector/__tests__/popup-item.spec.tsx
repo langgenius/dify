@@ -74,6 +74,9 @@ vi.mock('@/context/provider-context', () => ({
 const mockUseAppContext = vi.hoisted(() => vi.fn())
 vi.mock('@/context/app-context', () => ({
   useAppContext: mockUseAppContext,
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: ['credential.manage', 'credential.use'],
+  }),
 }))
 
 const makeModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({

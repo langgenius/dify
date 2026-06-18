@@ -5,10 +5,12 @@ import { useNodesSyncDraft } from '../../hooks/use-nodes-sync-draft'
 import { useSnippetDetailStore } from '../../store'
 
 type UseSnippetInputFieldActionsOptions = {
+  canEdit?: boolean
   snippetId: string
 }
 
 export const useSnippetInputFieldActions = ({
+  canEdit = true,
   snippetId,
 }: UseSnippetInputFieldActionsOptions) => {
   const { syncInputFieldsDraft } = useNodesSyncDraft(snippetId)
@@ -21,11 +23,14 @@ export const useSnippetInputFieldActions = ({
   })))
 
   const handleFieldsChange = useCallback((newFields: SnippetInputField[]) => {
+    if (!canEdit)
+      return
+
     setFields(newFields)
     void syncInputFieldsDraft(newFields, {
       onRefresh: setFields,
     })
-  }, [setFields, syncInputFieldsDraft])
+  }, [canEdit, setFields, syncInputFieldsDraft])
 
   return {
     fields,

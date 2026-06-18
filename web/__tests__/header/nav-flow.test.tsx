@@ -43,6 +43,7 @@ vi.mock('@/app/components/app/store', () => ({
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
+    workspacePermissionKeys: mockIsCurrentWorkspaceEditor ? ['app.create_and_management'] : [],
   }),
 }))
 

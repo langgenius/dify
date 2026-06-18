@@ -8,6 +8,8 @@ import {
   RiDashboard2Line,
   RiFileList3Fill,
   RiFileList3Line,
+  RiLock2Fill,
+  RiLock2Line,
   RiTerminalBoxFill,
   RiTerminalBoxLine,
   RiTerminalWindowFill,
@@ -21,6 +23,7 @@ import Annotations from '@/app/components/base/icons/src/vender/Annotations'
 import { useAppContext } from '@/context/app-context'
 import { usePathname } from '@/next/navigation'
 import { AppModeEnum } from '@/types/app'
+import { getAppACLCapabilities } from '@/utils/permission'
 import { AppInfoView } from './app-info'
 import { useAppInfoActions } from './app-info/use-app-info-actions'
 import NavLink from './nav-link'
@@ -68,7 +71,7 @@ const AppDetailSection = ({
 }: AppDetailSectionProps) => {
   const { t } = useTranslation()
   const pathname = usePathname()
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { userProfile, workspacePermissionKeys } = useAppContext()
   const appDetail = useStore(state => state.appDetail)
   const appInfoActions = useAppInfoActions({
     resetKey: appDetail?.id,
@@ -81,9 +84,14 @@ const AppDetailSection = ({
     const appId = appDetail.id
     const isWorkflowApp = appDetail.mode === AppModeEnum.WORKFLOW || appDetail.mode === AppModeEnum.ADVANCED_CHAT
     const supportsAnnotations = appDetail.mode !== AppModeEnum.WORKFLOW && appDetail.mode !== AppModeEnum.COMPLETION
+    const appACLCapabilities = getAppACLCapabilities(appDetail.permission_keys, {
+      currentUserId: userProfile?.id,
+      resourceMaintainer: appDetail.maintainer,
+      workspacePermissionKeys,
+    })
 
     return [
-      ...(isCurrentWorkspaceEditor
+      ...(appACLCapabilities.canAccessLayout
         ? [{
             name: t('appMenus.promptEng', { ns: 'common' }),
             href: `/app/${appId}/${isWorkflowApp ? 'workflow' : 'configuration'}`,
@@ -98,34 +106,49 @@ const AppDetailSection = ({
         icon: RiTerminalBoxLine,
         selectedIcon: RiTerminalBoxFill,
       },
-      ...(isCurrentWorkspaceEditor
+      ...(appACLCapabilities.canMonitor
         ? [{
             name: t('appMenus.logs', { ns: 'common' }),
             href: `/app/${appId}/logs`,
             icon: RiFileList3Line,
             selectedIcon: RiFileList3Fill,
-          }, ...(supportsAnnotations
-            ? [{
-                name: t('appMenus.annotations', { ns: 'common' }),
-                href: `/app/${appId}/annotations`,
-                icon: AnnotationNavIcon,
-                selectedIcon: AnnotationNavIcon,
-              }]
-            : [])]
+          }]
         : []
       ),
-      {
-        name: t('appMenus.overview', { ns: 'common' }),
-        href: `/app/${appId}/overview`,
-        icon: RiDashboard2Line,
-        selectedIcon: RiDashboard2Fill,
-      },
+      ...(appACLCapabilities.canEdit && supportsAnnotations
+        ? [{
+            name: t('appMenus.annotations', { ns: 'common' }),
+            href: `/app/${appId}/annotations`,
+            icon: AnnotationNavIcon,
+            selectedIcon: AnnotationNavIcon,
+          }]
+        : []
+      ),
+      ...(appACLCapabilities.canMonitor
+        ? [{
+            name: t('appMenus.overview', { ns: 'common' }),
+            href: `/app/${appId}/overview`,
+            icon: RiDashboard2Line,
+            selectedIcon: RiDashboard2Fill,
+          }]
+        : []
+      ),
+      ...(appACLCapabilities.canAccessConfig
+        ? [{
+            name: t('settings.resourceAccess', { ns: 'common' }),
+            href: `/app/${appId}/access-config`,
+            icon: RiLock2Line,
+            selectedIcon: RiLock2Fill,
+          }]
+        : []
+      ),
     ]
-  }, [appDetail, isCurrentWorkspaceEditor, t])
+  }, [appDetail, t, userProfile?.id, workspacePermissionKeys])
 
   if (!appDetail)
     return null
 
+  const hasLogsNavigation = navigation.some(isLogsNavItem)
   const hasAnnotationsNavigation = navigation.some(isAnnotationsNavItem)
 
   return (
@@ -147,7 +170,7 @@ const AppDetailSection = ({
       </div>
       <nav className={cn('flex flex-col gap-y-0.5 py-1', expand ? 'px-1' : 'px-3')}>
         {navigation.map((item) => {
-          const shouldRenderDividerBefore = isLogsNavItem(item)
+          const shouldRenderDividerBefore = isLogsNavItem(item) || (!hasLogsNavigation && isAnnotationsNavItem(item))
           const shouldRenderDividerAfter = hasAnnotationsNavigation ? isAnnotationsNavItem(item) : isLogsNavItem(item)
 
           return (

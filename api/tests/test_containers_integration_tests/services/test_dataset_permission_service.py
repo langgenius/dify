@@ -73,6 +73,7 @@ class DatasetPermissionTestDataFactory:
             data_source_type=DataSourceType.UPLOAD_FILE,
             indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=created_by,
+            maintainer=created_by,
             permission=permission,
             provider="vendor",
             retrieval_model={"top_k": 2},

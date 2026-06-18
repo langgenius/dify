@@ -13,7 +13,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { useSelector } from '@/context/app-context'
 import { DSLImportStatus } from '@/models/app'
 import { useRouter } from '@/next/navigation'
 import {
@@ -42,7 +41,6 @@ export const useImportDSL = () => {
   const { t } = useTranslation()
   const [isFetching, setIsFetching] = useState(false)
   const { handleCheckPluginDependencies } = usePluginDependencies()
-  const isCurrentWorkspaceEditor = useSelector(s => s.isCurrentWorkspaceEditor)
   const { push } = useRouter()
   const invalidateAppList = useInvalidateAppList()
   const [versions, setVersions] = useState<{ importedVersion: string, systemVersion: string }>()
@@ -74,6 +72,7 @@ export const useImportDSL = () => {
         app_mode,
         imported_dsl_version,
         current_dsl_version,
+        permission_keys,
       } = response
 
       if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
@@ -93,7 +92,7 @@ export const useImportDSL = () => {
         setNeedRefresh('1')
         invalidateAppList()
         await handleCheckPluginDependencies(app_id)
-        getRedirection(isCurrentWorkspaceEditor, { id: app_id, mode: app_mode }, push)
+        getRedirection({ id: app_id, mode: app_mode, permission_keys }, push)
       }
       else if (status === DSLImportStatus.PENDING) {
         setVersions({
@@ -115,7 +114,7 @@ export const useImportDSL = () => {
     finally {
       setIsFetching(false)
     }
-  }, [t, handleCheckPluginDependencies, isCurrentWorkspaceEditor, push, isFetching, setNeedRefresh, invalidateAppList])
+  }, [isFetching, t, setNeedRefresh, handleCheckPluginDependencies, push, setNeedRefresh, invalidateAppList])
 
   const handleImportDSLConfirm = useCallback(async (
     {
@@ -134,7 +133,7 @@ export const useImportDSL = () => {
         import_id: importIdRef.current,
       })
 
-      const { status, app_id, app_mode } = response
+      const { status, app_id, app_mode, permission_keys } = response
       if (!app_id)
         return
 
@@ -144,7 +143,7 @@ export const useImportDSL = () => {
         await handleCheckPluginDependencies(app_id)
         setNeedRefresh('1')
         invalidateAppList()
-        getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
+        getRedirection({ id: app_id, mode: app_mode, permission_keys }, push)
       }
       else if (status === DSLImportStatus.FAILED) {
         toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
@@ -158,7 +157,7 @@ export const useImportDSL = () => {
     finally {
       setIsFetching(false)
     }
-  }, [t, handleCheckPluginDependencies, isCurrentWorkspaceEditor, push, isFetching, setNeedRefresh, invalidateAppList])
+  }, [isFetching, t, handleCheckPluginDependencies, setNeedRefresh, push, setNeedRefresh, invalidateAppList])
 
   return {
     handleImportDSL,

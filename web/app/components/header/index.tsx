@@ -3,13 +3,14 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import WorkplaceSelector from '@/app/components/header/account-dropdown/workplace-selector'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useAppContext } from '@/context/app-context'
+import { useAppContext, useSelector as useAppContextSelector } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { DeploymentsNav } from '@/features/deployments/nav'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Link from '@/next/link'
+import { hasPermission } from '@/utils/permission'
 import { Plan } from '../billing/type'
 import AccountDropdown from './account-dropdown'
 import AppNav from './app-nav'
@@ -28,9 +29,10 @@ const navClassName = `
 `
 
 export function Header() {
-  const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const workspacePermissionKeys = useAppContextSelector(s => s.workspacePermissionKeys)
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
+  const { isCurrentWorkspaceEditor } = useAppContext()
   const { enableBilling, plan } = useProviderContext()
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -44,6 +46,9 @@ export function Header() {
     else
       setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
   }
+
+  const canAccessExplorePage = hasPermission(workspacePermissionKeys, 'app_library.access')
+  const canAccessToolsPage = hasPermission(workspacePermissionKeys, ['tool.manage', 'mcp.manage'])
 
   const logoLabel = isBrandingEnabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'
   const renderLogo = () => (
@@ -80,10 +85,10 @@ export function Header() {
           </div>
         </div>
         <div className="my-1 flex items-center justify-center gap-1">
-          {!isCurrentWorkspaceDatasetOperator && <ExploreNav className={navClassName} />}
-          {!isCurrentWorkspaceDatasetOperator && <AppNav />}
-          {(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator) && <DatasetNav />}
-          {!isCurrentWorkspaceDatasetOperator && <ToolsNav className={navClassName} />}
+          {canAccessExplorePage && <ExploreNav className={navClassName} />}
+          <AppNav />
+          <DatasetNav />
+          {canAccessToolsPage && <ToolsNav className={navClassName} />}
           {canUseAppDeploy && <DeploymentsNav />}
         </div>
       </div>
@@ -91,18 +96,18 @@ export function Header() {
   }
 
   return (
-    <div className="flex h-[56px] items-center">
-      <div className="flex min-w-0 flex-1 items-center overflow-hidden pr-2 pl-3 min-[1280px]:pr-3">
+    <div className="flex h-14 items-center">
+      <div className="flex min-w-0 flex-1 items-center overflow-hidden overflow-hidden pr-2 pl-3 min-[1280px]:pr-3">
         {renderLogo()}
         <div className="mx-1.5 shrink-0 font-light text-divider-deep">/</div>
         <WorkplaceSelector />
         {enableBilling ? <PlanBadge allowHover sandboxAsUpgrade plan={plan.type} onClick={handlePlanClick} /> : <LicenseNav />}
       </div>
       <div className="flex min-w-0 items-center justify-center gap-2 overflow-hidden py-3">
-        {!isCurrentWorkspaceDatasetOperator && <ExploreNav className={navClassName} />}
-        {!isCurrentWorkspaceDatasetOperator && <AppNav />}
-        {(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator) && <DatasetNav />}
-        {!isCurrentWorkspaceDatasetOperator && <ToolsNav className={navClassName} />}
+        {canAccessExplorePage && <ExploreNav className={navClassName} />}
+        <AppNav />
+        <DatasetNav />
+        {canAccessToolsPage && <ToolsNav className={navClassName} />}
         {canUseAppDeploy && <DeploymentsNav />}
       </div>
       <div className="flex min-w-0 flex-1 items-center justify-end gap-2 pr-3 pl-2 min-[1280px]:pl-3">

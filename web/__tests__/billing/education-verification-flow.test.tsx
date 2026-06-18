@@ -143,6 +143,11 @@ const setupContexts = (
   }
   mockAppCtx = {
     isCurrentWorkspaceManager: true,
+    workspacePermissionKeys: [
+      'billing.view',
+      'billing.manage',
+      'billing.subscription.manage',
+    ],
     userProfile: { email: 'student@university.edu' },
     langGeniusVersionInfo: { current_version: '1.0.0' },
     ...appOverrides,
