@@ -5,7 +5,7 @@ import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-from typing import Any, TypedDict, cast
+from typing import Any, NotRequired, TypedDict, cast
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
 from sqlalchemy import Row, delete, func, select, update
@@ -18,6 +18,8 @@ class InvitationData(TypedDict):
     account_id: str
     email: str
     workspace_id: str
+    role: NotRequired[str]
+    requires_setup: NotRequired[bool]
 
 
 _invitation_adapter: TypeAdapter[InvitationData] = TypeAdapter(InvitationData)
@@ -1805,6 +1807,7 @@ class RegisterService:
 
         account = AccountService.get_account_by_email_with_case_fallback(email)
 
+        requires_setup = False
         if not account:
             TenantService.check_member_permission(tenant, inviter, None, "add")
             name = normalized_email.split("@")[0]
@@ -1819,6 +1822,7 @@ class RegisterService:
             # Create new tenant member for invited tenant
             TenantService.create_tenant_member(tenant, account, role)
             TenantService.switch_tenant(account, tenant.id)
+            requires_setup = True
         else:
             TenantService.check_member_permission(tenant, inviter, account, "add")
             ta = db.session.scalar(
@@ -1826,15 +1830,16 @@ class RegisterService:
                 .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account.id)
                 .limit(1)
             )
+            requires_setup = account.status == AccountStatus.PENDING
 
-            if not ta:
+            if not ta and account.status == AccountStatus.PENDING:
                 TenantService.create_tenant_member(tenant, account, role)
 
             # Support resend invitation email when the account is pending status
-            if account.status != AccountStatus.PENDING:
+            if ta and account.status != AccountStatus.PENDING:
                 raise AccountAlreadyInTenantError("Account already in tenant.")
 
-        token = cls.generate_invite_token(tenant, account)
+        token = cls.generate_invite_token(tenant, account, role, requires_setup=requires_setup)
         language = account.interface_language or "en-US"
 
         # send email
@@ -1849,12 +1854,16 @@ class RegisterService:
         return token
 
     @classmethod
-    def generate_invite_token(cls, tenant: Tenant, account: Account) -> str:
+    def generate_invite_token(
+        cls, tenant: Tenant, account: Account, role: str = "normal", *, requires_setup: bool = False
+    ) -> str:
         token = str(uuid.uuid4())
         invitation_data = {
             "account_id": account.id,
             "email": account.email,
             "workspace_id": tenant.id,
+            "role": str(role),
+            "requires_setup": requires_setup,
         }
         expiry_hours = dify_config.INVITE_EXPIRY_HOURS
         redis_client.setex(cls._get_invitation_token_key(token), expiry_hours * 60 * 60, json.dumps(invitation_data))
@@ -1889,16 +1898,7 @@ class RegisterService:
         if not tenant:
             return None
 
-        tenant_account = db.session.execute(
-            select(Account, TenantAccountJoin.role)
-            .join(TenantAccountJoin, Account.id == TenantAccountJoin.account_id)
-            .where(Account.email == invitation_data["email"], TenantAccountJoin.tenant_id == tenant.id)
-        ).first()
-
-        if not tenant_account:
-            return None
-
-        account = tenant_account[0]
+        account = db.session.scalar(select(Account).where(Account.email == invitation_data["email"]).limit(1))
         if not account:
             return None
 

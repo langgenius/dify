@@ -190,7 +190,9 @@ class TestMemberInviteEmailApi:
         ):
             result, status = method(api, user)
 
-        assert result["invitation_results"][0]["status"] == "success"
+        assert status == 201
+        assert result["invitation_results"][0]["status"] == "already_member"
+        assert result["invitation_results"][0]["message"] == "Account already in workspace."
 
     def test_invite_invalid_role(self, app: Flask):
         api = MemberInviteEmailApi()
