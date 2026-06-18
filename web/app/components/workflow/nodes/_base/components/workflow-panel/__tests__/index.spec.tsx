@@ -30,6 +30,14 @@ const mockLogsState = {
   showSpecialResultPanel: false,
 }
 
+const createMockSingleRunParams = () => ({
+  forms: [],
+  onStop: vi.fn(),
+  runningStatus: NodeRunningStatus.Succeeded,
+  existVarValuesInForms: [],
+  filteredExistVarForms: [],
+})
+
 const mockLastRunState = {
   isShowSingleRun: false,
   hideSingleRun: vi.fn(),
@@ -45,13 +53,7 @@ const mockLastRunState = {
   setIsRunAfterSingleRun: vi.fn(),
   setTabType: vi.fn(),
   handleAfterCustomSingleRun: vi.fn(),
-  singleRunParams: {
-    forms: [],
-    onStop: vi.fn(),
-    runningStatus: NodeRunningStatus.Succeeded,
-    existVarValuesInForms: [],
-    filteredExistVarForms: [],
-  },
+  singleRunParams: createMockSingleRunParams(),
   nodeInfo: { id: 'node-1' },
   setRunInputData: vi.fn(),
   handleStop: () => mockHandleStop(),
@@ -313,6 +315,7 @@ describe('workflow-panel index', () => {
     mockLogsState.showSpecialResultPanel = false
     mockLastRunState.isShowSingleRun = false
     mockLastRunState.tabType = 'settings'
+    mockLastRunState.singleRunParams = createMockSingleRunParams()
   })
 
   it('should render the settings panel and wire title, description, run, and close actions', async () => {
@@ -501,6 +504,26 @@ describe('workflow-panel index', () => {
     )
 
     expect(screen.getByText('data-source-before-run-form')).toBeInTheDocument()
+  })
+
+  it('should keep the settings panel visible when single-run params have no forms', () => {
+    mockLastRunState.isShowSingleRun = true
+    mockLastRunState.singleRunParams = {} as ReturnType<typeof createMockSingleRunParams>
+
+    renderWorkflowComponent(
+      <BasePanel id="node-agent" data={createData({ type: BlockEnum.Agent }) as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+      {
+        initialStoreState: {
+          nodePanelWidth: 480,
+          otherPanelWidth: 200,
+        },
+      },
+    )
+
+    expect(screen.queryByText('before-run-form')).not.toBeInTheDocument()
+    expect(screen.getByText('panel-child')).toBeInTheDocument()
   })
 
   it('should render data source authorization controls and jump to the settings modal', () => {

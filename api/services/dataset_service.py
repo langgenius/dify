@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from redis.exceptions import LockNotOwnedError
 from sqlalchemy import ColumnElement, delete, exists, func, select, update
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
@@ -248,6 +248,7 @@ class DatasetService:
     def get_datasets(
         page,
         per_page,
+        session: scoped_session | Session | None = None,
         tenant_id=None,
         user=None,
         search=None,
@@ -256,6 +257,7 @@ class DatasetService:
         accessible_dataset_ids: list[str] | None = None,
         include_own_datasets: bool = False,
     ):
+        session = session or db.session
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
 
         if dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
@@ -336,6 +338,7 @@ class DatasetService:
                     "knowledge",
                     tenant_id,
                     tag_ids,
+                    session,
                     match_all=True,
                 )
             else:

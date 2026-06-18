@@ -78,7 +78,7 @@ class CreateAppParams(BaseModel):
 class AppService:
     @staticmethod
     def _build_app_list_filters(
-        user_id: str, tenant_id: str, params: AppListBaseParams
+        user_id: str, tenant_id: str, params: AppListBaseParams, session: scoped_session
     ) -> list[sa.ColumnElement[bool]]:
         filters = [App.tenant_id == tenant_id, App.is_universal == False]
 
@@ -123,7 +123,7 @@ class AppService:
             escaped_name = escape_like_pattern(name)
             filters.append(App.name.ilike(f"%{escaped_name}%", escape="\\"))
         if params.tag_ids and len(params.tag_ids) > 0:
-            target_ids = TagService.get_target_ids_by_tag_ids("app", tenant_id, params.tag_ids, match_all=True)
+            target_ids = TagService.get_target_ids_by_tag_ids("app", tenant_id, params.tag_ids, session, match_all=True)
             if target_ids and len(target_ids) > 0:
                 filters.append(App.id.in_(target_ids))
             else:
@@ -205,7 +205,9 @@ class AppService:
             ).scalars()
         )
 
-    def get_paginate_apps(self, user_id: str, tenant_id: str, params: AppListParams) -> Pagination | None:
+    def get_paginate_apps(
+        self, user_id: str, tenant_id: str, params: AppListParams, session: scoped_session
+    ) -> Pagination | None:
         """
         Get app list with pagination, filters, and explicit sort order.
         :param user_id: user id
@@ -213,7 +215,7 @@ class AppService:
         :param params: query parameters
         :return:
         """
-        filters = self._build_app_list_filters(user_id, tenant_id, params)
+        filters = self._build_app_list_filters(user_id, tenant_id, params, session)
         if not filters:
             return None
 
@@ -239,12 +241,12 @@ class AppService:
         return app_models
 
     def get_paginate_starred_apps(
-        self, user_id: str, tenant_id: str, params: StarredAppListParams
+        self, user_id: str, tenant_id: str, params: StarredAppListParams, session: scoped_session
     ) -> Pagination | None:
         """
         Get apps starred by the current account with pagination, filters, and explicit sort order.
         """
-        filters = self._build_app_list_filters(user_id, tenant_id, params)
+        filters = self._build_app_list_filters(user_id, tenant_id, params, session)
         if not filters:
             return None
 
@@ -555,17 +557,21 @@ class AppService:
         *,
         name: str | None = None,
         description: str | None = None,
+        role: str | None = None,
         icon_type: IconType | str | None = None,
         icon: str | None = None,
         icon_background: str | None = None,
-        role: str | None = None,
         account_id: str | None = None,
         updated_at: datetime | None = None,
     ) -> None:
         """Keep the Roster identity aligned with its Agent App shell.
 
         Agent Soul remains versioned through Composer. This helper only mirrors
-        user-facing identity fields so Roster and Agent Console do not drift.
+        user-facing identity fields, including the roster role/persona label,
+        so Roster and Agent Console do not drift.
+
+        Role omission is intentional: ``role=None`` preserves the backing
+        Agent's current role, while ``role=""`` explicitly clears it.
         """
         agent = self._get_backing_agent_for_update(app)
         if agent is None:
@@ -575,14 +581,14 @@ class AppService:
             agent.name = name
         if description is not None:
             agent.description = description
+        if role is not None:
+            agent.role = role
         if icon_type is not None:
             agent.icon_type = self._to_agent_icon_type(icon_type)
         if icon is not None:
             agent.icon = icon
         if icon_background is not None:
             agent.icon_background = icon_background
-        if role is not None:
-            agent.role = role
         agent.updated_by = account_id
         if updated_at is not None:
             agent.updated_at = updated_at
@@ -614,10 +620,12 @@ class AppService:
             app,
             name=app.name,
             description=app.description,
+            # Omitted role must stay omitted here: None means "preserve current
+            # backing-agent role", while an empty string is an explicit clear.
+            role=args.get("role"),
             icon_type=app.icon_type,
             icon=app.icon,
             icon_background=app.icon_background,
-            role=args.get("role"),
             account_id=current_user.id,
             updated_at=app.updated_at,
         )

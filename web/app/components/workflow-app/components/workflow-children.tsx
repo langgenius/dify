@@ -1,5 +1,5 @@
 import type {
-  PluginDefaultValue,
+  BlockDefaultValue,
   TriggerDefaultValue,
 } from '@/app/components/workflow/block-selector/types'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
@@ -101,7 +101,7 @@ const WorkflowChildren = () => {
     handleOnboardingClose()
   }, [handleOnboardingClose])
 
-  const handleSelectStartNode = useCallback((nodeType: BlockEnum, toolConfig?: PluginDefaultValue) => {
+  const handleSelectStartNode = useCallback((nodeType: BlockEnum, toolConfig?: BlockDefaultValue) => {
     if (!canEdit)
       return
 

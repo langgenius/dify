@@ -39,6 +39,7 @@ export type PopupProps = {
   modelList: Model[]
   scopeFeatures?: ModelFeatureEnum[]
   hideProviderSettingsFooter?: boolean
+  providerSettingsSource?: 'agent'
   onConfigureEmptyState?: () => void
   onInputValueChange: (value: string) => void
   onHide: () => void
@@ -49,6 +50,7 @@ function Popup({
   modelList,
   scopeFeatures = [],
   hideProviderSettingsFooter,
+  providerSettingsSource,
   onConfigureEmptyState,
   onInputValueChange,
   onHide,
@@ -175,8 +177,8 @@ function Popup({
 
   const handleOpenSettings = useCallback(() => {
     onHide()
-    openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
-  }, [onHide, openIntegrationsSetting])
+    openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER, source: providerSettingsSource })
+  }, [onHide, openIntegrationsSetting, providerSettingsSource])
   const handleClosePreviewCard = useCallback(() => {
     previewCardHandle.close()
   }, [previewCardHandle])

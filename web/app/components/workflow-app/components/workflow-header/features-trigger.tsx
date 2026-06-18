@@ -9,6 +9,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   memo,
   useCallback,
@@ -28,6 +29,7 @@ import {
   useNodesSyncDraft,
   // useWorkflowRunValidation,
 } from '@/app/components/workflow/hooks'
+import { hasValidRosterAgentBinding, isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import {
   useStore,
@@ -42,6 +44,7 @@ import {
 import { useProviderContext } from '@/context/provider-context'
 import useTheme from '@/hooks/use-theme'
 import { appDetailQueryKeyPrefix } from '@/service/use-apps'
+import { consoleQuery } from '@/service/client'
 import { useInvalidateAppTriggers } from '@/service/use-tools'
 import { useInvalidateAppWorkflow, usePublishWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
 
@@ -50,6 +53,7 @@ const FeaturesTrigger = () => {
   const { theme } = useTheme()
   const isChatMode = useIsChatMode()
   const workflowStore = useWorkflowStore()
+  const queryClient = useQueryClient()
   const appDetail = useAppStore(s => s.appDetail)
   const appID = appDetail?.id
   const queryClient = useQueryClient()
@@ -167,6 +171,11 @@ const FeaturesTrigger = () => {
         updatePublishedWorkflow(appID!)
         updateAppDetail()
         invalidateAppTriggers(appID!)
+        if (nodes.some(node => isAgentV2NodeData(node.data) && hasValidRosterAgentBinding(node.data))) {
+          void queryClient.invalidateQueries({
+            queryKey: consoleQuery.agent.get.key(),
+          })
+        }
         workflowStore.getState().setPublishedAt(res.created_at)
         workflowStore.getState().setLastPublishedHasUserInput(hasUserInputNode)
         resetWorkflowVersionHistory()
@@ -175,7 +184,7 @@ const FeaturesTrigger = () => {
     else {
       throw new Error('Checklist failed')
     }
-  }, [needWarningNodes, handleCheckBeforePublish, publishWorkflow, appID, t, updatePublishedWorkflow, updateAppDetail, workflowStore, resetWorkflowVersionHistory, invalidateAppTriggers, hasUserInputNode])
+  }, [needWarningNodes, handleCheckBeforePublish, publishWorkflow, appID, t, updatePublishedWorkflow, updateAppDetail, invalidateAppTriggers, nodes, queryClient, workflowStore, hasUserInputNode, resetWorkflowVersionHistory])
 
   const onPublisherToggle = useCallback((state: boolean) => {
     if (state)

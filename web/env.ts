@@ -63,6 +63,7 @@ const clientSchema = {
    * The deployment edition, SELF_HOSTED
    */
   NEXT_PUBLIC_EDITION: z.enum(['SELF_HOSTED', 'CLOUD']).default('SELF_HOSTED'),
+  NEXT_PUBLIC_ENABLE_AGENT_V2: coercedBoolean.default(false),
   /**
    * Enable preview features that are still in development.
    * Currently gates the `/create` and `/refine` slash commands in the
@@ -196,6 +197,7 @@ export const env = createEnv({
     NEXT_PUBLIC_DEPLOY_ENV: isServer ? process.env.NEXT_PUBLIC_DEPLOY_ENV : getRuntimeEnvFromBody('deployEnv'),
     NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON: isServer ? process.env.NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON : getRuntimeEnvFromBody('disableUploadImageAsIcon'),
     NEXT_PUBLIC_EDITION: isServer ? process.env.NEXT_PUBLIC_EDITION : getRuntimeEnvFromBody('edition'),
+    NEXT_PUBLIC_ENABLE_AGENT_V2: isServer ? process.env.NEXT_PUBLIC_ENABLE_AGENT_V2 : getRuntimeEnvFromBody('enableAgentV2'),
     NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: isServer ? process.env.NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW : getRuntimeEnvFromBody('enableFeaturePreview'),
 
     /**
@@ -252,6 +254,11 @@ export const env = createEnv({
 type ClientEnvKey = keyof typeof clientSchema
 type DatasetKey = CamelCase<Replace<ClientEnvKey, typeof CLIENT_ENV_PREFIX>>
 
+function getDatasetAttributeName(envKey: ClientEnvKey) {
+  const datasetName = kebabCase(slice(envKey, length(CLIENT_ENV_PREFIX))).replace(/-(\d)/g, '$1')
+  return concat('data-', datasetName)
+}
+
 /**
  * Browser-only function to get runtime env value from HTML body dataset.
  */
@@ -274,7 +281,7 @@ export function getDatasetMap() {
   return ObjectFromEntries(
     ObjectKeys(clientSchema)
       .map(envKey => [
-        concat('data-', kebabCase(slice(envKey, length(CLIENT_ENV_PREFIX)))),
+        getDatasetAttributeName(envKey),
         env[envKey],
       ]),
   )

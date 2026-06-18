@@ -166,6 +166,10 @@ export type InvitationResult = {
   email: string
   url: string
 } | {
+  status: 'already_member'
+  email: string
+  message?: string
+} | {
   status: 'failed'
   email: string
   message: string

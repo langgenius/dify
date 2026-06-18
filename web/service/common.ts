@@ -155,11 +155,37 @@ export const updateDataSourceNotionAction = ({ url }: { url: string }): Promise<
   return patch<CommonResponse>(url)
 }
 
-export const invitationCheck = ({ url, params }: { url: string, params: { workspace_id?: string, email?: string, token: string } }): Promise<CommonResponse & { is_valid: boolean, data: { workspace_name: string, email: string, workspace_id: string } }> => {
-  return get<CommonResponse & { is_valid: boolean, data: { workspace_name: string, email: string, workspace_id: string } }>(url, { params })
+export const fetchPluginProviders = (url: string): Promise<PluginProvider[] | null> => {
+  return get<PluginProvider[] | null>(url)
 }
 
-export const activateMember = ({ url, body }: { url: string, body: any }): Promise<LoginResponse> => {
+export const validatePluginProviderKey = ({ url, body }: { url: string, body: { credentials: any } }): Promise<ValidateOpenAIKeyResponse> => {
+  return post<ValidateOpenAIKeyResponse>(url, { body })
+}
+export const updatePluginProviderAIKey = ({ url, body }: { url: string, body: { credentials: any } }): Promise<UpdateOpenAIKeyResponse> => {
+  return post<UpdateOpenAIKeyResponse>(url, { body })
+}
+
+type InvitationCheckData = {
+  workspace_name: string
+  email: string
+  workspace_id: string
+  account_status?: string
+  requires_setup?: boolean
+}
+
+type ActivateMemberBody = {
+  token: string
+  name?: string
+  interface_language?: string
+  timezone?: string
+}
+
+export const invitationCheck = ({ url, params }: { url: string, params: { workspace_id?: string, email?: string, token: string } }): Promise<CommonResponse & { is_valid: boolean, data: InvitationCheckData }> => {
+  return get<CommonResponse & { is_valid: boolean, data: InvitationCheckData }>(url, { params })
+}
+
+export const activateMember = ({ url, body }: { url: string, body: ActivateMemberBody }): Promise<LoginResponse> => {
   return post<LoginResponse>(url, { body })
 }
 

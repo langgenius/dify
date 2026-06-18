@@ -308,7 +308,7 @@ class DatasetListApi(DatasetApiResource):
         # provider = request.args.get("provider", default="vendor")
 
         datasets, total = DatasetService.get_datasets(
-            query.page, query.limit, tenant_id, current_user, query.keyword, query.tag_ids, query.include_all
+            query.page, query.limit, db.session, tenant_id, current_user, query.keyword, query.tag_ids, query.include_all
         )
         # check embedding setting
         assert isinstance(current_user, Account)
@@ -792,7 +792,7 @@ class DatasetTagsApi(DatasetApiResource):
             raise Forbidden()
 
         payload = TagCreatePayload.model_validate(service_api_ns.payload or {})
-        tag = TagService.save_tags(SaveTagPayload(name=payload.name, type=TagType.KNOWLEDGE))
+        tag = TagService.save_tags(SaveTagPayload(name=payload.name, type=TagType.KNOWLEDGE), db.session)
 
         response = dump_response(
             KnowledgeTagResponse,
@@ -830,9 +830,9 @@ class DatasetTagsApi(DatasetApiResource):
 
         payload = TagUpdatePayload.model_validate(service_api_ns.payload or {})
         tag_id = payload.tag_id
-        tag = TagService.update_tags(UpdateTagServicePayload(name=payload.name), tag_id)
+        tag = TagService.update_tags(UpdateTagServicePayload(name=payload.name), tag_id, db.session)
 
-        binding_count = TagService.get_tag_binding_count(tag_id)
+        binding_count = TagService.get_tag_binding_count(tag_id, db.session)
 
         response = dump_response(
             KnowledgeTagResponse,
@@ -862,7 +862,7 @@ class DatasetTagsApi(DatasetApiResource):
     def delete(self, _):
         """Delete a knowledge type tag."""
         payload = TagDeletePayload.model_validate(service_api_ns.payload or {})
-        TagService.delete_tag(payload.tag_id)
+        TagService.delete_tag(payload.tag_id, db.session)
 
         return "", 204
 
@@ -895,7 +895,8 @@ class DatasetTagBindingApi(DatasetApiResource):
 
         payload = TagBindingPayload.model_validate(service_api_ns.payload or {})
         TagService.save_tag_binding(
-            TagBindingCreatePayload(tag_ids=payload.tag_ids, target_id=payload.target_id, type=TagType.KNOWLEDGE)
+            TagBindingCreatePayload(tag_ids=payload.tag_ids, target_id=payload.target_id, type=TagType.KNOWLEDGE),
+            db.session,
         )
 
         return "", 204
@@ -929,7 +930,8 @@ class DatasetTagUnbindingApi(DatasetApiResource):
 
         payload = TagUnbindingPayload.model_validate(service_api_ns.payload or {})
         TagService.delete_tag_binding(
-            TagBindingDeletePayload(tag_ids=payload.tag_ids, target_id=payload.target_id, type=TagType.KNOWLEDGE)
+            TagBindingDeletePayload(tag_ids=payload.tag_ids, target_id=payload.target_id, type=TagType.KNOWLEDGE),
+            db.session,
         )
 
         return "", 204
@@ -964,6 +966,8 @@ class DatasetTagsBindingStatusApi(DatasetApiResource):
         dataset_id = kwargs.get("dataset_id")
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
-        tags = TagService.get_tags_by_target_id("knowledge", current_user.current_tenant_id, str(dataset_id))
+        tags = TagService.get_tags_by_target_id(
+            "knowledge", current_user.current_tenant_id, str(dataset_id), db.session
+        )
         tags_list = [{"id": tag.id, "name": tag.name} for tag in tags]
         return dump_response(DatasetBoundTagListResponse, {"data": tags_list, "total": len(tags)}), 200
