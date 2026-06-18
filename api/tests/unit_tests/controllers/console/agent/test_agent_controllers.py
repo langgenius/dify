@@ -1,4 +1,4 @@
-from inspect import unwrap
+from inspect import getsource, unwrap
 from types import SimpleNamespace
 from typing import Any, cast
 
@@ -175,6 +175,11 @@ def test_agent_v2_console_routes_are_agent_id_first() -> None:
         "/apps/<uuid:app_id>/agent-sandbox/files",
     ):
         assert route not in paths
+
+
+def test_agent_app_write_routes_do_not_reuse_app_billing_quota() -> None:
+    for route_class in (AgentAppListApi, AgentAppCopyApi):
+        assert '@cloud_edition_billing_resource_check("apps")' not in getsource(route_class)
 
 
 @pytest.fixture
