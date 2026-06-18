@@ -94,12 +94,13 @@ class RedisSubscriptionBase(Subscription):
                 continue
 
             channel_field = raw_message.get("channel")
-            if isinstance(channel_field, bytes):
-                channel_name = channel_field.decode("utf-8")
-            elif isinstance(channel_field, str):
-                channel_name = channel_field
-            else:
-                channel_name = str(channel_field)
+            match channel_field:
+                case bytes():
+                    channel_name = channel_field.decode("utf-8")
+                case str():
+                    channel_name = channel_field
+                case _:
+                    channel_name = str(channel_field)
 
             if channel_name != self._topic:
                 _logger.warning(

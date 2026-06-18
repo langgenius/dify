@@ -882,7 +882,7 @@ class WorkflowResponseConverter:
         return files
 
     @classmethod
-    def _get_file_var_from_value(cls, value: Union[dict, list]) -> Mapping[str, Any] | None:
+    def _get_file_var_from_value(cls, value: object) -> Mapping[str, Any] | None:
         """
         Get file var from value
         :param value: variable value
@@ -891,10 +891,11 @@ class WorkflowResponseConverter:
         if not value:
             return None
 
-        if isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
-            return value
-        elif isinstance(value, File):
-            return value.to_dict()
+        match value:
+            case dict() if value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
+                return value
+            case File():
+                return value.to_dict()
 
         return None
 
