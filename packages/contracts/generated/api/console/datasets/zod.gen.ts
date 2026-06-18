@@ -1176,7 +1176,7 @@ export const zWebsiteInfo = z.object({
  */
 export const zPreProcessingRule = z.object({
   enabled: z.boolean(),
-  id: z.string(),
+  id: z.enum(['remove_extra_spaces', 'remove_stopwords', 'remove_urls_emails']),
 })
 
 /**
@@ -1233,7 +1233,7 @@ export const zCondition = z.object({
     '≥',
   ]),
   name: z.string(),
-  value: z.union([z.string(), z.array(z.string()), z.int(), z.number()]).nullish(),
+  value: z.union([z.string(), z.array(z.string()), z.number()]).nullish(),
 })
 
 /**
@@ -1277,7 +1277,7 @@ export const zWeightModel = z.object({
 export const zRetrievalModel = z.object({
   metadata_filtering_conditions: zMetadataFilteringCondition.nullish(),
   reranking_enable: z.boolean(),
-  reranking_mode: z.string().nullish(),
+  reranking_mode: z.enum(['reranking_model', 'weighted_score']).nullish(),
   reranking_model: zRerankingModel.nullish(),
   score_threshold: z.number().nullish(),
   score_threshold_enabled: z.boolean(),
@@ -1291,7 +1291,13 @@ export const zRetrievalModel = z.object({
  */
 export const zHitTestingPayload = z.object({
   attachment_ids: z.array(z.string()).nullish(),
-  external_retrieval_model: z.record(z.string(), z.unknown()).nullish(),
+  external_retrieval_model: z
+    .object({
+      score_threshold: z.number().optional(),
+      score_threshold_enabled: z.boolean().optional(),
+      top_k: z.int().optional(),
+    })
+    .nullish(),
   query: z.string().max(250),
   retrieval_model: zRetrievalModel.nullish(),
 })
@@ -1451,7 +1457,10 @@ export const zDataSource = z.object({
  */
 export const zKnowledgeConfig = z.object({
   data_source: zDataSource.nullish(),
-  doc_form: z.string().optional().default('text_model'),
+  doc_form: z
+    .enum(['hierarchical_model', 'qa_model', 'text_model'])
+    .optional()
+    .default('text_model'),
   doc_language: z.string().optional().default('English'),
   duplicate: z.boolean().optional().default(true),
   embedding_model: z.string().nullish(),
@@ -1462,7 +1471,14 @@ export const zKnowledgeConfig = z.object({
   original_document_id: z.string().nullish(),
   process_rule: zProcessRule.nullish(),
   retrieval_model: zRetrievalModel.nullish(),
-  summary_index_setting: z.record(z.string(), z.unknown()).nullish(),
+  summary_index_setting: z
+    .object({
+      enable: z.boolean().optional(),
+      model_name: z.string().optional(),
+      model_provider_name: z.string().optional(),
+      summary_prompt: z.string().optional(),
+    })
+    .nullish(),
 })
 
 export const zGetDatasetsQuery = z.object({

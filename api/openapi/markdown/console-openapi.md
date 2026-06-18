@@ -6390,9 +6390,9 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| conversation_id | query | Conversation UUID | Yes | string |
-| first_id | query | First message ID for pagination | No | string |
-| limit | query | Number of messages to return (1-100) | No | integer, <br>**Default:** 20 |
+| conversation_id | query | Conversation ID. | Yes | string |
+| first_id | query | The ID of the first chat record on the current page. Omit this value to fetch the latest messages; for subsequent pages, use the first message ID from the current list to fetch older messages. | No | string |
+| limit | query | Number of chat history messages to return per request. | No | integer, <br>**Default:** 20 |
 | installed_app_id | path |  | Yes | string (uuid) |
 
 #### Responses
@@ -13352,7 +13352,7 @@ Button styles for user actions.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | Yes |
+| content | string | Child chunk text content. | Yes |
 
 #### ChildChunkDetailResponse
 
@@ -13395,14 +13395,14 @@ Button styles for user actions.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | Yes |
-| id | string |  | No |
+| content | string | Child chunk text content. | Yes |
+| id | string | Existing child chunk ID. Omit to create a new child chunk. | No |
 
 #### ChildChunkUpdatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | Yes |
+| content | string | Child chunk text content. | Yes |
 
 #### CliToolSuggestion
 
@@ -13560,9 +13560,9 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| comparison_operator | string, <br>**Available values:** "<", "=", ">", "after", "before", "contains", "empty", "end with", "in", "is", "is not", "not contains", "not empty", "not in", "start with", "≠", "≤", "≥" | *Enum:* `"<"`, `"="`, `">"`, `"after"`, `"before"`, `"contains"`, `"empty"`, `"end with"`, `"in"`, `"is"`, `"is not"`, `"not contains"`, `"not empty"`, `"not in"`, `"start with"`, `"≠"`, `"≤"`, `"≥"` | Yes |
-| name | string |  | Yes |
-| value | string<br>[ string ]<br>integer<br>number |  | No |
+| comparison_operator | string, <br>**Available values:** "<", "=", ">", "after", "before", "contains", "empty", "end with", "in", "is", "is not", "not contains", "not empty", "not in", "start with", "≠", "≤", "≥" | Comparison to apply. String operators (`contains`, `not contains`, `start with`, `end with`, `is`, `is not`, `empty`, `not empty`, `in`, `not in`) act on string or array metadata; numeric operators (`=`, `≠`, `>`, `<`, `≥`, `≤`) act on numeric metadata; time operators (`before`, `after`) act on time metadata.<br>*Enum:* `"<"`, `"="`, `">"`, `"after"`, `"before"`, `"contains"`, `"empty"`, `"end with"`, `"in"`, `"is"`, `"is not"`, `"not contains"`, `"not empty"`, `"not in"`, `"start with"`, `"≠"`, `"≤"`, `"≥"` | Yes |
+| name | string | Metadata field name to compare against. | Yes |
+| value | string<br>[ string ]<br>number | Value to compare against. Type depends on `comparison_operator`: string for most string operators, array of strings for `in` and `not in`, number for numeric operators, and omit or use `null` for `empty` and `not empty`. | No |
 
 #### ConfigurateMethod
 
@@ -13704,8 +13704,8 @@ Enum class for configurate method of provider model.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| auto_generate | boolean |  | No |
-| name | string |  | No |
+| auto_generate | boolean | Automatically generate the conversation name. When `true`, the `name` field is ignored. | No |
+| name | string | Conversation name. Required when `auto_generate` is `false`. | No |
 
 #### ConversationVariableResponse
 
@@ -14682,15 +14682,15 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| document_ids | [ string (uuid) ] |  | Yes |
+| document_ids | [ string (uuid) ] | List of document IDs to include in the ZIP download. | Yes |
 
 #### DocumentMetadataOperation
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| document_id | string |  | Yes |
-| metadata_list | [ [MetadataDetail](#metadatadetail) ] |  | Yes |
-| partial_update | boolean |  | No |
+| document_id | string | Document ID whose metadata should be updated. | Yes |
+| metadata_list | [ [MetadataDetail](#metadatadetail) ] | Metadata fields to update. | Yes |
+| partial_update | boolean | Whether to partially update metadata, keeping existing values for unspecified fields. | No |
 
 #### DocumentMetadataResponse
 
@@ -15472,10 +15472,10 @@ Enum class for form type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachment_ids | [ string ] |  | No |
-| external_retrieval_model | object |  | No |
-| query | string |  | Yes |
-| retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
+| attachment_ids | [ string ] | List of attachment IDs to include in the retrieval context. | No |
+| external_retrieval_model | object | Retrieval settings for external knowledge bases. | No |
+| query | string | Search query text. | Yes |
+| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked. | No |
 
 #### HitTestingQuery
 
@@ -15857,19 +15857,19 @@ Input field definition for snippet parameters.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data_source | [DataSource](#datasource) |  | No |
-| doc_form | string, <br>**Default:** text_model |  | No |
-| doc_language | string, <br>**Default:** English |  | No |
-| duplicate | boolean, <br>**Default:** true |  | No |
-| embedding_model | string |  | No |
-| embedding_model_provider | string |  | No |
-| indexing_technique | string, <br>**Available values:** "economy", "high_quality" | *Enum:* `"economy"`, `"high_quality"` | Yes |
-| is_multimodal | boolean |  | No |
-| name | string |  | No |
-| original_document_id | string |  | No |
-| process_rule | [ProcessRule](#processrule) |  | No |
-| retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
-| summary_index_setting | object |  | No |
+| data_source | [DataSource](#datasource) | Document data source configuration. | No |
+| doc_form | string, <br>**Available values:** "hierarchical_model", "qa_model", "text_model", <br>**Default:** text_model | `text_model` for standard text chunking, `hierarchical_model` for parent-child chunk structure, `qa_model` for question-answer pair extraction.<br>*Enum:* `"hierarchical_model"`, `"qa_model"`, `"text_model"` | No |
+| doc_language | string, <br>**Default:** English | Language of the document for processing optimization. | No |
+| duplicate | boolean, <br>**Default:** true | Whether duplicate document content is allowed. | No |
+| embedding_model | string | Embedding model name. Use the `model` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
+| embedding_model_provider | string | Embedding model provider. Use the `provider` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
+| indexing_technique | string, <br>**Available values:** "economy", "high_quality" | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. Required when adding the first document to a knowledge base; subsequent documents inherit the knowledge base's indexing technique if omitted.<br>*Enum:* `"economy"`, `"high_quality"` | Yes |
+| is_multimodal | boolean | Whether the document uses multimodal indexing. | No |
+| name | string | Document name. | No |
+| original_document_id | string | Original document ID for replacement updates. | No |
+| process_rule | [ProcessRule](#processrule) | Processing rules for chunking. | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked in this knowledge base. | No |
+| summary_index_setting | object | Summary index configuration. | No |
 
 #### KnowledgePipeline
 
@@ -16142,9 +16142,9 @@ Enum class for large language model mode.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | No |
+| content | string | Optional text feedback providing additional detail. | No |
 | message_id | string | Message ID | Yes |
-| rating | string |  | No |
+| rating | string | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
 
 #### MessageFile
 
@@ -16199,24 +16199,24 @@ Enum class for large language model mode.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conversation_id | string | Conversation UUID | Yes |
-| first_id | string | First message ID for pagination | No |
-| limit | integer, <br>**Default:** 20 | Number of messages to return (1-100) | No |
+| conversation_id | string | Conversation ID. | Yes |
+| first_id | string | The ID of the first chat record on the current page. Omit this value to fetch the latest messages; for subsequent pages, use the first message ID from the current list to fetch older messages. | No |
+| limit | integer, <br>**Default:** 20 | Number of chat history messages to return per request. | No |
 
 #### MetadataArgs
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| name | string |  | Yes |
-| type | string, <br>**Available values:** "number", "string", "time" | *Enum:* `"number"`, `"string"`, `"time"` | Yes |
+| name | string | Metadata field name. | Yes |
+| type | string, <br>**Available values:** "number", "string", "time" | `string` for text values, `number` for numeric values, `time` for date/time values.<br>*Enum:* `"number"`, `"string"`, `"time"` | Yes |
 
 #### MetadataDetail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| id | string |  | Yes |
-| name | string |  | Yes |
-| value | string<br>integer<br>number |  | No |
+| id | string | Metadata field ID. | Yes |
+| name | string | Metadata field name. | Yes |
+| value | string<br>integer<br>number | Metadata value. Can be a string, number, or `null`. | No |
 
 #### MetadataFilteringCondition
 
@@ -16224,8 +16224,8 @@ Metadata Filtering Condition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conditions | [ [Condition](#condition) ] |  | No |
-| logical_operator | string |  | No |
+| conditions | [ [Condition](#condition) ] | List of metadata conditions to evaluate. | No |
+| logical_operator | string | How to combine multiple conditions. | No |
 
 #### MetadataOperationData
 
@@ -16233,13 +16233,13 @@ Metadata operation data
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| operation_data | [ [DocumentMetadataOperation](#documentmetadataoperation) ] |  | Yes |
+| operation_data | [ [DocumentMetadataOperation](#documentmetadataoperation) ] | Array of document metadata update operations. Each entry maps a document ID to its metadata values. | Yes |
 
 #### MetadataUpdatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| name | string |  | Yes |
+| name | string | New metadata field name. | Yes |
 
 #### ModelConfig
 
@@ -17415,8 +17415,8 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| enabled | boolean |  | Yes |
-| id | string |  | Yes |
+| enabled | boolean | Whether this preprocessing rule is enabled. | Yes |
+| id | string, <br>**Available values:** "remove_extra_spaces", "remove_stopwords", "remove_urls_emails" | Rule identifier.<br>*Enum:* `"remove_extra_spaces"`, `"remove_stopwords"`, `"remove_urls_emails"` | Yes |
 
 #### PreviewDetail
 
@@ -17441,8 +17441,8 @@ Serialized pricing info with codegen-safe decimal string patterns.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| mode | [ProcessRuleMode](#processrulemode) |  | Yes |
-| rules | [Rule](#rule) |  | No |
+| mode | [ProcessRuleMode](#processrulemode) | Processing mode. `automatic` uses built-in rules, `custom` allows manual configuration, and `hierarchical` enables parent-child chunk structure for `doc_form: hierarchical_model`. | Yes |
+| rules | [Rule](#rule) | Custom processing rules. | No |
 
 #### ProcessRuleMode
 
@@ -17799,8 +17799,8 @@ Model class for provider quota configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| reranking_model_name | string |  | No |
-| reranking_provider_name | string |  | No |
+| reranking_model_name | string | Name of the reranking model. | No |
+| reranking_provider_name | string | Provider name of the reranking model. | No |
 
 #### RestrictModel
 
@@ -17826,15 +17826,15 @@ Model class for provider quota configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| metadata_filtering_conditions | [MetadataFilteringCondition](#metadatafilteringcondition) |  | No |
-| reranking_enable | boolean |  | Yes |
-| reranking_mode | string |  | No |
-| reranking_model | [RerankingModel](#rerankingmodel) |  | No |
-| score_threshold | number |  | No |
-| score_threshold_enabled | boolean |  | Yes |
-| search_method | [RetrievalMethod](#retrievalmethod) |  | Yes |
-| top_k | integer |  | Yes |
-| weights | [WeightModel](#weightmodel) |  | No |
+| metadata_filtering_conditions | [MetadataFilteringCondition](#metadatafilteringcondition) | Restrict retrieval to chunks whose document metadata matches the given conditions. Conditions are evaluated server-side against document metadata fields. | No |
+| reranking_enable | boolean | Whether reranking is enabled. | Yes |
+| reranking_mode | string | Reranking mode. Required when `reranking_enable` is `true`. | No |
+| reranking_model | [RerankingModel](#rerankingmodel) | Reranking model configuration. | No |
+| score_threshold | number | Minimum similarity score for results. Only effective when score threshold filtering is enabled. | No |
+| score_threshold_enabled | boolean | Whether score threshold filtering is enabled. | Yes |
+| search_method | [RetrievalMethod](#retrievalmethod) | Search method used for retrieval. | Yes |
+| top_k | integer | Maximum number of results to return. | Yes |
+| weights | [WeightModel](#weightmodel) | Weight configuration for hybrid search. | No |
 
 #### RetrievalSettingResponse
 
@@ -17876,10 +17876,10 @@ Model class for provider quota configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| parent_mode | string |  | No |
-| pre_processing_rules | [ [PreProcessingRule](#preprocessingrule) ] |  | No |
-| segmentation | [Segmentation](#segmentation) |  | No |
-| subchunk_segmentation | [Segmentation](#segmentation) |  | No |
+| parent_mode | string | Parent-child segmentation mode. | No |
+| pre_processing_rules | [ [PreProcessingRule](#preprocessingrule) ] | Pre-processing rules to apply before segmentation. | No |
+| segmentation | [Segmentation](#segmentation) | Parent chunk segmentation settings. | No |
+| subchunk_segmentation | [Segmentation](#segmentation) | Child chunk segmentation settings. | No |
 
 #### RuleCodeGeneratePayload
 
@@ -18083,10 +18083,10 @@ Model class for provider quota configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| chunk_overlap | integer |  | No |
-| max_tokens | integer |  | Yes |
+| chunk_overlap | integer | Token overlap between chunks. | No |
+| max_tokens | integer | Maximum token count per chunk. | Yes |
 | separator | string, <br>**Default:**
- |  | No |
+ | Custom separator for splitting text. | No |
 
 #### SelectInputConfig
 
@@ -18690,10 +18690,10 @@ Tag type
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| message_id | string | Message ID | No |
+| message_id | string | Message ID. Takes priority over `text` when both are provided. | No |
 | streaming | boolean | Reserved for compatibility; TTS response streaming is determined by the provider output. | No |
-| text | string | Text to convert to audio | No |
-| voice | string | Voice to use for TTS | No |
+| text | string | Speech content to convert. | No |
+| voice | string | Voice to use for text-to-speech. Available voices depend on the TTS provider configured for this app. Omit to use the app's configured voice when available; that value is exposed by [Get App Parameters](/api-reference/applications/get-app-parameters) as `text_to_speech.voice`. | No |
 
 #### TextToSpeechPayload
 
@@ -19263,23 +19263,23 @@ in form definiton, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword_weight | number |  | Yes |
+| keyword_weight | number | Weight assigned to keyword search results. | Yes |
 
 #### WeightModel
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword_setting | [WeightKeywordSetting](#weightkeywordsetting) |  | No |
-| vector_setting | [WeightVectorSetting](#weightvectorsetting) |  | No |
-| weight_type | string |  | No |
+| keyword_setting | [WeightKeywordSetting](#weightkeywordsetting) | Keyword search weight settings. | No |
+| vector_setting | [WeightVectorSetting](#weightvectorsetting) | Semantic search weight settings. | No |
+| weight_type | string | Strategy for balancing semantic and keyword search weights. | No |
 
 #### WeightVectorSetting
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| embedding_model_name | string |  | Yes |
-| embedding_provider_name | string |  | Yes |
-| vector_weight | number |  | Yes |
+| embedding_model_name | string | Name of the embedding model used for vector search. | Yes |
+| embedding_provider_name | string | Provider of the embedding model used for vector search. | Yes |
+| vector_weight | number | Weight assigned to semantic vector search results. | Yes |
 
 #### WorkflowAgentBindingType
 
@@ -19975,8 +19975,8 @@ can reuse its existing handler.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files | [ object ] |  | No |
-| inputs | object |  | Yes |
+| files | [ object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
+| inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover the variable names and types expected by your app. | Yes |
 
 #### WorkflowRunQuery
 

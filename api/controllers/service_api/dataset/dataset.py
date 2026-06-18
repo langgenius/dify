@@ -1,8 +1,17 @@
-from typing import Any, Literal, override
+from typing import Annotated, Literal, override
 from uuid import UUID
 
 from flask import request
-from pydantic import BaseModel, ConfigDict, Field, GetJsonSchemaHandler, RootModel, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    GetJsonSchemaHandler,
+    RootModel,
+    WithJsonSchema,
+    field_validator,
+    model_validator,
+)
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -33,7 +42,12 @@ from models.dataset import DatasetPermissionEnum
 from models.enums import TagType
 from models.provider_ids import ModelProviderID
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
-from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
+from services.entities.knowledge_entities.knowledge_entities import (
+    ExternalRetrievalModel,
+    KnowledgeProvider,
+    RetrievalModel,
+    SummaryIndexSetting,
+)
 from services.tag_service import (
     SaveTagPayload,
     TagBindingCreatePayload,
@@ -46,37 +60,122 @@ from services.tag_service import (
 
 register_enum_models(service_api_ns, DatasetPermissionEnum)
 
+PartialMemberList = Annotated[
+    list[dict[str, str]] | None,
+    WithJsonSchema(
+        {
+            "anyOf": [
+                {
+                    "items": {
+                        "properties": {
+                            "user_id": {
+                                "description": "ID of the team member to grant access.",
+                                "type": "string",
+                            }
+                        },
+                        "type": "object",
+                    },
+                    "type": "array",
+                },
+                {"type": "null"},
+            ]
+        }
+    ),
+]
+
 
 class DatasetCreatePayload(BaseModel):
-    name: str = Field(..., min_length=1, max_length=40)
-    description: str = Field(default="", description="Dataset description (max 400 chars)", max_length=400)
-    indexing_technique: Literal["high_quality", "economy"] | None = None
-    permission: DatasetPermissionEnum | None = DatasetPermissionEnum.ONLY_ME
-    external_knowledge_api_id: str | None = None
-    provider: str = "vendor"
-    external_knowledge_id: str | None = None
-    retrieval_model: RetrievalModel | None = None
-    embedding_model: str | None = None
-    embedding_model_provider: str | None = None
-    summary_index_setting: dict | None = Field(default=None)
+    name: str = Field(..., min_length=1, max_length=40, description="Name of the knowledge base.")
+    description: str = Field(default="", description="Description of the knowledge base.", max_length=400)
+    indexing_technique: Literal["high_quality", "economy"] | None = Field(
+        default=None,
+        description="`high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing.",
+    )
+    permission: DatasetPermissionEnum | None = Field(
+        default=DatasetPermissionEnum.ONLY_ME,
+        description=(
+            "Controls who can access this knowledge base. `only_me` restricts access to the creator, "
+            "`all_team_members` grants workspace-wide access, and `partial_members` grants access to specified "
+            "members."
+        ),
+    )
+    external_knowledge_api_id: str | None = Field(default=None, description="ID of the external knowledge API.")
+    provider: KnowledgeProvider = Field(
+        default="vendor",
+        description="Knowledge base provider: `vendor` for internal knowledge bases, `external` for external ones.",
+    )
+    external_knowledge_id: str | None = Field(default=None, description="ID of the external knowledge base.")
+    retrieval_model: RetrievalModel | None = Field(
+        default=None,
+        description="Retrieval model configuration. Controls how chunks are searched and ranked.",
+    )
+    embedding_model: str | None = Field(
+        default=None,
+        description=(
+            "Embedding model name. Use the `model` field from "
+            "[Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`."
+        ),
+    )
+    embedding_model_provider: str | None = Field(
+        default=None,
+        description=(
+            "Embedding model provider. Use the `provider` field from "
+            "[Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`."
+        ),
+    )
+    summary_index_setting: SummaryIndexSetting = Field(
+        default=None,
+        description="Summary index configuration.",
+    )
 
 
 class DatasetUpdatePayload(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=40)
-    description: str | None = Field(default=None, description="Dataset description (max 400 chars)", max_length=400)
-    indexing_technique: Literal["high_quality", "economy"] | None = None
-    permission: DatasetPermissionEnum | None = None
-    embedding_model: str | None = None
-    embedding_model_provider: str | None = None
-    retrieval_model: RetrievalModel | None = None
-    partial_member_list: list[dict[str, str]] | None = None
-    external_retrieval_model: dict[str, Any] | None = Field(default=None)
-    external_knowledge_id: str | None = None
-    external_knowledge_api_id: str | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=40, description="Name of the knowledge base.")
+    description: str | None = Field(default=None, description="Description of the knowledge base.", max_length=400)
+    indexing_technique: Literal["high_quality", "economy"] | None = Field(
+        default=None,
+        description="`high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing.",
+    )
+    permission: DatasetPermissionEnum | None = Field(
+        default=None,
+        description=(
+            "Controls who can access this knowledge base. `only_me` restricts access to the creator, "
+            "`all_team_members` grants workspace-wide access, and `partial_members` grants access to specified "
+            "members."
+        ),
+    )
+    embedding_model: str | None = Field(
+        default=None,
+        description=(
+            "Embedding model name. Use the `model` field from "
+            "[Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`."
+        ),
+    )
+    embedding_model_provider: str | None = Field(
+        default=None,
+        description=(
+            "Embedding model provider. Use the `provider` field from "
+            "[Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`."
+        ),
+    )
+    retrieval_model: RetrievalModel | None = Field(
+        default=None,
+        description="Retrieval model configuration. Controls how chunks are searched and ranked.",
+    )
+    partial_member_list: PartialMemberList = Field(
+        default=None,
+        description="List of team members with access when `permission` is `partial_members`.",
+    )
+    external_retrieval_model: ExternalRetrievalModel = Field(
+        default=None,
+        description="Retrieval settings for external knowledge bases.",
+    )
+    external_knowledge_id: str | None = Field(default=None, description="ID of the external knowledge base.")
+    external_knowledge_api_id: str | None = Field(default=None, description="ID of the external knowledge API.")
 
 
 class DocumentStatusPayload(BaseModel):
-    document_ids: list[str] = Field(default_factory=list, description="Document IDs to update")
+    document_ids: list[str] = Field(default_factory=list, description="List of document IDs to update.")
 
 
 DOCUMENT_STATUS_ACTION_PARAM = {
@@ -87,7 +186,7 @@ DOCUMENT_STATUS_ACTION_PARAM = {
 
 
 class TagNamePayload(BaseModel):
-    name: str = Field(..., min_length=1, max_length=50)
+    name: str = Field(..., min_length=1, max_length=50, description="Tag name.")
 
 
 class TagCreatePayload(TagNamePayload):
@@ -95,16 +194,16 @@ class TagCreatePayload(TagNamePayload):
 
 
 class TagUpdatePayload(TagNamePayload):
-    tag_id: str
+    tag_id: str = Field(description="Tag ID to update.")
 
 
 class TagDeletePayload(BaseModel):
-    tag_id: str
+    tag_id: str = Field(description="Tag ID to delete.")
 
 
 class TagBindingPayload(BaseModel):
-    tag_ids: list[str]
-    target_id: str
+    tag_ids: list[str] = Field(description="Tag IDs to bind.")
+    target_id: str = Field(description="Knowledge base ID to bind the tags to.")
 
     @field_validator("tag_ids")
     @classmethod
@@ -119,7 +218,7 @@ class TagUnbindingPayload(BaseModel):
 
     tag_ids: list[str] = Field(default_factory=list)
     tag_id: str | None = None
-    target_id: str
+    target_id: str = Field(description="Knowledge base ID.")
 
     @classmethod
     @override
@@ -134,7 +233,7 @@ class TagUnbindingPayload(BaseModel):
             "minItems": 1,
             "type": "array",
         }
-        target_id_property = {"title": "Target Id", "type": "string"}
+        target_id_property = {"description": "Knowledge base ID.", "title": "Target Id", "type": "string"}
         return {
             "anyOf": [
                 {
@@ -192,11 +291,14 @@ class KnowledgeTagListResponse(RootModel[list[KnowledgeTagResponse]]):
 
 
 class DatasetListQuery(BaseModel):
-    page: int = Field(default=1, description="Page number")
-    limit: int = Field(default=20, description="Number of items per page")
-    keyword: str | None = Field(default=None, description="Search keyword")
-    include_all: bool = Field(default=False, description="Include all datasets")
-    tag_ids: list[str] = Field(default_factory=list, description="Filter by tag IDs")
+    page: int = Field(default=1, description="Page number to retrieve.")
+    limit: int = Field(default=20, description="Number of items per page. Server caps at `100`.")
+    keyword: str | None = Field(default=None, description="Search keyword to filter by name.")
+    include_all: bool = Field(
+        default=False,
+        description="Whether to include all knowledge bases regardless of permissions.",
+    )
+    tag_ids: list[str] = Field(default_factory=list, description="Tag IDs to filter by.")
 
 
 class DatasetDetailWithPartialMembersResponse(DatasetDetailResponse):
@@ -409,7 +511,7 @@ class DatasetApi(DatasetApiResource):
     )
     @service_api_ns.doc("get_dataset")
     @service_api_ns.doc(description="Get a specific dataset by ID")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID."})
     @service_api_ns.doc(
         responses={
             200: "Dataset retrieved successfully",
@@ -488,7 +590,7 @@ class DatasetApi(DatasetApiResource):
     @service_api_ns.expect(service_api_ns.models[DatasetUpdatePayload.__name__])
     @service_api_ns.doc("update_dataset")
     @service_api_ns.doc(description="Update an existing dataset")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID."})
     @service_api_ns.doc(
         responses={
             200: "Dataset updated successfully",
@@ -585,7 +687,7 @@ class DatasetApi(DatasetApiResource):
     )
     @service_api_ns.doc("delete_dataset")
     @service_api_ns.doc(description="Delete a dataset")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID."})
     @service_api_ns.doc(
         responses={
             204: "Dataset deleted successfully",
@@ -648,7 +750,7 @@ class DocumentStatusApi(DatasetApiResource):
     @service_api_ns.doc(description="Batch update document status")
     @service_api_ns.doc(
         params={
-            "dataset_id": "Dataset ID",
+            "dataset_id": "Knowledge base ID.",
             "action": DOCUMENT_STATUS_ACTION_PARAM,
         }
     )
@@ -927,7 +1029,7 @@ class DatasetTagsBindingStatusApi(DatasetApiResource):
     )
     @service_api_ns.doc("get_dataset_tags_binding_status")
     @service_api_ns.doc(description="Get tags bound to a specific dataset")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID."})
     @service_api_ns.doc(
         responses={
             200: "Tags retrieved successfully",

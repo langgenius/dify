@@ -41,7 +41,7 @@ class HitTestingApi(DatasetApiResource, DatasetsHitTestingBase):
     )
     @service_api_ns.doc("dataset_hit_testing")
     @service_api_ns.doc(description="Perform hit testing on a dataset")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID."})
     @service_api_ns.response(
         200,
         "Hit testing results",

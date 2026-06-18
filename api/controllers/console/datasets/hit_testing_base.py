@@ -23,17 +23,26 @@ from libs.login import resolve_account_fallback
 from models.account import Account
 from models.dataset import Dataset
 from services.dataset_service import DatasetService
-from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
+from services.entities.knowledge_entities.knowledge_entities import ExternalRetrievalModel, RetrievalModel
 from services.hit_testing_service import HitTestingService
 
 logger = logging.getLogger(__name__)
 
 
 class HitTestingPayload(BaseModel):
-    query: str = Field(max_length=250)
-    retrieval_model: RetrievalModel | None = None
-    external_retrieval_model: dict[str, Any] | None = Field(default=None)
-    attachment_ids: list[str] | None = None
+    query: str = Field(description="Search query text.", max_length=250)
+    retrieval_model: RetrievalModel | None = Field(
+        default=None,
+        description="Retrieval model configuration. Controls how chunks are searched and ranked.",
+    )
+    external_retrieval_model: ExternalRetrievalModel = Field(
+        default=None,
+        description="Retrieval settings for external knowledge bases.",
+    )
+    attachment_ids: list[str] | None = Field(
+        default=None,
+        description="List of attachment IDs to include in the retrieval context.",
+    )
 
 
 class DatasetsHitTestingBase:
