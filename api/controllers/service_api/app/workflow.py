@@ -21,6 +21,11 @@ from controllers.service_api.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from controllers.service_api.schema import (
+    expect_user_json,
+    expect_with_user,
+    json_or_event_stream_response,
+)
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -177,14 +182,15 @@ register_response_schema_models(
 def _serialize_workflow_run(workflow_run: WorkflowRun) -> dict:
     status = _enum_value(workflow_run.status)
     raw_outputs = workflow_run.outputs_dict
-    if status == WorkflowExecutionStatus.PAUSED.value or raw_outputs is None:
-        outputs: dict = {}
-    elif isinstance(raw_outputs, dict):
-        outputs = raw_outputs
-    elif isinstance(raw_outputs, Mapping):
-        outputs = dict(raw_outputs)
-    else:
-        outputs = {}
+    match raw_outputs:
+        case _ if status == WorkflowExecutionStatus.PAUSED.value or raw_outputs is None:
+            outputs: dict = {}
+        case dict():
+            outputs = raw_outputs
+        case _ if isinstance(raw_outputs, Mapping):
+            outputs = dict(raw_outputs)
+        case _:
+            outputs = {}
     return WorkflowRunResponse.model_validate(
         {
             "id": workflow_run.id,
@@ -208,6 +214,16 @@ def _serialize_workflow_log_pagination(pagination) -> dict:
 
 @service_api_ns.route("/workflows/run/<string:workflow_run_id>")
 class WorkflowRunDetailApi(Resource):
+    @service_api_ns.doc(
+        summary="Get Workflow Run Detail",
+        description="Retrieve the current execution results of a workflow task based on the workflow execution ID.",
+        tags=["Chatflows", "Workflows"],
+        responses={
+            200: "Successfully retrieved workflow run details.",
+            400: "`not_workflow_app` : App mode does not match the API route.",
+            404: "`not_found` : Workflow run not found.",
+        },
+    )
     @service_api_ns.doc("get_workflow_run_detail")
     @service_api_ns.doc(description="Get workflow run details")
     @service_api_ns.doc(params={"workflow_run_id": "Workflow run ID"})
@@ -249,7 +265,37 @@ class WorkflowRunDetailApi(Resource):
 
 @service_api_ns.route("/workflows/run")
 class WorkflowRunApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[WorkflowRunPayload.__name__])
+    @service_api_ns.doc(
+        summary="Run Workflow",
+        description="Execute a workflow. Cannot be executed without a published workflow.",
+        tags=["Workflows"],
+        responses={
+            200: (
+                "Successful response. The content type and structure depend on the `response_mode` parameter "
+                "in the request.\n"
+                "\n"
+                "- If `response_mode` is `blocking`, returns `application/json` with a "
+                "`WorkflowBlockingResponse` object.\n"
+                "- If `response_mode` is `streaming`, returns `text/event-stream` with a stream of "
+                "`ChunkWorkflowEvent` objects."
+            ),
+            400: (
+                "- `not_workflow_app` : App mode does not match the API route.\n"
+                "- `provider_not_initialize` : No valid model provider credentials found.\n"
+                "- `provider_quota_exceeded` : Model provider quota exhausted.\n"
+                "- `model_currently_not_support` : Current model unavailable.\n"
+                "- `completion_request_error` : Workflow execution request failed.\n"
+                "- `invalid_param` : Invalid parameter value."
+            ),
+            429: (
+                "- `too_many_requests` : Too many concurrent requests for this app.\n"
+                "- `rate_limit_error` : The upstream model provider rate limit was exceeded."
+            ),
+            500: "`internal_server_error` : Internal server error.",
+        },
+    )
+    @expect_with_user(service_api_ns, WorkflowRunPayload)
+    @json_or_event_stream_response(service_api_ns)
     @service_api_ns.doc("run_workflow")
     @service_api_ns.doc(description="Execute a workflow")
     @service_api_ns.doc(
@@ -313,7 +359,42 @@ class WorkflowRunApi(Resource):
 
 @service_api_ns.route("/workflows/<string:workflow_id>/run")
 class WorkflowRunByIdApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[WorkflowRunPayload.__name__])
+    @service_api_ns.doc(
+        summary="Run Workflow by ID",
+        description=(
+            "Execute a specific workflow version identified by its ID. Useful for running a particular "
+            "published version of the workflow."
+        ),
+        tags=["Workflows"],
+        responses={
+            200: (
+                "Successful response. The content type and structure depend on the `response_mode` parameter "
+                "in the request.\n"
+                "\n"
+                "- If `response_mode` is `blocking`, returns `application/json` with a "
+                "`WorkflowBlockingResponse` object.\n"
+                "- If `response_mode` is `streaming`, returns `text/event-stream` with a stream of "
+                "`ChunkWorkflowEvent` objects."
+            ),
+            400: (
+                "- `not_workflow_app` : App mode does not match the API route.\n"
+                "- `bad_request` : Workflow is a draft or has an invalid ID format.\n"
+                "- `provider_not_initialize` : No valid model provider credentials found.\n"
+                "- `provider_quota_exceeded` : Model provider quota exhausted.\n"
+                "- `model_currently_not_support` : Current model unavailable.\n"
+                "- `completion_request_error` : Workflow execution request failed.\n"
+                "- `invalid_param` : Required parameter missing or invalid."
+            ),
+            404: "`not_found` : Workflow not found.",
+            429: (
+                "- `too_many_requests` : Too many concurrent requests for this app.\n"
+                "- `rate_limit_error` : The upstream model provider rate limit was exceeded."
+            ),
+            500: "`internal_server_error` : Internal server error.",
+        },
+    )
+    @expect_with_user(service_api_ns, WorkflowRunPayload)
+    @json_or_event_stream_response(service_api_ns)
     @service_api_ns.doc("run_workflow_by_id")
     @service_api_ns.doc(description="Execute a specific workflow by ID")
     @service_api_ns.doc(params={"workflow_id": "Workflow ID to execute"})
@@ -387,6 +468,18 @@ class WorkflowRunByIdApi(Resource):
 
 @service_api_ns.route("/workflows/tasks/<string:task_id>/stop")
 class WorkflowTaskStopApi(Resource):
+    @service_api_ns.doc(
+        summary="Stop Workflow Task",
+        description="Stop a running workflow task. Only supported in `streaming` mode.",
+        tags=["Workflows"],
+        responses={
+            400: (
+                "- `not_workflow_app` : App mode does not match the API route.\n"
+                "- `invalid_param` : Required parameter missing or invalid."
+            ),
+        },
+    )
+    @expect_user_json(service_api_ns)
     @service_api_ns.doc("stop_workflow_task")
     @service_api_ns.doc(description="Stop a running workflow task")
     @service_api_ns.doc(params={"task_id": "Task ID to stop"})
@@ -417,6 +510,14 @@ class WorkflowTaskStopApi(Resource):
 
 @service_api_ns.route("/workflows/logs")
 class WorkflowAppLogApi(Resource):
+    @service_api_ns.doc(
+        summary="List Workflow Logs",
+        description="Retrieve paginated workflow execution logs with filtering options.",
+        tags=["Chatflows", "Workflows"],
+        responses={
+            200: "Successfully retrieved workflow logs.",
+        },
+    )
     @service_api_ns.doc(params=query_params_from_model(WorkflowLogQuery))
     @service_api_ns.doc("get_workflow_logs")
     @service_api_ns.doc(description="Get workflow execution logs")

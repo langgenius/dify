@@ -54,7 +54,7 @@ export const zPostTagsResponse = zTagResponse
 export const zPatchTagsByTagIdBody = zTagUpdateRequestPayload
 
 export const zPatchTagsByTagIdPath = z.object({
-  tag_id: z.string(),
+  tag_id: z.uuid(),
 })
 
 /**

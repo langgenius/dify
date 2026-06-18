@@ -36,12 +36,37 @@ class DownloadedFileResult:
     path: Path
 
 
+@dataclass(frozen=True, slots=True)
+class UploadedToolFileResource:
+    """Lower-level upload result carrying both public mapping and ToolFile id."""
+
+    mapping: UploadedToolFileMapping
+    tool_file_id: str
+
+
 def upload_file_from_environment(*, path: str) -> UploadedToolFileMapping:
     """Upload one sandbox-local file through the Agent Stub control plane.
 
     The signed upload data-plane response must carry the Dify-generated
     ``reference`` for the new ``ToolFile`` so the sandbox can return the
     canonical Agent output file mapping without synthesizing reference format.
+    """
+
+    return upload_tool_file_resource_from_environment(path=path).mapping
+
+
+def upload_tool_file_resource_from_environment(*, path: str) -> UploadedToolFileResource:
+    """Upload one sandbox-local file and preserve both reference and ToolFile id.
+
+    This lower-level helper backs ``drive push``. The signed upload data-plane
+    response must include both the canonical Dify ``reference`` used by public
+    CLI output and the raw ToolFile ``id`` required by drive commit payloads.
+
+    Raises:
+        AgentStubValidationError: if ``path`` does not resolve to a local file.
+        AgentStubTransferError: if the signed upload response omits either the
+            canonical ``reference`` or the raw ToolFile ``id``, or if the
+            canonical reference is malformed.
     """
 
     source_path = Path(path).expanduser().resolve()
@@ -64,7 +89,7 @@ def upload_file_from_environment(*, path: str) -> UploadedToolFileMapping:
             file_obj=file_obj,
             mimetype=mime_type,
         )
-    return _normalize_uploaded_tool_file(payload)
+    return _normalize_uploaded_tool_file_resource(payload)
 
 
 def download_file_from_environment(
@@ -101,13 +126,19 @@ def download_file_from_environment(
     return DownloadedFileResult(path=destination)
 
 
-def _normalize_uploaded_tool_file(payload: dict[str, object]) -> UploadedToolFileMapping:
+def _normalize_uploaded_tool_file_resource(payload: dict[str, object]) -> UploadedToolFileResource:
     reference = payload.get("reference")
     if not isinstance(reference, str) or not reference:
         raise AgentStubTransferError("signed file upload response is missing reference")
     if not is_canonical_dify_file_reference(reference):
         raise AgentStubTransferError("signed file upload response has invalid canonical reference")
-    return UploadedToolFileMapping(reference=reference)
+    tool_file_id = payload.get("id")
+    if not isinstance(tool_file_id, str) or not tool_file_id:
+        raise AgentStubTransferError("signed file upload response is missing id")
+    return UploadedToolFileResource(
+        mapping=UploadedToolFileMapping(reference=reference),
+        tool_file_id=tool_file_id,
+    )
 
 
 def _deduplicate_destination_path(path: Path) -> Path:
@@ -134,6 +165,8 @@ def _sanitize_download_filename(filename: str) -> str:
 __all__ = [
     "DownloadedFileResult",
     "UploadedToolFileMapping",
+    "UploadedToolFileResource",
     "download_file_from_environment",
     "upload_file_from_environment",
+    "upload_tool_file_resource_from_environment",
 ]

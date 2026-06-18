@@ -15,6 +15,7 @@ from controllers.common.fields import EventStreamResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_model, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotWorkflowAppError
+from controllers.service_api.schema import event_stream_response
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.base_app_generator import BaseAppGenerator
@@ -44,6 +45,24 @@ register_response_schema_model(service_api_ns, EventStreamResponse)
 class WorkflowEventsApi(Resource):
     """Service API for getting workflow execution events after resume."""
 
+    @service_api_ns.doc(
+        summary="Stream Workflow Events",
+        description=(
+            "Resume the Server-Sent Events stream for a workflow run after a pause or a dropped SSE "
+            "connection. For runs that have already finished, the stream emits a single "
+            "`workflow_finished` event and closes."
+        ),
+        tags=["Chatflows", "Workflows"],
+        responses={
+            200: (
+                "Server-Sent Events stream. Each event is delivered as `data: {JSON}\\n\\n`. Event payloads "
+                "follow the same schemas as the original streaming response."
+            ),
+            400: "`not_workflow_app` : Please check if your app mode matches the right API route.",
+            404: "`not_found` : Workflow run not found.",
+        },
+    )
+    @event_stream_response(service_api_ns)
     @service_api_ns.doc("get_workflow_events")
     @service_api_ns.doc(description="Get workflow execution events stream after resume")
     @service_api_ns.doc(params={"task_id": "Workflow run ID"})

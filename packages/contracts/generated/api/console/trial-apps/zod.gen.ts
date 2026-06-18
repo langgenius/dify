@@ -437,7 +437,7 @@ export const zSiteWritable = z.object({
 })
 
 export const zGetTrialAppsByAppIdPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -446,7 +446,7 @@ export const zGetTrialAppsByAppIdPath = z.object({
 export const zGetTrialAppsByAppIdResponse = zTrialAppDetailWithSite
 
 export const zPostTrialAppsByAppIdAudioToTextPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -457,7 +457,7 @@ export const zPostTrialAppsByAppIdAudioToTextResponse = zAudioTranscriptResponse
 export const zPostTrialAppsByAppIdChatMessagesBody = zChatRequest
 
 export const zPostTrialAppsByAppIdChatMessagesPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -468,7 +468,7 @@ export const zPostTrialAppsByAppIdChatMessagesResponse = zGeneratedAppResponse
 export const zPostTrialAppsByAppIdCompletionMessagesBody = zCompletionRequest
 
 export const zPostTrialAppsByAppIdCompletionMessagesPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -477,7 +477,7 @@ export const zPostTrialAppsByAppIdCompletionMessagesPath = z.object({
 export const zPostTrialAppsByAppIdCompletionMessagesResponse = zGeneratedAppResponse
 
 export const zGetTrialAppsByAppIdDatasetsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 export const zGetTrialAppsByAppIdDatasetsQuery = z.object({
@@ -492,8 +492,8 @@ export const zGetTrialAppsByAppIdDatasetsQuery = z.object({
 export const zGetTrialAppsByAppIdDatasetsResponse = zTrialDatasetList
 
 export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath = z.object({
-  app_id: z.string(),
-  message_id: z.string(),
+  app_id: z.uuid(),
+  message_id: z.uuid(),
 })
 
 /**
@@ -503,7 +503,7 @@ export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse
   = zSuggestedQuestionsResponse
 
 export const zGetTrialAppsByAppIdParametersPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -512,7 +512,7 @@ export const zGetTrialAppsByAppIdParametersPath = z.object({
 export const zGetTrialAppsByAppIdParametersResponse = zParameters
 
 export const zGetTrialAppsByAppIdSitePath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -523,7 +523,7 @@ export const zGetTrialAppsByAppIdSiteResponse = zSite
 export const zPostTrialAppsByAppIdTextToAudioBody = zTextToSpeechRequest
 
 export const zPostTrialAppsByAppIdTextToAudioPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -532,7 +532,7 @@ export const zPostTrialAppsByAppIdTextToAudioPath = z.object({
 export const zPostTrialAppsByAppIdTextToAudioResponse = zAudioBinaryResponse
 
 export const zGetTrialAppsByAppIdWorkflowsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -543,7 +543,7 @@ export const zGetTrialAppsByAppIdWorkflowsResponse = zTrialWorkflow
 export const zPostTrialAppsByAppIdWorkflowsRunBody = zWorkflowRunRequest
 
 export const zPostTrialAppsByAppIdWorkflowsRunPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
@@ -552,7 +552,7 @@ export const zPostTrialAppsByAppIdWorkflowsRunPath = z.object({
 export const zPostTrialAppsByAppIdWorkflowsRunResponse = zGeneratedAppResponse
 
 export const zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   task_id: z.string(),
 })
 

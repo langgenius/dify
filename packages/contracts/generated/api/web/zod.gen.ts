@@ -168,13 +168,22 @@ export const zConversationListQuery = z.object({
     .default('-updated_at'),
 })
 
-/**
- * ConversationRenamePayload
- */
-export const zConversationRenamePayload = z.object({
-  auto_generate: z.boolean().optional().default(false),
-  name: z.string().nullish(),
-})
+export const zConversationRenamePayload = z.intersection(
+  z.union([
+    z.object({
+      auto_generate: z.literal(true),
+      name: z.string().nullish(),
+    }),
+    z.object({
+      auto_generate: z.literal(false).optional().default(false),
+      name: z.string().regex(/.*\S.*/),
+    }),
+  ]),
+  z.object({
+    auto_generate: z.boolean().optional().default(false),
+    name: z.string().nullish(),
+  }),
+)
 
 /**
  * EmailCodeLoginSendPayload
@@ -957,7 +966,7 @@ export const zGetConversationsResponse = zConversationInfiniteScrollPagination
 export const zPostConversationsByCIdNameBody = zConversationRenamePayload
 
 export const zPostConversationsByCIdNamePath = z.object({
-  c_id: z.string(),
+  c_id: z.uuid(),
 })
 
 export const zPostConversationsByCIdNameQuery = z.object({
@@ -971,7 +980,7 @@ export const zPostConversationsByCIdNameQuery = z.object({
 export const zPostConversationsByCIdNameResponse = zSimpleConversation
 
 export const zPatchConversationsByCIdPinPath = z.object({
-  c_id: z.string(),
+  c_id: z.uuid(),
 })
 
 /**
@@ -980,7 +989,7 @@ export const zPatchConversationsByCIdPinPath = z.object({
 export const zPatchConversationsByCIdPinResponse = zResultResponse
 
 export const zPatchConversationsByCIdUnpinPath = z.object({
-  c_id: z.string(),
+  c_id: z.uuid(),
 })
 
 /**
@@ -1098,7 +1107,7 @@ export const zGetMessagesResponse = zWebMessageInfiniteScrollPagination
 export const zPostMessagesByMessageIdFeedbacksBody = zMessageFeedbackPayload
 
 export const zPostMessagesByMessageIdFeedbacksPath = z.object({
-  message_id: z.string(),
+  message_id: z.uuid(),
 })
 
 export const zPostMessagesByMessageIdFeedbacksQuery = z.object({
@@ -1112,7 +1121,7 @@ export const zPostMessagesByMessageIdFeedbacksQuery = z.object({
 export const zPostMessagesByMessageIdFeedbacksResponse = zResultResponse
 
 export const zGetMessagesByMessageIdMoreLikeThisPath = z.object({
-  message_id: z.string(),
+  message_id: z.uuid(),
 })
 
 export const zGetMessagesByMessageIdMoreLikeThisQuery = z.object({
@@ -1125,7 +1134,7 @@ export const zGetMessagesByMessageIdMoreLikeThisQuery = z.object({
 export const zGetMessagesByMessageIdMoreLikeThisResponse = zGeneratedAppResponse
 
 export const zGetMessagesByMessageIdSuggestedQuestionsPath = z.object({
-  message_id: z.string(),
+  message_id: z.uuid(),
 })
 
 /**
