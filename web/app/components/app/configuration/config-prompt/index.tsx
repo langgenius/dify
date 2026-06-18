@@ -9,7 +9,7 @@ import {
 import { produce } from 'immer'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'use-context-selector'
 import AdvancedMessageInput from '@/app/components/app/configuration/config-prompt/advanced-prompt-input'
 import { MAX_PROMPT_MESSAGE_LENGTH } from '@/config'
 import ConfigContext from '@/context/debug-configuration'
@@ -49,7 +49,7 @@ const Prompt: FC<IPromptProps> = ({
     modelModeType,
     dataSets,
     hasSetBlockStatus,
-  } = useContext(ConfigContext)
+  } = use(ConfigContext)
 
   const handleMessageTypeChange = (index: number, role: PromptRole) => {
     const newPrompt = produce(currentAdvancedPrompt as PromptItem[], (draft) => {

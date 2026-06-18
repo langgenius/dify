@@ -24,7 +24,7 @@ import { produce, setAutoFreeze } from 'immer'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
 import ChatUserInput from '@/app/components/app/configuration/debug/chat-user-input'
 import PromptValuePanel from '@/app/components/app/configuration/prompt-value-panel'
@@ -99,7 +99,7 @@ const Debug: FC<IDebug> = ({
     hasSetContextVar,
     datasetConfigs,
     externalDataToolsConfig,
-  } = useContext(ConfigContext)
+  } = use(ConfigContext)
   const { eventEmitter } = useEventEmitterContextContext()
   const { data: text2speechDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
   useEffect(() => {
