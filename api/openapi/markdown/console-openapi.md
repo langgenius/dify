@@ -10237,7 +10237,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| policy_id | path |  | Yes | string |
+| policy_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10250,7 +10250,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| policy_id | path |  | Yes | string |
+| policy_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10263,7 +10263,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| policy_id | path |  | Yes | string |
+| policy_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10276,7 +10276,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| policy_id | path |  | Yes | string |
+| policy_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10289,7 +10289,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| binding_id | path |  | Yes | string |
+| binding_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10302,7 +10302,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| binding_id | path |  | Yes | string |
+| binding_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10315,7 +10315,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 | policy_id | path |  | Yes | string |
 
 #### Responses
@@ -10329,7 +10329,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 | policy_id | path |  | Yes | string |
 
 #### Responses
@@ -10343,8 +10343,8 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-| policy_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
+| policy_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10357,7 +10357,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10370,7 +10370,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10383,8 +10383,8 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-| target_account_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
+| target_account_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10397,7 +10397,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10410,7 +10410,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10423,7 +10423,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
 | policy_id | path |  | Yes | string |
 
 #### Responses
@@ -10437,7 +10437,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
 | policy_id | path |  | Yes | string |
 
 #### Responses
@@ -10451,8 +10451,8 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
-| policy_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
+| policy_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10465,7 +10465,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10478,7 +10478,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10491,8 +10491,8 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
-| target_account_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
+| target_account_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10505,7 +10505,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10518,7 +10518,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10531,7 +10531,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| member_id | path |  | Yes | string |
+| member_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10544,7 +10544,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| member_id | path |  | Yes | string |
+| member_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10599,7 +10599,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| role_id | path |  | Yes | string |
+| role_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10612,7 +10612,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| role_id | path |  | Yes | string |
+| role_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10625,7 +10625,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| role_id | path |  | Yes | string |
+| role_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10638,7 +10638,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| role_id | path |  | Yes | string |
+| role_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10651,7 +10651,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| role_id | path |  | Yes | string |
+| role_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10664,7 +10664,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| policy_id | path |  | Yes | string |
+| policy_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10677,7 +10677,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| policy_id | path |  | Yes | string |
+| policy_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10690,7 +10690,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| policy_id | path |  | Yes | string |
+| policy_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10710,7 +10710,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| policy_id | path |  | Yes | string |
+| policy_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10723,7 +10723,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| policy_id | path |  | Yes | string |
+| policy_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -10736,7 +10736,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| policy_id | path |  | Yes | string |
+| policy_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -20940,6 +20940,19 @@ Workflow tool configuration
 | allow_owner_transfer | boolean |  | Yes |
 | workspace_id | string |  | Yes |
 
+#### WorkspacePermissionSnapshot
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| permission_keys | [ string ] |  | No |
+
+#### _AccessPolicyList
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AccessPolicy](#accesspolicy) ] |  | No |
+| pagination | [Pagination](#pagination) |  | No |
+
 #### _AnonymousInlineModel_744ff9cc03e6
 
 | Name | Type | Description | Required |
@@ -20983,6 +20996,27 @@ Workflow tool configuration
 | model_name | string |  | No |
 | model_provider_name | string |  | No |
 | summary_prompt | string |  | No |
+
+#### _MembersInRoleList
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [MembersInRole](#membersinrole) ] |  | No |
+| pagination | [Pagination](#pagination) |  | No |
+
+#### _RBACRoleAccountList
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [RBACRoleAccount](#rbacroleaccount) ] |  | No |
+| pagination | [Pagination](#pagination) |  | No |
+
+#### _RBACRoleList
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [RBACRole](#rbacrole) ] |  | No |
+| pagination | [Pagination](#pagination) |  | No |
 
 #### core__tools__entities__common_entities__I18nObject
 
