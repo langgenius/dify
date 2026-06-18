@@ -469,7 +469,7 @@ class TestRagPipelineTaskProxy:
         # Assert
         proxy._dispatch.assert_called_once()
 
-    def test_delay_method_with_empty_entities(self, caplog):
+    def test_delay_method_with_empty_entities(self, caplog: pytest.LogCaptureFixture):
         """Test delay method with empty rag_pipeline_invoke_entities."""
         # Arrange
         proxy = RagPipelineTaskProxy("tenant-123", "user-456", [])

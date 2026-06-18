@@ -50,7 +50,7 @@ class TestDeleteDraftVariableOffloadData:
         assert result == 0
         mock_conn.execute.assert_not_called()
 
-    def test_delete_draft_variable_offload_data_database_failure(self, caplog):
+    def test_delete_draft_variable_offload_data_database_failure(self, caplog: pytest.LogCaptureFixture):
         """Test handling of database operation failures."""
         mock_conn = MagicMock()
         file_ids = ["file-1"]
@@ -114,7 +114,9 @@ class TestDeleteAppStars:
 
 class TestDeleteArchivedWorkflowRunFiles:
     @patch("tasks.remove_app_and_related_data_task.get_archive_storage")
-    def test_delete_archived_workflow_run_files_not_configured(self, mock_get_storage, caplog):
+    def test_delete_archived_workflow_run_files_not_configured(
+        self, mock_get_storage, caplog: pytest.LogCaptureFixture
+    ):
         mock_get_storage.side_effect = ArchiveStorageNotConfiguredError("missing config")
 
         with caplog.at_level(logging.INFO, logger="tasks.remove_app_and_related_data_task"):
@@ -123,7 +125,7 @@ class TestDeleteArchivedWorkflowRunFiles:
         assert caplog.text.count("Archive storage not configured") == 1
 
     @patch("tasks.remove_app_and_related_data_task.get_archive_storage")
-    def test_delete_archived_workflow_run_files_list_failure(self, mock_get_storage, caplog):
+    def test_delete_archived_workflow_run_files_list_failure(self, mock_get_storage, caplog: pytest.LogCaptureFixture):
         storage = MagicMock()
         storage.list_objects.side_effect = Exception("list failed")
         mock_get_storage.return_value = storage
@@ -136,7 +138,7 @@ class TestDeleteArchivedWorkflowRunFiles:
         assert "Failed to list archive files for app app-1" in caplog.text
 
     @patch("tasks.remove_app_and_related_data_task.get_archive_storage")
-    def test_delete_archived_workflow_run_files_success(self, mock_get_storage, caplog):
+    def test_delete_archived_workflow_run_files_success(self, mock_get_storage, caplog: pytest.LogCaptureFixture):
         storage = MagicMock()
         storage.list_objects.return_value = ["key-1", "key-2"]
         mock_get_storage.return_value = storage
