@@ -9,6 +9,11 @@ export type IntegrationHeader = {
   title: string
 }
 
+type IntegrationNavOptions = {
+  canManageTools?: boolean
+  canManageMCP?: boolean
+}
+
 export const getPluginCategoryBySection = (section: IntegrationSection) => {
   if (section === 'builtin')
     return PluginCategoryEnum.tool
@@ -20,8 +25,12 @@ export const getPluginCategoryBySection = (section: IntegrationSection) => {
     return PluginCategoryEnum.extension
 }
 
-export function useIntegrationNav(section: IntegrationSection) {
+export function useIntegrationNav(section: IntegrationSection, options: IntegrationNavOptions = {}) {
   const { t } = useTranslation()
+  const {
+    canManageMCP = true,
+    canManageTools = true,
+  } = options
   const providerItem = useMemo<IntegrationSidebarNavItemData>(() => ({
     section: 'provider',
     label: t('settings.provider', { ns: 'common' }),
@@ -39,36 +48,48 @@ export function useIntegrationNav(section: IntegrationSection) {
     icon: 'i-custom-vender-integrations-api-extension',
     iconClassName: 'h-[13px] w-3.5',
   }), [t])
-  const toolItems = useMemo<IntegrationSidebarNavItemData[]>(() => [
-    {
-      section: 'builtin',
-      label: t('toolsPage.toolPlugin', { ns: 'common' }),
-      icon: 'i-custom-vender-integrations-tools',
-      iconClassName: 'h-[14px] w-[12.5px]',
-      className: 'pl-8',
-    },
-    {
-      section: 'mcp',
-      label: 'MCP',
-      icon: 'i-custom-vender-integrations-mcp',
-      iconClassName: 'h-[14.5px] w-[13.5px]',
-      className: 'pl-8',
-    },
-    {
-      section: 'workflow-tool',
-      label: t('common.workflowAsTool', { ns: 'workflow' }),
-      icon: 'i-custom-vender-integrations-workflow-as-tool',
-      iconClassName: 'size-4',
-      className: 'pl-8',
-    },
-    {
-      section: 'custom-tool',
-      label: t('settings.swaggerAPIAsTool', { ns: 'common' }),
-      icon: 'i-custom-vender-integrations-custom-tool',
-      iconClassName: 'h-[14.5px] w-[12.5px]',
-      className: 'pl-8',
-    },
-  ], [t])
+  const toolItems = useMemo<IntegrationSidebarNavItemData[]>(() => {
+    const items: IntegrationSidebarNavItemData[] = [
+      {
+        section: 'builtin',
+        label: t('toolsPage.toolPlugin', { ns: 'common' }),
+        icon: 'i-custom-vender-integrations-tools',
+        iconClassName: 'h-[14px] w-[12.5px]',
+        className: 'pl-8',
+      },
+    ]
+
+    if (canManageMCP) {
+      items.push({
+        section: 'mcp',
+        label: 'MCP',
+        icon: 'i-custom-vender-integrations-mcp',
+        iconClassName: 'h-[14.5px] w-[13.5px]',
+        className: 'pl-8',
+      })
+    }
+
+    if (canManageTools) {
+      items.push(
+        {
+          section: 'workflow-tool',
+          label: t('common.workflowAsTool', { ns: 'workflow' }),
+          icon: 'i-custom-vender-integrations-workflow-as-tool',
+          iconClassName: 'size-4',
+          className: 'pl-8',
+        },
+        {
+          section: 'custom-tool',
+          label: t('settings.swaggerAPIAsTool', { ns: 'common' }),
+          icon: 'i-custom-vender-integrations-custom-tool',
+          iconClassName: 'h-[14.5px] w-[12.5px]',
+          className: 'pl-8',
+        },
+      )
+    }
+
+    return items
+  }, [canManageMCP, canManageTools, t])
   const secondaryItems = useMemo<IntegrationSidebarNavItemData[]>(() => [
     {
       section: 'trigger',

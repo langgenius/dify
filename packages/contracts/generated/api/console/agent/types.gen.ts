@@ -38,10 +38,12 @@ export type AgentAppDetailWithSite = {
   icon_type?: string | null
   readonly icon_url: string | null
   id: string
+  maintainer?: string | null
   max_active_requests?: number | null
   mode: string
   model_config?: ModelConfig | null
   name: string
+  permission_keys?: Array<string>
   role?: string | null
   site?: Site | null
   tags?: Array<Tag>
@@ -307,10 +309,12 @@ export type AgentAppPartial = {
   readonly icon_url: string | null
   id: string
   is_starred?: boolean
+  maintainer?: string | null
   max_active_requests?: number | null
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
+  permission_keys?: Array<string>
   published_reference_count?: number
   published_references?: Array<AgentAppPublishedReferenceResponse>
   role?: string | null
@@ -1446,10 +1450,12 @@ export type AgentAppDetailWithSiteWritable = {
   icon_background?: string | null
   icon_type?: string | null
   id: string
+  maintainer?: string | null
   max_active_requests?: number | null
   mode: string
   model_config?: ModelConfig | null
   name: string
+  permission_keys?: Array<string>
   role?: string | null
   site?: SiteWritable | null
   tags?: Array<Tag>
@@ -1476,10 +1482,12 @@ export type AgentAppPartialWritable = {
   icon_type?: string | null
   id: string
   is_starred?: boolean
+  maintainer?: string | null
   max_active_requests?: number | null
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
+  permission_keys?: Array<string>
   published_reference_count?: number
   published_references?: Array<AgentAppPublishedReferenceResponse>
   role?: string | null

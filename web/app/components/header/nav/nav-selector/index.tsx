@@ -10,10 +10,6 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import {
-  RiAddLine,
-  RiArrowDownSLine,
-} from '@remixicon/react'
 import { debounce } from 'es-toolkit/compat'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -24,6 +20,7 @@ import { FileArrow01, FilePlus01, FilePlus02 } from '@/app/components/base/icons
 import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
 import { useRouter } from '@/next/navigation'
+import { hasPermission } from '@/utils/permission'
 
 export type NavItem = {
   id: string
@@ -170,8 +167,9 @@ function NavSelectorRouteItem({ nav, isCurrent, onBeforeNavigate }: {
 
 export function NavSelector({ curNav, navigationItems, createText, isApp, onCreate, onLoadMore, isLoadingMore }: INavSelectorProps) {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { workspacePermissionKeys } = useAppContext()
   const setAppDetail = useAppStore(state => state.setAppDetail)
+  const canCreate = hasPermission(workspacePermissionKeys, isApp ? 'app.create_and_management' : 'dataset.create_and_management')
 
   const handleScroll = useCallback(debounce((e) => {
     if (typeof onLoadMore === 'function') {
@@ -191,10 +189,7 @@ export function NavSelector({ curNav, navigationItems, createText, isApp, onCrea
         )}
       >
         <div className="max-w-[157px] min-w-0 truncate">{curNav?.name}</div>
-        <RiArrowDownSLine
-          className="ml-1 size-3 shrink-0 opacity-50 group-hover:opacity-100 group-data-popup-open:opacity-100"
-          aria-hidden="true"
-        />
+        <span className="ml-1 i-ri-arrow-down-s-line size-3 shrink-0 opacity-50 group-hover:opacity-100 group-data-popup-open:opacity-100" aria-hidden="true" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-end"
@@ -218,20 +213,20 @@ export function NavSelector({ curNav, navigationItems, createText, isApp, onCrea
             </div>
           )}
         </div>
-        {!isApp && isCurrentWorkspaceEditor && (
+        {!isApp && canCreate && (
           <div className="p-1">
             <DropdownMenuItem
               className="h-9 gap-2 px-3 py-[6px]"
               onClick={() => onCreate('')}
             >
               <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-background-default">
-                <RiAddLine className="size-4 text-text-primary" />
+                <span className="i-ri-add-line size-4 text-text-primary" />
               </div>
               <div className="grow text-left text-[14px] font-normal text-text-secondary">{createText}</div>
             </DropdownMenuItem>
           </div>
         )}
-        {isApp && isCurrentWorkspaceEditor && (
+        {isApp && canCreate && (
           <AppCreateMenu
             createText={createText}
             startFromBlankText={t('newApp.startFromBlank', { ns: 'app' })}

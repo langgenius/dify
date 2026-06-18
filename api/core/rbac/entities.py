@@ -25,6 +25,7 @@ class RBACPermission(StrEnum):
     APP_CREATE_AND_MANAGEMENT = "app_create_and_management"
     APP_RELEASE_AND_VERSION = "app_release_and_version"
     APP_IMPORT_EXPORT_DSL = "app_import_export_dsl"
+    APP_EDIT = "app_edit"
     APP_MONITOR = "app_monitor"
     APP_DELETE = "app_delete"
 
@@ -33,5 +34,22 @@ class RBACPermission(StrEnum):
     DATASET_CREATE_AND_MANAGEMENT = "dataset_create_and_management"
     DATASET_PIPELINE_TEST = "dataset_pipeline_test"
     DATASET_DOCUMENT_DOWNLOAD = "dataset_document_download"
+    DATASET_API_KEY_MANAGE = "dataset_api_key_manage"
+    DATASET_EXTERNAL_CONNECT = "dataset_external_connect"
+    DATASET_IMPORT_EXPORT_DSL = "dataset_import_export_dsl"
 
     WORKSPACE_ROLE_MANAGE = "workspace_role_manage"
+
+    SNIPPETS_CREATE_AND_MODIFY = "snippets_create_and_modify"
+    SNIPPETS_MANAGE = "snippets_management"
+
+    PLUGIN_INSTALL = "plugin_install"
+    PLUGIN_PREFERENCES = "plugin_preferences"
+    PLUGIN_MANAGE = "plugin_manage"
+    PLUGIN_DEBUG = "plugin_debug"
+
+    CREDENTIAL_USE = "credential_use"
+    CREDENTIAL_MANAGE = "credential_manage"
+
+    TOOL_MANAGE = "tool_manage"
+    MCP_MANAGE = "mcp_manage"

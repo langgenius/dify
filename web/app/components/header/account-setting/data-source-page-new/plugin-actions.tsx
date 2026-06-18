@@ -9,6 +9,7 @@ import Badge from '@/app/components/base/badge'
 import { HeaderModals } from '@/app/components/plugins/plugin-detail-panel/detail-header/components'
 import { useDetailHeaderState, usePluginOperations } from '@/app/components/plugins/plugin-detail-panel/detail-header/hooks'
 import OperationDropdown from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
+import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { useReadmePanelStore } from '@/app/components/plugins/readme-panel/store'
 import { PluginSource } from '@/app/components/plugins/types'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
@@ -49,6 +50,7 @@ const DataSourcePluginActions = ({
   const locale = useLocale()
   const readmeTriggerId = useId()
   const openReadmePanel = useReadmePanelStore(s => s.openReadmePanel)
+  const { canManagePlugin, canUpdatePlugin } = usePluginSettingsAccess()
   const detailHeaderState = usePluginDetailHeader(detail)
   const {
     modalStates,
@@ -67,6 +69,8 @@ const DataSourcePluginActions = ({
     modalStates,
     versionPicker,
     isFromMarketplace,
+    canManagePlugin,
+    canUpdatePlugin,
     onUpdate,
   })
   const displayVersion = isFromGitHub ? (detail.meta?.version ?? detail.version) : detail.version
@@ -96,7 +100,7 @@ const DataSourcePluginActions = ({
     <div className="flex shrink-0 items-center gap-1" onClick={e => e.stopPropagation()}>
       {!!displayVersion && (
         <PluginVersionPicker
-          disabled={!isFromMarketplace}
+          disabled={!canUpdatePlugin || !isFromMarketplace}
           isShow={versionPicker.isShow}
           onShowChange={versionPicker.setIsShow}
           pluginID={detail.plugin_id}
@@ -108,7 +112,7 @@ const DataSourcePluginActions = ({
               text={(
                 <>
                   <div>{displayVersion}</div>
-                  {isFromMarketplace && <span aria-hidden className="ml-1 i-ri-arrow-left-right-line h-3 w-3 shrink-0 text-text-tertiary" />}
+                  {canUpdatePlugin && isFromMarketplace && <span aria-hidden className="ml-1 i-ri-arrow-left-right-line h-3 w-3 shrink-0 text-text-tertiary" />}
                 </>
               )}
               hasRedCornerMark={hasNewVersion}
@@ -117,7 +121,7 @@ const DataSourcePluginActions = ({
           )}
         />
       )}
-      {(hasNewVersion || isFromGitHub) && (
+      {canUpdatePlugin && (hasNewVersion || isFromGitHub) && (
         <Tooltip>
           <TooltipTrigger
             delay={300}
@@ -145,6 +149,8 @@ const DataSourcePluginActions = ({
         onViewReadme={detail.plugin_unique_identifier ? handleViewReadme : undefined}
         detailUrl={getDetailUrl(detail, locale, theme || 'light')}
         triggerSize="xs"
+        showCheckVersion={canUpdatePlugin}
+        showRemove={canManagePlugin}
       />
       <HeaderModals
         detail={detail}

@@ -25,6 +25,7 @@ const mockFetchWorkflowDraft = vi.fn()
 const mockDownloadBlob = vi.fn()
 const mockGetSocket = vi.fn()
 const mockOnAppMetaUpdate = vi.fn()
+const mockSetQueryData = vi.fn()
 
 let mockAppDetail: Record<string, unknown> | undefined = {
   id: 'app-1',
@@ -63,7 +64,14 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 vi.mock('@/service/use-apps', () => ({
+  appDetailQueryKeyPrefix: ['apps', 'detail'],
   useInvalidateAppList: () => mockInvalidateAppList,
+}))
+
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({
+    setQueryData: mockSetQueryData,
+  }),
 }))
 
 vi.mock('@/service/apps', () => ({
@@ -107,6 +115,7 @@ describe('useAppInfoActions', () => {
     vi.clearAllMocks()
     mockOnAppMetaUpdate.mockReturnValue(() => {})
     mockGetSocket.mockReturnValue(null)
+    mockSetQueryData.mockReset()
     mockAppDetail = {
       id: 'app-1',
       name: 'Test App',

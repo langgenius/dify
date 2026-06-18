@@ -60,6 +60,7 @@ export const VersionHistoryPanel = ({
   const setCurrentVersion = useStore(s => s.setCurrentVersion)
   const userProfile = useAppContextSelector(s => s.userProfile)
   const configsMap = useHooksStore(s => s.configsMap)
+  const canImportExportDSL = useHooksStore(s => s.accessControl.canImportExportDSL)
   const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
   const {
     deleteAllInspectVars,
@@ -138,10 +139,12 @@ export const VersionHistoryPanel = ({
           setIsRestorePlanUpgradeModalOpen(true)
           break
         }
+        if (!canImportExportDSL)
+          return
         handleExportDSL?.(false, item.id)
         break
     }
-  }, [canUseWorkflowVersionAction, t, handleExportDSL])
+  }, [canUseWorkflowVersionAction, canImportExportDSL, t, handleExportDSL])
 
   const handleCancel = useCallback((operation: VersionHistoryContextMenuOptions) => {
     switch (operation) {
@@ -307,6 +310,7 @@ export const VersionHistoryPanel = ({
                           latestVersionId={latestVersionId || ''}
                           onClick={handleVersionClick}
                           handleClickActionMenuItem={handleClickActionMenuItem.bind(null, item)}
+                          canImportExportDSL={canImportExportDSL}
                           isLast={isLast}
                         />
                       )

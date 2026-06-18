@@ -24,6 +24,7 @@ import {
 } from '@/app/components/plugins/plugin-auth'
 import { AuthCategory } from '@/app/components/plugins/plugin-auth/types'
 import { CollectionType } from '@/app/components/tools/types'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import { useGetDataSourceOAuthUrl } from '@/service/use-datasource'
@@ -49,6 +50,7 @@ const Card = ({
   onPluginUpdate,
 }: CardProps) => {
   const { t } = useTranslation()
+  const { canUseCredential, canManageCredential } = useCredentialPermissions()
   const renderI18nObject = useRenderI18nObject()
   const {
     icon,
@@ -176,6 +178,7 @@ const Card = ({
             pluginPayload={pluginPayload}
             item={item}
             onUpdate={handleAuthUpdate}
+            disabled={disabled || !canManageCredential}
           />
         </div>
       </div>
@@ -192,6 +195,8 @@ const Card = ({
                   key={credentialItem.id}
                   credentialItem={credentialItem}
                   onAction={handleAction}
+                  canUseCredential={canUseCredential}
+                  canManageCredential={canManageCredential}
                 />
               ))
             }
@@ -216,7 +221,7 @@ const Card = ({
           </div>
           <AlertDialogActions>
             <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
-            <AlertDialogConfirmButton disabled={doingAction} onClick={handleConfirm}>
+            <AlertDialogConfirmButton disabled={doingAction || !canManageCredential} onClick={handleConfirm}>
               {t('operation.confirm', { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
@@ -234,7 +239,7 @@ const Card = ({
             formSchemas={credential_schema}
             editValues={editValues}
             onRemove={handleRemove}
-            disabled={disabled || doingAction}
+            disabled={disabled || doingAction || !canManageCredential}
           />
         )
       }

@@ -18,9 +18,10 @@ type MetadataProps = {
   docDetail?: FullDocumentDetail
   loading: boolean
   onUpdate: () => void
+  canEdit?: boolean
 }
 
-const Metadata: FC<MetadataProps> = ({ docDetail, loading, onUpdate }) => {
+const Metadata: FC<MetadataProps> = ({ docDetail, loading, onUpdate, canEdit = false }) => {
   const { t } = useTranslation()
   const metadataMap = useMetadataMap()
 
@@ -39,7 +40,7 @@ const Metadata: FC<MetadataProps> = ({ docDetail, loading, onUpdate }) => {
     cancelEdit,
     saveMetadata,
     updateMetadataField,
-  } = useMetadataState({ docDetail, onUpdate })
+  } = useMetadataState({ docDetail, onUpdate, canEdit })
 
   if (loading) {
     return (
@@ -56,21 +57,23 @@ const Metadata: FC<MetadataProps> = ({ docDetail, loading, onUpdate }) => {
         <span className={s.title}>{t('metadata.title', { ns: 'datasetDocuments' })}</span>
         {!editStatus
           ? (
-              <Button onClick={enableEdit} className={`${s.opBtn} ${s.opEditBtn}`}>
-                <PencilIcon className={s.opIcon} />
-                {t('operation.edit', { ns: 'common' })}
-              </Button>
+              canEdit && (
+                <Button onClick={enableEdit} className={`${s.opBtn} ${s.opEditBtn}`}>
+                  <PencilIcon className={s.opIcon} />
+                  {t('operation.edit', { ns: 'common' })}
+                </Button>
+              )
             )
-          : !showDocTypes && (
-              <div className={s.opBtnWrapper}>
-                <Button onClick={cancelEdit} className={`${s.opBtn} ${s.opCancelBtn}`}>
-                  {t('operation.cancel', { ns: 'common' })}
-                </Button>
-                <Button onClick={saveMetadata} className={`${s.opBtn} ${s.opSaveBtn}`} variant="primary" loading={saveLoading}>
-                  {t('operation.save', { ns: 'common' })}
-                </Button>
-              </div>
-            )}
+          : canEdit && !showDocTypes && (
+            <div className={s.opBtnWrapper}>
+              <Button onClick={cancelEdit} className={`${s.opBtn} ${s.opCancelBtn}`}>
+                {t('operation.cancel', { ns: 'common' })}
+              </Button>
+              <Button onClick={saveMetadata} className={`${s.opBtn} ${s.opSaveBtn}`} variant="primary" loading={saveLoading}>
+                {t('operation.save', { ns: 'common' })}
+              </Button>
+            </div>
+          )}
       </div>
 
       {/* Document type display / selector */}
@@ -81,7 +84,7 @@ const Metadata: FC<MetadataProps> = ({ docDetail, loading, onUpdate }) => {
           : (
               <DocumentTypeDisplay
                 displayType={metadataParams.documentType || ''}
-                showChangeLink={editStatus}
+                showChangeLink={canEdit && editStatus}
                 onChangeClick={() => setShowDocTypes(true)}
               />
             )}
@@ -90,7 +93,7 @@ const Metadata: FC<MetadataProps> = ({ docDetail, loading, onUpdate }) => {
       {(!docType && showDocTypes) ? null : <Divider />}
 
       {/* Doc type selector or editable metadata fields */}
-      {showDocTypes
+      {canEdit && showDocTypes
         ? (
             <DocTypeSelector
               docType={docType}
@@ -104,7 +107,7 @@ const Metadata: FC<MetadataProps> = ({ docDetail, loading, onUpdate }) => {
         : (
             <MetadataFieldList
               mainField={metadataParams.documentType || ''}
-              canEdit={editStatus}
+              canEdit={canEdit && editStatus}
               metadata={metadataParams.metadata}
               docDetail={docDetail}
               onFieldUpdate={updateMetadataField}

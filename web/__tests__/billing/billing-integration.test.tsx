@@ -127,6 +127,11 @@ const setupProviderContext = (planOverrides: PlanOverrides = {}, extra: Record<s
 const setupAppContext = (overrides: Record<string, unknown> = {}) => {
   mockAppCtx = {
     isCurrentWorkspaceManager: true,
+    workspacePermissionKeys: [
+      'billing.view',
+      'billing.manage',
+      'billing.subscription.manage',
+    ],
     userProfile: { email: 'test@example.com' },
     langGeniusVersionInfo: { current_version: '1.0.0' },
     ...overrides,
@@ -228,9 +233,12 @@ describe('Billing Page + Plan Integration', () => {
 
   // Verify billing URL button visibility and behavior
   describe('Billing URL button', () => {
-    it('should show billing button when enableBilling and isCurrentWorkspaceManager', () => {
+    it('should show billing button when subscription management permission is granted', () => {
       setupProviderContext({ type: Plan.sandbox })
-      setupAppContext({ isCurrentWorkspaceManager: true })
+      setupAppContext({
+        isCurrentWorkspaceManager: false,
+        workspacePermissionKeys: ['billing.subscription.manage'],
+      })
 
       render(<Billing />)
 
@@ -238,9 +246,12 @@ describe('Billing Page + Plan Integration', () => {
       expect(screen.getByText(/viewBillingAction/i)).toBeInTheDocument()
     })
 
-    it('should hide billing button when user is not workspace manager', () => {
+    it('should hide billing button when subscription management permission is missing', () => {
       setupProviderContext({ type: Plan.sandbox })
-      setupAppContext({ isCurrentWorkspaceManager: false })
+      setupAppContext({
+        isCurrentWorkspaceManager: true,
+        workspacePermissionKeys: ['billing.view', 'billing.manage'],
+      })
 
       render(<Billing />)
 
@@ -249,6 +260,17 @@ describe('Billing Page + Plan Integration', () => {
 
     it('should hide billing button when billing is disabled', () => {
       setupProviderContext({ type: Plan.sandbox }, { enableBilling: false })
+
+      render(<Billing />)
+
+      expect(screen.queryByText(/viewBillingTitle/i)).not.toBeInTheDocument()
+    })
+
+    it('should hide billing button when no billing permissions are granted', () => {
+      setupProviderContext({ type: Plan.sandbox })
+      setupAppContext({
+        workspacePermissionKeys: [],
+      })
 
       render(<Billing />)
 

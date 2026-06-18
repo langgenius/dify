@@ -19,8 +19,11 @@ from controllers.common.schema import register_response_schema_models, register_
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_app_model
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -78,6 +81,7 @@ class AgentAppFeatureConfigResource(Resource):
     @setup_required
     @login_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id

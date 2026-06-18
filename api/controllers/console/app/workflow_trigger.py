@@ -19,7 +19,15 @@ from models.trigger import AppTrigger, WorkflowWebhookTrigger
 
 from .. import console_ns
 from ..app.wraps import get_app_model
-from ..wraps import account_initialization_required, edit_permission_required, setup_required, with_current_tenant_id
+from ..wraps import (
+    RBACPermission,
+    RBACResourceScope,
+    account_initialization_required,
+    edit_permission_required,
+    rbac_permission_required,
+    setup_required,
+    with_current_tenant_id,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -90,8 +98,9 @@ class WebhookTriggerApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.WORKFLOW)
     @console_ns.response(200, "Success", console_ns.models[WebhookTriggerResponse.__name__])
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model(mode=AppMode.WORKFLOW)
     def get(self, app_model: App):
         """Get webhook trigger for a node"""
         args = Parser.model_validate(request.args.to_dict(flat=True))
@@ -122,9 +131,10 @@ class AppTriggersApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.WORKFLOW)
     @console_ns.response(200, "Success", console_ns.models[WorkflowTriggerListResponse.__name__])
     @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model(mode=AppMode.WORKFLOW)
     def get(self, current_tenant_id: str, app_model: App):
         """Get app triggers list"""
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
@@ -162,9 +172,10 @@ class AppTriggerEnableApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @get_app_model(mode=AppMode.WORKFLOW)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @console_ns.response(200, "Success", console_ns.models[WorkflowTriggerResponse.__name__])
     @with_current_tenant_id
+    @get_app_model(mode=AppMode.WORKFLOW)
     def post(self, current_tenant_id: str, app_model: App):
         """Update app trigger (enable/disable)"""
         args = ParserEnable.model_validate(console_ns.payload)

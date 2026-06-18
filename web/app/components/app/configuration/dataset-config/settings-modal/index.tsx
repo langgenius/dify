@@ -21,7 +21,6 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
-import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
 import { DatasetPermission } from '@/models/datasets'
 import { updateDatasetSetting } from '@/service/datasets'
@@ -57,7 +56,6 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const isExternal = currentDataset.provider === 'external'
   const openIntegrationsSetting = useIntegrationsSetting()
   const [loading, setLoading] = useState(false)
-  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
   const [localeCurrentDataset, setLocaleCurrentDataset] = useState({ ...currentDataset })
   const [topK, setTopK] = useState(localeCurrentDataset?.external_retrieval_model.top_k ?? 2)
   const [scoreThreshold, setScoreThreshold] = useState(localeCurrentDataset?.external_retrieval_model.score_threshold ?? 0.5)
@@ -240,7 +238,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
           </div>
           <div className="w-full">
             <PermissionSelector
-              disabled={!localeCurrentDataset?.embedding_available || isCurrentWorkspaceDatasetOperator}
+              disabled={!localeCurrentDataset?.embedding_available}
               permission={localeCurrentDataset.permission}
               value={selectedMemberIDs}
               onChange={v => handleValueChange('permission', v!)}

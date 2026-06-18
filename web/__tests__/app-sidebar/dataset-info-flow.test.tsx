@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DatasetInfo from '@/app/components/app-sidebar/dataset-info'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
+import { DatasetACLPermission } from '@/utils/permission'
 
 const mockReplace = vi.fn()
 const mockInvalidDatasetList = vi.fn()
@@ -31,11 +32,6 @@ vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (selector: (state: { dataset?: DataSet }) => unknown) => selector({
     dataset: mockDataset,
   }),
-}))
-
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { isCurrentWorkspaceDatasetOperator: boolean }) => unknown) =>
-    selector({ isCurrentWorkspaceDatasetOperator: false }),
 }))
 
 vi.mock('@/hooks/use-knowledge', () => ({
@@ -153,6 +149,11 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   enable_api: false,
   is_multimodal: false,
   is_published: true,
+  permission_keys: [
+    DatasetACLPermission.Edit,
+    DatasetACLPermission.Delete,
+    DatasetACLPermission.ImportExportDSL,
+  ],
   ...overrides,
 })
 

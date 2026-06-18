@@ -7,8 +7,11 @@ from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_app_model
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user_id,
@@ -70,6 +73,7 @@ class WorkflowAgentComposerApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
     @with_current_user_id
     @with_current_tenant_id
@@ -166,6 +170,7 @@ class WorkflowAgentComposerSaveToRosterApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
     @with_current_user_id
     @with_current_tenant_id
@@ -203,6 +208,7 @@ class AgentComposerApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user_id
     @with_current_tenant_id
     def put(self, tenant_id: str, account_id: str, agent_id: UUID):

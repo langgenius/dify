@@ -110,7 +110,7 @@ describe('AppDetailNav', () => {
     it('should apply expanded width class', () => {
       const { container } = render(<AppDetailNav navigation={navigation} />)
       const sidebar = container.firstElementChild as HTMLElement
-      expect(sidebar).toHaveClass('w-[216px]')
+      expect(sidebar).toHaveClass('w-55')
     })
 
     it('should apply collapsed width class', () => {

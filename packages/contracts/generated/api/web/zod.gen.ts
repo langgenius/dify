@@ -861,6 +861,7 @@ export const zSystemFeatureModel = z.object({
     restrict_to_marketplace_only: false,
   }),
   plugin_manager: zPluginManagerModel.default({ enabled: false }),
+  rbac_enabled: z.boolean().default(false),
   sso_enforced_for_signin: z.boolean().default(false),
   sso_enforced_for_signin_protocol: z.string().default(''),
   webapp_auth: zWebAppAuthModel.default({

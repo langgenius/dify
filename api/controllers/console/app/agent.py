@@ -17,7 +17,10 @@ from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_app_model
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -351,6 +354,7 @@ class AgentLogApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=[AppMode.AGENT_CHAT])
     def get(self, app_model: App):
         """Get agent logs"""

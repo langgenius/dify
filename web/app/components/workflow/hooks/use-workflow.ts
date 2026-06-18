@@ -26,6 +26,7 @@ import { useNodesMetaData } from '.'
 import {
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
+import { useHooksStore } from '../hooks-store'
 import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
 
 import { CUSTOM_NOTE_NODE } from '../note-node/constants'
@@ -437,7 +438,7 @@ export const useWorkflowReadOnly = () => {
   }
 }
 
-export const useNodesReadOnly = () => {
+const useNodesReadOnlyBase = (canEdit: boolean) => {
   const workflowStore = useWorkflowStore()
   const canvasReadOnly = useStore(s => s.canvasReadOnly)
   const workflowRunningData = useStore(s => s.workflowRunningData)
@@ -454,16 +455,18 @@ export const useNodesReadOnly = () => {
 
     return !!(
       canvasReadOnly
+      || !canEdit
       || workflowRunningData?.result.status === WorkflowRunningStatus.Running
       || workflowRunningData?.result.status === WorkflowRunningStatus.Paused
       || historyWorkflowData
       || isRestoring
     )
-  }, [workflowStore])
+  }, [workflowStore, canEdit])
 
   return {
     nodesReadOnly: !!(
       canvasReadOnly
+      || !canEdit
       || workflowRunningData?.result.status === WorkflowRunningStatus.Running
       || workflowRunningData?.result.status === WorkflowRunningStatus.Paused
       || historyWorkflowData
@@ -471,6 +474,16 @@ export const useNodesReadOnly = () => {
     ),
     getNodesReadOnly,
   }
+}
+
+export const useNodesReadOnlyByCanEdit = (canEdit: boolean) => {
+  return useNodesReadOnlyBase(canEdit)
+}
+
+export const useNodesReadOnly = () => {
+  const canEdit = useHooksStore(s => s.accessControl.canEdit)
+
+  return useNodesReadOnlyBase(canEdit)
 }
 
 export const useIsNodeInIteration = (iterationId: string) => {

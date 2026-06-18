@@ -32,16 +32,17 @@ from extensions.ext_redis import redis_client
 from fields.base import ResponseModel
 from fields.member_fields import AccountWithRole, AccountWithRoleList
 from libs.helper import extract_remote_ip
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from models.account import Account, TenantAccountJoin, TenantAccountRole
 from services.account_service import AccountService, RegisterService, TenantService
+from services.enterprise import rbac_service as enterprise_rbac_service
 from services.errors.account import AccountAlreadyInTenantError
 from services.feature_service import FeatureService
 
 
 class MemberInvitePayload(BaseModel):
     emails: list[str] = Field(default_factory=list)
-    role: TenantAccountRole
+    role: str
     language: str | None = None
 
 
@@ -107,6 +108,22 @@ def _is_role_enabled(role: TenantAccountRole | str, tenant_id: str) -> bool:
     return FeatureService.get_features(tenant_id=tenant_id, exclude_vector_space=True).dataset_operator_enabled
 
 
+def _serialize_member_roles(
+    current_role: str | None, member_roles: list[enterprise_rbac_service.RBACRole]
+) -> list[dict[str, str]]:
+    if dify_config.RBAC_ENABLED:
+        return [{"id": role.id, "name": role.name} for role in member_roles]
+    else:
+        if current_role:
+            return [{"id": current_role, "name": current_role}]
+        return []
+
+
+def _normalize_enum_value(value: object) -> str:
+    normalized = getattr(value, "value", value)
+    return str(normalized) if normalized is not None else ""
+
+
 def _normalize_invitee_emails(emails: list[str]) -> list[str]:
     return list(dict.fromkeys(email.lower() for email in emails))
 
@@ -164,11 +181,42 @@ class MemberListApi(Resource):
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[AccountWithRoleList.__name__])
     @with_current_user
-    def get(self, current_user: Account):
+    def get(self, current_user: Account | None = None):
+        if current_user is None:
+            current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         members = TenantService.get_tenant_members(current_user.current_tenant)
-        member_models = TypeAdapter(list[AccountWithRole]).validate_python(members, from_attributes=True)
+        if dify_config.RBAC_ENABLED:
+            member_ids = [member.id for member in members]
+            member_roles = enterprise_rbac_service.RBACService.MemberRoles.batch_get(
+                str(current_user.current_tenant.id),
+                current_user.id,
+                member_ids,
+            )
+            roles_map = {item.account_id: item.roles for item in member_roles}
+        else:
+            roles_map = {}
+
+        serialized_members = []
+        for member in members:
+            current_role = _normalize_enum_value(member.current_role)
+            serialized_members.append(
+                {
+                    "id": member.id,
+                    "name": member.name,
+                    "email": member.email,
+                    "avatar": member.avatar,
+                    "last_login_at": member.last_login_at,
+                    "last_active_at": member.last_active_at,
+                    "created_at": member.created_at,
+                    "role": current_role,
+                    "roles": _serialize_member_roles(current_role, roles_map.get(member.id, [])),
+                    "status": _normalize_enum_value(member.status),
+                }
+            )
+
+        member_models = TypeAdapter(list[AccountWithRole]).validate_python(serialized_members)
         response = AccountWithRoleList(accounts=member_models)
         return response.model_dump(mode="json"), 200
 
@@ -190,8 +238,11 @@ class MemberInviteEmailApi(Resource):
         invitee_emails = _normalize_invitee_emails(args.emails)
         invitee_role = args.role
         interface_language = args.language
-        if not TenantAccountRole.is_non_owner_role(invitee_role):
-            return {"code": "invalid-role", "message": "Invalid role"}, 400
+        if not dify_config.RBAC_ENABLED:
+            if not TenantAccountRole.is_valid_role(invitee_role):
+                return {"code": "invalid-role", "message": "Invalid role"}, 400
+            if not TenantAccountRole.is_non_owner_role(TenantAccountRole(invitee_role)):
+                return {"code": "invalid-role", "message": "Invalid role"}, 400
         inviter = current_user
         if not inviter.current_tenant:
             raise ValueError("No current tenant")
@@ -208,8 +259,9 @@ class MemberInviteEmailApi(Resource):
 
         tenant_id = inviter.current_tenant.id
         with redis_client.lock(f"workspace_member_invite:{tenant_id}", timeout=60):
-            new_member_count = _count_new_member_invites(tenant_id, invitee_emails)
-            _check_member_invite_limits(tenant_id, new_member_count)
+            if dify_config.ENTERPRISE_ENABLED is True or dify_config.BILLING_ENABLED is True:
+                new_member_count = _count_new_member_invites(tenant_id, invitee_emails)
+                _check_member_invite_limits(tenant_id, new_member_count)
 
             for invitee_email in invitee_emails:
                 try:

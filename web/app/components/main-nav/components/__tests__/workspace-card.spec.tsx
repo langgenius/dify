@@ -1,3 +1,4 @@
+import type { AppContextValue } from '@/context/app-context'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import type { ICurrentWorkspace, IWorkspace } from '@/models/common'
@@ -5,6 +6,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { createTestQueryClient, renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { LicenseStatus } from '@/features/system-features/constants'
@@ -30,6 +32,10 @@ vi.mock('@/config', async (importOriginal) => {
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: vi.fn(),
 }))
 
 vi.mock('@/context/modal-context', () => ({
@@ -120,6 +126,12 @@ const renderWorkspaceCard = (options?: RenderWorkspaceCardOptions) => {
   })
 }
 
+const mockWorkspacePermissionKeys = (workspacePermissionKeys: string[]) => {
+  vi.mocked(useAppContextSelector).mockImplementation((selector: (state: AppContextValue) => unknown) => selector({
+    workspacePermissionKeys,
+  } as AppContextValue))
+}
+
 describe('WorkspaceCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -137,6 +149,7 @@ describe('WorkspaceCard', () => {
       isFetchedPlan: true,
       plan: { type: Plan.sandbox },
     } as ProviderContextState)
+    mockWorkspacePermissionKeys(['workspace.member.manage'])
     vi.mocked(useModalContext).mockReturnValue({
       setShowPricingModal: mockSetShowPricingModal,
       setShowAccountSettingModal: mockSetShowAccountSettingModal,
@@ -308,6 +321,24 @@ describe('WorkspaceCard', () => {
     expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.BILLING })
   })
 
+  it('opens members settings from workspace menu when billing is disabled', async () => {
+    vi.mocked(useProviderContext).mockReturnValue({
+      enableBilling: false,
+      isEducationAccount: false,
+      isEducationWorkspace: false,
+      isFetchedPlan: false,
+      plan: { type: Plan.sandbox },
+    } as ProviderContextState)
+
+    renderWorkspaceCard()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'common.mainNav.workspace.settings' }))
+
+    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.MEMBERS })
+    expect(mockSetShowAccountSettingModal).not.toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.BILLING })
+  })
+
   it('switches workspace from the workspace switcher item', async () => {
     renderWorkspaceCard()
 
@@ -317,11 +348,12 @@ describe('WorkspaceCard', () => {
     await waitFor(() => expect(mockSwitchWorkspace).toHaveBeenCalledWith({ body: { tenant_id: 'workspace-2' } }))
   })
 
-  it('hides workspace management actions for dataset operators', async () => {
+  it('keeps workspace settings visible for dataset operators without member management permission', async () => {
     mockCurrentWorkspaceQuery({
       ...currentWorkspaceValue,
       role: 'dataset_operator',
     })
+    mockWorkspacePermissionKeys([])
 
     renderWorkspaceCard()
 
@@ -329,7 +361,35 @@ describe('WorkspaceCard', () => {
 
     const panel = await screen.findByRole('dialog', { name: 'Solar Studio' })
     expect(panel).toBeInTheDocument()
-    expect(within(panel).queryByRole('button', { name: 'common.mainNav.workspace.settings' })).not.toBeInTheDocument()
+    expect(within(panel).getByRole('button', { name: 'common.mainNav.workspace.settings' })).toBeInTheDocument()
+    expect(within(panel).queryByRole('button', { name: 'common.mainNav.workspace.inviteMembers' })).not.toBeInTheDocument()
+  })
+
+  it('shows invite members when member management permission is available', async () => {
+    mockCurrentWorkspaceQuery({
+      ...currentWorkspaceValue,
+      role: 'normal',
+    })
+    mockWorkspacePermissionKeys(['workspace.member.manage'])
+
+    renderWorkspaceCard()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+
+    const panel = await screen.findByRole('dialog', { name: 'Solar Studio' })
+    expect(within(panel).getByRole('button', { name: 'common.mainNav.workspace.settings' })).toBeInTheDocument()
+    expect(within(panel).getByRole('button', { name: 'common.mainNav.workspace.inviteMembers' })).toBeInTheDocument()
+  })
+
+  it('hides invite members when member management permission is missing', async () => {
+    mockWorkspacePermissionKeys([])
+
+    renderWorkspaceCard()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+
+    const panel = await screen.findByRole('dialog', { name: 'Solar Studio' })
+    expect(within(panel).getByRole('button', { name: 'common.mainNav.workspace.settings' })).toBeInTheDocument()
     expect(within(panel).queryByRole('button', { name: 'common.mainNav.workspace.inviteMembers' })).not.toBeInTheDocument()
   })
 })

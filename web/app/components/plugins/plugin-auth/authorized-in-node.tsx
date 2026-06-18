@@ -37,7 +37,6 @@ const AuthorizedInNode = ({
     canApiKey,
     canOAuth,
     credentials,
-    disabled,
     invalidPluginCredentialInfo,
     notAllowCustomCredential,
   } = usePluginAuth(pluginPayload, true, credentialId ? [credentialId] : undefined)
@@ -143,7 +142,6 @@ const AuthorizedInNode = ({
       placement="bottom-end"
       triggerPopupSameWidth={false}
       popupClassName="w-[360px]"
-      disabled={disabled}
       disableSetDefault
       onItemClick={handleAuthorizationItemClick}
       extraAuthorizationItems={extraAuthorizationItems}

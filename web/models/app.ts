@@ -45,6 +45,7 @@ export type DSLImportResponse = {
   imported_dsl_version?: string
   error: string
   leaked_dependencies: Dependency[]
+  permission_keys: string[]
 }
 
 export type UpdateAppSiteCodeResponse = { app_id: string } & SiteConfig

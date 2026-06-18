@@ -23,8 +23,11 @@ from controllers.console.app.error import (
 from controllers.console.app.wraps import get_app_model
 from controllers.console.explore.error import AppSuggestedQuestionsAfterAnswerDisabledError
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -182,8 +185,9 @@ class ChatMessageListApi(Resource):
     @login_required
     @account_initialization_required
     @setup_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def get(self, app_model: App):
         return _list_chat_messages(app_model=app_model)
 
@@ -200,6 +204,7 @@ class AgentChatMessageListApi(Resource):
     @account_initialization_required
     @setup_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @with_current_tenant_id
     def get(self, current_tenant_id: str, agent_id: UUID):
         app_model = resolve_agent_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
@@ -215,11 +220,11 @@ class MessageFeedbackApi(Resource):
     @console_ns.response(200, "Feedback updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(404, "Message not found")
     @console_ns.response(403, "Insufficient permissions")
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_user
+    @get_app_model
     def post(self, current_user: Account, app_model: App):
         return _update_message_feedback(current_user=current_user, app_model=app_model)
 
@@ -252,10 +257,11 @@ class MessageAnnotationCountApi(Resource):
         "Annotation count retrieved successfully",
         console_ns.models[AnnotationCountResponse.__name__],
     )
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model
     def get(self, app_model: App):
         count = db.session.scalar(
             select(func.count(MessageAnnotation.id)).where(MessageAnnotation.app_id == app_model.id)
@@ -278,8 +284,9 @@ class MessageSuggestedQuestionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def get(self, current_user: Account, app_model: App, message_id: UUID):
         return _get_message_suggested_questions(current_user=current_user, app_model=app_model, message_id=message_id)
 
@@ -318,10 +325,11 @@ class MessageFeedbackExportApi(Resource):
     )
     @console_ns.response(400, "Invalid parameters")
     @console_ns.response(500, "Internal server error")
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model
     def get(self, app_model: App):
         args = FeedbackExportQuery.model_validate(request.args.to_dict())
 
@@ -356,10 +364,11 @@ class MessageApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID", "message_id": "Message ID"})
     @console_ns.response(200, "Message retrieved successfully", console_ns.models[MessageDetailResponse.__name__])
     @console_ns.response(404, "Message not found")
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model
     def get(self, app_model: App, message_id: UUID):
         return _get_message_detail(app_model=app_model, message_id=message_id)
 

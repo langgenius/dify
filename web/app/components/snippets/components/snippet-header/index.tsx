@@ -16,6 +16,7 @@ import RunMode from './run-mode'
 type SnippetHeaderProps = {
   snippetId: string
   canDiscardChanges: boolean
+  canEdit?: boolean
   canSave: boolean
   hasDraftChanges: boolean
   isEditing: boolean
@@ -39,6 +40,7 @@ const ViewOnlyBadge = () => {
 }
 
 const EditActions = ({
+  canEdit = true,
   canSave,
   hasDraftChanges,
   isEditing,
@@ -48,11 +50,14 @@ const EditActions = ({
   onExitEditingWithoutSave,
   onPublish,
   onSaveAndExitEditing,
-}: Pick<SnippetHeaderProps, 'canSave' | 'hasDraftChanges' | 'isEditing' | 'isPublishing' | 'onEdit' | 'onExitEditing' | 'onExitEditingWithoutSave' | 'onPublish' | 'onSaveAndExitEditing'>) => {
+}: Pick<SnippetHeaderProps, 'canEdit' | 'canSave' | 'hasDraftChanges' | 'isEditing' | 'isPublishing' | 'onEdit' | 'onExitEditing' | 'onExitEditingWithoutSave' | 'onPublish' | 'onSaveAndExitEditing'>) => {
   const { t } = useTranslation('snippet')
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false)
 
   if (!isEditing) {
+    if (!canEdit)
+      return null
+
     return (
       <Button variant="primary" onClick={onEdit}>
         {t('edit')}
@@ -67,8 +72,11 @@ const EditActions = ({
         onOpenChange={setExitConfirmOpen}
         trigger={(
           <Button
-            disabled={isPublishing}
+            disabled={isPublishing || !canEdit}
             onClick={(event) => {
+              if (!canEdit)
+                return
+
               if (!hasDraftChanges) {
                 event.preventDefault()
                 void onExitEditing()
@@ -81,8 +89,8 @@ const EditActions = ({
             {t('exitEditing')}
           </Button>
         )}
-        disabled={isPublishing}
-        saveDisabled={!canSave}
+        disabled={isPublishing || !canEdit}
+        saveDisabled={!canEdit || !canSave}
         loading={isPublishing}
         onDiscard={async () => {
           await onExitEditingWithoutSave()
@@ -96,7 +104,7 @@ const EditActions = ({
       <Button
         variant="primary"
         loading={isPublishing}
-        disabled={isPublishing || !canSave}
+        disabled={isPublishing || !canEdit || !canSave}
         onClick={onPublish}
       >
         {t('save')}
@@ -108,6 +116,7 @@ const EditActions = ({
 const SnippetHeader = ({
   snippetId,
   canDiscardChanges,
+  canEdit = true,
   canSave,
   hasDraftChanges,
   isEditing,
@@ -135,6 +144,7 @@ const SnippetHeader = ({
             : <ViewOnlyBadge />,
           left: (
             <EditActions
+              canEdit={canEdit}
               canSave={canSave}
               hasDraftChanges={hasDraftChanges}
               isEditing={isEditing}
@@ -164,7 +174,7 @@ const SnippetHeader = ({
         viewHistoryProps,
       },
     }
-  }, [canDiscardChanges, canSave, hasDraftChanges, isEditing, isPublishing, onCancel, onEdit, onExitEditing, onExitEditingWithoutSave, onPublish, onSaveAndExitEditing, t, viewHistoryProps])
+  }, [canDiscardChanges, canEdit, canSave, hasDraftChanges, isEditing, isPublishing, onCancel, onEdit, onExitEditing, onExitEditingWithoutSave, onPublish, onSaveAndExitEditing, t, viewHistoryProps])
 
   return <Header {...headerProps} />
 }

@@ -4,11 +4,18 @@ import * as React from 'react'
 import CreateAppCard from '../new-app-card'
 
 const mockReplace = vi.fn()
+let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     replace: mockReplace,
   }),
   useSearchParams: () => new URLSearchParams(),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
 }))
 
 const mockOnPlanInfoChanged = vi.fn()
@@ -58,12 +65,21 @@ describe('CreateAppCard', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWorkspacePermissionKeys = ['app.create_and_management']
   })
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<CreateAppCard ref={defaultRef} />)
       expect(screen.getByText('app.newApp.startFromBlank')).toBeInTheDocument()
+    })
+
+    it('should not render without app.create_and_management permission', () => {
+      mockWorkspacePermissionKeys = []
+
+      const { container } = render(<CreateAppCard ref={defaultRef} />)
+
+      expect(container).toBeEmptyDOMElement()
     })
 
     it('should render three create buttons', () => {

@@ -58,6 +58,8 @@ const BuiltinMarketplacePanel = ({
 }
 
 type PluginsPanelResultsProps = {
+  canManagePlugin: boolean
+  canUpdatePlugin: boolean
   containerRef: RefObject<HTMLDivElement | null>
   contentFrameClassName: string
   contentInset: PluginPageContentInset
@@ -78,6 +80,8 @@ type PluginsPanelResultsProps = {
 }
 
 const PluginsPanelResults = ({
+  canManagePlugin,
+  canUpdatePlugin,
   containerRef,
   contentFrameClassName,
   contentInset,
@@ -117,7 +121,11 @@ const PluginsPanelResults = ({
         )}
         >
           {(hasVisiblePlugins || hasVisibleBuiltinTools) && (
-            <List pluginList={filteredList}>
+            <List
+              pluginList={filteredList}
+              canManagePlugin={canManagePlugin}
+              canUpdatePlugin={canUpdatePlugin}
+            >
               {filteredBuiltinTools.map(collection => (
                 <button
                   key={collection.id}

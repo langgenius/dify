@@ -51,7 +51,7 @@ const createBrandState = (overrides: Partial<ReturnType<typeof useWebAppBrand>> 
   webappBrandRemoved: false,
   uploadDisabled: false,
   workspaceLogo: 'https://example.com/workspace-logo.png',
-  isCurrentWorkspaceManager: true,
+  canManageCustomBrand: true,
   isSandbox: false,
   handleApply: vi.fn(),
   handleCancel: vi.fn(),

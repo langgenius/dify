@@ -9,11 +9,18 @@ import { createStore, Provider as JotaiProvider } from 'jotai'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { useAppContext } from '@/context/app-context'
 import { fetchAppDetail, fetchAppList, fetchBanners } from '@/service/explore'
-import { useMembers } from '@/service/use-common'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
+import { AppACLPermission } from '@/utils/permission'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '../../learn-dify/atoms'
 import AppList from '../index'
+
+type MockAppContext = {
+  userProfile: { id: string }
+  workspacePermissionKeys: string[]
+}
+
+const mockUseAppContext = vi.hoisted(() => vi.fn<() => MockAppContext>())
 
 let mockExploreData: { categories: string[], allList: App[] } | undefined = { categories: [], allList: [] }
 let mockLearnDifyApps: App[] = []
@@ -100,11 +107,8 @@ vi.mock('@/service/client', () => ({
 }))
 
 vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
-}))
-
-vi.mock('@/service/use-common', () => ({
-  useMembers: vi.fn(),
+  useAppContext: mockUseAppContext,
+  useSelector: <T,>(selector: (state: MockAppContext) => T): T => selector(mockUseAppContext()),
 }))
 
 vi.mock('@/hooks/use-import-dsl', () => ({
@@ -239,6 +243,7 @@ const createWorkspaceApp = (overrides: Partial<WorkspaceApp> = {}): WorkspaceApp
   api_base_url: overrides.api_base_url ?? '',
   tags: overrides.tags ?? [],
   access_mode: overrides.access_mode,
+  permission_keys: overrides.permission_keys,
 } as WorkspaceApp)
 
 const createBanner = (overrides: Partial<BannerType> = {}): BannerType => ({
@@ -255,15 +260,10 @@ const createBanner = (overrides: Partial<BannerType> = {}): BannerType => ({
   created_at: overrides.created_at ?? '2024-01-01T00:00:00Z',
 })
 
-const mockMemberRole = (hasEditPermission: boolean) => {
+const mockAppCreatePermission = (hasEditPermission: boolean) => {
   ;(useAppContext as Mock).mockReturnValue({
     userProfile: { id: 'user-1' },
-    isCurrentWorkspaceEditor: hasEditPermission,
-  })
-  ;(useMembers as Mock).mockReturnValue({
-    data: {
-      accounts: [{ id: 'user-1', role: hasEditPermission ? 'admin' : 'normal' }],
-    },
+    workspacePermissionKeys: hasEditPermission ? ['app.create_and_management'] : [],
   })
 }
 
@@ -283,7 +283,7 @@ const renderAppList = (
   options: RenderOptions = {},
 ) => {
   mockConfig.isCloudEdition = options.isCloudEdition ?? false
-  mockMemberRole(hasEditPermission)
+  mockAppCreatePermission(hasEditPermission)
   const { wrapper: SystemFeaturesWrapper, queryClient } = createSystemFeaturesWrapper({
     systemFeatures: { enable_explore_banner: options.enableExploreBanner ?? false },
   })
@@ -436,7 +436,7 @@ describe('AppList', () => {
         allList: [createApp()],
       }
       mockWorkspaceApps = [
-        createWorkspaceApp({ id: 'app-1', name: 'Email Reply', author_name: 'Evan' }),
+        createWorkspaceApp({ id: 'app-1', name: 'Email Reply', author_name: 'Evan', permission_keys: [AppACLPermission.Monitor] }),
         createWorkspaceApp({ id: 'app-2', name: 'Feature Copilot', author_name: 'Maggie' }),
         createWorkspaceApp({ id: 'app-3', name: 'Book Translation', author_name: 'Alex' }),
         createWorkspaceApp({ id: 'app-4', name: 'Logo Design', author_name: 'Taylor' }),

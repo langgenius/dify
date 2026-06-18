@@ -13,6 +13,8 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
 import { fetchAppDetailDirect } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
+import { getRedirectionPath } from '@/utils/app-redirection'
+import { getAppACLCapabilities } from '@/utils/permission'
 
 type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -34,7 +36,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const { t } = useTranslation()
   const router = useRouter()
   const pathname = usePathname()
-  const { isCurrentWorkspaceEditor, isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
+  const { isLoadingCurrentWorkspace, isLoadingWorkspacePermissionKeys, currentWorkspace, userProfile, workspacePermissionKeys } = useAppContext()
   const { appDetail, setAppDetail } = useStore(useShallow(state => ({
     appDetail: state.appDetail,
     setAppDetail: state.setAppDetail,
@@ -84,15 +86,33 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   }, [appId, router, setAppDetail])
 
   useEffect(() => {
-    if (!routeAppDetail || !currentWorkspace.id || isLoadingCurrentWorkspace || isLoadingAppDetail)
+    if (!routeAppDetail || !currentWorkspace.id || isLoadingCurrentWorkspace || isLoadingWorkspacePermissionKeys || isLoadingAppDetail)
       return
     if (routeAppDetail.id !== appId)
       return
 
-    // redirection
-    const canIEditApp = isCurrentWorkspaceEditor
-    if (!canIEditApp && (pathname.endsWith('configuration') || pathname.endsWith('workflow') || pathname.endsWith('logs') || pathname.endsWith('annotations'))) {
-      router.replace(`/app/${appId}/overview`)
+    const appACLCapabilities = getAppACLCapabilities(routeAppDetail.permission_keys, {
+      currentUserId: userProfile?.id,
+      resourceMaintainer: routeAppDetail.maintainer,
+      workspacePermissionKeys,
+    })
+    const isLayoutPath = pathname.endsWith('configuration') || pathname.endsWith('workflow')
+    const isLogsPath = pathname.endsWith('logs')
+    const isAnnotationsPath = pathname.endsWith('annotations')
+    const isOverviewPath = pathname.endsWith('overview')
+    const isAccessConfigPath = pathname.endsWith('access-config')
+    if (
+      (isLayoutPath && !appACLCapabilities.canAccessLayout)
+      || (isLogsPath && !appACLCapabilities.canMonitor)
+      || (isAnnotationsPath && !appACLCapabilities.canEdit)
+      || (isOverviewPath && !appACLCapabilities.canMonitor)
+      || (isAccessConfigPath && !appACLCapabilities.canAccessConfig)
+    ) {
+      router.replace(getRedirectionPath(routeAppDetail, {
+        currentUserId: userProfile?.id,
+        resourceMaintainer: routeAppDetail.maintainer,
+        workspacePermissionKeys,
+      }))
       return
     }
     if ((routeAppDetail.mode === AppModeEnum.WORKFLOW || routeAppDetail.mode === AppModeEnum.ADVANCED_CHAT) && (pathname).endsWith('configuration')) {
@@ -105,7 +125,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
     if (appDetailRes && appDetail?.id !== appDetailRes.id)
       setAppDetail({ ...appDetailRes, enable_sso: false })
-  }, [appDetail?.id, appDetailRes, appId, currentWorkspace.id, isCurrentWorkspaceEditor, isLoadingAppDetail, isLoadingCurrentWorkspace, pathname, routeAppDetail, router, setAppDetail])
+  }, [appDetail?.id, appDetailRes, appId, currentWorkspace.id, isLoadingAppDetail, isLoadingCurrentWorkspace, isLoadingWorkspacePermissionKeys, pathname, routeAppDetail, router, setAppDetail, userProfile?.id, workspacePermissionKeys])
 
   if (!appDetail) {
     return (

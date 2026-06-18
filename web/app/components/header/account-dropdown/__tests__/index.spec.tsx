@@ -147,6 +147,7 @@ const baseAppContextValue: AppContextValue = {
   useSelector: vi.fn(),
   isLoadingCurrentWorkspace: false,
   isValidatingCurrentWorkspace: false,
+  workspacePermissionKeys: [],
 }
 
 describe('AccountDropdown', () => {

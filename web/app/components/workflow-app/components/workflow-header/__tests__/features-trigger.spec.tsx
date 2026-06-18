@@ -46,6 +46,7 @@ const mockUpdatePublishedWorkflow = vi.fn()
 const mockResetWorkflowVersionHistory = vi.fn()
 const mockInvalidateAppTriggers = vi.fn()
 const mockFetchAppDetail = vi.fn()
+const mockInvalidateQueries = vi.fn()
 const mockSetPublishedAt = vi.fn()
 const mockSetLastPublishedHasUserInput = vi.fn()
 
@@ -85,6 +86,25 @@ vi.mock('@/app/components/workflow/store', () => ({
   },
   useWorkflowStore: () => mockWorkflowStore,
 }))
+
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: <T,>(selector: (state: { accessControl: { canReleaseAndVersion: boolean } }) => T): T =>
+    selector({
+      accessControl: {
+        canReleaseAndVersion: true,
+      },
+    }),
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQueryClient: () => ({
+      invalidateQueries: mockInvalidateQueries,
+    }),
+  }
+})
 
 vi.mock('@/app/components/base/features/hooks', () => ({
   useFeatures: (selector: (state: Record<string, unknown>) => unknown) => mockUseFeatures(selector),
@@ -204,6 +224,7 @@ describe('FeaturesTrigger', () => {
     // Set up app store state
     useAppStore.setState({ appDetail: { id: 'app-id' } as unknown as App })
     mockFetchAppDetail.mockResolvedValue({ id: 'app-id' })
+    mockInvalidateQueries.mockResolvedValue(undefined)
     mockPublishWorkflow.mockResolvedValue({ created_at: '2024-01-01T00:00:00Z' })
   })
 
@@ -447,7 +468,7 @@ describe('FeaturesTrigger', () => {
         expect(mockSetLastPublishedHasUserInput).toHaveBeenCalledWith(true)
         expect(mockResetWorkflowVersionHistory).toHaveBeenCalled()
         expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'common.api.actionSuccess' })
-        expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-id' })
+        expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['apps', 'detail', 'app-id'] })
         expect(useAppStore.getState().appDetail).toBeDefined()
       })
     })
@@ -470,15 +491,14 @@ describe('FeaturesTrigger', () => {
           },
         },
       ])
-      const { queryClient } = renderWithToast(<FeaturesTrigger />)
-      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+      renderWithToast(<FeaturesTrigger />)
 
       // Act
       await user.click(screen.getByRole('button', { name: 'publisher-publish' }))
 
       // Assert
       await waitFor(() => {
-        expect(invalidateQueries).toHaveBeenCalledWith({
+        expect(mockInvalidateQueries).toHaveBeenCalledWith({
           queryKey: consoleQuery.agent.get.key(),
         })
       })
@@ -503,8 +523,7 @@ describe('FeaturesTrigger', () => {
           },
         },
       ])
-      const { queryClient } = renderWithToast(<FeaturesTrigger />)
-      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+      renderWithToast(<FeaturesTrigger />)
 
       // Act
       await user.click(screen.getByRole('button', { name: 'publisher-publish' }))
@@ -513,7 +532,7 @@ describe('FeaturesTrigger', () => {
       await waitFor(() => {
         expect(mockPublishWorkflow).toHaveBeenCalled()
       })
-      expect(invalidateQueries).not.toHaveBeenCalledWith({
+      expect(mockInvalidateQueries).not.toHaveBeenCalledWith({
         queryKey: consoleQuery.agent.get.key(),
       })
     })
@@ -579,7 +598,7 @@ describe('FeaturesTrigger', () => {
       // Arrange
       const user = userEvent.setup()
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-      mockFetchAppDetail.mockRejectedValue(new Error('fetch failed'))
+      mockInvalidateQueries.mockRejectedValue(new Error('fetch failed'))
 
       renderWithToast(<FeaturesTrigger />)
 

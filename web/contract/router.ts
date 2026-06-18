@@ -1,6 +1,7 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
 import { contract as communityContract } from '@dify/contracts/api/console/orpc.gen'
 import { contract as enterpriseContract } from '@dify/contracts/enterprise/orpc.gen'
+import { rbacAccessConfigContract } from './console/access-control'
 import {
   appDeleteContract,
   appListContract,
@@ -152,6 +153,7 @@ export const consoleRouterContract = {
     checkInstalled: pluginCheckInstalledContract,
     latestVersions: pluginLatestVersionsContract,
   },
+  rbacAccessConfig: rbacAccessConfigContract,
   snippets: {
     list: listCustomizedSnippetsContract,
     create: createCustomizedSnippetContract,

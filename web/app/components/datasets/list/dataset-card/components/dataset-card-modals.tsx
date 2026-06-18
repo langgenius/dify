@@ -15,6 +15,7 @@ import RenameDatasetModal from '../../../rename-modal'
 type ModalState = {
   showRenameModal: boolean
   showConfirmDelete: boolean
+  showAccessConfig: boolean
   confirmMessage: string
 }
 
@@ -23,6 +24,7 @@ type DatasetCardModalsProps = {
   modalState: ModalState
   onCloseRename: () => void
   onCloseConfirm: () => void
+  onCloseAccessConfig: () => void
   onConfirmDelete: () => void
   onSuccess?: () => void
 }

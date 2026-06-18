@@ -21,7 +21,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
-import { useSearchForWhiteListCandidates } from '@/service/access-control'
+import { useSearchForWhiteListCandidates } from '@/service/access-control/use-app-access-control'
 import { SelectedGroupsBreadCrumb, SubjectItem } from './subject-options'
 import {
   getSubjectLabel,

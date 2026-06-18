@@ -32,11 +32,11 @@ const mockInvalidateDefaultModel = vi.hoisted(() => vi.fn())
 const mockUpdateDefaultModel = vi.hoisted(() => vi.fn(() => Promise.resolve({ result: 'success' })))
 const mockModelSelectorProps = vi.hoisted(() => [] as Array<{ hideProviderSettingsFooter?: boolean, onConfigureEmptyState?: () => void, showModelMeta?: boolean }>)
 
-let mockIsCurrentWorkspaceManager = true
+let mockWorkspacePermissionKeys = ['plugin.manage']
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
-    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -108,7 +108,7 @@ describe('SystemModel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockModelSelectorProps.length = 0
-    mockIsCurrentWorkspaceManager = true
+    mockWorkspacePermissionKeys = ['plugin.manage']
   })
 
   it('should render settings button', () => {
@@ -184,8 +184,8 @@ describe('SystemModel', () => {
     expect(mockUpdateModelList).not.toHaveBeenCalled()
   })
 
-  it('should disable save when user is not workspace manager', async () => {
-    mockIsCurrentWorkspaceManager = false
+  it('should disable save without plugin manage permission', async () => {
+    mockWorkspacePermissionKeys = []
     render(<SystemModel {...defaultProps} />)
 
     fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
