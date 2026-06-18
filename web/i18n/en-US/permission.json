@@ -42,6 +42,7 @@
   "common.duplicateAction": "Duplicate",
   "group.app": "Applications",
   "group.app_acl": "App access permissions",
+  "group.billing": "Billing",
   "group.credential": "Credentials",
   "group.dataset": "Knowledge bases",
   "group.dataset_acl": "Knowledge base access permissions",

@@ -42,6 +42,7 @@
   "common.duplicateAction": "複製",
   "group.app": "アプリ",
   "group.app_acl": "アプリアクセス権限",
+  "group.billing": "請求",
   "group.credential": "認証情報",
   "group.dataset": "ナレッジベース",
   "group.dataset_acl": "ナレッジベースアクセス権限",

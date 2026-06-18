@@ -42,6 +42,7 @@
   "common.duplicateAction": "创建副本",
   "group.app": "应用",
   "group.app_acl": "应用访问权限",
+  "group.billing": "账单",
   "group.credential": "凭据",
   "group.dataset": "知识库",
   "group.dataset_acl": "知识库访问权限",

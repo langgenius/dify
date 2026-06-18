@@ -14,7 +14,7 @@ import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { hasPermission } from '@/utils/permission'
+import { BillingPermission, hasPermission } from '@/utils/permission'
 import AccessRulesPage from './access-rules-page'
 import { ApiBasedExtensionPage } from './api-based-extension-page'
 import DataSourcePage from './data-source-page-new'
@@ -49,11 +49,14 @@ export default function AccountSetting({
   onTabChangeAction,
 }: IAccountSettingProps) {
   const resetModelProviderListExpanded = useResetModelProviderListExpanded()
-  const activeMenu = activeTab
   const { t } = useTranslation()
   const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
   const { isCurrentWorkspaceDatasetOperator, workspacePermissionKeys } = useAppContext()
   const canManageWorkspaceRoles = hasPermission(workspacePermissionKeys, 'workspace.role.manage')
+  const canViewBilling = enableBilling && hasPermission(workspacePermissionKeys, BillingPermission.View)
+  const activeMenu = activeTab === ACCOUNT_SETTING_TAB.BILLING && !canViewBilling
+    ? ACCOUNT_SETTING_TAB.LANGUAGE
+    : activeTab
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   const settingItems: GroupItem[] = [
@@ -130,7 +133,7 @@ export default function AccountSetting({
       visibleTabs.push(ACCOUNT_SETTING_TAB.ACCESS_RULES)
     }
 
-    if (enableBilling)
+    if (canViewBilling)
       visibleTabs.push(ACCOUNT_SETTING_TAB.BILLING)
 
     if (enableReplaceWebAppLogo || enableBilling)

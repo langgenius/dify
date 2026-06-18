@@ -170,6 +170,9 @@ const baseAppContextValue: AppContextValue = {
     'data_source.manage',
     'api_extension.manage',
     'customization.manage',
+    'billing.view',
+    'billing.manage',
+    'billing.subscription.manage',
   ],
 }
 
@@ -449,6 +452,38 @@ describe('AccountSetting', () => {
       // Assert
       expect(screen.queryByText('common.settings.billing')).not.toBeInTheDocument()
       expect(screen.queryByText('custom.custom')).not.toBeInTheDocument()
+    })
+
+    it('should hide billing entry when billing view permission is missing', () => {
+      // Arrange
+      const contextWithoutBillingViewPermission = {
+        ...baseAppContextValue,
+        workspacePermissionKeys: baseAppContextValue.workspacePermissionKeys.filter(key => key !== 'billing.view'),
+      }
+      vi.mocked(useAppContext).mockReturnValue(contextWithoutBillingViewPermission)
+      mockAppContextState.current = contextWithoutBillingViewPermission
+
+      // Act
+      renderAccountSetting()
+
+      // Assert
+      expect(screen.queryByRole('button', { name: 'common.settings.billing' })).not.toBeInTheDocument()
+    })
+
+    it('should not render billing page when active billing tab lacks billing view permission', () => {
+      // Arrange
+      const contextWithoutBillingViewPermission = {
+        ...baseAppContextValue,
+        workspacePermissionKeys: baseAppContextValue.workspacePermissionKeys.filter(key => key !== 'billing.view'),
+      }
+      vi.mocked(useAppContext).mockReturnValue(contextWithoutBillingViewPermission)
+      mockAppContextState.current = contextWithoutBillingViewPermission
+
+      // Act
+      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.BILLING })
+
+      // Assert
+      expect(screen.queryByTestId('billing-page')).not.toBeInTheDocument()
     })
   })
 

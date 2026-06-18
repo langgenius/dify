@@ -6,13 +6,15 @@ import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useBillingUrl } from '@/service/use-billing'
+import { BillingPermission, hasPermission } from '@/utils/permission'
 import PlanComp from '../plan'
 
 const Billing: FC = () => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { workspacePermissionKeys } = useAppContext()
   const { enableBilling } = useProviderContext()
-  const { data: billingUrl, isFetching, refetch } = useBillingUrl(enableBilling && isCurrentWorkspaceManager)
+  const canManageBillingSubscription = hasPermission(workspacePermissionKeys, BillingPermission.SubscriptionManage)
+  const { data: billingUrl, isFetching, refetch } = useBillingUrl(enableBilling && canManageBillingSubscription)
   const openAsyncWindow = useAsyncWindowOpen()
 
   const handleOpenBilling = async () => {
@@ -33,7 +35,7 @@ const Billing: FC = () => {
   return (
     <div>
       <PlanComp loc="billing-page" />
-      {enableBilling && isCurrentWorkspaceManager && (
+      {enableBilling && canManageBillingSubscription && (
         <button
           type="button"
           className="mt-3 flex w-full items-center justify-between rounded-xl bg-background-section-burn px-4 py-3"
