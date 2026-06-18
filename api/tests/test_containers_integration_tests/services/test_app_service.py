@@ -96,6 +96,7 @@ class TestAppService:
         assert app.api_rph == app_params.api_rph
         assert app.api_rpm == app_params.api_rpm
         assert app.created_by == account.id
+        assert app.maintainer == account.id
         assert app.updated_by == account.id
         assert app.status == "normal"
         assert app.enable_site is True

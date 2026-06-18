@@ -56,6 +56,14 @@ vi.mock('../../hooks', () => ({
   }),
 }))
 
+vi.mock('@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission', () => ({
+  default: () => ({
+    canInstallPlugin: true,
+    canUpdatePlugin: true,
+    currentDifyVersion: '1.0.0',
+  }),
+}))
+
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
     formatTime: () => '2024-12-31',

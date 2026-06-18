@@ -38,6 +38,12 @@ vi.mock('@/service/client', () => ({
   consoleQuery: {
     agent: {
       byAgentId: {
+        get: {
+          queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
+            'agent-detail',
+            input.params.agent_id,
+          ],
+        },
         composer: {
           get: {
             queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
@@ -165,6 +171,10 @@ describe('useAgentConfigureSync', () => {
 
   it('should publish only when publishDraft is called explicitly', async () => {
     const { queryClient, result } = renderUseAgentConfigureSync()
+    queryClient.setQueryData(['agent-detail', 'agent-1'], {
+      active_config_is_published: false,
+      name: 'Agent',
+    })
 
     await act(async () => {
       await result.current.publishDraft({
@@ -197,6 +207,10 @@ describe('useAgentConfigureSync', () => {
           system_prompt: 'Published prompt',
         },
       },
+    })
+    expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
+      active_config_is_published: true,
+      name: 'Agent',
     })
   })
 })

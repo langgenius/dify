@@ -39,6 +39,7 @@ export type AgentFileNode = {
   id: string
   name: string
   icon: FileTreeIconType
+  driveKey?: string
   children?: AgentFileNode[]
 }
 

@@ -40,14 +40,11 @@ vi.mock('../modal', () => ({
   },
 }))
 
-// Mutable workspace manager state
-let mockIsCurrentWorkspaceManager = true
+let mockWorkspacePermissionKeys: string[] = ['mcp.manage']
 
-// Mock the app context
 vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager,
-    isCurrentWorkspaceEditor: true,
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -87,7 +84,7 @@ describe('NewMCPCard', () => {
 
   beforeEach(() => {
     mockCreateMCP.mockClear()
-    mockIsCurrentWorkspaceManager = true
+    mockWorkspacePermissionKeys = ['mcp.manage']
   })
 
   describe('Rendering', () => {
@@ -108,8 +105,7 @@ describe('NewMCPCard', () => {
 
     it('should render add icon', () => {
       render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
-      const svgElements = document.querySelectorAll('svg')
-      expect(svgElements.length).toBeGreaterThan(0)
+      expect(document.querySelector('.border-dashed')).toBeInTheDocument()
     })
 
     it('should render toolbar button', () => {
@@ -154,17 +150,17 @@ describe('NewMCPCard', () => {
     })
   })
 
-  describe('Non-Manager User', () => {
-    it('should not render card when user is not workspace manager', () => {
-      mockIsCurrentWorkspaceManager = false
+  describe('mcp.manage Permission', () => {
+    it('should not render card when user lacks mcp.manage', () => {
+      mockWorkspacePermissionKeys = []
 
       render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
 
       expect(screen.queryByText('tools.mcp.create.cardTitle')).not.toBeInTheDocument()
     })
 
-    it('should not render toolbar button when user is not workspace manager', () => {
-      mockIsCurrentWorkspaceManager = false
+    it('should not render toolbar button when user lacks mcp.manage', () => {
+      mockWorkspacePermissionKeys = []
 
       render(<NewMCPButton {...defaultProps} />, { wrapper: createWrapper() })
 

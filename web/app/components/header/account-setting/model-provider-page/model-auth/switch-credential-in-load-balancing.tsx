@@ -9,7 +9,6 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { RiArrowDownSLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -17,6 +16,8 @@ import {
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { ConfigurationMethodEnum, ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { hasPermission } from '@/utils/permission'
 import Authorized from './authorized'
 
 type SwitchCredentialInLoadBalancingProps = {
@@ -25,7 +26,7 @@ type SwitchCredentialInLoadBalancingProps = {
   credentials?: Credential[]
   customModelCredential?: Credential
   setCustomModelCredential: Dispatch<SetStateAction<Credential | undefined>>
-  onUpdate?: (payload?: any, formValues?: Record<string, any>) => void
+  onUpdate?: (payload?: unknown, formValues?: Record<string, unknown>) => void
   onRemove?: (credentialId: string) => void
 }
 const SwitchCredentialInLoadBalancing = ({
@@ -39,9 +40,15 @@ const SwitchCredentialInLoadBalancing = ({
 }: SwitchCredentialInLoadBalancingProps) => {
   const { t } = useTranslation()
   const notAllowCustomCredential = provider.allow_custom_token === false
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canUseCredential = hasPermission(workspacePermissionKeys, ['credential.use', 'credential.manage'])
+  const canManageCredential = hasPermission(workspacePermissionKeys, 'credential.manage')
   const handleItemClick = useCallback((credential: Credential) => {
+    if (!canUseCredential)
+      return
+
     setCustomModelCredential(credential)
-  }, [setCustomModelCredential])
+  }, [canUseCredential, setCustomModelCredential])
 
   const renderTrigger = useCallback(() => {
     const selectedCredentialId = customModelCredential?.credential_id
@@ -60,7 +67,7 @@ const SwitchCredentialInLoadBalancing = ({
         className={cn(
           'shrink-0 space-x-1',
           (authRemoved || unavailable) && 'text-components-button-destructive-secondary-text',
-          empty && 'cursor-not-allowed opacity-50',
+          (empty || !canUseCredential) && 'cursor-not-allowed opacity-50',
         )}
       >
         {
@@ -85,10 +92,10 @@ const SwitchCredentialInLoadBalancing = ({
             <Badge className="ml-2">Enterprise</Badge>
           )
         }
-        <RiArrowDownSLine className="size-4" />
+        <span className="i-ri-arrow-down-s-line size-4" />
       </Button>
     )
-    if (empty && notAllowCustomCredential) {
+    if ((empty && notAllowCustomCredential) || !canUseCredential) {
       return (
         <Tooltip>
           <TooltipTrigger render={Item} />
@@ -99,7 +106,7 @@ const SwitchCredentialInLoadBalancing = ({
       )
     }
     return Item
-  }, [customModelCredential, t, credentials, notAllowCustomCredential])
+  }, [canUseCredential, customModelCredential, t, credentials, notAllowCustomCredential])
 
   return (
     <Authorized
@@ -133,8 +140,10 @@ const SwitchCredentialInLoadBalancing = ({
       onItemClick={handleItemClick}
       enableAddModelCredential
       showItemSelectedIcon
+      disabled={!canUseCredential}
+      hideAddAction={!canManageCredential}
       popupTitle={t('modelProvider.auth.modelCredentials', { ns: 'common' })}
-      triggerOnlyOpenModal={!credentials?.length}
+      triggerOnlyOpenModal={!credentials?.length && canManageCredential}
     />
   )
 }

@@ -113,6 +113,7 @@ function AgentConfigurePageLoadedContent({
     >
       <AgentOrchestratePanel
         agentId={agentId}
+        activeConfigIsPublished={agentQuery.data?.active_config_is_published}
         activeConfigSnapshot={activeConfigSnapshot}
         agentSoulConfig={agentSoulConfig}
         agentName={agentQuery.data?.name}

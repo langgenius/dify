@@ -25,8 +25,8 @@ import { DSLImportMode } from '@/models/app'
 import dynamic from '@/next/dynamic'
 import { consoleQuery } from '@/service/client'
 import { fetchAppDetail, fetchAppList, fetchBanners } from '@/service/explore'
-import { useMembers } from '@/service/use-common'
 import { trackCreateApp } from '@/utils/create-app-tracking'
+import { hasPermission } from '@/utils/permission'
 import { ExploreAppListHeader } from './explore-app-list-header'
 import { ExploreRecommendations } from './explore-recommendations'
 import { ExploreHomeSkeleton } from './loading-skeletons'
@@ -100,7 +100,7 @@ function getDisabledBannersQueryOptions() {
 const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   const { t } = useTranslation()
   const locale = useLocale()
-  const { userProfile } = useAppContext()
+  const { workspacePermissionKeys } = useAppContext()
   const { data: systemFeatures } = useSuspenseQuery(
     systemFeaturesQueryOptions(),
   )
@@ -120,12 +120,8 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
       isAppListError: exploreAppListQuery.isError || (!exploreAppListQuery.isPending && !exploreAppListQuery.data),
     }),
   })
-  const { data: membersData } = useMembers()
   const allCategoriesEn = t('apps.allCategories', { ns: 'explore', lng: 'en' })
-  const userAccount = membersData?.accounts?.find(
-    account => account.id === userProfile.id,
-  )
-  const hasEditPermission = !!userAccount && userAccount.role !== 'normal'
+  const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
@@ -288,7 +284,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
                   <Banner banners={homeQueries.banners} />
                 )}
                 <ExploreRecommendations
-                  canCreate={hasEditPermission}
+                  canCreate={canCreateApp}
                   continueWorkApps={homeQueries.continueWorkApps}
                   onCreate={handleCreateFromLearnDify}
                   onTry={handleTryApp}
@@ -314,7 +310,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
                       <AppCard
                         key={app.app_id}
                         app={app}
-                        canCreate={hasEditPermission}
+                        canCreate={canCreateApp}
                         onCreate={() => handleCreateFromAppList(app)}
                         onTry={handleTryApp}
                       />

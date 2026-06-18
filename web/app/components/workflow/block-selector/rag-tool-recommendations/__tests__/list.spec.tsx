@@ -25,6 +25,13 @@ vi.mock('@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
   }),
 }))
 
+vi.mock('@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission', () => ({
+  default: () => ({
+    canInstallPlugin: true,
+    currentDifyVersion: '1.0.0',
+  }),
+}))
+
 vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () => ({
   default: ({
     uniqueIdentifier,

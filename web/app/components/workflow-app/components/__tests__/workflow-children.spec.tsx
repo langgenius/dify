@@ -45,6 +45,7 @@ const mockExportCheck = vi.fn()
 const mockAutoGenerateWebhookUrl = vi.fn()
 
 let workflowStoreState: WorkflowStoreState
+let mockCanEdit = true
 let eventSubscription: ((value: { type: string, payload: { data: Array<Record<string, unknown>> } }) => void) | null = null
 let lastGenerateNodeInput: Record<string, unknown> | null = null
 
@@ -59,6 +60,16 @@ vi.mock('reactflow', () => ({
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: <T,>(selector: (state: WorkflowStoreState) => T) => selector(workflowStoreState),
+}))
+
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: <T,>(selector: (state: { accessControl: { canImportExportDSL: boolean, canEdit: boolean } }) => T): T =>
+    selector({
+      accessControl: {
+        canImportExportDSL: true,
+        canEdit: mockCanEdit,
+      },
+    }),
 }))
 
 vi.mock('@/context/event-emitter', () => ({
@@ -296,6 +307,7 @@ describe('WorkflowChildren', () => {
     }
     eventSubscription = null
     lastGenerateNodeInput = null
+    mockCanEdit = true
     mockHandleSyncWorkflowDraft.mockImplementation((_force?: boolean, _notRefresh?: boolean, callback?: { onSuccess?: () => void }) => {
       callback?.onSuccess?.()
     })
@@ -378,6 +390,20 @@ describe('WorkflowChildren', () => {
     await user.click(screen.getByRole('button', { name: /close-onboarding/i }))
 
     expect(mockHandleOnboardingClose).toHaveBeenCalled()
+  })
+
+  it('should hide onboarding actions when workflow is readonly', () => {
+    mockCanEdit = false
+    workflowStoreState = {
+      ...workflowStoreState,
+      showOnboarding: true,
+    }
+
+    render(<WorkflowChildren />)
+
+    expect(screen.queryByTestId('workflow-onboarding-modal')).not.toBeInTheDocument()
+    expect(mockSetNodes).not.toHaveBeenCalled()
+    expect(mockHandleSyncWorkflowDraft).not.toHaveBeenCalled()
   })
 
   it('should create a start node, sync draft, and auto-generate webhook url after selecting a start node', async () => {

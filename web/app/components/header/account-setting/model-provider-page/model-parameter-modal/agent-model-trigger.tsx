@@ -4,7 +4,6 @@ import type {
   ModelProvider,
 } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiEqualizer2Line } from '@remixicon/react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -75,7 +74,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
   return (
     <div
       className={cn(
-        'group relative flex grow cursor-pointer items-center gap-[2px] rounded-lg bg-components-input-bg-normal p-1 hover:bg-state-base-hover-alt',
+        'group relative flex grow cursor-pointer items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 hover:bg-state-base-hover-alt',
       )}
     >
       {modelId
@@ -131,7 +130,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
               )}
               {modelProvider && !disabled && !needsConfiguration && (
                 <div className="flex items-center pr-1">
-                  <RiEqualizer2Line className="size-4 text-text-tertiary group-hover:text-text-secondary" />
+                  <span className="i-ri-equalizer-2-line size-4 text-text-tertiary group-hover:text-text-secondary" />
                 </div>
               )}
             </>
@@ -144,7 +143,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
                 </span>
               </div>
               <div className="flex items-center pr-1">
-                <RiEqualizer2Line className="size-4 text-text-tertiary group-hover:text-text-secondary" />
+                <span className="i-ri-equalizer-2-line size-4 text-text-tertiary group-hover:text-text-secondary" />
               </div>
             </>
           )}
