@@ -88,6 +88,18 @@ export function useAgentConfigureSync({
       consoleQuery.agent.byAgentId.composer.get.queryKey({ input: { params: { agent_id: agentId } } }),
       composerState,
     )
+    queryClient.setQueryData(
+      consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
+      (agentDetail) => {
+        if (!agentDetail)
+          return agentDetail
+
+        return {
+          ...agentDetail,
+          active_config_is_published: true,
+        }
+      },
+    )
     void queryClient.invalidateQueries({
       queryKey: consoleQuery.agent.byAgentId.versions.get.key(),
     })

@@ -1,12 +1,15 @@
+import type { NodeDefault } from '../../types'
 import { act, renderHook } from '@testing-library/react'
 import { createNode } from '../../__tests__/fixtures'
 import { baseRunningData, renderWorkflowFlowHook, renderWorkflowHook } from '../../__tests__/workflow-test-env'
-import { WorkflowRunningStatus } from '../../types'
+import { BlockClassificationEnum } from '../../block-selector/types'
+import { BlockEnum, WorkflowRunningStatus } from '../../types'
 import {
   useIsChatMode,
   useIsNodeInIteration,
   useIsNodeInLoop,
   useNodesReadOnly,
+  useWorkflow,
   useWorkflowReadOnly,
 } from '../use-workflow'
 
@@ -19,6 +22,20 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockAppMode = 'workflow'
 })
+
+function createNodeDefault(type: BlockEnum): NodeDefault {
+  return {
+    metaData: {
+      classification: BlockClassificationEnum.Default,
+      sort: 0,
+      type,
+      title: type,
+      author: 'test',
+    },
+    defaultValue: {},
+    checkValid: () => ({ isValid: true }),
+  }
+}
 
 // ---------------------------------------------------------------------------
 // useIsChatMode
@@ -166,6 +183,50 @@ describe('useNodesReadOnly', () => {
       store.setState({ isRestoring: true })
     })
     expect(result.current.getNodesReadOnly()).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// useWorkflow connection validation
+// ---------------------------------------------------------------------------
+
+describe('useWorkflow connection validation', () => {
+  it('should validate Agent V2 graph nodes against the Agent V2 catalog type', () => {
+    const agentNode = createNode({
+      id: 'agent-v2',
+      data: {
+        type: BlockEnum.Agent,
+        title: 'Agent',
+        desc: '',
+        agent_node_kind: 'dify_agent',
+        version: '2',
+      },
+    })
+    const codeNode = createNode({
+      id: 'code',
+      data: {
+        type: BlockEnum.Code,
+        title: 'Code',
+        desc: '',
+      },
+    })
+
+    const { result } = renderWorkflowFlowHook(() => useWorkflow(), {
+      nodes: [agentNode, codeNode],
+      edges: [],
+      hooksStoreProps: {
+        availableNodesMetaData: {
+          nodes: [createNodeDefault(BlockEnum.AgentV2), createNodeDefault(BlockEnum.Code)],
+        },
+      },
+    })
+
+    expect(result.current.isValidConnection({
+      source: 'agent-v2',
+      sourceHandle: 'source',
+      target: 'code',
+      targetHandle: 'target',
+    })).toBe(true)
   })
 })
 
