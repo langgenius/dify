@@ -45,16 +45,27 @@ from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 
 class DatasourceNodeRunPayload(BaseModel):
-    inputs: dict[str, Any] = Field(description="Input values for the datasource node.")
-    datasource_type: DatasourceType = Field(description="Datasource type for the node.")
+    inputs: dict[str, Any] = Field(description="Input variables for the datasource node.")
+    datasource_type: DatasourceType = Field(description="Type of the datasource.")
     credential_id: str | None = Field(
         default=None, description="Datasource credential ID. Uses the default if omitted."
     )
-    is_published: bool = Field(description="Whether to run the published pipeline or the draft pipeline.")
+    is_published: bool = Field(
+        description=(
+            "Whether to run the published or draft version of the node. `true` runs the published version, "
+            "`false` runs the draft."
+        )
+    )
 
 
 class DatasourcePluginsQuery(BaseModel):
-    is_published: bool = Field(default=True, description="Whether to list plugins from the published pipeline.")
+    is_published: bool = Field(
+        default=True,
+        description=(
+            "Whether to retrieve nodes from the published or draft pipeline. `true` returns nodes from the published "
+            "version, `false` returns nodes from the draft."
+        ),
+    )
 
 
 class DatasourceCredentialInfoResponse(ResponseModel):

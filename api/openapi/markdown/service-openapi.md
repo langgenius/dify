@@ -462,7 +462,7 @@ Resume the Server-Sent Events stream for a workflow run after a pause or a dropp
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | task_id | path | Workflow run ID returned by the original workflow run request. | Yes | string |
-| continue_on_pause | query | Set to `true` to keep the stream open across multiple `workflow_paused` events. By default, the stream closes after the first pause. | No | boolean |
+| continue_on_pause | query | Set to `true` to keep the stream open across multiple `workflow_paused` events, which is useful when the workflow has more than one Human Input node in sequence. By default, the stream closes after the first pause. | No | boolean |
 | include_state_snapshot | query | When `true`, replay from the persisted state snapshot to include a status summary of already-executed nodes before streaming new events. | No | boolean |
 | user | query | End-user identifier that originally triggered the run. Must match the creator of the run. | Yes | string |
 
@@ -1015,7 +1015,7 @@ List the datasource nodes configured in the knowledge pipeline. Each node includ
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
-| is_published | query | Whether to list plugins from the published pipeline. | No | boolean, <br>**Default:** true |
+| is_published | query | Whether to retrieve nodes from the published or draft pipeline. `true` returns nodes from the published version, `false` returns nodes from the draft. | No | boolean, <br>**Default:** true |
 
 #### Responses
 
@@ -1754,7 +1754,7 @@ Returns a paginated list of chunks within a document. Supports filtering by keyw
 | keyword | query | Search keyword. | No | string |
 | limit | query | Number of items per page. Server caps at `100`. | No | integer, <br>**Default:** 20 |
 | page | query | Page number to retrieve. | No | integer, <br>**Default:** 1 |
-| status | query | Filter chunks by indexing status. | No | [ string ] |
+| status | query | Filter chunks by indexing status, such as `completed`, `indexing`, or `error`. | No | [ string ] |
 
 #### Responses
 
@@ -2167,7 +2167,7 @@ Resume the Server-Sent Events stream for a workflow run after a pause or a dropp
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | task_id | path | Workflow run ID returned by the original workflow run request. | Yes | string |
-| continue_on_pause | query | Set to `true` to keep the stream open across multiple `workflow_paused` events. By default, the stream closes after the first pause. | No | boolean |
+| continue_on_pause | query | Set to `true` to keep the stream open across multiple `workflow_paused` events, which is useful when the workflow has more than one Human Input node in sequence. By default, the stream closes after the first pause. | No | boolean |
 | include_state_snapshot | query | When `true`, replay from the persisted state snapshot to include a status summary of already-executed nodes before streaming new events. | No | boolean |
 | user | query | End-user identifier that originally triggered the run. Must match the creator of the run. | Yes | string |
 
@@ -2396,7 +2396,7 @@ Retrieve the list of available models by type. Primarily used to query `text-emb
 | ---- | ---- | ----------- | -------- |
 | embedding_model_name | string | Name of the embedding model to use for annotation matching. | Yes |
 | embedding_provider_name | string | Name of the embedding model provider. | Yes |
-| score_threshold | float | Minimum similarity score for an annotation to be considered a match. | Yes |
+| score_threshold | float | Minimum similarity score for an annotation to be considered a match. Higher values require closer matches. | Yes |
 
 #### AppFeedbackListResponse
 
@@ -2468,11 +2468,11 @@ Button styles for user actions.
 | ---- | ---- | ----------- | -------- |
 | auto_generate_name | boolean, <br>**Default:** true | Auto-generate the conversation title. If `false`, use the Rename Conversation API with `auto_generate: true` to generate the title asynchronously. | No |
 | conversation_id | string | Conversation ID to continue a conversation. Omit this field or pass an empty string to start a new conversation, then pass the returned `conversation_id` in subsequent requests. | No |
-| files | [ object ] | File list for multimodal understanding. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id`. | No |
+| files | [ object ] | File list for multimodal understanding, including images, documents, audio, and video. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
 | inputs | object | Values for app-defined variables. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover expected variable names and types. | Yes |
 | query | string | User input or question content. | Yes |
 | response_mode | string | Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. New Agent app mode supports streaming only. When omitted, non-Agent apps run in blocking mode and new Agent apps stream. | No |
-| workflow_id | string | Workflow ID for advanced chat | No |
+| workflow_id | string | Published workflow version ID to execute for advanced chat. If omitted, the app's current published workflow is used. | No |
 
 #### ChatRequestPayloadWithUser
 
@@ -2480,12 +2480,12 @@ Button styles for user actions.
 | ---- | ---- | ----------- | -------- |
 | auto_generate_name | boolean, <br>**Default:** true | Auto-generate the conversation title. If `false`, use the Rename Conversation API with `auto_generate: true` to generate the title asynchronously. | No |
 | conversation_id | string | Conversation ID to continue a conversation. Omit this field or pass an empty string to start a new conversation, then pass the returned `conversation_id` in subsequent requests. | No |
-| files | [ object ] | File list for multimodal understanding. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id`. | No |
+| files | [ object ] | File list for multimodal understanding, including images, documents, audio, and video. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
 | inputs | object | Values for app-defined variables. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover expected variable names and types. | Yes |
 | query | string | User input or question content. | Yes |
 | response_mode | string | Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. New Agent app mode supports streaming only. When omitted, non-Agent apps run in blocking mode and new Agent apps stream. | No |
 | user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | Yes |
-| workflow_id | string | Workflow ID for advanced chat | No |
+| workflow_id | string | Published workflow version ID to execute for advanced chat. If omitted, the app's current published workflow is used. | No |
 
 #### ChildChunkCreatePayload
 
@@ -2540,7 +2540,7 @@ Button styles for user actions.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files | [ object ] | File list for multimodal understanding. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id`. | No |
+| files | [ object ] | File list for multimodal understanding, including images, documents, audio, and video. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
 | inputs | object | Values for app-defined variables. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover expected variable names and types. | Yes |
 | query | string | User input or prompt content. | No |
 | response_mode | string | Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. When omitted, the request runs in blocking mode. | No |
@@ -2549,7 +2549,7 @@ Button styles for user actions.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files | [ object ] | File list for multimodal understanding. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id`. | No |
+| files | [ object ] | File list for multimodal understanding, including images, documents, audio, and video. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
 | inputs | object | Values for app-defined variables. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover expected variable names and types. | Yes |
 | query | string | User input or prompt content. | No |
 | response_mode | string | Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. When omitted, the request runs in blocking mode. | No |
@@ -2561,9 +2561,9 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| comparison_operator | string, <br>**Available values:** "<", "=", ">", "after", "before", "contains", "empty", "end with", "in", "is", "is not", "not contains", "not empty", "not in", "start with", "≠", "≤", "≥" | Comparison to apply. String operators act on string or array metadata; numeric operators act on number metadata; time operators act on time metadata.<br>*Enum:* `"<"`, `"="`, `">"`, `"after"`, `"before"`, `"contains"`, `"empty"`, `"end with"`, `"in"`, `"is"`, `"is not"`, `"not contains"`, `"not empty"`, `"not in"`, `"start with"`, `"≠"`, `"≤"`, `"≥"` | Yes |
+| comparison_operator | string, <br>**Available values:** "<", "=", ">", "after", "before", "contains", "empty", "end with", "in", "is", "is not", "not contains", "not empty", "not in", "start with", "≠", "≤", "≥" | Comparison to apply. String operators (`contains`, `not contains`, `start with`, `end with`, `is`, `is not`, `empty`, `not empty`, `in`, `not in`) act on string or array metadata; numeric operators (`=`, `≠`, `>`, `<`, `≥`, `≤`) act on numeric metadata; time operators (`before`, `after`) act on time metadata.<br>*Enum:* `"<"`, `"="`, `">"`, `"after"`, `"before"`, `"contains"`, `"empty"`, `"end with"`, `"in"`, `"is"`, `"is not"`, `"not contains"`, `"not empty"`, `"not in"`, `"start with"`, `"≠"`, `"≤"`, `"≥"` | Yes |
 | name | string | Metadata field name to compare against. | Yes |
-| value | string<br>[ string ]<br>number | Value to compare against. Type depends on `comparison_operator`. | No |
+| value | string<br>[ string ]<br>number | Value to compare against. Type depends on `comparison_operator`: string for most string operators, array of strings for `in` and `not in`, number for numeric operators, and omit or use `null` for `empty` and `not empty`. | No |
 
 #### ConversationInfiniteScrollPagination
 
@@ -2664,14 +2664,14 @@ Enum class for custom configuration status.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | description | string | Description of the knowledge base. | No |
-| embedding_model | string | Embedding model name. | No |
-| embedding_model_provider | string | Embedding model provider. | No |
+| embedding_model | string | Embedding model name. Use the `model` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
+| embedding_model_provider | string | Embedding model provider. Use the `provider` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
 | external_knowledge_api_id | string | ID of the external knowledge API. | No |
 | external_knowledge_id | string | ID of the external knowledge base. | No |
 | indexing_technique | string | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. | No |
 | name | string | Name of the knowledge base. | Yes |
 | permission | [PermissionEnum](#permissionenum) | Controls who can access this knowledge base. `only_me` restricts access to the creator, `all_team_members` grants workspace-wide access, and `partial_members` grants access to specified members. | No |
-| provider | string, <br>**Available values:** "external", "vendor", <br>**Default:** vendor | Knowledge base provider.<br>*Enum:* `"external"`, `"vendor"` | No |
+| provider | string, <br>**Available values:** "external", "vendor", <br>**Default:** vendor | Knowledge base provider: `vendor` for internal knowledge bases, `external` for external ones.<br>*Enum:* `"external"`, `"vendor"` | No |
 | retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked. | No |
 | summary_index_setting | object | Summary index configuration. | No |
 
@@ -2901,15 +2901,15 @@ Enum class for custom configuration status.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | description | string | Description of the knowledge base. | No |
-| embedding_model | string | Embedding model name. | No |
-| embedding_model_provider | string | Embedding model provider. | No |
+| embedding_model | string | Embedding model name. Use the `model` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
+| embedding_model_provider | string | Embedding model provider. Use the `provider` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
 | external_knowledge_api_id | string | ID of the external knowledge API. | No |
 | external_knowledge_id | string | ID of the external knowledge base. | No |
 | external_retrieval_model | object | Retrieval settings for external knowledge bases. | No |
 | indexing_technique | string | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. | No |
 | name | string | Name of the knowledge base. | No |
 | partial_member_list | [ object ] | List of team members with access when `permission` is `partial_members`. | No |
-| permission | [PermissionEnum](#permissionenum) | Controls who can access this knowledge base. | No |
+| permission | [PermissionEnum](#permissionenum) | Controls who can access this knowledge base. `only_me` restricts access to the creator, `all_team_members` grants workspace-wide access, and `partial_members` grants access to specified members. | No |
 | retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked. | No |
 
 #### DatasetVectorSettingResponse
@@ -2942,9 +2942,9 @@ Enum class for custom configuration status.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | credential_id | string | Datasource credential ID. Uses the default if omitted. | No |
-| datasource_type | string, <br>**Available values:** "local_file", "online_document", "online_drive", "website_crawl" | Datasource type for the node.<br>*Enum:* `"local_file"`, `"online_document"`, `"online_drive"`, `"website_crawl"` | Yes |
-| inputs | object | Input values for the datasource node. | Yes |
-| is_published | boolean | Whether to run the published pipeline or the draft pipeline. | Yes |
+| datasource_type | string, <br>**Available values:** "local_file", "online_document", "online_drive", "website_crawl" | Type of the datasource.<br>*Enum:* `"local_file"`, `"online_document"`, `"online_drive"`, `"website_crawl"` | Yes |
+| inputs | object | Input variables for the datasource node. | Yes |
+| is_published | boolean | Whether to run the published or draft version of the node. `true` runs the published version, `false` runs the draft. | Yes |
 
 #### DatasourcePluginListResponse
 
@@ -2968,7 +2968,7 @@ Enum class for custom configuration status.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| is_published | boolean, <br>**Default:** true | Whether to list plugins from the published pipeline. | No |
+| is_published | boolean, <br>**Default:** true | Whether to retrieve nodes from the published or draft pipeline. `true` returns nodes from the published version, `false` returns nodes from the draft. | No |
 
 #### DocumentAndBatchResponse
 
@@ -3052,7 +3052,7 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | document_id | string | Document ID whose metadata should be updated. | Yes |
 | metadata_list | [ [MetadataDetail](#metadatadetail) ] | Metadata fields to update. | Yes |
-| partial_update | boolean | Whether to update only provided metadata fields. | No |
+| partial_update | boolean | Whether to partially update metadata, keeping existing values for unspecified fields. | No |
 
 #### DocumentMetadataResponse
 
@@ -3127,9 +3127,9 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | doc_form | string, <br>**Available values:** "hierarchical_model", "qa_model", "text_model", <br>**Default:** text_model | `text_model` for standard text chunking, `hierarchical_model` for parent-child chunk structure, `qa_model` for question-answer pair extraction.<br>*Enum:* `"hierarchical_model"`, `"qa_model"`, `"text_model"` | No |
 | doc_language | string, <br>**Default:** English | Language of the document for processing optimization. | No |
-| embedding_model | string | Embedding model name. | No |
-| embedding_model_provider | string | Embedding model provider. | No |
-| indexing_technique | string | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. | No |
+| embedding_model | string | Embedding model name. Use the `model` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
+| embedding_model_provider | string | Embedding model provider. Use the `provider` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
+| indexing_technique | string | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. Required when adding the first document to a knowledge base; subsequent documents inherit the knowledge base's indexing technique if omitted. | No |
 | name | string | Document name. | Yes |
 | original_document_id | string | Original document ID for replacement. | No |
 | process_rule | [ProcessRule](#processrule) | Processing rules for chunking. | No |
@@ -3556,7 +3556,7 @@ Model class for i18n object.
 | ---- | ---- | ----------- | -------- |
 | id | string | Metadata field ID. | Yes |
 | name | string | Metadata field name. | Yes |
-| value | string<br>integer<br>number | Metadata value. | No |
+| value | string<br>integer<br>number | Metadata value. Can be a string, number, or `null`. | No |
 
 #### MetadataFilteringCondition
 
@@ -3658,10 +3658,10 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| datasource_info_list | [  ] | Datasource records to process. | Yes |
-| datasource_type | string, <br>**Available values:** "local_file", "online_document", "online_drive", "website_crawl" | Datasource type to run.<br>*Enum:* `"local_file"`, `"online_document"`, `"online_drive"`, `"website_crawl"` | Yes |
-| inputs | object | Input values for the pipeline run. | Yes |
-| is_published | boolean | Whether to run the published pipeline or the draft pipeline. | Yes |
+| datasource_info_list | [  ] | List of datasource objects to process. The expected item structure depends on `datasource_type`. | Yes |
+| datasource_type | string, <br>**Available values:** "local_file", "online_document", "online_drive", "website_crawl" | Type of the datasource. Determines which fields are expected in `datasource_info_list` items.<br>*Enum:* `"local_file"`, `"online_document"`, `"online_drive"`, `"website_crawl"` | Yes |
+| inputs | object | Key-value pairs for pipeline input variables defined in the workflow. Pass `{}` if the pipeline has no input variables. | Yes |
+| is_published | boolean | Whether to run the published or draft version of the pipeline. `true` runs the latest published version; `false` runs the current draft (useful for testing unpublished changes). | Yes |
 | response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode. Use `streaming` for SSE or `blocking` for JSON.<br>*Enum:* `"blocking"`, `"streaming"` | Yes |
 | start_node_id | string | ID of the datasource node where the run starts. | Yes |
 
@@ -3688,7 +3688,7 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| mode | [ProcessRuleMode](#processrulemode) | Processing mode. `automatic` uses built-in rules, `custom` allows manual configuration, and `hierarchical` enables parent-child chunk structure. | Yes |
+| mode | [ProcessRuleMode](#processrulemode) | Processing mode. `automatic` uses built-in rules, `custom` allows manual configuration, and `hierarchical` enables parent-child chunk structure for `doc_form: hierarchical_model`. | Yes |
 | rules | [Rule](#rule) | Custom processing rules. | No |
 
 #### ProcessRuleMode
@@ -3853,7 +3853,7 @@ Model class for provider with models response.
 | keyword | string | Search keyword. | No |
 | limit | integer, <br>**Default:** 20 | Number of items per page. Server caps at `100`. | No |
 | page | integer, <br>**Default:** 1 | Page number to retrieve. | No |
-| status | [ string ] | Filter chunks by indexing status. | No |
+| status | [ string ] | Filter chunks by indexing status, such as `completed`, `indexing`, or `error`. | No |
 
 #### SegmentListResponse
 
@@ -4069,7 +4069,7 @@ Accepts either the legacy tag_id payload or the normalized tag_ids payload.
 | message_id | string | Message ID. Takes priority over `text` when both are provided. | No |
 | streaming | boolean | Reserved for compatibility; TTS response streaming is determined by the provider output. | No |
 | text | string | Speech content to convert. | No |
-| voice | string | Voice to use for text-to-speech. Available voices depend on the TTS provider configured for this app. | No |
+| voice | string | Voice to use for text-to-speech. Available voices depend on the TTS provider configured for this app. Omit to use the app's configured voice when available; that value is exposed by [Get App Parameters](/api-reference/applications/get-app-parameters) as `text_to_speech.voice`. | No |
 
 #### TextToAudioPayloadWithUser
 
@@ -4079,7 +4079,7 @@ Accepts either the legacy tag_id payload or the normalized tag_ids payload.
 | streaming | boolean | Reserved for compatibility; TTS response streaming is determined by the provider output. | No |
 | text | string | Speech content to convert. | No |
 | user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | No |
-| voice | string | Voice to use for text-to-speech. Available voices depend on the TTS provider configured for this app. | No |
+| voice | string | Voice to use for text-to-speech. Available voices depend on the TTS provider configured for this app. Omit to use the app's configured voice when available; that value is exposed by [Get App Parameters](/api-reference/applications/get-app-parameters) as `text_to_speech.voice`. | No |
 
 #### UrlResponse
 
@@ -4155,7 +4155,7 @@ in form definiton, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| continue_on_pause | boolean | Set to `true` to keep the stream open across multiple `workflow_paused` events. By default, the stream closes after the first pause. | No |
+| continue_on_pause | boolean | Set to `true` to keep the stream open across multiple `workflow_paused` events, which is useful when the workflow has more than one Human Input node in sequence. By default, the stream closes after the first pause. | No |
 | include_state_snapshot | boolean | When `true`, replay from the persisted state snapshot to include a status summary of already-executed nodes before streaming new events. | No |
 | user | string | End-user identifier that originally triggered the run. Must match the creator of the run. | Yes |
 
@@ -4192,16 +4192,16 @@ in form definiton, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files | [ object ] | File list. Suitable when files need to be combined with text for input and available only when the model supports vision capability. | No |
-| inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. | Yes |
+| files | [ object ] | File list. Suitable when files need to be combined with text for input, available only when the model supports Vision capability. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
+| inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover the variable names and types expected by your app. | Yes |
 | response_mode | string | Response mode. Use `blocking` for synchronous responses or `streaming` for Server-Sent Events. When omitted, the request runs in blocking mode. | No |
 
 #### WorkflowRunPayloadWithUser
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files | [ object ] | File list. Suitable when files need to be combined with text for input and available only when the model supports vision capability. | No |
-| inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. | Yes |
+| files | [ object ] | File list. Suitable when files need to be combined with text for input, available only when the model supports Vision capability. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
+| inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover the variable names and types expected by your app. | Yes |
 | response_mode | string | Response mode. Use `blocking` for synchronous responses or `streaming` for Server-Sent Events. When omitted, the request runs in blocking mode. | No |
 | user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | Yes |
 

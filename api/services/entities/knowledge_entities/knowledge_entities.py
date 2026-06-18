@@ -128,7 +128,7 @@ class ProcessRule(BaseModel):
     mode: ProcessRuleMode = Field(
         description=(
             "Processing mode. `automatic` uses built-in rules, `custom` allows manual configuration, and "
-            "`hierarchical` enables parent-child chunk structure."
+            "`hierarchical` enables parent-child chunk structure for `doc_form: hierarchical_model`."
         )
     )
     rules: Rule | None = Field(default=None, description="Custom processing rules.")
@@ -186,13 +186,19 @@ class KnowledgeConfig(BaseModel):
     original_document_id: str | None = Field(default=None, description="Original document ID for replacement updates.")
     duplicate: bool = Field(default=True, description="Whether duplicate document content is allowed.")
     indexing_technique: Literal["high_quality", "economy"] = Field(
-        description="`high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing."
+        description=(
+            "`high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. "
+            "Required when adding the first document to a knowledge base; subsequent documents inherit the "
+            "knowledge base's indexing technique if omitted."
+        )
     )
     data_source: DataSource | None = Field(default=None, description="Document data source configuration.")
     process_rule: ProcessRule | None = Field(default=None, description="Processing rules for chunking.")
     retrieval_model: RetrievalModel | None = Field(
         default=None,
-        description="Retrieval model configuration. Controls how chunks are searched and ranked.",
+        description=(
+            "Retrieval model configuration. Controls how chunks are searched and ranked in this knowledge base."
+        ),
     )
     summary_index_setting: SummaryIndexSetting = Field(
         default=None,
@@ -206,8 +212,20 @@ class KnowledgeConfig(BaseModel):
         ),
     )
     doc_language: str = Field(default="English", description="Language of the document for processing optimization.")
-    embedding_model: str | None = Field(default=None, description="Embedding model name.")
-    embedding_model_provider: str | None = Field(default=None, description="Embedding model provider.")
+    embedding_model: str | None = Field(
+        default=None,
+        description=(
+            "Embedding model name. Use the `model` field from "
+            "[Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`."
+        ),
+    )
+    embedding_model_provider: str | None = Field(
+        default=None,
+        description=(
+            "Embedding model provider. Use the `provider` field from "
+            "[Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`."
+        ),
+    )
     name: str | None = Field(default=None, description="Document name.")
     is_multimodal: bool = Field(default=False, description="Whether the document uses multimodal indexing.")
 
@@ -258,19 +276,28 @@ class MetadataArgs(BaseModel):
 
 class MetadataUpdateArgs(BaseModel):
     name: str = Field(description="Metadata field name.")
-    value: str | int | float | None = Field(default=None, description="Metadata value.")
+    value: str | int | float | None = Field(
+        default=None,
+        description="Metadata value. Can be a string, number, or `null`.",
+    )
 
 
 class MetadataDetail(BaseModel):
     id: str = Field(description="Metadata field ID.")
     name: str = Field(description="Metadata field name.")
-    value: str | int | float | None = Field(default=None, description="Metadata value.")
+    value: str | int | float | None = Field(
+        default=None,
+        description="Metadata value. Can be a string, number, or `null`.",
+    )
 
 
 class DocumentMetadataOperation(BaseModel):
     document_id: str = Field(description="Document ID whose metadata should be updated.")
     metadata_list: list[MetadataDetail] = Field(description="Metadata fields to update.")
-    partial_update: bool = Field(default=False, description="Whether to update only provided metadata fields.")
+    partial_update: bool = Field(
+        default=False,
+        description="Whether to partially update metadata, keeping existing values for unspecified fields.",
+    )
 
 
 class MetadataOperationData(BaseModel):

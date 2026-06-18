@@ -69,8 +69,9 @@ class CompletionRequestPayload(BaseModel):
     files: InputFileList = Field(
         default=None,
         description=(
-            "File list for multimodal understanding. To attach a local file, first upload it via "
-            "[Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id`."
+            "File list for multimodal understanding, including images, documents, audio, and video. To attach a "
+            "local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned "
+            "`id` as `upload_file_id` with `transfer_method: local_file`."
         ),
     )
     response_mode: Literal["blocking", "streaming"] | None = Field(
@@ -98,8 +99,9 @@ class ChatRequestPayload(BaseModel):
     files: InputFileList = Field(
         default=None,
         description=(
-            "File list for multimodal understanding. To attach a local file, first upload it via "
-            "[Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id`."
+            "File list for multimodal understanding, including images, documents, audio, and video. To attach a "
+            "local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned "
+            "`id` as `upload_file_id` with `transfer_method: local_file`."
         ),
     )
     response_mode: Literal["blocking", "streaming"] | None = Field(
@@ -124,7 +126,13 @@ class ChatRequestPayload(BaseModel):
             "`auto_generate: true` to generate the title asynchronously."
         ),
     )
-    workflow_id: str | None = Field(default=None, description="Workflow ID for advanced chat")
+    workflow_id: str | None = Field(
+        default=None,
+        description=(
+            "Published workflow version ID to execute for advanced chat. If omitted, the app's current published "
+            "workflow is used."
+        ),
+    )
     trace_session_id: SkipJsonSchema[str | None] = Field(
         default=None, description="Trace session ID for observability grouping"
     )

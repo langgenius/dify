@@ -21,8 +21,9 @@ DatasourceInfoList = Annotated[
                         "properties": {
                             "reference": {
                                 "description": (
-                                    "Use the `id` returned by the Upload Pipeline File endpoint. `related_id` "
-                                    "is accepted as an alias."
+                                    "Use the `id` returned by the "
+                                    "[Upload Pipeline File](/api-reference/knowledge-pipeline/upload-pipeline-file) "
+                                    "endpoint. `related_id` is accepted as an alias."
                                 ),
                                 "type": "string",
                             },
@@ -87,7 +88,10 @@ DatasourceInfoList = Annotated[
                                 "type": "string",
                             },
                             "bucket": {
-                                "description": "Storage bucket name. Required by some drive providers.",
+                                "description": (
+                                    "Storage bucket name. Required by some drive providers, such as S3-compatible "
+                                    "stores; omit if the provider does not use buckets."
+                                ),
                                 "type": "string",
                             },
                             "name": {"description": "File name. Defaults to `untitled`.", "type": "string"},
@@ -114,11 +118,25 @@ class DatasourceNodeRunApiEntity(BaseModel):
 
 
 class PipelineRunApiEntity(BaseModel):
-    inputs: Mapping[str, Any] = Field(description="Input values for the pipeline run.")
-    datasource_type: DatasourceType = Field(description="Datasource type to run.")
-    datasource_info_list: DatasourceInfoList = Field(description="Datasource records to process.")
+    inputs: Mapping[str, Any] = Field(
+        description=(
+            "Key-value pairs for pipeline input variables defined in the workflow. Pass `{}` if the pipeline has "
+            "no input variables."
+        )
+    )
+    datasource_type: DatasourceType = Field(
+        description="Type of the datasource. Determines which fields are expected in `datasource_info_list` items."
+    )
+    datasource_info_list: DatasourceInfoList = Field(
+        description="List of datasource objects to process. The expected item structure depends on `datasource_type`."
+    )
     start_node_id: str = Field(description="ID of the datasource node where the run starts.")
-    is_published: bool = Field(description="Whether to run the published pipeline or the draft pipeline.")
+    is_published: bool = Field(
+        description=(
+            "Whether to run the published or draft version of the pipeline. `true` runs the latest published "
+            "version; `false` runs the current draft (useful for testing unpublished changes)."
+        )
+    )
     response_mode: PipelineResponseMode = Field(
         description="Response mode. Use `streaming` for SSE or `blocking` for JSON."
     )

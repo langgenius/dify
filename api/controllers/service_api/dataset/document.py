@@ -88,14 +88,30 @@ class DocumentTextCreatePayload(BaseModel):
     doc_language: str = Field(default="English", description="Language of the document for processing optimization.")
     indexing_technique: IndexingTechnique = Field(
         default=None,
-        description="`high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing.",
+        description=(
+            "`high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. "
+            "Required when adding the first document to a knowledge base; subsequent documents inherit the "
+            "knowledge base's indexing technique if omitted."
+        ),
     )
     retrieval_model: RetrievalModel | None = Field(
         default=None,
         description="Retrieval model configuration. Controls how chunks are searched and ranked.",
     )
-    embedding_model: str | None = Field(default=None, description="Embedding model name.")
-    embedding_model_provider: str | None = Field(default=None, description="Embedding model provider.")
+    embedding_model: str | None = Field(
+        default=None,
+        description=(
+            "Embedding model name. Use the `model` field from "
+            "[Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`."
+        ),
+    )
+    embedding_model_provider: str | None = Field(
+        default=None,
+        description=(
+            "Embedding model provider. Use the `provider` field from "
+            "[Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`."
+        ),
+    )
 
     @field_validator("doc_form")
     @classmethod
@@ -230,8 +246,10 @@ DOCUMENT_CREATE_BY_FILE_PARAMS = {
         "type": "string",
         "required": False,
         "description": (
-            "JSON string containing configuration. Accepts the same fields as Create Document by Text except "
-            "`name` and `text`."
+            "JSON string containing configuration. Accepts the same fields as "
+            "[Create Document by Text](/api-reference/documents/create-document-by-text) (`indexing_technique`, "
+            "`doc_form`, `doc_language`, `process_rule`, `retrieval_model`, `embedding_model`, "
+            "`embedding_model_provider`) except `name` and `text`."
         ),
     },
 }
@@ -248,7 +266,11 @@ DOCUMENT_UPDATE_BY_FILE_PARAMS = {
         "in": "formData",
         "type": "string",
         "required": False,
-        "description": "JSON string containing document update settings.",
+        "description": (
+            "JSON string containing document update settings such as `doc_form`, `doc_language`, `process_rule`, "
+            "`retrieval_model`, `embedding_model`, and `embedding_model_provider`. `name` and `text` are not used "
+            "for file updates."
+        ),
     },
 }
 

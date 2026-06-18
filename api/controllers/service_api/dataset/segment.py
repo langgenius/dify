@@ -67,7 +67,10 @@ class SegmentCreatePayload(BaseModel):
 class SegmentListQuery(BaseModel):
     limit: int = Field(default=20, ge=1, description="Number of items per page. Server caps at `100`.")
     page: int = Field(default=1, ge=1, description="Page number to retrieve.")
-    status: list[str] = Field(default_factory=list, description="Filter chunks by indexing status.")
+    status: list[str] = Field(
+        default_factory=list,
+        description="Filter chunks by indexing status, such as `completed`, `indexing`, or `error`.",
+    )
     keyword: str | None = Field(default=None, description="Search keyword.")
 
 

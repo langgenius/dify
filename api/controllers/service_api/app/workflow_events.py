@@ -46,8 +46,9 @@ class WorkflowEventsQuery(BaseModel):
     continue_on_pause: bool = Field(
         default=False,
         description=(
-            "Set to `true` to keep the stream open across multiple `workflow_paused` events. By default, the stream "
-            "closes after the first pause."
+            "Set to `true` to keep the stream open across multiple `workflow_paused` events, which is useful when "
+            "the workflow has more than one Human Input node in sequence. By default, the stream closes after the "
+            "first pause."
         ),
     )
 

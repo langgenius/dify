@@ -100,14 +100,29 @@ class DatasetCreatePayload(BaseModel):
         ),
     )
     external_knowledge_api_id: str | None = Field(default=None, description="ID of the external knowledge API.")
-    provider: KnowledgeProvider = Field(default="vendor", description="Knowledge base provider.")
+    provider: KnowledgeProvider = Field(
+        default="vendor",
+        description="Knowledge base provider: `vendor` for internal knowledge bases, `external` for external ones.",
+    )
     external_knowledge_id: str | None = Field(default=None, description="ID of the external knowledge base.")
     retrieval_model: RetrievalModel | None = Field(
         default=None,
         description="Retrieval model configuration. Controls how chunks are searched and ranked.",
     )
-    embedding_model: str | None = Field(default=None, description="Embedding model name.")
-    embedding_model_provider: str | None = Field(default=None, description="Embedding model provider.")
+    embedding_model: str | None = Field(
+        default=None,
+        description=(
+            "Embedding model name. Use the `model` field from "
+            "[Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`."
+        ),
+    )
+    embedding_model_provider: str | None = Field(
+        default=None,
+        description=(
+            "Embedding model provider. Use the `provider` field from "
+            "[Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`."
+        ),
+    )
     summary_index_setting: SummaryIndexSetting = Field(
         default=None,
         description="Summary index configuration.",
@@ -123,10 +138,26 @@ class DatasetUpdatePayload(BaseModel):
     )
     permission: DatasetPermissionEnum | None = Field(
         default=None,
-        description="Controls who can access this knowledge base.",
+        description=(
+            "Controls who can access this knowledge base. `only_me` restricts access to the creator, "
+            "`all_team_members` grants workspace-wide access, and `partial_members` grants access to specified "
+            "members."
+        ),
     )
-    embedding_model: str | None = Field(default=None, description="Embedding model name.")
-    embedding_model_provider: str | None = Field(default=None, description="Embedding model provider.")
+    embedding_model: str | None = Field(
+        default=None,
+        description=(
+            "Embedding model name. Use the `model` field from "
+            "[Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`."
+        ),
+    )
+    embedding_model_provider: str | None = Field(
+        default=None,
+        description=(
+            "Embedding model provider. Use the `provider` field from "
+            "[Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`."
+        ),
+    )
     retrieval_model: RetrievalModel | None = Field(
         default=None,
         description="Retrieval model configuration. Controls how chunks are searched and ranked.",

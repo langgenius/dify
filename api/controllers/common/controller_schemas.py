@@ -128,7 +128,10 @@ WORKFLOW_INPUT_FILE_ITEM_SCHEMA: dict[str, object] = {
             "type": "string",
         },
         "upload_file_id": {
-            "description": "Uploaded file ID when `transfer_method` is `local_file`.",
+            "description": (
+                "Uploaded file ID obtained from the [Upload File](/api-reference/files/upload-file) API when "
+                "`transfer_method` is `local_file`."
+            ),
             "type": "string",
         },
     },
@@ -154,14 +157,18 @@ class WorkflowRunPayload(BaseModel):
     inputs: dict[str, Any] = Field(
         description=(
             "Key-value pairs for workflow input variables. Values for file-type variables should be arrays of "
-            "file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`."
+            "file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the "
+            "`user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) "
+            "response to discover the variable names and types expected by your app."
         )
     )
     files: WorkflowInputFileList = Field(
         default=None,
         description=(
-            "File list. Suitable when files need to be combined with text for input and available only when the "
-            "model supports vision capability."
+            "File list. Suitable when files need to be combined with text for input, available only when the model "
+            "supports Vision capability. To attach a local file, first upload it via "
+            "[Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with "
+            "`transfer_method: local_file`."
         ),
     )
 
@@ -214,7 +221,9 @@ class TextToAudioPayload(BaseModel):
     voice: str | None = Field(
         default=None,
         description=(
-            "Voice to use for text-to-speech. Available voices depend on the TTS provider configured for this app."
+            "Voice to use for text-to-speech. Available voices depend on the TTS provider configured for this app. "
+            "Omit to use the app's configured voice when available; that value is exposed by "
+            "[Get App Parameters](/api-reference/applications/get-app-parameters) as `text_to_speech.voice`."
         ),
     )
     text: str | None = Field(default=None, description="Speech content to convert.")

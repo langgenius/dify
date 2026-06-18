@@ -49,13 +49,19 @@ class Condition(BaseModel):
     name: str = Field(description="Metadata field name to compare against.")
     comparison_operator: SupportedComparisonOperator = Field(
         description=(
-            "Comparison to apply. String operators act on string or array metadata; numeric operators act on "
-            "number metadata; time operators act on time metadata."
+            "Comparison to apply. String operators (`contains`, `not contains`, `start with`, `end with`, `is`, "
+            "`is not`, `empty`, `not empty`, `in`, `not in`) act on string or array metadata; numeric operators "
+            "(`=`, `≠`, `>`, `<`, `≥`, `≤`) act on numeric metadata; time operators (`before`, `after`) act on "
+            "time metadata."
         )
     )
     value: ConditionValue = Field(
         default=None,
-        description="Value to compare against. Type depends on `comparison_operator`.",
+        description=(
+            "Value to compare against. Type depends on `comparison_operator`: string for most string operators, "
+            "array of strings for `in` and `not in`, number for numeric operators, and omit or use `null` for "
+            "`empty` and `not empty`."
+        ),
     )
 
 
