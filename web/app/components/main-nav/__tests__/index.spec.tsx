@@ -34,7 +34,7 @@ const { mockIsAgentV2Enabled, mockSwitchWorkspace, mockToastSuccess, hotkeyRegis
   }>(),
 }))
 
-vi.mock('@/utils/features', () => ({
+vi.mock('@/features/agent-v2/feature-flag', () => ({
   isAgentV2Enabled: () => mockIsAgentV2Enabled(),
 }))
 

@@ -1,7 +1,7 @@
+import { env } from '@/env'
 import { notFound } from '@/next/navigation'
-import { isAgentV2Enabled } from '@/utils/features'
 
 export const guardAgentV2Route = () => {
-  if (!isAgentV2Enabled())
+  if (!env.NEXT_PUBLIC_ENABLE_AGENT_V2)
     notFound()
 }
