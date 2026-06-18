@@ -334,16 +334,17 @@ class ComposerConfigValidator:
 
     @classmethod
     def _reject_plaintext_secrets(cls, value: Any, *, path: str) -> None:
-        if isinstance(value, dict):
-            for key, nested in value.items():
-                normalized_key = key.lower().replace("-", "_")
-                nested_path = f"{path}.{key}"
-                if normalized_key in _PLAINTEXT_SECRET_KEYS and isinstance(nested, str) and nested:
-                    raise PlaintextSecretNotAllowedError(f"Plaintext secret is not allowed at {nested_path}")
-                cls._reject_plaintext_secrets(nested, path=nested_path)
-        elif isinstance(value, list):
-            for index, nested in enumerate(value):
-                cls._reject_plaintext_secrets(nested, path=f"{path}[{index}]")
+        match value:
+            case dict():
+                for key, nested in value.items():
+                    normalized_key = key.lower().replace("-", "_")
+                    nested_path = f"{path}.{key}"
+                    if normalized_key in _PLAINTEXT_SECRET_KEYS and isinstance(nested, str) and nested:
+                        raise PlaintextSecretNotAllowedError(f"Plaintext secret is not allowed at {nested_path}")
+                    cls._reject_plaintext_secrets(nested, path=nested_path)
+            case list():
+                for index, nested in enumerate(value):
+                    cls._reject_plaintext_secrets(nested, path=f"{path}[{index}]")
 
     @classmethod
     def _has_install_command(cls, entry: dict[str, Any]) -> bool:

@@ -354,11 +354,12 @@ def iter_method_nodes(method: MethodNode) -> Iterable[ast.AST]:
 
 
 def target_names(target: ast.AST) -> Iterable[str]:
-    if isinstance(target, ast.Name):
-        yield target.id
-    elif isinstance(target, ast.Tuple | ast.List):
-        for item in target.elts:
-            yield from target_names(item)
+    match target:
+        case ast.Name():
+            yield target.id
+        case ast.Tuple() | ast.List():
+            for item in target.elts:
+                yield from target_names(item)
 
 
 def record_assignment(

@@ -957,21 +957,22 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             )
             pause_reason_models = []
             for reason in pause_reasons:
-                if isinstance(reason, HumanInputRequired):
-                    # TODO(QuantumGhost): record node_id for `WorkflowPauseReason`
-                    pause_reason_model = WorkflowPauseReason(
-                        pause_id=pause_model.id,
-                        type_=reason.TYPE,
-                        form_id=reason.form_id,
-                    )
-                elif isinstance(reason, SchedulingPause):
-                    pause_reason_model = WorkflowPauseReason(
-                        pause_id=pause_model.id,
-                        type_=reason.TYPE,
-                        message=reason.message,
-                    )
-                else:
-                    raise AssertionError(f"unkown reason type: {type(reason)}")
+                match reason:
+                    case HumanInputRequired():
+                        # TODO(QuantumGhost): record node_id for `WorkflowPauseReason`
+                        pause_reason_model = WorkflowPauseReason(
+                            pause_id=pause_model.id,
+                            type_=reason.TYPE,
+                            form_id=reason.form_id,
+                        )
+                    case SchedulingPause():
+                        pause_reason_model = WorkflowPauseReason(
+                            pause_id=pause_model.id,
+                            type_=reason.TYPE,
+                            message=reason.message,
+                        )
+                    case _:
+                        raise AssertionError(f"unknown reason type: {type(reason)}")
 
                 pause_reason_models.append(pause_reason_model)
 
