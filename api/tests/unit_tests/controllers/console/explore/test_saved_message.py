@@ -1,3 +1,4 @@
+from inspect import unwrap
 from unittest.mock import MagicMock, PropertyMock, patch
 from uuid import uuid4
 
@@ -8,12 +9,6 @@ from werkzeug.exceptions import NotFound
 import controllers.console.explore.saved_message as module
 from controllers.console.explore.error import NotCompletionAppError
 from services.errors.message import MessageNotExistsError
-
-
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 def make_saved_message():
