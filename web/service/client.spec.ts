@@ -57,6 +57,7 @@ const createAgent = (overrides: Partial<AgentMutationResponse> = {}): AgentMutat
   icon_url: overrides.icon_url ?? null,
   mode: overrides.mode ?? 'agent',
   name: overrides.name ?? 'Agent',
+  role: overrides.role ?? 'Assistant',
 })
 
 const createComposerState = (overrides: Partial<AgentComposerMutationResponse> = {}): AgentComposerMutationResponse => ({
@@ -172,6 +173,7 @@ describe('consoleQuery agent mutation defaults', () => {
         body: {
           name: createdAgent.name,
           description: createdAgent.description,
+          role: createdAgent.role ?? 'Assistant',
         },
       },
       undefined,
@@ -201,6 +203,7 @@ describe('consoleQuery agent mutation defaults', () => {
         },
         body: {
           name: updatedAgent.name,
+          role: updatedAgent.role ?? 'Assistant',
         },
       },
       undefined,
