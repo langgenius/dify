@@ -26,7 +26,6 @@ from controllers.console.app.app import (
 )
 from controllers.console.wraps import (
     account_initialization_required,
-    cloud_edition_billing_resource_check,
     edit_permission_required,
     enterprise_license_required,
     setup_required,
@@ -335,7 +334,6 @@ class AgentAppListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @cloud_edition_billing_resource_check("apps")
     @edit_permission_required
     @with_current_user
     @with_current_tenant_id
@@ -414,7 +412,6 @@ class AgentAppCopyApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @cloud_edition_billing_resource_check("apps")
     @edit_permission_required
     @with_current_user
     @with_current_tenant_id
