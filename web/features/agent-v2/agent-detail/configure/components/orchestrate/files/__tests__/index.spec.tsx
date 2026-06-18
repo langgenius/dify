@@ -264,6 +264,16 @@ describe('AgentFiles', () => {
     })
   })
 
+  it('should keep the file preview trigger focus ring inside the row bounds', () => {
+    renderAgentFiles()
+
+    expect(screen.getByRole('button', { name: 'brief.md' })).toHaveClass(
+      'focus-visible:ring-2',
+      'focus-visible:ring-state-accent-solid',
+      'focus-visible:ring-inset',
+    )
+  })
+
   it('should open the shared detail dialog with the full file tree when the file row is clicked', async () => {
     renderAgentFiles()
 
