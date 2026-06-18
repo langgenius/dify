@@ -5,7 +5,7 @@ import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import OpenScopeConfirmDialog from './open-scope-confirm-dialog'
 import OpenScopeOption from './open-scope-option'
-import TitleTooltip from './title-tooltip'
+import TitleInfotip from './title-infotip'
 
 type ResourceOpenScopeSectionProps = {
   value?: ResourceOpenScope
@@ -47,7 +47,7 @@ function ResourceOpenScopeSection({
         <h2 className="system-sm-semibold text-text-secondary">
           {t('accessRule.resourceOpenScope', { ns: 'permission' })}
         </h2>
-        <TitleTooltip content={resourceOpenScopeDescription} />
+        <TitleInfotip content={resourceOpenScopeDescription} />
       </div>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <OpenScopeOption

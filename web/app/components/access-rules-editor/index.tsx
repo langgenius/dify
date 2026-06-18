@@ -13,7 +13,7 @@ import Loading from '@/app/components/base/loading'
 import AddAccessSubjectPopover from './add-access-subject-popover'
 import { ACCESS_RULE_TABLE_GRID } from './constants'
 import ResourceOpenScopeSection from './open-scope-section'
-import TitleTooltip from './title-tooltip'
+import TitleInfotip from './title-infotip'
 import UserAccessPolicyRow from './user-access-policy-row'
 
 export type AccessRulesEditorProps = {
@@ -69,7 +69,7 @@ export default function AccessRulesEditor({
           <h2 className="system-sm-semibold text-text-secondary">
             {t('accessRule.individualPermissionSettings', { ns: 'permission' })}
           </h2>
-          <TitleTooltip content={individualPermissionSettingsTip} />
+          <TitleInfotip content={individualPermissionSettingsTip} />
         </div>
         {onAddAccessSubject
           ? (
