@@ -3,10 +3,15 @@
 import type { ReactNode } from 'react'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import Loading from '@/app/components/base/loading'
-import { isDatasetOperatorAllowedRoute, isPathUnderRoute } from '@/app/components/main-nav/routes'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { redirect, usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
+
+const datasetOperatorRedirectRoutes = ['/', '/apps', '/app', '/deployments', '/snippets', '/roster', '/explore', '/tools', '/integrations'] as const
+
+function isPathUnderRoute(pathname: string, route: string) {
+  return pathname === route || pathname.startsWith(`${route}/`)
+}
 
 export function RoleRouteGuard({ children }: { children: ReactNode }) {
   const currentWorkspaceRoleQuery = useQuery(consoleQuery.workspaces.current.post.queryOptions({
@@ -14,7 +19,7 @@ export function RoleRouteGuard({ children }: { children: ReactNode }) {
   }))
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const pathname = usePathname()
-  const shouldGuardRoute = !isDatasetOperatorAllowedRoute(pathname)
+  const shouldGuardRoute = datasetOperatorRedirectRoutes.some(route => isPathUnderRoute(pathname, route))
   const shouldRedirectDatasetOperator = shouldGuardRoute
     && !currentWorkspaceRoleQuery.isPending
     && currentWorkspaceRoleQuery.data === 'dataset_operator'
@@ -24,11 +29,11 @@ export function RoleRouteGuard({ children }: { children: ReactNode }) {
   if (shouldGuardRoute && currentWorkspaceRoleQuery.isPending)
     return <Loading type="app" />
 
-  if (shouldRedirectDatasetOperator)
-    redirect('/datasets')
-
   if (shouldRedirectAppDeploy)
     redirect('/')
+
+  if (shouldRedirectDatasetOperator)
+    redirect('/datasets')
 
   return <>{children}</>
 }

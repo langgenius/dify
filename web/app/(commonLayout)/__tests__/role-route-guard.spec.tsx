@@ -87,7 +87,7 @@ describe('RoleRouteGuard', () => {
     })
   })
 
-  it('should redirect dataset operator on protected routes', () => {
+  it('should redirect dataset operator on guarded routes', () => {
     setCurrentWorkspaceQuery({ role: 'dataset_operator' })
 
     expect(() => renderGuard(<div>content</div>)).toThrow('NEXT_REDIRECT:/datasets')
@@ -95,13 +95,14 @@ describe('RoleRouteGuard', () => {
     expect(mocks.redirect).toHaveBeenCalledWith('/datasets')
   })
 
-  it('should redirect dataset operator on routes missing from the allowlist', () => {
+  it('should allow dataset operator on routes outside the guarded list', () => {
     mockPathname = '/new-route'
     setCurrentWorkspaceQuery({ role: 'dataset_operator' })
 
-    expect(() => renderGuard(<div>content</div>)).toThrow('NEXT_REDIRECT:/datasets')
+    renderGuard(<div>content</div>)
 
-    expect(mocks.redirect).toHaveBeenCalledWith('/datasets')
+    expect(screen.getByText('content')).toBeInTheDocument()
+    expect(mocks.redirect).not.toHaveBeenCalled()
   })
 
   it('should redirect dataset operator on deployments routes', () => {
@@ -113,25 +114,25 @@ describe('RoleRouteGuard', () => {
     expect(mocks.redirect).toHaveBeenCalledWith('/datasets')
   })
 
-  it('should prefer dataset operator redirect when app deploy is disabled', () => {
+  it('should prefer app deploy redirect when app deploy is disabled', () => {
     mockPathname = '/deployments/create'
     setCurrentWorkspaceQuery({ role: 'dataset_operator' })
 
-    expect(() => renderGuard(<div>content</div>, { enable_app_deploy: false })).toThrow('NEXT_REDIRECT:/datasets')
+    expect(() => renderGuard(<div>content</div>, { enable_app_deploy: false })).toThrow('NEXT_REDIRECT:/')
 
-    expect(mocks.redirect).toHaveBeenCalledWith('/datasets')
+    expect(mocks.redirect).toHaveBeenCalledWith('/')
   })
 
   it('should redirect app deploy routes when app deploy is disabled', () => {
     mockPathname = '/deployments/create'
     setCurrentWorkspaceQuery({ role: 'editor' })
 
-    expect(() => renderGuard(<div>content</div>, { enable_app_deploy: false })).toThrow('NEXT_REDIRECT:/apps')
+    expect(() => renderGuard(<div>content</div>, { enable_app_deploy: false })).toThrow('NEXT_REDIRECT:/')
 
-    expect(mocks.redirect).toHaveBeenCalledWith('/apps')
+    expect(mocks.redirect).toHaveBeenCalledWith('/')
   })
 
-  it('should allow dataset operator on configured routes', () => {
+  it('should allow dataset operator on non-guarded routes', () => {
     mockPathname = '/plugins'
     setCurrentWorkspaceQuery({ role: 'dataset_operator' })
 
@@ -141,7 +142,7 @@ describe('RoleRouteGuard', () => {
     expect(mocks.redirect).not.toHaveBeenCalled()
   })
 
-  it('should not block configured routes while workspace is loading', () => {
+  it('should not block non-guarded routes while workspace is loading', () => {
     mockPathname = '/plugins'
     setCurrentWorkspaceQuery({ isPending: true })
 

@@ -1,6 +1,6 @@
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 
-export type MainNavRouteVisibility = 'all' | 'notDatasetOperator' | 'editorOrDatasetOperator' | 'appDeployEditor'
+type MainNavRouteVisibility = 'all' | 'notDatasetOperator' | 'editorOrDatasetOperator' | 'appDeployEditor'
 
 export type MainNavRouteConfig = {
   key: string
@@ -11,7 +11,6 @@ export type MainNavRouteConfig = {
   activeIcon: string
   visibility: MainNavRouteVisibility
   feature?: 'agentV2'
-  datasetOperatorAccess?: boolean
 }
 
 export type MainNavRouteVisibilityOptions = {
@@ -21,7 +20,7 @@ export type MainNavRouteVisibilityOptions = {
   isCurrentWorkspaceEditor: boolean
 }
 
-export function isPathUnderRoute(pathname: string, route: string) {
+function isPathUnderRoute(pathname: string, route: string) {
   return pathname === route || pathname.startsWith(`${route}/`)
 }
 
@@ -62,7 +61,6 @@ export const MAIN_NAV_ROUTES = [
     icon: 'i-custom-vender-main-nav-knowledge',
     activeIcon: 'i-custom-vender-main-nav-knowledge-active',
     visibility: 'editorOrDatasetOperator',
-    datasetOperatorAccess: true,
   },
   {
     key: 'integrations',
@@ -81,7 +79,6 @@ export const MAIN_NAV_ROUTES = [
     icon: 'i-custom-vender-main-nav-marketplace',
     activeIcon: 'i-custom-vender-main-nav-marketplace-active',
     visibility: 'all',
-    datasetOperatorAccess: true,
   },
   {
     key: 'deployments',
@@ -108,8 +105,4 @@ export function isMainNavRouteVisible(route: MainNavRouteConfig, options: MainNa
     return options.isCurrentWorkspaceEditor || options.isCurrentWorkspaceDatasetOperator
 
   return options.canUseAppDeploy
-}
-
-export function isDatasetOperatorAllowedRoute(pathname: string) {
-  return MAIN_NAV_ROUTES.some(route => 'datasetOperatorAccess' in route && route.datasetOperatorAccess && route.active(pathname))
 }
