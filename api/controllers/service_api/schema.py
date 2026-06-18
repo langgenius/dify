@@ -8,18 +8,68 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from copy import deepcopy
-from typing import cast
+from typing import Annotated, Any, cast
 
 from flask_restx import Namespace
-from pydantic import BaseModel
+from pydantic import BaseModel, WithJsonSchema
 
-USER_PROPERTY_SCHEMA: dict[str, object] = {"description": "End user identifier", "type": "string"}
-USER_QUERY_PARAM: dict[str, object] = {"description": "End user identifier", "in": "query", "type": "string"}
-USER_FORM_PARAM: dict[str, object] = {"description": "End user identifier", "in": "formData", "type": "string"}
-FILE_FORM_PARAM: dict[str, object] = {"in": "formData", "required": True, "type": "file"}
+USER_DESCRIPTION = (
+    "User identifier, unique within the application. This identifier scopes data access; resources created with "
+    "one `user` value are only visible when queried with the same `user` value."
+)
+USER_PROPERTY_SCHEMA: dict[str, object] = {"description": USER_DESCRIPTION, "type": "string"}
+USER_QUERY_PARAM: dict[str, object] = {
+    "description": "User identifier, used for end-user context.",
+    "in": "query",
+    "type": "string",
+}
+USER_FORM_PARAM: dict[str, object] = {
+    "description": USER_DESCRIPTION,
+    "in": "formData",
+    "type": "string",
+}
+FILE_FORM_PARAM: dict[str, object] = {
+    "description": "The file to upload.",
+    "in": "formData",
+    "required": True,
+    "type": "file",
+}
 USER_FETCH_FROM_ATTR = "_dify_service_api_user_fetch_from"
 USER_REQUIRED_ATTR = "_dify_service_api_user_required"
 JSON_USER_FETCH_FROM = "JSON"
+
+INPUT_FILE_ITEM_SCHEMA: dict[str, object] = {
+    "type": "object",
+    "required": ["type", "transfer_method"],
+    "properties": {
+        "type": {
+            "description": "File type.",
+            "enum": ["document", "image", "audio", "video", "custom"],
+            "type": "string",
+        },
+        "transfer_method": {
+            "description": "Transfer method: `remote_url` for file URL, `local_file` for uploaded file.",
+            "enum": ["remote_url", "local_file"],
+            "type": "string",
+        },
+        "url": {
+            "description": "File URL when `transfer_method` is `remote_url`.",
+            "format": "url",
+            "type": "string",
+        },
+        "upload_file_id": {
+            "description": (
+                "Uploaded file ID obtained from the [Upload File](/api-reference/files/upload-file) API when "
+                "`transfer_method` is `local_file`."
+            ),
+            "type": "string",
+        },
+    },
+}
+INPUT_FILE_LIST_SCHEMA: dict[str, object] = {
+    "anyOf": [{"items": INPUT_FILE_ITEM_SCHEMA, "type": "array"}, {"type": "null"}]
+}
+InputFileList = Annotated[list[dict[str, Any]] | None, WithJsonSchema(INPUT_FILE_LIST_SCHEMA)]
 
 
 def expect_with_user(namespace: Namespace, model: type[BaseModel]):
@@ -54,8 +104,12 @@ def expect_user_json(namespace: Namespace):
     return decorator
 
 
-def multipart_file_params(*, include_user: bool) -> dict[str, dict[str, object]]:
-    params: dict[str, dict[str, object]] = {"file": FILE_FORM_PARAM}
+def multipart_file_params(*, include_user: bool, file_description: str | None = None) -> dict[str, dict[str, object]]:
+    file_param = deepcopy(FILE_FORM_PARAM)
+    if file_description is not None:
+        file_param["description"] = file_description
+
+    params: dict[str, dict[str, object]] = {"file": file_param}
     if include_user:
         params["user"] = USER_FORM_PARAM
     return deepcopy(params)

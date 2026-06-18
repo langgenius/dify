@@ -64,7 +64,16 @@ class AudioApi(Resource):
     )
     @service_api_ns.doc("audio_to_text")
     @service_api_ns.doc(description="Convert audio to text using speech-to-text")
-    @service_api_ns.doc(consumes=["multipart/form-data"], params=multipart_file_params(include_user=True))
+    @service_api_ns.doc(
+        consumes=["multipart/form-data"],
+        params=multipart_file_params(
+            include_user=True,
+            file_description=(
+                "Audio file to transcribe. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, "
+                "`audio/wav`, and `audio/amr`. File size limit is `30 MB`."
+            ),
+        ),
+    )
     @service_api_ns.doc(
         responses={
             200: "Audio successfully transcribed",
