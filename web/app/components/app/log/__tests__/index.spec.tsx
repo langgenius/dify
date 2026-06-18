@@ -33,6 +33,10 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
+}))
+
 vi.mock('@/service/use-log', () => ({
   useChatConversations: (...args: unknown[]) => mockUseChatConversations(...args),
   useCompletionConversations: (...args: unknown[]) => mockUseCompletionConversations(...args),
@@ -102,6 +106,9 @@ describe('Logs', () => {
     expect(mockUseChatConversations).toHaveBeenCalledWith(expect.objectContaining({
       appId: 'app-1',
     }))
+    expect(screen.getByRole('heading', { name: 'title' })).toBeInTheDocument()
+    expect(screen.getByText('description')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'operation.learnMore' })).toHaveAttribute('href', 'https://docs.example.com/use-dify/monitor/logs')
     expect(screen.getByText('loading-logs')).toBeInTheDocument()
   })
 

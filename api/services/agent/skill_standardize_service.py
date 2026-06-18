@@ -10,7 +10,9 @@ to the agent drive (Agent Files §5.4 / §4):
 Both are stored as ``ToolFile`` records and bound via ``AgentDriveService.commit``
 with ``value_owned_by_drive=True`` (the drive owns their lifecycle). The returned
 skill ref records the stable drive paths + file ids (not just the raw upload id),
-so the Composer can reload the bound skill list.
+so the Composer can reload the bound skill list. The console ``/skills/upload``
+endpoints delegate to this service so "upload" now always means drive-backed skill
+normalization.
 """
 
 from __future__ import annotations
@@ -34,7 +36,7 @@ def slugify_skill_name(name: str) -> str:
 
 
 class SkillStandardizeService:
-    """Validate + standardize a Skill package into a per-agent drive."""
+    """Validate + standardize a Skill package into a per-agent drive upload result."""
 
     def __init__(
         self,
@@ -112,6 +114,8 @@ class SkillStandardizeService:
                 "skill_md_key": skill_md_key,
                 "full_archive_file_id": archive_tool_file.id,
                 "full_archive_key": archive_key,
+                # ENG-371: zip member listing — strong signals (scripts/*.sh) for infer-tools.
+                "manifest_files": manifest.files,
             }
         )
         return {

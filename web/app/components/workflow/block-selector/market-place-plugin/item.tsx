@@ -35,7 +35,7 @@ const Item: FC<Props> = ({
   }] = useBoolean(false)
 
   return (
-    <div className="group/plugin flex rounded-lg py-1 pr-1 pl-3 hover:bg-state-base-hover">
+    <div className="group/plugin flex rounded-lg py-1 pr-1 pl-3 select-none hover:bg-state-base-hover">
       <div
         className="relative h-6 w-6 shrink-0 rounded-md border-[0.5px] border-components-panel-border-subtle bg-contain bg-center bg-no-repeat"
         style={{ backgroundImage: `url(${payload.icon})` }}
@@ -52,12 +52,13 @@ const Item: FC<Props> = ({
         </div>
         {/* Action */}
         <div className={cn(!open ? 'hidden' : 'flex', 'h-4 items-center space-x-1 system-xs-medium text-components-button-secondary-accent-text group-hover/plugin:flex')}>
-          <div
-            className="cursor-pointer rounded-md px-1.5 py-0.5 hover:bg-state-base-hover"
+          <button
+            type="button"
+            className="cursor-pointer rounded-md border-0 bg-transparent px-1.5 py-0.5 hover:bg-state-base-hover"
             onClick={showInstallModal}
           >
             {t('installAction', { ns: 'plugin' })}
-          </div>
+          </button>
           <Action
             open={open}
             onOpenChange={setOpen}

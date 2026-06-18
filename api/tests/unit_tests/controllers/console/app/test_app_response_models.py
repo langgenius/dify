@@ -314,6 +314,21 @@ def test_app_list_query_rejects_flat_tag_ids(app_module):
         app_module.AppListQuery.model_validate(normalized)
 
 
+def test_create_app_endpoint_rejects_agent_mode(app_module, monkeypatch: pytest.MonkeyPatch):
+    payload = {"name": "Iris", "mode": "agent", "description": "Agent app"}
+    app_service = MagicMock()
+    monkeypatch.setattr(app_module, "AppService", lambda: app_service)
+
+    app_module.console_ns.payload = payload
+    try:
+        with pytest.raises(ValidationError):
+            _unwrap(app_module.AppListApi().post)("tenant-1", SimpleNamespace(id="account-1"))
+    finally:
+        app_module.console_ns.payload = None
+
+    app_service.create_app.assert_not_called()
+
+
 def test_app_partial_serialization_uses_aliases(app_models):
     AppPartial = app_models.AppPartial
     created_at = _ts()
@@ -336,6 +351,7 @@ def test_app_partial_serialization_uses_aliases(app_models):
         create_user_name="Creator",
         author_name="Author",
         has_draft_trigger=True,
+        role="Should stay agent-only",
     )
 
     serialized = AppPartial.model_validate(app_obj, from_attributes=True).model_dump(mode="json")
@@ -348,6 +364,7 @@ def test_app_partial_serialization_uses_aliases(app_models):
     assert serialized["model_config"]["model"] == {"provider": "openai", "name": "gpt-4o"}
     assert serialized["workflow"]["id"] == "wf-1"
     assert serialized["tags"][0]["name"] == "Utilities"
+    assert "role" not in serialized
 
 
 def test_app_detail_with_site_includes_nested_serialization(app_models):
@@ -389,6 +406,8 @@ def test_app_detail_with_site_includes_nested_serialization(app_models):
         max_active_requests=5,
         deleted_tools=[{"type": "api", "tool_name": "search", "provider_id": "prov"}],
         site=site,
+        bound_agent_id="agent-1",
+        role="Should stay agent-only",
     )
 
     serialized = AppDetailWithSite.model_validate(app_obj, from_attributes=True).model_dump(mode="json")
@@ -398,6 +417,8 @@ def test_app_detail_with_site_includes_nested_serialization(app_models):
     assert serialized["deleted_tools"][0]["tool_name"] == "search"
     assert serialized["site"]["icon_url"] == "signed:site-icon"
     assert serialized["site"]["created_at"] == int(timestamp.timestamp())
+    assert serialized["bound_agent_id"] == "agent-1"
+    assert "role" not in serialized
 
 
 def test_app_pagination_aliases_per_page_and_has_next(app_models):

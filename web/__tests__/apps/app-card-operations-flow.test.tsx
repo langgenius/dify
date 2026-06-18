@@ -13,7 +13,7 @@ import type { App } from '@/types/app'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
-import AppCard from '@/app/components/apps/app-card'
+import { AppCard } from '@/app/components/apps/app-card'
 import { AccessMode } from '@/models/access-control'
 import { exportAppConfig, updateAppInfo } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
@@ -64,10 +64,10 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 })
 
 vi.mock('@/next/dynamic', () => ({
-  default: (loader: () => Promise<{ default: React.ComponentType }>) => {
+  default: (loader: () => Promise<React.ComponentType | { default: React.ComponentType }>) => {
     let Component: React.ComponentType<Record<string, unknown>> | null = null
     loader().then((mod) => {
-      Component = mod.default as React.ComponentType<Record<string, unknown>>
+      Component = (typeof mod === 'function' ? mod : mod.default) as React.ComponentType<Record<string, unknown>>
     }).catch(() => {})
     const Wrapper = (props: Record<string, unknown>) => {
       if (Component)
@@ -99,6 +99,10 @@ vi.mock('@/service/use-apps', () => ({
   useDeleteAppMutation: () => ({
     mutateAsync: mockDeleteAppMutation,
     isPending: mockDeleteMutationPending,
+  }),
+  useToggleAppStarMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
   }),
 }))
 
@@ -197,7 +201,7 @@ vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
 }))
 
 vi.mock('@/app/components/app/app-access-control', () => ({
-  default: ({ onConfirm, onClose }: Record<string, unknown>) => (
+  AccessControl: ({ onConfirm, onClose }: Record<string, unknown>) => (
     <div data-testid="access-control-modal">
       <button data-testid="confirm-access" onClick={onConfirm as () => void}>Confirm</button>
       <button data-testid="cancel-access" onClick={onClose as () => void}>Cancel</button>
@@ -277,21 +281,13 @@ describe('App Card Operations Flow', () => {
     it('should navigate to app config page when card is clicked', () => {
       renderAppCard({ id: 'app-123', mode: AppModeEnum.CHAT })
 
-      const card = screen.getByText('Test Chat App').closest('[class*="cursor-pointer"]')
-      if (card)
-        fireEvent.click(card)
-
-      expect(mockRouterPush).toHaveBeenCalledWith('/app/app-123/configuration')
+      expect(screen.getByRole('link', { name: 'Test Chat App' })).toHaveAttribute('href', '/app/app-123/configuration')
     })
 
     it('should navigate to workflow page for workflow apps', () => {
       renderAppCard({ id: 'app-wf', mode: AppModeEnum.WORKFLOW, name: 'WF App' })
 
-      const card = screen.getByText('WF App').closest('[class*="cursor-pointer"]')
-      if (card)
-        fireEvent.click(card)
-
-      expect(mockRouterPush).toHaveBeenCalledWith('/app/app-wf/workflow')
+      expect(screen.getByRole('link', { name: 'WF App' })).toHaveAttribute('href', '/app/app-wf/workflow')
     })
   })
 

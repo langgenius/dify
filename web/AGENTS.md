@@ -38,6 +38,15 @@
 - Do not access `localStorage`, `window.localStorage`, or `globalThis.localStorage` directly in app code; use the storage hook boundary and preserve existing raw/custom storage formats.
 - Do not add ad hoc global event listeners for shared state. Prefer atoms, existing stores, or a shared subscription hook so listeners are centralized and deduplicated.
 
+## Agent V2 Frontend
+
+- Keep Agent V2 separate from legacy workflow Agent. Use `web/features/agent-v2`, `web/app/components/workflow/nodes/agent-v2`, the `agent_node_kind: 'dify_agent'` and `version: '2'` payload discriminator, and `BlockEnum.AgentV2` where the graph type is already migrated. Do not bridge Agent V2 to legacy `agent_strategy_*` behavior or data shapes.
+- Use generated contracts and `consoleQuery` / `consoleClient` from `@/service/client` for Agent V2 backend calls. Do not add handwritten REST helpers, handwritten API types, mock-backed app state, or direct edits to generated contract files.
+- Treat TanStack Query as the server source of truth. Scope editable drafts with an instance-level `AgentComposerProvider`, hydrate Jotai `originalDraft`, `publishedDraft`, and `draft` from contract data, and compute dirty or unpublished state from those draft snapshots.
+- Keep transitional defaults and mock data at the owning surface, such as the configure page or workflow node, not in shared composer defaults.
+- Use `@langgenius/dify-ui/*` primitives and primitive data/CSS selectors first. Add call-site Tailwind only for real design deltas, avoid arbitrary values when token utilities exist, and keep focus rings visible without making inert layout regions focusable.
+- Keep Agent V2 copy in the `agentV2` i18n namespace, currently backed by `agent-v-2.json` in the maintained locale set.
+
 ## Automated Test Generation
 
 - Use `./docs/test.md` as the canonical instruction set for generating frontend automated tests.

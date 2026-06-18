@@ -15,12 +15,14 @@ const Overview = async (props: IDevelopProps) => {
   } = params
 
   return (
-    <div className="h-full overflow-y-auto bg-chatbot-bg px-4 py-6 sm:px-12">
+    <div className="flex h-full min-h-0 flex-col">
       <ApikeyInfoPanel />
-      <ChartView
-        appId={appId}
-        headerRight={<TracingPanel />}
-      />
+      <div className="min-h-0 flex-1">
+        <ChartView
+          appId={appId}
+          headerRight={<TracingPanel />}
+        />
+      </div>
     </div>
   )
 }

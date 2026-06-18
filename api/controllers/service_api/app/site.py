@@ -17,6 +17,18 @@ register_response_schema_models(service_api_ns, SiteResponse)
 class AppSiteApi(Resource):
     """Resource for app sites."""
 
+    @service_api_ns.doc(
+        summary="Get App WebApp Settings",
+        description=(
+            "Retrieve the WebApp settings of this application, including site configuration, theme, and "
+            "customization options."
+        ),
+        tags=["Applications"],
+        responses={
+            200: "WebApp settings of the application.",
+            403: "`forbidden` : Site not found for this application or the workspace has been archived.",
+        },
+    )
     @service_api_ns.doc("get_app_site")
     @service_api_ns.doc(description="Get application site configuration")
     @service_api_ns.doc(

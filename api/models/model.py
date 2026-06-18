@@ -397,6 +397,12 @@ class App(Base):
     __tablename__ = "apps"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="app_pkey"), sa.Index("app_tenant_id_idx", "tenant_id"))
 
+    if TYPE_CHECKING:
+        # Response-only attributes attached by app list/detail enrichers.
+        access_mode: str | None
+        has_draft_trigger: bool
+        is_starred: bool
+
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     name: Mapped[str] = mapped_column(String(255))
@@ -654,6 +660,28 @@ class App(Base):
         return None
 
 
+class AppStar(Base):
+    """Account-scoped star marker for apps in a workspace."""
+
+    __tablename__ = "app_stars"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="app_star_pkey"),
+        sa.UniqueConstraint("tenant_id", "account_id", "app_id", name="app_star_tenant_account_app_unique"),
+        sa.Index("app_star_tenant_account_idx", "tenant_id", "account_id"),
+        sa.Index("app_star_app_idx", "app_id"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+
+    @override
+    def __repr__(self) -> str:
+        return f"<AppStar app_id={self.app_id} account_id={self.account_id}>"
+
+
 class AppModelConfig(TypeBase):
     __tablename__ = "app_model_configs"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="app_model_config_pkey"), sa.Index("app_app_id_idx", "app_id"))
@@ -907,6 +935,9 @@ class RecommendedApp(TypeBase):
     custom_disclaimer: Mapped[str] = mapped_column(LongText, default="")
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     is_listed: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
+    is_learn_dify: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
+    )
     install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     language: Mapped[str] = mapped_column(
         String(255),
@@ -1143,34 +1174,32 @@ class Conversation(Base):
 
         # Convert file mapping to File object
         for key, value in inputs.items():
-            if (
-                isinstance(value, dict)
-                and cast(dict[str, Any], value).get("dify_model_identity") == FILE_MODEL_IDENTITY
-            ):
-                value_dict = cast(dict[str, Any], value)
-                inputs[key] = build_file_from_input_mapping(
-                    file_mapping=value_dict,
-                    tenant_resolver=tenant_resolver,
-                )
-            elif isinstance(value, list):
-                value_list = value
-                if all(
-                    isinstance(item, dict)
-                    and cast(dict[str, Any], item).get("dify_model_identity") == FILE_MODEL_IDENTITY
-                    for item in value_list
-                ):
-                    file_list: list[File] = []
-                    for item in value_list:
-                        if not isinstance(item, dict):
-                            continue
-                        item_dict = cast(dict[str, Any], item)
-                        file_list.append(
-                            build_file_from_input_mapping(
-                                file_mapping=item_dict,
-                                tenant_resolver=tenant_resolver,
+            match value:
+                case dict() if cast(dict[str, Any], value).get("dify_model_identity") == FILE_MODEL_IDENTITY:
+                    value_dict = cast(dict[str, Any], value)
+                    inputs[key] = build_file_from_input_mapping(
+                        file_mapping=value_dict,
+                        tenant_resolver=tenant_resolver,
+                    )
+                case list():
+                    value_list = value
+                    if all(
+                        isinstance(item, dict)
+                        and cast(dict[str, Any], item).get("dify_model_identity") == FILE_MODEL_IDENTITY
+                        for item in value_list
+                    ):
+                        file_list: list[File] = []
+                        for item in value_list:
+                            if not isinstance(item, dict):
+                                continue
+                            item_dict = cast(dict[str, Any], item)
+                            file_list.append(
+                                build_file_from_input_mapping(
+                                    file_mapping=item_dict,
+                                    tenant_resolver=tenant_resolver,
+                                )
                             )
-                        )
-                    inputs[key] = file_list
+                        inputs[key] = file_list
 
         return inputs
 
@@ -1485,46 +1514,45 @@ class Message(Base):
             owner_tenant_id=cast(str | None, getattr(self, "_owner_tenant_id", None)),
         )
         for key, value in inputs.items():
-            if (
-                isinstance(value, dict)
-                and cast(dict[str, Any], value).get("dify_model_identity") == FILE_MODEL_IDENTITY
-            ):
-                value_dict = cast(dict[str, Any], value)
-                inputs[key] = build_file_from_input_mapping(
-                    file_mapping=value_dict,
-                    tenant_resolver=tenant_resolver,
-                )
-            elif isinstance(value, list):
-                value_list = value
-                if all(
-                    isinstance(item, dict)
-                    and cast(dict[str, Any], item).get("dify_model_identity") == FILE_MODEL_IDENTITY
-                    for item in value_list
-                ):
-                    file_list: list[File] = []
-                    for item in value_list:
-                        if not isinstance(item, dict):
-                            continue
-                        item_dict = cast(dict[str, Any], item)
-                        file_list.append(
-                            build_file_from_input_mapping(
-                                file_mapping=item_dict,
-                                tenant_resolver=tenant_resolver,
+            match value:
+                case dict() if cast(dict[str, Any], value).get("dify_model_identity") == FILE_MODEL_IDENTITY:
+                    value_dict = cast(dict[str, Any], value)
+                    inputs[key] = build_file_from_input_mapping(
+                        file_mapping=value_dict,
+                        tenant_resolver=tenant_resolver,
+                    )
+                case list():
+                    value_list = value
+                    if all(
+                        isinstance(item, dict)
+                        and cast(dict[str, Any], item).get("dify_model_identity") == FILE_MODEL_IDENTITY
+                        for item in value_list
+                    ):
+                        file_list: list[File] = []
+                        for item in value_list:
+                            if not isinstance(item, dict):
+                                continue
+                            item_dict = cast(dict[str, Any], item)
+                            file_list.append(
+                                build_file_from_input_mapping(
+                                    file_mapping=item_dict,
+                                    tenant_resolver=tenant_resolver,
+                                )
                             )
-                        )
-                    inputs[key] = file_list
+                        inputs[key] = file_list
         return inputs
 
     @inputs.setter
     def inputs(self, value: Mapping[str, Any]):
         inputs = dict(value)
         for k, v in inputs.items():
-            if isinstance(v, File):
-                inputs[k] = v.model_dump()
-            elif isinstance(v, list):
-                v_list = v
-                if all(isinstance(item, File) for item in v_list):
-                    inputs[k] = [item.model_dump() for item in v_list if isinstance(item, File)]
+            match v:
+                case File():
+                    inputs[k] = v.model_dump()
+                case list():
+                    v_list = v
+                    if all(isinstance(item, File) for item in v_list):
+                        inputs[k] = [item.model_dump() for item in v_list if isinstance(item, File)]
         self._inputs = inputs
 
     @property

@@ -32,7 +32,7 @@
   "codegen.loading": "Génération de code...",
   "codegen.noDataLine1": "Décrivez votre cas d’utilisation sur la gauche,",
   "codegen.noDataLine2": "L’aperçu du code s’affichera ici.",
-  "codegen.overwriteConfirmMessage": "Cette action remplacera le code existant. Voulez-vous continuer ?",
+  "codegen.overwriteConfirmMessage": "Cette action remplacera le code existant. Voulez-vous continuer ?",
   "codegen.overwriteConfirmTitle": "Écraser le code existant ?",
   "codegen.resTitle": "Code généré",
   "codegen.title": "Générateur de code",

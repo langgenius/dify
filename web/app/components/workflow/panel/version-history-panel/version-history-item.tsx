@@ -15,6 +15,7 @@ type VersionHistoryItemProps = {
   onClick: (item: VersionHistory) => void
   handleClickActionMenuItem: (operation: VersionHistoryContextMenuOptions) => void
   isLast: boolean
+  hideActionMenu?: boolean
 }
 
 const formatVersion = (versionHistory: VersionHistory, latestVersionId: string): string => {
@@ -43,6 +44,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
   onClick,
   handleClickActionMenuItem,
   isLast,
+  hideActionMenu,
 }) => {
   const { t } = useTranslation()
   const [isHovering, setIsHovering] = useState(false)
@@ -78,6 +80,9 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
         setOpen(false)
       }}
       onContextMenu={(e) => {
+        if (hideActionMenu)
+          return
+
         e.preventDefault()
         setOpen(true)
       }}
@@ -123,7 +128,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
         }
       </div>
       {/* Action Menu */}
-      {!isDraft && isHovering && (
+      {!hideActionMenu && !isDraft && isHovering && (
         <div className="absolute top-1 right-1">
           <ActionMenu
             isShowDelete={!isLatest}

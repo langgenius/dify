@@ -20,9 +20,9 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
-import { useModalContext } from '@/context/modal-context'
 import { DatasetPermission } from '@/models/datasets'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useMembers } from '@/service/use-common'
@@ -30,6 +30,7 @@ import { RetrievalChangeTip, RetrievalSection } from './retrieval-section'
 
 type SettingsModalProps = {
   currentDataset: DataSet
+  height?: string
   onCancel: () => void
   onSave: (newDataset: DataSet) => void
 }
@@ -44,6 +45,7 @@ const labelClass = `
 
 const SettingsModal: FC<SettingsModalProps> = ({
   currentDataset,
+  height = 'calc(100vh - 72px)',
   onCancel,
   onSave,
 }) => {
@@ -53,7 +55,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const docLink = useDocLink()
   const ref = useRef(null)
   const isExternal = currentDataset.provider === 'external'
-  const { setShowAccountSettingModal } = useModalContext()
+  const openIntegrationsSetting = useIntegrationsSetting()
   const [loading, setLoading] = useState(false)
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
   const [localeCurrentDataset, setLocaleCurrentDataset] = useState({ ...currentDataset })
@@ -186,9 +188,9 @@ const SettingsModal: FC<SettingsModalProps> = ({
 
   return (
     <div
-      className="flex w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
+      className="flex min-h-0 w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
       style={{
-        height: 'calc(100vh - 72px)',
+        height,
       }}
       ref={ref}
     >
@@ -285,7 +287,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
                 <button
                   type="button"
                   className="cursor-pointer border-none bg-transparent p-0 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-                  onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
+                  onClick={() => openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
                 >
                   {t('form.embeddingModelTipLink', { ns: 'datasetSettings' })}
                 </button>

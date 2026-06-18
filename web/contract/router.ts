@@ -1,19 +1,29 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
 import { contract as communityContract } from '@dify/contracts/api/console/orpc.gen'
 import { contract as enterpriseContract } from '@dify/contracts/enterprise/orpc.gen'
-import { appDeleteContract, appListContract, workflowOnlineUsersContract } from './console/apps'
+import {
+  appDeleteContract,
+  appListContract,
+  appStarContract,
+  appStarredListContract,
+  appUnstarContract,
+  workflowOnlineUsersContract,
+} from './console/apps'
 import { bindPartnerStackContract, invoicesContract } from './console/billing'
 import {
   exploreAppDetailContract,
   exploreAppsContract,
   exploreBannersContract,
   exploreInstalledAppAccessModeContract,
+  exploreInstalledAppAccessModeUpdateContract,
   exploreInstalledAppMetaContract,
   exploreInstalledAppParametersContract,
   exploreInstalledAppPinContract,
   exploreInstalledAppsContract,
   exploreInstalledAppUninstallContract,
+  learnDifyAppsContract,
 } from './console/explore'
+import { fileUploadContract } from './console/files'
 import { changePreferredProviderTypeContract, modelProvidersModelsContract } from './console/model-providers'
 import { notificationContract, notificationDismissContract } from './console/notification'
 import { pluginCheckInstalledContract, pluginLatestVersionsContract } from './console/plugins'
@@ -77,6 +87,7 @@ import {
   workflowDraftUpdateFeaturesContract,
 } from './console/workflow'
 import { workflowCommentContracts } from './console/workflow-comment'
+import { workspacesGetContract, workspaceSwitchContract } from './console/workspaces'
 import { collectionPluginsContract, collectionsContract, downloadPluginContract, searchAdvancedContract, templateDetailContract } from './marketplace'
 
 export const marketplaceRouterContract = {
@@ -89,11 +100,6 @@ export const marketplaceRouterContract = {
 
 export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRouterContract>
 
-// Hand-written console contracts below are temporary overrides for gaps in the
-// generated community contract. Prefer fixing backend OpenAPI annotations so
-// generated contracts include accurate method, path, input, and output types;
-// once generated contracts are correct, the matching hand-written contracts
-// should be removed instead of kept in parallel.
 export const consoleRouterContract = {
   enterprise: enterpriseContract,
   ...communityContract,
@@ -101,16 +107,25 @@ export const consoleRouterContract = {
     ...communityContract.apps,
     list: appListContract,
     deleteApp: appDeleteContract,
+    starredList: appStarredListContract,
+    star: appStarContract,
+    unstar: appUnstarContract,
     workflowOnlineUsers: workflowOnlineUsersContract,
+    byAppId: {
+      ...communityContract.apps.byAppId,
+    },
   },
+  agent: communityContract.agent,
   explore: {
     ...communityContract.explore,
     apps: exploreAppsContract,
+    learnDifyApps: learnDifyAppsContract,
     appDetail: exploreAppDetailContract,
     installedApps: exploreInstalledAppsContract,
     uninstallInstalledApp: exploreInstalledAppUninstallContract,
     updateInstalledApp: exploreInstalledAppPinContract,
     appAccessMode: exploreInstalledAppAccessModeContract,
+    updateAppAccessMode: exploreInstalledAppAccessModeUpdateContract,
     installedAppParameters: exploreInstalledAppParametersContract,
     installedAppMeta: exploreInstalledAppMetaContract,
     banners: exploreBannersContract,
@@ -121,6 +136,13 @@ export const consoleRouterContract = {
     datasets: trialAppDatasetsContract,
     parameters: trialAppParametersContract,
     workflows: trialAppWorkflowsContract,
+  },
+  files: {
+    ...communityContract.files,
+    upload: {
+      ...communityContract.files.upload,
+      post: fileUploadContract,
+    },
   },
   modelProviders: {
     models: modelProvidersModelsContract,
@@ -196,5 +218,12 @@ export const consoleRouterContract = {
     oauthConfigure: triggerOAuthConfigureContract,
     oauthDelete: triggerOAuthDeleteContract,
     oauthInitiate: triggerOAuthInitiateContract,
+  },
+  workspaces: {
+    ...communityContract.workspaces,
+    get: workspacesGetContract,
+    switch: {
+      post: workspaceSwitchContract,
+    },
   },
 }

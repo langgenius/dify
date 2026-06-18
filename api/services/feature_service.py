@@ -160,6 +160,7 @@ class PluginManagerModel(FeatureResponseModel):
 
 
 class SystemFeatureModel(FeatureResponseModel):
+    enable_app_deploy: bool = False
     sso_enforced_for_signin: bool = False
     sso_enforced_for_signin_protocol: str = ""
     enable_marketplace: bool = False
@@ -418,6 +419,9 @@ class FeatureService:
 
         if "IsAllowCreateWorkspace" in enterprise_info:
             features.is_allow_create_workspace = enterprise_info["IsAllowCreateWorkspace"]
+
+        if "EnableAppDeploy" in enterprise_info:
+            features.enable_app_deploy = enterprise_info["EnableAppDeploy"]
 
         if "Branding" in enterprise_info:
             features.branding.application_title = enterprise_info["Branding"].get("applicationTitle", "")

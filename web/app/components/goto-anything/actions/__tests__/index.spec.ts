@@ -34,7 +34,7 @@ vi.mock('../plugin', () => ({
   } satisfies ActionItem,
 }))
 
-vi.mock('../commands', () => ({
+vi.mock('../commands/slash', () => ({
   slashAction: {
     key: '/',
     shortcut: '/',

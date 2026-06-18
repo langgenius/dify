@@ -39,7 +39,7 @@ vi.mock('react-i18next', () => ({
 }))
 
 vi.mock('@/app/components/app/app-publisher', () => ({
-  default: (props: Record<string, any>) => {
+  AppPublisher: (props: Record<string, any>) => {
     mockAppPublisherProps.current = props
     return (
       <div>
