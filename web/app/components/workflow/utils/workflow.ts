@@ -27,6 +27,7 @@ export const canRunBySingle = (nodeType: BlockEnum, isChildNode: boolean) => {
     || nodeType === BlockEnum.ParameterExtractor
     || nodeType === BlockEnum.Iteration
     || nodeType === BlockEnum.Agent
+    || nodeType === BlockEnum.AgentV2
     || nodeType === BlockEnum.DocExtractor
     || nodeType === BlockEnum.Loop
     || nodeType === BlockEnum.Start
@@ -184,5 +185,5 @@ export const changeNodesAndEdgesId = (nodes: Node[], edges: Edge[]) => {
 }
 
 export const hasErrorHandleNode = (nodeType?: BlockEnum) => {
-  return nodeType === BlockEnum.LLM || nodeType === BlockEnum.Tool || nodeType === BlockEnum.HttpRequest || nodeType === BlockEnum.Code || nodeType === BlockEnum.Agent
+  return nodeType === BlockEnum.LLM || nodeType === BlockEnum.Tool || nodeType === BlockEnum.HttpRequest || nodeType === BlockEnum.Code || nodeType === BlockEnum.Agent || nodeType === BlockEnum.AgentV2
 }

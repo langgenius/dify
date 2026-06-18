@@ -47,7 +47,7 @@ class EventParameter(BaseModel):
     template: PluginParameterTemplate | None = Field(default=None, description="The template of the parameter")
     scope: str | None = None
     required: bool = False
-    multiple: bool | None = Field(
+    multiple: bool = Field(
         default=False,
         description="Whether the parameter is multiple select, only valid for select or dynamic-select type",
     )

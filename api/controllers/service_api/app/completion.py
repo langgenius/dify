@@ -20,6 +20,7 @@ from controllers.service_api.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from controllers.service_api.schema import expect_user_json, expect_with_user, json_or_event_stream_response
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -92,7 +93,33 @@ register_response_schema_models(service_api_ns, GeneratedAppResponse, SimpleResu
 
 @service_api_ns.route("/completion-messages")
 class CompletionApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[CompletionRequestPayload.__name__])
+    @service_api_ns.doc(
+        summary="Send Completion Message",
+        description="Send a request to the text generation application.",
+        tags=["Completions"],
+        responses={
+            200: (
+                "Successful response. The content type and structure depend on the `response_mode` parameter "
+                "in the request.\n"
+                "\n"
+                "- If `response_mode` is `blocking`, returns `application/json` with a `CompletionResponse` "
+                "object.\n"
+                "- If `response_mode` is `streaming`, returns `text/event-stream` with a stream of "
+                "`ChunkCompletionEvent` objects."
+            ),
+            400: (
+                "- `app_unavailable` : App unavailable or misconfigured.\n"
+                "- `provider_not_initialize` : No valid model provider credentials found.\n"
+                "- `provider_quota_exceeded` : Model provider quota exhausted.\n"
+                "- `model_currently_not_support` : Current model unavailable.\n"
+                "- `completion_request_error` : Text generation failed."
+            ),
+            429: "`too_many_requests` : Too many concurrent requests for this app.",
+            500: "`internal_server_error` : Internal server error.",
+        },
+    )
+    @expect_with_user(service_api_ns, CompletionRequestPayload)
+    @json_or_event_stream_response(service_api_ns)
     @service_api_ns.doc("create_completion")
     @service_api_ns.doc(description="Create a completion for the given prompt")
     @service_api_ns.doc(
@@ -168,6 +195,15 @@ class CompletionApi(Resource):
 
 @service_api_ns.route("/completion-messages/<string:task_id>/stop")
 class CompletionStopApi(Resource):
+    @service_api_ns.doc(
+        summary="Stop Completion Message Generation",
+        description="Stops a completion message generation task. Only supported in `streaming` mode.",
+        tags=["Completions"],
+        responses={
+            400: "`app_unavailable` : App unavailable or misconfigured.",
+        },
+    )
+    @expect_user_json(service_api_ns)
     @service_api_ns.doc("stop_completion")
     @service_api_ns.doc(description="Stop a running completion task")
     @service_api_ns.doc(params={"task_id": "The ID of the task to stop"})
@@ -197,7 +233,39 @@ class CompletionStopApi(Resource):
 
 @service_api_ns.route("/chat-messages")
 class ChatApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[ChatRequestPayload.__name__])
+    @service_api_ns.doc(
+        summary="Send Chat Message",
+        description="Send a request to the chat application.",
+        tags=["Chats", "Chatflows"],
+        responses={
+            200: (
+                "Successful response. The content type and structure depend on the `response_mode` parameter "
+                "in the request.\n"
+                "\n"
+                "- If `response_mode` is `blocking`, returns `application/json` with a "
+                "`ChatCompletionResponse` object.\n"
+                "- If `response_mode` is `streaming`, returns `text/event-stream` with a stream of "
+                "Server-Sent Events."
+            ),
+            400: (
+                "- `app_unavailable` : App unavailable or misconfigured.\n"
+                "- `not_chat_app` : App mode does not match the API route.\n"
+                "- `conversation_completed` : The conversation has ended.\n"
+                "- `provider_not_initialize` : No valid model provider credentials found.\n"
+                "- `provider_quota_exceeded` : Model provider quota exhausted.\n"
+                "- `model_currently_not_support` : Current model unavailable.\n"
+                "- `completion_request_error` : Text generation failed."
+            ),
+            404: "`not_found` : Conversation does not exist.",
+            429: (
+                "- `too_many_requests` : Too many concurrent requests for this app.\n"
+                "- `rate_limit_error` : The upstream model provider rate limit was exceeded."
+            ),
+            500: "`internal_server_error` : Internal server error.",
+        },
+    )
+    @expect_with_user(service_api_ns, ChatRequestPayload)
+    @json_or_event_stream_response(service_api_ns)
     @service_api_ns.doc("create_chat_message")
     @service_api_ns.doc(description="Send a message in a chat conversation")
     @service_api_ns.doc(
@@ -276,6 +344,15 @@ class ChatApi(Resource):
 
 @service_api_ns.route("/chat-messages/<string:task_id>/stop")
 class ChatStopApi(Resource):
+    @service_api_ns.doc(
+        summary="Stop Chat Message Generation",
+        description="Stops a chat message generation task. Only supported in `streaming` mode.",
+        tags=["Chats", "Chatflows"],
+        responses={
+            400: "`not_chat_app` : App mode does not match the API route.",
+        },
+    )
+    @expect_user_json(service_api_ns)
     @service_api_ns.doc("stop_chat_message")
     @service_api_ns.doc(description="Stop a running chat message generation")
     @service_api_ns.doc(params={"task_id": "The ID of the task to stop"})

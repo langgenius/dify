@@ -19,6 +19,17 @@ register_response_schema_models(service_api_ns, ProviderWithModelsListResponse)
 
 @service_api_ns.route("/workspaces/current/models/model-types/<string:model_type>")
 class ModelProviderAvailableModelApi(Resource):
+    @service_api_ns.doc(
+        summary="Get Available Models",
+        description=(
+            "Retrieve the list of available models by type. Primarily used to query `text-embedding` and "
+            "`rerank` models for knowledge base configuration."
+        ),
+        tags=["Models"],
+        responses={
+            200: "Available models for the specified type.",
+        },
+    )
     @service_api_ns.doc("get_available_models")
     @service_api_ns.doc(description="Get available models by model type")
     @service_api_ns.doc(params={"model_type": "Type of model to retrieve"})

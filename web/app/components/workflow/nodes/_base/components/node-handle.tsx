@@ -1,5 +1,5 @@
 import type { MouseEvent } from 'react'
-import type { PluginDefaultValue } from '../../../block-selector/types'
+import type { BlockDefaultValue } from '../../../block-selector/types'
 import type { Node } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -68,7 +68,7 @@ export const NodeTargetHandle = memo(({
     if (!connected)
       setOpen(v => !v)
   }, [connected])
-  const handleSelect = useCallback((type: BlockEnum, pluginDefaultValue?: PluginDefaultValue) => {
+  const handleSelect = useCallback((type: BlockEnum, pluginDefaultValue?: BlockDefaultValue) => {
     handleNodeAdd(
       {
         nodeType: type,
@@ -161,7 +161,7 @@ export const NodeSourceHandle = memo(({
     e.stopPropagation()
     setOpen(v => !v)
   }, [])
-  const handleSelect = useCallback((type: BlockEnum, pluginDefaultValue?: PluginDefaultValue) => {
+  const handleSelect = useCallback((type: BlockEnum, pluginDefaultValue?: BlockDefaultValue) => {
     handleNodeAdd(
       {
         nodeType: type,

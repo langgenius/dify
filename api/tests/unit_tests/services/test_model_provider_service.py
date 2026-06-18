@@ -215,12 +215,13 @@ class TestModelProviderServiceDelegation:
 
         get_provider_config_mock.assert_called_once_with("tenant-1", "openai")
         provider_method = getattr(provider_configuration, provider_method_name)
-        if isinstance(provider_call_kwargs, tuple):
-            provider_method.assert_called_once_with(*provider_call_kwargs)
-        elif isinstance(provider_call_kwargs, dict):
-            provider_method.assert_called_once_with(**provider_call_kwargs)
-        else:
-            provider_method.assert_called_once_with(provider_call_kwargs)
+        match provider_call_kwargs:
+            case tuple():
+                provider_method.assert_called_once_with(*provider_call_kwargs)
+            case dict():
+                provider_method.assert_called_once_with(**provider_call_kwargs)
+            case _:
+                provider_method.assert_called_once_with(provider_call_kwargs)
         if method_name == "get_provider_credential":
             assert result == {"token": "abc"}
 

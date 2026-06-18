@@ -98,7 +98,7 @@ vi.mock('@/app/components/workflow/run/retry-log', () => ({
   },
 }))
 
-vi.mock('@/app/components/workflow/run/agent-log', () => ({
+vi.mock('@/app/components/workflow/run/agent-log/agent-log-trigger', () => ({
   AgentLogTrigger: (props: {
     onShowAgentOrToolLog: (detail: unknown) => void
     nodeInfo: { agentLog?: unknown }
@@ -326,6 +326,19 @@ describe('ResultPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'agent-trigger' }))
     expect(handleShowAgentOrToolLog).toHaveBeenCalledWith(agentLog)
+
+    rerender(
+      <ResultPanel
+        nodeInfo={createNodeInfo({
+          node_type: BlockEnum.AgentV2,
+          agentLog,
+        })}
+        status={NodeRunningStatus.Succeeded}
+        handleShowAgentOrToolLog={handleShowAgentOrToolLog}
+      />,
+    )
+
+    expect(screen.queryByRole('button', { name: 'agent-trigger' })).not.toBeInTheDocument()
 
     rerender(
       <ResultPanel
