@@ -1,8 +1,8 @@
-from pytest_mock import MockerFixture
 from types import SimpleNamespace
 from typing import cast
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.dataset import Pipeline

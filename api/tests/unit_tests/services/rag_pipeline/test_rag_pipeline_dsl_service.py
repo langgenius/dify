@@ -1,10 +1,10 @@
-from pytest_mock import MockerFixture
 from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import MagicMock, Mock
 
 import pytest
 import yaml
+from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
@@ -1400,7 +1400,9 @@ def test_create_or_update_pipeline_saves_dependencies_to_redis(mocker: MockerFix
     setex.assert_called_once()
 
 
-def test_extract_dependencies_from_workflow_graph_knowledge_index_without_embedding_provider(mocker: MockerFixture) -> None:
+def test_extract_dependencies_from_workflow_graph_knowledge_index_without_embedding_provider(
+    mocker: MockerFixture,
+) -> None:
     mocker.patch(
         "services.rag_pipeline.rag_pipeline_dsl_service.DependenciesAnalysisService.analyze_model_provider_dependency",
         return_value="dep",

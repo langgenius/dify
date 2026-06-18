@@ -1,4 +1,5 @@
 from pytest_mock import MockerFixture
+
 from services.rag_pipeline.pipeline_template.built_in.built_in_retrieval import BuiltInPipelineTemplateRetrieval
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
 

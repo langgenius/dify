@@ -1,5 +1,6 @@
-from pytest_mock import MockerFixture
 from types import SimpleNamespace
+
+from pytest_mock import MockerFixture
 
 from services.rag_pipeline.rag_pipeline_manage_service import RagPipelineManageService
 
