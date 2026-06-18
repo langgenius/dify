@@ -316,6 +316,7 @@ class TestAppAnnotationServiceEnableDisable:
 
             # Assert
             assert result == {"job_id": "uuid-1", "job_status": "waiting"}
+            mock_redis.setex.assert_called_once_with("enable_app_annotation_app-1", 600, "uuid-1")
             mock_redis.setnx.assert_called_once_with("enable_app_annotation_job_uuid-1", "waiting")
             mock_task.delay.assert_called_once_with(
                 "uuid-1",
@@ -363,6 +364,7 @@ class TestAppAnnotationServiceEnableDisable:
 
             # Assert
             assert result == {"job_id": "uuid-2", "job_status": "waiting"}
+            mock_redis.setex.assert_called_once_with("disable_app_annotation_app-1", 600, "uuid-2")
             mock_redis.setnx.assert_called_once_with("disable_app_annotation_job_uuid-2", "waiting")
             mock_task.delay.assert_called_once_with("uuid-2", "app-1", tenant_id)
 

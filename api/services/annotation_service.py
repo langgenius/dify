@@ -182,6 +182,7 @@ class AppAnnotationService:
         job_id = str(uuid.uuid4())
         enable_app_annotation_job_key = f"enable_app_annotation_job_{str(job_id)}"
         # send batch add segments task
+        redis_client.setex(enable_app_annotation_key, 600, str(job_id))
         redis_client.setnx(enable_app_annotation_job_key, "waiting")
         current_user, current_tenant_id = current_account_with_tenant()
         enable_annotation_reply_task.delay(
@@ -207,6 +208,7 @@ class AppAnnotationService:
         job_id = str(uuid.uuid4())
         disable_app_annotation_job_key = f"disable_app_annotation_job_{str(job_id)}"
         # send batch add segments task
+        redis_client.setex(disable_app_annotation_key, 600, str(job_id))
         redis_client.setnx(disable_app_annotation_job_key, "waiting")
         disable_annotation_reply_task.delay(str(job_id), app_id, current_tenant_id)
         return {"job_id": job_id, "job_status": "waiting"}
