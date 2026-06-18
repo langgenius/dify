@@ -1396,7 +1396,7 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
         mock_file_saver.save_binary_string.assert_not_called()
         mock_file_saver.save_remote_url.assert_not_called()
 
-    def test_unknown_item_type(self, llm_node_for_multimodal, caplog):
+    def test_unknown_item_type(self, llm_node_for_multimodal, caplog: pytest.LogCaptureFixture):
         llm_node, mock_file_saver = llm_node_for_multimodal
         unknown_item = self._UnknownItem()
 

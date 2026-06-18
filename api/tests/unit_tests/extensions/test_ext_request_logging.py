@@ -302,7 +302,9 @@ class TestRequestFinishedInfoAccessLine:
             assert "123.456" in msg  # rounded to 3 decimals
             assert "trace-xyz" in msg
 
-    def test_info_access_log_uses_dash_without_start_timestamp(self, monkeypatch: pytest.MonkeyPatch, caplog):
+    def test_info_access_log_uses_dash_without_start_timestamp(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ):
         app = _get_test_app()
         with app.test_request_context("/bar", method="POST"):
             # No g.__request_started_ts set -> duration should be '-'
