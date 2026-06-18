@@ -4,6 +4,10 @@ import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
 import {
+  zDeleteConversationsByCIdPath,
+  zDeleteConversationsByCIdResponse,
+  zDeleteSavedMessagesByMessageIdPath,
+  zDeleteSavedMessagesByMessageIdResponse,
   zGetConversationsQuery,
   zGetConversationsResponse,
   zGetFormHumanInputByFormTokenPath,
@@ -257,7 +261,24 @@ export const unpin = {
   patch: patch2,
 }
 
+/**
+ * Delete a specific conversation.
+ */
+export const delete_ = oc
+  .route({
+    description: 'Delete a specific conversation.',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteConversationsByCId',
+    path: '/conversations/{c_id}',
+    successStatus: 204,
+    tags: ['web'],
+  })
+  .input(z.object({ params: zDeleteConversationsByCIdPath }))
+  .output(zDeleteConversationsByCIdResponse)
+
 export const byCId = {
+  delete: delete_,
   name,
   pin,
   unpin,
@@ -837,6 +858,26 @@ export const remoteFiles = {
 }
 
 /**
+ * Remove a message from saved messages.
+ */
+export const delete2 = oc
+  .route({
+    description: 'Remove a message from saved messages.',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteSavedMessagesByMessageId',
+    path: '/saved-messages/{message_id}',
+    successStatus: 204,
+    tags: ['web'],
+  })
+  .input(z.object({ params: zDeleteSavedMessagesByMessageIdPath }))
+  .output(zDeleteSavedMessagesByMessageIdResponse)
+
+export const byMessageId2 = {
+  delete: delete2,
+}
+
+/**
  * Retrieve paginated list of saved messages for a completion application.
  */
 export const get11 = oc
@@ -869,6 +910,7 @@ export const post20 = oc
 export const savedMessages = {
   get: get11,
   post: post20,
+  byMessageId: byMessageId2,
 }
 
 /**

@@ -4,6 +4,23 @@ import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
 import {
+  zDeleteAppsAnnotationsByAnnotationIdPath,
+  zDeleteAppsAnnotationsByAnnotationIdResponse,
+  zDeleteConversationsByCIdBody,
+  zDeleteConversationsByCIdPath,
+  zDeleteConversationsByCIdResponse,
+  zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath,
+  zDeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse,
+  zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath,
+  zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse,
+  zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath,
+  zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse,
+  zDeleteDatasetsByDatasetIdMetadataByMetadataIdPath,
+  zDeleteDatasetsByDatasetIdMetadataByMetadataIdResponse,
+  zDeleteDatasetsByDatasetIdPath,
+  zDeleteDatasetsByDatasetIdResponse,
+  zDeleteDatasetsTagsBody,
+  zDeleteDatasetsTagsResponse,
   zGetAppFeedbacksQuery,
   zGetAppFeedbacksResponse,
   zGetAppsAnnotationReplyByActionStatusByJobIdPath,
@@ -170,8 +187,12 @@ import {
   zPostDatasetsPipelineFileUploadBody,
   zPostDatasetsPipelineFileUploadResponse,
   zPostDatasetsResponse,
+  zPostDatasetsTagsBindingBody,
+  zPostDatasetsTagsBindingResponse,
   zPostDatasetsTagsBody,
   zPostDatasetsTagsResponse,
+  zPostDatasetsTagsUnbindingBody,
+  zPostDatasetsTagsUnbindingResponse,
   zPostFilesUploadBody,
   zPostFilesUploadResponse,
   zPostFormHumanInputByFormTokenBody,
@@ -300,6 +321,25 @@ export const annotationReply = {
 }
 
 /**
+ * Delete Annotation
+ *
+ * Deletes an annotation and its associated hit history.
+ */
+export const delete_ = oc
+  .route({
+    description: 'Deletes an annotation and its associated hit history.',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteAppsAnnotationsByAnnotationId',
+    path: '/apps/annotations/{annotation_id}',
+    successStatus: 204,
+    summary: 'Delete Annotation',
+    tags: ['Annotations'],
+  })
+  .input(z.object({ params: zDeleteAppsAnnotationsByAnnotationIdPath }))
+  .output(zDeleteAppsAnnotationsByAnnotationIdResponse)
+
+/**
  * Update Annotation
  *
  * Updates the question and answer of an existing annotation.
@@ -323,6 +363,7 @@ export const put = oc
   .output(zPutAppsAnnotationsByAnnotationIdResponse)
 
 export const byAnnotationId = {
+  delete: delete_,
   put,
 }
 
@@ -588,7 +629,27 @@ export const variables = {
   byVariableId,
 }
 
+/**
+ * Delete Conversation
+ *
+ * Delete a conversation.
+ */
+export const delete2 = oc
+  .route({
+    description: 'Delete a conversation.',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteConversationsByCId',
+    path: '/conversations/{c_id}',
+    successStatus: 204,
+    summary: 'Delete Conversation',
+    tags: ['Conversations'],
+  })
+  .input(z.object({ body: zDeleteConversationsByCIdBody, params: zDeleteConversationsByCIdPath }))
+  .output(zDeleteConversationsByCIdResponse)
+
 export const byCId = {
+  delete: delete2,
   name,
   variables,
 }
@@ -646,6 +707,73 @@ export const pipeline = {
 }
 
 /**
+ * Create Tag Binding
+ *
+ * Bind one or more tags to a knowledge base. A knowledge base can have multiple tags.
+ */
+export const post10 = oc
+  .route({
+    description:
+      'Bind one or more tags to a knowledge base. A knowledge base can have multiple tags.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsTagsBinding',
+    path: '/datasets/tags/binding',
+    successStatus: 204,
+    summary: 'Create Tag Binding',
+    tags: ['Tags'],
+  })
+  .input(z.object({ body: zPostDatasetsTagsBindingBody }))
+  .output(zPostDatasetsTagsBindingResponse)
+
+export const binding = {
+  post: post10,
+}
+
+/**
+ * Delete Tag Binding
+ *
+ * Remove one or more tags from a knowledge base.
+ */
+export const post11 = oc
+  .route({
+    description: 'Remove one or more tags from a knowledge base.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsTagsUnbinding',
+    path: '/datasets/tags/unbinding',
+    successStatus: 204,
+    summary: 'Delete Tag Binding',
+    tags: ['Tags'],
+  })
+  .input(z.object({ body: zPostDatasetsTagsUnbindingBody }))
+  .output(zPostDatasetsTagsUnbindingResponse)
+
+export const unbinding = {
+  post: post11,
+}
+
+/**
+ * Delete Knowledge Tag
+ *
+ * Permanently delete a knowledge base tag. Does not delete the knowledge bases that were tagged.
+ */
+export const delete3 = oc
+  .route({
+    description:
+      'Permanently delete a knowledge base tag. Does not delete the knowledge bases that were tagged.',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteDatasetsTags',
+    path: '/datasets/tags',
+    successStatus: 204,
+    summary: 'Delete Knowledge Tag',
+    tags: ['Tags'],
+  })
+  .input(z.object({ body: zDeleteDatasetsTagsBody }))
+  .output(zDeleteDatasetsTagsResponse)
+
+/**
  * List Knowledge Tags
  *
  * Returns the list of all knowledge base tags in the workspace.
@@ -685,7 +813,7 @@ export const patch = oc
  *
  * Create a new tag for organizing knowledge bases.
  */
-export const post10 = oc
+export const post12 = oc
   .route({
     description: 'Create a new tag for organizing knowledge bases.',
     inputStructure: 'detailed',
@@ -699,9 +827,12 @@ export const post10 = oc
   .output(zPostDatasetsTagsResponse)
 
 export const tags = {
+  delete: delete3,
   get: get7,
   patch,
-  post: post10,
+  post: post12,
+  binding,
+  unbinding,
 }
 
 /**
@@ -709,7 +840,7 @@ export const tags = {
  *
  * Create a document by uploading a file. Supports common document formats (PDF, TXT, DOCX, etc.). Processing is asynchronous — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.
  */
-export const post11 = oc
+export const post13 = oc
   .route({
     description:
       'Create a document by uploading a file. Supports common document formats (PDF, TXT, DOCX, etc.). Processing is asynchronous — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.',
@@ -735,7 +866,7 @@ export const post11 = oc
  *
  * @deprecated
  */
-export const post12 = oc
+export const post14 = oc
   .route({
     deprecated: true,
     description:
@@ -756,7 +887,7 @@ export const post12 = oc
   .output(zPostDatasetsByDatasetIdDocumentCreateByFile2Response)
 
 export const createByFile = {
-  post: post12,
+  post: post14,
 }
 
 /**
@@ -764,7 +895,7 @@ export const createByFile = {
  *
  * Create a document from raw text content. The document is processed asynchronously — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.
  */
-export const post13 = oc
+export const post15 = oc
   .route({
     description:
       'Create a document from raw text content. The document is processed asynchronously — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.',
@@ -788,7 +919,7 @@ export const post13 = oc
  *
  * @deprecated
  */
-export const post14 = oc
+export const post16 = oc
   .route({
     deprecated: true,
     description:
@@ -808,7 +939,7 @@ export const post14 = oc
   .output(zPostDatasetsByDatasetIdDocumentCreateByText2Response)
 
 export const createByText = {
-  post: post14,
+  post: post16,
 }
 
 export const document_ = {
@@ -821,7 +952,7 @@ export const document_ = {
  *
  * Download multiple uploaded-file documents as a single ZIP archive. Accepts up to `100` document IDs.
  */
-export const post15 = oc
+export const post17 = oc
   .route({
     description:
       'Download multiple uploaded-file documents as a single ZIP archive. Accepts up to `100` document IDs.',
@@ -841,7 +972,7 @@ export const post15 = oc
   .output(zPostDatasetsByDatasetIdDocumentsDownloadZipResponse)
 
 export const downloadZip = {
-  post: post15,
+  post: post17,
 }
 
 /**
@@ -849,7 +980,7 @@ export const downloadZip = {
  *
  * Update metadata values for multiple documents at once. Each document in the request receives the specified metadata key-value pairs.
  */
-export const post16 = oc
+export const post18 = oc
   .route({
     description:
       'Update metadata values for multiple documents at once. Each document in the request receives the specified metadata key-value pairs.',
@@ -869,7 +1000,7 @@ export const post16 = oc
   .output(zPostDatasetsByDatasetIdDocumentsMetadataResponse)
 
 export const metadata = {
-  post: post16,
+  post: post18,
 }
 
 /**
@@ -953,6 +1084,33 @@ export const download = {
 }
 
 /**
+ * Delete Child Chunk
+ *
+ * Permanently delete a child chunk from its parent chunk.
+ */
+export const delete4 = oc
+  .route({
+    description: 'Permanently delete a child chunk from its parent chunk.',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId:
+      'deleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkId',
+    path: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}',
+    successStatus: 204,
+    summary: 'Delete Child Chunk',
+    tags: ['Chunks'],
+  })
+  .input(
+    z.object({
+      params:
+        zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath,
+    }),
+  )
+  .output(
+    zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse,
+  )
+
+/**
  * Update Child Chunk
  *
  * Update the content of an existing child chunk.
@@ -980,6 +1138,7 @@ export const patch3 = oc
   )
 
 export const byChildChunkId = {
+  delete: delete4,
   patch: patch3,
 }
 
@@ -1012,7 +1171,7 @@ export const get10 = oc
  *
  * Create a child chunk under the specified segment.
  */
-export const post17 = oc
+export const post19 = oc
   .route({
     description: 'Create a child chunk under the specified segment.',
     inputStructure: 'detailed',
@@ -1032,9 +1191,30 @@ export const post17 = oc
 
 export const childChunks = {
   get: get10,
-  post: post17,
+  post: post19,
   byChildChunkId,
 }
+
+/**
+ * Delete Chunk
+ *
+ * Permanently delete a chunk from the document.
+ */
+export const delete5 = oc
+  .route({
+    description: 'Permanently delete a chunk from the document.',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentId',
+    path: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}',
+    successStatus: 204,
+    summary: 'Delete Chunk',
+    tags: ['Chunks'],
+  })
+  .input(
+    z.object({ params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath }),
+  )
+  .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse)
 
 /**
  * Get Chunk
@@ -1060,7 +1240,7 @@ export const get11 = oc
  *
  * Update a chunk's content, keywords, or answer. Re-triggers indexing for the modified chunk.
  */
-export const post18 = oc
+export const post20 = oc
   .route({
     description:
       'Update a chunk\'s content, keywords, or answer. Re-triggers indexing for the modified chunk.',
@@ -1080,8 +1260,9 @@ export const post18 = oc
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse)
 
 export const bySegmentId = {
+  delete: delete5,
   get: get11,
-  post: post18,
+  post: post20,
   childChunks,
 }
 
@@ -1114,7 +1295,7 @@ export const get12 = oc
  *
  * Create one or more chunks within a document. Each chunk can include optional keywords and an answer field (for QA-mode documents).
  */
-export const post19 = oc
+export const post21 = oc
   .route({
     description:
       'Create one or more chunks within a document. Each chunk can include optional keywords and an answer field (for QA-mode documents).',
@@ -1135,7 +1316,7 @@ export const post19 = oc
 
 export const segments = {
   get: get12,
-  post: post19,
+  post: post21,
   bySegmentId,
 }
 
@@ -1146,7 +1327,7 @@ export const segments = {
  *
  * @deprecated
  */
-export const post20 = oc
+export const post22 = oc
   .route({
     deprecated: true,
     description:
@@ -1173,7 +1354,7 @@ export const post20 = oc
  *
  * @deprecated
  */
-export const post21 = oc
+export const post23 = oc
   .route({
     deprecated: true,
     description:
@@ -1194,7 +1375,7 @@ export const post21 = oc
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response)
 
 export const updateByFile = {
-  post: post21,
+  post: post23,
 }
 
 /**
@@ -1202,7 +1383,7 @@ export const updateByFile = {
  *
  * Update an existing document's text content, name, or processing configuration. Re-triggers indexing if content changes — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.
  */
-export const post22 = oc
+export const post24 = oc
   .route({
     description:
       'Update an existing document\'s text content, name, or processing configuration. Re-triggers indexing if content changes — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.',
@@ -1226,7 +1407,7 @@ export const post22 = oc
  *
  * @deprecated
  */
-export const post23 = oc
+export const post25 = oc
   .route({
     deprecated: true,
     description:
@@ -1246,8 +1427,27 @@ export const post23 = oc
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Response)
 
 export const updateByText = {
-  post: post23,
+  post: post25,
 }
+
+/**
+ * Delete Document
+ *
+ * Permanently delete a document and all its chunks from the knowledge base.
+ */
+export const delete6 = oc
+  .route({
+    description: 'Permanently delete a document and all its chunks from the knowledge base.',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteDatasetsByDatasetIdDocumentsByDocumentId',
+    path: '/datasets/{dataset_id}/documents/{document_id}',
+    successStatus: 204,
+    summary: 'Delete Document',
+    tags: ['Documents'],
+  })
+  .input(z.object({ params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath }))
+  .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse)
 
 /**
  * Get Document
@@ -1294,6 +1494,7 @@ export const patch4 = oc
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdResponse)
 
 export const byDocumentId = {
+  delete: delete6,
   get: get13,
   patch: patch4,
   download,
@@ -1340,7 +1541,7 @@ export const documents = {
  *
  * Performs a search query against a knowledge base to retrieve the most relevant chunks. This endpoint can be used for both production retrieval and test retrieval.
  */
-export const post24 = oc
+export const post26 = oc
   .route({
     description:
       'Performs a search query against a knowledge base to retrieve the most relevant chunks. This endpoint can be used for both production retrieval and test retrieval.',
@@ -1360,7 +1561,7 @@ export const post24 = oc
   .output(zPostDatasetsByDatasetIdHitTestingResponse)
 
 export const hitTesting = {
-  post: post24,
+  post: post26,
 }
 
 /**
@@ -1368,7 +1569,7 @@ export const hitTesting = {
  *
  * Enable or disable built-in metadata fields for the knowledge base.
  */
-export const post25 = oc
+export const post27 = oc
   .route({
     description: 'Enable or disable built-in metadata fields for the knowledge base.',
     inputStructure: 'detailed',
@@ -1382,7 +1583,7 @@ export const post25 = oc
   .output(zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse)
 
 export const byAction3 = {
-  post: post25,
+  post: post27,
 }
 
 /**
@@ -1410,6 +1611,26 @@ export const builtIn = {
 }
 
 /**
+ * Delete Metadata Field
+ *
+ * Permanently delete a custom metadata field. Documents using this field will lose their metadata values for it.
+ */
+export const delete7 = oc
+  .route({
+    description:
+      'Permanently delete a custom metadata field. Documents using this field will lose their metadata values for it.',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteDatasetsByDatasetIdMetadataByMetadataId',
+    path: '/datasets/{dataset_id}/metadata/{metadata_id}',
+    successStatus: 204,
+    summary: 'Delete Metadata Field',
+    tags: ['Metadata'],
+  })
+  .input(z.object({ params: zDeleteDatasetsByDatasetIdMetadataByMetadataIdPath }))
+  .output(zDeleteDatasetsByDatasetIdMetadataByMetadataIdResponse)
+
+/**
  * Update Metadata Field
  *
  * Rename a custom metadata field.
@@ -1433,6 +1654,7 @@ export const patch5 = oc
   .output(zPatchDatasetsByDatasetIdMetadataByMetadataIdResponse)
 
 export const byMetadataId = {
+  delete: delete7,
   patch: patch5,
 }
 
@@ -1460,7 +1682,7 @@ export const get16 = oc
  *
  * Create a custom metadata field for the knowledge base. Metadata fields can be used to annotate documents with structured information.
  */
-export const post26 = oc
+export const post28 = oc
   .route({
     description:
       'Create a custom metadata field for the knowledge base. Metadata fields can be used to annotate documents with structured information.',
@@ -1482,7 +1704,7 @@ export const post26 = oc
 
 export const metadata2 = {
   get: get16,
-  post: post26,
+  post: post28,
   builtIn,
   byMetadataId,
 }
@@ -1520,7 +1742,7 @@ export const datasourcePlugins = {
  *
  * Execute a single datasource node within the knowledge pipeline. Returns a streaming response with the node execution results.
  */
-export const post27 = oc
+export const post29 = oc
   .route({
     description:
       'Execute a single datasource node within the knowledge pipeline. Returns a streaming response with the node execution results.',
@@ -1540,7 +1762,7 @@ export const post27 = oc
   .output(zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse)
 
 export const run = {
-  post: post27,
+  post: post29,
 }
 
 export const byNodeId = {
@@ -1560,7 +1782,7 @@ export const datasource = {
  *
  * Execute the full knowledge pipeline for a knowledge base. Supports both streaming and blocking response modes.
  */
-export const post28 = oc
+export const post30 = oc
   .route({
     description:
       'Execute the full knowledge pipeline for a knowledge base. Supports both streaming and blocking response modes.',
@@ -1580,7 +1802,7 @@ export const post28 = oc
   .output(zPostDatasetsByDatasetIdPipelineRunResponse)
 
 export const run2 = {
-  post: post28,
+  post: post30,
 }
 
 export const pipeline2 = {
@@ -1594,7 +1816,7 @@ export const pipeline2 = {
  *
  * Performs a search query against a knowledge base to retrieve the most relevant chunks. This endpoint can be used for both production retrieval and test retrieval.
  */
-export const post29 = oc
+export const post31 = oc
   .route({
     description:
       'Performs a search query against a knowledge base to retrieve the most relevant chunks. This endpoint can be used for both production retrieval and test retrieval.',
@@ -1614,7 +1836,7 @@ export const post29 = oc
   .output(zPostDatasetsByDatasetIdRetrieveResponse)
 
 export const retrieve = {
-  post: post29,
+  post: post31,
 }
 
 /**
@@ -1638,6 +1860,26 @@ export const get18 = oc
 export const tags2 = {
   get: get18,
 }
+
+/**
+ * Delete Knowledge Base
+ *
+ * Permanently delete a knowledge base and all its documents. The knowledge base must not be in use by any application.
+ */
+export const delete8 = oc
+  .route({
+    description:
+      'Permanently delete a knowledge base and all its documents. The knowledge base must not be in use by any application.',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteDatasetsByDatasetId',
+    path: '/datasets/{dataset_id}',
+    successStatus: 204,
+    summary: 'Delete Knowledge Base',
+    tags: ['Knowledge Bases'],
+  })
+  .input(z.object({ params: zDeleteDatasetsByDatasetIdPath }))
+  .output(zDeleteDatasetsByDatasetIdResponse)
 
 /**
  * Get Knowledge Base
@@ -1678,6 +1920,7 @@ export const patch6 = oc
   .output(zPatchDatasetsByDatasetIdResponse)
 
 export const byDatasetId = {
+  delete: delete8,
   get: get19,
   patch: patch6,
   document: document_,
@@ -1713,7 +1956,7 @@ export const get20 = oc
  *
  * Create a new empty knowledge base. After creation, use [Create Document by Text](/api-reference/documents/create-document-by-text) or [Create Document by File](/api-reference/documents/create-document-by-file) to add documents.
  */
-export const post30 = oc
+export const post32 = oc
   .route({
     description:
       'Create a new empty knowledge base. After creation, use [Create Document by Text](/api-reference/documents/create-document-by-text) or [Create Document by File](/api-reference/documents/create-document-by-file) to add documents.',
@@ -1729,7 +1972,7 @@ export const post30 = oc
 
 export const datasets = {
   get: get20,
-  post: post30,
+  post: post32,
   pipeline,
   tags,
   byDatasetId,
@@ -1767,7 +2010,7 @@ export const endUsers = {
  *
  * Upload a file for use when sending messages, enabling multimodal understanding of images, documents, audio, and video. Uploaded files are for use by the current end-user only.
  */
-export const post31 = oc
+export const post33 = oc
   .route({
     description:
       'Upload a file for use when sending messages, enabling multimodal understanding of images, documents, audio, and video. Uploaded files are for use by the current end-user only.',
@@ -1783,7 +2026,7 @@ export const post31 = oc
   .output(zPostFilesUploadResponse)
 
 export const upload = {
-  post: post31,
+  post: post33,
 }
 
 /**
@@ -1847,7 +2090,7 @@ export const get23 = oc
  *
  * Submit the recipient's response to a paused Human Input form. The workflow resumes on acceptance; use [Stream Workflow Events](/api-reference/chatflows/stream-workflow-events) to follow subsequent events. Requires **WebApp** delivery.
  */
-export const post32 = oc
+export const post34 = oc
   .route({
     description:
       'Submit the recipient\'s response to a paused Human Input form. The workflow resumes on acceptance; use [Stream Workflow Events](/api-reference/chatflows/stream-workflow-events) to follow subsequent events. Requires **WebApp** delivery.',
@@ -1868,7 +2111,7 @@ export const post32 = oc
 
 export const byFormToken = {
   get: get23,
-  post: post32,
+  post: post34,
 }
 
 export const humanInput = {
@@ -1906,7 +2149,7 @@ export const info = {
  *
  * Submit feedback for a message. End users can rate messages as `like` or `dislike`, and optionally provide text feedback. Pass `null` for `rating` to revoke previously submitted feedback.
  */
-export const post33 = oc
+export const post35 = oc
   .route({
     description:
       'Submit feedback for a message. End users can rate messages as `like` or `dislike`, and optionally provide text feedback. Pass `null` for `rating` to revoke previously submitted feedback.',
@@ -1926,7 +2169,7 @@ export const post33 = oc
   .output(zPostMessagesByMessageIdFeedbacksResponse)
 
 export const feedbacks2 = {
-  post: post33,
+  post: post35,
 }
 
 /**
@@ -2056,7 +2299,7 @@ export const site = {
  *
  * Convert text to speech.
  */
-export const post34 = oc
+export const post36 = oc
   .route({
     description: 'Convert text to speech.',
     inputStructure: 'detailed',
@@ -2070,7 +2313,7 @@ export const post34 = oc
   .output(zPostTextToAudioResponse)
 
 export const textToAudio = {
-  post: post34,
+  post: post36,
 }
 
 /**
@@ -2156,7 +2399,7 @@ export const byWorkflowRunId = {
  *
  * Execute a workflow. Cannot be executed without a published workflow.
  */
-export const post35 = oc
+export const post37 = oc
   .route({
     description: 'Execute a workflow. Cannot be executed without a published workflow.',
     inputStructure: 'detailed',
@@ -2170,7 +2413,7 @@ export const post35 = oc
   .output(zPostWorkflowsRunResponse)
 
 export const run3 = {
-  post: post35,
+  post: post37,
   byWorkflowRunId,
 }
 
@@ -2179,7 +2422,7 @@ export const run3 = {
  *
  * Stop a running workflow task. Only supported in `streaming` mode.
  */
-export const post36 = oc
+export const post38 = oc
   .route({
     description: 'Stop a running workflow task. Only supported in `streaming` mode.',
     inputStructure: 'detailed',
@@ -2198,7 +2441,7 @@ export const post36 = oc
   .output(zPostWorkflowsTasksByTaskIdStopResponse)
 
 export const stop3 = {
-  post: post36,
+  post: post38,
 }
 
 export const byTaskId4 = {
@@ -2214,7 +2457,7 @@ export const tasks = {
  *
  * Execute a specific workflow version identified by its ID. Useful for running a particular published version of the workflow.
  */
-export const post37 = oc
+export const post39 = oc
   .route({
     description:
       'Execute a specific workflow version identified by its ID. Useful for running a particular published version of the workflow.',
@@ -2234,7 +2477,7 @@ export const post37 = oc
   .output(zPostWorkflowsByWorkflowIdRunResponse)
 
 export const run4 = {
-  post: post37,
+  post: post39,
 }
 
 export const byWorkflowId = {

@@ -1816,6 +1816,28 @@ export type PostAppsAnnotationsResponses = {
 export type PostAppsAnnotationsResponse
   = PostAppsAnnotationsResponses[keyof PostAppsAnnotationsResponses]
 
+export type DeleteAppsAnnotationsByAnnotationIdData = {
+  body?: never
+  path: {
+    annotation_id: string
+  }
+  query?: never
+  url: '/apps/annotations/{annotation_id}'
+}
+
+export type DeleteAppsAnnotationsByAnnotationIdErrors = {
+  401: unknown
+  403: unknown
+  404: unknown
+}
+
+export type DeleteAppsAnnotationsByAnnotationIdResponses = {
+  204: void
+}
+
+export type DeleteAppsAnnotationsByAnnotationIdResponse
+  = DeleteAppsAnnotationsByAnnotationIdResponses[keyof DeleteAppsAnnotationsByAnnotationIdResponses]
+
 export type PutAppsAnnotationsByAnnotationIdData = {
   body: AnnotationCreatePayload
   path: {
@@ -1979,6 +2001,29 @@ export type GetConversationsResponses = {
 
 export type GetConversationsResponse = GetConversationsResponses[keyof GetConversationsResponses]
 
+export type DeleteConversationsByCIdData = {
+  body: OptionalServiceApiUserPayload
+  path: {
+    c_id: string
+  }
+  query?: never
+  url: '/conversations/{c_id}'
+}
+
+export type DeleteConversationsByCIdErrors = {
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+}
+
+export type DeleteConversationsByCIdResponses = {
+  204: void
+}
+
+export type DeleteConversationsByCIdResponse
+  = DeleteConversationsByCIdResponses[keyof DeleteConversationsByCIdResponses]
+
 export type PostConversationsByCIdNameData = {
   body: ConversationRenamePayloadWithUser
   path: {
@@ -2122,6 +2167,25 @@ export type PostDatasetsPipelineFileUploadResponses = {
 export type PostDatasetsPipelineFileUploadResponse
   = PostDatasetsPipelineFileUploadResponses[keyof PostDatasetsPipelineFileUploadResponses]
 
+export type DeleteDatasetsTagsData = {
+  body: TagDeletePayload
+  path?: never
+  query?: never
+  url: '/datasets/tags'
+}
+
+export type DeleteDatasetsTagsErrors = {
+  401: unknown
+  403: unknown
+}
+
+export type DeleteDatasetsTagsResponses = {
+  204: void
+}
+
+export type DeleteDatasetsTagsResponse
+  = DeleteDatasetsTagsResponses[keyof DeleteDatasetsTagsResponses]
+
 export type GetDatasetsTagsData = {
   body?: never
   path?: never
@@ -2175,6 +2239,67 @@ export type PostDatasetsTagsResponses = {
 }
 
 export type PostDatasetsTagsResponse = PostDatasetsTagsResponses[keyof PostDatasetsTagsResponses]
+
+export type PostDatasetsTagsBindingData = {
+  body: TagBindingPayload
+  path?: never
+  query?: never
+  url: '/datasets/tags/binding'
+}
+
+export type PostDatasetsTagsBindingErrors = {
+  401: unknown
+  403: unknown
+}
+
+export type PostDatasetsTagsBindingResponses = {
+  204: void
+}
+
+export type PostDatasetsTagsBindingResponse
+  = PostDatasetsTagsBindingResponses[keyof PostDatasetsTagsBindingResponses]
+
+export type PostDatasetsTagsUnbindingData = {
+  body: TagUnbindingPayload
+  path?: never
+  query?: never
+  url: '/datasets/tags/unbinding'
+}
+
+export type PostDatasetsTagsUnbindingErrors = {
+  401: unknown
+  403: unknown
+}
+
+export type PostDatasetsTagsUnbindingResponses = {
+  204: void
+}
+
+export type PostDatasetsTagsUnbindingResponse
+  = PostDatasetsTagsUnbindingResponses[keyof PostDatasetsTagsUnbindingResponses]
+
+export type DeleteDatasetsByDatasetIdData = {
+  body?: never
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}'
+}
+
+export type DeleteDatasetsByDatasetIdErrors = {
+  401: unknown
+  403: unknown
+  404: unknown
+  409: unknown
+}
+
+export type DeleteDatasetsByDatasetIdResponses = {
+  204: void
+}
+
+export type DeleteDatasetsByDatasetIdResponse
+  = DeleteDatasetsByDatasetIdResponses[keyof DeleteDatasetsByDatasetIdResponses]
 
 export type GetDatasetsByDatasetIdData = {
   body?: never
@@ -2435,6 +2560,30 @@ export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponses = {
 export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponse
   = GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponses[keyof GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponses]
 
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdData = {
+  body?: never
+  path: {
+    dataset_id: string
+    document_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/documents/{document_id}'
+}
+
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+}
+
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
+  204: void
+}
+
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse
+  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses]
+
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdData = {
   body?: never
   path: {
@@ -2562,6 +2711,30 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses = {
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse
   = PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses]
 
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData = {
+  body?: never
+  path: {
+    dataset_id: string
+    document_id: string
+    segment_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
+}
+
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
+  401: unknown
+  403: unknown
+  404: unknown
+}
+
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses = {
+  204: void
+}
+
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
+  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses]
+
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData = {
   body?: never
   path: {
@@ -2662,6 +2835,35 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChild
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
   = PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses]
+
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdData
+  = {
+    body?: never
+    path: {
+      child_chunk_id: string
+      dataset_id: string
+      document_id: string
+      segment_id: string
+    }
+    query?: never
+    url: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}'
+  }
+
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors
+  = {
+    400: unknown
+    401: unknown
+    403: unknown
+    404: unknown
+  }
+
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses
+  = {
+    204: void
+  }
+
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
+  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdData
   = {
@@ -2904,6 +3106,29 @@ export type PostDatasetsByDatasetIdMetadataBuiltInByActionResponses = {
 
 export type PostDatasetsByDatasetIdMetadataBuiltInByActionResponse
   = PostDatasetsByDatasetIdMetadataBuiltInByActionResponses[keyof PostDatasetsByDatasetIdMetadataBuiltInByActionResponses]
+
+export type DeleteDatasetsByDatasetIdMetadataByMetadataIdData = {
+  body?: never
+  path: {
+    dataset_id: string
+    metadata_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/metadata/{metadata_id}'
+}
+
+export type DeleteDatasetsByDatasetIdMetadataByMetadataIdErrors = {
+  401: unknown
+  403: unknown
+  404: unknown
+}
+
+export type DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses = {
+  204: void
+}
+
+export type DeleteDatasetsByDatasetIdMetadataByMetadataIdResponse
+  = DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses[keyof DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses]
 
 export type PatchDatasetsByDatasetIdMetadataByMetadataIdData = {
   body: MetadataUpdatePayload

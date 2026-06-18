@@ -1581,6 +1581,26 @@ export type GetAgentInviteOptionsResponses = {
 export type GetAgentInviteOptionsResponse
   = GetAgentInviteOptionsResponses[keyof GetAgentInviteOptionsResponses]
 
+export type DeleteAgentByAgentIdData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}'
+}
+
+export type DeleteAgentByAgentIdErrors = {
+  403: unknown
+}
+
+export type DeleteAgentByAgentIdResponses = {
+  204: void
+}
+
+export type DeleteAgentByAgentIdResponse
+  = DeleteAgentByAgentIdResponses[keyof DeleteAgentByAgentIdResponses]
+
 export type GetAgentByAgentIdData = {
   body?: never
   path: {

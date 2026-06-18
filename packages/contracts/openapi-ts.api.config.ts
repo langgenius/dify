@@ -189,7 +189,10 @@ const hasSuccessResponse = (operation: SwaggerOperation) => {
     if (!isObject(response))
       return false
     const content = (response as JsonObject).content
-    return isObject(content) && Object.keys(content).length > 0
+    // 204 No Content is a valid success response without a body
+    if (!isObject(content) || Object.keys(content).length === 0)
+      return status === '204'
+    return true
   })
 }
 

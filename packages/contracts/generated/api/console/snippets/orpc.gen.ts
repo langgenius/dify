@@ -4,6 +4,12 @@ import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
 import {
+  zDeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesPath,
+  zDeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponse,
+  zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdPath,
+  zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse,
+  zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesPath,
+  zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesResponse,
   zGetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsPath,
   zGetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsResponse,
   zGetSnippetsBySnippetIdWorkflowRunsByRunIdPath,
@@ -380,6 +386,22 @@ export const run3 = {
 }
 
 /**
+ * Delete all variables for a specific node (snippet draft workflow)
+ */
+export const delete_ = oc
+  .route({
+    description: 'Delete all variables for a specific node (snippet draft workflow)',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariables',
+    path: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/variables',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesPath }))
+  .output(zDeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponse)
+
+/**
  * Get variables for a specific node (snippet draft workflow)
  */
 export const get9 = oc
@@ -395,6 +417,7 @@ export const get9 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponse)
 
 export const variables = {
+  delete: delete_,
   get: get9,
 }
 
@@ -477,6 +500,22 @@ export const reset = {
 }
 
 /**
+ * Delete a draft workflow variable (snippet scope)
+ */
+export const delete2 = oc
+  .route({
+    description: 'Delete a draft workflow variable (snippet scope)',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableId',
+    path: '/snippets/{snippet_id}/workflows/draft/variables/{variable_id}',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdPath }))
+  .output(zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse)
+
+/**
  * Get a specific draft workflow variable (snippet scope)
  */
 export const get11 = oc
@@ -512,10 +551,27 @@ export const patch = oc
   .output(zPatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse)
 
 export const byVariableId = {
+  delete: delete2,
   get: get11,
   patch,
   reset,
 }
+
+/**
+ * Delete all draft workflow variables for the current user (snippet scope)
+ */
+export const delete3 = oc
+  .route({
+    description: 'Delete all draft workflow variables for the current user (snippet scope)',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteSnippetsBySnippetIdWorkflowsDraftVariables',
+    path: '/snippets/{snippet_id}/workflows/draft/variables',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesPath }))
+  .output(zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesResponse)
 
 /**
  * List draft workflow variables without values (paginated, snippet scope)
@@ -538,6 +594,7 @@ export const get12 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDraftVariablesResponse)
 
 export const variables2 = {
+  delete: delete3,
   get: get12,
   byVariableId,
 }

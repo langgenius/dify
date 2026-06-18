@@ -4,6 +4,14 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type CustomizedPipelineTemplatePayload = {
+  description?: string
+  icon_info?: {
+    [key: string]: unknown
+  }
+  name: string
+}
+
 export type SimpleDataResponse = {
   data: string
 }
@@ -536,6 +544,38 @@ export type DatasetVectorSettingResponse = {
   vector_weight?: number | null
 }
 
+export type DeleteRagPipelineCustomizedTemplatesByTemplateIdData = {
+  body?: never
+  path: {
+    template_id: string
+  }
+  query?: never
+  url: '/rag/pipeline/customized/templates/{template_id}'
+}
+
+export type DeleteRagPipelineCustomizedTemplatesByTemplateIdResponses = {
+  204: void
+}
+
+export type DeleteRagPipelineCustomizedTemplatesByTemplateIdResponse
+  = DeleteRagPipelineCustomizedTemplatesByTemplateIdResponses[keyof DeleteRagPipelineCustomizedTemplatesByTemplateIdResponses]
+
+export type PatchRagPipelineCustomizedTemplatesByTemplateIdData = {
+  body: CustomizedPipelineTemplatePayload
+  path: {
+    template_id: string
+  }
+  query?: never
+  url: '/rag/pipeline/customized/templates/{template_id}'
+}
+
+export type PatchRagPipelineCustomizedTemplatesByTemplateIdResponses = {
+  204: void
+}
+
+export type PatchRagPipelineCustomizedTemplatesByTemplateIdResponse
+  = PatchRagPipelineCustomizedTemplatesByTemplateIdResponses[keyof PatchRagPipelineCustomizedTemplatesByTemplateIdResponses]
+
 export type PostRagPipelineCustomizedTemplatesByTemplateIdData = {
   body?: never
   path: {
@@ -721,6 +761,22 @@ export type PostRagPipelinesTransformDatasetsByDatasetIdResponses = {
 
 export type PostRagPipelinesTransformDatasetsByDatasetIdResponse
   = PostRagPipelinesTransformDatasetsByDatasetIdResponses[keyof PostRagPipelinesTransformDatasetsByDatasetIdResponses]
+
+export type PostRagPipelinesByPipelineIdCustomizedPublishData = {
+  body: CustomizedPipelineTemplatePayload
+  path: {
+    pipeline_id: string
+  }
+  query?: never
+  url: '/rag/pipelines/{pipeline_id}/customized/publish'
+}
+
+export type PostRagPipelinesByPipelineIdCustomizedPublishResponses = {
+  204: void
+}
+
+export type PostRagPipelinesByPipelineIdCustomizedPublishResponse
+  = PostRagPipelinesByPipelineIdCustomizedPublishResponses[keyof PostRagPipelinesByPipelineIdCustomizedPublishResponses]
 
 export type GetRagPipelinesByPipelineIdExportsData = {
   body?: never
@@ -1023,6 +1079,23 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunResponses 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunResponse
   = PostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunResponses[keyof PostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunResponses]
 
+export type DeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesData = {
+  body?: never
+  path: {
+    node_id: string
+    pipeline_id: string
+  }
+  query?: never
+  url: '/rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/variables'
+}
+
+export type DeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponses = {
+  204: void
+}
+
+export type DeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse
+  = DeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponses[keyof DeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponses]
+
 export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesData = {
   body?: never
   path: {
@@ -1108,6 +1181,22 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponses = 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponse
   = GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponses]
 
+export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesData = {
+  body?: never
+  path: {
+    pipeline_id: string
+  }
+  query?: never
+  url: '/rag/pipelines/{pipeline_id}/workflows/draft/variables'
+}
+
+export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponses = {
+  204: void
+}
+
+export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse
+  = DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponses[keyof DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponses]
+
 export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesData = {
   body?: never
   path: {
@@ -1126,6 +1215,23 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponses = {
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse
   = GetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponses]
+
+export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdData = {
+  body?: never
+  path: {
+    pipeline_id: string
+    variable_id: string
+  }
+  query?: never
+  url: '/rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}'
+}
+
+export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses = {
+  204: void
+}
+
+export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse
+  = DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses[keyof DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses]
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdData = {
   body?: never
@@ -1297,6 +1403,23 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishedRunResponses = {
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedRunResponse
   = PostRagPipelinesByPipelineIdWorkflowsPublishedRunResponses[keyof PostRagPipelinesByPipelineIdWorkflowsPublishedRunResponses]
+
+export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdData = {
+  body?: never
+  path: {
+    pipeline_id: string
+    workflow_id: string
+  }
+  query?: never
+  url: '/rag/pipelines/{pipeline_id}/workflows/{workflow_id}'
+}
+
+export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses = {
+  204: void
+}
+
+export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse
+  = DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses[keyof DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses]
 
 export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdData = {
   body: WorkflowUpdatePayload

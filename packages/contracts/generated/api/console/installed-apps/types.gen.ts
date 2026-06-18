@@ -428,6 +428,22 @@ export type PostInstalledAppsResponses = {
 
 export type PostInstalledAppsResponse = PostInstalledAppsResponses[keyof PostInstalledAppsResponses]
 
+export type DeleteInstalledAppsByInstalledAppIdData = {
+  body?: never
+  path: {
+    installed_app_id: string
+  }
+  query?: never
+  url: '/installed-apps/{installed_app_id}'
+}
+
+export type DeleteInstalledAppsByInstalledAppIdResponses = {
+  204: void
+}
+
+export type DeleteInstalledAppsByInstalledAppIdResponse
+  = DeleteInstalledAppsByInstalledAppIdResponses[keyof DeleteInstalledAppsByInstalledAppIdResponses]
+
 export type PatchInstalledAppsByInstalledAppIdData = {
   body: InstalledAppUpdatePayload
   path: {
@@ -545,6 +561,23 @@ export type GetInstalledAppsByInstalledAppIdConversationsResponses = {
 
 export type GetInstalledAppsByInstalledAppIdConversationsResponse
   = GetInstalledAppsByInstalledAppIdConversationsResponses[keyof GetInstalledAppsByInstalledAppIdConversationsResponses]
+
+export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdData = {
+  body?: never
+  path: {
+    c_id: string
+    installed_app_id: string
+  }
+  query?: never
+  url: '/installed-apps/{installed_app_id}/conversations/{c_id}'
+}
+
+export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdResponses = {
+  204: void
+}
+
+export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdResponse
+  = DeleteInstalledAppsByInstalledAppIdConversationsByCIdResponses[keyof DeleteInstalledAppsByInstalledAppIdConversationsByCIdResponses]
 
 export type PostInstalledAppsByInstalledAppIdConversationsByCIdNameData = {
   body: ConversationRenamePayload
@@ -736,6 +769,23 @@ export type PostInstalledAppsByInstalledAppIdSavedMessagesResponses = {
 
 export type PostInstalledAppsByInstalledAppIdSavedMessagesResponse
   = PostInstalledAppsByInstalledAppIdSavedMessagesResponses[keyof PostInstalledAppsByInstalledAppIdSavedMessagesResponses]
+
+export type DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdData = {
+  body?: never
+  path: {
+    installed_app_id: string
+    message_id: string
+  }
+  query?: never
+  url: '/installed-apps/{installed_app_id}/saved-messages/{message_id}'
+}
+
+export type DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponses = {
+  204: void
+}
+
+export type DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponse
+  = DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponses[keyof DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponses]
 
 export type PostInstalledAppsByInstalledAppIdTextToAudioData = {
   body: TextToAudioPayload

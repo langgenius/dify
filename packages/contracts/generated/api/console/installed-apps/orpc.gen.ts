@@ -4,6 +4,12 @@ import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
 import {
+  zDeleteInstalledAppsByInstalledAppIdConversationsByCIdPath,
+  zDeleteInstalledAppsByInstalledAppIdConversationsByCIdResponse,
+  zDeleteInstalledAppsByInstalledAppIdPath,
+  zDeleteInstalledAppsByInstalledAppIdResponse,
+  zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdPath,
+  zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponse,
   zGetInstalledAppsByInstalledAppIdConversationsPath,
   zGetInstalledAppsByInstalledAppIdConversationsQuery,
   zGetInstalledAppsByInstalledAppIdConversationsResponse,
@@ -209,7 +215,20 @@ export const unpin = {
   patch: patch2,
 }
 
+export const delete_ = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteInstalledAppsByInstalledAppIdConversationsByCId',
+    path: '/installed-apps/{installed_app_id}/conversations/{c_id}',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteInstalledAppsByInstalledAppIdConversationsByCIdPath }))
+  .output(zDeleteInstalledAppsByInstalledAppIdConversationsByCIdResponse)
+
 export const byCId = {
+  delete: delete_,
   name,
   pin,
   unpin,
@@ -360,6 +379,22 @@ export const parameters = {
   get: get6,
 }
 
+export const delete2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteInstalledAppsByInstalledAppIdSavedMessagesByMessageId',
+    path: '/installed-apps/{installed_app_id}/saved-messages/{message_id}',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdPath }))
+  .output(zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponse)
+
+export const byMessageId2 = {
+  delete: delete2,
+}
+
 export const get7 = oc
   .route({
     inputStructure: 'detailed',
@@ -395,6 +430,7 @@ export const post8 = oc
 export const savedMessages = {
   get: get7,
   post: post8,
+  byMessageId: byMessageId2,
 }
 
 export const post9 = oc
@@ -473,6 +509,18 @@ export const workflows = {
   tasks,
 }
 
+export const delete3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteInstalledAppsByInstalledAppId',
+    path: '/installed-apps/{installed_app_id}',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteInstalledAppsByInstalledAppIdPath }))
+  .output(zDeleteInstalledAppsByInstalledAppIdResponse)
+
 export const patch3 = oc
   .route({
     inputStructure: 'detailed',
@@ -490,6 +538,7 @@ export const patch3 = oc
   .output(zPatchInstalledAppsByInstalledAppIdResponse)
 
 export const byInstalledAppId = {
+  delete: delete3,
   patch: patch3,
   audioToText,
   chatMessages,

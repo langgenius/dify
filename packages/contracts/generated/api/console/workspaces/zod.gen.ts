@@ -209,6 +209,13 @@ export const zModelProviderPaymentCheckoutUrlResponse = z.object({
 })
 
 /**
+ * ParserCredentialDelete
+ */
+export const zParserCredentialDelete = z.object({
+  credential_id: z.string(),
+})
+
+/**
  * ProviderCredentialResponse
  */
 export const zProviderCredentialResponse = z.object({
@@ -924,14 +931,6 @@ export const zMemberInviteResponse = z.object({
 })
 
 /**
- * LoadBalancingPayload
- */
-export const zLoadBalancingPayload = z.object({
-  configs: z.array(z.record(z.string(), z.unknown())).nullish(),
-  enabled: z.boolean().nullish(),
-})
-
-/**
  * ModelType
  *
  * Enum class for model type.
@@ -946,12 +945,18 @@ export const zModelType = z.enum([
 ])
 
 /**
- * ParserPostModels
+ * ParserDeleteModels
  */
-export const zParserPostModels = z.object({
-  config_from: z.string().nullish(),
-  credential_id: z.string().nullish(),
-  load_balancing: zLoadBalancingPayload.nullish(),
+export const zParserDeleteModels = z.object({
+  model: z.string(),
+  model_type: zModelType,
+})
+
+/**
+ * ParserDeleteCredential
+ */
+export const zParserDeleteCredential = z.object({
+  credential_id: z.string(),
   model: z.string(),
   model_type: zModelType,
 })
@@ -996,14 +1001,6 @@ export const zParserValidate = z.object({
 })
 
 /**
- * ParserDeleteModels
- */
-export const zParserDeleteModels = z.object({
-  model: z.string(),
-  model_type: zModelType,
-})
-
-/**
  * LoadBalancingCredentialPayload
  */
 export const zLoadBalancingCredentialPayload = z.object({
@@ -1026,6 +1023,25 @@ export const zInner = z.object({
  */
 export const zParserPostDefault = z.object({
   model_settings: z.array(zInner),
+})
+
+/**
+ * LoadBalancingPayload
+ */
+export const zLoadBalancingPayload = z.object({
+  configs: z.array(z.record(z.string(), z.unknown())).nullish(),
+  enabled: z.boolean().nullish(),
+})
+
+/**
+ * ParserPostModels
+ */
+export const zParserPostModels = z.object({
+  config_from: z.string().nullish(),
+  credential_id: z.string().nullish(),
+  load_balancing: zLoadBalancingPayload.nullish(),
+  model: z.string(),
+  model_type: zModelType,
 })
 
 /**
@@ -2193,6 +2209,15 @@ export const zPostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmPat
 export const zPostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmResponse
   = zSnippetImportResponse
 
+export const zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdPath = z.object({
+  snippet_id: z.uuid(),
+})
+
+/**
+ * Snippet deleted successfully
+ */
+export const zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse = z.void()
+
 export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdPath = z.object({
   snippet_id: z.uuid(),
 })
@@ -2430,6 +2455,18 @@ export const zGetWorkspacesCurrentModelProvidersByProviderCheckoutUrlPath = z.ob
 export const zGetWorkspacesCurrentModelProvidersByProviderCheckoutUrlResponse
   = zModelProviderPaymentCheckoutUrlResponse
 
+export const zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsBody
+  = zParserCredentialDelete
+
+export const zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsPath = z.object({
+  provider: z.string(),
+})
+
+/**
+ * Credential deleted successfully
+ */
+export const zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponse = z.void()
+
 export const zGetWorkspacesCurrentModelProvidersByProviderCredentialsPath = z.object({
   provider: z.string(),
 })
@@ -2494,6 +2531,17 @@ export const zPostWorkspacesCurrentModelProvidersByProviderCredentialsValidatePa
 export const zPostWorkspacesCurrentModelProvidersByProviderCredentialsValidateResponse
   = zProviderCredentialValidateResponse
 
+export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsBody = zParserDeleteModels
+
+export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsPath = z.object({
+  provider: z.string(),
+})
+
+/**
+ * Model deleted successfully
+ */
+export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsResponse = z.void()
+
 export const zGetWorkspacesCurrentModelProvidersByProviderModelsPath = z.object({
   provider: z.string(),
 })
@@ -2514,6 +2562,18 @@ export const zPostWorkspacesCurrentModelProvidersByProviderModelsPath = z.object
  * Success
  */
 export const zPostWorkspacesCurrentModelProvidersByProviderModelsResponse = zSimpleResultResponse
+
+export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsBody
+  = zParserDeleteCredential
+
+export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsPath = z.object({
+  provider: z.string(),
+})
+
+/**
+ * Credential deleted successfully
+ */
+export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse = z.void()
 
 export const zGetWorkspacesCurrentModelProvidersByProviderModelsCredentialsPath = z.object({
   provider: z.string(),

@@ -232,6 +232,10 @@ export type ModelProviderPaymentCheckoutUrlResponse = {
   payment_link: string
 }
 
+export type ParserCredentialDelete = {
+  credential_id: string
+}
+
 export type ProviderCredentialResponse = {
   credentials?: {
     [key: string]: unknown
@@ -268,6 +272,11 @@ export type ProviderCredentialValidateResponse = {
   result: 'error' | 'success'
 }
 
+export type ParserDeleteModels = {
+  model: string
+  model_type: ModelType
+}
+
 export type ModelWithProviderListResponse = {
   data: Array<ModelWithProviderEntityResponse>
 }
@@ -276,6 +285,12 @@ export type ParserPostModels = {
   config_from?: string | null
   credential_id?: string | null
   load_balancing?: LoadBalancingPayload | null
+  model: string
+  model_type: ModelType
+}
+
+export type ParserDeleteCredential = {
+  credential_id: string
   model: string
   model_type: ModelType
 }
@@ -326,11 +341,6 @@ export type ParserValidate = {
 export type ModelCredentialValidateResponse = {
   error?: string | null
   result: string
-}
-
-export type ParserDeleteModels = {
-  model: string
-  model_type: ModelType
 }
 
 export type LoadBalancingCredentialPayload = {
@@ -963,6 +973,8 @@ export type ProviderResponse = {
   tenant_id: string
 }
 
+export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
+
 export type ModelWithProviderEntityResponse = {
   deprecated?: boolean
   features?: Array<ModelFeature> | null
@@ -985,8 +997,6 @@ export type LoadBalancingPayload = {
   }> | null
   enabled?: boolean | null
 }
-
-export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
 
 export type CredentialConfiguration = {
   credential_id: string
@@ -1636,6 +1646,26 @@ export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmRespo
 export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmResponse
   = PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmResponses[keyof PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmResponses]
 
+export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdData = {
+  body?: never
+  path: {
+    snippet_id: string
+  }
+  query?: never
+  url: '/workspaces/current/customized-snippets/{snippet_id}'
+}
+
+export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors = {
+  404: unknown
+}
+
+export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses = {
+  204: void
+}
+
+export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse
+  = DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses[keyof DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses]
+
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdData = {
   body?: never
   path: {
@@ -2102,6 +2132,22 @@ export type GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlResponses = {
 export type GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlResponse
   = GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlResponses[keyof GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlResponses]
 
+export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsData = {
+  body: ParserCredentialDelete
+  path: {
+    provider: string
+  }
+  query?: never
+  url: '/workspaces/current/model-providers/{provider}/credentials'
+}
+
+export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponses = {
+  204: void
+}
+
+export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponse
+  = DeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponses[keyof DeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponses]
+
 export type GetWorkspacesCurrentModelProvidersByProviderCredentialsData = {
   body?: never
   path: {
@@ -2184,6 +2230,22 @@ export type PostWorkspacesCurrentModelProvidersByProviderCredentialsValidateResp
 export type PostWorkspacesCurrentModelProvidersByProviderCredentialsValidateResponse
   = PostWorkspacesCurrentModelProvidersByProviderCredentialsValidateResponses[keyof PostWorkspacesCurrentModelProvidersByProviderCredentialsValidateResponses]
 
+export type DeleteWorkspacesCurrentModelProvidersByProviderModelsData = {
+  body: ParserDeleteModels
+  path: {
+    provider: string
+  }
+  query?: never
+  url: '/workspaces/current/model-providers/{provider}/models'
+}
+
+export type DeleteWorkspacesCurrentModelProvidersByProviderModelsResponses = {
+  204: void
+}
+
+export type DeleteWorkspacesCurrentModelProvidersByProviderModelsResponse
+  = DeleteWorkspacesCurrentModelProvidersByProviderModelsResponses[keyof DeleteWorkspacesCurrentModelProvidersByProviderModelsResponses]
+
 export type GetWorkspacesCurrentModelProvidersByProviderModelsData = {
   body?: never
   path: {
@@ -2215,6 +2277,22 @@ export type PostWorkspacesCurrentModelProvidersByProviderModelsResponses = {
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsResponse
   = PostWorkspacesCurrentModelProvidersByProviderModelsResponses[keyof PostWorkspacesCurrentModelProvidersByProviderModelsResponses]
+
+export type DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsData = {
+  body: ParserDeleteCredential
+  path: {
+    provider: string
+  }
+  query?: never
+  url: '/workspaces/current/model-providers/{provider}/models/credentials'
+}
+
+export type DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponses = {
+  204: void
+}
+
+export type DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse
+  = DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponses[keyof DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponses]
 
 export type GetWorkspacesCurrentModelProvidersByProviderModelsCredentialsData = {
   body?: never

@@ -48,3 +48,12 @@ export const zPostApiKeyAuthDataSourceBindingBody = zApiKeyAuthBindingPayload
  * Success
  */
 export const zPostApiKeyAuthDataSourceBindingResponse = zSimpleResultResponse
+
+export const zDeleteApiKeyAuthDataSourceByBindingIdPath = z.object({
+  binding_id: z.uuid(),
+})
+
+/**
+ * Binding deleted successfully
+ */
+export const zDeleteApiKeyAuthDataSourceByBindingIdResponse = z.void()

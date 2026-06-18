@@ -51,6 +51,15 @@ export const zPostTagsBody = zTagBasePayload
  */
 export const zPostTagsResponse = zTagResponse
 
+export const zDeleteTagsByTagIdPath = z.object({
+  tag_id: z.uuid(),
+})
+
+/**
+ * Tag deleted successfully
+ */
+export const zDeleteTagsByTagIdResponse = z.void()
+
 export const zPatchTagsByTagIdBody = zTagUpdateRequestPayload
 
 export const zPatchTagsByTagIdPath = z.object({

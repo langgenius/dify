@@ -2149,6 +2149,15 @@ export const zGetAgentInviteOptionsQuery = z.object({
  */
 export const zGetAgentInviteOptionsResponse = zAgentInviteOptionsResponse
 
+export const zDeleteAgentByAgentIdPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Agent app deleted successfully
+ */
+export const zDeleteAgentByAgentIdResponse = z.void()
+
 export const zGetAgentByAgentIdPath = z.object({
   agent_id: z.uuid(),
 })

@@ -972,6 +972,15 @@ export const zGetConversationsQuery = z.object({
  */
 export const zGetConversationsResponse = zConversationInfiniteScrollPagination
 
+export const zDeleteConversationsByCIdPath = z.object({
+  c_id: z.uuid(),
+})
+
+/**
+ * Conversation deleted successfully
+ */
+export const zDeleteConversationsByCIdResponse = z.void()
+
 export const zPostConversationsByCIdNameBody = zConversationRenamePayload
 
 export const zPostConversationsByCIdNamePath = z.object({
@@ -1206,6 +1215,15 @@ export const zPostSavedMessagesQuery = z.object({
  * Message saved successfully
  */
 export const zPostSavedMessagesResponse = zResultResponse
+
+export const zDeleteSavedMessagesByMessageIdPath = z.object({
+  message_id: z.uuid(),
+})
+
+/**
+ * Message removed successfully
+ */
+export const zDeleteSavedMessagesByMessageIdResponse = z.void()
 
 /**
  * Success

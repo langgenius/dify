@@ -4,6 +4,27 @@ import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
 import {
+  zDeleteDatasetsApiKeysByApiKeyIdPath,
+  zDeleteDatasetsApiKeysByApiKeyIdResponse,
+  zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath,
+  zDeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse,
+  zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath,
+  zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse,
+  zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath,
+  zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse,
+  zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath,
+  zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery,
+  zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse,
+  zDeleteDatasetsByDatasetIdDocumentsPath,
+  zDeleteDatasetsByDatasetIdDocumentsResponse,
+  zDeleteDatasetsByDatasetIdMetadataByMetadataIdPath,
+  zDeleteDatasetsByDatasetIdMetadataByMetadataIdResponse,
+  zDeleteDatasetsByDatasetIdPath,
+  zDeleteDatasetsByDatasetIdResponse,
+  zDeleteDatasetsByResourceIdApiKeysByApiKeyIdPath,
+  zDeleteDatasetsByResourceIdApiKeysByApiKeyIdResponse,
+  zDeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdPath,
+  zDeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse,
   zGetDatasetsApiBaseInfoResponse,
   zGetDatasetsApiKeysResponse,
   zGetDatasetsBatchImportStatusByJobIdPath,
@@ -79,6 +100,10 @@ import {
   zPatchDatasetsByDatasetIdBody,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionPath,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponse,
+  zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPausePath,
+  zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseResponse,
+  zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumePath,
+  zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponse,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionPath,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionQuery,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponse,
@@ -127,6 +152,9 @@ import {
   zPostDatasetsByDatasetIdDocumentsGenerateSummaryBody,
   zPostDatasetsByDatasetIdDocumentsGenerateSummaryPath,
   zPostDatasetsByDatasetIdDocumentsGenerateSummaryResponse,
+  zPostDatasetsByDatasetIdDocumentsMetadataBody,
+  zPostDatasetsByDatasetIdDocumentsMetadataPath,
+  zPostDatasetsByDatasetIdDocumentsMetadataResponse,
   zPostDatasetsByDatasetIdDocumentsPath,
   zPostDatasetsByDatasetIdDocumentsResponse,
   zPostDatasetsByDatasetIdExternalHitTestingBody,
@@ -136,8 +164,13 @@ import {
   zPostDatasetsByDatasetIdHitTestingPath,
   zPostDatasetsByDatasetIdHitTestingResponse,
   zPostDatasetsByDatasetIdMetadataBody,
+  zPostDatasetsByDatasetIdMetadataBuiltInByActionPath,
+  zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse,
   zPostDatasetsByDatasetIdMetadataPath,
   zPostDatasetsByDatasetIdMetadataResponse,
+  zPostDatasetsByDatasetIdRetryBody,
+  zPostDatasetsByDatasetIdRetryPath,
+  zPostDatasetsByDatasetIdRetryResponse,
   zPostDatasetsByResourceIdApiKeysPath,
   zPostDatasetsByResourceIdApiKeysResponse,
   zPostDatasetsExternalBody,
@@ -175,6 +208,26 @@ export const apiBaseInfo = {
 }
 
 /**
+ * Delete dataset API key
+ */
+export const delete_ = oc
+  .route({
+    description: 'Delete dataset API key',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteDatasetsApiKeysByApiKeyId',
+    path: '/datasets/api-keys/{api_key_id}',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteDatasetsApiKeysByApiKeyIdPath }))
+  .output(zDeleteDatasetsApiKeysByApiKeyIdResponse)
+
+export const byApiKeyId = {
+  delete: delete_,
+}
+
+/**
  * Get dataset API keys
  */
 export const get2 = oc
@@ -201,6 +254,7 @@ export const post = oc
 export const apiKeys = {
   get: get2,
   post,
+  byApiKeyId,
 }
 
 export const get3 = oc
@@ -278,6 +332,18 @@ export const useCheck = {
   get: get4,
 }
 
+export const delete2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiId',
+    path: '/datasets/external-knowledge-api/{external_knowledge_api_id}',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdPath }))
+  .output(zDeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse)
+
 /**
  * Get external knowledge API template details
  */
@@ -310,6 +376,7 @@ export const patch = oc
   .output(zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse)
 
 export const byExternalKnowledgeApiId = {
+  delete: delete2,
   get: get5,
   patch,
   useCheck,
@@ -612,6 +679,27 @@ export const generateSummary = {
   post: post10,
 }
 
+export const post11 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdDocumentsMetadata',
+    path: '/datasets/{dataset_id}/documents/metadata',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentsMetadataBody,
+      params: zPostDatasetsByDatasetIdDocumentsMetadataPath,
+    }),
+  )
+  .output(zPostDatasetsByDatasetIdDocumentsMetadataResponse)
+
+export const metadata2 = {
+  post: post11,
+}
+
 export const patch2 = oc
   .route({
     inputStructure: 'detailed',
@@ -712,7 +800,7 @@ export const put = oc
   )
   .output(zPutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponse)
 
-export const metadata2 = {
+export const metadata3 = {
   put,
 }
 
@@ -751,9 +839,49 @@ export const pipelineExecutionLog = {
 }
 
 /**
- * Update document processing status (pause/resume)
+ * pause document
  */
 export const patch3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPause',
+    path: '/datasets/{dataset_id}/documents/{document_id}/processing/pause',
+    successStatus: 204,
+    summary: 'pause document',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPausePath }))
+  .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseResponse)
+
+export const pause = {
+  patch: patch3,
+}
+
+/**
+ * recover document
+ */
+export const patch4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResume',
+    path: '/datasets/{dataset_id}/documents/{document_id}/processing/resume',
+    successStatus: 204,
+    summary: 'recover document',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumePath }))
+  .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponse)
+
+export const resume = {
+  patch: patch4,
+}
+
+/**
+ * Update document processing status (pause/resume)
+ */
+export const patch5 = oc
   .route({
     description: 'Update document processing status (pause/resume)',
     inputStructure: 'detailed',
@@ -766,14 +894,16 @@ export const patch3 = oc
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponse)
 
 export const byAction2 = {
-  patch: patch3,
+  patch: patch5,
 }
 
 export const processing = {
+  pause,
+  resume,
   byAction: byAction2,
 }
 
-export const post11 = oc
+export const post12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -790,10 +920,10 @@ export const post11 = oc
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdRenameResponse)
 
 export const rename = {
-  post: post11,
+  post: post12,
 }
 
-export const patch4 = oc
+export const patch6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PATCH',
@@ -810,10 +940,10 @@ export const patch4 = oc
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponse)
 
 export const byAction3 = {
-  patch: patch4,
+  patch: patch6,
 }
 
-export const post12 = oc
+export const post13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -830,7 +960,7 @@ export const post12 = oc
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentResponse)
 
 export const segment = {
-  post: post12,
+  post: post13,
   byAction: byAction3,
 }
 
@@ -845,7 +975,7 @@ export const get19 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportPath }))
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse)
 
-export const post13 = oc
+export const post14 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -863,10 +993,30 @@ export const post13 = oc
 
 export const batchImport = {
   get: get19,
-  post: post13,
+  post: post14,
 }
 
-export const patch5 = oc
+export const delete3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId:
+      'deleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkId',
+    path: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params:
+        zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdPath,
+    }),
+  )
+  .output(
+    zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse,
+  )
+
+export const patch7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PATCH',
@@ -887,7 +1037,8 @@ export const patch5 = oc
   )
 
 export const byChildChunkId = {
-  patch: patch5,
+  delete: delete3,
+  patch: patch7,
 }
 
 export const get20 = oc
@@ -907,7 +1058,7 @@ export const get20 = oc
   )
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse)
 
-export const patch6 = oc
+export const patch8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PATCH',
@@ -923,7 +1074,7 @@ export const patch6 = oc
   )
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse)
 
-export const post14 = oc
+export const post15 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -941,12 +1092,26 @@ export const post14 = oc
 
 export const childChunks = {
   get: get20,
-  patch: patch6,
-  post: post14,
+  patch: patch8,
+  post: post15,
   byChildChunkId,
 }
 
-export const patch7 = oc
+export const delete4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentId',
+    path: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(
+    z.object({ params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath }),
+  )
+  .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse)
+
+export const patch9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PATCH',
@@ -963,9 +1128,27 @@ export const patch7 = oc
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse)
 
 export const bySegmentId = {
-  patch: patch7,
+  delete: delete4,
+  patch: patch9,
   childChunks,
 }
+
+export const delete5 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteDatasetsByDatasetIdDocumentsByDocumentIdSegments',
+    path: '/datasets/{dataset_id}/documents/{document_id}/segments',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsPath,
+      query: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery.optional(),
+    }),
+  )
+  .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse)
 
 export const get21 = oc
   .route({
@@ -984,6 +1167,7 @@ export const get21 = oc
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse)
 
 export const segments = {
+  delete: delete5,
   get: get21,
   batchImport,
   bySegmentId,
@@ -1039,6 +1223,18 @@ export const websiteSync = {
   get: get23,
 }
 
+export const delete6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteDatasetsByDatasetIdDocumentsByDocumentId',
+    path: '/datasets/{dataset_id}/documents/{document_id}',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath }))
+  .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse)
+
 /**
  * Get document details
  */
@@ -1060,11 +1256,12 @@ export const get24 = oc
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdResponse)
 
 export const byDocumentId = {
+  delete: delete6,
   get: get24,
   download,
   indexingEstimate: indexingEstimate3,
   indexingStatus: indexingStatus2,
-  metadata: metadata2,
+  metadata: metadata3,
   notion,
   pipelineExecutionLog,
   processing,
@@ -1074,6 +1271,18 @@ export const byDocumentId = {
   summaryStatus,
   websiteSync,
 }
+
+export const delete7 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteDatasetsByDatasetIdDocuments',
+    path: '/datasets/{dataset_id}/documents',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteDatasetsByDatasetIdDocumentsPath }))
+  .output(zDeleteDatasetsByDatasetIdDocumentsResponse)
 
 /**
  * Get documents in a dataset
@@ -1095,7 +1304,7 @@ export const get25 = oc
   )
   .output(zGetDatasetsByDatasetIdDocumentsResponse)
 
-export const post15 = oc
+export const post16 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1112,10 +1321,12 @@ export const post15 = oc
   .output(zPostDatasetsByDatasetIdDocumentsResponse)
 
 export const documents = {
+  delete: delete7,
   get: get25,
-  post: post15,
+  post: post16,
   downloadZip,
   generateSummary,
+  metadata: metadata2,
   status,
   byDocumentId,
 }
@@ -1142,7 +1353,7 @@ export const errorDocs = {
 /**
  * Test external knowledge retrieval for dataset
  */
-export const post16 = oc
+export const post17 = oc
   .route({
     description: 'Test external knowledge retrieval for dataset',
     inputStructure: 'detailed',
@@ -1160,13 +1371,13 @@ export const post16 = oc
   .output(zPostDatasetsByDatasetIdExternalHitTestingResponse)
 
 export const externalHitTesting = {
-  post: post16,
+  post: post17,
 }
 
 /**
  * Test dataset knowledge retrieval
  */
-export const post17 = oc
+export const post18 = oc
   .route({
     description: 'Test dataset knowledge retrieval',
     inputStructure: 'detailed',
@@ -1184,7 +1395,7 @@ export const post17 = oc
   .output(zPostDatasetsByDatasetIdHitTestingResponse)
 
 export const hitTesting = {
-  post: post17,
+  post: post18,
 }
 
 /**
@@ -1206,7 +1417,39 @@ export const indexingStatus3 = {
   get: get27,
 }
 
-export const patch8 = oc
+export const post19 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdMetadataBuiltInByAction',
+    path: '/datasets/{dataset_id}/metadata/built-in/{action}',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostDatasetsByDatasetIdMetadataBuiltInByActionPath }))
+  .output(zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse)
+
+export const byAction4 = {
+  post: post19,
+}
+
+export const builtIn2 = {
+  byAction: byAction4,
+}
+
+export const delete8 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteDatasetsByDatasetIdMetadataByMetadataId',
+    path: '/datasets/{dataset_id}/metadata/{metadata_id}',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteDatasetsByDatasetIdMetadataByMetadataIdPath }))
+  .output(zDeleteDatasetsByDatasetIdMetadataByMetadataIdResponse)
+
+export const patch10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PATCH',
@@ -1223,7 +1466,8 @@ export const patch8 = oc
   .output(zPatchDatasetsByDatasetIdMetadataByMetadataIdResponse)
 
 export const byMetadataId = {
-  patch: patch8,
+  delete: delete8,
+  patch: patch10,
 }
 
 export const get28 = oc
@@ -1237,7 +1481,7 @@ export const get28 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdMetadataPath }))
   .output(zGetDatasetsByDatasetIdMetadataResponse)
 
-export const post18 = oc
+export const post20 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1254,9 +1498,10 @@ export const post18 = oc
   )
   .output(zPostDatasetsByDatasetIdMetadataResponse)
 
-export const metadata3 = {
+export const metadata4 = {
   get: get28,
-  post: post18,
+  post: post20,
+  builtIn: builtIn2,
   byMetadataId,
 }
 
@@ -1337,6 +1582,31 @@ export const relatedApps = {
 }
 
 /**
+ * retry document
+ */
+export const post21 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdRetry',
+    path: '/datasets/{dataset_id}/retry',
+    successStatus: 204,
+    summary: 'retry document',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdRetryBody,
+      params: zPostDatasetsByDatasetIdRetryPath,
+    }),
+  )
+  .output(zPostDatasetsByDatasetIdRetryResponse)
+
+export const retry = {
+  post: post21,
+}
+
+/**
  * Check if dataset is in use
  */
 export const get33 = oc
@@ -1354,6 +1624,18 @@ export const get33 = oc
 export const useCheck2 = {
   get: get33,
 }
+
+export const delete9 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteDatasetsByDatasetId',
+    path: '/datasets/{dataset_id}',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteDatasetsByDatasetIdPath }))
+  .output(zDeleteDatasetsByDatasetIdResponse)
 
 /**
  * Get dataset details
@@ -1373,7 +1655,7 @@ export const get34 = oc
 /**
  * Update dataset details
  */
-export const patch9 = oc
+export const patch11 = oc
   .route({
     description: 'Update dataset details',
     inputStructure: 'detailed',
@@ -1386,8 +1668,9 @@ export const patch9 = oc
   .output(zPatchDatasetsByDatasetIdResponse)
 
 export const byDatasetId = {
+  delete: delete9,
   get: get34,
-  patch: patch9,
+  patch: patch11,
   apiKeys: apiKeys2,
   autoDisableLogs,
   batch,
@@ -1396,12 +1679,36 @@ export const byDatasetId = {
   externalHitTesting,
   hitTesting,
   indexingStatus: indexingStatus3,
-  metadata: metadata3,
+  metadata: metadata4,
   notion: notion2,
   permissionPartUsers,
   queries,
   relatedApps,
+  retry,
   useCheck: useCheck2,
+}
+
+/**
+ * Delete an API key for a dataset
+ *
+ * Delete an API key for a dataset
+ */
+export const delete10 = oc
+  .route({
+    description: 'Delete an API key for a dataset',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteDatasetsByResourceIdApiKeysByApiKeyId',
+    path: '/datasets/{resource_id}/api-keys/{api_key_id}',
+    successStatus: 204,
+    summary: 'Delete an API key for a dataset',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteDatasetsByResourceIdApiKeysByApiKeyIdPath }))
+  .output(zDeleteDatasetsByResourceIdApiKeysByApiKeyIdResponse)
+
+export const byApiKeyId2 = {
+  delete: delete10,
 }
 
 /**
@@ -1427,7 +1734,7 @@ export const get35 = oc
  *
  * Create a new API key for a dataset
  */
-export const post19 = oc
+export const post22 = oc
   .route({
     description: 'Create a new API key for a dataset',
     inputStructure: 'detailed',
@@ -1443,7 +1750,8 @@ export const post19 = oc
 
 export const apiKeys3 = {
   get: get35,
-  post: post19,
+  post: post22,
+  byApiKeyId: byApiKeyId2,
 }
 
 export const byResourceId = {
@@ -1468,7 +1776,7 @@ export const get36 = oc
 /**
  * Create a new dataset
  */
-export const post20 = oc
+export const post23 = oc
   .route({
     description: 'Create a new dataset',
     inputStructure: 'detailed',
@@ -1483,7 +1791,7 @@ export const post20 = oc
 
 export const datasets = {
   get: get36,
-  post: post20,
+  post: post23,
   apiBaseInfo,
   apiKeys,
   batchImportStatus,

@@ -4,6 +4,8 @@ import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
 import {
+  zDeleteApiBasedExtensionByIdPath,
+  zDeleteApiBasedExtensionByIdResponse,
   zGetApiBasedExtensionByIdPath,
   zGetApiBasedExtensionByIdResponse,
   zGetApiBasedExtensionResponse,
@@ -13,6 +15,22 @@ import {
   zPostApiBasedExtensionByIdResponse,
   zPostApiBasedExtensionResponse,
 } from './zod.gen'
+
+/**
+ * Delete API-based extension
+ */
+export const delete_ = oc
+  .route({
+    description: 'Delete API-based extension',
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteApiBasedExtensionById',
+    path: '/api-based-extension/{id}',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteApiBasedExtensionByIdPath }))
+  .output(zDeleteApiBasedExtensionByIdResponse)
 
 /**
  * Get API-based extension by ID
@@ -45,6 +63,7 @@ export const post = oc
   .output(zPostApiBasedExtensionByIdResponse)
 
 export const byId = {
+  delete: delete_,
   get,
   post,
 }
