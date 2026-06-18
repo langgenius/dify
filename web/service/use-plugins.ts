@@ -566,18 +566,19 @@ const areAutoUpgradeSettingsEqual = (left: AutoUpdateConfig | undefined, right: 
     && areStringArraysEqual(left?.include_plugins ?? [], right?.include_plugins ?? [])
 }
 
-export const hasPluginPermission = (permission: PermissionType | undefined, isAdmin: boolean) => {
-  if (!permission)
-    return false
+// legacy plugin permission
+// export const hasPluginPermission = (permission: PermissionType | undefined, isAdmin: boolean) => {
+//   if (!permission)
+//     return false
 
-  if (permission === PermissionType.noOne)
-    return false
+//   if (permission === PermissionType.noOne)
+//     return false
 
-  if (permission === PermissionType.everyone)
-    return true
+//   if (permission === PermissionType.everyone)
+//     return true
 
-  return isAdmin
-}
+//   return isAdmin
+// }
 
 export const usePluginPermissionSettings = () => {
   return useQuery({
