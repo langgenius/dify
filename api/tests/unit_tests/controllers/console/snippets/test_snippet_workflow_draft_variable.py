@@ -46,21 +46,21 @@ def app():
 
 
 def test_ensure_snippet_draft_variable_row_allowed_rejects_system_variable():
-    variable = WorkflowDraftVariable(node_id=SYSTEM_VARIABLE_NODE_ID)
+    variable = SimpleNamespace(node_id=SYSTEM_VARIABLE_NODE_ID)
 
     with pytest.raises(module.NotFoundError, match="variable not found"):
         module._ensure_snippet_draft_variable_row_allowed(variable=variable, variable_id="var-1")
 
 
 def test_ensure_snippet_draft_variable_row_allowed_rejects_conversation_variable():
-    variable = WorkflowDraftVariable(node_id=CONVERSATION_VARIABLE_NODE_ID)
+    variable = SimpleNamespace(node_id=CONVERSATION_VARIABLE_NODE_ID)
 
     with pytest.raises(module.NotFoundError, match="variable not found"):
         module._ensure_snippet_draft_variable_row_allowed(variable=variable, variable_id="var-1")
 
 
 def test_ensure_snippet_draft_variable_row_allowed_accepts_canvas_node_variable():
-    variable = WorkflowDraftVariable(node_id="llm-1")
+    variable = SimpleNamespace(node_id="llm-1")
 
     module._ensure_snippet_draft_variable_row_allowed(variable=variable, variable_id="var-1")
 
