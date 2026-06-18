@@ -141,9 +141,10 @@ const MCPDetailContent: FC<Props> = ({
     if (res.result === 'success') {
       hideUpdateModal()
       onUpdate()
+      invalidateMCPTools(detail.id)
       handleAuthorize()
     }
-  }, [detail, updateMCP, hideUpdateModal, onUpdate, handleAuthorize])
+  }, [detail, updateMCP, hideUpdateModal, onUpdate, invalidateMCPTools, handleAuthorize])
 
   const handleDelete = useCallback(async () => {
     if (!detail)
