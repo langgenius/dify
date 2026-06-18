@@ -27,8 +27,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { hasPermission } from '@/utils/permission'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import Authorize from '../authorize'
 import ApiKeyModal from '../authorize/api-key-modal'
 import {
@@ -80,8 +79,7 @@ const Authorized = ({
   notAllowCustomCredential,
 }: AuthorizedProps) => {
   const { t } = useTranslation()
-  const workspacePermissionKeys = useAppContextWithSelector(s => s.workspacePermissionKeys)
-  const canManageCredential = hasPermission(workspacePermissionKeys, 'credential.manage')
+  const { canUseCredential, canManageCredential } = useCredentialPermissions()
   const [isLocalOpen, setIsLocalOpen] = useState(false)
   const mergedIsOpen = isOpen ?? isLocalOpen
   const setMergedIsOpen = useCallback((open: boolean) => {
@@ -168,7 +166,7 @@ const Authorized = ({
   }, [canManageCredential])
   const { mutateAsync: setPluginDefaultCredential } = useSetPluginDefaultCredentialHook(pluginPayload)
   const handleSetDefault = useCallback(async (id: string) => {
-    if (doingActionRef.current || !canManageCredential)
+    if (doingActionRef.current || !canUseCredential)
       return
     try {
       handleSetDoingAction(true)
@@ -179,7 +177,7 @@ const Authorized = ({
     finally {
       handleSetDoingAction(false)
     }
-  }, [canManageCredential, setPluginDefaultCredential, onUpdate, t, handleSetDoingAction])
+  }, [canUseCredential, setPluginDefaultCredential, onUpdate, t, handleSetDoingAction])
   const { mutateAsync: updatePluginCredential } = useUpdatePluginCredentialHook(pluginPayload)
   const handleRename = useCallback(async (payload: {
     credential_id: string

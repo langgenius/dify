@@ -39,11 +39,11 @@ import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-m
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
-import { useAppContext } from '@/context/app-context'
 import { useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 
 import { useProviderContext } from '@/context/provider-context'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { getLanguage } from '@/i18n-config/language'
 import {
   deleteWorkflowTool,
@@ -82,7 +82,8 @@ const ProviderDetail = ({
   const isAuthed = collection.is_team_authorization
   const isBuiltIn = collection.type === CollectionType.builtIn
   const isModel = collection.type === CollectionType.model
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { canUseCredential, canManageCredential } = useCredentialPermissions()
+  const canOpenCredentialSettings = isAuthed ? canUseCredential : canManageCredential
   const canManageTools = useCanManageTools()
   const invalidateAllWorkflowTools = useInvalidateAllWorkflowTools()
   const [isDetailLoading, setIsDetailLoading] = useState(false)
@@ -92,6 +93,9 @@ const ProviderDetail = ({
   const { setShowModelModal } = useModalContext()
   const { modelProviders: providers } = useProviderContext()
   const showSettingAuthModal = () => {
+    if (!canOpenCredentialSettings)
+      return
+
     if (isModel) {
       const provider = providers.find(item => item.provider === collection?.id)
       if (provider) {
@@ -359,7 +363,7 @@ const ProviderDetail = ({
                                   if (collection.type === CollectionType.builtIn || collection.type === CollectionType.model)
                                     showSettingAuthModal()
                                 }}
-                                disabled={!isCurrentWorkspaceManager}
+                                disabled={!canOpenCredentialSettings}
                               >
                                 <StatusDot className="mr-2" status="success" />
                                 {t('auth.authorized', { ns: 'tools' })}
@@ -381,7 +385,7 @@ const ProviderDetail = ({
                                 if (collection.type === CollectionType.builtIn || collection.type === CollectionType.model)
                                   showSettingAuthModal()
                               }}
-                              disabled={!isCurrentWorkspaceManager}
+                              disabled={!canOpenCredentialSettings}
                             >
                               {t('auth.unauthorized', { ns: 'tools' })}
                             </Button>
@@ -428,17 +432,24 @@ const ProviderDetail = ({
                     collection={collection}
                     onCancel={() => setShowSettingAuth(false)}
                     onSaved={async (value) => {
+                      if (!canManageCredential)
+                        return
+
                       await updateBuiltInToolCredential(collection.name, value)
                       toast.success(t('api.actionSuccess', { ns: 'common' }))
                       await onRefreshData()
                       setShowSettingAuth(false)
                     }}
                     onRemove={async () => {
+                      if (!canManageCredential)
+                        return
+
                       await removeBuiltInToolCredential(collection.name)
                       toast.success(t('api.actionSuccess', { ns: 'common' }))
                       await onRefreshData()
                       setShowSettingAuth(false)
                     }}
+                    readonly={!canManageCredential}
                   />
                 )}
                 {isShowEditCollectionToolModal && canManageTools && (

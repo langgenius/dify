@@ -14,7 +14,7 @@ vi.mock('@/i18n-config/language', () => ({
 
 const mockIsCurrentWorkspaceManager = vi.fn(() => true)
 const mockAppContextState = vi.hoisted(() => ({
-  workspacePermissionKeys: ['tool.manage'] as string[],
+  workspacePermissionKeys: ['tool.manage', 'credential.manage', 'credential.use'] as string[],
 }))
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
@@ -124,10 +124,10 @@ vi.mock('@/app/components/tools/edit-custom-collection-modal', () => ({
 }))
 
 vi.mock('@/app/components/tools/setting/build-in/config-credentials', () => ({
-  default: ({ onCancel, onSaved, onRemove }: { onCancel: () => void, onSaved: (val: Record<string, string>) => Promise<void>, onRemove: () => Promise<void> }) => (
-    <div data-testid="config-credential">
-      <button data-testid="credential-save" onClick={() => onSaved({ key: 'val' })}>Save</button>
-      <button data-testid="credential-remove" onClick={onRemove}>Remove</button>
+  default: ({ onCancel, onSaved, onRemove, readonly }: { onCancel: () => void, onSaved: (val: Record<string, string>) => Promise<void>, onRemove: () => Promise<void>, readonly?: boolean }) => (
+    <div data-testid="config-credential" data-readonly={readonly ? 'true' : 'false'}>
+      <button data-testid="credential-save" disabled={readonly} onClick={() => onSaved({ key: 'val' })}>Save</button>
+      <button data-testid="credential-remove" disabled={readonly} onClick={onRemove}>Remove</button>
       <button data-testid="credential-cancel" onClick={onCancel}>Cancel</button>
     </div>
   ),
@@ -173,7 +173,7 @@ describe('ProviderDetail', () => {
     ])
     mockFetchCustomToolList.mockResolvedValue([])
     mockFetchModelToolList.mockResolvedValue([])
-    mockAppContextState.workspacePermissionKeys = ['tool.manage']
+    mockAppContextState.workspacePermissionKeys = ['tool.manage', 'credential.manage', 'credential.use']
   })
 
   afterEach(() => {
@@ -533,6 +533,46 @@ describe('ProviderDetail', () => {
       })
       fireEvent.click(screen.getByText('tools.auth.unauthorized'))
       expect(screen.getByTestId('config-credential'))!.toBeInTheDocument()
+    })
+
+    it('does not open setup credential drawer without credential.manage', async () => {
+      mockAppContextState.workspacePermissionKeys = ['tool.manage', 'credential.use']
+
+      render(
+        <ProviderDetail
+          collection={createMockCollection({ allow_delete: true, is_team_authorization: false })}
+          onHide={mockOnHide}
+          onRefreshData={mockOnRefreshData}
+        />,
+      )
+      await waitFor(() => {
+        expect(screen.getByText('tools.auth.unauthorized'))!.toBeInTheDocument()
+      })
+
+      const setupButton = screen.getByText('tools.auth.unauthorized').closest('button')!
+      expect(setupButton).toBeDisabled()
+      fireEvent.click(setupButton)
+      expect(screen.queryByTestId('config-credential')).not.toBeInTheDocument()
+    })
+
+    it('opens authorized credential drawer as readonly with credential.use only', async () => {
+      mockAppContextState.workspacePermissionKeys = ['tool.manage', 'credential.use']
+
+      render(
+        <ProviderDetail
+          collection={createMockCollection({ allow_delete: true, is_team_authorization: true })}
+          onHide={mockOnHide}
+          onRefreshData={mockOnRefreshData}
+        />,
+      )
+      await waitFor(() => {
+        expect(screen.getByText('tools.auth.authorized'))!.toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByText('tools.auth.authorized'))
+      expect(screen.getByTestId('config-credential'))!.toHaveAttribute('data-readonly', 'true')
+      expect(screen.getByTestId('credential-save'))!.toBeDisabled()
+      expect(screen.getByTestId('credential-remove'))!.toBeDisabled()
     })
 
     it('saves credentials and refreshes data', async () => {

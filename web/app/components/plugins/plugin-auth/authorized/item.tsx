@@ -190,7 +190,7 @@ const Item = ({
               !credential.is_default && !disableSetDefault && !credential.not_allowed_to_use && !isBorrowed && (
                 <Button
                   size="small"
-                  disabled={disabled || !canManageCredential}
+                  disabled={disabled || !canUseCredential}
                   onClick={(e) => {
                     e.stopPropagation()
                     onSetDefault?.(credential.id)

@@ -1457,7 +1457,7 @@ describe('Authorized Component', () => {
       expect(screen.getByText('API Keys'))!.toBeInTheDocument()
     })
 
-    it('should disable credential management actions when credential.manage is missing', () => {
+    it('should allow credential.use to set default when credential.manage is missing', () => {
       const pluginPayload = createPluginPayload()
       const credentials = [createCredential({ is_default: false })]
       mockAppContext.workspacePermissionKeys = ['credential.use']
@@ -1472,15 +1472,27 @@ describe('Authorized Component', () => {
       )
 
       const setDefaultButton = screen.queryByText('plugin.auth.setDefault')
-      if (setDefaultButton) {
-        const button = setDefaultButton.closest('button')
-        expect(button)!.toBeDisabled()
-      }
-      else {
-        // If no set default button, verify the component rendered
-        // If no set default button, verify the component rendered
-        expect(screen.getByText('API Keys'))!.toBeInTheDocument()
-      }
+      expect(setDefaultButton)!.toBeInTheDocument()
+      expect(setDefaultButton!.closest('button'))!.toBeEnabled()
+    })
+
+    it('should disable set default when credential.use and credential.manage are missing', () => {
+      const pluginPayload = createPluginPayload()
+      const credentials = [createCredential({ is_default: false })]
+      mockAppContext.workspacePermissionKeys = []
+
+      render(
+        <Authorized
+          pluginPayload={pluginPayload}
+          credentials={credentials}
+          isOpen={true}
+        />,
+        { wrapper: createWrapper() },
+      )
+
+      const setDefaultButton = screen.queryByText('plugin.auth.setDefault')
+      expect(setDefaultButton)!.toBeInTheDocument()
+      expect(setDefaultButton!.closest('button'))!.toBeDisabled()
     })
 
     it('should pass disableSetDefault to Item components', () => {
