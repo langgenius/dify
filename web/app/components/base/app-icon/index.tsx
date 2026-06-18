@@ -8,9 +8,17 @@ import { useHover } from 'ahooks'
 import { cva } from 'class-variance-authority'
 import { init } from 'emoji-mart'
 import * as React from 'react'
-import { useRef } from 'react'
+import { useRef, useSyncExternalStore } from 'react'
 
 init({ data })
+
+const subscribeHydrationState = () => () => {}
+
+const useIsHydrated = () => useSyncExternalStore(
+  subscribeHydrationState,
+  () => true,
+  () => false,
+)
 
 type AppIconProps = {
   size?: 'xs' | 'tiny' | 'small' | 'medium' | 'large' | 'xl' | 'xxl'
@@ -105,9 +113,20 @@ const AppIcon: FC<AppIconProps> = ({
 }) => {
   const isValidImageIcon = iconType === 'image' && imageUrl
   const emojiIcon = (icon && icon !== '') ? icon : '🤖'
-  const Icon = <em-emoji key={emojiIcon} id={emojiIcon} />
+  const isHydrated = useIsHydrated()
+  const Icon = isHydrated ? <em-emoji key={emojiIcon} id={emojiIcon} /> : emojiIcon
   const wrapperRef = useRef<HTMLSpanElement>(null)
   const isHovering = useHover(wrapperRef)
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLSpanElement>) => {
+    if (!onClick)
+      return
+
+    if (event.key !== 'Enter' && event.key !== ' ')
+      return
+
+    event.preventDefault()
+    onClick()
+  }
 
   return (
     <span
@@ -115,6 +134,9 @@ const AppIcon: FC<AppIconProps> = ({
       className={cn(appIconVariants({ size, rounded }), className)}
       style={{ background: isValidImageIcon ? undefined : (background || '#FFEAD5') }}
       onClick={onClick}
+      onKeyDown={onClick ? handleKeyDown : undefined}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
     >
       {
         isValidImageIcon

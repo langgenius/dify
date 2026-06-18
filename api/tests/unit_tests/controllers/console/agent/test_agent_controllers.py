@@ -1,4 +1,4 @@
-from inspect import unwrap
+from inspect import getsource, unwrap
 from types import SimpleNamespace
 from typing import Any, cast
 
@@ -95,6 +95,7 @@ def _agent_app_composer_response() -> dict:
 def _app_detail_obj(**overrides):
     data = {
         "id": "app-1",
+        "tenant_id": "tenant-1",
         "name": "Iris",
         "description": "Agent app",
         "mode_compatible_with_agent": "agent",
@@ -118,7 +119,6 @@ def _app_detail_obj(**overrides):
         "deleted_tools": [],
         "site": None,
         "bound_agent_id": "00000000-0000-0000-0000-000000000001",
-        "tenant_id": "tenant-1",
     }
     data.update(overrides)
     return SimpleNamespace(**data)
@@ -175,6 +175,11 @@ def test_agent_v2_console_routes_are_agent_id_first() -> None:
         "/apps/<uuid:app_id>/agent-sandbox/files",
     ):
         assert route not in paths
+
+
+def test_agent_app_write_routes_do_not_reuse_app_billing_quota() -> None:
+    for route_class in (AgentAppListApi, AgentAppCopyApi):
+        assert '@cloud_edition_billing_resource_check("apps")' not in getsource(route_class)
 
 
 @pytest.fixture
@@ -653,7 +658,8 @@ def test_agent_observability_routes_resolve_app_from_agent_id(
     account = SimpleNamespace(id=account_id, timezone="UTC")
     with app.test_request_context(
         "/console/api/agent/00000000-0000-0000-0000-000000000001/logs"
-        "?page=2&limit=5&keyword=hello&status=success&source=console"
+        "?page=2&limit=5&keyword=hello&statuses[]=success&statuses[]=failed&sources[]=webapp:app-1"
+        "&sources[]=workflow:app-2:workflow-1:v1:node-1&sort_by=created_at&sort_order=asc"
     ):
         logs = unwrap(AgentLogsApi.get)(AgentLogsApi(), "tenant-1", account, agent_id)
 
@@ -666,8 +672,10 @@ def test_agent_observability_routes_resolve_app_from_agent_id(
     assert logs_params.page == 2
     assert logs_params.limit == 5
     assert logs_params.keyword == "hello"
-    assert logs_params.status == "success"
-    assert logs_params.source == "console"
+    assert logs_params.statuses == ("success", "failed")
+    assert logs_params.sources == ("webapp:app-1", "workflow:app-2:workflow-1:v1:node-1")
+    assert logs_params.sort_by == "created_at"
+    assert logs_params.sort_order == "asc"
 
     with app.test_request_context(
         "/console/api/agent/00000000-0000-0000-0000-000000000001/logs/00000000-0000-0000-0000-000000000002/messages"
@@ -685,6 +693,9 @@ def test_agent_observability_routes_resolve_app_from_agent_id(
     assert messages_call["app"] is app_model
     assert messages_call["agent_id"] == agent_id
     assert messages_call["conversation_id"] == "00000000-0000-0000-0000-000000000002"
+    messages_params = cast(Any, messages_call["params"])
+    assert messages_params.sources == ()
+    assert messages_params.statuses == ()
 
     with app.test_request_context("/console/api/agent/00000000-0000-0000-0000-000000000001/log-sources"):
         sources = unwrap(AgentLogSourcesApi.get)(AgentLogSourcesApi(), "tenant-1", account, agent_id)

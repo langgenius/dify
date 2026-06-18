@@ -7,9 +7,9 @@ import * as z from 'zod'
  */
 export const zActivatePayload = z.object({
   email: z.string().nullish(),
-  interface_language: z.string(),
-  name: z.string().max(30),
-  timezone: z.string(),
+  interface_language: z.string().nullish(),
+  name: z.string().max(30).nullish(),
+  timezone: z.string().nullish(),
   token: z.string(),
   workspace_id: z.string().nullish(),
 })
@@ -25,7 +25,9 @@ export const zActivationResponse = z.object({
  * ActivationCheckData
  */
 export const zActivationCheckData = z.object({
+  account_status: z.string().nullish(),
   email: z.string().nullable(),
+  requires_setup: z.boolean().nullish(),
   workspace_id: z.string().nullable(),
   workspace_name: z.string().nullable(),
 })

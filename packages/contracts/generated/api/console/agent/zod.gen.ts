@@ -187,7 +187,9 @@ export const zAgentConfigSnapshotSummaryResponse = z.object({
   agent_id: z.string().nullish(),
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
+  display_version: z.int().nullish(),
   id: z.string(),
+  snapshot_version: z.int().nullish(),
   summary: z.string().nullish(),
   version: z.int(),
   version_note: z.string().nullish(),
@@ -550,14 +552,6 @@ export const zAgentSkillRefConfig = z.object({
 })
 
 /**
- * AgentSkillStandardizeResponse
- */
-export const zAgentSkillStandardizeResponse = z.object({
-  manifest: zSkillManifest,
-  skill: zAgentSkillRefConfig,
-})
-
-/**
  * AgentSkillUploadResponse
  */
 export const zAgentSkillUploadResponse = z.object({
@@ -667,9 +661,9 @@ export const zModelConfig = z.object({
 })
 
 /**
- * AppDetailWithSite
+ * AgentAppDetailWithSite
  */
-export const zAppDetailWithSite = z.object({
+export const zAgentAppDetailWithSite = z.object({
   access_mode: z.string().nullish(),
   active_config_is_published: z.boolean().optional().default(false),
   api_base_url: z.string().nullish(),
@@ -1710,8 +1704,10 @@ export const zAgentConfigSnapshotDetailResponse = z.object({
   config_snapshot: zAgentSoulConfig,
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
+  display_version: z.int().nullish(),
   id: z.string(),
   revisions: z.array(zAgentConfigRevisionResponse).optional(),
+  snapshot_version: z.int().nullish(),
   summary: z.string().nullish(),
   version: z.int(),
   version_note: z.string().nullish(),
@@ -2063,9 +2059,9 @@ export const zSiteWritable = z.object({
 })
 
 /**
- * AppDetailWithSite
+ * AgentAppDetailWithSite
  */
-export const zAppDetailWithSiteWritable = z.object({
+export const zAgentAppDetailWithSiteWritable = z.object({
   access_mode: z.string().nullish(),
   active_config_is_published: z.boolean().optional().default(false),
   api_base_url: z.string().nullish(),
@@ -2131,7 +2127,7 @@ export const zPostAgentBody = zAgentAppCreatePayload
 /**
  * Agent app created successfully
  */
-export const zPostAgentResponse = zAppDetailWithSite
+export const zPostAgentResponse = zAgentAppDetailWithSite
 
 export const zGetAgentInviteOptionsQuery = z.object({
   app_id: z.string().optional(),
@@ -2161,7 +2157,7 @@ export const zGetAgentByAgentIdPath = z.object({
 /**
  * Agent app detail
  */
-export const zGetAgentByAgentIdResponse = zAppDetailWithSite
+export const zGetAgentByAgentIdResponse = zAgentAppDetailWithSite
 
 export const zPutAgentByAgentIdBody = zAgentAppUpdatePayload
 
@@ -2172,7 +2168,7 @@ export const zPutAgentByAgentIdPath = z.object({
 /**
  * Agent app updated successfully
  */
-export const zPutAgentByAgentIdResponse = zAppDetailWithSite
+export const zPutAgentByAgentIdResponse = zAgentAppDetailWithSite
 
 export const zGetAgentByAgentIdChatMessagesPath = z.object({
   agent_id: z.uuid(),
@@ -2259,7 +2255,7 @@ export const zPostAgentByAgentIdCopyPath = z.object({
 /**
  * Agent app copied successfully
  */
-export const zPostAgentByAgentIdCopyResponse = zAppDetailWithSite
+export const zPostAgentByAgentIdCopyResponse = zAgentAppDetailWithSite
 
 export const zGetAgentByAgentIdDriveFilesPath = z.object({
   agent_id: z.uuid(),
@@ -2364,9 +2360,13 @@ export const zGetAgentByAgentIdLogsQuery = z.object({
   keyword: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).optional().default(1),
+  sort_by: z.string().optional().default('updated_at'),
+  sort_order: z.string().optional().default('desc'),
   source: z.string().optional(),
+  sources: z.array(z.string()).optional(),
   start: z.string().optional(),
   status: z.string().optional(),
+  statuses: z.array(z.string()).optional(),
 })
 
 /**
@@ -2384,9 +2384,13 @@ export const zGetAgentByAgentIdLogsByConversationIdMessagesQuery = z.object({
   keyword: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).optional().default(1),
+  sort_by: z.string().optional().default('updated_at'),
+  sort_order: z.string().optional().default('desc'),
   source: z.string().optional(),
+  sources: z.array(z.string()).optional(),
   start: z.string().optional(),
   status: z.string().optional(),
+  statuses: z.array(z.string()).optional(),
 })
 
 /**
@@ -2452,21 +2456,16 @@ export const zPostAgentByAgentIdSandboxFilesUploadPath = z.object({
  */
 export const zPostAgentByAgentIdSandboxFilesUploadResponse = zSandboxUploadResponse
 
-export const zPostAgentByAgentIdSkillsStandardizePath = z.object({
-  agent_id: z.uuid(),
+export const zPostAgentByAgentIdSkillsUploadBody = z.object({
+  file: z.custom<Blob | File>(),
 })
-
-/**
- * Skill standardized into drive
- */
-export const zPostAgentByAgentIdSkillsStandardizeResponse = zAgentSkillStandardizeResponse
 
 export const zPostAgentByAgentIdSkillsUploadPath = z.object({
   agent_id: z.uuid(),
 })
 
 /**
- * Skill validated
+ * Skill uploaded into drive
  */
 export const zPostAgentByAgentIdSkillsUploadResponse = zAgentSkillUploadResponse
 

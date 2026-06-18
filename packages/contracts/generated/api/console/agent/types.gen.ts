@@ -21,7 +21,7 @@ export type AgentAppCreatePayload = {
   role: string
 }
 
-export type AppDetailWithSite = {
+export type AgentAppDetailWithSite = {
   access_mode?: string | null
   active_config_is_published?: boolean
   api_base_url?: string | null
@@ -255,11 +255,6 @@ export type SandboxUploadResponse = {
   path: string
 }
 
-export type AgentSkillStandardizeResponse = {
-  manifest: SkillManifest
-  skill: AgentSkillRefConfig
-}
-
 export type AgentSkillUploadResponse = {
   manifest: SkillManifest
   skill: AgentSkillRefConfig
@@ -286,8 +281,10 @@ export type AgentConfigSnapshotDetailResponse = {
   config_snapshot: AgentSoulConfig
   created_at?: number | null
   created_by?: string | null
+  display_version?: number | null
   id: string
   revisions?: Array<AgentConfigRevisionResponse>
+  snapshot_version?: number | null
   summary?: string | null
   version: number
   version_note?: string | null
@@ -419,7 +416,9 @@ export type AgentConfigSnapshotSummaryResponse = {
   agent_id?: string | null
   created_at?: number | null
   created_by?: string | null
+  display_version?: number | null
   id: string
+  snapshot_version?: number | null
   summary?: string | null
   version: number
   version_note?: string | null
@@ -1431,7 +1430,7 @@ export type AgentAppPaginationWritable = {
   total: number
 }
 
-export type AppDetailWithSiteWritable = {
+export type AgentAppDetailWithSiteWritable = {
   access_mode?: string | null
   active_config_is_published?: boolean
   api_base_url?: string | null
@@ -1550,7 +1549,7 @@ export type PostAgentErrors = {
 }
 
 export type PostAgentResponses = {
-  201: AppDetailWithSite
+  201: AgentAppDetailWithSite
 }
 
 export type PostAgentResponse = PostAgentResponses[keyof PostAgentResponses]
@@ -1604,7 +1603,7 @@ export type GetAgentByAgentIdData = {
 }
 
 export type GetAgentByAgentIdResponses = {
-  200: AppDetailWithSite
+  200: AgentAppDetailWithSite
 }
 
 export type GetAgentByAgentIdResponse = GetAgentByAgentIdResponses[keyof GetAgentByAgentIdResponses]
@@ -1624,7 +1623,7 @@ export type PutAgentByAgentIdErrors = {
 }
 
 export type PutAgentByAgentIdResponses = {
-  200: AppDetailWithSite
+  200: AgentAppDetailWithSite
 }
 
 export type PutAgentByAgentIdResponse = PutAgentByAgentIdResponses[keyof PutAgentByAgentIdResponses]
@@ -1770,7 +1769,7 @@ export type PostAgentByAgentIdCopyErrors = {
 }
 
 export type PostAgentByAgentIdCopyResponses = {
-  201: AppDetailWithSite
+  201: AgentAppDetailWithSite
 }
 
 export type PostAgentByAgentIdCopyResponse
@@ -1931,9 +1930,13 @@ export type GetAgentByAgentIdLogsData = {
     keyword?: string
     limit?: number
     page?: number
+    sort_by?: string
+    sort_order?: string
     source?: string
+    sources?: Array<string>
     start?: string
     status?: string
+    statuses?: Array<string>
   }
   url: '/agent/{agent_id}/logs'
 }
@@ -1956,9 +1959,13 @@ export type GetAgentByAgentIdLogsByConversationIdMessagesData = {
     keyword?: string
     limit?: number
     page?: number
+    sort_by?: string
+    sort_order?: string
     source?: string
+    sources?: Array<string>
     start?: string
     status?: string
+    statuses?: Array<string>
   }
   url: '/agent/{agent_id}/logs/{conversation_id}/messages'
 }
@@ -2065,28 +2072,10 @@ export type PostAgentByAgentIdSandboxFilesUploadResponses = {
 export type PostAgentByAgentIdSandboxFilesUploadResponse
   = PostAgentByAgentIdSandboxFilesUploadResponses[keyof PostAgentByAgentIdSandboxFilesUploadResponses]
 
-export type PostAgentByAgentIdSkillsStandardizeData = {
-  body?: never
-  path: {
-    agent_id: string
-  }
-  query?: never
-  url: '/agent/{agent_id}/skills/standardize'
-}
-
-export type PostAgentByAgentIdSkillsStandardizeErrors = {
-  400: unknown
-}
-
-export type PostAgentByAgentIdSkillsStandardizeResponses = {
-  201: AgentSkillStandardizeResponse
-}
-
-export type PostAgentByAgentIdSkillsStandardizeResponse
-  = PostAgentByAgentIdSkillsStandardizeResponses[keyof PostAgentByAgentIdSkillsStandardizeResponses]
-
 export type PostAgentByAgentIdSkillsUploadData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path: {
     agent_id: string
   }
