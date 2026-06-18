@@ -6,6 +6,7 @@ import {
   isFiniteNumber,
   numberStorageOptions,
   rawStorageOptions,
+  WORKFLOW_CANVAS_READ_ONLY_KEY,
   WORKFLOW_NODE_PANEL_WIDTH_KEY,
   WORKFLOW_OPERATION_MODE_KEY,
   WORKFLOW_PREVIEW_PANEL_WIDTH_KEY,
@@ -21,6 +22,7 @@ export const WorkflowLocalStorageBridge = () => {
   const [storedPreviewPanelWidth] = useLocalStorage<number>(WORKFLOW_PREVIEW_PANEL_WIDTH_KEY, undefined, numberStorageOptions)
   const [storedVariableInspectPanelHeight] = useLocalStorage<number>(WORKFLOW_VARIABLE_INSPECT_PANEL_HEIGHT_KEY, undefined, numberStorageOptions)
   const [storedControlMode] = useLocalStorage<string>(WORKFLOW_OPERATION_MODE_KEY, undefined, rawStorageOptions)
+  const [storedCanvasReadOnly] = useLocalStorage<string>(WORKFLOW_CANVAS_READ_ONLY_KEY, undefined, rawStorageOptions)
 
   const workflowStore = useWorkflowStore()
   const setNodePanelWidth = useStore(state => state.setNodePanelWidth)
@@ -28,8 +30,10 @@ export const WorkflowLocalStorageBridge = () => {
   const setPreviewPanelWidth = useStore(state => state.setPreviewPanelWidth)
   const setVariableInspectPanelHeight = useStore(state => state.setVariableInspectPanelHeight)
   const setControlMode = useStore(state => state.setControlMode)
+  const setCanvasReadOnly = useStore(state => state.setCanvasReadOnly)
 
   const setControlModeStorage = useSetLocalStorage<string>(WORKFLOW_OPERATION_MODE_KEY, rawStorageOptions)
+  const setCanvasReadOnlyStorage = useSetLocalStorage<string>(WORKFLOW_CANVAS_READ_ONLY_KEY, rawStorageOptions)
 
   useIsoLayoutEffect(() => {
     if (!isFiniteNumber(storedNodePanelWidth))
@@ -54,6 +58,11 @@ export const WorkflowLocalStorageBridge = () => {
       setControlMode(storedControlMode)
   }, [setControlMode, storedControlMode])
 
+  useIsoLayoutEffect(() => {
+    if (storedCanvasReadOnly === 'true' || storedCanvasReadOnly === 'false')
+      setCanvasReadOnly(storedCanvasReadOnly === 'true')
+  }, [setCanvasReadOnly, storedCanvasReadOnly])
+
   useEffect(() => {
     let previousControlMode = workflowStore.getState().controlMode
 
@@ -64,6 +73,17 @@ export const WorkflowLocalStorageBridge = () => {
       }
     })
   }, [setControlModeStorage, workflowStore])
+
+  useEffect(() => {
+    let previousCanvasReadOnly = workflowStore.getState().canvasReadOnly
+
+    return workflowStore.subscribe((state) => {
+      if (state.canvasReadOnly !== previousCanvasReadOnly) {
+        previousCanvasReadOnly = state.canvasReadOnly
+        setCanvasReadOnlyStorage(String(state.canvasReadOnly))
+      }
+    })
+  }, [setCanvasReadOnlyStorage, workflowStore])
 
   return null
 }

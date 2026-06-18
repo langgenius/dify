@@ -4,6 +4,7 @@ export const WORKFLOW_NODE_PANEL_WIDTH_KEY = 'workflow-node-panel-width'
 export const WORKFLOW_PREVIEW_PANEL_WIDTH_KEY = 'debug-and-preview-panel-width'
 export const WORKFLOW_VARIABLE_INSPECT_PANEL_HEIGHT_KEY = 'workflow-variable-inpsect-panel-height'
 export const WORKFLOW_OPERATION_MODE_KEY = 'workflow-operation-mode'
+export const WORKFLOW_CANVAS_READ_ONLY_KEY = 'workflow-canvas-read-only'
 
 export const rawStorageOptions = { raw: true } as const
 export const numberStorageOptions = {
