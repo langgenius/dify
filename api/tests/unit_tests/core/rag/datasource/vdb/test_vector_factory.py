@@ -9,7 +9,7 @@ import pytest
 from core.rag.models.document import Document
 
 
-def _register_fake_factory_module(monkeypatch, module_path: str, class_name: str):
+def _register_fake_factory_module(monkeypatch: pytest.MonkeyPatch, module_path: str, class_name: str):
     fake_module = types.ModuleType(module_path)
     fake_cls = type(class_name, (), {})
     setattr(fake_module, class_name, fake_cls)
@@ -105,7 +105,7 @@ def test_gen_index_struct_dict(vector_factory_module):
 def test_get_vector_factory_supported(
     vector_factory_module, monkeypatch: pytest.MonkeyPatch, vector_type, module_path, class_name
 ):
-    expected_cls = _register_fake_factory_module(monkeypatch, module_path, class_name)
+    expected_cls = _register_fake_factory_module: pytest.MonkeyPatchmodule_path, class_name)
 
     result_cls = vector_factory_module.Vector.get_vector_factory(getattr(vector_factory_module.VectorType, vector_type))
 
