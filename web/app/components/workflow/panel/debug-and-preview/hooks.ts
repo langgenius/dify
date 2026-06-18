@@ -809,7 +809,7 @@ export const useChat = (
           if (!responseItem.workflowProcess.tracing)
             responseItem.workflowProcess.tracing = []
 
-          const currentIndex = responseItem.workflowProcess.tracing.findIndex(item => item.node_id === nodeStartedData.node_id)
+          const currentIndex = responseItem.workflowProcess.tracing.findIndex(item => item.id === nodeStartedData.id)
           if (currentIndex > -1) {
             responseItem.workflowProcess.tracing[currentIndex] = {
               ...nodeStartedData,
@@ -835,12 +835,7 @@ export const useChat = (
           if (nodeFinishedData.iteration_id)
             return
 
-          const currentIndex = responseItem.workflowProcess.tracing.findIndex((item) => {
-            if (!item.execution_metadata?.parallel_id)
-              return item.id === nodeFinishedData.id
-
-            return item.id === nodeFinishedData.id && (item.execution_metadata?.parallel_id === nodeFinishedData.execution_metadata?.parallel_id)
-          })
+          const currentIndex = responseItem.workflowProcess.tracing.findIndex(item => item.id === nodeFinishedData.id)
           if (currentIndex > -1)
             responseItem.workflowProcess.tracing[currentIndex] = nodeFinishedData as any
         })
