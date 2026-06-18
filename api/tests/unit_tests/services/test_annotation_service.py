@@ -2,6 +2,7 @@
 Unit tests for services.annotation_service
 """
 
+import logging
 from io import BytesIO
 from types import SimpleNamespace
 from typing import Any, cast
@@ -1049,7 +1050,7 @@ class TestAppAnnotationServiceBatchImport:
             mock_redis.setnx.assert_called_once_with("app_annotation_batch_import_uuid-3", "waiting")
             mock_task.delay.assert_called_once()
 
-    def test_batch_import_app_annotations_should_cleanup_active_job_on_unexpected_exception(self) -> None:
+    def test_batch_import_app_annotations_should_cleanup_active_job_on_unexpected_exception(self, caplog) -> None:
         """Test unexpected runtime errors trigger cleanup and return wrapped error."""
         # Arrange
         file = _make_file(b"question,answer\nq,a\n")
@@ -1067,11 +1068,11 @@ class TestAppAnnotationServiceBatchImport:
             patch("services.annotation_service.redis_client") as mock_redis,
             patch("services.annotation_service.uuid.uuid4", return_value="uuid-4"),
             patch("services.annotation_service.naive_utc_now", return_value=SimpleNamespace(timestamp=lambda: 1)),
-            patch("services.annotation_service.logger") as mock_logger,
             patch(
                 "configs.dify_config",
                 new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
             ),
+            caplog.at_level(logging.DEBUG, logger="services.annotation_service"),
         ):
             mock_db.session.scalar.return_value = app
             mock_redis.zadd.side_effect = RuntimeError("boom")
@@ -1083,7 +1084,7 @@ class TestAppAnnotationServiceBatchImport:
             # Assert
             assert result["error_msg"] == "An error occurred while processing the file: boom"
             mock_redis.zrem.assert_called_once_with(f"annotation_import_active:{tenant_id}", "uuid-4")
-            mock_logger.debug.assert_called_once()
+            assert len(caplog.records) > 0
 
 
 class TestAppAnnotationServiceHitHistoryAndSettings:

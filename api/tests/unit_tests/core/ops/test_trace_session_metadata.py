@@ -124,7 +124,7 @@ def test_message_trace_metadata_includes_trace_session_id(monkeypatch):
         SimpleNamespace(engine=MagicMock(), session=db_session),
     )
     monkeypatch.setattr("core.ops.ops_trace_manager.Session", _DummySession)
-    monkeypatch.setattr("core.ops.ops_trace_manager.get_message_data", lambda message_id: _make_message_data())
+    monkeypatch.setattr("core.ops.ops_trace_manager.get_message_data", lambda message_id, session: _make_message_data())
     monkeypatch.setattr("core.telemetry.gateway.is_enterprise_telemetry_enabled", lambda: False)
     _DummySession.scalar_values = ["tenant-1"]
 

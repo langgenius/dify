@@ -14,6 +14,7 @@ Tests follow the Arrange-Act-Assert pattern for clarity.
 """
 
 import json
+import logging
 from unittest.mock import MagicMock, patch
 
 import httpx
