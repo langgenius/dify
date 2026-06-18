@@ -11988,10 +11988,12 @@ Default namespace
 | icon_type | string |  | No |
 | icon_url | string |  | Yes |
 | id | string |  | Yes |
+| maintainer | string |  | No |
 | max_active_requests | integer |  | No |
 | mode | string |  | Yes |
 | model_config | [ModelConfig](#modelconfig) |  | No |
 | name | string |  | Yes |
+| permission_keys | [ string ] |  | No |
 | role | string |  | No |
 | site | [Site](#site) |  | No |
 | tags | [ [Tag](#tag) ] |  | No |

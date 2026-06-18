@@ -231,8 +231,7 @@ class AccountService:
             member_account_id=member_account_id,
         ).roles
         return any(
-            role.is_builtin and role.category == "global_system_default" and role.role_tag == "owner"
-            for role in roles
+            role.is_builtin and role.category == "global_system_default" and role.role_tag == "owner" for role in roles
         )
 
     @staticmethod

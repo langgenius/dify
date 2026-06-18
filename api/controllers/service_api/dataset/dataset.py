@@ -308,7 +308,14 @@ class DatasetListApi(DatasetApiResource):
         # provider = request.args.get("provider", default="vendor")
 
         datasets, total = DatasetService.get_datasets(
-            query.page, query.limit, db.session, tenant_id, current_user, query.keyword, query.tag_ids, query.include_all
+            query.page,
+            query.limit,
+            db.session,
+            tenant_id,
+            current_user,
+            query.keyword,
+            query.tag_ids,
+            query.include_all,
         )
         # check embedding setting
         assert isinstance(current_user, Account)

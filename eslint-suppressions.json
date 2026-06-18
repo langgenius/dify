@@ -4839,14 +4839,6 @@
       "count": 3
     }
   },
-  "web/app/components/workflow-app/components/workflow-header/features-trigger.tsx": {
-    "import/no-duplicates": {
-      "count": 2
-    },
-    "perfectionist/sort-imports": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow-app/components/workflow-onboarding-modal/start-node-option.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -7490,116 +7482,6 @@
   },
   "web/i18n-config/lib.client.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 1
-    }
-  },
-  "web/i18n/ar-TN/common.json": {
-    "dify/no-extra-keys": {
-      "count": 1
-    }
-  },
-  "web/i18n/de-DE/common.json": {
-    "dify/no-extra-keys": {
-      "count": 1
-    }
-  },
-  "web/i18n/es-ES/common.json": {
-    "dify/no-extra-keys": {
-      "count": 1
-    }
-  },
-  "web/i18n/fa-IR/common.json": {
-    "dify/no-extra-keys": {
-      "count": 1
-    }
-  },
-  "web/i18n/fr-FR/common.json": {
-    "dify/no-extra-keys": {
-      "count": 1
-    }
-  },
-  "web/i18n/hi-IN/common.json": {
-    "dify/no-extra-keys": {
-      "count": 1
-    }
-  },
-  "web/i18n/id-ID/common.json": {
-    "dify/no-extra-keys": {
-      "count": 1
-    }
-  },
-  "web/i18n/it-IT/common.json": {
-    "dify/no-extra-keys": {
-      "count": 1
-    }
-  },
-  "web/i18n/ja-JP/common.json": {
-    "dify/no-extra-keys": {
-      "count": 1
-    }
-  },
-  "web/i18n/ko-KR/common.json": {
-    "dify/no-extra-keys": {
-      "count": 1
-    }
-  },
-  "web/i18n/nl-NL/common.json": {
-    "dify/no-extra-keys": {
-      "count": 1
-    }
-  },
-  "web/i18n/pl-PL/common.json": {
-    "dify/no-extra-keys": {
-      "count": 1
-    }
-  },
-  "web/i18n/pt-BR/common.json": {
-    "dify/no-extra-keys": {
-      "count": 1
-    }
-  },
-  "web/i18n/ro-RO/common.json": {
-    "dify/no-extra-keys": {
-      "count": 1
-    }
-  },
-  "web/i18n/ru-RU/common.json": {
-    "dify/no-extra-keys": {
-      "count": 1
-    }
-  },
-  "web/i18n/sl-SI/common.json": {
-    "dify/no-extra-keys": {
-      "count": 1
-    }
-  },
-  "web/i18n/th-TH/common.json": {
-    "dify/no-extra-keys": {
-      "count": 1
-    }
-  },
-  "web/i18n/tr-TR/common.json": {
-    "dify/no-extra-keys": {
-      "count": 1
-    }
-  },
-  "web/i18n/uk-UA/common.json": {
-    "dify/no-extra-keys": {
-      "count": 1
-    }
-  },
-  "web/i18n/vi-VN/common.json": {
-    "dify/no-extra-keys": {
-      "count": 1
-    }
-  },
-  "web/i18n/zh-Hans/common.json": {
-    "dify/no-extra-keys": {
-      "count": 1
-    }
-  },
-  "web/i18n/zh-Hant/common.json": {
-    "dify/no-extra-keys": {
       "count": 1
     }
   },
