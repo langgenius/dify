@@ -372,7 +372,7 @@ class TestMailTaskRetryLogic:
 
     @patch("tasks.mail_register_task.get_email_i18n_service")
     @patch("tasks.mail_register_task.mail")
-    def test_mail_task_logs_success(self, mock_mail, mock_email_service, caplog):
+    def test_mail_task_logs_success(self, mock_mail, mock_email_service, caplog: pytest.LogCaptureFixture):
         """Test that successful mail sends are logged properly."""
         # Arrange
         mock_mail.is_inited.return_value = True
@@ -398,7 +398,7 @@ class TestMailTaskRetryLogic:
 
     @patch("tasks.mail_register_task.get_email_i18n_service")
     @patch("tasks.mail_register_task.mail")
-    def test_mail_task_logs_failure(self, mock_mail, mock_email_service, caplog):
+    def test_mail_task_logs_failure(self, mock_mail, mock_email_service, caplog: pytest.LogCaptureFixture):
         """Test that failed mail sends are logged with exception details."""
         # Arrange
         mock_mail.is_inited.return_value = True
@@ -580,7 +580,9 @@ class TestInnerEmailTask:
     @patch("tasks.mail_inner_task.get_email_i18n_service")
     @patch("tasks.mail_inner_task.mail")
     @patch("tasks.mail_inner_task._render_template_with_strategy")
-    def test_inner_email_task_logs_failure(self, mock_render, mock_mail, mock_email_service, caplog):
+    def test_inner_email_task_logs_failure(
+        self, mock_render, mock_mail, mock_email_service, caplog: pytest.LogCaptureFixture
+    ):
         """Test inner email task logs failures properly."""
         # Arrange
         mock_mail.is_inited.return_value = True
@@ -899,7 +901,9 @@ class TestPerformanceAndTiming:
     @patch("tasks.mail_register_task.get_email_i18n_service")
     @patch("tasks.mail_register_task.mail")
     @patch("tasks.mail_register_task.time")
-    def test_mail_task_tracks_execution_time(self, mock_time, mock_mail, mock_email_service, caplog):
+    def test_mail_task_tracks_execution_time(
+        self, mock_time, mock_mail, mock_email_service, caplog: pytest.LogCaptureFixture
+    ):
         """Test that mail tasks track and log execution time."""
         # Arrange
         mock_mail.is_inited.return_value = True
@@ -1465,7 +1469,9 @@ class TestLoggingAndMonitoring:
 
     @patch("tasks.mail_register_task.get_email_i18n_service")
     @patch("tasks.mail_register_task.mail")
-    def test_mail_task_logs_recipient_information(self, mock_mail, mock_email_service, caplog):
+    def test_mail_task_logs_recipient_information(
+        self, mock_mail, mock_email_service, caplog: pytest.LogCaptureFixture
+    ):
         """
         Test that mail tasks log recipient information for audit trails.
 
@@ -1487,7 +1493,9 @@ class TestLoggingAndMonitoring:
 
     @patch("tasks.mail_inner_task.get_email_i18n_service")
     @patch("tasks.mail_inner_task.mail")
-    def test_inner_email_task_logs_subject_for_tracking(self, mock_mail, mock_email_service, caplog):
+    def test_inner_email_task_logs_subject_for_tracking(
+        self, mock_mail, mock_email_service, caplog: pytest.LogCaptureFixture
+    ):
         """
         Test that inner email task logs subject for tracking purposes.
 
