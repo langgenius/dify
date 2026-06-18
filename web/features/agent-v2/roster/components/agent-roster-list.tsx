@@ -9,12 +9,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useMutation } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
+import { consoleQuery } from '@/service/client'
 import { AgentWorkflowReferencesDropdown } from './agent-workflow-references-dropdown'
 import { DeleteAgentDialog } from './delete-agent-dialog'
 import { EditAgentDialog } from './edit-agent-dialog'
@@ -102,6 +105,7 @@ function AgentRosterItem({
   const descriptionId = useId()
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const duplicateAgentMutation = useMutation(consoleQuery.agent.byAgentId.copy.post.mutationOptions())
   const updatedAt = agent.updated_at != null
     ? formatTime(agent.updated_at, t('roster.dateTimeFormat'))
     : null
@@ -111,6 +115,24 @@ function AgentRosterItem({
   const isDraft = agent.active_config_is_published !== true
   const imageUrl = (agent.icon_type === 'image' || agent.icon_type === 'link') ? agent.icon : undefined
   const iconType = (imageUrl ? 'image' : agent.icon_type) as AgentIconType | null | undefined
+  const handleDuplicate = () => {
+    if (duplicateAgentMutation.isPending)
+      return
+
+    duplicateAgentMutation.mutate({
+      params: {
+        agent_id: agent.id,
+      },
+      body: {},
+    }, {
+      onSuccess: () => {
+        toast.success(t('roster.duplicateSuccess'))
+      },
+      onError: () => {
+        toast.error(t('roster.duplicateFailed'))
+      },
+    })
+  }
 
   return (
     <article className="group relative col-span-1 h-36.5 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out hover:shadow-lg">
@@ -196,7 +218,11 @@ function AgentRosterItem({
               <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
               <span>{t('roster.editInfo')}</span>
             </DropdownMenuItem>
-            <DropdownMenuItem disabled className="gap-2">
+            <DropdownMenuItem
+              disabled={duplicateAgentMutation.isPending}
+              className="gap-2"
+              onClick={handleDuplicate}
+            >
               <span aria-hidden className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary" />
               <span>{tCommon('operation.duplicate')}</span>
             </DropdownMenuItem>

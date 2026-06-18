@@ -1,14 +1,45 @@
 import type { ComponentProps } from 'react'
 import type { AgentRosterListItem } from '../agent-roster-list'
+import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentRosterList } from '../agent-roster-list'
+
+const { duplicateAgentMutationFn } = vi.hoisted(() => ({
+  duplicateAgentMutationFn: vi.fn(),
+}))
 
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
     formatTime: () => '06/12/2026 12:00:00 PM',
   }),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    agent: {
+      byAgentId: {
+        copy: {
+          post: {
+            mutationOptions: () => ({
+              mutationFn: duplicateAgentMutationFn,
+            }),
+          },
+        },
+        delete: {
+          mutationOptions: () => ({
+            mutationFn: vi.fn(),
+          }),
+        },
+        put: {
+          mutationOptions: () => ({
+            mutationFn: vi.fn(),
+          }),
+        },
+      },
+    },
+  },
 }))
 
 const createAgent = (overrides: Partial<AgentRosterListItem> = {}): AgentRosterListItem => ({
@@ -51,6 +82,16 @@ const renderList = (
 describe('AgentRosterList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.spyOn(toast, 'error').mockReturnValue('toast-id')
+    vi.spyOn(toast, 'success').mockReturnValue('toast-id')
+    duplicateAgentMutationFn.mockResolvedValue(createAgent({
+      id: 'agent-copy',
+      name: 'Research Agent copy',
+    }))
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('renders role under the card title instead of the agent mode', () => {
@@ -158,5 +199,28 @@ describe('AgentRosterList', () => {
     const workflowLink = screen.getByRole('menuitem', { name: /RFP Review Flow/ })
     expect(workflowLink).toHaveAttribute('href', '/app/workflow-app-id/workflow')
     expect(screen.getByText(/agentV2\.roster\.references\.label/)).toBeInTheDocument()
+  })
+
+  it('duplicates an agent from the card action menu', async () => {
+    const user = userEvent.setup()
+    renderList([createAgent()])
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: /common\.operation\.duplicate/ }))
+
+    expect(duplicateAgentMutationFn).toHaveBeenCalledWith(
+      {
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: {},
+      },
+      expect.objectContaining({
+        client: expect.any(QueryClient),
+      }),
+    )
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith('agentV2.roster.duplicateSuccess')
+    })
   })
 })
