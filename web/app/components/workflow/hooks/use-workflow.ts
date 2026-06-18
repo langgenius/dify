@@ -36,6 +36,7 @@ import {
 import {
   WorkflowRunningStatus,
 } from '../types'
+import { getNodeCatalogType } from '../utils'
 import {
   getWorkflowEntryNode,
   isWorkflowEntryNode,
@@ -360,13 +361,15 @@ export const useWorkflow = () => {
       return false
 
     if (sourceNode && targetNode) {
-      const sourceNodeAvailableNextNodes = getAvailableBlocks(sourceNode.data.type, !!sourceNode.parentId).availableNextBlocks
-      const targetNodeAvailablePrevNodes = getAvailableBlocks(targetNode.data.type, !!targetNode.parentId).availablePrevBlocks
+      const sourceNodeCatalogType = getNodeCatalogType(sourceNode.data)
+      const targetNodeCatalogType = getNodeCatalogType(targetNode.data)
+      const sourceNodeAvailableNextNodes = getAvailableBlocks(sourceNodeCatalogType, !!sourceNode.parentId).availableNextBlocks
+      const targetNodeAvailablePrevNodes = getAvailableBlocks(targetNodeCatalogType, !!targetNode.parentId).availablePrevBlocks
 
-      if (!sourceNodeAvailableNextNodes.includes(targetNode.data.type))
+      if (!sourceNodeAvailableNextNodes.includes(targetNodeCatalogType))
         return false
 
-      if (!targetNodeAvailablePrevNodes.includes(sourceNode.data.type))
+      if (!targetNodeAvailablePrevNodes.includes(sourceNodeCatalogType))
         return false
     }
 
