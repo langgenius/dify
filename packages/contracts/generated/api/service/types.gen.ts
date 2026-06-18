@@ -103,15 +103,16 @@ export type ChatRequestPayload = {
   auto_generate_name?: boolean
   conversation_id?: string | null
   files?: Array<{
-    [key: string]: unknown
+    transfer_method: 'local_file' | 'remote_url'
+    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+    upload_file_id?: string
+    url?: string
   }> | null
   inputs: {
     [key: string]: unknown
   }
   query: string
   response_mode?: 'blocking' | 'streaming' | null
-  retriever_from?: string
-  trace_session_id?: string | null
   workflow_id?: string | null
 }
 
@@ -119,15 +120,16 @@ export type ChatRequestPayloadWithUser = {
   auto_generate_name?: boolean
   conversation_id?: string | null
   files?: Array<{
-    [key: string]: unknown
+    transfer_method: 'local_file' | 'remote_url'
+    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+    upload_file_id?: string
+    url?: string
   }> | null
   inputs: {
     [key: string]: unknown
   }
   query: string
   response_mode?: 'blocking' | 'streaming' | null
-  retriever_from?: string
-  trace_session_id?: string | null
   user: string
   workflow_id?: string | null
 }
@@ -171,28 +173,30 @@ export type ChildChunkUpdatePayload = {
 
 export type CompletionRequestPayload = {
   files?: Array<{
-    [key: string]: unknown
+    transfer_method: 'local_file' | 'remote_url'
+    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+    upload_file_id?: string
+    url?: string
   }> | null
   inputs: {
     [key: string]: unknown
   }
   query?: string
   response_mode?: 'blocking' | 'streaming' | null
-  retriever_from?: string
-  trace_session_id?: string | null
 }
 
 export type CompletionRequestPayloadWithUser = {
   files?: Array<{
-    [key: string]: unknown
+    transfer_method: 'local_file' | 'remote_url'
+    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+    upload_file_id?: string
+    url?: string
   }> | null
   inputs: {
     [key: string]: unknown
   }
   query?: string
   response_mode?: 'blocking' | 'streaming' | null
-  retriever_from?: string
-  trace_session_id?: string | null
   user: string
 }
 
@@ -217,7 +221,7 @@ export type Condition = {
     | '≤'
     | '≥'
   name: string
-  value?: string | Array<string> | number | number | null
+  value?: string | Array<string> | number | null
 }
 
 export type ConversationInfiniteScrollPagination = {
@@ -315,10 +319,13 @@ export type DatasetCreatePayload = {
   indexing_technique?: 'economy' | 'high_quality' | null
   name: string
   permission?: PermissionEnum | null
-  provider?: string
+  provider?: 'external' | 'vendor'
   retrieval_model?: RetrievalModel | null
   summary_index_setting?: {
-    [key: string]: unknown
+    enable?: boolean
+    model_name?: string
+    model_provider_name?: string
+    summary_prompt?: string
   } | null
 }
 
@@ -512,12 +519,14 @@ export type DatasetUpdatePayload = {
   external_knowledge_api_id?: string | null
   external_knowledge_id?: string | null
   external_retrieval_model?: {
-    [key: string]: unknown
+    score_threshold?: number
+    score_threshold_enabled?: boolean
+    top_k?: number
   } | null
   indexing_technique?: 'economy' | 'high_quality' | null
   name?: string | null
   partial_member_list?: Array<{
-    [key: string]: string
+    user_id?: string
   }> | null
   permission?: PermissionEnum | null
   retrieval_model?: RetrievalModel | null
@@ -544,7 +553,7 @@ export type DatasourceCredentialInfoResponse = {
 
 export type DatasourceNodeRunPayload = {
   credential_id?: string | null
-  datasource_type: string
+  datasource_type: 'local_file' | 'online_document' | 'online_drive' | 'website_crawl'
   inputs: {
     [key: string]: unknown
   }
@@ -626,7 +635,15 @@ export type DocumentListQuery = {
   keyword?: string | null
   limit?: number
   page?: number
-  status?: string | null
+  status?:
+    | 'archived'
+    | 'available'
+    | 'disabled'
+    | 'error'
+    | 'indexing'
+    | 'paused'
+    | 'queuing'
+    | null
 }
 
 export type DocumentListResponse = {
@@ -701,11 +718,11 @@ export type DocumentStatusResponse = {
 }
 
 export type DocumentTextCreatePayload = {
-  doc_form?: string
+  doc_form?: 'hierarchical_model' | 'qa_model' | 'text_model'
   doc_language?: string
   embedding_model?: string | null
   embedding_model_provider?: string | null
-  indexing_technique?: string | null
+  indexing_technique?: 'economy' | 'high_quality' | null
   name: string
   original_document_id?: string | null
   process_rule?: ProcessRule | null
@@ -715,7 +732,7 @@ export type DocumentTextCreatePayload = {
 
 export type DocumentTextUpdate = (
   | {
-    doc_form?: string
+    doc_form?: 'hierarchical_model' | 'qa_model' | 'text_model'
     doc_language?: string
     name: string
     process_rule?: ProcessRule | null
@@ -723,7 +740,7 @@ export type DocumentTextUpdate = (
     text: string
   }
   | {
-    doc_form?: string
+    doc_form?: 'hierarchical_model' | 'qa_model' | 'text_model'
     doc_language?: string
     name?: string | null
     process_rule?: ProcessRule | null
@@ -731,7 +748,7 @@ export type DocumentTextUpdate = (
     text?: null
   }
 ) & {
-  doc_form?: string
+  doc_form?: 'hierarchical_model' | 'qa_model' | 'text_model'
   doc_language?: string
   name?: string | null
   process_rule?: ProcessRule | null
@@ -849,7 +866,9 @@ export type HitTestingFile = {
 export type HitTestingPayload = {
   attachment_ids?: Array<string> | null
   external_retrieval_model?: {
-    [key: string]: unknown
+    score_threshold?: number
+    score_threshold_enabled?: boolean
+    top_k?: number
   } | null
   query: string
   retrieval_model?: RetrievalModel | null
@@ -1146,15 +1165,37 @@ export type Parameters = {
 export type PermissionEnum = 'all_team_members' | 'only_me' | 'partial_members'
 
 export type PipelineRunApiEntity = {
-  datasource_info_list: Array<{
-    [key: string]: unknown
-  }>
-  datasource_type: string
+  datasource_info_list: Array<
+    | {
+      name?: string
+      reference: string
+    }
+    | {
+      credential_id?: string
+      page: {
+        page_id: string
+        page_name?: string
+        type: string
+      }
+      workspace_id: string
+    }
+    | {
+      title?: string
+      url: string
+    }
+    | {
+      bucket?: string
+      id: string
+      name?: string
+      type: 'file' | 'folder'
+    }
+  >
+  datasource_type: 'local_file' | 'online_document' | 'online_drive' | 'website_crawl'
   inputs: {
     [key: string]: unknown
   }
   is_published: boolean
-  response_mode: string
+  response_mode: 'blocking' | 'streaming'
   start_node_id: string
 }
 
@@ -1170,7 +1211,7 @@ export type PipelineUploadFileResponse = {
 
 export type PreProcessingRule = {
   enabled: boolean
-  id: string
+  id: 'remove_extra_spaces' | 'remove_stopwords' | 'remove_urls_emails'
 }
 
 export type ProcessRule = {
@@ -1231,7 +1272,7 @@ export type RetrievalMethod
 export type RetrievalModel = {
   metadata_filtering_conditions?: MetadataFilteringCondition | null
   reranking_enable: boolean
-  reranking_mode?: string | null
+  reranking_mode?: 'reranking_model' | 'weighted_score' | null
   reranking_model?: RerankingModel | null
   score_threshold?: number | null
   score_threshold_enabled: boolean
@@ -1578,24 +1619,28 @@ export type WorkflowRunForLogResponse = {
 
 export type WorkflowRunPayload = {
   files?: Array<{
-    [key: string]: unknown
+    transfer_method: 'local_file' | 'remote_url'
+    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+    upload_file_id?: string
+    url?: string
   }> | null
   inputs: {
     [key: string]: unknown
   }
   response_mode?: 'blocking' | 'streaming' | null
-  trace_session_id?: string | null
 }
 
 export type WorkflowRunPayloadWithUser = {
   files?: Array<{
-    [key: string]: unknown
+    transfer_method: 'local_file' | 'remote_url'
+    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+    upload_file_id?: string
+    url?: string
   }> | null
   inputs: {
     [key: string]: unknown
   }
   response_mode?: 'blocking' | 'streaming' | null
-  trace_session_id?: string | null
   user: string
 }
 
@@ -1704,7 +1749,7 @@ export type PostAppsAnnotationReplyByActionResponse
 export type GetAppsAnnotationReplyByActionStatusByJobIdData = {
   body?: never
   path: {
-    action: string
+    action: 'disable' | 'enable'
     job_id: string
   }
   query?: never
@@ -2399,7 +2444,7 @@ export type GetDatasetsByDatasetIdDocumentsData = {
     keyword?: string
     limit?: number
     page?: number
-    status?: string
+    status?: 'archived' | 'available' | 'disabled' | 'error' | 'indexing' | 'paused' | 'queuing'
   }
   url: '/datasets/{dataset_id}/documents'
 }
@@ -3661,7 +3706,7 @@ export type PostWorkflowsByWorkflowIdRunResponse
 export type GetWorkspacesCurrentModelsModelTypesByModelTypeData = {
   body?: never
   path: {
-    model_type: string
+    model_type: 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
   }
   query?: never
   url: '/workspaces/current/models/model-types/{model_type}'
