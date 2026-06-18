@@ -9,6 +9,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
+import { getDriveFileIconType } from '../files/file-icon'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { AgentSkillDetailDialog } from './detail-dialog'
 
@@ -22,7 +23,11 @@ const getSkillFileName = (key: string, skillDrivePath: string) => key.startsWith
   : key
 
 const toSkillFileNode = (item: AgentDriveItemResponse, skillDrivePath: string) => ({
-  icon: item.file_kind === 'folder' ? 'folder' as const : 'file' as const,
+  icon: getDriveFileIconType({
+    fileKind: item.file_kind,
+    fileName: getSkillFileName(item.key, skillDrivePath),
+    mimeType: item.mime_type,
+  }),
   id: item.key,
   name: getSkillFileName(item.key, skillDrivePath),
 })
@@ -102,6 +107,21 @@ export function AgentSkillItem({
     }),
     enabled: isPreviewOpen && !!previewFileId,
   })
+  const selectedFile = detailFiles.find(file => file.id === previewFileId)
+  const isImagePreviewFile = selectedFile?.icon === 'image'
+  const downloadQuery = useQuery({
+    ...consoleQuery.agent.byAgentId.drive.files.download.get.queryOptions({
+      input: {
+        params: {
+          agent_id: agentId,
+        },
+        query: {
+          key: previewFileId ?? '',
+        },
+      },
+    }),
+    enabled: isPreviewOpen && !!previewFileId && (isImagePreviewFile || !!previewQuery.data?.binary),
+  })
 
   return (
     <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
@@ -142,8 +162,14 @@ export function AgentSkillItem({
             description: skill.description ?? t('agentDetail.configure.skills.tip'),
             files: detailFiles,
             filePreview: {
-              content: previewQuery.data?.text,
+              binary: previewQuery.data?.binary,
+              content: previewQuery.data?.text ?? undefined,
+              downloadUrl: downloadQuery.data?.url,
+              fileName: selectedFile?.name,
+              isDownloadError: downloadQuery.isError,
+              isDownloadLoading: (isImagePreviewFile || !!previewQuery.data?.binary) && downloadQuery.isPending,
               isError: previewQuery.isError,
+              isImage: isImagePreviewFile,
               isLoading: previewQuery.isPending,
             },
             onSelectFile: file => setSelectedFileId(file.id),

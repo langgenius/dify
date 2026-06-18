@@ -20,6 +20,7 @@ import { AgentTools } from './tools'
 
 type AgentOrchestratePanelProps = {
   agentId: string
+  appId?: string
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentSoulConfig?: AgentConfigSnapshotDetailResponse['config_snapshot']
   agentName?: string | null
@@ -40,6 +41,7 @@ type AgentOrchestratePanelProps = {
 
 export function AgentOrchestratePanel({
   agentId,
+  appId,
   activeConfigSnapshot,
   agentSoulConfig,
   agentName,
@@ -87,7 +89,10 @@ export function AgentOrchestratePanel({
               />
               <AgentPromptEditor />
               <AgentSkills agentId={agentId} />
-              <AgentFiles />
+              <AgentFiles
+                agentId={agentId}
+                appId={appId}
+              />
               <AgentTools />
               <AgentKnowledgeRetrieval />
               <AgentAdvancedSettings />

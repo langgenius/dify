@@ -28,8 +28,14 @@ export type AgentSkillDetail = {
   fileCount?: number
   files: AgentSkillFileNode[]
   filePreview?: {
+    binary?: boolean
     content?: string
+    downloadUrl?: string
+    fileName?: string
+    isDownloadError?: boolean
+    isDownloadLoading?: boolean
     isError?: boolean
+    isImage?: boolean
     isLoading?: boolean
   }
   onSelectFile?: (file: AgentSkillFileNode) => void
@@ -107,17 +113,30 @@ function AgentSkillDetailSectionBlock({
 }
 
 function AgentFilePreviewContent({
+  binary,
   content,
+  downloadUrl,
+  fileName,
+  isDownloadError,
+  isDownloadLoading,
   isError,
+  isImage,
   isLoading,
 }: {
+  binary?: boolean
   content?: string
+  downloadUrl?: string
+  fileName?: string
+  isDownloadError?: boolean
+  isDownloadLoading?: boolean
   isError?: boolean
+  isImage?: boolean
   isLoading?: boolean
 }) {
   const { t } = useTranslation('agentV2')
+  const { t: tCommon } = useTranslation('common')
 
-  if (isLoading) {
+  if (isLoading || isDownloadLoading) {
     return (
       <div className="flex min-h-40 items-center justify-center">
         <Loading type="area" />
@@ -125,10 +144,45 @@ function AgentFilePreviewContent({
     )
   }
 
-  if (isError) {
+  if (isError || isDownloadError) {
     return (
       <p className="system-sm-regular text-text-tertiary">
         {t('agentDetail.configure.files.preview.failed')}
+      </p>
+    )
+  }
+
+  if (isImage && downloadUrl) {
+    return (
+      <div className="flex min-h-40 items-start justify-center">
+        <img
+          src={downloadUrl}
+          alt={fileName ?? ''}
+          className="max-h-[560px] max-w-full rounded-lg object-contain"
+        />
+      </div>
+    )
+  }
+
+  if (binary) {
+    if (downloadUrl) {
+      return (
+        <a
+          href={downloadUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 rounded-md px-2 py-1 system-sm-medium text-text-accent outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        >
+          <span aria-hidden className="i-ri-download-2-line size-4" />
+          <span>{tCommon('operation.download')}</span>
+          {fileName && <span className="max-w-80 truncate text-text-secondary">{fileName}</span>}
+        </a>
+      )
+    }
+
+    return (
+      <p className="system-sm-regular text-text-tertiary">
+        {t('agentDetail.configure.files.preview.empty')}
       </p>
     )
   }
@@ -182,8 +236,14 @@ export function AgentSkillDetailDialog({
         >
           {detail.filePreview && (
             <AgentFilePreviewContent
+              binary={detail.filePreview.binary}
               content={detail.filePreview.content}
+              downloadUrl={detail.filePreview.downloadUrl}
+              fileName={detail.filePreview.fileName}
+              isDownloadError={detail.filePreview.isDownloadError}
+              isDownloadLoading={detail.filePreview.isDownloadLoading}
               isError={detail.filePreview.isError}
+              isImage={detail.filePreview.isImage}
               isLoading={detail.filePreview.isLoading}
             />
           )}

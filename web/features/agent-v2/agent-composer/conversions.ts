@@ -78,10 +78,12 @@ const toFileFormState = (config?: AgentSoulConfig): AgentFileNode[] => (
     id,
     name: file.name ?? id,
     icon: toFileIcon(file),
+    driveKey: file.drive_key ?? undefined,
   }]
 })
 
 const toFileRefs = (files: AgentFileNode[]) => flattenFileNodes(files).map(file => ({
+  ...(file.driveKey ? { drive_key: file.driveKey } : {}),
   id: file.id,
   name: file.name,
   type: file.icon,
