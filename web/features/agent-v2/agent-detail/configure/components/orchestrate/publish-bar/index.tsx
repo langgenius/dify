@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse, AgentPublishedReferenceResponse, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
@@ -32,8 +32,6 @@ type AgentConfigurePublishBarProps = {
   }
   draftSavedAt?: number
   isPublishing?: boolean
-  publishedReferenceCount?: number
-  publishedReferences?: AgentPublishedReferenceResponse[]
   onPublish?: (payload: AgentConfigurePublishPayload) => void | Promise<void>
   onOpenVersions: () => void
 }
@@ -80,8 +78,6 @@ export function AgentConfigurePublishBar({
   currentModel,
   draftSavedAt,
   isPublishing = false,
-  publishedReferenceCount = 0,
-  publishedReferences = [],
   onPublish,
   onOpenVersions,
 }: AgentConfigurePublishBarProps) {
@@ -192,10 +188,9 @@ export function AgentConfigurePublishBar({
         </button>
         <AgentPublishImpactPopover
           actionLabel={currentStateMeta.actionLabel}
+          agentId={agentId}
           agentName={agentName}
           disabled={!canPublish}
-          publishedReferenceCount={publishedReferenceCount}
-          publishedReferences={publishedReferences}
           onPublish={handlePublish}
           trigger={(
             <Button
