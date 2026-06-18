@@ -887,11 +887,7 @@ class AppCopyApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         args = CopyAppPayload.model_validate(console_ns.payload or {})
 
-        session = Session(expire_on_commit=False)
-        if session.bind is None:
-            session.bind = db.engine
-
-        with session:
+        with Session(db.engine, expire_on_commit=False) as session:
             import_service = AppDslService(session)
             yaml_content = import_service.export_dsl(app_model=app_model, include_secret=True)
             result = import_service.import_app(

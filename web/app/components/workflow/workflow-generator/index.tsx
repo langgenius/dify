@@ -29,7 +29,8 @@ import WorkflowPreview from '@/app/components/workflow/workflow-preview'
 import { useRouter } from '@/next/navigation'
 import { generateWorkflow } from '@/service/debug'
 import { fetchWorkflowDraft } from '@/service/workflow'
-import { AppModeEnum, ModelModeType } from '@/types/app'
+import { ModelModeType } from '@/types/app'
+import { getRedirectionPath } from '@/utils/app-redirection'
 import { applyToCurrentApp, applyToNewApp, WorkflowApplyHashCollisionError, WorkflowApplyOrphanError } from './apply'
 import ExamplePrompts from './example-prompts'
 import GenerationPhases from './generation-phases'
@@ -353,7 +354,7 @@ const WorkflowGeneratorModal: React.FC = () => {
       return
     setApplyingTrue()
     try {
-      const { appId, appMode } = await applyToNewApp({
+      const { appId, appMode, permissionKeys } = await applyToNewApp({
         mode,
         graph: current.graph as GeneratedGraph,
         instruction,
@@ -362,10 +363,7 @@ const WorkflowGeneratorModal: React.FC = () => {
       })
       toast.success(t('workflowGenerator.applied'))
       closeGenerator()
-      const appPath = appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
-        ? `/app/${appId}/workflow`
-        : `/app/${appId}/configuration`
-      router.push(appPath)
+      router.push(getRedirectionPath({ id: appId, mode: appMode, permission_keys: permissionKeys }))
     }
     catch (e: unknown) {
       if (e instanceof WorkflowApplyOrphanError) {
