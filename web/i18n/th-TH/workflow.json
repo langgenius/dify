@@ -1,5 +1,6 @@
 {
-  "blocks.agent": "ตัวแทน",
+  "blocks.agent": "Agent",
+  "blocks.agent-v2": "Agent",
   "blocks.answer": "ตอบ",
   "blocks.assigner": "ตัวกําหนดตัวแปร",
   "blocks.code": "รหัส",
@@ -33,6 +34,7 @@
   "blocks.variable-aggregator": "ตัวรวบรวมตัวแปร",
   "blocks.variable-assigner": "ตัวรวบรวมตัวแปร",
   "blocksAbout.agent": "การเรียกใช้โมเดลภาษาขนาดใหญ่เพื่อตอบคําถามหรือประมวลผลภาษาธรรมชาติ",
+  "blocksAbout.agent-v2": "การเรียกใช้โมเดลภาษาขนาดใหญ่เพื่อตอบคําถามหรือประมวลผลภาษาธรรมชาติ",
   "blocksAbout.answer": "กําหนดเนื้อหาการตอบกลับของการสนทนาแชท",
   "blocksAbout.assigner": "โหนดการกําหนดตัวแปรใช้สําหรับกําหนดค่าให้กับตัวแปรที่เขียนได้ (เช่นตัวแปรการสนทนา)",
   "blocksAbout.code": "เรียกใช้โค้ด Python หรือ NodeJS เพื่อใช้ตรรกะที่กําหนดเอง",
@@ -414,6 +416,7 @@
   "nodes.agent.pluginNotFoundDesc": "การผสานรวมนี้ติดตั้งจาก GitHub โปรดไปที่การผสานรวมเพื่อติดตั้งใหม่",
   "nodes.agent.pluginNotInstalled": "ไม่ได้ติดตั้งการผสานรวมนี้",
   "nodes.agent.pluginNotInstalledDesc": "การผสานรวมนี้ติดตั้งจาก GitHub โปรดไปที่การผสานรวมเพื่อติดตั้งใหม่",
+  "nodes.agent.roster.label": "ตัวแทน",
   "nodes.agent.strategy.configureTip": "โปรดกําหนดค่ากลยุทธ์เอเจนต์",
   "nodes.agent.strategy.configureTipDesc": "หลังจากกําหนดค่ากลยุทธ์ตัวแทนโหนดนี้จะโหลดการกําหนดค่าที่เหลือโดยอัตโนมัติ กลยุทธ์จะส่งผลต่อกลไกการให้เหตุผลของเครื่องมือหลายขั้นตอน",
   "nodes.agent.strategy.label": "กลยุทธ์ตัวแทน",

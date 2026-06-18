@@ -140,9 +140,9 @@ export function registerLexicalTextEntity<T extends TextNode>(
       let nodeToReplace
 
       if (match.start === 0)
-        [nodeToReplace, currentNode] = (currentNode.splitText(match.end)) as [any, TextNode]
+        [nodeToReplace, currentNode] = currentNode.splitText(match.end) as [TextNode, TextNode]
       else
-        [, nodeToReplace, currentNode] = (currentNode.splitText(match.start, match.end)) as [unknown, any, TextNode]
+        [, nodeToReplace, currentNode] = currentNode.splitText(match.start, match.end) as [TextNode, TextNode, TextNode]
 
       const replacementNode = createNode(nodeToReplace!)
       replacementNode.setFormat(nodeToReplace!.getFormat())
@@ -194,6 +194,9 @@ export const decoratorTransform = (
   node: CustomTextNode,
   getMatch: (text: string) => null | EntityMatch,
   createNode: (textNode: TextNode) => LexicalNode,
+  options?: {
+    allowAdjacentMatches?: boolean
+  },
 ) => {
   if (!node.isSimpleText())
     return
@@ -227,7 +230,7 @@ export const decoratorTransform = (
     else {
       const nextMatch = getMatch(nextText)
 
-      if (nextMatch !== null && nextMatch.start === 0)
+      if (!options?.allowAdjacentMatches && nextMatch !== null && nextMatch.start === 0)
         return
     }
 
@@ -240,9 +243,9 @@ export const decoratorTransform = (
     let nodeToReplace
 
     if (match.start === 0)
-      [nodeToReplace, currentNode] = (currentNode.splitText(match.end)) as [any, CustomTextNode]
+      [nodeToReplace, currentNode] = currentNode.splitText(match.end) as [CustomTextNode, CustomTextNode]
     else
-      [, nodeToReplace, currentNode] = (currentNode.splitText(match.start, match.end)) as [unknown, any, CustomTextNode]
+      [, nodeToReplace, currentNode] = currentNode.splitText(match.start, match.end) as [CustomTextNode, CustomTextNode, CustomTextNode]
 
     const replacementNode = createNode(nodeToReplace!)
     nodeToReplace!.replace(replacementNode)

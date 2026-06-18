@@ -142,6 +142,26 @@ export const getNestedNodePosition = (node: Node, parentNode: Node) => {
   }
 }
 
+export const getNodesWithSameDefaultDataType = (
+  nodes: Node[],
+  nodeType: BlockEnum,
+  defaultValue: Partial<Node['data']>,
+) => {
+  const dataType = (defaultValue.type as BlockEnum | undefined) ?? nodeType
+  const discriminatorEntries = (['agent_node_kind', 'version'] as const)
+    .map(key => [key, (defaultValue as Record<string, unknown>)[key]] as const)
+    .filter(([, value]) => value !== undefined)
+
+  if (dataType !== nodeType && discriminatorEntries.length > 0) {
+    return nodes.filter(node =>
+      node.data.type === dataType
+      && discriminatorEntries.every(([key, value]) => (node.data as Record<string, unknown>)[key] === value),
+    )
+  }
+
+  return nodes.filter(node => node.data.type === dataType)
+}
+
 export const hasRetryNode = (nodeType?: BlockEnum) => {
   return nodeType === BlockEnum.LLM || nodeType === BlockEnum.Tool || nodeType === BlockEnum.HttpRequest || nodeType === BlockEnum.Code
 }

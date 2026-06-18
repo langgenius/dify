@@ -1,5 +1,6 @@
 {
-  "blocks.agent": "Agen",
+  "blocks.agent": "Agent",
+  "blocks.agent-v2": "Agent",
   "blocks.answer": "Jawaban",
   "blocks.assigner": "Penerima Variabel",
   "blocks.code": "Kode",
@@ -33,6 +34,7 @@
   "blocks.variable-aggregator": "Agregator Variabel",
   "blocks.variable-assigner": "Agregator Variabel",
   "blocksAbout.agent": "Memanggil model bahasa besar untuk menjawab pertanyaan atau memproses bahasa alami",
+  "blocksAbout.agent-v2": "Memanggil model bahasa besar untuk menjawab pertanyaan atau memproses bahasa alami",
   "blocksAbout.answer": "Menentukan konten balasan percakapan obrolan",
   "blocksAbout.assigner": "Simpul penetapan variabel digunakan untuk menetapkan nilai ke variabel yang dapat ditulis (seperti variabel percakapan).",
   "blocksAbout.code": "Eksekusi sepotong kode Python atau NodeJS untuk mengimplementasikan logika kustom",
@@ -414,6 +416,7 @@
   "nodes.agent.pluginNotFoundDesc": "Integrasi ini diinstal dari GitHub. Silakan buka Integrasis untuk menginstal ulang",
   "nodes.agent.pluginNotInstalled": "Integrasi ini tidak diinstal",
   "nodes.agent.pluginNotInstalledDesc": "Integrasi ini diinstal dari GitHub. Silakan buka Integrasis untuk menginstal ulang",
+  "nodes.agent.roster.label": "Agen",
   "nodes.agent.strategy.configureTip": "Silakan konfigurasikan strategi agen.",
   "nodes.agent.strategy.configureTipDesc": "Setelah mengonfigurasi strategi agen, node ini akan secara otomatis memuat konfigurasi yang tersisa. Strategi tersebut akan mempengaruhi mekanisme penalaran alat multi-langkah.",
   "nodes.agent.strategy.label": "Strategi Agen",

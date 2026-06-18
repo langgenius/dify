@@ -318,6 +318,7 @@
   "menus.newDataset": "ایجاد دانش",
   "menus.plugins": "یکپارچه‌سازی‌ها",
   "menus.pluginsTips": "یکپارچه‌سازی‌های شخص ثالث را ادغام کنید یا یکپارچه‌سازی‌های هوش مصنوعی سازگار با ChatGPT ایجاد کنید.",
+  "menus.roster": "فهرست عامل‌ها",
   "menus.status": "بتا",
   "menus.tools": "ابزارها",
   "model.addMoreModel": "برای افزودن مدل‌های بیشتر به تنظیمات بروید",

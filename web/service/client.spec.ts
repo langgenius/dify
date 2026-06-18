@@ -1,5 +1,6 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { MutationFunctionContext } from '@tanstack/react-query'
+import type { consoleQuery as ConsoleQuery } from './client'
 import type { Tag } from '@/contract/console/tags'
 import { QueryClient } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -40,6 +41,43 @@ const createApiBasedExtension = (overrides: Partial<ApiBasedExtensionResponse> =
   name: 'Weather',
   api_endpoint: 'https://api.example.com/weather',
   api_key: 'secret-key',
+  ...overrides,
+})
+
+type AgentMutationResponse = Parameters<NonNullable<ReturnType<typeof ConsoleQuery.agent.post.mutationOptions>['onSuccess']>>[0]
+type AgentComposerMutationResponse = Parameters<NonNullable<ReturnType<typeof ConsoleQuery.agent.byAgentId.composer.put.mutationOptions>['onSuccess']>>[0]
+
+const createAgent = (overrides: Partial<AgentMutationResponse> = {}): AgentMutationResponse => ({
+  ...overrides,
+  active_config_is_published: overrides.active_config_is_published ?? false,
+  enable_api: overrides.enable_api ?? true,
+  enable_site: overrides.enable_site ?? true,
+  description: overrides.description ?? 'Agent description',
+  id: overrides.id ?? 'agent-1',
+  icon_url: overrides.icon_url ?? null,
+  mode: overrides.mode ?? 'agent',
+  name: overrides.name ?? 'Agent',
+  role: overrides.role ?? 'Assistant',
+})
+
+const createComposerState = (overrides: Partial<AgentComposerMutationResponse> = {}): AgentComposerMutationResponse => ({
+  active_config_snapshot: {
+    id: 'snapshot-1',
+    version: 1,
+  },
+  agent: {
+    active_config_snapshot_id: 'snapshot-1',
+    description: 'Agent description',
+    id: 'agent-1',
+    name: 'Agent',
+    scope: 'roster',
+    status: 'active',
+  },
+  agent_soul: {
+    schema_version: 1,
+  },
+  save_options: ['save_to_current_version', 'save_as_new_version'],
+  variant: 'agent_app',
   ...overrides,
 })
 
@@ -109,6 +147,212 @@ describe('getBaseURL', () => {
     // Assert
     expect(url.href).toBe('https://api.example.com/console/api')
     expect(warnSpy).not.toHaveBeenCalled()
+  })
+})
+
+// Scenario: oRPC mutation defaults own shared Agent roster cache behavior.
+describe('consoleQuery agent mutation defaults', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('should invalidate roster and invite option lists after creating an agent', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const createdAgent = createAgent()
+
+    const mutationOptions = consoleQuery.agent.post.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      createdAgent,
+      {
+        body: {
+          name: createdAgent.name,
+          description: createdAgent.description,
+          role: createdAgent.role ?? 'Assistant',
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.get.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.inviteOptions.get.key(),
+    })
+  })
+
+  it('should invalidate invite option lists after updating an agent', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const updatedAgent = createAgent({ name: 'Updated Agent' })
+
+    const mutationOptions = consoleQuery.agent.byAgentId.put.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      updatedAgent,
+      {
+        params: {
+          agent_id: updatedAgent.id,
+        },
+        body: {
+          name: updatedAgent.name,
+          role: updatedAgent.role ?? 'Assistant',
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.inviteOptions.get.key(),
+    })
+  })
+
+  it('should invalidate roster and invite option lists after publishing an agent config', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const removeQueries = vi.spyOn(queryClient, 'removeQueries')
+    const inviteOptionsQueryKey = consoleQuery.agent.inviteOptions.get.queryKey({
+      input: {
+        query: {
+          app_id: 'app-1',
+          limit: 8,
+          page: 1,
+        },
+      },
+    })
+    queryClient.setQueryData(inviteOptionsQueryKey, {
+      data: [
+        {
+          active_config_is_published: true,
+          active_config_snapshot: null,
+          active_config_snapshot_id: 'snapshot-1',
+          agent_kind: 'dify_agent',
+          app_id: null,
+          archived_at: null,
+          archived_by: null,
+          created_at: 1,
+          created_by: null,
+          description: 'Agent description',
+          existing_node_ids: [],
+          icon: null,
+          icon_background: null,
+          icon_type: null,
+          id: 'agent-1',
+          in_current_workflow_count: 0,
+          is_in_current_workflow: false,
+          name: 'Agent',
+          published_node_reference_count: 0,
+          published_reference_count: 0,
+          published_references: [],
+          role: '',
+          scope: 'roster',
+          source: 'workflow',
+          status: 'active',
+          updated_at: 1,
+          updated_by: null,
+          workflow_id: null,
+          workflow_node_id: null,
+        },
+      ],
+      has_more: false,
+      limit: 8,
+      page: 1,
+      total: 1,
+    })
+
+    const mutationOptions = consoleQuery.agent.byAgentId.composer.put.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      createComposerState(),
+      {
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: {
+          variant: 'agent_app',
+          save_strategy: 'save_as_new_version',
+          agent_soul: {
+            schema_version: 1,
+          },
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.get.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.inviteOptions.get.key(),
+    })
+    expect(removeQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.inviteOptions.get.key(),
+    })
+    expect(queryClient.getQueryData(inviteOptionsQueryKey)).toBeUndefined()
+  })
+
+  it('should keep roster and invite option lists stable after saving an agent draft', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+
+    const mutationOptions = consoleQuery.agent.byAgentId.composer.put.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      createComposerState(),
+      {
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: {
+          variant: 'agent_app',
+          save_strategy: 'save_to_current_version',
+          agent_soul: {
+            schema_version: 1,
+          },
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.get.key(),
+    })
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.inviteOptions.get.key(),
+    })
+  })
+
+  it('should invalidate invite option lists after deleting an agent', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const deletedAgent = createAgent()
+
+    const mutationOptions = consoleQuery.agent.byAgentId.delete.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      {},
+      {
+        params: {
+          agent_id: deletedAgent.id,
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.inviteOptions.get.key(),
+    })
   })
 })
 

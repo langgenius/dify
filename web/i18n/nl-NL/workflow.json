@@ -1,5 +1,6 @@
 {
   "blocks.agent": "Agent",
+  "blocks.agent-v2": "Agent",
   "blocks.answer": "Answer",
   "blocks.assigner": "Variable Assigner",
   "blocks.code": "Code",
@@ -33,6 +34,7 @@
   "blocks.variable-aggregator": "Variable Aggregator",
   "blocks.variable-assigner": "Variable Aggregator",
   "blocksAbout.agent": "Invoking large language models to answer questions or process natural language",
+  "blocksAbout.agent-v2": "Invoking large language models to answer questions or process natural language",
   "blocksAbout.answer": "Define the reply content of a chat conversation",
   "blocksAbout.assigner": "The variable assignment node is used for assigning values to writable variables(like conversation variables).",
   "blocksAbout.code": "Execute a piece of Python or NodeJS code to implement custom logic",
@@ -414,6 +416,7 @@
   "nodes.agent.pluginNotFoundDesc": "This integratie is installed from GitHub. Please go to Integraties to reinstall",
   "nodes.agent.pluginNotInstalled": "This integratie is not installed",
   "nodes.agent.pluginNotInstalledDesc": "This integratie is installed from GitHub. Please go to Integraties to reinstall",
+  "nodes.agent.roster.label": "Agent",
   "nodes.agent.strategy.configureTip": "Please configure agentic strategy.",
   "nodes.agent.strategy.configureTipDesc": "After configuring the agentic strategy, this node will automatically load the remaining configurations. The strategy will affect the mechanism of multi-step tool reasoning. ",
   "nodes.agent.strategy.label": "Agentic Strategy",

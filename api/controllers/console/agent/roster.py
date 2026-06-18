@@ -2,19 +2,27 @@ from uuid import UUID
 
 from flask import abort, request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_app_model
 from controllers.console.app.app import (
-    AppDetailWithSite,
+    AppDetailWithSite as GenericAppDetailWithSite,
+)
+from controllers.console.app.app import (
     AppListQuery,
-    AppPagination,
-    AppPartial,
     CopyAppPayload,
-    UpdateAppPayload,
     _normalize_app_list_query_args,
+)
+from controllers.console.app.app import (
+    AppPagination as GenericAppPagination,
+)
+from controllers.console.app.app import (
+    AppPartial as GenericAppPartial,
+)
+from controllers.console.app.app import (
+    UpdateAppPayload as GenericUpdateAppPayload,
 )
 from controllers.console.wraps import (
     account_initialization_required,
@@ -80,7 +88,10 @@ class AgentAppCreatePayload(BaseModel):
         return role
 
 
-class AgentAppUpdatePayload(UpdateAppPayload):
+# Keep agent-app roster DTOs agent-specific instead of reusing the shared
+# /apps response/request models. The roster surface needs Agent-only fields such
+# as `role`, while the generic console/apps contracts must stay unchanged.
+class AgentAppUpdatePayload(GenericUpdateAppPayload):
     role: str = Field(..., min_length=1, description="Agent role", max_length=255)
 
     @field_validator("role")
@@ -98,19 +109,6 @@ class AgentAppPublishedReferenceResponse(BaseModel):
     app_icon_type: str | None = None
     app_icon: str | None = None
     app_icon_background: str | None = None
-
-
-class AgentAppPartial(AppPartial):
-    published_reference_count: int = 0
-    published_references: list[AgentAppPublishedReferenceResponse] = Field(default_factory=list)
-
-
-class AgentAppPagination(BaseModel):
-    page: int
-    limit: int
-    total: int
-    has_more: bool
-    data: list[AgentAppPartial]
 
 
 class AgentLogsQuery(BaseModel):
@@ -149,6 +147,26 @@ class AgentStatisticsQuery(BaseModel):
         return value
 
 
+class AgentAppPartial(GenericAppPartial):
+    app_id: str | None = None
+    role: str | None = None
+    active_config_is_published: bool = False
+    published_reference_count: int = 0
+    published_references: list[AgentAppPublishedReferenceResponse] = Field(default_factory=list)
+
+
+class AgentAppDetailWithSite(GenericAppDetailWithSite):
+    app_id: str | None = None
+    role: str | None = None
+    active_config_is_published: bool = False
+
+
+class AgentAppPagination(GenericAppPagination):
+    data: list[AgentAppPartial] = Field(  # type: ignore[assignment]  # pyrefly: ignore[bad-override-mutable-attribute]
+        validation_alias=AliasChoices("items", "data")
+    )
+
+
 register_schema_models(
     console_ns,
     AgentAppCreatePayload,
@@ -159,14 +177,14 @@ register_schema_models(
     AgentStatisticsQuery,
     AgentIdPath,
     AppListQuery,
-    UpdateAppPayload,
     RosterListQuery,
 )
 register_response_schema_models(
     console_ns,
-    AppDetailWithSite,
     AgentAppPagination,
     AgentAppPublishedReferenceResponse,
+    AgentAppDetailWithSite,
+    AgentAppPartial,
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
     AgentInviteOptionsResponse,
@@ -184,16 +202,25 @@ def _agent_roster_service() -> AgentRosterService:
 
 
 def _serialize_agent_app_detail(app_model) -> dict:
+    """Serialize an Agent App detail using roster-only DTOs.
+
+    `/agent` responses are roster-shaped rather than raw app-shaped: `id`
+    becomes the backing roster Agent id, `app_id` carries the underlying App
+    id, and `role` is injected from the backing roster Agent. Keeping that
+    remap in this serializer lets generated console/agent contracts expose the
+    roster persona fields without widening the shared /apps detail schema.
+    """
+
     app_model = AppService().get_app(app_model)
     if FeatureService.get_system_features().webapp_auth.enabled:
         app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
         app_model.access_mode = app_setting.access_mode  # type: ignore[attr-defined]
 
     roster_service = _agent_roster_service()
-    agent = roster_service.get_app_backing_agent(tenant_id=app_model.tenant_id, app_id=app_model.id)
+    payload = AgentAppDetailWithSite.model_validate(app_model, from_attributes=True).model_dump(mode="json")
+    agent = roster_service.get_app_backing_agent(tenant_id=app_model.tenant_id, app_id=str(app_model.id))
     if not agent:
         raise AgentNotFoundError()
-    payload = AppDetailWithSite.model_validate(app_model, from_attributes=True).model_dump(mode="json")
     payload.pop("bound_agent_id", None)
     payload["app_id"] = str(app_model.id)
     payload["id"] = agent.id
@@ -206,6 +233,14 @@ def _serialize_agent_app_detail(app_model) -> dict:
 
 
 def _serialize_agent_app_pagination(app_pagination, *, tenant_id: str) -> dict:
+    """Serialize Agent App lists with roster-shaped items.
+
+    Each item starts from the shared App list shape, then drops
+    `bound_agent_id`, rewrites `id` to the backing roster Agent id, stores the
+    original App id in `app_id`, and injects roster-only `role` when a backing
+    Agent is present.
+    """
+
     app_ids = [str(app.id) for app in app_pagination.items]
     roster_service = _agent_roster_service()
     agents_by_app_id = roster_service.load_app_backing_agents_by_app_id(
@@ -220,7 +255,7 @@ def _serialize_agent_app_pagination(app_pagination, *, tenant_id: str) -> dict:
         tenant_id=tenant_id,
         agent_ids=[agent.id for agent in agents_by_app_id.values()],
     )
-    payload = AppPagination.model_validate(app_pagination, from_attributes=True).model_dump(mode="json")
+    payload = AgentAppPagination.model_validate(app_pagination, from_attributes=True).model_dump(mode="json")
     for item in payload["data"]:
         app_id = item["id"]
         item.pop("bound_agent_id", None)
@@ -294,7 +329,7 @@ class AgentAppListApi(Resource):
         return _serialize_agent_app_pagination(app_pagination, tenant_id=current_tenant_id)
 
     @console_ns.expect(console_ns.models[AgentAppCreatePayload.__name__])
-    @console_ns.response(201, "Agent app created successfully", console_ns.models[AppDetailWithSite.__name__])
+    @console_ns.response(201, "Agent app created successfully", console_ns.models[AgentAppDetailWithSite.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(400, "Invalid request parameters")
     @setup_required
@@ -322,7 +357,7 @@ class AgentAppListApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>")
 class AgentAppApi(Resource):
-    @console_ns.response(200, "Agent app detail", console_ns.models[AppDetailWithSite.__name__])
+    @console_ns.response(200, "Agent app detail", console_ns.models[AgentAppDetailWithSite.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -333,7 +368,7 @@ class AgentAppApi(Resource):
         return _serialize_agent_app_detail(app_model)
 
     @console_ns.expect(console_ns.models[AgentAppUpdatePayload.__name__])
-    @console_ns.response(200, "Agent app updated successfully", console_ns.models[AppDetailWithSite.__name__])
+    @console_ns.response(200, "Agent app updated successfully", console_ns.models[AgentAppDetailWithSite.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(400, "Invalid request parameters")
     @setup_required
@@ -373,7 +408,7 @@ class AgentAppApi(Resource):
 @console_ns.route("/agent/<uuid:agent_id>/copy")
 class AgentAppCopyApi(Resource):
     @console_ns.expect(console_ns.models[CopyAppPayload.__name__])
-    @console_ns.response(201, "Agent app copied successfully", console_ns.models[AppDetailWithSite.__name__])
+    @console_ns.response(201, "Agent app copied successfully", console_ns.models[AgentAppDetailWithSite.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(400, "Invalid request parameters")
     @setup_required

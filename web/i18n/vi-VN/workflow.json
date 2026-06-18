@@ -1,5 +1,6 @@
 {
-  "blocks.agent": "Người đại lý",
+  "blocks.agent": "Agent",
+  "blocks.agent-v2": "Agent",
   "blocks.answer": "Trả lời",
   "blocks.assigner": "Trình gán biến",
   "blocks.code": "Mã",
@@ -33,6 +34,7 @@
   "blocks.variable-aggregator": "Trình tổng hợp biến",
   "blocks.variable-assigner": "Trình gán biến",
   "blocksAbout.agent": "Gọi các mô hình ngôn ngữ lớn để trả lời câu hỏi hoặc xử lý ngôn ngữ tự nhiên",
+  "blocksAbout.agent-v2": "Gọi các mô hình ngôn ngữ lớn để trả lời câu hỏi hoặc xử lý ngôn ngữ tự nhiên",
   "blocksAbout.answer": "Định nghĩa nội dung trả lời của cuộc trò chuyện",
   "blocksAbout.assigner": "Nút gán biến được sử dụng để gán giá trị cho các biến có thể ghi (như các biến hội thoại).",
   "blocksAbout.code": "Thực thi một đoạn mã Python hoặc NodeJS để thực hiện logic tùy chỉnh",
@@ -414,6 +416,7 @@
   "nodes.agent.pluginNotFoundDesc": "Tích hợp này được cài đặt từ GitHub. Vui lòng vào Tích hợp để cài đặt lại",
   "nodes.agent.pluginNotInstalled": "Tích hợp này chưa được cài đặt",
   "nodes.agent.pluginNotInstalledDesc": "Tích hợp này được cài đặt từ GitHub. Vui lòng vào Tích hợp để cài đặt lại",
+  "nodes.agent.roster.label": "Tác nhân",
   "nodes.agent.strategy.configureTip": "Vui lòng định cấu hình chiến lược tác nhân.",
   "nodes.agent.strategy.configureTipDesc": "Sau khi cấu hình chiến lược tác nhân, nút này sẽ tự động tải các cấu hình còn lại. Chiến lược sẽ ảnh hưởng đến cơ chế suy luận công cụ nhiều bước.",
   "nodes.agent.strategy.label": "Chiến lược đại lý",

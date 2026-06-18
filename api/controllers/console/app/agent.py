@@ -30,7 +30,7 @@ from models import Account
 from models.agent_config_entities import AgentFileRefConfig, AgentSkillRefConfig
 from models.model import App, AppMode, UploadFile
 from services.agent.composer_service import AgentComposerService
-from services.agent.skill_package_service import SkillManifest, SkillPackageError, SkillPackageService
+from services.agent.skill_package_service import SkillManifest, SkillPackageError
 from services.agent.skill_standardize_service import SkillStandardizeService
 from services.agent.skill_tool_inference_service import (
     SkillToolInferenceError,
@@ -45,11 +45,18 @@ from services.agent_drive_service import (
     normalize_drive_key,
 )
 from services.agent_service import AgentService
-from services.file_service import FileService
 
 logger = logging.getLogger(__name__)
 
 _WORKFLOW_AGENT_DRIVE_APP_MODES = [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT]
+_AGENT_SKILL_UPLOAD_PARAMS = {
+    "file": {
+        "in": "formData",
+        "type": "file",
+        "required": True,
+        "description": "Skill package (.zip or .skill).",
+    }
+}
 
 
 class AgentLogQuery(BaseModel):
@@ -125,11 +132,6 @@ class AgentSkillUploadResponse(ResponseModel):
     manifest: SkillManifest
 
 
-class AgentSkillStandardizeResponse(ResponseModel):
-    skill: AgentSkillRefConfig
-    manifest: SkillManifest
-
-
 class AgentDriveFileResponse(ResponseModel):
     name: str
     drive_key: str
@@ -156,7 +158,6 @@ register_response_schema_models(
     AgentDriveFileCommitResponse,
     AgentDriveFileResponse,
     AgentLogResponse,
-    AgentSkillStandardizeResponse,
     AgentSkillUploadResponse,
     SkillToolInferenceResult,
 )
@@ -174,30 +175,9 @@ def _agent_not_bound() -> tuple[dict[str, str], int]:
     return {"code": "agent_not_bound", "message": "no agent is bound for this app/node"}, 400
 
 
-def _upload_skill_for_app(*, current_user: Account):
-    if "file" not in request.files:
-        return {"code": "no_file", "message": "no skill file uploaded"}, 400
-    if len(request.files) > 1:
-        return {"code": "too_many_files", "message": "only one skill file is allowed"}, 400
+def _upload_skill_for_app(*, current_user: Account, app_model: App):
+    """Upload one skill package and commit its normalized files into the agent drive."""
 
-    upload = request.files["file"]
-    content = upload.stream.read()
-    try:
-        manifest = SkillPackageService().validate_and_extract(content=content, filename=upload.filename or "")
-    except SkillPackageError as exc:
-        return {"code": exc.code, "message": exc.message}, exc.status_code
-
-    upload_file = FileService(db.engine).upload_file(
-        filename=upload.filename or "skill.zip",
-        content=content,
-        mimetype=upload.mimetype or "application/zip",
-        user=current_user,
-    )
-    skill_ref = manifest.to_skill_ref(file_id=upload_file.id)
-    return {"skill": skill_ref.model_dump(exclude_none=True), "manifest": manifest.model_dump()}, 201
-
-
-def _standardize_skill_for_app(*, current_user: Account, app_model: App):
     query = query_params_from_request(AgentDriveMutationQuery)
     agent_id = _resolve_agent_id(app_model, query.node_id)
     if not agent_id:
@@ -382,51 +362,9 @@ class AgentLogApi(Resource):
 @console_ns.route("/agent/<uuid:agent_id>/skills/upload")
 class AgentSkillUploadByAgentApi(Resource):
     @console_ns.doc("upload_agent_skill_by_agent")
-    @console_ns.doc(description="Upload + validate a Skill package for an Agent App")
-    @console_ns.doc(params={"agent_id": "Agent ID"})
-    @console_ns.response(201, "Skill validated", console_ns.models[AgentSkillUploadResponse.__name__])
-    @console_ns.response(400, "Invalid skill package")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
-    def post(self, tenant_id: str, current_user: Account, agent_id: UUID):
-        resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
-        return _upload_skill_for_app(current_user=current_user)
-
-
-@console_ns.route("/apps/<uuid:app_id>/agent/skills/upload")
-class AgentSkillUploadApi(Resource):
-    @console_ns.doc("upload_agent_skill")
-    @console_ns.doc(description="Upload + validate a Skill package (.zip/.skill) and extract its manifest")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(201, "Skill validated", console_ns.models[AgentSkillUploadResponse.__name__])
-    @console_ns.response(400, "Invalid skill package")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=_WORKFLOW_AGENT_DRIVE_APP_MODES)
-    @with_current_user
-    def post(self, current_user: Account, app_model: App):
-        """Validate an uploaded Skill package and persist the archive.
-
-        Returns a validated skill ref (to bind into the Agent soul config on save)
-        plus its manifest. Standardizing into the agent drive is ENG-594.
-        """
-        return _upload_skill_for_app(current_user=current_user)
-
-
-@console_ns.route("/agent/<uuid:agent_id>/skills/standardize")
-class AgentSkillStandardizeByAgentApi(Resource):
-    @console_ns.doc("standardize_agent_skill_by_agent")
-    @console_ns.doc(description="Validate + standardize a Skill into an Agent App drive")
-    @console_ns.doc(params={"agent_id": "Agent ID"})
-    @console_ns.response(
-        201,
-        "Skill standardized into drive",
-        console_ns.models[AgentSkillStandardizeResponse.__name__],
-    )
+    @console_ns.doc(description="Upload + standardize a Skill into an Agent App drive")
+    @console_ns.doc(consumes=["multipart/form-data"], params={"agent_id": "Agent ID", **_AGENT_SKILL_UPLOAD_PARAMS})
+    @console_ns.response(201, "Skill uploaded into drive", console_ns.models[AgentSkillUploadResponse.__name__])
     @console_ns.response(400, "Invalid skill package or no bound agent")
     @setup_required
     @login_required
@@ -435,19 +373,22 @@ class AgentSkillStandardizeByAgentApi(Resource):
     @with_current_tenant_id
     def post(self, tenant_id: str, current_user: Account, agent_id: UUID):
         app_model = resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
-        return _standardize_skill_for_app(current_user=current_user, app_model=app_model)
+        return _upload_skill_for_app(current_user=current_user, app_model=app_model)
 
 
-@console_ns.route("/apps/<uuid:app_id>/agent/skills/standardize")
-class AgentSkillStandardizeApi(Resource):
-    @console_ns.doc("standardize_agent_skill")
-    @console_ns.doc(description="Validate + standardize a Skill into the agent drive (ENG-594)")
-    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentDriveMutationQuery)})
-    @console_ns.response(
-        201,
-        "Skill standardized into drive",
-        console_ns.models[AgentSkillStandardizeResponse.__name__],
+@console_ns.route("/apps/<uuid:app_id>/agent/skills/upload")
+class AgentSkillUploadApi(Resource):
+    @console_ns.doc("upload_agent_skill")
+    @console_ns.doc(description="Upload + standardize a Skill into the agent drive")
+    @console_ns.doc(
+        consumes=["multipart/form-data"],
+        params={
+            "app_id": "Application ID",
+            **query_params_from_model(AgentDriveMutationQuery),
+            **_AGENT_SKILL_UPLOAD_PARAMS,
+        },
     )
+    @console_ns.response(201, "Skill uploaded into drive", console_ns.models[AgentSkillUploadResponse.__name__])
     @console_ns.response(400, "Invalid skill package or no bound agent")
     @setup_required
     @login_required
@@ -455,8 +396,8 @@ class AgentSkillStandardizeApi(Resource):
     @get_app_model(mode=_WORKFLOW_AGENT_DRIVE_APP_MODES)
     @with_current_user
     def post(self, current_user: Account, app_model: App):
-        """Upload a Skill, validate it, and standardize it into the app agent's drive."""
-        return _standardize_skill_for_app(current_user=current_user, app_model=app_model)
+        """Upload a Skill, validate it, and commit drive-backed skill files."""
+        return _upload_skill_for_app(current_user=current_user, app_model=app_model)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/files")

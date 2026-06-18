@@ -542,17 +542,21 @@ class AppService:
         *,
         name: str | None = None,
         description: str | None = None,
+        role: str | None = None,
         icon_type: IconType | str | None = None,
         icon: str | None = None,
         icon_background: str | None = None,
-        role: str | None = None,
         account_id: str | None = None,
         updated_at: datetime | None = None,
     ) -> None:
         """Keep the Roster identity aligned with its Agent App shell.
 
         Agent Soul remains versioned through Composer. This helper only mirrors
-        user-facing identity fields so Roster and Agent Console do not drift.
+        user-facing identity fields, including the roster role/persona label,
+        so Roster and Agent Console do not drift.
+
+        Role omission is intentional: ``role=None`` preserves the backing
+        Agent's current role, while ``role=""`` explicitly clears it.
         """
         agent = self._get_backing_agent_for_update(app)
         if agent is None:
@@ -562,14 +566,14 @@ class AppService:
             agent.name = name
         if description is not None:
             agent.description = description
+        if role is not None:
+            agent.role = role
         if icon_type is not None:
             agent.icon_type = self._to_agent_icon_type(icon_type)
         if icon is not None:
             agent.icon = icon
         if icon_background is not None:
             agent.icon_background = icon_background
-        if role is not None:
-            agent.role = role
         agent.updated_by = account_id
         if updated_at is not None:
             agent.updated_at = updated_at
@@ -601,10 +605,12 @@ class AppService:
             app,
             name=app.name,
             description=app.description,
+            # Omitted role must stay omitted here: None means "preserve current
+            # backing-agent role", while an empty string is an explicit clear.
+            role=args.get("role"),
             icon_type=app.icon_type,
             icon=app.icon,
             icon_background=app.icon_background,
-            role=args.get("role"),
             account_id=current_user.id,
             updated_at=app.updated_at,
         )

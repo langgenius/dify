@@ -95,6 +95,7 @@ def _agent_app_composer_response() -> dict:
 def _app_detail_obj(**overrides):
     data = {
         "id": "app-1",
+        "tenant_id": "tenant-1",
         "name": "Iris",
         "description": "Agent app",
         "mode_compatible_with_agent": "agent",
@@ -118,7 +119,6 @@ def _app_detail_obj(**overrides):
         "deleted_tools": [],
         "site": None,
         "bound_agent_id": "00000000-0000-0000-0000-000000000001",
-        "tenant_id": "tenant-1",
     }
     data.update(overrides)
     return SimpleNamespace(**data)

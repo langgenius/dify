@@ -30,6 +30,7 @@ import { RetrievalChangeTip, RetrievalSection } from './retrieval-section'
 
 type SettingsModalProps = {
   currentDataset: DataSet
+  height?: string
   onCancel: () => void
   onSave: (newDataset: DataSet) => void
 }
@@ -44,6 +45,7 @@ const labelClass = `
 
 const SettingsModal: FC<SettingsModalProps> = ({
   currentDataset,
+  height = 'calc(100vh - 72px)',
   onCancel,
   onSave,
 }) => {
@@ -186,9 +188,9 @@ const SettingsModal: FC<SettingsModalProps> = ({
 
   return (
     <div
-      className="flex w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
+      className="flex min-h-0 w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
       style={{
-        height: 'calc(100vh - 72px)',
+        height,
       }}
       ref={ref}
     >
