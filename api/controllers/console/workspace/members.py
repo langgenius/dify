@@ -109,8 +109,7 @@ def _is_role_enabled(role: TenantAccountRole | str, tenant_id: str) -> bool:
 
 
 def _serialize_member_roles(
-    current_role: str | None, member_roles: list[enterprise_rbac_service.RBACRole]
-) -> list[dict[str, str]]:
+    current_role: str | None, member_roles: list[enterprise_rbac_service.RBACRole]) -> list[dict[str, str]]:
     if dify_config.RBAC_ENABLED:
         return [{"id": role.id, "name": role.name} for role in member_roles]
     else:
