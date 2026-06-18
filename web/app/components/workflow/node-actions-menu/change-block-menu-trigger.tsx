@@ -15,6 +15,7 @@ import {
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
+import { getNodeCatalogType } from '@/app/components/workflow/utils'
 import { FlowType } from '@/types/common'
 
 type ChangeBlockMenuTriggerProps = {
@@ -30,10 +31,11 @@ export function ChangeBlockMenuTrigger({
 }: ChangeBlockMenuTriggerProps) {
   const { t } = useTranslation()
   const { handleNodeChange } = useNodesInteractions()
+  const nodeCatalogType = getNodeCatalogType(nodeData)
   const {
     availablePrevBlocks,
     availableNextBlocks,
-  } = useAvailableBlocks(nodeData.type, nodeData.isInIteration || nodeData.isInLoop)
+  } = useAvailableBlocks(nodeCatalogType, nodeData.isInIteration || nodeData.isInLoop)
   const isChatMode = useIsChatMode()
   const flowType = useHooksStore(s => s.configsMap?.flowType)
   const nodes = useNodes()

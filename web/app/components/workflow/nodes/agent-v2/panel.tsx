@@ -33,6 +33,7 @@ export function AgentV2Panel({
   const { handleNodeDataUpdate, handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
   const openInlineAgentPanelNodeId = useStore(state => state.openInlineAgentPanelNodeId)
   const setOpenInlineAgentPanelNodeId = useStore(state => state.setOpenInlineAgentPanelNodeId)
+  const appId = useStore(state => state.appId)
   const drawerPortalContainerRef = useRef<HTMLDivElement>(null)
   const declaredOutputs = getAgentV2DeclaredOutputs(inputs)
   const rosterAgentId = inputs.agent_binding?.binding_type === 'roster_agent' ? inputs.agent_binding.agent_id : undefined
@@ -175,6 +176,7 @@ export function AgentV2Panel({
             ? (
                 <AgentOrchestrateDrawerPanel
                   agentId={displayedAgent.id}
+                  appId={appId}
                   inlineComposerState={inlineAgentQuery.data}
                   isInline={isInlineAgentReady}
                   nodeId={id}

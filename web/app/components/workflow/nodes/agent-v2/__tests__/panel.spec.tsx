@@ -136,6 +136,7 @@ vi.mock('../hooks', () => ({
 vi.mock('../components/agent-orchestrate-drawer-panel', () => ({
   AgentOrchestrateDrawerPanel: (props: {
     agentId: string
+    appId?: string
     inlineComposerState?: unknown
     isInline: boolean
     nodeId: string

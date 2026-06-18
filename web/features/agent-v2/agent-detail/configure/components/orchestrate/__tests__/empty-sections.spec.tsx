@@ -23,7 +23,7 @@ function renderEmptySections() {
         }}
       >
         <AgentSkills agentId="agent-1" />
-        <AgentFiles />
+        <AgentFiles agentId="agent-1" />
         <AgentTools />
         <AgentKnowledgeRetrieval />
       </AgentComposerProvider>

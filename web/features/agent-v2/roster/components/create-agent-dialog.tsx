@@ -70,9 +70,6 @@ export function CreateAgentDialog() {
         toast.success(t('roster.createSuccess'))
         handleOpenChange(false)
       },
-      onError: () => {
-        toast.error(t('roster.createFailed'))
-      },
     })
   }
 
