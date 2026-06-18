@@ -148,6 +148,14 @@ export const DataSourceProvider = {
 } as const
 export type DataSourceProvider = typeof DataSourceProvider[keyof typeof DataSourceProvider]
 
+export type PluginProvider = {
+  tool_name: string
+  is_enabled: boolean
+  credentials: {
+    api_key: string
+  } | null
+}
+
 export type FileUploadConfigResponse = {
   batch_count_limit: number
   image_file_size_limit?: number | string // default is 10MB

@@ -24,6 +24,7 @@ import type {
   Member,
   ModerateResponse,
   OauthResponse,
+  PluginProvider,
   Provider,
   ProviderAnthropicToken,
   ProviderAzureToken,
