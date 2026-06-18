@@ -43,9 +43,9 @@ class LocaltimeToTimestampTool(BuiltinTool):
             match local_tz:
                 case None:
                     converted_localtime = local_time.astimezone()
-                case str():
-                    local_tz = pytz.timezone(local_tz)
-                    converted_localtime = local_tz.localize(local_time)
+                case str() as timezone_name:
+                    timezone = pytz.timezone(timezone_name)
+                    converted_localtime = timezone.localize(local_time)
                 case tzinfo():
                     localize = getattr(local_tz, "localize", None)
                     if callable(localize):
