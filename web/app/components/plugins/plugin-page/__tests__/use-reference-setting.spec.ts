@@ -9,9 +9,13 @@ import { useInvalidateReferenceSettings, useMutationPluginPermissionSettings, us
 import { PermissionType, PluginCategoryEnum } from '../../types'
 import useReferenceSetting, { useCanInstallPluginFromMarketplace } from '../use-reference-setting'
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
-}))
+vi.mock('@/context/app-context', async () => {
+  const actual = await vi.importActual('@/context/app-context')
+  return {
+    ...actual,
+    useAppContext: vi.fn(),
+  }
+})
 
 vi.mock('@/service/use-plugins', () => ({
   usePluginAutoUpgradeSettings: vi.fn(),
@@ -32,8 +36,8 @@ describe('useReferenceSetting Hook', () => {
     vi.mocked(useAppContext).mockReturnValue({
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
-      langGeniusVersionInfo: { current_version: '1.0.0' },
-      workspacePermissionKeys: [],
+      langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
+      workspacePermissionKeys: [] as string[],
     } as ReturnType<typeof useAppContext>)
 
     vi.mocked(usePluginAutoUpgradeSettings).mockReturnValue({
@@ -102,7 +106,7 @@ describe('useReferenceSetting Hook', () => {
       vi.mocked(useAppContext).mockReturnValue({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: false,
-        langGeniusVersionInfo: { current_version: '1.0.0' },
+        langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
         workspacePermissionKeys: ['plugin.install', 'plugin.debug'],
       } as ReturnType<typeof useAppContext>)
       vi.mocked(usePluginPermissionSettings).mockReturnValue({
@@ -122,8 +126,8 @@ describe('useReferenceSetting Hook', () => {
       vi.mocked(useAppContext).mockReturnValue({
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: false,
-        langGeniusVersionInfo: { current_version: '1.0.0' },
-        workspacePermissionKeys: [],
+        langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
+        workspacePermissionKeys: [] as string[],
       } as ReturnType<typeof useAppContext>)
 
       vi.mocked(usePluginPermissionSettings).mockReturnValue({
@@ -143,8 +147,8 @@ describe('useReferenceSetting Hook', () => {
       vi.mocked(useAppContext).mockReturnValue({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: true,
-        langGeniusVersionInfo: { current_version: '1.0.0' },
-        workspacePermissionKeys: [],
+        langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
+        workspacePermissionKeys: [] as string[],
       } as ReturnType<typeof useAppContext>)
 
       vi.mocked(usePluginPermissionSettings).mockReturnValue({
@@ -164,7 +168,7 @@ describe('useReferenceSetting Hook', () => {
       vi.mocked(useAppContext).mockReturnValue({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: false,
-        langGeniusVersionInfo: { current_version: '1.0.0' },
+        langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
         workspacePermissionKeys: ['plugin.install', 'plugin.debug'],
       } as ReturnType<typeof useAppContext>)
 
@@ -187,7 +191,7 @@ describe('useReferenceSetting Hook', () => {
       vi.mocked(useAppContext).mockReturnValue({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: false,
-        langGeniusVersionInfo: { current_version: '1.0.0' },
+        langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
         workspacePermissionKeys: ['plugin.plugin_preferences'],
       } as ReturnType<typeof useAppContext>)
 
@@ -200,7 +204,7 @@ describe('useReferenceSetting Hook', () => {
       vi.mocked(useAppContext).mockReturnValue({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: true,
-        langGeniusVersionInfo: { current_version: '1.0.0' },
+        langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
         workspacePermissionKeys: ['plugin.plugin_preferences'],
       } as ReturnType<typeof useAppContext>)
 
@@ -216,8 +220,8 @@ describe('useReferenceSetting Hook', () => {
       vi.mocked(useAppContext).mockReturnValue({
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: false,
-        langGeniusVersionInfo: { current_version: '1.0.0' },
-        workspacePermissionKeys: [],
+        langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
+        workspacePermissionKeys: [] as string[],
       } as ReturnType<typeof useAppContext>)
 
       const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
@@ -295,7 +299,7 @@ describe('useReferenceSetting Hook', () => {
       vi.mocked(useAppContext).mockReturnValue({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: false,
-        langGeniusVersionInfo: { current_version: '1.0.0' },
+        langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
         workspacePermissionKeys: ['plugin.install', 'plugin.debug'],
       } as ReturnType<typeof useAppContext>)
       vi.mocked(usePluginAutoUpgradeSettings).mockReturnValue({
@@ -315,7 +319,7 @@ describe('useReferenceSetting Hook', () => {
       vi.mocked(useAppContext).mockReturnValue({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: false,
-        langGeniusVersionInfo: { current_version: '1.0.0' },
+        langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
         workspacePermissionKeys: [
           'plugin.install',
           'plugin.manage',
@@ -349,8 +353,8 @@ describe('useReferenceSetting Hook', () => {
       vi.mocked(useAppContext).mockReturnValue({
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: false,
-        langGeniusVersionInfo: { current_version: '1.0.0' },
-        workspacePermissionKeys: [],
+        langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
+        workspacePermissionKeys: [] as string[],
       } as ReturnType<typeof useAppContext>)
 
       const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool), {
@@ -377,7 +381,7 @@ describe('useCanInstallPluginFromMarketplace Hook', () => {
     vi.mocked(useAppContext).mockReturnValue({
       isCurrentWorkspaceManager: true,
       isCurrentWorkspaceOwner: false,
-      langGeniusVersionInfo: { current_version: '1.0.0' },
+      langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
       workspacePermissionKeys: ['plugin.install'],
     } as ReturnType<typeof useAppContext>)
 
@@ -416,8 +420,8 @@ describe('useCanInstallPluginFromMarketplace Hook', () => {
     vi.mocked(useAppContext).mockReturnValue({
       isCurrentWorkspaceManager: true,
       isCurrentWorkspaceOwner: false,
-      langGeniusVersionInfo: { current_version: '1.0.0' },
-      workspacePermissionKeys: [],
+      langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
+      workspacePermissionKeys: [] as string[],
     } as ReturnType<typeof useAppContext>)
 
     const { result } = renderHook(() => useCanInstallPluginFromMarketplace(), {
@@ -431,8 +435,8 @@ describe('useCanInstallPluginFromMarketplace Hook', () => {
     vi.mocked(useAppContext).mockReturnValue({
       isCurrentWorkspaceManager: true,
       isCurrentWorkspaceOwner: false,
-      langGeniusVersionInfo: { current_version: '1.0.0' },
-      workspacePermissionKeys: [],
+      langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
+      workspacePermissionKeys: [] as string[],
     } as ReturnType<typeof useAppContext>)
 
     const { result } = renderHook(() => useCanInstallPluginFromMarketplace(), {
@@ -455,7 +459,7 @@ describe('useCanInstallPluginFromMarketplace Hook', () => {
     vi.mocked(useAppContext).mockReturnValue({
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
-      langGeniusVersionInfo: { current_version: '1.0.0' },
+      langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
       workspacePermissionKeys: ['plugin.install'],
     } as ReturnType<typeof useAppContext>)
     vi.mocked(usePluginPermissionSettings).mockReturnValue({
