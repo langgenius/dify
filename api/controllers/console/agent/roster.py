@@ -286,7 +286,7 @@ class AgentAppListApi(Resource):
             status="normal",
         )
 
-        app_pagination = AppService().get_paginate_apps(current_user.id, current_tenant_id, params)
+        app_pagination = AppService().get_paginate_apps(current_user.id, current_tenant_id, params, db.session)
         if app_pagination is None:
             empty = AgentAppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
             return empty.model_dump(mode="json")

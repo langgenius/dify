@@ -409,6 +409,7 @@ class DatasetListApi(Resource):
             datasets, total = DatasetService.get_datasets(
                 query.page,
                 query.limit,
+                db.session,
                 current_tenant_id,
                 current_user,
                 query.keyword,

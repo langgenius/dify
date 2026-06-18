@@ -191,7 +191,7 @@ def test_agent_app_list_and_create_use_agent_route(
         def get_app(self, app_obj: object) -> object:
             return app_obj
 
-        def get_paginate_apps(self, user_id: str, tenant_id: str, params) -> object:
+        def get_paginate_apps(self, user_id: str, tenant_id: str, params, session) -> object:
             captured["list"] = {"user_id": user_id, "tenant_id": tenant_id, "params": params}
             return SimpleNamespace(
                 page=1,

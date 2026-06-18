@@ -16,7 +16,7 @@ since these test controller-level behavior.
 import uuid
 from contextlib import ExitStack
 from datetime import UTC, datetime
-from unittest.mock import Mock, PropertyMock, patch
+from unittest.mock import ANY, Mock, PropertyMock, patch
 
 import pytest
 from flask import Flask
@@ -1129,7 +1129,7 @@ class TestDatasetTagsApiPatch:
         assert status == 200
         assert response == {"id": "tag-1", "name": "Updated Tag", "type": "knowledge", "binding_count": "5"}
         mock_tag_svc.update_tags.assert_called_once()
-        update_payload, tag_id = mock_tag_svc.update_tags.call_args.args
+        update_payload, tag_id, session = mock_tag_svc.update_tags.call_args.args
         assert update_payload.name == "Updated Tag"
         assert tag_id == "tag-1"
 
@@ -1184,7 +1184,7 @@ class TestDatasetTagsApiDelete:
             result = api.delete(_=None)
 
         assert result == ("", 204)
-        mock_tag_svc.delete_tag.assert_called_once_with("tag-1")
+        mock_tag_svc.delete_tag.assert_called_once_with("tag-1", ANY)
 
     @patch("libs.login.current_user")
     def test_delete_tag_forbidden(self, mock_current_user, app: Flask):
@@ -1233,7 +1233,7 @@ class TestDatasetTagsBindingStatusApi:
         assert status_code == 200
         assert response["data"] == [{"id": "tag_1", "name": "Test Tag"}]
         assert response["total"] == 1
-        mock_tag_svc.get_tags_by_target_id.assert_called_once_with("knowledge", "tenant_123", "dataset_123")
+        mock_tag_svc.get_tags_by_target_id.assert_called_once_with("knowledge", "tenant_123", "dataset_123", ANY)
 
 
 class TestDatasetTagBindingApiPost:
@@ -1266,7 +1266,8 @@ class TestDatasetTagBindingApiPost:
         from services.tag_service import TagBindingCreatePayload
 
         mock_tag_svc.save_tag_binding.assert_called_once_with(
-            TagBindingCreatePayload(tag_ids=["tag-1"], target_id="ds-1", type=TagType.KNOWLEDGE)
+            TagBindingCreatePayload(tag_ids=["tag-1"], target_id="ds-1", type=TagType.KNOWLEDGE),
+            ANY,
         )
 
     @patch("controllers.service_api.dataset.dataset.current_user")
@@ -1317,7 +1318,8 @@ class TestDatasetTagUnbindingApiPost:
         from services.tag_service import TagBindingDeletePayload
 
         mock_tag_svc.delete_tag_binding.assert_called_once_with(
-            TagBindingDeletePayload(tag_ids=["tag-1"], target_id="ds-1", type=TagType.KNOWLEDGE)
+            TagBindingDeletePayload(tag_ids=["tag-1"], target_id="ds-1", type=TagType.KNOWLEDGE),
+            ANY,
         )
 
     @patch("controllers.service_api.dataset.dataset.TagService")
@@ -1347,7 +1349,8 @@ class TestDatasetTagUnbindingApiPost:
         from services.tag_service import TagBindingDeletePayload
 
         mock_tag_svc.delete_tag_binding.assert_called_once_with(
-            TagBindingDeletePayload(tag_ids=["tag-1"], target_id="ds-1", type=TagType.KNOWLEDGE)
+            TagBindingDeletePayload(tag_ids=["tag-1"], target_id="ds-1", type=TagType.KNOWLEDGE),
+            ANY,
         )
 
     @patch("controllers.service_api.dataset.dataset.current_user")

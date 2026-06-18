@@ -174,7 +174,7 @@ class AppListApi(Resource):
 
         tag_ids: list[str] | None = None
         if query.tag:
-            tags = TagService.get_tag_by_tag_name("app", workspace_id, query.tag)
+            tags = TagService.get_tag_by_tag_name("app", workspace_id, query.tag, db.session)
             if not tags:
                 return empty
             tag_ids = [tag.id for tag in tags]
@@ -191,7 +191,7 @@ class AppListApi(Resource):
             openapi_visible=True,
         )
 
-        pagination = AppService().get_paginate_apps(str(auth_data.account_id), workspace_id, params)
+        pagination = AppService().get_paginate_apps(str(auth_data.account_id), workspace_id, params, db.session)
         if pagination is None:
             return empty
 

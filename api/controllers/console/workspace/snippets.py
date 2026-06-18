@@ -126,6 +126,7 @@ class CustomizedSnippetsApi(Resource):
         snippet_service = _snippet_service()
         snippets, total, has_more = snippet_service.get_snippets(
             tenant_id=current_tenant_id,
+            session=db.session,
             page=query.page,
             limit=query.limit,
             keyword=query.keyword,
