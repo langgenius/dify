@@ -1,7 +1,7 @@
 """add identity mode to mcp tool provider
 
 Revision ID: 3df4dbcc1e21
-Revises: c4d5e6f7a8b9
+Revises: 2b3c4d5e6f70
 Create Date: 2026-05-29 15:00:00.000000
 
 Adds the `identity_mode` column to `tool_mcp_providers` to drive the M2 MCP
@@ -23,7 +23,7 @@ import models as models
 
 # revision identifiers, used by Alembic.
 revision = "3df4dbcc1e21"
-down_revision = "c4d5e6f7a8b9"
+down_revision = "2b3c4d5e6f70"
 branch_labels = None
 depends_on = None
 
