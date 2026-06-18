@@ -293,28 +293,27 @@ class StreamableHTTPTransport:
             json=message.model_dump(by_alias=True, mode="json", exclude_none=True),
             headers=headers,
         ) as response:
-            if response.status_code == 202:
-                logger.debug("Received 202 Accepted")
-                return
-
-            if response.status_code == 204:
-                logger.debug("Received 204 No Content")
-                return
-
-            if response.status_code == 404:
-                if isinstance(message.root, JSONRPCRequest):
-                    error_msg = (
-                        f"MCP server URL returned 404 Not Found: {self.url} "
-                        "— verify the server URL is correct and the server is running"
-                        if is_initialization
-                        else "Session terminated by server"
-                    )
-                    self._send_session_terminated_error(
-                        ctx.server_to_client_queue,
-                        message.root.id,
-                        message=error_msg,
-                    )
-                return
+            match response.status_code:
+                case 202:
+                    logger.debug("Received 202 Accepted")
+                    return
+                case 204:
+                    logger.debug("Received 204 No Content")
+                    return
+                case 404:
+                    if isinstance(message.root, JSONRPCRequest):
+                        error_msg = (
+                            f"MCP server URL returned 404 Not Found: {self.url} "
+                            "— verify the server URL is correct and the server is running"
+                            if is_initialization
+                            else "Session terminated by server"
+                        )
+                        self._send_session_terminated_error(
+                            ctx.server_to_client_queue,
+                            message.root.id,
+                            message=error_msg,
+                        )
+                    return
 
             response.raise_for_status()
             if is_initialization:
