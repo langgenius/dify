@@ -187,7 +187,7 @@ export type IndexingEstimateResponse = {
 
 export type KnowledgeConfig = {
   data_source?: DataSource | null
-  doc_form?: string
+  doc_form?: 'hierarchical_model' | 'qa_model' | 'text_model'
   doc_language?: string
   duplicate?: boolean
   embedding_model?: string | null
@@ -199,7 +199,10 @@ export type KnowledgeConfig = {
   process_rule?: ProcessRule | null
   retrieval_model?: RetrievalModel | null
   summary_index_setting?: {
-    [key: string]: unknown
+    enable?: boolean
+    model_name?: string
+    model_provider_name?: string
+    summary_prompt?: string
   } | null
 }
 
@@ -482,7 +485,9 @@ export type ExternalRetrievalTestResponse
 export type HitTestingPayload = {
   attachment_ids?: Array<string> | null
   external_retrieval_model?: {
-    [key: string]: unknown
+    score_threshold?: number
+    score_threshold_enabled?: boolean
+    top_k?: number
   } | null
   query: string
   retrieval_model?: RetrievalModel | null
@@ -707,7 +712,7 @@ export type ProcessRule = {
 export type RetrievalModel = {
   metadata_filtering_conditions?: MetadataFilteringCondition | null
   reranking_enable: boolean
-  reranking_mode?: string | null
+  reranking_mode?: 'reranking_model' | 'weighted_score' | null
   reranking_model?: RerankingModel | null
   score_threshold?: number | null
   score_threshold_enabled: boolean
@@ -1035,7 +1040,7 @@ export type WebsiteInfo = {
 
 export type PreProcessingRule = {
   enabled: boolean
-  id: string
+  id: 'remove_extra_spaces' | 'remove_stopwords' | 'remove_urls_emails'
 }
 
 export type Segmentation = {
@@ -1065,7 +1070,7 @@ export type Condition = {
     | '≤'
     | '≥'
   name: string
-  value?: string | Array<string> | number | number | null
+  value?: string | Array<string> | number | null
 }
 
 export type WeightKeywordSetting = {
