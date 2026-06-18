@@ -165,10 +165,9 @@ class WorkflowRunPayload(BaseModel):
     files: WorkflowInputFileList = Field(
         default=None,
         description=(
-            "File list. Suitable when files need to be combined with text for input, available only when the model "
-            "supports Vision capability. To attach a local file, first upload it via "
-            "[Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with "
-            "`transfer_method: local_file`."
+            "File list for workflow system file inputs. Available when file upload is enabled for the workflow. "
+            "To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use "
+            "the returned `id` as `upload_file_id` with `transfer_method: local_file`."
         ),
     )
 
