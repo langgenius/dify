@@ -54,6 +54,7 @@ from core.plugin.impl.plugin import PluginInstaller
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.provider_entities import ProviderEntity
+from libs.helper import get_console_api_url
 from models.provider import Provider, ProviderCredential, TenantPreferredModelProvider
 from models.provider_ids import GenericProviderID, ModelProviderID
 from services.enterprise.plugin_manager_service import (
@@ -548,7 +549,7 @@ class PluginService:
     @classmethod
     def get_plugin_icon_url(cls, tenant_id: str, filename: str) -> str:
         url_prefix = (
-            URL(dify_config.CONSOLE_API_URL or "/") / "console" / "api" / "workspaces" / "current" / "plugin" / "icon"
+            URL(get_console_api_url() or "/") / "console" / "api" / "workspaces" / "current" / "plugin" / "icon"
         )
         return str(url_prefix % {"tenant_id": tenant_id, "filename": filename})
 

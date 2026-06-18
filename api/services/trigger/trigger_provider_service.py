@@ -11,7 +11,6 @@ if TYPE_CHECKING:
 from sqlalchemy import delete, desc, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from configs import dify_config
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.helper.provider_encryption import ProviderConfigEncrypter, create_provider_encrypter
@@ -34,6 +33,7 @@ from core.trigger.utils.encryption import (
 from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.helper import get_console_api_url
 from models.provider_ids import TriggerProviderID
 from models.trigger import (
     TriggerOAuthSystemClient,
@@ -486,7 +486,7 @@ class TriggerProviderService:
 
             # Get OAuth client configuration
             redirect_uri = (
-                f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{subscription.provider_id}/trigger/callback"
+                f"{get_console_api_url()}/console/api/oauth/plugin/{subscription.provider_id}/trigger/callback"
             )
             system_credentials = cls.get_oauth_client(tenant_id, provider_id)
 

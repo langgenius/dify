@@ -7,8 +7,8 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 
 from configs import dify_config
-from controllers.common.fields import RedirectResponse
-from controllers.common.schema import query_params_from_model, register_response_schema_model, register_schema_models
+from controllers.common.schema import register_schema_models
+from libs.helper import get_console_api_url
 from libs.login import login_required
 from libs.oauth_data_source import NotionOAuth
 
@@ -55,7 +55,7 @@ def get_oauth_providers():
         notion_oauth = NotionOAuth(
             client_id=dify_config.NOTION_CLIENT_ID or "",
             client_secret=dify_config.NOTION_CLIENT_SECRET or "",
-            redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/data-source/callback/notion",
+            redirect_uri=get_console_api_url() + "/console/api/oauth/data-source/callback/notion",
         )
 
         OAUTH_PROVIDERS = {"notion": notion_oauth}

@@ -9,7 +9,6 @@ if TYPE_CHECKING:
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
-from configs import dify_config
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.helper import encrypter
 from core.helper.name_generator import generate_incremental_name
@@ -22,6 +21,7 @@ from core.tools.utils.encryption import ProviderConfigCache, ProviderConfigEncry
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.provider_entities import FormType
+from libs.helper import get_console_api_url
 from models.oauth import DatasourceOauthParamConfig, DatasourceOauthTenantParamConfig, DatasourceProvider
 from models.provider_ids import DatasourceProviderID
 
@@ -89,9 +89,7 @@ class DatasourceProviderService:
             plugin_id=plugin_id,
             provider=provider,
         )
-        redirect_uri = (
-            f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{datasource_provider_id}/datasource/callback"
-        )
+        redirect_uri = f"{get_console_api_url()}/console/api/oauth/plugin/{datasource_provider_id}/datasource/callback"
         system_credentials = self.get_oauth_client(tenant_id, datasource_provider_id)
         try:
             refreshed_credentials = OAuthHandler().refresh_credentials(
@@ -886,7 +884,7 @@ class DatasourceProviderService:
                 tenant_id=tenant_id, provider=datasource.provider, plugin_id=datasource.plugin_id
             )
             redirect_uri = (
-                f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{datasource_provider_id}/datasource/callback"
+                f"{get_console_api_url()}/console/api/oauth/plugin/{datasource_provider_id}/datasource/callback"
             )
             datasource_credentials.append(
                 {
@@ -948,7 +946,7 @@ class DatasourceProviderService:
                     tenant_id=tenant_id, provider=datasource.provider, plugin_id=datasource.plugin_id
                 )
                 redirect_uri = "{}/console/api/oauth/plugin/{}/datasource/callback".format(
-                    dify_config.CONSOLE_API_URL, datasource_provider_id
+                    get_console_api_url(), datasource_provider_id
                 )
                 datasource_credentials.append(
                     {

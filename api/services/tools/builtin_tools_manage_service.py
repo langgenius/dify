@@ -30,6 +30,7 @@ from core.tools.utils.encryption import create_provider_encrypter
 from core.tools.utils.system_encryption import decrypt_system_params
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.helper import get_console_api_url
 from models.account import Account
 from models.provider_ids import ToolProviderID
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
@@ -80,7 +81,7 @@ class BuiltinToolManageService:
             "is_oauth_custom_client_enabled": is_oauth_custom_client_enabled,
             "is_system_oauth_params_exists": is_system_oauth_params_exists,
             "client_params": BuiltinToolManageService.get_custom_oauth_client_params(tenant_id, provider_name),
-            "redirect_uri": f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_name}/tool/callback",
+            "redirect_uri": f"{get_console_api_url()}/console/api/oauth/plugin/{provider_name}/tool/callback",
         }
         return result
 

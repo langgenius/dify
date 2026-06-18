@@ -68,7 +68,7 @@ def test_from_db_model_maps_fields() -> None:
 def test_redirect_url_uses_console_api_url(monkeypatch: pytest.MonkeyPatch) -> None:
     # Arrange
     entity = _build_mcp_provider_entity()
-    monkeypatch.setattr(mcp_provider_module.dify_config, "CONSOLE_API_URL", "https://console.example.com")
+    monkeypatch.setattr(mcp_provider_module, "get_console_api_url", lambda: "https://console.example.com")
 
     # Act
     redirect_url = entity.redirect_url

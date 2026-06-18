@@ -14,7 +14,7 @@ from controllers.common.schema import query_params_from_model, register_response
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from libs.helper import extract_remote_ip
+from libs.helper import extract_remote_ip, get_console_api_url
 from libs.helper import timezone as validate_timezone_string
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo, decode_oauth_state
 from libs.token import (
@@ -57,7 +57,7 @@ def get_oauth_providers():
             github_oauth = GitHubOAuth(
                 client_id=dify_config.GITHUB_CLIENT_ID,
                 client_secret=dify_config.GITHUB_CLIENT_SECRET,
-                redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/github",
+                redirect_uri=get_console_api_url() + "/console/api/oauth/authorize/github",
             )
         if not dify_config.GOOGLE_CLIENT_ID or not dify_config.GOOGLE_CLIENT_SECRET:
             google_oauth = None
@@ -65,7 +65,7 @@ def get_oauth_providers():
             google_oauth = GoogleOAuth(
                 client_id=dify_config.GOOGLE_CLIENT_ID,
                 client_secret=dify_config.GOOGLE_CLIENT_SECRET,
-                redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/google",
+                redirect_uri=get_console_api_url() + "/console/api/oauth/authorize/google",
             )
 
         OAUTH_PROVIDERS = {"github": github_oauth, "google": google_oauth}
