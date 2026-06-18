@@ -479,7 +479,7 @@ def test_manifest_includes_internal_download_url():
 
     with (
         patch("services.agent_drive_service.file_factory.build_from_mapping", return_value=object()),
-        patch("services.agent_drive_service.DifyWorkflowFileRuntime") as runtime_cls,
+        patch("core.app.workflow.file_runtime.DifyWorkflowFileRuntime") as runtime_cls,
     ):
         runtime_cls.return_value.resolve_file_url.return_value = "http://internal/files/x?sign=1"
         items = AgentDriveService().manifest(tenant_id=TENANT, agent_id=AGENT, include_download_url=True)
@@ -677,7 +677,7 @@ def test_upload_file_download_url_uses_attachment_filename():
     upload_file_id = _seed_upload_file(name="report.pdf")
     _commit_upload("files/report.pdf", upload_file_id)
 
-    with patch("services.agent_drive_service.DifyWorkflowFileRuntime") as runtime_cls:
+    with patch("core.app.workflow.file_runtime.DifyWorkflowFileRuntime") as runtime_cls:
         runtime_cls.return_value.resolve_upload_file_url.return_value = "https://files.example/report.pdf"
         url = AgentDriveService().download_url(tenant_id=TENANT, agent_id=AGENT, key="files/report.pdf")
 

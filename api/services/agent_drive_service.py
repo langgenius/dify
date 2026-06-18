@@ -33,7 +33,6 @@ from sqlalchemy.exc import DataError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from core.app.file_access.controller import DatabaseFileAccessController
-from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
 from core.db.session_factory import session_factory
 from extensions.ext_storage import storage
 from factories import file_factory
@@ -570,6 +569,11 @@ class AgentDriveService:
         else:
             mapping = {"transfer_method": "local_file", "upload_file_id": file_id}
         controller = DatabaseFileAccessController()
+        # Keep workflow runtime wiring lazy: importing this service is part of
+        # Agent v2 node bootstrap, while ``core.app.workflow`` re-exports the
+        # node factory. A module-level import here would close that cycle.
+        from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
+
         runtime = DifyWorkflowFileRuntime(file_access_controller=controller)
         try:
             if file_kind == AgentDriveFileKind.UPLOAD_FILE:
