@@ -17,6 +17,7 @@ import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { useProviderContext } from '@/context/provider-context'
 import { AppModeEnum } from '@/types/app'
 import AppIconPicker from '../../base/app-icon-picker'
+import { MAX_APP_DESCRIPTION_LENGTH, MAX_APP_NAME_LENGTH } from './constants'
 
 export type CreateAppModalProps = {
   show: boolean
@@ -63,14 +64,14 @@ const CreateAppModal = ({
 }: CreateAppModalProps) => {
   const { t } = useTranslation()
 
-  const [name, setName] = React.useState(appName)
+  const [name, setName] = React.useState(() => appName.slice(0, MAX_APP_NAME_LENGTH))
   const [appIcon, setAppIcon] = useState(
     () => appIconType === 'image'
       ? { type: 'image' as const, fileId: _appIcon, url: appIconUrl }
       : { type: 'emoji' as const, icon: _appIcon, background: appIconBackground },
   )
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
-  const [description, setDescription] = useState(appDescription || '')
+  const [description, setDescription] = useState(() => (appDescription || '').slice(0, MAX_APP_DESCRIPTION_LENGTH))
   const [useIconAsAnswerIcon, setUseIconAsAnswerIcon] = useState(appUseIconAsAnswerIcon || false)
 
   const [maxActiveRequestsInput, setMaxActiveRequestsInput] = useState(
@@ -138,7 +139,8 @@ const CreateAppModal = ({
                 />
                 <Input
                   value={name}
-                  onChange={e => setName(e.target.value)}
+                  maxLength={MAX_APP_NAME_LENGTH}
+                  onChange={e => setName(e.target.value.slice(0, MAX_APP_NAME_LENGTH))}
                   placeholder={t('newApp.appNamePlaceholder', { ns: 'app' }) || ''}
                   className="h-10 grow"
                 />
@@ -152,7 +154,8 @@ const CreateAppModal = ({
                 className="resize-none"
                 placeholder={t('newApp.appDescriptionPlaceholder', { ns: 'app' }) || ''}
                 value={description}
-                onValueChange={value => setDescription(value)}
+                maxLength={MAX_APP_DESCRIPTION_LENGTH}
+                onValueChange={value => setDescription(value.slice(0, MAX_APP_DESCRIPTION_LENGTH))}
               />
             </div>
             {/* answer icon */}

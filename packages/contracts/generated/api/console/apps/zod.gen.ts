@@ -315,7 +315,7 @@ export const zModelConfigRequest = z.object({
  * AppNamePayload
  */
 export const zAppNamePayload = z.object({
-  name: z.string().min(1),
+  name: z.string().min(1).max(255),
 })
 
 /**
@@ -786,11 +786,11 @@ export const zIconType = z.enum(['emoji', 'image', 'link'])
  */
 export const zCreateAppPayload = z.object({
   description: z.string().max(400).nullish(),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
+  icon: z.string().max(255).nullish(),
+  icon_background: z.string().max(255).nullish(),
   icon_type: zIconType.nullish(),
   mode: z.enum(['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow']),
-  name: z.string().min(1),
+  name: z.string().min(1).max(255),
 })
 
 /**
@@ -798,11 +798,11 @@ export const zCreateAppPayload = z.object({
  */
 export const zUpdateAppPayload = z.object({
   description: z.string().max(400).nullish(),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
+  icon: z.string().max(255).nullish(),
+  icon_background: z.string().max(255).nullish(),
   icon_type: zIconType.nullish(),
   max_active_requests: z.int().nullish(),
-  name: z.string().min(1),
+  name: z.string().min(1).max(255),
   use_icon_as_answer_icon: z.boolean().nullish(),
 })
 
@@ -811,18 +811,18 @@ export const zUpdateAppPayload = z.object({
  */
 export const zCopyAppPayload = z.object({
   description: z.string().max(400).nullish(),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
+  icon: z.string().max(255).nullish(),
+  icon_background: z.string().max(255).nullish(),
   icon_type: zIconType.nullish(),
-  name: z.string().nullish(),
+  name: z.string().max(255).nullish(),
 })
 
 /**
  * AppIconPayload
  */
 export const zAppIconPayload = z.object({
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
+  icon: z.string().max(255).nullish(),
+  icon_background: z.string().max(255).nullish(),
   icon_type: zIconType.nullish(),
 })
 
@@ -2038,6 +2038,7 @@ export const zAppDetail = z.object({
   enable_site: z.boolean(),
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
   id: z.string(),
   mode_compatible_with_agent: z.string(),
   name: z.string(),

@@ -12869,6 +12869,7 @@ Enum class for api provider schema type.
 | enable_site | boolean |  | Yes |
 | icon | string |  | No |
 | icon_background | string |  | No |
+| icon_type | string |  | No |
 | id | string |  | Yes |
 | mode_compatible_with_agent | string |  | Yes |
 | name | string |  | Yes |

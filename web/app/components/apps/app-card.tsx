@@ -38,6 +38,7 @@ import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
 import StarIcon from '@/app/components/base/icons/src/vender/Star'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
+import { MAX_APP_NAME_LENGTH } from '@/app/components/explore/create-app-modal/constants'
 import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
@@ -607,7 +608,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
                     ns="app"
                     values={{ appName: app.name }}
                     components={{
-                      appName: <span className="system-sm-semibold text-text-primary" translate="no" />,
+                      appName: <span className="system-sm-semibold break-all text-text-primary" translate="no" />,
                     }}
                   />
                 </FieldLabel>
@@ -615,6 +616,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
                   type="text"
                   autoComplete="off"
                   spellCheck={false}
+                  maxLength={Math.max(app.name.length, MAX_APP_NAME_LENGTH)}
                   placeholder={t('deleteAppConfirmInputPlaceholder', { ns: 'app' })}
                   value={confirmDeleteInput}
                   onValueChange={setConfirmDeleteInput}
@@ -1111,7 +1113,7 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
                     ns="app"
                     values={{ appName: app.name }}
                     components={{
-                      appName: <span className="system-sm-semibold text-text-primary" translate="no" />,
+                      appName: <span className="system-sm-semibold break-all text-text-primary" translate="no" />,
                     }}
                   />
                 </FieldLabel>
@@ -1120,6 +1122,7 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
                     type="text"
                     autoComplete="off"
                     spellCheck={false}
+                    maxLength={Math.max(app.name.length, MAX_APP_NAME_LENGTH)}
                     placeholder={t('deleteAppConfirmInputPlaceholder', { ns: 'app' })}
                     value={confirmDeleteInput}
                     onValueChange={setConfirmDeleteInput}

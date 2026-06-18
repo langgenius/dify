@@ -1,0 +1,2 @@
+export const MAX_APP_NAME_LENGTH = 255
+export const MAX_APP_DESCRIPTION_LENGTH = 400

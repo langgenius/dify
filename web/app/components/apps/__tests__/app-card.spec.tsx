@@ -3,6 +3,7 @@ import type { App } from '@/types/app'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { MAX_APP_NAME_LENGTH } from '@/app/components/explore/create-app-modal/constants'
 import { AccessMode } from '@/models/access-control'
 import * as appsService from '@/service/apps'
 import * as exploreService from '@/service/explore'
@@ -770,6 +771,18 @@ describe('AppCard', () => {
       await waitFor(() => {
         expect(mockDeleteAppMutation).toHaveBeenCalled()
       })
+    })
+
+    it('should allow the delete confirmation input to hold the full app name', async () => {
+      const longName = 'x'.repeat(MAX_APP_NAME_LENGTH + 12)
+      render(<AppCard app={{ ...mockApp, name: longName }} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'common.operation.delete' }))
+      expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+
+      const deleteInput = screen.getByRole('textbox')
+      expect(deleteInput).toHaveAttribute('maxlength', String(longName.length))
     })
 
     it('should not call onRefresh after successful delete', async () => {
