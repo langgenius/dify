@@ -517,11 +517,11 @@ class TestAccountGeneration:
     @patch("controllers.console.auth.oauth.TenantService")
     def test_should_handle_account_generation_scenarios(
         self,
-        mock_tenant_service,
-        mock_account_service,
-        mock_register_service,
-        mock_feature_service,
-        mock_get_account,
+        mock_tenant_service: MagicMock,
+        mock_account_service: MagicMock,
+        mock_register_service: MagicMock,
+        mock_feature_service: MagicMock,
+        mock_get_account: MagicMock,
         app: Flask,
         user_info: OAuthUserInfo,
         mock_account,
@@ -562,11 +562,11 @@ class TestAccountGeneration:
     @patch("controllers.console.auth.oauth.TenantService")
     def test_should_register_with_lowercase_email(
         self,
-        mock_tenant_service,
-        mock_account_service,
-        mock_register_service,
-        mock_feature_service,
-        mock_get_account,
+        mock_tenant_service: MagicMock,
+        mock_account_service: MagicMock,
+        mock_register_service: MagicMock,
+        mock_feature_service: MagicMock,
+        mock_get_account: MagicMock,
         app: Flask,
     ):
         user_info = OAuthUserInfo(id="123", name="Test User", email="Upper@Example.com")
@@ -593,11 +593,11 @@ class TestAccountGeneration:
     @patch("controllers.console.auth.oauth.TenantService")
     def test_should_register_with_browser_timezone(
         self,
-        mock_tenant_service,
-        mock_account_service,
-        mock_register_service,
-        mock_feature_service,
-        mock_get_account,
+        mock_tenant_service: MagicMock,
+        mock_account_service: MagicMock,
+        mock_register_service: MagicMock,
+        mock_feature_service: MagicMock,
+        mock_get_account: MagicMock,
         app: Flask,
         user_info: OAuthUserInfo,
     ):
@@ -624,11 +624,11 @@ class TestAccountGeneration:
     @patch("controllers.console.auth.oauth.TenantService")
     def test_should_register_with_state_language(
         self,
-        mock_tenant_service,
-        mock_account_service,
-        mock_register_service,
-        mock_feature_service,
-        mock_get_account,
+        mock_tenant_service: MagicMock,
+        mock_account_service: MagicMock,
+        mock_register_service: MagicMock,
+        mock_feature_service: MagicMock,
+        mock_get_account: MagicMock,
         app: Flask,
         user_info: OAuthUserInfo,
     ):
