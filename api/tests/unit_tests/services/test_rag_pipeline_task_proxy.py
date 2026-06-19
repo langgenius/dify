@@ -1,6 +1,6 @@
 import json
 import logging
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, MagicMock
 
 import pytest
 
