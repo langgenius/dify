@@ -4,13 +4,13 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from dependency_injector.wiring import Provide, inject
 from sqlalchemy import delete, exists, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.di.container import CoreContainer
-from dependency_injector.wiring import Provide, inject
 from core.helper.name_generator import generate_incremental_name
 from core.helper.position_helper import is_filtered
 from core.helper.provider_cache import NoOpProviderCredentialCache, ToolProviderCredentialsCache

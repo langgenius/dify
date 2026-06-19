@@ -6,19 +6,18 @@ from typing import Any
 from uuid import uuid4
 
 import yaml
+from dependency_injector.wiring import Provide, inject
 from flask_login import current_user
 from sqlalchemy import select
-from sqlalchemy.orm import scoped_session
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants import DOCUMENT_EXTENSIONS
+from core.di.container import CoreContainer
 from core.plugin.impl.plugin import PluginInstaller
 from core.plugin.plugin_service import PluginService
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.di.container import CoreContainer
-from dependency_injector.wiring import Provide, inject
-from sqlalchemy.orm import Session
 from factories import variable_factory
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import DatasetRuntimeMode, DataSourceType

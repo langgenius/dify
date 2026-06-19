@@ -1,16 +1,14 @@
+from dependency_injector.wiring import Provide, inject
 from flask_login import current_user
 from sqlalchemy import select
-
-from dependency_injector.wiring import Provide, inject
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from core.di.container import CoreContainer
 from enums.cloud_plan import CloudPlan
-from extensions.ext_database import db
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from services.account_service import TenantService
 from services.feature_service import FeatureService
-from core.di.container import CoreContainer
 
 
 class WorkspaceService:

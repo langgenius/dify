@@ -3,13 +3,13 @@ import logging
 import uuid
 from datetime import UTC, datetime
 
+from dependency_injector.wiring import Provide, inject
 from redis import RedisError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.di.container import CoreContainer
-from dependency_injector.wiring import Provide, inject
 from extensions.ext_redis import redis_client
 from models.account import TenantAccountJoin
 
@@ -110,9 +110,7 @@ def sync_account_deletion(
         return True
 
     # Fetch all workspaces the account belongs to
-    workspace_joins = session.scalars(
-        select(TenantAccountJoin).where(TenantAccountJoin.account_id == account_id)
-    ).all()
+    workspace_joins = session.scalars(select(TenantAccountJoin).where(TenantAccountJoin.account_id == account_id)).all()
 
     # Queue sync task for each workspace
     success = True

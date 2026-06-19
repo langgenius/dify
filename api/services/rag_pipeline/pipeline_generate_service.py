@@ -1,14 +1,15 @@
 from collections.abc import Mapping
 from typing import Any
 
+from dependency_injector.wiring import Provide, inject
+from sqlalchemy.orm import Session
+
 from configs import dify_config
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.di.container import CoreContainer
-from dependency_injector.wiring import Provide, inject
 from models.dataset import Document, Pipeline
 from models.enums import IndexingStatus
-from sqlalchemy.orm import Session
 from models.model import Account, App, EndUser
 from models.workflow import Workflow
 from services.rag_pipeline.rag_pipeline import RagPipelineService
