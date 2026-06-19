@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import _ANY, PropertyMock, patch
+from unittest.mock import ANY, PropertyMock, patch
 
 from controllers.console import console_ns
 from controllers.console.auth.data_source_bearer_auth import (
@@ -40,7 +40,7 @@ def test_list_data_source_auth_uses_injected_tenant_id() -> None:
     ) as get_provider_auth_list:
         result = method(api, "tenant-1")
 
-    get_provider_auth_list.assert_called_once_with("tenant-1", _ANY)
+    get_provider_auth_list.assert_called_once_with("tenant-1", ANY)
     assert result["sources"][0]["id"] == "binding-1"
     assert result["sources"][0]["provider"] == "custom"
 
@@ -61,7 +61,7 @@ def test_create_data_source_auth_binding_uses_injected_tenant_id() -> None:
     ):
         result, status = method(api, "tenant-1")
 
-    create_auth.assert_called_once_with("tenant-1", _ANY, payload)
+    create_auth.assert_called_once_with("tenant-1", ANY, payload)
     assert result == {"result": "success"}
     assert status == 200
 
@@ -75,6 +75,6 @@ def test_delete_data_source_auth_binding_uses_injected_tenant_id() -> None:
     ) as delete_provider_auth:
         result, status = method(api, "tenant-1", "binding-1")
 
-    delete_provider_auth.assert_called_once_with("tenant-1", "binding-1", _ANY)
+    delete_provider_auth.assert_called_once_with("tenant-1", "binding-1", ANY)
     assert result == ""
     assert status == 204

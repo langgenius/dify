@@ -85,7 +85,7 @@ def test_create_binding_successful(
 
     assert response.status_code == 200
     assert response.get_json() == {"result": "success"}
-    create_auth.assert_called_once_with(tenant_id, payload)
+    create_auth.assert_called_once_with(tenant_id, db_session_with_containers, payload)
 
 
 def test_create_binding_failure(

@@ -161,14 +161,14 @@ class TestApiKeyAuthService:
         )
         db_session_with_containers.expire_all()
 
-        result = ApiKeyAuthService.get_auth_credentials(tenant_id, category, provider)
+        result = ApiKeyAuthService.get_auth_credentials(tenant_id, category, provider, db_session_with_containers)
 
         assert result == mock_credentials
 
     def test_get_auth_credentials_not_found(
         self, flask_app_with_containers: Flask, db_session_with_containers: Session, tenant_id, category, provider
     ):
-        result = ApiKeyAuthService.get_auth_credentials(tenant_id, category, provider)
+        result = ApiKeyAuthService.get_auth_credentials(tenant_id, category, provider, db_session_with_containers)
 
         assert result is None
 
@@ -185,7 +185,7 @@ class TestApiKeyAuthService:
         )
         db_session_with_containers.expire_all()
 
-        result = ApiKeyAuthService.get_auth_credentials(tenant_id, category, provider)
+        result = ApiKeyAuthService.get_auth_credentials(tenant_id, category, provider, db_session_with_containers)
 
         assert result == special_credentials
         assert result["config"]["api_key"] == "key_with_中文_and_special_chars_!@#$%"
@@ -276,27 +276,36 @@ class TestApiKeyAuthService:
     @patch("services.auth.api_key_auth_service.ApiKeyAuthFactory")
     @patch("services.auth.api_key_auth_service.encrypter")
     def test_create_provider_auth_database_error_handling(
-        self, mock_encrypter, mock_factory, flask_app_with_containers: Flask, tenant_id, mock_args
+        self,
+        mock_encrypter,
+        mock_factory,
+        flask_app_with_containers: Flask,
+        db_session_with_containers: Session,
+        tenant_id,
+        mock_args,
     ):
         mock_auth_instance = Mock()
         mock_auth_instance.validate_credentials.return_value = True
         mock_factory.return_value = mock_auth_instance
         mock_encrypter.encrypt_token.return_value = "encrypted_key"
 
-        with patch("services.auth.api_key_auth_service.db.session") as mock_session:
-            mock_session.commit.side_effect = Exception("Database error")
+        with patch.object(db_session_with_containers, "commit", side_effect=Exception("Database error")):
             with pytest.raises(Exception, match="Database error"):
                 ApiKeyAuthService.create_provider_auth(tenant_id, db_session_with_containers, mock_args)
 
     @patch("services.auth.api_key_auth_service.ApiKeyAuthFactory")
-    def test_create_provider_auth_factory_exception(self, mock_factory, tenant_id, mock_args):
+    def test_create_provider_auth_factory_exception(
+        self, mock_factory, db_session_with_containers: Session, tenant_id, mock_args
+    ):
         mock_factory.side_effect = Exception("Factory error")
         with pytest.raises(Exception, match="Factory error"):
             ApiKeyAuthService.create_provider_auth(tenant_id, db_session_with_containers, mock_args)
 
     @patch("services.auth.api_key_auth_service.ApiKeyAuthFactory")
     @patch("services.auth.api_key_auth_service.encrypter")
-    def test_create_provider_auth_encryption_exception(self, mock_encrypter, mock_factory, tenant_id, mock_args):
+    def test_create_provider_auth_encryption_exception(
+        self, mock_encrypter, mock_factory, db_session_with_containers: Session, tenant_id, mock_args
+    ):
         mock_auth_instance = Mock()
         mock_auth_instance.validate_credentials.return_value = True
         mock_factory.return_value = mock_auth_instance

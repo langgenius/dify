@@ -118,7 +118,9 @@ class TestAuthIntegration:
     def test_cross_tenant_access_prevention(
         self, flask_app_with_containers: Flask, db_session_with_containers: Session, tenant_id_2, category
     ):
-        result = ApiKeyAuthService.get_auth_credentials(tenant_id_2, category, AuthType.FIRECRAWL)
+        result = ApiKeyAuthService.get_auth_credentials(
+            tenant_id_2, category, AuthType.FIRECRAWL, db_session_with_containers
+        )
 
         assert result is None
 
@@ -254,7 +256,9 @@ class TestAuthIntegration:
 
         db_session_with_containers.expire_all()
 
-        result = ApiKeyAuthService.get_auth_credentials(tenant_id_1, category, AuthType.FIRECRAWL)
+        result = ApiKeyAuthService.get_auth_credentials(
+            tenant_id_1, category, AuthType.FIRECRAWL, db_session_with_containers
+        )
         assert result is not None
         assert result["config"]["api_key"] == "encrypted_key"
 
