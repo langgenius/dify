@@ -89,22 +89,22 @@ export function AgentPromptSlashMenu({
   const title = categories.find(category => category.key === view)?.label
   const handleAddFromFooter = () => {
     if (view === 'skills') {
-        onAddSkill?.({
-          onAdded: (item) => {
-            if (isPromptReferenceItem(item) && 'skillMdKey' in item && typeof item.skillMdKey === 'string')
-              onSelect(createDriveReferenceToken('skill', item.skillMdKey, item.name))
-          },
-        })
+      onAddSkill?.({
+        onAdded: (item) => {
+          if (isPromptReferenceItem(item) && 'skillMdKey' in item && typeof item.skillMdKey === 'string')
+            onSelect(createDriveReferenceToken('skill', item.skillMdKey, item.name))
+        },
+      })
       return
     }
 
     if (view === 'files') {
-        onAddFile?.({
-          onAdded: (item) => {
-            if (isPromptReferenceItem(item) && 'driveKey' in item && typeof item.driveKey === 'string')
-              onSelect(createDriveReferenceToken('file', item.driveKey, item.name))
-          },
-        })
+      onAddFile?.({
+        onAdded: (item) => {
+          if (isPromptReferenceItem(item) && 'driveKey' in item && typeof item.driveKey === 'string')
+            onSelect(createDriveReferenceToken('file', item.driveKey, item.name))
+        },
+      })
       return
     }
 
@@ -224,13 +224,13 @@ function AgentPromptSkillRows({
   return (
     <>
       {skills.map(skill => (
-          <AgentPromptSubmenuRow
-            key={skill.id}
-            icon="i-ri-box-3-line"
-            label={skill.name}
-            onClick={() => skill.skillMdKey && onSelect(createDriveReferenceToken('skill', skill.skillMdKey, skill.name))}
-          />
-        ))}
+        <AgentPromptSubmenuRow
+          key={skill.id}
+          icon="i-ri-box-3-line"
+          label={skill.name}
+          onClick={() => skill.skillMdKey && onSelect(createDriveReferenceToken('skill', skill.skillMdKey, skill.name))}
+        />
+      ))}
     </>
   )
 }

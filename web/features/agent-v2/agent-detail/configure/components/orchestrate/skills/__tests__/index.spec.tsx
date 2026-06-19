@@ -30,15 +30,15 @@ vi.mock('@/service/client', () => ({
   consoleQuery: {
     agent: {
       byAgentId: {
-          drive: {
-            skills: {
-              get: {
-                queryOptions: mocks.driveSkillsQueryOptions,
-              },
+        drive: {
+          skills: {
+            get: {
+              queryOptions: mocks.driveSkillsQueryOptions,
             },
-            files: {
-              get: {
-                queryOptions: mocks.driveFilesQueryOptions,
+          },
+          files: {
+            get: {
+              queryOptions: mocks.driveFilesQueryOptions,
             },
             download: {
               get: {
@@ -123,7 +123,7 @@ function renderAgentSkills() {
   })
 
   return render(
-      <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
       <AgentDriveApiContextProvider value={{ agentId: 'agent-1' }}>
         <AgentComposerProvider initialDraft={agentSkillsDraft}>
           <AgentSkills />
@@ -143,7 +143,7 @@ function renderWorkflowAgentSkills() {
   })
 
   return render(
-      <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
       <AgentDriveApiContextProvider value={{ agentId: 'agent-1', workflow: { appId: 'app-1', nodeId: 'node-1' } }}>
         <AgentComposerProvider initialDraft={agentSkillsDraft}>
           <AgentSkills />
@@ -163,7 +163,7 @@ function renderReadonlyAgentSkills() {
   })
 
   return render(
-      <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
       <AgentDriveApiContextProvider value={{ agentId: 'agent-1' }}>
         <AgentComposerProvider initialDraft={agentSkillsDraft}>
           <AgentOrchestrateReadOnlyContext value>
@@ -552,7 +552,7 @@ describe('AgentSkills', () => {
     })
 
     render(
-        <QueryClientProvider client={queryClient}>
+      <QueryClientProvider client={queryClient}>
         <AgentDriveApiContextProvider value={{ agentId: 'agent-1' }}>
           <AgentComposerProvider initialDraft={agentSkillsDraft}>
             <AgentSkills />

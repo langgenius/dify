@@ -1,7 +1,7 @@
 """agent drive skill metadata refactor
 
 Revision ID: b2515f9d4c2a
-Revises: a7c4e9d2f681
+Revises: 4f7b2c8d9a10
 Create Date: 2026-06-18 23:00:00.000000
 
 """
@@ -14,10 +14,11 @@ from typing import Any
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import mysql
+from sqlalchemy.engine.mock import MockConnection
 
 # revision identifiers, used by Alembic.
 revision = "b2515f9d4c2a"
-down_revision = "a7c4e9d2f681"
+down_revision = "4f7b2c8d9a10"
 branch_labels = None
 depends_on = None
 
@@ -47,6 +48,8 @@ def downgrade() -> None:
 
 def _remove_skills_files_from_snapshots() -> None:
     connection = op.get_bind()
+    if connection is None or isinstance(connection, MockConnection):
+        return
     snapshots = sa.table(
         "agent_config_snapshots",
         sa.column("id", sa.String()),

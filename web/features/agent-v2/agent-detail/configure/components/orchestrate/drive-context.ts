@@ -1,7 +1,7 @@
 'use client'
 
-import type { AgentFileNode, AgentSkill } from '@/features/agent-v2/agent-composer/form-state'
 import type { AgentDriveItemResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentFileNode, AgentSkill } from '@/features/agent-v2/agent-composer/form-state'
 import { useQuery } from '@tanstack/react-query'
 import { createContext, use, useMemo } from 'react'
 import { consoleQuery } from '@/service/client'
@@ -15,9 +15,11 @@ export type AgentDriveApiContext = {
   }
 }
 
-const FILES_DRIVE_PREFIX = 'files/'
+export const FILES_DRIVE_PREFIX = 'files/'
 
 const AgentDriveApiContext = createContext<AgentDriveApiContext | null>(null)
+
+export const AgentDriveApiContextProvider = AgentDriveApiContext.Provider
 
 const getAgentDriveFileName = (key: string) => {
   const normalizedKey = key.endsWith('/') ? key.slice(0, -1) : key
@@ -53,8 +55,6 @@ const toAgentFileNodeFromDriveItem = (item: {
   }),
   driveKey: item.key,
 })
-
-export const AgentDriveApiContextProvider = AgentDriveApiContext.Provider
 
 export const useAgentDriveApiContext = () => {
   const context = use(AgentDriveApiContext)
@@ -143,11 +143,4 @@ export const useAgentDriveFiles = ({
     query,
     files,
   }
-}
-
-export {
-  FILES_DRIVE_PREFIX,
-  getAgentDriveFileName,
-  toAgentFileNodeFromDriveItem,
-  toAgentSkill,
 }

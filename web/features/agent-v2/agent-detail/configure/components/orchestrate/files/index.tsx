@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
+import type { AgentDriveApiContext } from '../drive-context'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import {
   Dialog,
@@ -14,12 +15,11 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import type { AgentDriveApiContext } from '../drive-context'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
-import { FILES_DRIVE_PREFIX, getAgentDriveFileName, useAgentDriveApiContext, useAgentDriveFiles } from '../drive-context'
+import { FILES_DRIVE_PREFIX, useAgentDriveApiContext, useAgentDriveFiles } from '../drive-context'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { AgentSkillDetailDialog } from '../skills/detail-dialog'
 import { AgentFileTree } from './tree'
@@ -37,7 +37,6 @@ const findAgentFileNode = (files: AgentFileNode[], fileId: string): AgentFileNod
       return child
   }
 }
-
 
 function AgentFileItem({
   children,

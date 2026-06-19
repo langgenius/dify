@@ -1,7 +1,7 @@
 import { type } from '@orpc/contract'
 import { base } from '../base'
 
-export type AgentDriveSkillItem = {
+type AgentDriveSkillItem = {
   path: string
   skill_md_key: string
   archive_key?: string | null

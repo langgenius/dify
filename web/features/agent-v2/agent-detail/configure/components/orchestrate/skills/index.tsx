@@ -22,8 +22,8 @@ export function AgentSkills() {
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
   const apiContext = useAgentDriveApiContext()
   const { query: skillsQuery, skills } = useAgentDriveSkills()
-  const deleteAgentSkill = useMutation(consoleQuery.agent.byAgentId.skills.bySlug.delete.mutationOptions())
-  const deleteAppSkill = useMutation(consoleQuery.apps.byAppId.agent.skills.bySlug.delete.mutationOptions())
+  const { mutate: deleteAgentSkill } = useMutation(consoleQuery.agent.byAgentId.skills.bySlug.delete.mutationOptions())
+  const { mutate: deleteAppSkill } = useMutation(consoleQuery.apps.byAppId.agent.skills.bySlug.delete.mutationOptions())
 
   const handleOpenUpload = useCallback((options?: AgentOrchestrateAddActionOptions) => {
     promptAddCallbackRef.current = options?.onAdded
@@ -53,7 +53,7 @@ export function AgentSkills() {
       void skillsQuery.refetch()
     }
     if (apiContext.workflow) {
-      deleteAppSkill.mutate({
+      deleteAppSkill({
         params: {
           app_id: apiContext.workflow.appId,
           slug: skillSlug,
@@ -65,7 +65,7 @@ export function AgentSkills() {
       return
     }
 
-    deleteAgentSkill.mutate({
+    deleteAgentSkill({
       params: {
         agent_id: apiContext.agentId,
         slug: skillSlug,

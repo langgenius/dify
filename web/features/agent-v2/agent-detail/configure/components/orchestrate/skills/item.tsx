@@ -1,6 +1,7 @@
 'use client'
 
 import type { AgentDriveItemResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentDriveApiContext } from '../drive-context'
 import type { AgentFileNode, AgentSkill } from '@/features/agent-v2/agent-composer/form-state'
 import {
   Dialog,
@@ -9,7 +10,6 @@ import { useQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import type { AgentDriveApiContext } from '../drive-context'
 import { getDriveFileIconType } from '../files/file-icon'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { AgentSkillDetailDialog } from './detail-dialog'

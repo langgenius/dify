@@ -2,6 +2,7 @@ import type { InferContractRouterInputs } from '@orpc/contract'
 import { contract as communityContract } from '@dify/contracts/api/console/orpc.gen'
 import { contract as enterpriseContract } from '@dify/contracts/enterprise/orpc.gen'
 import { rbacAccessConfigContract } from './console/access-control'
+import { agentDriveContracts } from './console/agent-drive'
 import {
   appDeleteContract,
   appListContract,
@@ -87,7 +88,6 @@ import {
   workflowDraftUpdateEnvironmentVariablesContract,
   workflowDraftUpdateFeaturesContract,
 } from './console/workflow'
-import { agentDriveContracts } from './console/agent-drive'
 import { workflowCommentContracts } from './console/workflow-comment'
 import { workspacesGetContract, workspaceSwitchContract } from './console/workspaces'
 import { collectionPluginsContract, collectionsContract, downloadPluginContract, searchAdvancedContract, templateDetailContract } from './marketplace'
