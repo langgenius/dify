@@ -7,6 +7,13 @@ const [
   _useSetConversationIdInfo,
 ] = createLocalStorageState<Record<string, Record<string, string>>>(CONVERSATION_ID_INFO, {})
 
+const [
+  useWebAppSidebarCollapseState,
+  _useWebAppSidebarCollapseStateValue,
+  _useSetWebAppSidebarCollapseState,
+] = createLocalStorageState<string>('webappSidebarCollapse', undefined, { raw: true })
+
 export {
   useConversationIdInfo,
+  useWebAppSidebarCollapseState,
 }

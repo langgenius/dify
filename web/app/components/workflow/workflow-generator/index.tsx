@@ -1,7 +1,7 @@
 'use client'
 import type { GeneratedGraph } from './types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { CompletionParams, Model } from '@/types/app'
+import type { CompletionParams, ModelModeType } from '@/types/app'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -16,7 +16,6 @@ import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
-import { useLocalStorage } from 'foxact/use-local-storage'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -29,15 +28,14 @@ import WorkflowPreview from '@/app/components/workflow/workflow-preview'
 import { useRouter } from '@/next/navigation'
 import { generateWorkflow } from '@/service/debug'
 import { fetchWorkflowDraft } from '@/service/workflow'
-import { ModelModeType } from '@/types/app'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { applyToCurrentApp, applyToNewApp, WorkflowApplyHashCollisionError, WorkflowApplyOrphanError } from './apply'
 import ExamplePrompts from './example-prompts'
 import GenerationPhases from './generation-phases'
+import { EMPTY_WORKFLOW_GENERATOR_MODEL, useWorkflowGeneratorModel } from './storage'
 import { useWorkflowGeneratorStore } from './store'
 import useGenGraph from './use-gen-graph'
 
-const STORAGE_MODEL_KEY = 'workflow-gen-model'
 // Hard ceiling before we abort a hung request. Generous on purpose: the
 // backend runs two sequential LLM calls and may retry a transient provider
 // error (bounded backoff) or an unparseable response (one extra call), so a
@@ -47,17 +45,6 @@ const FE_TIMEOUT_MS = 90_000
 // Mirrors the backend's instruction/ideal-output cap on /workflow-generate —
 // keeping the limit client-side turns an opaque 400 into a visible input stop.
 const MAX_INSTRUCTION_LENGTH = 10_000
-
-// Stable default used both as the SSR/empty-storage seed for the persisted
-// model and as the merge base when patching a partial update. Module-level so
-// the reference stays identical across renders (useLocalStorage uses it as the
-// server value, which must not change identity each render).
-const EMPTY_MODEL: Model = {
-  name: '',
-  provider: '',
-  mode: ModelModeType.chat,
-  completion_params: {} as CompletionParams,
-}
 
 const renderPlaceholder = (label: string) => (
   <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3 px-8">
@@ -120,10 +107,7 @@ const WorkflowGeneratorModal: React.FC = () => {
 
   const isRefine = intent === 'refine' && !!currentAppId
 
-  // Persisted model selection. ``useLocalStorage`` is the storage boundary
-  // mandated for client-only preferences — the empty model is the SSR/seed
-  // value so ``model`` is always a concrete ``Model`` (never null) here.
-  const [model, setModel] = useLocalStorage<Model>(STORAGE_MODEL_KEY, EMPTY_MODEL)
+  const [model, setModel] = useWorkflowGeneratorModel()
 
   const { defaultModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
 
@@ -133,7 +117,7 @@ const WorkflowGeneratorModal: React.FC = () => {
   useEffect(() => {
     if (defaultModel && !model.name) {
       setModel(prev => ({
-        ...(prev ?? EMPTY_MODEL),
+        ...(prev ?? EMPTY_WORKFLOW_GENERATOR_MODEL),
         name: defaultModel.model,
         provider: defaultModel.provider.provider,
       }))
@@ -142,7 +126,7 @@ const WorkflowGeneratorModal: React.FC = () => {
 
   const handleModelChange = useCallback((newValue: { modelId: string, provider: string, mode?: string, features?: string[] }) => {
     setModel(prev => ({
-      ...(prev ?? EMPTY_MODEL),
+      ...(prev ?? EMPTY_WORKFLOW_GENERATOR_MODEL),
       provider: newValue.provider,
       name: newValue.modelId,
       mode: newValue.mode as ModelModeType,
@@ -151,7 +135,7 @@ const WorkflowGeneratorModal: React.FC = () => {
 
   const handleCompletionParamsChange = useCallback((newParams: FormValue) => {
     setModel(prev => ({
-      ...(prev ?? EMPTY_MODEL),
+      ...(prev ?? EMPTY_WORKFLOW_GENERATOR_MODEL),
       completion_params: newParams as CompletionParams,
     }))
   }, [setModel])

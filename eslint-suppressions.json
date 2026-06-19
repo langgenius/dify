@@ -228,9 +228,6 @@
     }
   },
   "web/app/(shareLayout)/webapp-reset-password/page.tsx": {
-    "no-restricted-globals": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -252,9 +249,6 @@
     }
   },
   "web/app/(shareLayout)/webapp-signin/components/mail-and-code-auth.tsx": {
-    "no-restricted-globals": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -318,11 +312,6 @@
       "count": 1
     },
     "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "web/app/account/(commonLayout)/delete-account/index.tsx": {
-    "no-restricted-globals": {
       "count": 1
     }
   },
@@ -644,9 +633,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
-    },
-    "no-restricted-globals": {
-      "count": 6
     },
     "react/set-state-in-effect": {
       "count": 4
@@ -4661,11 +4647,6 @@
       "count": 2
     }
   },
-  "web/app/components/signin/countdown.tsx": {
-    "no-restricted-globals": {
-      "count": 4
-    }
-  },
   "web/app/components/snippet-list/components/snippet-card.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -6195,11 +6176,6 @@
       "count": 2
     }
   },
-  "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/json-schema-generator/index.tsx": {
-    "no-restricted-properties": {
-      "count": 3
-    }
-  },
   "web/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/context.tsx": {
     "react-refresh/only-export-components": {
       "count": 2
@@ -7321,9 +7297,6 @@
     }
   },
   "web/app/reset-password/page.tsx": {
-    "no-restricted-globals": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
