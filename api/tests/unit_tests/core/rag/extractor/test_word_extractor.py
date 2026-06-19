@@ -549,7 +549,9 @@ def test_parse_docx_reads_real_paragraph_table_order(monkeypatch: pytest.MonkeyP
             os.remove(tmp_path)
 
 
-def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(monkeypatch: pytest.MonkeyPatch, caplog):
+def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+):
     extractor = object.__new__(WordExtractor)
 
     ext_image_id = "ext-image"

@@ -147,7 +147,9 @@ class TestDeleteDraftVariablesBatch:
         assert db_session_with_containers.scalar(select(func.count()).select_from(WorkflowDraftVariable)) == 0
 
     @patch("tasks.remove_app_and_related_data_task._delete_draft_variable_offload_data")
-    def test_delete_draft_variables_batch_logs_progress(self, mock_offload_cleanup, db_session_with_containers, caplog):
+    def test_delete_draft_variables_batch_logs_progress(
+        self, mock_offload_cleanup, db_session_with_containers, caplog: pytest.LogCaptureFixture
+    ):
         """Test that batch deletion logs progress correctly."""
         tenant, app = _create_tenant_and_app(db_session_with_containers)
         offload_data = _create_offload_data(db_session_with_containers, tenant_id=tenant.id, app_id=app.id, count=10)
@@ -203,7 +205,9 @@ class TestDeleteDraftVariableOffloadData:
         assert remaining_upload_files_count == 0
 
     @patch("extensions.ext_storage.storage")
-    def test_delete_draft_variable_offload_data_storage_failure(self, mock_storage, db_session_with_containers, caplog):
+    def test_delete_draft_variable_offload_data_storage_failure(
+        self, mock_storage, db_session_with_containers, caplog: pytest.LogCaptureFixture
+    ):
         """Test handling of storage deletion failures."""
         tenant, app = _create_tenant_and_app(db_session_with_containers)
         offload_data = _create_offload_data(db_session_with_containers, tenant_id=tenant.id, app_id=app.id, count=2)
