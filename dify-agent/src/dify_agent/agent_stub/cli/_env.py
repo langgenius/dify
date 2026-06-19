@@ -8,7 +8,9 @@ import os
 
 from dify_agent.agent_stub.protocol.agent_stub import (
     AGENT_STUB_AUTH_JWE_ENV_VAR,
+    AGENT_STUB_DRIVE_BASE_ENV_VAR,
     AGENT_STUB_URL_ENV_VAR,
+    DEFAULT_AGENT_STUB_DRIVE_BASE,
     normalize_agent_stub_url,
 )
 
@@ -51,9 +53,21 @@ def read_agent_stub_environment(env: Mapping[str, str] | None = None) -> AgentSt
     return AgentStubEnvironment(url=normalized_url, auth_jwe=auth_jwe)
 
 
+def read_agent_stub_drive_base(env: Mapping[str, str] | None = None) -> str:
+    """Read the sandbox-local drive base used by ``dify-agent drive pull``.
+
+    The variable is optional because older Agent Stub environments only injected
+    URL/auth values. Blank values keep the historical ``/mnt/drive`` fallback.
+    """
+    values = env or os.environ
+    configured_drive_base = (values.get(AGENT_STUB_DRIVE_BASE_ENV_VAR) or "").strip()
+    return configured_drive_base or DEFAULT_AGENT_STUB_DRIVE_BASE
+
+
 __all__ = [
     "AgentStubEnvironment",
     "MissingAgentStubEnvironmentError",
     "has_agent_stub_environment",
+    "read_agent_stub_drive_base",
     "read_agent_stub_environment",
 ]
