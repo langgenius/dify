@@ -75,7 +75,7 @@ class AgentAppFeatureConfigService:
         app_model: App,
         account: Account,
         config: dict[str, Any],
-        session: scoped_session | None = None,
+        session: scoped_session,
     ) -> AppModelConfig:
         """Persist the presentation features as a new app_model_config version.
 
@@ -83,7 +83,6 @@ class AgentAppFeatureConfigService:
         row carries only feature flags, with model / prompt / agent_mode left
         ``NULL`` so the Agent Soul remains the single source of truth for those.
         """
-        session = session or db.session
         validated = cls.validate_features(app_model.tenant_id, config)
 
         new_config = AppModelConfig(

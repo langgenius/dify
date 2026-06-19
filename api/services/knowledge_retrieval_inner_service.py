@@ -18,7 +18,6 @@ from sqlalchemy.orm import scoped_session
 from core.rag.entities.metadata_entities import Condition, MetadataFilteringCondition
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
-from extensions.ext_database import db
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.nodes.llm.entities import ModelConfig
 from models.dataset import Dataset
@@ -42,7 +41,7 @@ class InnerKnowledgeRetrievalService:
     def retrieve(
         self,
         request: InnerKnowledgeRetrieveRequest,
-        session: scoped_session | None = None,
+        session: scoped_session,
     ) -> InnerKnowledgeRetrieveResponse:
         """Run tenant-scoped retrieval for a trusted internal caller.
 
@@ -61,7 +60,6 @@ class InnerKnowledgeRetrievalService:
             InnerKnowledgeRetrieveDatasetTenantMismatchError:
                 At least one requested dataset is outside the caller tenant.
         """
-        session = session or db.session
         self._validate_caller_app(tenant_id=request.caller.tenant_id, app_id=request.caller.app_id, session=session)
         self._validate_datasets(tenant_id=request.caller.tenant_id, dataset_ids=request.dataset_ids, session=session)
 
