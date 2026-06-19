@@ -679,6 +679,6 @@ class TestAccountGeneration:
             assert oauth_new_user is False
             mock_tenant_service.create_tenant.assert_called_once_with("Test User's Workspace")
             mock_tenant_service.create_tenant_member.assert_called_once_with(
-                mock_new_tenant, mock_account, role="owner"
+                mock_new_tenant, mock_account, ANY, role="owner"
             )
             mock_event.send.assert_called_once_with(mock_new_tenant)

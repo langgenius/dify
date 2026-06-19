@@ -15,7 +15,7 @@ from flask import Flask
 
 from controllers.console.auth.activate import ActivateApi, ActivateCheckApi
 from controllers.console.error import AccountInFreezeError, AlreadyActivateError
-from models.account import AccountStatus
+from models.account import AccountStatus, TenantAccountRole
 
 
 class TestActivateCheckApi:
@@ -590,7 +590,9 @@ class TestActivateApi:
             response = ActivateApi().post()
 
         assert response["result"] == "success"
-        mock_create_tenant_member.assert_called_once_with(mock_invitation["tenant"], mock_account, "admin")
+        mock_create_tenant_member.assert_called_once_with(
+            mock_invitation["tenant"], mock_account, mock_db.session, role=TenantAccountRole.ADMIN
+        )
         mock_switch_tenant.assert_called_once_with(mock_account, mock_invitation["tenant"].id)
         mock_revoke_token.assert_called_once_with("workspace-123", "invitee@example.com", "valid_token")
 
