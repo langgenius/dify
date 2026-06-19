@@ -104,6 +104,7 @@ function AgentRosterItem({
   const nameId = useId()
   const descriptionId = useId()
   const [isEditOpen, setIsEditOpen] = useState(false)
+  const [editSessionKey, setEditSessionKey] = useState(0)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const duplicateAgentMutation = useMutation(consoleQuery.agent.byAgentId.copy.post.mutationOptions())
   const updatedAt = agent.updated_at != null
@@ -132,6 +133,11 @@ function AgentRosterItem({
         toast.error(t('roster.duplicateFailed'))
       },
     })
+  }
+
+  const handleEditOpen = () => {
+    setEditSessionKey(key => key + 1)
+    setIsEditOpen(true)
   }
 
   return (
@@ -214,7 +220,7 @@ function AgentRosterItem({
             <span aria-hidden className="i-ri-more-fill size-4.5 text-text-tertiary" />
           </DropdownMenuTrigger>
           <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-40">
-            <DropdownMenuItem className="gap-2" onClick={() => setIsEditOpen(true)}>
+            <DropdownMenuItem className="gap-2" onClick={handleEditOpen}>
               <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
               <span>{t('roster.editInfo')}</span>
             </DropdownMenuItem>
@@ -238,7 +244,12 @@ function AgentRosterItem({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <EditAgentDialog agent={agent} open={isEditOpen} onOpenChange={setIsEditOpen} />
+      <EditAgentDialog
+        key={`${agent.id}:${editSessionKey}`}
+        agent={agent}
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+      />
       <DeleteAgentDialog agentId={agent.id} agentName={agent.name} open={isDeleteOpen} onOpenChange={setIsDeleteOpen} />
     </article>
   )

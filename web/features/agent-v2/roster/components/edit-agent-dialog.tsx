@@ -100,6 +100,19 @@ export function EditAgentDialog({
   const [agentIcon, setAgentIcon] = useState<AgentIconSelection>(() => createAgentIconSelection(agent))
   const updateAgentMutation = useMutation(consoleQuery.agent.byAgentId.put.mutationOptions())
 
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen) {
+      setName(agent.name)
+      setDescription(agent.description ?? '')
+      setRole(agent.role ?? '')
+      setAgentIcon(createAgentIconSelection(agent))
+    }
+    else {
+      setIconPickerOpen(false)
+    }
+    onOpenChange(nextOpen)
+  }
+
   const handleSubmit = (formValues: AgentFormValues) => {
     const trimmedName = formValues.name?.trim() ?? ''
     const trimmedDescription = formValues.description?.trim() ?? ''
@@ -134,22 +147,9 @@ export function EditAgentDialog({
     }, {
       onSuccess: () => {
         toast.success(t('roster.updateSuccess'))
-        onOpenChange(false)
+        handleOpenChange(false)
       },
     })
-  }
-
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (nextOpen) {
-      setName(agent.name)
-      setDescription(agent.description ?? '')
-      setRole(agent.role ?? '')
-      setAgentIcon(createAgentIconSelection(agent))
-    }
-    else {
-      setIconPickerOpen(false)
-    }
-    onOpenChange(nextOpen)
   }
 
   const trimmedName = name.trim()
@@ -270,7 +270,7 @@ export function EditAgentDialog({
               </FieldRoot>
             </div>
             <div className="flex shrink-0 justify-end gap-2 px-6 pt-5 pb-6">
-              <Button type="button" className="min-w-18" onClick={() => onOpenChange(false)} disabled={updateAgentMutation.isPending}>
+              <Button type="button" className="min-w-18" onClick={() => handleOpenChange(false)} disabled={updateAgentMutation.isPending}>
                 {tCommon('operation.cancel')}
               </Button>
               <Button

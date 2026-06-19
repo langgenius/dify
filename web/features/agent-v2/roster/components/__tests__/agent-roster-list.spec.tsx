@@ -2,7 +2,7 @@ import type { ComponentProps } from 'react'
 import type { AgentRosterListItem } from '../agent-roster-list'
 import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentRosterList } from '../agent-roster-list'
 
@@ -222,5 +222,31 @@ describe('AgentRosterList', () => {
     await waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith('agentV2.roster.duplicateSuccess')
     })
+  })
+
+  it('resets the edit form draft when reopening after canceling unsaved changes', async () => {
+    const user = userEvent.setup()
+    renderList([createAgent()])
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: /agentV2\.roster\.editInfo/ }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
+    const nameInput = within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' })
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Draft Name')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'agentV2.roster.editDialog.title' })).not.toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: /agentV2\.roster\.editInfo/ }))
+
+    const reopenedDialog = await screen.findByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
+    expect(within(reopenedDialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' })).toHaveValue('Research Agent')
+    expect(within(reopenedDialog).getByRole('textbox', { name: 'agentV2.roster.createForm.roleLabel' })).toHaveValue('Research Assistant')
+    expect(within(reopenedDialog).getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
   })
 })
