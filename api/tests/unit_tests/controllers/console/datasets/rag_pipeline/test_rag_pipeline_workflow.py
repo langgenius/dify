@@ -1,4 +1,5 @@
 from __future__ import annotations
+from flask import Flask
 
 from datetime import datetime
 from inspect import unwrap as unwrap_all
@@ -117,7 +118,7 @@ def test_published_rag_pipeline_workflows_serialize_items_before_session_closes(
     assert response["has_more"] is False
 
 
-def test_rag_pipeline_workflow_patch_serializes_response_model(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_rag_pipeline_workflow_patch_serializes_response_model(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     workflow = _make_workflow(marked_name="Updated release")
 
     class _SessionContext:

@@ -1,5 +1,6 @@
 """User-scoped identity + session endpoints under /openapi/v1/account."""
 
+import pytest
 import builtins
 import sys
 import uuid
@@ -209,7 +210,7 @@ def test_sessions_list_defaults_when_query_omitted(app: Flask, monkeypatch: pyte
         "foo=bar",  # extra='forbid'
     ],
 )
-def test_sessions_list_rejects_out_of_bounds_query(app, monkeypatch, query):
+def test_sessions_list_rejects_out_of_bounds_query(app: Flask, monkeypatch: pytest.MonkeyPatch, query):
     """Out-of-range / unknown query params raise 422 instead of being silently coerced."""
     api = AccountSessionsApi()
     _stub_session_deps(monkeypatch, [])
