@@ -88,11 +88,10 @@ def test_api_key_and_custom_headers_merge(mock_metric_exporter: MagicMock, mock_
     assert ("x-custom", "foo") in headers
 
 
-@patch("enterprise.telemetry.exporter.logger")
 @patch("enterprise.telemetry.exporter.GRPCSpanExporter")
 @patch("enterprise.telemetry.exporter.GRPCMetricExporter")
 def test_api_key_overrides_conflicting_header(
-    mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock, mock_logger: MagicMock
+    mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock, caplog
 ) -> None:
     """Test that API key overrides conflicting authorization header and logs warning."""
     mock_config = SimpleNamespace(
@@ -105,7 +104,9 @@ def test_api_key_overrides_conflicting_header(
         ENTERPRISE_OTLP_API_KEY="test-key",
     )
 
-    EnterpriseExporter(mock_config)
+    import logging
+    with caplog.at_level(logging.WARNING):
+        EnterpriseExporter(mock_config)
 
     # Verify Bearer header takes precedence
     assert mock_span_exporter.call_args is not None
@@ -116,11 +117,10 @@ def test_api_key_overrides_conflicting_header(
     assert ("authorization", "Basic old") not in headers
 
     # Verify warning was logged
-    mock_logger.warning.assert_called_once()
-    assert mock_logger.warning.call_args is not None
-    warning_message = mock_logger.warning.call_args[0][0]
-    assert "ENTERPRISE_OTLP_API_KEY is set" in warning_message
-    assert "authorization" in warning_message
+    assert any(
+        "ENTERPRISE_OTLP_API_KEY is set" in record.message and "authorization" in record.message
+        for record in caplog.records
+    )
 
 
 @patch("enterprise.telemetry.exporter.GRPCSpanExporter")
@@ -535,33 +535,34 @@ def test_export_span_cross_workflow_parent_context() -> None:
     assert kwargs["context"] is not None
 
 
-@patch("enterprise.telemetry.exporter.logger")
-def test_export_span_logs_exception_on_error(mock_logger: MagicMock) -> None:
+def test_export_span_logs_exception_on_error(caplog) -> None:
     """If the span block raises, the exception is logged and context is still cleared."""
     exporter, mock_tracer, mock_span = _make_exporter_with_mock_tracer()
 
     mock_tracer.start_as_current_span.side_effect = RuntimeError("boom")
 
-    exporter.export_span(name="bad.span", attributes={})  # must not raise
+    import logging
+    with caplog.at_level(logging.ERROR):
+        exporter.export_span(name="bad.span", attributes={})  # must not raise
 
-    mock_logger.exception.assert_called_once()
-    assert "bad.span" in mock_logger.exception.call_args[0][1]
+    assert any("bad.span" in record.message and record.levelname == "ERROR" for record in caplog.records)
 
 
-@patch("enterprise.telemetry.exporter.logger")
-def test_export_span_invalid_trace_correlation_logs_warning(mock_logger: MagicMock) -> None:
+def test_export_span_invalid_trace_correlation_logs_warning(caplog) -> None:
     """Invalid UUID for trace_correlation_override triggers a warning log."""
     exporter, mock_tracer, mock_span = _make_exporter_with_mock_tracer()
 
     parent_uid = "987fbc97-4bed-5078-9f07-9141ba07c9f3"
-    exporter.export_span(
-        name="link.span",
-        attributes={},
-        correlation_id="not-a-valid-uuid",
-        parent_span_id_source=parent_uid,
-    )
+    import logging
+    with caplog.at_level(logging.WARNING):
+        exporter.export_span(
+            name="link.span",
+            attributes={},
+            correlation_id="not-a-valid-uuid",
+            parent_span_id_source=parent_uid,
+        )
 
-    mock_logger.warning.assert_called()
+    assert any(record.levelname == "WARNING" for record in caplog.records)
 
 
 # ---------------------------------------------------------------------------

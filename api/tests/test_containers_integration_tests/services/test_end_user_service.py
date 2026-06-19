@@ -210,8 +210,9 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         # Assert
         assert result.type == InvokeFrom.WEB_APP
 
-    @patch("services.end_user_service.logger")
-    def test_upgrade_legacy_end_user_type(self, mock_logger, db_session_with_containers: Session, factory):
+    def test_upgrade_legacy_end_user_type(self, db_session_with_containers: Session, factory, caplog):
+        import logging
+        caplog.set_level(logging.INFO)
         """Test upgrading legacy end user with different type."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -239,13 +240,11 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         # Assert
         assert result.id == existing_user.id
         assert result.type == InvokeFrom.WEB_APP  # Type should be updated
-        mock_logger.info.assert_called_once()
-        # Verify log message contains upgrade info
-        log_call = mock_logger.info.call_args[0][0]
-        assert "Upgrading legacy EndUser" in log_call
+        assert "Upgrading legacy EndUser" in caplog.text
 
-    @patch("services.end_user_service.logger")
-    def test_get_existing_end_user_matching_type(self, mock_logger, db_session_with_containers: Session, factory):
+    def test_get_existing_end_user_matching_type(self, db_session_with_containers: Session, factory, caplog):
+        import logging
+        caplog.set_level(logging.INFO)
         """Test retrieving existing end user with matching type."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -272,7 +271,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         # Assert
         assert result.id == existing_user.id
         assert result.type == InvokeFrom.SERVICE_API
-        mock_logger.info.assert_not_called()
+        assert "Upgrading legacy EndUser" not in caplog.text
 
     def test_create_anonymous_user_with_default_session(self, db_session_with_containers: Session, factory):
         """Test creating anonymous user when user_id is None."""

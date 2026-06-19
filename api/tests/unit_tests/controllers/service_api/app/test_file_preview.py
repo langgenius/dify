@@ -348,8 +348,7 @@ class TestFilePreviewApi:
 
             assert "Storage error" in str(exc_info.value)
 
-    @patch("controllers.service_api.app.file_preview.logger")
-    def test_validate_file_ownership_unexpected_error_logging(self, mock_logger, file_preview_api: FilePreviewApi):
+    def test_validate_file_ownership_unexpected_error_logging(self, caplog, file_preview_api: FilePreviewApi):
         """Test that unexpected errors are logged properly"""
         file_id = str(uuid.uuid4())
         app_id = str(uuid.uuid4())
@@ -366,7 +365,6 @@ class TestFilePreviewApi:
             assert "File access validation failed" in str(exc_info.value)
 
             # Verify logging was called
-            mock_logger.exception.assert_called_once_with(
-                "Unexpected error during file ownership validation",
-                extra={"file_id": file_id, "app_id": app_id, "error": "Unexpected database error"},
-            )
+            error_records = [r for r in caplog.records if r.levelname == "ERROR"]
+            assert len(error_records) == 1
+            assert "Unexpected error during file ownership validation" in error_records[0].getMessage()

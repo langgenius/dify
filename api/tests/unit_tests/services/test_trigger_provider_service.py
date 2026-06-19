@@ -252,12 +252,12 @@ def test_add_trigger_subscription_should_raise_error_when_provider_limit_reached
     mock_session: MagicMock,
     provider_id: TriggerProviderID,
     provider_controller: MagicMock,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     # Arrange
     _patch_redis_lock(mocker)
     mock_session.scalar.return_value = TriggerProviderService.__MAX_TRIGGER_PROVIDER_COUNT__
     _mock_get_trigger_provider(mocker, provider_controller)
-    mock_logger = mocker.patch("services.trigger.trigger_provider_service.logger")
 
     # Act + Assert
     with pytest.raises(ValueError, match="Maximum number of providers"):
@@ -272,7 +272,7 @@ def test_add_trigger_subscription_should_raise_error_when_provider_limit_reached
             properties={},
             credentials={},
         )
-    mock_logger.exception.assert_called_once()
+    assert len([record for record in caplog.records if record.levelname == "ERROR"]) == 1
 
 
 def test_add_trigger_subscription_should_raise_error_when_name_exists(

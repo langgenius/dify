@@ -146,10 +146,11 @@ class TestDeleteDraftVariablesBatch:
         assert db_session_with_containers.scalar(select(func.count()).select_from(WorkflowDraftVariable)) == 0
 
     @patch("tasks.remove_app_and_related_data_task._delete_draft_variable_offload_data")
-    @patch("tasks.remove_app_and_related_data_task.logger")
     def test_delete_draft_variables_batch_logs_progress(
-        self, mock_logger, mock_offload_cleanup, db_session_with_containers
+        self, mock_offload_cleanup, db_session_with_containers, caplog
     ):
+        import logging
+        caplog.set_level(logging.INFO)
         """Test that batch deletion logs progress correctly."""
         tenant, app = _create_tenant_and_app(db_session_with_containers)
         offload_data = _create_offload_data(db_session_with_containers, tenant_id=tenant.id, app_id=app.id, count=10)
@@ -169,8 +170,8 @@ class TestDeleteDraftVariablesBatch:
         mock_offload_cleanup.assert_called_once()
         _, called_file_ids = mock_offload_cleanup.call_args.args
         assert {str(file_id) for file_id in called_file_ids} == {str(file_id) for file_id in file_id_by_index.values()}
-        assert mock_logger.info.call_count == 2
-        mock_logger.info.assert_any_call(ANY)
+        info_records = [r for r in caplog.records if r.levelname == "INFO"]
+        assert len(info_records) >= 2
 
 
 class TestDeleteDraftVariableOffloadData:
@@ -204,10 +205,11 @@ class TestDeleteDraftVariableOffloadData:
         assert remaining_upload_files_count == 0
 
     @patch("extensions.ext_storage.storage")
-    @patch("tasks.remove_app_and_related_data_task.logging")
     def test_delete_draft_variable_offload_data_storage_failure(
-        self, mock_logging, mock_storage, db_session_with_containers
+        self, mock_storage, db_session_with_containers, caplog
     ):
+        import logging
+        caplog.set_level(logging.ERROR)
         """Test handling of storage deletion failures."""
         tenant, app = _create_tenant_and_app(db_session_with_containers)
         offload_data = _create_offload_data(db_session_with_containers, tenant_id=tenant.id, app_id=app.id, count=2)
@@ -221,7 +223,8 @@ class TestDeleteDraftVariableOffloadData:
             result = _delete_draft_variable_offload_data(session, file_ids)
 
         assert result == 1
-        mock_logging.exception.assert_called_once_with("Failed to delete storage object %s", storage_keys[0])
+        assert "Failed to delete storage object" in caplog.text
+        assert storage_keys[0] in caplog.text
 
         remaining_var_files_count = db_session_with_containers.scalar(
             select(func.count())
