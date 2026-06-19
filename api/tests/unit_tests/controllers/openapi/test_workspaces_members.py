@@ -16,6 +16,7 @@ and are covered in `auth/test_prepare.py` and `auth/test_verify.py`.
 """
 
 from __future__ import annotations
+from controllers.openapi.auth.data import AuthData
 
 import builtins
 import json
