@@ -59,12 +59,12 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                                 "your subscription."
                             )
                 except Exception as e:
-                    remaining_ids = document_ids[document_ids.index(document_id):]
+                    remaining_ids = document_ids[document_ids.index(document_id) :]
                     for remaining_id in remaining_ids:
                         remaining_doc = session.scalar(
-                            select(Document).where(
-                                Document.id == remaining_id, Document.dataset_id == dataset_id
-                            ).limit(1)
+                            select(Document)
+                            .where(Document.id == remaining_id, Document.dataset_id == dataset_id)
+                            .limit(1)
                         )
                         if remaining_doc:
                             remaining_doc.indexing_status = IndexingStatus.ERROR
