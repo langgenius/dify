@@ -28,6 +28,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from extensions.ext_database import db
 from events.app_event import app_model_config_was_updated
 from libs.helper import dump_response
 from libs.login import login_required
@@ -93,6 +94,7 @@ class AgentAppFeatureConfigResource(Resource):
             app_model=app_model,
             account=current_user,
             config=args.model_dump(exclude_none=True),
+            session=db.session
         )
 
         app_model_config_was_updated.send(app_model, app_model_config=new_app_model_config)
