@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models import TenantAccountRole
 from models.account import Account, Tenant, TenantAccountJoin
-from models.enums import ConversationFromSource
+from models.enums import ConversationFromSource, EndUserType
 from models.model import App, Conversation, EndUser, Message, MessageAnnotation
 from services.annotation_service import AppAnnotationService
 from services.conversation_service import ConversationService
@@ -76,7 +76,7 @@ class ConversationServiceIntegrationTestDataFactory:
         end_user = EndUser(
             tenant_id=app.tenant_id,
             app_id=app.id,
-            type=InvokeFrom.SERVICE_API,
+            type=EndUserType.SERVICE_API,
             external_user_id=f"external-{uuid4()}",
             name="End User",
             is_anonymous=False,
