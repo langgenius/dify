@@ -82,6 +82,7 @@ def test_local_sandbox_dockerfile_installs_stub_client_and_shellctl() -> None:
     assert "SHELL_SESSION_MANAGER_VERSION=2.2.0" in dockerfile
     assert "shell-session-manager==${SHELL_SESSION_MANAGER_VERSION}" in dockerfile
     assert "DIFY_AGENT_STUB_DRIVE_BASE=/mnt/drive" in dockerfile
+    assert "python -m compileall" in dockerfile
     assert "ln -s ${VIRTUAL_ENV}/bin/dify-agent /usr/local/bin/dify-agent" in dockerfile
     assert "ln -s ${VIRTUAL_ENV}/bin/shellctl /usr/local/bin/shellctl" in dockerfile
     assert "mkdir -p /mnt/drive" in dockerfile
