@@ -14,7 +14,6 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import RequestEntityTooLarge
 
 from configs import dify_config
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
 from core.tools.tool_file_manager import ToolFileManager
 from core.trigger.constants import TRIGGER_WEBHOOK_NODE_TYPE
@@ -31,7 +30,7 @@ from factories import file_factory
 from graphon.entities.graph_config import NodeConfigDict
 from graphon.file import FileTransferMethod
 from graphon.variables.types import ArrayValidation, SegmentType
-from models.enums import AppTriggerStatus, AppTriggerType
+from models.enums import AppTriggerStatus, AppTriggerType, EndUserType
 from models.model import App
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow
@@ -810,7 +809,7 @@ class WebhookService:
             )
 
             end_user = EndUserService.get_or_create_end_user_by_type(
-                type=InvokeFrom.TRIGGER,
+                type=EndUserType.TRIGGER,
                 tenant_id=webhook_trigger.tenant_id,
                 app_id=webhook_trigger.app_id,
                 user_id=None,

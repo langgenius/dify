@@ -41,6 +41,7 @@ from .enums import (
     ConversationStatus,
     CreatorUserRole,
     CustomizeTokenStrategy,
+    EndUserType,
     FeedbackFromSource,
     FeedbackRating,
     InvokeFrom,
@@ -2083,7 +2084,7 @@ class EndUser(Base, UserMixin):
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id = mapped_column(StringUUID, nullable=True)
-    type: Mapped[str] = mapped_column(String(255), nullable=False)
+    type: Mapped[EndUserType] = mapped_column(EnumText(EndUserType, length=255), nullable=False)
     external_user_id = mapped_column(String(255), nullable=True)
     name = mapped_column(String(255))
     _is_anonymous: Mapped[bool] = mapped_column(
