@@ -22,7 +22,7 @@ export const zDataSourceIntegrateIconResponse = z.object({
  * DataSourceIntegratePageResponse
  */
 export const zDataSourceIntegratePageResponse = z.object({
-  page_icon: zDataSourceIntegrateIconResponse,
+  page_icon: zDataSourceIntegrateIconResponse.nullable(),
   page_id: z.string(),
   page_name: z.string(),
   parent_id: z.string(),
@@ -50,7 +50,7 @@ export const zDataSourceIntegrateResponse = z.object({
   is_bound: z.boolean(),
   link: z.string(),
   provider: z.string(),
-  source_info: zDataSourceIntegrateWorkspaceResponse,
+  source_info: zDataSourceIntegrateWorkspaceResponse.nullable(),
 })
 
 /**
@@ -72,7 +72,7 @@ export const zPatchDataSourceIntegratesResponse = zSimpleResultResponse
 
 export const zGetDataSourceIntegratesByBindingIdByActionPath = z.object({
   action: z.string(),
-  binding_id: z.string(),
+  binding_id: z.uuid(),
 })
 
 /**
@@ -82,7 +82,7 @@ export const zGetDataSourceIntegratesByBindingIdByActionResponse = zDataSourceIn
 
 export const zPatchDataSourceIntegratesByBindingIdByActionPath = z.object({
   action: z.string(),
-  binding_id: z.string(),
+  binding_id: z.uuid(),
 })
 
 /**

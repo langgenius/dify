@@ -104,9 +104,9 @@ describe('AudioBtn', () => {
       expect(call![1]).toBe(false)
     })
 
-    it('should call installed app endpoint for explore installed routes', async () => {
+    it('should call installed app endpoint for installed app routes', async () => {
       mockUseParams({ appId: '456' })
-      mockUsePathname('/explore/installed/app/456')
+      mockUsePathname('/installed/456')
 
       render(<AudioBtn value="test" />)
       await userEvent.click(getButton())

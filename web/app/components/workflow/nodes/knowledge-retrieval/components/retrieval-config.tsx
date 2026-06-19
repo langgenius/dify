@@ -20,7 +20,7 @@ import ConfigRetrievalContent from '@/app/components/app/configuration/dataset-c
 import { DATASET_DEFAULT } from '@/config'
 import { RETRIEVE_TYPE } from '@/types/app'
 
-type Props = {
+type Props = Readonly<{
   payload: {
     retrieval_mode: RETRIEVE_TYPE
     multiple_retrieval_config?: MultipleRetrievalConfig
@@ -32,10 +32,11 @@ type Props = {
   onSingleRetrievalModelChange?: ModelParameterModalProps['setModel']
   onSingleRetrievalModelParamsChange?: ModelParameterModalProps['onCompletionParamsChange']
   readonly?: boolean
+  modal?: boolean
   rerankModalOpen: boolean
   onRerankModelOpenChange: (open: boolean) => void
   selectedDatasets: DataSet[]
-}
+}>
 
 const RetrievalConfig: FC<Props> = ({
   payload,
@@ -45,6 +46,7 @@ const RetrievalConfig: FC<Props> = ({
   onSingleRetrievalModelChange,
   onSingleRetrievalModelParamsChange,
   readonly,
+  modal,
   rerankModalOpen,
   onRerankModelOpenChange,
   selectedDatasets,
@@ -115,6 +117,7 @@ const RetrievalConfig: FC<Props> = ({
 
   return (
     <Popover
+      modal={modal}
       open={rerankModalOpen}
       onOpenChange={(nextOpen) => {
         if (readonly)

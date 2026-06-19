@@ -171,6 +171,7 @@ class TestExternalDatasetCreateApi:
         dataset.external_retrieval_model = None
         dataset.doc_metadata = []
         dataset.icon_info = None
+        dataset.permission_keys = []
 
         dataset.summary_index_setting = MagicMock()
         dataset.summary_index_setting.enable = False

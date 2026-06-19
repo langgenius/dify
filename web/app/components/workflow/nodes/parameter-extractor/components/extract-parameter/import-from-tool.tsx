@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { Param, ParamType } from '../../types'
 import type { ToolParameter } from '@/app/components/tools/types'
 import type {
-  PluginDefaultValue,
+  BlockDefaultValue,
   ToolDefaultValue,
 } from '@/app/components/workflow/block-selector/types'
 import type { BlockEnum } from '@/app/components/workflow/types'
@@ -25,9 +25,9 @@ import BlockSelector from '../../../../block-selector'
 
 const i18nPrefix = 'nodes.parameterExtractor'
 
-type Props = {
+type Props = Readonly<{
   onImport: (params: Param[]) => void
-}
+}>
 
 function toParmExactParams(toolParams: ToolParameter[], lan: string): Param[] {
   return toolParams.map((item) => {
@@ -50,7 +50,7 @@ const ImportFromTool: FC<Props> = ({
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
 
-  const handleSelectTool = useCallback((_type: BlockEnum, toolInfo?: PluginDefaultValue) => {
+  const handleSelectTool = useCallback((_type: BlockEnum, toolInfo?: BlockDefaultValue) => {
     if (!toolInfo || 'datasource_name' in toolInfo || !('tool_name' in toolInfo))
       return
 

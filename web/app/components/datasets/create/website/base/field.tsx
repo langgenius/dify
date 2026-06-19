@@ -5,7 +5,7 @@ import * as React from 'react'
 import { Infotip } from '@/app/components/base/infotip'
 import Input from './text-input'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   label: string
   labelClassName?: string
@@ -15,7 +15,7 @@ type Props = {
   placeholder?: string
   isNumber?: boolean
   tooltip?: string
-}
+}>
 
 const Field: FC<Props> = ({
   className,

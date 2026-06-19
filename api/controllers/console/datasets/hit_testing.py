@@ -5,9 +5,11 @@ from uuid import UUID
 from flask_restx import Resource
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
 from fields.hit_testing_fields import HitTestingResponse
 from libs.helper import dump_response
 from libs.login import login_required
+from models import Account
 
 from .. import console_ns
 from ..datasets.hit_testing_base import DatasetsHitTestingBase, HitTestingPayload
@@ -15,6 +17,8 @@ from ..wraps import (
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
     setup_required,
+    with_current_tenant_id,
+    with_current_user,
 )
 
 register_schema_models(console_ns, HitTestingPayload)
@@ -38,11 +42,17 @@ class HitTestingApi(Resource, DatasetsHitTestingBase):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
-    def post(self, dataset_id: UUID) -> dict[str, object]:
+    @with_current_tenant_id
+    @with_current_user
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_PIPELINE_TEST)
+    def post(self, current_user: Account, current_tenant_id: str, dataset_id: UUID) -> dict[str, object]:
         dataset_id_str = str(dataset_id)
 
-        dataset = self.get_and_validate_dataset(dataset_id_str)
+        dataset = self.get_and_validate_dataset(dataset_id_str, current_user, current_tenant_id)
         args = self.parse_args(console_ns.payload)
         self.hit_testing_args_check(args)
 
-        return dump_response(HitTestingResponse, self.perform_hit_testing(dataset, args))
+        return dump_response(
+            HitTestingResponse,
+            self.perform_hit_testing(dataset, args, current_user, current_tenant_id),
+        )

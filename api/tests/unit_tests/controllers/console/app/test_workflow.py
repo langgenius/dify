@@ -12,6 +12,7 @@ from flask import Flask
 from pydantic import ValidationError
 from werkzeug.exceptions import HTTPException, NotFound
 
+from controllers.common.errors import InvalidArgumentError
 from controllers.console.app import workflow as workflow_module
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
 from graphon.file import File, FileTransferMethod, FileType
@@ -178,6 +179,29 @@ def test_sync_draft_workflow_hash_mismatch(app: Flask, monkeypatch: pytest.Monke
     ):
         with pytest.raises(DraftWorkflowNotSync):
             handler(api, "t1", app_model=SimpleNamespace(id="app"))
+
+
+def test_sync_draft_workflow_variable_validation_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def _raise(*_args, **_kwargs):
+        raise workflow_module.VariableError("description too long")
+
+    monkeypatch.setattr(workflow_module.variable_factory, "build_conversation_variable_from_mapping", _raise)
+    monkeypatch.setattr(
+        workflow_module, "WorkflowService", lambda: SimpleNamespace(sync_draft_workflow=lambda **_kwargs: None)
+    )
+
+    api = workflow_module.DraftWorkflowApi()
+    handler = inspect.unwrap(api.post)
+
+    with app.test_request_context(
+        "/apps/app/workflows/draft",
+        method="POST",
+        json={"graph": {}, "features": {}, "hash": "h", "conversation_variables": [{"name": "topic"}]},
+    ):
+        with pytest.raises(InvalidArgumentError) as exc:
+            handler(api, "t1", app_model=SimpleNamespace(id="app"))
+
+    assert exc.value.description == "description too long"
 
 
 def test_restore_published_workflow_to_draft_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -514,6 +538,58 @@ def test_draft_workflow_get_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
 
     with pytest.raises(DraftWorkflowNotExist):
         handler(api, app_model=SimpleNamespace(id="app"))
+
+
+def test_draft_workflow_get_projects_agent_node_job_to_graph(monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow = _make_workflow(
+        graph_dict={
+            "nodes": [
+                {
+                    "id": "agent-node",
+                    "data": {
+                        "type": "agent",
+                        "version": "2",
+                    },
+                }
+            ],
+            "edges": [],
+        }
+    )
+    projected_graph = {
+        "nodes": [
+            {
+                "id": "agent-node",
+                "data": {
+                    "type": "agent",
+                    "version": "2",
+                    "agent_task": "Summarize it.",
+                    "agent_declared_outputs": [{"name": "summary", "type": "string"}],
+                },
+            }
+        ],
+        "edges": [],
+    }
+
+    monkeypatch.setattr(
+        workflow_module,
+        "WorkflowService",
+        lambda: SimpleNamespace(get_draft_workflow=lambda **_k: workflow),
+    )
+
+    from services.agent.workflow_publish_service import WorkflowAgentPublishService
+
+    monkeypatch.setattr(
+        WorkflowAgentPublishService,
+        "project_draft_bindings_to_graph",
+        lambda **_k: projected_graph,
+    )
+
+    api = workflow_module.DraftWorkflowApi()
+    handler = inspect.unwrap(api.get)
+
+    response = handler(api, app_model=SimpleNamespace(id="app"))
+
+    assert response["graph"] == projected_graph
 
 
 def test_advanced_chat_run_conversation_not_exists(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -16,12 +16,12 @@ import { UserActionButtonType } from '../types'
 
 const i18nPrefix = 'nodes.humanInput'
 
-type Props = {
+type Props = Readonly<{
   text: string
   data: UserActionButtonType
   onChange: (state: UserActionButtonType) => void
   readonly?: boolean
-}
+}>
 
 const ButtonStyleDropdown: FC<Props> = ({
   text = 'Button Text',

@@ -82,6 +82,14 @@ def _dump_dataset_detail(payload):
     return DatasetDetailResponse.model_validate(payload).model_dump(mode="json")
 
 
+def test_dataset_detail_preserves_permission_keys():
+    response = _dump_dataset_detail(
+        _dataset_detail_payload(permission_keys=["dataset.acl.readonly", "dataset.acl.edit"])
+    )
+
+    assert response["permission_keys"] == ["dataset.acl.readonly", "dataset.acl.edit"]
+
+
 def test_dataset_detail_expands_legacy_null_nested_fields():
     response = _dump_dataset_detail(
         _dataset_detail_payload(

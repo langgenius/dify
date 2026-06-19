@@ -1,5 +1,9 @@
-import type { ComponentType } from 'react'
+import type { ComponentProps, ComponentType } from 'react'
+import { createElement } from 'react'
 import { BlockEnum } from '../types'
+import { AgentV2Node } from './agent-v2/node'
+import { AgentV2Panel } from './agent-v2/panel'
+import { isAgentV2NodeData } from './agent-v2/types'
 import AgentNode from './agent/node'
 import AgentPanel from './agent/panel'
 import AnswerNode from './answer/node'
@@ -36,6 +40,8 @@ import ParameterExtractorNode from './parameter-extractor/node'
 import ParameterExtractorPanel from './parameter-extractor/panel'
 import QuestionClassifierNode from './question-classifier/node'
 import QuestionClassifierPanel from './question-classifier/panel'
+import StartPlaceholderNode from './start-placeholder/node'
+import StartPlaceholderPanel from './start-placeholder/panel'
 import StartNode from './start/node'
 import StartPanel from './start/panel'
 import TemplateTransformNode from './template-transform/node'
@@ -51,8 +57,27 @@ import TriggerWebhookPanel from './trigger-webhook/panel'
 import VariableAssignerNode from './variable-assigner/node'
 import VariableAssignerPanel from './variable-assigner/panel'
 
-export const NodeComponentMap: Record<string, ComponentType<any>> = {
+type WorkflowAgentNodeProps = ComponentProps<typeof AgentNode> | ComponentProps<typeof AgentV2Node>
+type WorkflowAgentPanelProps = ComponentProps<typeof AgentPanel> | ComponentProps<typeof AgentV2Panel>
+type WorkflowComponentMap = Record<string, ComponentType<Record<string, never>>>
+
+function WorkflowAgentNode(props: WorkflowAgentNodeProps) {
+  if (isAgentV2NodeData(props.data))
+    return createElement(AgentV2Node, props as ComponentProps<typeof AgentV2Node>)
+
+  return createElement(AgentNode, props as ComponentProps<typeof AgentNode>)
+}
+
+function WorkflowAgentPanel(props: WorkflowAgentPanelProps) {
+  if (isAgentV2NodeData(props.data))
+    return createElement(AgentV2Panel, props as ComponentProps<typeof AgentV2Panel>)
+
+  return createElement(AgentPanel, props as ComponentProps<typeof AgentPanel>)
+}
+
+export const NodeComponentMap = {
   [BlockEnum.Start]: StartNode,
+  [BlockEnum.StartPlaceholder]: StartPlaceholderNode,
   [BlockEnum.End]: EndNode,
   [BlockEnum.Answer]: AnswerNode,
   [BlockEnum.LLM]: LLMNode,
@@ -71,17 +96,19 @@ export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.Loop]: LoopNode,
   [BlockEnum.DocExtractor]: DocExtractorNode,
   [BlockEnum.ListFilter]: ListFilterNode,
-  [BlockEnum.Agent]: AgentNode,
+  [BlockEnum.Agent]: WorkflowAgentNode,
+  [BlockEnum.AgentV2]: AgentV2Node,
   [BlockEnum.DataSource]: DataSourceNode,
   [BlockEnum.KnowledgeBase]: KnowledgeBaseNode,
   [BlockEnum.HumanInput]: HumanInputNode,
   [BlockEnum.TriggerSchedule]: TriggerScheduleNode,
   [BlockEnum.TriggerWebhook]: TriggerWebhookNode,
   [BlockEnum.TriggerPlugin]: TriggerPluginNode,
-}
+} as unknown as WorkflowComponentMap
 
-export const PanelComponentMap: Record<string, ComponentType<any>> = {
+export const PanelComponentMap = {
   [BlockEnum.Start]: StartPanel,
+  [BlockEnum.StartPlaceholder]: StartPlaceholderPanel,
   [BlockEnum.End]: EndPanel,
   [BlockEnum.Answer]: AnswerPanel,
   [BlockEnum.LLM]: LLMPanel,
@@ -100,11 +127,12 @@ export const PanelComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.Loop]: LoopPanel,
   [BlockEnum.DocExtractor]: DocExtractorPanel,
   [BlockEnum.ListFilter]: ListFilterPanel,
-  [BlockEnum.Agent]: AgentPanel,
+  [BlockEnum.Agent]: WorkflowAgentPanel,
+  [BlockEnum.AgentV2]: AgentV2Panel,
   [BlockEnum.DataSource]: DataSourcePanel,
   [BlockEnum.KnowledgeBase]: KnowledgeBasePanel,
   [BlockEnum.HumanInput]: HumanInputPanel,
   [BlockEnum.TriggerSchedule]: TriggerSchedulePanel,
   [BlockEnum.TriggerWebhook]: TriggerWebhookPanel,
   [BlockEnum.TriggerPlugin]: TriggerPluginPanel,
-}
+} as unknown as WorkflowComponentMap

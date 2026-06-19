@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, uuid_value
 from models.model import AppMode
@@ -87,12 +87,8 @@ class AppDescribeInfo(AppInfoResponse):
 
 class AppDescribeResponse(BaseModel):
     info: AppDescribeInfo | None = None
-    # `parameters` (the app-config blob) and `input_schema` (a Draft 2020-12 JSON Schema derived
-    # per-app) are deliberately open JSON, not under-annotated. The `x-dify-opaque` marker tells the
-    # contract generator's readiness detector to treat them as intentional, so the route is not
-    # flagged "annotations incomplete". CLI/web consume them as opaque objects either way.
-    parameters: dict[str, Any] | None = Field(default=None, json_schema_extra={"x-dify-opaque": True})
-    input_schema: dict[str, Any] | None = Field(default=None, json_schema_extra={"x-dify-opaque": True})
+    parameters: dict[str, Any] | None = Field(default=None)
+    input_schema: dict[str, Any] | None = Field(default=None)
 
 
 class ChatMessageResponse(BaseModel):
@@ -148,6 +144,18 @@ class WorkspacePayload(BaseModel):
     id: str
     name: str
     role: str
+
+
+class DeviceTokenResponse(BaseModel):
+    token: str
+    expires_at: str
+    subject_type: Literal["account", "external_sso"]
+    account: AccountPayload | None = None
+    workspaces: list[WorkspacePayload] = []
+    default_workspace_id: str | None = None
+    token_id: str
+    subject_email: str | None = None
+    subject_issuer: str | None = None
 
 
 class AccountResponse(BaseModel):
@@ -292,7 +300,7 @@ class AppListQuery(BaseModel):
 class AppRunRequest(BaseModel):
     inputs: dict[str, Any]
     query: str | None = None
-    files: list[dict[str, Any]] | None = None
+    files: list[dict[str, Any]] | None = Field(default=None)
     conversation_id: UUIDStrOrEmpty | None = None
     auto_generate_name: bool = True
     workflow_id: str | None = None
@@ -424,9 +432,56 @@ class TaskStopResponse(BaseModel):
     result: Literal["success"]
 
 
+class AppDslImportPayload(BaseModel):
+    """Request body for POST /workspaces/<workspace_id>/apps/imports."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: Literal["yaml-content", "yaml-url"] = Field(..., description="Import mode: yaml-content or yaml-url")
+    yaml_content: str | None = Field(None, description="Inline YAML DSL string (required when mode is yaml-content)")
+    yaml_url: str | None = Field(None, description="Remote URL to fetch YAML from (required when mode is yaml-url)")
+    name: str | None = Field(None, description="Override the app name from the DSL")
+    description: str | None = Field(None, description="Override the app description from the DSL")
+    icon_type: str | None = Field(None)
+    icon: str | None = Field(None)
+    icon_background: str | None = Field(None)
+    app_id: str | None = Field(None, description="Existing app ID to overwrite (workflow/advanced-chat apps only)")
+
+    @model_validator(mode="after")
+    def _validate_source_by_mode(self) -> AppDslImportPayload:
+        if self.mode == "yaml-content" and not self.yaml_content:
+            raise ValueError("yaml_content is required when mode is 'yaml-content'")
+        if self.mode == "yaml-url" and not self.yaml_url:
+            raise ValueError("yaml_url is required when mode is 'yaml-url'")
+        return self
+
+
+class AppDslExportQuery(BaseModel):
+    """Query parameters for GET /apps/<app_id>/export."""
+
+    include_secret: bool = Field(False, description="Include encrypted secret values in the exported DSL")
+    workflow_id: UUIDStr | None = Field(
+        None, description="Export a specific workflow version instead of the current draft"
+    )
+
+
+class AppDslExportResponse(BaseModel):
+    """Export DSL response."""
+
+    data: str = Field(..., description="DSL YAML string")
+
+
 class FormSubmitResponse(BaseModel):
     """Empty 200 body for POST /apps/<id>/form/human_input/<token>. `extra='forbid'`
     pins `additionalProperties: false` so the generated contract is an exact `{}` rather
     than an under-annotated open object."""
 
     model_config = ConfigDict(extra="forbid")
+
+
+class HumanInputFormDefinitionResponse(BaseModel):
+    form_content: str
+    inputs: list[dict[str, Any]] = Field(default_factory=list)
+    resolved_default_values: dict[str, str]
+    user_actions: list[dict[str, Any]] = Field(default_factory=list)
+    expiration_time: int | None = None

@@ -5,24 +5,27 @@ import Control from '../control'
 
 type WorkflowStoreState = {
   controlMode: ControlMode
-  maximizeCanvas: boolean
 }
 
 const {
   mockHandleAddNote,
   mockHandleLayout,
+  mockHandleModeComment,
   mockHandleModeHand,
   mockHandleModePointer,
-  mockHandleToggleMaximizeCanvas,
 } = vi.hoisted(() => ({
   mockHandleAddNote: vi.fn(),
   mockHandleLayout: vi.fn(),
+  mockHandleModeComment: vi.fn(),
   mockHandleModeHand: vi.fn(),
   mockHandleModePointer: vi.fn(),
-  mockHandleToggleMaximizeCanvas: vi.fn(),
 }))
 
 let mockNodesReadOnly = false
+let mockCanComment = true
+let mockCanEdit = true
+let mockCanUseCommentMode = true
+let mockIsCommentModeAvailable = true
 let mockStoreState: WorkflowStoreState
 
 vi.mock('../../hooks', () => ({
@@ -30,12 +33,12 @@ vi.mock('../../hooks', () => ({
     nodesReadOnly: mockNodesReadOnly,
     getNodesReadOnly: () => mockNodesReadOnly,
   }),
-  useWorkflowCanvasMaximize: () => ({
-    handleToggleMaximizeCanvas: mockHandleToggleMaximizeCanvas,
-  }),
   useWorkflowMoveMode: () => ({
     handleModePointer: mockHandleModePointer,
     handleModeHand: mockHandleModeHand,
+    handleModeComment: mockHandleModeComment,
+    isCommentModeAvailable: mockIsCommentModeAvailable,
+    canUseCommentMode: mockCanUseCommentMode,
   }),
   useWorkflowOrganize: () => ({
     handleLayout: mockHandleLayout,
@@ -50,6 +53,16 @@ vi.mock('../hooks', () => ({
 
 vi.mock('../../store', () => ({
   useStore: (selector: (state: WorkflowStoreState) => unknown) => selector(mockStoreState),
+}))
+
+vi.mock('../../hooks-store', () => ({
+  useHooksStore: <T,>(selector: (state: { accessControl: { canComment: boolean, canEdit: boolean } }) => T): T =>
+    selector({
+      accessControl: {
+        canComment: mockCanComment,
+        canEdit: mockCanEdit,
+      },
+    }),
 }))
 
 vi.mock('../add-block', () => ({
@@ -74,9 +87,12 @@ describe('Control', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockNodesReadOnly = false
+    mockCanComment = true
+    mockCanEdit = true
+    mockCanUseCommentMode = true
+    mockIsCommentModeAvailable = true
     mockStoreState = {
       controlMode: ControlMode.Pointer,
-      maximizeCanvas: false,
     }
   })
 
@@ -89,41 +105,40 @@ describe('Control', () => {
       expect(screen.getByTestId('more-actions')).toBeInTheDocument()
       expect(screen.getByTestId('workflow.common.pointerMode').firstElementChild).toHaveClass('bg-state-accent-active')
       expect(screen.getByTestId('workflow.common.handMode').firstElementChild).not.toHaveClass('bg-state-accent-active')
-      expect(screen.getByTestId('workflow.panel.maximize')).toBeInTheDocument()
     })
 
-    it('should switch the maximize tooltip and active style when the canvas is maximized', () => {
+    it('should highlight hand mode when it is active', () => {
       mockStoreState = {
         controlMode: ControlMode.Hand,
-        maximizeCanvas: true,
       }
 
       render(<Control />)
 
       expect(screen.getByTestId('workflow.common.handMode').firstElementChild).toHaveClass('bg-state-accent-active')
-      expect(screen.getByTestId('workflow.panel.minimize').firstElementChild).toHaveClass('bg-state-accent-active')
     })
   })
 
   // User interactions exposed by the control bar.
   describe('User Interactions', () => {
-    it('should trigger the note, mode, organize, and maximize handlers', () => {
+    it('should trigger the note, mode, and organize handlers', () => {
       render(<Control />)
 
       fireEvent.click(screen.getByTestId('workflow.nodes.note.addNote').firstElementChild as HTMLElement)
       fireEvent.click(screen.getByTestId('workflow.common.pointerMode').firstElementChild as HTMLElement)
       fireEvent.click(screen.getByTestId('workflow.common.handMode').firstElementChild as HTMLElement)
+      fireEvent.click(screen.getByTestId('workflow.common.commentMode').firstElementChild as HTMLElement)
       fireEvent.click(screen.getByTestId('workflow.panel.organizeBlocks').firstElementChild as HTMLElement)
-      fireEvent.click(screen.getByTestId('workflow.panel.maximize').firstElementChild as HTMLElement)
 
       expect(mockHandleAddNote).toHaveBeenCalledTimes(1)
       expect(mockHandleModePointer).toHaveBeenCalledTimes(1)
       expect(mockHandleModeHand).toHaveBeenCalledTimes(1)
+      expect(mockHandleModeComment).toHaveBeenCalledTimes(1)
       expect(mockHandleLayout).toHaveBeenCalledTimes(1)
-      expect(mockHandleToggleMaximizeCanvas).toHaveBeenCalledTimes(1)
     })
 
-    it('should block note creation when the workflow is read only', () => {
+    it('should block note creation when editing is not allowed', () => {
+      mockCanEdit = false
+      mockCanComment = true
       mockNodesReadOnly = true
 
       render(<Control />)
@@ -131,6 +146,33 @@ describe('Control', () => {
       fireEvent.click(screen.getByTestId('workflow.nodes.note.addNote').firstElementChild as HTMLElement)
 
       expect(mockHandleAddNote).not.toHaveBeenCalled()
+    })
+
+    it('should keep comment mode enabled for readonly layout users who can comment', () => {
+      mockNodesReadOnly = true
+      mockCanUseCommentMode = true
+
+      render(<Control />)
+
+      const commentButton = screen.getByTestId('workflow.common.commentMode').firstElementChild as HTMLButtonElement
+      expect(commentButton).toBeEnabled()
+
+      fireEvent.click(commentButton)
+
+      expect(mockHandleModeComment).toHaveBeenCalledTimes(1)
+    })
+
+    it('should disable comment mode when comment operation is blocked', () => {
+      mockCanUseCommentMode = false
+
+      render(<Control />)
+
+      const commentButton = screen.getByTestId('workflow.common.commentMode').firstElementChild as HTMLButtonElement
+      expect(commentButton).toBeDisabled()
+
+      fireEvent.click(commentButton)
+
+      expect(mockHandleModeComment).not.toHaveBeenCalled()
     })
   })
 })

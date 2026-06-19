@@ -44,7 +44,7 @@ dependencies = [
     "resend>=2.27.0,<3.0.0",
     # Emerging: newer and fast-moving, use compatible pins
     "fastopenapi[flask]==0.7.0",
-    "graphon==0.4.0",
+    "graphon==0.5.2",
     "httpx-sse==0.4.3",
     "json-repair==0.59.4",
 ]
@@ -60,6 +60,7 @@ exclude = ["providers/vdb/__pycache__", "providers/trace/__pycache__"]
 
 [tool.uv.sources]
 dify-agent = { path = "../dify-agent", editable = true }
+flask-restx = { git = "https://github.com/asukaminato0721/flask-restx", rev = "27758e26f8f740d7525d5039c51a9e524b6e2b68" }
 dify-vdb-alibabacloud-mysql = { workspace = true }
 dify-vdb-analyticdb = { workspace = true }
 dify-vdb-baidu = { workspace = true }

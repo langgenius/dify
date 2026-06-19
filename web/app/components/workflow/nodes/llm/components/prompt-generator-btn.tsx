@@ -12,14 +12,14 @@ import { Generator } from '@/app/components/base/icons/src/vender/other'
 import { AppModeEnum } from '@/types/app'
 import { useHooksStore } from '../../../hooks-store'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   onGenerated?: (prompt: string) => void
   modelConfig?: ModelConfig
   nodeId: string
   editorId?: string
   currentPrompt?: string
-}
+}>
 
 const PromptGeneratorBtn: FC<Props> = ({
   className,

@@ -1,6 +1,6 @@
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import ANY, Mock
 
 import pytest
 from flask import Flask
@@ -95,6 +95,7 @@ def test_list_snippets_returns_pagination(app, monkeypatch):
     }
     get_snippets.assert_called_once_with(
         tenant_id="tenant-1",
+        session=ANY,
         page=2,
         limit=10,
         keyword=None,

@@ -3,7 +3,7 @@ import { basePath } from '@/utils/var'
 
 const REFRESH_TOKEN_PATH = '/refresh-token'
 const AUTH_REFRESH_PATH = `${basePath}/auth/refresh`
-const DEFAULT_REDIRECT_PATH = `${basePath}/apps`
+const DEFAULT_REDIRECT_PATH = `${basePath}/`
 
 const resolveSafeRedirectPath = (request: Request) => {
   const requestUrl = new URL(request.url)

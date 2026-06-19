@@ -55,7 +55,7 @@ import VarReferencePopup from './var-reference-popup'
 
 const TRIGGER_DEFAULT_WIDTH = 227
 
-type Props = {
+type Props = Readonly<{
   className?: string
   nodeId: string
   isShowNodeName?: boolean
@@ -85,7 +85,7 @@ type Props = {
   currentTool?: Tool
   currentProvider?: ToolWithProvider | TriggerWithProvider
   preferSchemaType?: boolean
-}
+}>
 
 const DEFAULT_VALUE_SELECTOR: Props['value'] = []
 

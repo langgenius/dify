@@ -1293,7 +1293,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", marker = "extra == 'server'", specifier = "==0.136.0" },
-    { name = "graphon", marker = "extra == 'server'", specifier = "==0.2.2" },
+    { name = "graphon", marker = "extra == 'server'", specifier = "==0.5.2" },
     { name = "grpclib", extras = ["protobuf"], marker = "extra == 'grpc'", specifier = ">=0.4.9,<0.5.0" },
     { name = "httpx", specifier = "==0.28.1" },
     { name = "jsonschema", marker = "extra == 'server'", specifier = ">=4.23.0,<5.0.0" },
@@ -1630,13 +1630,13 @@ requires-dist = [
     { name = "flask-login", specifier = "==0.6.3" },
     { name = "flask-migrate", specifier = ">=4.1.0,<5.0.0" },
     { name = "flask-orjson", specifier = ">=2.0.0,<3.0.0" },
-    { name = "flask-restx", specifier = ">=1.3.2,<2.0.0" },
+    { name = "flask-restx", git = "https://github.com/asukaminato0721/flask-restx?rev=27758e26f8f740d7525d5039c51a9e524b6e2b68" },
     { name = "gevent", specifier = ">=26.4.0,<26.5.0" },
     { name = "gevent-websocket", specifier = "==0.10.1" },
     { name = "gmpy2", specifier = ">=2.3.0,<3.0.0" },
     { name = "google-api-python-client", specifier = ">=2.196.0,<3.0.0" },
     { name = "google-cloud-aiplatform", specifier = ">=1.151.0,<2.0.0" },
-    { name = "graphon", specifier = "==0.4.0" },
+    { name = "graphon", specifier = "==0.5.2" },
     { name = "gunicorn", specifier = ">=26.0.0,<27.0.0" },
     { name = "httpx", extras = ["socks"], specifier = "==0.28.1" },
     { name = "httpx-sse", specifier = "==0.4.3" },
@@ -2570,8 +2570,8 @@ wheels = [
 
 [[package]]
 name = "flask-restx"
-version = "1.3.2"
-source = { registry = "https://pypi.org/simple" }
+version = "1.3.3.dev0"
+source = { git = "https://github.com/asukaminato0721/flask-restx?rev=27758e26f8f740d7525d5039c51a9e524b6e2b68#27758e26f8f740d7525d5039c51a9e524b6e2b68" }
 dependencies = [
     { name = "aniso8601" },
     { name = "flask" },
@@ -2579,10 +2579,6 @@ dependencies = [
     { name = "jsonschema" },
     { name = "referencing" },
     { name = "werkzeug" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/43/89/9b9ca58cbb8e9ec46f4a510ba93878e0c88d518bf03c350e3b1b7ad85cbe/flask-restx-1.3.2.tar.gz", hash = "sha256:0ae13d77e7d7e4dce513970cfa9db45364aef210e99022de26d2b73eb4dbced5", size = 2814719, upload-time = "2025-09-23T20:34:25.21Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/7a/3f/b82cd8e733a355db1abb8297afbf59ec972c00ef90bf8d4eed287958b204/flask_restx-1.3.2-py2.py3-none-any.whl", hash = "sha256:6e035496e8223668044fc45bf769e526352fd648d9e159bd631d94fd645a687b", size = 2799859, upload-time = "2025-09-23T20:34:23.055Z" },
 ]
 
 [[package]]
@@ -2991,7 +2987,7 @@ httpx = [
 
 [[package]]
 name = "graphon"
-version = "0.4.0"
+version = "0.5.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "charset-normalizer" },
@@ -3012,9 +3008,9 @@ dependencies = [
     { name = "unstructured", extra = ["docx", "epub", "md", "ppt", "pptx"] },
     { name = "webvtt-py" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/76/24/eb1e7983404dcac84816b76ea450e1bb97023e55e00c699d609340bc361e/graphon-0.4.0.tar.gz", hash = "sha256:afb0c7a58f89e09cfa585296429b4d08cd0df80b9ac54d550f88e7d76ec48ee0", size = 261812, upload-time = "2026-05-13T11:48:39.198Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c2/16/f183da187414c335be67f52f6a1b7c2a33bf0b1d5090eda7e6c92d42d94a/graphon-0.5.2.tar.gz", hash = "sha256:d66a9edcd883766bd50e94f84a691c92ce536ea60e721552089e83ac8e94bf68", size = 269773, upload-time = "2026-06-16T04:06:22.074Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b7/de/bad6b3fd1e4b4defc16e6ea106e55c44725a159f1d191a99877bce1c9931/graphon-0.4.0-py3-none-any.whl", hash = "sha256:b33f95886da823d5b1b53d663a4f5f8fa383c37740f3bd19297b8d140fcb804c", size = 372711, upload-time = "2026-05-13T11:48:37.712Z" },
+    { url = "https://files.pythonhosted.org/packages/2f/e6/36a3981cd44e7a40a7cd7d374e26f01e02dd49410c5fbbd7df248750d5fb/graphon-0.5.2-py3-none-any.whl", hash = "sha256:11f89399e67ed1ddd2ce1c336accd9c4ad5b8fe2741f9167e6085af0b325cd14", size = 381908, upload-time = "2026-06-16T04:06:20.453Z" },
 ]
 
 [[package]]

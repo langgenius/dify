@@ -5,6 +5,13 @@ from pydantic import TypeAdapter
 
 from extensions.ext_logging import get_request_id
 
+# NOTE: Avoid renaming exception classes in this file, since
+# the `_handle_plugin_daemon_error` in api/core/plugin/impl/base.py
+# build exception instances based on the class name.
+#
+# Renaming of exception classes could result in incorrect exception
+# being raised.
+
 
 class PluginDaemonError(Exception):
     """Base class for all plugin daemon errors."""
@@ -73,6 +80,10 @@ class PluginInvokeError(PluginDaemonClientSideError, ValueError):
             f"error type: {self.get_error_type()}, "
             f"error details: {self.get_error_message()}"
         )
+
+
+class PluginLLMPollingUnsupportedError(PluginInvokeError):
+    """Plugin-backed LLM polling is unavailable for the requested model."""
 
 
 class PluginUniqueIdentifierError(PluginDaemonClientSideError):

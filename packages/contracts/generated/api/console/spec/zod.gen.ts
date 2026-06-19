@@ -3,6 +3,11 @@
 import * as z from 'zod'
 
 /**
+ * SchemaDefinitionsResponse
+ */
+export const zSchemaDefinitionsResponse = z.unknown()
+
+/**
  * Success
  */
-export const zGetSpecSchemaDefinitionsResponse = z.record(z.string(), z.unknown())
+export const zGetSpecSchemaDefinitionsResponse = zSchemaDefinitionsResponse

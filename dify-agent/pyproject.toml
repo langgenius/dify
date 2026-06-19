@@ -17,13 +17,10 @@ dify-agent = "dify_agent.agent_stub.cli.main:main"
 dify-agent-stub-server = "dify_agent.agent_stub.server.cli:main"
 
 [project.optional-dependencies]
-grpc = [
-    "grpclib[protobuf]>=0.4.9,<0.5.0",
-    "protobuf>=6.33.5,<7.0.0",
-]
+grpc = ["grpclib[protobuf]>=0.4.9,<0.5.0", "protobuf>=6.33.5,<7.0.0"]
 server = [
     "fastapi==0.136.0",
-    "graphon==0.2.2",
+    "graphon==0.5.2",
     "jsonschema>=4.23.0,<5.0.0",
     "jwcrypto>=1.5.6,<2",
     "pydantic-ai-slim[anthropic,google,openai]>=1.85.1,<2.0.0",
@@ -35,22 +32,14 @@ server = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = [
-    "agenton*",
-    "agenton_collections*",
-    "dify_agent*",
-]
+include = ["agenton*", "agenton_collections*", "dify_agent*"]
 
 [tool.pyright]
 include = ["src", "examples", "tests"]
 venvPath = "."
 venv = ".venv"
 pythonVersion = "3.12"
-extraPaths = [
-    "src",
-    "examples/agenton",
-    "examples/dify_agent",
-]
+extraPaths = ["src", "examples/agenton", "examples/dify_agent"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -59,12 +48,7 @@ python_files = ["test_*.py", "*_test.py"]
 [tool.ruff]
 line-length = 120
 target-version = "py312"
-include = [
-    "src/**/*.py",
-    "examples/**/*.py",
-    "tests/**/*.py",
-    "docs/**/*.py",
-]
+include = ["src/**/*.py", "examples/**/*.py", "tests/**/*.py", "docs/**/*.py"]
 
 [dependency-groups]
 dev = [

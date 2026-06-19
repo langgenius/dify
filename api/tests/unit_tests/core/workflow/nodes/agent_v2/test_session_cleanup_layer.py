@@ -7,7 +7,7 @@ from agenton.compositor.schemas import LayerSessionSnapshot
 from agenton.layers.base import LifecycleState
 from dify_agent.protocol import CancelRunRequest, RunEvent, RunStatusResponse
 
-from clients.agent_backend import AgentBackendRunRequestBuilder, CleanupLayerSpec, FakeAgentBackendRunClient
+from clients.agent_backend import AgentBackendRunRequestBuilder, FakeAgentBackendRunClient, RuntimeLayerSpec
 from clients.agent_backend.errors import AgentBackendHTTPError
 from core.workflow.nodes.agent_v2.session_cleanup_layer import WorkflowAgentSessionCleanupLayer
 from core.workflow.nodes.agent_v2.session_store import (
@@ -40,7 +40,7 @@ def _layer_snapshot(name: str) -> LayerSessionSnapshot:
 def _stored_session(scope: WorkflowAgentSessionScope, *, index: int = 1) -> StoredWorkflowAgentSession:
     """A typical stored session with prompt + execution_context + history + llm specs.
 
-    The LLM layer is *not* in ``composition_layer_specs`` because the cleanup
+    The LLM layer is *not* in ``runtime_layer_specs`` because the cleanup
     contract excludes credential-bearing plugin layers, but it *is* present in
     the saved snapshot so the layer's filter logic gets exercised.
     """
@@ -55,10 +55,10 @@ def _stored_session(scope: WorkflowAgentSessionScope, *, index: int = 1) -> Stor
             ]
         ),
         backend_run_id=f"agent-run-{index}",
-        composition_layer_specs=[
-            CleanupLayerSpec(name="workflow_node_job_prompt", type="plain.prompt", config={"prefix": "ok"}),
-            CleanupLayerSpec(name="execution_context", type="dify.execution_context", config={"tenant_id": "t"}),
-            CleanupLayerSpec(name="history", type="pydantic_ai.history"),
+        runtime_layer_specs=[
+            RuntimeLayerSpec(name="workflow_node_job_prompt", type="plain.prompt", config={"prefix": "ok"}),
+            RuntimeLayerSpec(name="execution_context", type="dify.execution_context", config={"tenant_id": "t"}),
+            RuntimeLayerSpec(name="history", type="pydantic_ai.history"),
         ],
     )
 
@@ -268,7 +268,7 @@ def test_cleanup_layer_marks_cleaned_locally_when_http_cleanup_disabled():
 
 def test_cleanup_layer_skips_sessions_without_persisted_specs():
     """Backwards-compatible safety net: a row written before A.1 landed has
-    no composition_layer_specs, so cleanup would unavoidably hit the snapshot-
+    no runtime_layer_specs, so cleanup would unavoidably hit the snapshot-
     validation trap. The layer must skip such rows instead of issuing a
     doomed request."""
     scope = _default_scope()
@@ -276,7 +276,7 @@ def test_cleanup_layer_skips_sessions_without_persisted_specs():
         scope=scope,
         session_snapshot=CompositorSessionSnapshot(layers=[_layer_snapshot("history")]),
         backend_run_id="legacy-run",
-        composition_layer_specs=[],
+        runtime_layer_specs=[],
     )
     session_store = FakeSessionStore(stored=[legacy_session])
     agent_backend_client = _WaitableFakeAgentBackendRunClient()
@@ -315,7 +315,7 @@ def test_cleanup_layer_fans_out_to_every_active_session():
     assert {entry[1] for entry in session_store.cleaned} == {"cleanup-run-many"}
 
 
-def test_cleanup_layer_warns_when_http_enabled_but_client_missing(caplog):
+def test_cleanup_layer_warns_when_http_enabled_but_client_missing(caplog: pytest.LogCaptureFixture):
     """The HTTP cleanup branch must defensively skip when no client was wired.
 
     This is the deployment-misconfig path: ``_HTTP_CLEANUP_SUPPORTED`` was
@@ -347,7 +347,7 @@ def test_cleanup_layer_warns_when_http_enabled_but_client_missing(caplog):
     assert any("no agent backend client is wired in" in record.message for record in caplog.records)
 
 
-def test_cleanup_layer_skips_workflow_terminal_when_workflow_run_id_missing(caplog):
+def test_cleanup_layer_skips_workflow_terminal_when_workflow_run_id_missing(caplog: pytest.LogCaptureFixture):
     """``workflow_run_id`` is the keying field; without it the fanout cannot
     target a row, so the layer logs a warning and bails."""
     import logging

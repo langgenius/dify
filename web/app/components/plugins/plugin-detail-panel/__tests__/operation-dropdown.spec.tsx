@@ -20,21 +20,22 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', () => ({
   DropdownMenuTrigger: ({ children, className }: { children: ReactNode, className?: string }) => (
     <button data-testid="dropdown-trigger" className={className}>{children}</button>
   ),
-  DropdownMenuContent: ({ children }: { children: ReactNode }) => (
-    <div data-testid="dropdown-content">{children}</div>
+  DropdownMenuContent: ({ children, popupClassName }: { children: ReactNode, popupClassName?: string }) => (
+    <div data-testid="dropdown-content" className={popupClassName}>{children}</div>
   ),
-  DropdownMenuItem: ({ children, onClick, render, destructive }: { children: ReactNode, onClick?: () => void, render?: ReactElement, destructive?: boolean }) => {
+  DropdownMenuItem: ({ children, className, onClick, render, variant }: { children: ReactNode, className?: string, onClick?: () => void, render?: ReactElement, variant?: string }) => {
     if (render)
-      return cloneElement(render, { onClick, 'data-destructive': destructive } as Record<string, unknown>, children)
-    return <div data-testid="dropdown-item" data-destructive={destructive} onClick={onClick}>{children}</div>
+      return cloneElement(render, { className, onClick, 'data-variant': variant } as Record<string, unknown>, children)
+    return <div data-testid="dropdown-item" className={className} data-variant={variant} onClick={onClick}>{children}</div>
   },
-  DropdownMenuSeparator: () => <hr data-testid="dropdown-separator" />,
+  DropdownMenuSeparator: ({ className }: { className?: string }) => <hr data-testid="dropdown-separator" className={className} />,
 }))
 
 describe('OperationDropdown', () => {
   const mockOnInfo = vi.fn()
   const mockOnCheckVersion = vi.fn()
   const mockOnRemove = vi.fn()
+  const mockOnViewReadme = vi.fn()
   const defaultProps = {
     source: PluginSource.github,
     detailUrl: 'https://github.com/test/repo',
@@ -58,6 +59,15 @@ describe('OperationDropdown', () => {
       render(<OperationDropdown {...defaultProps} />)
 
       expect(screen.getByTestId('dropdown-content')).toBeInTheDocument()
+    })
+
+    it('should render figma-aligned dropdown surface and rows', () => {
+      render(<OperationDropdown {...defaultProps} />)
+
+      expect(screen.getByTestId('dropdown-content')).toHaveClass('w-[192px]', 'py-1')
+      expect(screen.getByText('plugin.detailPanel.operation.viewDetail').closest('a')).toHaveClass('px-2', 'py-1', 'system-md-regular')
+      expect(screen.getByText('plugin.detailPanel.operation.remove').closest('[data-testid="dropdown-item"]')).toHaveClass('px-2', 'py-1', 'system-md-regular')
+      expect(screen.getByTestId('dropdown-separator')).toHaveClass('my-0')
     })
 
     it('should render info option for github source', () => {
@@ -84,10 +94,46 @@ describe('OperationDropdown', () => {
       expect(screen.getByText('plugin.detailPanel.operation.viewDetail')).toBeInTheDocument()
     })
 
+    it('should render view README option when provided', () => {
+      render(<OperationDropdown {...defaultProps} onViewReadme={mockOnViewReadme} />)
+
+      expect(screen.getByText('plugin.detailPanel.operation.viewReadme')).toBeInTheDocument()
+    })
+
+    it('should render view README below view marketplace', () => {
+      render(<OperationDropdown {...defaultProps} onViewReadme={mockOnViewReadme} source={PluginSource.marketplace} />)
+
+      const viewMarketplace = screen.getByText('plugin.detailPanel.operation.viewDetail').closest('a')!
+      const viewReadme = screen.getByText('plugin.detailPanel.operation.viewReadme').closest('[data-testid="dropdown-item"]')!
+
+      expect(viewMarketplace.compareDocumentPosition(viewReadme)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    })
+
+    it('should not render view README option when it is unavailable', () => {
+      render(<OperationDropdown {...defaultProps} />)
+
+      expect(screen.queryByText('plugin.detailPanel.operation.viewReadme')).not.toBeInTheDocument()
+    })
+
     it('should always render remove option', () => {
       render(<OperationDropdown {...defaultProps} />)
 
       expect(screen.getByText('plugin.detailPanel.operation.remove')).toBeInTheDocument()
+    })
+
+    it('should render remove option with normal text color', () => {
+      render(<OperationDropdown {...defaultProps} />)
+
+      expect(screen.getByText('plugin.detailPanel.operation.remove').closest('[data-testid="dropdown-item"]')).not.toHaveAttribute('data-variant', 'destructive')
+    })
+
+    it('should render destructive hover styles for remove option when requested', () => {
+      render(<OperationDropdown {...defaultProps} destructiveRemove />)
+
+      expect(screen.getByText('plugin.detailPanel.operation.remove').closest('[data-testid="dropdown-item"]')).toHaveClass(
+        'data-highlighted:bg-state-destructive-hover',
+        'data-highlighted:text-text-destructive',
+      )
     })
 
     it('should not render info option for marketplace source', () => {
@@ -144,6 +190,14 @@ describe('OperationDropdown', () => {
       fireEvent.click(screen.getByText('plugin.detailPanel.operation.remove'))
 
       expect(mockOnRemove).toHaveBeenCalledTimes(1)
+    })
+
+    it('should call onViewReadme when view README option is clicked', () => {
+      render(<OperationDropdown {...defaultProps} onViewReadme={mockOnViewReadme} />)
+
+      fireEvent.click(screen.getByText('plugin.detailPanel.operation.viewReadme'))
+
+      expect(mockOnViewReadme).toHaveBeenCalledTimes(1)
     })
 
     it('should have correct href for view detail link', () => {
