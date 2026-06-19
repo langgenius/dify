@@ -1294,7 +1294,9 @@ class TenantService:
         tenant_was_created.send(tenant)
 
     @staticmethod
-    def create_tenant_member(tenant: Tenant, account: Account, session: scoped_session, role: str = "normal") -> TenantAccountJoin:
+    def create_tenant_member(
+        tenant: Tenant, account: Account, session: scoped_session, role: str = "normal"
+    ) -> TenantAccountJoin:
         """Create tenant member"""
         if role == TenantAccountRole.OWNER:
             if TenantService.has_roles(tenant, [TenantAccountRole.OWNER]):

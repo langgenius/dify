@@ -794,7 +794,9 @@ class TestTenantService:
         mock_db_dependencies["db"].session.add = MagicMock()
 
         # Execute test
-        result = TenantService.create_tenant_member(mock_tenant, mock_account,mock_db_dependencies["db"].session, "normal")
+        result = TenantService.create_tenant_member(
+            mock_tenant, mock_account, mock_db_dependencies["db"].session, "normal"
+        )
 
         # Verify member was created with correct parameters
         assert result is not None

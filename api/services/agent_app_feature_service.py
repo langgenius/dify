@@ -10,9 +10,10 @@ but deliberately never touching model, prompt, tools, datasets or agent_mode
 """
 
 from __future__ import annotations
-from sqlalchemy.orm import scoped_session
 
 from typing import Any, cast
+
+from sqlalchemy.orm import scoped_session
 
 from core.app.app_config.common.sensitive_word_avoidance.manager import SensitiveWordAvoidanceConfigManager
 from core.app.app_config.features.opening_statement.manager import OpeningStatementConfigManager
@@ -67,7 +68,9 @@ class AgentAppFeatureConfigService:
         return cast(AppModelConfigDict, filtered)
 
     @classmethod
-    def update_features(cls, *, app_model: App, account: Account, config: dict[str, Any], session: scoped_session) -> AppModelConfig:
+    def update_features(
+        cls, *, app_model: App, account: Account, config: dict[str, Any], session: scoped_session
+    ) -> AppModelConfig:
         """Persist the presentation features as a new app_model_config version.
 
         Returns the new ``AppModelConfig`` row (now referenced by the app); the
