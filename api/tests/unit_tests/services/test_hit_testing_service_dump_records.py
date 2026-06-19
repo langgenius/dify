@@ -111,7 +111,7 @@ def _create_segment(db_session: Session, *, document: DatasetDocument | None = N
     return segment
 
 
-class TestHitTestingServiceDumpRecords:
+class TestHitTestingService:
     def test_dump_dataset_document_returns_frontend_required_fields(self, db_session_with_containers: Session) -> None:
         document = _create_dataset_document(db_session_with_containers, doc_metadata={"source": "manual"})
 
