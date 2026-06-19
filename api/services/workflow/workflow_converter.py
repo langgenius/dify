@@ -106,6 +106,7 @@ class WorkflowConverter:
         new_app.is_demo = False
         new_app.is_public = app_model.is_public
         new_app.created_by = account.id
+        new_app.maintainer = account.id
         new_app.updated_by = account.id
         session.add(new_app)
         session.flush()

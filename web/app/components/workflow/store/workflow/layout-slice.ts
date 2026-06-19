@@ -1,17 +1,5 @@
 import type { StateCreator } from 'zustand'
 
-const getStoredMaximizeCanvas = () => {
-  if (typeof window === 'undefined')
-    return false
-
-  try {
-    return window.localStorage.getItem('workflow-canvas-maximize') === 'true'
-  }
-  catch {
-    return false
-  }
-}
-
 export type LayoutSliceShape = {
   workflowCanvasWidth?: number
   workflowCanvasHeight?: number
@@ -32,8 +20,6 @@ export type LayoutSliceShape = {
   setBottomPanelHeight: (height: number) => void
   variableInspectPanelHeight: number // min-height = 120px; default-height = 320px;
   setVariableInspectPanelHeight: (height: number) => void
-  maximizeCanvas: boolean
-  setMaximizeCanvas: (maximize: boolean) => void
 }
 
 export const createLayoutSlice: StateCreator<LayoutSliceShape> = set => ({
@@ -64,7 +50,4 @@ export const createLayoutSlice: StateCreator<LayoutSliceShape> = set => ({
   variableInspectPanelHeight: 320,
   setVariableInspectPanelHeight: height => set(state =>
     state.variableInspectPanelHeight === height ? state : ({ variableInspectPanelHeight: height })),
-  maximizeCanvas: getStoredMaximizeCanvas(),
-  setMaximizeCanvas: maximize => set(state =>
-    state.maximizeCanvas === maximize ? state : ({ maximizeCanvas: maximize })),
 })

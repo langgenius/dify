@@ -1,16 +1,11 @@
-from unittest.mock import patch
+from inspect import unwrap
+from unittest.mock import ANY, patch
 
 from flask import Flask
 
 import controllers.console.explore.recommended_app as module
 from models import Account
 from models.model import AppMode, IconType
-
-
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 def make_account(interface_language: str | None) -> Account:
@@ -37,7 +32,7 @@ class TestRecommendedAppListApi:
         ):
             result = method(api, make_account("fr-FR"))
 
-        service_mock.assert_called_once_with("en-US")
+        service_mock.assert_called_once_with(ANY, "en-US")
         assert result == result_data
 
     def test_get_fallback_to_user_language(self, app: Flask):
@@ -56,7 +51,7 @@ class TestRecommendedAppListApi:
         ):
             result = method(api, make_account("fr-FR"))
 
-        service_mock.assert_called_once_with("fr-FR")
+        service_mock.assert_called_once_with(ANY, "fr-FR")
         assert result == result_data
 
     def test_get_fallback_to_default_language(self, app: Flask):
@@ -75,7 +70,47 @@ class TestRecommendedAppListApi:
         ):
             result = method(api, make_account(None))
 
-        service_mock.assert_called_once_with(module.languages[0])
+        service_mock.assert_called_once_with(ANY, module.languages[0])
+        assert result == result_data
+
+
+class TestLearnDifyAppListApi:
+    def test_get_with_language_param(self, app: Flask):
+        api = module.LearnDifyAppListApi()
+        method = unwrap(api.get)
+
+        result_data = {"recommended_apps": []}
+
+        with (
+            app.test_request_context("/", query_string={"language": "en-US"}),
+            patch.object(
+                module.RecommendedAppService,
+                "get_learn_dify_apps",
+                return_value=result_data,
+            ) as service_mock,
+        ):
+            result = method(api, make_account("fr-FR"))
+
+        service_mock.assert_called_once_with(ANY, "en-US")
+        assert result == result_data
+
+    def test_get_fallback_to_user_language(self, app: Flask):
+        api = module.LearnDifyAppListApi()
+        method = unwrap(api.get)
+
+        result_data = {"recommended_apps": []}
+
+        with (
+            app.test_request_context("/", query_string={"language": "invalid"}),
+            patch.object(
+                module.RecommendedAppService,
+                "get_learn_dify_apps",
+                return_value=result_data,
+            ) as service_mock,
+        ):
+            result = method(api, make_account("fr-FR"))
+
+        service_mock.assert_called_once_with(ANY, "fr-FR")
         assert result == result_data
 
 
@@ -96,7 +131,7 @@ class TestRecommendedAppApi:
         ):
             result = method(api, "11111111-1111-1111-1111-111111111111")
 
-        service_mock.assert_called_once_with("11111111-1111-1111-1111-111111111111")
+        service_mock.assert_called_once_with(ANY, "11111111-1111-1111-1111-111111111111")
         assert result == result_data
 
 
@@ -144,3 +179,29 @@ class TestRecommendedAppResponseModels:
         assert response["recommended_apps"][0]["app_id"] == "app-1"
         assert response["recommended_apps"][0]["categories"] == ["cat", "other"]
         assert response["categories"] == ["cat"]
+
+    def test_learn_dify_app_list_response_serialization(self):
+        response = module.LearnDifyAppListResponse.model_validate(
+            {
+                "recommended_apps": [
+                    {
+                        "app": {
+                            "id": "app-1",
+                            "name": "App",
+                            "mode": "chat",
+                            "icon": "icon.png",
+                            "icon_type": "emoji",
+                            "icon_background": "#fff",
+                        },
+                        "app_id": "app-1",
+                        "description": "desc",
+                        "categories": ["Workflow"],
+                        "position": 1,
+                        "is_listed": True,
+                    }
+                ],
+            }
+        ).model_dump(mode="json")
+
+        assert response["recommended_apps"][0]["app_id"] == "app-1"
+        assert response["recommended_apps"][0]["categories"] == ["Workflow"]

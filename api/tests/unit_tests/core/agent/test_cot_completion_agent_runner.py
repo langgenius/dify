@@ -17,7 +17,7 @@ from graphon.model_runtime.entities.message_entities import (
 
 
 @pytest.fixture
-def runner(mocker, dummy_tool_factory):
+def runner(mocker: MockerFixture, dummy_tool_factory):
     runner = CotCompletionAgentRunner.__new__(CotCompletionAgentRunner)
 
     runner._instruction = "Test instruction"

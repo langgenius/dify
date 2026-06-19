@@ -19,7 +19,7 @@ export default class AuthList extends DifyCommand {
 
   async run(argv: string[]) {
     const { flags } = this.parse(AuthList, argv)
-    const reg = Registry.load()
+    const reg = await Registry.load()
     const result = runAuthList(reg)
     return table({ format: flags.output, data: result })
   }

@@ -71,7 +71,7 @@ export function Infotip({
         aria-label={ariaLabel}
         onClick={handleClick}
         className={cn(
-          'inline-flex size-4 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
+          'inline-flex size-4 shrink-0 cursor-pointer items-center justify-center rounded-sm border-0 bg-transparent p-0 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
           className,
         )}
       >

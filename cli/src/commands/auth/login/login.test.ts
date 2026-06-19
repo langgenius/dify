@@ -49,7 +49,7 @@ describe('runLogin', () => {
     const active = reg.resolveActive()
     expect(active?.ctx.account.email).toBe('tester@dify.ai')
     expect(active?.ctx.workspace?.id).toBe('550e8400-e29b-41d4-a716-446655440000')
-    expect(store.read(active!.host, 'tester@dify.ai')).toBe('dfoa_test')
+    expect(await store.read(active!.host, 'tester@dify.ai')).toBe('dfoa_test')
 
     const hostsRaw = await readFile(join(configDir(), 'hosts.yml'), 'utf8')
     expect(hostsRaw).toContain('current_host:')
@@ -82,7 +82,7 @@ describe('runLogin', () => {
     expect(active?.ctx.external_subject?.email).toBe('sso@dify.ai')
     expect(active?.ctx.external_subject?.issuer).toBe('https://issuer.example')
     expect(active?.ctx.account.email).toBe('')
-    expect(store.read(active!.host, 'sso@dify.ai')).toBe('dfoe_test')
+    expect(await store.read(active!.host, 'sso@dify.ai')).toBe('dfoe_test')
     expect(io.outBuf()).toContain('external SSO')
     expect(io.outBuf()).toContain('sso@dify.ai')
   })

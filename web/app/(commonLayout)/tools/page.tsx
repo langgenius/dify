@@ -1,14 +1,17 @@
-'use client'
-import type { FC } from 'react'
-import * as React from 'react'
-import { useTranslation } from 'react-i18next'
-import ToolProviderList from '@/app/components/tools/provider-list'
-import useDocumentTitle from '@/hooks/use-document-title'
+import type { LegacyToolsSearchParams } from '@/app/components/integrations/routes'
+import { getIntegrationRedirectPathByLegacyToolsSearchParams } from '@/app/components/integrations/routes'
+import { redirect } from '@/next/navigation'
 
-const ToolsList: FC = () => {
-  const { t } = useTranslation()
-  useDocumentTitle(t('menus.tools', { ns: 'common' }))
-
-  return <ToolProviderList />
+type ToolsPageProps = {
+  searchParams?: Promise<LegacyToolsSearchParams>
 }
-export default React.memo(ToolsList)
+
+const ToolsPage = async ({
+  searchParams,
+}: ToolsPageProps) => {
+  const resolvedSearchParams = await searchParams
+
+  redirect(getIntegrationRedirectPathByLegacyToolsSearchParams(resolvedSearchParams))
+}
+
+export default ToolsPage

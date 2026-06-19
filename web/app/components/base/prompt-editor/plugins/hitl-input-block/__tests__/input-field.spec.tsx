@@ -11,6 +11,7 @@ type VarReferencePickerProps = {
 }
 
 let lastVarReferencePickerProps: VarReferencePickerProps | undefined
+let fileUploadSettingMaxLength: number | undefined = 4
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
   default: (props: VarReferencePickerProps) => {
@@ -66,7 +67,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/file-upload-setting', 
         allowed_file_extensions: ['.pdf'],
         allowed_file_types: [SupportUploadFileTypes.document],
         allowed_file_upload_methods: [TransferMethod.local_file],
-        max_length: 4,
+        max_length: fileUploadSettingMaxLength,
       })}
     >
       file-upload-setting
@@ -89,6 +90,7 @@ describe('InputField', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     lastVarReferencePickerProps = undefined
+    fileUploadSettingMaxLength = 4
   })
 
   it('should keep the header and actions visible while the field content scrolls internally', () => {
@@ -625,6 +627,32 @@ describe('InputField', () => {
       allowed_file_upload_methods: ['local_file'],
       number_limits: 4,
     })
+  })
+
+  it('should normalize empty file-list upload limit on save', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    fileUploadSettingMaxLength = Number.NaN
+
+    render(
+      <InputField
+        nodeId="node-14-normalize"
+        isEdit={false}
+        payload={createPayload()}
+        onChange={onChange}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'select-file-list' }))
+    await user.click(screen.getByRole('button', { name: 'file-upload-setting' }))
+    await user.click(screen.getByRole('button', { name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i }))
+
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange.mock.calls[0]![0]).toEqual(expect.objectContaining({
+      type: InputVarType.multiFiles,
+      number_limits: 1,
+    }))
   })
 
   it('should clear paragraph default state when switching to file-list', async () => {

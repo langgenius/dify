@@ -1,17 +1,17 @@
 import type { AccessControlAccount, AccessControlGroup } from '@/models/access-control'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import useAccessControlStore from '@/context/access-control-store'
 import { AccessMode } from '@/models/access-control'
-import SpecificGroupsOrMembers from '../specific-groups-or-members'
+import { SpecificGroupsOrMembers } from '../specific-groups-or-members'
+import { createAccessControlDraftHarness } from './access-control-test-utils'
 
-const mockUseAppWhiteListSubjects = vi.fn()
+const mockUseSearchForWhiteListCandidates = vi.fn()
 
 vi.mock('@/service/access-control', () => ({
-  useAppWhiteListSubjects: (...args: unknown[]) => mockUseAppWhiteListSubjects(...args),
+  useSearchForWhiteListCandidates: (...args: unknown[]) => mockUseSearchForWhiteListCandidates(...args),
 }))
 
-vi.mock('../add-member-or-group-pop', () => ({
-  default: () => <div data-testid="add-member-or-group-dialog" />,
+vi.mock('@/service/access-control/use-app-access-control', () => ({
+  useSearchForWhiteListCandidates: (...args: unknown[]) => mockUseSearchForWhiteListCandidates(...args),
 }))
 
 const createGroup = (overrides: Partial<AccessControlGroup> = {}): AccessControlGroup => ({
@@ -36,50 +36,48 @@ describe('SpecificGroupsOrMembers', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    useAccessControlStore.setState({
-      appId: '',
-      specificGroups: [],
-      specificMembers: [],
-      currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS,
-      selectedGroupsForBreadcrumb: [],
-    })
-    mockUseAppWhiteListSubjects.mockReturnValue({
-      isPending: false,
-      data: {
-        groups: [baseGroup],
-        members: [baseMember],
-      },
+    mockUseSearchForWhiteListCandidates.mockReturnValue({
+      isLoading: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+      data: { pages: [] },
     })
   })
 
   it('should render the collapsed row when not in specific mode', () => {
-    useAccessControlStore.setState({
-      currentMenu: AccessMode.ORGANIZATION,
-    })
+    const harness = createAccessControlDraftHarness(
+      <SpecificGroupsOrMembers />,
+      { currentMenu: AccessMode.ORGANIZATION },
+    )
 
-    render(<SpecificGroupsOrMembers />)
+    render(harness.element)
 
     expect(screen.getByText('app.accessControlDialog.accessItems.specific')).toBeInTheDocument()
-    expect(screen.queryByTestId('add-member-or-group-dialog')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.operation.add' })).not.toBeInTheDocument()
   })
 
-  it('should show loading while whitelist subjects are pending', async () => {
-    mockUseAppWhiteListSubjects.mockReturnValue({
-      isPending: true,
-      data: undefined,
-    })
+  it('should show loading when the selected subjects are pending', async () => {
+    const harness = createAccessControlDraftHarness(<SpecificGroupsOrMembers loading />)
+    render(harness.element)
 
-    const { container } = render(<SpecificGroupsOrMembers />)
+    expect(screen.getByRole('combobox', { name: 'common.operation.add' })).toBeDisabled()
 
     await waitFor(() => {
-      expect(container.querySelector('.spin-animation')).toBeInTheDocument()
+      expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
     })
   })
 
   it('should render fetched groups and members and support removal', async () => {
-    useAccessControlStore.setState({ appId: 'app-1' })
+    const harness = createAccessControlDraftHarness(
+      <SpecificGroupsOrMembers />,
+      {
+        appId: 'app-1',
+        specificGroups: [baseGroup],
+        specificMembers: [baseMember],
+      },
+    )
 
-    render(<SpecificGroupsOrMembers />)
+    render(harness.element)
 
     await waitFor(() => {
       expect(screen.getByText(baseGroup.name)).toBeInTheDocument()
@@ -91,9 +89,9 @@ describe('SpecificGroupsOrMembers', () => {
     const memberRemove = removeButtons[1]!
 
     fireEvent.click(groupRemove)
-    expect(useAccessControlStore.getState().specificGroups).toEqual([])
+    expect(harness.getSnapshot().specificGroups).toEqual([])
 
     fireEvent.click(memberRemove)
-    expect(useAccessControlStore.getState().specificMembers).toEqual([])
+    expect(harness.getSnapshot().specificMembers).toEqual([])
   })
 })

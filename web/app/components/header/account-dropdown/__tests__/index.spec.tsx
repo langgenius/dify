@@ -5,6 +5,7 @@ import type { ProviderContextState } from '@/context/provider-context'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -37,6 +38,17 @@ vi.mock('@/app/components/header/github-star', () => ({
 
 vi.mock('@/app/components/base/theme-switcher', () => ({
   default: () => <button type="button" data-testid="theme-switcher-button">Theme switcher</button>,
+}))
+
+const { mockSetTheme } = vi.hoisted(() => ({
+  mockSetTheme: vi.fn(),
+}))
+
+vi.mock('next-themes', () => ({
+  useTheme: () => ({
+    theme: 'system',
+    setTheme: mockSetTheme,
+  }),
 }))
 
 vi.mock('@/context/app-context', () => ({
@@ -135,6 +147,7 @@ const baseAppContextValue: AppContextValue = {
   useSelector: vi.fn(),
   isLoadingCurrentWorkspace: false,
   isValidatingCurrentWorkspace: false,
+  workspacePermissionKeys: [],
 }
 
 describe('AccountDropdown', () => {
@@ -228,6 +241,29 @@ describe('AccountDropdown', () => {
       expect(mockSetShowAccountSettingModal).toHaveBeenCalled()
     })
 
+    it('should open preferences from the account dropdown', () => {
+      // Act
+      renderWithRouter(<AppSelector variant="mainNav" />)
+      fireEvent.click(screen.getByRole('button'))
+      fireEvent.click(screen.getByText('common.settings.preferences'))
+
+      // Assert
+      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.LANGUAGE })
+    })
+
+    it('should show Appearance after Preferences in the main nav account dropdown', () => {
+      // Act
+      renderWithRouter(<AppSelector variant="mainNav" />)
+      fireEvent.click(screen.getByRole('button'))
+
+      const preferences = screen.getByText('common.settings.preferences')
+      const appearance = screen.getByText('common.account.appearanceLabel')
+
+      // Assert
+      expect(preferences.compareDocumentPosition(appearance)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+      expect(screen.getByRole('menuitem', { name: 'common.account.appearanceLabel' })).toBeInTheDocument()
+    })
+
     it('should show Compliance in Cloud Edition for workspace owner', () => {
       // Arrange
       mockConfig.IS_CLOUD_EDITION = true
@@ -279,6 +315,15 @@ describe('AccountDropdown', () => {
         expect(mockLogout).toHaveBeenCalled()
         expect(mockPush).toHaveBeenCalledWith('/signin')
       })
+    })
+
+    it('should use the shutdown icon for main nav logout', () => {
+      // Act
+      renderWithRouter(<AppSelector variant="mainNav" />)
+      fireEvent.click(screen.getByRole('button'))
+
+      // Assert
+      expect(screen.getByRole('menuitem', { name: 'common.userProfile.logout' }).querySelector('.i-ri-shut-down-line')).toBeInTheDocument()
     })
 
     it('should show About section when about button is clicked and can close it', () => {

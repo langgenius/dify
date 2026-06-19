@@ -2,6 +2,7 @@
 import type { UseEmblaCarouselType } from 'embla-carousel-react'
 import { cn } from '@langgenius/dify-ui/cn'
 import Autoplay from 'embla-carousel-autoplay'
+import Fade from 'embla-carousel-fade'
 import useEmblaCarousel from 'embla-carousel-react'
 import * as React from 'react'
 
@@ -215,6 +216,7 @@ CarouselDot.displayName = 'CarouselDot'
 
 const CarouselPlugins = {
   Autoplay,
+  Fade,
 }
 
 Carousel.Content = CarouselContent

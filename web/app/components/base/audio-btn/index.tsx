@@ -4,6 +4,7 @@ import { t } from 'i18next'
 import { useState } from 'react'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import Loading from '@/app/components/base/loading'
+import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { useParams, usePathname } from '@/next/navigation'
 import s from './style.module.css'
 
@@ -56,7 +57,7 @@ const AudioBtn = ({
     isPublic = true
   }
   else if (params.appId) {
-    if (pathname.search('explore/installed') > -1)
+    if (isInstalledAppPath(pathname))
       url = `/installed-apps/${params.appId}/text-to-audio`
     else
       url = `/apps/${params.appId}/text-to-audio`

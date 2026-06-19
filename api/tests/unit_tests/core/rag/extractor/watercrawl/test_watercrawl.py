@@ -168,6 +168,13 @@ class TestWaterCrawlAPIClient:
         assert client.process_response(_response(200, {"ok": True})) == {"ok": True}
         assert client.process_response(_response(200, None)) == {}
 
+    def test_process_response_accepts_json_content_type_parameters(self):
+        client = WaterCrawlAPIClient(api_key="k")
+
+        response = _response(200, {"ok": True}, content_type="application/json; charset=utf-8")
+
+        assert client.process_response(response) == {"ok": True}
+
     def test_process_response_octet_stream_returns_bytes(self):
         client = WaterCrawlAPIClient(api_key="k")
         assert (
@@ -242,11 +249,18 @@ class TestWaterCrawlAPIClient:
         client = WaterCrawlAPIClient(api_key="k")
 
         response = _response(200, {"markdown": "body"})
-        monkeypatch.setattr(client_module.httpx, "get", lambda *args, **kwargs: response)
+        captured = {}
+
+        def fake_get(*args, **kwargs):
+            captured.update(kwargs)
+            return response
+
+        monkeypatch.setattr(client_module.httpx, "get", fake_get)
 
         result = client.download_result({"result": "https://example.com/result.json"})
 
         assert result["result"] == {"markdown": "body"}
+        assert captured["timeout"] is not None
         response.close.assert_called_once()
 
 

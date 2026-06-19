@@ -30,9 +30,36 @@ vi.mock('@/next/link', () => {
   }
 })
 
+const mockReplace = vi.fn()
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    replace: mockReplace,
+  }),
+}))
+
+let mockCurrentUserId = 'user-1'
+let mockWorkspacePermissionKeys = ['dataset.create_and_management']
+let mockIsLoadingWorkspacePermissionKeys = false
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: {
+    userProfile: { id: string }
+    workspacePermissionKeys: string[]
+    isLoadingWorkspacePermissionKeys: boolean
+  }) => unknown) => {
+    return selector({
+      userProfile: { id: mockCurrentUserId },
+      workspacePermissionKeys: mockWorkspacePermissionKeys,
+      isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+    })
+  },
+}))
+
 // Mock modal context
 const mockSetShowAccountSettingModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
+  useModalContext: () => ({
+    setShowAccountSettingModal: mockSetShowAccountSettingModal,
+  }),
   useModalContextSelector: (selector: (state: { setShowAccountSettingModal: typeof mockSetShowAccountSettingModal }) => unknown) => {
     const state = {
       setShowAccountSettingModal: mockSetShowAccountSettingModal,
@@ -162,6 +189,7 @@ vi.mock('../step-two', () => ({
         <span data-testid="step-two-is-api-key-set">{String(props.isAPIKeySet)}</span>
         <span data-testid="step-two-data-source-type">{props.dataSourceType}</span>
         <span data-testid="step-two-files-count">{props.files?.length || 0}</span>
+        <span data-testid="step-two-can-create-document">{String(props.canCreateDocument)}</span>
         <button data-testid="step-two-prev" onClick={() => props.onStepChange!(-1)}>Prev Step</button>
         <button data-testid="step-two-next" onClick={() => props.onStepChange!(1)}>Next Step</button>
         <button data-testid="step-two-setting" onClick={props.onSetting}>Open Settings</button>
@@ -271,6 +299,7 @@ const createMockDataset = (overrides?: Partial<DataSet>): DataSet => ({
   runtime_mode: 'general' as const,
   enable_api: false,
   is_multimodal: false,
+  permission_keys: ['dataset.acl.use', 'dataset.acl.edit'],
   ...overrides,
 })
 
@@ -290,6 +319,9 @@ describe('DatasetUpdateForm', () => {
     mockDataSourceList = { result: [createMockDataSourceAuth()] }
     mockIsLoadingDataSourceList = false
     mockFetchingError = false
+    mockCurrentUserId = 'user-1'
+    mockWorkspacePermissionKeys = ['dataset.create_and_management']
+    mockIsLoadingWorkspacePermissionKeys = false
     // Reset captured props
     stepOneProps = {} as StepOneProps
     stepTwoProps = {} as StepTwoProps
@@ -745,6 +777,26 @@ describe('DatasetUpdateForm', () => {
       fireEvent.click(screen.getByTestId('step-one-next'))
 
       expect(screen.getByTestId('step-two'))!.toBeInTheDocument()
+    })
+
+    it('should redirect when existing dataset does not grant add document permission', async () => {
+      mockDatasetDetail = createMockDataset({ permission_keys: ['dataset.acl.edit'] })
+
+      render(<DatasetUpdateForm datasetId="dataset-123" />)
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/datasets/dataset-123/documents')
+      })
+      expect(screen.queryByTestId('step-one')).not.toBeInTheDocument()
+    })
+
+    it('should pass add document permission to StepTwo for existing dataset', () => {
+      mockDatasetDetail = createMockDataset()
+
+      render(<DatasetUpdateForm datasetId="dataset-123" />)
+      fireEvent.click(screen.getByTestId('step-one-next'))
+
+      expect(screen.getByTestId('step-two-can-create-document')).toHaveTextContent('true')
     })
 
     it('should pass indexingType from datasetDetail to StepTwo', () => {

@@ -108,13 +108,13 @@ describe('FileBasedStore.withLock concurrency', () => {
     const s1 = new YamlStore(path)
     const s2 = new YamlStore(path)
 
-    s1.lock()
+    await s1.lock()
 
-    expect(() => s2.get({ key: 'key', default: '' })).toThrow(ConcurrentAccessError)
+    await expect(s2.get({ key: 'key', default: '' })).rejects.toThrow(ConcurrentAccessError)
 
-    s1.unlock()
+    await s1.unlock()
 
-    expect(s2.get({ key: 'key', default: '' })).toBe('value')
+    expect(await s2.get({ key: 'key', default: '' })).toBe('value')
   })
 
   it('second set throws while first holds the lock, succeeds after release', async () => {
@@ -124,14 +124,14 @@ describe('FileBasedStore.withLock concurrency', () => {
     const s1 = new YamlStore(path)
     const s2 = new YamlStore(path)
 
-    s1.lock()
+    await s1.lock()
 
-    expect(() => s2.set({ key: 'key', default: '' }, 'blocked')).toThrow(ConcurrentAccessError)
+    await expect(s2.set({ key: 'key', default: '' }, 'blocked')).rejects.toThrow(ConcurrentAccessError)
 
-    s1.unlock()
+    await s1.unlock()
 
-    s2.set({ key: 'key', default: '' }, 'written')
-    expect(s2.get({ key: 'key', default: '' })).toBe('written')
+    await s2.set({ key: 'key', default: '' }, 'written')
+    expect(await s2.get({ key: 'key', default: '' })).toBe('written')
   })
 })
 
@@ -199,9 +199,9 @@ describe('YamlStore persistence', () => {
     await writeFile(path, 'existing: value\n')
 
     const store = new YamlStore(path)
-    store.load()
+    await store.load()
     store.doSet({ key: 'token', default: '' }, 'abc-123')
-    store.flush()
+    await store.flush()
 
     const raw = readFileSync(path, 'utf8')
     const store2 = new YamlStore(path)
@@ -210,11 +210,11 @@ describe('YamlStore persistence', () => {
     expect(store2.doGet({ key: 'existing', default: '' })).toBe('value')
   })
 
-  it('flush writes file when dirty (content changed from undefined)', () => {
+  it('flush writes file when dirty (content changed from undefined)', async () => {
     const path = join(dir, 'config.yml')
     const store = new YamlStore(path)
     store.setRawContent('key: value\n')
-    store.flush()
+    await store.flush()
     expect(existsSync(path)).toBe(true)
     expect(readFileSync(path, 'utf8')).toBe('key: value\n')
   })
@@ -223,10 +223,10 @@ describe('YamlStore persistence', () => {
     const path = join(dir, 'config.yml')
     await writeFile(path, 'key: value\n')
     const store = new YamlStore(path)
-    store.load()
+    await store.load()
     const mtime = statSync(path).mtimeMs
     store.setRawContent('key: value\n')
-    store.flush()
+    await store.flush()
     expect(statSync(path).mtimeMs).toBe(mtime)
   })
 })

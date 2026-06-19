@@ -521,7 +521,9 @@ def test_update_run_error(trace_instance):
         trace_instance.update_run(update_data)
 
 
-def test_workflow_trace_usage_extraction_error(trace_instance, monkeypatch: pytest.MonkeyPatch, caplog):
+def test_workflow_trace_usage_extraction_error(
+    trace_instance, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+):
     workflow_data = MagicMock()
     workflow_data.created_at = _dt()
     workflow_data.finished_at = _dt() + timedelta(seconds=1)

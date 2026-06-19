@@ -26,7 +26,6 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
-import { useAppContext } from '@/context/app-context'
 import { useRouter } from '@/next/navigation'
 import { generateWorkflow } from '@/service/debug'
 import { fetchWorkflowDraft } from '@/service/workflow'
@@ -111,7 +110,6 @@ const RecoveryDialog = ({ open, onOpenChange, title, description, cancelLabel, c
 const WorkflowGeneratorModal: React.FC = () => {
   const { t } = useTranslation('workflow')
   const router = useRouter()
-  const { isCurrentWorkspaceEditor } = useAppContext()
 
   const isOpen = useWorkflowGeneratorStore(s => s.isOpen)
   const mode = useWorkflowGeneratorStore(s => s.mode)
@@ -356,7 +354,7 @@ const WorkflowGeneratorModal: React.FC = () => {
       return
     setApplyingTrue()
     try {
-      const { appId, appMode } = await applyToNewApp({
+      const { appId, appMode, permissionKeys } = await applyToNewApp({
         mode,
         graph: current.graph as GeneratedGraph,
         instruction,
@@ -365,7 +363,7 @@ const WorkflowGeneratorModal: React.FC = () => {
       })
       toast.success(t('workflowGenerator.applied'))
       closeGenerator()
-      router.push(getRedirectionPath(isCurrentWorkspaceEditor, { id: appId, mode: appMode }))
+      router.push(getRedirectionPath({ id: appId, mode: appMode, permission_keys: permissionKeys }))
     }
     catch (e: unknown) {
       if (e instanceof WorkflowApplyOrphanError) {
@@ -382,7 +380,7 @@ const WorkflowGeneratorModal: React.FC = () => {
     finally {
       setApplyingFalse()
     }
-  }, [current, instruction, mode, router, isCurrentWorkspaceEditor, closeGenerator, t, isApplying, setApplyingTrue, setApplyingFalse])
+  }, [current, instruction, mode, router, closeGenerator, t, isApplying, setApplyingTrue, setApplyingFalse])
 
   const handleApplyToCurrentConfirmed = useCallback(async () => {
     if (!current?.graph || !currentAppId || isApplying)

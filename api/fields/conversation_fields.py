@@ -179,15 +179,18 @@ class StatusCount(ResponseModel):
 
 class ModelConfig(ResponseModel):
     opening_statement: str | None = None
-    suggested_questions: JSONValue | None = None
-    model: JSONValue | None = None
-    user_input_form: JSONValue | None = None
+    suggested_questions: JSONValue | None = Field(default=None)
+    model: JSONValue | None = Field(default=None)
+    user_input_form: JSONValue | None = Field(default=None)
     pre_prompt: str | None = None
-    agent_mode: JSONValue | None = None
+    agent_mode: JSONValue | None = Field(default=None)
 
 
 class SimpleModelConfig(ResponseModel):
-    model: JSONValue | None = Field(default=None, validation_alias="model_dict")
+    model: JSONValue | None = Field(
+        default=None,
+        validation_alias="model_dict",
+    )
     pre_prompt: str | None = None
 
 
