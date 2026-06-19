@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
 import { AppModeEnum } from '@/types/app'
 import Apps from '../index'
 
@@ -52,14 +52,15 @@ vi.mock('@/app/components/app/type-selector', () => ({
 }))
 vi.mock('../../app-card', () => ({
   default: ({ app, canCreate, onCreate }: { app: { app: { name: string } }, canCreate: boolean, onCreate: () => void }) => (
-    <div
+    <button
+      type="button"
       data-testid="app-card"
       data-name={app.app.name}
       data-can-create={canCreate ? 'true' : 'false'}
       onClick={onCreate}
     >
       {app.app.name}
-    </div>
+    </button>
   ),
 }))
 vi.mock('@/app/components/explore/create-app-modal', () => ({

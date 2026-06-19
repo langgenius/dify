@@ -7,13 +7,12 @@ import {
   RiGroupLine,
 } from '@remixicon/react'
 import { useUnmountedRef } from 'ahooks'
-import { useSetLocalStorage } from 'foxact/use-local-storage'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiAggregate, TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import UsageInfo from '@/app/components/billing/usage-info'
-import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
+import { useSetEducationVerifying } from '@/app/education-apply/storage'
 import VerifyStateModal from '@/app/education-apply/verify-state-modal'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
@@ -73,7 +72,7 @@ const PlanComp: FC<Props> = ({
   const canManageBilling = hasPermission(workspacePermissionKeys, BillingPermission.Manage)
   const { mutateAsync, isPending } = useEducationVerify()
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
-  const setEducationVerifying = useSetLocalStorage<string>(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, { raw: true })
+  const setEducationVerifying = useSetEducationVerifying()
   const unmountedRef = useUnmountedRef()
   const handleVerify = () => {
     if (isPending)
