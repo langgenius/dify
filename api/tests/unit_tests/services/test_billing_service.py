@@ -213,7 +213,9 @@ class TestBillingServiceSendRequest:
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
     )
-    def test_delete_request_non_200_with_invalid_json(self, mock_httpx_request, mock_billing_config, status_code, caplog):
+    def test_delete_request_non_200_with_invalid_json(
+        self, mock_httpx_request, mock_billing_config, status_code, caplog
+    ):
         """Test DELETE request with non-200 status code raises ValueError before JSON parsing.
 
         DELETE now checks status code before calling response.json(), so ValueError is raised

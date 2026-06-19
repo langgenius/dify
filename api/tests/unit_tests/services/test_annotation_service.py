@@ -7,7 +7,6 @@ from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
-import logging
 import pandas as pd
 import pytest
 from werkzeug.datastructures import FileStorage

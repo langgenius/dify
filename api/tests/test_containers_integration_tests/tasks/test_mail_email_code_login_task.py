@@ -546,6 +546,7 @@ class TestSendEmailCodeLoginMailTask:
         self, db_session_with_containers: Session, mock_external_service_dependencies, caplog
     ):
         import logging
+
         caplog.set_level(logging.ERROR)
         """
         Test comprehensive error handling for email code login mail task.

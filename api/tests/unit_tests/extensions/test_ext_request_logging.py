@@ -56,8 +56,6 @@ def mock_response_receiver(monkeypatch: pytest.MonkeyPatch) -> mock.Mock:
     return mock_log_request_finished
 
 
-
-
 @pytest.fixture
 def enable_request_logging(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(dify_config, "ENABLE_REQUEST_LOGGING", True)
