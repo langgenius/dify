@@ -970,7 +970,9 @@ class ProviderManager:
                 continue
 
             if provider_record.quota_type is not None:
-                quota_type_to_provider_records_dict[cast(ProviderQuotaType, provider_record.quota_type)] = provider_record
+                quota_type_to_provider_records_dict[cast(ProviderQuotaType, provider_record.quota_type)] = (
+                    provider_record
+                )
         quota_configurations = []
 
         if dify_config.EDITION == "CLOUD":
