@@ -71,6 +71,7 @@ class TestMailRegisterTask:
         self, db_session_with_containers: Session, mock_mail_dependencies, caplog
     ):
         import logging
+
         caplog.set_level(logging.ERROR)
         """Test email registration task exception handling."""
         mock_mail_dependencies["email_service"].send_email.side_effect = Exception("Email service error")
@@ -125,6 +126,7 @@ class TestMailRegisterTask:
         self, db_session_with_containers: Session, mock_mail_dependencies, caplog
     ):
         import logging
+
         caplog.set_level(logging.ERROR)
         """Test account exist email task exception handling."""
         mock_mail_dependencies["email_service"].send_email.side_effect = Exception("Email service error")

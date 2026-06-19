@@ -535,6 +535,7 @@ class TestDisableSegmentsFromIndexTask:
 
     def test_disable_segments_performance_timing(self, db_session_with_containers: Session, caplog):
         import logging
+
         caplog.set_level(logging.INFO)
         """
         Test that the task properly measures and logs performance timing.

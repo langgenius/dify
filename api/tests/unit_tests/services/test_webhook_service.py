@@ -171,8 +171,9 @@ class TestWebhookServiceUnit:
         monkeypatch.setattr("services.trigger.webhook_service.magic", fake_magic)
 
         import logging
+
         caplog.set_level(logging.DEBUG)
-        
+
         result = WebhookService._detect_binary_mimetype(b"binary data")
 
         assert result == "application/octet-stream"

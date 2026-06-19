@@ -298,6 +298,7 @@ class TestMailInviteMemberTask:
         self, db_session_with_containers: Session, mock_external_service_dependencies, caplog
     ):
         import logging
+
         caplog.set_level(logging.ERROR)
         """
         Test error handling when email service raises an exception.
