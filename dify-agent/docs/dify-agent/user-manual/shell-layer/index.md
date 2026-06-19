@@ -224,7 +224,7 @@ and pre-creates that directory with write access for the same user.
 The provided `docker/local-sandbox/Dockerfile` installs:
 
 - `tmux`, required by `shellctl` to manage shell jobs;
-- `shell-session-manager==2.2.0`, which provides the `shellctl` CLI/server;
+- `shell-session-manager==2.2.1`, which provides the `shellctl` CLI/server;
 - `uv`, so uv shebang scripts with PEP 723 metadata can run inside the shell
   workspace;
 - the `dify-agent` Agent Stub client CLI, including its gRPC transport extra;

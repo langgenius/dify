@@ -29,7 +29,7 @@ WORKDIR /opt/dify-agent
 
 FROM base AS packages
 
-ENV SHELL_SESSION_MANAGER_VERSION=2.2.0
+ENV SHELL_SESSION_MANAGER_VERSION=2.2.1
 
 COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
@@ -45,8 +45,7 @@ ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 
 COPY --from=packages ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 
-RUN ${VIRTUAL_ENV}/bin/python -m compileall -q ${VIRTUAL_ENV}/lib/python3.12/site-packages \
-    && ln -s ${VIRTUAL_ENV}/bin/dify-agent /usr/local/bin/dify-agent \
+RUN ln -s ${VIRTUAL_ENV}/bin/dify-agent /usr/local/bin/dify-agent \
     && ln -s ${VIRTUAL_ENV}/bin/shellctl /usr/local/bin/shellctl \
     && useradd --create-home --shell /bin/sh dify \
     && mkdir -p /mnt/drive \
