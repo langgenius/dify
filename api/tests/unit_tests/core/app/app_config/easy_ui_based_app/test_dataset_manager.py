@@ -32,7 +32,7 @@ def base_config(valid_uuid):
 
 
 @pytest.fixture
-def mock_dataset_service(mocker, valid_uuid):
+def mock_dataset_service(mocker: MockerFixture, valid_uuid):
     mock_dataset = MagicMock()
     mock_dataset.tenant_id = "tenant1"
 

@@ -183,7 +183,17 @@ const addOperationIds = (document: SwaggerDocument) => {
 }
 
 const hasSuccessResponse = (operation: SwaggerOperation) => {
-  return Object.keys(operation.responses ?? {}).some(status => /^2\d\d$/.test(status))
+  return Object.entries(operation.responses ?? {}).some(([status, response]) => {
+    if (!/^2\d\d$/.test(status))
+      return false
+    if (!isObject(response))
+      return false
+    const content = (response as JsonObject).content
+    // 204 No Content is a valid success response without a body
+    if (!isObject(content) || Object.keys(content).length === 0)
+      return status === '204'
+    return true
+  })
 }
 
 const filterContractOperations = (document: SwaggerDocument) => {

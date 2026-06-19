@@ -61,6 +61,7 @@ describe('VersionHistoryItem', () => {
           latestVersionId="latest-version"
           onClick={onClick}
           handleClickActionMenuItem={vi.fn()}
+          canImportExportDSL
           isLast={false}
         />,
       )
@@ -91,6 +92,7 @@ describe('VersionHistoryItem', () => {
           latestVersionId="version-1"
           onClick={onClick}
           handleClickActionMenuItem={handleClickActionMenuItem}
+          canImportExportDSL
           isLast={false}
         />,
       )
@@ -127,6 +129,35 @@ describe('VersionHistoryItem', () => {
       )
     })
 
+    it('should hide export from the context menu when import/export DSL permission is missing', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <VersionHistoryItem
+          item={createVersionHistory()}
+          currentVersion={null}
+          latestVersionId="version-1"
+          onClick={vi.fn()}
+          handleClickActionMenuItem={vi.fn()}
+          canImportExportDSL={false}
+          isLast={false}
+        />,
+      )
+
+      const title = screen.getByText('Release 1')
+      const itemContainer = title.closest('.group')
+      if (!itemContainer)
+        throw new Error('Expected version history item container')
+
+      fireEvent.mouseEnter(itemContainer)
+
+      const triggerButton = await screen.findByRole('button')
+      await user.click(triggerButton)
+
+      expect(screen.queryByText('app.export')).not.toBeInTheDocument()
+      expect(screen.getByText('workflow.versionHistory.copyId')).toBeInTheDocument()
+    })
+
     it('should ignore clicks when the item is already selected', async () => {
       const user = userEvent.setup()
       const onClick = vi.fn()
@@ -139,6 +170,7 @@ describe('VersionHistoryItem', () => {
           latestVersionId="other-version"
           onClick={onClick}
           handleClickActionMenuItem={vi.fn()}
+          canImportExportDSL
           isLast
         />,
       )

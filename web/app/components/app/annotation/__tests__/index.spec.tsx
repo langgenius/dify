@@ -41,6 +41,10 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
 }))
 
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
+}))
+
 vi.mock('../filter', () => ({
   default: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="filter">{children}</div>
@@ -197,6 +201,9 @@ describe('Annotation', () => {
   it('should render empty element when no annotations are returned', async () => {
     renderComponent()
 
+    expect(screen.getByRole('heading', { name: 'appAnnotation.title' })).toBeInTheDocument()
+    expect(screen.getByText('appAnnotation.noData.description')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'common.operation.learnMore' })).toHaveAttribute('href', 'https://docs.example.com/use-dify/monitor/annotation-reply')
     expect(await screen.findByTestId('empty-element')).toBeInTheDocument()
     expect(fetchAnnotationListMock).toHaveBeenCalledWith(appDetail.id, expect.objectContaining({
       page: 1,

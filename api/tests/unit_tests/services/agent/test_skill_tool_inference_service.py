@@ -33,7 +33,7 @@ def _patch_soul_files(monkeypatch, files):
     monkeypatch.setattr(SkillToolInferenceService, "_manifest_files_from_soul", staticmethod(lambda **kwargs: files))
 
 
-def test_infer_returns_suggestions_with_inferred_from(monkeypatch):
+def test_infer_returns_suggestions_with_inferred_from(monkeypatch: pytest.MonkeyPatch):
     service, drive = _service()
     _patch_soul_files(monkeypatch, ["SKILL.md", "scripts/transcribe.sh"])
     raw = (
@@ -53,7 +53,7 @@ def test_infer_returns_suggestions_with_inferred_from(monkeypatch):
     drive.preview.assert_called_once_with(tenant_id="t-1", agent_id="a-1", key="audio-transcribe/SKILL.md")
 
 
-def test_infer_threads_manifest_files_into_the_prompt(monkeypatch):
+def test_infer_threads_manifest_files_into_the_prompt(monkeypatch: pytest.MonkeyPatch):
     service, _ = _service()
     _patch_soul_files(monkeypatch, ["scripts/run.sh"])
     captured: dict[str, str] = {}
@@ -69,7 +69,7 @@ def test_infer_threads_manifest_files_into_the_prompt(monkeypatch):
     assert "ffmpeg" in captured["prompt"]  # SKILL.md body present
 
 
-def test_infer_not_inferable_passes_reason_through(monkeypatch):
+def test_infer_not_inferable_passes_reason_through(monkeypatch: pytest.MonkeyPatch):
     service, _ = _service()
     _patch_soul_files(monkeypatch, [])
     raw = '{"inferable": false, "cli_tools": [], "reason": "SKILL.md 未描述任何外部命令依赖"}'
@@ -78,7 +78,7 @@ def test_infer_not_inferable_passes_reason_through(monkeypatch):
     assert result == {"inferable": False, "cli_tools": [], "reason": "SKILL.md 未描述任何外部命令依赖"}
 
 
-def test_infer_retries_once_then_422(monkeypatch):
+def test_infer_retries_once_then_422(monkeypatch: pytest.MonkeyPatch):
     service, _ = _service()
     _patch_soul_files(monkeypatch, [])
     calls: list[int] = []
@@ -96,7 +96,7 @@ def test_infer_retries_once_then_422(monkeypatch):
     assert exc_info.value.status_code == 422
 
 
-def test_infer_repairs_slightly_malformed_json(monkeypatch):
+def test_infer_repairs_slightly_malformed_json(monkeypatch: pytest.MonkeyPatch):
     service, _ = _service()
     _patch_soul_files(monkeypatch, [])
     raw = 'Here you go: {"inferable": true, "cli_tools": [], "reason": null,}'
@@ -126,7 +126,7 @@ def test_binary_skill_md_maps_to_404():
 # ── real-path coverage: _invoke / _manifest_files_from_soul / passthrough ────
 
 
-def test_invoke_maps_missing_default_model_to_400(monkeypatch):
+def test_invoke_maps_missing_default_model_to_400(monkeypatch: pytest.MonkeyPatch):
     import services.agent.skill_tool_inference_service as module
     from core.errors.error import ProviderTokenNotInitError
 
@@ -140,7 +140,7 @@ def test_invoke_maps_missing_default_model_to_400(monkeypatch):
     assert exc_info.value.status_code == 400
 
 
-def test_invoke_maps_model_failure_to_422_and_success_returns_text(monkeypatch):
+def test_invoke_maps_model_failure_to_422_and_success_returns_text(monkeypatch: pytest.MonkeyPatch):
     import services.agent.skill_tool_inference_service as module
 
     fake_manager = MagicMock()
@@ -173,7 +173,7 @@ def test_load_skill_md_passes_through_non_missing_drive_errors():
     assert exc_info.value.code == "agent_not_found"
 
 
-def _patch_inference_db(monkeypatch, *, agent, snapshot):
+def _patch_inference_db(monkeypatch: pytest.MonkeyPatch, *, agent, snapshot):
     from types import SimpleNamespace
 
     import services.agent.skill_tool_inference_service as module
@@ -182,7 +182,7 @@ def _patch_inference_db(monkeypatch, *, agent, snapshot):
     monkeypatch.setattr(module.db, "session", SimpleNamespace(scalar=lambda stmt: next(results)))
 
 
-def test_manifest_files_from_soul_reads_active_snapshot(monkeypatch):
+def test_manifest_files_from_soul_reads_active_snapshot(monkeypatch: pytest.MonkeyPatch):
     from types import SimpleNamespace
 
     soul_dict = {
@@ -203,7 +203,7 @@ def test_manifest_files_from_soul_reads_active_snapshot(monkeypatch):
     assert files == ["scripts/a.sh"]
 
 
-def test_manifest_files_from_soul_degrades_when_agent_or_snapshot_missing(monkeypatch):
+def test_manifest_files_from_soul_degrades_when_agent_or_snapshot_missing(monkeypatch: pytest.MonkeyPatch):
     _patch_inference_db(monkeypatch, agent=None, snapshot=None)
     assert SkillToolInferenceService._manifest_files_from_soul(tenant_id="t", agent_id="a", slug="s") == []
 
@@ -213,7 +213,7 @@ def test_manifest_files_from_soul_degrades_when_agent_or_snapshot_missing(monkey
     assert SkillToolInferenceService._manifest_files_from_soul(tenant_id="t", agent_id="a", slug="s") == []
 
 
-def test_manifest_files_from_soul_empty_when_slug_not_in_soul(monkeypatch):
+def test_manifest_files_from_soul_empty_when_slug_not_in_soul(monkeypatch: pytest.MonkeyPatch):
     from types import SimpleNamespace
 
     soul_dict = {"skills_files": {"skills": [{"name": "Other", "skill_md_key": "other/SKILL.md"}]}}

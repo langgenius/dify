@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import type { FullDocumentDetail } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
@@ -18,12 +17,14 @@ type Props = Readonly<{
   documentId: string
   className?: string
   docDetail: FullDocumentDetail
+  canEdit?: boolean
 }>
 const MetadataDocument: FC<Props> = ({
   datasetId,
   documentId,
   className,
   docDetail,
+  canEdit = false,
 }) => {
   const { t } = useTranslation()
 
@@ -57,7 +58,7 @@ const MetadataDocument: FC<Props> = ({
                 titleTooltip={t(`${i18nPrefix}.metadataToolTip`, { ns: 'dataset' })}
                 list={isEdit ? tempList : list}
                 dataSetId={datasetId}
-                headerRight={embeddingAvailable && (isEdit
+                headerRight={embeddingAvailable && canEdit && (isEdit
                   ? (
                       <div className="flex space-x-1">
                         <Button variant="ghost" size="small" onClick={handleCancel}>
@@ -70,7 +71,7 @@ const MetadataDocument: FC<Props> = ({
                     )
                   : (
                       <Button variant="ghost" size="small" onClick={startToEdit}>
-                        <RiEditLine className="mr-1 size-3.5 cursor-pointer text-text-tertiary" />
+                        <span className="mr-1 i-ri-edit-line size-3.5 cursor-pointer text-text-tertiary" />
                         <div>{t('operation.edit', { ns: 'common' })}</div>
                       </Button>
                     ))}
@@ -90,7 +91,7 @@ const MetadataDocument: FC<Props> = ({
             </div>
           )
         : (
-            embeddingAvailable && <NoData onStart={() => setIsEdit(true)} />
+            embeddingAvailable && canEdit && <NoData onStart={() => setIsEdit(true)} />
           )}
       {builtInEnabled && (
         <div className="pl-2">

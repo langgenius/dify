@@ -166,7 +166,22 @@ See `[web/docs/overlay.md](../../web/docs/overlay.md)` for the web app overlay b
 
 - `pnpm -C packages/dify-ui test` — Vitest unit tests for primitives.
 - `pnpm -C packages/dify-ui storybook` — Storybook on the default port. Each primitive has `index.stories.tsx`.
+- `pnpm -C packages/dify-ui test:storybook` — Storybook component tests in Vitest browser mode. Stories without `play` are render and a11y smoke tests; stories with `play` should cover public UI contracts such as opening overlays, keyboard navigation, disabled/loading guards, form submission, and controlled state updates.
 - `pnpm -C packages/dify-ui type-check` — `tsgo --noEmit` for this package only.
+
+### Test Boundary
+
+Use Storybook tests for behavior that belongs to the documented component example:
+visible state changes, user interaction, keyboard paths, overlay open/close flows,
+and accessibility-facing semantics. Keep regular Vitest unit tests for lower-level
+wrapper contracts such as class variants, Base UI passthrough props, hidden input
+serialization, data attribute hooks, store behavior, and edge cases that do not
+need a full story.
+
+Storybook accessibility testing stays enabled globally with `a11y.test = 'error'`.
+If a story is temporarily marked `todo`, keep the exception local to that story
+and do not treat an interaction `play` test as a replacement for fixing the
+underlying accessibility issue.
 
 ### Disabling Animations In Tests
 

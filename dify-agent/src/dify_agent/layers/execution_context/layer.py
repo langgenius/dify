@@ -1,7 +1,8 @@
 """Runtime Dify execution-context layer.
 
 The public config carries Dify-owned execution identifiers plus the tenant/user
-daemon context needed by plugin-backed business layers. Server-only daemon URL
+daemon context needed by plugin-backed business layers and the caller identity
+needed by knowledge-base layers. Server-only daemon URL
 and API key are injected by the provider factory. The layer is intentionally
 config/settings-only under Agenton's state-only core: it does not open, cache,
 close, or snapshot HTTP clients, and its lifecycle hooks remain the inherited
@@ -29,7 +30,7 @@ from dify_agent.layers.execution_context.configs import (
 class DifyExecutionContextLayer(PlainLayer[NoLayerDeps, DifyExecutionContextLayerConfig, EmptyRuntimeState]):
     """Layer that carries Dify execution context without owning live resources."""
 
-    type_id: ClassVar[str] = DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID
+    type_id: ClassVar[str | None] = DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID
 
     config: DifyExecutionContextLayerConfig
     daemon_url: str

@@ -1,10 +1,10 @@
 import { cleanup, screen } from '@testing-library/react'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import {
   assertions,
   clearAllMocks,
   defaultModalContext,
   interactions,
+  mockRouterPush,
   mockUseModalContext,
   scenarios,
   textKeys,
@@ -88,14 +88,13 @@ describe('APIKeyInfoPanel - Community Edition', () => {
   })
 
   describe('User Interactions', () => {
-    it('should call setShowAccountSettingModal when set API button is clicked', () => {
+    it('should navigate to the model provider page when set API button is clicked', () => {
       scenarios.withMockModal(mockSetShowAccountSettingModal)
 
       interactions.clickMainButton()
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-        payload: ACCOUNT_SETTING_TAB.PROVIDER,
-      })
+      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'provider' })
+      expect(mockRouterPush).not.toHaveBeenCalled()
     })
 
     it('should hide panel when close button is clicked', () => {

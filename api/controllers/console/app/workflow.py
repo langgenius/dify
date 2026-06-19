@@ -2,12 +2,12 @@ import json
 import logging
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any, NotRequired, TypedDict
+from typing import Any, NotRequired, TypedDict, cast
 
 from flask import abort, request
 from flask_restx import Resource, fields
 from pydantic import AliasChoices, BaseModel, Field, RootModel, ValidationError, field_validator
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
@@ -26,10 +26,14 @@ from controllers.console.app.error import (
     DraftWorkflowNotExist,
     DraftWorkflowNotSync,
 )
+from controllers.console.app.permission_keys import get_app_permission_keys
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -436,8 +440,9 @@ class DraftWorkflowApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App):
         """
         Get draft workflow
@@ -449,8 +454,16 @@ class DraftWorkflowApi(Resource):
         if not workflow:
             raise DraftWorkflowNotExist()
 
-        # return workflow, if not found, return 404
-        return dump_response(WorkflowResponse, workflow)
+        from services.agent.workflow_publish_service import WorkflowAgentPublishService
+
+        # Return workflow with response-only Agent node job projection so the
+        # front-end can treat draft graph node data as the editing source.
+        response = WorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
+        response["graph"] = WorkflowAgentPublishService.project_draft_bindings_to_graph(
+            session=cast(Session, db.session),
+            draft_workflow=workflow,
+        )
+        return response
 
     @setup_required
     @login_required
@@ -475,6 +488,7 @@ class DraftWorkflowApi(Resource):
     @console_ns.response(403, "Permission denied")
     @with_current_user
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def post(self, current_user: Account, app_model: App):
         """
         Sync draft workflow
@@ -540,6 +554,7 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @with_current_user
     @edit_permission_required
@@ -589,6 +604,7 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @with_current_user
     @edit_permission_required
@@ -631,6 +647,7 @@ class WorkflowDraftRunIterationNodeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
@@ -669,6 +686,7 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @with_current_user
     @edit_permission_required
@@ -711,6 +729,7 @@ class WorkflowDraftRunLoopNodeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
@@ -785,6 +804,7 @@ class AdvancedChatDraftHumanInputFormPreviewApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @with_current_user
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def post(self, current_user: Account, app_model: App, node_id: str):
         """
         Preview human input form content and placeholders
@@ -816,6 +836,7 @@ class AdvancedChatDraftHumanInputFormRunApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @with_current_user
     @edit_permission_required
@@ -849,6 +870,7 @@ class WorkflowDraftHumanInputFormPreviewApi(Resource):
     @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def post(self, current_user: Account, app_model: App, node_id: str):
         """
         Preview human input form content and placeholders
@@ -880,6 +902,7 @@ class WorkflowDraftHumanInputFormRunApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
@@ -913,6 +936,7 @@ class WorkflowDraftHumanInputDeliveryTestApi(Resource):
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
     @with_current_user
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     def post(self, current_user: Account, app_model: App, node_id: str):
         """
         Test human input delivery
@@ -944,6 +968,7 @@ class DraftWorkflowRunApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
@@ -982,8 +1007,9 @@ class WorkflowTaskStopApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def post(self, app_model: App, task_id: str):
         """
         Stop workflow task
@@ -1014,6 +1040,7 @@ class DraftWorkflowNodeRunApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
@@ -1064,8 +1091,9 @@ class PublishedWorkflowApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App):
         """
         Get published workflow
@@ -1085,6 +1113,7 @@ class PublishedWorkflowApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
@@ -1133,8 +1162,9 @@ class DefaultBlockConfigsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App):
         """
         Get default block config
@@ -1159,8 +1189,9 @@ class DefaultBlockConfigApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, block_type: str):
         """
         Get default block config
@@ -1197,14 +1228,15 @@ class ConvertToWorkflowApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.COMPLETION])
     @with_current_user
+    @with_current_tenant_id
     @edit_permission_required
-    def post(self, current_user: Account, app_model: App):
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    def post(self, current_tenant_id: str, current_user: Account, app_model: App):
         """
         Convert basic mode of chatbot app to workflow mode
         Convert expert mode of chatbot app to workflow mode
         Convert Completion App to Workflow App
         """
-
         payload = console_ns.payload or {}
         args = ConvertToWorkflowPayload.model_validate(payload).model_dump(exclude_none=True)
 
@@ -1215,6 +1247,7 @@ class ConvertToWorkflowApi(Resource):
         # return app id
         return {
             "new_app_id": new_app_model.id,
+            "permission_keys": get_app_permission_keys(str(current_tenant_id), current_user.id, str(new_app_model.id)),
         }
 
 
@@ -1237,6 +1270,7 @@ class WorkflowFeaturesApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def post(self, current_user: Account, app_model: App):
 
         args = WorkflowFeaturesPayload.model_validate(console_ns.payload or {})
@@ -1262,6 +1296,7 @@ class PublishedAllWorkflowApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
@@ -1314,6 +1349,7 @@ class DraftWorkflowRestoreApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
     def post(self, current_user: Account, app_model: App, workflow_id: str):
         workflow_service = WorkflowService()
 
@@ -1352,6 +1388,7 @@ class WorkflowByIdApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     def patch(self, current_user: Account, app_model: App, workflow_id: str):
         """
         Update workflow attributes
@@ -1390,6 +1427,7 @@ class WorkflowByIdApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @console_ns.response(204, "Workflow deleted successfully")
     def delete(self, app_model: App, workflow_id: str):
         """
@@ -1428,6 +1466,7 @@ class DraftWorkflowNodeLastRunApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, node_id: str):
         srv = WorkflowService()
@@ -1472,6 +1511,7 @@ class DraftWorkflowTriggerRunApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
@@ -1540,6 +1580,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
@@ -1623,6 +1664,7 @@ class DraftWorkflowTriggerRunAllApi(Resource):
     @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     def post(self, current_user: Account, app_model: App):
         """
         Full workflow debug when the start node is a trigger

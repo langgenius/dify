@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
+import { expect, waitFor, within } from 'storybook/test'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -55,6 +56,21 @@ export const Default: Story = {
       </AlertDialogContent>
     </AlertDialog>
   ),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const body = within(canvasElement.ownerDocument.body)
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Delete project' }))
+
+    const dialog = body.getByRole('alertdialog', { name: 'Delete project?' })
+    await waitFor(async () => {
+      await expect(dialog).toBeVisible()
+    })
+
+    await userEvent.click(body.getByRole('button', { name: 'Cancel' }))
+    await waitFor(async () => {
+      await expect(body.queryByRole('alertdialog', { name: 'Delete project?' })).not.toBeInTheDocument()
+    })
+  },
 }
 
 export const NonDestructive: Story = {

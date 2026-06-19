@@ -131,7 +131,10 @@ describe('node actions menu details', () => {
       handleNodesCopy,
     } as unknown as ReturnType<typeof useNodesInteractions>)
     mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false } as ReturnType<typeof useNodesReadOnly>)
-    mockUseHooksStore.mockImplementation((selector: any) => selector({ configsMap: { flowType: FlowType.appFlow } }))
+    mockUseHooksStore.mockImplementation((selector: any) => selector({
+      configsMap: { flowType: FlowType.appFlow },
+      accessControl: { canRun: true },
+    }))
     mockUseNodes.mockReturnValue([{ id: 'start', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } as any }] as any)
     mockUseAllWorkflowTools.mockReturnValue({ data: [] } as any)
   })

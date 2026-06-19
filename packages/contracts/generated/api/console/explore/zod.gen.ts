@@ -60,6 +60,13 @@ export const zRecommendedAppListResponse = z.object({
   recommended_apps: z.array(zRecommendedAppResponse),
 })
 
+/**
+ * LearnDifyAppListResponse
+ */
+export const zLearnDifyAppListResponse = z.object({
+  recommended_apps: z.array(zRecommendedAppResponse),
+})
+
 export const zGetExploreAppsQuery = z.object({
   language: z.string().optional(),
 })
@@ -69,8 +76,17 @@ export const zGetExploreAppsQuery = z.object({
  */
 export const zGetExploreAppsResponse = zRecommendedAppListResponse
 
+export const zGetExploreAppsLearnDifyQuery = z.object({
+  language: z.string().optional(),
+})
+
+/**
+ * Success
+ */
+export const zGetExploreAppsLearnDifyResponse = zLearnDifyAppListResponse
+
 export const zGetExploreAppsByAppIdPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**

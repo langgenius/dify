@@ -354,4 +354,49 @@ describe('Human input share form', () => {
     await user.click(screen.getByRole('button', { name: 'share-update-summary' }))
     expect(approveButton).toBeEnabled()
   })
+
+  it('should hide branding when remove_webapp_brand is enabled', () => {
+    mockUseGetHumanInputForm.mockReturnValue({
+      data: {
+        ...formData,
+        site: {
+          ...formData.site,
+          custom_config: {
+            remove_webapp_brand: true,
+            replace_webapp_logo: null,
+          },
+        },
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    render(<FormContent />)
+
+    expect(screen.queryByText('share.chat.poweredBy')).not.toBeInTheDocument()
+    expect(screen.queryByText('dify-logo')).not.toBeInTheDocument()
+  })
+
+  it('should render the custom branding logo when replace_webapp_logo is provided', () => {
+    mockUseGetHumanInputForm.mockReturnValue({
+      data: {
+        ...formData,
+        site: {
+          ...formData.site,
+          custom_config: {
+            remove_webapp_brand: false,
+            replace_webapp_logo: 'https://example.com/custom-logo.png',
+          },
+        },
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    render(<FormContent />)
+
+    expect(screen.getByText('share.chat.poweredBy')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'logo' })).toHaveAttribute('src', 'https://example.com/custom-logo.png')
+    expect(screen.queryByText('dify-logo')).not.toBeInTheDocument()
+  })
 })

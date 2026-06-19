@@ -4,6 +4,7 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
+import { IS_CLOUD_EDITION } from '@/config'
 import { useModalContext } from '@/context/modal-context'
 
 const UpgradeCard: FC = () => {
@@ -13,6 +14,9 @@ const UpgradeCard: FC = () => {
   const handleUpgrade = useCallback(() => {
     setShowPricingModal()
   }, [setShowPricingModal])
+
+  if (!IS_CLOUD_EDITION)
+    return null
 
   return (
     <div className="flex items-center justify-between rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg py-3 pr-3.5 pl-4 shadow-xs backdrop-blur-[5px]">

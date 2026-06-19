@@ -90,7 +90,6 @@ describe('Plugin Authentication Flow Integration', () => {
         canOAuth: false,
         canApiKey: true,
         credentials: [],
-        disabled: false,
         invalidPluginCredentialInfo: vi.fn(),
         notAllowCustomCredential: false,
       })
@@ -108,7 +107,6 @@ describe('Plugin Authentication Flow Integration', () => {
         canOAuth: true,
         canApiKey: true,
         credentials: [],
-        disabled: false,
         invalidPluginCredentialInfo: vi.fn(),
         notAllowCustomCredential: false,
       })
@@ -125,7 +123,6 @@ describe('Plugin Authentication Flow Integration', () => {
         canOAuth: false,
         canApiKey: true,
         credentials: [],
-        disabled: false,
         invalidPluginCredentialInfo: vi.fn(),
         notAllowCustomCredential: false,
       })
@@ -147,7 +144,6 @@ describe('Plugin Authentication Flow Integration', () => {
         credentials: [
           { id: 'cred-1', name: 'My API Key', is_default: true },
         ],
-        disabled: false,
         invalidPluginCredentialInfo: vi.fn(),
         notAllowCustomCredential: false,
       })
@@ -165,7 +161,6 @@ describe('Plugin Authentication Flow Integration', () => {
         canOAuth: false,
         canApiKey: true,
         credentials: [{ id: 'cred-1', name: 'Key', is_default: true }],
-        disabled: false,
         invalidPluginCredentialInfo: vi.fn(),
         notAllowCustomCredential: false,
       })
@@ -187,7 +182,6 @@ describe('Plugin Authentication Flow Integration', () => {
         canOAuth: false,
         canApiKey: true,
         credentials: [{ id: 'cred-1', name: 'Key', is_default: true }],
-        disabled: false,
         invalidPluginCredentialInfo: vi.fn(),
         notAllowCustomCredential: false,
       })
@@ -207,7 +201,6 @@ describe('Plugin Authentication Flow Integration', () => {
         canOAuth: false,
         canApiKey: true,
         credentials: [],
-        disabled: false,
         invalidPluginCredentialInfo: vi.fn(),
         notAllowCustomCredential: false,
       })
@@ -229,7 +222,6 @@ describe('Plugin Authentication Flow Integration', () => {
         canOAuth: true,
         canApiKey: false,
         credentials: [],
-        disabled: false,
         invalidPluginCredentialInfo: vi.fn(),
         notAllowCustomCredential: false,
       })
@@ -258,7 +250,6 @@ describe('Plugin Authentication Flow Integration', () => {
           { id: 'cred-2', name: 'API Key 2', is_default: false },
           { id: 'cred-3', name: 'OAuth Token', is_default: false, credential_type: CredentialTypeEnum.OAUTH2 },
         ],
-        disabled: false,
         invalidPluginCredentialInfo: vi.fn(),
         notAllowCustomCredential: false,
       })

@@ -15,7 +15,7 @@
   "inputField.manage": "Urus",
   "publishToast.desc": "Ketika alur tidak diterbitkan, Anda dapat memodifikasi struktur potongan di simpul pangkalan pengetahuan, dan orkestrasi dan perubahan alur akan secara otomatis disimpan sebagai draf.",
   "publishToast.title": "Pipeline ini belum dipublikasikan",
-  "ragToolSuggestions.noRecommendationPlugins": "Tidak ada plugin yang disarankan, temukan lebih banyak di <CustomLink>Marketplace</CustomLink>",
+  "ragToolSuggestions.noRecommendationPlugins": "Tidak ada integrasi yang disarankan, temukan lebih banyak di <CustomLink>Marketplace</CustomLink>",
   "ragToolSuggestions.title": "Saran untuk RAG",
   "result.resultPreview.error": "Terjadi kesalahan selama eksekusi",
   "result.resultPreview.footerTip": "Dalam mode uji coba, pratinjau hingga {{count}} potongan",

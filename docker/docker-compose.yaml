@@ -393,7 +393,6 @@ services:
       TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
       CSP_WHITELIST: ${CSP_WHITELIST:-}
       ALLOW_EMBED: ${ALLOW_EMBED:-false}
-      ALLOW_INLINE_STYLES: ${ALLOW_INLINE_STYLES:-false}
       ALLOW_UNSAFE_DATA_SCHEME: ${ALLOW_UNSAFE_DATA_SCHEME:-false}
       MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
       MARKETPLACE_URL: ${MARKETPLACE_URL:-https://marketplace.dify.ai}
@@ -629,9 +628,8 @@ services:
       # pls clearly modify the squid env vars to fit your network environment.
       HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
       COREDUMP_DIR: ${SSRF_COREDUMP_DIR:-/var/spool/squid}
-      REVERSE_PROXY_PORT: ${SSRF_REVERSE_PROXY_PORT:-8194}
-      SANDBOX_HOST: ${SSRF_SANDBOX_HOST:-sandbox}
-      SANDBOX_PORT: ${SANDBOX_PORT:-8194}
+      SSRF_PROXY_ALLOW_PRIVATE_IPS: ${SSRF_PROXY_ALLOW_PRIVATE_IPS:-}
+      SSRF_PROXY_ALLOW_PRIVATE_DOMAINS: ${SSRF_PROXY_ALLOW_PRIVATE_DOMAINS:-}
     networks:
       - ssrf_proxy_network
       - default

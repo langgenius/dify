@@ -60,6 +60,7 @@ class ComposerSavePayload(BaseModel):
 
 class RosterAgentCreatePayload(BaseModel):
     name: str = Field(min_length=1, max_length=255)
+    mode: Literal["agent"] = "agent"
     description: str = ""
     role: str = Field(default="", max_length=255)
     icon_type: AgentIconType | None = None

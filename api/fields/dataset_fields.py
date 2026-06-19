@@ -15,6 +15,7 @@ dataset_fields = {
     "indexing_technique": fields.String,
     "created_by": fields.String,
     "created_at": TimestampField,
+    "permission_keys": fields.List(fields.String()),
 }
 
 
@@ -143,6 +144,7 @@ dataset_detail_fields = {
     "total_available_documents": fields.Integer,
     "enable_api": fields.Boolean,
     "is_multimodal": fields.Boolean,
+    "permission_keys": fields.List(fields.String()),
 }
 
 
@@ -267,6 +269,8 @@ class DatasetDetailResponse(ResponseModel):
     total_available_documents: int
     enable_api: bool
     is_multimodal: bool
+    permission_keys: list[str] = Field(default_factory=list)
+    maintainer: str | None = None
 
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod

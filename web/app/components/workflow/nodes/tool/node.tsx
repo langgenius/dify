@@ -35,7 +35,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
   return (
     <div className="relative mb-1 px-3 py-1">
       {showInstallButton && (
-        <div className="pointer-events-auto absolute top-[-32px] right-3 z-40">
+        <div className="pointer-events-auto absolute -top-8 right-3 z-40">
           <InstallPluginButton
             size="small"
             className="font-medium! text-text-accent!"

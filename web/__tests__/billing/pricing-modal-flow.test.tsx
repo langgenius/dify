@@ -112,6 +112,11 @@ const setupContexts = (planOverrides: Record<string, unknown> = {}, appOverrides
   }
   mockAppCtx = {
     isCurrentWorkspaceManager: true,
+    workspacePermissionKeys: [
+      'billing.view',
+      'billing.manage',
+      'billing.subscription.manage',
+    ],
     userProfile: { email: 'test@example.com' },
     langGeniusVersionInfo: { current_version: '1.0.0' },
     ...appOverrides,

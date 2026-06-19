@@ -9,7 +9,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@langgenius/dify-ui/tooltip'
-import { RiSettings2Line } from '@remixicon/react'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
@@ -71,7 +70,6 @@ type ActionsSectionProps = Pick<AppPublisherProps, | 'hasHumanInputNode'
     showRunConfig?: boolean
     workflowToolIsLoading: boolean
     workflowToolOutdated: boolean
-    workflowToolIsCurrentWorkspaceManager: boolean
     workflowToolMessage?: string
     onConfigureWorkflowTool: () => void
   }
@@ -275,7 +273,6 @@ export const PublisherActionsSection = ({
   workflowToolAvailable = true,
   workflowToolIsLoading,
   workflowToolOutdated,
-  workflowToolIsCurrentWorkspaceManager,
   workflowToolMessage,
   onConfigureWorkflowTool,
 }: ActionsSectionProps) => {
@@ -297,7 +294,7 @@ export const PublisherActionsSection = ({
           actionButton={showRunConfig
             ? {
                 ariaLabel: t('operation.config', { ns: 'common' }),
-                icon: <RiSettings2Line className="size-4" />,
+                icon: <span className="i-ri-settings-2-line size-4" />,
                 onClick: () => handleOpenRunConfig?.(appURL),
               }
             : undefined}
@@ -316,7 +313,7 @@ export const PublisherActionsSection = ({
                 actionButton={showBatchRunConfig
                   ? {
                       ariaLabel: t('operation.config', { ns: 'common' }),
-                      icon: <RiSettings2Line className="size-4" />,
+                      icon: <span className="i-ri-settings-2-line size-4" />,
                       onClick: () => handleOpenRunConfig?.(`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`),
                     }
                   : undefined}
@@ -366,7 +363,6 @@ export const PublisherActionsSection = ({
           published={!!toolPublished}
           isLoading={workflowToolIsLoading}
           outdated={workflowToolOutdated}
-          isCurrentWorkspaceManager={workflowToolIsCurrentWorkspaceManager}
           onConfigure={onConfigureWorkflowTool}
           disabledReason={workflowToolMessage}
         />

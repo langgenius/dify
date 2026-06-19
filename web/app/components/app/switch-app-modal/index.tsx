@@ -24,7 +24,6 @@ import AppIcon from '@/app/components/base/app-icon'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import Input from '@/app/components/base/input'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
 import { deleteApp, switchApp } from '@/service/apps'
@@ -45,7 +44,6 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
   const { t } = useTranslation()
   const setAppDetail = useAppStore(s => s.setAppDetail)
 
-  const { isCurrentWorkspaceEditor } = useAppContext()
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
 
@@ -64,7 +62,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
 
   const goStart = async () => {
     try {
-      const { new_app_id: newAppID } = await switchApp({
+      const { new_app_id: newAppID, permission_keys } = await switchApp({
         appID: appDetail.id,
         name,
         icon_type: appIcon.type,
@@ -82,10 +80,10 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         await deleteApp(appDetail.id)
       setNeedRefresh('1')
       getRedirection(
-        isCurrentWorkspaceEditor,
         {
           id: newAppID,
           mode: appDetail.mode === AppModeEnum.COMPLETION ? AppModeEnum.WORKFLOW : AppModeEnum.ADVANCED_CHAT,
+          permission_keys,
         },
         removeOriginal ? replace : push,
       )

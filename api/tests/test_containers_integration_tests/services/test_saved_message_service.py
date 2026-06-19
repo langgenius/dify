@@ -5,7 +5,7 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from models import App, CreatorUserRole
-from models.enums import ConversationFromSource
+from models.enums import ConversationFromSource, EndUserType
 from models.model import EndUser, Message
 from models.web import SavedMessage
 from services.app_service import AppService, CreateAppParams
@@ -107,7 +107,7 @@ class TestSavedMessageService:
             app_id=app.id,
             external_user_id=fake.uuid4(),
             name=fake.name(),
-            type="normal",
+            type=EndUserType.BROWSER,
             session_id=fake.uuid4(),
             is_anonymous=False,
         )

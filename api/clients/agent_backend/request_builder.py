@@ -19,6 +19,7 @@ from agenton.compositor.schemas import LayerSessionSnapshot
 from agenton.layers import ExitIntent
 from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID, PromptLayerConfig
 from agenton_collections.layers.pydantic_ai import PYDANTIC_AI_HISTORY_LAYER_TYPE_ID
+from dify_agent.layers.ask_human import DIFY_ASK_HUMAN_LAYER_TYPE_ID, DifyAskHumanLayerConfig
 from dify_agent.layers.dify_plugin import (
     DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
     DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
@@ -31,6 +32,7 @@ from dify_agent.layers.execution_context import (
     DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
     DifyExecutionContextLayerConfig,
 )
+from dify_agent.layers.knowledge import DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID, DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
 from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
 from dify_agent.protocol import (
@@ -38,6 +40,7 @@ from dify_agent.protocol import (
     DIFY_AGENT_MODEL_LAYER_ID,
     DIFY_AGENT_OUTPUT_LAYER_ID,
     CreateRunRequest,
+    DeferredToolResultsPayload,
     LayerExitSignals,
     RunComposition,
     RunLayerSpec,
@@ -53,6 +56,8 @@ AGENT_APP_USER_PROMPT_LAYER_ID = "agent_app_user_prompt"
 DIFY_EXECUTION_CONTEXT_LAYER_ID = "execution_context"
 DIFY_DRIVE_LAYER_ID = "drive"
 DIFY_PLUGIN_TOOLS_LAYER_ID = "tools"
+DIFY_KNOWLEDGE_BASE_LAYER_ID = "knowledge"
+DIFY_ASK_HUMAN_LAYER_ID = "ask_human"
 DIFY_SHELL_LAYER_ID = "shell"
 
 
@@ -136,14 +141,22 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
     idempotency_key: str | None = None
     output: AgentBackendOutputConfig | None = None
     tools: DifyPluginToolsLayerConfig | None = None
+    knowledge: DifyKnowledgeBaseLayerConfig | None = None
     # Drive Skills & Files declaration (dify.drive) — an index the agent pulls
     # through the back proxy, never inline content; see AGENT_DRIVE_MANIFEST_ENABLED.
     drive_config: DifyDriveLayerConfig | None = None
+    # Human-in-the-loop ask_human deferred tool (dify.ask_human). Present only when
+    # the Agent Soul configures human involvement; a deferred call ends the run and
+    # the workflow pauses via the existing HITL form mechanism (ENG-635).
+    ask_human_config: DifyAskHumanLayerConfig | None = None
     # Inject the sandboxed shell layer (dify.shell). Requires the agent backend
     # to be wired with a shellctl entrypoint; see configs AGENT_SHELL_ENABLED.
     include_shell: bool = False
     shell_config: DifyShellLayerConfig | None = None
     session_snapshot: CompositorSessionSnapshot | None = None
+    # Human tool results fed back into a continuation run after a HITL submission
+    # (ENG-638). Keyed by the original deferred tool_call_id.
+    deferred_tool_results: DeferredToolResultsPayload | None = None
     include_history: bool = True
     suspend_on_exit: bool = True
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
@@ -175,14 +188,21 @@ class AgentBackendAgentAppRunInput(BaseModel):
     idempotency_key: str | None = None
     output: AgentBackendOutputConfig | None = None
     tools: DifyPluginToolsLayerConfig | None = None
+    knowledge: DifyKnowledgeBaseLayerConfig | None = None
     # Drive Skills & Files declaration (dify.drive) — an index the agent pulls
     # through the back proxy, never inline content; see AGENT_DRIVE_MANIFEST_ENABLED.
     drive_config: DifyDriveLayerConfig | None = None
+    # Human-in-the-loop ask_human deferred tool (dify.ask_human). Present only when
+    # the Agent Soul configures human involvement (ENG-635).
+    ask_human_config: DifyAskHumanLayerConfig | None = None
     # Inject the sandboxed shell layer (dify.shell). Requires the agent backend
     # to be wired with a shellctl entrypoint; see configs AGENT_SHELL_ENABLED.
     include_shell: bool = False
     shell_config: DifyShellLayerConfig | None = None
     session_snapshot: CompositorSessionSnapshot | None = None
+    # Human tool results fed back into a continuation run after a HITL submission
+    # (ENG-638). Keyed by the original deferred tool_call_id.
+    deferred_tool_results: DeferredToolResultsPayload | None = None
     include_history: bool = True
     suspend_on_exit: bool = True
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
@@ -205,7 +225,7 @@ class AgentBackendRunRequestBuilder:
 
         Layer graph: optional Agent Soul system prompt → user prompt →
         execution context → optional history (multi-turn) → LLM → optional
-        plugin tools → optional structured output. Mirrors the workflow-node
+        plugin tools / knowledge search → optional structured output. Mirrors the workflow-node
         layer ordering minus the workflow-job / previous-node prompt.
         """
         layers: list[RunLayerSpec] = []
@@ -284,6 +304,30 @@ class AgentBackendRunRequestBuilder:
                 )
             )
 
+        if run_input.knowledge is not None and run_input.knowledge.dataset_ids:
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_KNOWLEDGE_BASE_LAYER_ID,
+                    type=DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID,
+                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
+                    metadata=run_input.metadata,
+                    config=run_input.knowledge,
+                )
+            )
+
+        if run_input.ask_human_config is not None:
+            # Human-in-the-loop ask_human deferred tool (dify.ask_human). A call ends
+            # the run with a deferred_tool_call; the caller pauses (workflow HITL) and
+            # later resumes with deferred_tool_results. Needs the history layer above.
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_ASK_HUMAN_LAYER_ID,
+                    type=DIFY_ASK_HUMAN_LAYER_TYPE_ID,
+                    metadata=run_input.metadata,
+                    config=run_input.ask_human_config,
+                )
+            )
+
         if run_input.include_shell:
             # Sandboxed bash workspace (dify.shell). Depends on execution_context so
             # the agent server can mint per-command Agent Stub env (back proxy);
@@ -318,6 +362,7 @@ class AgentBackendRunRequestBuilder:
             idempotency_key=run_input.idempotency_key,
             metadata=run_input.metadata,
             session_snapshot=run_input.session_snapshot,
+            deferred_tool_results=run_input.deferred_tool_results,
             on_exit=LayerExitSignals(
                 default=ExitIntent.SUSPEND if run_input.suspend_on_exit else ExitIntent.DELETE,
             ),
@@ -368,7 +413,12 @@ class AgentBackendRunRequestBuilder:
         )
 
     def build_for_workflow_node(self, run_input: AgentBackendWorkflowNodeRunInput) -> CreateRunRequest:
-        """Build a workflow Agent Node run request without defining another wire schema."""
+        """Build a workflow Agent Node run request without defining another wire schema.
+
+        Layer graph mirrors the workflow surface: prompts → execution context →
+        optional drive/history → LLM → optional plugin tools / knowledge search
+        → optional auxiliary layers such as ask_human, shell, and structured output.
+        """
         layers: list[RunLayerSpec] = []
         if run_input.agent_soul_prompt:
             layers.append(
@@ -453,6 +503,30 @@ class AgentBackendRunRequestBuilder:
                 )
             )
 
+        if run_input.knowledge is not None and run_input.knowledge.dataset_ids:
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_KNOWLEDGE_BASE_LAYER_ID,
+                    type=DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID,
+                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
+                    metadata=run_input.metadata,
+                    config=run_input.knowledge,
+                )
+            )
+
+        if run_input.ask_human_config is not None:
+            # Human-in-the-loop ask_human deferred tool (dify.ask_human). A call ends
+            # the run with a deferred_tool_call; the caller pauses (workflow HITL) and
+            # later resumes with deferred_tool_results. Needs the history layer above.
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_ASK_HUMAN_LAYER_ID,
+                    type=DIFY_ASK_HUMAN_LAYER_TYPE_ID,
+                    metadata=run_input.metadata,
+                    config=run_input.ask_human_config,
+                )
+            )
+
         if run_input.include_shell:
             # Sandboxed bash workspace (dify.shell). Depends on execution_context so
             # the agent server can mint per-command Agent Stub env (back proxy);
@@ -487,6 +561,7 @@ class AgentBackendRunRequestBuilder:
             idempotency_key=run_input.idempotency_key,
             metadata=run_input.metadata,
             session_snapshot=run_input.session_snapshot,
+            deferred_tool_results=run_input.deferred_tool_results,
             on_exit=LayerExitSignals(
                 default=ExitIntent.SUSPEND if run_input.suspend_on_exit else ExitIntent.DELETE,
             ),

@@ -18,6 +18,7 @@ import {
   useAvailableBlocks,
   useNodesInteractions,
 } from '@/app/components/workflow/hooks'
+import { getNodeCatalogType } from '@/app/components/workflow/utils'
 
 type ChangeItemProps = {
   data: CommonNodeType
@@ -32,10 +33,11 @@ const ChangeItem = ({
   const { t } = useTranslation()
 
   const { handleNodeChange } = useNodesInteractions()
+  const nodeCatalogType = getNodeCatalogType(data)
   const {
     availablePrevBlocks,
     availableNextBlocks,
-  } = useAvailableBlocks(data.type, data.isInIteration || data.isInLoop)
+  } = useAvailableBlocks(nodeCatalogType, data.isInIteration || data.isInLoop)
 
   const handleSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
     handleNodeChange(nodeId, type, sourceHandle, pluginDefaultValue)
@@ -59,7 +61,7 @@ const ChangeItem = ({
       }}
       trigger={renderTrigger}
       popupClassName="w-[328px]!"
-      availableBlocksTypes={intersection(availablePrevBlocks, availableNextBlocks).filter(item => item !== data.type)}
+      availableBlocksTypes={intersection(availablePrevBlocks, availableNextBlocks).filter(item => item !== nodeCatalogType)}
     />
   )
 }

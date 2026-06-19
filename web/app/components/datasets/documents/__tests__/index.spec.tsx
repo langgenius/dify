@@ -33,6 +33,8 @@ vi.mock('@/context/dataset-detail', () => ({
         embedding_available: true,
         data_source_type: DataSourceType.FILE,
         runtime_mode: 'rag',
+        created_by: 'test-user',
+        permission_keys: ['dataset.acl.use', 'dataset.acl.edit'],
       },
     }
     return selector(mockState as MockState)
@@ -43,6 +45,14 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(() => ({
     plan: { type: 'professional' },
   })),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) =>
+    selector({
+      userProfile: { id: 'test-user' },
+      workspacePermissionKeys: ['dataset.create_and_management'],
+    }),
 }))
 
 // Mock document service hooks
@@ -278,6 +288,8 @@ describe('Documents', () => {
           embedding_available: true,
           data_source_type: DataSourceType.FILE,
           runtime_mode: 'rag',
+          created_by: 'test-user',
+          permission_keys: ['dataset.acl.use', 'dataset.acl.edit'],
         },
       }
       return selector(mockState as MockState)
@@ -362,6 +374,8 @@ describe('Documents', () => {
             embedding_available: true,
             data_source_type: DataSourceType.NOTION,
             runtime_mode: 'rag',
+            created_by: 'test-user',
+            permission_keys: ['dataset.acl.use', 'dataset.acl.edit'],
           },
         }
         return selector(mockState as MockState)
@@ -466,6 +480,8 @@ describe('Documents', () => {
             embedding_available: true,
             data_source_type: DataSourceType.FILE,
             runtime_mode: 'rag_pipeline',
+            created_by: 'test-user',
+            permission_keys: ['dataset.acl.use', 'dataset.acl.edit'],
           },
         }
         return selector(mockState as MockState)
@@ -487,6 +503,8 @@ describe('Documents', () => {
             embedding_available: true,
             data_source_type: DataSourceType.FILE,
             runtime_mode: 'rag',
+            created_by: 'test-user',
+            permission_keys: ['dataset.acl.use', 'dataset.acl.edit'],
           },
         }
         return selector(mockState as MockState)

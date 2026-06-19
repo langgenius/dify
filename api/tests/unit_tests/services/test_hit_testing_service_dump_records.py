@@ -1,6 +1,8 @@
 from datetime import datetime
 from unittest.mock import Mock, patch
 
+import pytest
+
 from services.hit_testing_service import HitTestingService
 
 
@@ -80,7 +82,7 @@ class TestHitTestingServiceDumpRecords:
 
         assert result[0]["segment"]["created_at"] == datetime(2024, 1, 1, 0, 0, 0)
 
-    def test_dump_retrieval_records_skips_records_with_missing_documents(self, caplog):
+    def test_dump_retrieval_records_skips_records_with_missing_documents(self, caplog: pytest.LogCaptureFixture):
         record = _retrieval_record(
             {
                 "segment": {
