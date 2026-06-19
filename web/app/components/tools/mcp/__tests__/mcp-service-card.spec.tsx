@@ -57,7 +57,7 @@ type MockHookState = {
     description: string
     parameters: Record<string, unknown>
   } | undefined
-  isCurrentWorkspaceManager: boolean
+  canManageMCP: boolean
   toggleDisabled: boolean
   isMinimalState: boolean
   appUnpublished: boolean
@@ -80,7 +80,7 @@ const createDefaultHookState = (overrides: Partial<MockHookState> = {}): MockHoo
     description: 'Test server',
     parameters: {},
   },
-  isCurrentWorkspaceManager: true,
+  canManageMCP: true,
   toggleDisabled: false,
   isMinimalState: false,
   appUnpublished: false,
@@ -141,6 +141,28 @@ describe('MCPServiceCard', () => {
       expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
       expect(screen.getByText(/appOverview.overview.status/)).toBeInTheDocument()
       expect(screen.getByRole('switch')).toBeInTheDocument()
+    })
+
+    it('should keep status visible and disable management controls without mcp.manage', () => {
+      mockHookState = createDefaultHookState({
+        canManageMCP: false,
+        toggleDisabled: true,
+      })
+
+      render(<MCPServiceCard appInfo={createMockAppInfo()} />, { wrapper: createWrapper() })
+
+      expect(screen.getByText('tools.mcp.server.title')).toBeInTheDocument()
+      expect(screen.getByText(/appOverview.overview.status/)).toBeInTheDocument()
+      expect(screen.getByText('https://api.example.com/mcp/server/abc123/mcp')).toBeInTheDocument()
+
+      const switchElement = screen.getByRole('switch')
+      expect(switchElement.className).toContain('cursor-not-allowed')
+
+      const editButton = screen.getByRole('button', { name: /tools\.mcp\.server\.edit/i })
+      expect(editButton).toBeDisabled()
+
+      const regenerateButton = screen.getByRole('button', { name: /appOverview\.overview\.appInfo\.regenerate/i })
+      expect(regenerateButton).toBeDisabled()
     })
 
     it('should render edit button in full state', () => {

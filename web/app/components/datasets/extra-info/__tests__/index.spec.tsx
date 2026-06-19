@@ -4,6 +4,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { AppModeEnum } from '@/types/app'
+import { DatasetACLPermission } from '@/utils/permission'
 
 // Component Imports (after mocks)
 
@@ -35,6 +36,7 @@ const mockDataset: Partial<DataSet> = {
   id: 'dataset-123',
   name: 'Test Dataset',
   enable_api: true,
+  permission_keys: [DatasetACLPermission.Edit],
 }
 
 // Mock use-context-selector
@@ -54,14 +56,6 @@ vi.mock('@/context/dataset-detail', () => ({
   })),
   useDatasetDetailContextWithSelector: vi.fn((selector: (v: { dataset?: typeof mockDataset, mutateDatasetRes?: () => void }) => unknown) =>
     selector({ dataset: mockDataset as DataSet, mutateDatasetRes: mockMutateDatasetRes }),
-  ),
-}))
-
-// Mock app context for workspace permissions
-let mockIsCurrentWorkspaceManager = true
-vi.mock('@/context/app-context', () => ({
-  useSelector: vi.fn((selector: (state: { isCurrentWorkspaceManager: boolean }) => unknown) =>
-    selector({ isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager }),
   ),
 }))
 
@@ -522,7 +516,7 @@ describe('ApiAccess', () => {
 describe('ApiAccessCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCurrentWorkspaceManager = true
+    mockDataset.permission_keys = [DatasetACLPermission.Edit]
     mockEnableDatasetServiceApi.mockResolvedValue({ result: 'success' })
     mockDisableDatasetServiceApi.mockResolvedValue({ result: 'success' })
   })
@@ -695,8 +689,8 @@ describe('ApiAccessCard', () => {
   })
 
   describe('Permission Handling', () => {
-    it('should disable switch when user is not workspace manager', () => {
-      mockIsCurrentWorkspaceManager = false
+    it('should disable switch when dataset lacks edit ACL permission', () => {
+      mockDataset.permission_keys = []
 
       render(
         <Popover open>
@@ -711,8 +705,8 @@ describe('ApiAccessCard', () => {
       expect(switchButton).toHaveAttribute('aria-disabled', 'true')
     })
 
-    it('should enable switch when user is workspace manager', () => {
-      mockIsCurrentWorkspaceManager = true
+    it('should enable switch when dataset has edit ACL permission', () => {
+      mockDataset.permission_keys = [DatasetACLPermission.Edit]
 
       render(
         <Popover open>

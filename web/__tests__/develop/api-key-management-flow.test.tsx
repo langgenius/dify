@@ -87,13 +87,13 @@ describe('API Key management flow', () => {
 
     expect(screen.getByText('https://api.dify.ai/v1')).toBeInTheDocument()
     expect(screen.getByText('appApi.ok')).toBeInTheDocument()
-    expect(screen.getByText('appApi.apiKey')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'appApi.apiKey' })).toBeDisabled()
   })
 
   it('clicking API Key button opens SecretKeyModal with real modal content', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
 
-    render(<ApiServer apiBaseUrl="https://api.dify.ai/v1" appId="app-1" />)
+    render(<ApiServer apiBaseUrl="https://api.dify.ai/v1" appId="app-1" canManageApiKey />)
 
     // Click API Key button (rendered by SecretKeyButton)
     await act(async () => {
@@ -113,7 +113,7 @@ describe('API Key management flow', () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     mockIsLoading.mockReturnValue(true)
 
-    render(<ApiServer apiBaseUrl="https://api.dify.ai/v1" appId="app-1" />)
+    render(<ApiServer apiBaseUrl="https://api.dify.ai/v1" appId="app-1" canManageApiKey />)
 
     await act(async () => {
       await user.click(screen.getByText('appApi.apiKey'))
@@ -131,7 +131,7 @@ describe('API Key management flow', () => {
   it('modal can be closed by clicking X icon', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
 
-    render(<ApiServer apiBaseUrl="https://api.dify.ai/v1" appId="app-1" />)
+    render(<ApiServer apiBaseUrl="https://api.dify.ai/v1" appId="app-1" canManageApiKey />)
 
     // Open modal
     await act(async () => {
@@ -144,7 +144,7 @@ describe('API Key management flow', () => {
     })
 
     // Click X icon to close
-    const closeIcon = document.body.querySelector('svg.cursor-pointer')
+    const closeIcon = document.body.querySelector('.i-heroicons-x-mark-20-solid.cursor-pointer')
     expect(closeIcon).toBeInTheDocument()
 
     await act(async () => {
@@ -162,7 +162,7 @@ describe('API Key management flow', () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
 
     const { rerender } = render(
-      <ApiServer apiBaseUrl="http://localhost:5001/v1" appId="app-dev" />,
+      <ApiServer apiBaseUrl="http://localhost:5001/v1" appId="app-dev" canManageApiKey />,
     )
 
     expect(screen.getByText('http://localhost:5001/v1')).toBeInTheDocument()
@@ -178,14 +178,14 @@ describe('API Key management flow', () => {
     })
 
     // Close modal, update URL and re-verify
-    const xIcon = document.body.querySelector('svg.cursor-pointer')
+    const xIcon = document.body.querySelector('.i-heroicons-x-mark-20-solid.cursor-pointer')
     await act(async () => {
       await user.click(xIcon!)
     })
     await flushUI()
 
     rerender(
-      <ApiServer apiBaseUrl="https://api.production.com/v1" appId="app-prod" />,
+      <ApiServer apiBaseUrl="https://api.production.com/v1" appId="app-prod" canManageApiKey />,
     )
 
     expect(screen.getByText('https://api.production.com/v1')).toBeInTheDocument()

@@ -15,6 +15,13 @@ import { fetchAppDetail, fetchAppList, fetchBanners } from '@/service/explore'
 import { useMembers } from '@/service/use-common'
 import { AppModeEnum } from '@/types/app'
 
+type MockAppContext = {
+  userProfile: { id: string }
+  workspacePermissionKeys: string[]
+}
+
+const mockUseAppContext = vi.hoisted(() => vi.fn<() => MockAppContext>())
+
 const allCategoriesEn = 'explore.apps.allCategories:{"lng":"en"}'
 let mockTabValue = allCategoriesEn
 const mockSetTab = vi.fn()
@@ -109,7 +116,8 @@ vi.mock('@/service/client', () => ({
 }))
 
 vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
+  useAppContext: mockUseAppContext,
+  useSelector: <T,>(selector: (state: MockAppContext) => T): T => selector(mockUseAppContext()),
 }))
 
 vi.mock('@/service/use-common', () => ({
@@ -188,6 +196,7 @@ const createApp = (overrides: Partial<App> = {}): App => ({
 const mockMemberRole = (hasEditPermission: boolean) => {
   ;(useAppContext as Mock).mockReturnValue({
     userProfile: { id: 'user-1' },
+    workspacePermissionKeys: hasEditPermission ? ['app.create_and_management'] : [],
   })
   ;(useMembers as Mock).mockReturnValue({
     data: {

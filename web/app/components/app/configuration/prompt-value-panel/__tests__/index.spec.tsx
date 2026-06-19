@@ -40,8 +40,13 @@ vi.mock('@/app/components/app/store', () => ({
 
 // Use real store - global zustand mock will auto-reset between tests
 vi.mock('@/app/components/base/features/new-feature-panel/feature-bar', () => ({
-  default: ({ onFeatureBarClick }: { onFeatureBarClick: () => void }) => (
-    <button type="button" onClick={onFeatureBarClick}>
+  default: ({ onFeatureBarClick, disabled, hideEditEntrance }: { onFeatureBarClick: () => void, disabled?: boolean, hideEditEntrance?: boolean }) => (
+    <button
+      type="button"
+      disabled={disabled}
+      data-hide-edit-entrance={hideEditEntrance ? 'true' : 'false'}
+      onClick={onFeatureBarClick}
+    >
       feature bar
     </button>
   ),
@@ -126,6 +131,7 @@ const baseContextValue: any = {
     },
   },
   setInputs: mockSetInputs,
+  canTestAndRun: true,
   mode: AppModeEnum.COMPLETION,
   isAdvancedMode: false,
   completionPromptConfig: {
@@ -425,13 +431,42 @@ describe('PromptValuePanel', () => {
     expect(screen.getByTestId('bool-input-boolVar')).toBeInTheDocument()
   })
 
-  it('marks actions as disabled when readonly even if the prompt is runnable', () => {
+  it('keeps debug actions enabled when readonly configuration still has test/run permission', () => {
     renderPanel({
       context: {
         readonly: true,
+        canTestAndRun: true,
       },
     })
 
+    expect(screen.getByRole('button', { name: 'common.operation.clear' })).toHaveAttribute('data-disabled', 'false')
+    expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toHaveAttribute('data-disabled', 'false')
+    expect(screen.getByRole('button', { name: 'feature bar' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'feature bar' })).toHaveAttribute('data-hide-edit-entrance', 'true')
+  })
+
+  it('marks debug inputs and actions as disabled when test/run permission is missing even if configuration is editable', () => {
+    renderPanel({
+      context: {
+        readonly: false,
+        canTestAndRun: false,
+      },
+    })
+
+    expect(screen.getByPlaceholderText('Text Var')).toHaveAttribute('readonly')
+    expect(screen.getByRole('button', { name: 'common.operation.clear' })).toHaveAttribute('data-disabled', 'true')
+    expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toHaveAttribute('data-disabled', 'true')
+  })
+
+  it('marks debug inputs and actions as disabled when configuration is readonly and test/run permission is missing', () => {
+    renderPanel({
+      context: {
+        readonly: true,
+        canTestAndRun: false,
+      },
+    })
+
+    expect(screen.getByPlaceholderText('Text Var')).toHaveAttribute('readonly')
     expect(screen.getByRole('button', { name: 'common.operation.clear' })).toHaveAttribute('data-disabled', 'true')
     expect(screen.getByRole('button', { name: 'appDebug.inputs.run' })).toHaveAttribute('data-disabled', 'true')
   })

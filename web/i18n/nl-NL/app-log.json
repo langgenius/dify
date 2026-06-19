@@ -42,7 +42,7 @@
   "filter.period.today": "Today",
   "filter.period.yearToDate": "Year to date",
   "filter.sortBy": "Sort by:",
-  "monitoring.description": "Monitoring records the running status of the application, including performance, user activity, and costs.",
+  "monitoring.description": "Monitoring registreert de actieve status van de applicatie, inclusief prestaties, gebruikersactiviteit en kosten.",
   "promptLog": "Prompt Log",
   "runDetail.fileListDetail": "Detail",
   "runDetail.fileListLabel": "File Details",

@@ -41,6 +41,7 @@ from .enums import (
     ConversationStatus,
     CreatorUserRole,
     CustomizeTokenStrategy,
+    EndUserType,
     FeedbackFromSource,
     FeedbackRating,
     InvokeFrom,
@@ -395,7 +396,11 @@ class IconType(StrEnum):
 
 class App(Base):
     __tablename__ = "apps"
-    __table_args__ = (sa.PrimaryKeyConstraint("id", name="app_pkey"), sa.Index("app_tenant_id_idx", "tenant_id"))
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="app_pkey"),
+        sa.Index("app_tenant_id_idx", "tenant_id"),
+        sa.Index("app_tenant_maintainer_idx", "tenant_id", "maintainer"),
+    )
 
     if TYPE_CHECKING:
         # Response-only attributes attached by app list/detail enrichers.
@@ -426,6 +431,7 @@ class App(Base):
     tracing = mapped_column(LongText, nullable=True)
     max_active_requests: Mapped[int | None]
     created_by = mapped_column(StringUUID, nullable=True)
+    maintainer: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
@@ -1174,34 +1180,32 @@ class Conversation(Base):
 
         # Convert file mapping to File object
         for key, value in inputs.items():
-            if (
-                isinstance(value, dict)
-                and cast(dict[str, Any], value).get("dify_model_identity") == FILE_MODEL_IDENTITY
-            ):
-                value_dict = cast(dict[str, Any], value)
-                inputs[key] = build_file_from_input_mapping(
-                    file_mapping=value_dict,
-                    tenant_resolver=tenant_resolver,
-                )
-            elif isinstance(value, list):
-                value_list = value
-                if all(
-                    isinstance(item, dict)
-                    and cast(dict[str, Any], item).get("dify_model_identity") == FILE_MODEL_IDENTITY
-                    for item in value_list
-                ):
-                    file_list: list[File] = []
-                    for item in value_list:
-                        if not isinstance(item, dict):
-                            continue
-                        item_dict = cast(dict[str, Any], item)
-                        file_list.append(
-                            build_file_from_input_mapping(
-                                file_mapping=item_dict,
-                                tenant_resolver=tenant_resolver,
+            match value:
+                case dict() if cast(dict[str, Any], value).get("dify_model_identity") == FILE_MODEL_IDENTITY:
+                    value_dict = cast(dict[str, Any], value)
+                    inputs[key] = build_file_from_input_mapping(
+                        file_mapping=value_dict,
+                        tenant_resolver=tenant_resolver,
+                    )
+                case list():
+                    value_list = value
+                    if all(
+                        isinstance(item, dict)
+                        and cast(dict[str, Any], item).get("dify_model_identity") == FILE_MODEL_IDENTITY
+                        for item in value_list
+                    ):
+                        file_list: list[File] = []
+                        for item in value_list:
+                            if not isinstance(item, dict):
+                                continue
+                            item_dict = cast(dict[str, Any], item)
+                            file_list.append(
+                                build_file_from_input_mapping(
+                                    file_mapping=item_dict,
+                                    tenant_resolver=tenant_resolver,
+                                )
                             )
-                        )
-                    inputs[key] = file_list
+                        inputs[key] = file_list
 
         return inputs
 
@@ -1516,46 +1520,45 @@ class Message(Base):
             owner_tenant_id=cast(str | None, getattr(self, "_owner_tenant_id", None)),
         )
         for key, value in inputs.items():
-            if (
-                isinstance(value, dict)
-                and cast(dict[str, Any], value).get("dify_model_identity") == FILE_MODEL_IDENTITY
-            ):
-                value_dict = cast(dict[str, Any], value)
-                inputs[key] = build_file_from_input_mapping(
-                    file_mapping=value_dict,
-                    tenant_resolver=tenant_resolver,
-                )
-            elif isinstance(value, list):
-                value_list = value
-                if all(
-                    isinstance(item, dict)
-                    and cast(dict[str, Any], item).get("dify_model_identity") == FILE_MODEL_IDENTITY
-                    for item in value_list
-                ):
-                    file_list: list[File] = []
-                    for item in value_list:
-                        if not isinstance(item, dict):
-                            continue
-                        item_dict = cast(dict[str, Any], item)
-                        file_list.append(
-                            build_file_from_input_mapping(
-                                file_mapping=item_dict,
-                                tenant_resolver=tenant_resolver,
+            match value:
+                case dict() if cast(dict[str, Any], value).get("dify_model_identity") == FILE_MODEL_IDENTITY:
+                    value_dict = cast(dict[str, Any], value)
+                    inputs[key] = build_file_from_input_mapping(
+                        file_mapping=value_dict,
+                        tenant_resolver=tenant_resolver,
+                    )
+                case list():
+                    value_list = value
+                    if all(
+                        isinstance(item, dict)
+                        and cast(dict[str, Any], item).get("dify_model_identity") == FILE_MODEL_IDENTITY
+                        for item in value_list
+                    ):
+                        file_list: list[File] = []
+                        for item in value_list:
+                            if not isinstance(item, dict):
+                                continue
+                            item_dict = cast(dict[str, Any], item)
+                            file_list.append(
+                                build_file_from_input_mapping(
+                                    file_mapping=item_dict,
+                                    tenant_resolver=tenant_resolver,
+                                )
                             )
-                        )
-                    inputs[key] = file_list
+                        inputs[key] = file_list
         return inputs
 
     @inputs.setter
     def inputs(self, value: Mapping[str, Any]):
         inputs = dict(value)
         for k, v in inputs.items():
-            if isinstance(v, File):
-                inputs[k] = v.model_dump()
-            elif isinstance(v, list):
-                v_list = v
-                if all(isinstance(item, File) for item in v_list):
-                    inputs[k] = [item.model_dump() for item in v_list if isinstance(item, File)]
+            match v:
+                case File():
+                    inputs[k] = v.model_dump()
+                case list():
+                    v_list = v
+                    if all(isinstance(item, File) for item in v_list):
+                        inputs[k] = [item.model_dump() for item in v_list if isinstance(item, File)]
         self._inputs = inputs
 
     @property
@@ -2081,7 +2084,7 @@ class EndUser(Base, UserMixin):
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id = mapped_column(StringUUID, nullable=True)
-    type: Mapped[str] = mapped_column(String(255), nullable=False)
+    type: Mapped[EndUserType] = mapped_column(EnumText(EndUserType, length=255), nullable=False)
     external_user_id = mapped_column(String(255), nullable=True)
     name = mapped_column(String(255))
     _is_anonymous: Mapped[bool] = mapped_column(

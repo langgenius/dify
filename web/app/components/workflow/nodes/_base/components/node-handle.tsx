@@ -1,5 +1,5 @@
 import type { MouseEvent } from 'react'
-import type { PluginDefaultValue } from '../../../block-selector/types'
+import type { BlockDefaultValue } from '../../../block-selector/types'
 import type { Node } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -28,6 +28,7 @@ import {
   BlockEnum,
   NodeRunningStatus,
 } from '../../../types'
+import { getNodeCatalogType } from '../../../utils'
 
 type NodeHandleProps = {
   handleId: string
@@ -57,7 +58,7 @@ export const NodeTargetHandle = memo(({
   const { handleNodeAdd } = useNodesInteractions()
   const { getNodesReadOnly } = useNodesReadOnly()
   const connected = data._connectedTargetHandleIds?.includes(handleId)
-  const { availablePrevBlocks } = useAvailableBlocks(data.type, data.isInIteration || data.isInLoop)
+  const { availablePrevBlocks } = useAvailableBlocks(getNodeCatalogType(data), data.isInIteration || data.isInLoop)
   const isConnectable = !!availablePrevBlocks.length
 
   const handleOpenChange = useCallback((v: boolean) => {
@@ -68,7 +69,7 @@ export const NodeTargetHandle = memo(({
     if (!connected)
       setOpen(v => !v)
   }, [connected])
-  const handleSelect = useCallback((type: BlockEnum, pluginDefaultValue?: PluginDefaultValue) => {
+  const handleSelect = useCallback((type: BlockEnum, pluginDefaultValue?: BlockDefaultValue) => {
     handleNodeAdd(
       {
         nodeType: type,
@@ -147,7 +148,7 @@ export const NodeSourceHandle = memo(({
   const workflowStoreApi = useWorkflowStore()
   const { handleNodeAdd } = useNodesInteractions()
   const { getNodesReadOnly } = useNodesReadOnly()
-  const { availableNextBlocks } = useAvailableBlocks(data.type, data.isInIteration || data.isInLoop)
+  const { availableNextBlocks } = useAvailableBlocks(getNodeCatalogType(data), data.isInIteration || data.isInLoop)
   const isConnectable = !!availableNextBlocks.length
   const isChatMode = useIsChatMode()
   const shouldAutoOpen = shouldAutoOpenStartNodeSelector && canAutoOpenStartNodeSelector(data.type, isChatMode)
@@ -161,7 +162,7 @@ export const NodeSourceHandle = memo(({
     e.stopPropagation()
     setOpen(v => !v)
   }, [])
-  const handleSelect = useCallback((type: BlockEnum, pluginDefaultValue?: PluginDefaultValue) => {
+  const handleSelect = useCallback((type: BlockEnum, pluginDefaultValue?: BlockDefaultValue) => {
     handleNodeAdd(
       {
         nodeType: type,

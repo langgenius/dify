@@ -10,6 +10,7 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
+from configs import dify_config
 from controllers.common.schema import register_response_schema_models
 from extensions.ext_database import db
 from fields.base import ResponseModel
@@ -23,8 +24,11 @@ from services.api_token_service import ApiTokenCache
 
 from . import console_ns
 from .wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -147,7 +151,7 @@ class BaseApiKeyResource(Resource):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         _get_resource(resource_id, current_tenant_id, self.resource_model)
 
-        if not current_user.is_admin_or_owner:
+        if not dify_config.RBAC_ENABLED and not current_user.is_admin_or_owner:
             raise Forbidden()
 
         key = db.session.scalar(
@@ -190,6 +194,7 @@ class AppApiKeyListResource(BaseApiKeyListResource):
     @console_ns.response(400, "Maximum keys exceeded")
     @with_current_tenant_id
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
     def post(self, current_tenant_id: str, resource_id: UUID) -> tuple[dict[str, object], int]:
         """Create a new API key for an app"""
         return dump_response(ApiKeyItem, self._create_api_key(str(resource_id), current_tenant_id)), 201
@@ -208,6 +213,7 @@ class AppApiKeyResource(BaseApiKeyResource):
     @console_ns.response(204, "API key deleted successfully")
     @with_current_user
     @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
     def delete(
         self, current_tenant_id: str, current_user: Account, resource_id: UUID, api_key_id: UUID
     ) -> tuple[str, int]:
@@ -261,6 +267,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
     @console_ns.response(400, "Maximum keys exceeded")
     @with_current_tenant_id
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE)
     def post(self, current_tenant_id: str, resource_id: UUID) -> tuple[dict[str, object], int]:
         """Create a new API key bound to a single dataset"""
         return dump_response(ApiKeyItem, self._create_api_key(str(resource_id), current_tenant_id)), 201
@@ -281,6 +288,7 @@ class DatasetApiKeyResource(BaseApiKeyResource):
     @console_ns.response(204, "API key deleted successfully")
     @with_current_user
     @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_API_KEY_MANAGE)
     def delete(
         self, current_tenant_id: str, current_user: Account, resource_id: UUID, api_key_id: UUID
     ) -> tuple[str, int]:

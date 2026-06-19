@@ -4,11 +4,13 @@ import ApiAccess from '../index'
 
 // Mock context and hooks for Card component
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: vi.fn(() => 'test-dataset-id'),
+  useDatasetDetailContextWithSelector: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({ dataset: { id: 'test-dataset-id', permission_keys: [] }, mutateDatasetRes: () => {} }),
 }))
 
 vi.mock('@/context/app-context', () => ({
-  useSelector: vi.fn(() => true),
+  useSelector: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({ workspacePermissionKeys: ['dataset.api_key.manage'], userProfile: { id: 'u1' } }),
 }))
 
 vi.mock('@/hooks/use-api-access-url', () => ({

@@ -18,10 +18,10 @@ export type AgentAppCreatePayload = {
   icon_background?: string | null
   icon_type?: IconType | null
   name: string
-  role?: string
+  role: string
 }
 
-export type AppDetailWithSite = {
+export type AgentAppDetailWithSite = {
   access_mode?: string | null
   active_config_is_published?: boolean
   api_base_url?: string | null
@@ -38,10 +38,12 @@ export type AppDetailWithSite = {
   icon_type?: string | null
   readonly icon_url: string | null
   id: string
+  maintainer?: string | null
   max_active_requests?: number | null
   mode: string
   model_config?: ModelConfig | null
   name: string
+  permission_keys?: Array<string>
   role?: string | null
   site?: Site | null
   tags?: Array<Tag>
@@ -67,7 +69,7 @@ export type AgentAppUpdatePayload = {
   icon_type?: IconType | null
   max_active_requests?: number | null
   name: string
-  role?: string | null
+  role: string
   use_icon_as_answer_icon?: boolean | null
 }
 
@@ -122,6 +124,14 @@ export type AgentComposerValidateResponse = {
   warnings?: Array<ComposerValidationWarningResponse>
 }
 
+export type CopyAppPayload = {
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: IconType | null
+  name?: string | null
+}
+
 export type AgentDriveListResponse = {
   items?: Array<AgentDriveItemResponse>
 }
@@ -169,8 +179,21 @@ export type AgentDriveFileCommitResponse = {
   file: AgentDriveFileResponse
 }
 
+export type AgentLogSourceListResponse = {
+  data: Array<AgentLogSourceResponse>
+  groups: Array<AgentLogSourceGroupResponse>
+}
+
 export type AgentLogListResponse = {
-  data: Array<AgentLogItemResponse>
+  data: Array<AgentLogConversationItemResponse>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
+}
+
+export type AgentLogMessageListResponse = {
+  data: Array<AgentLogMessageItemResponse>
   has_more: boolean
   limit: number
   page: number
@@ -234,11 +257,6 @@ export type SandboxUploadResponse = {
   path: string
 }
 
-export type AgentSkillStandardizeResponse = {
-  manifest: SkillManifest
-  skill: AgentSkillRefConfig
-}
-
 export type AgentSkillUploadResponse = {
   manifest: SkillManifest
   skill: AgentSkillRefConfig
@@ -265,8 +283,10 @@ export type AgentConfigSnapshotDetailResponse = {
   config_snapshot: AgentSoulConfig
   created_at?: number | null
   created_by?: string | null
+  display_version?: number | null
   id: string
   revisions?: Array<AgentConfigRevisionResponse>
+  snapshot_version?: number | null
   summary?: string | null
   version: number
   version_note?: string | null
@@ -289,10 +309,12 @@ export type AgentAppPartial = {
   readonly icon_url: string | null
   id: string
   is_starred?: boolean
+  maintainer?: string | null
   max_active_requests?: number | null
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
+  permission_keys?: Array<string>
   published_reference_count?: number
   published_references?: Array<AgentAppPublishedReferenceResponse>
   role?: string | null
@@ -398,7 +420,9 @@ export type AgentConfigSnapshotSummaryResponse = {
   agent_id?: string | null
   created_at?: number | null
   created_by?: string | null
+  display_version?: number | null
   id: string
+  snapshot_version?: number | null
   summary?: string | null
   version: number
   version_note?: string | null
@@ -546,23 +570,54 @@ export type AgentDriveFileResponse = {
   size?: number | null
 }
 
-export type AgentLogItemResponse = {
+export type AgentLogSourceResponse = {
+  app_icon?: string | null
+  app_icon_background?: string | null
+  app_icon_type?: string | null
+  app_id: string
+  app_name: string
+  id: string
+  node_id?: string | null
+  type: 'webapp' | 'workflow'
+  workflow_id?: string | null
+  workflow_version?: string | null
+}
+
+export type AgentLogSourceGroupResponse = {
+  label: string
+  sources?: Array<AgentLogSourceResponse>
+  type: 'webapp' | 'workflow'
+}
+
+export type AgentLogConversationItemResponse = {
+  conversation_id: string
+  created_at?: number | null
+  end_user_id?: string | null
+  id: string
+  message_count: number
+  operation_rate?: number | null
+  source?: AgentLogSourceResponse | null
+  status: 'failed' | 'paused' | 'success'
+  title?: string | null
+  unread: boolean
+  updated_at?: number | null
+  user_rate?: number | null
+}
+
+export type AgentLogMessageItemResponse = {
   answer: string
   answer_tokens: number
   conversation_id: string
-  conversation_name?: string | null
   created_at?: number | null
   currency: string
   error?: string | null
   from_account_id?: string | null
   from_end_user_id?: string | null
-  from_source?: string | null
   id: string
   latency: number
   message_id: string
   message_tokens: number
   query: string
-  source?: string | null
   status: string
   total_price: string
   total_tokens: number
@@ -1379,7 +1434,7 @@ export type AgentAppPaginationWritable = {
   total: number
 }
 
-export type AppDetailWithSiteWritable = {
+export type AgentAppDetailWithSiteWritable = {
   access_mode?: string | null
   active_config_is_published?: boolean
   api_base_url?: string | null
@@ -1395,10 +1450,12 @@ export type AppDetailWithSiteWritable = {
   icon_background?: string | null
   icon_type?: string | null
   id: string
+  maintainer?: string | null
   max_active_requests?: number | null
   mode: string
   model_config?: ModelConfig | null
   name: string
+  permission_keys?: Array<string>
   role?: string | null
   site?: SiteWritable | null
   tags?: Array<Tag>
@@ -1425,10 +1482,12 @@ export type AgentAppPartialWritable = {
   icon_type?: string | null
   id: string
   is_starred?: boolean
+  maintainer?: string | null
   max_active_requests?: number | null
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
+  permission_keys?: Array<string>
   published_reference_count?: number
   published_references?: Array<AgentAppPublishedReferenceResponse>
   role?: string | null
@@ -1498,7 +1557,7 @@ export type PostAgentErrors = {
 }
 
 export type PostAgentResponses = {
-  201: AppDetailWithSite
+  201: AgentAppDetailWithSite
 }
 
 export type PostAgentResponse = PostAgentResponses[keyof PostAgentResponses]
@@ -1552,7 +1611,7 @@ export type GetAgentByAgentIdData = {
 }
 
 export type GetAgentByAgentIdResponses = {
-  200: AppDetailWithSite
+  200: AgentAppDetailWithSite
 }
 
 export type GetAgentByAgentIdResponse = GetAgentByAgentIdResponses[keyof GetAgentByAgentIdResponses]
@@ -1572,7 +1631,7 @@ export type PutAgentByAgentIdErrors = {
 }
 
 export type PutAgentByAgentIdResponses = {
-  200: AppDetailWithSite
+  200: AgentAppDetailWithSite
 }
 
 export type PutAgentByAgentIdResponse = PutAgentByAgentIdResponses[keyof PutAgentByAgentIdResponses]
@@ -1703,6 +1762,27 @@ export type PostAgentByAgentIdComposerValidateResponses = {
 export type PostAgentByAgentIdComposerValidateResponse
   = PostAgentByAgentIdComposerValidateResponses[keyof PostAgentByAgentIdComposerValidateResponses]
 
+export type PostAgentByAgentIdCopyData = {
+  body: CopyAppPayload
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/copy'
+}
+
+export type PostAgentByAgentIdCopyErrors = {
+  400: unknown
+  403: unknown
+}
+
+export type PostAgentByAgentIdCopyResponses = {
+  201: AgentAppDetailWithSite
+}
+
+export type PostAgentByAgentIdCopyResponse
+  = PostAgentByAgentIdCopyResponses[keyof PostAgentByAgentIdCopyResponses]
+
 export type GetAgentByAgentIdDriveFilesData = {
   body?: never
   path: {
@@ -1832,6 +1912,22 @@ export type PostAgentByAgentIdFilesResponses = {
 export type PostAgentByAgentIdFilesResponse
   = PostAgentByAgentIdFilesResponses[keyof PostAgentByAgentIdFilesResponses]
 
+export type GetAgentByAgentIdLogSourcesData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/log-sources'
+}
+
+export type GetAgentByAgentIdLogSourcesResponses = {
+  200: AgentLogSourceListResponse
+}
+
+export type GetAgentByAgentIdLogSourcesResponse
+  = GetAgentByAgentIdLogSourcesResponses[keyof GetAgentByAgentIdLogSourcesResponses]
+
 export type GetAgentByAgentIdLogsData = {
   body?: never
   path: {
@@ -1842,9 +1938,13 @@ export type GetAgentByAgentIdLogsData = {
     keyword?: string
     limit?: number
     page?: number
+    sort_by?: string
+    sort_order?: string
     source?: string
+    sources?: Array<string>
     start?: string
     status?: string
+    statuses?: Array<string>
   }
   url: '/agent/{agent_id}/logs'
 }
@@ -1855,6 +1955,35 @@ export type GetAgentByAgentIdLogsResponses = {
 
 export type GetAgentByAgentIdLogsResponse
   = GetAgentByAgentIdLogsResponses[keyof GetAgentByAgentIdLogsResponses]
+
+export type GetAgentByAgentIdLogsByConversationIdMessagesData = {
+  body?: never
+  path: {
+    agent_id: string
+    conversation_id: string
+  }
+  query?: {
+    end?: string
+    keyword?: string
+    limit?: number
+    page?: number
+    sort_by?: string
+    sort_order?: string
+    source?: string
+    sources?: Array<string>
+    start?: string
+    status?: string
+    statuses?: Array<string>
+  }
+  url: '/agent/{agent_id}/logs/{conversation_id}/messages'
+}
+
+export type GetAgentByAgentIdLogsByConversationIdMessagesResponses = {
+  200: AgentLogMessageListResponse
+}
+
+export type GetAgentByAgentIdLogsByConversationIdMessagesResponse
+  = GetAgentByAgentIdLogsByConversationIdMessagesResponses[keyof GetAgentByAgentIdLogsByConversationIdMessagesResponses]
 
 export type GetAgentByAgentIdMessagesByMessageIdData = {
   body?: never
@@ -1951,28 +2080,10 @@ export type PostAgentByAgentIdSandboxFilesUploadResponses = {
 export type PostAgentByAgentIdSandboxFilesUploadResponse
   = PostAgentByAgentIdSandboxFilesUploadResponses[keyof PostAgentByAgentIdSandboxFilesUploadResponses]
 
-export type PostAgentByAgentIdSkillsStandardizeData = {
-  body?: never
-  path: {
-    agent_id: string
-  }
-  query?: never
-  url: '/agent/{agent_id}/skills/standardize'
-}
-
-export type PostAgentByAgentIdSkillsStandardizeErrors = {
-  400: unknown
-}
-
-export type PostAgentByAgentIdSkillsStandardizeResponses = {
-  201: AgentSkillStandardizeResponse
-}
-
-export type PostAgentByAgentIdSkillsStandardizeResponse
-  = PostAgentByAgentIdSkillsStandardizeResponses[keyof PostAgentByAgentIdSkillsStandardizeResponses]
-
 export type PostAgentByAgentIdSkillsUploadData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path: {
     agent_id: string
   }

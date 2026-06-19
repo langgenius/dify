@@ -12,7 +12,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from graphon.variables import FloatVariable, IntegerVariable, StringVariable
 from models.account import Account, Tenant, TenantAccountJoin
-from models.enums import ConversationFromSource
+from models.enums import ConversationFromSource, EndUserType
 from models.model import App, Conversation, EndUser
 from models.workflow import ConversationVariable
 from services.conversation_service import ConversationService
@@ -78,7 +78,7 @@ class ConversationServiceVariableIntegrationFactory:
         end_user = EndUser(
             tenant_id=app.tenant_id,
             app_id=app.id,
-            type=InvokeFrom.SERVICE_API.value,
+            type=EndUserType.SERVICE_API,
             external_user_id=f"external-{uuid4()}",
             name=f"End User {uuid4()}",
             is_anonymous=False,

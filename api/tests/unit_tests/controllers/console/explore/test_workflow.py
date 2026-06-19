@@ -1,3 +1,4 @@
+from inspect import unwrap
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,12 +13,6 @@ from controllers.console.explore.workflow import (
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from models.model import AppMode
 from services.errors.llm import InvokeRateLimitError
-
-
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 @pytest.fixture

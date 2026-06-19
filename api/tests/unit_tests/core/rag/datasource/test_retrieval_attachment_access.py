@@ -3,6 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import select
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
@@ -112,7 +113,7 @@ def test_segment_attachment_lookup_grants_returned_upload_files_to_current_scope
     assert "upload_files.id IN" in whereclause
 
 
-def test_knowledge_retrieval_grants_returned_segments_to_current_scope(monkeypatch) -> None:
+def test_knowledge_retrieval_grants_returned_segments_to_current_scope(monkeypatch: pytest.MonkeyPatch) -> None:
     tenant_id = str(uuid4())
     dataset_id = str(uuid4())
     document_id = str(uuid4())

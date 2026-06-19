@@ -10,7 +10,9 @@ import { TIME_PERIOD_MAPPING as LONG_TIME_PERIOD_MAPPING } from '@/app/component
 import { AvgResponseTime, AvgSessionInteractions, AvgUserInteractions, ConversationsChart, CostChart, EndUsersChart, MessagesChart, TokenPerSecond, UserSatisfactionRate, WorkflowCostChart, WorkflowDailyTerminalsChart, WorkflowMessagesChart } from '@/app/components/app/overview/app-chart'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { IS_CLOUD_EDITION } from '@/config'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
+import { getAppACLCapabilities } from '@/utils/permission'
 import LongTimeRangePicker from './long-time-range-picker'
 import TimeRangePicker from './time-range-picker'
 
@@ -37,6 +39,13 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const appDetail = useAppStore(state => state.appDetail)
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canMonitor = React.useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
+    currentUserId,
+    resourceMaintainer: appDetail?.maintainer,
+    workspacePermissionKeys,
+  }).canMonitor, [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys])
   const isChatApp = appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow'
   const isWorkflow = appDetail?.mode === 'workflow'
   const [period, setPeriod] = useState<PeriodParams>(IS_CLOUD_EDITION
@@ -44,7 +53,7 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
     : { name: t('filter.period.last7days', { ns: 'appLog' }), query: { start: today.subtract(7, 'day').startOf('day').format(queryDateFormat), end: today.endOf('day').format(queryDateFormat) } },
   )
 
-  if (!appDetail)
+  if (!appDetail || !canMonitor)
     return null
 
   return (

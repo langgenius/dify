@@ -6,7 +6,9 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiAggregate } from '@/app/components/base/icons/src/vender/knowledge'
 import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { hasPermission } from '@/utils/permission'
 import Card from './card'
 
 type ApiAccessProps = {
@@ -21,6 +23,8 @@ const ApiAccess = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const datasetId = useDatasetDetailContextWithSelector(state => state.dataset?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canManageSecretKey = hasPermission(workspacePermissionKeys, 'dataset.api_key.manage')
   const [isSecretKeyModalVisible, setIsSecretKeyModalVisible] = useState(false)
 
   const handleOpenSecretKeyModal = useCallback(() => {
@@ -71,6 +75,7 @@ const ApiAccess = ({
       <SecretKeyModal
         isShow={isSecretKeyModalVisible}
         datasetId={datasetId}
+        canManage={canManageSecretKey}
         onClose={handleCloseSecretKeyModal}
       />
     </div>

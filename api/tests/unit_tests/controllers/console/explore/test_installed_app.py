@@ -13,10 +13,7 @@ type Payload = dict[str, object]
 type PayloadPatch = Callable[[Payload], AbstractContextManager[object]]
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
+from inspect import unwrap
 
 
 @pytest.fixture
@@ -64,6 +61,7 @@ class TestInstalledAppsListApi:
         assert "app_model_configs" in compiled_filter
         assert "workflow_id" in compiled_filter
         assert "app_model_config_id" in compiled_filter
+        assert "apps.mode != 'agent'" in compiled_filter
 
     def test_get_installed_apps(
         self, app: Flask, current_user: MagicMock, tenant_id: str, installed_app: MagicMock

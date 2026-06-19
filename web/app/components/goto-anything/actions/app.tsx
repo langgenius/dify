@@ -52,10 +52,7 @@ const parser = (apps: App[]): AppSearchResult[] => {
     title: app.name,
     description: app.description,
     type: 'app' as const,
-    path: getRedirectionPath(true, {
-      id: app.id,
-      mode: app.mode,
-    }),
+    path: getRedirectionPath(app),
     icon: appIcon(app),
     data: app,
   }))
@@ -70,7 +67,7 @@ const parserWithSections = (apps: App[]): SearchResult[] => {
       title: app.name,
       description: app.description,
       type: 'app' as const,
-      path: getRedirectionPath(true, { id: app.id, mode: app.mode }),
+      path: getRedirectionPath(app),
       icon: appIcon(app),
       data: app,
     })

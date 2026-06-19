@@ -258,7 +258,7 @@ class TestUpgradePluginWithMarketplace:
 class TestUpgradePluginWithGithub:
     @patch("core.plugin.plugin_service.FeatureService")
     @patch("core.plugin.plugin_service.PluginInstaller")
-    def test_checks_marketplace_permission_and_delegates(self, mock_installer_cls, mock_fs):
+    def test_checks_marketplace_permission_and_delegates(self, mock_installer_cls: MagicMock, mock_fs: MagicMock):
         mock_fs.get_system_features.return_value = _make_features()
         installer = mock_installer_cls.return_value
         installer.upgrade_plugin.return_value = MagicMock()
@@ -273,7 +273,7 @@ class TestUpgradePluginWithGithub:
 class TestUploadPkg:
     @patch("core.plugin.plugin_service.FeatureService")
     @patch("core.plugin.plugin_service.PluginInstaller")
-    def test_runs_permission_and_scope_checks(self, mock_installer_cls, mock_fs):
+    def test_runs_permission_and_scope_checks(self, mock_installer_cls: MagicMock, mock_fs: MagicMock):
         mock_fs.get_system_features.return_value = _make_features()
         upload_resp = MagicMock()
         upload_resp.verification = None
@@ -318,7 +318,7 @@ class TestInstallFromMarketplacePkg:
     @patch("core.plugin.plugin_service.FeatureService")
     @patch("core.plugin.plugin_service.PluginInstaller")
     @patch("core.plugin.plugin_service.dify_config")
-    def test_uses_cached_when_already_downloaded(self, mock_config, mock_installer_cls, mock_fs):
+    def test_uses_cached_when_already_downloaded(self, mock_config, mock_installer_cls: MagicMock, mock_fs: MagicMock):
         mock_config.MARKETPLACE_ENABLED = True
         mock_fs.get_system_features.return_value = _make_features()
         installer = mock_installer_cls.return_value

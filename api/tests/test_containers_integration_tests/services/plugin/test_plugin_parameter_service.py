@@ -47,8 +47,8 @@ class TestGetDynamicSelectOptionsTool:
     @patch("services.plugin.plugin_parameter_service.ToolManager")
     def test_fetches_credentials_with_credential_id(
         self,
-        mock_tool_mgr,
-        mock_encrypter_fn,
+        mock_tool_mgr: MagicMock,
+        mock_encrypter_fn: MagicMock,
         mock_client_cls,
         flask_app_with_containers: Flask,
         db_session_with_containers: Session,
@@ -90,8 +90,8 @@ class TestGetDynamicSelectOptionsTool:
     @patch("services.plugin.plugin_parameter_service.ToolManager")
     def test_raises_when_tool_provider_not_found(
         self,
-        mock_tool_mgr,
-        mock_encrypter_fn,
+        mock_tool_mgr: MagicMock,
+        mock_encrypter_fn: MagicMock,
         flask_app_with_containers: Flask,
         db_session_with_containers: Session,
     ):

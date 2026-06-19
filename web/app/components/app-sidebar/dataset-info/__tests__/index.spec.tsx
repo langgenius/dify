@@ -8,13 +8,14 @@ import {
   DataSourceType,
 } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
+import { DatasetACLPermission } from '@/utils/permission'
 import DatasetInfo from '..'
 import Dropdown from '../dropdown'
 import Menu from '../menu'
 import MenuItem from '../menu-item'
 
 let mockDataset: DataSet
-let mockIsDatasetOperator = false
+const mockPush = vi.fn()
 const mockReplace = vi.fn()
 const mockInvalidDatasetList = vi.fn()
 const mockInvalidDatasetDetail = vi.fn()
@@ -87,22 +88,23 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   runtime_mode: 'rag_pipeline',
   enable_api: false,
   is_multimodal: false,
+  permission_keys: [
+    DatasetACLPermission.Edit,
+    DatasetACLPermission.Delete,
+    DatasetACLPermission.ImportExportDSL,
+  ],
   ...overrides,
 })
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
+    push: mockPush,
     replace: mockReplace,
   }),
 }))
 
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (selector: (state: { dataset?: DataSet }) => unknown) => selector({ dataset: mockDataset }),
-}))
-
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { isCurrentWorkspaceDatasetOperator: boolean }) => unknown) =>
-    selector({ isCurrentWorkspaceDatasetOperator: mockIsDatasetOperator }),
 }))
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
@@ -161,7 +163,6 @@ describe('DatasetInfo', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDataset = createDataset()
-    mockIsDatasetOperator = false
   })
 
   // Rendering of dataset summary details based on expand and dataset state.
@@ -273,6 +274,21 @@ describe('Menu', () => {
       expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
     })
 
+    it('should show resource access option when enabled', () => {
+      render(
+        <Menu
+          showDelete={false}
+          showAccessConfig
+          openRenameModal={vi.fn()}
+          handleExportPipeline={vi.fn()}
+          detectIsUsedByApp={vi.fn()}
+          openAccessConfig={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByText('common.settings.resourceAccess')).toBeInTheDocument()
+    })
+
     it('should hide export and delete options when not rag pipeline and not deletable', () => {
       // Arrange
       mockDataset = createDataset({ runtime_mode: 'general' })
@@ -331,6 +347,26 @@ describe('Menu', () => {
       expect(handleExportPipeline).toHaveBeenCalledTimes(1)
       expect(detectIsUsedByApp).toHaveBeenCalledTimes(1)
     })
+
+    it('should invoke access config callback from its menu item', async () => {
+      const user = userEvent.setup()
+      const openAccessConfig = vi.fn()
+
+      render(
+        <Menu
+          showDelete={false}
+          showAccessConfig
+          openRenameModal={vi.fn()}
+          handleExportPipeline={vi.fn()}
+          detectIsUsedByApp={vi.fn()}
+          openAccessConfig={openAccessConfig}
+        />,
+      )
+
+      await user.click(screen.getByText('common.settings.resourceAccess'))
+
+      expect(openAccessConfig).toHaveBeenCalledTimes(1)
+    })
   })
 })
 
@@ -338,7 +374,6 @@ describe('Dropdown', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDataset = createDataset({ pipeline_id: 'pipeline-1', runtime_mode: 'rag_pipeline' })
-    mockIsDatasetOperator = false
     mockExportPipeline.mockResolvedValue({ data: 'pipeline-content' })
     mockCheckIsUsedInApp.mockResolvedValue({ is_using: false })
     mockDeleteDataset.mockResolvedValue({})
@@ -356,18 +391,43 @@ describe('Dropdown', () => {
     }
   })
 
-  // Rendering behavior based on workspace role.
+  // Rendering behavior based on dataset ACL permission keys.
   describe('Rendering', () => {
-    it('should hide delete option when user is dataset operator', async () => {
+    it('should hide delete option when dataset lacks delete ACL permission', async () => {
       const user = userEvent.setup()
       // Arrange
-      mockIsDatasetOperator = true
+      mockDataset = createDataset({
+        pipeline_id: 'pipeline-1',
+        runtime_mode: 'rag_pipeline',
+        permission_keys: [
+          DatasetACLPermission.Edit,
+          DatasetACLPermission.ImportExportDSL,
+        ],
+      })
       render(<Dropdown expand />)
 
       // Act
       await openMenu(user)
 
       // Assert
+      expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
+    })
+
+    it('should show resource access option when dataset only has access config ACL permission', async () => {
+      const user = userEvent.setup()
+      // Arrange
+      mockDataset = createDataset({
+        runtime_mode: 'general',
+        permission_keys: [DatasetACLPermission.AccessConfig],
+      })
+      render(<Dropdown expand />)
+
+      // Act
+      await openMenu(user)
+
+      // Assert
+      expect(screen.getByText('common.settings.resourceAccess')).toBeInTheDocument()
+      expect(screen.queryByText('common.operation.edit')).not.toBeInTheDocument()
       expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
     })
   })
@@ -440,6 +500,23 @@ describe('Dropdown', () => {
       })
       expect(mockInvalidDatasetList).toHaveBeenCalledTimes(1)
       expect(mockReplace).toHaveBeenCalledWith('/datasets')
+    })
+
+    it('should navigate to dataset access config when resource access is clicked', async () => {
+      const user = userEvent.setup()
+      // Arrange
+      mockDataset = createDataset({
+        runtime_mode: 'general',
+        permission_keys: [DatasetACLPermission.AccessConfig],
+      })
+      render(<Dropdown expand />)
+
+      // Act
+      await openMenu(user)
+      await user.click(screen.getByText('common.settings.resourceAccess'))
+
+      // Assert
+      expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/access-config')
     })
   })
 })

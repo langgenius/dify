@@ -1,6 +1,5 @@
 'use client'
 import type { CreateApiKeyResponse } from '@/models/app'
-import { PlusIcon, XMarkIcon } from '@heroicons/react/20/solid'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -15,7 +14,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Radio } from '@langgenius/dify-ui/radio'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
-import { RiDeleteBinLine } from '@remixicon/react'
 import {
   useState,
 } from 'react'
@@ -46,6 +44,7 @@ type ISecretKeyModalProps = {
   // When set (and appId is not), the modal manages keys for this knowledge base:
   // it lists every key that can reach it and can create keys bound to it.
   datasetId?: string
+  canManage: boolean
   onClose: () => void
 }
 
@@ -53,13 +52,14 @@ const SecretKeyModal = ({
   isShow = false,
   appId,
   datasetId,
+  canManage,
   onClose,
 }: ISecretKeyModalProps) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
-  const { currentWorkspace, isCurrentWorkspaceManager, isCurrentWorkspaceEditor } = useAppContext()
+  const { currentWorkspace } = useAppContext()
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
-  const [isVisible, setVisible] = useState(false)
+  const [isVisible, setIsVisible] = useState(false)
   const [newKey, setNewKey] = useState<CreateApiKeyResponse | undefined>(undefined)
   const [newKeyScope, setNewKeyScope] = useState<DatasetKeyScope>('dataset')
   const invalidateAppApiKeys = useInvalidateAppApiKeys()
@@ -75,6 +75,8 @@ const SecretKeyModal = ({
 
   const onDel = async () => {
     setShowConfirmDelete(false)
+    if (!canManage)
+      return
     if (!delKeyID)
       return
 
@@ -94,6 +96,9 @@ const SecretKeyModal = ({
   }
 
   const onCreate = async () => {
+    if (!currentWorkspace || !canManage)
+      return
+
     const params = appId
       ? { url: `/apps/${appId}/api-keys`, body: {} }
       : isDatasetScope && newKeyScope === 'dataset'
@@ -101,7 +106,7 @@ const SecretKeyModal = ({
         : { url: '/datasets/api-keys', body: {} }
     const createApikey = appId ? createAppApikey : createDatasetApikey
     const res = await createApikey(params)
-    setVisible(true)
+    setIsVisible(true)
     setNewKey(res)
     if (appId)
       invalidateAppApiKeys(appId)
@@ -130,7 +135,7 @@ const SecretKeyModal = ({
   }
 
   const handleClose = () => {
-    setVisible(false)
+    setIsVisible(false)
     onClose()
   }
 
@@ -149,7 +154,7 @@ const SecretKeyModal = ({
           </DialogTitle>
 
           <div className="-mt-6 -mr-2 mb-4 flex justify-end">
-            <XMarkIcon className="size-6 cursor-pointer text-text-tertiary" onClick={handleClose} />
+            <span className="i-heroicons-x-mark-20-solid size-6 cursor-pointer text-text-tertiary" onClick={handleClose} />
           </div>
           <p className="mt-1 shrink-0 text-[13px] leading-5 font-normal text-text-tertiary">{t('apiKeyModal.apiSecretKeyTips', { ns: 'appApi' })}</p>
           {isApiKeysLoading && <div className="mt-4"><Loading /></div>}
@@ -172,14 +177,14 @@ const SecretKeyModal = ({
                       <div className="min-w-0 flex-[1.8] truncate px-3">{api.last_used_at ? formatTime(Number(api.last_used_at), t('dateTimeFormat', { ns: 'appLog' }) as string) : t('never', { ns: 'appApi' })}</div>
                       <div className="flex w-20 shrink-0 space-x-2 px-3">
                         <CopyFeedback content={api.token} />
-                        {isCurrentWorkspaceManager && (
+                        {canManage && (
                           <ActionButton
                             onClick={() => {
                               setDelKeyId(api.id)
                               setShowConfirmDelete(true)
                             }}
                           >
-                            <RiDeleteBinLine className="size-4" />
+                            <span className="i-ri-delete-bin-line size-4" />
                           </ActionButton>
                         )}
                       </div>
@@ -206,8 +211,8 @@ const SecretKeyModal = ({
             </RadioGroup>
           )}
           <div className="flex">
-            <Button className={`mt-4 flex shrink-0 ${s.autoWidth}`} onClick={onCreate} disabled={!currentWorkspace || !isCurrentWorkspaceEditor}>
-              <PlusIcon className="mr-1 flex size-4 shrink-0" />
+            <Button className={`mt-4 flex shrink-0 ${s.autoWidth}`} onClick={onCreate} disabled={!currentWorkspace || !canManage}>
+              <span className="mr-1 i-heroicons-plus-20-solid flex size-4 shrink-0" />
               <div className="text-xs font-medium text-text-secondary">{t('apiKeyModal.createNewSecretKey', { ns: 'appApi' })}</div>
             </Button>
           </div>
@@ -237,7 +242,7 @@ const SecretKeyModal = ({
         </DialogContent>
       </Dialog>
       {isShow && (
-        <SecretKeyGenerateModal className="shrink-0" isShow={isVisible} onClose={() => setVisible(false)} newKey={newKey} />
+        <SecretKeyGenerateModal className="shrink-0" isShow={isVisible} onClose={() => setIsVisible(false)} newKey={newKey} />
       )}
     </>
   )

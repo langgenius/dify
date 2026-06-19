@@ -324,8 +324,10 @@ class AgentRuntimeSession(DefaultFieldsMixin, Base):
       ``workflow_id / workflow_run_id / node_id / binding_id /
       agent_config_snapshot_id / composition_layer_specs`` columns are set.
     - Agent App conversations: ``owner_type = conversation``; the
-      ``conversation_id`` and ``agent_config_snapshot_id`` columns are set and
-      the workflow columns stay NULL.
+      ``conversation_id`` column is set and the workflow columns stay NULL.
+      Published/web/API runs scope runtime state by ``agent_config_snapshot_id``;
+      console debugger runs may keep it NULL so prompt-only draft saves can reuse
+      the same preview conversation state while executing the latest Agent Soul.
 
     The snapshot is runtime state returned by Agent backend, kept separate from
     Agent Soul snapshots and workflow node-job config.
