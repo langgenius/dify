@@ -32,7 +32,7 @@ vi.mock('@/app/components/header/account-setting', () => ({
   ),
 }))
 
-vi.mock('@/context/education.storage', () => ({
+vi.mock('@/app/education-apply/storage', () => ({
   useSetEducationVerifying: () => mockSetEducationVerifying,
 }))
 

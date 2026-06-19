@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION } from '@/app/education-apply/constants'
-import { useSetEducationVerifying } from '@/context/education.storage'
+import { useSetEducationVerifying } from '@/app/education-apply/storage'
 import { useSearchParams } from '@/next/navigation'
 
 export function EducationVerifyActionRecorder() {

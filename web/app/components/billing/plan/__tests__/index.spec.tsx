@@ -36,7 +36,7 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
-vi.mock('@/context/education.storage', () => ({
+vi.mock('@/app/education-apply/storage', () => ({
   useSetEducationVerifying: () => setEducationVerifyingMock,
 }))
 

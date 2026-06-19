@@ -10,9 +10,9 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { useSelector } from '@/context/app-context'
-import { useSetNeedRefreshAppList } from '@/context/app-list.storage'
 import { DSLImportStatus } from '@/models/app'
 import { useRouter } from '@/next/navigation'
 import {

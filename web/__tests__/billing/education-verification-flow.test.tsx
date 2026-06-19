@@ -77,7 +77,7 @@ vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => vi.fn(),
 }))
 
-vi.mock('@/context/education.storage', () => ({
+vi.mock('@/app/education-apply/storage', () => ({
   useSetEducationVerifying: () => mockSetEducationVerifying,
 }))
 

@@ -1,26 +1,37 @@
 import { createLocalStorageState } from 'foxact/create-local-storage-state'
-import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
+import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from './constants'
 
-export const [
+const [
   useEducationVerifying,
-  useEducationVerifyingValue,
+  _useEducationVerifyingValue,
   useSetEducationVerifying,
 ] = createLocalStorageState<string>(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, 'no', { raw: true })
 
-export const [
+const [
   useEducationReverifyPrevExpireAt,
-  useEducationReverifyPrevExpireAtValue,
+  _useEducationReverifyPrevExpireAtValue,
   useSetEducationReverifyPrevExpireAt,
 ] = createLocalStorageState<number>('education-reverify-prev-expire-at', 0)
 
-export const [
+const [
   useEducationReverifyHasNoticed,
-  useEducationReverifyHasNoticedValue,
+  _useEducationReverifyHasNoticedValue,
   useSetEducationReverifyHasNoticed,
 ] = createLocalStorageState<boolean>('education-reverify-has-noticed', false)
 
-export const [
+const [
   useEducationExpiredHasNoticed,
-  useEducationExpiredHasNoticedValue,
+  _useEducationExpiredHasNoticedValue,
   useSetEducationExpiredHasNoticed,
 ] = createLocalStorageState<boolean>('education-expired-has-noticed', false)
+
+export {
+  useEducationExpiredHasNoticed,
+  useEducationReverifyHasNoticed,
+  useEducationReverifyPrevExpireAt,
+  useEducationVerifying,
+  useSetEducationExpiredHasNoticed,
+  useSetEducationReverifyHasNoticed,
+  useSetEducationReverifyPrevExpireAt,
+  useSetEducationVerifying,
+}

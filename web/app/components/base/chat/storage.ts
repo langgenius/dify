@@ -1,8 +1,12 @@
 import { createLocalStorageState } from 'foxact/create-local-storage-state'
-import { CONVERSATION_ID_INFO } from '@/app/components/base/chat/constants'
+import { CONVERSATION_ID_INFO } from './constants'
 
-export const [
+const [
   useConversationIdInfo,
-  useConversationIdInfoValue,
-  useSetConversationIdInfo,
+  _useConversationIdInfoValue,
+  _useSetConversationIdInfo,
 ] = createLocalStorageState<Record<string, Record<string, string>>>(CONVERSATION_ID_INFO, {})
+
+export {
+  useConversationIdInfo,
+}

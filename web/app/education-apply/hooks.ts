@@ -15,7 +15,7 @@ import {
   useEducationReverifyHasNoticed,
   useEducationReverifyPrevExpireAt,
   useEducationVerifying,
-} from '@/context/education.storage'
+} from '@/app/education-apply/storage'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'

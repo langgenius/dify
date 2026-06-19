@@ -12,7 +12,7 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(),
 }))
 
-vi.mock('@/context/education.storage', () => ({
+vi.mock('@/app/education-apply/storage', () => ({
   useSetEducationVerifying: () => setEducationVerifyingMock,
 }))
 

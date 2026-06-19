@@ -17,8 +17,8 @@ import {
   DEFAULT_ACCOUNT_SETTING_TAB,
   isValidAccountSettingTab,
 } from '@/app/components/header/account-setting/constants'
+import { useSetEducationVerifying } from '@/app/education-apply/storage'
 import { useAppContext } from '@/context/app-context'
-import { useSetEducationVerifying } from '@/context/education.storage'
 import { useProviderContext } from '@/context/provider-context'
 import {
   useAccountSettingModal,
