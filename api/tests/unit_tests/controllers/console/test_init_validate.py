@@ -1,10 +1,10 @@
 from __future__ import annotations
-from flask import Flask
 
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from flask import Flask
 
 from controllers.console import init_validate
 from controllers.console.error import AlreadySetupError, InitValidateFailedError

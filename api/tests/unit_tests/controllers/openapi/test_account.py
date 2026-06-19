@@ -1,6 +1,5 @@
 """User-scoped identity + session endpoints under /openapi/v1/account."""
 
-import pytest
 import builtins
 import sys
 import uuid

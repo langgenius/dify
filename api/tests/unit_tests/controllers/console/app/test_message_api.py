@@ -1,9 +1,9 @@
 from __future__ import annotations
-from flask import Flask
 
 from datetime import UTC, datetime
 
 import pytest
+from flask import Flask
 
 from controllers.console.app import message as message_module
 

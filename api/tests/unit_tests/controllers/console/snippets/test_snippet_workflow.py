@@ -1,5 +1,4 @@
 from __future__ import annotations
-from flask import Flask
 
 from datetime import datetime
 from inspect import unwrap
@@ -7,6 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import HTTPException, NotFound
 
 from controllers.console.snippets import snippet_workflow as snippet_workflow_module
@@ -328,7 +328,9 @@ def test_workflow_run_detail_raises_not_found_when_run_missing(app: Flask, monke
             handler(api, snippet=snippet, run_id="run-1")
 
 
-def test_draft_node_last_run_raises_not_found_when_execution_missing(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_draft_node_last_run_raises_not_found_when_execution_missing(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
     snippet = _snippet()
     draft_workflow = SimpleNamespace(id="workflow-1")
     monkeypatch.setattr(

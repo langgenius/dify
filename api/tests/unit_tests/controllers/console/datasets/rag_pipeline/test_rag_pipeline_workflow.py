@@ -1,5 +1,4 @@
 from __future__ import annotations
-from flask import Flask
 
 from datetime import datetime
 from inspect import unwrap as unwrap_all
@@ -7,6 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import PropertyMock, patch
 
 import pytest
+from flask import Flask
 
 from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as module
 from models.account import Account, TenantAccountRole

@@ -1,11 +1,11 @@
 from __future__ import annotations
-from flask import Flask
 
 from decimal import Decimal
 from inspect import unwrap
 from types import SimpleNamespace
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import BadRequest
 
 from controllers.console.app import statistic as statistic_module

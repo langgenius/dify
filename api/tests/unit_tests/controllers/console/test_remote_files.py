@@ -1,5 +1,4 @@
 from __future__ import annotations
-from flask import Flask
 
 import urllib.parse
 from datetime import UTC, datetime
@@ -9,6 +8,7 @@ from unittest.mock import MagicMock
 
 import httpx
 import pytest
+from flask import Flask
 
 from controllers.common.errors import FileTooLargeError, RemoteFileUploadError, UnsupportedFileTypeError
 from controllers.console import remote_files as remote_files_module
@@ -125,7 +125,9 @@ def test_get_remote_file_info_preserves_unencoded_target_query(app: Flask, monke
     make_request.assert_called_once_with("HEAD", f"{target_url}?{query}")
 
 
-def test_get_remote_file_info_falls_back_to_get_and_uses_default_headers(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_remote_file_info_falls_back_to_get_and_uses_default_headers(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
     api = remote_files_module.GetRemoteFileInfo()
     handler = unwrap(api.get)
     decoded_url = "https://example.com/test.txt"
@@ -268,7 +270,9 @@ def test_remote_file_upload_rejects_oversized_file(app: Flask, monkeypatch: pyte
             handler(api, current_user)
 
 
-def test_remote_file_upload_translates_service_file_too_large_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_remote_file_upload_translates_service_file_too_large_error(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
     api = remote_files_module.RemoteFileUpload()
     handler = unwrap(api.post)
     url = "https://example.com/large.bin"
@@ -283,7 +287,9 @@ def test_remote_file_upload_translates_service_file_too_large_error(app: Flask, 
             handler(api, current_user)
 
 
-def test_remote_file_upload_translates_service_unsupported_type_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_remote_file_upload_translates_service_unsupported_type_error(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
     api = remote_files_module.RemoteFileUpload()
     handler = unwrap(api.post)
     url = "https://example.com/file.exe"
