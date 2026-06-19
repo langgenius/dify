@@ -54,7 +54,7 @@ catalog:
   '@amplitude/analytics-browser': 2.44.1
   '@amplitude/plugin-session-replay-browser': 1.32.1
   '@antfu/eslint-config': 9.0.0
-  '@base-ui/react': 1.5.0
+  '@base-ui/react': 1.6.0
   '@chromatic-com/storybook': 5.2.1
   '@cucumber/cucumber': 13.0.0
   '@egoist/tailwindcss-icons': 1.9.2
