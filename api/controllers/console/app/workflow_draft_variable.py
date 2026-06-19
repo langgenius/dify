@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Callable
 from functools import wraps
-from typing import Any, Concatenate, TypedDict
+from typing import Any, Concatenate, TypedDict, override
 from uuid import UUID
 
 from flask import Response, request
@@ -10,15 +10,19 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import sessionmaker
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     DraftWorkflowNotExist,
 )
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_user,
 )
@@ -28,6 +32,7 @@ from extensions.ext_database import db
 from factories import variable_factory
 from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
+from fields.base import ResponseModel
 from graphon.file import helpers as file_helpers
 from graphon.variables.segment_group import SegmentGroup
 from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
@@ -42,6 +47,28 @@ logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
 
 
+class OpaqueRawField(fields.Raw):
+    @override
+    def schema(self) -> dict[str, object]:
+        return {"type": "object"}
+
+
+class JsonValueRawField(fields.Raw):
+    @override
+    def schema(self) -> dict[str, object]:
+        return {
+            "anyOf": [
+                {"type": "string"},
+                {"type": "integer"},
+                {"type": "number"},
+                {"type": "boolean"},
+                {"type": "object", "additionalProperties": True},
+                {"type": "array", "items": {}},
+                {"type": "null"},
+            ]
+        }
+
+
 class WorkflowDraftVariableListQuery(BaseModel):
     page: int = Field(default=1, ge=1, le=100_000, description="Page number")
     limit: int = Field(default=20, ge=1, le=100, description="Items per page")
@@ -54,12 +81,33 @@ class WorkflowDraftVariableUpdatePayload(BaseModel):
 
 class ConversationVariableUpdatePayload(BaseModel):
     conversation_variables: list[dict[str, Any]] = Field(
-        ..., description="Conversation variables for the draft workflow"
+        ...,
+        description="Conversation variables for the draft workflow",
     )
 
 
 class EnvironmentVariableUpdatePayload(BaseModel):
-    environment_variables: list[dict[str, Any]] = Field(..., description="Environment variables for the draft workflow")
+    environment_variables: list[dict[str, Any]] = Field(
+        ...,
+        description="Environment variables for the draft workflow",
+    )
+
+
+class EnvironmentVariableItemResponse(ResponseModel):
+    id: str
+    type: str
+    name: str
+    description: str | None = None
+    selector: list[str]
+    value_type: str
+    value: Any
+    edited: bool
+    visible: bool
+    editable: bool
+
+
+class EnvironmentVariableListResponse(ResponseModel):
+    items: list[EnvironmentVariableItemResponse]
 
 
 register_schema_models(
@@ -69,6 +117,7 @@ register_schema_models(
     ConversationVariableUpdatePayload,
     EnvironmentVariableUpdatePayload,
 )
+register_response_schema_models(console_ns, SimpleResultResponse, EnvironmentVariableListResponse)
 
 
 def _convert_values_to_json_serializable_object(value: Segment):
@@ -155,8 +204,8 @@ _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS = {
 
 _WORKFLOW_DRAFT_VARIABLE_FIELDS = {
     **_WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS,
-    "value": fields.Raw(attribute=_serialize_var_value),
-    "full_content": fields.Raw(attribute=_serialize_full_content),
+    "value": JsonValueRawField(attribute=_serialize_var_value),
+    "full_content": OpaqueRawField(attribute=_serialize_full_content),
 }
 
 _WORKFLOW_DRAFT_ENV_VARIABLE_FIELDS = {
@@ -181,7 +230,7 @@ def _get_items(var_list: WorkflowDraftVariableList) -> list[WorkflowDraftVariabl
 
 _WORKFLOW_DRAFT_VARIABLE_LIST_WITHOUT_VALUE_FIELDS = {
     "items": fields.List(fields.Nested(_WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS), attribute=_get_items),
-    "total": fields.Raw(),
+    "total": fields.Integer,
 }
 
 _WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS = {
@@ -237,6 +286,7 @@ def _api_prerequisite[T, **P, R](
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @with_current_user
     @wraps(f)
@@ -248,7 +298,7 @@ def _api_prerequisite[T, **P, R](
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/variables")
 class WorkflowVariableCollectionApi(Resource):
-    @console_ns.expect(console_ns.models[WorkflowDraftVariableListQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(WorkflowDraftVariableListQuery))
     @console_ns.doc("get_workflow_variables")
     @console_ns.doc(description="Get draft workflow variables")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -258,6 +308,7 @@ class WorkflowVariableCollectionApi(Resource):
     )
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_list_without_value_model)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def get(self, current_user: Account, app_model: App):
         """
         Get draft workflow
@@ -322,6 +373,7 @@ class NodeVariableCollectionApi(Resource):
     @console_ns.response(200, "Node variables retrieved successfully", workflow_draft_variable_list_model)
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_list_model)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def get(self, current_user: Account, app_model: App, node_id: str):
         validate_node_id(node_id)
         with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
@@ -356,6 +408,7 @@ class VariableApi(Resource):
     @console_ns.response(404, "Variable not found")
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_model)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def get(self, current_user: Account, app_model: App, variable_id: UUID):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
@@ -528,6 +581,7 @@ class ConversationVariableCollectionApi(Resource):
     @console_ns.response(404, "Draft workflow not found")
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_list_model)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def get(self, current_user: Account, app_model: App):
         # NOTE(QuantumGhost): Prefill conversation variables into the draft variables table
         # so their IDs can be returned to the caller.
@@ -544,13 +598,18 @@ class ConversationVariableCollectionApi(Resource):
     @console_ns.doc("update_conversation_variables")
     @console_ns.doc(description="Update conversation variables for workflow draft")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Conversation variables updated successfully")
+    @console_ns.response(
+        200,
+        "Conversation variables updated successfully",
+        console_ns.models[SimpleResultResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @get_app_model(mode=AppMode.ADVANCED_CHAT)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
+    @get_app_model(mode=AppMode.ADVANCED_CHAT)
     def post(self, current_user: Account, app_model: App):
         payload = ConversationVariableUpdatePayload.model_validate(console_ns.payload or {})
 
@@ -578,6 +637,7 @@ class SystemVariableCollectionApi(Resource):
     @console_ns.response(200, "System variables retrieved successfully", workflow_draft_variable_list_model)
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_list_model)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def get(self, current_user: Account, app_model: App):
         return _get_variable_list(app_model, SYSTEM_VARIABLE_NODE_ID, current_user.id)
 
@@ -587,9 +647,14 @@ class EnvironmentVariableCollectionApi(Resource):
     @console_ns.doc("get_environment_variables")
     @console_ns.doc(description="Get environment variables for workflow")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Environment variables retrieved successfully")
+    @console_ns.response(
+        200,
+        "Environment variables retrieved successfully",
+        console_ns.models[EnvironmentVariableListResponse.__name__],
+    )
     @console_ns.response(404, "Draft workflow not found")
     @_api_prerequisite
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def get(self, _current_user: Account, app_model: App):
         """
         Get draft workflow
@@ -625,13 +690,18 @@ class EnvironmentVariableCollectionApi(Resource):
     @console_ns.doc("update_environment_variables")
     @console_ns.doc(description="Update environment variables for workflow draft")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Environment variables updated successfully")
+    @console_ns.response(
+        200,
+        "Environment variables updated successfully",
+        console_ns.models[SimpleResultResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def post(self, current_user: Account, app_model: App):
         payload = EnvironmentVariableUpdatePayload.model_validate(console_ns.payload or {})
 

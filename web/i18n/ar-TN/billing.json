@@ -164,6 +164,8 @@
   "upgrade.uploadMultipleFiles.title": "قم بالترقية لفتح ميزة تحميل المستندات دفعة واحدة",
   "upgrade.uploadMultiplePages.description": "لقد وصلت إلى حد التحميل — يمكن اختيار ورفع مستند واحد فقط في كل مرة على الخطة الحالية الخاصة بك.",
   "upgrade.uploadMultiplePages.title": "قم بالترقية لتحميل عدة مستندات دفعة واحدة",
+  "upgrade.workflowRestore.description": "استعادة إصدارات سير العمل غير متاحة في خطتك الحالية.",
+  "upgrade.workflowRestore.title": "قم بالترقية لاستعادة إصدارات سير العمل",
   "upgradeBtn.encourage": "الترقية الآن",
   "upgradeBtn.encourageShort": "ترقية",
   "upgradeBtn.plain": "عرض الخطة",

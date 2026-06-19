@@ -15,16 +15,20 @@ import { useModalContext } from '@/context/modal-context'
 import ExternalKnowledgeAPICard from '../external-knowledge-api-card'
 
 type ExternalAPIPanelProps = {
+  canManageExternalKnowledgeApi: boolean
   onClose: () => void
 }
 
-const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({ onClose }) => {
+const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({ canManageExternalKnowledgeApi, onClose }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { setShowExternalKnowledgeAPIModal } = useModalContext()
   const { externalKnowledgeApiList, mutateExternalKnowledgeApis, isLoading } = useExternalKnowledgeApi()
 
   const handleOpenExternalAPIModal = () => {
+    if (!canManageExternalKnowledgeApi)
+      return
+
     setShowExternalKnowledgeAPIModal({
       payload: { name: '', settings: { endpoint: '', api_key: '' } },
       datasetBindings: [],
@@ -67,16 +71,18 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({ onClose }) => {
             </ActionButton>
           </div>
         </div>
-        <div className="flex flex-col items-start justify-center gap-2 self-stretch px-4 py-3">
-          <Button
-            variant="primary"
-            className="flex items-center justify-center gap-0.5 px-3 py-2"
-            onClick={handleOpenExternalAPIModal}
-          >
-            <RiAddLine className="size-4 text-components-button-primary-text" />
-            <div className="system-sm-medium text-components-button-primary-text">{t('createExternalAPI', { ns: 'dataset' })}</div>
-          </Button>
-        </div>
+        {canManageExternalKnowledgeApi && (
+          <div className="flex flex-col items-start justify-center gap-2 self-stretch px-4 py-3">
+            <Button
+              variant="primary"
+              className="flex items-center justify-center gap-0.5 px-3 py-2"
+              onClick={handleOpenExternalAPIModal}
+            >
+              <RiAddLine className="size-4 text-components-button-primary-text" />
+              <div className="system-sm-medium text-components-button-primary-text">{t('createExternalAPI', { ns: 'dataset' })}</div>
+            </Button>
+          </div>
+        )}
         <div className="flex grow flex-col items-start gap-1 self-stretch px-4 py-0">
           {isLoading
             ? (
@@ -84,7 +90,11 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({ onClose }) => {
               )
             : (
                 externalKnowledgeApiList.map(api => (
-                  <ExternalKnowledgeAPICard key={api.id} api={api} />
+                  <ExternalKnowledgeAPICard
+                    key={api.id}
+                    api={api}
+                    canManageExternalKnowledgeApi={canManageExternalKnowledgeApi}
+                  />
                 ))
               )}
         </div>

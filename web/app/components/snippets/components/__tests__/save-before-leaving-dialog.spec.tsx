@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { expectLoadingButton } from '@/test/button'
 import SaveBeforeLeavingDialog from '../save-before-leaving-dialog'
 
 describe('SaveBeforeLeavingDialog', () => {
@@ -40,6 +41,6 @@ describe('SaveBeforeLeavingDialog', () => {
 
     expect(screen.getByRole('button', { name: 'snippet.continueEditing' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'snippet.doNotSave' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'snippet.saveAndExit' })).toBeDisabled()
+    expectLoadingButton(screen.getByRole('button', { name: 'snippet.saveAndExit' }))
   })
 })

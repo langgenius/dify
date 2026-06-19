@@ -1,5 +1,6 @@
+import logging
 import uuid
-from unittest.mock import ANY, call, patch
+from unittest.mock import call, patch
 
 import pytest
 from sqlalchemy import delete, func, select
@@ -147,7 +148,7 @@ class TestDeleteDraftVariablesBatch:
 
     @patch("tasks.remove_app_and_related_data_task._delete_draft_variable_offload_data")
     def test_delete_draft_variables_batch_logs_progress(
-        self, mock_offload_cleanup, db_session_with_containers, caplog
+        self, mock_offload_cleanup, db_session_with_containers, caplog: pytest.LogCaptureFixture
     ):
         import logging
         caplog.set_level(logging.INFO)
@@ -164,14 +165,15 @@ class TestDeleteDraftVariablesBatch:
 
         mock_offload_cleanup.return_value = len(file_id_by_index)
 
-        result = delete_draft_variables_batch(app.id, 50)
+        with caplog.at_level(logging.INFO, logger="tasks.remove_app_and_related_data_task"):
+            result = delete_draft_variables_batch(app.id, 50)
 
         assert result == 30
         mock_offload_cleanup.assert_called_once()
         _, called_file_ids = mock_offload_cleanup.call_args.args
         assert {str(file_id) for file_id in called_file_ids} == {str(file_id) for file_id in file_id_by_index.values()}
-        info_records = [r for r in caplog.records if r.levelname == "INFO"]
-        assert len(info_records) >= 2
+        info_records = [record for record in caplog.records if record.levelno == logging.INFO]
+        assert len(info_records) == 2
 
 
 class TestDeleteDraftVariableOffloadData:
@@ -206,7 +208,7 @@ class TestDeleteDraftVariableOffloadData:
 
     @patch("extensions.ext_storage.storage")
     def test_delete_draft_variable_offload_data_storage_failure(
-        self, mock_storage, db_session_with_containers, caplog
+        self, mock_storage, db_session_with_containers, caplog: pytest.LogCaptureFixture
     ):
         import logging
         caplog.set_level(logging.ERROR)
@@ -219,12 +221,12 @@ class TestDeleteDraftVariableOffloadData:
 
         mock_storage.delete.side_effect = [Exception("Storage error"), None]
 
-        with session_factory.create_session() as session, session.begin():
-            result = _delete_draft_variable_offload_data(session, file_ids)
+        with caplog.at_level(logging.ERROR):
+            with session_factory.create_session() as session, session.begin():
+                result = _delete_draft_variable_offload_data(session, file_ids)
 
         assert result == 1
-        assert "Failed to delete storage object" in caplog.text
-        assert storage_keys[0] in caplog.text
+        assert f"Failed to delete storage object {storage_keys[0]}" in caplog.text
 
         remaining_var_files_count = db_session_with_containers.scalar(
             select(func.count())

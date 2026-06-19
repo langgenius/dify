@@ -24,9 +24,11 @@ import { useProviderContext } from '@/context/provider-context'
 import useTheme from '@/hooks/use-theme'
 import { useRouter } from '@/next/navigation'
 import { createApp } from '@/service/apps'
+import { useInvalidateAppList } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
+import { hasPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
 import AppIconPicker from '../../base/app-icon-picker'
 import { CreateAppDialogShell } from '../create-app-dialog-shell'
@@ -55,13 +57,18 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
 
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { userProfile, workspacePermissionKeys } = useAppContext()
+  const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
+  const invalidateAppList = useInvalidateAppList()
 
   const isCreatingRef = useRef(false)
 
   const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
 
   const onCreate = useCallback(async () => {
+    if (!canCreateApp)
+      return
+
     if (!appMode) {
       toast.error(t('newApp.appTypeRequired', { ns: 'app' }))
       return
@@ -89,17 +96,22 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
       onSuccess()
       onClose()
       setNeedRefresh('1')
-      getRedirection(isCurrentWorkspaceEditor, app, push)
+      invalidateAppList()
+      getRedirection(app, push, {
+        currentUserId: userProfile?.id,
+        resourceMaintainer: app.maintainer,
+        workspacePermissionKeys,
+      })
     }
     catch (error) {
       toast.error(error instanceof Error ? error.message : t('newApp.appCreateFailed', { ns: 'app' }))
     }
     isCreatingRef.current = false
-  }, [name, t, appMode, appIcon, description, onSuccess, onClose, push, isCurrentWorkspaceEditor])
+  }, [canCreateApp, name, t, appMode, appIcon, description, onSuccess, onClose, push, userProfile?.id, workspacePermissionKeys, setNeedRefresh, invalidateAppList])
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
   useHotkey('Mod+Enter', () => {
-    if (isAppsFull)
+    if (isAppsFull || !canCreateApp)
       return
     handleCreateApp()
   }, {
@@ -269,7 +281,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
               </button>
               <div className="flex gap-2">
                 <Button onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-                <Button disabled={isAppsFull || !name} className="gap-1" variant="primary" onClick={handleCreateApp}>
+                <Button disabled={!canCreateApp || isAppsFull || !name} className="gap-1" variant="primary" onClick={handleCreateApp}>
                   <span>{t('newApp.Create', { ns: 'app' })}</span>
                   <KbdGroup>
                     {['Mod', 'Enter'].map(key => (

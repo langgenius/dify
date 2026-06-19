@@ -8,6 +8,7 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 import { useModalContext } from '@/context/modal-context'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import { getDocDownloadUrl } from '@/service/common'
+import { expectLoadingButton } from '@/test/button'
 import { downloadUrl } from '@/utils/download'
 import Compliance from '../compliance'
 
@@ -253,7 +254,7 @@ describe('Compliance', () => {
       await waitFor(() => {
         const busyButton = menuItem!.querySelector('button[aria-busy="true"]')
         expect(busyButton).not.toBeNull()
-        expect(busyButton)!.toBeDisabled()
+        expectLoadingButton(busyButton)
         expect(busyButton!.querySelector('.animate-spin')).not.toBeNull()
       }, { timeout: 10000 })
 
@@ -288,7 +289,7 @@ describe('Compliance', () => {
       await waitFor(() => {
         const busyButton = menuItem!.querySelector('button[aria-busy="true"]')
         expect(busyButton).not.toBeNull()
-        expect(busyButton)!.toBeDisabled()
+        expectLoadingButton(busyButton)
         expect(getDocDownloadUrl).toHaveBeenCalledTimes(1)
       }, { timeout: 10000 })
 

@@ -7,8 +7,18 @@ const { mockUseQueryData } = vi.hoisted(() => ({
   mockUseQueryData: { current: [] as Tag[] },
 }))
 
+const mockWorkspacePermissionKeys = vi.hoisted(() => ({
+  value: ['app.tag.manage', 'dataset.tag.manage'] as string[],
+}))
+
 vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({ data: mockUseQueryData.current }),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }),
 }))
 
 const mockTags: Tag[] = [
@@ -37,6 +47,7 @@ describe('TagFilter', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseQueryData.current = mockTags
+    mockWorkspacePermissionKeys.value = ['app.tag.manage', 'dataset.tag.manage']
   })
 
   describe('Rendering', () => {
@@ -79,6 +90,11 @@ describe('TagFilter', () => {
   })
 
   describe('Props', () => {
+    it('should hide the leading tag icon when disabled', () => {
+      const { container } = render(<TagFilter {...defaultProps} showLeadingIcon={false} />)
+      expect(container.querySelector('svg')).not.toBeInTheDocument()
+    })
+
     it('should filter tags by type prop', async () => {
       const user = userEvent.setup()
       render(<TagFilter {...defaultProps} type="knowledge" />)
@@ -198,6 +214,18 @@ describe('TagFilter', () => {
       await user.click(screen.getByText(i18n.manageTags))
 
       expect(onOpenTagManagement).toHaveBeenCalledTimes(1)
+    })
+
+    it('should hide tag management action without tag management permission', async () => {
+      const user = userEvent.setup()
+      mockWorkspacePermissionKeys.value = []
+
+      render(<TagFilter {...defaultProps} />)
+
+      await user.click(screen.getByText(i18n.placeholder))
+
+      expect(screen.queryByRole('button', { name: i18n.manageTags })).not.toBeInTheDocument()
+      expect(screen.getByRole('option', { name: /Frontend/i })).toBeInTheDocument()
     })
   })
 

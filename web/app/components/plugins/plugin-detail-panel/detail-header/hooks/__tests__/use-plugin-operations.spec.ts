@@ -13,9 +13,8 @@ type VersionPickerMock = {
 
 const {
   mockSetShowUpdatePluginModal,
-  mockRefreshModelProviders,
   mockInvalidateCheckInstalled,
-  mockInvalidateAllToolProviders,
+  mockRefreshPluginList,
   mockUninstallPlugin,
   mockFetchReleases,
   mockCheckForUpdates,
@@ -23,9 +22,8 @@ const {
 } = vi.hoisted(() => {
   return {
     mockSetShowUpdatePluginModal: vi.fn(),
-    mockRefreshModelProviders: vi.fn(),
     mockInvalidateCheckInstalled: vi.fn(),
-    mockInvalidateAllToolProviders: vi.fn(),
+    mockRefreshPluginList: vi.fn(),
     mockUninstallPlugin: vi.fn(() => Promise.resolve({ success: true })),
     mockFetchReleases: vi.fn(() => Promise.resolve([{ tag_name: 'v2.0.0' }])),
     mockCheckForUpdates: vi.fn(() => ({ needUpdate: true, toastProps: { type: 'success', message: 'Update available' } })),
@@ -54,9 +52,9 @@ vi.mock('@/context/modal-context', () => ({
   }),
 }))
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    refreshModelProviders: mockRefreshModelProviders,
+vi.mock('@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list', () => ({
+  default: () => ({
+    refreshPluginList: mockRefreshPluginList,
   }),
 }))
 
@@ -66,10 +64,6 @@ vi.mock('@/service/plugins', () => ({
 
 vi.mock('@/service/use-plugins', () => ({
   useInvalidateCheckInstalled: () => mockInvalidateCheckInstalled,
-}))
-
-vi.mock('@/service/use-tools', () => ({
-  useInvalidateAllToolProviders: () => mockInvalidateAllToolProviders,
 }))
 
 vi.mock('../../../../install-plugin/hooks', async (importOriginal) => {
@@ -461,7 +455,7 @@ describe('usePluginOperations', () => {
       expect(modalStates.hideDeleteConfirm).toHaveBeenCalled()
     })
 
-    it('should refresh model providers when deleting model plugin', async () => {
+    it('should refresh plugin list when deleting model plugin', async () => {
       const detail = createPluginDetail({
         declaration: {
           author: 'test-author',
@@ -487,10 +481,10 @@ describe('usePluginOperations', () => {
         await result.current.handleDelete()
       })
 
-      expect(mockRefreshModelProviders).toHaveBeenCalled()
+      expect(mockRefreshPluginList).toHaveBeenCalledWith({ category: 'model' })
     })
 
-    it('should invalidate tool providers when deleting tool plugin', async () => {
+    it('should refresh plugin list when deleting tool plugin', async () => {
       const detail = createPluginDetail({
         declaration: {
           author: 'test-author',
@@ -516,7 +510,7 @@ describe('usePluginOperations', () => {
         await result.current.handleDelete()
       })
 
-      expect(mockInvalidateAllToolProviders).toHaveBeenCalled()
+      expect(mockRefreshPluginList).toHaveBeenCalledWith({ category: 'tool' })
     })
 
     it('should track plugin uninstalled event', async () => {

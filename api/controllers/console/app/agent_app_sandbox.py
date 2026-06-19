@@ -22,6 +22,7 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
+from controllers.console.agent.app_helpers import resolve_agent_app_model
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required, with_current_tenant_id
 from fields.base import ResponseModel
@@ -132,18 +133,18 @@ def _handle(exc: Exception) -> tuple[dict[str, object], int]:
     raise exc
 
 
-@console_ns.route("/apps/<uuid:app_id>/agent-sandbox/files")
+@console_ns.route("/agent/<uuid:agent_id>/sandbox/files")
 class AgentAppSandboxListResource(Resource):
     @console_ns.doc("list_agent_app_sandbox_files")
     @console_ns.doc(description="List a directory in an Agent App conversation sandbox")
-    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentSandboxListQuery)})
+    @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentSandboxListQuery)})
     @console_ns.response(200, "Listing returned", console_ns.models[SandboxListResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.AGENT])
     @with_current_tenant_id
-    def get(self, tenant_id: str, app_model: App):
+    def get(self, tenant_id: str, agent_id: UUID):
+        app_model = resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         query = query_params_from_request(AgentSandboxListQuery)
         try:
             result = AgentAppSandboxService().list_files(
@@ -157,18 +158,18 @@ class AgentAppSandboxListResource(Resource):
         return result.model_dump()
 
 
-@console_ns.route("/apps/<uuid:app_id>/agent-sandbox/files/read")
+@console_ns.route("/agent/<uuid:agent_id>/sandbox/files/read")
 class AgentAppSandboxReadResource(Resource):
     @console_ns.doc("read_agent_app_sandbox_file")
     @console_ns.doc(description="Read a text/binary preview file in an Agent App conversation sandbox")
-    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentSandboxFileQuery)})
+    @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentSandboxFileQuery)})
     @console_ns.response(200, "Preview returned", console_ns.models[SandboxReadResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.AGENT])
     @with_current_tenant_id
-    def get(self, tenant_id: str, app_model: App):
+    def get(self, tenant_id: str, agent_id: UUID):
+        app_model = resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         query = query_params_from_request(AgentSandboxFileQuery)
         try:
             result = AgentAppSandboxService().read_file(
@@ -182,7 +183,7 @@ class AgentAppSandboxReadResource(Resource):
         return result.model_dump()
 
 
-@console_ns.route("/apps/<uuid:app_id>/agent-sandbox/files/upload")
+@console_ns.route("/agent/<uuid:agent_id>/sandbox/files/upload")
 class AgentAppSandboxUploadResource(Resource):
     @console_ns.doc("upload_agent_app_sandbox_file")
     @console_ns.doc(description="Upload one Agent App sandbox file as a Dify ToolFile mapping")
@@ -191,9 +192,9 @@ class AgentAppSandboxUploadResource(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.AGENT])
     @with_current_tenant_id
-    def post(self, tenant_id: str, app_model: App):
+    def post(self, tenant_id: str, agent_id: UUID):
+        app_model = resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         payload = AgentSandboxUploadPayload.model_validate(request.get_json(silent=True) or {})
         try:
             result = AgentAppSandboxService().upload_file(

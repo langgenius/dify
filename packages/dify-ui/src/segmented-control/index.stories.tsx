@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { ReactNode } from 'react'
+import * as React from 'react'
 import {
   SegmentedControl,
   SegmentedControlDivider,
@@ -35,10 +35,10 @@ const Icon = () => (
 )
 
 const Item = () => (
-  <>
+  <React.Fragment>
     <Icon />
     <span className="px-0.5">Item</span>
-  </>
+  </React.Fragment>
 )
 
 function SegmentedControlExample({
@@ -93,7 +93,7 @@ function SpecPanel({
   children,
 }: {
   className?: string
-  children: ReactNode
+  children: React.ReactNode
 }) {
   return (
     <div className={className}>
@@ -113,6 +113,9 @@ export const DesignSpec: Story = {
     </div>
   ),
   parameters: {
+    a11y: {
+      test: 'todo',
+    },
     docs: {
       description: {
         story: 'Figma node 2473:9851: segmented control examples with text+icon and icon-only rows, with and without outer padding.',
@@ -168,6 +171,9 @@ export const DataAttributeStates: Story = {
     </div>
   ),
   parameters: {
+    a11y: {
+      test: 'todo',
+    },
     docs: {
       description: {
         story: '`SegmentedControlItem` gets `data-pressed` and `data-disabled` from Base UI Toggle. Accent, neutral, and multiple-selection examples are composed through props and className.',

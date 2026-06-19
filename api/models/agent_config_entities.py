@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import re
 from enum import StrEnum
-from typing import Any, Final, Literal
+from typing import Annotated, Any, Final, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, WithJsonSchema, field_validator, model_validator
 
 from core.workflow.file_reference import is_canonical_file_reference
 from graphon.file import FileTransferMethod
@@ -27,6 +27,44 @@ class DeclaredOutputType(StrEnum):
     ARRAY = "array"
     BOOLEAN = "boolean"
     FILE = "file"
+
+
+_DECLARED_OUTPUT_CHILDREN_JSON_SCHEMA = {
+    "type": "array",
+    "items": {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "name": {"type": "string"},
+            "type": {
+                "type": "string",
+                "enum": [item.value for item in DeclaredOutputType],
+            },
+            "description": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+            "required": {"type": "boolean"},
+            "file": {"type": "object", "additionalProperties": True},
+            "array_item": {
+                "type": "object",
+                "additionalProperties": True,
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [item.value for item in DeclaredOutputType],
+                    },
+                    "description": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                    "children": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+                },
+            },
+            "children": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+        },
+        "required": ["name", "type"],
+    },
+}
+
+DeclaredOutputChildren = Annotated[
+    list["DeclaredOutputChildConfig"],
+    WithJsonSchema(_DECLARED_OUTPUT_CHILDREN_JSON_SCHEMA),
+]
 
 
 class AgentCliToolAuthorizationStatus(StrEnum):
@@ -76,7 +114,7 @@ RuntimeParameterValue = JsonPrimitive | list[str] | list[int] | list[float] | li
 
 
 class AgentFlexibleConfig(BaseModel):
-    model_config = ConfigDict(extra="allow", json_schema_extra={"x-dify-opaque": True})
+    model_config = ConfigDict(extra="allow")
 
     def get(self, key: str, default: Any = None) -> Any:
         return self.model_dump(mode="python").get(key, default)
@@ -99,6 +137,10 @@ class AgentFileRefConfig(AgentFlexibleConfig):
     transfer_method: str | None = Field(default=None, max_length=64)
     url: str | None = None
     remote_url: str | None = None
+    # Drive key once the file is committed to the agent drive ("files/<name>",
+    # ENG-625). Files without it are plain upload references and stay invisible
+    # to the runtime drive manifest.
+    drive_key: str | None = Field(default=None, max_length=512)
 
 
 class AgentSkillRefConfig(AgentFlexibleConfig):
@@ -107,6 +149,16 @@ class AgentSkillRefConfig(AgentFlexibleConfig):
     description: str | None = None
     file_id: str | None = Field(default=None, max_length=255)
     path: str | None = None
+    # Standardization outputs (ENG-594) — previously riding along via
+    # ``extra="allow"``, promoted to the explicit schema because the runtime
+    # drive manifest (ENG-623) keys off them.
+    skill_md_key: str | None = Field(default=None, max_length=512)
+    skill_md_file_id: str | None = Field(default=None, max_length=255)
+    full_archive_key: str | None = Field(default=None, max_length=512)
+    full_archive_file_id: str | None = Field(default=None, max_length=255)
+    # Zip member path listing from standardization (ENG-371): lets infer-tools
+    # show the model strong signals like ``scripts/*.sh`` without unpacking.
+    manifest_files: list[str] | None = None
 
 
 class AgentPermissionConfig(BaseModel):
@@ -134,6 +186,9 @@ class AgentSecretRefConfig(AgentFlexibleConfig):
     env_name: str | None = Field(default=None, max_length=255)
     variable: str | None = Field(default=None, max_length=255)
     type: str | None = Field(default=None, max_length=64)
+    # UI-facing selected secret reference. This is a credential/ref id, not the
+    # plaintext secret value; runtime maps it to the shell-layer ``ref``.
+    value: str | None = Field(default=None, max_length=255)
     id: str | None = Field(default=None, max_length=255)
     ref: str | None = Field(default=None, max_length=255)
     credential_id: str | None = Field(default=None, max_length=255)
@@ -162,7 +217,7 @@ class AgentCliToolConfig(AgentFlexibleConfig):
     install_command: str | None = None
     install: str | None = None
     setup_command: str | None = None
-    invoke_metadata: dict[str, Any] = Field(default_factory=dict, json_schema_extra={"x-dify-opaque": True})
+    invoke_metadata: dict[str, Any] = Field(default_factory=dict)
     env: AgentCliToolEnvConfig = Field(default_factory=AgentCliToolEnvConfig)
     pre_authorized: bool | None = None
     authorization_status: AgentCliToolAuthorizationStatus | None = None
@@ -175,6 +230,10 @@ class AgentCliToolConfig(AgentFlexibleConfig):
     risk_accepted: bool = False
     approved: bool = False
     risk_level: AgentCliToolRiskLevel | None = None
+    # Slug of the skill an infer-tools suggestion came from (ENG-371); drives
+    # the "inferred from <skill>" badge. Plain provenance metadata — saving an
+    # inferred tool still passes every composer validation rule.
+    inferred_from: str | None = Field(default=None, max_length=255)
 
 
 class AgentKnowledgeDatasetConfig(AgentFlexibleConfig):
@@ -295,7 +354,7 @@ class WorkflowNodeJobMetadata(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     file_refs: list[AgentFileRefConfig] | None = None
-    agent_soul: dict[str, Any] | None = Field(default=None, json_schema_extra={"x-dify-opaque": True})
+    agent_soul: dict[str, Any] | None = Field(default=None)
 
 
 class AgentSoulPromptConfig(BaseModel):
@@ -447,7 +506,7 @@ class AppVariableConfig(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     type: str = Field(min_length=1, max_length=64)
     required: bool = False
-    default: Any = Field(default=None, json_schema_extra={"x-dify-opaque": True})
+    default: Any = Field(default=None)
 
 
 class AgentSoulConfig(BaseModel):
@@ -489,11 +548,55 @@ class DeclaredArrayItem(BaseModel):
 
     type: DeclaredOutputType
     description: str | None = None
+    children: DeclaredOutputChildren = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _reject_nested_array(self) -> DeclaredArrayItem:
         if self.type == DeclaredOutputType.ARRAY:
             raise ValueError("nested arrays are not supported as array_item.type")
+        if self.children and self.type != DeclaredOutputType.OBJECT:
+            raise ValueError("array_item.children is only allowed when array_item.type is object")
+        return self
+
+
+class DeclaredOutputChildConfig(BaseModel):
+    """Nested field under an object-shaped declared output.
+
+    The first backend version keeps child fields lightweight: they describe the
+    variable-picker/schema tree but do not own independent retry/check behavior.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=255)
+    type: DeclaredOutputType
+    description: str | None = None
+    required: bool = True
+    file: DeclaredOutputFileConfig | None = None
+    array_item: DeclaredArrayItem | None = None
+    children: DeclaredOutputChildren = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _validate_shape(self) -> DeclaredOutputChildConfig:
+        if not _OUTPUT_NAME_PATTERN.fullmatch(self.name):
+            raise ValueError(
+                f"output child name {self.name!r} must match {_OUTPUT_NAME_PATTERN.pattern} "
+                "(JSON-schema-friendly identifier)"
+            )
+        if self.type == DeclaredOutputType.FILE:
+            if self.file is None:
+                self.file = DeclaredOutputFileConfig()
+        elif self.file is not None:
+            raise ValueError("file metadata is only allowed for file output children")
+
+        if self.type == DeclaredOutputType.ARRAY:
+            if self.array_item is None:
+                self.array_item = DeclaredArrayItem(type=DeclaredOutputType.OBJECT)
+        elif self.array_item is not None:
+            raise ValueError("array_item is only allowed when child type is array")
+
+        if self.children and self.type != DeclaredOutputType.OBJECT:
+            raise ValueError("children is only allowed for object output children")
         return self
 
 
@@ -546,7 +649,7 @@ class DeclaredOutputFailureStrategy(BaseModel):
     # When ``on_failure == DEFAULT_VALUE`` this value replaces the failed output. The
     # value's shape must match the owning ``DeclaredOutputConfig.type``; that match is
     # enforced at ``DeclaredOutputConfig`` level so the strategy stays type-agnostic.
-    default_value: Any = Field(default=None, json_schema_extra={"x-dify-opaque": True})
+    default_value: Any = Field(default=None)
 
     @model_validator(mode="after")
     def _require_default_value_when_default_strategy(self) -> DeclaredOutputFailureStrategy:
@@ -574,6 +677,7 @@ class DeclaredOutputConfig(BaseModel):
     required: bool = True
     file: DeclaredOutputFileConfig | None = None
     array_item: DeclaredArrayItem | None = None
+    children: DeclaredOutputChildren = Field(default_factory=list)
     check: DeclaredOutputCheckConfig | None = None
     failure_strategy: DeclaredOutputFailureStrategy = Field(default_factory=DeclaredOutputFailureStrategy)
 
@@ -606,6 +710,9 @@ class DeclaredOutputConfig(BaseModel):
                 self.array_item = DeclaredArrayItem(type=DeclaredOutputType.OBJECT)
         elif self.array_item is not None:
             raise ValueError("array_item is only allowed when type is array")
+
+        if self.children and self.type != DeclaredOutputType.OBJECT:
+            raise ValueError("children is only allowed for object outputs")
 
         # Per PRD §OUTPUT 配置框: output check is file-only.
         if self.check is not None and self.check.enabled and self.type != DeclaredOutputType.FILE:

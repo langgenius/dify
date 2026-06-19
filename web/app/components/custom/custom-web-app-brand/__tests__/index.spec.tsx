@@ -19,7 +19,7 @@ const createHookState = (overrides: Partial<ReturnType<typeof useWebAppBrand>> =
   uploadDisabled: false,
   workspaceLogo: 'https://example.com/workspace-logo.png',
   isSandbox: false,
-  isCurrentWorkspaceManager: true,
+  canManageCustomBrand: true,
   handleApply: vi.fn(),
   handleCancel: vi.fn(),
   handleChange: vi.fn(),
@@ -89,6 +89,19 @@ describe('CustomWebAppBrand', () => {
       })
 
       expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
+    })
+
+    it('should disable write controls when customization management permission is missing', () => {
+      renderComponent({
+        fileId: 'new-logo',
+        canManageCustomBrand: false,
+        uploadDisabled: true,
+      })
+
+      expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByRole('button', { name: 'custom.change' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'custom.apply' })).toBeDisabled()
     })
 
     it('should default the switch to unchecked when brand removal state is missing', () => {

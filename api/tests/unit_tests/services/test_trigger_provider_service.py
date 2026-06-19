@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import logging
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock
@@ -252,7 +253,7 @@ def test_add_trigger_subscription_should_raise_error_when_provider_limit_reached
     mock_session: MagicMock,
     provider_id: TriggerProviderID,
     provider_controller: MagicMock,
-    caplog: pytest.LogCaptureFixture,
+    caplog,
 ) -> None:
     # Arrange
     _patch_redis_lock(mocker)
@@ -260,19 +261,20 @@ def test_add_trigger_subscription_should_raise_error_when_provider_limit_reached
     _mock_get_trigger_provider(mocker, provider_controller)
 
     # Act + Assert
-    with pytest.raises(ValueError, match="Maximum number of providers"):
-        TriggerProviderService.add_trigger_subscription(
-            tenant_id="tenant-1",
-            user_id="user-1",
-            name="main",
-            provider_id=provider_id,
-            endpoint_id="endpoint-1",
-            credential_type=CredentialType.API_KEY,
-            parameters={},
-            properties={},
-            credentials={},
-        )
-    assert len([record for record in caplog.records if record.levelname == "ERROR"]) == 1
+    with caplog.at_level(logging.ERROR, logger="services.trigger.trigger_provider_service"):
+        with pytest.raises(ValueError, match="Maximum number of providers"):
+            TriggerProviderService.add_trigger_subscription(
+                tenant_id="tenant-1",
+                user_id="user-1",
+                name="main",
+                provider_id=provider_id,
+                endpoint_id="endpoint-1",
+                credential_type=CredentialType.API_KEY,
+                parameters={},
+                properties={},
+                credentials={},
+            )
+    assert sum(1 for r in caplog.records if r.levelno >= logging.ERROR) == 1
 
 
 def test_add_trigger_subscription_should_raise_error_when_name_exists(

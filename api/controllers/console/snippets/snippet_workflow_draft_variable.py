@@ -19,9 +19,11 @@ from flask_restx import Resource, marshal, marshal_with
 from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
+from controllers.common.schema import query_params_from_model
 from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist
 from controllers.console.app.workflow_draft_variable import (
+    EnvironmentVariableListResponse,
     WorkflowDraftVariableListQuery,
     WorkflowDraftVariableUpdatePayload,
     ensure_variable_access,
@@ -32,8 +34,11 @@ from controllers.console.app.workflow_draft_variable import (
 )
 from controllers.console.snippets.snippet_workflow import get_snippet
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_user,
 )
@@ -90,7 +95,7 @@ def _snippet_draft_var_prerequisite[T, **P, R](
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/variables")
 class SnippetWorkflowVariableCollectionApi(Resource):
-    @console_ns.expect(console_ns.models[WorkflowDraftVariableListQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(WorkflowDraftVariableListQuery))
     @console_ns.doc("get_snippet_workflow_variables")
     @console_ns.doc(description="List draft workflow variables without values (paginated, snippet scope)")
     @console_ns.response(
@@ -100,6 +105,7 @@ class SnippetWorkflowVariableCollectionApi(Resource):
     )
     @_snippet_draft_var_prerequisite
     @marshal_with(workflow_draft_variable_list_without_value_model)
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False)
     def get(self, current_user: Account, snippet: CustomizedSnippet) -> WorkflowDraftVariableList:
         args = WorkflowDraftVariableListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
@@ -123,6 +129,9 @@ class SnippetWorkflowVariableCollectionApi(Resource):
     @console_ns.doc(description="Delete all draft workflow variables for the current user (snippet scope)")
     @console_ns.response(204, "Workflow variables deleted successfully")
     @_snippet_draft_var_prerequisite
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
+    )
     def delete(self, current_user: Account, snippet: CustomizedSnippet) -> Response:
         draft_var_srv = WorkflowDraftVariableService(session=db.session())
         draft_var_srv.delete_user_workflow_variables(snippet.id, user_id=current_user.id)
@@ -305,7 +314,11 @@ class SnippetSystemVariableCollectionApi(Resource):
 class SnippetEnvironmentVariableCollectionApi(Resource):
     @console_ns.doc("get_snippet_environment_variables")
     @console_ns.doc(description="Get environment variables from snippet draft workflow graph")
-    @console_ns.response(200, "Environment variables retrieved successfully")
+    @console_ns.response(
+        200,
+        "Environment variables retrieved successfully",
+        console_ns.models[EnvironmentVariableListResponse.__name__],
+    )
     @console_ns.response(404, "Draft workflow not found")
     @_snippet_draft_var_prerequisite
     def get(self, _current_user: Account, snippet: CustomizedSnippet) -> dict[str, list[dict[str, Any]]]:

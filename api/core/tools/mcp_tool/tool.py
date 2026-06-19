@@ -122,13 +122,14 @@ class MCPTool(Tool):
 
     def _process_json_content(self, content_json: Any) -> Generator[ToolInvokeMessage, None, None]:
         """Process JSON content based on its type."""
-        if isinstance(content_json, dict):
-            yield self.create_json_message(content_json)
-        elif isinstance(content_json, list):
-            yield from self._process_json_list(content_json)
-        else:
-            # For primitive types (str, int, bool, etc.), convert to string
-            yield self.create_text_message(str(content_json))
+        match content_json:
+            case dict():
+                yield self.create_json_message(content_json)
+            case list():
+                yield from self._process_json_list(content_json)
+            case _:
+                # For primitive types (str, int, bool, etc.), convert to string
+                yield self.create_text_message(str(content_json))
 
     def _process_json_list(self, json_list: list) -> Generator[ToolInvokeMessage, None, None]:
         """Process a list of JSON items."""
@@ -222,16 +223,17 @@ class MCPTool(Tool):
 
         # Recursively search through nested structures
         for value in payload.values():
-            if isinstance(value, Mapping):
-                found = cls._extract_usage_dict(value)
-                if found is not None:
-                    return found
-            elif isinstance(value, list) and not isinstance(value, (str, bytes, bytearray)):
-                for item in value:
-                    if isinstance(item, Mapping):
-                        found = cls._extract_usage_dict(item)
-                        if found is not None:
-                            return found
+            match value:
+                case _ if isinstance(value, Mapping):
+                    found = cls._extract_usage_dict(value)
+                    if found is not None:
+                        return found
+                case list() if not isinstance(value, (str, bytes, bytearray)):
+                    for item in value:
+                        if isinstance(item, Mapping):
+                            found = cls._extract_usage_dict(item)
+                            if found is not None:
+                                return found
         return None
 
     @override
@@ -358,7 +360,17 @@ class MCPTool(Tool):
                 tenant_id=self.tenant_id,
                 app_id=app_id,
                 audience=audience,
+                user_type=self._resolve_user_type(),
             )
         except MCPTokenError as e:
             raise ToolInvokeError(f"Failed to obtain forwarded identity token: {e}") from e
         headers[FORWARDED_IDENTITY_HEADER] = token
+
+    def _resolve_user_type(self) -> str:
+        """Return "account" for console-authenticated callers (debugger/explore),
+        "end_user" for webapp / service-api / trigger callers — so the enterprise
+        side routes to the console store vs the published-webapp store."""
+        invoke_from = self.runtime.invoke_from
+        if invoke_from is not None and invoke_from.runs_as_account():
+            return "account"
+        return "end_user"

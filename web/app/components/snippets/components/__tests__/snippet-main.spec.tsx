@@ -26,6 +26,9 @@ const mockHandleWorkflowStartRunInWorkflow = vi.fn()
 const mockHandleCheckBeforePublish = vi.fn()
 const mockPush = vi.hoisted(() => vi.fn())
 const mockUseAvailableNodesMetaData = vi.hoisted(() => vi.fn())
+const mockWorkspacePermissionKeys = vi.hoisted(() => ({
+  value: ['snippets.create_and_modify'],
+}))
 const mockInspectVarsCrud = {
   hasNodeInspectVars: vi.fn(),
   hasSetInspectVar: vi.fn(),
@@ -48,6 +51,12 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
     error: vi.fn(),
     success: vi.fn(),
   },
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }),
 }))
 let capturedHooksStore: Record<string, unknown> | undefined
 let capturedWorkflowNodes: WorkflowProps['nodes'] | undefined
@@ -160,9 +169,11 @@ vi.mock('@/app/components/snippets/components/snippet-children', () => ({
     onExitEditingWithoutSave,
     onPublish,
     canSave,
+    canEdit,
     isEditing,
   }: {
     canSave: boolean
+    canEdit: boolean
     isEditing: boolean
     onCancel: () => void
     onEdit: () => void
@@ -170,7 +181,7 @@ vi.mock('@/app/components/snippets/components/snippet-children', () => ({
     onPublish: () => void
   }) => (
     <div>
-      {!isEditing && <button type="button" onClick={onEdit}>edit</button>}
+      {!isEditing && canEdit && <button type="button" onClick={onEdit}>edit</button>}
       <a href="/snippets">snippets list</a>
       <button type="button" onClick={onExitEditingWithoutSave}>exit without save</button>
       <button type="button" disabled={!canSave} onClick={onPublish}>publish</button>
@@ -324,6 +335,7 @@ describe('SnippetMain', () => {
       reset: mockReset,
       setFields: mockSetFields,
     }
+    mockWorkspacePermissionKeys.value = ['snippets.create_and_modify']
   })
 
   describe('Initial Mode', () => {
@@ -337,6 +349,23 @@ describe('SnippetMain', () => {
 
       expect(screen.queryByRole('button', { name: 'edit' })).not.toBeInTheDocument()
       expect(capturedWorkflowNodes?.map(node => node.id)).toEqual(['draft-node'])
+    })
+
+    it('should stay readonly without snippet create-and-modify permission', async () => {
+      mockWorkspacePermissionKeys.value = []
+      const draftNode = createDraftNode('draft-node')
+
+      renderSnippetMain({
+        hasPublishedWorkflow: false,
+        workflowDraftNodes: [draftNode],
+      })
+
+      expect(screen.queryByRole('button', { name: 'edit' })).not.toBeInTheDocument()
+
+      const doSyncWorkflowDraft = capturedHooksStore?.doSyncWorkflowDraft as (() => Promise<void>)
+      await doSyncWorkflowDraft()
+
+      expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
     })
 
     it('should enter readonly mode with published graph by default when published workflow exists', async () => {

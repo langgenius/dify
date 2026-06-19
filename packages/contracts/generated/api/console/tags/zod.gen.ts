@@ -36,7 +36,7 @@ export const zTagBasePayload = z.object({
 
 export const zGetTagsQuery = z.object({
   keyword: z.string().optional(),
-  type: z.string().optional(),
+  type: z.enum(['', 'app', 'knowledge', 'snippet']).optional().default(''),
 })
 
 /**
@@ -52,18 +52,18 @@ export const zPostTagsBody = zTagBasePayload
 export const zPostTagsResponse = zTagResponse
 
 export const zDeleteTagsByTagIdPath = z.object({
-  tag_id: z.string(),
+  tag_id: z.uuid(),
 })
 
 /**
  * Tag deleted successfully
  */
-export const zDeleteTagsByTagIdResponse = z.record(z.string(), z.never())
+export const zDeleteTagsByTagIdResponse = z.void()
 
 export const zPatchTagsByTagIdBody = zTagUpdateRequestPayload
 
 export const zPatchTagsByTagIdPath = z.object({
-  tag_id: z.string(),
+  tag_id: z.uuid(),
 })
 
 /**

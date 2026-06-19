@@ -322,6 +322,12 @@ class WorkflowService:
 
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
+        db.session.flush()
+        WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+            session=cast(Session, db.session),
+            draft_workflow=workflow,
+            account_id=account.id,
+        )
         WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
             session=cast(Session, db.session),
             draft_workflow=workflow,

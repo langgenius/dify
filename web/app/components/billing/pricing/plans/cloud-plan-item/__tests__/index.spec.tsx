@@ -77,7 +77,14 @@ beforeAll(() => {
 beforeEach(() => {
   vi.clearAllMocks()
   toast.dismiss()
-  mockUseAppContext.mockReturnValue({ isCurrentWorkspaceManager: true })
+  mockUseAppContext.mockReturnValue({
+    isCurrentWorkspaceManager: true,
+    workspacePermissionKeys: [
+      'billing.view',
+      'billing.manage',
+      'billing.subscription.manage',
+    ],
+  })
   mockUseProviderContext.mockReturnValue({
     enableEducationPlan: false,
     isEducationAccount: false,
@@ -173,8 +180,11 @@ describe('CloudPlanItem', () => {
 
   // Payment actions triggered from the CTA
   describe('Plan purchase flow', () => {
-    it('should show toast when non-manager tries to buy a plan', () => {
-      mockUseAppContext.mockReturnValue({ isCurrentWorkspaceManager: false })
+    it('should show toast when billing manage permission is missing for plan purchase', () => {
+      mockUseAppContext.mockReturnValue({
+        isCurrentWorkspaceManager: true,
+        workspacePermissionKeys: ['billing.subscription.manage'],
+      })
 
       renderWithToastHost(
         <CloudPlanItem
@@ -188,11 +198,16 @@ describe('CloudPlanItem', () => {
       fireEvent.click(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))
       expect(screen.getByText('billing.buyPermissionDeniedTip'))!.toBeInTheDocument()
       expect(mockBillingInvoices).not.toHaveBeenCalled()
+      expect(mockFetchSubscriptionUrls).not.toHaveBeenCalled()
     })
 
     it('should open billing portal when upgrading current paid plan', async () => {
       const openWindow = vi.fn(async (cb: () => Promise<string>) => await cb())
       mockUseAsyncWindowOpen.mockReturnValue(openWindow)
+      mockUseAppContext.mockReturnValue({
+        isCurrentWorkspaceManager: false,
+        workspacePermissionKeys: ['billing.subscription.manage'],
+      })
 
       render(
         <CloudPlanItem
@@ -212,6 +227,11 @@ describe('CloudPlanItem', () => {
     })
 
     it('should redirect to subscription url when selecting a new paid plan', async () => {
+      mockUseAppContext.mockReturnValue({
+        isCurrentWorkspaceManager: false,
+        workspacePermissionKeys: ['billing.manage'],
+      })
+
       render(
         <CloudPlanItem
           plan={Plan.professional}
@@ -293,8 +313,11 @@ describe('CloudPlanItem', () => {
       })
     })
 
-    it('should show default CTA and hide warning when current user is not workspace manager', () => {
-      mockUseAppContext.mockReturnValue({ isCurrentWorkspaceManager: false })
+    it('should show default CTA and hide warning when billing manage permission is missing', () => {
+      mockUseAppContext.mockReturnValue({
+        isCurrentWorkspaceManager: true,
+        workspacePermissionKeys: [],
+      })
       mockUseProviderContext.mockReturnValue({
         enableEducationPlan: true,
         isEducationAccount: true,
@@ -314,8 +337,11 @@ describe('CloudPlanItem', () => {
       expect(screen.queryByText('education.planNotSupportEducationDiscount')).not.toBeInTheDocument()
     })
 
-    it('should hide education unsupported warning when current user is not workspace manager', () => {
-      mockUseAppContext.mockReturnValue({ isCurrentWorkspaceManager: false })
+    it('should hide education unsupported warning when billing manage permission is missing', () => {
+      mockUseAppContext.mockReturnValue({
+        isCurrentWorkspaceManager: true,
+        workspacePermissionKeys: [],
+      })
       mockUseProviderContext.mockReturnValue({
         enableEducationPlan: true,
         isEducationAccount: true,

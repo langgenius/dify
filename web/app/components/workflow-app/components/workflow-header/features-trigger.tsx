@@ -8,7 +8,7 @@ import type {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiApps2AddLine } from '@remixicon/react'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   memo,
   useCallback,
@@ -16,7 +16,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
-import AppPublisher from '@/app/components/app/app-publisher'
+import { AppPublisher } from '@/app/components/app/app-publisher'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { Plan } from '@/app/components/billing/type'
@@ -28,6 +28,8 @@ import {
   useNodesSyncDraft,
   // useWorkflowRunValidation,
 } from '@/app/components/workflow/hooks'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { hasValidRosterAgentBinding, isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
 import {
   useStore,
   useWorkflowStore,
@@ -40,7 +42,8 @@ import {
 } from '@/app/components/workflow/types'
 import { useProviderContext } from '@/context/provider-context'
 import useTheme from '@/hooks/use-theme'
-import { fetchAppDetail } from '@/service/apps'
+import { consoleQuery } from '@/service/client'
+import { appDetailQueryKeyPrefix } from '@/service/use-apps'
 import { useInvalidateAppTriggers } from '@/service/use-tools'
 import { useInvalidateAppWorkflow, usePublishWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
 
@@ -49,10 +52,11 @@ const FeaturesTrigger = () => {
   const { theme } = useTheme()
   const isChatMode = useIsChatMode()
   const workflowStore = useWorkflowStore()
+  const queryClient = useQueryClient()
   const appDetail = useAppStore(s => s.appDetail)
   const appID = appDetail?.id
-  const setAppDetail = useAppStore(s => s.setAppDetail)
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
+  const canReleaseAndVersion = useHooksStore(s => s.accessControl.canReleaseAndVersion)
   const { plan, isFetchedPlan } = useProviderContext()
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
@@ -130,13 +134,12 @@ const FeaturesTrigger = () => {
 
   const updateAppDetail = useCallback(async () => {
     try {
-      const res = await fetchAppDetail({ url: '/apps', id: appID! })
-      setAppDetail({ ...res })
+      await queryClient.invalidateQueries({ queryKey: [...appDetailQueryKeyPrefix, appID!] })
     }
     catch (error) {
       console.error(error)
     }
-  }, [appID, setAppDetail])
+  }, [appID, queryClient])
 
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
   // const { validateBeforeRun } = useWorkflowRunValidation()
@@ -166,6 +169,11 @@ const FeaturesTrigger = () => {
         updatePublishedWorkflow(appID!)
         updateAppDetail()
         invalidateAppTriggers(appID!)
+        if (nodes.some(node => isAgentV2NodeData(node.data) && hasValidRosterAgentBinding(node.data))) {
+          void queryClient.invalidateQueries({
+            queryKey: consoleQuery.agent.get.key(),
+          })
+        }
         workflowStore.getState().setPublishedAt(res.created_at)
         workflowStore.getState().setLastPublishedHasUserInput(hasUserInputNode)
         resetWorkflowVersionHistory()
@@ -174,7 +182,7 @@ const FeaturesTrigger = () => {
     else {
       throw new Error('Checklist failed')
     }
-  }, [needWarningNodes, handleCheckBeforePublish, publishWorkflow, appID, t, updatePublishedWorkflow, updateAppDetail, workflowStore, resetWorkflowVersionHistory, invalidateAppTriggers, hasUserInputNode])
+  }, [needWarningNodes, handleCheckBeforePublish, publishWorkflow, appID, t, updatePublishedWorkflow, updateAppDetail, invalidateAppTriggers, nodes, queryClient, workflowStore, hasUserInputNode, resetWorkflowVersionHistory])
 
   const onPublisherToggle = useCallback((state: boolean) => {
     if (state)
@@ -196,7 +204,7 @@ const FeaturesTrigger = () => {
           )}
           onClick={handleShowFeatures}
         >
-          <RiApps2AddLine className="mr-1 size-4 text-components-button-secondary-text" />
+          <span className="mr-1 i-ri-apps-2-add-line size-4 text-components-button-secondary-text" />
           {t('common.features', { ns: 'workflow' })}
         </Button>
       )}
@@ -204,7 +212,7 @@ const FeaturesTrigger = () => {
         {...{
           publishedAt,
           draftUpdatedAt,
-          disabled: nodesReadOnly || !hasWorkflowNodes,
+          disabled: nodesReadOnly || !hasWorkflowNodes || !canReleaseAndVersion,
           toolPublished,
           inputs: variables,
           outputs: endVariables,
@@ -216,7 +224,7 @@ const FeaturesTrigger = () => {
           missingStartNode: !startNode,
           hasTriggerNode,
           startNodeLimitExceeded,
-          publishDisabled: !hasWorkflowNodes || startNodeLimitExceeded,
+          publishDisabled: !hasWorkflowNodes || startNodeLimitExceeded || !canReleaseAndVersion,
           hasHumanInputNode,
         }}
       />

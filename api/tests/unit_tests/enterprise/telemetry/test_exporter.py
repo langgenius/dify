@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -104,8 +105,7 @@ def test_api_key_overrides_conflicting_header(
         ENTERPRISE_OTLP_API_KEY="test-key",
     )
 
-    import logging
-    with caplog.at_level(logging.WARNING):
+    with caplog.at_level(logging.WARNING, logger="enterprise.telemetry.exporter"):
         EnterpriseExporter(mock_config)
 
     # Verify Bearer header takes precedence
@@ -117,10 +117,8 @@ def test_api_key_overrides_conflicting_header(
     assert ("authorization", "Basic old") not in headers
 
     # Verify warning was logged
-    assert any(
-        "ENTERPRISE_OTLP_API_KEY is set" in record.message and "authorization" in record.message
-        for record in caplog.records
-    )
+    assert "ENTERPRISE_OTLP_API_KEY is set" in caplog.text
+    assert "authorization" in caplog.text
 
 
 @patch("enterprise.telemetry.exporter.GRPCSpanExporter")
@@ -541,11 +539,11 @@ def test_export_span_logs_exception_on_error(caplog) -> None:
 
     mock_tracer.start_as_current_span.side_effect = RuntimeError("boom")
 
-    import logging
-    with caplog.at_level(logging.ERROR):
+    with caplog.at_level(logging.ERROR, logger="enterprise.telemetry.exporter"):
         exporter.export_span(name="bad.span", attributes={})  # must not raise
 
-    assert any("bad.span" in record.message and record.levelname == "ERROR" for record in caplog.records)
+    assert "Failed to export span" in caplog.text
+    assert "bad.span" in caplog.text
 
 
 def test_export_span_invalid_trace_correlation_logs_warning(caplog) -> None:
@@ -553,8 +551,7 @@ def test_export_span_invalid_trace_correlation_logs_warning(caplog) -> None:
     exporter, mock_tracer, mock_span = _make_exporter_with_mock_tracer()
 
     parent_uid = "987fbc97-4bed-5078-9f07-9141ba07c9f3"
-    import logging
-    with caplog.at_level(logging.WARNING):
+    with caplog.at_level(logging.WARNING, logger="enterprise.telemetry.exporter"):
         exporter.export_span(
             name="link.span",
             attributes={},
@@ -562,7 +559,7 @@ def test_export_span_invalid_trace_correlation_logs_warning(caplog) -> None:
             parent_span_id_source=parent_uid,
         )
 
-    assert any(record.levelname == "WARNING" for record in caplog.records)
+    assert "Invalid trace correlation UUID for cross-workflow link" in caplog.text
 
 
 # ---------------------------------------------------------------------------
