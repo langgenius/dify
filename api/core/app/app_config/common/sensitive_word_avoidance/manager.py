@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, ValidationError, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from core.app.app_config.entities import SensitiveWordAvoidanceEntity
 from core.moderation.factory import ModerationFactory
@@ -12,36 +12,22 @@ class SensitiveWordAvoidanceConfig(BaseModel):
 
     enabled: bool = False
     type: str | None = None
-    config: dict[str, Any] = {}
+    config: dict[str, Any] = Field(default_factory=dict)
 
-    @field_validator("enabled", mode="before")
+    @model_validator(mode="before")
     @classmethod
-    def coerce_enabled(cls, value: Any) -> Any:
-        if value is None:
-            return False
-        return value
-
-    @field_validator("type", mode="before")
-    @classmethod
-    def validate_type(cls, value: Any) -> Any:
-        if value is not None and not isinstance(value, str):
-            raise ValueError("sensitive_word_avoidance.type must be a string")
-        return value
-
-    @field_validator("config", mode="before")
-    @classmethod
-    def validate_config(cls, value: Any) -> Any:
-        if value is None:
-            return {}
-        if not isinstance(value, dict):
-            raise ValueError("sensitive_word_avoidance.config must be a dict")
-        return value
+    def _normalize(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if data.get("enabled") is None:
+                data["enabled"] = False
+            if data.get("config") is None:
+                data["config"] = {}
+        return data
 
     @model_validator(mode="after")
-    def validate_enabled_fields(self) -> "SensitiveWordAvoidanceConfig":
-        if self.enabled:
-            if not self.type:
-                raise ValueError("sensitive_word_avoidance.type is required when enabled")
+    def _check_enabled(self) -> "SensitiveWordAvoidanceConfig":
+        if self.enabled and not self.type:
+            raise ValueError("sensitive_word_avoidance.type is required when enabled")
         return self
 
     def run_provider_validation(self, tenant_id: str) -> None:

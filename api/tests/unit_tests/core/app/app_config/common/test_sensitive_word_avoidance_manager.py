@@ -121,7 +121,7 @@ class TestSensitiveWordAvoidanceConfigManagerValidateAndSetDefaults:
             }
         }
 
-        with pytest.raises(ValueError, match="must be a string"):
+        with pytest.raises(ValueError, match="valid string"):
             SensitiveWordAvoidanceConfigManager.validate_and_set_defaults(tenant_id="tenant1", config=config)
 
     def test_validate_raises_when_config_not_dict(self):
@@ -133,7 +133,7 @@ class TestSensitiveWordAvoidanceConfigManagerValidateAndSetDefaults:
             }
         }
 
-        with pytest.raises(ValueError, match="must be a dict"):
+        with pytest.raises(ValueError, match="valid dictionary"):
             SensitiveWordAvoidanceConfigManager.validate_and_set_defaults(tenant_id="tenant1", config=config)
 
     def test_validate_calls_moderation_factory(self, mocker: MockerFixture):
