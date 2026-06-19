@@ -1,5 +1,6 @@
 import { createLocalStorageState } from 'foxact/create-local-storage-state'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+
+export const NEED_REFRESH_APP_LIST_KEY = 'needRefreshAppList'
 
 const [
   useNeedRefreshAppList,

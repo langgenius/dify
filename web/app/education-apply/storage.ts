@@ -1,5 +1,6 @@
 import { createLocalStorageState } from 'foxact/create-local-storage-state'
-import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from './constants'
+
+const EDUCATION_VERIFYING_LOCALSTORAGE_ITEM = 'educationVerifying'
 
 const [
   useEducationVerifying,

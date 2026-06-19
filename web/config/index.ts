@@ -180,8 +180,6 @@ export const VAR_ITEM_TEMPLATE_IN_PIPELINE = {
 
 export const appDefaultIconBackground = '#D5F5F6'
 
-export const NEED_REFRESH_APP_LIST_KEY = 'needRefreshAppList'
-
 export const DATASET_DEFAULT = {
   top_k: 4,
   score_threshold: 0.8,
