@@ -355,11 +355,12 @@ class TestQAIndexProcessor:
         all_qa_documents: list[Document] = []
         source_document = Document(page_content="source text", metadata={"origin": "doc-1"})
 
-        with patch(
-            "core.rag.index_processor.processor.qa_index_processor.LLMGenerator.generate_qa_document",
-            side_effect=RuntimeError("llm failure"),
-        ), caplog.at_level(
-            logging.ERROR, logger="core.rag.index_processor.processor.qa_index_processor"
+        with (
+            patch(
+                "core.rag.index_processor.processor.qa_index_processor.LLMGenerator.generate_qa_document",
+                side_effect=RuntimeError("llm failure"),
+            ),
+            caplog.at_level(logging.ERROR, logger="core.rag.index_processor.processor.qa_index_processor"),
         ):
             processor._format_qa_document(fake_flask_app, "tenant-1", source_document, all_qa_documents, "English")
 
