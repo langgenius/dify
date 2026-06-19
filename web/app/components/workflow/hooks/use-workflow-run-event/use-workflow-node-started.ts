@@ -7,6 +7,7 @@ import {
 } from 'reactflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
+import { findParallelTraceIndex } from '@/app/components/workflow/utils/top-level-tracing'
 
 export const useWorkflowNodeStarted = () => {
   const store = useStoreApi()
@@ -33,8 +34,8 @@ export const useWorkflowNodeStarted = () => {
       transform,
     } = store.getState()
     const nodes = getNodes()
-    const currentIndex = workflowRunningData?.tracing?.findIndex(item => item.node_id === data.node_id)
-    if (currentIndex && currentIndex > -1) {
+    const currentIndex = findParallelTraceIndex(workflowRunningData?.tracing || [], data as any)
+    if (currentIndex !== undefined && currentIndex > -1) {
       setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
         draft.tracing![currentIndex] = {
           ...data,

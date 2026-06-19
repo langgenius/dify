@@ -2,6 +2,7 @@ import type { AgentLogResponse } from '@/types/workflow'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { findParallelTraceIndex } from '@/app/components/workflow/utils/top-level-tracing'
 
 export const useWorkflowAgentLog = () => {
   const workflowStore = useWorkflowStore()
@@ -14,7 +15,7 @@ export const useWorkflowAgentLog = () => {
     } = workflowStore.getState()
 
     setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
-      const currentIndex = draft.tracing!.findIndex(item => item.node_id === data.node_id)
+      const currentIndex = findParallelTraceIndex(draft.tracing!, { ...data, id: data.node_execution_id })
       if (currentIndex > -1) {
         const current = draft.tracing![currentIndex]
 

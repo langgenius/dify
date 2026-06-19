@@ -44,7 +44,7 @@ import {
 import { useHooksStore } from '../../hooks-store'
 import { useWorkflowStore } from '../../store'
 import { NodeRunningStatus, WorkflowRunningStatus } from '../../types'
-
+import { findParallelTraceIndex } from '../utils/top-level-tracing'
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
   onGetSuggestedQuestions?: (responseItemId: string, getAbortController: GetAbortController) => Promise<any>
@@ -787,8 +787,7 @@ export const useChat = (
           if (!responseItem.workflowProcess?.tracing)
             return
           const tracing = responseItem.workflowProcess.tracing
-          const iterationIndex = tracing.findIndex(item => item.node_id === iterationFinishedData.node_id
-            && (item.execution_metadata?.parallel_id === iterationFinishedData.execution_metadata?.parallel_id || item.parallel_id === iterationFinishedData.execution_metadata?.parallel_id))!
+          const iterationIndex = findParallelTraceIndex(tracing, iterationFinishedData as any)
           if (iterationIndex > -1) {
             tracing[iterationIndex] = {
               ...tracing[iterationIndex],
@@ -831,12 +830,7 @@ export const useChat = (
           if (nodeFinishedData.iteration_id)
             return
 
-          const currentIndex = responseItem.workflowProcess.tracing.findIndex((item) => {
-            if (!item.execution_metadata?.parallel_id)
-              return item.id === nodeFinishedData.id
-
-            return item.id === nodeFinishedData.id && (item.execution_metadata?.parallel_id === nodeFinishedData.execution_metadata?.parallel_id)
-          })
+          const currentIndex = findParallelTraceIndex(responseItem.workflowProcess.tracing, nodeFinishedData as any)
           if (currentIndex > -1)
             responseItem.workflowProcess.tracing[currentIndex] = nodeFinishedData as any
         })
@@ -858,8 +852,7 @@ export const useChat = (
           if (!responseItem.workflowProcess?.tracing)
             return
           const tracing = responseItem.workflowProcess.tracing
-          const loopIndex = tracing.findIndex(item => item.node_id === loopFinishedData.node_id
-            && (item.execution_metadata?.parallel_id === loopFinishedData.execution_metadata?.parallel_id || item.parallel_id === loopFinishedData.execution_metadata?.parallel_id))!
+          const loopIndex = findParallelTraceIndex(tracing, loopFinishedData as any)
           if (loopIndex > -1) {
             tracing[loopIndex] = {
               ...tracing[loopIndex],
