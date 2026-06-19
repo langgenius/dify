@@ -47,9 +47,7 @@ class SensitiveWordAvoidanceAPIConfig(BaseModel):
 
 
 EnabledSensitiveWordAvoidanceConfig = Annotated[
-    SensitiveWordAvoidanceKeywordsConfig
-    | SensitiveWordAvoidanceOpenAIConfig
-    | SensitiveWordAvoidanceAPIConfig,
+    SensitiveWordAvoidanceKeywordsConfig | SensitiveWordAvoidanceOpenAIConfig | SensitiveWordAvoidanceAPIConfig,
     Field(discriminator="type"),
 ]
 
@@ -58,9 +56,7 @@ SensitiveWordAvoidanceConfig = Annotated[
     Field(discriminator="enabled"),
 ]
 
-_sensitive_word_avoidance_adapter: TypeAdapter[SensitiveWordAvoidanceConfig] = TypeAdapter(
-    SensitiveWordAvoidanceConfig
-)
+_sensitive_word_avoidance_adapter: TypeAdapter[SensitiveWordAvoidanceConfig] = TypeAdapter(SensitiveWordAvoidanceConfig)
 
 
 def _normalize_raw(raw: Any) -> Any:
