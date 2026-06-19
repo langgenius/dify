@@ -167,6 +167,9 @@ class AppAnnotationService:
 
         # async job
         job_id = str(uuid.uuid4())
+        # Set the app-level cache key so concurrent requests see the in-progress job.
+        # The task deletes this key in its finally block.
+        redis_client.setex(enable_app_annotation_key, 3600, job_id)
         enable_app_annotation_job_key = f"enable_app_annotation_job_{str(job_id)}"
         # send batch add segments task
         redis_client.setnx(enable_app_annotation_job_key, "waiting")
@@ -192,6 +195,9 @@ class AppAnnotationService:
 
         # async job
         job_id = str(uuid.uuid4())
+        # Set the app-level cache key so concurrent requests see the in-progress job.
+        # The task deletes this key in its finally block.
+        redis_client.setex(disable_app_annotation_key, 3600, job_id)
         disable_app_annotation_job_key = f"disable_app_annotation_job_{str(job_id)}"
         # send batch add segments task
         redis_client.setnx(disable_app_annotation_job_key, "waiting")
