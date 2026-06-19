@@ -1290,6 +1290,11 @@ export type GetMfaInfoReply = {
   globalEnabled?: boolean
 }
 
+export type GetMemberRbacRolesReply = {
+  accountId?: string
+  roles?: Array<RbacRole>
+}
+
 export type GetMemberReply = {
   account?: AccountDetail
 }
@@ -1660,6 +1665,16 @@ export type PluginInstallationSettingsReply = {
   restrictToMarketplaceOnly?: boolean
 }
 
+export type RbacRole = {
+  id?: string
+  type?: string
+  name?: string
+  description?: string
+  isBuiltin?: boolean
+  category?: string
+  permissionKeys?: Array<string>
+}
+
 export type ResetMemberPasswordReply = {
   id?: string
   password?: string
@@ -1937,6 +1952,16 @@ export type UpdateMfaStatusReq = {
 
 export type UpdateMfaStatusRes = {
   message?: string
+}
+
+export type UpdateMemberRbacRolesReply = {
+  accountId?: string
+  roles?: Array<RbacRole>
+}
+
+export type UpdateMemberRbacRolesReq = {
+  id?: string
+  roleIds?: Array<string>
 }
 
 export type UpdateMemberReply = {

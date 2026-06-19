@@ -20,6 +20,8 @@ describe('AccountSetting Constants', () => {
   it('should have correct ACCOUNT_SETTING_TAB values', () => {
     expect(ACCOUNT_SETTING_TAB.PROVIDER).toBe('provider')
     expect(ACCOUNT_SETTING_TAB.MEMBERS).toBe('members')
+    expect(ACCOUNT_SETTING_TAB.PERMISSIONS).toBe('permissions')
+    expect(ACCOUNT_SETTING_TAB.ACCESS_RULES).toBe('access-rules')
     expect(ACCOUNT_SETTING_TAB.BILLING).toBe('billing')
     expect(ACCOUNT_SETTING_TAB.DATA_SOURCE).toBe('data-source')
     expect(ACCOUNT_SETTING_TAB.API_BASED_EXTENSION).toBe('custom-endpoint')
@@ -34,6 +36,8 @@ describe('AccountSetting Constants', () => {
   it('isValidAccountSettingTab should return true for valid tabs', () => {
     expect(isValidAccountSettingTab('provider')).toBe(true)
     expect(isValidAccountSettingTab('members')).toBe(true)
+    expect(isValidAccountSettingTab('permissions')).toBe(true)
+    expect(isValidAccountSettingTab('access-rules')).toBe(true)
     expect(isValidAccountSettingTab('billing')).toBe(true)
     expect(isValidAccountSettingTab('data-source')).toBe(true)
     expect(isValidAccountSettingTab('custom-endpoint')).toBe(true)
@@ -48,6 +52,8 @@ describe('AccountSetting Constants', () => {
   })
 
   it('isValidSettingsTab should include integrations tabs', () => {
+    expect(isValidSettingsTab('permissions')).toBe(true)
+    expect(isValidSettingsTab('access-rules')).toBe(true)
     expect(isValidSettingsTab('billing')).toBe(true)
     expect(isValidSettingsTab('language')).toBe(true)
     expect(isValidSettingsTab('provider')).toBe(true)

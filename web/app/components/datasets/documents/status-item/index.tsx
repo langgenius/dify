@@ -37,8 +37,9 @@ type StatusItemProps = {
   }
   datasetId?: string
   onUpdate?: (operationName?: string) => void
+  canEdit?: boolean
 }
-const StatusItem = ({ status, reverse = false, scene = 'list', textCls = '', errorMessage, datasetId = '', detail, onUpdate }: StatusItemProps) => {
+const StatusItem = ({ status, reverse = false, scene = 'list', textCls = '', errorMessage, datasetId = '', detail, onUpdate, canEdit = false }: StatusItemProps) => {
   const { t } = useTranslation()
   const DOC_INDEX_STATUS_MAP = useIndexStatus()
   const localStatus = status.toLowerCase() as keyof typeof DOC_INDEX_STATUS_MAP
@@ -48,6 +49,9 @@ const StatusItem = ({ status, reverse = false, scene = 'list', textCls = '', err
   const { mutateAsync: disableDocument } = useDocumentDisable()
   const { mutateAsync: deleteDocument } = useDocumentDelete()
   const onOperate = async (operationName: OperationName) => {
+    if (!canEdit)
+      return
+
     let opApi = deleteDocument
     switch (operationName) {
       case 'enable':
@@ -67,6 +71,8 @@ const StatusItem = ({ status, reverse = false, scene = 'list', textCls = '', err
     }
   }
   const { run: handleSwitch } = useDebounceFn((operationName: OperationName) => {
+    if (!canEdit)
+      return
     if (operationName === 'enable' && enabled)
       return
     if (operationName === 'disable' && !enabled)
@@ -99,8 +105,8 @@ const StatusItem = ({ status, reverse = false, scene = 'list', textCls = '', err
                 <span className="flex">
                   <Switch
                     checked={archived ? false : enabled}
-                    onCheckedChange={v => !archived && handleSwitch(v ? 'enable' : 'disable')}
-                    disabled={embedding || archived}
+                    onCheckedChange={v => !archived && canEdit && handleSwitch(v ? 'enable' : 'disable')}
+                    disabled={embedding || archived || !canEdit}
                     size="md"
                   />
                 </span>

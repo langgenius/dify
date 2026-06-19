@@ -71,6 +71,16 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/operation-dropdown', () =>
   ),
 }))
 
+vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
+  usePluginSettingsAccess: () => ({
+    canManagePlugin: true,
+    canUpdatePlugin: true,
+  }),
+  default: () => ({
+    canUpdate: true,
+  }),
+}))
+
 vi.mock('@/app/components/plugins/update-plugin/plugin-version-picker', () => ({
   default: ({ trigger, onSelect, disabled }: {
     trigger: ReactNode

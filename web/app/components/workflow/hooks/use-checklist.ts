@@ -66,6 +66,7 @@ import {
 import { BlockEnum } from '../types'
 import {
   getDataSourceCheckParams,
+  getNodeCatalogType,
   getToolCheckParams,
   getValidTreeNodes,
 } from '../utils'
@@ -97,10 +98,6 @@ const withFlowType = (moreDataForCheckValid: CheckValidExtraData, flowType?: Flo
     ...(moreDataForCheckValid ?? {}),
     flowType,
   }
-}
-
-const getNodeMetaType = (data: CommonNodeType) => {
-  return isAgentV2NodeData(data) ? BlockEnum.AgentV2 : data.type
 }
 
 const START_NODE_TYPES: BlockEnum[] = [
@@ -272,7 +269,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
 
       if (node!.type === CUSTOM_NODE) {
         const checkData = getCheckData(node!.data)
-        const validator = nodesExtraData?.[getNodeMetaType(node!.data) as BlockEnum]?.checkValid
+        const validator = nodesExtraData?.[getNodeCatalogType(node!.data)]?.checkValid
         const isPluginMissing = isNodePluginMissing(node!.data, { builtInTools: buildInTools, customTools, workflowTools, mcpTools, triggerPlugins, dataSourceList })
 
         const errorMessages: string[] = []
@@ -556,7 +553,7 @@ export const useChecklistBeforePublish = () => {
       }
 
       const checkData = getCheckData(node!.data, datasets, embeddingProviderModelMap)
-      const { errorMessage } = nodesExtraData![getNodeMetaType(node!.data) as BlockEnum].checkValid(checkData, t, withFlowType(moreDataForCheckValid, flowType))
+      const { errorMessage } = nodesExtraData![getNodeCatalogType(node!.data)].checkValid(checkData, t, withFlowType(moreDataForCheckValid, flowType))
 
       if (errorMessage) {
         toast.error(`[${node!.data.title}] ${errorMessage}`)

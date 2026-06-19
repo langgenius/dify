@@ -95,16 +95,9 @@ describe('renderWorkflowComponent', () => {
     expect(screen.getByTestId('hooks-reader'))!.toHaveTextContent('test-123')
   })
 
-  it('should throw when HooksStoreContext is not provided', () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      expect(() => {
-        renderWorkflowComponent(React.createElement(HooksStoreReader))
-      }).toThrow('Missing HooksStoreContext.Provider')
-    }
-    finally {
-      consoleSpy.mockRestore()
-    }
+  it('should provide HooksStoreContext with default store', () => {
+    renderWorkflowComponent(React.createElement(HooksStoreReader))
+    expect(screen.getByTestId('hooks-reader'))!.toHaveTextContent('none')
   })
 
   it('should forward extra render options (container)', () => {

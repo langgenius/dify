@@ -1,4 +1,4 @@
-from typing import Annotated, Literal, override
+from typing import Annotated, Any, Literal, override
 from uuid import UUID
 
 from flask import request
@@ -15,6 +15,7 @@ from pydantic import (
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
+from configs import dify_config
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import (
     query_params_from_model,
@@ -82,6 +83,32 @@ PartialMemberList = Annotated[
         }
     ),
 ]
+
+
+_SERVICE_DATASET_DETAIL_EXCLUDE = {"permission_keys"}
+_SERVICE_DATASET_LIST_EXCLUDE = {"data": {"__all__": _SERVICE_DATASET_DETAIL_EXCLUDE}}
+
+
+def _dump_service_dataset_detail(dataset: Any) -> dict[str, Any]:
+    return DatasetDetailResponse.model_validate(dataset, from_attributes=True).model_dump(
+        mode="json",
+        exclude=_SERVICE_DATASET_DETAIL_EXCLUDE,
+    )
+
+
+def _dump_service_dataset_list(response: dict[str, Any]) -> dict[str, Any]:
+    return DatasetListResponse.model_validate(response).model_dump(
+        mode="json",
+        exclude=_SERVICE_DATASET_LIST_EXCLUDE,
+    )
+
+
+def _dump_service_dataset_with_partial_members(data: dict[str, Any]) -> dict[str, Any]:
+    exclude: set[str] = set(_SERVICE_DATASET_DETAIL_EXCLUDE)
+    if "partial_member_list" not in data:
+        exclude.add("partial_member_list")
+
+    return DatasetDetailWithPartialMembersResponse.model_validate(data).model_dump(mode="json", exclude=exclude)
 
 
 class DatasetCreatePayload(BaseModel):
@@ -383,7 +410,14 @@ class DatasetListApi(DatasetApiResource):
         # provider = request.args.get("provider", default="vendor")
 
         datasets, total = DatasetService.get_datasets(
-            query.page, query.limit, tenant_id, current_user, query.keyword, query.tag_ids, query.include_all
+            query.page,
+            query.limit,
+            db.session,
+            tenant_id,
+            current_user,
+            query.keyword,
+            query.tag_ids,
+            query.include_all,
         )
         # check embedding setting
         assert isinstance(current_user, Account)
@@ -398,7 +432,7 @@ class DatasetListApi(DatasetApiResource):
         for embedding_model in embedding_models:
             model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
 
-        data = [dump_response(DatasetDetailResponse, dataset) for dataset in datasets]
+        data = [_dump_service_dataset_detail(dataset) for dataset in datasets]
         for item in data:
             if item["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY and item["embedding_model_provider"]:
                 item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
@@ -416,7 +450,7 @@ class DatasetListApi(DatasetApiResource):
             "total": total,
             "page": query.page,
         }
-        return dump_response(DatasetListResponse, response), 200
+        return _dump_service_dataset_list(response), 200
 
     @service_api_ns.doc(
         summary="Create an Empty Knowledge Base",
@@ -489,7 +523,7 @@ class DatasetListApi(DatasetApiResource):
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
 
-        return dump_response(DatasetDetailResponse, dataset), 200
+        return _dump_service_dataset_detail(dataset), 200
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>")
@@ -534,7 +568,7 @@ class DatasetApi(DatasetApiResource):
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
-        data = dump_response(DatasetDetailResponse, dataset)
+        data = _dump_service_dataset_detail(dataset)
         # check embedding setting
         assert isinstance(current_user, Account)
         cid = current_user.current_tenant_id
@@ -566,13 +600,7 @@ class DatasetApi(DatasetApiResource):
             part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
             data.update({"partial_member_list": part_users_list})
 
-        return (
-            DatasetDetailWithPartialMembersResponse.model_validate(data).model_dump(
-                mode="json",
-                exclude={"partial_member_list"} if "partial_member_list" not in data else set(),
-            ),
-            200,
-        )
+        return _dump_service_dataset_with_partial_members(data), 200
 
     @service_api_ns.doc(
         summary="Update Knowledge Base",
@@ -641,20 +669,21 @@ class DatasetApi(DatasetApiResource):
                 retrieval_model.reranking_model.reranking_model_name,
             )
 
-        # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
-        DatasetPermissionService.check_permission(
-            current_user,
-            dataset,
-            str(payload.permission) if payload.permission else None,
-            payload.partial_member_list,
-        )
+        if not dify_config.RBAC_ENABLED:
+            # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
+            DatasetPermissionService.check_permission(
+                current_user,
+                dataset,
+                str(payload.permission) if payload.permission else None,
+                payload.partial_member_list,
+            )
 
         dataset = DatasetService.update_dataset(dataset_id_str, update_data, current_user)
 
         if dataset is None:
             raise NotFound("Dataset not found.")
 
-        result_data = dump_response(DatasetDetailResponse, dataset)
+        result_data = _dump_service_dataset_detail(dataset)
         assert isinstance(current_user, Account)
         tenant_id = current_user.current_tenant_id
 
@@ -667,7 +696,7 @@ class DatasetApi(DatasetApiResource):
         partial_member_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
         result_data.update({"partial_member_list": partial_member_list})
 
-        return DatasetDetailWithPartialMembersResponse.model_validate(result_data).model_dump(mode="json"), 200
+        return _dump_service_dataset_with_partial_members(result_data), 200
 
     @service_api_ns.doc(
         summary="Delete Knowledge Base",

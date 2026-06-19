@@ -38,10 +38,11 @@ import { cloneDeep } from 'es-toolkit/object'
 import { useCallback, useEffect, useRef } from 'react'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
-import { PermissionType, PluginCategoryEnum, TaskStatus } from '@/app/components/plugins/types'
+import { PluginCategoryEnum, TaskStatus } from '@/app/components/plugins/types'
 import { useAppContext } from '@/context/app-context'
 import { fetchModelProviderModelList } from '@/service/common'
 import { fetchPluginInfoFromMarketPlace, uninstallPlugin } from '@/service/plugins'
+import { hasPermission } from '@/utils/permission'
 // eslint-disable-next-line no-restricted-imports
 import { get, getMarketplace, post, postMarketplace } from './base'
 import { consoleQuery } from './client'
@@ -565,18 +566,19 @@ const areAutoUpgradeSettingsEqual = (left: AutoUpdateConfig | undefined, right: 
     && areStringArraysEqual(left?.include_plugins ?? [], right?.include_plugins ?? [])
 }
 
-export const hasPluginPermission = (permission: PermissionType | undefined, isAdmin: boolean) => {
-  if (!permission)
-    return false
+// legacy plugin permission
+// export const hasPluginPermission = (permission: PermissionType | undefined, isAdmin: boolean) => {
+//   if (!permission)
+//     return false
 
-  if (permission === PermissionType.noOne)
-    return false
+//   if (permission === PermissionType.noOne)
+//     return false
 
-  if (permission === PermissionType.everyone)
-    return true
+//   if (permission === PermissionType.everyone)
+//     return true
 
-  return isAdmin
-}
+//   return isAdmin
+// }
 
 export const usePluginPermissionSettings = () => {
   return useQuery({
@@ -811,12 +813,8 @@ export const useFetchPluginsInMarketPlaceByInfo = (infos: MarketplacePluginInfoR
 export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
   const initializedRef = useRef(false)
   const queryClient = useQueryClient()
-  const { isCurrentWorkspaceManager, isCurrentWorkspaceOwner } = useAppContext()
-  const { data: permissions } = usePluginPermissionSettings()
-  const canManagement = hasPluginPermission(
-    permissions?.install_permission,
-    isCurrentWorkspaceManager || isCurrentWorkspaceOwner,
-  )
+  const { workspacePermissionKeys } = useAppContext()
+  const canManagement = hasPermission(workspacePermissionKeys, 'plugin.install')
   const { refreshPluginList } = useRefreshPluginList()
   const query = useQuery<PluginTaskListResponse>({
     enabled: canManagement,

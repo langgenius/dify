@@ -4,13 +4,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthType } from '../../types'
 import CustomCreateCard, { NewCustomToolButton } from '../custom-create-card'
 
-// Mock workspace manager state
-let mockIsWorkspaceManager = true
+let mockWorkspacePermissionKeys: string[] = ['tool.manage']
 
-// Mock useAppContext
 vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: mockIsWorkspaceManager,
+  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -83,28 +81,23 @@ describe('CustomCreateCard', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsWorkspaceManager = true
+    mockWorkspacePermissionKeys = ['tool.manage']
     mockModalVisible = false
     mockCreateCustomCollection.mockResolvedValue({})
   })
 
-  // Tests for conditional rendering based on workspace manager status
-  describe('Workspace Manager Conditional Rendering', () => {
-    it('should render card when user is workspace manager', () => {
-      mockIsWorkspaceManager = true
-
+  describe('tool.manage conditional rendering', () => {
+    it('should render card when user has tool.manage', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
-      // Card should be visible with create text
       expect(screen.getByText(/createSwaggerAPIAsTool/i)).toBeInTheDocument()
     })
 
-    it('should not render anything when user is not workspace manager', () => {
-      mockIsWorkspaceManager = false
+    it('should not render anything when user does not have tool.manage', () => {
+      mockWorkspacePermissionKeys = []
 
       const { container } = render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
-      // Container should be empty (firstChild is null when nothing renders)
       expect(container.firstChild).toBeNull()
     })
   })
@@ -146,10 +139,18 @@ describe('CustomCreateCard', () => {
   })
 
   describe('Toolbar Button Rendering', () => {
-    it('should render toolbar add button for workspace managers', () => {
+    it('should render toolbar add button when user has tool.manage', () => {
       render(<NewCustomToolButton onRefreshData={mockOnRefreshData} />)
 
       expect(screen.getByRole('button', { name: /tools\.addSwaggerAPIAsTool/i })).toBeInTheDocument()
+    })
+
+    it('should not render toolbar add button when user does not have tool.manage', () => {
+      mockWorkspacePermissionKeys = []
+
+      const { container } = render(<NewCustomToolButton onRefreshData={mockOnRefreshData} />)
+
+      expect(container.firstChild).toBeNull()
     })
 
     it('should open modal when toolbar add button is clicked', () => {

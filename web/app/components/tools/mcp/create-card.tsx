@@ -3,7 +3,7 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAppContext } from '@/context/app-context'
+import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
 import { useDocLink } from '@/context/i18n'
 import { useCreateMCP } from '@/service/use-tools'
 import CreateEntryCard from '../provider/create-entry-card'
@@ -14,18 +14,21 @@ type Props = Readonly<{
 }>
 
 function useMCPCreateAction({ handleCreate }: Props) {
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const canManageMCP = useCanManageMCP()
   const { mutateAsync: createMCP } = useCreateMCP()
   const [showModal, setShowModal] = useState(false)
 
   const create = async (info: Parameters<typeof createMCP>[0]) => {
+    if (!canManageMCP)
+      return
+
     const provider = await createMCP(info)
     await handleCreate(provider)
   }
 
   return {
+    canManageMCP,
     create,
-    isCurrentWorkspaceManager,
     setShowModal,
     showModal,
   }
@@ -35,13 +38,13 @@ export function NewMCPButton({ handleCreate }: Props) {
   const { t } = useTranslation()
   const addMCPServerLabel = t('mcp.create.cardTitle', { ns: 'tools' })
   const {
+    canManageMCP,
     create,
-    isCurrentWorkspaceManager,
     setShowModal,
     showModal,
   } = useMCPCreateAction({ handleCreate })
 
-  if (!isCurrentWorkspaceManager)
+  if (!canManageMCP)
     return null
 
   return (
@@ -56,7 +59,7 @@ export function NewMCPButton({ handleCreate }: Props) {
         <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
         {addMCPServerLabel}
       </Button>
-      {showModal && (
+      {canManageMCP && showModal && (
         <MCPModal
           show={showModal}
           onConfirm={create}
@@ -71,8 +74,8 @@ const NewMCPCard = ({ handleCreate }: Props) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const {
+    canManageMCP,
     create,
-    isCurrentWorkspaceManager,
     setShowModal,
     showModal,
   } = useMCPCreateAction({ handleCreate })
@@ -81,7 +84,7 @@ const NewMCPCard = ({ handleCreate }: Props) => {
 
   return (
     <>
-      {isCurrentWorkspaceManager && (
+      {canManageMCP && (
         <CreateEntryCard
           title={t('mcp.create.cardTitle', { ns: 'tools' })}
           linkText={t('mcp.create.cardLink', { ns: 'tools' })}
@@ -89,7 +92,7 @@ const NewMCPCard = ({ handleCreate }: Props) => {
           onCreate={() => setShowModal(true)}
         />
       )}
-      {showModal && (
+      {canManageMCP && showModal && (
         <MCPModal
           show={showModal}
           onConfirm={create}

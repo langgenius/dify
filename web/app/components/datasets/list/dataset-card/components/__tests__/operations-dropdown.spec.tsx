@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { DatasetACLPermission } from '@/utils/permission'
 import OperationsDropdown from '../operations-dropdown'
 
 describe('OperationsDropdown', () => {
@@ -25,15 +26,21 @@ describe('OperationsDropdown', () => {
     created_by: 'user-1',
     doc_form: ChunkingMode.text,
     runtime_mode: 'general',
+    permission_keys: [
+      DatasetACLPermission.Edit,
+      DatasetACLPermission.Delete,
+      DatasetACLPermission.ImportExportDSL,
+      DatasetACLPermission.AccessConfig,
+    ],
     ...overrides,
   } as DataSet)
 
   const defaultProps = {
     dataset: createMockDataset(),
-    isCurrentWorkspaceDatasetOperator: false,
     openRenameModal: vi.fn(),
     handleExportPipeline: vi.fn(),
     detectIsUsedByApp: vi.fn(),
+    openAccessConfig: vi.fn(),
   }
 
   beforeEach(() => {
@@ -65,38 +72,52 @@ describe('OperationsDropdown', () => {
   })
 
   describe('Props', () => {
-    it('should show delete option when not workspace dataset operator', () => {
-      render(<OperationsDropdown {...defaultProps} isCurrentWorkspaceDatasetOperator={false} />)
+    it('should show delete option when dataset has delete ACL permission', () => {
+      render(<OperationsDropdown {...defaultProps} />)
 
-      const triggerButton = document.querySelector('[class*="cursor-pointer"]')
-      if (triggerButton)
-        fireEvent.click(triggerButton)
+      fireEvent.click(screen.getByLabelText('Dataset operations'))
+
+      expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
     })
 
-    it('should hide delete option when is workspace dataset operator', () => {
-      render(<OperationsDropdown {...defaultProps} isCurrentWorkspaceDatasetOperator={true} />)
+    it('should hide delete option when dataset lacks delete ACL permission', () => {
+      const dataset = createMockDataset({
+        permission_keys: [DatasetACLPermission.Edit],
+      })
+      render(<OperationsDropdown {...defaultProps} dataset={dataset} />)
 
-      const triggerButton = document.querySelector('[class*="cursor-pointer"]')
-      if (triggerButton)
-        fireEvent.click(triggerButton)
+      fireEvent.click(screen.getByLabelText('Dataset operations'))
+
+      expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
     })
 
     it('should show export pipeline when runtime_mode is rag_pipeline', () => {
       const dataset = createMockDataset({ runtime_mode: 'rag_pipeline' })
       render(<OperationsDropdown {...defaultProps} dataset={dataset} />)
 
-      const triggerButton = document.querySelector('[class*="cursor-pointer"]')
-      if (triggerButton)
-        fireEvent.click(triggerButton)
+      fireEvent.click(screen.getByLabelText('Dataset operations'))
+
+      expect(screen.getByText('datasetPipeline.operations.exportPipeline')).toBeInTheDocument()
     })
 
     it('should hide export pipeline when runtime_mode is not rag_pipeline', () => {
       const dataset = createMockDataset({ runtime_mode: 'general' })
       render(<OperationsDropdown {...defaultProps} dataset={dataset} />)
 
-      const triggerButton = document.querySelector('[class*="cursor-pointer"]')
-      if (triggerButton)
-        fireEvent.click(triggerButton)
+      fireEvent.click(screen.getByLabelText('Dataset operations'))
+
+      expect(screen.queryByText('datasetPipeline.operations.exportPipeline')).not.toBeInTheDocument()
+    })
+
+    it('should show resource access option when dataset has access config ACL permission', () => {
+      const dataset = createMockDataset({
+        permission_keys: [DatasetACLPermission.AccessConfig],
+      })
+      render(<OperationsDropdown {...defaultProps} dataset={dataset} />)
+
+      fireEvent.click(screen.getByLabelText('Dataset operations'))
+
+      expect(screen.getByText('common.settings.resourceAccess')).toBeInTheDocument()
     })
   })
 
@@ -180,6 +201,19 @@ describe('OperationsDropdown', () => {
       const detectIsUsedByApp = vi.fn()
       render(<OperationsDropdown {...defaultProps} detectIsUsedByApp={detectIsUsedByApp} />)
       expect(detectIsUsedByApp).not.toHaveBeenCalled()
+    })
+
+    it('should call openAccessConfig when resource access is clicked', () => {
+      const openAccessConfig = vi.fn()
+      const dataset = createMockDataset({
+        permission_keys: [DatasetACLPermission.AccessConfig],
+      })
+      render(<OperationsDropdown {...defaultProps} dataset={dataset} openAccessConfig={openAccessConfig} />)
+
+      fireEvent.click(screen.getByLabelText('Dataset operations'))
+      fireEvent.click(screen.getByText('common.settings.resourceAccess'))
+
+      expect(openAccessConfig).toHaveBeenCalledTimes(1)
     })
   })
 

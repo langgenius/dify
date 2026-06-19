@@ -55,7 +55,12 @@ class TagService:
 
     @staticmethod
     def get_target_ids_by_tag_ids(
-        tag_type: str, current_tenant_id: str, tag_ids: list[str], session: scoped_session, *, match_all: bool = False
+        tag_type: str,
+        current_tenant_id: str,
+        tag_ids: list[str],
+        session: scoped_session | Session,
+        *,
+        match_all: bool = False,
     ):
         """
         Return target IDs bound to tags for the given tenant and resource type.

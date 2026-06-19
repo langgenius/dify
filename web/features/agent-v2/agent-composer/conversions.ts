@@ -78,10 +78,12 @@ const toFileFormState = (config?: AgentSoulConfig): AgentFileNode[] => (
     id,
     name: file.name ?? id,
     icon: toFileIcon(file),
+    driveKey: file.drive_key ?? undefined,
   }]
 })
 
 const toFileRefs = (files: AgentFileNode[]) => flattenFileNodes(files).map(file => ({
+  ...(file.driveKey ? { drive_key: file.driveKey } : {}),
   id: file.id,
   name: file.name,
   type: file.icon,
@@ -289,10 +291,11 @@ const toCliEnvVariables = (tool: AgentSoulCliToolConfig): EnvVariable[] => [
   }),
   ...(tool.env?.secret_refs ?? []).map((secret): EnvVariable => {
     const key = secret.key ?? secret.name ?? secret.variable ?? secret.env_name ?? ''
+    const value = secret.value ?? secret.ref ?? secret.credential_id ?? ''
     return {
       id: secret.id ?? secret.ref ?? secret.credential_id ?? key,
       key,
-      value: '••••••••••••',
+      value,
       scope: 'secret',
       masked: true,
     }
@@ -352,7 +355,7 @@ const toCliToolConfigs = (tools: AgentTool[]) => tools.flatMap((tool) => {
           id: variable.id,
           key: variable.key.trim(),
           name: variable.key.trim(),
-          ref: variable.id,
+          value: variable.value,
           variable: variable.key.trim(),
         })),
     },
@@ -376,10 +379,11 @@ const toEnvVariableFormState = (config?: AgentSoulConfig): EnvVariable[] => [
   }),
   ...(config?.env?.secret_refs ?? []).map((secret): EnvVariable => {
     const key = secret.key ?? secret.name ?? secret.variable ?? secret.env_name ?? ''
+    const value = secret.value ?? secret.ref ?? secret.credential_id ?? ''
     return {
       id: secret.id ?? secret.ref ?? secret.credential_id ?? key,
       key,
-      value: '••••••••••••',
+      value,
       scope: 'secret',
       masked: true,
     }
@@ -402,7 +406,7 @@ const toEnvConfig = (variables: EnvVariable[]): AgentSoulConfig['env'] => ({
       id: variable.id,
       key: variable.key.trim(),
       name: variable.key.trim(),
-      ref: variable.id,
+      value: variable.value,
       variable: variable.key.trim(),
     })),
 })

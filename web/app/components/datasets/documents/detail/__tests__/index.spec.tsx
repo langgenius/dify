@@ -1,10 +1,11 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { DatasetACLPermission } from '@/utils/permission'
 
 // --- All hoisted mock fns and state (accessible inside vi.mock factories) ---
 const mocks = vi.hoisted(() => {
   const state = {
-    dataset: { embedding_available: true } as Record<string, unknown> | null,
+    dataset: { embedding_available: true, permission_keys: ['dataset.acl.edit'] } as Record<string, unknown> | null,
     documentDetail: null as Record<string, unknown> | null,
     documentError: null as Error | null,
     documentMetadata: null as Record<string, unknown> | null,
@@ -156,8 +157,8 @@ vi.mock('../../status-item', () => ({
 }))
 
 vi.mock('@/app/components/datasets/metadata/metadata-document', () => ({
-  default: ({ datasetId, documentId }: { datasetId?: string, documentId?: string }) => (
-    <div data-testid="metadata" data-dataset-id={datasetId} data-document-id={documentId}>Metadata</div>
+  default: ({ datasetId, documentId, canEdit }: { datasetId?: string, documentId?: string, canEdit?: boolean }) => (
+    <div data-testid="metadata" data-dataset-id={datasetId} data-document-id={documentId} data-can-edit={String(canEdit)}>Metadata</div>
   ),
 }))
 
@@ -195,7 +196,7 @@ describe('DocumentDetail', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
-    mocks.state.dataset = { embedding_available: true }
+    mocks.state.dataset = { embedding_available: true, permission_keys: [DatasetACLPermission.Edit] }
     mocks.state.documentDetail = createDocumentDetail()
     mocks.state.documentError = null
     mocks.state.documentMetadata = null
@@ -284,6 +285,12 @@ describe('DocumentDetail', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       expect(screen.queryByTestId('segment-add')).not.toBeInTheDocument()
     })
+
+    it('should hide SegmentAdd when dataset only has readonly ACL permission', () => {
+      mocks.state.dataset = { embedding_available: true, permission_keys: [DatasetACLPermission.Readonly] }
+      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+      expect(screen.queryByTestId('segment-add')).not.toBeInTheDocument()
+    })
   })
 
   describe('Metadata Panel', () => {
@@ -316,6 +323,14 @@ describe('DocumentDetail', () => {
       const metadata = screen.getByTestId('metadata')
       expect(metadata).toHaveAttribute('data-dataset-id', 'ds-1')
       expect(metadata).toHaveAttribute('data-document-id', 'doc-1')
+      expect(metadata).toHaveAttribute('data-can-edit', 'true')
+    })
+
+    it('should pass readonly ACL state to Metadata', () => {
+      mocks.state.dataset = { embedding_available: true, permission_keys: [DatasetACLPermission.Readonly] }
+      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+
+      expect(screen.getByTestId('metadata')).toHaveAttribute('data-can-edit', 'false')
     })
   })
 
