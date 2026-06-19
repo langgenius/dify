@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
-from services.auth.firecrawl.firecrawl import FirecrawlAuth, _CREDENTIAL_VALIDATION_TIMEOUT
+from services.auth.firecrawl.firecrawl import _CREDENTIAL_VALIDATION_TIMEOUT, FirecrawlAuth
 
 
 class TestFirecrawlAuth:
