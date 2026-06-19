@@ -1,6 +1,7 @@
 """Testcontainers integration tests for OAuth controller endpoints."""
 
 from __future__ import annotations
+from unittest.mock import ANY
 
 from unittest.mock import MagicMock, patch
 
@@ -655,11 +656,11 @@ class TestAccountGeneration:
     @patch("controllers.console.auth.oauth.tenant_was_created")
     def test_should_create_workspace_for_account_without_tenant(
         self,
-        mock_event,
-        mock_account_service,
-        mock_feature_service,
-        mock_tenant_service,
-        mock_get_account,
+        mock_event: MagicMock,
+        mock_account_service: MagicMock,
+        mock_feature_service: MagicMock,
+        mock_tenant_service: MagicMock,
+        mock_get_account: MagicMock,
         app: Flask,
         user_info: OAuthUserInfo,
         mock_account,
