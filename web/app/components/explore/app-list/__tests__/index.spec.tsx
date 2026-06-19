@@ -12,7 +12,7 @@ import { fetchAppDetail, fetchAppList, fetchBanners } from '@/service/explore'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
-import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '../../learn-dify/atoms'
+import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '../../learn-dify/storage'
 import AppList from '../index'
 
 type MockAppContext = {
