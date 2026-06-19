@@ -85,8 +85,8 @@ vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => vi.fn(),
 }))
 
-vi.mock('foxact/use-local-storage', () => ({
-  useSetLocalStorage: () => mockSetEducationVerifying,
+vi.mock('@/app/education-apply/storage', () => ({
+  useSetEducationVerifying: () => mockSetEducationVerifying,
 }))
 
 // ─── External component mocks ───────────────────────────────────────────────

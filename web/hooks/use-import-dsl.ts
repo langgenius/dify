@@ -4,15 +4,14 @@ import type {
 } from '@/models/app'
 import type { AppIconType } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useSetLocalStorage } from 'foxact/use-local-storage'
 import {
   useCallback,
   useRef,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { DSLImportStatus } from '@/models/app'
 import { useRouter } from '@/next/navigation'
 import {
@@ -45,7 +44,7 @@ export const useImportDSL = () => {
   const invalidateAppList = useInvalidateAppList()
   const [versions, setVersions] = useState<{ importedVersion: string, systemVersion: string }>()
   const importIdRef = useRef<string>('')
-  const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
+  const setNeedRefresh = useSetNeedRefreshAppList()
 
   const handleImportDSL = useCallback(async (
     payload: DSLPayload,
@@ -114,7 +113,7 @@ export const useImportDSL = () => {
     finally {
       setIsFetching(false)
     }
-  }, [isFetching, t, setNeedRefresh, handleCheckPluginDependencies, push, setNeedRefresh, invalidateAppList])
+  }, [isFetching, t, handleCheckPluginDependencies, push, setNeedRefresh, invalidateAppList])
 
   const handleImportDSLConfirm = useCallback(async (
     {
@@ -157,7 +156,7 @@ export const useImportDSL = () => {
     finally {
       setIsFetching(false)
     }
-  }, [isFetching, t, handleCheckPluginDependencies, setNeedRefresh, push, setNeedRefresh, invalidateAppList])
+  }, [isFetching, t, handleCheckPluginDependencies, setNeedRefresh, push, invalidateAppList])
 
   return {
     handleImportDSL,

@@ -31,15 +31,14 @@ import {
   TooltipTrigger,
 } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useSetLocalStorage } from 'foxact/use-local-storage'
 import { useCallback, useId, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
+import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import AppIcon from '@/app/components/base/app-icon'
 import StarIcon from '@/app/components/base/icons/src/vender/Star'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -311,7 +310,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
   const { mutateAsync: mutateDeleteApp, isPending: isDeleting } = useDeleteAppMutation()
   const { mutateAsync: mutateToggleAppStar, isPending: isTogglingStar } = useToggleAppStarMutation()
-  const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
+  const setNeedRefresh = useSetNeedRefreshAppList()
   const resourceMaintainer = getAppResourceMaintainer(app)
   const maintainerPermissionOptions = useMemo(() => ({
     currentUserId,
@@ -738,7 +737,7 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
   const { mutateAsync: mutateDeleteApp, isPending: isDeleting } = useDeleteAppMutation()
   const { mutateAsync: mutateToggleAppStar, isPending: isTogglingStar } = useToggleAppStarMutation()
-  const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
+  const setNeedRefresh = useSetNeedRefreshAppList()
   const resourceMaintainer = getAppResourceMaintainer(app)
   const maintainerPermissionOptions = useMemo(() => ({
     currentUserId,

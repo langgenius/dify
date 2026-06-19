@@ -106,10 +106,6 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
   },
 }))
 
-vi.mock('@/config', () => ({
-  NEED_REFRESH_APP_LIST_KEY: 'test-refresh-key',
-}))
-
 describe('useAppInfoActions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
