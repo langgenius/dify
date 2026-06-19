@@ -832,14 +832,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/create-app-dialog/app-list/__tests__/index.spec.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/app/create-app-dialog/app-list/index.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -3937,11 +3929,6 @@
       "count": 1
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/index.tsx": {
-    "tailwindcss/no-duplicate-classes": {
       "count": 1
     }
   },
