@@ -4,6 +4,8 @@ import {
   RiCursorLine,
   RiFunctionAddLine,
   RiHand,
+  RiLockLine,
+  RiLockUnlockLine,
   RiStickyNoteAddLine,
 } from '@remixicon/react'
 import {
@@ -29,6 +31,8 @@ import TipPopup from './tip-popup'
 const Control = () => {
   const { t } = useTranslation()
   const controlMode = useStore(s => s.controlMode)
+  const canvasReadOnly = useStore(s => s.canvasReadOnly)
+  const setCanvasReadOnly = useStore(s => s.setCanvasReadOnly)
   const {
     handleModePointer,
     handleModeHand,
@@ -116,6 +120,22 @@ const Control = () => {
           </button>
         </TipPopup>
       )}
+      <Divider className="my-1 w-3.5" />
+      <TipPopup title={t(canvasReadOnly ? 'common.unlockCanvas' : 'common.lockCanvas', { ns: 'workflow' })}>
+        <button
+          type="button"
+          aria-label={t(canvasReadOnly ? 'common.unlockCanvas' : 'common.lockCanvas', { ns: 'workflow' })}
+          className={cn(
+            'flex size-8 cursor-pointer items-center justify-center rounded-lg',
+            canvasReadOnly ? 'bg-state-accent-active text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
+          )}
+          onClick={() => setCanvasReadOnly(!canvasReadOnly)}
+        >
+          {canvasReadOnly
+            ? <RiLockLine aria-hidden className="size-4" />
+            : <RiLockUnlockLine aria-hidden className="size-4" />}
+        </button>
+      </TipPopup>
       <Divider className="my-1 w-3.5" />
       <TipPopup title={t('panel.organizeBlocks', { ns: 'workflow' })} shortcut="workflow.organize">
         <button

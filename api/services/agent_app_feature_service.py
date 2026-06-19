@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from typing import Any, cast
 
+from sqlalchemy.orm import scoped_session
+
 from core.app.app_config.common.sensitive_word_avoidance.manager import SensitiveWordAvoidanceConfigManager
 from core.app.app_config.features.opening_statement.manager import OpeningStatementConfigManager
 from core.app.app_config.features.retrieval_resource.manager import RetrievalResourceConfigManager
@@ -67,13 +69,21 @@ class AgentAppFeatureConfigService:
         return cast(AppModelConfigDict, filtered)
 
     @classmethod
-    def update_features(cls, *, app_model: App, account: Account, config: dict[str, Any]) -> AppModelConfig:
+    def update_features(
+        cls,
+        *,
+        app_model: App,
+        account: Account,
+        config: dict[str, Any],
+        session: scoped_session | None = None,
+    ) -> AppModelConfig:
         """Persist the presentation features as a new app_model_config version.
 
         Returns the new ``AppModelConfig`` row (now referenced by the app); the
         row carries only feature flags, with model / prompt / agent_mode left
         ``NULL`` so the Agent Soul remains the single source of truth for those.
         """
+        session = session or db.session
         validated = cls.validate_features(app_model.tenant_id, config)
 
         new_config = AppModelConfig(
@@ -82,13 +92,13 @@ class AgentAppFeatureConfigService:
             updated_by=account.id,
         ).from_model_config_dict(validated)
 
-        db.session.add(new_config)
-        db.session.flush()
+        session.add(new_config)
+        session.flush()
 
         app_model.app_model_config_id = new_config.id
         app_model.updated_by = account.id
         app_model.updated_at = naive_utc_now()
-        db.session.commit()
+        session.commit()
 
         return new_config
 
