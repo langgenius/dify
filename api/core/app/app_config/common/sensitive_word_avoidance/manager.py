@@ -47,9 +47,7 @@ class SensitiveWordAvoidanceConfig(BaseModel):
     def run_provider_validation(self, tenant_id: str) -> None:
         """Call ModerationFactory validation (skip for structure-only checks)."""
         if self.enabled and self.type:
-            ModerationFactory.validate_config(
-                name=self.type, tenant_id=tenant_id, config=self.config
-            )
+            ModerationFactory.validate_config(name=self.type, tenant_id=tenant_id, config=self.config)
 
 
 class SensitiveWordAvoidanceConfigManager:
