@@ -65,7 +65,7 @@ def test_billing_disabled_account_exists_sends_email_only(
     mail_task.delay.assert_called_once_with(account.email)
 
 
-def test_billing_enabled_account_not_found_calls_billing_no_email(
+def test_billing_enabled_account_not_found_skips_billing_and_email(
     mock_external_dependencies: tuple[MagicMock, MagicMock], mocker: MockerFixture, caplog: LogCaptureFixture
 ) -> None:
     billing_service, mail_task = mock_external_dependencies
@@ -74,7 +74,7 @@ def test_billing_enabled_account_not_found_calls_billing_no_email(
 
     delete_account_task(account_id)
 
-    billing_service.delete_account.assert_called_once_with(account_id)
+    billing_service.delete_account.assert_not_called()
     mail_task.delay.assert_not_called()
     assert any("not found" in record.getMessage().lower() for record in caplog.records)
 
