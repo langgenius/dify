@@ -534,12 +534,11 @@ class TestParagraphIndexProcessor:
         session = Mock()
         session.scalars.return_value = scalars_result
 
-        with (
-            patch(
-                "core.rag.index_processor.processor.paragraph_index_processor.build_from_mapping",
-                return_value=SimpleNamespace(id="file-1"),
-            ) as mock_builder,
-            caplog.at_level(logging.WARNING, logger="core.rag.index_processor.processor.paragraph_index_processor"),
+        with patch(
+            "core.rag.index_processor.processor.paragraph_index_processor.build_from_mapping",
+            return_value=SimpleNamespace(id="file-1"),
+        ) as mock_builder, caplog.at_level(
+            logging.WARNING, logger="core.rag.index_processor.processor.paragraph_index_processor"
         ):
             files = ParagraphIndexProcessor._extract_images_from_text("tenant-1", text, session)
 
@@ -571,12 +570,11 @@ class TestParagraphIndexProcessor:
         session = Mock()
         session.scalars.return_value = scalars_result
 
-        with (
-            patch(
-                "core.rag.index_processor.processor.paragraph_index_processor.build_from_mapping",
-                side_effect=RuntimeError("build failed"),
-            ),
-            caplog.at_level(logging.WARNING, logger="core.rag.index_processor.processor.paragraph_index_processor"),
+        with patch(
+            "core.rag.index_processor.processor.paragraph_index_processor.build_from_mapping",
+            side_effect=RuntimeError("build failed"),
+        ), caplog.at_level(
+            logging.WARNING, logger="core.rag.index_processor.processor.paragraph_index_processor"
         ):
             files = ParagraphIndexProcessor._extract_images_from_text("tenant-1", text, session)
 
