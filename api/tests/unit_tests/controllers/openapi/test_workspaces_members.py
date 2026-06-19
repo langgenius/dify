@@ -16,7 +16,6 @@ and are covered in `auth/test_prepare.py` and `auth/test_verify.py`.
 """
 
 from __future__ import annotations
-from controllers.openapi.auth.data import AuthData
 
 import builtins
 import json
@@ -35,6 +34,7 @@ from werkzeug.exceptions import BadRequest, NotFound, UnprocessableEntity
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi._errors import MemberLicenseExceeded, MemberLimitExceeded
 from controllers.openapi._models import MemberInvitePayload, MemberRoleUpdatePayload
+from controllers.openapi.auth.data import AuthData
 from controllers.openapi.workspaces import (
     WorkspaceMemberApi,
     WorkspaceMemberRoleApi,
@@ -268,7 +268,9 @@ def test_update_role_rejects_invalid_body_with_422(app: Flask, bypass_pipeline):
 # ---------------------------------------------------------------------------
 
 
-def test_switch_returns_workspace_detail_with_current_true(app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
+def test_switch_returns_workspace_detail_with_current_true(
+    app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch
+):
     """Happy path: switch service is called, then the workspace+membership
     row is re-queried so the returned `current` reflects post-commit state.
     """
@@ -299,7 +301,9 @@ def test_switch_returns_workspace_detail_with_current_true(app: Flask, bypass_pi
     assert switch_mock.called
 
 
-def test_switch_404s_when_service_raises_account_not_link_tenant(app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
+def test_switch_404s_when_service_raises_account_not_link_tenant(
+    app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch
+):
     """If switch_tenant raises (e.g. Tenant.status != NORMAL), the body
     surfaces as NotFound, not 500."""
     ws_id = str(uuid.uuid4())
@@ -426,7 +430,9 @@ def test_members_list_rejects_unknown_query_param(app: Flask, bypass_pipeline, m
 # ---------------------------------------------------------------------------
 
 
-def test_invite_happy_path_returns_invite_url_and_member_id(app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
+def test_invite_happy_path_returns_invite_url_and_member_id(
+    app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch
+):
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()
     api = WorkspaceMembersApi()
