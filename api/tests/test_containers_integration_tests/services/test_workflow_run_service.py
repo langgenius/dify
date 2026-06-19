@@ -7,7 +7,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from models.enums import ConversationFromSource, CreatorUserRole
+from models.enums import ConversationFromSource, CreatorUserRole, EndUserType
 from models.model import (
     Message,
 )
@@ -684,7 +684,7 @@ class TestWorkflowRunService:
         end_user = EndUser(
             tenant_id=app.tenant_id,
             app_id=app.id,
-            type="web_app",
+            type=EndUserType.BROWSER,
             is_anonymous=False,
             session_id=str(uuid.uuid4()),
             external_user_id=str(uuid.uuid4()),

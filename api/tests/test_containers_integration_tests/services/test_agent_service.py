@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from models import Account, AppMode, CreatorUserRole
-from models.enums import ConversationFromSource, MessageFileBelongsTo
+from models.enums import ConversationFromSource, EndUserType, MessageFileBelongsTo
 from models.model import AppModelConfig, Conversation, EndUser, Message, MessageAgentThought
 from services.account_service import AccountService, TenantService
 from services.agent_service import AgentService
@@ -388,7 +388,7 @@ class TestAgentService:
             id=fake.uuid4(),
             tenant_id=app.tenant_id,
             app_id=app.id,
-            type="web_app",
+            type=EndUserType.BROWSER,
             is_anonymous=False,
             session_id=fake.uuid4(),
             name=fake.name(),

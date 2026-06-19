@@ -1,7 +1,7 @@
 """add resource maintainers
 
 Revision ID: a7c4e9d2f681
-Revises: 9f4b7c2d1a80
+Revises: d2f1a4b8c3e0
 Create Date: 2026-06-15 12:00:00.000000
 
 """

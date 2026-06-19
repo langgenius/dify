@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models import Account, App
-from models.enums import ConversationFromSource
+from models.enums import ConversationFromSource, EndUserType
 from models.model import Conversation, EndUser
 from models.web import PinnedConversation
 from services.account_service import AccountService, TenantService
@@ -109,7 +109,7 @@ class TestWebConversationService:
         end_user = EndUser(
             session_id=fake.uuid4(),
             app_id=app.id,
-            type="normal",
+            type=EndUserType.BROWSER,
             is_anonymous=False,
             tenant_id=app.tenant_id,
         )
