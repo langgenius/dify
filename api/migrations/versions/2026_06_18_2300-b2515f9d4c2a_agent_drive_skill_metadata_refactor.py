@@ -1,7 +1,7 @@
 """agent drive skill metadata refactor
 
 Revision ID: b2515f9d4c2a
-Revises: d2f1a4b8c3e0
+Revises: a7c4e9d2f681
 Create Date: 2026-06-18 23:00:00.000000
 
 """
@@ -17,7 +17,7 @@ from sqlalchemy.dialects import mysql
 
 # revision identifiers, used by Alembic.
 revision = "b2515f9d4c2a"
-down_revision = "d2f1a4b8c3e0"
+down_revision = "a7c4e9d2f681"
 branch_labels = None
 depends_on = None
 
