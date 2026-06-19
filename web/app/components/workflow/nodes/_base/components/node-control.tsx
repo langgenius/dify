@@ -11,10 +11,12 @@ import { useTranslation } from 'react-i18next'
 import {
   Stop,
 } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { NodeActionsDropdown } from '@/app/components/workflow/node-actions-menu'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import {
   useNodesInteractions,
+  useNodesReadOnly,
 } from '../../../hooks'
 import { NodeRunningStatus } from '../../../types'
 import { canRunBySingle } from '../../../utils'
@@ -29,7 +31,9 @@ const NodeControl: FC<NodeControlProps> = ({
 }) => {
   const { t } = useTranslation()
   const { handleNodeSelect } = useNodesInteractions()
+  const nodesReadOnly = useNodesReadOnly()
   const workflowStore = useWorkflowStore()
+  const canRun = useHooksStore(s => s.accessControl.canRun)
   const isSingleRunning = data._singleRunningStatus === NodeRunningStatus.Running
 
   const isChildNode = !!(data.isInIteration || data.isInLoop)
@@ -48,7 +52,7 @@ const NodeControl: FC<NodeControlProps> = ({
         onClick={e => e.stopPropagation()}
       >
         {
-          canRunBySingle(data.type, isChildNode) && (
+          canRun && !nodesReadOnly && canRunBySingle(data.type, isChildNode) && (
             <button
               type="button"
               aria-label={isSingleRunning ? t('debug.variableInspect.trigger.stop', { ns: 'workflow' }) : t('panel.runThisStep', { ns: 'workflow' })}

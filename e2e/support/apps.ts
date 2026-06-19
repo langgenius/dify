@@ -19,6 +19,6 @@ export const openBlankAppCreation = async (page: Page) => {
     return
   }
 
-  await page.getByRole('button', { name: 'Create' }).click()
+  await page.getByRole('button', { name: 'Create', exact: true }).click()
   await page.getByRole('menuitem', { name: 'Create from Blank' }).click()
 }

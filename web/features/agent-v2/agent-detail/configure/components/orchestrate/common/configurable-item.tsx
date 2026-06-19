@@ -32,12 +32,12 @@ export function ConfigureSectionConfigurableItem({
         </span>
       </div>
       {!readOnly && (
-        <div className="hidden shrink-0 items-center gap-1 group-focus-within:flex group-hover:flex">
+        <div className="pointer-events-none flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
           <button
             type="button"
             aria-label={editAriaLabel}
             onClick={onEdit}
-            className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
             <span aria-hidden className="i-ri-equalizer-2-line size-4" />
           </button>
@@ -45,14 +45,14 @@ export function ConfigureSectionConfigurableItem({
             type="button"
             aria-label={removeAriaLabel}
             onClick={onRemove}
-            className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:bg-state-destructive-hover focus-visible:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
             <span aria-hidden className="i-ri-delete-bin-line size-4" />
           </button>
         </div>
       )}
       {hasBadge && (
-        <span className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary group-focus-within:hidden group-hover:hidden">
+        <span className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary transition-opacity group-focus-within:opacity-0 group-hover:opacity-0">
           {badge}
         </span>
       )}

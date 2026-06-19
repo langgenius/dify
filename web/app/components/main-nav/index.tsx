@@ -190,7 +190,6 @@ const MainNav = ({
       agentV2Enabled,
       canUseAppDeploy,
       isCurrentWorkspaceDatasetOperator,
-      isCurrentWorkspaceEditor,
     }))
     .map(route => ({
       href: route.href,
@@ -198,7 +197,7 @@ const MainNav = ({
       active: route.active,
       icon: route.icon,
       activeIcon: route.activeIcon,
-    })), [agentV2Enabled, canUseAppDeploy, isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceEditor, t])
+    })), [agentV2Enabled, canUseAppDeploy, isCurrentWorkspaceDatasetOperator, t])
 
   const renderLogo = () => {
     const appTitle = systemFeatures.branding.enabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'

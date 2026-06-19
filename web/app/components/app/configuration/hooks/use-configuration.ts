@@ -50,6 +50,7 @@ import { usePathname } from '@/next/navigation'
 import { updateAppModelConfig } from '@/service/apps'
 import { useFileUploadConfig } from '@/service/use-common'
 import { AppModeEnum, ModelModeType, Resolution, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
+import { getAppACLCapabilities } from '@/utils/permission'
 import { supportFunctionCall } from '@/utils/tool-call'
 import { basePath } from '@/utils/var'
 import {
@@ -108,7 +109,7 @@ export type ConfigurationViewModel = {
 
 export const useConfiguration = (): ConfigurationViewModel => {
   const { t } = useTranslation()
-  const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
+  const { isLoadingCurrentWorkspace, currentWorkspace, userProfile, workspacePermissionKeys } = useAppContext()
   const openIntegrationsSetting = useIntegrationsSetting()
 
   const { appDetail, showAppConfigureFeaturesModal, setAppSidebarExpand, setShowAppConfigureFeaturesModal } = useAppStore(useShallow(state => ({
@@ -120,6 +121,12 @@ export const useConfiguration = (): ConfigurationViewModel => {
 
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
   const latestPublishedAt = useMemo(() => appDetail?.model_config?.updated_at, [appDetail])
+  const appACLCapabilities = useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
+    currentUserId: userProfile?.id,
+    resourceMaintainer: appDetail?.maintainer,
+    workspacePermissionKeys,
+  }), [appDetail?.maintainer, appDetail?.permission_keys, userProfile?.id, workspacePermissionKeys])
+  const configurationReadonly = !appACLCapabilities.canEdit
   const [formattingChanged, setFormattingChanged] = useState(false)
   const [hasFetchedDetail, setHasFetchedDetail] = useState(false)
   const pathname = usePathname()
@@ -482,6 +489,9 @@ export const useConfiguration = (): ConfigurationViewModel => {
   ])
 
   const onPublish = useCallback(async (params?: AppPublisherPublishParams, features?: FeaturesData) => {
+    if (!appACLCapabilities.canReleaseAndVersion)
+      return
+
     const modelAndParameter = params && 'model' in params && 'provider' in params && 'parameters' in params
       ? params
       : undefined
@@ -515,6 +525,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
       textToSpeechConfig,
     })(updateAppModelConfig, modelAndParameter, features)
   }, [
+    appACLCapabilities.canReleaseAndVersion,
     appId,
     chatPromptConfig,
     citationConfig,
@@ -567,6 +578,8 @@ export const useConfiguration = (): ConfigurationViewModel => {
   }, [modelConfig, setModelConfig])
 
   const contextValue: DebugConfigurationValue = {
+    readonly: configurationReadonly,
+    canTestAndRun: appACLCapabilities.canTestAndRun,
     appId,
     isAPIKeySet,
     isTrailFinished: false,
@@ -644,7 +657,8 @@ export const useConfiguration = (): ConfigurationViewModel => {
 
   return {
     appPublisherProps: {
-      publishDisabled: cannotPublish,
+      disabled: !appACLCapabilities.canReleaseAndVersion,
+      publishDisabled: cannotPublish || !appACLCapabilities.canReleaseAndVersion,
       publishedAt: (latestPublishedAt || 0) * 1000,
       debugWithMultipleModel,
       multipleModelConfigs,

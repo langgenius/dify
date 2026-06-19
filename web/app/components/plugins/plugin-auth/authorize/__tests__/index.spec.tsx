@@ -28,6 +28,9 @@ const createWrapper = () => {
 
 // Mock API hooks - only mock network-related hooks
 const mockGetPluginOAuthClientSchema = vi.fn()
+const mockAppContext = vi.hoisted(() => ({
+  workspacePermissionKeys: ['credential.manage', 'credential.use'] as string[],
+}))
 
 vi.mock('../../hooks/use-credential', () => ({
   useGetPluginOAuthUrlHook: () => ({
@@ -61,6 +64,13 @@ vi.mock('@/hooks/use-oauth', () => ({
   openOAuthPopup: vi.fn(),
 }))
 
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) =>
+    selector({
+      workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
+    }),
+}))
+
 // Mock service/use-triggers - API service
 vi.mock('@/service/use-triggers', () => ({
   useTriggerPluginDynamicOptions: () => ({
@@ -84,6 +94,7 @@ const createPluginPayload = (overrides: Partial<PluginPayload> = {}): PluginPayl
 describe('Authorize', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockAppContext.workspacePermissionKeys = ['credential.manage', 'credential.use']
     mockGetPluginOAuthClientSchema.mockReturnValue({
       schema: [],
       is_oauth_custom_client_enabled: false,
@@ -240,15 +251,15 @@ describe('Authorize', () => {
       })
     })
 
-    describe('disabled prop', () => {
-      it('should disable OAuth button when disabled is true', () => {
+    describe('credential.manage permission', () => {
+      it('should disable OAuth button when credential.manage is missing', () => {
         const pluginPayload = createPluginPayload()
+        mockAppContext.workspacePermissionKeys = ['credential.use']
 
         render(
           <Authorize
             pluginPayload={pluginPayload}
             canOAuth={true}
-            disabled={true}
           />,
           { wrapper: createWrapper() },
         )
@@ -256,14 +267,14 @@ describe('Authorize', () => {
         expect(screen.getByRole('button')).toBeDisabled()
       })
 
-      it('should disable API Key button when disabled is true', () => {
+      it('should disable API Key button when credential.manage is missing', () => {
         const pluginPayload = createPluginPayload()
+        mockAppContext.workspacePermissionKeys = ['credential.use']
 
         render(
           <Authorize
             pluginPayload={pluginPayload}
             canApiKey={true}
-            disabled={true}
           />,
           { wrapper: createWrapper() },
         )
@@ -271,7 +282,7 @@ describe('Authorize', () => {
         expect(screen.getByRole('button')).toBeDisabled()
       })
 
-      it('should not disable buttons when disabled is false', () => {
+      it('should not disable buttons when credential.manage is present', () => {
         const pluginPayload = createPluginPayload()
 
         render(
@@ -279,7 +290,6 @@ describe('Authorize', () => {
             pluginPayload={pluginPayload}
             canOAuth={true}
             canApiKey={true}
-            disabled={false}
           />,
           { wrapper: createWrapper() },
         )
@@ -538,15 +548,15 @@ describe('Authorize', () => {
       }).not.toThrow()
     })
 
-    it('should handle both disabled and notAllowCustomCredential together', () => {
+    it('should stay disabled when credential.manage is missing and custom credentials are unavailable', () => {
       const pluginPayload = createPluginPayload()
+      mockAppContext.workspacePermissionKeys = ['credential.use']
 
       render(
         <Authorize
           pluginPayload={pluginPayload}
           canOAuth={true}
           canApiKey={true}
-          disabled={true}
           notAllowCustomCredential={true}
         />,
         { wrapper: createWrapper() },
@@ -730,15 +740,15 @@ describe('Authorize', () => {
       expect(buttons.length).toBe(2)
     })
 
-    it('should indicate disabled state for accessibility', () => {
+    it('should indicate permission-disabled state for accessibility', () => {
       const pluginPayload = createPluginPayload()
+      mockAppContext.workspacePermissionKeys = ['credential.use']
 
       render(
         <Authorize
           pluginPayload={pluginPayload}
           canOAuth={true}
           canApiKey={true}
-          disabled={true}
         />,
         { wrapper: createWrapper() },
       )

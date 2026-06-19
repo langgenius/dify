@@ -208,6 +208,7 @@ describe('CreateFromDSLModal', () => {
       status: DSLImportStatus.COMPLETED,
       app_id: 'app-1',
       app_mode: AppModeEnum.CHAT,
+      permission_keys: ['app.acl.view_layout'],
     })
 
     render(
@@ -244,8 +245,7 @@ describe('CreateFromDSLModal', () => {
     expect(mockInvalidateAppList).toHaveBeenCalledTimes(1)
     expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('app-1')
     expect(mockGetRedirection).toHaveBeenCalledWith(
-      true,
-      { id: 'app-1', mode: 'chat' },
+      { id: 'app-1', mode: 'chat', permission_keys: ['app.acl.view_layout'] },
       mockPush,
     )
   })
@@ -256,6 +256,7 @@ describe('CreateFromDSLModal', () => {
       status: DSLImportStatus.COMPLETED_WITH_WARNINGS,
       app_id: 'app-2',
       app_mode: AppModeEnum.CHAT,
+      permission_keys: ['app.acl.view_layout'],
     })
 
     render(
@@ -322,6 +323,7 @@ describe('CreateFromDSLModal', () => {
       status: DSLImportStatus.COMPLETED,
       app_id: 'app-3',
       app_mode: AppModeEnum.WORKFLOW,
+      permission_keys: ['app.acl.view_layout'],
     })
 
     render(
@@ -450,6 +452,7 @@ describe('CreateFromDSLModal', () => {
       status: DSLImportStatus
       app_id: string
       app_mode: string
+      permission_keys?: string[]
     }) => void
     mockImportDSL.mockImplementationOnce(
       () =>
@@ -478,6 +481,7 @@ describe('CreateFromDSLModal', () => {
         status: DSLImportStatus.COMPLETED,
         app_id: 'app-1',
         app_mode: AppModeEnum.CHAT,
+        permission_keys: ['app.acl.view_layout'],
       })
     })
 
@@ -498,6 +502,7 @@ describe('CreateFromDSLModal', () => {
       status: DSLImportStatus.COMPLETED,
       app_id: 'app-shortcut',
       app_mode: 'chat',
+      permission_keys: ['app.acl.view_layout'],
     })
 
     render(

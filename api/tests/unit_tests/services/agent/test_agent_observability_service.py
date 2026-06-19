@@ -6,7 +6,7 @@ import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.enums import ConversationFromSource, MessageStatus
-from services.agent.observability_service import AgentObservabilityService
+from services.agent.observability_service import AgentLogQueryParams, AgentObservabilityService
 
 
 def test_resolve_source_accepts_frontend_aliases() -> None:
@@ -38,6 +38,54 @@ def test_resolve_source_filter_accepts_structured_sources() -> None:
 
     with pytest.raises(ValueError, match="Unsupported source"):
         AgentObservabilityService.resolve_source_filter("workflow:broken")
+
+
+def test_resolve_source_filters_accepts_multiple_structured_sources() -> None:
+    filters = AgentObservabilityService.resolve_source_filters(("webapp:app-1", "workflow:app-2:workflow-1:v1:node-1"))
+
+    assert [source_filter.kind for source_filter in filters] == ["webapp", "workflow"]
+    assert filters[0].app_id == "app-1"
+    assert filters[1].node_id == "node-1"
+    assert AgentObservabilityService.resolve_source_filters(())[0].kind == "all"
+    assert AgentObservabilityService.resolve_source_filters(("all", "webapp:app-1"))[0].kind == "all"
+
+
+def test_apply_status_filter_accepts_multiple_statuses() -> None:
+    class FakeStmt:
+        def __init__(self):
+            self.conditions = []
+
+        def where(self, *conditions):
+            self.conditions.extend(conditions)
+            return self
+
+    stmt = FakeStmt()
+
+    result = AgentObservabilityService._apply_status_filter(stmt, ("success", "failed", "paused"))
+
+    assert result is stmt
+    assert len(stmt.conditions) == 1
+    with pytest.raises(ValueError, match="Unsupported status"):
+        AgentObservabilityService._apply_status_filter(FakeStmt(), ("unknown",))
+
+
+def test_list_logs_sorts_by_requested_field(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = AgentObservabilityService(session=None)
+    app = SimpleNamespace(id="app-1")
+    rows = [
+        {"id": "old", "source": {"id": "webapp:app-1"}, "created_at": 10, "updated_at": 100},
+        {"id": "new", "source": {"id": "webapp:app-1"}, "created_at": 20, "updated_at": 50},
+    ]
+    monkeypatch.setattr(service, "_list_webapp_conversation_logs", lambda **kwargs: rows)
+    monkeypatch.setattr(service, "_list_workflow_conversation_logs", lambda **kwargs: [])
+
+    payload = service.list_logs(
+        app=app,  # type: ignore[arg-type]
+        agent_id="agent-1",
+        params=AgentLogQueryParams(sources=("webapp:app-1",), sort_by="created_at", sort_order="asc"),
+    )
+
+    assert [item["id"] for item in payload["data"]] == ["old", "new"]
 
 
 def test_source_serializers_return_structured_frontend_shape() -> None:

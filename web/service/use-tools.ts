@@ -1,4 +1,4 @@
-import type { QueryKey } from '@tanstack/react-query'
+import type { QueryKey, UseQueryOptions } from '@tanstack/react-query'
 import type {
   Collection,
   MCPServerDetail,
@@ -199,10 +199,11 @@ export const useUpdateMCPTools = () => {
   })
 }
 
-export const useMCPServerDetail = (appID: string) => {
+export const useMCPServerDetail = (appID: string, enabled = true) => {
   return useQuery<MCPServerDetail>({
     queryKey: [NAME_SPACE, 'MCPServerDetail', appID],
     queryFn: () => get<MCPServerDetail>(`/apps/${appID}/server`),
+    enabled,
   })
 }
 
@@ -307,7 +308,10 @@ export type AppTrigger = {
   updated_at: string
 }
 
-export const useAppTriggers = (appId: string | undefined, options?: any) => {
+export const useAppTriggers = (
+  appId: string | undefined,
+  options?: Omit<UseQueryOptions<{ data: AppTrigger[] }>, 'queryKey' | 'queryFn'>,
+) => {
   return useQuery<{ data: AppTrigger[] }>({
     queryKey: [NAME_SPACE, 'app-triggers', appId],
     queryFn: () => get<{ data: AppTrigger[] }>(`/apps/${appId}/triggers`),

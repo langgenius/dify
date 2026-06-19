@@ -9,7 +9,7 @@ from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from controllers.console.error import AccountNotFound, NotAllowedCreateWorkspace
-from models import AccountStatus, TenantAccountJoin, TenantStatus
+from models import AccountStatus, App, Dataset, TenantAccountJoin, TenantStatus
 from services.account_service import AccountService, RegisterService, TenantService, TokenPair
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -1799,8 +1799,32 @@ class TestTenantService:
         TenantService.create_tenant_member(tenant, owner_account, role="owner")
         TenantService.create_tenant_member(tenant, member_account, role="normal")
 
+        app = App(
+            tenant_id=tenant.id,
+            name="Member app",
+            mode="chat",
+            enable_site=True,
+            enable_api=True,
+            created_by=member_account.id,
+            maintainer=member_account.id,
+        )
+        dataset = Dataset(
+            tenant_id=tenant.id,
+            name="Member dataset",
+            created_by=member_account.id,
+            maintainer=member_account.id,
+        )
+        db_session_with_containers.add_all([app, dataset])
+        db_session_with_containers.commit()
+
         # Remove member
-        with patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync:
+        with (
+            patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync,
+            patch(
+                "services.account_service.AccountService.get_rbac_workspace_owner_account_id",
+                return_value=owner_account.id,
+            ),
+        ):
             mock_sync.return_value = True
 
             TenantService.remove_member_from_tenant(tenant, member_account, owner_account)
@@ -1819,6 +1843,12 @@ class TestTenantService:
             .first()
         )
         assert member_join is None
+        db_session_with_containers.refresh(app)
+        db_session_with_containers.refresh(dataset)
+        assert app.created_by == member_account.id
+        assert app.maintainer == owner_account.id
+        assert dataset.created_by == member_account.id
+        assert dataset.maintainer == owner_account.id
 
     def test_remove_member_from_tenant_operate_self(
         self, db_session_with_containers: Session, mock_external_service_dependencies

@@ -24,6 +24,13 @@ vi.mock('@/service/plugins', () => ({
   fetchPluginInfoFromMarketPlace: vi.fn(),
 }))
 
+vi.mock('@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission', () => ({
+  default: () => ({
+    canInstallPlugin: true,
+    currentDifyVersion: '1.0.0',
+  }),
+}))
+
 const mockFetch = vi.mocked(fetchPluginInfoFromMarketPlace)
 const mockGetIconUrl = vi.fn((icon: string) => `https://icons/${icon}`)
 

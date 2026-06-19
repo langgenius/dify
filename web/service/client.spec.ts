@@ -188,6 +188,40 @@ describe('consoleQuery agent mutation defaults', () => {
     })
   })
 
+  it('should cache copied agent detail and invalidate roster lists after copying an agent', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const copiedAgent = createAgent({ id: 'copied-agent', name: 'Agent copy' })
+
+    const mutationOptions = consoleQuery.agent.byAgentId.copy.post.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      copiedAgent,
+      {
+        params: {
+          agent_id: 'source-agent',
+        },
+        body: {},
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(queryClient.getQueryData(consoleQuery.agent.byAgentId.get.queryKey({
+      input: {
+        params: {
+          agent_id: copiedAgent.id,
+        },
+      },
+    }))).toEqual(copiedAgent)
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.get.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.inviteOptions.get.key(),
+    })
+  })
+
   it('should invalidate invite option lists after updating an agent', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
