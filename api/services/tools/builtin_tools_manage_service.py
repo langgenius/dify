@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
+from core.di.container import CoreContainer
+from dependency_injector.wiring import Provide, inject
 from core.helper.name_generator import generate_incremental_name
 from core.helper.position_helper import is_filtered
 from core.helper.provider_cache import NoOpProviderCredentialCache, ToolProviderCredentialsCache
@@ -344,11 +346,13 @@ class BuiltinToolManageService:
         )
 
     @staticmethod
+    @inject
     def get_builtin_tool_provider_credentials(
         tenant_id: str,
         provider_name: str,
         user: Account | None = None,
         include_credential_ids: list[str] | None = None,
+        session: Session = Provide[CoreContainer.db_session],
     ) -> list[ToolProviderCredentialApiEntity]:
         """
         get builtin tool provider credentials, filtered by visibility.
@@ -367,7 +371,7 @@ class BuiltinToolManageService:
         from models.credential_permission import CredentialType as CredPermType
         from services.credential_permission_service import CredentialPermissionService
 
-        with db.session.no_autoflush:
+        with session.no_autoflush:
             base_filter = (
                 BuiltinToolProvider.tenant_id == tenant_id,
                 BuiltinToolProvider.provider == provider_name,
@@ -383,7 +387,7 @@ class BuiltinToolManageService:
                     credential_type=CredPermType.BUILTIN_TOOL_PROVIDER,
                     user=user,
                 )
-            visible_providers = list(db.session.scalars(visible_query).all())
+            visible_providers = list(session.scalars(visible_query).all())
 
             # Fetch any explicitly-included IDs that the visibility filter excluded.
             borrowed_ids: set[str] = set()
@@ -397,7 +401,7 @@ class BuiltinToolManageService:
                         .where(*base_filter, BuiltinToolProvider.id.in_(wanted_ids))
                         .order_by(*order)
                     )
-                    borrowed_providers = list(db.session.scalars(borrowed_query).all())
+                    borrowed_providers = list(session.scalars(borrowed_query).all())
                     borrowed_ids = {p.id for p in borrowed_providers}
 
             providers = visible_providers + borrowed_providers

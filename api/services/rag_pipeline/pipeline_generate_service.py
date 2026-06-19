@@ -4,9 +4,11 @@ from typing import Any
 from configs import dify_config
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
-from extensions.ext_database import db
+from core.di.container import CoreContainer
+from dependency_injector.wiring import Provide, inject
 from models.dataset import Document, Pipeline
 from models.enums import IndexingStatus
+from sqlalchemy.orm import Session
 from models.model import Account, App, EndUser
 from models.workflow import Workflow
 from services.rag_pipeline.rag_pipeline import RagPipelineService
@@ -105,13 +107,18 @@ class PipelineGenerateService:
         return workflow
 
     @classmethod
-    def update_document_status(cls, document_id: str):
+    @inject
+    def update_document_status(
+        cls,
+        document_id: str,
+        session: Session = Provide[CoreContainer.db_session],
+    ):
         """
         Update document status to waiting
         :param document_id: document id
         """
-        document = db.session.get(Document, document_id)
+        document = session.get(Document, document_id)
         if document:
             document.indexing_status = IndexingStatus.WAITING
-            db.session.add(document)
-            db.session.commit()
+            session.add(document)
+            session.commit()
