@@ -49,6 +49,7 @@ from typing_extensions import Self, override
 
 from agenton.layers import LayerDeps, PydanticAILayer, PydanticAIPrompt, PydanticAITool
 from dify_agent.agent_stub.server.shell_agent_stub_env import ShellAgentStubTokenFactory, build_shell_agent_stub_env
+from dify_agent.layers.drive.layer import DifyDriveLayer
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.shell.configs import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
 
@@ -168,8 +169,13 @@ type ShellInterruptToolResult = ShellJobStatusObservation | ShellToolErrorObserv
 
 
 class DifyShellLayerDeps(LayerDeps):
-    """Optional direct-layer dependencies used by the shell runtime layer."""
+    """Optional direct-layer dependencies used by the shell runtime layer.
 
+    The drive dependency supplies the drive-specific local base for injected
+    Agent Stub CLI commands; the execution context supplies the token principal.
+    """
+
+    drive: DifyDriveLayer | None  # pyright: ignore[reportUninitializedInstanceVariable]
     execution_context: DifyExecutionContextLayer | None  # pyright: ignore[reportUninitializedInstanceVariable]
 
 
@@ -760,8 +766,10 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         """Build per-command Agent Stub env only for user-visible ``shell.run``."""
         execution_context_layer = self.deps.execution_context
         execution_context = execution_context_layer.config if execution_context_layer is not None else None
+        drive_layer = self.deps.drive
         return build_shell_agent_stub_env(
             agent_stub_url=self.agent_stub_url,
+            agent_stub_drive_base=drive_layer.local_drive_base if drive_layer is not None else None,
             execution_context=execution_context,
             token_factory=self.agent_stub_token_factory,
             session_id=self.runtime_state.session_id,

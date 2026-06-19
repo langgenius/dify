@@ -33,6 +33,7 @@ from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubDriveFileRef,
     AgentStubDriveItem,
     AgentStubDriveManifestResponse,
+    DEFAULT_AGENT_STUB_DRIVE_BASE,
 )
 
 _SKILL_MD_FILENAME = "SKILL.md"
@@ -82,7 +83,10 @@ def list_drive_from_environment(prefix: str, json_output: bool) -> str | AgentSt
     return _format_manifest(response)
 
 
-def pull_drive_from_environment(targets: list[str] | None = None, drive_base: str = "/mnt/drive") -> list[Path]:
+def pull_drive_from_environment(
+    targets: list[str] | None = None,
+    drive_base: str = DEFAULT_AGENT_STUB_DRIVE_BASE,
+) -> list[Path]:
     """Pull drive files into one local drive base via signed download URLs.
 
     Args:

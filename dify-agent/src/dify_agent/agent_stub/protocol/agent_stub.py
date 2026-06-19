@@ -21,6 +21,8 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 AGENT_STUB_PROTOCOL_VERSION: Final[int] = 1
 AGENT_STUB_URL_ENV_VAR: Final[str] = "DIFY_AGENT_STUB_URL"
 AGENT_STUB_AUTH_JWE_ENV_VAR: Final[str] = "DIFY_AGENT_STUB_AUTH_JWE"
+AGENT_STUB_DRIVE_BASE_ENV_VAR: Final[str] = "DIFY_AGENT_STUB_DRIVE_BASE"
+DEFAULT_AGENT_STUB_DRIVE_BASE: Final[str] = "/mnt/drive"
 
 type AgentStubURLScheme = Literal["http", "https", "grpc"]
 
@@ -297,8 +299,10 @@ def _format_url_host(host: str) -> str:
 
 __all__ = [
     "AGENT_STUB_AUTH_JWE_ENV_VAR",
+    "AGENT_STUB_DRIVE_BASE_ENV_VAR",
     "AGENT_STUB_PROTOCOL_VERSION",
     "AGENT_STUB_URL_ENV_VAR",
+    "DEFAULT_AGENT_STUB_DRIVE_BASE",
     "AgentStubConnectRequest",
     "AgentStubConnectResponse",
     "AgentStubEndpoint",

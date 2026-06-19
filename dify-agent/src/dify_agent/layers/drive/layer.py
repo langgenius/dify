@@ -3,8 +3,8 @@
 The API backend sends the full drive skill catalog plus the ordered drive keys
 mentioned in the prompt. When the layer enters a run context it eagerly pulls
 those mentioned skills/files from the Dify inner drive bridge, materializes them
-under ``drive_base``, and contributes a concise prompt block describing what was
-loaded and what other skills remain available for lazy pull.
+under ``drive_base / drive_ref``, and contributes a concise prompt block
+describing what was loaded and what other skills remain available for lazy pull.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from zipfile import BadZipFile, ZipFile, ZipInfo
 import httpx
 from typing_extensions import Self, override
 
-from agenton.layers import EmptyRuntimeState, Layer, LayerDeps, PlainLayer, PydanticAIPrompt
+from agenton.layers import EmptyRuntimeState, Layer, LayerDeps, PlainLayer
 from dify_agent.layers.drive.configs import DIFY_DRIVE_LAYER_TYPE_ID, DifyDriveLayerConfig
 
 _SKILL_ARCHIVE_FILENAME = ".DIFY-SKILL-FULL.zip"
@@ -32,7 +32,7 @@ class DifyDriveLayerError(RuntimeError):
 
 
 class DifyDriveDeps(LayerDeps):
-    execution_context: Layer  # pyright: ignore[reportUninitializedInstanceVariable]
+    execution_context: Layer[Any, Any, Any, Any, Any, Any]  # pyright: ignore[reportUninitializedInstanceVariable]
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,8 +76,8 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
 
     @property
     @override
-    def prefix_prompts(self) -> list[PydanticAIPrompt[object]]:
-        return [self.build_prompt_context]
+    def prefix_prompts(self) -> list[str]:
+        return [self.build_prompt_context()]
 
     @override
     async def on_context_create(self) -> None:
@@ -86,6 +86,12 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
     @override
     async def on_context_resume(self) -> None:
         await self._pull_mentioned_targets()
+
+    @property
+    def local_drive_base(self) -> str:
+        """Return the sandbox-local root for this configured drive ref."""
+        drive_root = Path(self.config.drive_base).expanduser().resolve()
+        return str(_resolve_drive_destination(drive_root, self.config.drive_ref))
 
     def build_prompt_context(self) -> str:
         sections: list[str] = []
@@ -208,7 +214,7 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
         return [deduplicated[key] for key in sorted(deduplicated)]
 
     async def _download_items(self, items: list[_DriveManifestItem]) -> dict[str, str]:
-        base_path = Path(self.config.drive_base).expanduser().resolve()
+        base_path = Path(self.local_drive_base)
         try:
             base_path.mkdir(parents=True, exist_ok=True)
         except OSError as exc:

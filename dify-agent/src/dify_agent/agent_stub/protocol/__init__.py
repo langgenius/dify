@@ -2,8 +2,10 @@
 
 from .agent_stub import (
     AGENT_STUB_AUTH_JWE_ENV_VAR,
+    AGENT_STUB_DRIVE_BASE_ENV_VAR,
     AGENT_STUB_PROTOCOL_VERSION,
     AGENT_STUB_URL_ENV_VAR,
+    DEFAULT_AGENT_STUB_DRIVE_BASE,
     AgentStubConnectRequest,
     AgentStubConnectResponse,
     AgentStubDriveCommitItem,
@@ -31,8 +33,10 @@ from .agent_stub import (
 
 __all__ = [
     "AGENT_STUB_AUTH_JWE_ENV_VAR",
+    "AGENT_STUB_DRIVE_BASE_ENV_VAR",
     "AGENT_STUB_PROTOCOL_VERSION",
     "AGENT_STUB_URL_ENV_VAR",
+    "DEFAULT_AGENT_STUB_DRIVE_BASE",
     "AgentStubConnectRequest",
     "AgentStubConnectResponse",
     "AgentStubDriveCommitItem",

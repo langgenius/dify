@@ -294,6 +294,58 @@ def test_cli_drive_pull_forwards_multiple_targets(
     assert captured.out.strip() == "/tmp/drive/skills/foo/SKILL.md"
 
 
+def test_cli_drive_pull_uses_environment_drive_base_default(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setenv("DIFY_AGENT_STUB_DRIVE_BASE", "/env/drive")
+    captured_kwargs: dict[str, object] = {}
+
+    def fake_pull_drive_from_environment(*, targets, drive_base):
+        captured_kwargs["targets"] = targets
+        captured_kwargs["drive_base"] = drive_base
+        return [Path(drive_base) / "skills" / "foo" / "SKILL.md"]
+
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli.main.pull_drive_from_environment",
+        fake_pull_drive_from_environment,
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["drive", "pull", "skills/foo"])
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert captured_kwargs == {"targets": ["skills/foo"], "drive_base": "/env/drive"}
+    assert captured.out.strip() == "/env/drive/skills/foo/SKILL.md"
+
+
+def test_cli_drive_pull_keeps_historical_drive_base_when_env_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.delenv("DIFY_AGENT_STUB_DRIVE_BASE", raising=False)
+    captured_kwargs: dict[str, object] = {}
+
+    def fake_pull_drive_from_environment(*, targets, drive_base):
+        captured_kwargs["targets"] = targets
+        captured_kwargs["drive_base"] = drive_base
+        return [Path(drive_base) / "skills" / "foo" / "SKILL.md"]
+
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli.main.pull_drive_from_environment",
+        fake_pull_drive_from_environment,
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["drive", "pull", "skills/foo"])
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert captured_kwargs == {"targets": ["skills/foo"], "drive_base": "/mnt/drive"}
+    assert captured.out.strip() == "/mnt/drive/skills/foo/SKILL.md"
+
+
 def test_cli_drive_push_prints_commit_json(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],

@@ -56,3 +56,4 @@ def test_drive_layer_is_registered_and_constructible_from_config() -> None:
 
     assert isinstance(layer, DifyDriveLayer)
     assert layer.config.drive_ref == "agent-1"
+    assert layer.local_drive_base == "/mnt/drive/agent-1"
