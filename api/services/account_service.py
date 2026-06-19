@@ -1280,7 +1280,7 @@ class TenantService:
             tenant = TenantService.create_tenant(name=name, is_setup=is_setup)
         else:
             tenant = TenantService.create_tenant(name=f"{account.name}'s Workspace", is_setup=is_setup)
-        TenantService.create_tenant_member(tenant, account, role="owner")
+        TenantService.create_tenant_member(tenant, account, db.session, role="owner")
         if dify_config.RBAC_ENABLED:
             owner_role_id = AccountService._resolve_legacy_role_id(str(tenant.id), account.id, TenantAccountRole.OWNER)
             RBACService.MemberRoles.replace(
@@ -1294,14 +1294,14 @@ class TenantService:
         tenant_was_created.send(tenant)
 
     @staticmethod
-    def create_tenant_member(tenant: Tenant, account: Account, role: str = "normal") -> TenantAccountJoin:
+    def create_tenant_member(tenant: Tenant, account: Account, session: scoped_session, role: str = "normal") -> TenantAccountJoin:
         """Create tenant member"""
         if role == TenantAccountRole.OWNER:
             if TenantService.has_roles(tenant, [TenantAccountRole.OWNER]):
                 logger.error("Tenant %s has already an owner.", tenant.id)
                 raise Exception("Tenant already has an owner.")
 
-        ta = db.session.scalar(
+        ta = session.scalar(
             select(TenantAccountJoin)
             .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account.id)
             .limit(1)
@@ -1310,9 +1310,9 @@ class TenantService:
             ta.role = TenantAccountRole(role)
         else:
             ta = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole(role))
-            db.session.add(ta)
+            session.add(ta)
 
-        db.session.commit()
+        session.commit()
         if dify_config.BILLING_ENABLED:
             BillingService.clean_billing_info_cache(tenant.id)
         return ta
@@ -1915,7 +1915,7 @@ class RegisterService:
             ):
                 try:
                     tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-                    TenantService.create_tenant_member(tenant, account, role="owner")
+                    TenantService.create_tenant_member(tenant, account, db.session, role="owner")
                     account.current_tenant = tenant
                     tenant_was_created.send(tenant)
                 except Exception:
@@ -1970,7 +1970,7 @@ class RegisterService:
                 status=AccountStatus.PENDING,
                 is_setup=True,
             )
-            TenantService.create_tenant_member(tenant, account, tenant_join_role)
+            TenantService.create_tenant_member(tenant, account, db.session, tenant_join_role)
             TenantService.switch_tenant(account, tenant.id)
             requires_setup = True
         else:
@@ -1983,7 +1983,7 @@ class RegisterService:
             requires_setup = account.status == AccountStatus.PENDING
 
             if not ta and (account.status == AccountStatus.PENDING or dify_config.RBAC_ENABLED):
-                TenantService.create_tenant_member(tenant, account, tenant_join_role)
+                TenantService.create_tenant_member(tenant, account, db.session, tenant_join_role)
 
             # Support resend invitation email when the account is pending status
             if account.status != AccountStatus.PENDING:
