@@ -405,7 +405,7 @@ def test_members_list_paginates_with_query_params(app: Flask, bypass_pipeline, m
     assert [d["id"] for d in body["data"]] == ["m-2", "m-3"]
 
 
-def test_members_list_rejects_unknown_query_param(app: Flask, bypass_pipeline, monkeypatch):
+def test_members_list_rejects_unknown_query_param(app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
     """Strict (`extra='forbid'`) — typos like `?pg=2` surface as 422 (unified via @accepts)."""
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()
@@ -508,7 +508,7 @@ def _invite_request(app, ws_id: str, acct_id: uuid.UUID):
     )
 
 
-def test_invite_blocked_by_saas_members_cap(app: Flask, bypass_pipeline, monkeypatch):
+def test_invite_blocked_by_saas_members_cap(app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
     """SaaS billing plan member cap → MemberLimitExceeded (403)."""
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()
@@ -542,7 +542,7 @@ def test_invite_blocked_by_saas_members_cap(app: Flask, bypass_pipeline, monkeyp
     invite_mock.assert_not_called()
 
 
-def test_invite_blocked_by_ee_workspace_members_license(app: Flask, bypass_pipeline, monkeypatch):
+def test_invite_blocked_by_ee_workspace_members_license(app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
     """EE License workspace_members cap → MemberLicenseExceeded (403).
 
     Note: billing.enabled is False (EE without SaaS billing); only the
