@@ -219,10 +219,8 @@ class TokenBufferMemory:
                 prompt_messages.pop(0)
 
             # If even a single message exceeds the budget, drop everything.
-            if prompt_messages:
-                curr_message_tokens = self.model_instance.get_llm_num_tokens(prompt_messages)
-                if curr_message_tokens > max_token_limit:
-                    prompt_messages.clear()
+            if prompt_messages and curr_message_tokens > max_token_limit:
+                prompt_messages.clear()
 
         return prompt_messages
 
