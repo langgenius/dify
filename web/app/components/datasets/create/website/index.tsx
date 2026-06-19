@@ -7,8 +7,8 @@ import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
-import { useModalContext } from '@/context/modal-context'
 import { DataSourceProvider } from '@/models/common'
 import Firecrawl from './firecrawl'
 import s from './index.module.css'
@@ -16,7 +16,7 @@ import JinaReader from './jina-reader'
 import NoData from './no-data'
 import Watercrawl from './watercrawl'
 
-type Props = {
+type Props = Readonly<{
   onPreview: (payload: CrawlResultItem) => void
   checkedCrawlResult: CrawlResultItem[]
   onCheckedCrawlResultChange: (payload: CrawlResultItem[]) => void
@@ -25,7 +25,7 @@ type Props = {
   crawlOptions: CrawlOptions
   onCrawlOptionsChange: (payload: CrawlOptions) => void
   authedDataSourceList: DataSourceAuth[]
-}
+}>
 
 const Website: FC<Props> = ({
   onPreview,
@@ -38,7 +38,7 @@ const Website: FC<Props> = ({
   authedDataSourceList,
 }) => {
   const { t } = useTranslation()
-  const { setShowAccountSettingModal } = useModalContext()
+  const openIntegrationsSetting = useIntegrationsSetting()
   const [selectedProvider, setSelectedProvider] = useState<DataSourceProvider>(DataSourceProvider.jinaReader)
 
   const availableProviders = useMemo(() => authedDataSourceList.filter((item) => {
@@ -50,10 +50,10 @@ const Website: FC<Props> = ({
   }), [authedDataSourceList])
 
   const handleOnConfig = useCallback(() => {
-    setShowAccountSettingModal({
+    openIntegrationsSetting({
       payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
     })
-  }, [setShowAccountSettingModal])
+  }, [openIntegrationsSetting])
 
   const source = availableProviders.find(source => source.provider === selectedProvider)
 

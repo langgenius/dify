@@ -5,6 +5,7 @@ import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEducationInit } from '@/app/education-apply/hooks'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import AppListContext from '@/context/app-list-context'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useImportDSL } from '@/hooks/use-import-dsl'
@@ -13,6 +14,7 @@ import dynamic from '@/next/dynamic'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { fetchAppDetail } from '@/service/explore'
 import { trackCreateApp } from '@/utils/create-app-tracking'
+import { hasPermission } from '@/utils/permission'
 import List from './list'
 
 const DSLConfirmModal = dynamic(() => import('../app/create-from-dsl-modal/dsl-confirm-modal'), { ssr: false })
@@ -24,6 +26,8 @@ const Apps = () => {
   const { t } = useTranslation()
   const searchParams = useSearchParams()
   const { replace } = useRouter()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const templateId = searchParams.get('template-id')
   const templateDismissedRef = useRef(false)
 
@@ -48,12 +52,15 @@ const Apps = () => {
   const [isShowCreateModal, setIsShowCreateModal] = useState(false)
 
   const handleShowFromTryApp = useCallback(() => {
+    if (!canCreateApp)
+      return
+
     currentCreateAppTrackingRef.current = {
       source: 'studio_template_preview',
       templateId: currentTryAppParams?.appId || currentTryAppParams?.app.app_id,
     }
     setIsShowCreateModal(true)
-  }, [currentTryAppParams?.app.app_id, currentTryAppParams?.appId])
+  }, [canCreateApp, currentTryAppParams?.app.app_id, currentTryAppParams?.appId])
   const trackCurrentCreateApp = useCallback((appMode?: TryAppSelection['app']['app']['mode'] | null) => {
     const currentCreateAppTracking = currentCreateAppTrackingRef.current
     const resolvedAppMode = appMode ?? currentCreateAppModeRef.current
@@ -102,6 +109,9 @@ const Apps = () => {
   }, [handleImportDSLConfirm, onSuccess, trackCurrentCreateApp])
 
   const handleMarketplaceTemplateConfirm = useCallback(async (dslContent: string) => {
+    if (!canCreateApp)
+      return
+
     currentCreateAppModeRef.current = null
     currentCreateAppTrackingRef.current = {
       source: 'external',
@@ -121,7 +131,7 @@ const Apps = () => {
         setShowDSLConfirmModal(true)
       },
     })
-  }, [handleImportDSL, handleCloseTemplateModal, onSuccess, templateId, trackCurrentCreateApp])
+  }, [canCreateApp, handleImportDSL, handleCloseTemplateModal, onSuccess, templateId, trackCurrentCreateApp])
 
   const onCreate: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
@@ -130,6 +140,9 @@ const Apps = () => {
     icon_background,
     description,
   }) => {
+    if (!canCreateApp)
+      return
+
     hideTryAppPanel()
 
     const { export_data, mode } = await fetchAppDetail(
@@ -154,7 +167,7 @@ const Apps = () => {
         setShowDSLConfirmModal(true)
       },
     })
-  }, [currApp?.app.id, handleImportDSL, hideTryAppPanel, trackCurrentCreateApp])
+  }, [canCreateApp, currApp?.app.id, handleImportDSL, hideTryAppPanel, trackCurrentCreateApp])
 
   return (
     <AppListContext.Provider value={{
@@ -202,7 +215,7 @@ const Apps = () => {
           />
         )}
 
-        {templateId && !templateDismissedRef.current && (
+        {canCreateApp && templateId && !templateDismissedRef.current && (
           <ImportFromMarketplaceTemplateModal
             templateId={templateId}
             onClose={handleCloseTemplateModal}

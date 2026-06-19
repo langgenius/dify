@@ -18,6 +18,9 @@ const NodeSelectorWrapper = (props: NodeSelectorProps) => {
       if (block.metaData.type === BlockEnum.Start)
         return false
 
+      if (block.metaData.type === BlockEnum.StartPlaceholder)
+        return false
+
       if (block.metaData.type === BlockEnum.DataSource)
         return false
 

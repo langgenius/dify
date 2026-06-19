@@ -6,6 +6,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import AppIcon from '@/app/components/base/app-icon'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import {
   fetchMarketplaceTemplateDSL,
@@ -100,22 +101,13 @@ const ImportFromMarketplaceTemplateModal = ({
           {template && (
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-3">
-                {template.icon_file_key
-                  ? (
-                      <img
-                        src={`${MARKETPLACE_API_PREFIX}/templates/${template.id}/icon`}
-                        alt={template.template_name}
-                        className="size-10 rounded-lg object-cover"
-                      />
-                    )
-                  : (
-                      <div
-                        className="flex size-10 items-center justify-center rounded-lg text-xl"
-                        style={{ background: template.icon_background || '#F3F4F6' }}
-                      >
-                        {template.icon || '📄'}
-                      </div>
-                    )}
+                <AppIcon
+                  size="large"
+                  iconType={template.icon_file_key ? 'image' : 'emoji'}
+                  icon={template.icon || 'page_facing_up'}
+                  background={template.icon_file_key ? undefined : template.icon_background}
+                  imageUrl={template.icon_file_key ? `${MARKETPLACE_API_PREFIX}/templates/${template.id}/icon` : undefined}
+                />
                 <div className="flex flex-col">
                   <div className="system-md-semibold text-text-primary">{template.template_name}</div>
                   <div className="flex items-center gap-1 system-xs-regular text-text-tertiary">

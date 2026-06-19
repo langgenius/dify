@@ -6,11 +6,11 @@ import Link from '@/next/link'
 
 type EncryptedKey = I18nKeysWithPrefix<'common', 'provider.encrypted.'>
 
-type Props = {
+type Props = Readonly<{
   className?: string
   frontTextKey?: EncryptedKey
   backTextKey?: EncryptedKey
-}
+}>
 
 const DEFAULT_FRONT_KEY: EncryptedKey = 'provider.encrypted.front'
 const DEFAULT_BACK_KEY: EncryptedKey = 'provider.encrypted.back'

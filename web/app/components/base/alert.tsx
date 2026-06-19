@@ -5,12 +5,12 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 
-type Props = {
+type Props = Readonly<{
   type?: 'info'
   message: string
   onHide: () => void
   className?: string
-}
+}>
 const bgVariants = cva(
   '',
   {

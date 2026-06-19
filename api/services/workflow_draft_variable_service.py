@@ -125,10 +125,11 @@ class DraftVarLoader(VariableLoader):
         # can be safely accessed before any offloading logic is applied.
         for draft_var in draft_vars:
             value = draft_var.get_value()
-            if isinstance(value, FileSegment):
-                files.append(value.value)
-            elif isinstance(value, ArrayFileSegment):
-                files.extend(value.value)
+            match value:
+                case FileSegment():
+                    files.append(value.value)
+                case ArrayFileSegment():
+                    files.extend(value.value)
         with Session(bind=self._engine) as session:
             storage_key_loader = StorageKeyLoader(
                 session,
@@ -749,6 +750,7 @@ class _InsertionDict(TypedDict):
     file_id: str | None
     visible: NotRequired[bool]
     editable: NotRequired[bool]
+    is_default_value: NotRequired[bool]
     created_at: NotRequired[datetime]
     updated_at: NotRequired[datetime]
     description: NotRequired[str]
@@ -778,6 +780,8 @@ def _model_to_insertion_dict(model: WorkflowDraftVariable) -> _InsertionDict:
         d["updated_at"] = model.updated_at
     if model.description is not None:
         d["description"] = model.description
+    if model.is_default_value is not None:
+        d["is_default_value"] = model.is_default_value
     return d
 
 

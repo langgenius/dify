@@ -21,6 +21,9 @@ from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
     AgentSoulConfig,
     AgentSoulModelConfig,
+    DeclaredArrayItem,
+    DeclaredOutputChildConfig,
+    DeclaredOutputConfig,
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
@@ -42,6 +45,28 @@ class CapturingCredentialsProvider:
         self.provider_name = provider_name
         self.model_name = model_name
         return {"api_key": "secret-key"}
+
+
+def test_agent_soul_round_trip_preserves_existing_app_feature_fields():
+    config = AgentSoulConfig.model_validate(
+        {
+            "app_features": {
+                "file_upload": {
+                    "enabled": True,
+                    "allowed_file_upload_methods": ["local_file"],
+                },
+                "annotation_reply": {"enabled": True},
+                "more_like_this": {"enabled": False},
+            }
+        }
+    )
+
+    dumped = config.model_dump(mode="json")
+
+    assert dumped["app_features"]["file_upload"]["enabled"] is True
+    assert dumped["app_features"]["file_upload"]["allowed_file_upload_methods"] == ["local_file"]
+    assert dumped["app_features"]["annotation_reply"] == {"enabled": True}
+    assert dumped["app_features"]["more_like_this"] == {"enabled": False}
 
 
 class FakePluginToolsBuilder:
@@ -147,7 +172,9 @@ def test_builds_create_run_request_from_agent_soul_and_node_job():
     layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
     assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["agent_id"] == "agent-1"
     assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["agent_config_version_id"] == "snapshot-1"
-    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["invoke_from"] == "single_step"
+    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["user_from"] == "account"
+    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["agent_mode"] == "single_step"
+    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["invoke_from"] == "debugger"
     assert dumped["idempotency_key"] == "run-1:node-exec-1"
     assert dumped["composition"]["layers"][0]["config"]["prefix"] == "You are careful."
     assert dumped["composition"]["layers"][1]["config"]["prefix"] == "Use the previous output."
@@ -222,11 +249,17 @@ def test_builds_workflow_run_request_with_file_output_schema_and_reserved_metada
 
     dumped = result.request.model_dump(mode="json")
     layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
-    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["invoke_from"] == "workflow_run"
+    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["agent_mode"] == "workflow_run"
+    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["invoke_from"] == "service-api"
     assert dumped["idempotency_key"] == "node-exec-1"
     output_schema = dumped["composition"]["layers"][-1]["config"]["json_schema"]
-    assert output_schema["properties"]["report"]["properties"]["file_id"]["type"] == "string"
-    assert output_schema["properties"]["report"]["required"] == ["file_id"]
+    report_schema = output_schema["properties"]["report"]
+    assert len(report_schema["oneOf"]) == 4
+    assert all(branch["additionalProperties"] is False for branch in report_schema["oneOf"])
+    assert report_schema["oneOf"][0]["required"] == ["transfer_method", "reference"]
+    assert report_schema["oneOf"][1]["required"] == ["transfer_method", "reference"]
+    assert report_schema["oneOf"][2]["required"] == ["transfer_method", "reference"]
+    assert report_schema["oneOf"][3]["required"] == ["transfer_method", "url"]
     assert output_schema["properties"]["confidence"]["type"] == "number"
     assert output_schema["required"] == ["report"]
     assert dumped["composition"]["layers"][5]["config"]["model_settings"] == {"temperature": 0.2}
@@ -291,6 +324,7 @@ def test_build_shell_layer_config_accepts_legacy_fallback_keys():
                 "secret_refs": [
                     {"variable": "TOKEN", "credential_id": "credential-1"},
                     {"name": "API_KEY", "provider_credential_id": "credential-2"},
+                    {"name": "EDITABLE_TOKEN", "value": "credential-3"},
                     {"ref": "missing-name"},
                 ],
             },
@@ -300,9 +334,9 @@ def test_build_shell_layer_config_accepts_legacy_fallback_keys():
     config = build_shell_layer_config(agent_soul).model_dump(mode="json")
 
     assert config["cli_tools"] == [
-        {"name": "node", "install_commands": ["apt-get install -y nodejs"]},
-        {"name": "python", "install_commands": ["pip install pytest"]},
-        {"name": None, "install_commands": ["apk add git"]},
+        {"name": "node", "install_commands": ["apt-get install -y nodejs"], "env": [], "secret_refs": []},
+        {"name": "python", "install_commands": ["pip install pytest"], "env": [], "secret_refs": []},
+        {"name": None, "install_commands": ["apk add git"], "env": [], "secret_refs": []},
     ]
     assert config["env"] == [
         {"name": "PROJECT_NAME", "value": "demo"},
@@ -311,6 +345,7 @@ def test_build_shell_layer_config_accepts_legacy_fallback_keys():
     assert config["secret_refs"] == [
         {"name": "TOKEN", "ref": "credential-1"},
         {"name": "API_KEY", "ref": "credential-2"},
+        {"name": "EDITABLE_TOKEN", "ref": "credential-3"},
     ]
     assert config["sandbox"] is None
 
@@ -323,7 +358,9 @@ def test_build_shell_layer_config_maps_typed_command_field():
 
     config = build_shell_layer_config(agent_soul).model_dump(mode="json")
 
-    assert config["cli_tools"] == [{"name": "jq", "install_commands": ["apt-get install -y jq"]}]
+    assert config["cli_tools"] == [
+        {"name": "jq", "install_commands": ["apt-get install -y jq"], "env": [], "secret_refs": []}
+    ]
 
 
 def test_build_shell_layer_config_skips_disabled_cli_tools():
@@ -341,7 +378,9 @@ def test_build_shell_layer_config_skips_disabled_cli_tools():
 
     config = build_shell_layer_config(agent_soul).model_dump(mode="json")
 
-    assert config["cli_tools"] == [{"name": "jq", "install_commands": ["apt-get install -y jq"]}]
+    assert config["cli_tools"] == [
+        {"name": "jq", "install_commands": ["apt-get install -y jq"], "env": [], "secret_refs": []}
+    ]
 
 
 def test_build_shell_layer_config_skips_unauthorized_or_unacknowledged_cli_tools():
@@ -367,8 +406,43 @@ def test_build_shell_layer_config_skips_unauthorized_or_unacknowledged_cli_tools
     config = build_shell_layer_config(agent_soul).model_dump(mode="json")
 
     assert config["cli_tools"] == [
-        {"name": "jq", "install_commands": ["apt-get install -y jq"]},
-        {"name": "accepted-risk", "install_commands": ["curl https://example.test/install.sh | sh"]},
+        {"name": "jq", "install_commands": ["apt-get install -y jq"], "env": [], "secret_refs": []},
+        {
+            "name": "accepted-risk",
+            "install_commands": ["curl https://example.test/install.sh | sh"],
+            "env": [],
+            "secret_refs": [],
+        },
+    ]
+
+
+def test_build_shell_layer_config_maps_cli_tool_scoped_env():
+    agent_soul = AgentSoulConfig.model_validate(
+        {
+            "tools": {
+                "cli_tools": [
+                    {
+                        "name": "github",
+                        "command": "apt-get install -y gh",
+                        "env": {
+                            "variables": [{"name": "GH_HOST", "value": "github.com"}],
+                            "secret_refs": [{"name": "GITHUB_TOKEN", "credential_id": "credential-1"}],
+                        },
+                    }
+                ]
+            }
+        }
+    )
+
+    config = build_shell_layer_config(agent_soul).model_dump(mode="json")
+
+    assert config["cli_tools"] == [
+        {
+            "name": "github",
+            "install_commands": ["apt-get install -y gh"],
+            "env": [{"name": "GH_HOST", "value": "github.com"}],
+            "secret_refs": [{"name": "GITHUB_TOKEN", "ref": "credential-1"}],
+        }
     ]
 
 
@@ -420,6 +494,119 @@ def test_builds_workflow_run_request_with_dify_plugin_tools_layer():
     # quotas / rate limits / audit tags to the real call site instead of a
     # hard-coded ``VALIDATION`` placeholder.
     assert plugin_tools_builder.last_invoke_from == context.dify_context.invoke_from
+
+
+def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():
+    context = _context()
+    snapshot = AgentConfigSnapshot(
+        id="snapshot-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version=1,
+        config_snapshot=AgentSoulConfig.model_validate(
+            {
+                "prompt": {"system_prompt": "You are careful."},
+                "model": {
+                    "plugin_id": "langgenius/openai",
+                    "model_provider": "openai",
+                    "model": "gpt-test",
+                },
+                "knowledge": {
+                    "datasets": [{"id": "dataset-1"}, {"id": "  "}, {"id": "dataset-2"}],
+                    "query_config": {
+                        "top_k": 6,
+                        "score_threshold": 0.4,
+                        "score_threshold_enabled": True,
+                    },
+                },
+            }
+        ),
+    )
+    context = replace(context, snapshot=snapshot)
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    dumped = result.request.model_dump(mode="json")
+    layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
+    knowledge_layer = layers["knowledge"]
+    assert knowledge_layer["type"] == "dify.knowledge_base"
+    assert knowledge_layer["deps"] == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+    assert knowledge_layer["config"] == {
+        "dataset_ids": ["dataset-1", "dataset-2"],
+        "retrieval": {
+            "mode": "multiple",
+            "top_k": 6,
+            "score_threshold": 0.4,
+            "reranking_mode": "reranking_model",
+            "reranking_enable": True,
+            "reranking_model": None,
+            "weights": None,
+            "model": None,
+        },
+        "metadata_filtering": {"mode": "disabled", "metadata_model_config": None, "conditions": None},
+        "max_result_content_chars": 2000,
+        "max_observation_chars": 12000,
+    }
+
+
+def test_build_knowledge_layer_uses_stable_default_top_k_when_query_config_omits_it():
+    context = _context()
+    snapshot = AgentConfigSnapshot(
+        id="snapshot-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version=1,
+        config_snapshot=AgentSoulConfig.model_validate(
+            {
+                "prompt": {"system_prompt": "You are careful."},
+                "model": {
+                    "plugin_id": "langgenius/openai",
+                    "model_provider": "openai",
+                    "model": "gpt-test",
+                },
+                "knowledge": {
+                    "datasets": [{"id": "dataset-1"}],
+                    "query_config": {},
+                },
+            }
+        ),
+    )
+    context = replace(context, snapshot=snapshot)
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    dumped = result.request.model_dump(mode="json")
+    knowledge_layer = next(layer for layer in dumped["composition"]["layers"] if layer["name"] == "knowledge")
+    assert knowledge_layer["config"]["retrieval"]["top_k"] == 4
+
+
+def test_build_skips_knowledge_layer_when_agent_soul_has_no_valid_dataset_ids():
+    context = _context()
+    snapshot = AgentConfigSnapshot(
+        id="snapshot-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version=1,
+        config_snapshot=AgentSoulConfig.model_validate(
+            {
+                "prompt": {"system_prompt": "You are careful."},
+                "model": {
+                    "plugin_id": "langgenius/openai",
+                    "model_provider": "openai",
+                    "model": "gpt-test",
+                },
+                "knowledge": {
+                    "datasets": [{"id": "  "}, {}],
+                },
+            }
+        ),
+    )
+    context = replace(context, snapshot=snapshot)
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    dumped = result.request.model_dump(mode="json")
+    assert all(layer["name"] != "knowledge" for layer in dumped["composition"]["layers"])
 
 
 def test_build_passes_saved_session_snapshot_to_agent_backend_request():
@@ -519,8 +706,8 @@ def test_empty_declared_outputs_injects_prd_defaults_text_files_json():
     assert properties["text"]["type"] == "string"
     assert properties["files"]["type"] == "array"
     # `files` defaults to array<file> → items is a file ref object.
-    assert properties["files"]["items"]["properties"]["file_id"]["type"] == "string"
-    assert properties["files"]["items"]["required"] == ["file_id"]
+    assert len(properties["files"]["items"]["oneOf"]) == 4
+    assert all(branch["additionalProperties"] is False for branch in properties["files"]["items"]["oneOf"])
     assert properties["json"]["type"] == "object"
     # Defaults are all required=False so no `required:` key on the schema.
     assert "required" not in output_layer["json_schema"]
@@ -561,6 +748,40 @@ def test_array_output_emits_typed_items_per_array_item():
     assert output_schema["required"] == ["tags"]
 
 
+def test_nested_declared_output_emits_object_and_array_child_schema():
+    profile_output = DeclaredOutputConfig(
+        name="profile",
+        type=DeclaredOutputType.OBJECT,
+        children=[
+            DeclaredOutputChildConfig(name="email", type=DeclaredOutputType.STRING),
+            DeclaredOutputChildConfig(
+                name="nickname",
+                type=DeclaredOutputType.STRING,
+                required=False,
+                description="Optional display name",
+            ),
+            DeclaredOutputChildConfig(
+                name="addresses",
+                type=DeclaredOutputType.ARRAY,
+                array_item=DeclaredArrayItem(
+                    type=DeclaredOutputType.OBJECT,
+                    description="Address item",
+                    children=[DeclaredOutputChildConfig(name="city", type=DeclaredOutputType.STRING)],
+                ),
+            ),
+        ],
+    )
+
+    schema = WorkflowAgentRuntimeRequestBuilder._schema_for_declared_output(profile_output)
+
+    assert schema["properties"]["email"] == {"type": "string"}
+    assert schema["properties"]["nickname"] == {"type": "string", "description": "Optional display name"}
+    assert schema["properties"]["addresses"]["items"]["properties"]["city"] == {"type": "string"}
+    assert schema["properties"]["addresses"]["items"]["description"] == "Address item"
+    assert schema["properties"]["addresses"]["items"]["required"] == ["city"]
+    assert schema["required"] == ["email", "addresses"]
+
+
 def test_effective_declared_outputs_passthrough_when_user_declared():
     """effective_declared_outputs() must return user-provided outputs verbatim
     when non-empty; only empty input gets PRD defaults injected."""
@@ -569,3 +790,227 @@ def test_effective_declared_outputs_passthrough_when_user_declared():
     declared = [DeclaredOutputConfig(name="summary", type=DeclaredOutputType.STRING)]
     effective = WorkflowAgentRuntimeRequestBuilder.effective_declared_outputs(declared)
     assert list(effective) == declared
+
+
+def test_mentions_expand_in_soul_and_job_prompts_without_token_leak():
+    """ENG-616: slash-menu mention tokens expand to canonical names; node_output
+    mentions expand to the reference name only (the value stays in the Workflow
+    context user prompt), and no ``[§…§]`` marker leaks into the request."""
+    import json
+
+    context = _context()
+    context.snapshot.config_snapshot = AgentSoulConfig(
+        prompt={"system_prompt": "Careful. Ask [§human:c-1:EMAIL · DAVE§] when unsure."},
+        model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
+        human={"contacts": [{"id": "c-1", "name": "David Hayes", "channel": "email"}]},
+    )
+    context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "workflow_prompt": (
+                "Read [§node_output:previous-node.text:PREV/text§] and produce [§output:summary§]. "
+                "Unknown [§knowledge:gone:旧手册§] degrades."
+            ),
+            "previous_node_output_refs": [
+                {"selector": ["previous-node", "text"], "name": "PREV/text"},
+            ],
+            "declared_outputs": [{"name": "summary", "type": "string"}],
+        }
+    )
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    dumped = result.request.model_dump(mode="json")
+    assert dumped["composition"]["layers"][0]["config"]["prefix"] == ("Careful. Ask EMAIL · David Hayes when unsure.")
+    assert dumped["composition"]["layers"][1]["config"]["prefix"] == (
+        "Read PREV/text and produce summary (string). Unknown 旧手册 degrades."
+    )
+    # the value still rides the Workflow context block, not the job prompt
+    assert "Previous result" in dumped["composition"]["layers"][2]["config"]["user"]
+    assert "[§" not in json.dumps(dumped["composition"]["layers"][:3])
+
+
+# ── ENG-623: dify.drive declaration layer ─────────────────────────────────────
+
+
+def _soul_with_drive_skill() -> AgentSoulConfig:
+    return AgentSoulConfig(
+        prompt={"system_prompt": "You are careful."},
+        model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
+        skills_files={
+            "skills": [
+                {
+                    "id": "abc123",
+                    "name": "Tender Analyzer",
+                    "description": "Parses RFPs.",
+                    "skill_md_key": "tender-analyzer/SKILL.md",
+                    "full_archive_key": "tender-analyzer/.DIFY-SKILL-FULL.zip",
+                },
+                {"id": "legacy", "name": "Legacy Skill"},  # pre-standardization: no drive key
+            ],
+            "files": [
+                {"name": "sample.pdf", "drive_key": "files/sample.pdf", "type": "application/pdf"},
+                {"name": "plain-upload.pdf", "file_id": "upload-1"},  # not drive-backed
+            ],
+        },
+    )
+
+
+def test_build_drive_layer_config_catalogs_only_drive_backed_refs():
+    from core.workflow.nodes.agent_v2.runtime_request_builder import build_drive_layer_config
+
+    config, warnings = build_drive_layer_config(_soul_with_drive_skill(), agent_id="agent-1")
+
+    assert config is not None
+    assert config.drive_ref == "agent-agent-1"
+    assert [skill.skill_md_key for skill in config.skills] == ["tender-analyzer/SKILL.md"]
+    assert config.skills[0].archive_key == "tender-analyzer/.DIFY-SKILL-FULL.zip"
+    assert [file.key for file in config.files] == ["files/sample.pdf"]
+    assert [w["code"] for w in warnings] == ["skill_ref_dangling"]
+    assert "Legacy Skill" in warnings[0]["message"]
+
+
+def test_build_drive_layer_config_skips_when_nothing_configured():
+    from core.workflow.nodes.agent_v2.runtime_request_builder import build_drive_layer_config
+
+    soul = AgentSoulConfig(
+        model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test")
+    )
+    assert build_drive_layer_config(soul, agent_id="agent-1") == (None, [])
+
+
+def test_build_drive_layer_config_requires_agent_identity():
+    from core.workflow.nodes.agent_v2.runtime_request_builder import build_drive_layer_config
+
+    config, warnings = build_drive_layer_config(_soul_with_drive_skill(), agent_id=None)
+
+    assert config is None
+    assert [w["code"] for w in warnings] == ["skill_ref_dangling"]
+
+
+def test_workflow_run_request_contains_drive_layer_when_flag_enabled(monkeypatch: pytest.MonkeyPatch):
+    """Contract test: locks the dify.drive composition shape against cross-package drift."""
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
+    )
+    context = _context()
+    context.snapshot.config_snapshot = _soul_with_drive_skill()
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    dumped = result.request.model_dump(mode="json")
+    layer_names = [layer["name"] for layer in dumped["composition"]["layers"]]
+    assert "drive" in layer_names
+    # injected right after execution_context, before history/llm
+    assert layer_names.index("drive") == layer_names.index("execution_context") + 1
+    drive = next(layer for layer in dumped["composition"]["layers"] if layer["name"] == "drive")
+    assert drive["type"] == "dify.drive"
+    assert drive["config"]["drive_ref"] == "agent-agent-1"
+    assert drive["config"]["skills"] == [
+        {
+            "name": "Tender Analyzer",
+            "description": "Parses RFPs.",
+            "skill_md_key": "tender-analyzer/SKILL.md",
+            "archive_key": "tender-analyzer/.DIFY-SKILL-FULL.zip",
+        }
+    ]
+    assert drive["config"]["files"] == [
+        {"name": "sample.pdf", "key": "files/sample.pdf", "size": None, "mime_type": "application/pdf"}
+    ]
+    # the dangling legacy ref degraded to a warning instead of failing the run
+    warnings = result.metadata["runtime_support"]["unsupported_runtime_warnings"]
+    assert any(w["code"] == "skill_ref_dangling" for w in warnings)
+    # the drive layer is non-sensitive and must survive into persistable specs
+    from dify_agent.protocol import extract_runtime_layer_specs
+
+    specs = extract_runtime_layer_specs(result.request.composition)
+    assert any(spec.name == "drive" and spec.type == "dify.drive" for spec in specs)
+
+
+def test_workflow_run_request_has_no_drive_layer_when_flag_disabled():
+    context = _context()
+    context.snapshot.config_snapshot = _soul_with_drive_skill()
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    dumped = result.request.model_dump(mode="json")
+    assert all(layer["name"] != "drive" for layer in dumped["composition"]["layers"])
+    warnings = result.metadata["runtime_support"]["unsupported_runtime_warnings"]
+    assert any(w["code"] == "drive_manifest_disabled" for w in warnings)
+
+
+def test_build_drive_layer_config_all_refs_dangling_yields_no_config():
+    from core.workflow.nodes.agent_v2.runtime_request_builder import build_drive_layer_config
+
+    soul = AgentSoulConfig(
+        model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
+        skills_files={"skills": [{"id": "legacy", "name": "Legacy"}], "files": [{"name": "u.pdf", "file_id": "u1"}]},
+    )
+    config, warnings = build_drive_layer_config(soul, agent_id="agent-1")
+    assert config is None
+    assert [w["code"] for w in warnings] == ["skill_ref_dangling"]
+
+
+# ── ENG-635: ask_human layer gating + feature manifest ───────────────────────
+
+
+def test_build_ask_human_layer_config_gated_on_human_contacts():
+    from dify_agent.layers.ask_human import DifyAskHumanLayerConfig
+
+    from core.workflow.nodes.agent_v2.runtime_request_builder import build_ask_human_layer_config
+
+    # no human involvement configured -> tool stays off
+    assert build_ask_human_layer_config(AgentSoulConfig()) is None
+
+    soul = AgentSoulConfig.model_validate(
+        {"human": {"contacts": [{"id": "c-1", "name": "David", "email": "d@acme.com", "channel": "email"}]}}
+    )
+    config = build_ask_human_layer_config(soul)
+    assert isinstance(config, DifyAskHumanLayerConfig)
+    assert config.enabled is True
+
+
+def test_feature_manifest_marks_human_supported_when_configured():
+    from core.workflow.nodes.agent_v2.runtime_feature_manifest import build_runtime_feature_manifest
+
+    soul = AgentSoulConfig.model_validate(
+        {"human": {"contacts": [{"id": "c-1", "name": "David", "email": "d@acme.com", "channel": "email"}]}}
+    )
+    manifest = build_runtime_feature_manifest(soul)
+    assert "human" in manifest["supported"]
+    assert "human" not in manifest["reserved"]
+    assert manifest["reserved_status"]["human"] == "supported_by_ask_human_hitl"
+    # configured human no longer produces a "not executed" warning
+    assert all("human" not in w["section"] for w in manifest["unsupported_runtime_warnings"])
+
+
+def test_feature_manifest_marks_knowledge_supported_without_warning_when_configured():
+    from core.workflow.nodes.agent_v2.runtime_feature_manifest import build_runtime_feature_manifest
+
+    soul = AgentSoulConfig.model_validate(
+        {
+            "knowledge": {
+                "datasets": [{"id": "dataset-1", "name": "Product Docs"}],
+            }
+        }
+    )
+
+    manifest = build_runtime_feature_manifest(soul)
+    assert "knowledge" in manifest["supported"]
+    assert "knowledge" not in manifest["reserved"]
+    assert manifest["reserved_status"]["knowledge"] == "supported_by_knowledge_layer"
+    assert all("knowledge" not in w["section"] for w in manifest["unsupported_runtime_warnings"])
+
+
+def test_feature_manifest_treats_blank_knowledge_dataset_ids_as_not_configured():
+    from core.workflow.nodes.agent_v2.runtime_feature_manifest import build_runtime_feature_manifest
+
+    soul = AgentSoulConfig.model_validate(
+        {
+            "knowledge": {
+                "datasets": [{"id": "  "}, {}],
+            }
+        }
+    )
+
+    manifest = build_runtime_feature_manifest(soul)
+    assert manifest["reserved_status"]["knowledge"] == "not_configured"

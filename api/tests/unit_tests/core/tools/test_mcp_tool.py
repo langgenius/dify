@@ -177,7 +177,7 @@ def _build_forwarding_tool(*, mode: str = "idp_token") -> MCPTool:
 
 
 def test_inject_forwarded_identity_stamps_custom_header():
-    """The minted SSO token must be placed in X-Dify-SSO-Access-Token; the
+    """The minted SSO token must be placed in X-Dify-SSO-Token; the
     workspace-scoped Authorization header and any other custom headers must
     pass through untouched so provider credentials keep working."""
     from core.tools.mcp_tool.tool import FORWARDED_IDENTITY_HEADER
@@ -217,6 +217,38 @@ def test_inject_forwarded_identity_translates_token_error_to_invoke_error():
     # Headers must NOT have been mutated when token-issuance failed.
     assert FORWARDED_IDENTITY_HEADER not in headers
     assert "Authorization" not in headers
+
+
+def test_inject_forwarded_identity_sends_end_user_type_for_webapp():
+    """A WEB_APP run forwards user_type=end_user so enterprise routes to the
+    published-webapp token store."""
+    tool = _build_forwarding_tool()
+    tool.runtime = ToolRuntime(tenant_id="tenant-1", invoke_from=InvokeFrom.WEB_APP)
+    headers: dict[str, str] = {}
+
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseService.issue_mcp_token",
+        return_value=("forwarded.jwt", 1900000000),
+    ) as issue:
+        tool._inject_forwarded_identity(
+            headers, user_id="eu-1", app_id="app-1", audience="https://mcp.example.com/mcp/"
+        )
+
+    assert issue.call_args.kwargs["user_type"] == "end_user"
+
+
+def test_inject_forwarded_identity_sends_account_type_for_debugger():
+    """A DEBUGGER/console run forwards user_type=account (the existing behaviour)."""
+    tool = _build_forwarding_tool()  # built with InvokeFrom.DEBUGGER
+    headers: dict[str, str] = {}
+
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseService.issue_mcp_token",
+        return_value=("forwarded.jwt", 1900000000),
+    ) as issue:
+        tool._inject_forwarded_identity(headers, user_id="acc-1", app_id=None, audience="https://mcp.example.com/mcp/")
+
+    assert issue.call_args.kwargs["user_type"] == "account"
 
 
 def test_invoke_remote_mcp_tool_fails_closed_when_user_id_missing():

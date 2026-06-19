@@ -11,7 +11,7 @@ import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { FlowType } from '@/types/common'
 import type { VarInInspect } from '@/types/workflow'
 import { noop } from 'es-toolkit/function'
-import { useContext } from 'react'
+import { use } from 'react'
 import {
   useStore as useZustandStore,
 } from 'zustand'
@@ -27,6 +27,23 @@ export type SyncDraftCallback = {
   onError?: () => void
   onSettled?: () => void
 }
+
+export type WorkflowAccessControl = {
+  canEdit: boolean
+  canComment: boolean
+  canRun: boolean
+  canImportExportDSL: boolean
+  canReleaseAndVersion: boolean
+}
+
+export const fullWorkflowAccessControl: WorkflowAccessControl = {
+  canEdit: true,
+  canComment: true,
+  canRun: true,
+  canImportExportDSL: true,
+  canReleaseAndVersion: true,
+}
+
 type CommonHooksFnMap = {
   doSyncWorkflowDraft: (
     notRefreshWhenSyncError?: boolean,
@@ -65,6 +82,7 @@ type CommonHooksFnMap = {
   invalidateSysVarValues: () => void
   resetConversationVar: (varId: string) => Promise<void>
   invalidateConversationVarValues: () => void
+  accessControl: WorkflowAccessControl
   configsMap?: {
     flowId: string
     flowType: FlowType
@@ -117,6 +135,7 @@ export const createHooksStore = ({
   resetConversationVar = async () => noop(),
   invalidateConversationVarValues = noop,
   configsMap,
+  accessControl = fullWorkflowAccessControl,
 }: Partial<Shape>) => {
   return createStore<Shape>(set => ({
     refreshAll: props => set(state => ({ ...state, ...props })),
@@ -155,11 +174,12 @@ export const createHooksStore = ({
     resetConversationVar,
     invalidateConversationVarValues,
     configsMap,
+    accessControl,
   }))
 }
 
 export function useHooksStore<T>(selector: (state: Shape) => T): T {
-  const store = useContext(HooksStoreContext)
+  const store = use(HooksStoreContext)
   if (!store)
     throw new Error('Missing HooksStoreContext.Provider in the tree')
 

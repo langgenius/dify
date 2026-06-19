@@ -91,6 +91,7 @@ Use:
 
 Flag:
 
+- Manually recreating UI behavior or chrome already owned by `@langgenius/dify-ui/*` or `web/app/components/base/*`, such as buttons, inputs, toggle groups, popovers, dropdown menus, alert dialogs, switches, avatars, scroll areas, toasts, borders, focus states, disabled states, segmented controls, or existing feature components.
 - Styling a raw Base UI primitive directly in `web/` when a Dify UI primitive exists.
 - Wrapping a Dify UI primitive in a feature component that hides its label, error, disabled, or focus contract.
 - Replacing a semantic primitive with a generic `div` plus classes to match a screenshot.
@@ -121,3 +122,13 @@ Use `!` only for a tightly scoped compatibility override after confirming the pr
 ## Focus Details
 
 Flag focus rings attached to the wrong element. For example, Base UI `Slider.Thumb` focuses an internal `input[type=range]`, so the visible thumb wrapper needs `has-[:focus-visible]` rather than direct wrapper `focus-visible`.
+
+## Custom SVG Icons
+
+Flag:
+
+- New generated React icon components or JSON files under `web/app/components/base/icons/src/...` for custom SVG icons.
+- Custom SVG icons consumed outside the Tailwind `i-custom-*` icon class pipeline.
+- Generated `packages/iconify-collections/custom-*/icons.json` diffs where unrelated existing icons lost or changed intrinsic `width` or `height`.
+
+New custom SVG icons belong in `packages/iconify-collections/assets/...`. Regenerate with `pnpm --filter @dify/iconify-collections generate`, validate with `pnpm --filter @dify/iconify-collections check:dimensions`, and consume the generated icon with Tailwind `i-custom-*` classes.

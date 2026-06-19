@@ -29,10 +29,13 @@ let modelIdCounter = 0
 let featureState: FeatureStoreState
 
 type MockChatInputAreaProps = {
+  readonly?: boolean
   onSend?: (message: string, files?: FileEntity[]) => void
   onFeatureBarClick?: (state: boolean) => void
   showFeatureBar?: boolean
   showFileUpload?: boolean
+  featureBarReadonly?: boolean
+  disabled?: boolean
   inputs?: Record<string, any>
   inputsForm?: InputForm[]
   speechToTextConfig?: unknown
@@ -90,8 +93,8 @@ vi.mock('@/app/components/base/chat/chat/chat-input-area', () => ({
     capturedChatInputProps = props
     return (
       <div data-testid="chat-input-area">
-        <button type="button" onClick={() => props.onSend?.('test message', mockFiles)}>send</button>
-        <button type="button" onClick={() => props.onFeatureBarClick?.(true)}>feature</button>
+        <button type="button" disabled={props.disabled} onClick={() => props.onSend?.('test message', mockFiles)}>send</button>
+        {props.showFeatureBar && <button type="button" disabled={props.featureBarReadonly} onClick={() => props.onFeatureBarClick?.(true)}>feature</button>}
       </div>
     )
   },
@@ -150,12 +153,16 @@ type DebugConfiguration = {
   mode: AppModeEnum
   inputs: Inputs
   modelConfig: ModelConfig
+  readonly: boolean
+  canTestAndRun: boolean
 }
 
 const createDebugConfiguration = (overrides: Partial<DebugConfiguration> = {}): DebugConfiguration => ({
   mode: AppModeEnum.CHAT,
   inputs: {},
   modelConfig: createModelConfig(),
+  readonly: false,
+  canTestAndRun: true,
   ...overrides,
 })
 
@@ -436,6 +443,38 @@ describe('DebugWithMultipleModel', () => {
       expect(capturedChatInputProps?.speechToTextConfig).toEqual(featureState.features.speech2text)
       expect(capturedChatInputProps?.visionConfig).toEqual(featureState.features.file)
       expect(useAppStore.getState().showAppConfigureFeaturesModal).toBe(true)
+    })
+
+    it('should allow sending but disable feature configuration when configuration is readonly and test/run is allowed', () => {
+      mockUseDebugConfigurationContext.mockReturnValue(createDebugConfiguration({
+        readonly: true,
+        canTestAndRun: true,
+      }))
+
+      renderComponent()
+      fireEvent.click(screen.getByRole('button', { name: /send/i }))
+
+      expect(capturedChatInputProps?.readonly).toBe(false)
+      expect(capturedChatInputProps?.disabled).toBe(false)
+      expect(capturedChatInputProps?.showFeatureBar).toBe(true)
+      expect(capturedChatInputProps?.featureBarReadonly).toBe(true)
+      expect(screen.getByRole('button', { name: /feature/i })).toBeDisabled()
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(expect.objectContaining({
+        type: APP_CHAT_WITH_MULTIPLE_MODEL,
+      }))
+    })
+
+    it('should block sending when test/run permission is missing', () => {
+      mockUseDebugConfigurationContext.mockReturnValue(createDebugConfiguration({
+        canTestAndRun: false,
+      }))
+
+      renderComponent()
+      fireEvent.click(screen.getByRole('button', { name: /send/i }))
+
+      expect(capturedChatInputProps?.readonly).toBe(true)
+      expect(capturedChatInputProps?.disabled).toBe(true)
+      expect(mockEventEmitter.emit).not.toHaveBeenCalled()
     })
 
     it('should render chat input in agent chat mode', () => {

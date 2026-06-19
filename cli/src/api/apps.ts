@@ -1,4 +1,4 @@
-import type { AppDescribeResponse, AppListResponse } from '@dify/contracts/api/openapi/types.gen'
+import type { AppDescribeResponse, AppListResponse, AppMode } from '@dify/contracts/api/openapi/types.gen'
 import type { OpenApiClient } from '@/http/orpc'
 import type { HttpClient } from '@/http/types'
 import { createOpenApiClient } from '@/http/orpc'
@@ -7,7 +7,7 @@ export type ListQuery = {
   readonly workspaceId: string
   readonly page?: number
   readonly limit?: number
-  readonly mode?: string
+  readonly mode?: AppMode | ''
   readonly name?: string
   readonly tag?: string
 }
@@ -32,13 +32,10 @@ export class AppsClient {
     })
   }
 
-  async describe(appId: string, workspaceId: string, fields?: readonly string[]): Promise<AppDescribeResponse> {
+  async describe(appId: string, fields?: readonly string[]): Promise<AppDescribeResponse> {
     return this.orpc.apps.byAppId.describe.get({
       params: { app_id: appId },
       query: {
-        workspace_id: workspaceId,
-        // The backend parses a comma-separated string (validator splits on ','); the contract
-        // types `fields` as a string accordingly, so join here rather than send an array.
         fields: fields !== undefined && fields.length > 0 ? fields.join(',') : undefined,
       },
     })

@@ -5,28 +5,29 @@ import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Command } from 'cmdk'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { PluginInstallPermissionProvider } from '../plugins/install-plugin/components/plugin-install-permission-provider'
+import useWorkspacePluginInstallPermission from '../plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '../plugins/install-plugin/install-from-marketplace'
-import { SlashCommandProvider } from './actions/commands'
 import { slashCommandRegistry } from './actions/commands/registry'
+import { SlashCommandProvider } from './actions/commands/slash-provider'
 import CommandSelector from './command-selector'
 import { EmptyState, Footer, ResultList, SearchInput } from './components'
 import { GotoAnythingProvider, useGotoAnythingContext } from './context'
-import {
-  useGotoAnythingModal,
-  useGotoAnythingNavigation,
-  useGotoAnythingResults,
-  useGotoAnythingSearch,
-} from './hooks'
+import { useGotoAnythingModal } from './hooks/use-goto-anything-modal'
+import { useGotoAnythingNavigation } from './hooks/use-goto-anything-navigation'
+import { useGotoAnythingResults } from './hooks/use-goto-anything-results'
+import { useGotoAnythingSearch } from './hooks/use-goto-anything-search'
 
-type Props = {
+type Props = Readonly<{
   onHide?: () => void
-}
+}>
 
 const GotoAnythingDialog: FC<Props> = ({
   onHide,
 }) => {
   const { t } = useTranslation()
   const { isWorkflowPage, isRagPipelinePage } = useGotoAnythingContext()
+  const { canInstallPlugin, currentDifyVersion } = useWorkspacePluginInstallPermission()
   const prevShowRef = useRef(false)
 
   // Search state management (called first so setSearchQuery is available)
@@ -218,13 +219,18 @@ const GotoAnythingDialog: FC<Props> = ({
         </DialogContent>
       </Dialog>
 
-      {activePlugin && (
-        <InstallFromMarketplace
-          manifest={activePlugin}
-          uniqueIdentifier={activePlugin.latest_package_identifier}
-          onClose={() => setActivePlugin(undefined)}
-          onSuccess={() => setActivePlugin(undefined)}
-        />
+      {activePlugin && canInstallPlugin && (
+        <PluginInstallPermissionProvider
+          canInstallPlugin={canInstallPlugin}
+          currentDifyVersion={currentDifyVersion}
+        >
+          <InstallFromMarketplace
+            manifest={activePlugin}
+            uniqueIdentifier={activePlugin.latest_package_identifier}
+            onClose={() => setActivePlugin(undefined)}
+            onSuccess={() => setActivePlugin(undefined)}
+          />
+        </PluginInstallPermissionProvider>
       )}
     </>
   )

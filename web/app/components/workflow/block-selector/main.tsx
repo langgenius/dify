@@ -107,10 +107,11 @@ function NodeSelector({
     return nodes.filter(node => !ignoreSet.has(node.id))
   }, [nodes, ignoreNodeIds])
 
-  const { hasTriggerNode, hasUserInputNode } = useMemo(() => {
+  const { hasTriggerNode, hasUserInputNode, hasStartPlaceholderNode } = useMemo(() => {
     const result = {
       hasTriggerNode: false,
       hasUserInputNode: false,
+      hasStartPlaceholderNode: false,
     }
     for (const node of filteredNodes) {
       const nodeType = (node.data as CommonNodeType | undefined)?.type
@@ -118,9 +119,11 @@ function NodeSelector({
         continue
       if (nodeType === BlockEnum.Start)
         result.hasUserInputNode = true
+      if (nodeType === BlockEnum.StartPlaceholder)
+        result.hasStartPlaceholderNode = true
       if (isTriggerNode(nodeType))
         result.hasTriggerNode = true
-      if (result.hasTriggerNode && result.hasUserInputNode)
+      if (result.hasTriggerNode && result.hasUserInputNode && result.hasStartPlaceholderNode)
         break
     }
     return result
@@ -132,6 +135,7 @@ function NodeSelector({
   const disableSnippetsTab = flowType === FlowType.snippet
   const {
     activeTab,
+    resetActiveTab,
     setActiveTab,
     tabs,
   } = useTabs({
@@ -141,7 +145,7 @@ function NodeSelector({
     noSnippets: disableSnippetsTab,
     noStart: !showStartTab,
     defaultActiveTab,
-    hasUserInputNode,
+    hasStartPlaceholderNode,
     disableStartTab,
     forceEnableStartTab,
   })
@@ -155,6 +159,7 @@ function NodeSelector({
     if (!newOpen) {
       setSearchText('')
       setSnippetsLoading(false)
+      resetActiveTab()
     }
     else if (activeTab === TabsEnum.Snippets) {
       setSnippetsLoading(true)
@@ -162,7 +167,7 @@ function NodeSelector({
 
     if (onOpenChange)
       onOpenChange(newOpen)
-  }, [activeTab, disabled, onOpenChange])
+  }, [activeTab, disabled, onOpenChange, resetActiveTab])
   const handleTrigger = useCallback<MouseEventHandler<HTMLElement>>((e) => {
     e.stopPropagation()
   }, [])
@@ -265,6 +270,8 @@ function NodeSelector({
             activeTab={activeTab}
             blocks={blocks}
             allowStartNodeSelection={canSelectUserInput}
+            hasUserInputNode={hasUserInputNode}
+            hasTriggerNode={hasTriggerNode}
             onActiveTabChange={handleActiveTabChange}
             filterElem={activeTab === TabsEnum.Snippets
               ? null

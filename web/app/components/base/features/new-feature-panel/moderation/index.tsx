@@ -12,10 +12,10 @@ import { useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useCodeBasedExtensions } from '@/service/use-common'
 
-type Props = {
+type Props = Readonly<{
   disabled?: boolean
   onChange?: OnFeaturesChange
-}
+}>
 
 const Moderation = ({
   disabled,

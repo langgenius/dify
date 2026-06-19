@@ -9,12 +9,15 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import selectinload
 from werkzeug.exceptions import NotFound
 
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_user,
 )
@@ -91,15 +94,16 @@ class CompletionConversationApi(Resource):
     @console_ns.doc("list_completion_conversations")
     @console_ns.doc(description="Get completion conversations with pagination and filtering")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[CompletionConversationQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(CompletionConversationQuery))
     @console_ns.response(200, "Success", console_ns.models[ConversationPaginationResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.COMPLETION)
     @edit_permission_required
     @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model(mode=AppMode.COMPLETION)
     def get(self, current_user: Account, app_model: App):
         args = CompletionConversationQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -169,9 +173,10 @@ class CompletionConversationDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.COMPLETION)
     @edit_permission_required
     @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model(mode=AppMode.COMPLETION)
     def get(self, current_user: Account, app_model: App, conversation_id: UUID):
         conversation_id_str = str(conversation_id)
         return ConversationMessageDetailResponse.model_validate(
@@ -187,9 +192,10 @@ class CompletionConversationDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.COMPLETION)
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
+    @get_app_model(mode=AppMode.COMPLETION)
     def delete(self, current_user: Account, app_model: App, conversation_id: UUID):
         conversation_id_str = str(conversation_id)
 
@@ -206,15 +212,16 @@ class ChatConversationApi(Resource):
     @console_ns.doc("list_chat_conversations")
     @console_ns.doc(description="Get chat conversations with pagination, filtering and summary")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[ChatConversationQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(ChatConversationQuery))
     @console_ns.response(200, "Success", console_ns.models[ConversationWithSummaryPaginationResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @edit_permission_required
     @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def get(self, current_user: Account, app_model: App):
         args = ChatConversationQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -323,9 +330,10 @@ class ChatConversationDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @edit_permission_required
     @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def get(self, current_user: Account, app_model: App, conversation_id: UUID):
         conversation_id_str = str(conversation_id)
         return ConversationDetailResponse.model_validate(
@@ -340,10 +348,11 @@ class ChatConversationDetailApi(Resource):
     @console_ns.response(404, "Conversation not found")
     @setup_required
     @login_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def delete(self, current_user: Account, app_model: App, conversation_id: UUID):
         conversation_id_str = str(conversation_id)
 

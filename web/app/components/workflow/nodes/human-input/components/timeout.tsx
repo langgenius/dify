@@ -6,12 +6,12 @@ import Input from '@/app/components/base/input'
 
 const i18nPrefix = 'nodes.humanInput'
 
-type Props = {
+type Props = Readonly<{
   timeout: number
   unit: 'day' | 'hour'
   onChange: (state: { timeout: number, unit: 'day' | 'hour' }) => void
   readonly?: boolean
-}
+}>
 
 const TimeoutInput: FC<Props> = ({
   timeout,

@@ -5,10 +5,10 @@ import { useTranslation } from 'react-i18next'
 import { FullScreenLoading } from '@/app/components/full-screen-loading'
 import { isLegacyBase401 } from '@/features/account-profile/client'
 
-type Props = {
+type Props = Readonly<{
   error: Error & { digest?: string }
   unstable_retry: () => void
-}
+}>
 
 export default function CommonLayoutError({ error, unstable_retry }: Props) {
   const { t } = useTranslation('common')
@@ -23,7 +23,7 @@ export default function CommonLayoutError({ error, unstable_retry }: Props) {
     return <FullScreenLoading />
 
   return (
-    <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-background-body">
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col items-center justify-center gap-4 bg-background-body">
       <div className="system-sm-regular text-text-tertiary">
         {t('errorBoundary.message')}
       </div>

@@ -172,6 +172,8 @@ class ToolFileMessageTransformer:
                                 meta=tool_file_meta,
                             )
                         else:
+                            if file.mime_type and "mime_type" not in tool_file_meta:
+                                tool_file_meta["mime_type"] = file.mime_type
                             yield ToolInvokeMessage(
                                 type=ToolInvokeMessage.MessageType.LINK,
                                 message=ToolInvokeMessage.TextMessage(text=url),

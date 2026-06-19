@@ -12,7 +12,7 @@ import { getCanonicalClassLabel, getDisplayClassLabel } from './class-label-util
 
 const i18nPrefix = 'nodes.questionClassifiers'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   headerClassName?: string
   nodeId: string
@@ -23,7 +23,7 @@ type Props = {
   readonly?: boolean
   filterVar: (payload: Var, valueSelector: ValueSelector) => boolean
   onLabelEditStart?: () => void
-}
+}>
 
 const ClassItem: FC<Props> = ({
   className,

@@ -136,12 +136,13 @@ class EnterpriseService:
         tenant_id: str,
         app_id: str | None,
         audience: str,
+        user_type: str = "account",
     ) -> tuple[str, int]:
         """Mint a short-lived SSO id_token (or OAuth2 access_token) representing
         the calling Dify user, audience-scoped to the given MCP server identifier.
 
         Used by MCPTool.invoke_remote_mcp_tool to stamp the
-        X-Dify-SSO-Access-Token header on outbound MCP requests when the
+        X-Dify-SSO-Token header on outbound MCP requests when the
         provider's identity_mode is set to "idp_token".
 
         Returns:
@@ -163,6 +164,7 @@ class EnterpriseService:
                     "tenant_id": tenant_id,
                     "app_id": app_id or "",
                     "audience": audience,
+                    "user_type": user_type,
                 },
             )
         except EnterpriseServiceError as e:

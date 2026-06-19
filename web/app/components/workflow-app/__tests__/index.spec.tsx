@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
+import { AppACLPermission } from '@/utils/permission'
 import WorkflowApp from '../index'
 
 const mockSetTriggerStatuses = vi.fn()
@@ -17,6 +18,8 @@ let appStoreState: {
   appDetail?: {
     id: string
     mode: string
+    maintainer?: string
+    permission_keys?: string[]
   }
 }
 
@@ -38,6 +41,10 @@ let appContextState: {
   currentWorkspace: {
     id?: string
   }
+  userProfile: {
+    id: string
+  }
+  workspacePermissionKeys: string[]
 }
 
 let appTriggersState: {
@@ -185,6 +192,7 @@ describe('WorkflowApp', () => {
       appDetail: {
         id: 'app-1',
         mode: 'workflow',
+        permission_keys: [AppACLPermission.TestAndRun],
       },
     }
     workflowInitState = {
@@ -206,6 +214,8 @@ describe('WorkflowApp', () => {
     appContextState = {
       isLoadingCurrentWorkspace: false,
       currentWorkspace: { id: 'workspace-1' },
+      userProfile: { id: 'user-1' },
+      workspacePermissionKeys: [],
     }
     appTriggersState = {}
     searchParamsValue = null
@@ -287,6 +297,27 @@ describe('WorkflowApp', () => {
 
   it('should skip replay lookups when replayRunId is missing', () => {
     render(<WorkflowApp />)
+
+    expect(mockGetWorkflowRunAndTraceUrl).not.toHaveBeenCalled()
+    expect(mockFetchRunDetail).not.toHaveBeenCalled()
+    expect(mockSetInputs).not.toHaveBeenCalled()
+  })
+
+  it('should skip replay lookups when test/run permission is missing', async () => {
+    searchParamsValue = 'run-1'
+    appStoreState = {
+      appDetail: {
+        id: 'app-1',
+        mode: 'workflow',
+        permission_keys: [AppACLPermission.ViewLayout],
+      },
+    }
+
+    render(<WorkflowApp />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('workflow-app-main')).toBeInTheDocument()
+    })
 
     expect(mockGetWorkflowRunAndTraceUrl).not.toHaveBeenCalled()
     expect(mockFetchRunDetail).not.toHaveBeenCalled()

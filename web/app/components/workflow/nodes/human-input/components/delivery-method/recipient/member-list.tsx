@@ -10,7 +10,7 @@ import Input from '@/app/components/base/input'
 
 const i18nPrefix = 'nodes.humanInput'
 
-type Props = {
+type Props = Readonly<{
   value: Recipient[]
   searchValue: string
   onSearchChange: (value: string) => void
@@ -18,7 +18,7 @@ type Props = {
   onSelect: (value: string) => void
   email: string
   hideSearch?: boolean
-}
+}>
 
 const MemberList: FC<Props> = ({ searchValue, list, value, onSearchChange, onSelect, email, hideSearch }) => {
   const { t } = useTranslation()

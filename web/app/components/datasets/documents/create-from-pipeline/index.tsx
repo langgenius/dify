@@ -5,16 +5,19 @@ import type { Node } from '@/app/components/workflow/types'
 import type { FileIndexingEstimateResponse } from '@/models/datasets'
 import type { InitialDocumentDetail } from '@/models/pipeline'
 import { useBoolean } from 'ahooks'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { DatasourceType } from '@/models/pipeline'
+import { useRouter } from '@/next/navigation'
 import { useCurrentPlanVectorSpace } from '@/service/use-billing'
 import { useFileUploadConfig } from '@/service/use-common'
 import { usePublishedPipelineInfo } from '@/service/use-pipeline'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import { useDataSourceStore } from './data-source/store'
 import DataSourceProvider from './data-source/store/provider'
 import {
@@ -32,10 +35,23 @@ import { StepOnePreview, StepTwoPreview } from './steps/preview-panel'
 
 const CreateFormPipeline = () => {
   const { t } = useTranslation()
+  const router = useRouter()
   const plan = useProviderContextSelector(state => state.plan)
   const enableBilling = useProviderContextSelector(state => state.enableBilling)
-  const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
+  const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
+  const pipelineId = dataset?.pipeline_id
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const isLoadingWorkspacePermissionKeys = useAppContextWithSelector(state => state.isLoadingWorkspacePermissionKeys)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const dataSourceStore = useDataSourceStore()
+  const canAddDocumentsToDataset = getDatasetACLCapabilities(dataset?.permission_keys, {
+    currentUserId,
+    resourceMaintainer: dataset?.maintainer,
+    workspacePermissionKeys,
+  }).canUse
+  const shouldRedirectToDocuments = !!dataset
+    && !isLoadingWorkspacePermissionKeys
+    && !canAddDocumentsToDataset
 
   // Core state
   const [datasource, setDatasource] = useState<Datasource>()
@@ -187,9 +203,18 @@ const CreateFormPipeline = () => {
     clearWebsiteCrawlData,
     clearOnlineDriveData,
     setDatasource,
+    canProcess: canAddDocumentsToDataset,
   })
 
+  useEffect(() => {
+    if (shouldRedirectToDocuments && dataset?.id)
+      router.replace(`/datasets/${dataset.id}/documents`)
+  }, [dataset, router, shouldRedirectToDocuments])
+
   if (isFetchingPipelineInfo)
+    return <Loading type="app" />
+
+  if (isLoadingWorkspacePermissionKeys || shouldRedirectToDocuments)
     return <Loading type="app" />
 
   return (

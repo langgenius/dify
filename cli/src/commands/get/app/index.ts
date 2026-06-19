@@ -8,6 +8,7 @@ import { runGetApp } from './run'
 
 const APP_MODE_VALUES: readonly AppMode[] = [
   'advanced-chat',
+  'agent',
   'agent-chat',
   'channel',
   'chat',
@@ -56,7 +57,7 @@ export default class GetApp extends DifyCommand {
       allWorkspaces: flags['all-workspaces'],
       page: flags.page,
       limitRaw: flags.limit,
-      mode: flags.mode,
+      mode: flags.mode as AppMode | undefined,
       name: flags.name,
       tag: flags.tag,
       format,

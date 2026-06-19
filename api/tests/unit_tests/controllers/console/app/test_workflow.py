@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import json
 from datetime import datetime
 from types import SimpleNamespace
@@ -7,20 +8,16 @@ from typing import cast
 from unittest.mock import Mock
 
 import pytest
+from flask import Flask
 from pydantic import ValidationError
 from werkzeug.exceptions import HTTPException, NotFound
 
+from controllers.common.errors import InvalidArgumentError
 from controllers.console.app import workflow as workflow_module
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables import SecretVariable, StringVariable
 from graphon.variables.variables import RAGPipelineVariable
-
-
-def _unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 def _make_workflow(**overrides):
@@ -107,24 +104,20 @@ def test_parse_file_with_config(monkeypatch: pytest.MonkeyPatch) -> None:
     build_mock.assert_called_once()
 
 
-def test_sync_draft_workflow_invalid_content_type(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_sync_draft_workflow_invalid_content_type(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = workflow_module.DraftWorkflowApi()
-    handler = _unwrap(api.post)
-
-    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "t1"))
+    handler = inspect.unwrap(api.post)
 
     with app.test_request_context("/apps/app/workflows/draft", method="POST", data="x", content_type="text/html"):
         with pytest.raises(HTTPException) as exc:
-            handler(api, app_model=SimpleNamespace(id="app"))
+            handler(api, "t1", app_model=SimpleNamespace(id="app"))
 
     assert exc.value.code == 415
 
 
-def test_sync_draft_workflow_invalid_json(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_sync_draft_workflow_invalid_json(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = workflow_module.DraftWorkflowApi()
-    handler = _unwrap(api.post)
-
-    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "t1"))
+    handler = inspect.unwrap(api.post)
 
     with app.test_request_context(
         "/apps/app/workflows/draft",
@@ -132,19 +125,19 @@ def test_sync_draft_workflow_invalid_json(app, monkeypatch: pytest.MonkeyPatch) 
         data="[]",
         content_type="application/json",
     ):
-        response, status = handler(api, app_model=SimpleNamespace(id="app"))
+        response, status = handler(api, "t1", app_model=SimpleNamespace(id="app"))
 
     assert status == 400
     assert response["message"] == "Invalid JSON data"
 
 
-def test_sync_draft_workflow_success(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_sync_draft_workflow_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     workflow = SimpleNamespace(
         unique_hash="h",
         updated_at=None,
         created_at=datetime(2024, 1, 1),
     )
-    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "t1"))
+
     monkeypatch.setattr(
         workflow_module.variable_factory, "build_environment_variable_from_mapping", lambda *_args: "env"
     )
@@ -156,20 +149,19 @@ def test_sync_draft_workflow_success(app, monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
 
     api = workflow_module.DraftWorkflowApi()
-    handler = _unwrap(api.post)
+    handler = inspect.unwrap(api.post)
 
     with app.test_request_context(
         "/apps/app/workflows/draft",
         method="POST",
         json={"graph": {}, "features": {}, "hash": "h"},
     ):
-        response = handler(api, app_model=SimpleNamespace(id="app"))
+        response = handler(api, "t1", app_model=SimpleNamespace(id="app"))
 
     assert response["result"] == "success"
 
 
-def test_sync_draft_workflow_hash_mismatch(app, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "t1"))
+def test_sync_draft_workflow_hash_mismatch(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
 
     def _raise(*_args, **_kwargs):
         raise workflow_module.WorkflowHashNotEqualError()
@@ -178,7 +170,7 @@ def test_sync_draft_workflow_hash_mismatch(app, monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
 
     api = workflow_module.DraftWorkflowApi()
-    handler = _unwrap(api.post)
+    handler = inspect.unwrap(api.post)
 
     with app.test_request_context(
         "/apps/app/workflows/draft",
@@ -186,10 +178,33 @@ def test_sync_draft_workflow_hash_mismatch(app, monkeypatch: pytest.MonkeyPatch)
         json={"graph": {}, "features": {}, "hash": "h"},
     ):
         with pytest.raises(DraftWorkflowNotSync):
-            handler(api, app_model=SimpleNamespace(id="app"))
+            handler(api, "t1", app_model=SimpleNamespace(id="app"))
 
 
-def test_restore_published_workflow_to_draft_success(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_sync_draft_workflow_variable_validation_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def _raise(*_args, **_kwargs):
+        raise workflow_module.VariableError("description too long")
+
+    monkeypatch.setattr(workflow_module.variable_factory, "build_conversation_variable_from_mapping", _raise)
+    monkeypatch.setattr(
+        workflow_module, "WorkflowService", lambda: SimpleNamespace(sync_draft_workflow=lambda **_kwargs: None)
+    )
+
+    api = workflow_module.DraftWorkflowApi()
+    handler = inspect.unwrap(api.post)
+
+    with app.test_request_context(
+        "/apps/app/workflows/draft",
+        method="POST",
+        json={"graph": {}, "features": {}, "hash": "h", "conversation_variables": [{"name": "topic"}]},
+    ):
+        with pytest.raises(InvalidArgumentError) as exc:
+            handler(api, "t1", app_model=SimpleNamespace(id="app"))
+
+    assert exc.value.description == "description too long"
+
+
+def test_restore_published_workflow_to_draft_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     workflow = SimpleNamespace(
         unique_hash="restored-hash",
         updated_at=None,
@@ -197,7 +212,6 @@ def test_restore_published_workflow_to_draft_success(app, monkeypatch: pytest.Mo
     )
     user = SimpleNamespace(id="account-1")
 
-    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (user, "t1"))
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
@@ -205,7 +219,7 @@ def test_restore_published_workflow_to_draft_success(app, monkeypatch: pytest.Mo
     )
 
     api = workflow_module.DraftWorkflowRestoreApi()
-    handler = _unwrap(api.post)
+    handler = inspect.unwrap(api.post)
 
     with app.test_request_context(
         "/apps/app/workflows/published-workflow/restore",
@@ -213,6 +227,7 @@ def test_restore_published_workflow_to_draft_success(app, monkeypatch: pytest.Mo
     ):
         response = handler(
             api,
+            "t1",
             app_model=SimpleNamespace(id="app", tenant_id="tenant-1"),
             workflow_id="published-workflow",
         )
@@ -221,10 +236,7 @@ def test_restore_published_workflow_to_draft_success(app, monkeypatch: pytest.Mo
     assert response["hash"] == "restored-hash"
 
 
-def test_restore_published_workflow_to_draft_not_found(app, monkeypatch: pytest.MonkeyPatch) -> None:
-    user = SimpleNamespace(id="account-1")
-
-    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (user, "t1"))
+def test_restore_published_workflow_to_draft_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
@@ -236,7 +248,7 @@ def test_restore_published_workflow_to_draft_not_found(app, monkeypatch: pytest.
     )
 
     api = workflow_module.DraftWorkflowRestoreApi()
-    handler = _unwrap(api.post)
+    handler = inspect.unwrap(api.post)
 
     with app.test_request_context(
         "/apps/app/workflows/published-workflow/restore",
@@ -245,15 +257,15 @@ def test_restore_published_workflow_to_draft_not_found(app, monkeypatch: pytest.
         with pytest.raises(NotFound):
             handler(
                 api,
+                "t1",
                 app_model=SimpleNamespace(id="app", tenant_id="tenant-1"),
                 workflow_id="published-workflow",
             )
 
 
-def test_restore_published_workflow_to_draft_returns_400_for_draft_source(app, monkeypatch: pytest.MonkeyPatch) -> None:
-    user = SimpleNamespace(id="account-1")
-
-    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (user, "t1"))
+def test_restore_published_workflow_to_draft_returns_400_for_draft_source(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
@@ -268,7 +280,7 @@ def test_restore_published_workflow_to_draft_returns_400_for_draft_source(app, m
     )
 
     api = workflow_module.DraftWorkflowRestoreApi()
-    handler = _unwrap(api.post)
+    handler = inspect.unwrap(api.post)
 
     with app.test_request_context(
         "/apps/app/workflows/draft-workflow/restore",
@@ -277,6 +289,7 @@ def test_restore_published_workflow_to_draft_returns_400_for_draft_source(app, m
         with pytest.raises(HTTPException) as exc:
             handler(
                 api,
+                "t1",
                 app_model=SimpleNamespace(id="app", tenant_id="tenant-1"),
                 workflow_id="draft-workflow",
             )
@@ -286,11 +299,8 @@ def test_restore_published_workflow_to_draft_returns_400_for_draft_source(app, m
 
 
 def test_restore_published_workflow_to_draft_returns_400_for_invalid_structure(
-    app, monkeypatch: pytest.MonkeyPatch
+    app: Flask, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    user = SimpleNamespace(id="account-1")
-
-    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (user, "t1"))
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
@@ -302,7 +312,7 @@ def test_restore_published_workflow_to_draft_returns_400_for_invalid_structure(
     )
 
     api = workflow_module.DraftWorkflowRestoreApi()
-    handler = _unwrap(api.post)
+    handler = inspect.unwrap(api.post)
 
     with app.test_request_context(
         "/apps/app/workflows/published-workflow/restore",
@@ -311,6 +321,7 @@ def test_restore_published_workflow_to_draft_returns_400_for_invalid_structure(
         with pytest.raises(HTTPException) as exc:
             handler(
                 api,
+                "t1",
                 app_model=SimpleNamespace(id="app", tenant_id="tenant-1"),
                 workflow_id="published-workflow",
             )
@@ -319,9 +330,11 @@ def test_restore_published_workflow_to_draft_returns_400_for_invalid_structure(
     assert exc.value.description == "invalid workflow graph"
 
 
-def test_get_published_workflows_serializes_items_before_session_closes(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_published_workflows_serializes_items_before_session_closes(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
     api = workflow_module.PublishedAllWorkflowApi()
-    handler = _unwrap(api.get)
+    handler = inspect.unwrap(api.get)
 
     session_state = {"open": False}
 
@@ -351,7 +364,6 @@ def test_get_published_workflows_serializes_items_before_session_closes(app, mon
 
     monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
     monkeypatch.setattr(workflow_module, "sessionmaker", lambda *_args, **_kwargs: _SessionMaker())
-    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(id="u1"), "t1"))
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
@@ -365,7 +377,7 @@ def test_get_published_workflows_serializes_items_before_session_closes(app, mon
         method="GET",
         query_string={"page": 1, "limit": 10, "user_id": "", "named_only": "false"},
     ):
-        response = handler(api, app_model=SimpleNamespace(id="app", workflow_id="wf-1"))
+        response = handler(api, "t1", app_model=SimpleNamespace(id="app", workflow_id="wf-1"))
 
     assert response["items"][0]["id"] == "w1"
     assert response["page"] == 1
@@ -380,7 +392,7 @@ def test_draft_workflow_get_serializes_response_model(monkeypatch: pytest.Monkey
     )
 
     api = workflow_module.DraftWorkflowApi()
-    handler = _unwrap(api.get)
+    handler = inspect.unwrap(api.get)
 
     response = handler(api, app_model=SimpleNamespace(id="app"))
 
@@ -522,13 +534,65 @@ def test_draft_workflow_get_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
     api = workflow_module.DraftWorkflowApi()
-    handler = _unwrap(api.get)
+    handler = inspect.unwrap(api.get)
 
     with pytest.raises(DraftWorkflowNotExist):
         handler(api, app_model=SimpleNamespace(id="app"))
 
 
-def test_advanced_chat_run_conversation_not_exists(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_draft_workflow_get_projects_agent_node_job_to_graph(monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow = _make_workflow(
+        graph_dict={
+            "nodes": [
+                {
+                    "id": "agent-node",
+                    "data": {
+                        "type": "agent",
+                        "version": "2",
+                    },
+                }
+            ],
+            "edges": [],
+        }
+    )
+    projected_graph = {
+        "nodes": [
+            {
+                "id": "agent-node",
+                "data": {
+                    "type": "agent",
+                    "version": "2",
+                    "agent_task": "Summarize it.",
+                    "agent_declared_outputs": [{"name": "summary", "type": "string"}],
+                },
+            }
+        ],
+        "edges": [],
+    }
+
+    monkeypatch.setattr(
+        workflow_module,
+        "WorkflowService",
+        lambda: SimpleNamespace(get_draft_workflow=lambda **_k: workflow),
+    )
+
+    from services.agent.workflow_publish_service import WorkflowAgentPublishService
+
+    monkeypatch.setattr(
+        WorkflowAgentPublishService,
+        "project_draft_bindings_to_graph",
+        lambda **_k: projected_graph,
+    )
+
+    api = workflow_module.DraftWorkflowApi()
+    handler = inspect.unwrap(api.get)
+
+    response = handler(api, app_model=SimpleNamespace(id="app"))
+
+    assert response["graph"] == projected_graph
+
+
+def test_advanced_chat_run_conversation_not_exists(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         workflow_module.AppGenerateService,
         "generate",
@@ -536,10 +600,9 @@ def test_advanced_chat_run_conversation_not_exists(app, monkeypatch: pytest.Monk
             workflow_module.services.errors.conversation.ConversationNotExistsError()
         ),
     )
-    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "t1"))
 
     api = workflow_module.AdvancedChatDraftWorkflowRunApi()
-    handler = _unwrap(api.post)
+    handler = inspect.unwrap(api.post)
 
     with app.test_request_context(
         "/apps/app/advanced-chat/workflows/draft/run",
@@ -547,15 +610,14 @@ def test_advanced_chat_run_conversation_not_exists(app, monkeypatch: pytest.Monk
         json={"inputs": {}},
     ):
         with pytest.raises(NotFound):
-            handler(api, app_model=SimpleNamespace(id="app"))
+            handler(api, "t1", app_model=SimpleNamespace(id="app"))
 
 
-def test_workflow_online_users_filters_inaccessible_workflow(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     app_id_1 = "11111111-1111-1111-1111-111111111111"
     app_id_2 = "22222222-2222-2222-2222-222222222222"
     signed_avatar_url = "https://files.example.com/signed/avatar-1"
     sign_avatar = Mock(return_value=signed_avatar_url)
-    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "tenant-1"))
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
@@ -602,14 +664,14 @@ def test_workflow_online_users_filters_inaccessible_workflow(app, monkeypatch: p
     monkeypatch.setattr(workflow_module.redis_client, "pipeline", redis_pipeline_factory)
 
     api = workflow_module.WorkflowOnlineUsersApi()
-    handler = _unwrap(api.post)
+    handler = inspect.unwrap(api.post)
 
     with app.test_request_context(
         "/apps/workflows/online-users",
         method="POST",
         json={"app_ids": [app_id_1, app_id_2]},
     ):
-        response = handler(api)
+        response = handler(api, "tenant-1")
 
     assert response == {
         "data": [
@@ -636,9 +698,8 @@ def test_workflow_online_users_filters_inaccessible_workflow(app, monkeypatch: p
     sign_avatar.assert_called_once_with("avatar-file-id")
 
 
-def test_workflow_online_users_batches_redis_reads(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_workflow_online_users_batches_redis_reads(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     app_ids = [f"wf-{index}" for index in range(workflow_module.WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE + 1)]
-    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "tenant-1"))
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
@@ -653,14 +714,14 @@ def test_workflow_online_users_batches_redis_reads(app, monkeypatch: pytest.Monk
     monkeypatch.setattr(workflow_module.redis_client, "pipeline", redis_pipeline_factory)
 
     api = workflow_module.WorkflowOnlineUsersApi()
-    handler = _unwrap(api.post)
+    handler = inspect.unwrap(api.post)
 
     with app.test_request_context(
         "/apps/workflows/online-users",
         method="POST",
         json={"app_ids": app_ids},
     ):
-        response = handler(api)
+        response = handler(api, "tenant-1")
 
     assert len(response["data"]) == len(app_ids)
     assert redis_pipeline_factory.call_count == 2
@@ -668,8 +729,7 @@ def test_workflow_online_users_batches_redis_reads(app, monkeypatch: pytest.Monk
     assert second_pipeline.hgetall.call_count == 1
 
 
-def test_workflow_online_users_rejects_excessive_workflow_ids(app, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "tenant-1"))
+def test_workflow_online_users_rejects_excessive_workflow_ids(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     accessible_app_ids = Mock(return_value=set())
     monkeypatch.setattr(
         workflow_module,
@@ -680,7 +740,7 @@ def test_workflow_online_users_rejects_excessive_workflow_ids(app, monkeypatch: 
     excessive_ids = [f"wf-{index}" for index in range(workflow_module.MAX_WORKFLOW_ONLINE_USERS_REQUEST_IDS + 1)]
 
     api = workflow_module.WorkflowOnlineUsersApi()
-    handler = _unwrap(api.post)
+    handler = inspect.unwrap(api.post)
 
     with app.test_request_context(
         "/apps/workflows/online-users",
@@ -688,7 +748,7 @@ def test_workflow_online_users_rejects_excessive_workflow_ids(app, monkeypatch: 
         json={"app_ids": excessive_ids},
     ):
         with pytest.raises(HTTPException) as exc:
-            handler(api)
+            handler(api, "tenant-1")
 
     assert exc.value.code == 400
     assert exc.value.description is not None

@@ -9,6 +9,7 @@ import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { updateCurrentWorkspace } from '@/service/common'
+import { hasPermission } from '@/utils/permission'
 
 const MAX_LOGO_FILE_SIZE = 5 * 1024 * 1024
 const CUSTOM_CONFIG_URL = '/workspaces/custom-config'
@@ -16,7 +17,7 @@ const WEB_APP_LOGO_UPLOAD_URL = '/workspaces/custom-config/webapp-logo/upload'
 const useWebAppBrand = () => {
   const { t } = useTranslation()
   const { plan, enableBilling } = useProviderContext()
-  const { currentWorkspace, mutateCurrentWorkspace, isCurrentWorkspaceManager } = useAppContext()
+  const { currentWorkspace, mutateCurrentWorkspace, workspacePermissionKeys } = useAppContext()
   const [fileId, setFileId] = useState('')
   const [imgKey, setImgKey] = useState(() => Date.now())
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -25,7 +26,8 @@ const useWebAppBrand = () => {
   const uploading = uploadProgress > 0 && uploadProgress < 100
   const webappLogo = currentWorkspace.custom_config?.replace_webapp_logo || ''
   const webappBrandRemoved = currentWorkspace.custom_config?.remove_webapp_brand
-  const uploadDisabled = isSandbox || webappBrandRemoved || !isCurrentWorkspaceManager
+  const canManageCustomBrand = hasPermission(workspacePermissionKeys, 'customization.manage')
+  const uploadDisabled = isSandbox || webappBrandRemoved || !canManageCustomBrand
   const workspaceLogo = systemFeatures.branding.enabled ? systemFeatures.branding.workspace_logo : ''
   const persistWorkspaceBrand = async (body: Record<string, unknown>) => {
     await updateCurrentWorkspace({
@@ -89,7 +91,7 @@ const useWebAppBrand = () => {
     uploadDisabled,
     workspaceLogo,
     isSandbox,
-    isCurrentWorkspaceManager,
+    canManageCustomBrand,
     handleApply,
     handleCancel,
     handleChange,

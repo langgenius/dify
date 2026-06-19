@@ -26,6 +26,7 @@ type UseDocumentCreationOptions = {
   crawlOptions?: CrawlOptions
   websiteCrawlProvider?: DataSourceProvider
   websiteCrawlJobId?: string
+  canCreateDocument?: boolean
   // Callbacks
   onStepChange?: (delta: number) => void
   updateIndexingTypeCache?: (type: string) => void
@@ -46,7 +47,7 @@ type ValidationParams = {
 }
 export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
   const { t } = useTranslation()
-  const { datasetId, isSetting, documentDetail, dataSourceType, files, notionPages, notionCredentialId, websitePages, crawlOptions, websiteCrawlProvider = DataSourceProvider.jinaReader, websiteCrawlJobId = '', onStepChange, updateIndexingTypeCache, updateResultCache, updateRetrievalMethodCache, onSave, mutateDatasetRes } = options
+  const { datasetId, isSetting, documentDetail, dataSourceType, files, notionPages, notionCredentialId, websitePages, crawlOptions, websiteCrawlProvider = DataSourceProvider.jinaReader, websiteCrawlJobId = '', canCreateDocument = true, onStepChange, updateIndexingTypeCache, updateResultCache, updateRetrievalMethodCache, onSave, mutateDatasetRes } = options
   const createFirstDocumentMutation = useCreateFirstDocument()
   const createDocumentMutation = useCreateDocument(datasetId!)
   const invalidDatasetList = useInvalidDatasetList()
@@ -140,6 +141,9 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
   ])
   // Execute creation
   const executeCreation = useCallback(async (params: CreateDocumentReq, indexType: IndexingType, retrievalConfig: RetrievalConfig) => {
+    if (datasetId && !isSetting && !canCreateDocument)
+      return
+
     if (!datasetId) {
       await createFirstDocumentMutation.mutateAsync(params, {
         onSuccess(data) {
@@ -179,6 +183,7 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
     dataSourceType,
     onStepChange,
     isSetting,
+    canCreateDocument,
     onSave,
   ])
   // Validate preview params

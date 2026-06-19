@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import dataclasses
-from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from typing import Any, overload, override
+from typing import Any, Protocol, overload, override
 
 from configs import dify_config
 from graphon.file import File
@@ -66,14 +65,12 @@ class TruncationResult:
     truncated: bool
 
 
-class BaseTruncator(ABC):
-    @abstractmethod
-    def truncate(self, segment: Segment) -> TruncationResult:
-        pass
+class BaseTruncator(Protocol):
+    """Protocol for variable truncation strategies."""
 
-    @abstractmethod
-    def truncate_variable_mapping(self, v: Mapping[str, Any]) -> tuple[Mapping[str, Any], bool]:
-        pass
+    def truncate(self, segment: Segment) -> TruncationResult: ...
+
+    def truncate_variable_mapping(self, v: Mapping[str, Any]) -> tuple[Mapping[str, Any], bool]: ...
 
 
 class VariableTruncator(BaseTruncator):

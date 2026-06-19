@@ -19,6 +19,15 @@ const mockHandleNodesDuplicate = vi.fn()
 const mockHandleNodesDelete = vi.fn()
 const mockHandleCreateSnippet = vi.fn()
 const mockCreateSnippetDialogRender = vi.fn()
+const mockWorkspacePermissionKeys = vi.hoisted(() => ({
+  value: ['snippets.create_and_modify'] as string[],
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }),
+}))
 
 vi.mock('@/app/components/snippets/hooks/use-create-snippet', async () => {
   const React = await vi.importActual<typeof import('react')>('react')
@@ -135,6 +144,7 @@ describe('SelectionContextmenu', () => {
     mockHandleNodesDelete.mockReset()
     mockHandleCreateSnippet.mockReset()
     mockCreateSnippetDialogRender.mockReset()
+    mockWorkspacePermissionKeys.value = ['snippets.create_and_modify']
   })
 
   it('should not render when selection context menu target is absent', () => {
@@ -224,6 +234,24 @@ describe('SelectionContextmenu', () => {
       target: 'n2',
       selected: false,
     }))
+  })
+
+  it('should hide create snippet action without snippets create-and-modify permission', async () => {
+    mockWorkspacePermissionKeys.value = []
+    const nodes = [
+      createNode({ id: 'n1', selected: true, width: 80, height: 40 }),
+      createNode({ id: 'n2', selected: true, position: { x: 140, y: 0 }, width: 80, height: 40 }),
+    ]
+    const { store } = renderSelectionMenu({ nodes })
+
+    act(() => {
+      store.setState({ contextMenuTarget: { type: 'selection' } })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole('menuitem', { name: /common.copy/ })).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('menuitem', { name: /Create Snippet|snippet\.createDialogTitle/ })).not.toBeInTheDocument()
   })
 
   it('should add input fields for variable references outside of the selected graph', async () => {

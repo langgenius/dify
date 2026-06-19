@@ -9,11 +9,11 @@ import { EffectColor } from '../../settings/chunk-structure/types'
 import OptionCard from '../../settings/option-card'
 import RetrievalParamConfig from '../retrieval-param-config'
 
-type Props = {
+type Props = Readonly<{
   disabled?: boolean
   value: RetrievalConfig
   onChange: (value: RetrievalConfig) => void
-}
+}>
 
 const EconomicalRetrievalMethodConfig: FC<Props> = ({
   disabled = false,
@@ -40,6 +40,7 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
         type={RETRIEVE_METHOD.keywordSearch}
         value={value}
         onChange={onChange}
+        disabled={disabled}
       />
     </OptionCard>
   )

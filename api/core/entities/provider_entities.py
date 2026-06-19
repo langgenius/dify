@@ -88,7 +88,7 @@ class SystemConfiguration(BaseModel):
     enabled: bool
     current_quota_type: ProviderQuotaType | None = None
     quota_configurations: list[QuotaConfiguration] = []
-    credentials: dict[str, Any] | None = None
+    credentials: dict[str, Any] | None = Field(default=None)
 
 
 class CustomProviderConfiguration(BaseModel):
@@ -113,7 +113,7 @@ class CustomModelConfiguration(BaseModel):
     current_credential_id: str | None = None
     current_credential_name: str | None = None
     available_model_credentials: list[CredentialConfiguration] = []
-    unadded_to_model_list: bool | None = False
+    unadded_to_model_list: bool = False
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
@@ -209,7 +209,7 @@ class ProviderConfig(BasicProviderConfig):
     required: bool = False
     default: Union[int, str, float, bool] | None = None
     options: list[Option] | None = None
-    multiple: bool | None = False
+    multiple: bool = False
     label: I18nObject | None = None
     help: I18nObject | None = None
     url: str | None = None

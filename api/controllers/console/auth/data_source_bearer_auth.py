@@ -3,6 +3,7 @@ from uuid import UUID
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
+from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from fields.base import ResponseModel
 from libs.login import login_required
@@ -10,7 +11,15 @@ from services.auth.api_key_auth_service import ApiKeyAuthService
 
 from .. import console_ns
 from ..auth.error import ApiKeyAuthFailedError
-from ..wraps import account_initialization_required, is_admin_or_owner_required, setup_required, with_current_tenant_id
+from ..wraps import (
+    RBACPermission,
+    RBACResourceScope,
+    account_initialization_required,
+    is_admin_or_owner_required,
+    rbac_permission_required,
+    setup_required,
+    with_current_tenant_id,
+)
 
 
 class ApiKeyAuthBindingPayload(BaseModel):
@@ -33,7 +42,12 @@ class ApiKeyAuthDataSourceListResponse(ResponseModel):
 
 
 register_schema_models(console_ns, ApiKeyAuthBindingPayload)
-register_response_schema_models(console_ns, ApiKeyAuthDataSourceItem, ApiKeyAuthDataSourceListResponse)
+register_response_schema_models(
+    console_ns,
+    SimpleResultResponse,
+    ApiKeyAuthDataSourceItem,
+    ApiKeyAuthDataSourceListResponse,
+)
 
 
 @console_ns.route("/api-key-auth/data-source")
@@ -64,10 +78,12 @@ class ApiKeyAuthDataSource(Resource):
 
 @console_ns.route("/api-key-auth/data-source/binding")
 class ApiKeyAuthDataSourceBinding(Resource):
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @console_ns.expect(console_ns.models[ApiKeyAuthBindingPayload.__name__])
     @with_current_tenant_id
     def post(self, current_tenant_id: str):
@@ -88,6 +104,7 @@ class ApiKeyAuthDataSourceBindingDelete(Resource):
     @login_required
     @account_initialization_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @console_ns.response(204, "Binding deleted successfully")
     @with_current_tenant_id
     def delete(self, current_tenant_id: str, binding_id: UUID):

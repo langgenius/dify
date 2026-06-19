@@ -1,13 +1,12 @@
-"""HTTPX-based client for Dify Agent runs.
+"""HTTPX-based client for the Dify Agent HTTP API.
 
-The client uses the public DTOs from ``dify_agent.protocol.schemas`` for all
-normal request and response parsing. It intentionally does not retry
-``POST /runs`` because create-run is not idempotent, and create helpers require a
-``CreateRunRequest`` instance rather than accepting raw payload dicts. SSE
-streams are the only operation with reconnect logic: transient stream, connect,
-or read failures, stream timeouts, and HTTP 5xx stream responses reconnect with
-the latest observed event id, while HTTP 4xx responses, DTO validation failures,
-and malformed SSE frames fail immediately.
+The client uses the public DTOs from ``dify_agent.protocol`` for request and
+response parsing across both run-management and sandbox-file endpoints. It
+intentionally does not retry non-idempotent ``POST`` requests such as
+``/runs``. SSE streams are the only operation with reconnect logic: transient
+stream, connect, or read failures, stream timeouts, and HTTP 5xx stream
+responses reconnect with the latest observed event id, while HTTP 4xx
+responses, DTO validation failures, and malformed SSE frames fail immediately.
 """
 
 from __future__ import annotations
@@ -26,7 +25,7 @@ import httpx
 from pydantic import BaseModel, ValidationError
 from pydantic_ai.messages import FunctionToolResultEvent
 
-from dify_agent.protocol.schemas import (
+from dify_agent.protocol import (
     CancelRunRequest,
     CancelRunResponse,
     CreateRunRequest,
@@ -35,12 +34,19 @@ from dify_agent.protocol.schemas import (
     RunEvent,
     RunEventsResponse,
     RunStatusResponse,
+    SandboxListRequest,
+    SandboxListResponse,
+    SandboxLocator,
+    SandboxReadRequest,
+    SandboxReadResponse,
+    SandboxUploadRequest,
+    SandboxUploadResponse,
 )
 
 _ResponseModelT = TypeVar("_ResponseModelT", bound=BaseModel)
 _TERMINAL_EVENT_TYPES = {"run_succeeded", "run_failed", "run_cancelled"}
 _TERMINAL_RUN_STATUSES = {"succeeded", "failed", "cancelled"}
-_FUNCTION_TOOL_RESULT_PAYLOAD_KEY: str | None = None
+_function_tool_result_payload_key_cache: str | None = None
 
 
 class DifyAgentClientError(RuntimeError):
@@ -60,7 +66,7 @@ class DifyAgentHTTPError(DifyAgentClientError):
 
 
 class DifyAgentNotFoundError(DifyAgentHTTPError):
-    """Raised when the server returns ``404`` for a run resource."""
+    """Raised when the server returns ``404`` for a requested Dify Agent resource."""
 
 
 class DifyAgentValidationError(DifyAgentHTTPError):
@@ -170,13 +176,13 @@ def _function_tool_result_payload_key() -> str:
     during local development or rolling deploys, so the client normalizes the
     remote frame into the local schema before Pydantic validation.
     """
-    global _FUNCTION_TOOL_RESULT_PAYLOAD_KEY
-    if _FUNCTION_TOOL_RESULT_PAYLOAD_KEY is not None:
-        return _FUNCTION_TOOL_RESULT_PAYLOAD_KEY
+    global _function_tool_result_payload_key_cache
+    if _function_tool_result_payload_key_cache is not None:
+        return _function_tool_result_payload_key_cache
 
     parameters = list(inspect.signature(FunctionToolResultEvent).parameters)
-    _FUNCTION_TOOL_RESULT_PAYLOAD_KEY = "part" if parameters and parameters[0] == "part" else "result"
-    return _FUNCTION_TOOL_RESULT_PAYLOAD_KEY
+    _function_tool_result_payload_key_cache = "part" if parameters and parameters[0] == "part" else "result"
+    return _function_tool_result_payload_key_cache
 
 
 def _normalize_run_event_payload_for_local_pydantic_ai(payload: Any) -> Any:
@@ -201,13 +207,15 @@ def _normalize_run_event_payload_for_local_pydantic_ai(payload: Any) -> Any:
 
 
 class Client:
-    """Unified synchronous and asynchronous client for Dify Agent runs.
+    """Unified synchronous and asynchronous client for the Dify Agent HTTP API.
 
     The instance is intentionally small and stateful: it stores base URL, default
     headers, timeout settings, optional external HTTPX clients, and lazy-owned
-    clients for whichever sync/async side is used. External clients are never
-    closed by this wrapper. Owned sync clients close via ``close_sync`` or the
-    sync context manager; owned async clients close via ``aclose`` or the async
+    clients for whichever sync/async side is used. It is the shared transport
+    boundary for both run-management endpoints (create/status/events/cancel) and
+    sandbox-file endpoints (list/read/upload). External clients are never closed
+    by this wrapper. Owned sync clients close via ``close_sync`` or the sync
+    context manager; owned async clients close via ``aclose`` or the async
     context manager.
     """
 
@@ -418,6 +426,62 @@ class Client:
         except httpx.RequestError as exc:
             raise DifyAgentClientError(f"get_events_sync request failed: {exc}") from exc
         return _parse_model_response(response, RunEventsResponse)
+
+    async def list_sandbox_files(self, locator: SandboxLocator, path: str) -> SandboxListResponse:
+        """List a sandbox directory through ``POST /sandbox/files/list``."""
+        request_model = _build_request_model(SandboxListRequest, locator=locator, path=path)
+        response = await self._post_async_json("list_sandbox_files", "/sandbox/files/list", request_model)
+        return _parse_model_response(response, SandboxListResponse)
+
+    def list_sandbox_files_sync(self, locator: SandboxLocator, path: str) -> SandboxListResponse:
+        """Synchronous variant of ``list_sandbox_files``."""
+        request_model = _build_request_model(SandboxListRequest, locator=locator, path=path)
+        response = self._post_sync_json("list_sandbox_files_sync", "/sandbox/files/list", request_model)
+        return _parse_model_response(response, SandboxListResponse)
+
+    async def read_sandbox_file(
+        self,
+        locator: SandboxLocator,
+        path: str,
+        max_bytes: int = 262144,
+    ) -> SandboxReadResponse:
+        """Read a sandbox file preview through ``POST /sandbox/files/read``."""
+        request_model = _build_request_model(
+            SandboxReadRequest,
+            locator=locator,
+            path=path,
+            max_bytes=max_bytes,
+        )
+        response = await self._post_async_json("read_sandbox_file", "/sandbox/files/read", request_model)
+        return _parse_model_response(response, SandboxReadResponse)
+
+    def read_sandbox_file_sync(
+        self,
+        locator: SandboxLocator,
+        path: str,
+        max_bytes: int = 262144,
+    ) -> SandboxReadResponse:
+        """Synchronous variant of ``read_sandbox_file``."""
+        request_model = _build_request_model(
+            SandboxReadRequest,
+            locator=locator,
+            path=path,
+            max_bytes=max_bytes,
+        )
+        response = self._post_sync_json("read_sandbox_file_sync", "/sandbox/files/read", request_model)
+        return _parse_model_response(response, SandboxReadResponse)
+
+    async def upload_sandbox_file(self, locator: SandboxLocator, path: str) -> SandboxUploadResponse:
+        """Upload a sandbox file mapping through ``POST /sandbox/files/upload``."""
+        request_model = _build_request_model(SandboxUploadRequest, locator=locator, path=path)
+        response = await self._post_async_json("upload_sandbox_file", "/sandbox/files/upload", request_model)
+        return _parse_model_response(response, SandboxUploadResponse)
+
+    def upload_sandbox_file_sync(self, locator: SandboxLocator, path: str) -> SandboxUploadResponse:
+        """Synchronous variant of ``upload_sandbox_file``."""
+        request_model = _build_request_model(SandboxUploadRequest, locator=locator, path=path)
+        response = self._post_sync_json("upload_sandbox_file_sync", "/sandbox/files/upload", request_model)
+        return _parse_model_response(response, SandboxUploadResponse)
 
     async def stream_events(
         self,
@@ -631,12 +695,48 @@ class Client:
             headers.update(extra)
         return headers
 
+    async def _post_async_json(self, operation: str, path: str, request_model: BaseModel) -> httpx.Response:
+        try:
+            return await self._get_async_http_client().post(
+                self._url(path),
+                content=request_model.model_dump_json(),
+                headers=self._merged_headers({"Content-Type": "application/json"}),
+                timeout=self._timeout,
+            )
+        except httpx.TimeoutException as exc:
+            raise DifyAgentTimeoutError(f"{operation} timed out") from exc
+        except httpx.RequestError as exc:
+            raise DifyAgentClientError(f"{operation} request failed: {exc}") from exc
+
+    def _post_sync_json(self, operation: str, path: str, request_model: BaseModel) -> httpx.Response:
+        try:
+            return self._get_sync_http_client().post(
+                self._url(path),
+                content=request_model.model_dump_json(),
+                headers=self._merged_headers({"Content-Type": "application/json"}),
+                timeout=self._timeout,
+            )
+        except httpx.TimeoutException as exc:
+            raise DifyAgentTimeoutError(f"{operation} timed out") from exc
+        except httpx.RequestError as exc:
+            raise DifyAgentClientError(f"{operation} request failed: {exc}") from exc
+
 
 def _validate_create_run_request(request: CreateRunRequest) -> CreateRunRequest:
     """Reject raw payloads so create-run uses the public request DTO boundary."""
     if isinstance(request, CreateRunRequest):
         return request
     raise DifyAgentValidationError(detail="request must be a CreateRunRequest")
+
+
+def _build_request_model[_RequestModelT: BaseModel](
+    model_type: type[_RequestModelT], /, **payload: object
+) -> _RequestModelT:
+    """Validate one request DTO built from method parameters."""
+    try:
+        return model_type.model_validate(payload)
+    except ValidationError as exc:
+        raise DifyAgentValidationError(detail=exc.errors(include_url=False)) from exc
 
 
 def _parse_model_response(response: httpx.Response, model_type: type[_ResponseModelT]) -> _ResponseModelT:

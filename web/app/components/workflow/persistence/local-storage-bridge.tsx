@@ -1,15 +1,12 @@
 import { useEffect, useLayoutEffect as useLayoutEffectFromReact } from 'react'
-import { useLocalStorage, useSetLocalStorage } from '@/hooks/use-local-storage'
 import { useStore, useWorkflowStore } from '../store'
 import {
   isControlMode,
   isFiniteNumber,
-  numberStorageOptions,
-  rawStorageOptions,
-  WORKFLOW_NODE_PANEL_WIDTH_KEY,
-  WORKFLOW_OPERATION_MODE_KEY,
-  WORKFLOW_PREVIEW_PANEL_WIDTH_KEY,
-  WORKFLOW_VARIABLE_INSPECT_PANEL_HEIGHT_KEY,
+  useDebugPreviewPanelWidthValue,
+  useWorkflowNodePanelWidthValue,
+  useWorkflowOperationMode,
+  useWorkflowVariableInspectPanelHeightValue,
 } from './local-storage-options'
 
 const useIsoLayoutEffect = typeof document !== 'undefined'
@@ -17,10 +14,10 @@ const useIsoLayoutEffect = typeof document !== 'undefined'
   : useEffect
 
 export const WorkflowLocalStorageBridge = () => {
-  const [storedNodePanelWidth] = useLocalStorage<number>(WORKFLOW_NODE_PANEL_WIDTH_KEY, undefined, numberStorageOptions)
-  const [storedPreviewPanelWidth] = useLocalStorage<number>(WORKFLOW_PREVIEW_PANEL_WIDTH_KEY, undefined, numberStorageOptions)
-  const [storedVariableInspectPanelHeight] = useLocalStorage<number>(WORKFLOW_VARIABLE_INSPECT_PANEL_HEIGHT_KEY, undefined, numberStorageOptions)
-  const [storedControlMode] = useLocalStorage<string>(WORKFLOW_OPERATION_MODE_KEY, undefined, rawStorageOptions)
+  const storedNodePanelWidth = useWorkflowNodePanelWidthValue()
+  const storedPreviewPanelWidth = useDebugPreviewPanelWidthValue()
+  const storedVariableInspectPanelHeight = useWorkflowVariableInspectPanelHeightValue()
+  const [storedControlMode, setControlModeStorage] = useWorkflowOperationMode()
 
   const workflowStore = useWorkflowStore()
   const setNodePanelWidth = useStore(state => state.setNodePanelWidth)
@@ -28,8 +25,6 @@ export const WorkflowLocalStorageBridge = () => {
   const setPreviewPanelWidth = useStore(state => state.setPreviewPanelWidth)
   const setVariableInspectPanelHeight = useStore(state => state.setVariableInspectPanelHeight)
   const setControlMode = useStore(state => state.setControlMode)
-
-  const setControlModeStorage = useSetLocalStorage<string>(WORKFLOW_OPERATION_MODE_KEY, rawStorageOptions)
 
   useIsoLayoutEffect(() => {
     if (!isFiniteNumber(storedNodePanelWidth))

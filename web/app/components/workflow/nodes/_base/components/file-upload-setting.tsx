@@ -15,13 +15,13 @@ import FileTypeItem from './file-type-item'
 import InputNumberWithSlider from './input-number-with-slider'
 import OptionCard from './option-card'
 
-type Props = {
+type Props = Readonly<{
   payload: UploadFileSetting
   isMultiple: boolean
   inFeaturePanel?: boolean
   hideSupportFileType?: boolean
   onChange: (payload: UploadFileSetting) => void
-}
+}>
 
 const FileUploadSetting: FC<Props> = ({
   payload,
@@ -89,11 +89,14 @@ const FileUploadSetting: FC<Props> = ({
   }, [onChange, payload])
 
   const handleMaxUploadNumLimitChange = useCallback((value: number) => {
+    const normalizedValue = Number.isFinite(value)
+      ? Math.min(Math.max(value, 1), maxFileUploadLimit)
+      : value
     const newPayload = produce(payload, (draft) => {
-      draft.max_length = value
+      draft.max_length = normalizedValue
     })
     onChange(newPayload)
-  }, [onChange, payload])
+  }, [maxFileUploadLimit, onChange, payload])
 
   return (
     <div>
@@ -163,6 +166,7 @@ const FileUploadSetting: FC<Props> = ({
             <InputNumberWithSlider
               label={t('variableConfig.maxNumberOfUploads', { ns: 'appDebug' })!}
               value={max_length}
+              defaultValue={1}
               min={1}
               max={maxFileUploadLimit}
               onChange={handleMaxUploadNumLimitChange}

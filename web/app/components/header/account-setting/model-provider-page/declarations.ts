@@ -247,6 +247,7 @@ export type DefaultModelResponse = {
 export type DefaultModel = {
   provider: string
   model: string
+  plugin_id?: string
 }
 
 export type CustomConfigurationModelFixedFields = {
