@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
-from services.auth.watercrawl.watercrawl import WatercrawlAuth, _CREDENTIAL_VALIDATION_TIMEOUT
+from services.auth.watercrawl.watercrawl import _CREDENTIAL_VALIDATION_TIMEOUT, WatercrawlAuth
 
 
 class TestWatercrawlAuth:
