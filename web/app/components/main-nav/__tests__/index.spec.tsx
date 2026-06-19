@@ -21,6 +21,7 @@ import { consoleQuery } from '@/service/client'
 import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 import MainNav from '../index'
+import { DETAIL_SIDEBAR_STORAGE_KEY } from '../storage'
 
 const activeEdgeClassName = 'before:pointer-events-none'
 
@@ -356,7 +357,6 @@ describe('MainNav', () => {
     })
     mockSwitchWorkspace.mockReturnValue(new Promise(() => {}))
     hotkeyRegistrations.clear()
-    useAppStore.getState().setAppSidebarExpand('')
     useAppStore.getState().setAppDetail()
   })
 
@@ -418,7 +418,7 @@ describe('MainNav', () => {
   })
 
   it('keeps the global navigation account section expanded on home routes', () => {
-    localStorage.setItem('app-detail-collapse-or-expand', 'collapse')
+    localStorage.setItem(DETAIL_SIDEBAR_STORAGE_KEY, 'collapse')
     mockPathname = '/'
 
     renderMainNav()
@@ -626,7 +626,7 @@ describe('MainNav', () => {
     expect(screen.getByRole('complementary')).toHaveClass('p-1')
     expect(screen.getByTestId('app-detail-top')).toHaveAttribute('data-expand', 'false')
     expect(screen.getByTestId('app-detail-section')).toHaveAttribute('data-expand', 'false')
-    expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('collapse')
+    expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('collapse')
   })
 
   it('shows app detail navigation as a floating preview when hovering the collapsed top toggle', () => {
@@ -637,7 +637,7 @@ describe('MainNav', () => {
     fireEvent.mouseEnter(screen.getByTestId('app-detail-top').parentElement!)
 
     expect(screen.getByRole('complementary')).toHaveClass('w-16', 'overflow-visible')
-    expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('collapse')
+    expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('collapse')
     expect(screen.getAllByTestId('app-detail-top')).toHaveLength(1)
     expect(screen.getByTestId('app-detail-top')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByTestId('app-detail-section')).toHaveAttribute('data-expand', 'true')
@@ -655,7 +655,7 @@ describe('MainNav', () => {
     expect(screen.getByRole('complementary')).not.toHaveClass('overflow-visible')
     expect(screen.getByTestId('app-detail-top')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByTestId('app-detail-section')).toHaveAttribute('data-expand', 'true')
-    expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('expand')
+    expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('expand')
   })
 
   it('replaces global navigation with dataset detail navigation on dataset routes', () => {
@@ -685,7 +685,7 @@ describe('MainNav', () => {
     expect(screen.getByRole('complementary')).toHaveClass('p-1')
     expect(screen.getByTestId('dataset-detail-top')).toHaveAttribute('data-expand', 'false')
     expect(screen.getByTestId('dataset-detail-section')).toHaveAttribute('data-expand', 'false')
-    expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('collapse')
+    expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('collapse')
   })
 
   it('shows dataset detail navigation as a floating preview when hovering the collapsed top toggle', () => {
@@ -696,7 +696,7 @@ describe('MainNav', () => {
     fireEvent.mouseEnter(screen.getByTestId('dataset-detail-top').parentElement!)
 
     expect(screen.getByRole('complementary')).toHaveClass('w-16', 'overflow-visible')
-    expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('collapse')
+    expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('collapse')
     expect(screen.getAllByTestId('dataset-detail-top')).toHaveLength(1)
     expect(screen.getByTestId('dataset-detail-top')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByTestId('dataset-detail-section')).toHaveAttribute('data-expand', 'true')
@@ -756,7 +756,7 @@ describe('MainNav', () => {
     expect(screen.getByRole('complementary')).toHaveClass('p-1')
     expect(screen.getByTestId('agent-detail-top')).toHaveAttribute('data-expand', 'false')
     expect(screen.getByTestId('agent-detail-section')).toHaveAttribute('data-expand', 'false')
-    expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('collapse')
+    expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('collapse')
   })
 
   it('collapses deployment detail navigation from the top-right toggle', () => {
@@ -769,7 +769,7 @@ describe('MainNav', () => {
     expect(screen.getByRole('complementary')).toHaveClass('p-1')
     expect(screen.getByTestId('deployment-detail-top')).toHaveAttribute('data-expand', 'false')
     expect(screen.getByTestId('deployment-detail-section')).toHaveAttribute('data-expand', 'false')
-    expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('collapse')
+    expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('collapse')
   })
 
   it.each([
@@ -804,7 +804,7 @@ describe('MainNav', () => {
     fireEvent.mouseEnter(screen.getByTestId('agent-detail-top').parentElement!)
 
     expect(screen.getByRole('complementary')).toHaveClass('w-16', 'overflow-visible')
-    expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('collapse')
+    expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('collapse')
     expect(screen.getAllByTestId('agent-detail-top')).toHaveLength(1)
     expect(screen.getByTestId('agent-detail-top')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByTestId('agent-detail-section')).toHaveAttribute('data-expand', 'true')

@@ -3,19 +3,11 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import AppDetailNav from '..'
 
-let mockAppSidebarExpand = 'expand'
-const mockSetAppSidebarExpand = vi.fn()
+let mockDetailSidebarMode = 'expand'
+const mockSetDetailSidebarMode = vi.fn()
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    appDetail: { id: 'app-1', name: 'Test', mode: 'chat', icon: '🤖', icon_type: 'emoji', icon_background: '#fff' },
-    appSidebarExpand: mockAppSidebarExpand,
-    setAppSidebarExpand: mockSetAppSidebarExpand,
-  }),
-}))
-
-vi.mock('zustand/react/shallow', () => ({
-  useShallow: (fn: unknown) => fn,
+vi.mock('@/app/components/main-nav/storage', () => ({
+  useDetailSidebarMode: () => [mockDetailSidebarMode, mockSetDetailSidebarMode],
 }))
 
 let mockIsHovering = true
@@ -79,7 +71,7 @@ const navigation = [
 describe('AppDetailNav', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAppSidebarExpand = 'expand'
+    mockDetailSidebarMode = 'expand'
     mockIsHovering = true
     mockKeyPressCallback = null
   })
@@ -114,7 +106,7 @@ describe('AppDetailNav', () => {
     })
 
     it('should apply collapsed width class', () => {
-      mockAppSidebarExpand = 'collapse'
+      mockDetailSidebarMode = 'collapse'
       const { container } = render(<AppDetailNav navigation={navigation} />)
       const sidebar = container.firstElementChild as HTMLElement
       expect(sidebar).toHaveClass('w-14')
@@ -164,37 +156,30 @@ describe('AppDetailNav', () => {
     })
 
     it('should pass collapse mode to nav links when collapsed', () => {
-      mockAppSidebarExpand = 'collapse'
+      mockDetailSidebarMode = 'collapse'
       render(<AppDetailNav navigation={navigation} />)
       expect(screen.getByTestId('nav-link-Overview')).toHaveAttribute('data-mode', 'collapse')
     })
   })
 
   describe('Toggle behavior', () => {
-    it('should call setAppSidebarExpand on toggle', async () => {
+    it('should collapse detail sidebar on toggle', async () => {
       const user = userEvent.setup()
       render(<AppDetailNav navigation={navigation} />)
 
       await user.click(screen.getByTestId('toggle-button'))
 
-      expect(mockSetAppSidebarExpand).toHaveBeenCalledWith('collapse')
+      expect(mockSetDetailSidebarMode).toHaveBeenCalledWith('collapse')
     })
 
     it('should toggle from collapse to expand', async () => {
       const user = userEvent.setup()
-      mockAppSidebarExpand = 'collapse'
+      mockDetailSidebarMode = 'collapse'
       render(<AppDetailNav navigation={navigation} />)
 
       await user.click(screen.getByTestId('toggle-button'))
 
-      expect(mockSetAppSidebarExpand).toHaveBeenCalledWith('expand')
-    })
-  })
-
-  describe('Sidebar persistence', () => {
-    it('should persist expand state to localStorage', () => {
-      render(<AppDetailNav navigation={navigation} />)
-      expect(localStorage.setItem).toHaveBeenCalledWith('app-detail-collapse-or-expand', 'expand')
+      expect(mockSetDetailSidebarMode).toHaveBeenCalledWith('expand')
     })
   })
 
@@ -218,7 +203,7 @@ describe('AppDetailNav', () => {
       act(() => {
         cb!({ preventDefault: vi.fn() })
       })
-      expect(mockSetAppSidebarExpand).toHaveBeenCalledWith('collapse')
+      expect(mockSetDetailSidebarMode).toHaveBeenCalledWith('collapse')
     })
   })
 

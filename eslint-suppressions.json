@@ -378,11 +378,6 @@
       "count": 1
     }
   },
-  "web/app/components/app-sidebar/index.tsx": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
   "web/app/components/app/annotation/add-annotation-modal/edit-item/index.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1

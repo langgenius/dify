@@ -41,6 +41,7 @@ import {
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
+import { useSetDetailSidebarMode } from '@/app/components/main-nav/storage'
 import { ANNOTATION_DEFAULT, DATASET_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -112,12 +113,12 @@ export const useConfiguration = (): ConfigurationViewModel => {
   const { isLoadingCurrentWorkspace, currentWorkspace, userProfile, workspacePermissionKeys } = useAppContext()
   const openIntegrationsSetting = useIntegrationsSetting()
 
-  const { appDetail, showAppConfigureFeaturesModal, setAppSidebarExpand, setShowAppConfigureFeaturesModal } = useAppStore(useShallow(state => ({
+  const { appDetail, showAppConfigureFeaturesModal, setShowAppConfigureFeaturesModal } = useAppStore(useShallow(state => ({
     appDetail: state.appDetail,
-    setAppSidebarExpand: state.setAppSidebarExpand,
     showAppConfigureFeaturesModal: state.showAppConfigureFeaturesModal,
     setShowAppConfigureFeaturesModal: state.setShowAppConfigureFeaturesModal,
   })))
+  const setDetailSidebarMode = useSetDetailSidebarMode()
 
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
   const latestPublishedAt = useMemo(() => appDetail?.model_config?.updated_at, [appDetail])
@@ -568,8 +569,8 @@ export const useConfiguration = (): ConfigurationViewModel => {
         { id: `${Date.now()}-no-repeat`, model: '', provider: '', parameters: {} },
       ],
     )
-    setAppSidebarExpand('collapse')
-  }, [completionParamsState, handleMultipleModelConfigsChange, modelConfig.model_id, modelConfig.provider, setAppSidebarExpand])
+    setDetailSidebarMode('collapse')
+  }, [completionParamsState, handleMultipleModelConfigsChange, modelConfig.model_id, modelConfig.provider, setDetailSidebarMode])
 
   const onAgentSettingChange = useCallback((config: ModelConfig['agentConfig']) => {
     setModelConfig(produce(modelConfig, (draft: ModelConfig) => {
