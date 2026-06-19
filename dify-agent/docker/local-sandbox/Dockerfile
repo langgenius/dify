@@ -45,7 +45,8 @@ ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 
 COPY --from=packages ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 
-RUN ln -s ${VIRTUAL_ENV}/bin/dify-agent /usr/local/bin/dify-agent \
+RUN ${VIRTUAL_ENV}/bin/python -m compileall -q ${VIRTUAL_ENV}/lib/python3.12/site-packages \
+    && ln -s ${VIRTUAL_ENV}/bin/dify-agent /usr/local/bin/dify-agent \
     && ln -s ${VIRTUAL_ENV}/bin/shellctl /usr/local/bin/shellctl \
     && useradd --create-home --shell /bin/sh dify \
     && mkdir -p /mnt/drive \
