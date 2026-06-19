@@ -1,7 +1,9 @@
 import json
 from typing import Any, TypedDict
 
+from dependency_injector.wiring import Provide, inject
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -14,13 +16,10 @@ from core.app.app_config.entities import (
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfigManager
 from core.app.apps.chat.app_config_manager import ChatAppConfigManager
 from core.app.apps.completion.app_config_manager import CompletionAppConfigManager
+from core.di.container import CoreContainer
 from core.helper import encrypter
 from core.prompt.simple_prompt_transform import SimplePromptTransform
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from dependency_injector.wiring import Provide, inject
-from sqlalchemy.orm import Session
-
-from core.di.container import CoreContainer
 from events.app_event import app_was_created
 from graphon.file import FileUploadConfig
 from graphon.model_runtime.entities.llm_entities import LLMMode
@@ -120,7 +119,11 @@ class WorkflowConverter:
 
     @inject
     def convert_app_model_config_to_workflow(
-        self, app_model: App, app_model_config: AppModelConfig, account_id: str, session: Session = Provide[CoreContainer.db_session]
+        self,
+        app_model: App,
+        app_model_config: AppModelConfig,
+        account_id: str,
+        session: Session = Provide[CoreContainer.db_session],
     ):
         """
         Convert app model config to workflow mode

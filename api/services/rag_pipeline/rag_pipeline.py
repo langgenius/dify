@@ -8,13 +8,12 @@ from datetime import UTC, datetime
 from typing import Any, cast
 from uuid import uuid4
 
+from dependency_injector.wiring import Provide, inject
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
 from configs import dify_config
-from core.di.container import CoreContainer
-from dependency_injector.wiring import Provide, inject
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.entities.datasource_entities import (
@@ -29,6 +28,7 @@ from core.datasource.entities.datasource_entities import (
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.datasource.website_crawl.website_crawl_plugin import WebsiteCrawlDatasourcePlugin
+from core.di.container import CoreContainer
 from core.helper import marketplace
 from core.rag.entities import DatasourceCompletedEvent, DatasourceErrorEvent, DatasourceProcessingEvent
 from core.repositories.factory import DifyCoreRepositoryFactory, OrderConfig

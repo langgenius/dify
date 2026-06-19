@@ -9,12 +9,12 @@ from opentelemetry.trace.span import INVALID_SPAN_ID, INVALID_TRACE_ID
 from configs import dify_config
 from contexts.wrapper import RecyclableContextVar
 from controllers.console.error import UnauthorizedAndForceLogout
+from core.di.container import CoreContainer
 from core.logging.context import init_request_context
 from dify_app import DifyApp
 from extensions.ext_socketio import sio
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import LicenseStatus
-from core.di.container import CoreContainer
 
 logger = logging.getLogger(__name__)
 

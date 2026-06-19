@@ -1,12 +1,12 @@
 import json
 from typing import Any
 
+from dependency_injector.wiring import Provide, inject
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.di.container import CoreContainer
 from core.helper import encrypter
-from dependency_injector.wiring import Provide, inject
 from models.source import DataSourceApiKeyAuthBinding
 from services.auth.api_key_auth_factory import ApiKeyAuthFactory
 
