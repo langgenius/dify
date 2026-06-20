@@ -1,4 +1,4 @@
-from typing import Any, Type, cast
+from typing import Any, cast
 
 from core.extension.extensible import ExtensionModule
 from core.moderation.base import Moderation, ModerationInputsResult, ModerationOutputsResult
@@ -22,7 +22,7 @@ class ModerationFactory:
         :param config: the form config data
         :return:
         """
-        extension_class = cast(Type[Moderation], code_based_extension.extension_class(ExtensionModule.MODERATION, name))
+        extension_class = cast(type[Moderation], code_based_extension.extension_class(ExtensionModule.MODERATION, name))
         extension_class.validate_config(tenant_id, config)
 
     def moderation_for_inputs(self, inputs: dict[str, Any], query: str = "") -> ModerationInputsResult:

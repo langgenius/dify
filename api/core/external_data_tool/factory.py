@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any, Type, cast
+from typing import Any, cast
 
 from core.extension.extensible import ExtensionModule
 from core.external_data_tool.base import ExternalDataTool
@@ -23,7 +23,9 @@ class ExternalDataToolFactory:
         :param config: the form config data
         :return:
         """
-        extension_class = cast(Type[ExternalDataTool], code_based_extension.extension_class(ExtensionModule.EXTERNAL_DATA_TOOL, name))
+        extension_class = cast(
+            type[ExternalDataTool], code_based_extension.extension_class(ExtensionModule.EXTERNAL_DATA_TOOL, name)
+        )
         extension_class.validate_config(tenant_id, config)
 
     def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:
