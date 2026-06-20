@@ -8,7 +8,6 @@ export const Dialog = BaseDialog.Root
 export const DialogTrigger = BaseDialog.Trigger
 export const DialogTitle = BaseDialog.Title
 export const DialogDescription = BaseDialog.Description
-export const DialogPortal = BaseDialog.Portal
 
 type DialogCloseButtonProps = Omit<BaseDialog.Close.Props, 'children'>
 
@@ -45,7 +44,7 @@ export function DialogContent({
   backdropProps,
 }: DialogContentProps) {
   return (
-    <DialogPortal>
+    <BaseDialog.Portal>
       <BaseDialog.Backdrop
         {...backdropProps}
         className={cn(
@@ -63,6 +62,6 @@ export function DialogContent({
       >
         {children}
       </BaseDialog.Popup>
-    </DialogPortal>
+    </BaseDialog.Portal>
   )
 }
