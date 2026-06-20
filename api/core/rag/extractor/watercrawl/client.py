@@ -71,9 +71,7 @@ class BaseAPIClient:
         stream = kwargs.pop("stream", False)
         url = urljoin(self.base_url, endpoint)
         if stream:
-            request = self.session.build_request(
-                method, url, params=query_params, json=data, timeout=_STREAM_TIMEOUT
-            )
+            request = self.session.build_request(method, url, params=query_params, json=data, timeout=_STREAM_TIMEOUT)
             return self.session.send(request, stream=True, **kwargs)
 
         return self.session.request(method, url, params=query_params, json=data, **kwargs)
