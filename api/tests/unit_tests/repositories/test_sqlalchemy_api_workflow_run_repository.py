@@ -2,11 +2,15 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 from graphon.nodes.human_input.entities import FormDefinition, ParagraphInputConfig, UserActionConfig
 from graphon.nodes.human_input.enums import FormInputType
 from models.human_input import RecipientType
-from repositories.sqlalchemy_api_workflow_run_repository import _build_human_input_required_reason
+from repositories.sqlalchemy_api_workflow_run_repository import (
+    DifyAPISQLAlchemyWorkflowRunRepository,
+    _build_human_input_required_reason,
+)
 
 
 def _build_form_model() -> SimpleNamespace:
@@ -62,3 +66,30 @@ def test_build_human_input_required_reason_falls_back_to_console_token() -> None
     assert reason.node_id == "node-1"
     assert reason.actions[0].id == "approve"
     assert not hasattr(reason, "form_token")
+
+
+def _make_run_repo() -> tuple[DifyAPISQLAlchemyWorkflowRunRepository, MagicMock]:
+    session = MagicMock()
+    session_maker = MagicMock()
+    session_maker.return_value.__enter__.return_value = session
+    return DifyAPISQLAlchemyWorkflowRunRepository(session_maker), session
+
+
+def test_delete_runs_by_ids_rowcount_none_returns_zero() -> None:
+    repo, session = _make_run_repo()
+    delete_result = MagicMock()
+    delete_result.rowcount = None
+    session.execute.return_value = delete_result
+
+    assert repo.delete_runs_by_ids(["run-1", "run-2"]) == 0
+
+
+def test_delete_runs_by_app_rowcount_none_returns_zero() -> None:
+    repo, session = _make_run_repo()
+    # select returns one ID (< default batch_size), loop exits after first batch
+    session.scalars.return_value.all.return_value = ["run-1"]
+    delete_result = MagicMock()
+    delete_result.rowcount = None
+    session.execute.return_value = delete_result
+
+    assert repo.delete_runs_by_app("tenant-1", "app-1") == 0
