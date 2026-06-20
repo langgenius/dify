@@ -12,6 +12,7 @@ from flask import Flask
 from sqlalchemy.orm import Session
 
 from controllers.openapi.auth.data import AuthData
+from extensions.ext_database import db
 from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType, reset_auth_ctx, set_auth_ctx
 from models import Account, Tenant
 from services.account_service import AccountService, TenantService
@@ -58,7 +59,7 @@ def add_tenant_for_account(account: Account, *, role: str = "normal", name: str 
     with patch("services.account_service.FeatureService") as mock_feature_service:
         mock_feature_service.get_system_features.return_value.is_allow_create_workspace = True
         tenant = TenantService.create_tenant(name=name)
-    TenantService.create_tenant_member(tenant, account, role=role)
+    TenantService.create_tenant_member(tenant, account, db.session, role=role)
     return tenant
 
 

@@ -17,6 +17,8 @@ from unittest.mock import Mock, patch
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
+import pytest
+
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models.dataset import (
     AppDatasetJoin,
@@ -703,7 +705,7 @@ class TestDocumentSegmentIndexing:
         # Assert
         assert segment.hit_count == 5
 
-    def test_document_segment_attachments_prefers_files_url_for_source_url(self, monkeypatch):
+    def test_document_segment_attachments_prefers_files_url_for_source_url(self, monkeypatch: pytest.MonkeyPatch):
         """Test attachment source URLs use FILES_URL before falling back to CONSOLE_API_URL."""
         # Arrange
         segment = DocumentSegment(

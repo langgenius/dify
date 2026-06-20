@@ -40,7 +40,11 @@ def runner(mocker: MockerFixture, dummy_tool_factory):
 
 class TestOrganizeInstructionPrompt:
     def test_success_all_placeholders(
-        self, runner, dummy_app_config_factory, dummy_agent_config_factory, dummy_prompt_entity_factory
+        self,
+        runner: CotCompletionAgentRunner,
+        dummy_app_config_factory,
+        dummy_agent_config_factory,
+        dummy_prompt_entity_factory,
     ):
         template = (
             "{{instruction}} | {{tools}} | {{tool_names}} | {{historic_messages}} | {{agent_scratchpad}} | {{query}}"
@@ -58,12 +62,14 @@ class TestOrganizeInstructionPrompt:
         tools_payload = json.loads(result.split(" | ")[1])
         assert {item["name"] for item in tools_payload} == {"toolA", "toolB"}
 
-    def test_agent_none_raises(self, runner, dummy_app_config_factory):
+    def test_agent_none_raises(self, runner: CotCompletionAgentRunner, dummy_app_config_factory):
         runner.app_config = dummy_app_config_factory(agent=None)
         with pytest.raises(ValueError, match="Agent configuration is not set"):
             runner._organize_instruction_prompt()
 
-    def test_prompt_entity_none_raises(self, runner, dummy_app_config_factory, dummy_agent_config_factory):
+    def test_prompt_entity_none_raises(
+        self, runner: CotCompletionAgentRunner, dummy_app_config_factory, dummy_agent_config_factory
+    ):
         runner.app_config = dummy_app_config_factory(agent=dummy_agent_config_factory(prompt_entity=None))
         with pytest.raises(ValueError, match="prompt entity is not set"):
             runner._organize_instruction_prompt()
@@ -75,7 +81,7 @@ class TestOrganizeInstructionPrompt:
 
 
 class TestOrganizeHistoricPrompt:
-    def test_with_user_and_assistant_string(self, runner, mocker: MockerFixture):
+    def test_with_user_and_assistant_string(self, runner: CotCompletionAgentRunner, mocker: MockerFixture):
         user_msg = UserPromptMessage(content="Hello")
         assistant_msg = AssistantPromptMessage(content="Hi there")
 
@@ -90,7 +96,7 @@ class TestOrganizeHistoricPrompt:
         assert "Question: Hello" in result
         assert "Hi there" in result
 
-    def test_assistant_list_with_text_content(self, runner, mocker: MockerFixture):
+    def test_assistant_list_with_text_content(self, runner: CotCompletionAgentRunner, mocker: MockerFixture):
         text_content = TextPromptMessageContent(data="Partial answer")
         assistant_msg = AssistantPromptMessage(content=[text_content])
 
@@ -104,7 +110,9 @@ class TestOrganizeHistoricPrompt:
 
         assert "Partial answer" in result
 
-    def test_assistant_list_with_non_text_content_ignored(self, runner, mocker: MockerFixture):
+    def test_assistant_list_with_non_text_content_ignored(
+        self, runner: CotCompletionAgentRunner, mocker: MockerFixture
+    ):
         non_text_content = ImagePromptMessageContent(format="url", mime_type="image/png")
         assistant_msg = AssistantPromptMessage(content=[non_text_content])
 
@@ -117,7 +125,7 @@ class TestOrganizeHistoricPrompt:
         result = runner._organize_historic_prompt()
         assert result == ""
 
-    def test_empty_history(self, runner, mocker: MockerFixture):
+    def test_empty_history(self, runner: CotCompletionAgentRunner, mocker: MockerFixture):
         mocker.patch.object(
             runner,
             "_organize_historic_prompt_messages",
