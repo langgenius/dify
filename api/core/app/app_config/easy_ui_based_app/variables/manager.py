@@ -45,7 +45,9 @@ class BasicVariablesConfigManager:
 
         # variables and external_data_tools
         for variables in config.get("user_input_form", []):
-            variable_type = list(variables.keys())[0]
+            if not variables:
+                continue
+            variable_type = next(iter(variables))
             if variable_type == VariableEntityType.EXTERNAL_DATA_TOOL:
                 variable = variables[variable_type]
                 if "config" not in variable:
@@ -112,7 +114,9 @@ class BasicVariablesConfigManager:
 
         variables = []
         for item in config["user_input_form"]:
-            key = list(item.keys())[0]
+            if not item:
+                continue
+            key = next(iter(item))
             # if key not in {"text-input", "select", "paragraph", "number", "external_data_tool"}:
             if key not in {
                 VariableEntityType.TEXT_INPUT,
