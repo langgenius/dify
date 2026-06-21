@@ -656,7 +656,7 @@ def _patch_workflow_trace_deps(monkeypatch, trace_instance):
     trace_instance.add_run = MagicMock()
 
 
-def test_workflow_trace_id_uses_message_id_not_external(trace_instance, monkeypatch):
+def test_workflow_trace_id_uses_message_id_not_external(trace_instance, monkeypatch: pytest.MonkeyPatch):
     """Chatflow with external trace_id: LangSmith trace_id must be message_id, not external."""
     trace_info = _make_workflow_trace_info(
         message_id="msg-abc",
@@ -677,7 +677,7 @@ def test_workflow_trace_id_uses_message_id_not_external(trace_instance, monkeypa
     assert trace_info.metadata.get("external_trace_id") == "external-999"
 
 
-def test_workflow_trace_id_pure_workflow_uses_run_id(trace_instance, monkeypatch):
+def test_workflow_trace_id_pure_workflow_uses_run_id(trace_instance, monkeypatch: pytest.MonkeyPatch):
     """Pure workflow (no message_id) with external trace_id: trace_id must be workflow_run_id."""
     trace_info = _make_workflow_trace_info(
         message_id=None,

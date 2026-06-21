@@ -1276,7 +1276,7 @@ class TestTenantService:
         )
 
         # Create tenant member
-        tenant_member = TenantService.create_tenant_member(tenant, account, role="admin")
+        tenant_member = TenantService.create_tenant_member(tenant, account, db_session_with_containers, role="admin")
 
         assert tenant_member.tenant_id == tenant.id
         assert tenant_member.account_id == account.id
@@ -1317,11 +1317,11 @@ class TestTenantService:
         )
 
         # Create first owner
-        TenantService.create_tenant_member(tenant, account1, role="owner")
+        TenantService.create_tenant_member(tenant, account1, db_session_with_containers, role="owner")
 
         # Try to create second owner (should fail)
         with pytest.raises(Exception, match="Tenant already has an owner"):
-            TenantService.create_tenant_member(tenant, account2, role="owner")
+            TenantService.create_tenant_member(tenant, account2, db_session_with_containers, role="owner")
 
     def test_create_tenant_member_existing_member(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -1349,11 +1349,11 @@ class TestTenantService:
         )
 
         # Create member with initial role
-        tenant_member1 = TenantService.create_tenant_member(tenant, account, role="normal")
+        tenant_member1 = TenantService.create_tenant_member(tenant, account, db_session_with_containers, role="normal")
         assert tenant_member1.role == "normal"
 
         # Update member role
-        tenant_member2 = TenantService.create_tenant_member(tenant, account, role="editor")
+        tenant_member2 = TenantService.create_tenant_member(tenant, account, db_session_with_containers, role="editor")
         assert tenant_member2.tenant_id == tenant_member1.tenant_id
         assert tenant_member2.account_id == tenant_member1.account_id
         assert tenant_member2.role == "editor"
@@ -1384,8 +1384,8 @@ class TestTenantService:
         tenant2 = TenantService.create_tenant(name=tenant2_name)
 
         # Add account to both tenants
-        TenantService.create_tenant_member(tenant1, account, role="normal")
-        TenantService.create_tenant_member(tenant2, account, role="admin")
+        TenantService.create_tenant_member(tenant1, account, db_session_with_containers, role="normal")
+        TenantService.create_tenant_member(tenant2, account, db_session_with_containers, role="admin")
 
         # Get join tenants
         join_tenants = TenantService.get_join_tenants(account)
@@ -1421,7 +1421,7 @@ class TestTenantService:
         tenant = TenantService.create_tenant(name=tenant_name)
 
         # Add account to tenant and set as current
-        TenantService.create_tenant_member(tenant, account, role="owner")
+        TenantService.create_tenant_member(tenant, account, db_session_with_containers, role="owner")
         account.current_tenant = tenant
 
         db_session_with_containers.commit()
@@ -1486,8 +1486,8 @@ class TestTenantService:
         tenant2 = TenantService.create_tenant(name=tenant2_name)
 
         # Add account to both tenants
-        TenantService.create_tenant_member(tenant1, account, role="owner")
-        TenantService.create_tenant_member(tenant2, account, role="admin")
+        TenantService.create_tenant_member(tenant1, account, db_session_with_containers, role="owner")
+        TenantService.create_tenant_member(tenant2, account, db_session_with_containers, role="admin")
 
         # Set initial current tenant
         account.current_tenant = tenant1
@@ -1588,8 +1588,8 @@ class TestTenantService:
         )
 
         # Add members with different roles
-        TenantService.create_tenant_member(tenant, owner_account, role="owner")
-        TenantService.create_tenant_member(tenant, admin_account, role="admin")
+        TenantService.create_tenant_member(tenant, owner_account, db_session_with_containers, role="owner")
+        TenantService.create_tenant_member(tenant, admin_account, db_session_with_containers, role="admin")
 
         # Check if tenant has owner role
         from models.account import TenantAccountRole
@@ -1648,7 +1648,7 @@ class TestTenantService:
         )
 
         # Add account to tenant with specific role
-        TenantService.create_tenant_member(tenant, account, role="editor")
+        TenantService.create_tenant_member(tenant, account, db_session_with_containers, role="editor")
 
         # Get user role
         user_role = TenantService.get_user_role(account, tenant)
@@ -1690,8 +1690,8 @@ class TestTenantService:
         )
 
         # Add members with different roles
-        TenantService.create_tenant_member(tenant, owner_account, role="owner")
-        TenantService.create_tenant_member(tenant, member_account, role="normal")
+        TenantService.create_tenant_member(tenant, owner_account, db_session_with_containers, role="owner")
+        TenantService.create_tenant_member(tenant, member_account, db_session_with_containers, role="normal")
 
         # Check owner permission to add member (should succeed)
         TenantService.check_member_permission(tenant, owner_account, member_account, "add")
@@ -1723,7 +1723,7 @@ class TestTenantService:
         )
 
         # Add account to tenant
-        TenantService.create_tenant_member(tenant, account, role="owner")
+        TenantService.create_tenant_member(tenant, account, db_session_with_containers, role="owner")
 
         # Try to check permission with invalid action
         with pytest.raises(Exception, match="Invalid action"):
@@ -1755,7 +1755,7 @@ class TestTenantService:
         )
 
         # Add account to tenant
-        TenantService.create_tenant_member(tenant, account, role="owner")
+        TenantService.create_tenant_member(tenant, account, db_session_with_containers, role="owner")
 
         # Try to check permission to operate self
         with pytest.raises(Exception, match="Cannot operate self"):
@@ -1796,8 +1796,8 @@ class TestTenantService:
         )
 
         # Add members with different roles
-        TenantService.create_tenant_member(tenant, owner_account, role="owner")
-        TenantService.create_tenant_member(tenant, member_account, role="normal")
+        TenantService.create_tenant_member(tenant, owner_account, db_session_with_containers, role="owner")
+        TenantService.create_tenant_member(tenant, member_account, db_session_with_containers, role="normal")
 
         app = App(
             tenant_id=tenant.id,
@@ -1876,7 +1876,7 @@ class TestTenantService:
         )
 
         # Add account to tenant
-        TenantService.create_tenant_member(tenant, account, role="owner")
+        TenantService.create_tenant_member(tenant, account, db_session_with_containers, role="owner")
 
         # Try to remove self
         with pytest.raises(Exception, match="Cannot operate self"):
@@ -1917,7 +1917,7 @@ class TestTenantService:
         )
 
         # Add only owner to tenant
-        TenantService.create_tenant_member(tenant, owner_account, role="owner")
+        TenantService.create_tenant_member(tenant, owner_account, db_session_with_containers, role="owner")
 
         # Try to remove non-member
         with pytest.raises(Exception, match="Member not in tenant"):
@@ -1956,8 +1956,8 @@ class TestTenantService:
         )
 
         # Add members with different roles
-        TenantService.create_tenant_member(tenant, owner_account, role="owner")
-        TenantService.create_tenant_member(tenant, member_account, role="normal")
+        TenantService.create_tenant_member(tenant, owner_account, db_session_with_containers, role="owner")
+        TenantService.create_tenant_member(tenant, member_account, db_session_with_containers, role="normal")
 
         # Update member role
         TenantService.update_member_role(tenant, member_account, "admin", owner_account)
@@ -2005,8 +2005,8 @@ class TestTenantService:
         )
 
         # Add members with different roles
-        TenantService.create_tenant_member(tenant, owner_account, role="owner")
-        TenantService.create_tenant_member(tenant, member_account, role="admin")
+        TenantService.create_tenant_member(tenant, owner_account, db_session_with_containers, role="owner")
+        TenantService.create_tenant_member(tenant, member_account, db_session_with_containers, role="admin")
 
         # Update member role to owner
         TenantService.update_member_role(tenant, member_account, "owner", owner_account)
@@ -2062,8 +2062,8 @@ class TestTenantService:
         )
 
         # Add members with different roles
-        TenantService.create_tenant_member(tenant, owner_account, role="owner")
-        TenantService.create_tenant_member(tenant, member_account, role="admin")
+        TenantService.create_tenant_member(tenant, owner_account, db_session_with_containers, role="owner")
+        TenantService.create_tenant_member(tenant, member_account, db_session_with_containers, role="admin")
 
         # Try to update member role to already assigned role
         with pytest.raises(Exception, match="The provided role is already assigned to the member"):
@@ -2160,7 +2160,7 @@ class TestTenantService:
             password=password,
         )
         existing_tenant = TenantService.create_tenant(name=existing_tenant_name)
-        TenantService.create_tenant_member(existing_tenant, account, role="owner")
+        TenantService.create_tenant_member(existing_tenant, account, db_session_with_containers, role="owner")
         account.current_tenant = existing_tenant
 
         db_session_with_containers.commit()
@@ -2243,9 +2243,9 @@ class TestTenantService:
         )
 
         # Add members with different roles
-        TenantService.create_tenant_member(tenant, owner_account, role="owner")
-        TenantService.create_tenant_member(tenant, admin_account, role="admin")
-        TenantService.create_tenant_member(tenant, normal_account, role="normal")
+        TenantService.create_tenant_member(tenant, owner_account, db_session_with_containers, role="owner")
+        TenantService.create_tenant_member(tenant, admin_account, db_session_with_containers, role="admin")
+        TenantService.create_tenant_member(tenant, normal_account, db_session_with_containers, role="normal")
 
         # Get tenant members
         members = TenantService.get_tenant_members(tenant)
@@ -2309,9 +2309,11 @@ class TestTenantService:
         )
 
         # Add members with different roles
-        TenantService.create_tenant_member(tenant, owner_account, role="owner")
-        TenantService.create_tenant_member(tenant, dataset_operator_account, role="dataset_operator")
-        TenantService.create_tenant_member(tenant, normal_account, role="normal")
+        TenantService.create_tenant_member(tenant, owner_account, db_session_with_containers, role="owner")
+        TenantService.create_tenant_member(
+            tenant, dataset_operator_account, db_session_with_containers, role="dataset_operator"
+        )
+        TenantService.create_tenant_member(tenant, normal_account, db_session_with_containers, role="normal")
 
         # Get dataset operator members
         dataset_operators = TenantService.get_dataset_operator_members(tenant)
@@ -2742,7 +2744,7 @@ class TestRegisterService:
             interface_language="en-US",
             password=inviter_password,
         )
-        TenantService.create_tenant_member(tenant, inviter, role="owner")
+        TenantService.create_tenant_member(tenant, inviter, db_session_with_containers, role="owner")
 
         # Mock the email task
         with patch("services.account_service.send_invite_member_mail_task") as mock_send_mail:
@@ -2808,7 +2810,7 @@ class TestRegisterService:
             interface_language="en-US",
             password=inviter_password,
         )
-        TenantService.create_tenant_member(tenant, inviter, role="owner")
+        TenantService.create_tenant_member(tenant, inviter, db_session_with_containers, role="owner")
 
         # Create existing account
         existing_account = AccountService.create_account(
@@ -2877,7 +2879,7 @@ class TestRegisterService:
             interface_language="en-US",
             password=inviter_password,
         )
-        TenantService.create_tenant_member(tenant, inviter, role="owner")
+        TenantService.create_tenant_member(tenant, inviter, db_session_with_containers, role="owner")
 
         # Create existing account with pending status
         existing_account = AccountService.create_account(
@@ -2891,7 +2893,7 @@ class TestRegisterService:
         db_session_with_containers.commit()
 
         # Add existing account to tenant
-        TenantService.create_tenant_member(tenant, existing_account, role="normal")
+        TenantService.create_tenant_member(tenant, existing_account, db_session_with_containers, role="normal")
 
         # Mock the email task
         with patch("services.account_service.send_invite_member_mail_task") as mock_send_mail:
@@ -2967,7 +2969,7 @@ class TestRegisterService:
             interface_language="en-US",
             password=inviter_password,
         )
-        TenantService.create_tenant_member(tenant, inviter, role="owner")
+        TenantService.create_tenant_member(tenant, inviter, db_session_with_containers, role="owner")
 
         # Create existing account with active status
         existing_account = AccountService.create_account(
@@ -2981,7 +2983,7 @@ class TestRegisterService:
         db_session_with_containers.commit()
 
         # Add existing account to tenant
-        TenantService.create_tenant_member(tenant, existing_account, role="normal")
+        TenantService.create_tenant_member(tenant, existing_account, db_session_with_containers, role="normal")
 
         # Execute invitation (should fail for active member)
         with pytest.raises(AccountAlreadyInTenantError, match="Account already in tenant."):
@@ -3193,7 +3195,7 @@ class TestRegisterService:
             interface_language="en-US",
             password=password,
         )
-        TenantService.create_tenant_member(tenant, account, role="normal")
+        TenantService.create_tenant_member(tenant, account, db_session_with_containers, role="normal")
 
         # Generate a real token
         token = RegisterService.generate_invite_token(tenant, account)
@@ -3313,7 +3315,7 @@ class TestRegisterService:
             interface_language="en-US",
             password=password,
         )
-        TenantService.create_tenant_member(tenant, account, role="normal")
+        TenantService.create_tenant_member(tenant, account, db_session_with_containers, role="normal")
 
         # Create a real token but with mismatched account ID
         from extensions.ext_redis import redis_client
@@ -3363,7 +3365,7 @@ class TestRegisterService:
             interface_language="en-US",
             password=password,
         )
-        TenantService.create_tenant_member(tenant, account, role="normal")
+        TenantService.create_tenant_member(tenant, account, db_session_with_containers, role="normal")
 
         # Change tenant status to non-normal
         tenant.status = TenantStatus.ARCHIVE
