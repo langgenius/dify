@@ -27,6 +27,7 @@ from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import VariableLoader
 from graphon.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
 from models.dataset import Document, Pipeline
+from models.enums import IndexingStatus
 from models.model import EndUser
 from models.workflow import Workflow
 
@@ -302,7 +303,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
                     select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
                 )
                 if document:
-                    document.indexing_status = "error"
+                    document.indexing_status = IndexingStatus.ERROR
                     document.error = event.error or "Unknown error"
                     db.session.add(document)
                     db.session.commit()
