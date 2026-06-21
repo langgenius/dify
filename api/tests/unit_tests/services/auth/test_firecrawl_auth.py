@@ -82,11 +82,18 @@ class TestFirecrawlAuth:
             "limit": 1,
             "scrapeOptions": {"onlyMainContent": True},
         }
-        mock_post.assert_called_once_with(
-            "https://api.firecrawl.dev/v1/crawl",
-            headers={"Content-Type": "application/json", "Authorization": "Bearer test_api_key_123"},
-            json=expected_data,
-        )
+        mock_post.assert_called_once()
+        call_args = mock_post.call_args
+        assert call_args.args == ("https://api.firecrawl.dev/v1/crawl",)
+        assert call_args.kwargs["headers"] == {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test_api_key_123",
+        }
+        assert call_args.kwargs["json"] == expected_data
+        timeout = call_args.kwargs["timeout"]
+        assert isinstance(timeout, httpx.Timeout)
+        assert timeout.connect is not None
+        assert timeout.read is not None
 
     @pytest.mark.parametrize(
         ("status_code", "error_message"),

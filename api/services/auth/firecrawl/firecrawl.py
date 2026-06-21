@@ -5,6 +5,8 @@ import httpx
 
 from services.auth.api_key_auth_base import ApiKeyAuthBase, AuthCredentials
 
+FIRECRAWL_AUTH_REQUEST_TIMEOUT: httpx.Timeout = httpx.Timeout(10.0, connect=3.0)
+
 
 class FirecrawlAuth(ApiKeyAuthBase):
     def __init__(self, credentials: AuthCredentials):
@@ -42,7 +44,7 @@ class FirecrawlAuth(ApiKeyAuthBase):
         return f"{self.base_url.rstrip('/')}/{path.lstrip('/')}"
 
     def _post_request(self, url, data, headers):
-        return httpx.post(url, headers=headers, json=data)
+        return httpx.post(url, headers=headers, json=data, timeout=FIRECRAWL_AUTH_REQUEST_TIMEOUT)
 
     def _handle_error(self, response):
         try:
