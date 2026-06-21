@@ -164,4 +164,51 @@ describe('Operator Component', () => {
       })
     })
   })
+
+  describe('Visibility Action', () => {
+    it('should call onAction for "visibility" when the credential is editable and manageable', async () => {
+      // Arrange
+      const credential = createMockCredential(CredentialTypeEnum.API_KEY)
+      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} canManageCredential />)
+
+      // Act
+      await userEvent.setup().click(screen.getByRole('button'))
+      fireEvent.click(await screen.findByText('plugin.auth.whoCanUse'))
+
+      // Assert
+      await waitFor(() => {
+        expect(mockOnAction).toHaveBeenCalledWith('visibility', credential)
+      })
+    })
+
+    it('should not call onAction for "visibility" when the credential is not editable (legacy/non-owner row)', async () => {
+      // Arrange: is_editable === false means the current user does not own the credential
+      const credential = { ...createMockCredential(CredentialTypeEnum.API_KEY), is_editable: false }
+      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} canManageCredential />)
+
+      // Act
+      await userEvent.setup().click(screen.getByRole('button'))
+      fireEvent.click(await screen.findByText('plugin.auth.whoCanUse'))
+
+      // Assert
+      await waitFor(() => {
+        expect(mockOnAction).not.toHaveBeenCalled()
+      })
+    })
+
+    it('should not call onAction for "visibility" when the user cannot manage credentials', async () => {
+      // Arrange
+      const credential = createMockCredential(CredentialTypeEnum.API_KEY)
+      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
+
+      // Act
+      await userEvent.setup().click(screen.getByRole('button'))
+      fireEvent.click(await screen.findByText('plugin.auth.whoCanUse'))
+
+      // Assert
+      await waitFor(() => {
+        expect(mockOnAction).not.toHaveBeenCalled()
+      })
+    })
+  })
 })

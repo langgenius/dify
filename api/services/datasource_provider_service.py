@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
@@ -22,8 +23,11 @@ from core.tools.utils.encryption import ProviderConfigCache, ProviderConfigEncry
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.provider_entities import FormType
+from models.credential_permission import CredentialType as CredPermType
+from models.enums import PermissionEnum
 from models.oauth import DatasourceOauthParamConfig, DatasourceOauthTenantParamConfig, DatasourceProvider
 from models.provider_ids import DatasourceProviderID
+from services.credential_permission_service import CredentialPermissionService
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +62,22 @@ class DatasourceProviderService:
         if datasource_provider.expires_at == -1:
             return False
         return (datasource_provider.expires_at - 60) < current_time
+
+    @staticmethod
+    def _resolve_visibility(
+        visibility: str | None, default: PermissionEnum = PermissionEnum.ALL_TEAM
+    ) -> PermissionEnum:
+        """Convert a raw visibility string to PermissionEnum, falling back to ``default``.
+
+        ``None`` keeps the legacy behaviour (all_team_members) for API backward compatibility;
+        the UI sends an explicit value when the creator picks a narrower scope.
+        """
+        if not visibility:
+            return default
+        try:
+            return PermissionEnum(visibility)
+        except ValueError:
+            raise ValueError(f"Invalid visibility: {visibility}")
 
     def _refresh_datasource_credentials(
         self,
@@ -382,6 +402,66 @@ class DatasourceProviderService:
             target_provider.is_default = True
         return {"result": "success"}
 
+    def update_datasource_credential_visibility(
+        self,
+        tenant_id: str,
+        datasource_provider_id: DatasourceProviderID,
+        credential_id: str,
+        visibility: str,
+        user: "Account",
+        partial_member_list: list[str] | None = None,
+    ) -> None:
+        """
+        Update the visibility (sharing scope) of a datasource credential.
+
+        - only_me / all_team_members: clears any partial-member rows
+        - partial_members: replaces the partial-member access list (requires a non-empty list)
+
+        Only the creator may change visibility. Legacy credentials (user_id is NULL) have no
+        recorded creator; the first user to set a non-public scope claims ownership so the
+        visibility filter can enforce it (a NULL user_id is otherwise treated as all_team).
+        """
+        visibility_enum = self._resolve_visibility(visibility)
+        with sessionmaker(bind=db.engine).begin() as session:
+            target_provider = session.scalar(
+                select(DatasourceProvider)
+                .where(
+                    DatasourceProvider.tenant_id == tenant_id,
+                    DatasourceProvider.id == credential_id,
+                    DatasourceProvider.provider == datasource_provider_id.provider_name,
+                    DatasourceProvider.plugin_id == datasource_provider_id.plugin_id,
+                )
+                .limit(1)
+            )
+            if target_provider is None:
+                raise ValueError("provider not found")
+
+            if target_provider.user_id is not None and target_provider.user_id != user.id:
+                raise Forbidden("Only the creator can change the visibility of this credential")
+
+            if visibility_enum == PermissionEnum.PARTIAL_TEAM:
+                members = list(dict.fromkeys(partial_member_list or []))
+                if not members:
+                    raise ValueError("partial_member_list is required when visibility is partial_members")
+                CredentialPermissionService.replace_partial_member_list(
+                    session=session,
+                    credential_id=credential_id,
+                    credential_type=CredPermType.DATASOURCE_PROVIDER,
+                    tenant_id=tenant_id,
+                    account_ids=members,
+                )
+            else:
+                CredentialPermissionService.clear_partial_member_list(
+                    session=session,
+                    credential_id=credential_id,
+                    credential_type=CredPermType.DATASOURCE_PROVIDER,
+                )
+
+            # Record ownership so only_me / partial_members can actually be enforced.
+            if target_provider.user_id is None and visibility_enum != PermissionEnum.ALL_TEAM:
+                target_provider.user_id = user.id
+            target_provider.visibility = visibility_enum
+
     def setup_oauth_custom_client_params(
         self,
         tenant_id: str,
@@ -635,9 +715,14 @@ class DatasourceProviderService:
         avatar_url: str | None,
         expire_at: int,
         credentials: dict[str, Any],
+        user_id: str | None = None,
+        visibility: str | None = None,
     ) -> None:
         """
         add datasource oauth provider
+
+        :param user_id: creator account id, persisted so visibility can be enforced later
+        :param visibility: "only_me" or "all_team_members" (OAuth tokens default to only_me)
         """
         credential_type = CredentialType.OAUTH2
         with sessionmaker(bind=db.engine).begin() as session:
@@ -694,6 +779,8 @@ class DatasourceProviderService:
                     encrypted_credentials=credentials,
                     avatar_url=avatar_url or "default",
                     expires_at=expire_at,
+                    user_id=user_id,
+                    visibility=self._resolve_visibility(visibility, default=PermissionEnum.ONLY_ME),
                 )
                 session.add(datasource_provider)
 
@@ -703,6 +790,8 @@ class DatasourceProviderService:
         tenant_id: str,
         provider_id: DatasourceProviderID,
         credentials: dict[str, Any],
+        user_id: str | None = None,
+        visibility: str | None = None,
     ) -> None:
         """
         validate datasource provider credentials.
@@ -710,6 +799,8 @@ class DatasourceProviderService:
         :param tenant_id:
         :param provider:
         :param credentials:
+        :param user_id: creator account id, persisted so visibility can be enforced later
+        :param visibility: "only_me" or "all_team_members" (defaults to all_team_members)
         """
         provider_name = provider_id.provider_name
         plugin_id = provider_id.plugin_id
@@ -764,6 +855,8 @@ class DatasourceProviderService:
                     plugin_id=plugin_id,
                     auth_type=CredentialType.API_KEY,
                     encrypted_credentials=credentials,
+                    user_id=user_id,
+                    visibility=self._resolve_visibility(visibility),
                 )
                 session.add(datasource_provider)
 
@@ -811,9 +904,6 @@ class DatasourceProviderService:
         :param user: current user (id + admin flag drive the visibility filter)
         :return:
         """
-        from models.credential_permission import CredentialType as CredPermType
-        from services.credential_permission_service import CredentialPermissionService
-
         # Get all provider configurations of the current workspace
         query = select(DatasourceProvider).where(
             DatasourceProvider.tenant_id == tenant_id,
@@ -857,6 +947,14 @@ class DatasourceProviderService:
             for key, value in copy_credentials.items():
                 if key in credential_secret_variables:
                     copy_credentials[key] = encrypter.obfuscated_token(value)
+            visibility = datasource_provider.visibility or PermissionEnum.ALL_TEAM
+            partial_member_list: list[str] = []
+            if visibility == PermissionEnum.PARTIAL_TEAM:
+                partial_member_list = list(
+                    CredentialPermissionService.get_partial_member_list(
+                        datasource_provider.id, CredPermType.DATASOURCE_PROVIDER
+                    )
+                )
             copy_credentials_list.append(
                 {
                     "credential": copy_credentials,
@@ -865,15 +963,23 @@ class DatasourceProviderService:
                     "avatar_url": datasource_provider.avatar_url,
                     "id": datasource_provider.id,
                     "is_default": default_provider_id and datasource_provider.id == default_provider_id,
+                    "visibility": str(visibility),
+                    "user_id": datasource_provider.user_id,
+                    # only the creator may change a credential's scope (legacy NULL-owner rows stay editable)
+                    "is_editable": True
+                    if user is None
+                    else (datasource_provider.user_id is None or datasource_provider.user_id == user.id),
+                    "partial_member_list": partial_member_list,
                 }
             )
 
         return copy_credentials_list
 
-    def get_all_datasource_credentials(self, tenant_id: str) -> list[dict]:
+    def get_all_datasource_credentials(self, tenant_id: str, user: "Account | None" = None) -> list[dict]:
         """
         get datasource credentials.
 
+        :param user: current user; when provided the credential list is filtered by visibility
         :return:
         """
         # get all plugin providers
@@ -883,7 +989,7 @@ class DatasourceProviderService:
         for datasource in datasources:
             datasource_provider_id = DatasourceProviderID(f"{datasource.plugin_id}/{datasource.provider}")
             credentials = self.list_datasource_credentials(
-                tenant_id=tenant_id, provider=datasource.provider, plugin_id=datasource.plugin_id
+                tenant_id=tenant_id, provider=datasource.provider, plugin_id=datasource.plugin_id, user=user
             )
             redirect_uri = (
                 f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{datasource_provider_id}/datasource/callback"
@@ -926,10 +1032,11 @@ class DatasourceProviderService:
             )
         return datasource_credentials
 
-    def get_hard_code_datasource_credentials(self, tenant_id: str) -> list[dict]:
+    def get_hard_code_datasource_credentials(self, tenant_id: str, user: "Account | None" = None) -> list[dict]:
         """
         get hard code datasource credentials.
 
+        :param user: current user; when provided the credential list is filtered by visibility
         :return:
         """
         # get all plugin providers
@@ -945,7 +1052,7 @@ class DatasourceProviderService:
             ]:
                 datasource_provider_id = DatasourceProviderID(f"{datasource.plugin_id}/{datasource.provider}")
                 credentials = self.list_datasource_credentials(
-                    tenant_id=tenant_id, provider=datasource.provider, plugin_id=datasource.plugin_id
+                    tenant_id=tenant_id, provider=datasource.provider, plugin_id=datasource.plugin_id, user=user
                 )
                 redirect_uri = "{}/console/api/oauth/plugin/{}/datasource/callback".format(
                     dify_config.CONSOLE_API_URL, datasource_provider_id

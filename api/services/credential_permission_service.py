@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from sqlalchemy import or_, select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import InstrumentedAttribute, Session, scoped_session
 
 from models.account import Account
@@ -26,6 +26,47 @@ class CredentialPermissionService:
                 CredentialPermission.credential_type == credential_type,
             )
         ).all()
+
+    @classmethod
+    def replace_partial_member_list(
+        cls,
+        *,
+        session,
+        credential_id: str,
+        credential_type: str,
+        tenant_id: str,
+        account_ids: Sequence[str],
+    ) -> None:
+        """Replace the partial-member access list of a credential.
+
+        Mirrors DatasetPermissionService.update_partial_member_list. The caller owns
+        the transaction (``session``) so this stays consistent with the visibility update.
+        """
+        session.execute(
+            delete(CredentialPermission).where(
+                CredentialPermission.credential_id == credential_id,
+                CredentialPermission.credential_type == credential_type,
+            )
+        )
+        for account_id in dict.fromkeys(account_ids):
+            session.add(
+                CredentialPermission(
+                    credential_id=credential_id,
+                    credential_type=credential_type,
+                    account_id=account_id,
+                    tenant_id=tenant_id,
+                )
+            )
+
+    @classmethod
+    def clear_partial_member_list(cls, *, session, credential_id: str, credential_type: str) -> None:
+        """Remove all partial-member access rows of a credential (caller owns the transaction)."""
+        session.execute(
+            delete(CredentialPermission).where(
+                CredentialPermission.credential_id == credential_id,
+                CredentialPermission.credential_type == credential_type,
+            )
+        )
 
     @classmethod
     def apply_visibility_filter(
