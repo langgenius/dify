@@ -1,18 +1,36 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
+from core.repositories.factory import OrderConfig
+from graphon.entities import WorkflowNodeExecution
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
 
 
-def _make_repo() -> tuple[DifyAPISQLAlchemyWorkflowNodeExecutionRepository, MagicMock]:
+class _ConcreteNodeRepo(DifyAPISQLAlchemyWorkflowNodeExecutionRepository):
+    def save(self, execution: WorkflowNodeExecution) -> None:
+        pass
+
+    def save_execution_data(self, execution: WorkflowNodeExecution) -> None:
+        pass
+
+    def get_by_workflow_execution(
+        self,
+        workflow_execution_id: str,
+        order_config: OrderConfig | None = None,
+    ) -> Sequence[WorkflowNodeExecution]:
+        return []
+
+
+def _make_repo() -> tuple[_ConcreteNodeRepo, MagicMock]:
     session = MagicMock()
     session_maker = MagicMock()
     session_maker.return_value.__enter__.return_value = session
-    return DifyAPISQLAlchemyWorkflowNodeExecutionRepository(session_maker), session
+    return _ConcreteNodeRepo(session_maker), session
 
 
 def test_delete_expired_executions_rowcount_none_returns_zero() -> None:
