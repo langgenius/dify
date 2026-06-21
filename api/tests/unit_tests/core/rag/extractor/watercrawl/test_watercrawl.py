@@ -73,6 +73,9 @@ class TestBaseAPIClient:
         assert client.session == "session"
         assert captured["headers"]["X-API-Key"] == "k"
         assert captured["headers"]["User-Agent"] == "WaterCrawl-Plugin"
+        assert captured["timeout"] is not None
+        assert captured["timeout"].connect is not None
+        assert captured["timeout"].read is not None
 
     def test_request_stream_and_non_stream_paths(self, monkeypatch: pytest.MonkeyPatch):
         class FakeSession:

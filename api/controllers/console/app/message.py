@@ -338,6 +338,7 @@ class MessageFeedbackExportApi(Resource):
 
         try:
             export_data = FeedbackService.export_feedbacks(
+                db.session(),
                 app_id=app_model.id,
                 from_source=args.from_source,
                 rating=args.rating,
