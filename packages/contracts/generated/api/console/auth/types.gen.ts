@@ -13,6 +13,7 @@ export type DatasourceCredentialPayload = {
     [key: string]: unknown
   }
   name?: string | null
+  visibility?: string | null
 }
 
 export type SimpleResultResponse = {
@@ -45,6 +46,12 @@ export type DatasourceCredentialUpdatePayload = {
 export type DatasourceUpdateNamePayload = {
   credential_id: string
   name: string
+}
+
+export type DatasourceCredentialVisibilityPayload = {
+  credential_id: string
+  partial_member_list?: Array<string> | null
+  visibility: string
 }
 
 export type GetAuthPluginDatasourceDefaultListData = {
@@ -202,3 +209,19 @@ export type PostAuthPluginDatasourceByProviderIdUpdateNameResponses = {
 
 export type PostAuthPluginDatasourceByProviderIdUpdateNameResponse
   = PostAuthPluginDatasourceByProviderIdUpdateNameResponses[keyof PostAuthPluginDatasourceByProviderIdUpdateNameResponses]
+
+export type PostAuthPluginDatasourceByProviderIdVisibilityData = {
+  body: DatasourceCredentialVisibilityPayload
+  path: {
+    provider_id: string
+  }
+  query?: never
+  url: '/auth/plugin/datasource/{provider_id}/visibility'
+}
+
+export type PostAuthPluginDatasourceByProviderIdVisibilityResponses = {
+  200: SimpleResultResponse
+}
+
+export type PostAuthPluginDatasourceByProviderIdVisibilityResponse
+  = PostAuthPluginDatasourceByProviderIdVisibilityResponses[keyof PostAuthPluginDatasourceByProviderIdVisibilityResponses]

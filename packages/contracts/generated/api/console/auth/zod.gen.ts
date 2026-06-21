@@ -15,6 +15,7 @@ export const zDatasourceCredentialsResponse = z.object({
 export const zDatasourceCredentialPayload = z.object({
   credentials: z.record(z.string(), z.unknown()),
   name: z.string().max(100).nullish(),
+  visibility: z.string().nullish(),
 })
 
 /**
@@ -61,6 +62,15 @@ export const zDatasourceCredentialUpdatePayload = z.object({
 export const zDatasourceUpdateNamePayload = z.object({
   credential_id: z.string(),
   name: z.string().max(100),
+})
+
+/**
+ * DatasourceCredentialVisibilityPayload
+ */
+export const zDatasourceCredentialVisibilityPayload = z.object({
+  credential_id: z.string(),
+  partial_member_list: z.array(z.string()).nullish(),
+  visibility: z.string(),
 })
 
 /**
@@ -156,3 +166,15 @@ export const zPostAuthPluginDatasourceByProviderIdUpdateNamePath = z.object({
  * Success
  */
 export const zPostAuthPluginDatasourceByProviderIdUpdateNameResponse = zSimpleResultResponse
+
+export const zPostAuthPluginDatasourceByProviderIdVisibilityBody
+  = zDatasourceCredentialVisibilityPayload
+
+export const zPostAuthPluginDatasourceByProviderIdVisibilityPath = z.object({
+  provider_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zPostAuthPluginDatasourceByProviderIdVisibilityResponse = zSimpleResultResponse
