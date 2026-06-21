@@ -103,3 +103,44 @@ class TestApplyVisibilityFilter:
         assert "WHERE" in compiled
         assert "visibility" in compiled
         assert "user_id" in compiled
+
+
+class TestReplacePartialMemberList:
+    def test_replaces_with_deduped_members(self, credential_id, tenant_id, user_id, other_user_id):
+        session = MagicMock()
+        CredentialPermissionService.replace_partial_member_list(
+            session=session,
+            credential_id=credential_id,
+            credential_type=CredentialType.DATASOURCE_PROVIDER,
+            tenant_id=tenant_id,
+            account_ids=[user_id, other_user_id, user_id],  # duplicate user_id
+        )
+        # one delete + one add per unique member
+        assert session.execute.call_count == 1
+        added = [c.args[0] for c in session.add.call_args_list]
+        assert {a.account_id for a in added} == {user_id, other_user_id}
+        assert all(a.credential_type == CredentialType.DATASOURCE_PROVIDER for a in added)
+
+    def test_empty_list_only_deletes(self, credential_id, tenant_id):
+        session = MagicMock()
+        CredentialPermissionService.replace_partial_member_list(
+            session=session,
+            credential_id=credential_id,
+            credential_type=CredentialType.DATASOURCE_PROVIDER,
+            tenant_id=tenant_id,
+            account_ids=[],
+        )
+        assert session.execute.call_count == 1
+        session.add.assert_not_called()
+
+
+class TestClearPartialMemberList:
+    def test_clear_issues_delete(self, credential_id):
+        session = MagicMock()
+        CredentialPermissionService.clear_partial_member_list(
+            session=session,
+            credential_id=credential_id,
+            credential_type=CredentialType.DATASOURCE_PROVIDER,
+        )
+        assert session.execute.call_count == 1
+        session.add.assert_not_called()

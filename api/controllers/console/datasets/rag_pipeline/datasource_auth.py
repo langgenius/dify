@@ -39,10 +39,19 @@ class DatasourceCredentialPayload(BaseModel):
     credentials: dict[str, Any] = Field(
         description="Plugin-defined credential parameters. The schema is declared by the datasource provider."
     )
+    visibility: str | None = Field(default=None, description="only_me or all_team_members (defaults to all_team)")
 
 
 class DatasourceCredentialDeletePayload(BaseModel):
     credential_id: str
+
+
+class DatasourceCredentialVisibilityPayload(BaseModel):
+    credential_id: str
+    visibility: str = Field(description="only_me, all_team_members, or partial_members")
+    partial_member_list: list[str] | None = Field(
+        default=None, description="account ids granted access when visibility is partial_members"
+    )
 
 
 class DatasourceCredentialUpdatePayload(BaseModel):
@@ -132,6 +141,7 @@ register_schema_models(
     DatasourceOAuthCallbackQuery,
     DatasourceCredentialPayload,
     DatasourceCredentialDeletePayload,
+    DatasourceCredentialVisibilityPayload,
     DatasourceCredentialUpdatePayload,
     DatasourceCustomClientPayload,
     DatasourceDefaultPayload,
@@ -259,6 +269,9 @@ class DatasourceOAuthCallback(Resource):
                 name=oauth_response.metadata.get("name") or None,
                 expire_at=oauth_response.expires_at,
                 credentials=dict(oauth_response.credentials),
+                user_id=user_id,
+                # OAuth tokens are tied to the authorizing user's personal account; default to only_me
+                visibility="only_me",
             )
         return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
 
@@ -274,8 +287,9 @@ class DatasourceAuth(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.CREDENTIAL_CREATE, resource_required=False)
+    @with_current_user
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, provider_id: str):
+    def post(self, current_tenant_id: str, current_user: Account, provider_id: str):
         payload = DatasourceCredentialPayload.model_validate(console_ns.payload or {})
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
@@ -286,6 +300,8 @@ class DatasourceAuth(Resource):
                 provider_id=datasource_provider_id,
                 credentials=payload.credentials,
                 name=payload.name,
+                user_id=current_user.id,
+                visibility=payload.visibility,
             )
         except CredentialsValidateFailedError as ex:
             raise ValueError(str(ex))
@@ -380,11 +396,12 @@ class DatasourceAuthListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @with_current_tenant_id
-    def get(self, current_tenant_id: str):
+    def get(self, current_tenant_id: str, current_user: Account):
         datasource_provider_service = DatasourceProviderService()
         datasources = datasource_provider_service.get_all_datasource_credentials(
-            tenant_id=current_tenant_id, session=db.session()
+            tenant_id=current_tenant_id, user=current_user, session=db.session()
         )
         return dump_response(DatasourceProviderAuthListResponse, {"result": datasources}), 200
 
@@ -399,11 +416,12 @@ class DatasourceHardCodeAuthListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @with_current_tenant_id
-    def get(self, current_tenant_id: str):
+    def get(self, current_tenant_id: str, current_user: Account):
         datasource_provider_service = DatasourceProviderService()
         datasources = datasource_provider_service.get_hard_code_datasource_credentials(
-            tenant_id=current_tenant_id, session=db.session()
+            tenant_id=current_tenant_id, user=current_user, session=db.session()
         )
         return dump_response(DatasourceProviderAuthListResponse, {"result": datasources}), 200
 
@@ -488,5 +506,31 @@ class DatasourceUpdateProviderNameApi(Resource):
             datasource_provider_id=datasource_provider_id,
             name=payload.name,
             credential_id=payload.credential_id,
+        )
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
+
+
+@console_ns.route("/auth/plugin/datasource/<path:provider_id>/visibility")
+class DatasourceUpdateVisibilityApi(Resource):
+    @console_ns.expect(console_ns.models[DatasourceCredentialVisibilityPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str, current_user: Account, provider_id: str):
+        payload = DatasourceCredentialVisibilityPayload.model_validate(console_ns.payload or {})
+        datasource_provider_id = DatasourceProviderID(provider_id)
+        datasource_provider_service = DatasourceProviderService()
+        datasource_provider_service.update_datasource_credential_visibility(
+            tenant_id=current_tenant_id,
+            datasource_provider_id=datasource_provider_id,
+            credential_id=payload.credential_id,
+            visibility=payload.visibility,
+            partial_member_list=payload.partial_member_list,
+            user=current_user,
         )
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200

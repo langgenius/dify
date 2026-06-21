@@ -6,7 +6,7 @@ import {
   useMutation,
   useQuery,
 } from '@tanstack/react-query'
-import { get } from './base'
+import { get, post } from './base'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'data-source-auth'
@@ -77,4 +77,21 @@ export const useInvalidDataSourceAuth = ({
   provider: string
 }) => {
   return useInvalid([NAME_SPACE, 'specific-data-source', pluginId, provider])
+}
+
+// Update the sharing scope (visibility) of a datasource credential.
+// `provider` is `${pluginId}/${name}`, matching the other datasource auth endpoints.
+export const useUpdateDataSourceCredentialVisibility = (
+  provider: string,
+) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'update-visibility', provider],
+    mutationFn: (params: {
+      credential_id: string
+      visibility: string
+      partial_member_list?: string[]
+    }) => {
+      return post(`/auth/plugin/datasource/${provider}/visibility`, { body: params })
+    },
+  })
 }
