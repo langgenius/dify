@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+from graphon.entities import WorkflowExecution
 from graphon.nodes.human_input.entities import FormDefinition, ParagraphInputConfig, UserActionConfig
 from graphon.nodes.human_input.enums import FormInputType
 from models.human_input import RecipientType
@@ -11,6 +12,11 @@ from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,
     _build_human_input_required_reason,
 )
+
+
+class _ConcreteRunRepo(DifyAPISQLAlchemyWorkflowRunRepository):
+    def save(self, execution: WorkflowExecution) -> None:
+        pass
 
 
 def _build_form_model() -> SimpleNamespace:
@@ -68,11 +74,11 @@ def test_build_human_input_required_reason_falls_back_to_console_token() -> None
     assert not hasattr(reason, "form_token")
 
 
-def _make_run_repo() -> tuple[DifyAPISQLAlchemyWorkflowRunRepository, MagicMock]:
+def _make_run_repo() -> tuple[_ConcreteRunRepo, MagicMock]:
     session = MagicMock()
     session_maker = MagicMock()
     session_maker.return_value.__enter__.return_value = session
-    return DifyAPISQLAlchemyWorkflowRunRepository(session_maker), session
+    return _ConcreteRunRepo(session_maker), session
 
 
 def test_delete_runs_by_ids_rowcount_none_returns_zero() -> None:
