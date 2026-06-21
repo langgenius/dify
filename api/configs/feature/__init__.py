@@ -943,10 +943,16 @@ class AuthConfig(BaseSettings):
         default=True,
     )
 
-    OPENAPI_RATE_LIMIT_PER_TOKEN: PositiveInt = Field(
+    OPENAPI_RATE_LIMIT_PER_TOKEN: NonNegativeInt = Field(
         description="Per-token rate limit on /openapi/v1/* (requests per minute). "
-        "Bucket keyed on sha256(token), shared across api replicas via Redis.",
+        "Bucket keyed on sha256(token), shared across api replicas via Redis. "
+        "Set to 0 to disable the per-token limit entirely.",
         default=60,
+    )
+
+    DEVICE_FLOW_APPROVE_RATE_LIMIT_PER_HOUR: PositiveInt = Field(
+        description="Max device-flow approve requests per session per hour on /openapi/oauth/device/approve.",
+        default=10,
     )
 
 

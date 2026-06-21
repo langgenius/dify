@@ -1,17 +1,17 @@
-import type { YamlStore } from '../store/store'
 import type { ConfigFile } from './schema'
-import { newError } from '../errors/base'
-import { ErrorCode } from '../errors/codes'
+import type { YamlStore } from '@/store/store'
+import { newError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
 import { ConfigFileSchema, CURRENT_SCHEMA_VERSION } from './schema'
 
 export type LoadResult
   = | { found: false }
     | { found: true, config: ConfigFile }
 
-export function loadConfig(store: YamlStore): LoadResult {
+export async function loadConfig(store: YamlStore): Promise<LoadResult> {
   let raw: Record<string, unknown> | null
   try {
-    raw = store.getTyped<Record<string, unknown>>()
+    raw = await store.getTyped<Record<string, unknown>>()
   }
   catch (err) {
     throw newError(

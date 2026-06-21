@@ -9,7 +9,7 @@ from controllers.common.errors import (
     RemoteFileUploadError,
     UnsupportedFileTypeError,
 )
-from core.helper import ssrf_proxy
+from core.file import remote_fetcher
 from extensions.ext_database import db
 from fields.file_fields import FileWithSignedUrl, RemoteFileInfo
 from graphon.file import helpers as file_helpers
@@ -60,10 +60,10 @@ class RemoteFileInfoApi(WebApiResource):
             HTTPException: If the remote file cannot be accessed
         """
         decoded_url = helpers.decode_remote_url(url, request.query_string)
-        resp = ssrf_proxy.head(decoded_url)
+        resp = remote_fetcher.make_request("HEAD", decoded_url)
         if resp.status_code != httpx.codes.OK:
             # failed back to get method
-            resp = ssrf_proxy.get(decoded_url, timeout=3)
+            resp = remote_fetcher.make_request("GET", decoded_url, timeout=3)
         resp.raise_for_status()
         info = RemoteFileInfo(
             file_type=resp.headers.get("Content-Type", "application/octet-stream"),
@@ -86,6 +86,7 @@ class RemoteFileUploadApi(WebApiResource):
         }
     )
     @web_ns.response(201, "Remote file uploaded", web_ns.models[FileWithSignedUrl.__name__])
+    @web_ns.expect(web_ns.models[RemoteFileUploadPayload.__name__])
     def post(self, app_model: App, end_user: EndUser):
         """Upload a file from a remote URL.
 
@@ -112,9 +113,9 @@ class RemoteFileUploadApi(WebApiResource):
         url = str(payload.url)
 
         try:
-            resp = ssrf_proxy.head(url=url)
+            resp = remote_fetcher.make_request("HEAD", url=url)
             if resp.status_code != httpx.codes.OK:
-                resp = ssrf_proxy.get(url=url, timeout=3, follow_redirects=True)
+                resp = remote_fetcher.make_request("GET", url=url, timeout=3, follow_redirects=True)
             if resp.status_code != httpx.codes.OK:
                 raise RemoteFileUploadError(f"Failed to fetch file from {url}: {resp.text}")
         except httpx.RequestError as e:
@@ -125,7 +126,7 @@ class RemoteFileUploadApi(WebApiResource):
         if not FileService.is_file_size_within_limit(extension=file_info.extension, file_size=file_info.size):
             raise FileTooLargeError
 
-        content = resp.content if resp.request.method == "GET" else ssrf_proxy.get(url).content
+        content = resp.content if resp.request.method == "GET" else remote_fetcher.make_request("GET", url).content
 
         try:
             upload_file = FileService(db.engine).upload_file(

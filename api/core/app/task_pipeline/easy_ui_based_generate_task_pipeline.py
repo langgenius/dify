@@ -65,19 +65,20 @@ from models.model import AppMode, Conversation, Message, MessageAgentThought, Me
 
 logger = logging.getLogger(__name__)
 
+type EasyUIAppGenerateEntity = ChatAppGenerateEntity | CompletionAppGenerateEntity | AgentChatAppGenerateEntity
 
-class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
+
+class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerateEntity]):
     """
     EasyUIBasedGenerateTaskPipeline is a class that generate stream output and state management for Application.
     """
 
     _task_state: EasyUITaskState
-    _application_generate_entity: ChatAppGenerateEntity | CompletionAppGenerateEntity | AgentChatAppGenerateEntity
     _precomputed_event_type: StreamEvent | None = None
 
     def __init__(
         self,
-        application_generate_entity: ChatAppGenerateEntity | CompletionAppGenerateEntity | AgentChatAppGenerateEntity,
+        application_generate_entity: EasyUIAppGenerateEntity,
         queue_manager: AppQueueManager,
         conversation: Conversation,
         message: Message,
@@ -310,12 +311,13 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                         yield response
                 case QueueLLMChunkEvent() | QueueAgentMessageEvent():
                     chunk = event.chunk
-                    delta_text = chunk.delta.message.content
-                    if delta_text is None:
+                    delta_content = chunk.delta.message.content
+                    if delta_content is None:
                         continue
-                    if isinstance(chunk.delta.message.content, list):
+                    if isinstance(delta_content, list):
+                        # EasyUI streams text only; structured multimodal chunks contribute their text parts.
                         delta_text = ""
-                        for content in chunk.delta.message.content:
+                        for content in delta_content:
                             logger.debug(
                                 "The content type %s in LLM chunk delta message content.: %r", type(content), content
                             )
@@ -331,17 +333,19 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                                         content,
                                     )
                                     continue
+                    else:
+                        delta_text = delta_content
 
                     if not self._task_state.llm_result.prompt_messages:
                         self._task_state.llm_result.prompt_messages = chunk.prompt_messages
 
                     # handle output moderation chunk
-                    should_direct_answer = self._handle_output_moderation_chunk(cast(str, delta_text))
+                    should_direct_answer = self._handle_output_moderation_chunk(delta_text)
                     if should_direct_answer:
                         continue
 
                     current_content = cast(str, self._task_state.llm_result.message.content)
-                    current_content += cast(str, delta_text)
+                    current_content += delta_text
                     self._task_state.llm_result.message.content = current_content
 
                     match event:
@@ -352,13 +356,13 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                                     message_id=self._message_id
                                 )
                             yield self._message_cycle_manager.message_to_stream_response(
-                                answer=cast(str, delta_text),
+                                answer=delta_text,
                                 message_id=self._message_id,
                                 event_type=self._precomputed_event_type,
                             )
                         case _:
                             yield self._agent_message_to_stream_response(
-                                answer=cast(str, delta_text),
+                                answer=delta_text,
                                 message_id=self._message_id,
                             )
                 case QueueMessageReplaceEvent():
@@ -389,9 +393,10 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         if not conversation:
             raise ValueError(f"Conversation {self._conversation_id} not found")
 
-        message.message = PromptMessageUtil.prompt_messages_to_prompt_for_saving(
+        saved_prompt = PromptMessageUtil.prompt_messages_to_prompt_for_saving(
             self._model_config.mode, self._task_state.llm_result.prompt_messages
         )
+        object.__setattr__(message, "message", saved_prompt)
         message.message_tokens = usage.prompt_tokens
         message.message_unit_price = usage.prompt_unit_price
         message.message_price_unit = usage.prompt_price_unit
@@ -413,7 +418,10 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         if trace_manager:
             trace_manager.add_trace_task(
                 TraceTask(
-                    TraceTaskName.MESSAGE_TRACE, conversation_id=self._conversation_id, message_id=self._message_id
+                    TraceTaskName.MESSAGE_TRACE,
+                    conversation_id=self._conversation_id,
+                    message_id=self._message_id,
+                    trace_session_id=self._application_generate_entity.extras.get("trace_session_id"),
                 )
             )
 

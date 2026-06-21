@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, StrictStr, ValidationError
+from werkzeug.exceptions import BadRequest
 
 
 class ParentTraceContext(BaseModel):
@@ -72,6 +73,69 @@ def extract_external_trace_id_from_args(args: Mapping[str, Any]):
     return {}
 
 
+TRACE_SESSION_ID_HEADER = "X-Trace-Session-Id"
+TRACE_SESSION_ID_ARG = "trace_session_id"
+TRACE_SESSION_ID_MAX_LENGTH = 200
+
+
+def _validate_trace_session_id(value: Any) -> str:
+    if not isinstance(value, str):
+        raise BadRequest("trace_session_id must be a string.")
+
+    normalized = value.strip()
+    if not normalized:
+        raise BadRequest("trace_session_id must be 1 to 200 characters after trimming.")
+    if len(normalized) > TRACE_SESSION_ID_MAX_LENGTH:
+        raise BadRequest("trace_session_id must be 1 to 200 characters after trimming.")
+    return normalized
+
+
+def get_trace_session_id(request: Any) -> str | None:
+    """
+    Resolve the Service API trace session ID from explicit request inputs.
+
+    Priority is ``X-Trace-Session-Id`` header, then ``trace_session_id`` query
+    parameter, then ``trace_session_id`` JSON body field. Only the resolved
+    highest-priority input is validated; lower-priority values are ignored.
+    """
+    if TRACE_SESSION_ID_HEADER in request.headers:
+        return _validate_trace_session_id(request.headers.get(TRACE_SESSION_ID_HEADER))
+
+    if TRACE_SESSION_ID_ARG in request.args:
+        return _validate_trace_session_id(request.args.get(TRACE_SESSION_ID_ARG))
+
+    if getattr(request, "is_json", False):
+        json_data = getattr(request, "json", None)
+        if isinstance(json_data, Mapping) and TRACE_SESSION_ID_ARG in json_data:
+            return _validate_trace_session_id(json_data.get(TRACE_SESSION_ID_ARG))
+
+    return None
+
+
+def extract_trace_session_id_from_args(args: Mapping[str, Any]) -> dict[str, str]:
+    """
+    Extract normalized ``trace_session_id`` from generation args for entity extras.
+    """
+    trace_session_id = args.get(TRACE_SESSION_ID_ARG)
+    if isinstance(trace_session_id, str):
+        normalized = trace_session_id.strip()
+        if normalized:
+            return {TRACE_SESSION_ID_ARG: normalized}
+    return {}
+
+
+def omit_trace_session_id_from_payload(payload: Any) -> Any:
+    """
+    Return a payload copy without transport-level ``trace_session_id``.
+
+    Controllers validate this field through :func:`get_trace_session_id` so lower-priority
+    body values cannot fail DTO validation before header/query priority is applied.
+    """
+    if isinstance(payload, Mapping) and TRACE_SESSION_ID_ARG in payload:
+        return {key: value for key, value in payload.items() if key != TRACE_SESSION_ID_ARG}
+    return payload
+
+
 def extract_parent_trace_context_from_args(args: Mapping[str, Any]) -> dict[str, ParentTraceContext]:
     """
     Extract 'parent_trace_context' from args.
@@ -80,15 +144,16 @@ def extract_parent_trace_context_from_args(args: Mapping[str, Any]) -> dict[str,
     Returns an empty dict if the context is missing or incomplete.
     """
     parent_trace_context = args.get("parent_trace_context")
-    if isinstance(parent_trace_context, ParentTraceContext):
-        context = parent_trace_context
-    elif isinstance(parent_trace_context, Mapping):
-        try:
-            context = ParentTraceContext.model_validate(parent_trace_context)
-        except ValidationError:
+    match parent_trace_context:
+        case ParentTraceContext():
+            context = parent_trace_context
+        case Mapping():
+            try:
+                context = ParentTraceContext.model_validate(parent_trace_context)
+            except ValidationError:
+                return {}
+        case _:
             return {}
-    else:
-        return {}
 
     if context.parent_node_execution_id is None:
         return {}

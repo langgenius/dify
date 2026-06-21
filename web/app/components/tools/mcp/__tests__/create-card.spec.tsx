@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import NewMCPCard from '../create-card'
+import NewMCPCard, { NewMCPButton } from '../create-card'
 
 // Track the mock functions
 const mockCreateMCP = vi.fn().mockResolvedValue({ id: 'new-mcp-id', name: 'New MCP' })
@@ -40,14 +40,11 @@ vi.mock('../modal', () => ({
   },
 }))
 
-// Mutable workspace manager state
-let mockIsCurrentWorkspaceManager = true
+let mockWorkspacePermissionKeys: string[] = ['mcp.manage']
 
-// Mock the app context
 vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager,
-    isCurrentWorkspaceEditor: true,
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -87,7 +84,7 @@ describe('NewMCPCard', () => {
 
   beforeEach(() => {
     mockCreateMCP.mockClear()
-    mockIsCurrentWorkspaceManager = true
+    mockWorkspacePermissionKeys = ['mcp.manage']
   })
 
   describe('Rendering', () => {
@@ -108,8 +105,13 @@ describe('NewMCPCard', () => {
 
     it('should render add icon', () => {
       render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
-      const svgElements = document.querySelectorAll('svg')
-      expect(svgElements.length).toBeGreaterThan(0)
+      expect(document.querySelector('.border-dashed')).toBeInTheDocument()
+    })
+
+    it('should render toolbar button', () => {
+      render(<NewMCPButton {...defaultProps} />, { wrapper: createWrapper() })
+
+      expect(screen.getByRole('button', { name: /tools\.mcp\.create\.cardTitle/i })).toBeInTheDocument()
     })
   })
 
@@ -136,24 +138,56 @@ describe('NewMCPCard', () => {
       expect(docLink).toHaveAttribute('target', '_blank')
       expect(docLink).toHaveAttribute('rel', 'noopener noreferrer')
     })
+
+    it('should open modal when toolbar button is clicked', async () => {
+      render(<NewMCPButton {...defaultProps} />, { wrapper: createWrapper() })
+
+      fireEvent.click(screen.getByRole('button', { name: /tools\.mcp\.create\.cardTitle/i }))
+
+      await waitFor(() => {
+        expect(screen.getByText('tools.mcp.modal.title')).toBeInTheDocument()
+      })
+    })
   })
 
-  describe('Non-Manager User', () => {
-    it('should not render card when user is not workspace manager', () => {
-      mockIsCurrentWorkspaceManager = false
+  describe('mcp.manage Permission', () => {
+    it('should not render card when user lacks mcp.manage', () => {
+      mockWorkspacePermissionKeys = []
 
       render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
+
+      expect(screen.queryByText('tools.mcp.create.cardTitle')).not.toBeInTheDocument()
+    })
+
+    it('should not render toolbar button when user lacks mcp.manage', () => {
+      mockWorkspacePermissionKeys = []
+
+      render(<NewMCPButton {...defaultProps} />, { wrapper: createWrapper() })
 
       expect(screen.queryByText('tools.mcp.create.cardTitle')).not.toBeInTheDocument()
     })
   })
 
   describe('Styling', () => {
-    it('should have correct card structure', () => {
+    it('should match the Figma card shell and section sizing', () => {
       render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
 
-      const card = document.querySelector('.rounded-xl')
-      expect(card).toBeInTheDocument()
+      const card = screen.getByText('tools.mcp.create.cardTitle').closest('.col-span-1')
+      expect(card).toHaveClass(
+        'h-[120px]',
+        'overflow-hidden',
+        'rounded-xl',
+        'border-[0.5px]',
+        'border-components-panel-border',
+        'bg-components-panel-on-panel-item-bg',
+        'shadow-md',
+      )
+
+      const header = screen.getByRole('button', { name: 'tools.mcp.create.cardTitle' })
+      expect(header).toHaveClass('h-[84px]', 'gap-3', 'p-4')
+
+      const docLink = screen.getByText('tools.mcp.create.cardLink').closest('a')
+      expect(docLink).toHaveClass('h-8', 'border-t', 'border-divider-subtle', 'px-3', 'py-2')
     })
 
     it('should have clickable cursor style', () => {

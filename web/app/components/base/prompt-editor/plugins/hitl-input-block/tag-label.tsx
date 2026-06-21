@@ -5,12 +5,12 @@ import { RiEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { Variable02 } from '../../../icons/src/vender/solid/development'
 
-type Props = {
+type Props = Readonly<{
   type: 'edit' | 'variable'
   children: string
   className?: string
   onClick?: () => void
-}
+}>
 
 const TagLabel: FC<Props> = ({
   type,

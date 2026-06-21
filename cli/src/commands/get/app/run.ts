@@ -1,14 +1,14 @@
 import type { AppDescribeResponse, AppListResponse, AppMode } from '@dify/contracts/api/openapi/types.gen'
-import type { KyInstance } from 'ky'
-import type { HostsBundle } from '../../../auth/hosts.js'
-import type { IOStreams } from '../../../sys/io/streams'
-import { AppsClient } from '../../../api/apps.js'
-import { WorkspacesClient } from '../../../api/workspaces.js'
-import { LIMIT_DEFAULT, parseLimit } from '../../../limit/limit.js'
-import { getEnv } from '../../../sys/index.js'
-import { runWithSpinner } from '../../../sys/io/spinner.js'
-import { nullStreams } from '../../../sys/io/streams'
-import { resolveWorkspaceId } from '../../../workspace/resolver.js'
+import type { ActiveContext } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
+import type { IOStreams } from '@/sys/io/streams'
+import { AppsClient } from '@/api/apps'
+import { WorkspacesClient } from '@/api/workspaces'
+import { LIMIT_DEFAULT, parseLimit } from '@/limit/limit'
+import { getEnv } from '@/sys/index'
+import { runWithSpinner } from '@/sys/io/spinner'
+import { nullStreams } from '@/sys/io/streams'
+import { resolveWorkspaceId } from '@/workspace/resolver'
 import { AppListOutput, AppRow } from './handlers.js'
 
 export type GetAppOptions = {
@@ -17,19 +17,19 @@ export type GetAppOptions = {
   readonly allWorkspaces?: boolean
   readonly page?: number
   readonly limitRaw?: string
-  readonly mode?: string
+  readonly mode?: AppMode
   readonly name?: string
   readonly tag?: string
   readonly format?: string
 }
 
 export type GetAppDeps = {
-  readonly bundle: HostsBundle
-  readonly http: KyInstance
+  readonly active: ActiveContext
+  readonly http: HttpClient
   readonly io?: IOStreams
   readonly envLookup?: (k: string) => string | undefined
-  readonly appsFactory?: (http: KyInstance) => AppsClient
-  readonly workspacesFactory?: (http: KyInstance) => WorkspacesClient
+  readonly appsFactory?: (http: HttpClient) => AppsClient
+  readonly workspacesFactory?: (http: HttpClient) => WorkspacesClient
 }
 
 const ALL_WORKSPACES_CONCURRENCY = 4
@@ -40,8 +40,8 @@ export type GetAppResult = {
 
 export async function runGetApp(opts: GetAppOptions, deps: GetAppDeps): Promise<GetAppResult> {
   const env = deps.envLookup ?? getEnv
-  const appsFactory = deps.appsFactory ?? ((h: KyInstance) => new AppsClient(h))
-  const wsFactory = deps.workspacesFactory ?? ((h: KyInstance) => new WorkspacesClient(h))
+  const appsFactory = deps.appsFactory ?? ((h: HttpClient) => new AppsClient(h))
+  const wsFactory = deps.workspacesFactory ?? ((h: HttpClient) => new WorkspacesClient(h))
 
   const apps = appsFactory(deps.http)
   const pageSize = resolveLimit(opts.limitRaw, env)
@@ -57,12 +57,12 @@ export async function runGetApp(opts: GetAppOptions, deps: GetAppDeps): Promise<
         return runAllWorkspaces(apps, ws, opts, page, pageSize)
       }
       if (opts.appId !== undefined && opts.appId !== '') {
-        const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), bundle: deps.bundle })
-        const wsName = workspaceNameForId(deps.bundle, wsId)
-        const desc = await apps.describe(opts.appId, wsId, ['info'])
+        const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), active: deps.active })
+        const wsName = workspaceNameForId(deps.active, wsId)
+        const desc = await apps.describe(opts.appId, ['info'])
         return describeToEnvelope(desc, wsId, wsName)
       }
-      const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), bundle: deps.bundle })
+      const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), active: deps.active })
       return apps.list({
         workspaceId: wsId,
         page,
@@ -111,16 +111,10 @@ function describeToEnvelope(desc: AppDescribeResponse, wsId: string, wsName: str
   }
 }
 
-function workspaceNameForId(b: HostsBundle, id: string): string {
+function workspaceNameForId(active: ActiveContext, id: string): string {
   if (id === '')
     return ''
-  if (b.workspace?.id === id)
-    return b.workspace.name
-  for (const w of b.available_workspaces ?? []) {
-    if (w.id === id)
-      return w.name
-  }
-  return ''
+  return active.ctx.workspace?.id === id ? active.ctx.workspace.name : ''
 }
 
 async function runAllWorkspaces(

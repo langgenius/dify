@@ -21,13 +21,13 @@ import Form from '@/app/components/header/account-setting/model-provider-page/mo
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { ReadmeEntrance } from '../readme-panel/entrance'
 
-type Props = {
+type Props = Readonly<{
   formSchemas: FormSchema[]
   defaultValues?: any
   onCancel: () => void
   onSaved: (value: Record<string, any>) => void
   pluginDetail: PluginDetail
-}
+}>
 
 const extractDefaultValues = (schemas: any[]) => {
   const result: Record<string, any> = {}
@@ -93,7 +93,7 @@ const EndpointModal: FC<Props> = ({
       <DrawerPortal>
         <DrawerBackdrop className="bg-black/30" />
         <DrawerViewport>
-          <DrawerPopup className={cn('justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-[420px] data-[swipe-direction=right]:max-w-[420px] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border')}>
+          <DrawerPopup className={cn('justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-[400px] data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border')}>
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
               <div className="p-4 pb-2">
                 <div className="flex items-center justify-between">

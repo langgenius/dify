@@ -1,33 +1,21 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { useEffect } from 'react'
-import Loading from '@/app/components/base/loading'
-import { useAppContext } from '@/context/app-context'
-import { usePathname, useRouter } from '@/next/navigation'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { redirect, usePathname } from '@/next/navigation'
 
-const datasetOperatorRedirectRoutes = ['/apps', '/app', '/explore', '/tools'] as const
+function isPathUnderRoute(pathname: string, route: string) {
+  return pathname === route || pathname.startsWith(`${route}/`)
+}
 
-const isPathUnderRoute = (pathname: string, route: string) => pathname === route || pathname.startsWith(`${route}/`)
-
-export default function RoleRouteGuard({ children }: { children: ReactNode }) {
-  const { isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
+export function RoleRouteGuard({ children }: { children: ReactNode }) {
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const pathname = usePathname()
-  const router = useRouter()
-  const shouldGuardRoute = datasetOperatorRedirectRoutes.some(route => isPathUnderRoute(pathname, route))
-  const shouldRedirect = shouldGuardRoute && !isLoadingCurrentWorkspace && isCurrentWorkspaceDatasetOperator
+  const shouldRedirectAppDeploy = isPathUnderRoute(pathname, '/deployments') && !systemFeatures.enable_app_deploy
 
-  useEffect(() => {
-    if (shouldRedirect)
-      router.replace('/datasets')
-  }, [shouldRedirect, router])
-
-  // Block rendering only for guarded routes to avoid permission flicker.
-  if (shouldGuardRoute && isLoadingCurrentWorkspace)
-    return <Loading type="app" />
-
-  if (shouldRedirect)
-    return null
+  if (shouldRedirectAppDeploy)
+    redirect('/apps')
 
   return <>{children}</>
 }

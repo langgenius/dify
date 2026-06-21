@@ -1,7 +1,9 @@
-import type { KyInstance } from 'ky'
-import type { SseEvent } from '../http/sse.js'
-import { normalizeDifyStream } from '../http/sse-dify.js'
-import { parseSSE } from '../http/sse.js'
+import type { OpenApiClient } from '@/http/orpc'
+import type { SseEvent } from '@/http/sse'
+import type { HttpClient } from '@/http/types'
+import { createOpenApiClient } from '@/http/orpc'
+import { parseSSE } from '@/http/sse'
+import { normalizeDifyStream } from '@/http/sse-dify'
 
 export type RunBodyArgs = {
   readonly message?: string
@@ -32,13 +34,19 @@ export function buildRunBody(args: RunBodyArgs): Record<string, unknown> {
 export type StreamOptions = {
   signal?: AbortSignal
   includeStateSnapshot?: boolean
+  retryOnRateLimit?: boolean
 }
 
 export class AppRunClient {
-  private readonly http: KyInstance
+  private readonly http: HttpClient
+  private readonly orpc: OpenApiClient
 
-  constructor(http: KyInstance) {
+  constructor(http: HttpClient) {
     this.http = http
+    // Mixed class (SPEC §4.4): runStream / reconnectStream are SSE and stay on the raw
+    // `http.stream` facade; stopTask / submitHumanInput are plain JSON and go through the
+    // generated oRPC contract. Both facades share this one transport.
+    this.orpc = createOpenApiClient(http)
   }
 
   async runStream(
@@ -46,12 +54,13 @@ export class AppRunClient {
     body: Record<string, unknown>,
     opts: StreamOptions = {},
   ): Promise<AsyncIterable<SseEvent>> {
-    const res = await this.http.post(`apps/${encodeURIComponent(appId)}/run`, {
+    const res = await this.http.stream(`apps/${encodeURIComponent(appId)}/run`, {
+      method: 'POST',
       json: body,
       headers: { Accept: 'text/event-stream' },
-      retry: { limit: 0 },
-      timeout: false,
       signal: opts.signal,
+      throwOnError: true,
+      retryOnRateLimit: opts.retryOnRateLimit,
     })
     if (res.body === null)
       throw new Error('streaming response body missing')
@@ -59,9 +68,8 @@ export class AppRunClient {
   }
 
   async stopTask(appId: string, taskId: string): Promise<void> {
-    await this.http.post(`apps/${encodeURIComponent(appId)}/tasks/${encodeURIComponent(taskId)}/stop`, {
-      json: {},
-      timeout: 30_000,
+    await this.orpc.apps.byAppId.tasks.byTaskId.stop.post({
+      params: { app_id: appId, task_id: taskId },
     })
   }
 
@@ -71,10 +79,10 @@ export class AppRunClient {
     action: string,
     inputs: Record<string, unknown>,
   ): Promise<void> {
-    await this.http.post(
-      `apps/${encodeURIComponent(appId)}/form/human_input/${encodeURIComponent(formToken)}`,
-      { json: { action, inputs }, timeout: 30_000 },
-    )
+    await this.orpc.apps.byAppId.form.humanInput.byFormToken.post({
+      params: { app_id: appId, form_token: formToken },
+      body: { action, inputs },
+    })
   }
 
   async reconnectStream(
@@ -83,15 +91,14 @@ export class AppRunClient {
     opts: StreamOptions = {},
   ): Promise<AsyncIterable<SseEvent>> {
     const url = `apps/${encodeURIComponent(appId)}/tasks/${encodeURIComponent(workflowRunId)}/events`
-    const res = await this.http.get(url, {
+    const res = await this.http.stream(url, {
       searchParams: {
         include_state_snapshot: opts.includeStateSnapshot === true ? 'true' : 'false',
         continue_on_pause: 'false',
       },
       headers: { Accept: 'text/event-stream' },
-      retry: { limit: 0 },
-      timeout: false,
       signal: opts.signal,
+      throwOnError: true,
     })
     if (res.body === null)
       throw new Error('reconnect stream body missing')

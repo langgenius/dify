@@ -32,11 +32,12 @@ from controllers.console.wraps import (
     decrypt_password_field,
     email_password_login_enabled,
     setup_required,
+    with_current_user,
 )
 from events.tenant_event import tenant_was_created
+from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
-from libs.login import current_account_with_tenant
 from libs.token import (
     clear_access_token_from_cookie,
     clear_csrf_token_from_cookie,
@@ -46,6 +47,7 @@ from libs.token import (
     set_csrf_token_to_cookie,
     set_refresh_token_to_cookie,
 )
+from models.account import Account
 from services.account_service import AccountService, InvitationDetailDict, RegisterService, TenantService
 from services.billing_service import BillingService
 from services.entities.auth_entities import LoginFailureReason, LoginPayloadBase
@@ -172,9 +174,8 @@ class LoginApi(Resource):
 class LogoutApi(Resource):
     @setup_required
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    def post(self):
-        current_user, _ = current_account_with_tenant()
-        account = current_user
+    @with_current_user
+    def post(self, account: Account):
         if isinstance(account, flask_login.AnonymousUserMixin):
             response = make_response({"result": "success"})
         else:
@@ -299,7 +300,7 @@ class EmailCodeLoginApi(Resource):
                     raise NotAllowedCreateWorkspace()
                 else:
                     new_tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-                    TenantService.create_tenant_member(new_tenant, account, role="owner")
+                    TenantService.create_tenant_member(new_tenant, account, db.session, role="owner")
                     account.current_tenant = new_tenant
                     tenant_was_created.send(new_tenant)
 

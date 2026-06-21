@@ -5,14 +5,12 @@ from __future__ import annotations
 import uuid as _uuid
 from typing import Any, cast
 
-from flask import request
 from flask_restx import Resource
-from pydantic import ValidationError
 from werkzeug.exceptions import Conflict, NotFound, UnprocessableEntity
 
 from controllers.common.fields import Parameters
-from controllers.common.schema import query_params_from_model
 from controllers.openapi import openapi_ns
+from controllers.openapi._contract import accepts, returns
 from controllers.openapi._input_schema import EMPTY_INPUT_SCHEMA, build_input_schema, resolve_app_config
 from controllers.openapi._models import (
     AppDescribeInfo,
@@ -88,16 +86,12 @@ def parameters_payload(app: App) -> dict:
 
 @openapi_ns.route("/apps/<string:app_id>/describe")
 class AppDescribeApi(AppReadResource):
-    @openapi_ns.doc(params=query_params_from_model(AppDescribeQuery))
-    @openapi_ns.response(200, "App description", openapi_ns.models[AppDescribeResponse.__name__])
     @auth_router.guard(scope=Scope.APPS_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
-    def get(self, app_id: str, *, auth_data: AuthData):
-        try:
-            query = AppDescribeQuery.model_validate(request.args.to_dict(flat=True))
-        except ValidationError as exc:
-            raise UnprocessableEntity(exc.json())
-
-        app = self._load(app_id, workspace_id=query.workspace_id)
+    @returns(200, AppDescribeResponse, description="App description")
+    @accepts(query=AppDescribeQuery)
+    def get(self, app_id: str, *, auth_data: AuthData, query: AppDescribeQuery):
+        # describe is UUID-only (workspace_id query param dropped in #37212).
+        app = self._load(app_id)
 
         requested = query.fields
         want_info = requested is None or "info" in requested
@@ -133,35 +127,22 @@ class AppDescribeApi(AppReadResource):
             except AppUnavailableError:
                 input_schema = dict(EMPTY_INPUT_SCHEMA)
 
-        return (
-            AppDescribeResponse(
-                info=info,
-                parameters=parameters,
-                input_schema=input_schema,
-            ).model_dump(mode="json", exclude_none=False),
-            200,
+        return AppDescribeResponse(
+            info=info,
+            parameters=parameters,
+            input_schema=input_schema,
         )
 
 
 @openapi_ns.route("/apps")
 class AppListApi(Resource):
-    @openapi_ns.doc(params=query_params_from_model(AppListQuery))
-    @openapi_ns.response(200, "App list", openapi_ns.models[AppListResponse.__name__])
-    @auth_router.guard(scope=Scope.APPS_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
-    def get(self, *, auth_data: AuthData):
-        try:
-            query: AppListQuery = AppListQuery.model_validate(request.args.to_dict(flat=True))
-        except ValidationError as exc:
-            raise UnprocessableEntity(exc.json())
-
+    @auth_router.guard_workspace(scope=Scope.APPS_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    @returns(200, AppListResponse, description="App list")
+    @accepts(query=AppListQuery)
+    def get(self, *, auth_data: AuthData, query: AppListQuery):
         workspace_id = query.workspace_id
 
-        empty = (
-            AppListResponse(page=query.page, limit=query.limit, total=0, has_more=False, data=[]).model_dump(
-                mode="json"
-            ),
-            200,
-        )
+        empty = AppListResponse(page=query.page, limit=query.limit, total=0, has_more=False, data=[])
 
         if query.name:
             try:
@@ -189,11 +170,11 @@ class AppListApi(Resource):
                 workspace_name=tenant_name,
             )
             env = AppListResponse(page=1, limit=1, total=1, has_more=False, data=[item])
-            return env.model_dump(mode="json"), 200
+            return env
 
         tag_ids: list[str] | None = None
         if query.tag:
-            tags = TagService.get_tag_by_tag_name("app", workspace_id, query.tag)
+            tags = TagService.get_tag_by_tag_name("app", workspace_id, query.tag, db.session)
             if not tags:
                 return empty
             tag_ids = [tag.id for tag in tags]
@@ -210,7 +191,7 @@ class AppListApi(Resource):
             openapi_visible=True,
         )
 
-        pagination = AppService().get_paginate_apps(str(auth_data.account_id), workspace_id, params)
+        pagination = AppService().get_paginate_apps(str(auth_data.account_id), workspace_id, params, db.session)
         if pagination is None:
             return empty
 
@@ -240,4 +221,4 @@ class AppListApi(Resource):
             has_more=query.page * query.limit < cast(int, pagination.total),
             data=items,
         )
-        return env.model_dump(mode="json"), 200
+        return env

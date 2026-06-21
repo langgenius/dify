@@ -3,6 +3,7 @@ import type { Query } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { expectLoadingButton } from '@/test/button'
 import QueryInput from '../index'
 
 // Capture onChange callback so tests can trigger handleImageChange
@@ -63,6 +64,7 @@ describe('QueryInput', () => {
     onClickRetrievalMethod: vi.fn(),
     retrievalConfig: { search_method: 'semantic_search' } as RetrievalConfig,
     isEconomy: false,
+    canRunRetrievalRecall: true,
     hitTestingMutation: vi.fn(),
     externalKnowledgeBaseHitTestingMutation: vi.fn(),
   })
@@ -101,6 +103,12 @@ describe('QueryInput', () => {
     expect(screen.getByRole('button', { name: /input\.testing/ }))!.toBeDisabled()
   })
 
+  it('should disable submit button when retrieval recall permission is missing', () => {
+    render(<QueryInput {...defaultProps} canRunRetrievalRecall={false} />)
+
+    expect(screen.getByRole('button', { name: /input\.testing/ }))!.toBeDisabled()
+  })
+
   it('should render retrieval method for non-external mode', () => {
     render(<QueryInput {...defaultProps} />)
     expect(screen.getByText('dataset.retrieval.semantic_search.title'))!.toBeInTheDocument()
@@ -123,8 +131,7 @@ describe('QueryInput', () => {
   it('should show loading state on submit button when loading', () => {
     render(<QueryInput {...defaultProps} loading={true} />)
     const submitButton = screen.getByRole('button', { name: /input\.testing/ })
-    expect(submitButton)!.toBeDisabled()
-    expect(submitButton)!.toHaveAttribute('aria-busy', 'true')
+    expectLoadingButton(submitButton)
     expect(submitButton.querySelector('.animate-spin'))!.toBeInTheDocument()
   })
 
@@ -230,6 +237,16 @@ describe('QueryInput', () => {
           expect.objectContaining({ content: 'new text', content_type: 'text_query' }),
         ]),
       )
+    })
+  })
+
+  describe('Permission Guarding', () => {
+    it('should not run hit testing mutation when retrieval recall permission is missing', () => {
+      render(<QueryInput {...defaultProps} canRunRetrievalRecall={false} />)
+
+      fireEvent.click(screen.getByRole('button', { name: /input\.testing/ }))
+
+      expect(defaultProps.hitTestingMutation).not.toHaveBeenCalled()
     })
   })
 

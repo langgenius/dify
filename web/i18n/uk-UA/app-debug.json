@@ -99,7 +99,7 @@
   "feature.dataSet.notSupportSelectMulti": "Наразі підтримується лише одне знання",
   "feature.dataSet.queryVariable.choosePlaceholder": "Виберіть змінну для запиту",
   "feature.dataSet.queryVariable.contextVarNotEmpty": "змінна контекстного запиту не може бути порожньою",
-  "feature.dataSet.queryVariable.deleteContextVarTip": "Ця змінна була встановлена ​​як змінна контекстного запиту, і її видалення вплине на нормальне використання Знань. Якщо вам все ще потрібно її видалити, будь ласка, виберіть її повторно в розділі контексту.",
+  "feature.dataSet.queryVariable.deleteContextVarTip": "Ця змінна була встановлена як змінна контекстного запиту, і її видалення вплине на нормальне використання Знань. Якщо вам все ще потрібно її видалити, будь ласка, виберіть її повторно в розділі контексту.",
   "feature.dataSet.queryVariable.deleteContextVarTitle": "Видалити змінну “{{varName}}”?",
   "feature.dataSet.queryVariable.noVar": "Змінних немає",
   "feature.dataSet.queryVariable.noVarTip": "будь ласка, створіть змінну в розділі Змінні",

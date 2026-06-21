@@ -10,21 +10,23 @@ import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppTypeSelector from '@/app/components/app/type-selector'
+import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { DSLImportMode } from '@/models/app'
 import { useRouter } from '@/next/navigation'
 import { importDSL } from '@/service/apps'
 import { fetchAppDetail } from '@/service/explore'
+import { useInvalidateAppList } from '@/service/use-apps'
 import { useExploreAppList } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
+import { hasPermission } from '@/utils/permission'
 import AppCard from '../app-card'
 import Sidebar, { AppCategories, AppCategoryLabel } from './sidebar'
 
@@ -43,9 +45,13 @@ const Apps = ({
   onCreateFromBlank,
 }: AppsProps) => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { workspacePermissionKeys } = useAppContext()
+  const canCreateAppFromTemplate = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const { push } = useRouter()
+  const invalidateAppList = useInvalidateAppList()
   const allCategoriesEn = AppCategories.RECOMMENDED
+
+  const setNeedRefresh = useSetNeedRefreshAppList()
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
@@ -135,8 +141,10 @@ const Apps = ({
         onSuccess()
       if (app.app_id)
         await handleCheckPluginDependencies(app.app_id)
-      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-      getRedirection(isCurrentWorkspaceEditor, { id: app.app_id!, mode }, push)
+      setNeedRefresh('1')
+      invalidateAppList()
+      if (app.app_id)
+        getRedirection({ id: app.app_id, mode: app.app_mode, permission_keys: app.permission_keys }, push)
     }
     catch {
       toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
@@ -201,7 +209,7 @@ const Apps = ({
                   <AppCard
                     key={app.app_id}
                     app={app}
-                    canCreate={isCurrentWorkspaceEditor}
+                    canCreate={canCreateAppFromTemplate}
                     onCreate={() => {
                       setCurrApp(app)
                       setIsShowCreateModal(true)

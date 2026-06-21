@@ -41,7 +41,7 @@ SANDBOX_TEST_IMAGE_ENV = "DIFY_SANDBOX_TEST_IMAGE"
 class _CloserProtocol(Protocol):
     """_Closer is any type which implement the close() method."""
 
-    def close(self):
+    def close(self) -> None:
         """close the current object, release any external resouece (file, transaction, connection etc.)
         associated with it.
         """
@@ -67,7 +67,7 @@ class DifyTestContainers:
     caches, and search engines.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize container management with default configurations."""
         self.network: Network | None = None
         self.postgres: PostgresContainer | None = None
@@ -77,7 +77,7 @@ class DifyTestContainers:
         self._containers_started = False
         logger.info("DifyTestContainers initialized - ready to manage test containers")
 
-    def start_containers_with_env(self):
+    def start_containers_with_env(self) -> None:
         """
         Start all required containers for integration testing.
 
@@ -199,6 +199,8 @@ class DifyTestContainers:
         # Get container internal network addresses
         postgres_container_name = self.postgres.get_wrapped_container().name
         redis_container_name = self.redis.get_wrapped_container().name
+        assert postgres_container_name is not None
+        assert redis_container_name is not None
 
         self.dify_plugin_daemon.env = {
             "DB_HOST": postgres_container_name,  # Use container name for internal network communication
@@ -251,7 +253,7 @@ class DifyTestContainers:
         self._containers_started = True
         logger.info("All test containers started successfully")
 
-    def stop_containers(self):
+    def stop_containers(self) -> None:
         """
         Stop and clean up all test containers.
 
@@ -290,7 +292,7 @@ def _get_migration_dir() -> Path:
     return conftest_dir.parent.parent / "migrations"
 
 
-def _get_engine_url(engine: Engine):
+def _get_engine_url(engine: Engine) -> str:
     try:
         return engine.url.render_as_string(hide_password=False).replace("%", "%%")
     except AttributeError:
@@ -409,7 +411,7 @@ def set_up_containers_and_env() -> Generator[DifyTestContainers, None, None]:
 
 
 @pytest.fixture(scope="session")
-def flask_app_with_containers(set_up_containers_and_env) -> Flask:
+def flask_app_with_containers(set_up_containers_and_env: DifyTestContainers) -> Flask:
     """
     Session-scoped Flask application fixture using test containers.
 
@@ -422,6 +424,7 @@ def flask_app_with_containers(set_up_containers_and_env) -> Flask:
     Returns:
         Flask: Configured Flask application
     """
+    assert set_up_containers_and_env is _container_manager
     logger.info("=== Creating session-scoped Flask application ===")
     app = _create_app_with_containers()
     logger.info("Session-scoped Flask application created successfully")
@@ -505,7 +508,7 @@ def _truncate_container_database(app: Flask) -> None:
     session_factory-created sessions. Truncating after each test gives the suite
     a central DB isolation contract that does not depend on which session a test used.
     This only covers SQLAlchemy application tables in db.metadata for now;
-    Redis, object storage, and custom ad hoc metadata still need their own cleanup.
+    object storage and custom ad hoc metadata still need their own cleanup.
     """
     with app.app_context():
         db.session.remove()
@@ -524,13 +527,27 @@ def _truncate_container_database(app: Flask) -> None:
         db.session.remove()
 
 
+def _flush_container_redis(app: Flask) -> None:
+    """
+    Reset Redis after a container integration test.
+
+    Tests in this package share one Redis container for performance. Application
+    code stores temporary tokens, rate-limit counters, locks, and cache entries
+    there, so flushing after each test gives Redis-backed state the same
+    isolation contract as the PostgreSQL container.
+    """
+    with app.app_context():
+        app.extensions["redis"].flushdb()
+
+
 @pytest.fixture(autouse=True)
 def isolate_container_database(request: pytest.FixtureRequest) -> Generator[None, None, None]:
     """
-    Clean DB state after tests that use the containerized Flask app.
+    Clean DB and Redis state after tests that use the containerized Flask app.
 
     This fixture intentionally does not depend on flask_app_with_containers so
-    non-DB tests under this package do not start the full app/container stack.
+    tests under this package do not start the full app/container stack just to
+    run state cleanup.
     """
     yield
 
@@ -538,11 +555,15 @@ def isolate_container_database(request: pytest.FixtureRequest) -> Generator[None
         return
 
     app = request.getfixturevalue("flask_app_with_containers")
-    _truncate_container_database(app)
+    assert isinstance(app, Flask)
+    try:
+        _truncate_container_database(app)
+    finally:
+        _flush_container_redis(app)
 
 
 @pytest.fixture(scope="package", autouse=True)
-def mock_ssrf_proxy_requests():
+def mock_ssrf_proxy_requests() -> Generator[None, None, None]:
     """
     Avoid outbound network during containerized tests by stubbing SSRF proxy helpers.
     """
@@ -551,7 +572,7 @@ def mock_ssrf_proxy_requests():
 
     import httpx
 
-    def _fake_request(method, url, **kwargs):
+    def _fake_request(method: str, url: str, **_kwargs: object) -> httpx.Response:
         request = httpx.Request(method=method, url=url)
         return httpx.Response(200, request=request, content=b"")
 

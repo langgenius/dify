@@ -1,11 +1,11 @@
 import { cn } from '@langgenius/dify-ui/cn'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   orgName?: string
   packageName: string
   packageNameClassName?: string
-}
+}>
 
 const OrgInfo = ({
   className,

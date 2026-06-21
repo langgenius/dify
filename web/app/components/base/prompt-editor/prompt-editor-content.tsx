@@ -1,10 +1,8 @@
-import type {
-  EditorState,
-  LexicalCommand,
-} from 'lexical'
+import type { EditorState } from 'lexical'
 import type { FC } from 'react'
-import type { Hotkey } from './plugins/shortcuts-popup-plugin'
+import type { Hotkey, ShortcutPopupDisplayMode, ShortcutPopupInsertHandler } from './plugins/shortcuts-popup-plugin'
 import type {
+  AgentOutputBlockType,
   ContextBlockType,
   CurrentBlockType,
   ErrorMessageBlockType,
@@ -14,6 +12,7 @@ import type {
   LastRunBlockType,
   QueryBlockType,
   RequestURLBlockType,
+  RosterReferenceBlockType,
   VariableBlockType,
   WorkflowVariableBlockType,
 } from './types'
@@ -24,6 +23,10 @@ import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import * as React from 'react'
+import {
+  AgentOutputBlock,
+  AgentOutputBlockReplacementBlock,
+} from './plugins/agent-output-block'
 import ComponentPickerBlock from './plugins/component-picker-block'
 import {
   ContextBlock,
@@ -60,6 +63,8 @@ import {
   RequestURLBlock,
   RequestURLBlockReplacementBlock,
 } from './plugins/request-url-block'
+import RosterReferenceBlock from './plugins/roster-reference-block'
+import { RosterReferenceBlockContext } from './plugins/roster-reference-block/context'
 import ShortcutsPopupPlugin from './plugins/shortcuts-popup-plugin'
 import UpdateBlock from './plugins/update-block'
 import VariableBlock from './plugins/variable-block'
@@ -71,7 +76,8 @@ import {
 
 type ShortcutPopup = {
   hotkey: Hotkey
-  Popup: React.ComponentType<{ onClose: () => void, onInsert: (command: LexicalCommand<unknown>, params: unknown[]) => void }>
+  displayMode?: ShortcutPopupDisplayMode
+  Popup: React.ComponentType<{ onClose: () => void, onInsert: ShortcutPopupInsertHandler }>
 }
 
 type PromptEditorContentProps = {
@@ -86,13 +92,17 @@ type PromptEditorContentProps = {
   requestURLBlock?: RequestURLBlockType
   historyBlock?: HistoryBlockType
   variableBlock?: VariableBlockType
+  rosterReferenceBlock?: RosterReferenceBlockType
   externalToolBlock?: ExternalToolBlockType
   workflowVariableBlock?: WorkflowVariableBlockType
+  agentOutputBlock?: AgentOutputBlockType
   hitlInputBlock?: HITLInputBlockType
   currentBlock?: CurrentBlockType
   errorMessageBlock?: ErrorMessageBlockType
   lastRunBlock?: LastRunBlockType
   isSupportFileVar?: boolean
+  disableSlashPicker?: boolean
+  disableBracePicker?: boolean
   onBlur?: () => void
   onFocus?: () => void
   instanceId?: string
@@ -112,13 +122,17 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
   requestURLBlock,
   historyBlock,
   variableBlock,
+  rosterReferenceBlock,
   externalToolBlock,
   workflowVariableBlock,
+  agentOutputBlock,
   hitlInputBlock,
   currentBlock,
   errorMessageBlock,
   lastRunBlock,
   isSupportFileVar,
+  disableSlashPicker,
+  disableBracePicker,
   onBlur,
   onFocus,
   instanceId,
@@ -126,7 +140,7 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
   onEditorChange,
 }) => {
   return (
-    <>
+    <RosterReferenceBlockContext value={rosterReferenceBlock}>
       <RichTextPlugin
         contentEditable={(
           <ContentEditable
@@ -147,39 +161,45 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
         )}
         ErrorBoundary={LexicalErrorBoundary}
       />
-      {shortcutPopups.map(({ hotkey, Popup }, idx) => (
-        <ShortcutsPopupPlugin key={idx} hotkey={hotkey}>
+      {shortcutPopups.map(({ hotkey, displayMode, Popup }, idx) => (
+        <ShortcutsPopupPlugin key={idx} hotkey={hotkey} displayMode={displayMode}>
           {(closePortal, onInsert) => <Popup onClose={closePortal} onInsert={onInsert} />}
         </ShortcutsPopupPlugin>
       ))}
-      <ComponentPickerBlock
-        triggerString="/"
-        contextBlock={contextBlock}
-        historyBlock={historyBlock}
-        queryBlock={queryBlock}
-        requestURLBlock={requestURLBlock}
-        variableBlock={variableBlock}
-        externalToolBlock={externalToolBlock}
-        workflowVariableBlock={workflowVariableBlock}
-        currentBlock={currentBlock}
-        errorMessageBlock={errorMessageBlock}
-        lastRunBlock={lastRunBlock}
-        isSupportFileVar={isSupportFileVar}
-      />
-      <ComponentPickerBlock
-        triggerString="{"
-        contextBlock={contextBlock}
-        historyBlock={historyBlock}
-        queryBlock={queryBlock}
-        requestURLBlock={requestURLBlock}
-        variableBlock={variableBlock}
-        externalToolBlock={externalToolBlock}
-        workflowVariableBlock={workflowVariableBlock}
-        currentBlock={currentBlock}
-        errorMessageBlock={errorMessageBlock}
-        lastRunBlock={lastRunBlock}
-        isSupportFileVar={isSupportFileVar}
-      />
+      {!disableSlashPicker && (
+        <ComponentPickerBlock
+          triggerString="/"
+          contextBlock={contextBlock}
+          historyBlock={historyBlock}
+          queryBlock={queryBlock}
+          requestURLBlock={requestURLBlock}
+          variableBlock={variableBlock}
+          externalToolBlock={externalToolBlock}
+          workflowVariableBlock={workflowVariableBlock}
+          agentOutputBlock={agentOutputBlock}
+          currentBlock={currentBlock}
+          errorMessageBlock={errorMessageBlock}
+          lastRunBlock={lastRunBlock}
+          isSupportFileVar={isSupportFileVar}
+        />
+      )}
+      {!disableBracePicker && (
+        <ComponentPickerBlock
+          triggerString="{"
+          contextBlock={contextBlock}
+          historyBlock={historyBlock}
+          queryBlock={queryBlock}
+          requestURLBlock={requestURLBlock}
+          variableBlock={variableBlock}
+          externalToolBlock={externalToolBlock}
+          workflowVariableBlock={workflowVariableBlock}
+          agentOutputBlock={agentOutputBlock}
+          currentBlock={currentBlock}
+          errorMessageBlock={errorMessageBlock}
+          lastRunBlock={lastRunBlock}
+          isSupportFileVar={isSupportFileVar}
+        />
+      )}
       {contextBlock?.show && (
         <>
           <ContextBlock {...contextBlock} />
@@ -204,10 +224,19 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
           <VariableValueBlock />
         </>
       )}
+      {rosterReferenceBlock?.show && (
+        <RosterReferenceBlock />
+      )}
       {workflowVariableBlock?.show && (
         <>
           <WorkflowVariableBlock {...workflowVariableBlock} />
           <WorkflowVariableBlockReplacementBlock {...workflowVariableBlock} />
+        </>
+      )}
+      {agentOutputBlock?.show && (
+        <>
+          <AgentOutputBlock {...agentOutputBlock} />
+          <AgentOutputBlockReplacementBlock {...agentOutputBlock} />
         </>
       )}
       {hitlInputBlock?.show && (
@@ -250,7 +279,7 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
       {floatingAnchorElem && (
         <DraggableBlockPlugin anchorElem={floatingAnchorElem} />
       )}
-    </>
+    </RosterReferenceBlockContext>
   )
 }
 

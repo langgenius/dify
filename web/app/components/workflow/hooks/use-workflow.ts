@@ -26,6 +26,7 @@ import { useNodesMetaData } from '.'
 import {
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
+import { useHooksStore } from '../hooks-store'
 import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
 
 import { CUSTOM_NOTE_NODE } from '../note-node/constants'
@@ -36,6 +37,7 @@ import {
 import {
   WorkflowRunningStatus,
 } from '../types'
+import { getNodeCatalogType } from '../utils'
 import {
   getWorkflowEntryNode,
   isWorkflowEntryNode,
@@ -360,13 +362,15 @@ export const useWorkflow = () => {
       return false
 
     if (sourceNode && targetNode) {
-      const sourceNodeAvailableNextNodes = getAvailableBlocks(sourceNode.data.type, !!sourceNode.parentId).availableNextBlocks
-      const targetNodeAvailablePrevNodes = getAvailableBlocks(targetNode.data.type, !!targetNode.parentId).availablePrevBlocks
+      const sourceNodeCatalogType = getNodeCatalogType(sourceNode.data)
+      const targetNodeCatalogType = getNodeCatalogType(targetNode.data)
+      const sourceNodeAvailableNextNodes = getAvailableBlocks(sourceNodeCatalogType, !!sourceNode.parentId).availableNextBlocks
+      const targetNodeAvailablePrevNodes = getAvailableBlocks(targetNodeCatalogType, !!targetNode.parentId).availablePrevBlocks
 
-      if (!sourceNodeAvailableNextNodes.includes(targetNode.data.type))
+      if (!sourceNodeAvailableNextNodes.includes(targetNodeCatalogType))
         return false
 
-      if (!targetNodeAvailablePrevNodes.includes(sourceNode.data.type))
+      if (!targetNodeAvailablePrevNodes.includes(sourceNodeCatalogType))
         return false
     }
 
@@ -417,19 +421,26 @@ export const useWorkflow = () => {
 export const useWorkflowReadOnly = () => {
   const workflowStore = useWorkflowStore()
   const workflowRunningData = useStore(s => s.workflowRunningData)
+  const canvasReadOnly = useStore(s => s.canvasReadOnly)
 
   const getWorkflowReadOnly = useCallback(() => {
-    return workflowStore.getState().workflowRunningData?.result.status === WorkflowRunningStatus.Running
+    const {
+      canvasReadOnly,
+      workflowRunningData,
+    } = workflowStore.getState()
+
+    return canvasReadOnly || workflowRunningData?.result.status === WorkflowRunningStatus.Running
   }, [workflowStore])
 
   return {
-    workflowReadOnly: workflowRunningData?.result.status === WorkflowRunningStatus.Running,
+    workflowReadOnly: canvasReadOnly || workflowRunningData?.result.status === WorkflowRunningStatus.Running,
     getWorkflowReadOnly,
   }
 }
 
-export const useNodesReadOnly = () => {
+const useNodesReadOnlyBase = (canEdit: boolean) => {
   const workflowStore = useWorkflowStore()
+  const canvasReadOnly = useStore(s => s.canvasReadOnly)
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const isRestoring = useStore(s => s.isRestoring)
@@ -439,25 +450,40 @@ export const useNodesReadOnly = () => {
       workflowRunningData,
       historyWorkflowData,
       isRestoring,
+      canvasReadOnly,
     } = workflowStore.getState()
 
     return !!(
-      workflowRunningData?.result.status === WorkflowRunningStatus.Running
+      canvasReadOnly
+      || !canEdit
+      || workflowRunningData?.result.status === WorkflowRunningStatus.Running
       || workflowRunningData?.result.status === WorkflowRunningStatus.Paused
       || historyWorkflowData
       || isRestoring
     )
-  }, [workflowStore])
+  }, [workflowStore, canEdit])
 
   return {
     nodesReadOnly: !!(
-      workflowRunningData?.result.status === WorkflowRunningStatus.Running
+      canvasReadOnly
+      || !canEdit
+      || workflowRunningData?.result.status === WorkflowRunningStatus.Running
       || workflowRunningData?.result.status === WorkflowRunningStatus.Paused
       || historyWorkflowData
       || isRestoring
     ),
     getNodesReadOnly,
   }
+}
+
+export const useNodesReadOnlyByCanEdit = (canEdit: boolean) => {
+  return useNodesReadOnlyBase(canEdit)
+}
+
+export const useNodesReadOnly = () => {
+  const canEdit = useHooksStore(s => s.accessControl.canEdit)
+
+  return useNodesReadOnlyBase(canEdit)
 }
 
 export const useIsNodeInIteration = (iterationId: string) => {

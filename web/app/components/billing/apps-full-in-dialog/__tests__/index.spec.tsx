@@ -1,14 +1,23 @@
+import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { Mock } from 'vitest'
 import type { UsagePlanInfo } from '@/app/components/billing/type'
 import type { AppContextValue } from '@/context/app-context'
 import type { ProviderContextState } from '@/context/provider-context'
-import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
+import type { ICurrentWorkspace, LangGeniusVersionResponse } from '@/models/common'
 import { render, screen } from '@testing-library/react'
 import { Plan } from '@/app/components/billing/type'
 import { mailToSupport } from '@/app/components/header/utils/util'
 import { useAppContext } from '@/context/app-context'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import AppsFull from '../index'
+
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: true,
+  }
+})
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
@@ -59,7 +68,7 @@ const buildProviderContext = (overrides: Partial<ProviderContextState> = {}): Pr
 })
 
 const buildAppContext = (overrides: Partial<AppContextValue> = {}): AppContextValue => {
-  const userProfile: UserProfileResponse = {
+  const userProfile: GetAccountProfileResponse = {
     id: 'user-id',
     name: 'Test User',
     email: 'user@example.com',
@@ -100,6 +109,7 @@ const buildAppContext = (overrides: Partial<AppContextValue> = {}): AppContextVa
     langGeniusVersionInfo,
     isLoadingCurrentWorkspace: false,
     isValidatingCurrentWorkspace: false,
+    workspacePermissionKeys: [],
   }
   const useSelector: AppContextValue['useSelector'] = selector => selector({ ...base, useSelector })
   return {

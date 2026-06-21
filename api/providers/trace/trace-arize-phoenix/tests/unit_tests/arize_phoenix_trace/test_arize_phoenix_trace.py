@@ -2,7 +2,7 @@ import json
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any, cast, override
 from unittest.mock import MagicMock, patch
 
 import dify_trace_arize_phoenix.arize_phoenix_trace as arize_phoenix_trace_module
@@ -20,6 +20,7 @@ from dify_trace_arize_phoenix.arize_phoenix_trace import (
     _resolve_node_parent,
     _resolve_published_parent_span_context,
     _resolve_structured_parent_execution_id,
+    _resolve_trace_session_id,
     _resolve_workflow_parent_context,
     _resolve_workflow_session_id,
     datetime_to_nanos,
@@ -106,6 +107,14 @@ def _get_start_span_call(start_span_mock, *, span_name: str):
     raise AssertionError(f"Could not find start_span call with name={span_name!r}")
 
 
+def _get_start_span_call_by_kind(start_span_mock, *, span_kind: str):
+    for call in start_span_mock.call_args_list:
+        attributes = call.kwargs.get("attributes", {})
+        if attributes.get(SpanAttributes.OPENINFERENCE_SPAN_KIND) == span_kind:
+            return call
+    raise AssertionError(f"Could not find start_span call with span kind={span_kind!r}")
+
+
 class _FakeQuery:
     def __init__(self, result):
         self._result = result
@@ -124,10 +133,12 @@ class _CollectingSpanExporter(SpanExporter):
     def __init__(self):
         self.spans: list[ReadableSpan] = []
 
+    @override
     def export(self, spans: Sequence[ReadableSpan]) -> SpanExportResult:
         self.spans.extend(spans)
         return SpanExportResult.SUCCESS
 
+    @override
     def shutdown(self) -> None:
         return None
 
@@ -249,9 +260,11 @@ def test_set_span_status():
 
     # repr branch
     class SilentError:
+        @override
         def __str__(self):
             return ""
 
+        @override
         def __repr__(self):
             return "SilentErrorRepr"
 
@@ -358,6 +371,34 @@ class TestGetNodeSpanKind:
 
 
 class TestWorkflowSessionResolution:
+    def test_resolve_workflow_session_id_prefers_trace_session_id_metadata(self):
+        trace_info = _make_workflow_info(
+            conversation_id="conversation-1",
+            workflow_run_id="workflow-run-1",
+            metadata={"app_id": "app-1", "trace_session_id": "session-1"},
+        )
+
+        assert _resolve_trace_session_id(trace_info) == "session-1"
+        assert _resolve_workflow_session_id(trace_info) == "session-1"
+
+    def test_resolve_workflow_session_id_falls_back_to_existing_workflow_behavior(self):
+        trace_info = _make_workflow_info(
+            conversation_id="conversation-1",
+            workflow_run_id="workflow-run-1",
+            metadata={"app_id": "app-1"},
+        )
+
+        assert _resolve_trace_session_id(trace_info) == "conversation-1"
+
+    def test_resolve_message_session_id_prefers_trace_session_id_metadata(self):
+        message_data = SimpleNamespace(conversation_id="conversation-1")
+        trace_info = _make_message_info(
+            message_data=message_data,
+            metadata={"app_id": "app-1", "trace_session_id": "session-1"},
+        )
+
+        assert _resolve_trace_session_id(trace_info) == "session-1"
+
     def test_prefers_conversation_id(self):
         info = _make_workflow_trace_info(conversation_id="conversation-1")
 
@@ -415,7 +456,7 @@ class TestPhoenixParentSpanBridgeHelpers:
         assert error.parent_node_execution_id == "outer-node-execution-1"
         assert "outer-node-execution-1" in str(error)
 
-    def test_resolve_parent_span_context_rejects_payload_without_traceparent(self, monkeypatch):
+    def test_resolve_parent_span_context_rejects_payload_without_traceparent(self, monkeypatch: pytest.MonkeyPatch):
         mock_redis = MagicMock()
         mock_redis.get.return_value = '{"tracestate": "vendor=value"}'
         monkeypatch.setattr(arize_phoenix_trace_module, "redis_client", mock_redis)
@@ -780,7 +821,11 @@ def test_workflow_trace_uses_canonical_root_context_for_top_level_workflow(
     mock_sessionmaker, mock_repo_factory, mock_db, trace_instance
 ):
     mock_db.engine = MagicMock()
-    info = _make_workflow_info(message_id="message-1", workflow_run_id="workflow-run-1")
+    info = _make_workflow_info(
+        message_id="message-1",
+        workflow_run_id="workflow-run-1",
+        metadata={"app_id": "app1", "trace_session_id": "trace-session-1"},
+    )
     repo = MagicMock()
     repo.get_by_workflow_execution.return_value = []
     mock_repo_factory.create_workflow_node_execution_repository.return_value = repo
@@ -803,6 +848,7 @@ def test_workflow_trace_uses_canonical_root_context_for_top_level_workflow(
             SpanAttributes.INPUT_MIME_TYPE: "application/json",
             SpanAttributes.OUTPUT_VALUE: safe_json_dumps(info.workflow_run_outputs),
             SpanAttributes.OUTPUT_MIME_TYPE: "application/json",
+            SpanAttributes.SESSION_ID: "trace-session-1",
         },
     )
     mock_extract.assert_called_once_with(carrier=root_carrier)
@@ -940,6 +986,7 @@ def test_workflow_trace_reuses_upstream_parent_workflow_context_when_no_parent_n
             SpanAttributes.INPUT_MIME_TYPE: "application/json",
             SpanAttributes.OUTPUT_VALUE: safe_json_dumps(info.workflow_run_outputs),
             SpanAttributes.OUTPUT_MIME_TYPE: "application/json",
+            SpanAttributes.SESSION_ID: "outer-workflow-run-1",
         },
     )
     mock_extract.assert_called_once_with(carrier=parent_carrier)
@@ -1085,6 +1132,7 @@ def test_workflow_trace_falls_back_when_parent_app_tracing_cannot_publish_parent
             SpanAttributes.INPUT_MIME_TYPE: "application/json",
             SpanAttributes.OUTPUT_VALUE: safe_json_dumps(info.workflow_run_outputs),
             SpanAttributes.OUTPUT_MIME_TYPE: "application/json",
+            SpanAttributes.SESSION_ID: "outer-workflow-run-1",
         },
     )
     mock_extract.assert_called_once_with(carrier=parent_carrier)
@@ -1287,6 +1335,7 @@ def test_workflow_trace_keeps_nested_conversation_session_while_reusing_parent_r
             SpanAttributes.INPUT_MIME_TYPE: "application/json",
             SpanAttributes.OUTPUT_VALUE: safe_json_dumps(info.workflow_run_outputs),
             SpanAttributes.OUTPUT_MIME_TYPE: "application/json",
+            SpanAttributes.SESSION_ID: "conversation-1",
         },
     )
     mock_extract.assert_called_once_with(carrier=parent_carrier)
@@ -1924,6 +1973,40 @@ def test_message_trace_keeps_conversation_id_as_session(mock_db, trace_instance)
         trace_instance.tracer.start_span, span_name=TraceTaskName.MESSAGE_TRACE.value
     )
     assert message_span_call.kwargs["attributes"][SpanAttributes.SESSION_ID] == "conversation-2"
+
+
+@patch("dify_trace_arize_phoenix.arize_phoenix_trace.db")
+def test_message_trace_uses_trace_session_id_metadata_as_session(mock_db, trace_instance):
+    mock_db.engine = MagicMock()
+    info = _make_message_info(metadata={"app_id": "app-1", "trace_session_id": "session-1"})
+    info.message_data = MagicMock()
+    info.message_data.conversation_id = "conversation-2"
+    info.message_data.from_account_id = "acc2"
+    info.message_data.from_end_user_id = None
+    info.message_data.query = "q2"
+    info.message_data.answer = "a2"
+    info.message_data.status = "s2"
+    info.message_data.model_id = "m2"
+    info.message_data.model_provider = "p2"
+    info.message_data.message_metadata = "{}"
+    info.message_data.error = None
+    info.error = None
+
+    root_span = MagicMock()
+    message_span = MagicMock()
+    llm_span = MagicMock()
+    trace_instance.tracer.start_span.side_effect = [root_span, message_span, llm_span]
+
+    trace_instance.message_trace(info)
+
+    message_span_call = _get_start_span_call(
+        trace_instance.tracer.start_span, span_name=TraceTaskName.MESSAGE_TRACE.value
+    )
+    llm_span_call = _get_start_span_call_by_kind(
+        trace_instance.tracer.start_span, span_kind=OpenInferenceSpanKindValues.LLM.value
+    )
+    assert message_span_call.kwargs["attributes"][SpanAttributes.SESSION_ID] == "session-1"
+    assert llm_span_call.kwargs["attributes"][SpanAttributes.SESSION_ID] == "session-1"
 
 
 @patch("dify_trace_arize_phoenix.arize_phoenix_trace.db")

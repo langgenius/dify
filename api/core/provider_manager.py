@@ -57,6 +57,7 @@ from services.feature_service import FeatureService
 
 if TYPE_CHECKING:
     from graphon.model_runtime.protocols.runtime import ModelRuntime
+    from models.account import Account
 
 _credentials_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 
@@ -572,14 +573,22 @@ class ProviderManager:
         return provider_names
 
     @staticmethod
-    def get_provider_available_credentials(tenant_id: str, provider_name: str) -> list[CredentialConfiguration]:
+    def get_provider_available_credentials(
+        tenant_id: str,
+        provider_name: str,
+        user: Account | None = None,
+    ) -> list[CredentialConfiguration]:
         """
-        Get provider all credentials.
+        Get provider all credentials, filtered by visibility.
 
         :param tenant_id: workspace id
         :param provider_name: provider name
+        :param user: current user (id + admin flag drive the visibility filter)
         :return:
         """
+        from models.credential_permission import CredentialType as CredPermType
+        from services.credential_permission_service import CredentialPermissionService
+
         with session_factory.create_session() as session:
             stmt = (
                 select(ProviderCredential)
@@ -589,6 +598,16 @@ class ProviderManager:
                 )
                 .order_by(ProviderCredential.created_at.desc())
             )
+
+            if user is not None:
+                stmt = CredentialPermissionService.apply_visibility_filter(
+                    stmt,
+                    model_id_column=ProviderCredential.id,
+                    model_user_id_column=ProviderCredential.user_id,
+                    model_visibility_column=ProviderCredential.visibility,
+                    credential_type=CredPermType.PROVIDER_CREDENTIAL,
+                    user=user,
+                )
 
             available_credentials = session.scalars(stmt).all()
 
@@ -797,7 +816,7 @@ class ProviderManager:
         return [
             {
                 "model": model_key[0],
-                "model_type": ModelType.value_of(model_key[1]),
+                "model_type": ModelType(model_key[1]),
                 "available_model_credentials": [
                     CredentialConfiguration(credential_id=cred.id, credential_name=cred.credential_name)
                     for cred in creds

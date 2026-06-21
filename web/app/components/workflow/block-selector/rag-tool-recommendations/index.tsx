@@ -4,14 +4,14 @@ import type { ViewType } from '@/app/components/workflow/block-selector/view-typ
 import type { OnSelectBlock } from '@/app/components/workflow/types'
 import { RiMoreLine } from '@remixicon/react'
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/arrows'
 import Loading from '@/app/components/base/loading'
 import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
+import { useRAGRecommendationsCollapsed } from '@/app/components/workflow/block-selector/storage'
 import Link from '@/next/link'
 import { useRAGRecommendedPlugins } from '@/service/use-tools'
-import { isServer } from '@/utils/client'
 import { getMarketplaceUrl } from '@/utils/var'
 import List from './list'
 
@@ -21,34 +21,13 @@ type RAGToolRecommendationsProps = {
   onTagsChange: Dispatch<SetStateAction<string[]>>
 }
 
-const STORAGE_KEY = 'workflow_rag_recommendations_collapsed'
-
 const RAGToolRecommendations = ({
   viewType,
   onSelect,
   onTagsChange,
 }: RAGToolRecommendationsProps) => {
   const { t } = useTranslation()
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
-    if (isServer)
-      return false
-    const stored = window.localStorage.getItem(STORAGE_KEY)
-    return stored === 'true'
-  })
-
-  useEffect(() => {
-    if (isServer)
-      return
-    const stored = window.localStorage.getItem(STORAGE_KEY)
-    if (stored !== null)
-      setIsCollapsed(stored === 'true')
-  }, [])
-
-  useEffect(() => {
-    if (isServer)
-      return
-    window.localStorage.setItem(STORAGE_KEY, String(isCollapsed))
-  }, [isCollapsed])
+  const [isCollapsed, setIsCollapsed] = useRAGRecommendationsCollapsed()
 
   const {
     data: ragRecommendedPlugins,

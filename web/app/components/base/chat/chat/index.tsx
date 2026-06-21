@@ -10,6 +10,7 @@ import type {
   OnRegenerate,
   OnSend,
 } from '../types'
+import type { HumanInputFormSubmitData } from './answer/human-input-content/type'
 import type { InputForm } from './type'
 import type { Emoji } from '@/app/components/tools/types'
 import type { AppData } from '@/models/share'
@@ -63,13 +64,14 @@ export type ChatProps = {
   switchSibling?: (siblingMessageId: string) => void
   showFeatureBar?: boolean
   showFileUpload?: boolean
+  featureBarReadonly?: boolean
   onFeatureBarClick?: (state: boolean) => void
   noSpacing?: boolean
   inputDisabled?: boolean
   sidebarCollapseState?: boolean
   hideAvatar?: boolean
   sendOnEnter?: boolean
-  onHumanInputFormSubmit?: (formToken: string, formData: any) => Promise<void>
+  onHumanInputFormSubmit?: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
   getHumanInputNodeData?: (nodeID: string) => any
 }
 
@@ -108,6 +110,7 @@ const Chat: FC<ChatProps> = ({
   switchSibling,
   showFeatureBar,
   showFileUpload,
+  featureBarReadonly,
   onFeatureBarClick,
   noSpacing,
   inputDisabled,
@@ -241,6 +244,7 @@ const Chat: FC<ChatProps> = ({
                   disabled={inputDisabled}
                   showFeatureBar={showFeatureBar}
                   showFileUpload={showFileUpload}
+                  featureBarReadonly={featureBarReadonly}
                   featureBarDisabled={isResponding}
                   onFeatureBarClick={onFeatureBarClick}
                   visionConfig={config?.file_upload}

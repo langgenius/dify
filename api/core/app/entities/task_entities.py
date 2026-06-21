@@ -241,7 +241,7 @@ class WorkflowFinishStreamResponse(StreamResponse):
         created_by: Mapping[str, object] = Field(default_factory=dict)
         created_at: int
         finished_at: int | None
-        exceptions_count: int | None = 0
+        exceptions_count: int = 0
         files: Sequence[Mapping[str, Any]] | None = []
 
     event: StreamEvent = StreamEvent.WORKFLOW_FINISHED
@@ -341,6 +341,8 @@ class HumanInputFormFilledResponse(StreamResponse):
         rendered_content: str
         action_id: str
         action_text: str
+
+        submitted_data: Mapping[str, Any] | None = None
 
     event: StreamEvent = StreamEvent.HUMAN_INPUT_FORM_FILLED
     workflow_run_id: str

@@ -4,7 +4,7 @@ import logging
 import queue
 import threading
 from collections.abc import Iterator
-from typing import Self
+from typing import Self, override
 
 from extensions.redis_names import serialize_redis_name
 from libs.broadcast_channel.channel import Producer, Subscriber, Subscription
@@ -138,10 +138,11 @@ class _StreamsSubscription(Subscription):
                         if isinstance(fields, dict):
                             data = fields.get(b"data")
                         data_bytes: bytes | None = None
-                        if isinstance(data, str):
-                            data_bytes = data.encode()
-                        elif isinstance(data, (bytes, bytearray)):
-                            data_bytes = bytes(data)
+                        match data:
+                            case str():
+                                data_bytes = data.encode()
+                            case bytes() | bytearray():
+                                data_bytes = bytes(data)
                         if data_bytes is not None:
                             self._queue.put_nowait(data_bytes)
                         last_id = entry_id
@@ -165,6 +166,7 @@ class _StreamsSubscription(Subscription):
         )
         self._listener.start()
 
+    @override
     def __iter__(self) -> Iterator[bytes]:
         # Iterator delegates to receive with timeout; stops on closure.
         with self._lock:
@@ -181,6 +183,7 @@ class _StreamsSubscription(Subscription):
             if item is not None:
                 yield item
 
+    @override
     def receive(self, timeout: float | None = 0.1) -> bytes | None:
         with self._lock:
             if self._closed:
@@ -200,6 +203,7 @@ class _StreamsSubscription(Subscription):
         assert isinstance(item, (bytes, bytearray)), "Unexpected item type in stream queue"
         return bytes(item)
 
+    @override
     def close(self) -> None:
         with self._lock:
             if self._closed:
@@ -221,11 +225,13 @@ class _StreamsSubscription(Subscription):
                 )
 
     # Context manager helpers
+    @override
     def __enter__(self) -> Self:
         with self._lock:
             self._start_if_needed()
         return self
 
+    @override
     def __exit__(self, exc_type, exc_value, traceback) -> bool | None:
         self.close()
         return None

@@ -1,20 +1,18 @@
-import type { KyInstance } from 'ky'
-import type { HostsBundle } from '../../../auth/hosts.js'
-import type { AppInfoCache } from '../../../cache/app-info.js'
-import type { IOStreams } from '../../../sys/io/streams'
-import { AppMetaClient } from '../../../api/app-meta.js'
-import { AppRunClient } from '../../../api/app-run.js'
-import { AppsClient } from '../../../api/apps.js'
-import { FileUploadClient } from '../../../api/file-upload.js'
-import { BaseError } from '../../../errors/base.js'
-import { ErrorCode } from '../../../errors/codes.js'
-import { getEnv, processExit } from '../../../sys/index.js'
-import { FieldInfo } from '../../../types/app-meta.js'
-import { resolveWorkspaceId } from '../../../workspace/resolver.js'
-import { pickStrategy } from './_strategies/index.js'
+import type { ActiveContext } from '@/auth/hosts'
+import type { AppInfoCache } from '@/cache/app-info'
+import type { HttpClient } from '@/http/types'
+import type { IOStreams } from '@/sys/io/streams'
+import { AppMetaClient } from '@/api/app-meta'
+import { AppRunClient } from '@/api/app-run'
+import { AppsClient } from '@/api/apps'
+import { FileUploadClient } from '@/api/file-upload'
+import { pickStrategy } from '@/commands/run/app/_strategies/index'
+import { BaseError, HttpClientError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
+import { processExit } from '@/sys/index'
+import { FieldInfo } from '@/types/app-meta'
 import { resolveFileInputs } from './file-flags.js'
 import { RUN_MODES } from './handlers.js'
-import { AppRunPrintFlags } from './print-flags.js'
 
 export type RunAppOptions = {
   readonly appId: string
@@ -29,11 +27,12 @@ export type RunAppOptions = {
   readonly format?: string
   readonly stream?: boolean
   readonly think?: boolean
+  readonly retryOnRateLimit?: boolean
 }
 
 export type RunAppDeps = {
-  readonly bundle: HostsBundle
-  readonly http: KyInstance
+  readonly active: ActiveContext
+  readonly http: HttpClient
   readonly host: string
   readonly io: IOStreams
   readonly cache?: AppInfoCache
@@ -79,11 +78,27 @@ async function resolveInputs(
 }
 
 export async function runApp(opts: RunAppOptions, deps: RunAppDeps): Promise<void> {
-  const env = deps.envLookup ?? getEnv
-  const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), bundle: deps.bundle })
   const apps = new AppsClient(deps.http)
   const meta = new AppMetaClient({ apps, host: deps.host, cache: deps.cache })
-  const m = await meta.get(opts.appId, wsId, [FieldInfo])
+
+  try {
+    await executeRun(opts, deps, meta)
+  }
+  catch (err) {
+    if (err instanceof HttpClientError && err.httpStatus === 422) {
+      await meta.invalidate(opts.appId)
+      throw err.withHint('app metadata cache cleared — if the app was recently republished, run the command again')
+    }
+    throw err
+  }
+}
+
+async function executeRun(
+  opts: RunAppOptions,
+  deps: RunAppDeps,
+  meta: AppMetaClient,
+): Promise<void> {
+  const m = await meta.get(opts.appId, [FieldInfo])
   const mode = m.info?.mode ?? ''
   if (mode === '')
     throw new Error(`app ${opts.appId}: mode missing from /describe`)
@@ -110,9 +125,8 @@ export async function runApp(opts: RunAppOptions, deps: RunAppDeps): Promise<voi
   const isText = TEXT_FORMATS.has(format)
   const livePrint = opts.stream === true
   const runClient = new AppRunClient(deps.http)
-  const printFlags = new AppRunPrintFlags()
 
   const exit = deps.exit ?? processExit
-  const ctx = { opts: { ...opts, inputs }, deps, mode, format, isText, livePrint, runClient, printFlags, exit, think: opts.think ?? false }
+  const ctx = { opts: { ...opts, inputs }, deps, mode, format, isText, livePrint, runClient, exit, think: opts.think ?? false }
   await pickStrategy(isText, livePrint).execute(ctx)
 }

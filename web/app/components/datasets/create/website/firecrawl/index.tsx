@@ -6,7 +6,7 @@ import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useModalContextSelector } from '@/context/modal-context'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import { checkFirecrawlTaskStatus, createFirecrawlTask } from '@/service/datasets'
 import { sleep } from '@/utils'
 import CrawledResult from '../base/crawled-result'
@@ -19,14 +19,14 @@ import Options from './options'
 
 const ERROR_I18N_PREFIX = 'errorMsg'
 const I18N_PREFIX = 'stepOne.website'
-type Props = {
+type Props = Readonly<{
   onPreview: (payload: CrawlResultItem) => void
   checkedCrawlResult: CrawlResultItem[]
   onCheckedCrawlResultChange: (payload: CrawlResultItem[]) => void
   onJobIdChange: (jobId: string) => void
   crawlOptions: CrawlOptions
   onCrawlOptionsChange: (payload: CrawlOptions) => void
-}
+}>
 const Step = {
   init: 'init',
   running: 'running',
@@ -61,12 +61,12 @@ const FireCrawl: FC<Props> = ({ onPreview, checkedCrawlResult, onCheckedCrawlRes
       isMountedRef.current = false
     }
   }, [])
-  const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
+  const openIntegrationsSetting = useIntegrationsSetting()
   const handleSetting = useCallback(() => {
-    setShowAccountSettingModal({
+    openIntegrationsSetting({
       payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
     })
-  }, [setShowAccountSettingModal])
+  }, [openIntegrationsSetting])
   const checkValid = useCallback((url: string) => {
     let errorMsg = ''
     if (!url) {

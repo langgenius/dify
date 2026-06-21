@@ -6,6 +6,7 @@ import {
   useMemo,
 } from 'react'
 import { useResizePanel } from '../nodes/_base/hooks/use-resize-panel'
+import { useSetWorkflowVariableInspectPanelHeight } from '../persistence/local-storage-options'
 import { useStore } from '../store'
 import Panel from './panel'
 
@@ -21,10 +22,12 @@ const VariableInspectPanel: FC = () => {
     return workflowCanvasHeight - 60
   }, [workflowCanvasHeight])
 
+  const setPanelHeightStorage = useSetWorkflowVariableInspectPanelHeight()
+
   const handleResize = useCallback((width: number, height: number) => {
-    localStorage.setItem('workflow-variable-inpsect-panel-height', `${height}`)
+    setPanelHeightStorage(height)
     setVariableInspectPanelHeight(height)
-  }, [setVariableInspectPanelHeight])
+  }, [setVariableInspectPanelHeight, setPanelHeightStorage])
 
   const {
     triggerRef,

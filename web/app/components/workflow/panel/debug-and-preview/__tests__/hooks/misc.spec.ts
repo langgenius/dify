@@ -228,10 +228,10 @@ describe('useChat – handleSubmitHumanInputForm', () => {
     const { result } = renderHook(() => useChat({}))
 
     await act(async () => {
-      await result.current.handleSubmitHumanInputForm('token-123', { field: 'value' })
+      await result.current.handleSubmitHumanInputForm('token-123', { inputs: { field: 'value' }, action: 'approve' })
     })
 
-    expect(mockSubmitHumanInputForm).toHaveBeenCalledWith('token-123', { field: 'value' })
+    expect(mockSubmitHumanInputForm).toHaveBeenCalledWith('token-123', { inputs: { field: 'value' }, action: 'approve' })
   })
 })
 

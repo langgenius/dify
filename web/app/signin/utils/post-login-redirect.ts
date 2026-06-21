@@ -1,6 +1,5 @@
 import type { ReadonlyURLSearchParams } from '@/next/navigation'
 
-const OAUTH_AUTHORIZE_PENDING_KEY = 'oauth_authorize_pending_redirect'
 const REDIRECT_URL_KEY = 'redirect_url'
 const DEVICE_REDIRECT_KEY = 'dify_post_login_redirect'
 const DEVICE_TTL_MS = 15 * 60 * 1000
@@ -9,13 +8,6 @@ const ALLOWED: Record<string, ReadonlySet<string>> = {
   '/device': new Set(['user_code', 'sso_verified']),
   '/account/oauth/authorize': new Set(['client_id', 'scope', 'state', 'redirect_uri']),
 }
-
-type OAuthPendingRedirect = {
-  value?: string
-  expiry?: number
-}
-
-const getCurrentUnixTimestamp = () => Math.floor(Date.now() / 1000)
 
 function validate(target: string): string | null {
   if (typeof window === 'undefined')
@@ -87,51 +79,14 @@ function getDeviceRedirect(): string | null {
   }
 }
 
-function removeOAuthPendingRedirect() {
-  try {
-    localStorage.removeItem(OAUTH_AUTHORIZE_PENDING_KEY)
-  }
-  catch {}
-}
-
-function getOAuthPendingRedirect(): string | null {
-  try {
-    const raw = localStorage.getItem(OAUTH_AUTHORIZE_PENDING_KEY)
-    if (!raw)
-      return null
-    removeOAuthPendingRedirect()
-    const item: OAuthPendingRedirect = JSON.parse(raw)
-    if (!item.value || typeof item.expiry !== 'number')
-      return null
-    return getCurrentUnixTimestamp() > item.expiry ? null : item.value
-  }
-  catch {
-    removeOAuthPendingRedirect()
-    return null
-  }
-}
-
-export function setOAuthPendingRedirect(url: string, ttlSeconds: number = 300) {
-  try {
-    const item: OAuthPendingRedirect = {
-      value: url,
-      expiry: getCurrentUnixTimestamp() + ttlSeconds,
-    }
-    localStorage.setItem(OAUTH_AUTHORIZE_PENDING_KEY, JSON.stringify(item))
-  }
-  catch {}
-}
-
 export const resolvePostLoginRedirect = (searchParams?: ReadonlyURLSearchParams) => {
   if (searchParams) {
     const redirectUrl = searchParams.get(REDIRECT_URL_KEY)
     if (redirectUrl) {
       try {
-        removeOAuthPendingRedirect()
         return decodeURIComponent(redirectUrl)
       }
       catch {
-        removeOAuthPendingRedirect()
         return redirectUrl
       }
     }
@@ -139,5 +94,5 @@ export const resolvePostLoginRedirect = (searchParams?: ReadonlyURLSearchParams)
   const device = getDeviceRedirect()
   if (device)
     return device
-  return getOAuthPendingRedirect()
+  return null
 }

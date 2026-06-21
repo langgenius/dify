@@ -1,14 +1,12 @@
 from types import SimpleNamespace
 
+from pytest_mock import MockerFixture
+
 from services.rag_pipeline.pipeline_template.customized.customized_retrieval import CustomizedPipelineTemplateRetrieval
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
 
 
-def test_get_pipeline_templates(mocker) -> None:
-    mocker.patch(
-        "services.rag_pipeline.pipeline_template.customized.customized_retrieval.current_account_with_tenant",
-        return_value=("account-id", "tenant-id"),
-    )
+def test_get_pipeline_templates(mocker: MockerFixture) -> None:
     customized_template = SimpleNamespace(
         id="tpl-1",
         name="Custom Template",
@@ -27,7 +25,7 @@ def test_get_pipeline_templates(mocker) -> None:
     )
     retrieval = CustomizedPipelineTemplateRetrieval()
 
-    result = retrieval.get_pipeline_templates("en-US")
+    result = retrieval.get_pipeline_templates("en-US", "tenant-id")
 
     assert retrieval.get_type() == PipelineTemplateType.CUSTOMIZED
     assert result == {
@@ -44,7 +42,7 @@ def test_get_pipeline_templates(mocker) -> None:
     }
 
 
-def test_get_pipeline_template_detail_returns_detail(mocker) -> None:
+def test_get_pipeline_template_detail_returns_detail(mocker: MockerFixture) -> None:
     session_mock = mocker.Mock()
     session_mock.get.return_value = SimpleNamespace(
         id="tpl-1",
@@ -75,7 +73,7 @@ def test_get_pipeline_template_detail_returns_detail(mocker) -> None:
     }
 
 
-def test_get_pipeline_template_detail_returns_none_when_not_found(mocker) -> None:
+def test_get_pipeline_template_detail_returns_none_when_not_found(mocker: MockerFixture) -> None:
     session_mock = mocker.Mock()
     session_mock.get.return_value = None
     mocker.patch(

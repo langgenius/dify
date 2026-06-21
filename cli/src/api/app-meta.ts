@@ -1,7 +1,7 @@
-import type { AppInfoCache } from '../cache/app-info.js'
-import type { AppMeta, AppMetaFieldKey } from '../types/app-meta.js'
-import type { AppsClient } from './apps.js'
-import { covers, fromDescribe, mergeMeta } from '../types/app-meta.js'
+import type { AppsClient } from './apps'
+import type { AppInfoCache } from '@/cache/app-info'
+import type { AppMeta, AppMetaFieldKey } from '@/types/app-meta'
+import { covers, fromDescribe, mergeMeta } from '@/types/app-meta'
 
 export type AppMetaClientOptions = {
   readonly apps: AppsClient
@@ -23,12 +23,12 @@ export class AppMetaClient {
     this.now = opts.now ?? (() => new Date())
   }
 
-  async get(appId: string, workspaceId: string, fields: readonly AppMetaFieldKey[] = []): Promise<AppMeta> {
+  async get(appId: string, fields: readonly AppMetaFieldKey[] = []): Promise<AppMeta> {
     const cached = this.cache?.get(this.host, appId)
     if (cached !== undefined && this.cache?.isFresh(cached, this.now()) === true && covers(cached.meta, fields))
       return cached.meta
 
-    const resp = await this.apps.describe(appId, workspaceId, fields.length === 0 ? undefined : fields)
+    const resp = await this.apps.describe(appId, fields.length === 0 ? undefined : fields)
     const fresh = fromDescribe(resp, fields)
     const merged = cached !== undefined && this.cache?.isFresh(cached, this.now()) === true
       ? mergeMeta(cached.meta, fresh)

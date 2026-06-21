@@ -5,7 +5,6 @@ import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tag01Icon from '@/app/components/base/icons/src/vender/line/financeAndECommerce/Tag01'
 import XCircleIcon from '@/app/components/base/icons/src/vender/solid/general/XCircle'
 import { consoleQuery } from '@/service/client'
 import { TagSearchContent } from './tag-search-content'
@@ -19,12 +18,14 @@ type TagFilterProps = {
   value: string[]
   onChange: (v: string[]) => void
   onOpenTagManagement?: () => void
+  showLeadingIcon?: boolean
 }
 export const TagFilter = ({
   type,
   value,
   onChange,
   onOpenTagManagement = () => {},
+  showLeadingIcon = true,
 }: TagFilterProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -49,7 +50,8 @@ export const TagFilter = ({
 
   const firstTagId = value[0]
   const currentTagName = firstTagId ? tagById.get(firstTagId)?.name : undefined
-  const triggerLabel = selectedTags.length ? selectedTags.map(tag => tag.name).join(', ') : t('tag.placeholder', { ns: 'common' })
+  const placeholderLabel = t('tag.placeholder', { ns: 'common' })
+  const triggerLabel = selectedTags.length ? selectedTags.map(tag => tag.name).join(', ') : placeholderLabel
   const handleValueChange = useCallback((nextTags: Tag[]) => {
     const unknownTagIds = value.filter(tagId => !tagById.has(tagId))
     onChange([...unknownTagIds, ...nextTags.map(tag => tag.id)])
@@ -74,16 +76,18 @@ export const TagFilter = ({
           aria-label={triggerLabel}
           icon={false}
           className={cn(
-            'flex h-8 max-w-60 min-w-28 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-0 text-left select-none hover:bg-components-input-bg-normal focus-visible:bg-components-input-bg-normal data-popup-open:bg-components-input-bg-normal',
+            'flex h-8 max-w-60 min-w-28 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-0 text-left select-none hover:bg-components-input-bg-normal focus-visible:bg-components-input-bg-normal focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-components-input-bg-normal',
             !!value.length && 'pr-6 shadow-xs',
           )}
         >
           <span className="flex w-full min-w-0 items-center gap-1">
-            <span className="p-px">
-              <Tag01Icon className="size-3.5 text-text-tertiary" aria-hidden="true" />
-            </span>
-            <span className="min-w-0 grow truncate text-[13px] leading-4.5 text-text-secondary">
-              {!value.length && t('tag.placeholder', { ns: 'common' })}
+            {showLeadingIcon && (
+              <span className="p-px">
+                <span className="i-custom-vender-line-financeAndECommerce-tag-01 size-3.5 text-text-tertiary" aria-hidden="true" />
+              </span>
+            )}
+            <span className="min-w-0 grow truncate text-[13px] leading-4.5 text-text-tertiary">
+              {!value.length && placeholderLabel}
               {!!value.length && currentTagName}
             </span>
             {value.length > 1 && (
@@ -100,7 +104,7 @@ export const TagFilter = ({
           <button
             type="button"
             aria-label={t('operation.clear', { ns: 'common' })}
-            className="group/clear absolute top-1/2 right-2 -translate-y-1/2 border-none bg-transparent p-px"
+            className="group/clear absolute top-1/2 right-2 -translate-y-1/2 rounded-md border-none bg-transparent p-px outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             onClick={(event) => {
               event.stopPropagation()
               onChange([])

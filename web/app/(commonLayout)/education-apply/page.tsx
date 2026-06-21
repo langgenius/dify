@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect } from 'react'
+import { FullScreenLoading } from '@/app/components/full-screen-loading'
 import EducationApplyPage from '@/app/education-apply/education-apply-page'
-import RootLoading from '@/app/loading'
 import { useProviderContext } from '@/context/provider-context'
 import {
   useRouter,
@@ -28,7 +28,7 @@ export default function EducationApply() {
   }, [enableEducationPlan, isFetchedPlanInfo, router, token])
 
   if (!isFetchedPlanInfo || !enableEducationPlan || !token || isLoadingEducationAccountInfo)
-    return <RootLoading />
+    return <FullScreenLoading />
 
   return <EducationApplyPage />
 }

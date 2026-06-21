@@ -2,7 +2,7 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta
-from typing import cast
+from typing import cast, override
 
 from langsmith import Client
 from langsmith.schemas import RunBase
@@ -47,21 +47,25 @@ class LangSmithDataTrace(BaseTraceInstance):
         self.langsmith_client = Client(api_key=langsmith_config.api_key, api_url=langsmith_config.endpoint)
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
 
+    @override
     def trace(self, trace_info: BaseTraceInfo):
-        if isinstance(trace_info, WorkflowTraceInfo):
-            self.workflow_trace(trace_info)
-        if isinstance(trace_info, MessageTraceInfo):
-            self.message_trace(trace_info)
-        if isinstance(trace_info, ModerationTraceInfo):
-            self.moderation_trace(trace_info)
-        if isinstance(trace_info, SuggestedQuestionTraceInfo):
-            self.suggested_question_trace(trace_info)
-        if isinstance(trace_info, DatasetRetrievalTraceInfo):
-            self.dataset_retrieval_trace(trace_info)
-        if isinstance(trace_info, ToolTraceInfo):
-            self.tool_trace(trace_info)
-        if isinstance(trace_info, GenerateNameTraceInfo):
-            self.generate_name_trace(trace_info)
+        match trace_info:
+            case WorkflowTraceInfo():
+                self.workflow_trace(trace_info)
+            case MessageTraceInfo():
+                self.message_trace(trace_info)
+            case ModerationTraceInfo():
+                self.moderation_trace(trace_info)
+            case SuggestedQuestionTraceInfo():
+                self.suggested_question_trace(trace_info)
+            case DatasetRetrievalTraceInfo():
+                self.dataset_retrieval_trace(trace_info)
+            case ToolTraceInfo():
+                self.tool_trace(trace_info)
+            case GenerateNameTraceInfo():
+                self.generate_name_trace(trace_info)
+            case _:
+                pass
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
         # trace_id must equal the root run's run_id (LangSmith protocol); external trace_id

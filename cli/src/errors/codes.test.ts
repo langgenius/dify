@@ -5,11 +5,11 @@ import {
   ErrorCode,
   ExitCode,
   exitFor,
-} from './codes.js'
+} from './codes'
 
 describe('error codes', () => {
-  it('has 17 codes (parity with internal/api/errors)', () => {
-    expect(ALL_ERROR_CODES).toHaveLength(17)
+  it('has correct number codes (parity with internal/api/errors)', () => {
+    expect(ALL_ERROR_CODES).toHaveLength(Object.keys(CODE_TO_EXIT_MAP).length)
   })
 
   it('has the expected ExitCode buckets', () => {
@@ -18,6 +18,7 @@ describe('error codes', () => {
     expect(ExitCode.Usage).toBe(2)
     expect(ExitCode.Auth).toBe(4)
     expect(ExitCode.VersionCompat).toBe(6)
+    expect(ExitCode.RateLimited).toBe(7)
   })
 
   it('every code maps to an exit', () => {
@@ -42,11 +43,11 @@ describe('error codes', () => {
     [ErrorCode.UsageMissingArg, ExitCode.Usage],
     [ErrorCode.ConfigInvalidKey, ExitCode.Usage],
     [ErrorCode.ConfigInvalidValue, ExitCode.Usage],
-    [ErrorCode.NetworkTimeout, ExitCode.Generic],
-    [ErrorCode.NetworkDns, ExitCode.Generic],
     [ErrorCode.Server5xx, ExitCode.Generic],
     [ErrorCode.Server4xxOther, ExitCode.Generic],
+    [ErrorCode.ClientError, ExitCode.Generic],
     [ErrorCode.Unknown, ExitCode.Generic],
+    [ErrorCode.RateLimited, ExitCode.RateLimited],
   ])('exitFor(%s) -> %d', (code, want) => {
     expect(exitFor(code)).toBe(want)
   })

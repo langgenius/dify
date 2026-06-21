@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { BaseError, isBaseError, newError, unknownError } from './base.js'
-import { ErrorCode, ExitCode } from './codes.js'
+import { BaseError, HttpClientError, isBaseError, newError, unknownError } from './base'
+import { ErrorCode, ExitCode } from './codes'
 
 describe('BaseError', () => {
   it('captures code, message, optional fields', () => {
-    const err = new BaseError({
+    const err = new HttpClientError({
       code: ErrorCode.AuthExpired,
       message: 'session expired',
       hint: 'run difyctl auth login',
@@ -30,7 +30,6 @@ describe('BaseError', () => {
     expect(newError(ErrorCode.AuthExpired, 'x').exit()).toBe(ExitCode.Auth)
     expect(newError(ErrorCode.UsageInvalidFlag, 'x').exit()).toBe(ExitCode.Usage)
     expect(newError(ErrorCode.VersionSkew, 'x').exit()).toBe(ExitCode.VersionCompat)
-    expect(newError(ErrorCode.NetworkDns, 'x').exit()).toBe(ExitCode.Generic)
   })
 
   it('toString without hint formats "<code>: <message>"', () => {
@@ -56,7 +55,7 @@ describe('BaseError', () => {
 
   it('withHttpStatus + withRequest + wrap chain immutably', () => {
     const cause = new Error('underlying')
-    const built = newError(ErrorCode.NetworkTimeout, 'timed out')
+    const built = HttpClientError.from(newError(ErrorCode.NetworkConnection, 'timed out'))
       .withHttpStatus(504)
       .withRequest('POST', 'https://x/y')
       .wrap(cause)
@@ -68,7 +67,7 @@ describe('BaseError', () => {
 
   it('wrap exposes cause via standard Error.cause property', () => {
     const cause = new Error('underlying failure')
-    const wrapped = newError(ErrorCode.NetworkTimeout, 'timed out').wrap(cause)
+    const wrapped = newError(ErrorCode.NetworkConnection, 'timed out').wrap(cause)
     expect(wrapped.cause).toBe(cause)
   })
 
@@ -84,5 +83,58 @@ describe('BaseError', () => {
     const err = unknownError('something failed', cause)
     expect(err.code).toBe(ErrorCode.Unknown)
     expect(err.cause).toBe(cause)
+  })
+})
+
+describe('error envelope', () => {
+  it('emits required fields only when minimal', () => {
+    const err = newError(ErrorCode.Unknown, 'boom')
+    expect(err.toEnvelope()).toEqual({
+      error: { code: 'unknown', message: 'boom' },
+    })
+  })
+
+  it('includes hint / http_status / method / url when present', () => {
+    const err = HttpClientError.from(newError(ErrorCode.NetworkConnection, 'timed out'))
+      .withHint('check your network')
+      .withHttpStatus(504)
+      .withRequest('POST', 'https://api.dify.ai/v1/x')
+    expect(err.toEnvelope()).toEqual({
+      error: {
+        code: 'network_connection',
+        message: 'timed out',
+        hint: 'check your network',
+        http_status: 504,
+        method: 'POST',
+        url: 'https://api.dify.ai/v1/x',
+      },
+    })
+  })
+
+  it('renderEnvelope returns a single-line JSON string', () => {
+    const err = newError(ErrorCode.AuthExpired, 'session expired')
+      .withHint('run difyctl auth login')
+    const out = JSON.stringify(err.toEnvelope())
+    expect(out).toBe(
+      '{"error":{"code":"auth_expired","message":"session expired","hint":"run difyctl auth login"}}',
+    )
+    expect(out).not.toContain('\n')
+  })
+
+  it('renderEnvelope output round-trips through JSON.parse to an ErrorEnvelope shape', () => {
+    const err = newError(ErrorCode.UsageInvalidFlag, 'bad flag').withHint('see --help')
+    const parsed = JSON.parse(JSON.stringify(err.toEnvelope()))
+    expect(parsed).toEqual({
+      error: { code: 'usage_invalid_flag', message: 'bad flag', hint: 'see --help' },
+    })
+  })
+
+  it('omits undefined optional fields entirely (no `hint: null`)', () => {
+    const err = newError(ErrorCode.Server5xx, 'upstream broke')
+    const envelope = err.toEnvelope()
+    expect(envelope.error).not.toHaveProperty('hint')
+    expect(envelope.error).not.toHaveProperty('http_status')
+    expect(envelope.error).not.toHaveProperty('method')
+    expect(envelope.error).not.toHaveProperty('url')
   })
 })

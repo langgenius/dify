@@ -1,4 +1,4 @@
-from importlib import import_module
+import inspect
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -16,50 +16,32 @@ from controllers.console.datasets.external import (
     ExternalDatasetCreateApi,
     ExternalKnowledgeHitTestingApi,
 )
+from models.account import Account, TenantAccountRole
 from services.dataset_service import DatasetService
 from services.external_knowledge_service import ExternalDatasetService
 from services.hit_testing_service import HitTestingService
 from services.knowledge_service import ExternalDatasetTestService
 
-external_controller = import_module("controllers.console.datasets.external")
-
-
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
-
 
 @pytest.fixture
-def app():
+def app() -> Flask:
     app = Flask("test_external_dataset")
     app.config["TESTING"] = True
     return app
 
 
 @pytest.fixture
-def current_user():
-    user = MagicMock()
+def current_user() -> Account:
+    user = Account(name="Test User", email="user-1@example.com")
     user.id = "user-1"
-    user.is_dataset_editor = True
-    user.has_edit_permission = True
-    user.is_dataset_operator = True
+    user.role = TenantAccountRole.EDITOR
     return user
-
-
-@pytest.fixture(autouse=True)
-def mock_auth(monkeypatch: pytest.MonkeyPatch, current_user):
-    monkeypatch.setattr(
-        external_controller,
-        "current_account_with_tenant",
-        lambda: (current_user, "tenant-1"),
-    )
 
 
 class TestExternalApiTemplateListApi:
     def test_get_success(self, app: Flask):
         api = ExternalApiTemplateListApi()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         api_item = MagicMock()
         api_item.to_dict.return_value = {"id": "1"}
@@ -79,10 +61,10 @@ class TestExternalApiTemplateListApi:
         assert resp["data"][0]["id"] == "1"
         get_external_knowledge_apis.assert_called_once_with(1, 20, "tenant-1", None)
 
-    def test_post_forbidden(self, app: Flask, current_user):
-        current_user.is_dataset_editor = False
+    def test_post_forbidden(self, app: Flask, current_user: Account):
+        current_user.role = TenantAccountRole.NORMAL
         api = ExternalApiTemplateListApi()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         payload = {"name": "x", "settings": {"k": "v"}}
 
@@ -92,11 +74,11 @@ class TestExternalApiTemplateListApi:
             patch.object(ExternalDatasetService, "validate_api_list"),
         ):
             with pytest.raises(Forbidden):
-                method(api)
+                method(api, "tenant-1", current_user)
 
-    def test_post_duplicate_name(self, app: Flask):
+    def test_post_duplicate_name(self, app: Flask, current_user: Account):
         api = ExternalApiTemplateListApi()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         payload = {"name": "x", "settings": {"k": "v"}}
 
@@ -111,13 +93,13 @@ class TestExternalApiTemplateListApi:
             ),
         ):
             with pytest.raises(DatasetNameDuplicateError):
-                method(api)
+                method(api, "tenant-1", current_user)
 
 
 class TestExternalApiTemplateApi:
     def test_get_not_found(self, app: Flask):
         api = ExternalApiTemplateApi()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         with (
             app.test_request_context("/"),
@@ -128,24 +110,23 @@ class TestExternalApiTemplateApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, "api-id")
+                method(api, "tenant-1", "api-id")
 
-    def test_delete_forbidden(self, app: Flask, current_user):
-        current_user.has_edit_permission = False
-        current_user.is_dataset_operator = False
+    def test_delete_forbidden(self, app: Flask, current_user: Account):
+        current_user.role = TenantAccountRole.NORMAL
 
         api = ExternalApiTemplateApi()
-        method = unwrap(api.delete)
+        method = inspect.unwrap(api.delete)
 
         with app.test_request_context("/"):
             with pytest.raises(Forbidden):
-                method(api, "api-id")
+                method(api, "tenant-1", current_user, "api-id")
 
 
 class TestExternalApiUseCheckApi:
     def test_get_scopes_usage_check_to_current_tenant(self, app: Flask):
         api = ExternalApiUseCheckApi()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         with (
             app.test_request_context("/"),
@@ -155,7 +136,7 @@ class TestExternalApiUseCheckApi:
                 return_value=(True, 2),
             ) as mock_use_check,
         ):
-            response, status = method(api, "api-id")
+            response, status = method(api, "tenant-1", "api-id")
 
         assert status == 200
         assert response == {"is_using": True, "count": 2}
@@ -163,9 +144,9 @@ class TestExternalApiUseCheckApi:
 
 
 class TestExternalDatasetCreateApi:
-    def test_create_success(self, app: Flask):
+    def test_create_success(self, app: Flask, current_user: Account):
         api = ExternalDatasetCreateApi()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         payload = {
             "external_knowledge_api_id": "api",
@@ -190,6 +171,7 @@ class TestExternalDatasetCreateApi:
         dataset.external_retrieval_model = None
         dataset.doc_metadata = []
         dataset.icon_info = None
+        dataset.permission_keys = []
 
         dataset.summary_index_setting = MagicMock()
         dataset.summary_index_setting.enable = False
@@ -203,14 +185,14 @@ class TestExternalDatasetCreateApi:
                 return_value=dataset,
             ),
         ):
-            _, status = method(api)
+            _, status = method(api, "tenant-1", current_user)
 
         assert status == 201
 
-    def test_create_forbidden(self, app: Flask, current_user):
-        current_user.is_dataset_editor = False
+    def test_create_forbidden(self, app: Flask, current_user: Account):
+        current_user.role = TenantAccountRole.NORMAL
         api = ExternalDatasetCreateApi()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         payload = {
             "external_knowledge_api_id": "api",
@@ -223,13 +205,13 @@ class TestExternalDatasetCreateApi:
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=payload),
         ):
             with pytest.raises(Forbidden):
-                method(api)
+                method(api, "tenant-1", current_user)
 
 
 class TestExternalKnowledgeHitTestingApi:
-    def test_hit_testing_dataset_not_found(self, app: Flask):
+    def test_hit_testing_dataset_not_found(self, app: Flask, current_user: Account):
         api = ExternalKnowledgeHitTestingApi()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         with (
             app.test_request_context("/"),
@@ -240,11 +222,11 @@ class TestExternalKnowledgeHitTestingApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, "dataset-id")
+                method(api, current_user, "dataset-id")
 
-    def test_hit_testing_success(self, app: Flask):
+    def test_hit_testing_success(self, app: Flask, current_user: Account):
         api = ExternalKnowledgeHitTestingApi()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         payload = {"query": "hello"}
 
@@ -261,7 +243,7 @@ class TestExternalKnowledgeHitTestingApi:
                 return_value={"ok": True},
             ),
         ):
-            resp = method(api, "dataset-id")
+            resp = method(api, current_user, "dataset-id")
 
         assert resp["ok"] is True
 
@@ -269,7 +251,7 @@ class TestExternalKnowledgeHitTestingApi:
 class TestBedrockRetrievalApi:
     def test_bedrock_retrieval(self, app: Flask):
         api = BedrockRetrievalApi()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         payload = {
             "retrieval_setting": {},
@@ -293,9 +275,9 @@ class TestBedrockRetrievalApi:
 
 
 class TestExternalApiTemplateListApiAdvanced:
-    def test_post_duplicate_name_error(self, app: Flask, mock_auth, current_user):
+    def test_post_duplicate_name_error(self, app: Flask, current_user: Account):
         api = ExternalApiTemplateListApi()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         payload = {"name": "duplicate_api", "settings": {"key": "value"}}
 
@@ -309,11 +291,11 @@ class TestExternalApiTemplateListApiAdvanced:
             ),
         ):
             with pytest.raises(DatasetNameDuplicateError):
-                method(api)
+                method(api, "tenant-1", current_user)
 
-    def test_get_with_pagination(self, app: Flask, mock_auth, current_user):
+    def test_get_with_pagination(self, app: Flask):
         api = ExternalApiTemplateListApi()
-        method = unwrap(api.get)
+        method = inspect.unwrap(api.get)
 
         templates = [MagicMock(id=f"api-{i}") for i in range(3)]
 
@@ -333,12 +315,12 @@ class TestExternalApiTemplateListApiAdvanced:
 
 
 class TestExternalDatasetCreateApiAdvanced:
-    def test_create_forbidden(self, app: Flask, mock_auth, current_user):
+    def test_create_forbidden(self, app: Flask, current_user: Account):
         """Test creating external dataset without permission"""
         api = ExternalDatasetCreateApi()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
-        current_user.is_dataset_editor = False
+        current_user.role = TenantAccountRole.NORMAL
 
         payload = {
             "external_knowledge_api_id": "api-1",
@@ -349,14 +331,14 @@ class TestExternalDatasetCreateApiAdvanced:
 
         with app.test_request_context("/", json=payload), patch.object(type(console_ns), "payload", payload):
             with pytest.raises(Forbidden):
-                method(api)
+                method(api, "tenant-1", current_user)
 
 
 class TestExternalKnowledgeHitTestingApiAdvanced:
-    def test_hit_testing_dataset_not_found(self, app: Flask, mock_auth, current_user):
+    def test_hit_testing_dataset_not_found(self, app: Flask, current_user: Account):
         """Test hit testing on non-existent dataset"""
         api = ExternalKnowledgeHitTestingApi()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         payload = {
             "query": "test query",
@@ -372,11 +354,11 @@ class TestExternalKnowledgeHitTestingApiAdvanced:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, "ds-1")
+                method(api, current_user, "ds-1")
 
-    def test_hit_testing_with_custom_retrieval_model(self, app: Flask, mock_auth, current_user):
+    def test_hit_testing_with_custom_retrieval_model(self, app: Flask, current_user: Account):
         api = ExternalKnowledgeHitTestingApi()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         dataset = MagicMock()
         payload = {
@@ -398,15 +380,15 @@ class TestExternalKnowledgeHitTestingApiAdvanced:
                 return_value={"results": []},
             ),
         ):
-            resp = method(api, "ds-1")
+            resp = method(api, current_user, "ds-1")
 
         assert resp["results"] == []
 
 
 class TestBedrockRetrievalApiAdvanced:
-    def test_bedrock_retrieval_with_invalid_setting(self, app: Flask, mock_auth, current_user):
+    def test_bedrock_retrieval_with_invalid_setting(self, app: Flask):
         api = BedrockRetrievalApi()
-        method = unwrap(api.post)
+        method = inspect.unwrap(api.post)
 
         payload = {
             "retrieval_setting": {},

@@ -12,6 +12,13 @@ export const zApiKeyAuthBindingPayload = z.object({
 })
 
 /**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
  * ApiKeyAuthDataSourceItem
  */
 export const zApiKeyAuthDataSourceItem = z.object({
@@ -40,13 +47,13 @@ export const zPostApiKeyAuthDataSourceBindingBody = zApiKeyAuthBindingPayload
 /**
  * Success
  */
-export const zPostApiKeyAuthDataSourceBindingResponse = z.record(z.string(), z.unknown())
+export const zPostApiKeyAuthDataSourceBindingResponse = zSimpleResultResponse
 
 export const zDeleteApiKeyAuthDataSourceByBindingIdPath = z.object({
-  binding_id: z.string(),
+  binding_id: z.uuid(),
 })
 
 /**
  * Binding deleted successfully
  */
-export const zDeleteApiKeyAuthDataSourceByBindingIdResponse = z.record(z.string(), z.never())
+export const zDeleteApiKeyAuthDataSourceByBindingIdResponse = z.void()

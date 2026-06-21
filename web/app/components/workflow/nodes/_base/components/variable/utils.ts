@@ -1,4 +1,3 @@
-import type { AgentNodeType } from '../../../agent/types'
 import type { AnswerNodeType } from '../../../answer/types'
 import type { CodeNodeType } from '../../../code/types'
 import type { DocExtractorNodeType } from '../../../document-extractor/types'
@@ -14,6 +13,8 @@ import type { ParameterExtractorNodeType } from '../../../parameter-extractor/ty
 import type { QuestionClassifierNodeType } from '../../../question-classifier/types'
 import type { TemplateTransformNodeType } from '../../../template-transform/types'
 import type { ToolNodeType } from '../../../tool/types'
+import type { AgentV2NodeType } from '@/app/components/workflow/nodes/agent-v2/types'
+import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { CaseItem, Condition } from '@/app/components/workflow/nodes/if-else/types'
@@ -51,6 +52,8 @@ import {
   TEMPLATE_TRANSFORM_OUTPUT_STRUCT,
   TOOL_OUTPUT_STRUCT,
 } from '@/app/components/workflow/constants'
+import { getAgentV2OutputVars } from '@/app/components/workflow/nodes/agent-v2/output-variables'
+import { isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
 import DataSourceNodeDefault from '@/app/components/workflow/nodes/data-source/default'
 import HumanInputNodeDefault from '@/app/components/workflow/nodes/human-input/default'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
@@ -592,6 +595,11 @@ const formatItem = (
     }
 
     case BlockEnum.Agent: {
+      if (isAgentV2NodeData(data)) {
+        res.vars = getAgentV2OutputVars(data)
+        break
+      }
+
       const payload = data as AgentNodeType
       const outputs: Var[] = []
       Object.keys(payload.output_schema?.properties || {}).forEach(
@@ -607,6 +615,11 @@ const formatItem = (
         },
       )
       res.vars = [...outputs, ...TOOL_OUTPUT_STRUCT, ...AGENT_OUTPUT_STRUCT]
+      break
+    }
+
+    case BlockEnum.AgentV2: {
+      res.vars = getAgentV2OutputVars(data as AgentV2NodeType)
       break
     }
 
@@ -1448,6 +1461,31 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       res = [...(mixVars as ValueSelector[]), ...(vars as any)]
       break
     }
+    case BlockEnum.Agent: {
+      if (isAgentV2NodeData(data)) {
+        const payload = data as AgentV2NodeType
+        res = matchNotSystemVars([payload.agent_task || ''])
+        break
+      }
+
+      const payload = data as AgentNodeType
+      const valueSelectors: ValueSelector[] = []
+      if (!payload.agent_parameters)
+        break
+
+      Object.keys(payload.agent_parameters || {}).forEach((key) => {
+        const { value } = payload.agent_parameters![key]!
+        if (typeof value === 'string')
+          valueSelectors.push(...matchNotSystemVars([value]))
+      })
+      res = valueSelectors
+      break
+    }
+    case BlockEnum.AgentV2: {
+      const payload = data as AgentV2NodeType
+      res = matchNotSystemVars([payload.agent_task || ''])
+      break
+    }
     case BlockEnum.DataSource: {
       const payload = data as DataSourceNodeType
       const mixVars = matchNotSystemVars(
@@ -1507,21 +1545,6 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       break
     }
 
-    case BlockEnum.Agent: {
-      const payload = data as AgentNodeType
-      const valueSelectors: ValueSelector[] = []
-      if (!payload.agent_parameters)
-        break
-
-      Object.keys(payload.agent_parameters || {}).forEach((key) => {
-        const { value } = payload.agent_parameters![key]!
-        if (typeof value === 'string')
-          valueSelectors.push(...matchNotSystemVars([value]))
-      })
-      res = valueSelectors
-      break
-    }
-
     case BlockEnum.HumanInput: {
       const payload = data as HumanInputNodeType
       const formContent = payload.form_content
@@ -1530,7 +1553,14 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
           return []
         return [method.config.body]
       })
-      res = matchNotSystemVars([formContent, ...mailTemplates])
+      const inputSelectors = payload.inputs.flatMap((input) => {
+        if (input.type === InputVarType.paragraph && input.default.type === 'variable')
+          return [input.default.selector]
+        if (input.type === InputVarType.select && input.option_source.type === 'variable')
+          return [input.option_source.selector]
+        return []
+      })
+      res = [...matchNotSystemVars([formContent, ...mailTemplates]), ...inputSelectors]
       break
     }
   }
@@ -1875,43 +1905,17 @@ export const updateNodeVars = (
         }
         break
       }
-      case BlockEnum.DataSource: {
-        const payload = data as DataSourceNodeType
-        const hasShouldRenameVar = Object.keys(
-          payload.datasource_parameters,
-        )?.filter(
-          key =>
-            payload.datasource_parameters[key]!.type !== ToolVarType.constant,
-        )
-        if (hasShouldRenameVar) {
-          Object.keys(payload.datasource_parameters).forEach((key) => {
-            const value = payload.datasource_parameters[key]!
-            const { type } = value!
-            if (
-              type === ToolVarType.variable
-              && value!.value.join('.') === oldVarSelector.join('.')
-            ) {
-              payload.datasource_parameters[key] = {
-                ...value,
-                value: newVarSelector,
-              }
-            }
-
-            if (type === ToolVarType.mixed) {
-              payload.datasource_parameters[key] = {
-                ...value,
-                value: replaceOldVarInText(
-                  payload.datasource_parameters[key]!.value as string,
-                  oldVarSelector,
-                  newVarSelector,
-                ),
-              }
-            }
-          })
-        }
-        break
-      }
       case BlockEnum.Agent: {
+        if (isAgentV2NodeData(data)) {
+          const payload = data as AgentV2NodeType
+          payload.agent_task = replaceOldVarInText(
+            payload.agent_task || '',
+            oldVarSelector,
+            newVarSelector,
+          )
+          break
+        }
+
         const payload = data as AgentNodeType
         if (payload.agent_parameters) {
           Object.keys(payload.agent_parameters).forEach((key) => {
@@ -1948,6 +1952,51 @@ export const updateNodeVars = (
             oldVarSelector,
             newVarSelector,
           )
+        }
+        break
+      }
+      case BlockEnum.AgentV2: {
+        const payload = data as AgentV2NodeType
+        payload.agent_task = replaceOldVarInText(
+          payload.agent_task || '',
+          oldVarSelector,
+          newVarSelector,
+        )
+        break
+      }
+      case BlockEnum.DataSource: {
+        const payload = data as DataSourceNodeType
+        const hasShouldRenameVar = Object.keys(
+          payload.datasource_parameters,
+        )?.filter(
+          key =>
+            payload.datasource_parameters[key]!.type !== ToolVarType.constant,
+        )
+        if (hasShouldRenameVar) {
+          Object.keys(payload.datasource_parameters).forEach((key) => {
+            const value = payload.datasource_parameters[key]!
+            const { type } = value!
+            if (
+              type === ToolVarType.variable
+              && value!.value.join('.') === oldVarSelector.join('.')
+            ) {
+              payload.datasource_parameters[key] = {
+                ...value,
+                value: newVarSelector,
+              }
+            }
+
+            if (type === ToolVarType.mixed) {
+              payload.datasource_parameters[key] = {
+                ...value,
+                value: replaceOldVarInText(
+                  payload.datasource_parameters[key]!.value as string,
+                  oldVarSelector,
+                  newVarSelector,
+                ),
+              }
+            }
+          })
         }
         break
       }
@@ -2031,6 +2080,15 @@ export const updateNodeVars = (
               ),
             },
           }
+        })
+        payload.inputs = payload.inputs.map((input) => {
+          if (input.type === InputVarType.paragraph && input.default.type === 'variable' && input.default.selector.join('.') === oldVarSelector.join('.')) {
+            input.default.selector = newVarSelector
+          }
+          if (input.type === InputVarType.select && input.option_source.type === 'variable' && input.option_source.selector.join('.') === oldVarSelector.join('.')) {
+            input.option_source.selector = newVarSelector
+          }
+          return input
         })
         break
       }

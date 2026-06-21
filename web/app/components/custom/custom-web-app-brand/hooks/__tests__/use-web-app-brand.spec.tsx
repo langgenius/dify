@@ -1,6 +1,6 @@
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ChangeEvent } from 'react'
 import type { AppContextValue } from '@/context/app-context'
-import type { SystemFeatures } from '@/types/feature'
 import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
@@ -18,7 +18,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { updateCurrentWorkspace } from '@/service/common'
 import useWebAppBrand from '../use-web-app-brand'
 
-let currentBrandingOverrides: Partial<SystemFeatures['branding']> = {}
+let currentBrandingOverrides: Partial<GetSystemFeaturesResponse['branding']> = {}
 const renderHook = <Result, Props = void>(callback: (props: Props) => Result) =>
   renderHookWithSystemFeatures(callback, {
     systemFeatures: {
@@ -107,6 +107,7 @@ const createAppContextValue = (overrides: Partial<AppContextValue> = {}): AppCon
     isCurrentWorkspaceOwner: false,
     isCurrentWorkspaceEditor: false,
     isCurrentWorkspaceDatasetOperator: false,
+    workspacePermissionKeys: ['customization.manage'],
     mutateCurrentWorkspace: vi.fn(),
     langGeniusVersionInfo: initialLangGeniusVersionInfo,
     useSelector: vi.fn() as unknown as AppContextValue['useSelector'],
@@ -139,8 +140,33 @@ describe('useWebAppBrand', () => {
 
       expect(result.current.webappLogo).toBe('https://example.com/replace.png')
       expect(result.current.workspaceLogo).toBe('https://example.com/workspace-logo.png')
+      expect(result.current.canManageCustomBrand).toBe(true)
       expect(result.current.uploadDisabled).toBe(false)
       expect(result.current.uploading).toBe(false)
+    })
+
+    it('should disable uploads when customization management permission is missing', () => {
+      appContextValue = createAppContextValue({
+        workspacePermissionKeys: [],
+        isCurrentWorkspaceManager: true,
+      })
+
+      const { result } = renderHook(() => useWebAppBrand())
+
+      expect(result.current.canManageCustomBrand).toBe(false)
+      expect(result.current.uploadDisabled).toBe(true)
+    })
+
+    it('should allow uploads for non-manager users with customization management permission', () => {
+      appContextValue = createAppContextValue({
+        workspacePermissionKeys: ['customization.manage'],
+        isCurrentWorkspaceManager: false,
+      })
+
+      const { result } = renderHook(() => useWebAppBrand())
+
+      expect(result.current.canManageCustomBrand).toBe(true)
+      expect(result.current.uploadDisabled).toBe(false)
     })
 
     it('should disable uploads in sandbox workspaces and when branding is removed', () => {

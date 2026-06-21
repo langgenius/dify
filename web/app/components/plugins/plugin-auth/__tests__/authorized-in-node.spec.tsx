@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { Credential, PluginPayload } from '../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthCategory, CredentialTypeEnum } from '../types'
 
@@ -36,10 +36,14 @@ vi.mock('@/service/use-tools', () => ({
 }))
 
 const mockIsCurrentWorkspaceManager = vi.fn()
+const mockUserProfile = { id: 'test-user', name: 'Test User', email: 'test@example.com', avatar_url: '' }
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
   }),
+  // Item renders useAppContextWithSelector(state => state.userProfile)
+  useSelector: (selector: (state: { userProfile: typeof mockUserProfile }) => unknown) =>
+    selector({ userProfile: mockUserProfile }),
 }))
 
 vi.mock('@/hooks/use-oauth', () => ({
@@ -112,6 +116,24 @@ describe('AuthorizedInNode Component', () => {
       { wrapper: createWrapper() },
     )
     expect(screen.getByText('plugin.auth.workspaceDefault'))!.toBeInTheDocument()
+  })
+
+  it('should expose the workspace default credential id when requested', async () => {
+    const AuthorizedInNode = (await import('../authorized-in-node')).default
+    const onDefaultCredentialChange = vi.fn()
+    const pluginPayload = createPluginPayload()
+    render(
+      <AuthorizedInNode
+        pluginPayload={pluginPayload}
+        onAuthorizationItemClick={vi.fn()}
+        onDefaultCredentialChange={onDefaultCredentialChange}
+      />,
+      { wrapper: createWrapper() },
+    )
+
+    await waitFor(() => {
+      expect(onDefaultCredentialChange).toHaveBeenCalledWith('test-credential-id')
+    })
   })
 
   it('should render credential name when credentialId matches', async () => {

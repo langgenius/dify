@@ -1,11 +1,11 @@
-import type { Dependency, InstallStatus, Plugin } from '../../../types'
+import type { Dependency, InstallStatus, Plugin, VersionProps } from '../../../types'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { InstallStep } from '../../../types'
 import ReadyToInstall from '../ready-to-install'
 
 // Track the onInstalled callback from the Install component
-let capturedOnInstalled: ((plugins: Plugin[], installStatus: InstallStatus[]) => void) | null = null
+let capturedOnInstalled: ((plugins: Plugin[], installStatus: InstallStatus[], versionInfo: VersionProps[]) => void) | null = null
 
 vi.mock('../steps/install', () => ({
   default: ({
@@ -18,7 +18,7 @@ vi.mock('../steps/install', () => ({
     allPlugins: Dependency[]
     onCancel: () => void
     onStartToInstall: () => void
-    onInstalled: (plugins: Plugin[], installStatus: InstallStatus[]) => void
+    onInstalled: (plugins: Plugin[], installStatus: InstallStatus[], versionInfo: VersionProps[]) => void
     isFromMarketPlace?: boolean
   }) => {
     capturedOnInstalled = onInstalled
@@ -33,6 +33,7 @@ vi.mock('../steps/install', () => ({
           onClick={() => onInstalled(
             [{ plugin_id: 'p1', name: 'Plugin 1' } as Plugin],
             [{ success: true, isFromMarketPlace: true }],
+            [{ hasInstalled: false, toInstallVersion: '1.0.0' }],
           )}
         >
           Complete
@@ -46,15 +47,18 @@ vi.mock('../steps/installed', () => ({
   default: ({
     list,
     installStatus,
+    versionInfo,
     onCancel,
   }: {
     list: Plugin[]
     installStatus: InstallStatus[]
+    versionInfo?: VersionProps[]
     onCancel: () => void
   }) => (
     <div data-testid="installed-step">
       <span data-testid="installed-count">{list.length}</span>
       <span data-testid="installed-status-count">{installStatus.length}</span>
+      <span data-testid="installed-version-count">{versionInfo?.length ?? 0}</span>
       <button data-testid="installed-close-btn" onClick={onCancel}>Close</button>
     </div>
   ),
@@ -181,6 +185,10 @@ describe('ReadyToInstall', () => {
             { success: true, isFromMarketPlace: true },
             { success: false, isFromMarketPlace: false },
           ],
+          [
+            { hasInstalled: true, installedVersion: '0.9.0', toInstallVersion: '1.0.0' },
+            { hasInstalled: false, toInstallVersion: '2.0.0' },
+          ],
         )
       })
 
@@ -197,6 +205,7 @@ describe('ReadyToInstall', () => {
 
       expect(screen.getByTestId('installed-count')).toHaveTextContent('2')
       expect(screen.getByTestId('installed-status-count')).toHaveTextContent('2')
+      expect(screen.getByTestId('installed-version-count')).toHaveTextContent('2')
     })
   })
 

@@ -23,6 +23,7 @@ import {
   useWorkflowInteractions,
 } from '../../hooks'
 import { useResizePanel } from '../../nodes/_base/hooks/use-resize-panel'
+import { useSetDebugPreviewPanelWidth } from '../../persistence/local-storage-options'
 import { BlockEnum } from '../../types'
 import ChatWrapper from './chat-wrapper'
 
@@ -54,11 +55,12 @@ const DebugAndPreview = () => {
   const nodePanelWidth = useStore(s => s.nodePanelWidth)
   const panelWidth = useStore(s => s.previewPanelWidth)
   const setPanelWidth = useStore(s => s.setPreviewPanelWidth)
+  const setPanelWidthStorage = useSetDebugPreviewPanelWidth()
   const handleResize = useCallback((width: number, source: 'user' | 'system' = 'user') => {
     if (source === 'user')
-      localStorage.setItem('debug-and-preview-panel-width', `${width}`)
+      setPanelWidthStorage(width)
     setPanelWidth(width)
-  }, [setPanelWidth])
+  }, [setPanelWidth, setPanelWidthStorage])
   const maxPanelWidth = useMemo(() => {
     if (!workflowCanvasWidth)
       return 720

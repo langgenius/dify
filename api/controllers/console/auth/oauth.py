@@ -4,10 +4,13 @@ import urllib.parse
 import httpx
 from flask import current_app, redirect, request
 from flask_restx import Resource
+from pydantic import BaseModel, Field
 from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from constants.languages import languages
+from controllers.common.fields import RedirectResponse
+from controllers.common.schema import query_params_from_model, register_response_schema_model, register_schema_models
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -29,6 +32,21 @@ from services.feature_service import FeatureService
 from .. import console_ns
 
 logger = logging.getLogger(__name__)
+
+
+class OAuthLoginQuery(BaseModel):
+    invite_token: str | None = Field(default=None, description="Optional invitation token")
+    timezone: str | None = Field(default=None, description="Preferred timezone")
+    language: str | None = Field(default=None, description="Preferred interface language")
+
+
+class OAuthCallbackQuery(BaseModel):
+    code: str = Field(description="Authorization code from OAuth provider")
+    state: str | None = Field(default=None, description="OAuth state parameter")
+
+
+register_schema_models(console_ns, OAuthLoginQuery, OAuthCallbackQuery)
+register_response_schema_model(console_ns, RedirectResponse)
 
 
 def get_oauth_providers():
@@ -83,10 +101,9 @@ def _preferred_interface_language(language: str | None = None) -> str:
 class OAuthLogin(Resource):
     @console_ns.doc("oauth_login")
     @console_ns.doc(description="Initiate OAuth login process")
-    @console_ns.doc(
-        params={"provider": "OAuth provider name (github/google)", "invite_token": "Optional invitation token"}
-    )
-    @console_ns.response(302, "Redirect to OAuth authorization URL")
+    @console_ns.doc(params={"provider": "OAuth provider name (github/google)"})
+    @console_ns.doc(params=query_params_from_model(OAuthLoginQuery))
+    @console_ns.response(302, "Redirect to OAuth authorization URL", console_ns.models[RedirectResponse.__name__])
     @console_ns.response(400, "Invalid provider")
     def get(self, provider: str):
         invite_token = request.args.get("invite_token") or None
@@ -110,14 +127,9 @@ class OAuthLogin(Resource):
 class OAuthCallback(Resource):
     @console_ns.doc("oauth_callback")
     @console_ns.doc(description="Handle OAuth callback and complete login process")
-    @console_ns.doc(
-        params={
-            "provider": "OAuth provider name (github/google)",
-            "code": "Authorization code from OAuth provider",
-            "state": "Optional state parameter (used for invite token)",
-        }
-    )
-    @console_ns.response(302, "Redirect to console with access token")
+    @console_ns.doc(params={"provider": "OAuth provider name (github/google)"})
+    @console_ns.doc(params=query_params_from_model(OAuthCallbackQuery))
+    @console_ns.response(302, "Redirect to console with access token", console_ns.models[RedirectResponse.__name__])
     @console_ns.response(400, "OAuth process failed")
     def get(self, provider: str):
         OAUTH_PROVIDERS = get_oauth_providers()
@@ -234,7 +246,7 @@ def _generate_account(
                 raise WorkSpaceNotAllowedCreateError()
             else:
                 new_tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-                TenantService.create_tenant_member(new_tenant, account, role="owner")
+                TenantService.create_tenant_member(new_tenant, account, db.session, role="owner")
                 account.current_tenant = new_tenant
                 tenant_was_created.send(new_tenant)
 

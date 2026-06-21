@@ -1,3 +1,5 @@
+from typing import override
+
 import pytest
 from dify_vdb_tidb_vector.tidb_vector import TiDBVector, TiDBVectorConfig
 
@@ -25,10 +27,12 @@ class TiDBVectorTest(AbstractVectorTest):
         super().__init__()
         self.vector = vector
 
+    @override
     def search_by_full_text(self):
         hits_by_full_text: list[Document] = self.vector.search_by_full_text(query=get_example_text())
         assert len(hits_by_full_text) == 0
 
+    @override
     def get_ids_by_metadata_field(self):
         ids = self.vector.get_ids_by_metadata_field(key="doc_id", value=self.example_doc_id)
         assert len(ids) == 1

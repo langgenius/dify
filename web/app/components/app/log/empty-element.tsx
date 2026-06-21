@@ -3,6 +3,7 @@ import type { FC, SVGProps } from 'react'
 import type { App } from '@/types/app'
 import * as React from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import Link from '@/next/link'
 import { AppModeEnum } from '@/types/app'
 import { getRedirectionPath } from '@/utils/app-redirection'
@@ -18,6 +19,8 @@ const ThreeDotsIcon = ({ className }: SVGProps<SVGElement>) => {
 
 const EmptyElement: FC<{ appDetail: App }> = ({ appDetail }) => {
   const { t } = useTranslation()
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
 
   const getWebAppType = (appType: AppModeEnum) => {
     if (appType !== AppModeEnum.COMPLETION && appType !== AppModeEnum.WORKFLOW)
@@ -37,8 +40,24 @@ const EmptyElement: FC<{ appDetail: App }> = ({ appDetail }) => {
             i18nKey="table.empty.element.content"
             ns="appLog"
             components={{
-              shareLink: <Link href={`${appDetail.site.app_base_url}${basePath}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`} className="text-util-colors-blue-blue-600" target="_blank" rel="noopener noreferrer" />,
-              testLink: <Link href={getRedirectionPath(true, appDetail)} className="text-util-colors-blue-blue-600" />,
+              shareLink: (
+                <Link
+                  href={`${appDetail.site.app_base_url}${basePath}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`}
+                  className="text-util-colors-blue-blue-600"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                />
+              ),
+              testLink: (
+                <Link
+                  href={getRedirectionPath(appDetail, {
+                    currentUserId,
+                    resourceMaintainer: appDetail.maintainer,
+                    workspacePermissionKeys,
+                  })}
+                  className="text-util-colors-blue-blue-600"
+                />
+              ),
             }}
           />
         </div>

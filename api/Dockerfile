@@ -17,7 +17,7 @@ FROM base AS packages
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
           # basic environment
-          g++ \
+          git g++ \
           # for building gmpy2
           libmpfr-dev libmpc-dev
 
@@ -27,7 +27,7 @@ COPY api/providers ./providers
 COPY dify-agent/pyproject.toml dify-agent/README.md /app/dify-agent/
 COPY dify-agent/src /app/dify-agent/src
 # Trust the checked-in lock during image builds; local path sources are copied from the repository context.
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --no-dev --no-editable
 
 # production stage
 FROM base AS production

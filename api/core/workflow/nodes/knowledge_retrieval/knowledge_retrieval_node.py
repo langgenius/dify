@@ -6,7 +6,7 @@ the workflow node registry.
 
 import logging
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, override
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
@@ -87,9 +87,11 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         self._rag_retrieval = DatasetRetrieval()
 
     @classmethod
+    @override
     def version(cls):
         return "1"
 
+    @override
     def _run(self) -> NodeRunResult:
         usage = LLMUsage.empty_usage()
         if not self._node_data.query_variable_selector and not self._node_data.query_attachment_selector:
@@ -134,7 +136,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 inputs=variables,
                 process_data={"usage": jsonable_encoder(usage)},
-                outputs=outputs,  # type: ignore
+                outputs=outputs,
                 metadata={
                     WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
                     WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
@@ -295,25 +297,26 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         for cond in conditions.conditions or []:
             value = cond.value
             resolved_value: str | Sequence[str] | int | float | None
-            if isinstance(value, str):
-                segment_group = variable_pool.convert_template(value)
-                if len(segment_group.value) == 1:
-                    resolved_value = _normalize_metadata_filter_scalar(segment_group.value[0].to_object())
-                else:
-                    resolved_value = segment_group.text
-            elif isinstance(value, Sequence) and all(isinstance(v, str) for v in value):
-                resolved_values: list[str] = []
-                for v in value:
-                    segment_group = variable_pool.convert_template(v)
+            match value:
+                case str():
+                    segment_group = variable_pool.convert_template(value)
                     if len(segment_group.value) == 1:
-                        resolved_values.append(
-                            _normalize_metadata_filter_sequence_item(segment_group.value[0].to_object())
-                        )
+                        resolved_value = _normalize_metadata_filter_scalar(segment_group.value[0].to_object())
                     else:
-                        resolved_values.append(segment_group.text)
-                resolved_value = resolved_values
-            else:
-                resolved_value = value
+                        resolved_value = segment_group.text
+                case _ if isinstance(value, Sequence) and all(isinstance(v, str) for v in value):
+                    resolved_values: list[str] = []
+                    for v in value:
+                        segment_group = variable_pool.convert_template(v)
+                        if len(segment_group.value) == 1:
+                            resolved_values.append(
+                                _normalize_metadata_filter_sequence_item(segment_group.value[0].to_object())
+                            )
+                        else:
+                            resolved_values.append(segment_group.text)
+                    resolved_value = resolved_values
+                case _:
+                    resolved_value = value
             resolved_conditions.append(
                 Condition(
                     name=cond.name,
@@ -327,6 +330,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         )
 
     @classmethod
+    @override
     def _extract_variable_selector_to_variable_mapping(
         cls,
         *,

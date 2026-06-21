@@ -6,6 +6,7 @@ import pluginQuery from '@tanstack/eslint-plugin-query'
 import md from 'eslint-markdown'
 import tailwindcss from 'eslint-plugin-better-tailwindcss'
 import hyoban from 'eslint-plugin-hyoban'
+import jsxA11y from 'eslint-plugin-jsx-a11y'
 import markdownPreferences from 'eslint-plugin-markdown-preferences'
 import noBarrelFiles from 'eslint-plugin-no-barrel-files'
 import sonar from 'eslint-plugin-sonarjs'
@@ -55,6 +56,10 @@ export default antfu(
     rules: {
       'react/no-unnecessary-use-prefix': 'off',
     },
+  },
+  {
+    files: [GLOB_TSX],
+    ...jsxA11y.flatConfigs.recommended,
   },
   {
     plugins: {
@@ -177,6 +182,44 @@ export default antfu(
           ...WEB_SERVICE_FETCH_RESTRICTED_IMPORT_PATTERNS,
         ],
       }],
+    },
+  },
+  {
+    name: 'dify/restricted-local-storage-access',
+    files: [GLOB_TS, GLOB_TSX],
+    ignores: [
+      ...GLOB_TESTS,
+      'vitest.setup.ts',
+      'instrumentation-client.ts',
+    ],
+    rules: {
+      'no-restricted-globals': [
+        'error',
+        {
+          name: 'localStorage',
+          message: 'Do not use localStorage directly. Use a foxact storage boundary instead; prefer feature-owned createLocalStorageState for shared storage.',
+        },
+      ],
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'window',
+          property: 'localStorage',
+          message: 'Do not use window.localStorage directly. Use a foxact storage boundary instead; prefer feature-owned createLocalStorageState for shared storage.',
+        },
+        {
+          object: 'globalThis',
+          property: 'localStorage',
+          message: 'Do not use globalThis.localStorage directly. Use a foxact storage boundary instead; prefer feature-owned createLocalStorageState for shared storage.',
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'ImportDeclaration[source.value="ahooks"] ImportSpecifier[imported.name="useLocalStorageState"]',
+          message: 'Do not use ahooks useLocalStorageState. Use foxact storage hooks instead.',
+        },
+      ],
     },
   },
 )

@@ -1,6 +1,7 @@
 import io
 from collections.abc import Generator
 from pathlib import Path
+from typing import override
 
 from supabase import Client
 
@@ -28,29 +29,35 @@ class SupabaseStorage(BaseStorage):
         if not self.bucket_exists():
             self.client.storage.create_bucket(id=id, name=bucket_name)
 
+    @override
     def save(self, filename, data):
         self.client.storage.from_(self.bucket_name).upload(filename, data)
 
+    @override
     def load_once(self, filename: str) -> bytes:
         content: bytes = self.client.storage.from_(self.bucket_name).download(filename)
         return content
 
+    @override
     def load_stream(self, filename: str) -> Generator:
         result = self.client.storage.from_(self.bucket_name).download(filename)
         byte_stream = io.BytesIO(result)
         while chunk := byte_stream.read(4096):  # Read in chunks of 4KB
             yield chunk
 
+    @override
     def download(self, filename, target_filepath):
         result = self.client.storage.from_(self.bucket_name).download(filename)
         Path(target_filepath).write_bytes(result)
 
+    @override
     def exists(self, filename):
         result = self.client.storage.from_(self.bucket_name).list(path=filename)
         if len(result) > 0:
             return True
         return False
 
+    @override
     def delete(self, filename: str):
         self.client.storage.from_(self.bucket_name).remove([filename])
 

@@ -1,9 +1,12 @@
 from collections.abc import Sequence
+from typing import Any, Literal
 
 from flask_restx import Resource
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, RootModel
+from sqlalchemy.orm import Session
 
-from controllers.common.schema import register_enum_models, register_schema_models
+from controllers.common.fields import SimpleDataResponse
+from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     CompletionRequestError,
@@ -11,7 +14,8 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.app.wraps import with_session
+from controllers.console.wraps import account_initialization_required, setup_required, with_current_tenant_id
 from core.app.app_config.entities import ModelConfig
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
@@ -19,11 +23,11 @@ from core.helper.code_executor.javascript.javascript_code_provider import Javasc
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.llm_generator import LLMGenerator
-from extensions.ext_database import db
 from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.errors.invoke import InvokeError
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
 from models import App
+from services.workflow_generator_service import WorkflowGeneratorService
 from services.workflow_service import WorkflowService
 
 
@@ -33,12 +37,49 @@ class InstructionGeneratePayload(BaseModel):
     current: str = Field(default="", description="Current instruction text")
     language: str = Field(default="javascript", description="Programming language (javascript/python)")
     instruction: str = Field(..., description="Instruction for generation")
-    model_config_data: ModelConfig = Field(..., alias="model_config", description="Model configuration")
+    model_config_data: ModelConfig = Field(
+        ...,
+        alias="model_config",
+        description="Model configuration",
+    )
     ideal_output: str = Field(default="", description="Expected ideal output")
 
 
 class InstructionTemplatePayload(BaseModel):
     type: str = Field(..., description="Instruction template type")
+
+
+# Upper bound for the generator's free-text inputs. Generous for prose (a
+# detailed instruction rarely passes 2k chars) while keeping the
+# planner+builder prompts well inside every mainstream context window.
+# Mirrored by the ``maxLength`` on the frontend generator textarea.
+_MAX_INSTRUCTION_LENGTH = 10_000
+
+
+class WorkflowGeneratePayload(BaseModel):
+    """Payload for the cmd+k `/create` and `/refine` workflow generator endpoint.
+
+    See ``services/workflow_generator_service.py`` for behaviour. Errors are
+    surfaced through the same envelope as ``/rule-generate`` so the frontend
+    can reuse its existing handler.
+    """
+
+    mode: Literal["workflow", "advanced-chat"] = Field(..., description="Target app mode for the generated graph")
+    instruction: str = Field(..., description="Natural-language workflow description")
+    ideal_output: str = Field(default="", description="Optional sample output for grounding")
+    model_config_data: ModelConfig = Field(
+        ...,
+        alias="model_config",
+        description="Model configuration",
+    )
+    current_graph: dict | None = Field(
+        default=None,
+        description="Existing draft graph to refine (cmd+k `/refine`); omit for create-from-scratch",
+    )
+
+
+class GeneratorResponse(RootModel[Any]):
+    root: Any
 
 
 register_enum_models(console_ns, LLMMode)
@@ -49,8 +90,10 @@ register_schema_models(
     RuleStructuredOutputPayload,
     InstructionGeneratePayload,
     InstructionTemplatePayload,
+    WorkflowGeneratePayload,
     ModelConfig,
 )
+register_response_schema_models(console_ns, GeneratorResponse, SimpleDataResponse)
 
 
 @console_ns.route("/rule-generate")
@@ -58,15 +101,19 @@ class RuleGenerateApi(Resource):
     @console_ns.doc("generate_rule_config")
     @console_ns.doc(description="Generate rule configuration using LLM")
     @console_ns.expect(console_ns.models[RuleGeneratePayload.__name__])
-    @console_ns.response(200, "Rule configuration generated successfully")
+    @console_ns.response(
+        200,
+        "Rule configuration generated successfully",
+        console_ns.models[GeneratorResponse.__name__],
+    )
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str):
         args = RuleGeneratePayload.model_validate(console_ns.payload)
-        _, current_tenant_id = current_account_with_tenant()
 
         try:
             rules = LLMGenerator.generate_rule_config(tenant_id=current_tenant_id, args=args)
@@ -87,15 +134,15 @@ class RuleCodeGenerateApi(Resource):
     @console_ns.doc("generate_rule_code")
     @console_ns.doc(description="Generate code rules using LLM")
     @console_ns.expect(console_ns.models[RuleCodeGeneratePayload.__name__])
-    @console_ns.response(200, "Code rules generated successfully")
+    @console_ns.response(200, "Code rules generated successfully", console_ns.models[GeneratorResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str):
         args = RuleCodeGeneratePayload.model_validate(console_ns.payload)
-        _, current_tenant_id = current_account_with_tenant()
 
         try:
             code_result = LLMGenerator.generate_code(
@@ -119,15 +166,15 @@ class RuleStructuredOutputGenerateApi(Resource):
     @console_ns.doc("generate_structured_output")
     @console_ns.doc(description="Generate structured output rules using LLM")
     @console_ns.expect(console_ns.models[RuleStructuredOutputPayload.__name__])
-    @console_ns.response(200, "Structured output generated successfully")
+    @console_ns.response(200, "Structured output generated successfully", console_ns.models[GeneratorResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str):
         args = RuleStructuredOutputPayload.model_validate(console_ns.payload)
-        _, current_tenant_id = current_account_with_tenant()
 
         try:
             structured_output = LLMGenerator.generate_structured_output(
@@ -151,15 +198,16 @@ class InstructionGenerateApi(Resource):
     @console_ns.doc("generate_instruction")
     @console_ns.doc(description="Generate instruction for workflow nodes or general use")
     @console_ns.expect(console_ns.models[InstructionGeneratePayload.__name__])
-    @console_ns.response(200, "Instruction generated successfully")
+    @console_ns.response(200, "Instruction generated successfully", console_ns.models[GeneratorResponse.__name__])
     @console_ns.response(400, "Invalid request parameters or flow/workflow not found")
     @console_ns.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    @with_current_tenant_id
+    @with_session(write=False)
+    def post(self, session: Session, current_tenant_id: str):
         args = InstructionGeneratePayload.model_validate(console_ns.payload)
-        _, current_tenant_id = current_account_with_tenant()
         providers: list[type[CodeNodeProvider]] = [Python3CodeProvider, JavascriptCodeProvider]
         code_provider: type[CodeNodeProvider] | None = next(
             (p for p in providers if p.is_accept_language(args.language)), None
@@ -168,10 +216,10 @@ class InstructionGenerateApi(Resource):
         try:
             # Generate from nothing for a workflow node
             if (args.current in (code_template, "")) and args.node_id != "":
-                app = db.session.get(App, args.flow_id)
+                app = session.get(App, args.flow_id)
                 if not app:
                     return {"error": f"app {args.flow_id} not found"}, 400
-                workflow = WorkflowService().get_draft_workflow(app_model=app)
+                workflow = WorkflowService().get_draft_workflow(app_model=app, session=session)
                 if not workflow:
                     return {"error": f"workflow {args.flow_id} not found"}, 400
                 nodes: Sequence = workflow.graph_dict["nodes"]
@@ -245,7 +293,7 @@ class InstructionGenerationTemplateApi(Resource):
     @console_ns.doc("get_instruction_template")
     @console_ns.doc(description="Get instruction generation template")
     @console_ns.expect(console_ns.models[InstructionTemplatePayload.__name__])
-    @console_ns.response(200, "Template retrieved successfully")
+    @console_ns.response(200, "Template retrieved successfully", console_ns.models[SimpleDataResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
     @setup_required
     @login_required
@@ -263,3 +311,72 @@ class InstructionGenerationTemplateApi(Resource):
                 return {"data": INSTRUCTION_GENERATE_TEMPLATE_CODE}
             case _:
                 raise ValueError(f"Invalid type: {args.type}")
+
+
+@console_ns.route("/workflow-generate")
+class WorkflowGenerateApi(Resource):
+    """Generate a Workflow / Chatflow draft graph from a natural-language description.
+
+    Triggered by the cmd+k `/create` slash command. Returns a graph payload
+    shaped exactly like ``WorkflowService.sync_draft_workflow``'s input, so the
+    frontend can hand it straight to ``/apps/{id}/workflows/draft``.
+    """
+
+    @console_ns.doc("generate_workflow_graph")
+    @console_ns.doc(description="Generate a Dify workflow graph from natural language")
+    @console_ns.expect(console_ns.models[WorkflowGeneratePayload.__name__])
+    @console_ns.response(200, "Workflow graph generated successfully", console_ns.models[GeneratorResponse.__name__])
+    @console_ns.response(400, "Invalid request parameters")
+    @console_ns.response(402, "Provider quota exceeded")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str):
+        args = WorkflowGeneratePayload.model_validate(console_ns.payload)
+
+        # Reject obviously-empty instructions at the boundary — Pydantic only
+        # validates ``instruction`` is a str, but a whitespace-only string
+        # would still hit the LLM and waste a planner+builder roundtrip on a
+        # response that the postprocess validator would reject anyway.
+        if not args.instruction.strip():
+            return {
+                "error": "Instruction is required",
+                "errors": [{"code": "EMPTY_INSTRUCTION", "detail": "Instruction is required"}],
+            }, 400
+
+        # Bound the prompt at the boundary too: an arbitrarily long
+        # instruction (or pasted document) blows the planner/builder context
+        # window and fails with an opaque provider error after two slow LLM
+        # calls. The cap matches the frontend textarea's maxLength.
+        if len(args.instruction) > _MAX_INSTRUCTION_LENGTH or len(args.ideal_output) > _MAX_INSTRUCTION_LENGTH:
+            return {
+                "error": "Instruction is too long",
+                "errors": [
+                    {
+                        "code": "INSTRUCTION_TOO_LONG",
+                        "detail": f"Instruction and ideal output must each be at most "
+                        f"{_MAX_INSTRUCTION_LENGTH} characters",
+                    }
+                ],
+            }, 400
+
+        try:
+            result = WorkflowGeneratorService.generate_workflow_graph(
+                tenant_id=current_tenant_id,
+                mode=args.mode,
+                instruction=args.instruction,
+                model_config=args.model_config_data,
+                ideal_output=args.ideal_output,
+                current_graph=args.current_graph,
+            )
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
+        except QuotaExceededError:
+            raise ProviderQuotaExceededError()
+        except ModelCurrentlyNotSupportError:
+            raise ProviderModelCurrentlyNotSupportError()
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
+
+        return result

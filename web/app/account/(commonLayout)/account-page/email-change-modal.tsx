@@ -216,7 +216,6 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
   const handleLogout = async () => {
     await logout()
 
-    localStorage.removeItem('setup_status')
     // Tokens are now stored in cookies and cleared by backend
 
     router.push('/signin')

@@ -1,4 +1,6 @@
-from unittest.mock import MagicMock, patch
+from inspect import unwrap
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
@@ -18,12 +20,6 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
-
-
 class TestDefaultModelApi:
     def test_get_success(self, app: Flask):
         api = DefaultModelApi()
@@ -34,15 +30,11 @@ class TestDefaultModelApi:
                 "/",
                 query_string={"model_type": ModelType.LLM},
             ),
-            patch(
-                "controllers.console.workspace.models.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
             patch("controllers.console.workspace.models.ModelProviderService") as service_mock,
         ):
             service_mock.return_value.get_default_model_of_model_type.return_value = {"model": "gpt-4"}
 
-            result = method(api)
+            result = method(api, "tenant1")
 
         assert "data" in result
 
@@ -62,13 +54,9 @@ class TestDefaultModelApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.models.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
             patch("controllers.console.workspace.models.ModelProviderService"),
         ):
-            result = method(api)
+            result = method(api, "tenant1")
 
         assert result["result"] == "success"
 
@@ -78,12 +66,11 @@ class TestDefaultModelApi:
 
         with (
             app.test_request_context("/", query_string={"model_type": ModelType.LLM}),
-            patch("controllers.console.workspace.models.current_account_with_tenant", return_value=(MagicMock(), "t1")),
             patch("controllers.console.workspace.models.ModelProviderService") as service,
         ):
             service.return_value.get_default_model_of_model_type.return_value = None
 
-            result = method(api)
+            result = method(api, "t1")
 
         assert "data" in result
 
@@ -95,15 +82,11 @@ class TestModelProviderModelApi:
 
         with (
             app.test_request_context("/"),
-            patch(
-                "controllers.console.workspace.models.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
             patch("controllers.console.workspace.models.ModelProviderService") as service_mock,
         ):
             service_mock.return_value.get_models_by_provider.return_value = []
 
-            result = method(api, "openai")
+            result = method(api, "tenant1", "openai")
 
         assert "data" in result
 
@@ -122,14 +105,10 @@ class TestModelProviderModelApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.models.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
             patch("controllers.console.workspace.models.ModelProviderService"),
             patch("controllers.console.workspace.models.ModelLoadBalancingService"),
         ):
-            result, status = method(api, "openai")
+            result, status = method(api, "tenant1", "openai")
 
         assert status == 200
 
@@ -144,13 +123,9 @@ class TestModelProviderModelApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.models.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
             patch("controllers.console.workspace.models.ModelProviderService"),
         ):
-            result, status = method(api, "openai")
+            result, status = method(api, "tenant1", "openai")
 
         assert status == 204
 
@@ -160,12 +135,11 @@ class TestModelProviderModelApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.models.current_account_with_tenant", return_value=(MagicMock(), "t1")),
             patch("controllers.console.workspace.models.ModelProviderService") as service,
         ):
             service.return_value.get_models_by_provider.return_value = []
 
-            result = method(api, "openai")
+            result = method(api, "t1", "openai")
 
         assert "data" in result
 
@@ -183,10 +157,6 @@ class TestModelProviderModelCredentialApi:
                     "model_type": ModelType.LLM,
                 },
             ),
-            patch(
-                "controllers.console.workspace.models.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
             patch("controllers.console.workspace.models.ModelProviderService") as provider_service,
             patch("controllers.console.workspace.models.ModelLoadBalancingService") as lb_service,
         ):
@@ -198,7 +168,7 @@ class TestModelProviderModelCredentialApi:
             provider_service.return_value.provider_manager.get_provider_model_available_credentials.return_value = []
             lb_service.return_value.get_load_balancing_configs.return_value = (False, [])
 
-            result = method(api, "openai")
+            result = method(api, "tenant1", SimpleNamespace(id="u1"), "openai")
 
         assert "credentials" in result
 
@@ -214,13 +184,9 @@ class TestModelProviderModelCredentialApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.models.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
             patch("controllers.console.workspace.models.ModelProviderService"),
         ):
-            result, status = method(api, "openai")
+            result, status = method(api, "tenant1", "openai")
 
         assert status == 201
 
@@ -230,7 +196,6 @@ class TestModelProviderModelCredentialApi:
 
         with (
             app.test_request_context("/", query_string={"model": "gpt", "model_type": ModelType.LLM}),
-            patch("controllers.console.workspace.models.current_account_with_tenant", return_value=(MagicMock(), "t1")),
             patch("controllers.console.workspace.models.ModelProviderService") as service,
             patch("controllers.console.workspace.models.ModelLoadBalancingService") as lb,
         ):
@@ -238,7 +203,7 @@ class TestModelProviderModelCredentialApi:
             service.return_value.provider_manager.get_provider_model_available_credentials.return_value = []
             lb.return_value.get_load_balancing_configs.return_value = (False, [])
 
-            result = method(api, "openai")
+            result = method(api, "t1", SimpleNamespace(id="u1"), "openai")
 
         assert result["credentials"] == {}
 
@@ -254,10 +219,9 @@ class TestModelProviderModelCredentialApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.models.current_account_with_tenant", return_value=(MagicMock(), "t1")),
             patch("controllers.console.workspace.models.ModelProviderService"),
         ):
-            result, status = method(api, "openai")
+            result, status = method(api, "t1", "openai")
 
         assert status == 204
 
@@ -275,13 +239,9 @@ class TestModelProviderModelCredentialSwitchApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.models.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
             patch("controllers.console.workspace.models.ModelProviderService"),
         ):
-            result = method(api, "openai")
+            result = method(api, "tenant1", "openai")
 
         assert result["result"] == "success"
 
@@ -298,13 +258,9 @@ class TestModelEnableDisableApis:
 
         with (
             app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.models.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
             patch("controllers.console.workspace.models.ModelProviderService"),
         ):
-            result = method(api, "openai")
+            result = method(api, "tenant1", "openai")
 
         assert result["result"] == "success"
 
@@ -319,13 +275,9 @@ class TestModelEnableDisableApis:
 
         with (
             app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.models.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
             patch("controllers.console.workspace.models.ModelProviderService"),
         ):
-            result = method(api, "openai")
+            result = method(api, "tenant1", "openai")
 
         assert result["result"] == "success"
 
@@ -343,13 +295,9 @@ class TestModelProviderModelValidateApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.models.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
             patch("controllers.console.workspace.models.ModelProviderService"),
         ):
-            result = method(api, "openai")
+            result = method(api, "tenant1", "openai")
 
         assert result["result"] == "success"
 
@@ -366,15 +314,11 @@ class TestModelProviderModelValidateApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch(
-                "controllers.console.workspace.models.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
             patch("controllers.console.workspace.models.ModelProviderService") as service_mock,
         ):
             service_mock.return_value.validate_model_credentials.side_effect = CredentialsValidateFailedError("invalid")
 
-            result = method(api, "openai")
+            result = method(api, "tenant1", "openai")
 
         assert result["result"] == "error"
 
@@ -386,15 +330,11 @@ class TestParameterAndAvailableModels:
 
         with (
             app.test_request_context("/", query_string={"model": "gpt-4"}),
-            patch(
-                "controllers.console.workspace.models.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
             patch("controllers.console.workspace.models.ModelProviderService") as service_mock,
         ):
             service_mock.return_value.get_model_parameter_rules.return_value = []
 
-            result = method(api, "openai")
+            result = method(api, "tenant1", "openai")
 
         assert "data" in result
 
@@ -404,15 +344,11 @@ class TestParameterAndAvailableModels:
 
         with (
             app.test_request_context("/"),
-            patch(
-                "controllers.console.workspace.models.current_account_with_tenant",
-                return_value=(MagicMock(), "tenant1"),
-            ),
             patch("controllers.console.workspace.models.ModelProviderService") as service_mock,
         ):
             service_mock.return_value.get_models_by_model_type.return_value = []
 
-            result = method(api, ModelType.LLM)
+            result = method(api, "tenant1", ModelType.LLM)
 
         assert "data" in result
 
@@ -422,12 +358,11 @@ class TestParameterAndAvailableModels:
 
         with (
             app.test_request_context("/", query_string={"model": "gpt"}),
-            patch("controllers.console.workspace.models.current_account_with_tenant", return_value=(MagicMock(), "t1")),
             patch("controllers.console.workspace.models.ModelProviderService") as service,
         ):
             service.return_value.get_model_parameter_rules.return_value = []
 
-            result = method(api, "openai")
+            result = method(api, "t1", "openai")
 
         assert result["data"] == []
 
@@ -437,11 +372,10 @@ class TestParameterAndAvailableModels:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.workspace.models.current_account_with_tenant", return_value=(MagicMock(), "t1")),
             patch("controllers.console.workspace.models.ModelProviderService") as service,
         ):
             service.return_value.get_models_by_model_type.return_value = []
 
-            result = method(api, ModelType.LLM)
+            result = method(api, "t1", ModelType.LLM)
 
         assert result["data"] == []

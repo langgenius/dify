@@ -15,10 +15,11 @@ class _FakeResponse:
 
 
 def _mock_head(monkeypatch: pytest.MonkeyPatch, headers: dict[str, str], status_code: int = 200):
-    def _fake_head(url: str, follow_redirects: bool = True):
+    def _fake_head(method: str, url: str, follow_redirects: bool = True):
+        assert method == "HEAD"
         return _FakeResponse(status_code=status_code, headers=headers)
 
-    monkeypatch.setattr("factories.file_factory.remote.ssrf_proxy.head", _fake_head)
+    monkeypatch.setattr("factories.file_factory.remote.remote_fetcher.make_request", _fake_head)
 
 
 class TestGetRemoteFileInfo:
@@ -356,6 +357,7 @@ class TestBuildFromDatasourceFile:
         )
         assert captured["mime_type"] == "text/csv"
         assert file.extension == ".csv"
+        assert file.transfer_method == FileTransferMethod.DATASOURCE_FILE
 
     def test_extension_falls_back_to_bin_when_key_has_no_dot(self, monkeypatch: pytest.MonkeyPatch):
         captured: dict = {}
@@ -383,3 +385,4 @@ class TestBuildFromDatasourceFile:
 
         assert captured["extension"] == ".bin"
         assert file.extension == ".bin"
+        assert file.transfer_method == FileTransferMethod.DATASOURCE_FILE

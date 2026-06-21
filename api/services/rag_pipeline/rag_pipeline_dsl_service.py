@@ -17,7 +17,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.helper import ssrf_proxy
+from core.file import remote_fetcher
 from core.helper.name_generator import generate_incremental_name
 from core.plugin.entities.plugin import PluginDependency
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
@@ -125,7 +125,7 @@ class RagPipelineDslService:
                 ):
                     yaml_url = yaml_url.replace("https://github.com", "https://raw.githubusercontent.com")
                     yaml_url = yaml_url.replace("/blob/", "/")
-                response = ssrf_proxy.get(yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
+                response = remote_fetcher.make_request("GET", yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
                 response.raise_for_status()
                 content = response.content.decode()
 
@@ -283,6 +283,7 @@ class RagPipelineDslService:
                             },
                             indexing_technique=IndexTechniqueType(knowledge_configuration.indexing_technique),
                             created_by=account.id,
+                            maintainer=account.id,
                             retrieval_model=knowledge_configuration.retrieval_model.model_dump(),
                             runtime_mode=DatasetRuntimeMode.RAG_PIPELINE,
                             chunk_structure=knowledge_configuration.chunk_structure,
@@ -415,6 +416,7 @@ class RagPipelineDslService:
                             },
                             indexing_technique=IndexTechniqueType(knowledge_configuration.indexing_technique),
                             created_by=account.id,
+                            maintainer=account.id,
                             retrieval_model=knowledge_configuration.retrieval_model.model_dump(),
                             runtime_mode=DatasetRuntimeMode.RAG_PIPELINE,
                             chunk_structure=knowledge_configuration.chunk_structure,

@@ -12,11 +12,15 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useReactFlowStore } from 'reactflow'
+import { useCreateSnippetFromSelection } from '@/app/components/snippets/hooks/use-create-snippet-from-selection'
+import { canCreateAndModifySnippets } from '@/app/components/snippets/utils/permission'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
 import { ShortcutKbd } from './shortcuts/shortcut-kbd'
 import { useStore, useWorkflowStore } from './store'
+import { BlockEnum } from './types'
 
 const AlignType = {
   Bottom: 'bottom',
@@ -70,6 +74,14 @@ const menuSections: MenuSection[] = [
     ],
   },
 ]
+
+const unsupportedSnippetNodeTypes = new Set([
+  BlockEnum.Answer,
+  BlockEnum.End,
+  BlockEnum.Start,
+  BlockEnum.HumanInput,
+  BlockEnum.KnowledgeRetrieval,
+])
 
 const getAlignableNodes = (nodes: Node[], selectedNodes: Node[]) => {
   const selectedNodeIds = new Set(selectedNodes.map(node => node.id))
@@ -223,6 +235,7 @@ export function SelectionContextmenu({
 }) {
   const { t } = useTranslation()
   const { getNodesReadOnly } = useNodesReadOnly()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const { handleNodesCopy, handleNodesDelete, handleNodesDuplicate } = useNodesInteractions()
   const isSelectionContextMenu = useStore(s => s.contextMenuTarget?.type === 'selection')
 
@@ -234,8 +247,20 @@ export function SelectionContextmenu({
   const selectedNodes = useReactFlowStore(state =>
     state.getNodes().filter(node => node.selected),
   )
+  const edges = useReactFlowStore(state => state.edges)
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { saveStateToHistory } = useWorkflowHistory()
+  const {
+    createSnippetDialog,
+    handleOpenCreateSnippet,
+    isCreateSnippetDialogOpen,
+  } = useCreateSnippetFromSelection({
+    edges,
+    selectedNodes,
+    onClose,
+  })
+  const canCreateSnippet = canCreateAndModifySnippets(workspacePermissionKeys)
+    && selectedNodes.every(node => !unsupportedSnippetNodeTypes.has(node.data.type))
 
   const handleCopyNodes = useCallback(() => {
     handleNodesCopy()
@@ -345,57 +370,73 @@ export function SelectionContextmenu({
   }, [collaborativeWorkflow, workflowStore, selectedNodes, getNodesReadOnly, handleSyncWorkflowDraft, saveStateToHistory, onClose])
 
   if (!isSelectionContextMenu || selectedNodes.length <= 1)
-    return null
+    return isCreateSnippetDialogOpen ? createSnippetDialog : null
 
   return (
-    <ContextMenuContent popupClassName="w-[240px]" sideOffset={4}>
-      <ContextMenuGroup>
-        <ContextMenuItem
-          className="justify-between px-3 text-text-secondary"
-          onClick={handleCopyNodes}
-        >
-          <span>{t('common.copy', { defaultValue: 'common.copy', ns: 'workflow' })}</span>
-          <ShortcutKbd shortcut="workflow.copy" />
-        </ContextMenuItem>
-        <ContextMenuItem
-          className="justify-between px-3 text-text-secondary"
-          onClick={handleDuplicateNodes}
-        >
-          <span>{t('common.duplicate', { defaultValue: 'common.duplicate', ns: 'workflow' })}</span>
-          <ShortcutKbd shortcut="workflow.duplicate" />
-        </ContextMenuItem>
-      </ContextMenuGroup>
-      <ContextMenuSeparator />
-      <ContextMenuGroup>
-        <ContextMenuItem
-          className="justify-between px-3 text-text-secondary data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"
-          onClick={handleDeleteNodes}
-        >
-          <span>{t('operation.delete', { defaultValue: 'operation.delete', ns: 'common' })}</span>
-          <ShortcutKbd shortcut="workflow.delete" />
-        </ContextMenuItem>
-      </ContextMenuGroup>
-      <ContextMenuSeparator />
-      {menuSections.map((section, sectionIndex) => (
-        <ContextMenuGroup key={section.titleKey}>
-          {sectionIndex > 0 && <ContextMenuSeparator />}
-          <ContextMenuLabel>
-            {t(section.titleKey, { defaultValue: section.titleKey, ns: 'workflow' })}
-          </ContextMenuLabel>
-          {section.items.map((item) => {
-            return (
+    <>
+      <ContextMenuContent popupClassName="w-[240px]" sideOffset={4}>
+        {canCreateSnippet && (
+          <>
+            <ContextMenuGroup>
               <ContextMenuItem
-                key={item.alignType}
-                data-testid={`selection-contextmenu-item-${item.alignType}`}
-                onClick={() => handleAlignNodes(item.alignType)}
+                className="px-3 text-text-secondary"
+                onClick={handleOpenCreateSnippet}
               >
-                <span aria-hidden className={`${item.icon} h-4 w-4 ${item.iconClassName ?? ''}`.trim()} />
-                {t(item.translationKey, { defaultValue: item.translationKey, ns: 'workflow' })}
+                <span>{t('snippet.createDialogTitle', { defaultValue: 'Create Snippet', ns: 'workflow' })}</span>
               </ContextMenuItem>
-            )
-          })}
+            </ContextMenuGroup>
+            <ContextMenuSeparator />
+          </>
+        )}
+        <ContextMenuGroup>
+          <ContextMenuItem
+            className="justify-between px-3 text-text-secondary"
+            onClick={handleCopyNodes}
+          >
+            <span>{t('common.copy', { defaultValue: 'common.copy', ns: 'workflow' })}</span>
+            <ShortcutKbd shortcut="workflow.copy" />
+          </ContextMenuItem>
+          <ContextMenuItem
+            className="justify-between px-3 text-text-secondary"
+            onClick={handleDuplicateNodes}
+          >
+            <span>{t('common.duplicate', { defaultValue: 'common.duplicate', ns: 'workflow' })}</span>
+            <ShortcutKbd shortcut="workflow.duplicate" />
+          </ContextMenuItem>
         </ContextMenuGroup>
-      ))}
-    </ContextMenuContent>
+        <ContextMenuSeparator />
+        <ContextMenuGroup>
+          <ContextMenuItem
+            className="justify-between px-3 text-text-secondary data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"
+            onClick={handleDeleteNodes}
+          >
+            <span>{t('operation.delete', { defaultValue: 'operation.delete', ns: 'common' })}</span>
+            <ShortcutKbd shortcut="workflow.delete" />
+          </ContextMenuItem>
+        </ContextMenuGroup>
+        <ContextMenuSeparator />
+        {menuSections.map((section, sectionIndex) => (
+          <ContextMenuGroup key={section.titleKey}>
+            {sectionIndex > 0 && <ContextMenuSeparator />}
+            <ContextMenuLabel>
+              {t(section.titleKey, { defaultValue: section.titleKey, ns: 'workflow' })}
+            </ContextMenuLabel>
+            {section.items.map((item) => {
+              return (
+                <ContextMenuItem
+                  key={item.alignType}
+                  data-testid={`selection-contextmenu-item-${item.alignType}`}
+                  onClick={() => handleAlignNodes(item.alignType)}
+                >
+                  <span aria-hidden className={`${item.icon} h-4 w-4 ${item.iconClassName ?? ''}`.trim()} />
+                  {t(item.translationKey, { defaultValue: item.translationKey, ns: 'workflow' })}
+                </ContextMenuItem>
+              )
+            })}
+          </ContextMenuGroup>
+        ))}
+      </ContextMenuContent>
+      {createSnippetDialog}
+    </>
   )
 }

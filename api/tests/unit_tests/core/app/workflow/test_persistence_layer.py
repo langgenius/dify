@@ -218,12 +218,13 @@ class TestWorkflowPersistenceLayer:
         assert exec_repo.saved[-1].status == WorkflowExecutionStatus.FAILED
         assert trace_tasks
 
-    def test_handle_graph_run_succeeded_enqueues_parent_trace_context(self, monkeypatch):
+    def test_handle_graph_run_succeeded_enqueues_parent_trace_context(self, monkeypatch: pytest.MonkeyPatch):
         trace_tasks: list[TraceTask] = []
         trace_manager = SimpleNamespace(user_id="user", add_trace_task=lambda task: trace_tasks.append(task))
         layer, _, _, _ = _make_layer(
             extras={
                 "external_trace_id": "trace",
+                "trace_session_id": "session-1",
                 "parent_trace_context": {
                     "parent_workflow_run_id": "outer-workflow-run-1",
                     "parent_node_execution_id": "outer-node-execution-1",
@@ -245,6 +246,7 @@ class TestWorkflowPersistenceLayer:
         ):
             captured["trace_type"] = self.trace_type
             captured["external_trace_id"] = self.kwargs.get("external_trace_id")
+            captured["trace_session_id"] = self.kwargs.get("trace_session_id")
             captured["parent_trace_context"] = self.kwargs.get("parent_trace_context")
             captured["workflow_run_id"] = workflow_run_id
             return {"ok": True}
@@ -257,6 +259,7 @@ class TestWorkflowPersistenceLayer:
         trace_task = trace_tasks[0]
         assert trace_task.trace_type == TraceTaskName.WORKFLOW_TRACE
         assert trace_task.kwargs["external_trace_id"] == "trace"
+        assert trace_task.kwargs["trace_session_id"] == "session-1"
         assert trace_task.kwargs["parent_trace_context"] == {
             "parent_workflow_run_id": "outer-workflow-run-1",
             "parent_node_execution_id": "outer-node-execution-1",
@@ -266,6 +269,7 @@ class TestWorkflowPersistenceLayer:
 
         assert captured["trace_type"] == TraceTaskName.WORKFLOW_TRACE
         assert captured["external_trace_id"] == "trace"
+        assert captured["trace_session_id"] == "session-1"
         assert captured["parent_trace_context"] == {
             "parent_workflow_run_id": "outer-workflow-run-1",
             "parent_node_execution_id": "outer-node-execution-1",

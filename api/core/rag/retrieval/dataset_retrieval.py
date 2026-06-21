@@ -123,7 +123,7 @@ class DatasetRetrieval:
         if not available_datasets_ids:
             return []
 
-        if not request.query:
+        if not request.query and not request.attachment_ids:
             return []
 
         metadata_filter_document_ids, metadata_condition = None, None
@@ -609,7 +609,7 @@ class DatasetRetrieval:
         metadata_filter_document_ids: dict[str, list[str]] | None = None,
         metadata_condition: MetadataFilteringCondition | None = None,
     ):
-        tools = []
+        tools: list[PromptMessageTool] = []
         for dataset in available_datasets:
             description = dataset.description
             if not description:
@@ -1162,7 +1162,7 @@ class DatasetRetrieval:
         :param invoke_from: invoke from
         :param hit_callback: hit callback
         """
-        tools = []
+        tools: list[DatasetRetrieverBaseTool] = []
         available_datasets = []
         for dataset_id in dataset_ids:
             # get dataset from dataset id
@@ -1525,16 +1525,18 @@ class DatasetRetrieval:
                 filters.append(json_field.like(f"%{escaped_value}", escape="\\"))
 
             case "is" | "=":
-                if isinstance(value, str):
-                    filters.append(json_field == value)
-                elif isinstance(value, (int, float)):
-                    filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() == value)
+                match value:
+                    case str():
+                        filters.append(json_field == value)
+                    case int() | float():
+                        filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() == value)
 
             case "is not" | "≠":
-                if isinstance(value, str):
-                    filters.append(json_field != value)
-                elif isinstance(value, (int, float)):
-                    filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() != value)
+                match value:
+                    case str():
+                        filters.append(json_field != value)
+                    case int() | float():
+                        filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() != value)
 
             case "empty":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].is_(None))
@@ -1554,12 +1556,13 @@ class DatasetRetrieval:
             case "≥" | ">=":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() >= value)
             case "in" | "not in":
-                if isinstance(value, str):
-                    value_list = [v.strip() for v in value.split(",") if v.strip()]
-                elif isinstance(value, (list, tuple)):
-                    value_list = [str(v) for v in value if v is not None]
-                else:
-                    value_list = [str(value)] if value is not None else []
+                match value:
+                    case str():
+                        value_list = [v.strip() for v in value.split(",") if v.strip()]
+                    case list() | tuple():
+                        value_list = [str(v) for v in value if v is not None]
+                    case _:
+                        value_list = [str(value)] if value is not None else []
 
                 if not value_list:
                     # `field in []` is False, `field not in []` is True
@@ -1706,12 +1709,13 @@ class DatasetRetrieval:
         usage = None
         for result in invoke_result:
             text = result.delta.message.content
-            if isinstance(text, str):
-                full_text += text
-            elif isinstance(text, list):
-                for i in text:
-                    if i.data:
-                        full_text += i.data
+            match text:
+                case str():
+                    full_text += text
+                case list():
+                    for i in text:
+                        if i.data:
+                            full_text += i.data
 
             if not model:
                 model = result.model

@@ -94,8 +94,38 @@ class TestGetUser:
         # Assert
         assert result == mock_new_user
         mock_session.get.assert_not_called()
-        mock_session.scalar.assert_called_once()
+        # Non-anonymous miss now tries id, then session_id fallback (see
+        # #36736); both miss in this tenant → fall through to create.
+        assert mock_session.scalar.call_count == 2
         mock_session.add.assert_called_once_with(mock_new_user)
+
+    @patch("controllers.inner_api.plugin.wraps.select")
+    @patch("controllers.inner_api.plugin.wraps.EndUser")
+    @patch("controllers.inner_api.plugin.wraps.sessionmaker")
+    @patch("controllers.inner_api.plugin.wraps.db")
+    def test_should_return_existing_user_by_session_id_fallback_for_non_anonymous(
+        self, mock_db, mock_sessionmaker, mock_enduser_class, mock_select, app: Flask
+    ):
+        """Non-anonymous user_id misses on EndUser.id but hits on
+        EndUser.session_id — this is the plugin-daemon Reverse Invocation
+        case where the daemon sends a stable session-derived UUID that
+        was written into session_id on the first call. See #36736.
+        """
+        # Arrange
+        mock_user = MagicMock()
+        mock_session = MagicMock()
+        mock_sessionmaker.return_value.begin.return_value.__enter__.return_value = mock_session
+        # First scalar (id lookup) returns None, second (session_id fallback) hits.
+        mock_session.scalar.side_effect = [None, mock_user]
+
+        # Act
+        with app.app_context():
+            result = get_user("tenant123", "daemon-session-uuid")
+
+        # Assert
+        assert result == mock_user
+        assert mock_session.scalar.call_count == 2
+        mock_session.add.assert_not_called()
 
     @patch("controllers.inner_api.plugin.wraps.select")
     @patch("controllers.inner_api.plugin.wraps.EndUser")
@@ -207,9 +237,10 @@ class TestGetUserTenant:
             monkeypatch.setattr(app, "login_manager", MagicMock(), raising=False)
             with patch("controllers.inner_api.plugin.wraps.db.session.get") as mock_get:
                 with patch("controllers.inner_api.plugin.wraps.get_user") as mock_get_user:
-                    mock_get.return_value = mock_tenant
-                    mock_get_user.return_value = mock_user
-                    result = protected_view()
+                    with patch("controllers.inner_api.plugin.wraps.user_logged_in"):
+                        mock_get.return_value = mock_tenant
+                        mock_get_user.return_value = mock_user
+                        result = protected_view()
 
         # Assert
         assert result["tenant"] == mock_tenant
@@ -263,9 +294,10 @@ class TestGetUserTenant:
             monkeypatch.setattr(app, "login_manager", MagicMock(), raising=False)
             with patch("controllers.inner_api.plugin.wraps.db.session.get") as mock_get:
                 with patch("controllers.inner_api.plugin.wraps.get_user") as mock_get_user:
-                    mock_get.return_value = mock_tenant
-                    mock_get_user.return_value = mock_user
-                    result = protected_view()
+                    with patch("controllers.inner_api.plugin.wraps.user_logged_in"):
+                        mock_get.return_value = mock_tenant
+                        mock_get_user.return_value = mock_user
+                        result = protected_view()
 
         # Assert
         assert result["tenant"] == mock_tenant

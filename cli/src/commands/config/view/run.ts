@@ -1,8 +1,8 @@
-import type { ConfigFile } from '../../../config/schema.js'
-import type { YamlStore } from '../../../store/store.js'
-import { loadConfig } from '../../../config/config-loader.js'
-import { knownKeyNames, lookupKey } from '../../../config/keys.js'
-import { emptyConfig } from '../../../config/schema.js'
+import type { ConfigFile } from '@/config/schema'
+import type { YamlStore } from '@/store/store'
+import { loadConfig } from '@/config/config-loader'
+import { knownKeyNames, lookupKey } from '@/config/keys'
+import { emptyConfig } from '@/config/schema'
 
 export type RunConfigViewOptions = {
   readonly json?: boolean
@@ -11,8 +11,8 @@ export type RunConfigViewOptions = {
 
 type ViewOut = Record<string, number | string>
 
-export function runConfigView(opts: RunConfigViewOptions): string {
-  const loaded = loadConfig(opts.store)
+export async function runConfigView(opts: RunConfigViewOptions): Promise<string> {
+  const loaded = await loadConfig(opts.store)
   const config: ConfigFile = loaded.found ? loaded.config : emptyConfig()
   const out = collect(config)
   if (opts.json)

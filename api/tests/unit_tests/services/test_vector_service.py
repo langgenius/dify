@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 from unittest.mock import MagicMock
@@ -268,7 +269,7 @@ def test_create_segments_vector_parent_child_uses_default_embedding_model_when_p
 
 
 def test_create_segments_vector_parent_child_missing_document_logs_warning_and_continues(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     dataset = _make_dataset(doc_form=vector_service_module.IndexStructureType.PARENT_CHILD_INDEX)
     segment = _make_segment()
@@ -280,18 +281,16 @@ def test_create_segments_vector_parent_child_missing_document_logs_warning_and_c
         _mock_parent_child_queries(dataset_document=None, processing_rule=processing_rule),
     )
 
-    logger_mock = MagicMock()
-    monkeypatch.setattr(vector_service_module, "logger", logger_mock)
-
     index_processor = MagicMock()
     factory_instance = MagicMock()
     factory_instance.init_index_processor.return_value = index_processor
     monkeypatch.setattr(vector_service_module, "IndexProcessorFactory", MagicMock(return_value=factory_instance))
 
-    VectorService.create_segments_vector(
-        None, [segment], dataset, vector_service_module.IndexStructureType.PARENT_CHILD_INDEX
-    )
-    logger_mock.warning.assert_called_once()
+    with caplog.at_level(logging.WARNING, logger="services.vector_service"):
+        VectorService.create_segments_vector(
+            None, [segment], dataset, vector_service_module.IndexStructureType.PARENT_CHILD_INDEX
+        )
+    assert "Expected DatasetDocument record to exist, but none was found" in caplog.text
     index_processor.load.assert_not_called()
 
 
@@ -615,7 +614,7 @@ def test_update_multimodel_vector_commits_when_no_upload_files_found(monkeypatch
 
 
 def test_update_multimodel_vector_adds_bindings_and_vectors_and_skips_missing_upload_files(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     dataset = _make_dataset(indexing_technique=IndexTechniqueType.HIGH_QUALITY, is_multimodal=True)
     segment = _make_segment(segment_id="seg-1", tenant_id="tenant-1", attachments=[{"id": "old-1"}])
@@ -630,12 +629,10 @@ def test_update_multimodel_vector_adds_bindings_and_vectors_and_skips_missing_up
     monkeypatch.setattr(vector_service_module, "delete", MagicMock())
     monkeypatch.setattr(vector_service_module, "select", MagicMock())
 
-    logger_mock = MagicMock()
-    monkeypatch.setattr(vector_service_module, "logger", logger_mock)
+    with caplog.at_level(logging.WARNING, logger="services.vector_service"):
+        VectorService.update_multimodel_vector(segment=segment, attachment_ids=["file-1", "missing"], dataset=dataset)
 
-    VectorService.update_multimodel_vector(segment=segment, attachment_ids=["file-1", "missing"], dataset=dataset)
-
-    logger_mock.warning.assert_called_once()
+    assert "Upload file not found for attachment_id" in caplog.text
     db_mock.session.add_all.assert_called_once()
     bindings = db_mock.session.add_all.call_args.args[0]
     assert len(bindings) == 1
@@ -673,7 +670,9 @@ def test_update_multimodel_vector_updates_bindings_without_multimodal_vector_ops
     db_mock.session.commit.assert_called_once()
 
 
-def test_update_multimodel_vector_rolls_back_and_reraises_on_error(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_update_multimodel_vector_rolls_back_and_reraises_on_error(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
     dataset = _make_dataset(indexing_technique=IndexTechniqueType.HIGH_QUALITY, is_multimodal=True)
     segment = _make_segment(segment_id="seg-1", tenant_id="tenant-1", attachments=[{"id": "old-1"}])
 
@@ -688,11 +687,11 @@ def test_update_multimodel_vector_rolls_back_and_reraises_on_error(monkeypatch: 
     monkeypatch.setattr(vector_service_module, "delete", MagicMock())
     monkeypatch.setattr(vector_service_module, "select", MagicMock())
 
-    logger_mock = MagicMock()
-    monkeypatch.setattr(vector_service_module, "logger", logger_mock)
+    with caplog.at_level(logging.ERROR, logger="services.vector_service"):
+        with pytest.raises(RuntimeError, match="boom"):
+            VectorService.update_multimodel_vector(segment=segment, attachment_ids=["file-1"], dataset=dataset)
 
-    with pytest.raises(RuntimeError, match="boom"):
-        VectorService.update_multimodel_vector(segment=segment, attachment_ids=["file-1"], dataset=dataset)
-
-    logger_mock.exception.assert_called_once()
+    exception_records = [r for r in caplog.records if r.levelname == "ERROR"]
+    assert len(exception_records) == 1
+    assert "Failed to update multimodal vector for segment" in exception_records[0].getMessage()
     db_mock.session.rollback.assert_called_once()

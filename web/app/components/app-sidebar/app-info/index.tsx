@@ -1,6 +1,7 @@
 import type { AppInfoActions } from './use-app-info-actions'
 import * as React from 'react'
-import { useAppContext } from '@/context/app-context'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { getAppACLCapabilities } from '@/utils/permission'
 import AppInfoDetailPanel from './app-info-detail-panel'
 import AppInfoModals from './app-info-modals'
 import AppInfoTrigger from './app-info-trigger'
@@ -23,7 +24,7 @@ type AppInfoDetailLayerProps = {
   open?: boolean
 }
 
-export const AppInfoDetailLayer = ({
+const AppInfoDetailLayer = ({
   actions,
   open = actions.panelOpen,
 }: AppInfoDetailLayerProps) => {
@@ -79,15 +80,26 @@ export const AppInfoView = ({
   actions,
   renderDetail = true,
 }: AppInfoViewProps) => {
-  const { isCurrentWorkspaceEditor } = useAppContext()
   const {
     appDetail,
     panelOpen,
     setPanelOpen,
+    activeModal,
+    secretEnvList,
   } = actions
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const appACLCapabilities = getAppACLCapabilities(appDetail?.permission_keys, {
+    currentUserId,
+    resourceMaintainer: appDetail?.maintainer,
+    workspacePermissionKeys,
+  })
 
   if (!appDetail)
     return null
+
+  const detailLayerOpen = onlyShowDetail ? openState : panelOpen
+  const shouldRenderDetailLayer = renderDetail && (detailLayerOpen || activeModal || secretEnvList.length > 0)
 
   return (
     <div>
@@ -96,15 +108,15 @@ export const AppInfoView = ({
           appDetail={appDetail}
           expand={expand}
           onClick={() => {
-            if (isCurrentWorkspaceEditor)
+            if (appACLCapabilities.canAccessLayout)
               setPanelOpen(v => !v)
           }}
         />
       )}
-      {renderDetail && (
+      {shouldRenderDetailLayer && (
         <AppInfoDetailLayer
           actions={actions}
-          open={onlyShowDetail ? openState : panelOpen}
+          open={detailLayerOpen}
         />
       )}
     </div>
