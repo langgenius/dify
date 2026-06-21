@@ -19,7 +19,6 @@ import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import { FileList } from '@/app/components/base/file-uploader'
 import { User } from '@/app/components/base/icons/src/public/avatar'
-import { Markdown } from '@/app/components/base/markdown'
 import ActionButton from '../../action-button'
 import { CssTransform } from '../embedded-chatbot/theme/utils'
 import ContentSwitch from './content-switch'
@@ -206,7 +205,7 @@ const Question: FC<QuestionProps> = ({
             )
           }
           {!isEditing
-            ? <Markdown content={content} />
+            ? <div className="body-md-regular break-words whitespace-pre-wrap">{content}</div>
             : (
                 <div className="flex flex-col gap-4">
                   <div className="max-h-[158px] overflow-x-hidden overflow-y-auto pr-1">
@@ -214,6 +213,7 @@ const Question: FC<QuestionProps> = ({
                       className={cn(
                         'w-full resize-none bg-transparent p-0 body-lg-regular leading-7 text-text-primary outline-hidden',
                       )}
+                      // eslint-disable-next-line jsx-a11y/no-autofocus -- Edit mode opens from an explicit user action.
                       autoFocus
                       minRows={1}
                       value={editedContent}
