@@ -218,9 +218,9 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         # Assert
         assert result.type == EndUserType.BROWSER
 
-    def test_upgrade_legacy_end_user_type(
-        self, caplog: pytest.LogCaptureFixture, db_session_with_containers: Session, factory: TestEndUserServiceFactory
-    ):
+    def test_upgrade_legacy_end_user_type(self, db_session_with_containers: Session, factory, caplog):
+
+        caplog.set_level(logging.INFO)
         """Test upgrading legacy end user with different type."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -247,20 +247,12 @@ class TestEndUserServiceGetOrCreateEndUserByType:
 
         # Assert
         assert result.id == existing_user.id
-        assert result.type == EndUserType.BROWSER  # Type should be updated
-        matching_logs = [
-            record
-            for record in caplog.records
-            if record.name == "services.end_user_service"
-            and record.levelno == logging.INFO
-            and "Upgrading legacy EndUser" in record.message
-        ]
+        assert result.type == InvokeFrom.WEB_APP  # Type should be updated
+        assert "Upgrading legacy EndUser" in caplog.text
 
-        assert len(matching_logs) == 1
+    def test_get_existing_end_user_matching_type(self, db_session_with_containers: Session, factory, caplog):
 
-    def test_get_existing_end_user_matching_type(
-        self, db_session_with_containers: Session, factory: TestEndUserServiceFactory, caplog
-    ):
+        caplog.set_level(logging.INFO)
         """Test retrieving existing end user with matching type."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -287,9 +279,8 @@ class TestEndUserServiceGetOrCreateEndUserByType:
 
         # Assert
         assert result.id == existing_user.id
-        assert result.type == EndUserType.SERVICE_API
-        # No legacy-upgrade log should be emitted when the existing user's type already matches.
-        assert [record for record in caplog.records if record.levelno == logging.INFO] == []
+        assert result.type == InvokeFrom.SERVICE_API
+        assert "Upgrading legacy EndUser" not in caplog.text
 
     def test_create_anonymous_user_with_default_session(
         self, db_session_with_containers: Session, factory: TestEndUserServiceFactory

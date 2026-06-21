@@ -354,8 +354,8 @@ class TestWebhookServiceTriggerExecutionWithContainers:
 
         mock_mark_rate_limited.assert_called_once_with(tenant.id)
 
-    def test_trigger_workflow_execution_logs_and_reraises_unexpected_errors(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
+    def test_trigger_workflow_execution_logs_unexpected_errors(
+        self, db_session_with_containers: Session, flask_app_with_containers: Flask, caplog
     ):
         del flask_app_with_containers
         factory = WebhookServiceRelationshipFactory
@@ -373,7 +373,6 @@ class TestWebhookServiceTriggerExecutionWithContainers:
                 "services.trigger.webhook_service.EndUserService.get_or_create_end_user_by_type",
                 side_effect=RuntimeError("boom"),
             ),
-            patch("services.trigger.webhook_service.logger.exception") as mock_logger_exception,
         ):
             with pytest.raises(RuntimeError, match="boom"):
                 WebhookService.trigger_workflow_execution(
@@ -382,7 +381,7 @@ class TestWebhookServiceTriggerExecutionWithContainers:
                     workflow,
                 )
 
-        mock_logger_exception.assert_called_once()
+        assert len([record for record in caplog.records if record.levelname == "ERROR"]) == 1
 
 
 class TestWebhookServiceRelationshipSyncWithContainers:
@@ -481,8 +480,8 @@ class TestWebhookServiceRelationshipSyncWithContainers:
         assert cached_payload["node_id"] == "node-cache"
         assert cached_payload["webhook_id"] == "cache-webhook-id-00001"
 
-    def test_sync_webhook_relationships_logs_when_lock_release_fails(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
+    def test_sync_webhook_relationships_logs_error_when_lock_release_fails(
+        self, db_session_with_containers: Session, flask_app_with_containers: Flask, caplog
     ):
         del flask_app_with_containers
         factory = WebhookServiceRelationshipFactory
@@ -497,11 +496,10 @@ class TestWebhookServiceRelationshipSyncWithContainers:
 
         with (
             patch("services.trigger.webhook_service.redis_client.lock", return_value=lock),
-            patch("services.trigger.webhook_service.logger.exception") as mock_logger_exception,
         ):
             WebhookService.sync_webhook_relationships(app, workflow)
 
-        mock_logger_exception.assert_called_once()
+        assert len([record for record in caplog.records if record.levelname == "ERROR"]) == 1
 
 
 def _read_cache(cache_key: str) -> dict[str, str] | None:

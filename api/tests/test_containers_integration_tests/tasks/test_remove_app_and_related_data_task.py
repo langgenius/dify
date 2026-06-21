@@ -150,6 +150,8 @@ class TestDeleteDraftVariablesBatch:
     def test_delete_draft_variables_batch_logs_progress(
         self, mock_offload_cleanup, db_session_with_containers, caplog: pytest.LogCaptureFixture
     ):
+
+        caplog.set_level(logging.INFO)
         """Test that batch deletion logs progress correctly."""
         tenant, app = _create_tenant_and_app(db_session_with_containers)
         offload_data = _create_offload_data(db_session_with_containers, tenant_id=tenant.id, app_id=app.id, count=10)
@@ -208,6 +210,8 @@ class TestDeleteDraftVariableOffloadData:
     def test_delete_draft_variable_offload_data_storage_failure(
         self, mock_storage, db_session_with_containers, caplog: pytest.LogCaptureFixture
     ):
+
+        caplog.set_level(logging.ERROR)
         """Test handling of storage deletion failures."""
         tenant, app = _create_tenant_and_app(db_session_with_containers)
         offload_data = _create_offload_data(db_session_with_containers, tenant_id=tenant.id, app_id=app.id, count=2)

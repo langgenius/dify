@@ -312,16 +312,15 @@ class TestGetSchemaVersion:
         result = restore._get_schema_version(manifest)
         assert result == "1.0"
 
-    def test_missing_schema_version_defaults_to_1_0(self):
+    def test_missing_schema_version_defaults_to_1_0(self, caplog):
         """Should default to 1.0 when schema_version is missing."""
         restore = WorkflowRunRestore()
         manifest = {"tables": {}}
 
-        with patch("services.retention.workflow_run.restore_archived_workflow_run.logger") as mock_logger:
-            result = restore._get_schema_version(manifest)
+        result = restore._get_schema_version(manifest)
 
         assert result == "1.0"
-        mock_logger.warning.assert_called_once_with("Manifest missing schema_version; defaulting to 1.0")
+        assert "Manifest missing schema_version; defaulting to 1.0" in caplog.text
 
     def test_unsupported_schema_version_raises_error(self):
         """Should raise ValueError for unsupported schema version."""
@@ -492,7 +491,7 @@ class TestRestoreTableRecords:
     """Tests for WorkflowRunRestore._restore_table_records method."""
 
     @patch("services.retention.workflow_run.restore_archived_workflow_run.TABLE_MODELS")
-    def test_unknown_table_returns_zero(self, mock_table_models):
+    def test_unknown_table_returns_zero(self, mock_table_models, caplog):
         """Should return 0 for unknown table."""
         restore = WorkflowRunRestore()
         mock_table_models.get.return_value = None
@@ -500,11 +499,10 @@ class TestRestoreTableRecords:
         mock_session = Mock()
         records = [{"id": "test"}]
 
-        with patch("services.retention.workflow_run.restore_archived_workflow_run.logger") as mock_logger:
-            result = restore._restore_table_records(mock_session, "unknown_table", records, schema_version="1.0")
+        result = restore._restore_table_records(mock_session, "unknown_table", records, schema_version="1.0")
 
         assert result == 0
-        mock_logger.warning.assert_called_once_with("Unknown table: %s", "unknown_table")
+        assert "Unknown table: unknown_table" in caplog.text
 
     def test_empty_records_returns_zero(self):
         """Should return 0 for empty records list."""

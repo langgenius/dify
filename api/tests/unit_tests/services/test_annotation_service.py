@@ -1079,6 +1079,7 @@ class TestAppAnnotationServiceBatchImport:
             mock_redis.zadd.side_effect = RuntimeError("boom")
             mock_redis.zrem.side_effect = RuntimeError("cleanup-failed")
 
+            caplog.set_level(logging.DEBUG)
             # Act
             with caplog.at_level(logging.DEBUG):
                 result = AppAnnotationService.batch_import_app_annotations(app.id, file)
