@@ -23,6 +23,7 @@ from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolProviderType
 from core.tools.errors import ToolInvokeError
+from graphon.file.models import File
 from graphon.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 
 logger = logging.getLogger(__name__)
@@ -261,6 +262,36 @@ class MCPTool(Tool):
             if value is not None and not (isinstance(value, str) and value.strip() == "")
         }
 
+    @staticmethod
+    def _expand_file_value(value: Any) -> Any:
+        """Recursively convert ``File`` objects to JSON-safe dicts.
+
+        ``File`` stores ``related_id`` as a computed property and discards
+        ``url`` entirely, so ``model_dump()`` (used by the MCP protocol
+        serializer) silently drops them.  This method builds a plain dict
+        that includes those fields so MCP servers receive the full file
+        metadata — including ``related_id`` and ``url`` — that they need
+        to fetch the binary.
+        """
+        if isinstance(value, File):
+            data = value.model_dump(mode="json")
+            # ``related_id`` is a property (not a Pydantic field) so
+            # model_dump() never includes it.
+            data["related_id"] = value.related_id
+            # ``url`` is discarded during File construction.  Attempt to
+            # regenerate it; gracefully degrade when the workflow file
+            # runtime is not configured (e.g. unit tests).
+            try:
+                data["url"] = value.generate_url()
+            except Exception:
+                data["url"] = None
+            return {k: MCPTool._expand_file_value(v) for k, v in data.items()}
+        if isinstance(value, dict):
+            return {k: MCPTool._expand_file_value(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [MCPTool._expand_file_value(item) for item in value]
+        return value
+
     @property
     def _forwarding_requested(self) -> bool:
         """True only when the configured identity_mode wants forwarding AND
@@ -283,6 +314,7 @@ class MCPTool(Tool):
 
         headers = self.headers.copy() if self.headers else {}
         tool_parameters = self._handle_none_parameter(tool_parameters)
+        tool_parameters = self._expand_file_value(tool_parameters)
 
         from sqlalchemy.orm import Session
 
