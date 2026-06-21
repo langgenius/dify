@@ -6,8 +6,8 @@ import { AppACLPermission } from '@/utils/permission'
 import { useConfiguration } from '../use-configuration'
 
 const mockSetShowAccountSettingModal = vi.fn()
-const mockSetAppSidebarExpand = vi.fn()
 const mockSetShowAppConfigureFeaturesModal = vi.fn()
+const mockSetDetailSidebarMode = vi.fn()
 const mockHandleMultipleModelConfigsChange = vi.fn()
 const mockFetchCollectionList = vi.fn()
 const mockFetchAppDetailDirect = vi.fn()
@@ -85,10 +85,13 @@ vi.mock('@/app/components/app/store', () => ({
       mode: AppModeEnum.CHAT,
       permission_keys: mockAppPermissionKeys,
     },
-    setAppSidebarExpand: mockSetAppSidebarExpand,
     showAppConfigureFeaturesModal: false,
     setShowAppConfigureFeaturesModal: mockSetShowAppConfigureFeaturesModal,
   }),
+}))
+
+vi.mock('@/app/components/main-nav/storage', () => ({
+  useSetDetailSidebarMode: () => mockSetDetailSidebarMode,
 }))
 
 vi.mock('@/service/use-common', () => ({
@@ -466,7 +469,7 @@ describe('useConfiguration', () => {
     expect(mockSetShowAppConfigureFeaturesModal).toHaveBeenCalledWith(true)
     expect(mockFormattingChangedDispatcher).toHaveBeenCalled()
     expect(mockHandleMultipleModelConfigsChange).toHaveBeenCalled()
-    expect(mockSetAppSidebarExpand).toHaveBeenCalledWith('collapse')
+    expect(mockSetDetailSidebarMode).toHaveBeenCalledWith('collapse')
     expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'provider' })
     expect(mockSetConversationHistoriesRole).toHaveBeenCalledWith({
       assistant_prefix: 'bot',

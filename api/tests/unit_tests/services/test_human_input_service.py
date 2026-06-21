@@ -259,7 +259,7 @@ def test_resolve_form_inputs_uses_runtime_select_options(
 
 
 def test_submit_form_by_token_calls_repository_and_enqueue(
-    sample_form_record, mock_session_factory, mocker: MockerFixture
+    sample_form_record: HumanInputFormRecord, mock_session_factory, mocker: MockerFixture
 ):
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
@@ -318,7 +318,7 @@ def test_submit_form_by_token_enqueues_agent_app_resume_for_conversation_form(
 
 
 def test_submit_form_by_token_skips_enqueue_for_delivery_test(
-    sample_form_record, mock_session_factory, mocker: MockerFixture
+    sample_form_record: HumanInputFormRecord, mock_session_factory, mocker: MockerFixture
 ):
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
@@ -343,7 +343,7 @@ def test_submit_form_by_token_skips_enqueue_for_delivery_test(
 
 
 def test_submit_form_by_token_passes_submission_user_id(
-    sample_form_record, mock_session_factory, mocker: MockerFixture
+    sample_form_record: HumanInputFormRecord, mock_session_factory, mocker: MockerFixture
 ):
     session_factory, _ = mock_session_factory
     repo = MagicMock(spec=HumanInputFormSubmissionRepository)
@@ -528,7 +528,7 @@ def test_validate_human_input_submission_rejects_invalid_select_and_file_payload
     repo.mark_submitted.assert_not_called()
 
 
-def test_form_properties(sample_form_record):
+def test_form_properties(sample_form_record: HumanInputFormRecord):
     form = Form(sample_form_record)
     assert form.id == "form-id"
     assert form.workflow_run_id == "workflow-run-id"

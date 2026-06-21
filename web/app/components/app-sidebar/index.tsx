@@ -4,9 +4,8 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useHover } from 'ahooks'
 import * as React from 'react'
-import { useCallback, useEffect } from 'react'
-import { useShallow } from 'zustand/react/shallow'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { useCallback } from 'react'
+import { useDetailSidebarMode } from '@/app/components/main-nav/storage'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Divider from '../base/divider'
 import AppInfo, { AppInfoView } from './app-info'
@@ -37,27 +36,17 @@ const AppDetailNav = ({
   iconType = 'app',
   appInfoActions,
 }: IAppDetailNavProps) => {
-  const { appSidebarExpand, setAppSidebarExpand } = useAppStore(useShallow(state => ({
-    appSidebarExpand: state.appSidebarExpand,
-    setAppSidebarExpand: state.setAppSidebarExpand,
-  })))
+  const [detailSidebarMode, setDetailSidebarMode] = useDetailSidebarMode()
   const sidebarRef = React.useRef<HTMLDivElement>(null)
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-  const expand = appSidebarExpand === 'expand'
+  const expand = detailSidebarMode === 'expand'
 
   const handleToggle = useCallback(() => {
-    setAppSidebarExpand(appSidebarExpand === 'expand' ? 'collapse' : 'expand')
-  }, [appSidebarExpand, setAppSidebarExpand])
+    setDetailSidebarMode(detailSidebarMode === 'expand' ? 'collapse' : 'expand')
+  }, [detailSidebarMode, setDetailSidebarMode])
 
   const isHoveringSidebar = useHover(sidebarRef)
-
-  useEffect(() => {
-    if (appSidebarExpand) {
-      localStorage.setItem('app-detail-collapse-or-expand', appSidebarExpand)
-      setAppSidebarExpand(appSidebarExpand)
-    }
-  }, [appSidebarExpand, setAppSidebarExpand])
 
   useHotkey('Mod+B', (e) => {
     e.preventDefault()
@@ -81,7 +70,7 @@ const AppDetailNav = ({
         )}
       >
         {renderHeader
-          ? renderHeader(appSidebarExpand)
+          ? renderHeader(detailSidebarMode)
           : iconType === 'app' && (
             appInfoActions
               ? (
@@ -123,12 +112,12 @@ const AppDetailNav = ({
         )}
       >
         {renderNavigation
-          ? renderNavigation(appSidebarExpand)
+          ? renderNavigation(detailSidebarMode)
           : navigation.map((item, index) => {
               return (
                 <NavLink
                   key={index}
-                  mode={appSidebarExpand}
+                  mode={detailSidebarMode}
                   iconMap={{ selected: item.selectedIcon, normal: item.icon }}
                   name={item.name}
                   href={item.href}
@@ -137,7 +126,7 @@ const AppDetailNav = ({
               )
             })}
       </nav>
-      {iconType !== 'app' && extraInfo && extraInfo(appSidebarExpand)}
+      {iconType !== 'app' && extraInfo && extraInfo(detailSidebarMode)}
     </div>
   )
 }

@@ -174,7 +174,7 @@ class ActivateApi(Resource):
         RegisterService.revoke_token(args.workspace_id, normalized_request_email, args.token)
 
         if membership_id is None:
-            TenantService.create_tenant_member(tenant, account, str(role))
+            TenantService.create_tenant_member(tenant, account, db.session, role=role)
 
         if setup_fields:
             account.name = setup_fields[0]

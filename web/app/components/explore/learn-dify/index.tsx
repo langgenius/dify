@@ -7,8 +7,8 @@ import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLearnDifyAppList } from '@/service/use-explore'
-import { useLearnDifyVisibleValue, useSetLearnDifyHidden } from './atoms'
 import LearnDifyItem from './item'
+import { useLearnDifyHiddenValue, useSetLearnDifyHidden } from './storage'
 
 type LearnDifyProps = {
   canCreate?: boolean
@@ -132,10 +132,10 @@ const LearnDifyContent = ({
 }
 
 const DismissibleLearnDify = (props: LearnDifyProps) => {
-  const visible = useLearnDifyVisibleValue()
+  const hidden = useLearnDifyHiddenValue()
   const setHidden = useSetLearnDifyHidden()
 
-  if (!visible)
+  if (hidden)
     return null
 
   return <LearnDifyContent {...props} onHide={() => setHidden(true)} />
