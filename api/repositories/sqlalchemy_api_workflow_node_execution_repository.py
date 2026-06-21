@@ -286,7 +286,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
                 delete_stmt = delete(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id.in_(execution_ids))
                 result = cast(CursorResult, session.execute(delete_stmt))
                 session.commit()
-                total_deleted += (result.rowcount or 0)
+                total_deleted += result.rowcount or 0
 
                 # If we deleted fewer than the batch size, we're done
                 if len(execution_ids) < batch_size:
@@ -334,7 +334,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
                 delete_stmt = delete(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id.in_(execution_ids))
                 result = cast(CursorResult, session.execute(delete_stmt))
                 session.commit()
-                total_deleted += (result.rowcount or 0)
+                total_deleted += result.rowcount or 0
 
                 # If we deleted fewer than the batch size, we're done
                 if len(execution_ids) < batch_size:
