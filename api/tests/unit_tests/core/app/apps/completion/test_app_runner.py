@@ -139,6 +139,37 @@ class TestCompletionAppRunner:
         assert dataset_retrieval.retrieve.call_args.kwargs["query"] == "query_from_input"
         runner._handle_invoke_result.assert_called_once()
 
+    def test_run_closes_scoped_session_before_llm_invoke(self, runner, mocker: MockerFixture):
+        app_record = MagicMock(id="app1", tenant_id="tenant")
+        app_config = _build_app_config()
+        app_generate_entity = _build_generate_entity(app_config)
+        queue_manager = MagicMock()
+
+        events = []
+        runner.organize_prompt_messages = MagicMock(return_value=([], None))
+        runner.moderation_for_inputs = MagicMock(return_value=(None, app_generate_entity.inputs, "query"))
+        runner.check_hosting_moderation = MagicMock(return_value=False)
+        runner.recalc_llm_max_tokens = MagicMock()
+        runner._handle_invoke_result = MagicMock()
+
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = lambda **kwargs: events.append("invoke") or "invoke_result"
+        mocker.patch.object(module, "ModelInstance", return_value=model_instance)
+        mocker.patch.object(module.db.session, "close", side_effect=lambda: events.append("close"))
+
+        with patched_create_session(return_value=app_record):
+            runner.run(app_generate_entity, queue_manager, MagicMock(id="msg"))
+
+        assert events == ["close", "invoke"]
+        runner._handle_invoke_result.assert_called_once_with(
+            invoke_result="invoke_result",
+            queue_manager=queue_manager,
+            stream=True,
+            message_id="msg",
+            user_id="user",
+            tenant_id="tenant",
+        )
+
     def test_run_uses_low_image_detail_default(self, runner, mocker: MockerFixture):
         app_record = MagicMock(id="app1", tenant_id="tenant")
 

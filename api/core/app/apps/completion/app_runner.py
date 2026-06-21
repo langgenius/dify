@@ -14,6 +14,7 @@ from core.db.session_factory import create_session
 from core.model_manager import ModelInstance
 from core.moderation.base import ModerationError
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
+from extensions.ext_database import db
 from graphon.file import File
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from models.model import App, Message
@@ -176,6 +177,10 @@ class CompletionAppRunner(AppRunner):
             provider_model_bundle=application_generate_entity.model_conf.provider_model_bundle,
             model=application_generate_entity.model_conf.model,
         )
+
+        # Release the Flask scoped session before LLM streaming so a checked-out DB connection
+        # is not held for the lifetime of the provider response.
+        db.session.close()
 
         invoke_result = model_instance.invoke_llm(
             prompt_messages=prompt_messages,

@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 from pydantic import BaseModel
 from pytest_mock import MockerFixture
+from sqlalchemy.dialects import postgresql
 
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.plugin.backwards_invocation.app import PluginAppBackwardsInvocation
@@ -323,22 +324,39 @@ class TestPluginAppBackwardsInvocation:
         assert spy.call_count == 1
 
     def test_get_user_returns_end_user(self, mocker: MockerFixture):
-        self.patch_create_session(mocker, side_effect=[MagicMock(id="end-user")])
+        session = self.patch_create_session(mocker, side_effect=[MagicMock(id="end-user")])
+        app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
 
-        user = PluginAppBackwardsInvocation._get_user("uid")
+        user = PluginAppBackwardsInvocation._get_user("uid", app)
+
         assert user.id == "end-user"
+        stmt = session.scalar.call_args_list[0].args[0]
+        compiled = str(stmt.compile(dialect=postgresql.dialect()))
+        assert "end_users.id" in compiled
+        assert "end_users.tenant_id" in compiled
+        assert "end_users.app_id" in compiled
+        assert stmt.compile().params == {"id_1": "uid", "tenant_id_1": "tenant-1", "app_id_1": "app-1"}
 
     def test_get_user_falls_back_to_account_user(self, mocker: MockerFixture):
-        self.patch_create_session(mocker, side_effect=[None, MagicMock(id="account-user")])
+        session = self.patch_create_session(mocker, side_effect=[None, MagicMock(id="account-user")])
+        app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
 
-        user = PluginAppBackwardsInvocation._get_user("uid")
+        user = PluginAppBackwardsInvocation._get_user("uid", app)
+
         assert user.id == "account-user"
+        stmt = session.scalar.call_args_list[1].args[0]
+        compiled = str(stmt.compile(dialect=postgresql.dialect()))
+        assert "accounts.id" in compiled
+        assert "tenant_account_joins.account_id" in compiled
+        assert "tenant_account_joins.tenant_id" in compiled
+        assert stmt.compile().params == {"id_1": "uid", "tenant_id_1": "tenant-1"}
 
     def test_get_user_raises_when_user_not_found(self, mocker: MockerFixture):
         self.patch_create_session(mocker, side_effect=[None, None])
+        app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
 
         with pytest.raises(ValueError, match="user not found"):
-            PluginAppBackwardsInvocation._get_user("uid")
+            PluginAppBackwardsInvocation._get_user("uid", app)
 
     def test_get_app_returns_app(self, mocker: MockerFixture):
         app_obj = MagicMock(id="app")
@@ -357,3 +375,35 @@ class TestPluginAppBackwardsInvocation:
 
         with pytest.raises(ValueError, match="app not found"):
             PluginAppBackwardsInvocation._get_app("app", "tenant")
+
+    def test_get_workflow_stays_inside_app_boundary(self, mocker: MockerFixture):
+        workflow = MagicMock(id="workflow")
+        session = self.patch_create_session(mocker, return_value=workflow)
+        app = SimpleNamespace(id="app-1", tenant_id="tenant-1", workflow_id="workflow-1")
+
+        assert PluginAppBackwardsInvocation._get_workflow(app) is workflow
+
+        stmt = session.scalar.call_args.args[0]
+        compiled = str(stmt.compile(dialect=postgresql.dialect()))
+        assert "workflows.id" in compiled
+        assert "workflows.tenant_id" in compiled
+        assert "workflows.app_id" in compiled
+        assert stmt.compile().params == {
+            "id_1": "workflow-1",
+            "tenant_id_1": "tenant-1",
+            "app_id_1": "app-1",
+            "param_1": 1,
+        }
+
+    def test_get_app_model_config_stays_inside_app_boundary(self, mocker: MockerFixture):
+        app_model_config = MagicMock(id="config")
+        session = self.patch_create_session(mocker, return_value=app_model_config)
+        app = SimpleNamespace(id="app-1", app_model_config_id="config-1")
+
+        assert PluginAppBackwardsInvocation._get_app_model_config(app) is app_model_config
+
+        stmt = session.scalar.call_args.args[0]
+        compiled = str(stmt.compile(dialect=postgresql.dialect()))
+        assert "app_model_configs.id" in compiled
+        assert "app_model_configs.app_id" in compiled
+        assert stmt.compile().params == {"id_1": "config-1", "app_id_1": "app-1", "param_1": 1}

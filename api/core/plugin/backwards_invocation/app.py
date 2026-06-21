@@ -15,7 +15,7 @@ from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db.session_factory import create_session
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from extensions.ext_database import db
-from models import Account
+from models import Account, TenantAccountJoin
 from models.model import App, AppMode, AppModelConfig, EndUser
 from models.workflow import Workflow
 from services.end_user_service import EndUserService
@@ -69,7 +69,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         if not user_id:
             user = EndUserService.get_or_create_end_user(app)
         else:
-            user = cls._get_user(user_id)
+            user = cls._get_user(user_id, app)
 
         conversation_id = conversation_id or ""
 
@@ -208,15 +208,23 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         )
 
     @classmethod
-    def _get_user(cls, user_id: str) -> EndUser | Account:
+    def _get_user(cls, user_id: str, app: App) -> EndUser | Account:
         """
         get the user by user id
         """
         with create_session() as session:
-            stmt = select(EndUser).where(EndUser.id == user_id)
+            stmt = select(EndUser).where(
+                EndUser.id == user_id,
+                EndUser.tenant_id == app.tenant_id,
+                EndUser.app_id == app.id,
+            )
             user = session.scalar(stmt)
             if not user:
-                stmt = select(Account).where(Account.id == user_id)
+                stmt = select(Account).where(
+                    Account.id == user_id,
+                    Account.id == TenantAccountJoin.account_id,
+                    TenantAccountJoin.tenant_id == app.tenant_id,
+                )
                 user = session.scalar(stmt)
             if user:
                 session.expunge(user)
@@ -253,7 +261,11 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
             return None
 
         with create_session() as session:
-            workflow = session.scalar(select(Workflow).where(Workflow.id == app.workflow_id).limit(1))
+            workflow = session.scalar(
+                select(Workflow)
+                .where(Workflow.id == app.workflow_id, Workflow.tenant_id == app.tenant_id, Workflow.app_id == app.id)
+                .limit(1)
+            )
             if workflow:
                 session.expunge(workflow)
             return workflow
@@ -268,7 +280,9 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
 
         with create_session() as session:
             app_model_config = session.scalar(
-                select(AppModelConfig).where(AppModelConfig.id == app.app_model_config_id).limit(1)
+                select(AppModelConfig)
+                .where(AppModelConfig.id == app.app_model_config_id, AppModelConfig.app_id == app.id)
+                .limit(1)
             )
             if app_model_config:
                 session.expunge(app_model_config)

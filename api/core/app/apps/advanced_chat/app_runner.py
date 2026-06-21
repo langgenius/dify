@@ -35,6 +35,7 @@ from core.workflow.system_variables import (
 )
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
 from graphon.enums import WorkflowType
@@ -202,6 +203,10 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 root_node_id=root_node_id,
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
             )
+
+        # Release the Flask scoped session before workflow execution so a checked-out DB connection
+        # is not held for the lifetime of the graph run.
+        db.session.close()
 
         # RUN WORKFLOW
         # Create Redis command channel for this workflow execution

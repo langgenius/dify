@@ -287,3 +287,54 @@ class TestChatAppRunner:
             patch.object(ChatAppRunner, "check_hosting_moderation", return_value=True),
         ):
             runner.run(app_generate_entity, DummyQueueManager(), SimpleNamespace(), SimpleNamespace(id="m1"))
+
+    def test_run_closes_scoped_session_before_llm_invoke(self):
+        runner = ChatAppRunner()
+        app_config = SimpleNamespace(
+            app_id="app-1",
+            tenant_id="tenant-1",
+            prompt_template=None,
+            external_data_variables=[],
+            dataset=None,
+            additional_features=None,
+        )
+        app_generate_entity = DummyGenerateEntity(
+            app_config=app_config,
+            model_conf=SimpleNamespace(provider_model_bundle=None, model="model-1", parameters={}),
+            inputs={},
+            query="hi",
+            files=[],
+            file_upload_config=None,
+            conversation_id=None,
+            stream=True,
+            user_id="user-1",
+            invoke_from=InvokeFrom.SERVICE_API,
+        )
+
+        events = []
+        queue_manager = DummyQueueManager()
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = lambda **kwargs: events.append("invoke") or "invoke-result"
+
+        with (
+            patched_create_session(return_value=SimpleNamespace(id="app-1", tenant_id="tenant-1")),
+            patch.object(ChatAppRunner, "organize_prompt_messages", return_value=([], [])),
+            patch.object(ChatAppRunner, "moderation_for_inputs", return_value=(None, {}, "hi")),
+            patch.object(ChatAppRunner, "query_app_annotations_to_reply", return_value=None),
+            patch.object(ChatAppRunner, "check_hosting_moderation", return_value=False),
+            patch.object(ChatAppRunner, "recalc_llm_max_tokens"),
+            patch.object(ChatAppRunner, "_handle_invoke_result") as mock_handle,
+            patch("core.app.apps.chat.app_runner.ModelInstance", return_value=model_instance),
+            patch("core.app.apps.chat.app_runner.db.session.close", side_effect=lambda: events.append("close")),
+        ):
+            runner.run(app_generate_entity, queue_manager, SimpleNamespace(), SimpleNamespace(id="m1"))
+
+        assert events == ["close", "invoke"]
+        mock_handle.assert_called_once_with(
+            invoke_result="invoke-result",
+            queue_manager=queue_manager,
+            stream=True,
+            message_id="m1",
+            user_id="user-1",
+            tenant_id="tenant-1",
+        )
