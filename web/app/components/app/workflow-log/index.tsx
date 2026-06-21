@@ -31,6 +31,10 @@ export type QueryParam = {
   period: string
   status?: string
   keyword?: string
+  created_by_end_user_session_id?: string
+  created_by_account?: string
+  dateAfter?: string
+  dateBefore?: string
 }
 
 const Logs: FC<ILogsProps> = ({ appDetail }) => {
@@ -50,13 +54,27 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     limit,
     ...(debouncedQueryParams.status !== 'all' ? { status: debouncedQueryParams.status } : {}),
     ...(debouncedQueryParams.keyword ? { keyword: debouncedQueryParams.keyword } : {}),
-    ...((debouncedQueryParams.period !== '9')
-      ? {
-          created_at__after: dayjs().subtract(TIME_PERIOD_MAPPING[debouncedQueryParams.period]!.value, 'day').startOf('day').tz(timezone).format('YYYY-MM-DDTHH:mm:ssZ'),
-          created_at__before: dayjs().endOf('day').tz(timezone).format('YYYY-MM-DDTHH:mm:ssZ'),
-        }
+    ...(debouncedQueryParams.created_by_end_user_session_id
+      ? { created_by_end_user_session_id: debouncedQueryParams.created_by_end_user_session_id }
       : {}),
-    ...omit(debouncedQueryParams, ['period', 'status']),
+    ...(debouncedQueryParams.created_by_account
+      ? { created_by_account: debouncedQueryParams.created_by_account }
+      : {}),
+    ...(debouncedQueryParams.dateAfter
+      ? { created_at__after: dayjs(debouncedQueryParams.dateAfter).format('YYYY-MM-DDTHH:mm:ssZ') }
+      : debouncedQueryParams.period !== '9'
+        ? {
+            created_at__after: dayjs().subtract(TIME_PERIOD_MAPPING[debouncedQueryParams.period]!.value, 'day').startOf('day').tz(timezone).format('YYYY-MM-DDTHH:mm:ssZ'),
+          }
+        : {}),
+    ...(debouncedQueryParams.dateBefore
+      ? { created_at__before: dayjs(debouncedQueryParams.dateBefore).format('YYYY-MM-DDTHH:mm:ssZ') }
+      : debouncedQueryParams.period !== '9'
+        ? {
+            created_at__before: dayjs().endOf('day').tz(timezone).format('YYYY-MM-DDTHH:mm:ssZ'),
+          }
+        : {}),
+    ...omit(debouncedQueryParams, ['period', 'status', 'dateAfter', 'dateBefore']),
   }
 
   const { data: workflowLogs, refetch: mutate } = useWorkflowLogs({
@@ -73,7 +91,13 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
         description={t('workflowSubtitle', { ns: 'appLog' })}
       />
       <div className="flex max-h-[calc(100%-16px)] flex-1 flex-col py-4">
-        <Filter queryParams={queryParams} setQueryParams={setQueryParams} />
+        <Filter
+          queryParams={queryParams}
+          setQueryParams={(next) => {
+            setQueryParams(next)
+            setCurrPage(0)
+          }}
+        />
         {/* workflow log */}
         {total === undefined
           ? <Loading type="app" />
