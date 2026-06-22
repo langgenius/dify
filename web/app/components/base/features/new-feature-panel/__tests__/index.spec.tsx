@@ -57,6 +57,7 @@ const renderPanel = (props: Partial<{
   onClose: () => void
   inWorkflow: boolean
   showFileUpload: boolean
+  showAnnotationReply: boolean
 }> = {}) => {
   return render(
     <FeaturesProvider features={defaultFeatures}>
@@ -68,6 +69,7 @@ const renderPanel = (props: Partial<{
         onClose={props.onClose ?? vi.fn()}
         inWorkflow={props.inWorkflow}
         showFileUpload={props.showFileUpload}
+        showAnnotationReply={props.showAnnotationReply}
       />
     </FeaturesProvider>,
   )
@@ -188,6 +190,12 @@ describe('NewFeaturePanel', () => {
 
     it('should not render AnnotationReply in workflow mode', () => {
       renderPanel({ isChatMode: true, inWorkflow: true })
+
+      expect(screen.queryByText(/feature\.annotation\.title/)).not.toBeInTheDocument()
+    })
+
+    it('should not render AnnotationReply when showAnnotationReply is false', () => {
+      renderPanel({ isChatMode: true, inWorkflow: false, showAnnotationReply: false })
 
       expect(screen.queryByText(/feature\.annotation\.title/)).not.toBeInTheDocument()
     })

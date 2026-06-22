@@ -86,6 +86,10 @@ describe('Operations', () => {
     datasetId: 'dataset-1',
     detail: defaultDetail,
     onUpdate: mockOnUpdate,
+    canEdit: true,
+    canDownload: true,
+    canDelete: true,
+    canViewSettings: true,
   }
 
   beforeEach(() => {
@@ -123,6 +127,54 @@ describe('Operations', () => {
       render(<Operations {...defaultProps} embeddingAvailable={false} scene="list" />)
       const disabledSwitch = screen.getByRole('switch')
       expect(disabledSwitch)!.toHaveAttribute('aria-disabled', 'true')
+    })
+
+    it('should not render an operations menu and should disable switch without any document operation permissions', async () => {
+      vi.useFakeTimers()
+      render(
+        <Operations
+          {...defaultProps}
+          canEdit={false}
+          canDownload={false}
+          canDelete={false}
+          canViewSettings={false}
+        />,
+      )
+
+      expect(screen.queryByRole('button', { name: 'common.operation.more' })).not.toBeInTheDocument()
+
+      const switchElement = screen.getByRole('switch')
+      expect(switchElement)!.toHaveAttribute('aria-disabled', 'true')
+      await act(async () => {
+        fireEvent.click(switchElement)
+        vi.advanceTimersByTime(600)
+      })
+      expect(mockEnable).not.toHaveBeenCalled()
+      expect(mockDisable).not.toHaveBeenCalled()
+      vi.useRealTimers()
+    })
+
+    it('should only render download action when download is the only granted document operation', async () => {
+      render(
+        <Operations
+          {...defaultProps}
+          canEdit={false}
+          canDownload
+          canDelete={false}
+          canViewSettings={false}
+        />,
+      )
+
+      const moreButton = screen.getByRole('button', { name: 'common.operation.more' })
+      await act(async () => {
+        fireEvent.click(moreButton)
+      })
+
+      expect(screen.getByText('datasetDocuments.list.action.download'))!.toBeInTheDocument()
+      expect(screen.queryByText('datasetDocuments.list.table.rename')).not.toBeInTheDocument()
+      expect(screen.queryByText('datasetDocuments.list.action.settings')).not.toBeInTheDocument()
+      expect(screen.queryByText('datasetDocuments.list.action.archive')).not.toBeInTheDocument()
+      expect(screen.queryByText('datasetDocuments.list.action.delete')).not.toBeInTheDocument()
     })
   })
 
@@ -222,6 +274,17 @@ describe('Operations', () => {
         fireEvent.click(settingsButton)
       })
       expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/documents/doc-1/settings')
+    })
+
+    it('should hide document settings when settings permission is not granted', async () => {
+      render(<Operations {...defaultProps} canViewSettings={false} />)
+
+      const moreButton = screen.getByRole('button', { name: 'common.operation.more' })
+      await act(async () => {
+        fireEvent.click(moreButton)
+      })
+
+      expect(screen.queryByText('datasetDocuments.list.action.settings')).not.toBeInTheDocument()
     })
   })
 

@@ -122,6 +122,7 @@ def install_swagger_compatibility() -> None:
     original_description_for = Swagger.description_for
     original_serialize_operation = Swagger.serialize_operation
     original_parameters_and_request_body_for = Swagger.parameters_and_request_body_for
+    original_request_body_from_form_params = Swagger.request_body_from_form_params
     original_as_dict = Swagger.as_dict
 
     def get_or_create_inline_model(self: Swagger, nested_fields: dict[object, object]) -> object:
@@ -203,6 +204,35 @@ def install_swagger_compatibility() -> None:
             path[method] = operation
         return not_none(path)
 
+    def request_body_from_form_params_with_file_description(self: Swagger, params: list[dict[str, object]]):
+        request_body = original_request_body_from_form_params(self, params)
+        for param in params:
+            if param.get("type") != "file":
+                continue
+
+            name = param.get("name")
+            description = param.get("description")
+            if not isinstance(name, str) or not isinstance(description, str):
+                continue
+
+            content = request_body.get("content")
+            if not isinstance(content, dict):
+                continue
+            multipart = content.get("multipart/form-data")
+            if not isinstance(multipart, dict):
+                continue
+            schema = multipart.get("schema")
+            if not isinstance(schema, dict):
+                continue
+            properties = schema.get("properties")
+            if not isinstance(properties, dict):
+                continue
+            file_schema = properties.get(name)
+            if isinstance(file_schema, dict):
+                file_schema["description"] = description
+
+        return request_body
+
     def as_dict_with_inline_dict_support(self: Swagger):
         # Temporary set RESTX_INCLUDE_ALL_MODELS = false to prevent "length changed while iterating" error
         include_all_models = current_app.config.get("RESTX_INCLUDE_ALL_MODELS", False)
@@ -219,5 +249,6 @@ def install_swagger_compatibility() -> None:
     Swagger.description_for = description_for_with_explicit_summary
     Swagger.serialize_operation = serialize_operation_with_explicit_summary_tags
     Swagger.serialize_resource = serialize_resource_with_explicit_operation_tags
+    Swagger.request_body_from_form_params = request_body_from_form_params_with_file_description
     Swagger.as_dict = as_dict_with_inline_dict_support
     Swagger._dify_swagger_compatibility_installed = True

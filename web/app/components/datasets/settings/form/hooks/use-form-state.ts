@@ -16,6 +16,7 @@ import { DatasetPermission } from '@/models/datasets'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { useMembers } from '@/service/use-common'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import { checkShowMultiModalTip } from '../../utils'
 
 const DEFAULT_APP_ICON: IconInfo = {
@@ -27,9 +28,19 @@ const DEFAULT_APP_ICON: IconInfo = {
 
 export const useFormState = () => {
   const { t } = useTranslation()
-  const isCurrentWorkspaceDatasetOperator = useAppContextWithSelector(state => state.isCurrentWorkspaceDatasetOperator)
   const currentDataset = useDatasetDetailContextWithSelector(state => state.dataset)
   const mutateDatasets = useDatasetDetailContextWithSelector(state => state.mutateDatasetRes)
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const datasetACLCapabilities = useMemo(
+    () => getDatasetACLCapabilities(currentDataset?.permission_keys, {
+      currentUserId,
+      resourceMaintainer: currentDataset?.maintainer,
+      workspacePermissionKeys,
+    }),
+    [currentDataset?.maintainer, currentDataset?.permission_keys, currentUserId, workspacePermissionKeys],
+  )
+  const canEditSettings = datasetACLCapabilities.canEdit
 
   // Basic form state
   const [loading, setLoading] = useState(false)
@@ -111,6 +122,9 @@ export const useFormState = () => {
 
   // Save handler
   const handleSave = async () => {
+    if (!canEditSettings)
+      return
+
     if (loading)
       return
 
@@ -201,7 +215,7 @@ export const useFormState = () => {
   return {
     // Context values
     currentDataset,
-    isCurrentWorkspaceDatasetOperator,
+    canEditSettings,
 
     // Loading state
     loading,

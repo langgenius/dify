@@ -237,14 +237,12 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         workflow = session.scalar(select(Workflow).where(Workflow.id == workflow_run.workflow_id))
         if workflow is None:
             raise WorkflowNotFoundError(
-                "Workflow not found: workflow_run_id=%s, workflow_id=%s", workflow_run.id, workflow_run.workflow_id
+                f"Workflow not found: workflow_run_id={workflow_run.id}, workflow_id={workflow_run.workflow_id}"
             )
         user = _get_user(session, workflow_run)
         app_model = session.scalar(select(App).where(App.id == workflow_run.app_id))
         if app_model is None:
-            raise _AppNotFoundError(
-                "App not found: app_id=%s, workflow_run_id=%s", workflow_run.app_id, workflow_run.id
-            )
+            raise _AppNotFoundError(f"App not found: app_id={workflow_run.app_id}, workflow_run_id={workflow_run.id}")
 
     workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
         session_factory=session_factory,

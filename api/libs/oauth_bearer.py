@@ -490,7 +490,8 @@ def check_workspace_membership(
     account_id: uuid.UUID | str,
     tenant_id: str,
     token_hash: str,
-    membership_cache: dict[str, bool],
+    membership_cache: dict[str, bool] | None = None,
+    cached_verdicts: dict[str, bool] | None = None,
 ) -> None:
     """Layer-0 enforcement core. Raises `Forbidden` on deny, returns on allow.
 
@@ -499,7 +500,8 @@ def check_workspace_membership(
     short-circuiting on EE / SSO subjects before invoking — this function
     runs the membership + active-status checks unconditionally.
     """
-    cached = membership_cache.get(tenant_id)
+    cache = membership_cache if membership_cache is not None else cached_verdicts or {}
+    cached = cache.get(tenant_id)
     if cached is True:
         return
     if cached is False:

@@ -83,8 +83,7 @@ import {
   zPostAgentByAgentIdSandboxFilesUploadResponse,
   zPostAgentByAgentIdSkillsBySlugInferToolsPath,
   zPostAgentByAgentIdSkillsBySlugInferToolsResponse,
-  zPostAgentByAgentIdSkillsStandardizePath,
-  zPostAgentByAgentIdSkillsStandardizeResponse,
+  zPostAgentByAgentIdSkillsUploadBody,
   zPostAgentByAgentIdSkillsUploadPath,
   zPostAgentByAgentIdSkillsUploadResponse,
   zPostAgentResponse,
@@ -599,31 +598,11 @@ export const sandbox = {
 }
 
 /**
- * Validate + standardize a Skill into an Agent App drive
+ * Upload + standardize a Skill into an Agent App drive
  */
 export const post8 = oc
   .route({
-    description: 'Validate + standardize a Skill into an Agent App drive',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postAgentByAgentIdSkillsStandardize',
-    path: '/agent/{agent_id}/skills/standardize',
-    successStatus: 201,
-    tags: ['console'],
-  })
-  .input(z.object({ params: zPostAgentByAgentIdSkillsStandardizePath }))
-  .output(zPostAgentByAgentIdSkillsStandardizeResponse)
-
-export const standardize = {
-  post: post8,
-}
-
-/**
- * Upload + validate a Skill package for an Agent App
- */
-export const post9 = oc
-  .route({
-    description: 'Upload + validate a Skill package for an Agent App',
+    description: 'Upload + standardize a Skill into an Agent App drive',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAgentByAgentIdSkillsUpload',
@@ -631,17 +610,22 @@ export const post9 = oc
     successStatus: 201,
     tags: ['console'],
   })
-  .input(z.object({ params: zPostAgentByAgentIdSkillsUploadPath }))
+  .input(
+    z.object({
+      body: zPostAgentByAgentIdSkillsUploadBody,
+      params: zPostAgentByAgentIdSkillsUploadPath,
+    }),
+  )
   .output(zPostAgentByAgentIdSkillsUploadResponse)
 
 export const upload2 = {
-  post: post9,
+  post: post8,
 }
 
 /**
  * Infer CLI tool + ENV suggestions from a standardized Agent App skill
  */
-export const post10 = oc
+export const post9 = oc
   .route({
     description: 'Infer CLI tool + ENV suggestions from a standardized Agent App skill',
     inputStructure: 'detailed',
@@ -654,7 +638,7 @@ export const post10 = oc
   .output(zPostAgentByAgentIdSkillsBySlugInferToolsResponse)
 
 export const inferTools = {
-  post: post10,
+  post: post9,
 }
 
 /**
@@ -678,7 +662,6 @@ export const bySlug = {
 }
 
 export const skills = {
-  standardize,
   upload: upload2,
   bySlug,
 }
@@ -804,7 +787,7 @@ export const get20 = oc
   .input(z.object({ query: zGetAgentQuery.optional() }))
   .output(zGetAgentResponse)
 
-export const post11 = oc
+export const post10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -818,7 +801,7 @@ export const post11 = oc
 
 export const agent = {
   get: get20,
-  post: post11,
+  post: post10,
   inviteOptions,
   byAgentId,
 }

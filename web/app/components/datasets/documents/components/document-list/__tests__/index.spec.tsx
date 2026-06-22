@@ -24,8 +24,22 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset: { doc_form: string } }) => unknown) =>
-    selector({ dataset: { doc_form: ChunkingMode.text } }),
+  useDatasetDetailContextWithSelector: (selector: (state: { dataset: { doc_form: string, created_by: string, permission_keys: string[] } }) => unknown) =>
+    selector({
+      dataset: {
+        doc_form: ChunkingMode.text,
+        created_by: 'user-1',
+        permission_keys: ['dataset.acl.edit', 'dataset.acl.use'],
+      },
+    }),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) =>
+    selector({
+      userProfile: { id: 'user-1' },
+      workspacePermissionKeys: ['dataset.create_and_management'],
+    }),
 }))
 
 vi.mock('@/app/components/datasets/metadata/hooks/use-batch-edit-document-metadata', () => ({
@@ -384,15 +398,14 @@ describe('DocumentList', () => {
     })
 
     it('should show rename modal when rename button is clicked', async () => {
-      const { container } = render(<DocumentList {...defaultProps} />, { wrapper: createWrapper() })
+      render(<DocumentList {...defaultProps} />, { wrapper: createWrapper() })
 
-      // Find and click the rename button in the first row
-      const renameButtons = container.querySelectorAll('.cursor-pointer.rounded-md')
-      if (renameButtons.length > 0) {
-        await act(async () => {
-          fireEvent.click(renameButtons[0]!)
-        })
-      }
+      await act(async () => {
+        fireEvent.click(screen.getAllByRole('button', { name: 'common.operation.more' })[0]!)
+      })
+      await act(async () => {
+        fireEvent.click(await screen.findByText('datasetDocuments.list.table.rename'))
+      })
 
       expect(screen.getByRole('dialog', { name: 'datasetDocuments.list.table.rename' }))!.toBeInTheDocument()
     })
