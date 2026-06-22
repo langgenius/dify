@@ -107,9 +107,9 @@ export const createReleaseDescriptionFieldAtom = createReleaseFormAtoms.fieldAto
 export const createReleaseAppInstanceIdAtom = atom<string | undefined>(undefined)
 export const createReleaseDialogOpenAtom = atom(false)
 
-const createReleaseDslContentStateAtom = atom('')
-const createReleaseDslReadErrorStateAtom = atom(false)
-const createReleaseDslReadingAtom = atom(false)
+export const createReleaseDslContentAtom = atom('')
+export const createReleaseDslReadErrorAtom = atom(false)
+export const isReadingCreateReleaseDslAtom = atom(false)
 const createReleaseDslReadTokenAtom = atom(0)
 
 function requiredAppInstanceId(get: Getter) {
@@ -170,30 +170,18 @@ export const createReleaseSourceModeAtom = atom((get) => {
   return effectiveCreateReleaseSourceMode(get)
 })
 
-export const createReleaseDslContentAtom = atom((get) => {
-  return get(createReleaseDslContentStateAtom)
-})
-
-export const createReleaseDslReadErrorAtom = atom((get) => {
-  return get(createReleaseDslReadErrorStateAtom)
-})
-
-export const isReadingCreateReleaseDslAtom = atom((get) => {
-  return get(createReleaseDslReadingAtom)
-})
-
 export const createReleaseHasDslContentAtom = atom((get) => {
-  return Boolean(get(createReleaseDslContentStateAtom).trim())
+  return Boolean(get(createReleaseDslContentAtom).trim())
 })
 
 export const createReleaseIsWorkflowDslContentAtom = atom((get) => {
-  const dslContent = get(createReleaseDslContentStateAtom)
+  const dslContent = get(createReleaseDslContentAtom)
 
   return get(createReleaseHasDslContentAtom) ? isWorkflowDsl(dslContent) : false
 })
 
 export const createReleaseEncodedDslContentAtom = atom((get) => {
-  const dslContent = get(createReleaseDslContentStateAtom)
+  const dslContent = get(createReleaseDslContentAtom)
 
   return get(createReleaseHasDslContentAtom) && get(createReleaseIsWorkflowDslContentAtom)
     ? encodeDslContent(dslContent)
@@ -324,9 +312,9 @@ export const createReleaseCanCreateAtom = atom((get) => {
 // Actions
 const resetCreateReleaseDslFileAtom = atom(null, (get, set) => {
   set(createReleaseDslReadTokenAtom, get(createReleaseDslReadTokenAtom) + 1)
-  set(createReleaseDslContentStateAtom, '')
-  set(createReleaseDslReadErrorStateAtom, false)
-  set(createReleaseDslReadingAtom, false)
+  set(createReleaseDslContentAtom, '')
+  set(createReleaseDslReadErrorAtom, false)
+  set(isReadingCreateReleaseDslAtom, false)
 })
 
 export const openCreateReleaseDialogAtom = atom(null, (_get, set) => {
@@ -342,30 +330,30 @@ export const closeCreateReleaseDialogAtom = atom(null, (_get, set) => {
 const selectCreateReleaseDslFileAtom = atom(null, async (get, set, file?: File) => {
   const readToken = get(createReleaseDslReadTokenAtom) + 1
   set(createReleaseDslReadTokenAtom, readToken)
-  set(createReleaseDslContentStateAtom, '')
-  set(createReleaseDslReadErrorStateAtom, false)
-  set(createReleaseDslReadingAtom, false)
+  set(createReleaseDslContentAtom, '')
+  set(createReleaseDslReadErrorAtom, false)
+  set(isReadingCreateReleaseDslAtom, false)
 
   if (!file)
     return
 
-  set(createReleaseDslReadingAtom, true)
+  set(isReadingCreateReleaseDslAtom, true)
   try {
     const content = await file.text()
     if (get(createReleaseDslReadTokenAtom) !== readToken)
       return
 
-    set(createReleaseDslContentStateAtom, content)
+    set(createReleaseDslContentAtom, content)
   }
   catch {
     if (get(createReleaseDslReadTokenAtom) !== readToken)
       return
 
-    set(createReleaseDslReadErrorStateAtom, true)
+    set(createReleaseDslReadErrorAtom, true)
   }
   finally {
     if (get(createReleaseDslReadTokenAtom) === readToken)
-      set(createReleaseDslReadingAtom, false)
+      set(isReadingCreateReleaseDslAtom, false)
   }
 })
 
@@ -466,8 +454,8 @@ export const submitCreateReleaseFormAtom = atom(null, (get, set) => {
 // Scoped atoms
 export const createReleaseLocalAtoms = [
   createReleaseDialogOpenAtom,
-  createReleaseDslContentStateAtom,
-  createReleaseDslReadErrorStateAtom,
-  createReleaseDslReadingAtom,
+  createReleaseDslContentAtom,
+  createReleaseDslReadErrorAtom,
+  isReadingCreateReleaseDslAtom,
   createReleaseDslReadTokenAtom,
 ] as const
