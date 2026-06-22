@@ -133,7 +133,7 @@ def create_tenant(email: str, language: str | None = None, name: str | None = No
         password=new_password,
         language=language,
         create_workspace_required=False,
-        session=db.session
+        session=db.session,
     )
     TenantService.create_owner_tenant_if_not_exist(account, name, session=db.session)
 

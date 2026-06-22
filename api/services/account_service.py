@@ -360,7 +360,9 @@ class AccountService:
         return token
 
     @staticmethod
-    def authenticate(email: str, password: str, invite_token: str | None = None, *, session: scoped_session | Session) -> Account:
+    def authenticate(
+        email: str, password: str, invite_token: str | None = None, *, session: scoped_session | Session
+    ) -> Account:
         """authenticate account with email and password"""
 
         account = session.scalar(select(Account).where(Account.email == email).limit(1))
@@ -391,7 +393,9 @@ class AccountService:
         return account
 
     @staticmethod
-    def update_account_password(account: Account, password: str, new_password: str, *, session: scoped_session | Session):
+    def update_account_password(
+        account: Account, password: str, new_password: str, *, session: scoped_session | Session
+    ):
         """update account password"""
         if account.password and not compare_password(password, account.password, account.password_salt):
             raise CurrentPasswordIncorrectError("Current password is incorrect.")
@@ -1613,7 +1617,9 @@ class TenantService:
         )
 
     @staticmethod
-    def get_user_role(account: Account, tenant: Tenant, *, session: scoped_session | Session) -> TenantAccountRole | None:
+    def get_user_role(
+        account: Account, tenant: Tenant, *, session: scoped_session | Session
+    ) -> TenantAccountRole | None:
         """Get the role of the current account for a given tenant"""
         join = session.scalar(
             select(TenantAccountJoin)
@@ -1683,7 +1689,9 @@ class TenantService:
                 raise NoPermissionError(f"No permission to {action} member.")
 
     @staticmethod
-    def remove_member_from_tenant(tenant: Tenant, account: Account, operator: Account, *, session: scoped_session | Session):
+    def remove_member_from_tenant(
+        tenant: Tenant, account: Account, operator: Account, *, session: scoped_session | Session
+    ):
         """Remove member from tenant.
 
         Apps and datasets maintained by the removed member are reassigned to
