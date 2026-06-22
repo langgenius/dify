@@ -230,14 +230,14 @@ function AgentRosterItem({
         </DropdownMenu>
       </div>
       <EditAgentDialog
-        key={`${agent.id}:${editSessionKey}`}
         agent={agent}
+        formKey={editSessionKey}
         open={isEditOpen}
         onOpenChange={setIsEditOpen}
       />
       <DuplicateAgentDialog
-        key={`${agent.id}:${duplicateSessionKey}`}
         agent={agent}
+        formKey={duplicateSessionKey}
         open={isDuplicateOpen}
         onOpenChange={setIsDuplicateOpen}
       />

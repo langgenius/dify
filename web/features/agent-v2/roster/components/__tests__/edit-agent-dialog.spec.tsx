@@ -75,6 +75,7 @@ const renderDialog = (agent = createAgent()) => {
   render(
     <EditAgentDialog
       agent={agent}
+      formKey={0}
       open
       onOpenChange={onOpenChange}
     />,

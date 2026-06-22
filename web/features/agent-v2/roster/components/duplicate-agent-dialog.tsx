@@ -17,6 +17,7 @@ import { consoleQuery } from '@/service/client'
 
 type DuplicateAgentDialogProps = {
   agent: AgentAppPartial
+  formKey: number
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -69,6 +70,7 @@ const getDefaultCopyName = (name: string) => {
 
 export function DuplicateAgentDialog({
   agent,
+  formKey,
   open,
   onOpenChange,
 }: DuplicateAgentDialogProps) {
@@ -82,12 +84,21 @@ export function DuplicateAgentDialog({
       },
     },
   })) ?? agent
+  const [renderedFormKey, setRenderedFormKey] = useState(formKey)
   const [name, setName] = useState('')
   const [description, setDescription] = useState(latestAgent.description ?? '')
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
   const [agentIcon, setAgentIcon] = useState<AgentIconSelection>(() => createAgentIconSelection(latestAgent))
   const duplicateAgentMutation = useMutation(consoleQuery.agent.byAgentId.copy.post.mutationOptions())
   const defaultCopyName = getDefaultCopyName(latestAgent.name)
+
+  if (formKey !== renderedFormKey) {
+    setRenderedFormKey(formKey)
+    setName('')
+    setDescription(latestAgent.description ?? '')
+    setIconPickerOpen(false)
+    setAgentIcon(createAgentIconSelection(latestAgent))
+  }
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen) {
@@ -148,6 +159,7 @@ export function DuplicateAgentDialog({
             </DialogDescription>
           </div>
           <Form<DuplicateAgentFormValues>
+            key={formKey}
             className="min-h-0 flex-1"
             onFormSubmit={handleSubmit}
           >
