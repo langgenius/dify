@@ -546,7 +546,7 @@ class TestAppAnnotationServiceDirectManipulation:
 
             # Act & Assert
             with pytest.raises(NotFound):
-                AppAnnotationService.update_app_annotation_directly(args, app.id, "ann-1")
+                AppAnnotationService.update_app_annotation_directly(args, app.id, "ann-1", mock_db.session)
 
     def test_update_app_annotation_directly_should_raise_not_found_when_app_missing(self) -> None:
         """Test missing app raises NotFound in update path."""
@@ -562,7 +562,7 @@ class TestAppAnnotationServiceDirectManipulation:
 
             # Act & Assert
             with pytest.raises(NotFound):
-                AppAnnotationService.update_app_annotation_directly(args, "app-1", "ann-1")
+                AppAnnotationService.update_app_annotation_directly(args, "app-1", "ann-1", mock_db.session)
 
     def test_update_app_annotation_directly_should_raise_value_error_when_question_missing(self) -> None:
         """Test missing question raises ValueError."""
@@ -581,7 +581,7 @@ class TestAppAnnotationServiceDirectManipulation:
 
             # Act & Assert
             with pytest.raises(ValueError):
-                AppAnnotationService.update_app_annotation_directly(args, app.id, annotation.id)
+                AppAnnotationService.update_app_annotation_directly(args, app.id, annotation.id, mock_db.session)
 
     def test_update_app_annotation_directly_should_update_annotation_and_index(self) -> None:
         """Test update changes fields and triggers index update."""
@@ -602,7 +602,7 @@ class TestAppAnnotationServiceDirectManipulation:
             mock_db.session.get.return_value = annotation
 
             # Act
-            result = AppAnnotationService.update_app_annotation_directly(args, app.id, annotation.id)
+            result = AppAnnotationService.update_app_annotation_directly(args, app.id, annotation.id, mock_db.session)
 
             # Assert
             assert result == annotation
