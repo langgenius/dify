@@ -221,4 +221,19 @@ describe('EditAgentDialog', () => {
     expect(toastMock.error).not.toHaveBeenCalled()
     expect(mutationMock.mutate).not.toHaveBeenCalled()
   })
+
+  it('keeps the form open when the backdrop is clicked', async () => {
+    const user = userEvent.setup()
+    const { onOpenChange } = renderDialog()
+
+    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
+    const backdrop = document.body.querySelector('.bg-background-overlay') as HTMLElement
+    await user.click(backdrop)
+
+    expect(onOpenChange).not.toHaveBeenCalledWith(false)
+    expect(dialog).toBeInTheDocument()
+
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
 })
