@@ -116,20 +116,21 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
                     return value if isinstance(value, str) else str(value)
 
             case PluginParameterType.BOOLEAN:
-                if value is None:
-                    return False
-                elif isinstance(value, str):
-                    # Allowed YAML boolean value strings: https://yaml.org/type/bool.html
-                    # and also '0' for False and '1' for True
-                    match value.lower():
-                        case "true" | "yes" | "y" | "1":
-                            return True
-                        case "false" | "no" | "n" | "0":
-                            return False
-                        case _:
-                            return bool(value)
-                else:
-                    return value if isinstance(value, bool) else bool(value)
+                match value:
+                    case None:
+                        return False
+                    case str():
+                        # Allowed YAML boolean value strings: https://yaml.org/type/bool.html
+                        # and also '0' for False and '1' for True
+                        match value.lower():
+                            case "true" | "yes" | "y" | "1":
+                                return True
+                            case "false" | "no" | "n" | "0":
+                                return False
+                            case _:
+                                return bool(value)
+                    case _:
+                        return value if isinstance(value, bool) else bool(value)
 
             case PluginParameterType.NUMBER:
                 match value:

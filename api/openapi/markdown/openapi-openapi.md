@@ -4,10 +4,9 @@ User-scoped programmatic API (bearer auth)
 ## Version: 1.0
 
 ### Available authorizations
-#### Bearer (API Key Authentication)
-Type: Bearer {your-api-key}  
-**Name:** Authorization  
-**In:** header  
+#### Bearer (HTTP, bearer)
+Use the Service API key as a Bearer token in the Authorization header.
+Bearer format: API_KEY
 
 ---
 ## openapi
@@ -793,7 +792,7 @@ Liveness payload for `GET /openapi/v1/_health` — no auth required.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| action | string |  | Yes |
+| action | string | ID of the action button the recipient selected. Must match one of the `id` values from the form's `user_actions` list. | Yes |
 | inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
 
 #### Import
@@ -806,6 +805,7 @@ Liveness payload for `GET /openapi/v1/_health` — no auth required.
 | error | string |  | No |
 | id | string |  | Yes |
 | imported_dsl_version | string |  | No |
+| permission_keys | [ string ] |  | No |
 | status | [ImportStatus](#importstatus) |  | Yes |
 
 #### ImportStatus

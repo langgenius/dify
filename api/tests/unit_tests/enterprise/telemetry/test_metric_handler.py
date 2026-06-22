@@ -222,7 +222,7 @@ def test_idempotency_first_seen(sample_envelope, mock_redis):
     )
 
 
-def test_idempotency_redis_failure_fails_open(sample_envelope, mock_redis, caplog):
+def test_idempotency_redis_failure_fails_open(sample_envelope, mock_redis, caplog: pytest.LogCaptureFixture):
     mock_redis.set.side_effect = Exception("Redis unavailable")
 
     handler = EnterpriseMetricHandler()

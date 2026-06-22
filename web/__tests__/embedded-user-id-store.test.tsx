@@ -1,23 +1,25 @@
 import { screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { renderToString } from 'react-dom/server'
+import { createSystemFeaturesWrapper, renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import WebAppStoreProvider, { useWebAppStore } from '@/context/web-app-context'
 
 import { AccessMode } from '@/models/access-control'
 
-vi.mock('@/next/navigation', () => ({
+const navigationMocks = vi.hoisted(() => ({
   usePathname: vi.fn(() => '/chatbot/sample-app'),
-  useSearchParams: vi.fn(() => {
-    const params = new URLSearchParams()
-    return params
-  }),
+  useSearchParams: vi.fn(() => new URLSearchParams()),
+}))
+
+const useGetWebAppAccessModeByCodeMock = vi.hoisted(() => vi.fn())
+
+vi.mock('@/next/navigation', () => ({
+  usePathname: navigationMocks.usePathname,
+  useSearchParams: navigationMocks.useSearchParams,
 }))
 
 vi.mock('@/service/use-share', () => ({
-  useGetWebAppAccessModeByCode: vi.fn(() => ({
-    isLoading: false,
-    data: { accessMode: AccessMode.PUBLIC },
-  })),
+  useGetWebAppAccessModeByCode: (...args: unknown[]) => useGetWebAppAccessModeByCodeMock(...args),
 }))
 
 const mockGetProcessedSystemVariablesFromUrlParams = vi.fn()
@@ -61,10 +63,50 @@ const initialWebAppStore = (() => {
 
 beforeEach(() => {
   mockGetProcessedSystemVariablesFromUrlParams.mockReset()
+  navigationMocks.usePathname.mockReset()
+  navigationMocks.usePathname.mockReturnValue('/chatbot/sample-app')
+  navigationMocks.useSearchParams.mockReset()
+  navigationMocks.useSearchParams.mockReturnValue(new URLSearchParams())
+  useGetWebAppAccessModeByCodeMock.mockReset()
+  useGetWebAppAccessModeByCodeMock.mockReturnValue({
+    isLoading: false,
+    data: { accessMode: AccessMode.PUBLIC },
+  })
   useWebAppStore.setState(initialWebAppStore, true)
 })
 
 describe('WebAppStoreProvider embedded user id handling', () => {
+  it('parses share code from redirect_url during server render without window', () => {
+    const params = new URLSearchParams()
+    params.set('redirect_url', encodeURIComponent('/chatbot/redirected-app'))
+    navigationMocks.usePathname.mockReturnValue('/webapp-signin')
+    navigationMocks.useSearchParams.mockReturnValue(params)
+    const originalWindow = globalThis.window
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: undefined,
+    })
+    const { wrapper: Wrapper } = createSystemFeaturesWrapper()
+
+    try {
+      expect(() => renderToString(
+        <Wrapper>
+          <WebAppStoreProvider>
+            <div />
+          </WebAppStoreProvider>
+        </Wrapper>,
+      )).not.toThrow()
+    }
+    finally {
+      Object.defineProperty(globalThis, 'window', {
+        configurable: true,
+        value: originalWindow,
+      })
+    }
+
+    expect(useGetWebAppAccessModeByCodeMock).toHaveBeenCalledWith('redirected-app')
+  })
+
   it('hydrates embedded user and conversation ids from system variables', async () => {
     mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({
       user_id: 'iframe-user-123',

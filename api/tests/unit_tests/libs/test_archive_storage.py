@@ -16,7 +16,7 @@ from libs.archive_storage import (
 BUCKET_NAME = "archive-bucket"
 
 
-def _configure_storage(monkeypatch, **overrides):
+def _configure_storage(monkeypatch: pytest.MonkeyPatch, **overrides):
     defaults = {
         "ARCHIVE_STORAGE_ENABLED": True,
         "ARCHIVE_STORAGE_ENDPOINT": "https://storage.example.com",

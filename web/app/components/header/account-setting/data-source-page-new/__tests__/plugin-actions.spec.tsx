@@ -94,6 +94,13 @@ vi.mock('@/utils/var', () => ({
   getMarketplaceUrl: (path: string) => `https://marketplace.example.com${path}`,
 }))
 
+vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
+  usePluginSettingsAccess: () => ({
+    canManagePlugin: true,
+    canUpdatePlugin: true,
+  }),
+}))
+
 const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail => ({
   id: 'plugin-installation-id',
   created_at: '2024-01-01',

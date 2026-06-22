@@ -257,6 +257,7 @@ export type Import = {
   error?: string
   id: string
   imported_dsl_version?: string
+  permission_keys?: Array<string>
   status: ImportStatus
 }
 
@@ -331,6 +332,7 @@ export type OpenApiErrorCode
     | 'file_too_large'
     | 'filename_not_exists'
     | 'forbidden'
+    | 'form_not_found'
     | 'internal_server_error'
     | 'invalid_param'
     | 'member_license_exceeded'
@@ -343,6 +345,7 @@ export type OpenApiErrorCode
     | 'provider_not_initialize'
     | 'provider_quota_exceeded'
     | 'rate_limit_error'
+    | 'recipient_surface_mismatch'
     | 'request_entity_too_large'
     | 'too_many_files'
     | 'too_many_requests'

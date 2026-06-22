@@ -13,6 +13,8 @@ export type HitlPauseData = {
   actions: unknown[]
   display_in_ui: boolean
   form_token: string | null
+  // Channels where the form can be approved when it is not CLI-resumable, e.g. ['email'].
+  approval_channels?: string[]
   resolved_default_values: Record<string, string>
   expiration_time: number
 }

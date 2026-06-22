@@ -132,6 +132,7 @@ describe('DatasetNav', () => {
     } as unknown as ReturnType<typeof useDatasetList>)
     vi.mocked(useAppContext).mockReturnValue({
       isCurrentWorkspaceEditor: true,
+      workspacePermissionKeys: ['dataset.create_and_management'],
     } as unknown as ReturnType<typeof useAppContext>)
   })
 

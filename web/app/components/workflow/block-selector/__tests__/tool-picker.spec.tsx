@@ -35,6 +35,7 @@ const mockCreateCustomCollection = vi.mocked(createCustomCollection)
 const mockInstallPackageFromMarketPlace = vi.fn()
 const mockCheckInstalled = vi.fn()
 const mockRefreshPluginList = vi.fn()
+let mockWorkspacePermissionKeys: string[] = ['tool.manage']
 
 const mockUseGetLanguage = vi.mocked(useGetLanguage)
 const mockUseTheme = vi.mocked(useTheme)
@@ -54,6 +55,12 @@ vi.mock('@/context/i18n', () => ({
   useGetLanguage: vi.fn(),
 }))
 
+vi.mock('@/context/app-context', () => ({
+  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
+}))
+
 vi.mock('@/hooks/use-theme', () => ({
   default: vi.fn(),
 }))
@@ -68,6 +75,10 @@ vi.mock('@/app/components/plugins/hooks', async (importOriginal) => {
 
 vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
   useMarketplacePlugins: vi.fn(),
+}))
+
+vi.mock('@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission', () => ({
+  default: () => ({ canInstallPlugin: true }),
 }))
 
 vi.mock('@/service/tools', () => ({
@@ -323,6 +334,7 @@ const renderToolPicker = (props: Partial<React.ComponentProps<typeof ToolPicker>
 describe('ToolPicker', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWorkspacePermissionKeys = ['tool.manage']
 
     mockUseGetLanguage.mockReturnValue('en_US')
     mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
@@ -345,8 +357,12 @@ describe('ToolPicker', () => {
       page: 0,
     } as ReturnType<typeof useMarketplacePlugins>)
     mockUseAllBuiltInTools.mockReturnValue({ data: builtInTools } as ReturnType<typeof useAllBuiltInTools>)
-    mockUseAllCustomTools.mockReturnValue({ data: customTools } as ReturnType<typeof useAllCustomTools>)
-    mockUseAllWorkflowTools.mockReturnValue({ data: workflowTools } as ReturnType<typeof useAllWorkflowTools>)
+    mockUseAllCustomTools.mockImplementation((enabled = true) => ({
+      data: enabled ? customTools : [],
+    } as ReturnType<typeof useAllCustomTools>))
+    mockUseAllWorkflowTools.mockImplementation((enabled = true) => ({
+      data: enabled ? workflowTools : [],
+    } as ReturnType<typeof useAllWorkflowTools>))
     mockUseAllMCPTools.mockReturnValue({ data: mcpTools } as ReturnType<typeof useAllMCPTools>)
     mockUseInvalidateAllBuiltInTools.mockReturnValue(mockInvalidateBuiltInTools)
     mockUseInvalidateAllCustomTools.mockReturnValue(mockInvalidateCustomTools)
@@ -480,6 +496,24 @@ describe('ToolPicker', () => {
     })
     expect(mockInvalidateCustomTools).toHaveBeenCalledTimes(1)
     expect(screen.queryByTestId('edit-custom-tool-modal')).not.toBeInTheDocument()
+  })
+
+  it('should keep custom and workflow tools usable but hide custom create action without tool.manage', () => {
+    mockWorkspacePermissionKeys = []
+
+    renderToolPicker({
+      isShow: true,
+      supportAddCustomTool: true,
+    })
+
+    expect(mockUseAllCustomTools).toHaveBeenCalledWith(true)
+    expect(mockUseAllWorkflowTools).toHaveBeenCalledWith(true)
+    expect(screen.getByText('Custom Provider')).toBeInTheDocument()
+    expect(screen.getByText('Built-in Provider')).toBeInTheDocument()
+    expect(screen.getByText('MCP Provider')).toBeInTheDocument()
+    expect(Array.from(document.querySelectorAll('button')).some((button) => {
+      return button.className.includes('bg-components-button-primary-bg')
+    })).toBe(false)
   })
 
   it('should invalidate all tool collections after featured install succeeds', async () => {

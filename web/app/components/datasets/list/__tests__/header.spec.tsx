@@ -22,7 +22,7 @@ vi.mock('@/features/tag-management/components/tag-filter', () => ({
 }))
 
 vi.mock('@/app/components/datasets/create/website/base/checkbox-with-label', () => ({
-  default: () => <label>include all</label>,
+  default: () => <span>include all</span>,
 }))
 
 vi.mock('../../extra-info/service-api', () => ({
@@ -31,9 +31,9 @@ vi.mock('../../extra-info/service-api', () => ({
 
 const defaultProps = {
   apiBaseUrl: 'https://api.example.com',
+  canConnectExternalDataset: true,
+  canCreateDataset: true,
   includeAll: false,
-  isCurrentWorkspaceEditor: true,
-  isCurrentWorkspaceManager: true,
   isCurrentWorkspaceOwner: true,
   keywords: '',
   tagFilterValue: [],
@@ -60,5 +60,31 @@ describe('DatasetListHeader', () => {
     const menuItem = screen.getByRole('button', { name: /dataset\.firstEmpty\.pipelineTitle/ })
 
     expect(menuItem.querySelector('.i-custom-vender-pipeline-pipeline-line')).toBeInTheDocument()
+  })
+
+  it('should hide dataset creation actions when dataset.create_and_management is unavailable', () => {
+    render(<DatasetListHeader {...defaultProps} canCreateDataset={false} />)
+
+    expect(screen.queryByRole('button', { name: /dataset\.firstEmpty\.createTitle/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /dataset\.firstEmpty\.pipelineTitle/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /dataset\.connectDataset/ })).toBeInTheDocument()
+  })
+
+  it('should hide external API panel entry when dataset.external.connect is unavailable', () => {
+    render(<DatasetListHeader {...defaultProps} canConnectExternalDataset={false} />)
+
+    expect(screen.queryByRole('button', { name: /dataset\.externalAPIPanelTitle/ })).not.toBeInTheDocument()
+  })
+
+  it('should hide the create menu when no creation or connection action is available', () => {
+    render((
+      <DatasetListHeader
+        {...defaultProps}
+        canConnectExternalDataset={false}
+        canCreateDataset={false}
+      />
+    ))
+
+    expect(screen.queryByRole('button', { name: /common\.operation\.create/ })).not.toBeInTheDocument()
   })
 })

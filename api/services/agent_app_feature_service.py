@@ -23,7 +23,6 @@ from core.app.app_config.features.suggested_questions_after_answer.manager impor
     SuggestedQuestionsAfterAnswerConfigManager,
 )
 from core.app.app_config.features.text_to_speech.manager import TextToSpeechConfigManager
-from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.account import Account
 from models.model import App, AppModelConfig, AppModelConfigDict

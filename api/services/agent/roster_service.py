@@ -121,11 +121,26 @@ class AgentRosterService:
             "id": version.id,
             "agent_id": version.agent_id,
             "version": version.version,
+            "display_version": version.version,
+            "snapshot_version": version.version,
             "summary": version.summary,
             "version_note": version.version_note,
             "created_by": version.created_by,
             "created_at": to_timestamp(version.created_at),
         }
+
+    @classmethod
+    def _serialize_visible_version(
+        cls,
+        version: AgentConfigSnapshot,
+        *,
+        display_version: int,
+    ) -> dict[str, Any]:
+        payload = cls.serialize_version(version) or {}
+        payload["version"] = display_version
+        payload["display_version"] = display_version
+        payload["snapshot_version"] = version.version
+        return payload
 
     @staticmethod
     def _build_roster_agents_stmt(*, tenant_id: str, keyword: str | None = None):
@@ -651,12 +666,16 @@ class AgentRosterService:
     @staticmethod
     def _visible_version_operations(agent: Agent) -> set[AgentConfigRevisionOperation]:
         if agent.source == AgentSource.AGENT_APP:
-            return {AgentConfigRevisionOperation.SAVE_NEW_VERSION}
+            return {
+                AgentConfigRevisionOperation.SAVE_NEW_VERSION,
+                AgentConfigRevisionOperation.RESTORE_VERSION,
+            }
         return {
             AgentConfigRevisionOperation.CREATE_VERSION,
             AgentConfigRevisionOperation.SAVE_NEW_VERSION,
             AgentConfigRevisionOperation.SAVE_NEW_AGENT,
             AgentConfigRevisionOperation.SAVE_TO_ROSTER,
+            AgentConfigRevisionOperation.RESTORE_VERSION,
         }
 
     def active_config_is_published(self, *, tenant_id: str, agent: Agent) -> bool:
@@ -673,15 +692,7 @@ class AgentRosterService:
 
     def list_agent_versions(self, *, tenant_id: str, agent_id: str) -> list[dict[str, Any]]:
         agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
-        visible_version_ids = (
-            select(AgentConfigRevision.current_snapshot_id)
-            .where(
-                AgentConfigRevision.tenant_id == tenant_id,
-                AgentConfigRevision.agent_id == agent_id,
-                AgentConfigRevision.operation.in_(self._visible_version_operations(agent)),
-            )
-            .subquery()
-        )
+        visible_version_ids = self._visible_version_ids_stmt(tenant_id=tenant_id, agent_id=agent_id, agent=agent)
         versions = list(
             self._session.scalars(
                 select(AgentConfigSnapshot)
@@ -693,25 +704,39 @@ class AgentRosterService:
                 .order_by(AgentConfigSnapshot.version.desc())
             ).all()
         )
+        total = len(versions)
         return [
-            serialized_version
-            for version in versions
-            if (serialized_version := self.serialize_version(version)) is not None
+            self._serialize_visible_version(version, display_version=total - index)
+            for index, version in enumerate(versions)
         ]
 
-    def get_agent_version_detail(self, *, tenant_id: str, agent_id: str, version_id: str) -> dict[str, Any]:
-        agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
-        visible_revision_id = self._session.scalar(
-            select(AgentConfigRevision.id)
+    def _visible_version_ids_stmt(self, *, tenant_id: str, agent_id: str, agent: Agent):
+        return (
+            select(AgentConfigRevision.current_snapshot_id)
             .where(
                 AgentConfigRevision.tenant_id == tenant_id,
                 AgentConfigRevision.agent_id == agent_id,
-                AgentConfigRevision.current_snapshot_id == version_id,
                 AgentConfigRevision.operation.in_(self._visible_version_operations(agent)),
             )
-            .limit(1)
+            .subquery()
         )
-        if not visible_revision_id:
+
+    def get_agent_version_detail(self, *, tenant_id: str, agent_id: str, version_id: str) -> dict[str, Any]:
+        agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
+        visible_version_ids = self._visible_version_ids_stmt(tenant_id=tenant_id, agent_id=agent_id, agent=agent)
+        visible_versions = list(
+            self._session.scalars(
+                select(AgentConfigSnapshot)
+                .where(
+                    AgentConfigSnapshot.tenant_id == tenant_id,
+                    AgentConfigSnapshot.agent_id == agent_id,
+                    AgentConfigSnapshot.id.in_(select(visible_version_ids.c.current_snapshot_id)),
+                )
+                .order_by(AgentConfigSnapshot.version.asc())
+            ).all()
+        )
+        display_versions_by_id = {version.id: index for index, version in enumerate(visible_versions, start=1)}
+        if version_id not in display_versions_by_id:
             raise AgentVersionNotFoundError()
         version = self._get_version(tenant_id=tenant_id, agent_id=agent_id, version_id=version_id)
         revisions = list(
@@ -725,7 +750,7 @@ class AgentRosterService:
                 .order_by(AgentConfigRevision.revision.desc())
             ).all()
         )
-        result = self.serialize_version(version) or {}
+        result = self._serialize_visible_version(version, display_version=display_versions_by_id[version_id])
         result["config_snapshot"] = version.config_snapshot_dict
         result["revisions"] = [
             {
@@ -742,6 +767,46 @@ class AgentRosterService:
             for revision in revisions
         ]
         return result
+
+    def restore_agent_version(
+        self, *, tenant_id: str, agent_id: str, version_id: str, account_id: str
+    ) -> dict[str, Any]:
+        agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
+        visible_version_ids = self._visible_version_ids_stmt(tenant_id=tenant_id, agent_id=agent_id, agent=agent)
+        visible_version_id = self._session.scalar(
+            select(AgentConfigSnapshot.id)
+            .where(
+                AgentConfigSnapshot.tenant_id == tenant_id,
+                AgentConfigSnapshot.agent_id == agent_id,
+                AgentConfigSnapshot.id == version_id,
+                AgentConfigSnapshot.id.in_(select(visible_version_ids.c.current_snapshot_id)),
+            )
+            .limit(1)
+        )
+        if not visible_version_id:
+            raise AgentVersionNotFoundError()
+
+        version = self._get_version(tenant_id=tenant_id, agent_id=agent_id, version_id=version_id)
+        if agent.active_config_snapshot_id == version.id:
+            return {"result": "success", "active_config_snapshot_id": version.id}
+
+        previous_snapshot_id = agent.active_config_snapshot_id
+        agent.active_config_snapshot_id = version.id
+        agent.active_config_has_model = agent_soul_has_model(version.config_snapshot)
+        agent.updated_by = account_id
+        self._session.add(
+            AgentConfigRevision(
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                previous_snapshot_id=previous_snapshot_id,
+                current_snapshot_id=version.id,
+                revision=self._next_revision(tenant_id=tenant_id, agent_id=agent_id),
+                operation=AgentConfigRevisionOperation.RESTORE_VERSION,
+                created_by=account_id,
+            )
+        )
+        self._session.commit()
+        return {"result": "success", "active_config_snapshot_id": version.id}
 
     def _get_agent(self, *, tenant_id: str, agent_id: str, roster_only: bool = False) -> Agent:
         stmt = select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id)
@@ -767,6 +832,17 @@ class AgentRosterService:
         if not version:
             raise AgentVersionNotFoundError()
         return version
+
+    def _next_revision(self, *, tenant_id: str, agent_id: str) -> int:
+        return (
+            self._session.scalar(
+                select(func.max(AgentConfigRevision.revision)).where(
+                    AgentConfigRevision.tenant_id == tenant_id,
+                    AgentConfigRevision.agent_id == agent_id,
+                )
+            )
+            or 0
+        ) + 1
 
     def _load_published_active_snapshot_agent_ids(self, *, tenant_id: str, agents: list[Agent]) -> set[str]:
         predicates = [

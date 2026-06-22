@@ -71,6 +71,13 @@ vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en_US',
 }))
 
+vi.mock('@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission', () => ({
+  default: () => ({
+    canInstallPlugin: true,
+    currentDifyVersion: '1.0.0',
+  }),
+}))
+
 const contextValue = { isWorkflowPage: false, isRagPipelinePage: false }
 vi.mock('../context', () => ({
   useGotoAnythingContext: () => contextValue,

@@ -87,19 +87,11 @@ export const Playground: Story = {
     await userEvent.click(canvas.getByRole('button', { name: '50' }))
     await expect(canvas.getByRole('button', { name: '50' })).toHaveAttribute('aria-pressed', 'true')
   },
-  parameters: {
-    a11y: {
-      test: 'todo',
-    },
-  },
 }
 
 export const DesignSpec: Story = {
   render: () => <DesignSpecDemo />,
   parameters: {
-    a11y: {
-      test: 'todo',
-    },
     docs: {
       description: {
         story: 'Pagination rows with default, hover-like, focused, page-size, and skeleton examples.',

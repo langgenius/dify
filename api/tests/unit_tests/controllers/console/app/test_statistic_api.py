@@ -5,6 +5,7 @@ from inspect import unwrap
 from types import SimpleNamespace
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import BadRequest
 
 from controllers.console.app import statistic as statistic_module
@@ -38,7 +39,7 @@ def _install_common(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(statistic_module, "convert_datetime_to_date", lambda field: field)
 
 
-def test_daily_message_statistic_returns_rows(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_daily_message_statistic_returns_rows(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = statistic_module.DailyMessageStatistic()
     method = unwrap(api.get)
 
@@ -52,7 +53,7 @@ def test_daily_message_statistic_returns_rows(app, monkeypatch: pytest.MonkeyPat
     assert response.get_json() == {"data": [{"date": "2024-01-01", "message_count": 3}]}
 
 
-def test_daily_conversation_statistic_returns_rows(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_daily_conversation_statistic_returns_rows(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = statistic_module.DailyConversationStatistic()
     method = unwrap(api.get)
 
@@ -66,7 +67,7 @@ def test_daily_conversation_statistic_returns_rows(app, monkeypatch: pytest.Monk
     assert response.get_json() == {"data": [{"date": "2024-01-02", "conversation_count": 5}]}
 
 
-def test_daily_token_cost_statistic_returns_rows(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_daily_token_cost_statistic_returns_rows(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = statistic_module.DailyTokenCostStatistic()
     method = unwrap(api.get)
 
@@ -84,7 +85,7 @@ def test_daily_token_cost_statistic_returns_rows(app, monkeypatch: pytest.Monkey
     assert data["data"][0]["total_price"] == 0.25
 
 
-def test_daily_terminals_statistic_returns_rows(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_daily_terminals_statistic_returns_rows(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = statistic_module.DailyTerminalsStatistic()
     method = unwrap(api.get)
 
@@ -98,7 +99,7 @@ def test_daily_terminals_statistic_returns_rows(app, monkeypatch: pytest.MonkeyP
     assert response.get_json() == {"data": [{"date": "2024-01-04", "terminal_count": 7}]}
 
 
-def test_average_session_interaction_statistic_requires_chat_mode(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_average_session_interaction_statistic_requires_chat_mode(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test that AverageSessionInteractionStatistic is limited to chat/agent modes."""
     # This just verifies the decorator is applied correctly
     # Actual endpoint testing would require complex JOIN mocking
@@ -107,7 +108,7 @@ def test_average_session_interaction_statistic_requires_chat_mode(app, monkeypat
     assert callable(method)
 
 
-def test_daily_message_statistic_with_invalid_time_range(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_daily_message_statistic_with_invalid_time_range(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = statistic_module.DailyMessageStatistic()
     method = unwrap(api.get)
 
@@ -123,7 +124,7 @@ def test_daily_message_statistic_with_invalid_time_range(app, monkeypatch: pytes
             method(api, SimpleNamespace(timezone="UTC"), app_model=SimpleNamespace(id="app-1"))
 
 
-def test_daily_message_statistic_multiple_rows(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_daily_message_statistic_multiple_rows(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = statistic_module.DailyMessageStatistic()
     method = unwrap(api.get)
 
@@ -142,7 +143,7 @@ def test_daily_message_statistic_multiple_rows(app, monkeypatch: pytest.MonkeyPa
     assert len(data["data"]) == 3
 
 
-def test_daily_message_statistic_empty_result(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_daily_message_statistic_empty_result(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = statistic_module.DailyMessageStatistic()
     method = unwrap(api.get)
 
@@ -155,7 +156,7 @@ def test_daily_message_statistic_empty_result(app, monkeypatch: pytest.MonkeyPat
     assert response.get_json() == {"data": []}
 
 
-def test_daily_conversation_statistic_with_time_range(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_daily_conversation_statistic_with_time_range(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = statistic_module.DailyConversationStatistic()
     method = unwrap(api.get)
 
@@ -174,7 +175,7 @@ def test_daily_conversation_statistic_with_time_range(app, monkeypatch: pytest.M
     assert response.get_json() == {"data": [{"date": "2024-01-02", "conversation_count": 5}]}
 
 
-def test_daily_token_cost_with_multiple_currencies(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_daily_token_cost_with_multiple_currencies(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = statistic_module.DailyTokenCostStatistic()
     method = unwrap(api.get)
 

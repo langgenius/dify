@@ -12,7 +12,7 @@ const Form = () => {
   const {
     // Context values
     currentDataset,
-    isCurrentWorkspaceDatasetOperator,
+    canEditSettings,
 
     // Loading state
     loading,
@@ -66,12 +66,12 @@ const Form = () => {
   } = useFormState()
 
   const isExternalProvider = currentDataset?.provider === 'external'
+  const readonly = !canEditSettings
 
   return (
     <div className="flex w-full flex-col gap-y-4 px-20 py-8 sm:w-[960px]">
       <BasicInfoSection
         currentDataset={currentDataset}
-        isCurrentWorkspaceDatasetOperator={isCurrentWorkspaceDatasetOperator}
         name={name}
         setName={setName}
         description={description}
@@ -86,6 +86,7 @@ const Form = () => {
         selectedMemberIDs={selectedMemberIDs}
         setSelectedMemberIDs={setSelectedMemberIDs}
         memberList={memberList}
+        readonly={readonly}
       />
 
       {isExternalProvider
@@ -96,6 +97,7 @@ const Form = () => {
               scoreThreshold={scoreThreshold}
               scoreThresholdEnabled={scoreThresholdEnabled}
               handleSettingsChange={handleSettingsChange}
+              readonly={readonly}
             />
           )
         : (
@@ -113,6 +115,7 @@ const Form = () => {
               summaryIndexSetting={summaryIndexSetting}
               handleSummaryIndexSettingChange={handleSummaryIndexSettingChange}
               showMultiModalTip={showMultiModalTip}
+              readonly={readonly}
             />
           )}
 
@@ -126,7 +129,7 @@ const Form = () => {
             className="min-w-24"
             variant="primary"
             loading={loading}
-            disabled={loading}
+            disabled={loading || readonly}
             onClick={handleSave}
           >
             {t('form.save', { ns: 'datasetSettings' })}

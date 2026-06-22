@@ -23,6 +23,7 @@ import {
   initialEdges,
   initialNodes,
 } from '@/app/components/workflow/utils'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useRouter } from '@/next/navigation'
 import { useSnippetPublishedWorkflow } from '@/service/use-snippet-workflows'
 import { useConfigsMap } from '../hooks/use-configs-map'
@@ -33,6 +34,7 @@ import { useSnippetRefreshDraft } from '../hooks/use-snippet-refresh-draft'
 import { useSnippetRun } from '../hooks/use-snippet-run'
 import { useSnippetStartRun } from '../hooks/use-snippet-start-run'
 import { useSnippetDetailStore } from '../store'
+import { canCreateAndModifySnippets } from '../utils/permission'
 import { useSnippetInputFieldActions } from './hooks/use-snippet-input-field-actions'
 import { useSnippetPublish } from './hooks/use-snippet-publish'
 import SaveBeforeLeavingDialog from './save-before-leaving-dialog'
@@ -54,6 +56,7 @@ type SnippetMainContentProps = {
   snippetId: string
   fields: SnippetInputField[]
   canDiscardChanges: boolean
+  canEdit: boolean
   canSave: boolean
   hasDraftChanges: boolean
   isEditing: boolean
@@ -92,6 +95,7 @@ const SnippetMainContent = ({
   snippetId,
   fields,
   canDiscardChanges,
+  canEdit,
   canSave,
   hasDraftChanges,
   isEditing,
@@ -224,6 +228,7 @@ const SnippetMainContent = ({
         snippetId={snippetId}
         fields={fields}
         canDiscardChanges={canDiscardChanges}
+        canEdit={canEdit}
         canSave={canSave}
         hasDraftChanges={hasDraftChanges}
         isEditing={isEditing}
@@ -261,7 +266,10 @@ const SnippetMain = ({
   draftEdges,
   draftViewport,
 }: SnippetMainProps) => {
-  const [isEditing, setIsEditing] = useState(!hasPublishedWorkflow)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
+  const [isEditingState, setIsEditingState] = useState(!hasPublishedWorkflow)
+  const isEditing = canCreateAndModifySnippet && isEditingState
   const [localDraftState, setLocalDraftState] = useState<LocalDraftState>()
   const [draftChangeState, setDraftChangeState] = useState({
     initial: hasInitialDraftChanges,
@@ -365,6 +373,7 @@ const SnippetMain = ({
     fields,
     handleFieldsChange,
   } = useSnippetInputFieldActions({
+    canEdit: canCreateAndModifySnippet,
     snippetId,
   })
   const {
@@ -405,7 +414,7 @@ const SnippetMain = ({
   const doSyncWorkflowDraft = useCallback((
     ...args: Parameters<typeof syncWorkflowDraft>
   ) => {
-    if (!isEditing)
+    if (!canCreateAndModifySnippet || !isEditing)
       return Promise.resolve()
 
     const [
@@ -421,19 +430,22 @@ const SnippetMain = ({
       setHasDraftChanges(true)
 
     return syncWorkflowDraft(...args)
-  }, [isEditing, setHasDraftChanges, syncWorkflowDraft])
+  }, [canCreateAndModifySnippet, isEditing, setHasDraftChanges, syncWorkflowDraft])
 
   const syncWorkflowDraftWhenPageCloseInEditing = useCallback(() => {
-    if (!isEditing)
+    if (!canCreateAndModifySnippet || !isEditing)
       return
 
     syncWorkflowDraftWhenPageClose()
-  }, [isEditing, syncWorkflowDraftWhenPageClose])
+  }, [canCreateAndModifySnippet, isEditing, syncWorkflowDraftWhenPageClose])
 
   const handleFieldsChangeInEditing = useCallback((nextFields: SnippetInputField[]) => {
+    if (!canCreateAndModifySnippet || !isEditing)
+      return
+
     handleFieldsChange(nextFields)
     setHasDraftChanges(true)
-  }, [handleFieldsChange, setHasDraftChanges])
+  }, [canCreateAndModifySnippet, handleFieldsChange, isEditing, setHasDraftChanges])
 
   const updateLocalDraftFromSyncPayload = useCallback((
     syncedDraftPayload?: Omit<SnippetDraftSyncPayload, 'hash'> | void,
@@ -468,6 +480,9 @@ const SnippetMain = ({
   }, [draftPayload, fields, setFields])
 
   const handleCancelChanges = useCallback(async () => {
+    if (!canCreateAndModifySnippet)
+      return
+
     const workflow = publishedWorkflow ?? (await refetchPublishedWorkflow()).data
     if (!workflow)
       return
@@ -485,32 +500,41 @@ const SnippetMain = ({
       onRefresh: setFields,
     })
     setHasDraftChanges(false)
-  }, [handleRestoreFromPublishedWorkflow, publishedWorkflow, refetchPublishedWorkflow, setFields, setHasDraftChanges, syncInputFieldsDraft, updateLocalDraftFromSyncPayload])
+  }, [canCreateAndModifySnippet, handleRestoreFromPublishedWorkflow, publishedWorkflow, refetchPublishedWorkflow, setFields, setHasDraftChanges, syncInputFieldsDraft, updateLocalDraftFromSyncPayload])
 
   const handleExitEditing = useCallback(async () => {
-    if (hasDraftChanges)
+    if (!canCreateAndModifySnippet || hasDraftChanges)
       return
 
-    setIsEditing(false)
-  }, [hasDraftChanges])
+    setIsEditingState(false)
+  }, [canCreateAndModifySnippet, hasDraftChanges])
 
   const handleExitEditingWithoutSave = useCallback(async () => {
+    if (!canCreateAndModifySnippet)
+      return
+
     const syncedDraftPayload = await syncWorkflowDraft(true)
     updateLocalDraftFromSyncPayload(syncedDraftPayload)
     skipNextForcedDraftSyncRef.current = true
-    setIsEditing(false)
-  }, [syncWorkflowDraft, updateLocalDraftFromSyncPayload])
+    setIsEditingState(false)
+  }, [canCreateAndModifySnippet, syncWorkflowDraft, updateLocalDraftFromSyncPayload])
 
   const handleDiscardAndRoute = useCallback(async () => {
+    if (!canCreateAndModifySnippet)
+      return
+
     const syncedDraftPayload = await syncWorkflowDraft(true)
     updateLocalDraftFromSyncPayload(syncedDraftPayload)
     skipNextForcedDraftSyncRef.current = true
-  }, [syncWorkflowDraft, updateLocalDraftFromSyncPayload])
+  }, [canCreateAndModifySnippet, syncWorkflowDraft, updateLocalDraftFromSyncPayload])
 
   const handleEdit = useCallback(() => {
+    if (!canCreateAndModifySnippet)
+      return
+
     skipNextForcedDraftSyncRef.current = true
-    setIsEditing(true)
-  }, [])
+    setIsEditingState(true)
+  }, [canCreateAndModifySnippet])
 
   const hooksStore = useMemo(() => {
     return {
@@ -594,6 +618,7 @@ const SnippetMain = ({
             snippetId={snippetId}
             fields={fields}
             canDiscardChanges={hasPublishedWorkflow}
+            canEdit={canCreateAndModifySnippet}
             canSave={canSave}
             hasDraftChanges={hasDraftChanges}
             isEditing={isEditing}
@@ -609,7 +634,7 @@ const SnippetMain = ({
             }}
             onSavedAndExitEditing={() => {
               setHasDraftChanges(false)
-              setIsEditing(false)
+              setIsEditingState(false)
             }}
           />
         </WorkflowWithInnerContext>

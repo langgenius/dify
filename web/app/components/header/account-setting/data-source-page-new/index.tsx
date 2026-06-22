@@ -5,7 +5,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
-import { useCanSetPluginSettings } from '@/app/components/plugins/plugin-page/use-reference-setting'
+import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
@@ -59,14 +59,15 @@ const DataSourcePage = ({
   const renderI18nObject = useRenderI18nObject()
   const [searchText, setSearchText] = useState('')
   const {
-    canSetPermissions,
-  } = useCanSetPluginSettings()
+    canSetPluginPreferences,
+    canViewInstalledPlugins,
+  } = usePluginSettingsAccess()
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
   })
   const { data, isLoading: isDataSourceListLoading } = useGetDataSourceListAuth()
-  const { data: installedPluginList } = useInstalledPluginList()
+  const { data: installedPluginList } = useInstalledPluginList(!canViewInstalledPlugins)
   const pluginListWithLatestVersion = usePluginsWithLatestVersion(installedPluginList?.plugins)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const invalidateDataSourceListAuth = useInvalidDataSourceListAuth()
@@ -111,7 +112,7 @@ const DataSourcePage = ({
         value={searchText}
         onValueChange={setSearchText}
       />
-      {canSetPermissions && (
+      {canSetPluginPreferences && (
         <UpdateSettingDialog
           category={PluginCategoryEnum.datasource}
         />

@@ -263,6 +263,7 @@ export const zImport = z.object({
   error: z.string().optional().default(''),
   id: z.string(),
   imported_dsl_version: z.string().optional().default(''),
+  permission_keys: z.array(z.string()).optional(),
   status: zImportStatus,
 })
 
@@ -365,6 +366,7 @@ export const zOpenApiErrorCode = z.enum([
   'file_too_large',
   'filename_not_exists',
   'forbidden',
+  'form_not_found',
   'internal_server_error',
   'invalid_param',
   'member_license_exceeded',
@@ -377,6 +379,7 @@ export const zOpenApiErrorCode = z.enum([
   'provider_not_initialize',
   'provider_quota_exceeded',
   'rate_limit_error',
+  'recipient_surface_mismatch',
   'request_entity_too_large',
   'too_many_files',
   'too_many_requests',
