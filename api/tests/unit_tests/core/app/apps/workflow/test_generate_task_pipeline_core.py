@@ -134,6 +134,7 @@ class TestWorkflowGenerateTaskPipeline:
                 "actions": [],
                 "display_in_ui": False,
                 "form_token": None,
+                "approval_channels": [],
                 "resolved_default_values": {},
                 "expiration_time": 1,
             }

@@ -175,6 +175,7 @@ class TestAdvancedChatGenerateTaskPipeline:
                 "actions": [{"id": "approve", "title": "Approve", "button_style": "default"}],
                 "display_in_ui": True,
                 "form_token": "token-1",
+                "approval_channels": [],
                 "resolved_default_values": {},
                 "expiration_time": 123,
             }
