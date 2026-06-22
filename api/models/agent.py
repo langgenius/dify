@@ -432,14 +432,17 @@ class AgentDriveFile(DefaultFieldsMixin, Base):
     synced. ``value_owned_by_drive`` gates physical cleanup: only drive-owned values
     (created by the agent runtime or Skill standardization, not shared with other
     business records) have their storage object + record deleted when the KV entry is
-    overwritten or removed; otherwise only the KV row is dropped. Lifecycle never relies
-    on ``UploadFile.used/used_by`` (not a reliable refcount).
+    overwritten or removed; otherwise only the KV row is dropped. Skills are represented
+    by the canonical ``<path>/SKILL.md`` row with ``is_skill=True`` and a serialized
+    ``skill_metadata`` string. Lifecycle never relies on ``UploadFile.used/used_by``
+    (not a reliable refcount).
     """
 
     __tablename__ = "agent_drive_files"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="agent_drive_file_pkey"),
         UniqueConstraint("tenant_id", "agent_id", "key", name="agent_drive_file_scope_key_unique"),
+        Index("agent_drive_files_tenant_agent_is_skill_key_idx", "tenant_id", "agent_id", "is_skill", "key"),
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -455,6 +458,8 @@ class AgentDriveFile(DefaultFieldsMixin, Base):
     value_owned_by_drive: Mapped[bool] = mapped_column(
         sa.Boolean, nullable=False, default=False, server_default=sa.text("false")
     )
+    is_skill: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False, server_default=sa.text("false"))
+    skill_metadata: Mapped[str | None] = mapped_column(LongText, nullable=True)
     size: Mapped[int | None] = mapped_column(sa.BigInteger, nullable=True)
     hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     mime_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
