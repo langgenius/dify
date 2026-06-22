@@ -35,7 +35,7 @@ class TestWebhookServiceExtractionFallbacks:
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         webhook_trigger = MagicMock()
- 
+
         with caplog.at_level(logging.WARNING, logger="services.trigger.webhook_service"):
             with flask_app.test_request_context(
                 "/webhook",
@@ -44,7 +44,7 @@ class TestWebhookServiceExtractionFallbacks:
                 data="plain content",
             ):
                 result = WebhookService.extract_webhook_data(webhook_trigger)
- 
+
             assert result["body"] == {"raw": "plain content"}
             assert any(r.levelno >= logging.WARNING for r in caplog.records)
 
@@ -176,7 +176,7 @@ class TestWebhookServiceValidationAndConversion:
     ) -> None:
         with caplog.at_level(logging.WARNING, logger="services.trigger.webhook_service"):
             result = WebhookService._validate_json_value("param", {"x": 1}, "unsupported-type")
- 
+
             assert result == {"x": 1}
             assert any(r.levelno >= logging.WARNING for r in caplog.records)
 

@@ -259,7 +259,7 @@ def test_add_trigger_subscription_should_raise_error_when_provider_limit_reached
     _patch_redis_lock(mocker)
     mock_session.scalar.return_value = TriggerProviderService.__MAX_TRIGGER_PROVIDER_COUNT__
     _mock_get_trigger_provider(mocker, provider_controller)
- 
+
     # Act + Assert
     with caplog.at_level(logging.ERROR, logger="services.trigger.trigger_provider_service"):
         with pytest.raises(ValueError, match="Maximum number of providers"):

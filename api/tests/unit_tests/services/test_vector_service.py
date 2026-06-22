@@ -274,19 +274,19 @@ def test_create_segments_vector_parent_child_missing_document_logs_warning_and_c
 ) -> None:
     dataset = _make_dataset(doc_form=vector_service_module.IndexStructureType.PARENT_CHILD_INDEX)
     segment = _make_segment()
- 
+
     processing_rule = MagicMock()
     monkeypatch.setattr(
         vector_service_module,
         "db",
         _mock_parent_child_queries(dataset_document=None, processing_rule=processing_rule),
     )
- 
+
     index_processor = MagicMock()
     factory_instance = MagicMock()
     factory_instance.init_index_processor.return_value = index_processor
     monkeypatch.setattr(vector_service_module, "IndexProcessorFactory", MagicMock(return_value=factory_instance))
- 
+
     with caplog.at_level(logging.WARNING, logger="services.vector_service"):
         VectorService.create_segments_vector(
             None, [segment], dataset, vector_service_module.IndexStructureType.PARENT_CHILD_INDEX
@@ -630,7 +630,7 @@ def test_update_multimodel_vector_adds_bindings_and_vectors_and_skips_missing_up
     monkeypatch.setattr(vector_service_module, "SegmentAttachmentBinding", binding_ctor)
     monkeypatch.setattr(vector_service_module, "delete", MagicMock())
     monkeypatch.setattr(vector_service_module, "select", MagicMock())
- 
+
     with caplog.at_level(logging.WARNING, logger="services.vector_service"):
         VectorService.update_multimodel_vector(segment=segment, attachment_ids=["file-1", "missing"], dataset=dataset)
         assert any(r.levelno >= logging.WARNING for r in caplog.records)
@@ -688,10 +688,10 @@ def test_update_multimodel_vector_rolls_back_and_reraises_on_error(
     )
     monkeypatch.setattr(vector_service_module, "delete", MagicMock())
     monkeypatch.setattr(vector_service_module, "select", MagicMock())
- 
+
     with caplog.at_level(logging.ERROR, logger="services.vector_service"):
         with pytest.raises(RuntimeError, match="boom"):
             VectorService.update_multimodel_vector(segment=segment, attachment_ids=["file-1"], dataset=dataset)
- 
+
         assert any(r.levelno >= logging.ERROR for r in caplog.records)
     db_mock.session.rollback.assert_called_once()
