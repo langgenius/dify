@@ -219,9 +219,7 @@ def test_account_pipeline_skips_rbac_step_without_requirement():
 def test_external_sso_pipeline_never_enforces_rbac():
     # RBAC is a console (account) concern; external SSO callers are scope-gated.
     rbac_steps = [
-        s._step
-        for s in external_sso_pipeline._auth
-        if isinstance(s, When) and s._step is check_rbac_permission
+        s._step for s in external_sso_pipeline._auth if isinstance(s, When) and s._step is check_rbac_permission
     ]
     assert rbac_steps == []
     assert check_rbac_permission not in external_sso_pipeline._auth
