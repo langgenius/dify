@@ -17,13 +17,17 @@ from unittest import mock
 import pytest
 from flask.testing import FlaskClient
 
+from constants import HEADER_NAME_CSRF_TOKEN
 from controllers.console.app import message as message_api
 from controllers.console.app import wraps
+from controllers.console import wraps as console_wraps
 from libs.datetime_utils import naive_utc_now
+from libs.token import _real_cookie_name, generate_csrf_token
 from models import App, Tenant
 from models.account import Account, TenantAccountJoin, TenantAccountRole
 from models.enums import AppStatus
 from models.model import AppMode
+from services.account_service import AccountService
 
 
 class TestChatMessageCrossTenant:
@@ -49,9 +53,20 @@ class TestChatMessageCrossTenant:
         return app
 
     @pytest.fixture
-    def mock_account(self, monkeypatch: pytest.MonkeyPatch):
+    def mock_account(self):
         """Account whose current tenant is distinct from ``mock_app_model``'s
-        ``tenant_id``. Mirrors the ``mock_account`` fixture in
+        ``tenant_id``.
+
+        The ``current_tenant`` property setter would issue a DB query via
+        ``Session``, which would (a) require a Flask app context and (b) be
+        redundant — the cross-tenant boundary only reads ``_current_tenant.id``
+        via the ``current_account_with_tenant`` shim that the test patches.
+        We therefore assign ``_current_tenant`` directly and skip the DB
+        round-trip. The earlier version of this fixture also patched
+        ``models.account.Session`` globally, which broke ``load_user`` →
+        ``set_tenant_id`` for the ``setup_account`` user (whose ``auth_header``
+        the request actually carries). See ``git log`` for the abandoned
+        ``mock.Mock()`` session-mock pattern inherited from
         ``test_chat_message_permissions.py``.
         """
         account = Account(name="Test Cross-Tenant User", email="test-cross-tenant@example.com")
@@ -63,27 +78,29 @@ class TestChatMessageCrossTenant:
 
         tenant = Tenant(name="Test Tenant A")
         tenant.id = str(uuid.uuid4())
-
-        mock_session_instance = mock.Mock()
-
-        mock_tenant_join = TenantAccountJoin(role=TenantAccountRole.OWNER)
-        monkeypatch.setattr(mock_session_instance, "scalar", mock.Mock(return_value=mock_tenant_join))
-
-        mock_scalars_result = mock.Mock()
-        mock_scalars_result.one.return_value = tenant
-        monkeypatch.setattr(mock_session_instance, "scalars", mock.Mock(return_value=mock_scalars_result))
-
-        mock_session_context = mock.Mock()
-        mock_session_context.__enter__.return_value = mock_session_instance
-        monkeypatch.setattr("models.account.Session", lambda _, expire_on_commit: mock_session_context)
-
-        account.current_tenant = tenant
+        account._current_tenant = tenant
         return account
+
+    @pytest.fixture
+    def csrf_auth_header(self, test_client: FlaskClient, setup_account):
+        """Like ``auth_header`` from the integration conftest, but also
+        attaches a CSRF cookie and ``X-CSRF-Token`` header so non-OPTIONS
+        requests pass ``libs.login.login_required``'s ``check_csrf_token``
+        gate. Mirrors the helper in
+        ``tests/test_containers_integration_tests/controllers/console/helpers.py``.
+        """
+        access_token = AccountService.get_account_jwt_token(setup_account)
+        csrf_token = generate_csrf_token(setup_account.id)
+        test_client.set_cookie(_real_cookie_name("csrf_token"), csrf_token, domain="localhost")
+        return {
+            "Authorization": f"Bearer {access_token}",
+            HEADER_NAME_CSRF_TOKEN: csrf_token,
+        }
 
     def test_cross_tenant_chat_messages_returns_404(
         self,
         test_client: FlaskClient,
-        auth_header,
+        csrf_auth_header,
         monkeypatch: pytest.MonkeyPatch,
         mock_app_model,
         mock_account,
@@ -103,11 +120,19 @@ class TestChatMessageCrossTenant:
             "_load_app_model_from_scoped_session",
             mock.Mock(return_value=None),
         )
-        monkeypatch.setattr(message_api, "current_user", mock_account)
+        # with_current_user reads current_account_with_tenant() — patch it
+        # directly. The test_chat_message_permissions.py pattern of
+        # monkeypatch.setattr(message_api, "current_user", ...) is broken
+        # because message.py does not import current_user into its namespace.
+        monkeypatch.setattr(
+            console_wraps,
+            "current_account_with_tenant",
+            mock.Mock(return_value=(mock_account, mock_account._current_tenant.id)),
+        )
 
         response = test_client.get(
             f"/console/api/apps/{mock_app_model.id}/chat-messages",
-            headers=auth_header,
+            headers=csrf_auth_header,
             query_string={"conversation_id": str(uuid.uuid4())},
         )
 
@@ -116,7 +141,7 @@ class TestChatMessageCrossTenant:
     def test_same_tenant_chat_messages_returns_200(
         self,
         test_client: FlaskClient,
-        auth_header,
+        csrf_auth_header,
         monkeypatch: pytest.MonkeyPatch,
         mock_app_model,
         mock_account,
@@ -136,7 +161,11 @@ class TestChatMessageCrossTenant:
             "_load_app_model_from_scoped_session",
             mock.Mock(return_value=mock_app_model),
         )
-        monkeypatch.setattr(message_api, "current_user", mock_account)
+        monkeypatch.setattr(
+            console_wraps,
+            "current_account_with_tenant",
+            mock.Mock(return_value=(mock_account, mock_account._current_tenant.id)),
+        )
 
         conversation_id = uuid.uuid4()
         mock_conversation = SimpleNamespace(id=str(conversation_id), app_id=str(mock_app_model.id))
@@ -157,7 +186,7 @@ class TestChatMessageCrossTenant:
 
         response = test_client.get(
             f"/console/api/apps/{mock_app_model.id}/chat-messages",
-            headers=auth_header,
+            headers=csrf_auth_header,
             query_string={"conversation_id": str(conversation_id)},
         )
 
