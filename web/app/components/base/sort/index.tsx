@@ -64,7 +64,7 @@ function Sort({
                   key={item.value}
                   value={item.value}
                   closeOnClick
-                  className="gap-2 rounded-lg px-2 py-[6px] pl-3"
+                  className="mx-0 gap-2 rounded-lg px-2 py-[6px]"
                 >
                   <div title={item.name} className="grow truncate system-sm-medium text-text-secondary">{item.name}</div>
                   {value === item.value && <span aria-hidden className="i-ri-check-line size-4 shrink-0 text-util-colors-blue-light-blue-light-600" />}
