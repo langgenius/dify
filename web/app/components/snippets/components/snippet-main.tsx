@@ -93,19 +93,12 @@ const hasSnippetDraftNodes = (payload?: Omit<SnippetDraftSyncPayload, 'hash'> | 
 const SnippetMainContent = ({
   snippetId,
   fields,
-  canDiscardChanges,
-  canEdit,
   canSave,
   hasDraftChanges,
   isEditing,
   onBeforePublish,
-  onCancel,
   onDiscardRoute,
-  onEdit,
-  onExitEditing,
-  onExitEditingWithoutSave,
   onSaved,
-  onSavedAndExitEditing,
 }: SnippetMainContentProps) => {
   const { push } = useRouter()
   const { t } = useTranslation('snippet')
@@ -133,12 +126,6 @@ const SnippetMainContent = ({
 
     return didSave
   }, [handlePublish, onBeforePublish, onSaved, t])
-
-  const handleSaveAndExitEditing = useCallback(async () => {
-    const didSave = await handlePublishSnippet()
-    if (didSave)
-      onSavedAndExitEditing()
-  }, [handlePublishSnippet, onSavedAndExitEditing])
 
   const navigateToPendingHref = useCallback((href: string) => {
     const url = new URL(href, window.location.href)
@@ -226,18 +213,9 @@ const SnippetMainContent = ({
       <SnippetChildren
         snippetId={snippetId}
         fields={fields}
-        canDiscardChanges={canDiscardChanges}
-        canEdit={canEdit}
         canSave={canSave}
-        hasDraftChanges={hasDraftChanges}
-        isEditing={isEditing}
         isPublishing={isPublishing}
-        onCancel={onCancel}
-        onEdit={onEdit}
-        onExitEditing={onExitEditing}
-        onExitEditingWithoutSave={onExitEditingWithoutSave}
         onPublish={handlePublishSnippet}
-        onSaveAndExitEditing={handleSaveAndExitEditing}
       />
       <SaveBeforeLeavingDialog
         open={!!pendingHref}

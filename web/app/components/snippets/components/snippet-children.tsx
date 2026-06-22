@@ -7,35 +7,17 @@ import SnippetWorkflowPanel from './workflow-panel'
 type SnippetChildrenProps = {
   snippetId: string
   fields: SnippetInputField[]
-  canDiscardChanges: boolean
-  canEdit?: boolean
   canSave: boolean
-  hasDraftChanges: boolean
-  isEditing: boolean
   isPublishing: boolean
-  onCancel: () => void
-  onEdit: () => void
-  onExitEditing: () => void | Promise<void>
-  onExitEditingWithoutSave: () => void | Promise<void>
   onPublish: () => void
-  onSaveAndExitEditing: () => void | Promise<void>
 }
 
 const SnippetChildren = ({
   snippetId,
   fields,
-  canDiscardChanges,
-  canEdit = true,
   canSave,
-  hasDraftChanges,
-  isEditing,
   isPublishing,
-  onCancel,
-  onEdit,
-  onExitEditing,
-  onExitEditingWithoutSave,
   onPublish,
-  onSaveAndExitEditing,
 }: SnippetChildrenProps) => {
   return (
     <>
@@ -43,18 +25,9 @@ const SnippetChildren = ({
 
       <SnippetHeader
         snippetId={snippetId}
-        canDiscardChanges={canDiscardChanges}
-        canEdit={canEdit}
         canSave={canSave}
-        hasDraftChanges={hasDraftChanges}
-        isEditing={isEditing}
         isPublishing={isPublishing}
-        onCancel={onCancel}
-        onEdit={onEdit}
-        onExitEditing={onExitEditing}
-        onExitEditingWithoutSave={onExitEditingWithoutSave}
         onPublish={onPublish}
-        onSaveAndExitEditing={onSaveAndExitEditing}
       />
 
       <SnippetWorkflowPanel
