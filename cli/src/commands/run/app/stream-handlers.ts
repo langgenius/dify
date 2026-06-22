@@ -4,7 +4,7 @@ import type { SseEvent } from '@/http/sse'
 import { newError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
-import { ThinkChunkFilter } from '@/sys/io/think-filter'
+import { filterThinkInOutputs, ThinkChunkFilter } from '@/sys/io/think-filter'
 import { RUN_MODES } from './handlers'
 import { HitlPauseError } from './sse-collector'
 
@@ -106,6 +106,11 @@ class CompletionStreamPrinter implements StreamPrinter {
 
 class WorkflowStreamPrinter implements StreamPrinter {
   private final: Record<string, unknown> | undefined
+  private readonly think: boolean
+  constructor(think: boolean) {
+    this.think = think
+  }
+
   onEvent(_out: NodeJS.WritableStream, errOut: NodeJS.WritableStream, ev: SseEvent): void {
     if (handleCommonEvents(ev))
       return
@@ -132,12 +137,20 @@ class WorkflowStreamPrinter implements StreamPrinter {
     }
   }
 
-  onEnd(out: NodeJS.WritableStream): void {
+  onEnd(out: NodeJS.WritableStream, errOut: NodeJS.WritableStream): void {
     if (this.final === undefined)
       return
     const data = this.final.data
     if (data !== null && typeof data === 'object' && 'outputs' in data) {
-      out.write(`${JSON.stringify((data as { outputs: unknown }).outputs)}\n`)
+      const raw = (data as { outputs: unknown }).outputs
+      if (raw !== null && typeof raw === 'object' && !Array.isArray(raw)) {
+        const { outputs, thinking } = filterThinkInOutputs(raw as Record<string, unknown>, this.think)
+        if (this.think && thinking !== '')
+          errOut.write(`${thinking}\n`)
+        out.write(`${JSON.stringify(outputs)}\n`)
+        return
+      }
+      out.write(`${JSON.stringify(raw)}\n`)
       return
     }
     out.write(`${JSON.stringify(this.final)}\n`)
@@ -149,7 +162,7 @@ const FACTORIES: Record<string, (think: boolean, isTTY: boolean) => StreamPrinte
   [RUN_MODES.AdvancedChat]: (think, isTTY) => new ChatStreamPrinter(think, isTTY),
   [RUN_MODES.AgentChat]: (think, isTTY) => new ChatStreamPrinter(think, isTTY),
   [RUN_MODES.Completion]: (think, _isTTY) => new CompletionStreamPrinter(think),
-  [RUN_MODES.Workflow]: (_think, _isTTY) => new WorkflowStreamPrinter(),
+  [RUN_MODES.Workflow]: (think, _isTTY) => new WorkflowStreamPrinter(think),
 }
 
 export function streamPrinterFor(mode: string, think = false, isTTY = false): StreamPrinter {

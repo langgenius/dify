@@ -1,17 +1,15 @@
 'use client'
 
 import type { App } from '@/types/app'
-<<<<<<< Updated upstream
-=======
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
->>>>>>> Stashed changes
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { getRedirectionPath } from '@/utils/app-redirection'
@@ -28,12 +26,15 @@ const ContinueWorkItem = ({
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const currentUserId = useAppContextSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isRbacEnabled = systemFeatures.rbac_enabled
   const updatedAt = (app.updated_at || app.created_at) * 1000
   const isPreviewOnly = hasOnlyAppPreviewPermission(app.permission_keys)
   const href = getRedirectionPath(app, {
     currentUserId,
     resourceMaintainer: app.maintainer,
     workspacePermissionKeys,
+    isRbacEnabled,
   })
   const cardClassName = cn(
     'flex min-w-0 items-center gap-3 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-4 pt-4 pb-4 shadow-xs shadow-shadow-shadow-3',

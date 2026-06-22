@@ -1,7 +1,8 @@
 import type { App } from '@/types/app'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -177,6 +178,7 @@ describe('CreateAppModal', () => {
         currentUserId: 'user-1',
         resourceMaintainer: 'user-1',
         workspacePermissionKeys: ['app.create_and_management'],
+        isRbacEnabled: false,
       }),
     )
   })

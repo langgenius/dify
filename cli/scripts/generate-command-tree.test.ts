@@ -137,6 +137,17 @@ export const commandTree: CommandTree = {
     const verIdx = out.indexOf('Version')
     expect(authIdx).toBeLessThan(verIdx)
   })
+
+  it('quotes hyphenated keys and leaves plain identifier keys unquoted', () => {
+    const entries: CommandEntry[] = [
+      { tokens: ['export', 'app'], identifier: 'ExportApp', importPath: '@/commands/export/app/index' },
+      { tokens: ['export', 'studio-app'], identifier: 'ExportStudioApp', importPath: '@/commands/export/studio-app/index' },
+    ]
+    const out = formatModule(entries, buildTree(entries))
+    expect(out).toContain(`'studio-app': { command: ExportStudioApp, subcommands: {} },`)
+    expect(out).toContain(`app: { command: ExportApp, subcommands: {} },`)
+    expect(out).not.toContain(`'app':`)
+  })
 })
 
 function makeFixture(): string {
