@@ -4,7 +4,7 @@ from .agent_stub import (
     AGENT_STUB_AUTH_JWE_ENV_VAR,
     AGENT_STUB_DRIVE_BASE_ENV_VAR,
     AGENT_STUB_PROTOCOL_VERSION,
-    AGENT_STUB_URL_ENV_VAR,
+    AGENT_STUB_API_BASE_URL_ENV_VAR,
     DEFAULT_AGENT_STUB_DRIVE_BASE,
     AgentStubConnectRequest,
     AgentStubConnectResponse,
@@ -27,7 +27,7 @@ from .agent_stub import (
     agent_stub_file_download_request_url,
     agent_stub_file_upload_request_url,
     is_canonical_dify_file_reference,
-    normalize_agent_stub_url,
+    normalize_agent_stub_api_base_url,
     parse_agent_stub_endpoint,
 )
 
@@ -35,7 +35,7 @@ __all__ = [
     "AGENT_STUB_AUTH_JWE_ENV_VAR",
     "AGENT_STUB_DRIVE_BASE_ENV_VAR",
     "AGENT_STUB_PROTOCOL_VERSION",
-    "AGENT_STUB_URL_ENV_VAR",
+    "AGENT_STUB_API_BASE_URL_ENV_VAR",
     "DEFAULT_AGENT_STUB_DRIVE_BASE",
     "AgentStubConnectRequest",
     "AgentStubConnectResponse",
@@ -58,6 +58,6 @@ __all__ = [
     "agent_stub_file_download_request_url",
     "agent_stub_file_upload_request_url",
     "is_canonical_dify_file_reference",
-    "normalize_agent_stub_url",
+    "normalize_agent_stub_api_base_url",
     "parse_agent_stub_endpoint",
 ]

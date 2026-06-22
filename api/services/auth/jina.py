@@ -8,7 +8,10 @@ from services.auth.api_key_auth_base import ApiKeyAuthBase, AuthCredentials
 
 _http_client: httpx.Client = get_pooled_http_client(
     "auth:jina_standalone",
-    lambda: httpx.Client(limits=httpx.Limits(max_keepalive_connections=50, max_connections=100)),
+    lambda: httpx.Client(
+        timeout=httpx.Timeout(10.0),
+        limits=httpx.Limits(max_keepalive_connections=50, max_connections=100),
+    ),
 )
 
 

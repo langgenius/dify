@@ -27,7 +27,7 @@ def _make_account() -> Account:
 
 
 @pytest.fixture(autouse=True)
-def _patch_snippet_service_factory(monkeypatch):
+def _patch_snippet_service_factory(monkeypatch: pytest.MonkeyPatch):
     def factory():
         service_factory = module.SnippetService
         if isinstance(service_factory, type):
@@ -64,7 +64,7 @@ def test_ensure_snippet_draft_variable_row_allowed_accepts_canvas_node_variable(
     module._ensure_snippet_draft_variable_row_allowed(variable=variable, variable_id="var-1")
 
 
-def test_conversation_variables_returns_empty_list(app):
+def test_conversation_variables_returns_empty_list(app: Flask):
     api = module.SnippetConversationVariableCollectionApi()
     handler = _unwrap(api.get)
 
@@ -74,7 +74,7 @@ def test_conversation_variables_returns_empty_list(app):
     assert result == WorkflowDraftVariableList(variables=[])
 
 
-def test_system_variables_returns_empty_list(app):
+def test_system_variables_returns_empty_list(app: Flask):
     api = module.SnippetSystemVariableCollectionApi()
     handler = _unwrap(api.get)
 

@@ -544,6 +544,7 @@
   "modelProvider.ttsModel.key": "文本转语音模型",
   "modelProvider.ttsModel.tip": "设置对话中文字转语音输出的默认使用模型。",
   "modelProvider.upgradeForLoadBalancing": "升级以解锁负载均衡功能",
+  "navigation.skipToMain": "跳转到主要内容",
   "noData": "暂无数据",
   "operation.add": "添加",
   "operation.added": "已添加",

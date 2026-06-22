@@ -333,6 +333,28 @@ describe('AgentSkills', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
+  it('should route Agent App skill delete through agent and slug identifiers', async () => {
+    const deleteSkill = vi.fn().mockResolvedValue({ result: 'success', removed_keys: ['tender-analyzer/SKILL.md'] })
+    mocks.deleteSkillMutationOptions.mockReturnValue({
+      mutationFn: deleteSkill,
+      mutationKey: ['delete-skill'],
+    })
+    renderAgentSkills()
+
+    fireEvent.click(screen.getByRole('button', {
+      name: /agentV2\.agentDetail\.configure\.skills\.remove.*Tender Analyzer/,
+    }))
+
+    await waitFor(() => {
+      expect(deleteSkill.mock.calls[0]?.[0]).toEqual({
+        params: {
+          agent_id: 'agent-1',
+          slug: 'tender-analyzer',
+        },
+      })
+    })
+  })
+
   it('should route workflow skill delete through app and node identifiers', async () => {
     const deleteSkill = vi.fn().mockResolvedValue({ result: 'success', removed_keys: ['tender-analyzer/SKILL.md'] })
     mocks.deleteSkillMutationOptions.mockReturnValue({

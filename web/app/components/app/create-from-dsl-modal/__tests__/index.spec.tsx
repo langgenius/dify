@@ -6,7 +6,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { AppModeEnum } from '@/types/app'
 import CreateFromDSLModal, { CreateFromDSLModalTab } from '../index'

@@ -49,8 +49,8 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
     type_id: ClassVar[str | None] = DIFY_DRIVE_LAYER_TYPE_ID
 
     config: DifyDriveLayerConfig
-    dify_api_inner_url: str
-    dify_api_inner_api_key: str
+    inner_api_url: str
+    inner_api_key: str
     _loaded_skill_bodies: dict[str, str] = field(default_factory=dict)
     _pulled_file_paths: dict[str, str] = field(default_factory=dict)
 
@@ -65,13 +65,13 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
         cls,
         config: DifyDriveLayerConfig,
         *,
-        dify_api_inner_url: str,
-        dify_api_inner_api_key: str,
+        inner_api_url: str,
+        inner_api_key: str,
     ) -> Self:
         return cls(
             config=DifyDriveLayerConfig.model_validate(config),
-            dify_api_inner_url=dify_api_inner_url.rstrip("/"),
-            dify_api_inner_api_key=dify_api_inner_api_key,
+            inner_api_url=inner_api_url.rstrip("/"),
+            inner_api_key=inner_api_key,
         )
 
     @property
@@ -104,9 +104,7 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
             skill = next((item for item in self.config.skills if item.skill_md_key == skill_key), None)
             if skill is None:
                 continue
-            loaded_skill_sections.append(
-                f"Path: {skill.path}\nName: {skill.name}\nSKILL.md:\n{body}"
-            )
+            loaded_skill_sections.append(f"Path: {skill.path}\nName: {skill.name}\nSKILL.md:\n{body}")
         if loaded_skill_sections:
             sections.append("Loaded mentioned skills:\n\n" + "\n\n".join(loaded_skill_sections))
 
@@ -173,13 +171,13 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
                 try:
                     async with semaphore:
                         response = await client.get(
-                            f"{self.dify_api_inner_url}/inner/api/drive/{self.config.drive_ref}/manifest",
+                            f"{self.inner_api_url}/inner/api/drive/{self.config.drive_ref}/manifest",
                             params={
                                 "tenant_id": tenant_id,
                                 "prefix": prefix,
                                 "include_download_url": "true",
                             },
-                            headers={"X-Inner-Api-Key": self.dify_api_inner_api_key},
+                            headers={"X-Inner-Api-Key": self.inner_api_key},
                         )
                 except (httpx.InvalidURL, httpx.TimeoutException, httpx.RequestError) as exc:
                     raise DifyDriveLayerError(f"drive manifest request failed for {prefix}") from exc

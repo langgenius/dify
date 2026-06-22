@@ -17,7 +17,7 @@ from dify_agent.agent_stub.protocol.agent_stub import (
     agent_stub_drive_manifest_url,
     agent_stub_file_download_request_url,
     agent_stub_file_upload_request_url,
-    normalize_agent_stub_url,
+    normalize_agent_stub_api_base_url,
     parse_agent_stub_endpoint,
 )
 
@@ -32,6 +32,12 @@ def test_agent_stub_connections_url_handles_trailing_slash_and_no_trailing_slash
         "https://agent.example.com/agent-stub/connections"
     )
     assert agent_stub_connections_url("https://agent.example.com/agent-stub/") == (
+        "https://agent.example.com/agent-stub/connections"
+    )
+
+
+def test_agent_stub_connections_url_normalizes_service_root_to_agent_stub_base() -> None:
+    assert agent_stub_connections_url("https://agent.example.com") == (
         "https://agent.example.com/agent-stub/connections"
     )
 
@@ -54,23 +60,33 @@ def test_agent_stub_drive_request_urls_handle_trailing_slash() -> None:
     )
 
 
-def test_normalize_agent_stub_url_rejects_query_and_fragment() -> None:
+def test_normalize_agent_stub_api_base_url_rejects_query_and_fragment() -> None:
     with pytest.raises(ValueError, match="query string or fragment"):
-        _ = normalize_agent_stub_url("https://agent.example.com/agent-stub?x=1")
+        _ = normalize_agent_stub_api_base_url("https://agent.example.com/agent-stub?x=1")
 
     with pytest.raises(ValueError, match="query string or fragment"):
-        _ = normalize_agent_stub_url("https://agent.example.com/agent-stub#fragment")
+        _ = normalize_agent_stub_api_base_url("https://agent.example.com/agent-stub#fragment")
+
+
+def test_normalize_agent_stub_api_base_url_accepts_service_root_or_agent_stub_root_only() -> None:
+    assert normalize_agent_stub_api_base_url("https://agent.example.com") == "https://agent.example.com/agent-stub"
+    assert normalize_agent_stub_api_base_url("https://agent.example.com/agent-stub/") == (
+        "https://agent.example.com/agent-stub"
+    )
+
+    with pytest.raises(ValueError, match="empty or /agent-stub"):
+        _ = normalize_agent_stub_api_base_url("https://agent.example.com/foo")
 
 
 def test_parse_agent_stub_endpoint_rejects_invalid_schemes_and_missing_host() -> None:
     with pytest.raises(ValueError, match="http, https, or grpc"):
-        _ = normalize_agent_stub_url("not-a-url")
+        _ = normalize_agent_stub_api_base_url("not-a-url")
 
     with pytest.raises(ValueError, match="http, https, or grpc"):
-        _ = normalize_agent_stub_url("ftp://agent.example.com/agent-stub")
+        _ = normalize_agent_stub_api_base_url("ftp://agent.example.com/agent-stub")
 
     with pytest.raises(ValueError, match="include a host"):
-        _ = normalize_agent_stub_url("https:///agent-stub")
+        _ = normalize_agent_stub_api_base_url("https:///agent-stub")
 
 
 def test_parse_agent_stub_endpoint_accepts_grpc_host_and_port() -> None:

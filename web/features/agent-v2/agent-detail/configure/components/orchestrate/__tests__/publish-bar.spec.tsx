@@ -19,6 +19,7 @@ const hotkeyRegistrations = vi.hoisted(() => new Map<string, {
 
 const mockFormatForDisplay = vi.hoisted(() => vi.fn((hotkey: string) => `display:${hotkey}`))
 const mockFormatTimeFromNow = vi.hoisted(() => vi.fn(() => 'just now'))
+const mockFormatTime = vi.hoisted(() => vi.fn((timestamp: number) => `formatted:${timestamp}`))
 const workflowReferences = vi.hoisted(() => ({
   data: [] as AgentReferencingWorkflowResponse[],
 }))
@@ -37,6 +38,12 @@ vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
 vi.mock('@/hooks/use-format-time-from-now', () => ({
   useFormatTimeFromNow: () => ({
     formatTimeFromNow: mockFormatTimeFromNow,
+  }),
+}))
+
+vi.mock('@/hooks/use-timestamp', () => ({
+  default: () => ({
+    formatTime: mockFormatTime,
   }),
 }))
 
@@ -150,6 +157,7 @@ function renderPublishBar({
   isPublishing,
   onPublish = vi.fn<PublishHandler>(),
   prompt = '',
+  selectedVersionSnapshot,
   setupStore,
   usedByAppReferences = [],
 }: {
@@ -159,6 +167,7 @@ function renderPublishBar({
   isPublishing?: boolean
   onPublish?: PublishMock
   prompt?: string
+  selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
   setupStore?: (store: ReturnType<typeof createStore>) => void
   usedByAppReferences?: AgentReferencingWorkflowResponse[]
 } = {}) {
@@ -183,7 +192,9 @@ function renderPublishBar({
           draftSavedAt={draftSavedAt}
           agentName="Iris"
           isPublishing={isPublishing}
+          selectedVersionSnapshot={selectedVersionSnapshot}
           onPublish={onPublish}
+          onExitVersions={vi.fn()}
           onOpenVersions={vi.fn()}
         />
       </JotaiProvider>
@@ -220,6 +231,25 @@ describe('AgentConfigurePublishBar', () => {
     expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
       expect.objectContaining({ enabled: true, ignoreInputs: false }),
     )
+  })
+
+  it('should render selected version in view-only restore mode', () => {
+    const selectedVersionSnapshot = {
+      ...activeConfigSnapshot,
+      id: 'snapshot-2',
+      version: 2,
+      version_note: 'Stable version',
+      created_by: 'Alice',
+    }
+
+    renderPublishBar({
+      selectedVersionSnapshot,
+    })
+
+    expect(screen.getByText('Stable version')).toBeInTheDocument()
+    expect(screen.getByText('agentV2.agentDetail.versionHistory.viewOnly')).toBeInTheDocument()
+    expect(screen.getByText('formatted:1710000000 · Alice')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.versionHistory.restore' })).toBeDisabled()
   })
 
   it('should render saved time from the latest draft save timestamp', () => {

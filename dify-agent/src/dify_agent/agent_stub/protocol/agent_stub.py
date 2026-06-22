@@ -19,7 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 
 AGENT_STUB_PROTOCOL_VERSION: Final[int] = 1
-AGENT_STUB_URL_ENV_VAR: Final[str] = "DIFY_AGENT_STUB_URL"
+AGENT_STUB_API_BASE_URL_ENV_VAR: Final[str] = "DIFY_AGENT_STUB_API_BASE_URL"
 AGENT_STUB_AUTH_JWE_ENV_VAR: Final[str] = "DIFY_AGENT_STUB_AUTH_JWE"
 AGENT_STUB_DRIVE_BASE_ENV_VAR: Final[str] = "DIFY_AGENT_STUB_DRIVE_BASE"
 DEFAULT_AGENT_STUB_DRIVE_BASE: Final[str] = "/mnt/drive"
@@ -49,11 +49,11 @@ class AgentStubEndpoint:
 def parse_agent_stub_endpoint(url: str) -> AgentStubEndpoint:
     """Parse one Agent Stub endpoint URL for HTTP or gRPC transport selection.
 
-    HTTP(S) endpoints are normalized by trimming whitespace and removing a final
-    trailing slash from the path while preserving the configured base path.
-    gRPC endpoints must be plain ``grpc://host:port`` targets with no path,
-    query string, or fragment because transport routing happens on the gRPC
-    service name instead of an HTTP URL path.
+    HTTP(S) endpoints accept either the service root or the explicit
+    ``/agent-stub`` API root and normalize to the latter. gRPC endpoints must be
+    plain ``grpc://host:port`` targets with no path, query string, or fragment
+    because transport routing happens on the gRPC service name instead of an
+    HTTP URL path.
     """
     stripped = url.strip()
     if not stripped:
@@ -87,6 +87,10 @@ def parse_agent_stub_endpoint(url: str) -> AgentStubEndpoint:
         )
 
     normalized_path = parsed.path.rstrip("/")
+    if normalized_path in {"", "/"}:
+        normalized_path = "/agent-stub"
+    elif normalized_path != "/agent-stub":
+        raise ValueError("HTTP Agent Stub API base URL path must be empty or /agent-stub")
     normalized_url = urlunsplit((scheme, parsed.netloc, normalized_path, "", ""))
     return AgentStubEndpoint(
         url=normalized_url,
@@ -97,8 +101,8 @@ def parse_agent_stub_endpoint(url: str) -> AgentStubEndpoint:
     )
 
 
-def normalize_agent_stub_url(url: str) -> str:
-    """Return the normalized Agent Stub URL used across settings and CLI env."""
+def normalize_agent_stub_api_base_url(url: str) -> str:
+    """Return the normalized Agent Stub API base URL used across settings and CLI env."""
     return parse_agent_stub_endpoint(url).url
 
 
@@ -301,7 +305,7 @@ __all__ = [
     "AGENT_STUB_AUTH_JWE_ENV_VAR",
     "AGENT_STUB_DRIVE_BASE_ENV_VAR",
     "AGENT_STUB_PROTOCOL_VERSION",
-    "AGENT_STUB_URL_ENV_VAR",
+    "AGENT_STUB_API_BASE_URL_ENV_VAR",
     "DEFAULT_AGENT_STUB_DRIVE_BASE",
     "AgentStubConnectRequest",
     "AgentStubConnectResponse",
@@ -324,6 +328,6 @@ __all__ = [
     "agent_stub_file_download_request_url",
     "agent_stub_file_upload_request_url",
     "is_canonical_dify_file_reference",
-    "normalize_agent_stub_url",
+    "normalize_agent_stub_api_base_url",
     "parse_agent_stub_endpoint",
 ]

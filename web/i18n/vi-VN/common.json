@@ -516,6 +516,7 @@
   "modelProvider.ttsModel.key": "Mô hình Văn bản thành Tiếng nói",
   "modelProvider.ttsModel.tip": "Thiết lập mô hình mặc định cho đầu vào văn bản thành tiếng nói trong cuộc trò chuyện.",
   "modelProvider.upgradeForLoadBalancing": "Nâng cấp gói của bạn để bật Cân bằng tải.",
+  "navigation.skipToMain": "Chuyển đến nội dung chính",
   "noData": "Không có dữ liệu",
   "operation.add": "Thêm",
   "operation.added": "Đã thêm",

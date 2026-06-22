@@ -55,11 +55,11 @@ def create_default_layer_providers(
     *,
     plugin_daemon_url: str = "http://localhost:5002",
     plugin_daemon_api_key: str = "",
-    dify_api_inner_url: str = "http://localhost:5001",
-    dify_api_inner_api_key: str = "",
+    inner_api_url: str = "http://localhost:5001",
+    inner_api_key: str = "",
     shellctl_entrypoint: str | None = None,
     shellctl_auth_token: str | None = None,
-    agent_stub_url: str | None = None,
+    agent_stub_api_base_url: str | None = None,
     agent_stub_token_codec: AgentStubTokenCodec | None = None,
 ) -> tuple[DifyAgentLayerProvider, ...]:
     """Return the server provider set of safe config-constructible layers.
@@ -94,8 +94,8 @@ def create_default_layer_providers(
             layer_type=DifyDriveLayer,
             create=lambda config: DifyDriveLayer.from_config_with_settings(
                 DifyDriveLayerConfig.model_validate(config),
-                dify_api_inner_url=dify_api_inner_url,
-                dify_api_inner_api_key=dify_api_inner_api_key,
+                inner_api_url=inner_api_url,
+                inner_api_key=inner_api_key,
             ),
         ),
         LayerProvider.from_factory(
@@ -112,7 +112,7 @@ def create_default_layer_providers(
                 DifyShellLayerConfig.model_validate(config),
                 shellctl_entrypoint=shellctl_entrypoint,
                 shellctl_client_factory=create_shellctl_client_factory(token=shellctl_token),
-                agent_stub_url=agent_stub_url,
+                agent_stub_api_base_url=agent_stub_api_base_url,
                 agent_stub_token_factory=agent_stub_token_factory,
             ),
         ),
@@ -122,8 +122,8 @@ def create_default_layer_providers(
             layer_type=DifyKnowledgeBaseLayer,
             create=lambda config: DifyKnowledgeBaseLayer.from_config_with_settings(
                 DifyKnowledgeBaseLayerConfig.model_validate(config),
-                dify_api_inner_url=dify_api_inner_url,
-                dify_api_inner_api_key=dify_api_inner_api_key,
+                inner_api_url=inner_api_url,
+                inner_api_key=inner_api_key,
             ),
         ),
     )

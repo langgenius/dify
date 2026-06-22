@@ -313,7 +313,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
     config: DifyShellLayerConfig
     shellctl_entrypoint: str
     shellctl_client_factory: ShellctlClientFactory
-    agent_stub_url: str | None = None
+    agent_stub_api_base_url: str | None = None
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
     _shellctl_client: ShellctlClientProtocol | None = None
 
@@ -331,7 +331,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         *,
         shellctl_entrypoint: str | None,
         shellctl_client_factory: ShellctlClientFactory,
-        agent_stub_url: str | None = None,
+        agent_stub_api_base_url: str | None = None,
         agent_stub_token_factory: ShellAgentStubTokenFactory | None = None,
     ) -> Self:
         """Create the layer from public config plus server-only shell settings."""
@@ -344,7 +344,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             config=config,
             shellctl_entrypoint=normalized_entrypoint,
             shellctl_client_factory=shellctl_client_factory,
-            agent_stub_url=agent_stub_url,
+            agent_stub_api_base_url=agent_stub_api_base_url,
             agent_stub_token_factory=agent_stub_token_factory,
         )
         layer.bind_deps({})
@@ -768,7 +768,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         execution_context = execution_context_layer.config if execution_context_layer is not None else None
         drive_layer = self.deps.drive
         return build_shell_agent_stub_env(
-            agent_stub_url=self.agent_stub_url,
+            agent_stub_api_base_url=self.agent_stub_api_base_url,
             agent_stub_drive_base=drive_layer.local_drive_base if drive_layer is not None else None,
             execution_context=execution_context,
             token_factory=self.agent_stub_token_factory,

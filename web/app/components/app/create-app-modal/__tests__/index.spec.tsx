@@ -2,7 +2,7 @@ import type { App } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'

@@ -34,10 +34,12 @@ type AgentOrchestratePanelProps = {
   isPublishing?: boolean
   className?: string
   readOnly?: boolean
+  selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
   showHeader?: boolean
   showPublishBar?: boolean
   onSelectModel: (model: DefaultModel) => void
   onPublish: (payload: AgentConfigurePublishPayload) => void | Promise<void>
+  onExitVersions?: () => void
   onOpenVersions: () => void
 }
 
@@ -55,10 +57,12 @@ export function AgentOrchestratePanel({
   isPublishing,
   className,
   readOnly = false,
+  selectedVersionSnapshot,
   showHeader = true,
   showPublishBar = true,
   onSelectModel,
   onPublish,
+  onExitVersions,
   onOpenVersions,
 }: AgentOrchestratePanelProps) {
   const { t } = useTranslation('agentV2')
@@ -121,7 +125,9 @@ export function AgentOrchestratePanel({
           currentModel={currentModel}
           draftSavedAt={draftSavedAt}
           isPublishing={isPublishing}
+          selectedVersionSnapshot={selectedVersionSnapshot}
           onPublish={onPublish}
+          onExitVersions={onExitVersions}
           onOpenVersions={onOpenVersions}
         />
       )}

@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useConfigPublishPayload, useHasAgentComposerUnpublishedChanges } from '@/features/agent-v2/agent-composer/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import useTimestamp from '@/hooks/use-timestamp'
 import { AgentPublishImpactPopover } from './publish-impact-popover'
 
 const PUBLISH_AGENT_HOTKEY = 'Mod+Shift+P' satisfies RegisterableHotkey
@@ -35,7 +36,9 @@ type AgentConfigurePublishBarProps = {
   }
   draftSavedAt?: number
   isPublishing?: boolean
+  selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
   onPublish?: (payload: AgentConfigurePublishPayload) => void | Promise<void>
+  onExitVersions?: () => void
   onOpenVersions: () => void
 }
 
@@ -81,7 +84,9 @@ export function AgentConfigurePublishBar({
   currentModel,
   draftSavedAt,
   isPublishing = false,
+  selectedVersionSnapshot,
   onPublish,
+  onExitVersions,
   onOpenVersions,
 }: AgentConfigurePublishBarProps) {
   const { t } = useTranslation('agentV2')
@@ -129,6 +134,15 @@ export function AgentConfigurePublishBar({
         clearTimeout(hidePublishBarTimerRef.current)
     }
   }, [])
+
+  if (selectedVersionSnapshot) {
+    return (
+      <AgentVersionRestoreBar
+        version={selectedVersionSnapshot}
+        onExitVersions={onExitVersions}
+      />
+    )
+  }
 
   const publishedMeta = activeConfigSnapshot?.created_at
     ? t('agentDetail.configure.publishBar.publishedAt', {
@@ -235,6 +249,62 @@ export function AgentConfigurePublishBar({
             </Button>
           )}
         />
+      </div>
+    </div>
+  )
+}
+
+function AgentVersionRestoreBar({
+  version,
+  onExitVersions,
+}: {
+  version: AgentConfigSnapshotSummaryResponse
+  onExitVersions?: () => void
+}) {
+  const { t } = useTranslation('agentV2')
+  const { formatTime } = useTimestamp()
+  const versionLabel = version.version_note || t('agentDetail.versionHistory.versionName', { version: version.version })
+  const createdAt = version.created_at == null
+    ? null
+    : formatTime(version.created_at, t('roster.dateTimeFormat'))
+
+  return (
+    <div className="flex h-16 shrink-0 items-center justify-center px-4 pt-2 pb-3">
+      <div className="flex max-w-full min-w-0 items-center gap-2 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-2 pr-2.5 pl-2 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
+        <div className="flex min-w-0 flex-col justify-center gap-0.5 pr-4 pl-2">
+          <div className="flex min-w-0 items-center gap-1">
+            <p className="min-w-0 truncate system-sm-semibold text-text-primary">
+              {versionLabel}
+            </p>
+            <span className="shrink-0 rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
+              {t('agentDetail.versionHistory.viewOnly')}
+            </span>
+          </div>
+          {(createdAt || version.created_by) && (
+            <p className="min-w-0 truncate system-xs-regular text-text-tertiary">
+              {createdAt}
+              {createdAt && version.created_by && ' · '}
+              {version.created_by}
+            </p>
+          )}
+        </div>
+        <Button
+          type="button"
+          variant="primary"
+          disabled
+          className="h-8 rounded-lg px-3"
+        >
+          {t('agentDetail.versionHistory.restore')}
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          className="h-8 gap-1 rounded-lg px-3 text-text-accent"
+          onClick={onExitVersions}
+        >
+          <span aria-hidden className="i-ri-arrow-go-back-line size-4 shrink-0" />
+          <span className="shrink-0">{t('agentDetail.versionHistory.exitVersions')}</span>
+        </Button>
       </div>
     </div>
   )

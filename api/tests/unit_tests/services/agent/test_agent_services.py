@@ -1405,7 +1405,7 @@ class TestAgentAppBackingAgent:
         with pytest.raises(roster_service.AgentNotFoundError):
             service.get_agent_app_model(tenant_id="tenant-1", agent_id="agent-x")
 
-    def test_duplicate_agent_app_copies_app_config_and_active_soul(self, monkeypatch):
+    def test_duplicate_agent_app_copies_app_config_and_active_soul(self, monkeypatch: pytest.MonkeyPatch):
         source_config = SimpleNamespace(
             opening_statement="hello",
             suggested_questions='["q1"]',
@@ -1544,7 +1544,7 @@ class TestAgentAppBackingAgent:
         assert target_agent.updated_by == "account-1"
         assert session.commits == 1
 
-    def test_duplicate_agent_app_inherits_webapp_access_mode(self, monkeypatch):
+    def test_duplicate_agent_app_inherits_webapp_access_mode(self, monkeypatch: pytest.MonkeyPatch):
         source_app = SimpleNamespace(
             id="source-app",
             tenant_id="tenant-1",
@@ -1603,7 +1603,7 @@ class TestAgentAppBackingAgent:
         assert duplicated is target_app
         assert access_mode_updates == [("target-app", "private")]
 
-    def test_duplicate_agent_app_falls_back_to_public_access_mode(self, monkeypatch):
+    def test_duplicate_agent_app_falls_back_to_public_access_mode(self, monkeypatch: pytest.MonkeyPatch):
         source_app = SimpleNamespace(
             id="source-app",
             tenant_id="tenant-1",

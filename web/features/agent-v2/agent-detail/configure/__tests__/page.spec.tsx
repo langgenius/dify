@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { AgentConfigurePage } from '../page'
 
@@ -135,7 +136,13 @@ describe('AgentConfigurePage', () => {
 
   describe('Loading state', () => {
     it('should show loading instead of the configure panels while composer data is pending', () => {
-      render(<AgentConfigurePage agentId="agent-1" />)
+      const queryClient = new QueryClient()
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
 
       expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
       expect(screen.queryByRole('region', { name: 'orchestrate-panel' })).not.toBeInTheDocument()

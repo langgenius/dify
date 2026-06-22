@@ -6,17 +6,16 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiRobot2Line } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
-import { useSetLocalStorage } from 'foxact/use-local-storage'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppTypeSelector from '@/app/components/app/type-selector'
+import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { DSLImportMode } from '@/models/app'
 import { useRouter } from '@/next/navigation'
@@ -52,7 +51,7 @@ const Apps = ({
   const invalidateAppList = useInvalidateAppList()
   const allCategoriesEn = AppCategories.RECOMMENDED
 
-  const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
+  const setNeedRefresh = useSetNeedRefreshAppList()
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
