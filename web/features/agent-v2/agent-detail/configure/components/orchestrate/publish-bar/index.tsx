@@ -27,7 +27,6 @@ export type AgentConfigurePublishPayload = {
 type AgentConfigurePublishState = 'draft' | 'publishing' | 'published' | 'unpublished'
 
 type PublishBarMode = { status: 'compact' }
-  | { status: 'resolvingReferences' }
   | { status: 'confirmingImpact', references: AgentReferencingWorkflowResponse[] }
 
 type AgentConfigurePublishBarProps = {
@@ -117,7 +116,7 @@ export function AgentConfigurePublishBar({
     isDirty: hasUnpublishedChanges,
     isPublishing,
   })
-  const canPublish = !isPublishing && (publishableState === 'draft' || publishableState === 'unpublished')
+  const publishIsAvailable = !isPublishing && (publishableState === 'draft' || publishableState === 'unpublished')
   const workflowReferencesQueryOptions = consoleQuery.agent.byAgentId.referencingWorkflows.get.queryOptions({
     input: {
       params: {
@@ -127,9 +126,9 @@ export function AgentConfigurePublishBar({
   })
   const workflowReferencesQuery = useQuery({
     ...workflowReferencesQueryOptions,
-    enabled: canPublish && !selectedVersionSnapshot,
+    enabled: publishIsAvailable && !selectedVersionSnapshot,
   })
-  const isResolvingReferences = publishBarMode.status === 'resolvingReferences'
+  const canPublish = publishIsAvailable
 
   const handlePublish = async () => {
     if (!canPublish)
@@ -140,7 +139,7 @@ export function AgentConfigurePublishBar({
   }
 
   const handlePublishRequest = async () => {
-    if (!canPublish || isResolvingReferences)
+    if (!canPublish)
       return
 
     if (publishBarMode.status === 'confirmingImpact') {
@@ -148,21 +147,15 @@ export function AgentConfigurePublishBar({
       return
     }
 
-    setPublishBarMode({ status: 'resolvingReferences' })
-    try {
-      const cachedReferences = queryClient.getQueryData<AgentReferencingWorkflowsResponse>(workflowReferencesQueryOptions.queryKey)
-      const references = (cachedReferences ?? workflowReferencesQuery.data ?? await workflowReferencesQuery.refetch().then(result => result.data))?.data ?? []
+    const cachedReferences = queryClient.getQueryData<AgentReferencingWorkflowsResponse>(workflowReferencesQueryOptions.queryKey)
+    const references = (cachedReferences ?? workflowReferencesQuery.data ?? await queryClient.ensureQueryData(workflowReferencesQueryOptions))?.data ?? []
 
-      if (references.length > 0) {
-        setPublishBarMode({ status: 'confirmingImpact', references })
-        return
-      }
+    if (references.length > 0) {
+      setPublishBarMode({ status: 'confirmingImpact', references })
+      return
+    }
 
-      await handlePublish()
-    }
-    finally {
-      setPublishBarMode(currentMode => currentMode.status === 'resolvingReferences' ? { status: 'compact' } : currentMode)
-    }
+    await handlePublish()
   }
 
   useHotkey(PUBLISH_AGENT_HOTKEY, (event) => {
