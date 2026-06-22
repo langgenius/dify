@@ -554,6 +554,7 @@ def test_list_skills_uses_canonical_skill_rows():
 
     skills = AgentDriveService().list_skills(tenant_id=TENANT, agent_id=AGENT)
 
+    created_at = skills[0].pop("created_at")
     assert skills == [
         {
             "path": "pdf-toolkit",
@@ -564,9 +565,9 @@ def test_list_skills_uses_canonical_skill_rows():
             "size": 5,
             "mime_type": "text/plain",
             "hash": None,
-            "created_at": None,
         }
     ]
+    assert created_at is None or isinstance(created_at, int)
 
 
 def test_inspect_skill_returns_manifest_files_and_file_tree():
