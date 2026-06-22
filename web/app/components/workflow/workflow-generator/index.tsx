@@ -15,6 +15,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -25,6 +26,7 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { generateWorkflow } from '@/service/debug'
 import { fetchWorkflowDraft } from '@/service/workflow'
@@ -97,6 +99,8 @@ const RecoveryDialog = ({ open, onOpenChange, title, description, cancelLabel, c
 const WorkflowGeneratorModal: React.FC = () => {
   const { t } = useTranslation('workflow')
   const router = useRouter()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isRbacEnabled = systemFeatures.rbac_enabled
 
   const isOpen = useWorkflowGeneratorStore(s => s.isOpen)
   const mode = useWorkflowGeneratorStore(s => s.mode)
@@ -347,7 +351,7 @@ const WorkflowGeneratorModal: React.FC = () => {
       })
       toast.success(t('workflowGenerator.applied'))
       closeGenerator()
-      router.push(getRedirectionPath({ id: appId, mode: appMode, permission_keys: permissionKeys }))
+      router.push(getRedirectionPath({ id: appId, mode: appMode, permission_keys: permissionKeys }, { isRbacEnabled }))
     }
     catch (e: unknown) {
       if (e instanceof WorkflowApplyOrphanError) {
@@ -364,7 +368,7 @@ const WorkflowGeneratorModal: React.FC = () => {
     finally {
       setApplyingFalse()
     }
-  }, [current, instruction, mode, router, closeGenerator, t, isApplying, setApplyingTrue, setApplyingFalse])
+  }, [current, instruction, mode, router, closeGenerator, t, isApplying, isRbacEnabled, setApplyingTrue, setApplyingFalse])
 
   const handleApplyToCurrentConfirmed = useCallback(async () => {
     if (!current?.graph || !currentAppId || isApplying)

@@ -461,9 +461,7 @@ class AgentSkillByAgentApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/agent/skills/<string:slug>")
 class AgentSkillApi(Resource):
     @console_ns.doc("delete_agent_skill")
-    @console_ns.doc(
-        description="Delete a standardized skill by removing its known drive keys via commit-null"
-    )
+    @console_ns.doc(description="Delete a standardized skill by removing its known drive keys via commit-null")
     @console_ns.doc(
         params={
             "app_id": "Application ID",

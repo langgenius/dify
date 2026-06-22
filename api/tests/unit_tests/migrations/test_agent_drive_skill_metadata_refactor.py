@@ -8,10 +8,9 @@ import sqlalchemy as sa
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 
-
-_MIGRATION_PATH = Path(
-    "/home/beautyyu/Development/worktrees/dify-2515-refactor-skills-preview/"
-    "api/migrations/versions/2026_06_18_2300-b2515f9d4c2a_agent_drive_skill_metadata_refactor.py"
+_MIGRATION_PATH = (
+    Path(__file__).resolve().parents[3]
+    / "migrations/versions/2026_06_18_2300-b2515f9d4c2a_agent_drive_skill_metadata_refactor.py"
 )
 
 

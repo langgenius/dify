@@ -165,6 +165,33 @@ def test_list_resolves_workflow_node_binding_agent():
     assert composer.resolve_workflow_node_agent_id.call_args.kwargs["node_id"] == "agent-node-1"
 
 
+def test_skill_list_by_agent_calls_service():
+    raw = _raw(AgentDriveSkillListByAgentApi.get)
+    with app.test_request_context("/"):
+        with (
+            patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP) as resolve_app,
+            patch(f"{_MOD}.AgentDriveService") as drive,
+        ):
+            drive.return_value.list_skills.return_value = [
+                {
+                    "path": "pdf-toolkit",
+                    "skill_md_key": "pdf-toolkit/SKILL.md",
+                    "archive_key": "pdf-toolkit/.DIFY-SKILL-FULL.zip",
+                    "name": "PDF Toolkit",
+                    "description": "Work with PDFs.",
+                    "size": 5,
+                    "mime_type": "text/markdown",
+                    "hash": None,
+                    "created_at": 1718000000,
+                }
+            ]
+            body = raw(AgentDriveSkillListByAgentApi(), "tenant-1", "agent-1")
+
+    assert body["items"][0]["path"] == "pdf-toolkit"
+    resolve_app.assert_called_once_with(tenant_id="tenant-1", agent_id="agent-1")
+    assert drive.return_value.list_skills.call_args.kwargs["agent_id"] == "agent-1"
+
+
 def test_skill_list_resolves_workflow_node_binding_agent():
     raw = _raw(AgentDriveSkillListApi.get)
     with app.test_request_context("/?node_id=agent-node-1"):
@@ -174,37 +201,87 @@ def test_skill_list_resolves_workflow_node_binding_agent():
         ):
             composer.resolve_workflow_node_agent_id.return_value = "wf-agent-9"
             drive.return_value.list_skills.return_value = []
-            raw(AgentDriveSkillListApi(), _APP)
+            body = raw(AgentDriveSkillListApi(), _APP)
 
+    assert body == {"items": []}
     assert drive.return_value.list_skills.call_args.kwargs["agent_id"] == "wf-agent-9"
-    assert composer.resolve_workflow_node_agent_id.call_args.kwargs["node_id"] == "agent-node-1"
+
+
+def test_skill_inspect_by_agent_returns_strict_json_response():
+    raw = _raw(AgentDriveSkillInspectByAgentApi.get)
+    payload = {
+        "path": "pdf-toolkit",
+        "skill_md_key": "pdf-toolkit/SKILL.md",
+        "archive_key": "pdf-toolkit/.DIFY-SKILL-FULL.zip",
+        "name": "PDF Toolkit",
+        "description": "Work with PDFs.",
+        "size": 5,
+        "mime_type": "text/markdown",
+        "hash": None,
+        "created_at": 1718000000,
+        "source": "skill_md",
+        "files": [
+            {
+                "path": "SKILL.md",
+                "name": "SKILL.md",
+                "type": "file",
+                "drive_key": "pdf-toolkit/SKILL.md",
+                "available_in_drive": True,
+            }
+        ],
+        "file_tree": [],
+        "skill_md": {
+            "key": "pdf-toolkit/SKILL.md",
+            "size": 5,
+            "truncated": False,
+            "binary": False,
+            "text": "# PDF Toolkit\nUse it.\n",
+        },
+        "warnings": [],
+    }
+    with app.test_request_context("/"):
+        with (
+            patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP),
+            patch(f"{_MOD}.AgentDriveService") as drive,
+        ):
+            drive.return_value.inspect_skill.return_value = payload
+            response = raw(AgentDriveSkillInspectByAgentApi(), "tenant-1", "agent-1", "pdf-toolkit")
+
+    assert response.status_code == 200
+    assert response.get_json()["skill_md"]["text"] == "# PDF Toolkit\nUse it.\n"
+    assert b"# PDF Toolkit\\nUse it.\\n" in response.get_data()
 
 
 def test_skill_inspect_resolves_workflow_node_binding_agent():
     raw = _raw(AgentDriveSkillInspectApi.get)
+    payload = {
+        "path": "pdf-toolkit",
+        "skill_md_key": "pdf-toolkit/SKILL.md",
+        "archive_key": None,
+        "name": "PDF Toolkit",
+        "description": "",
+        "size": 5,
+        "mime_type": "text/markdown",
+        "hash": None,
+        "created_at": None,
+        "source": "skill_md",
+        "files": [],
+        "file_tree": [],
+        "skill_md": {"key": "pdf-toolkit/SKILL.md", "size": 5, "truncated": False, "binary": False, "text": "# hi"},
+        "warnings": [],
+    }
     with app.test_request_context("/?node_id=agent-node-1"):
         with (
             patch(f"{_MOD}.AgentComposerService") as composer,
             patch(f"{_MOD}.AgentDriveService") as drive,
         ):
             composer.resolve_workflow_node_agent_id.return_value = "wf-agent-9"
-            drive.return_value.inspect_skill.return_value = {
-                "path": "tender-analyzer",
-                "skill_md_key": "tender-analyzer/SKILL.md",
-                "archive_key": None,
-                "name": "Tender Analyzer",
-                "description": "Parses RFPs.",
-                "source": "skill_md",
-                "files": [],
-                "file_tree": [],
-                "skill_md": {"key": "tender-analyzer/SKILL.md", "truncated": False, "binary": False, "text": "# hi"},
-                "warnings": [],
-            }
-            response = raw(AgentDriveSkillInspectApi(), _APP, "tender-analyzer")
+            drive.return_value.inspect_skill.return_value = payload
+            response = raw(AgentDriveSkillInspectApi(), _APP, "pdf-toolkit")
 
-    assert response.get_json()["source"] == "skill_md"
+    assert response.get_json()["path"] == "pdf-toolkit"
     assert drive.return_value.inspect_skill.call_args.kwargs["agent_id"] == "wf-agent-9"
-    assert drive.return_value.inspect_skill.call_args.kwargs["skill_path"] == "tender-analyzer"
+    assert drive.return_value.inspect_skill.call_args.kwargs["skill_path"] == "pdf-toolkit"
     assert composer.resolve_workflow_node_agent_id.call_args.kwargs["node_id"] == "agent-node-1"
 
 

@@ -75,7 +75,7 @@ export function CreateAgentDialog() {
 
   return (
     <>
-      <Dialog open={open} onOpenChange={handleOpenChange}>
+      <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
         <DialogTrigger
           render={(
             <Button
@@ -88,7 +88,7 @@ export function CreateAgentDialog() {
           <span className="px-0.5 system-sm-medium">{t('roster.createAgent')}</span>
         </DialogTrigger>
         <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[520px] flex-col overflow-hidden! p-0!">
-          <DialogCloseButton className="top-5 right-5 size-8 rounded-lg" />
+          <DialogCloseButton />
           <div className="shrink-0 pt-6 pr-14 pb-3 pl-6">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {t('roster.createDialog.title')}

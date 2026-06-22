@@ -53,7 +53,9 @@ def _build_layer(tmp_path: Path) -> DifyDriveLayer:
 
 
 @pytest.mark.anyio
-async def test_on_context_create_loads_mentioned_targets_into_prompt(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+async def test_on_context_create_loads_mentioned_targets_into_prompt(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     layer = _build_layer(tmp_path)
 
     async def _fetch_manifest_items(*, tenant_id: str, targets: list[tuple[str, bool]]) -> list[_DriveManifestItem]:
@@ -91,7 +93,9 @@ async def test_on_context_create_loads_mentioned_targets_into_prompt(monkeypatch
 
 
 @pytest.mark.anyio
-async def test_on_context_resume_loads_mentioned_targets_into_prompt(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+async def test_on_context_resume_loads_mentioned_targets_into_prompt(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     layer = _build_layer(tmp_path)
 
     async def _fetch_manifest_items(*, tenant_id: str, targets: list[tuple[str, bool]]) -> list[_DriveManifestItem]:

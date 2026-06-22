@@ -248,6 +248,52 @@ class AgentDriveService:
             self._delete_storage(storage_key)
         return committed
 
+    def delete(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        prefix: str | None = None,
+        key: str | None = None,
+    ) -> list[str]:
+        """Delete drive entries by exact ``key`` or by ``prefix`` (ENG-625 D5).
+
+        Drive-owned values get their backing record + storage object cleaned via
+        the same ``_cleanup_value`` path commit-overwrite uses; shared values only
+        lose the KV row. Idempotent: deleting nothing returns ``[]``.
+        """
+        if (prefix is None) == (key is None):
+            raise AgentDriveError("invalid_delete_scope", "delete requires exactly one of prefix or key")
+        removed_keys: list[str] = []
+        pending_storage_deletes: list[str] = []
+        with session_factory.create_session() as session:
+            self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
+            stmt = select(AgentDriveFile).where(
+                AgentDriveFile.tenant_id == tenant_id,
+                AgentDriveFile.agent_id == agent_id,
+            )
+            if key is not None:
+                stmt = stmt.where(AgentDriveFile.key == normalize_drive_key(key))
+            else:
+                stmt = stmt.where(AgentDriveFile.key.startswith(normalize_drive_key(prefix or "")))
+            rows = list(session.scalars(stmt))
+            for row in rows:
+                if row.value_owned_by_drive:
+                    self._cleanup_value(
+                        session,
+                        tenant_id=tenant_id,
+                        file_kind=row.file_kind,
+                        file_id=row.file_id,
+                        exclude_row_id=row.id,
+                        pending_storage_deletes=pending_storage_deletes,
+                    )
+                removed_keys.append(row.key)
+                session.delete(row)
+            session.commit()
+        for storage_key in pending_storage_deletes:
+            self._delete_storage(storage_key)
+        return removed_keys
+
     def list_skills(self, *, tenant_id: str, agent_id: str) -> list[AgentDriveSkillInfo]:
         """Return the drive-backed skill catalog derived from canonical ``SKILL.md`` rows."""
 
@@ -395,8 +441,8 @@ class AgentDriveService:
             existing.is_skill = item.is_skill
             existing.skill_metadata = skill_metadata
             existing.size = size
-            existing.mime_type = mime_type
             existing.hash = file_hash
+            existing.mime_type = mime_type
             return self._row_dict(existing)
 
         row = AgentDriveFile(
@@ -563,11 +609,19 @@ class AgentDriveService:
         if manifest_files:
             paths = sorted({normalize_drive_key(path) for path in manifest_files})
         else:
-            paths = sorted({key.removeprefix(f"{skill_path}/") for key in drive_keys})
+            paths = sorted(
+                {
+                    key.removeprefix(f"{skill_path}/")
+                    for key in drive_keys
+                    if not key.endswith(f"/{_SKILL_ARCHIVE_NAME}")
+                }
+            )
             warnings.append("manifest_files_unavailable")
 
         files: list[AgentDriveSkillFileInfo] = []
         for path in paths:
+            if path == _SKILL_ARCHIVE_NAME:
+                continue
             drive_key = f"{skill_path}/{path}"
             files.append(
                 {

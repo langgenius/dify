@@ -1,6 +1,6 @@
 'use client'
 
-import type { FormEvent, FormEventHandler, MouseEvent } from 'react'
+import type { FormEvent, FormEventHandler, KeyboardEvent, MouseEvent } from 'react'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
@@ -56,7 +56,7 @@ import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection, getRedirectionPath } from '@/utils/app-redirection'
 import { downloadBlob } from '@/utils/download'
-import { getAppACLCapabilities, hasPermission } from '@/utils/permission'
+import { getAppACLCapabilities, hasOnlyAppPreviewPermission, hasPermission } from '@/utils/permission'
 import { formatTime } from '@/utils/time'
 import { basePath } from '@/utils/var'
 
@@ -297,6 +297,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const currentUserId = useAppContextSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
+  const isRbacEnabled = systemFeatures.rbac_enabled
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
 
@@ -316,8 +317,10 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
     currentUserId,
     resourceMaintainer,
     workspacePermissionKeys,
-  }), [currentUserId, resourceMaintainer, workspacePermissionKeys])
+    isRbacEnabled,
+  }), [currentUserId, isRbacEnabled, resourceMaintainer, workspacePermissionKeys])
   const appACLCapabilities = useMemo(() => getAppACLCapabilities(app.permission_keys, maintainerPermissionOptions), [app.permission_keys, maintainerPermissionOptions])
+  const isPreviewOnly = hasOnlyAppPreviewPermission(app.permission_keys)
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
 
   const onConfirmDelete = useCallback(async () => {
@@ -441,6 +444,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
         currentUserId,
         resourceMaintainer: getAppResourceMaintainer(newApp),
         workspacePermissionKeys,
+        isRbacEnabled,
       })
     }
     catch {
@@ -526,101 +530,103 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
 
   return (
     <>
-      <div
-        className={cn(
-          'absolute top-2 right-2 flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs transition-opacity',
-          isOperationsMenuOpen
-            ? 'pointer-events-auto opacity-100'
-            : 'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
-        )}
-      >
-        <Tooltip>
-          <TooltipTrigger
-            render={(
-              <button
-                type="button"
-                aria-label={starActionLabel}
-                disabled={isTogglingStar}
-                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-70"
-                onClick={handleToggleStar}
-              >
-                <StarIcon
-                  aria-hidden
-                  className={cn(
-                    app.is_starred ? 'text-text-warning-secondary' : 'text-text-tertiary',
-                    'size-[18px]',
-                  )}
-                />
-              </button>
-            )}
-          />
-          <TooltipContent>{starActionLabel}</TooltipContent>
-        </Tooltip>
-        {shouldShowOperationsMenu && (
-          <DropdownMenu modal={false} open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
-            <DropdownMenuTrigger
-              aria-label={t('operation.more', { ns: 'common' })}
-              className={cn(
-                'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-                isOperationsMenuOpen ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
+      {!isPreviewOnly && (
+        <div
+          className={cn(
+            'absolute top-2 right-2 flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs transition-opacity',
+            isOperationsMenuOpen
+              ? 'pointer-events-auto opacity-100'
+              : 'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
+          )}
+        >
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <button
+                  type="button"
+                  aria-label={starActionLabel}
+                  disabled={isTogglingStar}
+                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-70"
+                  onClick={handleToggleStar}
+                >
+                  <StarIcon
+                    aria-hidden
+                    className={cn(
+                      app.is_starred ? 'text-text-warning-secondary' : 'text-text-tertiary',
+                      'size-[18px]',
+                    )}
+                  />
+                </button>
               )}
-              onClick={(e) => {
-                e.stopPropagation()
-                e.preventDefault()
-              }}
-            >
-              <span className="sr-only">{t('operation.more', { ns: 'common' })}</span>
-              <span aria-hidden className="i-ri-more-fill h-[18px] w-[18px] text-text-tertiary" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              placement="bottom-end"
-              sideOffset={4}
-              popupClassName={operationsMenuWidthClassName}
-            >
-              {systemFeatures.webapp_auth.enabled
-                ? (
-                    <AppCardOperationsMenuContent
-                      app={app}
-                      shouldShowEditOption={shouldShowEditOption}
-                      shouldShowDuplicateOption={shouldShowDuplicateOption}
-                      shouldShowExportOption={shouldShowExportOption}
-                      shouldShowSwitchOption={shouldShowSwitchOption}
-                      shouldShowAccessControlOption={shouldShowAccessControlOption}
-                      shouldShowAccessConfigOption={shouldShowAccessConfigOption}
-                      shouldShowDeleteOption={shouldShowDeleteOption}
-                      onEdit={handleShowEditModal}
-                      onDuplicate={handleShowDuplicateModal}
-                      onExport={exportCheck}
-                      onSwitch={handleShowSwitchModal}
-                      onDelete={handleShowDeleteConfirm}
-                      onAccessControl={handleShowAccessControl}
-                      onAccessConfig={handleOpenAccessConfig}
-                    />
-                  )
-                : (
-                    <AppCardOperationsMenu
-                      app={app}
-                      shouldShowEditOption={shouldShowEditOption}
-                      shouldShowDuplicateOption={shouldShowDuplicateOption}
-                      shouldShowExportOption={shouldShowExportOption}
-                      shouldShowSwitchOption={shouldShowSwitchOption}
-                      shouldShowOpenInExploreOption={!app.has_draft_trigger}
-                      shouldShowAccessControlOption={shouldShowAccessControlOption}
-                      shouldShowAccessConfigOption={shouldShowAccessConfigOption}
-                      shouldShowDeleteOption={shouldShowDeleteOption}
-                      onEdit={handleShowEditModal}
-                      onDuplicate={handleShowDuplicateModal}
-                      onExport={exportCheck}
-                      onSwitch={handleShowSwitchModal}
-                      onDelete={handleShowDeleteConfirm}
-                      onAccessControl={handleShowAccessControl}
-                      onAccessConfig={handleOpenAccessConfig}
-                    />
-                  )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
+            />
+            <TooltipContent>{starActionLabel}</TooltipContent>
+          </Tooltip>
+          {shouldShowOperationsMenu && (
+            <DropdownMenu modal={false} open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
+              <DropdownMenuTrigger
+                aria-label={t('operation.more', { ns: 'common' })}
+                className={cn(
+                  'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+                  isOperationsMenuOpen ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
+                )}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                }}
+              >
+                <span className="sr-only">{t('operation.more', { ns: 'common' })}</span>
+                <span aria-hidden className="i-ri-more-fill h-[18px] w-[18px] text-text-tertiary" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                placement="bottom-end"
+                sideOffset={4}
+                popupClassName={operationsMenuWidthClassName}
+              >
+                {systemFeatures.webapp_auth.enabled
+                  ? (
+                      <AppCardOperationsMenuContent
+                        app={app}
+                        shouldShowEditOption={shouldShowEditOption}
+                        shouldShowDuplicateOption={shouldShowDuplicateOption}
+                        shouldShowExportOption={shouldShowExportOption}
+                        shouldShowSwitchOption={shouldShowSwitchOption}
+                        shouldShowAccessControlOption={shouldShowAccessControlOption}
+                        shouldShowAccessConfigOption={shouldShowAccessConfigOption}
+                        shouldShowDeleteOption={shouldShowDeleteOption}
+                        onEdit={handleShowEditModal}
+                        onDuplicate={handleShowDuplicateModal}
+                        onExport={exportCheck}
+                        onSwitch={handleShowSwitchModal}
+                        onDelete={handleShowDeleteConfirm}
+                        onAccessControl={handleShowAccessControl}
+                        onAccessConfig={handleOpenAccessConfig}
+                      />
+                    )
+                  : (
+                      <AppCardOperationsMenu
+                        app={app}
+                        shouldShowEditOption={shouldShowEditOption}
+                        shouldShowDuplicateOption={shouldShowDuplicateOption}
+                        shouldShowExportOption={shouldShowExportOption}
+                        shouldShowSwitchOption={shouldShowSwitchOption}
+                        shouldShowOpenInExploreOption={!app.has_draft_trigger}
+                        shouldShowAccessControlOption={shouldShowAccessControlOption}
+                        shouldShowAccessConfigOption={shouldShowAccessConfigOption}
+                        shouldShowDeleteOption={shouldShowDeleteOption}
+                        onEdit={handleShowEditModal}
+                        onDuplicate={handleShowDuplicateModal}
+                        onExport={exportCheck}
+                        onSwitch={handleShowSwitchModal}
+                        onDelete={handleShowDeleteConfirm}
+                        onAccessControl={handleShowAccessControl}
+                        onAccessConfig={handleOpenAccessConfig}
+                      />
+                    )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+      )}
       {showEditModal && (
         <EditAppModal
           isEditModal
@@ -724,6 +730,7 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const currentUserId = useAppContextSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
+  const isRbacEnabled = systemFeatures.rbac_enabled
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
 
@@ -743,8 +750,10 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
     currentUserId,
     resourceMaintainer,
     workspacePermissionKeys,
-  }), [currentUserId, resourceMaintainer, workspacePermissionKeys])
+    isRbacEnabled,
+  }), [currentUserId, isRbacEnabled, resourceMaintainer, workspacePermissionKeys])
   const appACLCapabilities = useMemo(() => getAppACLCapabilities(app.permission_keys, maintainerPermissionOptions), [app.permission_keys, maintainerPermissionOptions])
+  const isPreviewOnly = hasOnlyAppPreviewPermission(app.permission_keys)
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const canManageAppTags = hasPermission(workspacePermissionKeys, 'app.tag.manage')
 
@@ -871,6 +880,7 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
         currentUserId,
         resourceMaintainer: getAppResourceMaintainer(newApp),
         workspacePermissionKeys,
+        isRbacEnabled,
       })
     }
     catch {
@@ -951,7 +961,7 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
   const shouldShowAccessConfigOption = appACLCapabilities.canAccessConfig
   const shouldShowDeleteOption = appACLCapabilities.canDelete
   const shouldShowOperationsMenu = shouldShowEditOption || shouldShowDuplicateOption || shouldShowExportOption || shouldShowSwitchOption || shouldShowAccessControlOption || shouldShowAccessConfigOption || shouldShowDeleteOption
-  const shouldShowAppTags = appACLCapabilities.canEdit || canManageAppTags
+  const canBindOrUnbindTags = !isPreviewOnly && (canManageAppTags || appACLCapabilities.canEdit)
   const operationsMenuWidthClassName = shouldShowSwitchOption ? 'w-[256px]' : 'w-[216px]'
 
   const editTimeText = useMemo(() => {
@@ -995,174 +1005,212 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
   const appNameId = useId()
   const appDescriptionId = useId()
   const appHref = getRedirectionPath(app, maintainerPermissionOptions)
+  const appCardClassName = cn(
+    'inline-flex h-full w-full touch-manipulation flex-col overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs outline-hidden transition-shadow duration-200 ease-in-out',
+    isPreviewOnly
+      ? 'cursor-not-allowed opacity-60 focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+      : 'cursor-pointer hover:shadow-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+  )
   const starActionLabel = app.is_starred
     ? t('studio.unstarApp', { ns: 'app' })
     : t('studio.starApp', { ns: 'app' })
+  const showPreviewOnlyAccessWarning = useCallback(() => {
+    toast.warning(t('noAccessResourcePermission', { ns: 'app' }))
+  }, [t])
+  const handlePreviewOnlyCardKeyDown = useCallback((event: KeyboardEvent<HTMLElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ')
+      return
+
+    event.preventDefault()
+    showPreviewOnlyAccessWarning()
+  }, [showPreviewOnlyAccessWarning])
+  const appCardContent = (
+    <>
+      <div className="flex shrink-0 items-center gap-3 pt-4 pr-4 pb-2 pl-4">
+        <div className="relative shrink-0">
+          <AppIcon
+            size="large"
+            iconType={app.icon_type}
+            icon={app.icon}
+            background={app.icon_background}
+            imageUrl={app.icon_url}
+          />
+          <AppTypeIcon type={app.mode} wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm" className="size-3" />
+        </div>
+        <div className="flex w-0 grow flex-col gap-1 py-px">
+          <div className="flex items-center text-sm/5 font-semibold text-text-secondary">
+            <div id={appNameId} className="truncate">{app.name}</div>
+          </div>
+          <div className="truncate system-2xs-medium-uppercase text-text-tertiary">{appModeLabel}</div>
+        </div>
+        {onlinePresenceUsers.length > 0 && (
+          <div className="ml-3 flex shrink-0 items-start">
+            <UserAvatarList users={onlinePresenceUsers} size="xxs" maxVisible={3} className="justify-end" />
+          </div>
+        )}
+      </div>
+      <div className="shrink-0 px-4 py-1 system-xs-regular text-text-tertiary">
+        <div
+          id={appDescriptionId}
+          className="line-clamp-2 min-h-8"
+        >
+          {app.description}
+        </div>
+      </div>
+      <div className="flex h-[26px] shrink-0 items-start px-3" />
+      <div className="flex min-w-0 shrink-0 items-center pt-2 pr-4 pb-3 pl-4 system-xs-regular text-text-tertiary">
+        <div className="flex min-w-0 flex-1 items-center gap-1 whitespace-nowrap">
+          <div className="truncate">{app.author_name}</div>
+          <div className="shrink-0">·</div>
+          <div className="truncate">{editTimeText}</div>
+        </div>
+      </div>
+    </>
+  )
 
   return (
     <>
       <div
         className="group relative col-span-1 h-41.5"
       >
-        <Link
-          href={appHref}
-          aria-labelledby={appNameId}
-          aria-describedby={app.description ? appDescriptionId : undefined}
-          className="inline-flex h-full w-full cursor-pointer touch-manipulation flex-col overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs outline-hidden transition-shadow duration-200 ease-in-out hover:shadow-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        {isPreviewOnly
+          ? (
+              <article
+                role="button"
+                tabIndex={0}
+                aria-disabled="true"
+                aria-labelledby={appNameId}
+                aria-describedby={app.description ? appDescriptionId : undefined}
+                className={appCardClassName}
+                onClick={showPreviewOnlyAccessWarning}
+                onKeyDown={handlePreviewOnlyCardKeyDown}
+              >
+                {appCardContent}
+              </article>
+            )
+          : (
+              <Link
+                href={appHref}
+                aria-labelledby={appNameId}
+                aria-describedby={app.description ? appDescriptionId : undefined}
+                className={appCardClassName}
+              >
+                {appCardContent}
+              </Link>
+            )}
+        <div
+          className="absolute top-[104px] right-3 left-3 flex h-[26px] min-w-0 items-start"
+          onClick={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+          }}
         >
-          <div className="flex shrink-0 items-center gap-3 pt-4 pr-4 pb-2 pl-4">
-            <div className="relative shrink-0">
-              <AppIcon
-                size="large"
-                iconType={app.icon_type}
-                icon={app.icon}
-                background={app.icon_background}
-                imageUrl={app.icon_url}
+          <AppCardTags
+            appId={app.id}
+            tags={app.tags}
+            canBindOrUnbindTags={canBindOrUnbindTags}
+            onOpenTagManagement={onOpenTagManagement}
+            onTagsChange={onRefresh}
+          />
+        </div>
+        <AppAccessModeIcon accessMode={app.access_mode} />
+        {!isPreviewOnly && (
+          <div
+            className={cn(
+              'absolute top-2 right-2 flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs transition-opacity',
+              isOperationsMenuOpen
+                ? 'pointer-events-auto opacity-100'
+                : 'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
+            )}
+          >
+            <Tooltip>
+              <TooltipTrigger
+                render={(
+                  <button
+                    type="button"
+                    aria-label={starActionLabel}
+                    disabled={isTogglingStar}
+                    className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-70"
+                    onClick={handleToggleStar}
+                  >
+                    <StarIcon
+                      aria-hidden
+                      className={cn(
+                        app.is_starred ? 'text-text-warning-secondary' : 'text-text-tertiary',
+                        'size-[18px]',
+                      )}
+                    />
+                  </button>
+                )}
               />
-              <AppTypeIcon type={app.mode} wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm" className="size-3" />
-            </div>
-            <div className="flex w-0 grow flex-col gap-1 py-px">
-              <div className="flex items-center text-sm/5 font-semibold text-text-secondary">
-                <div id={appNameId} className="truncate">{app.name}</div>
-              </div>
-              <div className="truncate system-2xs-medium-uppercase text-text-tertiary">{appModeLabel}</div>
-            </div>
-            {onlinePresenceUsers.length > 0 && (
-              <div className="ml-3 flex shrink-0 items-start">
-                <UserAvatarList users={onlinePresenceUsers} size="xxs" maxVisible={3} className="justify-end" />
-              </div>
+              <TooltipContent>{starActionLabel}</TooltipContent>
+            </Tooltip>
+            {shouldShowOperationsMenu && (
+              <DropdownMenu modal={false} open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
+                <DropdownMenuTrigger
+                  aria-label={t('operation.more', { ns: 'common' })}
+                  className={cn(
+                    'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+                    isOperationsMenuOpen ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    e.preventDefault()
+                  }}
+                >
+                  <span className="sr-only">{t('operation.more', { ns: 'common' })}</span>
+                  <span aria-hidden className="i-ri-more-fill h-[18px] w-[18px] text-text-tertiary" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  placement="bottom-end"
+                  sideOffset={4}
+                  popupClassName={operationsMenuWidthClassName}
+                >
+                  {systemFeatures.webapp_auth.enabled
+                    ? (
+                        <AppCardOperationsMenuContent
+                          app={app}
+                          shouldShowEditOption={shouldShowEditOption}
+                          shouldShowDuplicateOption={shouldShowDuplicateOption}
+                          shouldShowExportOption={shouldShowExportOption}
+                          shouldShowSwitchOption={shouldShowSwitchOption}
+                          shouldShowAccessControlOption={shouldShowAccessControlOption}
+                          shouldShowAccessConfigOption={shouldShowAccessConfigOption}
+                          shouldShowDeleteOption={shouldShowDeleteOption}
+                          onEdit={handleShowEditModal}
+                          onDuplicate={handleShowDuplicateModal}
+                          onExport={exportCheck}
+                          onSwitch={handleShowSwitchModal}
+                          onDelete={handleShowDeleteConfirm}
+                          onAccessControl={handleShowAccessControl}
+                          onAccessConfig={handleOpenAccessConfig}
+                        />
+                      )
+                    : (
+                        <AppCardOperationsMenu
+                          app={app}
+                          shouldShowEditOption={shouldShowEditOption}
+                          shouldShowDuplicateOption={shouldShowDuplicateOption}
+                          shouldShowExportOption={shouldShowExportOption}
+                          shouldShowSwitchOption={shouldShowSwitchOption}
+                          shouldShowOpenInExploreOption={!app.has_draft_trigger}
+                          shouldShowAccessControlOption={shouldShowAccessControlOption}
+                          shouldShowAccessConfigOption={shouldShowAccessConfigOption}
+                          shouldShowDeleteOption={shouldShowDeleteOption}
+                          onEdit={handleShowEditModal}
+                          onDuplicate={handleShowDuplicateModal}
+                          onExport={exportCheck}
+                          onSwitch={handleShowSwitchModal}
+                          onDelete={handleShowDeleteConfirm}
+                          onAccessControl={handleShowAccessControl}
+                          onAccessConfig={handleOpenAccessConfig}
+                        />
+                      )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
-          <div className="shrink-0 px-4 py-1 system-xs-regular text-text-tertiary">
-            <div
-              id={appDescriptionId}
-              className="line-clamp-2 min-h-8"
-            >
-              {app.description}
-            </div>
-          </div>
-          <div className="flex h-[26px] shrink-0 items-start px-3" />
-          <div className="flex min-w-0 shrink-0 items-center pt-2 pr-4 pb-3 pl-4 system-xs-regular text-text-tertiary">
-            <div className="flex min-w-0 flex-1 items-center gap-1 whitespace-nowrap">
-              <div className="truncate">{app.author_name}</div>
-              <div className="shrink-0">·</div>
-              <div className="truncate">{editTimeText}</div>
-            </div>
-          </div>
-        </Link>
-        {shouldShowAppTags && (
-          <div
-            className="absolute top-[104px] right-3 left-3 flex h-[26px] min-w-0 items-start"
-            onClick={(e) => {
-              e.stopPropagation()
-              e.preventDefault()
-            }}
-          >
-            <AppCardTags
-              appId={app.id}
-              tags={app.tags}
-              canBindOrUnbindTags={appACLCapabilities.canEdit}
-              onOpenTagManagement={onOpenTagManagement}
-              onTagsChange={onRefresh}
-            />
-          </div>
         )}
-        <AppAccessModeIcon accessMode={app.access_mode} />
-        <div
-          className={cn(
-            'absolute top-2 right-2 flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs transition-opacity',
-            isOperationsMenuOpen
-              ? 'pointer-events-auto opacity-100'
-              : 'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
-          )}
-        >
-          <Tooltip>
-            <TooltipTrigger
-              render={(
-                <button
-                  type="button"
-                  aria-label={starActionLabel}
-                  disabled={isTogglingStar}
-                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-70"
-                  onClick={handleToggleStar}
-                >
-                  <StarIcon
-                    aria-hidden
-                    className={cn(
-                      app.is_starred ? 'text-text-warning-secondary' : 'text-text-tertiary',
-                      'size-[18px]',
-                    )}
-                  />
-                </button>
-              )}
-            />
-            <TooltipContent>{starActionLabel}</TooltipContent>
-          </Tooltip>
-          {shouldShowOperationsMenu && (
-            <DropdownMenu modal={false} open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
-              <DropdownMenuTrigger
-                aria-label={t('operation.more', { ns: 'common' })}
-                className={cn(
-                  'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-                  isOperationsMenuOpen ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
-                )}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  e.preventDefault()
-                }}
-              >
-                <span className="sr-only">{t('operation.more', { ns: 'common' })}</span>
-                <span aria-hidden className="i-ri-more-fill h-[18px] w-[18px] text-text-tertiary" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                placement="bottom-end"
-                sideOffset={4}
-                popupClassName={operationsMenuWidthClassName}
-              >
-                {systemFeatures.webapp_auth.enabled
-                  ? (
-                      <AppCardOperationsMenuContent
-                        app={app}
-                        shouldShowEditOption={shouldShowEditOption}
-                        shouldShowDuplicateOption={shouldShowDuplicateOption}
-                        shouldShowExportOption={shouldShowExportOption}
-                        shouldShowSwitchOption={shouldShowSwitchOption}
-                        shouldShowAccessControlOption={shouldShowAccessControlOption}
-                        shouldShowAccessConfigOption={shouldShowAccessConfigOption}
-                        shouldShowDeleteOption={shouldShowDeleteOption}
-                        onEdit={handleShowEditModal}
-                        onDuplicate={handleShowDuplicateModal}
-                        onExport={exportCheck}
-                        onSwitch={handleShowSwitchModal}
-                        onDelete={handleShowDeleteConfirm}
-                        onAccessControl={handleShowAccessControl}
-                        onAccessConfig={handleOpenAccessConfig}
-                      />
-                    )
-                  : (
-                      <AppCardOperationsMenu
-                        app={app}
-                        shouldShowEditOption={shouldShowEditOption}
-                        shouldShowDuplicateOption={shouldShowDuplicateOption}
-                        shouldShowExportOption={shouldShowExportOption}
-                        shouldShowSwitchOption={shouldShowSwitchOption}
-                        shouldShowOpenInExploreOption={!app.has_draft_trigger}
-                        shouldShowAccessControlOption={shouldShowAccessControlOption}
-                        shouldShowAccessConfigOption={shouldShowAccessConfigOption}
-                        shouldShowDeleteOption={shouldShowDeleteOption}
-                        onEdit={handleShowEditModal}
-                        onDuplicate={handleShowDuplicateModal}
-                        onExport={exportCheck}
-                        onSwitch={handleShowSwitchModal}
-                        onDelete={handleShowDeleteConfirm}
-                        onAccessControl={handleShowAccessControl}
-                        onAccessConfig={handleOpenAccessConfig}
-                      />
-                    )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
       </div>
       {showEditModal && (
         <EditAppModal

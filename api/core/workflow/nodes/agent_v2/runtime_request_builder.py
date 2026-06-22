@@ -53,7 +53,6 @@ from models.agent_config_entities import (
     effective_declared_outputs as _effective_declared_outputs,
 )
 from models.provider_ids import ModelProviderID
-from services.agent_drive_service import AgentDriveService, decode_drive_mention_ref
 from services.agent.prompt_mentions import (
     MentionKind,
     build_node_job_mention_resolver,
@@ -61,6 +60,7 @@ from services.agent.prompt_mentions import (
     expand_prompt_mentions,
     parse_prompt_mentions,
 )
+from services.agent_drive_service import AgentDriveService, decode_drive_mention_ref
 
 from .output_failure_orchestrator import retry_idempotency_key
 from .plugin_tools_builder import WorkflowAgentPluginToolsBuilder, WorkflowAgentPluginToolsBuildError

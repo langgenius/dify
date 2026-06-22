@@ -36,8 +36,8 @@ from core.workflow.nodes.agent_v2.plugin_tools_builder import (
 )
 from core.workflow.nodes.agent_v2.runtime_request_builder import (
     append_runtime_warnings,
-    build_drive_aware_soul_mention_resolver,
     build_ask_human_layer_config,
+    build_drive_aware_soul_mention_resolver,
     build_drive_layer_config,
     build_knowledge_layer_config,
     build_shell_layer_config,

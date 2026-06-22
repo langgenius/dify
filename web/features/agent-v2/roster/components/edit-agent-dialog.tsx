@@ -17,6 +17,7 @@ import { consoleQuery } from '@/service/client'
 
 type EditAgentDialogProps = {
   agent: AgentAppPartial
+  formKey: number
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -88,17 +89,28 @@ const applyIconPayload = (body: AgentAppUpdatePayload, icon: AgentIconSelection)
 
 export function EditAgentDialog({
   agent,
+  formKey,
   open,
   onOpenChange,
 }: EditAgentDialogProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
+  const [renderedFormKey, setRenderedFormKey] = useState(formKey)
   const [name, setName] = useState(agent.name)
   const [description, setDescription] = useState(agent.description ?? '')
   const [role, setRole] = useState(agent.role ?? '')
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
   const [agentIcon, setAgentIcon] = useState<AgentIconSelection>(() => createAgentIconSelection(agent))
   const updateAgentMutation = useMutation(consoleQuery.agent.byAgentId.put.mutationOptions())
+
+  if (formKey !== renderedFormKey) {
+    setRenderedFormKey(formKey)
+    setName(agent.name)
+    setDescription(agent.description ?? '')
+    setRole(agent.role ?? '')
+    setIconPickerOpen(false)
+    setAgentIcon(createAgentIconSelection(agent))
+  }
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen) {
@@ -163,9 +175,9 @@ export function EditAgentDialog({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={handleOpenChange}>
+      <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
         <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-130 flex-col overflow-hidden! p-0!">
-          <DialogCloseButton className="top-5 right-5 size-8 rounded-lg" />
+          <DialogCloseButton />
           <div className="shrink-0 pt-6 pr-14 pb-3 pl-6">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {t('roster.editDialog.title')}
@@ -175,6 +187,7 @@ export function EditAgentDialog({
             </DialogDescription>
           </div>
           <Form<AgentFormValues>
+            key={formKey}
             className="min-h-0 flex-1"
             onFormSubmit={handleSubmit}
           >

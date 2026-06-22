@@ -11,6 +11,7 @@ backend — drive data lives in the API's own DB/storage, served straight from
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from typing import Any
 from uuid import UUID
 
@@ -159,7 +160,7 @@ def _handle(exc: AgentDriveError) -> tuple[dict[str, object], int]:
     return {"code": exc.code, "message": exc.message}, exc.status_code
 
 
-def _json_response(data: dict[str, Any]):
+def _json_response(data: Mapping[str, Any]):
     return Response(
         response=json.dumps(data, ensure_ascii=False, separators=(",", ":")),
         content_type="application/json; charset=utf-8",

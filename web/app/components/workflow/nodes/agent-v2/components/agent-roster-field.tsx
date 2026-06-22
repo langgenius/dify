@@ -84,6 +84,7 @@ function InlineSetupAvatar({
 function AgentRosterDrawer({
   agent,
   children,
+  isInlineSetup = false,
   mode = 'detail',
   open,
   portalContainerRef,
@@ -94,6 +95,7 @@ function AgentRosterDrawer({
 }: {
   agent: AgentRosterDisplayData
   children?: ReactNode
+  isInlineSetup?: boolean
   mode?: AgentRosterDrawerMode
   open: boolean
   portalContainerRef: RefObject<HTMLDivElement | null>
@@ -104,7 +106,7 @@ function AgentRosterDrawer({
 }) {
   const { t } = useTranslation()
   const isSetup = mode === 'setup'
-  const title = isSetup ? t(`${i18nPrefix}.roster.inlineSetup.title`, { ns: 'workflow' }) : agent.name
+  const title = isInlineSetup ? t(`${i18nPrefix}.roster.inlineSetup.name`, { ns: 'workflow' }) : agent.name
   const description = isSetup ? t(`${i18nPrefix}.roster.inlineSetup.description`, { ns: 'workflow' }) : agent.role
 
   return (
@@ -139,8 +141,10 @@ function AgentRosterDrawer({
                 )}
               >
                 <div className="flex min-w-0 items-start justify-between">
-                  <div className={cn('flex min-w-0 flex-1', isSetup ? 'min-w-px flex-col' : 'h-10 items-center gap-2 px-0.5 py-0.5')}>
-                    {!isSetup && <AgentRosterAvatar agent={agent} size="md" className="size-9" />}
+                  <div className={cn('flex min-w-0 flex-1', isSetup ? 'min-w-px items-center gap-2' : 'h-10 items-center gap-2 px-0.5 py-0.5')}>
+                    {isInlineSetup
+                      ? <InlineSetupAvatar className="size-9" />
+                      : <AgentRosterAvatar agent={agent} size="md" className="size-9" />}
                     <div className={cn('flex min-w-0 flex-1 flex-col', isSetup ? '' : 'gap-0.5 py-px')}>
                       <div className="flex min-w-0 items-center gap-1">
                         <DrawerTitle className={cn('truncate', isSetup ? 'system-xl-semibold text-text-primary' : 'system-sm-medium text-text-secondary')}>
@@ -340,6 +344,7 @@ export function AgentRosterField({
                     </button>
                     <AgentRosterDrawer
                       agent={agent}
+                      isInlineSetup={isInlineSetup}
                       mode={panelMode}
                       open={panelOpen}
                       portalContainerRef={portalContainerRef}
