@@ -76,7 +76,7 @@ const createApp = (overrides: Partial<App> = {}): App => ({
 
 const renderItem = (
   app: App,
-  systemFeatures: Parameters<typeof renderWithSystemFeatures>[1]['systemFeatures'] = { rbac_enabled: true },
+  systemFeatures: NonNullable<Parameters<typeof renderWithSystemFeatures>[1]>['systemFeatures'] = { rbac_enabled: true },
 ) => renderWithSystemFeatures(<ContinueWorkItem app={app} />, { systemFeatures })
 
 describe('ContinueWorkItem', () => {
