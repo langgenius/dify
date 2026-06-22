@@ -22,7 +22,6 @@ export type GetAppOptions = {
   readonly limitRaw?: string
   readonly mode?: AppMode
   readonly name?: string
-  readonly tag?: string
   readonly format?: string
 }
 
@@ -76,7 +75,6 @@ export async function runGetApp(opts: GetAppOptions, deps: GetAppDeps): Promise<
         limit: pageSize,
         mode: opts.mode,
         name: opts.name,
-        tag: opts.tag,
       })
     },
   )
@@ -109,9 +107,7 @@ function describeToEnvelope(desc: AppDescribeResponse, wsId: string, wsName: str
       name: desc.info.name,
       description: desc.info.description,
       mode: desc.info.mode as AppMode,
-      tags: [],
       updated_at: desc.info.updated_at,
-      created_by_name: undefined,
       workspace_id: wsId,
       workspace_name: wsName === '' ? undefined : wsName,
     }],
@@ -146,7 +142,6 @@ async function runAllWorkspaces(
       limit,
       mode: opts.mode,
       name: opts.name,
-      tag: opts.tag,
     })
     merged.total += env.total
     merged.data = [...merged.data, ...env.data]

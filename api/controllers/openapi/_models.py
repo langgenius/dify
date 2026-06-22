@@ -38,18 +38,12 @@ class PaginationEnvelope[T](BaseModel):
         return cls(page=page, limit=limit, total=total, has_more=page * limit < total, data=items)
 
 
-class TagItem(BaseModel):
-    name: str
-
-
 class AppListRow(BaseModel):
     id: str
     name: str
     description: str | None = None
     mode: AppMode
-    tags: list[TagItem] = []
     updated_at: str | None = None
-    created_by_name: str | None = None
     workspace_id: str | None = None
     workspace_name: str | None = None
 
@@ -292,7 +286,6 @@ class AppListQuery(BaseModel):
     limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
     mode: AppMode | None = None
     name: str | None = Field(None, max_length=200)
-    tag: str | None = Field(None, max_length=100)
 
 
 class AppRunRequest(BaseModel):

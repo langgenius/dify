@@ -42,13 +42,12 @@ describe('runGetApp', () => {
     }))
   }
 
-  it('list (no id, default format) renders table with NAME ID MODE TAGS UPDATED', async () => {
+  it('list (no id, default format) renders table with NAME ID MODE UPDATED', async () => {
     const out = await render()
-    expect(out).toMatch(/^NAME\s+ID\s+MODE\s+TAGS\s+UPDATED/)
+    expect(out).toMatch(/^NAME\s+ID\s+MODE\s+UPDATED/)
     expect(out).toContain('Greeter')
     expect(out).toContain('app-1')
     expect(out).toContain('chat')
-    expect(out).toContain('demo')
     expect(out).toContain('Workflow')
     expect(out).not.toContain('app-3')
   })
@@ -58,9 +57,7 @@ describe('runGetApp', () => {
       'NAME',
       'ID',
       'MODE',
-      'TAGS',
       'UPDATED',
-      'AUTHOR',
       'WORKSPACE',
     ])
   })
@@ -76,12 +73,6 @@ describe('runGetApp', () => {
     const out = await render({ mode: 'workflow' })
     expect(out).toContain('Workflow')
     expect(out).not.toContain('Greeter')
-  })
-
-  it('--tag filters server-side', async () => {
-    const out = await render({ tag: 'demo' })
-    expect(out).toContain('Greeter')
-    expect(out).not.toContain('Workflow')
   })
 
   it('-A all-workspaces aggregates across workspaces sorted by id', async () => {
@@ -112,10 +103,9 @@ describe('runGetApp', () => {
     expect(out.trim().split('\n').sort()).toEqual(['app-1', 'app-2'])
   })
 
-  it('-o wide includes AUTHOR and WORKSPACE columns', async () => {
+  it('-o wide includes the WORKSPACE column', async () => {
     const out = await render({ format: 'wide' })
-    expect(out).toMatch(/^NAME\s+ID\s+MODE\s+TAGS\s+UPDATED\s+AUTHOR\s+WORKSPACE/)
-    expect(out).toContain('tester')
+    expect(out).toMatch(/^NAME\s+ID\s+MODE\s+UPDATED\s+WORKSPACE/)
     expect(out).toContain('Default')
   })
 

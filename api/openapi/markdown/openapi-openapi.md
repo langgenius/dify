@@ -83,7 +83,6 @@ User-scoped operations
 | mode | query |  | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "channel", "chat", "completion", "rag-pipeline", "workflow" |
 | name | query |  | No | string |
 | page | query |  | No | integer, <br>**Default:** 1 |
-| tag | query |  | No | string |
 | workspace_id | query |  | Yes | string |
 
 #### Responses
@@ -601,7 +600,6 @@ mode is a closed enum.
 | mode | [AppMode](#appmode) |  | No |
 | name | string |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
-| tag | string |  | No |
 | workspace_id | string |  | Yes |
 
 #### AppListResponse
@@ -618,12 +616,10 @@ mode is a closed enum.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_by_name | string |  | No |
 | description | string |  | No |
 | id | string |  | Yes |
 | mode | [AppMode](#appmode) |  | Yes |
 | name | string |  | Yes |
-| tags | [ [TagItem](#tagitem) ], <br>**Default:**  |  | No |
 | updated_at | string |  | No |
 | workspace_id | string |  | No |
 | workspace_name | string |  | No |
@@ -993,12 +989,6 @@ Pagination for GET /account/sessions. Strict (extra='forbid').
 | id | string |  | Yes |
 | last_used_at | string |  | No |
 | prefix | string |  | Yes |
-
-#### TagItem
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| name | string |  | Yes |
 
 #### TaskStopResponse
 

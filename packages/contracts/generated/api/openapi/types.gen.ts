@@ -76,7 +76,6 @@ export type AppListQuery = {
   mode?: AppMode | null
   name?: string | null
   page?: number
-  tag?: string | null
   workspace_id: string
 }
 
@@ -89,12 +88,10 @@ export type AppListResponse = {
 }
 
 export type AppListRow = {
-  created_by_name?: string | null
   description?: string | null
   id: string
   mode: AppMode
   name: string
-  tags?: Array<TagItem>
   updated_at?: string | null
   workspace_id?: string | null
   workspace_name?: string | null
@@ -406,10 +403,6 @@ export type SessionRow = {
   prefix: string
 }
 
-export type TagItem = {
-  name: string
-}
-
 export type TaskStopResponse = {
   result: 'success'
 }
@@ -605,7 +598,6 @@ export type GetAppsData = {
       | 'workflow'
     name?: string
     page?: number
-    tag?: string
     workspace_id: string
   }
   url: '/apps'

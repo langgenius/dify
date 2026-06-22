@@ -114,8 +114,31 @@ export const zAppListQuery = z.object({
   mode: zAppMode.nullish(),
   name: z.string().max(200).nullish(),
   page: z.int().gte(1).optional().default(1),
-  tag: z.string().max(100).nullish(),
   workspace_id: z.string(),
+})
+
+/**
+ * AppListRow
+ */
+export const zAppListRow = z.object({
+  description: z.string().nullish(),
+  id: z.string(),
+  mode: zAppMode,
+  name: z.string(),
+  updated_at: z.string().nullish(),
+  workspace_id: z.string().nullish(),
+  workspace_name: z.string().nullish(),
+})
+
+/**
+ * AppListResponse
+ */
+export const zAppListResponse = z.object({
+  data: z.array(zAppListRow),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
 })
 
 /**
@@ -440,6 +463,17 @@ export const zPermittedExternalAppsListQuery = z.object({
 })
 
 /**
+ * PermittedExternalAppsListResponse
+ */
+export const zPermittedExternalAppsListResponse = z.object({
+  data: z.array(zAppListRow),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
  * RevokeResponse
  */
 export const zRevokeResponse = z.object({
@@ -484,50 +518,6 @@ export const zSessionRow = z.object({
  */
 export const zSessionListResponse = z.object({
   data: z.array(zSessionRow),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
-})
-
-/**
- * TagItem
- */
-export const zTagItem = z.object({
-  name: z.string(),
-})
-
-/**
- * AppListRow
- */
-export const zAppListRow = z.object({
-  created_by_name: z.string().nullish(),
-  description: z.string().nullish(),
-  id: z.string(),
-  mode: zAppMode,
-  name: z.string(),
-  tags: z.array(zTagItem).optional().default([]),
-  updated_at: z.string().nullish(),
-  workspace_id: z.string().nullish(),
-  workspace_name: z.string().nullish(),
-})
-
-/**
- * AppListResponse
- */
-export const zAppListResponse = z.object({
-  data: z.array(zAppListRow),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
-})
-
-/**
- * PermittedExternalAppsListResponse
- */
-export const zPermittedExternalAppsListResponse = z.object({
-  data: z.array(zAppListRow),
   has_more: z.boolean(),
   limit: z.int(),
   page: z.int(),
@@ -720,7 +710,6 @@ export const zGetAppsQuery = z.object({
     .optional(),
   name: z.string().max(200).optional(),
   page: z.int().gte(1).optional().default(1),
-  tag: z.string().max(100).optional(),
   workspace_id: z.string(),
 })
 

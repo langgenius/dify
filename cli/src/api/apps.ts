@@ -10,7 +10,6 @@ export type ListQuery = {
   readonly limit?: number
   readonly mode?: AppMode | ''
   readonly name?: string
-  readonly tag?: string
 }
 
 // An absent or empty mode filter means "any mode" — collapse both to undefined for the query.
@@ -33,7 +32,6 @@ export class AppsClient implements AppReader {
         limit: q.limit ?? 20,
         mode: normalizeMode(q.mode),
         name: q.name !== undefined && q.name !== '' ? q.name : undefined,
-        tag: q.tag !== undefined && q.tag !== '' ? q.tag : undefined,
       },
     })
   }

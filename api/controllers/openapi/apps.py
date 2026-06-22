@@ -19,7 +19,6 @@ from controllers.openapi._models import (
     AppListQuery,
     AppListResponse,
     AppListRow,
-    TagItem,
 )
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData
@@ -31,7 +30,6 @@ from models import App
 from models.model import AppMode
 from services.account_service import TenantService
 from services.app_service import AppListParams, AppService
-from services.tag_service import TagService
 
 _ALLOWED_DESCRIBE_FIELDS: frozenset[str] = frozenset({"info", "parameters", "input_schema"})
 
@@ -161,28 +159,18 @@ class AppListApi(Resource):
                 name=app.name,
                 description=app.description,
                 mode=app.mode,
-                tags=[TagItem(name=t.name) for t in app.tags],
                 updated_at=app.updated_at.isoformat() if app.updated_at else None,
-                created_by_name=getattr(app, "author_name", None),
                 workspace_id=str(workspace_id),
                 workspace_name=tenant_name,
             )
             env = AppListResponse(page=1, limit=1, total=1, has_more=False, data=[item])
             return env
 
-        tag_ids: list[str] | None = None
-        if query.tag:
-            tags = TagService.get_tag_by_tag_name("app", workspace_id, query.tag, db.session)
-            if not tags:
-                return empty
-            tag_ids = [tag.id for tag in tags]
-
         params = AppListParams(
             page=query.page,
             limit=query.limit,
             mode=query.mode.value if query.mode else "all",  # type:ignore
             name=query.name,
-            tag_ids=tag_ids,
             status="normal",
             # Visibility gate pushed into the query — pagination.total stays
             # consistent across pages because invisible rows never count.
@@ -203,9 +191,7 @@ class AppListApi(Resource):
                 name=r.name,
                 description=r.description,
                 mode=r.mode,
-                tags=[TagItem(name=t.name) for t in r.tags],
                 updated_at=r.updated_at.isoformat() if r.updated_at else None,
-                created_by_name=getattr(r, "author_name", None),
                 workspace_id=str(workspace_id),
                 workspace_name=tenant_name,
             )

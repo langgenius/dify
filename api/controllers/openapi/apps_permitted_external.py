@@ -71,9 +71,7 @@ class PermittedExternalAppsListApi(Resource):
                     name=app.name,
                     description=app.description,
                     mode=app.mode,
-                    tags=[],  # tenant-scoped; not surfaced cross-tenant
                     updated_at=app.updated_at.isoformat() if app.updated_at else None,
-                    created_by_name=None,  # cross-tenant author leak prevention
                     workspace_id=str(app.tenant_id),
                     workspace_name=tenant.name if tenant else None,
                 )
