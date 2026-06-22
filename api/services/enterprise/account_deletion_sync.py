@@ -3,11 +3,13 @@ import logging
 import uuid
 from datetime import UTC, datetime
 
+from dependency_injector.wiring import Provide, inject
 from redis import RedisError
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from configs import dify_config
-from extensions.ext_database import db
+from core.di.container import CoreContainer
 from extensions.ext_redis import redis_client
 from models.account import TenantAccountJoin
 
@@ -87,7 +89,10 @@ def sync_workspace_member_removal(workspace_id: str, member_id: str, *, source: 
     return _queue_task(workspace_id=workspace_id, member_id=member_id, source=source)
 
 
-def sync_account_deletion(account_id: str, *, source: str) -> bool:
+@inject
+def sync_account_deletion(
+    account_id: str, *, source: str, session: Session = Provide[CoreContainer.db_session]
+) -> bool:
     """
     Sync full account deletion across all workspaces (enterprise only).
 
@@ -105,9 +110,7 @@ def sync_account_deletion(account_id: str, *, source: str) -> bool:
         return True
 
     # Fetch all workspaces the account belongs to
-    workspace_joins = db.session.scalars(
-        select(TenantAccountJoin).where(TenantAccountJoin.account_id == account_id)
-    ).all()
+    workspace_joins = session.scalars(select(TenantAccountJoin).where(TenantAccountJoin.account_id == account_id)).all()
 
     # Queue sync task for each workspace
     success = True

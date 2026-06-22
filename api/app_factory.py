@@ -9,6 +9,7 @@ from opentelemetry.trace.span import INVALID_SPAN_ID, INVALID_TRACE_ID
 from configs import dify_config
 from contexts.wrapper import RecyclableContextVar
 from controllers.console.error import UnauthorizedAndForceLogout
+from core.di.container import CoreContainer
 from core.logging.context import init_request_context
 from dify_app import DifyApp
 from extensions.ext_socketio import sio
@@ -54,6 +55,12 @@ def create_flask_app_with_configs() -> DifyApp:
     dify_app = DifyApp(__name__)
     dify_app.config.from_mapping(dify_config.model_dump())
     dify_app.config["RESTX_INCLUDE_ALL_MODELS"] = True
+
+    # Initialize Core Dependency Injection Container
+    container = CoreContainer()
+    dify_app.container = container
+    # List modules that need dependency injection wired
+    container.wire(modules=["services.workspace_service"])
 
     # add before request hook
     @dify_app.before_request

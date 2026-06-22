@@ -1,7 +1,9 @@
 import json
 from typing import Any, TypedDict
 
+from dependency_injector.wiring import Provide, inject
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -14,11 +16,11 @@ from core.app.app_config.entities import (
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfigManager
 from core.app.apps.chat.app_config_manager import ChatAppConfigManager
 from core.app.apps.completion.app_config_manager import CompletionAppConfigManager
+from core.di.container import CoreContainer
 from core.helper import encrypter
 from core.prompt.simple_prompt_transform import SimplePromptTransform
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from events.app_event import app_was_created
-from extensions.ext_database import db
 from graphon.file import FileUploadConfig
 from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.utils.encoders import jsonable_encoder
@@ -52,8 +54,16 @@ class WorkflowConverter:
     App Convert to Workflow Mode
     """
 
+    @inject
     def convert_to_workflow(
-        self, app_model: App, account: Account, name: str, icon_type: str, icon: str, icon_background: str
+        self,
+        app_model: App,
+        account: Account,
+        name: str,
+        icon_type: str,
+        icon: str,
+        icon_background: str,
+        session: Session = Provide[CoreContainer.db_session],
     ):
         """
         Convert app to workflow
@@ -97,17 +107,24 @@ class WorkflowConverter:
         new_app.created_by = account.id
         new_app.maintainer = account.id
         new_app.updated_by = account.id
-        db.session.add(new_app)
-        db.session.flush()
+        session.add(new_app)
+        session.flush()
 
         workflow.app_id = new_app.id
-        db.session.commit()
+        session.commit()
 
         app_was_created.send(new_app, account=account)
 
         return new_app
 
-    def convert_app_model_config_to_workflow(self, app_model: App, app_model_config: AppModelConfig, account_id: str):
+    @inject
+    def convert_app_model_config_to_workflow(
+        self,
+        app_model: App,
+        app_model_config: AppModelConfig,
+        account_id: str,
+        session: Session = Provide[CoreContainer.db_session],
+    ):
         """
         Convert app model config to workflow mode
         :param app_model: App instance
@@ -217,8 +234,8 @@ class WorkflowConverter:
             conversation_variables=[],
         )
 
-        db.session.add(workflow)
-        db.session.commit()
+        session.add(workflow)
+        session.commit()
 
         return workflow
 
@@ -650,14 +667,17 @@ class WorkflowConverter:
         else:
             return AppMode.ADVANCED_CHAT
 
-    def _get_api_based_extension(self, tenant_id: str, api_based_extension_id: str):
+    @inject
+    def _get_api_based_extension(
+        self, tenant_id: str, api_based_extension_id: str, session: Session = Provide[CoreContainer.db_session]
+    ):
         """
         Get API Based Extension
         :param tenant_id: tenant id
         :param api_based_extension_id: api based extension id
         :return:
         """
-        api_based_extension = db.session.scalar(
+        api_based_extension = session.scalar(
             select(APIBasedExtension)
             .where(APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id)
             .limit(1)
