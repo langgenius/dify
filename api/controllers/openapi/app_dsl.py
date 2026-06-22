@@ -95,6 +95,11 @@ class AppDslImportConfirmApi(Resource):
         scope=Scope.WORKSPACE_WRITE,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.EDITOR, TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
+        rbac=RBACRequirement(
+            resource_type=RBACResourceScope.APP,
+            scene=RBACPermission.APP_IMPORT_EXPORT_DSL,
+            resource_required=False,
+        ),
     )
     @returns(200, Import, "Import confirmed")
     @returns(400, Import, "Import failed")
