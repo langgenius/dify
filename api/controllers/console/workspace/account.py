@@ -755,7 +755,7 @@ class ChangeEmailResetApi(Resource):
         # legitimately verified token.
         AccountService.revoke_change_email_token(args.token)
 
-        updated_account = AccountService.update_account_email(current_user, email=normalized_new_email)
+        updated_account = AccountService.update_account_email(current_user, email=normalized_new_email, session=db.session)
 
         AccountService.send_change_email_completed_notify_email(
             email=normalized_new_email,

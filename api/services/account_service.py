@@ -585,30 +585,30 @@ class AccountService:
         return account
 
     @staticmethod
-    def update_account_email(account: Account, email: str) -> Account:
+    def update_account_email(account: Account, email: str, session: scoped_session) -> Account:
         """Update account email"""
         account.email = email
-        account_integrate = db.session.scalar(
+        account_integrate = session.scalar(
             select(AccountIntegrate).where(AccountIntegrate.account_id == account.id).limit(1)
         )
         if account_integrate:
-            db.session.delete(account_integrate)
-        db.session.add(account)
-        db.session.commit()
+            session.delete(account_integrate)
+        session.add(account)
+        session.commit()
         return account
 
     @staticmethod
-    def update_login_info(account: Account, *, ip_address: str):
+    def update_login_info(account: Account, session: scoped_session, *, ip_address: str):
         """Update last login time and ip"""
         account.last_login_at = naive_utc_now()
         account.last_login_ip = ip_address
-        db.session.add(account)
-        db.session.commit()
+        session.add(account)
+        session.commit()
 
     @staticmethod
     def login(account: Account, *, ip_address: str | None = None) -> TokenPair:
         if ip_address:
-            AccountService.update_login_info(account=account, ip_address=ip_address)
+            AccountService.update_login_info(account=account, session=db.session, ip_address=ip_address)
 
         if account.status == AccountStatus.PENDING:
             account.status = AccountStatus.ACTIVE

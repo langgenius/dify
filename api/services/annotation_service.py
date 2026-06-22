@@ -1,3 +1,4 @@
+from sqlalchemy.orm import scoped_session
 import logging
 import uuid
 from typing import TypedDict
@@ -300,17 +301,17 @@ class AppAnnotationService:
         return annotation
 
     @classmethod
-    def update_app_annotation_directly(cls, args: UpdateAnnotationArgs, app_id: str, annotation_id: str):
+    def update_app_annotation_directly(cls, args: UpdateAnnotationArgs, app_id: str, annotation_id: str, session: scoped_session):
         # get app info
         _, current_tenant_id = current_account_with_tenant()
-        app = db.session.scalar(
+        app = session.scalar(
             select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
         )
 
         if not app:
             raise NotFound("App not found")
 
-        annotation = db.session.get(MessageAnnotation, annotation_id)
+        annotation = session.get(MessageAnnotation, annotation_id)
 
         if not annotation:
             raise NotFound("Annotation not found")
@@ -326,9 +327,9 @@ class AppAnnotationService:
         annotation.content = answer
         annotation.question = question
 
-        db.session.commit()
+        session.commit()
         # if annotation reply is enabled , add annotation to index
-        app_annotation_setting = db.session.scalar(
+        app_annotation_setting = session.scalar(
             select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1)
         )
 

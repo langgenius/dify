@@ -5,6 +5,7 @@ from flask import request
 from flask_restx import Resource
 from flask_restx.api import HTTPStatus
 from pydantic import BaseModel, Field, TypeAdapter
+from extensions.ext_database import db
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.wraps import edit_permission_required
@@ -281,7 +282,7 @@ class AnnotationUpdateDeleteApi(Resource):
         """Update an existing annotation."""
         payload = AnnotationCreatePayload.model_validate(service_api_ns.payload or {})
         update_args: UpdateAnnotationArgs = {"question": payload.question, "answer": payload.answer}
-        annotation = AppAnnotationService.update_app_annotation_directly(update_args, app_model.id, str(annotation_id))
+        annotation = AppAnnotationService.update_app_annotation_directly(update_args, app_model.id, str(annotation_id), db.session)
         response = Annotation.model_validate(annotation, from_attributes=True)
         return response.model_dump(mode="json")
 
