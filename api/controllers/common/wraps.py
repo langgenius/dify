@@ -1,31 +1,3 @@
-"""Shared decorator utilities for Dify controller layers.
-
-This module provides decorators that are not tied to any single API group (e.g.
-console, inner, service).  Currently it exposes the RBAC permission gate, which
-can be applied to any blueprint.
-
-Key exports
------------
-``rbac_permission_required`` – decorator that enforces enterprise RBAC access
-    control for flask-login backed groups (console/service).  When
-    ``RBAC_ENABLED`` is ``False`` it is a no-op.
-
-``enforce_rbac_access`` – the underlying check, decoupled from flask-login so
-    other auth layers (e.g. the openapi auth pipeline) can enforce the same
-    rules without re-implementing them.  The openapi group wires this in via
-    ``controllers.openapi.auth.verify.check_rbac_permission`` instead of using
-    a decorator, so RBAC only applies to console-accessible (account) callers
-    and never to external (end_user) webapp callers.
-
-``RBACPermission``, ``RBACResourceScope`` – re-exported from ``core.rbac`` so
-    callers only need a single import site.
-
-Private helpers
----------------
-``_extract_resource_id``, ``_is_resource_owned_by_current_user`` – kept module-
-    private but accessible via the module namespace for unit-test patching.
-"""
-
 from collections.abc import Callable
 from functools import wraps
 
