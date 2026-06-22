@@ -5,7 +5,7 @@ Runs against the model directly, not the HTTP layer. Pins:
 - workspace_id is required.
 - numeric bounds enforced (page >= 1, limit in [1, MAX_PAGE_LIMIT]).
 - mode validates against the SupportedAppType enum (listable app types only).
-- name and tag have length caps.
+- name has a length cap.
 """
 
 from __future__ import annotations
@@ -24,7 +24,6 @@ def test_defaults():
     assert q.limit == 20
     assert q.mode is None
     assert q.name is None
-    assert q.tag is None
 
 
 def test_workspace_id_required():
@@ -89,12 +88,6 @@ def test_name_length_capped():
         AppListQuery.model_validate({"workspace_id": "00000000-0000-0000-0000-000000000001", "name": "x" * 201})
 
 
-def test_tag_length_capped():
-    AppListQuery.model_validate({"workspace_id": "00000000-0000-0000-0000-000000000001", "tag": "x" * 100})
-    with pytest.raises(ValidationError):
-        AppListQuery.model_validate({"workspace_id": "00000000-0000-0000-0000-000000000001", "tag": "x" * 101})
-
-
 def test_all_fields_accept_valid_values():
     """Pin the happy-path acceptance for every field in one place."""
     q = AppListQuery.model_validate(
@@ -104,7 +97,6 @@ def test_all_fields_accept_valid_values():
             "limit": 50,
             "mode": "workflow",
             "name": "search",
-            "tag": "prod",
         }
     )
     assert q.workspace_id == "00000000-0000-0000-0000-000000000001"
@@ -113,4 +105,3 @@ def test_all_fields_accept_valid_values():
     assert q.mode is not None
     assert q.mode.value == "workflow"
     assert q.name == "search"
-    assert q.tag == "prod"

@@ -5,7 +5,7 @@ import ApiKeySection from '../api-key-section'
 
 vi.mock('@/context/app-context', () => ({
   useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
-    workspacePermissionKeys: ['credential.manage', 'credential.use'],
+    workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
   }),
 }))
 

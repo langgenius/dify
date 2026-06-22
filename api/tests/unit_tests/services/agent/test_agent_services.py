@@ -23,7 +23,8 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
-from models.model import SUPPORTED_APP_TYPES, AppMode, IconType
+from models.enums import ConversationFromSource, ConversationStatus
+from models.model import SUPPORTED_APP_TYPES, AppMode, Conversation, IconType
 from models.workflow import Workflow
 from services.agent import composer_service, roster_service
 from services.agent.agent_soul_state import agent_soul_has_model
@@ -530,6 +531,100 @@ def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch
     assert inline_agent.active_config_snapshot_id == "inline-version-2"
     assert inline_agent.active_config_has_model is True
     assert inline_agent.updated_by == "account-1"
+
+
+def test_node_job_only_switches_roster_binding_to_inline_agent(monkeypatch: pytest.MonkeyPatch):
+    fake_session = FakeSession()
+    monkeypatch.setattr(composer_service.db, "session", fake_session)
+    created_agent = SimpleNamespace(id="inline-agent-1", active_config_snapshot_id="inline-version-1")
+    captured: dict[str, object] = {}
+
+    def fake_create_workflow_only_agent(**kwargs):
+        captured.update(kwargs)
+        return created_agent
+
+    monkeypatch.setattr(AgentComposerService, "_create_workflow_only_agent", fake_create_workflow_only_agent)
+    existing_node_job = WorkflowNodeJobConfig(workflow_prompt="keep the existing task")
+    binding = WorkflowAgentNodeBinding(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        workflow_version="draft",
+        node_id="node-1",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+        agent_id="roster-agent-1",
+        current_snapshot_id="roster-version-1",
+        node_job_config=existing_node_job,
+        created_by="account-1",
+        updated_by="account-1",
+    )
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": ComposerVariant.WORKFLOW.value,
+            "save_strategy": ComposerSaveStrategy.NODE_JOB_ONLY.value,
+            "binding": {"binding_type": WorkflowAgentBindingType.INLINE_AGENT.value},
+            "agent_soul": {"prompt": {"system_prompt": "start from scratch"}},
+        }
+    )
+
+    updated_binding = AgentComposerService._save_node_job_only(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        node_id="node-1",
+        account_id="account-1",
+        binding=binding,
+        payload=payload,
+    )
+
+    assert updated_binding is binding
+    assert binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT
+    assert binding.agent_id == "inline-agent-1"
+    assert binding.current_snapshot_id == "inline-version-1"
+    assert binding.node_job_config is existing_node_job
+    assert binding.updated_by == "account-1"
+    assert captured["tenant_id"] == "tenant-1"
+    assert captured["app_id"] == "app-1"
+    assert captured["workflow_id"] == "workflow-1"
+    assert captured["node_id"] == "node-1"
+    assert captured["account_id"] == "account-1"
+    assert captured["agent_soul"].prompt.system_prompt == "start from scratch"
+    assert fake_session.flushes == 1
+
+
+def test_node_job_only_rejects_start_from_scratch_with_existing_inline_binding_id():
+    binding = WorkflowAgentNodeBinding(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        workflow_version="draft",
+        node_id="node-1",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+        agent_id="roster-agent-1",
+        current_snapshot_id="roster-version-1",
+        node_job_config=WorkflowNodeJobConfig(),
+    )
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": ComposerVariant.WORKFLOW.value,
+            "save_strategy": ComposerSaveStrategy.NODE_JOB_ONLY.value,
+            "binding": {
+                "binding_type": WorkflowAgentBindingType.INLINE_AGENT.value,
+                "agent_id": "existing-inline-agent",
+            },
+        }
+    )
+
+    with pytest.raises(ValueError, match="Start from Scratch"):
+        AgentComposerService._save_node_job_only(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_id="workflow-1",
+            node_id="node-1",
+            account_id="account-1",
+            binding=binding,
+            payload=payload,
+        )
 
 
 def test_node_job_only_rejects_inline_binding_pointing_to_roster_agent(monkeypatch: pytest.MonkeyPatch):
@@ -1046,10 +1141,91 @@ def test_agent_app_visible_versions_exclude_draft_saves():
     agent_app_operations = AgentRosterService._visible_version_operations(agent_app)
     roster_operations = AgentRosterService._visible_version_operations(roster_agent)
 
-    assert agent_app_operations == {AgentConfigRevisionOperation.SAVE_NEW_VERSION}
+    assert agent_app_operations == {
+        AgentConfigRevisionOperation.SAVE_NEW_VERSION,
+        AgentConfigRevisionOperation.RESTORE_VERSION,
+    }
     assert AgentConfigRevisionOperation.SAVE_CURRENT_VERSION not in agent_app_operations
     assert AgentConfigRevisionOperation.CREATE_VERSION in roster_operations
+    assert AgentConfigRevisionOperation.RESTORE_VERSION in roster_operations
     assert AgentConfigRevisionOperation.SAVE_CURRENT_VERSION not in roster_operations
+
+
+def test_restore_roster_agent_version_switches_active_snapshot(monkeypatch: pytest.MonkeyPatch):
+    fake_session = FakeSession(scalar=["version-2", 6])
+    service = AgentRosterService(fake_session)
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Analyst",
+        description="old",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="version-4",
+    )
+    version = AgentConfigSnapshot(
+        id="version-2",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version=2,
+        config_snapshot=_agent_soul_with_model(),
+    )
+
+    monkeypatch.setattr(service, "_get_agent", lambda **kwargs: agent)
+    monkeypatch.setattr(service, "_get_version", lambda **kwargs: version)
+
+    restored = service.restore_agent_version(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version_id="version-2",
+        account_id="account-1",
+    )
+
+    assert restored == {"result": "success", "active_config_snapshot_id": "version-2"}
+    assert agent.active_config_snapshot_id == "version-2"
+    assert agent.active_config_has_model is True
+    assert agent.updated_by == "account-1"
+    assert fake_session.commits == 1
+    revision = fake_session.added[0]
+    assert revision.tenant_id == "tenant-1"
+    assert revision.agent_id == "agent-1"
+    assert revision.previous_snapshot_id == "version-4"
+    assert revision.current_snapshot_id == "version-2"
+    assert revision.revision == 7
+    assert revision.operation == AgentConfigRevisionOperation.RESTORE_VERSION
+    assert revision.created_by == "account-1"
+
+
+def test_restore_roster_agent_version_rejects_invisible_versions(monkeypatch: pytest.MonkeyPatch):
+    fake_session = FakeSession(scalar=[None])
+    service = AgentRosterService(fake_session)
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Analyst",
+        description="old",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="version-4",
+    )
+
+    monkeypatch.setattr(service, "_get_agent", lambda **kwargs: agent)
+
+    with pytest.raises(roster_service.AgentVersionNotFoundError):
+        service.restore_agent_version(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            version_id="version-2",
+            account_id="account-1",
+        )
+
+    assert agent.active_config_snapshot_id == "version-4"
+    assert fake_session.added == []
+    assert fake_session.commits == 0
 
 
 def test_app_list_all_restricts_to_supported_app_types():
@@ -1279,6 +1455,7 @@ class TestAgentAppBackingAgent:
         assert agent.agent_kind == AgentKind.DIFY_AGENT
         assert agent.name == "Iris"
         assert agent.role == "research assistant"
+        assert agent.debug_conversation_id is not None
         # A v1 snapshot + revision are seeded and wired as the active version.
         snapshots = [a for a in session.added if isinstance(a, AgentConfigSnapshot)]
         assert len(snapshots) == 1
@@ -1288,6 +1465,14 @@ class TestAgentAppBackingAgent:
             a for a in session.added if getattr(a, "operation", None) == AgentConfigRevisionOperation.CREATE_VERSION
         ]
         assert len(revisions) == 1
+        conversations = [a for a in session.added if isinstance(a, Conversation)]
+        assert len(conversations) == 1
+        assert agent.debug_conversation_id == conversations[0].id
+        assert conversations[0].app_id == "app-1"
+        assert conversations[0].mode == "agent"
+        assert conversations[0].status == ConversationStatus.NORMAL
+        assert conversations[0].from_source == ConversationFromSource.CONSOLE
+        assert conversations[0].from_account_id == "account-1"
         # Caller (AppService.create_app) owns the commit — helper must not commit.
         assert session.commits == 0
 

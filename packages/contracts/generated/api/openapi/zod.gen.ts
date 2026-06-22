@@ -12,6 +12,19 @@ export const zAccountPayload = z.object({
 })
 
 /**
+ * AppDescribeInfo
+ */
+export const zAppDescribeInfo = z.object({
+  description: z.string().nullish(),
+  id: z.string(),
+  is_agent: z.boolean().optional().default(false),
+  mode: z.string(),
+  name: z.string(),
+  service_api_enabled: z.boolean(),
+  updated_at: z.string().nullish(),
+})
+
+/**
  * AppDescribeQuery
  *
  * `?fields=` allow-list for GET /apps/<id>/describe.
@@ -20,6 +33,15 @@ export const zAccountPayload = z.object({
  */
 export const zAppDescribeQuery = z.object({
   fields: z.string().optional(),
+})
+
+/**
+ * AppDescribeResponse
+ */
+export const zAppDescribeResponse = z.object({
+  info: zAppDescribeInfo.nullish(),
+  input_schema: z.record(z.string(), z.unknown()).nullish(),
+  parameters: z.record(z.string(), z.unknown()).nullish(),
 })
 
 /**
@@ -59,6 +81,16 @@ export const zAppDslImportPayload = z.object({
 })
 
 /**
+ * AppInfo
+ */
+export const zAppInfo = z.object({
+  description: z.string().nullish(),
+  id: z.string(),
+  mode: z.string(),
+  name: z.string(),
+})
+
+/**
  * AppMode
  */
 export const zAppMode = z.enum([
@@ -71,6 +103,30 @@ export const zAppMode = z.enum([
   'rag-pipeline',
   'workflow',
 ])
+
+/**
+ * AppListRow
+ */
+export const zAppListRow = z.object({
+  description: z.string().nullish(),
+  id: z.string(),
+  mode: zAppMode,
+  name: z.string(),
+  updated_at: z.string().nullish(),
+  workspace_id: z.string().nullish(),
+  workspace_name: z.string().nullish(),
+})
+
+/**
+ * AppListResponse
+ */
+export const zAppListResponse = z.object({
+  data: z.array(zAppListRow),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
 
 /**
  * AppRunRequest
@@ -352,6 +408,7 @@ export const zOpenApiErrorCode = z.enum([
   'file_too_large',
   'filename_not_exists',
   'forbidden',
+  'form_not_found',
   'internal_server_error',
   'invalid_param',
   'member_license_exceeded',
@@ -364,6 +421,7 @@ export const zOpenApiErrorCode = z.enum([
   'provider_not_initialize',
   'provider_quota_exceeded',
   'rate_limit_error',
+  'recipient_surface_mismatch',
   'request_entity_too_large',
   'too_many_files',
   'too_many_requests',
@@ -379,6 +437,17 @@ export const zOpenApiErrorCode = z.enum([
 export const zPackage = z.object({
   plugin_unique_identifier: z.string(),
   version: z.string().nullish(),
+})
+
+/**
+ * PermittedExternalAppsListResponse
+ */
+export const zPermittedExternalAppsListResponse = z.object({
+  data: z.array(zAppListRow),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
 })
 
 /**
@@ -465,7 +534,6 @@ export const zAppListQuery = z.object({
   mode: zSupportedAppType.nullish(),
   name: z.string().max(200).nullish(),
   page: z.int().gte(1).optional().default(1),
-  tag: z.string().max(100).nullish(),
   workspace_id: z.string(),
 })
 
@@ -479,86 +547,6 @@ export const zPermittedExternalAppsListQuery = z.object({
   mode: zSupportedAppType.nullish(),
   name: z.string().max(200).nullish(),
   page: z.int().gte(1).optional().default(1),
-})
-
-/**
- * TagItem
- */
-export const zTagItem = z.object({
-  name: z.string(),
-})
-
-/**
- * AppDescribeInfo
- */
-export const zAppDescribeInfo = z.object({
-  author: z.string().nullish(),
-  description: z.string().nullish(),
-  id: z.string(),
-  is_agent: z.boolean().optional().default(false),
-  mode: z.string(),
-  name: z.string(),
-  service_api_enabled: z.boolean(),
-  tags: z.array(zTagItem).optional().default([]),
-  updated_at: z.string().nullish(),
-})
-
-/**
- * AppDescribeResponse
- */
-export const zAppDescribeResponse = z.object({
-  info: zAppDescribeInfo.nullish(),
-  input_schema: z.record(z.string(), z.unknown()).nullish(),
-  parameters: z.record(z.string(), z.unknown()).nullish(),
-})
-
-/**
- * AppInfoResponse
- */
-export const zAppInfoResponse = z.object({
-  author: z.string().nullish(),
-  description: z.string().nullish(),
-  id: z.string(),
-  mode: z.string(),
-  name: z.string(),
-  tags: z.array(zTagItem).optional().default([]),
-})
-
-/**
- * AppListRow
- */
-export const zAppListRow = z.object({
-  created_by_name: z.string().nullish(),
-  description: z.string().nullish(),
-  id: z.string(),
-  mode: zAppMode,
-  name: z.string(),
-  tags: z.array(zTagItem).optional().default([]),
-  updated_at: z.string().nullish(),
-  workspace_id: z.string().nullish(),
-  workspace_name: z.string().nullish(),
-})
-
-/**
- * AppListResponse
- */
-export const zAppListResponse = z.object({
-  data: z.array(zAppListRow),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
-})
-
-/**
- * PermittedExternalAppsListResponse
- */
-export const zPermittedExternalAppsListResponse = z.object({
-  data: z.array(zAppListRow),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
 })
 
 /**
@@ -736,7 +724,6 @@ export const zGetAppsQuery = z.object({
   mode: z.enum(['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow']).optional(),
   name: z.string().max(200).optional(),
   page: z.int().gte(1).optional().default(1),
-  tag: z.string().max(100).optional(),
   workspace_id: z.string(),
 })
 
@@ -896,6 +883,19 @@ export const zGetPermittedExternalAppsQuery = z.object({
  * Permitted external apps list
  */
 export const zGetPermittedExternalAppsResponse = zPermittedExternalAppsListResponse
+
+export const zGetPermittedExternalAppsByAppIdDescribePath = z.object({
+  app_id: z.string(),
+})
+
+export const zGetPermittedExternalAppsByAppIdDescribeQuery = z.object({
+  fields: z.string().optional(),
+})
+
+/**
+ * Permitted external app description
+ */
+export const zGetPermittedExternalAppsByAppIdDescribeResponse = zAppDescribeResponse
 
 /**
  * Workspace list
