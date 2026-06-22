@@ -740,7 +740,7 @@ export const statistics = {
   summary,
 }
 
-export const post11 = oc
+export const post10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -752,7 +752,7 @@ export const post11 = oc
   .output(zPostAgentByAgentIdVersionsByVersionIdRestoreResponse)
 
 export const restore = {
-  post: post11,
+  post: post10,
 }
 
 export const get19 = oc
@@ -853,7 +853,7 @@ export const get22 = oc
   .input(z.object({ query: zGetAgentQuery.optional() }))
   .output(zGetAgentResponse)
 
-export const post10 = oc
+export const post11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -867,7 +867,7 @@ export const post10 = oc
 
 export const agent = {
   get: get22,
-  post: post10,
+  post: post11,
   inviteOptions,
   byAgentId,
 }
