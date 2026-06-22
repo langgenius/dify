@@ -79,7 +79,7 @@ export function AgentOrchestratePanel({
     : { agentId }, [agentId, appId, nodeId])
 
   return (
-    <div className={cn('flex max-w-140 min-w-90 flex-[0_0_min(41.08280255%,560px)] flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg', className)}>
+    <div className={cn('relative flex max-w-140 min-w-90 flex-[0_0_min(41.08280255%,560px)] flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg', className)}>
       {showHeader && <AgentOrchestrateHeader headingId={orchestrateHeadingId} />}
 
       <AgentOrchestrateReadOnlyContext value={readOnly}>
@@ -93,7 +93,8 @@ export function AgentOrchestratePanel({
             labelledBy={showHeader ? orchestrateHeadingId : undefined}
             slotClassNames={{
               viewport: 'overscroll-contain',
-              content: 'min-h-full px-4 py-3',
+              content: cn('min-h-full px-4 py-3', showPublishBar && 'pb-20'),
+              scrollbar: showPublishBar ? 'z-20' : undefined,
             }}
           >
             <AgentDriveApiContextProvider value={driveApiContext}>
