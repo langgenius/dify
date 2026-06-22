@@ -359,15 +359,16 @@ class ApiTool(Tool):
                     if value is None:
                         return None
                 elif property["type"] == "object" or property["type"] == "array":
-                    if isinstance(value, str):
-                        try:
-                            return json.loads(value)
-                        except ValueError:
+                    match value:
+                        case str():
+                            try:
+                                return json.loads(value)
+                            except ValueError:
+                                return value
+                        case dict():
                             return value
-                    elif isinstance(value, dict):
-                        return value
-                    else:
-                        return value
+                        case _:
+                            return value
                 else:
                     raise ValueError(f"Invalid type {property['type']} for property {property}")
             elif "anyOf" in property and isinstance(property["anyOf"], list):

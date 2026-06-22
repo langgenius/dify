@@ -23,7 +23,7 @@ from typing import Any
 from core.tools.tool_file_manager import ToolFileManager
 from models.agent_config_entities import AgentSkillRefConfig
 from services.agent.skill_package_service import SkillPackageService
-from services.agent_drive_service import AgentDriveService, DriveCommitItem, DriveFileRef
+from services.agent_drive_service import AgentDriveService, DriveCommitItem, DriveFileRef, DriveSkillMetadata
 
 _FULL_ARCHIVE_NAME = ".DIFY-SKILL-FULL.zip"
 _SKILL_MD_NAME = "SKILL.md"
@@ -91,6 +91,12 @@ class SkillStandardizeService:
                     key=skill_md_key,
                     file_ref=DriveFileRef(kind="tool_file", id=md_tool_file.id),
                     value_owned_by_drive=True,
+                    is_skill=True,
+                    skill_metadata=DriveSkillMetadata(
+                        name=manifest.name,
+                        description=manifest.description,
+                        manifest_files=manifest.files,
+                    ),
                 ),
                 DriveCommitItem(
                     key=archive_key,
