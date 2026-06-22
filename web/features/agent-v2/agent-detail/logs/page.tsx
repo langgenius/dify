@@ -15,6 +15,8 @@ import { AgentLogsTable } from './components/logs-table'
 import { AgentLogSourcePicker } from './components/source-picker'
 
 type PeriodKey = 'last7days' | 'last30days' | 'allTime'
+type LogsSortField = 'created_at' | 'updated_at'
+type LogsSortOrder = 'asc' | 'desc'
 
 type AgentLogsPageProps = {
   agentId: string
@@ -42,6 +44,19 @@ const getPeriodQuery = (period: PeriodKey) => {
   }
 }
 
+const parseSortValue = (value: string): {
+  field: LogsSortField
+  order: LogsSortOrder
+} => {
+  const isDescending = value.startsWith('-')
+  const field = isDescending ? value.slice(1) : value
+
+  return {
+    field: field === 'updated_at' ? 'updated_at' : 'created_at',
+    order: isDescending ? 'desc' : 'asc',
+  }
+}
+
 export function AgentLogsPage({
   agentId,
 }: AgentLogsPageProps) {
@@ -51,6 +66,10 @@ export function AgentLogsPage({
   const [period, setPeriod] = useState<PeriodKey>('last7days')
   const [source, setSource] = useState<SourceFilterValue>([])
   const [keyword, setKeyword] = useState('')
+  const [sort, setSort] = useState<{ field: LogsSortField, order: LogsSortOrder }>({
+    field: 'created_at',
+    order: 'desc',
+  })
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(25)
   const periodItems = periodOptions.map(option => ({
@@ -74,8 +93,9 @@ export function AgentLogsPage({
         page,
         limit,
         keyword: keyword.trim() || undefined,
-        // TODO: Send multiple source ids after the backend contract supports multi-source filtering.
-        source: source.length === 1 ? source[0] : undefined,
+        ...(source.length > 0 ? { sources: source } : {}),
+        sort_by: sort.field,
+        sort_order: sort.order,
       },
     },
   }))
@@ -151,13 +171,16 @@ export function AgentLogsPage({
           </div>
 
           <Sort
-            order="desc"
-            value="updated_at"
+            order={sort.order === 'desc' ? '-' : ''}
+            value={sort.field}
             items={[
               { value: 'created_at', name: t('agentDetail.logs.filters.sort.lastCreatedTime') },
               { value: 'updated_at', name: t('agentDetail.logs.filters.sort.lastUpdatedTime') },
             ]}
-            onSelect={() => {}}
+            onSelect={(nextSortValue) => {
+              setPage(1)
+              setSort(parseSortValue(nextSortValue))
+            }}
           />
         </div>
       </header>

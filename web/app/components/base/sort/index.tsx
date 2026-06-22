@@ -6,7 +6,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { RiArrowDownSLine, RiCheckLine, RiSortAsc, RiSortDesc } from '@remixicon/react'
+import { RiSortAsc, RiSortDesc } from '@remixicon/react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -47,12 +47,12 @@ function Sort({
                 {triggerContent}
               </div>
             </div>
-            <RiArrowDownSLine className="size-4 text-text-tertiary" />
+            <span aria-hidden className="i-ri-arrow-down-s-line size-4 text-text-tertiary" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
             placement="bottom-start"
             sideOffset={4}
-            popupClassName="relative w-[240px] rounded-xl border-[0.5px] bg-components-panel-bg-blur p-0"
+            popupClassName="relative w-[240px] rounded-xl bg-components-panel-bg-blur p-0"
           >
             <DropdownMenuRadioGroup
               value={value}
@@ -67,7 +67,7 @@ function Sort({
                   className="gap-2 rounded-lg px-2 py-[6px] pl-3"
                 >
                   <div title={item.name} className="grow truncate system-sm-medium text-text-secondary">{item.name}</div>
-                  {value === item.value && <RiCheckLine className="size-4 shrink-0 text-util-colors-blue-light-blue-light-600" />}
+                  {value === item.value && <span aria-hidden className="i-ri-check-line size-4 shrink-0 text-util-colors-blue-light-blue-light-600" />}
                 </DropdownMenuRadioItem>
               ))}
             </DropdownMenuRadioGroup>
