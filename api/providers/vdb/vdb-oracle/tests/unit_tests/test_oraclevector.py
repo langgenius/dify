@@ -586,9 +586,7 @@ def test_search_by_full_text_drops_unsafe_or_reserved_tokens(oracle_module, monk
     vector._get_connection.assert_not_called()
 
 
-def test_search_by_full_text_returns_empty_on_oracle_text_parser_error(
-    oracle_module, monkeypatch: pytest.MonkeyPatch
-):
+def test_search_by_full_text_returns_empty_on_oracle_text_parser_error(oracle_module, monkeypatch: pytest.MonkeyPatch):
     vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
     vector.table_name = "embedding_collection_1"
 
