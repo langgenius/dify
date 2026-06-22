@@ -29,7 +29,7 @@ const mockState = vi.hoisted(() => ({
   credentialData: { credentials: {}, available_credentials: [] } as CredentialData,
   doingAction: false,
   deleteCredentialId: null as string | null,
-  workspacePermissionKeys: ['credential.manage', 'credential.use'] as string[],
+  workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'] as string[],
   formSchemas: [] as CredentialFormSchema[],
   formValues: {} as Record<string, unknown>,
   modelNameAndTypeFormSchemas: [] as CredentialFormSchema[],
@@ -184,7 +184,7 @@ describe('ModelModal', () => {
     mockState.credentialData = { credentials: {}, available_credentials: [] }
     mockState.doingAction = false
     mockState.deleteCredentialId = null
-    mockState.workspacePermissionKeys = ['credential.manage', 'credential.use']
+    mockState.workspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
     mockState.formSchemas = []
     mockState.formValues = {}
     mockState.modelNameAndTypeFormSchemas = []

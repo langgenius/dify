@@ -46,6 +46,7 @@
   "group.credential": "Credentials",
   "group.dataset": "Knowledge bases",
   "group.dataset_acl": "Knowledge base access permissions",
+  "group.integration": "Integrations",
   "group.plugin": "Plugins",
   "group.tool_mcp": "Tools and MCP",
   "group.workspace": "Workspace",

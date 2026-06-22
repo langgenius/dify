@@ -74,6 +74,37 @@ describe('streamPrinterFor — workflow', () => {
   })
 })
 
+describe('streamPrinterFor — workflow think filtering', () => {
+  it('think: false (default) strips <think> from string outputs, nothing to stderr', () => {
+    const sp = streamPrinterFor('workflow')
+    const cap = captures()
+    sp.onEvent(cap.out, cap.err, ev('workflow_finished', { data: { outputs: { text: '<think>hidden</think>\nresult' } } }))
+    sp.onEnd(cap.out, cap.err)
+    const parsed = JSON.parse(cap.outBuf().trim()) as { text: string }
+    expect(parsed.text).toBe('result')
+    expect(cap.errBuf()).toBe('')
+  })
+
+  it('think: true strips <think> from string outputs and routes thinking to stderr', () => {
+    const sp = streamPrinterFor('workflow', true)
+    const cap = captures()
+    sp.onEvent(cap.out, cap.err, ev('workflow_finished', { data: { outputs: { text: '<think>reasoning</think>\nresult' } } }))
+    sp.onEnd(cap.out, cap.err)
+    const parsed = JSON.parse(cap.outBuf().trim()) as { text: string }
+    expect(parsed.text).toBe('result')
+    expect(cap.errBuf()).toContain('<think>')
+    expect(cap.errBuf()).toContain('reasoning')
+  })
+
+  it('array outputs pass through unchanged (not reshaped into an object)', () => {
+    const sp = streamPrinterFor('workflow', true)
+    const cap = captures()
+    sp.onEvent(cap.out, cap.err, ev('workflow_finished', { data: { outputs: ['a', 'b'] } }))
+    sp.onEnd(cap.out, cap.err)
+    expect(cap.outBuf().trim()).toBe('["a","b"]')
+  })
+})
+
 describe('streamPrinterFor — unknown mode', () => {
   it('throws', () => {
     expect(() => streamPrinterFor('whatever')).toThrow()

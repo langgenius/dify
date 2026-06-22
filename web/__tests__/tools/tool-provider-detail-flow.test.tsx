@@ -49,7 +49,7 @@ vi.mock('@/context/app-context', () => ({
     isCurrentWorkspaceManager: true,
   }),
   useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
-    workspacePermissionKeys: ['tool.manage', 'credential.manage', 'credential.use'],
+    workspacePermissionKeys: ['tool.manage', 'credential.create', 'credential.manage', 'credential.use'],
   }),
 }))
 

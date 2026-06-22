@@ -36,6 +36,7 @@ from extensions.ext_database import db
 from fields.agent_fields import (
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
+    AgentConfigSnapshotRestoreResponse,
     AgentInviteOptionsResponse,
     AgentLogListResponse,
     AgentLogMessageListResponse,
@@ -185,6 +186,7 @@ class AgentStatisticsQuery(BaseModel):
 
 class AgentAppPartial(GenericAppPartial):
     app_id: str | None = None
+    debug_conversation_id: str | None = None
     role: str | None = None
     active_config_is_published: bool = False
     published_reference_count: int = 0
@@ -193,6 +195,7 @@ class AgentAppPartial(GenericAppPartial):
 
 class AgentAppDetailWithSite(GenericAppDetailWithSite):
     app_id: str | None = None
+    debug_conversation_id: str | None = None
     role: str | None = None
     active_config_is_published: bool = False
 
@@ -223,6 +226,7 @@ register_response_schema_models(
     AgentAppPartial,
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
+    AgentConfigSnapshotRestoreResponse,
     AgentInviteOptionsResponse,
     AgentLogListResponse,
     AgentLogMessageListResponse,
@@ -260,6 +264,7 @@ def _serialize_agent_app_detail(app_model) -> dict:
     payload.pop("bound_agent_id", None)
     payload["app_id"] = str(app_model.id)
     payload["id"] = agent.id
+    payload["debug_conversation_id"] = agent.debug_conversation_id
     payload["role"] = agent.role or ""
     payload["active_config_is_published"] = roster_service.active_config_is_published(
         tenant_id=app_model.tenant_id,
@@ -299,6 +304,7 @@ def _serialize_agent_app_pagination(app_pagination, *, tenant_id: str) -> dict:
         if agent:
             item["app_id"] = app_id
             item["id"] = agent.id
+            item["debug_conversation_id"] = agent.debug_conversation_id
             item["role"] = agent.role or ""
             item["active_config_is_published"] = active_config_is_published_by_agent_id.get(agent.id, False)
             published_references = published_references_by_agent_id.get(agent.id, [])
@@ -647,5 +653,26 @@ class AgentRosterVersionDetailApi(Resource):
                 tenant_id=tenant_id,
                 agent_id=str(agent_id),
                 version_id=str(version_id),
+            ),
+        )
+
+
+@console_ns.route("/agent/<uuid:agent_id>/versions/<uuid:version_id>/restore")
+class AgentRosterVersionRestoreApi(Resource):
+    @console_ns.response(200, "Agent version restored", console_ns.models[AgentConfigSnapshotRestoreResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, current_user: Account, agent_id: UUID, version_id: UUID):
+        return dump_response(
+            AgentConfigSnapshotRestoreResponse,
+            _agent_roster_service().restore_agent_version(
+                tenant_id=tenant_id,
+                agent_id=str(agent_id),
+                version_id=str(version_id),
+                account_id=current_user.id,
             ),
         )

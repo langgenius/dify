@@ -193,6 +193,29 @@ export type AgentDrivePreviewResponse = {
   truncated: boolean
 }
 
+export type AgentDriveSkillListResponse = {
+  items?: Array<AgentDriveSkillItemResponse>
+}
+
+export type AgentDriveSkillInspectResponse = {
+  archive_key?: string | null
+  created_at?: number | null
+  description: string
+  file_tree?: Array<{
+    [key: string]: unknown
+  }>
+  files?: Array<AgentDriveSkillFileResponse>
+  hash?: string | null
+  mime_type?: string | null
+  name: string
+  path: string
+  size?: number | null
+  skill_md: AgentDriveSkillMarkdownResponse
+  skill_md_key: string
+  source: string
+  warnings?: Array<string>
+}
+
 export type AgentDriveDeleteResponse = {
   config_version_id?: string | null
   removed_keys?: Array<string>
@@ -1274,9 +1297,39 @@ export type AgentDriveItemResponse = {
   created_at?: number | null
   file_kind: string
   hash?: string | null
+  is_skill?: boolean | null
   key: string
   mime_type?: string | null
   size?: number | null
+  skill_metadata?: string | null
+}
+
+export type AgentDriveSkillItemResponse = {
+  archive_key?: string | null
+  created_at?: number | null
+  description: string
+  hash?: string | null
+  mime_type?: string | null
+  name: string
+  path: string
+  size?: number | null
+  skill_md_key: string
+}
+
+export type AgentDriveSkillFileResponse = {
+  available_in_drive: boolean
+  drive_key?: string | null
+  name: string
+  path: string
+  type: string
+}
+
+export type AgentDriveSkillMarkdownResponse = {
+  binary: boolean
+  key: string
+  size?: number | null
+  text?: string | null
+  truncated: boolean
 }
 
 export type AgentDriveFileResponse = {
@@ -3124,6 +3177,44 @@ export type GetAppsByAppIdAgentDriveFilesPreviewResponses = {
 
 export type GetAppsByAppIdAgentDriveFilesPreviewResponse
   = GetAppsByAppIdAgentDriveFilesPreviewResponses[keyof GetAppsByAppIdAgentDriveFilesPreviewResponses]
+
+export type GetAppsByAppIdAgentDriveSkillsData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    node_id?: string
+    prefix?: string
+  }
+  url: '/apps/{app_id}/agent/drive/skills'
+}
+
+export type GetAppsByAppIdAgentDriveSkillsResponses = {
+  200: AgentDriveSkillListResponse
+}
+
+export type GetAppsByAppIdAgentDriveSkillsResponse
+  = GetAppsByAppIdAgentDriveSkillsResponses[keyof GetAppsByAppIdAgentDriveSkillsResponses]
+
+export type GetAppsByAppIdAgentDriveSkillsBySkillPathInspectData = {
+  body?: never
+  path: {
+    app_id: string
+    skill_path: string
+  }
+  query?: {
+    node_id?: string
+  }
+  url: '/apps/{app_id}/agent/drive/skills/{skill_path}/inspect'
+}
+
+export type GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponses = {
+  200: AgentDriveSkillInspectResponse
+}
+
+export type GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponse
+  = GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponses[keyof GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponses]
 
 export type DeleteAppsByAppIdAgentFilesData = {
   body?: never
