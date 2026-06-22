@@ -4,7 +4,6 @@ from uuid import UUID
 from flask import abort, make_response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
-from extensions.ext_database import db
 
 from controllers.common.errors import NoFileUploadedError, TooManyFilesError
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
@@ -20,6 +19,7 @@ from controllers.console.wraps import (
     rbac_permission_required,
     setup_required,
 )
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.annotation_fields import (
     Annotation,
@@ -389,7 +389,9 @@ class AnnotationUpdateDeleteApi(Resource):
             update_args["answer"] = args.answer
         if args.question is not None:
             update_args["question"] = args.question
-        annotation = AppAnnotationService.update_app_annotation_directly(update_args, str(app_id), str(annotation_id), db.session)
+        annotation = AppAnnotationService.update_app_annotation_directly(
+            update_args, str(app_id), str(annotation_id), db.session
+        )
         return Annotation.model_validate(annotation, from_attributes=True).model_dump(mode="json")
 
     @setup_required

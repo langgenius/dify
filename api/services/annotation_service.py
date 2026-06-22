@@ -1,10 +1,10 @@
-from sqlalchemy.orm import scoped_session
 import logging
 import uuid
 from typing import TypedDict
 
 import pandas as pd
 from sqlalchemy import delete, or_, select, update
+from sqlalchemy.orm import scoped_session
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
@@ -301,7 +301,9 @@ class AppAnnotationService:
         return annotation
 
     @classmethod
-    def update_app_annotation_directly(cls, args: UpdateAnnotationArgs, app_id: str, annotation_id: str, session: scoped_session):
+    def update_app_annotation_directly(
+        cls, args: UpdateAnnotationArgs, app_id: str, annotation_id: str, session: scoped_session
+    ):
         # get app info
         _, current_tenant_id = current_account_with_tenant()
         app = session.scalar(
