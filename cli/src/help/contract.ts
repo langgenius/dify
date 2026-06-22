@@ -38,7 +38,7 @@ export const CONTRACT: Contract = {
     description:
       'On failure the error goes to stderr. Under -o json/yaml it is a structured envelope; otherwise a human line.',
     shape:
-      '{ "error": { "code": string, "message": string, "hint"?: string, "http_status"?: number, "request"?: string } }',
+      '{ "error": { "code": string, "message": string, "hint"?: string, "http_status"?: number, "method"?: string, "url"?: string, "raw_response"?: string, "server"?: object } }',
   },
   hitl: {
     description:
