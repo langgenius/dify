@@ -193,11 +193,7 @@ def sanitize_oracle_text_token(token: str) -> list[str]:
     parts = ORACLE_TEXT_SAFE_TOKEN.findall(str(token))
     if not parts:
         return []
-    return [
-        part
-        for part in parts
-        if part.upper() not in ORACLE_TEXT_RESERVED_TOKENS
-    ]
+    return [part for part in parts if part.upper() not in ORACLE_TEXT_RESERVED_TOKENS]
 
 
 def build_oracle_text_query(tokens: list[str]) -> str | None:
