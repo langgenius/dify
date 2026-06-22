@@ -1584,15 +1584,7 @@ export type GetAgentData = {
     creator_ids?: Array<string>
     is_created_by_me?: boolean
     limit?: number
-    mode?:
-      | 'advanced-chat'
-      | 'agent'
-      | 'agent-chat'
-      | 'all'
-      | 'channel'
-      | 'chat'
-      | 'completion'
-      | 'workflow'
+    mode?: string
     name?: string
     page?: number
     sort_by?: 'earliest_created' | 'last_modified' | 'recently_created'

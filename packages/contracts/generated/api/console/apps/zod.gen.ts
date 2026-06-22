@@ -3713,19 +3713,7 @@ export const zGetAppsQuery = z.object({
   creator_ids: z.array(z.string()).optional(),
   is_created_by_me: z.boolean().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
-  mode: z
-    .enum([
-      'advanced-chat',
-      'agent',
-      'agent-chat',
-      'all',
-      'channel',
-      'chat',
-      'completion',
-      'workflow',
-    ])
-    .optional()
-    .default('all'),
+  mode: z.string().optional().default('all'),
   name: z.string().optional(),
   page: z.int().gte(1).lte(99999).optional().default(1),
   sort_by: z
@@ -3776,19 +3764,7 @@ export const zGetAppsStarredQuery = z.object({
   creator_ids: z.array(z.string()).optional(),
   is_created_by_me: z.boolean().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
-  mode: z
-    .enum([
-      'advanced-chat',
-      'agent',
-      'agent-chat',
-      'all',
-      'channel',
-      'chat',
-      'completion',
-      'workflow',
-    ])
-    .optional()
-    .default('all'),
+  mode: z.string().optional().default('all'),
   name: z.string().optional(),
   page: z.int().gte(1).lte(99999).optional().default(1),
   sort_by: z

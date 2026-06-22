@@ -300,7 +300,7 @@ Check if activation token is valid
 | creator_ids | query | Filter by creator account IDs | No | [ string ] |
 | is_created_by_me | query | Filter by creator | No | boolean |
 | limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
-| mode | query | App mode filter | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all |
+| mode | query | App mode filter | No | string, <br>**Default:** all |
 | name | query | Filter by app name | No | string |
 | page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
 | sort_by | query | Sort apps by last modified, recently created, or earliest created | No | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified |
@@ -1114,7 +1114,7 @@ Get list of applications with pagination and filtering
 | creator_ids | query | Filter by creator account IDs | No | [ string ] |
 | is_created_by_me | query | Filter by creator | No | boolean |
 | limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
-| mode | query | App mode filter | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all |
+| mode | query | App mode filter | No | string, <br>**Default:** all |
 | name | query | Filter by app name | No | string |
 | page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
 | sort_by | query | Sort apps by last modified, recently created, or earliest created | No | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified |
@@ -1197,7 +1197,7 @@ Get applications starred by the current account
 | creator_ids | query | Filter by creator account IDs | No | [ string ] |
 | is_created_by_me | query | Filter by creator | No | boolean |
 | limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
-| mode | query | App mode filter | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all |
+| mode | query | App mode filter | No | string, <br>**Default:** all |
 | name | query | Filter by app name | No | string |
 | page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
 | sort_by | query | Sort apps by last modified, recently created, or earliest created | No | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified |
@@ -13734,7 +13734,7 @@ Enum class for api provider schema type.
 | creator_ids | [ string ] | Filter by creator account IDs | No |
 | is_created_by_me | boolean | Filter by creator | No |
 | limit | integer, <br>**Default:** 20 | Page size (1-100) | No |
-| mode | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all | App mode filter<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
+| mode | [AppMode](#appmode)<br>string | App mode filter | No |
 | name | string | Filter by app name | No |
 | page | integer, <br>**Default:** 1 | Page number (1-99999) | No |
 | sort_by | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified | Sort apps by last modified, recently created, or earliest created<br>*Enum:* `"earliest_created"`, `"last_modified"`, `"recently_created"` | No |
@@ -13760,6 +13760,12 @@ AppMCPServer Status Enum
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AppMCPServerStatus | string | AppMCPServer Status Enum |  |
+
+#### AppMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppMode | string |  |  |
 
 #### AppNamePayload
 
@@ -19364,7 +19370,7 @@ Query parameters for listing snippet published workflows.
 | creator_ids | [ string ] | Filter by creator account IDs | No |
 | is_created_by_me | boolean | Filter by creator | No |
 | limit | integer, <br>**Default:** 20 | Page size (1-100) | No |
-| mode | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all | App mode filter<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
+| mode | [AppMode](#appmode)<br>string | App mode filter | No |
 | name | string | Filter by app name | No |
 | page | integer, <br>**Default:** 1 | Page number (1-99999) | No |
 | sort_by | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified | Sort apps by last modified, recently created, or earliest created<br>*Enum:* `"earliest_created"`, `"last_modified"`, `"recently_created"` | No |
