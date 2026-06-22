@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Generator
 
 import uuid
 from collections.abc import Callable, Iterator
@@ -46,20 +47,21 @@ def make_account(db_session_with_containers: Session) -> Callable[..., Account]:
                 name=fake.name(),
                 interface_language="en-US",
                 password=generate_valid_password(fake),
+                session=db_session_with_containers,
             )
             if with_owner_tenant:
-                TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+                TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         return account
 
     return _make
 
 
-def add_tenant_for_account(account: Account, *, role: str = "normal", name: str = "Second WS") -> Tenant:
+def add_tenant_for_account(account: Account, *, session: Session, role: str = "normal", name: str = "Second WS") -> Tenant:
     """Create an additional tenant and join ``account`` to it (real service calls)."""
     with patch("services.account_service.FeatureService") as mock_feature_service:
         mock_feature_service.get_system_features.return_value.is_allow_create_workspace = True
-        tenant = TenantService.create_tenant(name=name)
-    TenantService.create_tenant_member(tenant, account, db.session, role=role)
+        tenant = TenantService.create_tenant(name=name, session=session)
+    TenantService.create_tenant_member(tenant, account, session, role=role)
     return tenant
 
 
@@ -93,7 +95,7 @@ def account_auth_context(
     *,
     token_id: uuid.UUID,
     client_id: str = "integration-cli",
-) -> Iterator[AuthContext]:
+) -> Generator[AuthContext]:
     """Publish an account ``AuthContext`` for handlers that read ``get_auth_ctx()``.
 
     The auth pipeline normally sets this ContextVar; the integration suite

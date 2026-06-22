@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.entities.entities import Subscription as TriggerSubscriptionEntity
+from extensions.ext_database import db
 from models.account import Account, Tenant
 from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription
@@ -54,7 +55,7 @@ class TestTriggerProviderService:
 
     def _create_test_account_and_tenant(
         self,
-        mock_external_service_dependencies: MockExternalServiceDependencies,
+        mock_external_service_dependencies: MockExternalServiceDependencies,db_session_with_containers: Session,
     ) -> tuple[Account, Tenant]:
         """
         Helper method to create a test account and tenant for testing.
@@ -83,8 +84,9 @@ class TestTriggerProviderService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
         assert tenant is not None
 

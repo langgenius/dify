@@ -3,7 +3,7 @@ from datetime import datetime
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter, computed_field, field_validator
-
+from extensions.ext_database import db
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
@@ -489,7 +489,7 @@ class WorkflowCommentMentionUsersApi(Resource):
         current_tenant = current_user.current_tenant  # need the tenant object here
         if current_tenant is None:
             raise ValueError("current tenant is required")
-        members = TenantService.get_tenant_members(current_tenant)
+        members = TenantService.get_tenant_members(current_tenant, session=db.session)
         users = TypeAdapter(list[AccountWithRole]).validate_python(members, from_attributes=True)
         response = WorkflowCommentMentionUsersPayload(users=users)
         return response.model_dump(mode="json"), 200

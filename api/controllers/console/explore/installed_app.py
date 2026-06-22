@@ -175,7 +175,7 @@ class InstalledAppsListApi(Resource):
 
         if current_user.current_tenant is None:
             raise ValueError("current_user.current_tenant must not be None")
-        current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant)
+        current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant, session=db.session)
         installed_app_list: list[dict[str, Any]] = []
         for installed_app, app_model in installed_apps:
             installed_app_list.append(

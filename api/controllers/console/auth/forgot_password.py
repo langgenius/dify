@@ -198,10 +198,10 @@ class ForgotPasswordResetApi(Resource):
 
         # Create workspace if needed
         if (
-            not TenantService.get_join_tenants(account)
+            not TenantService.get_join_tenants(account, session=db.session)
             and FeatureService.get_system_features().is_allow_create_workspace
         ):
-            tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+            tenant = TenantService.create_tenant(f"{account.name}'s Workspace", session=db.session)
             TenantService.create_tenant_member(tenant, account, db.session, role="owner")
             account.current_tenant = tenant
             tenant_was_created.send(tenant)

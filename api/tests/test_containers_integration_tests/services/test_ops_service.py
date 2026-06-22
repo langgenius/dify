@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.ops.entities.config_entity import TracingProviderEnum
+from extensions.ext_database import db
 from models.model import TraceAppConfig
 from services.account_service import AccountService, TenantService
 from services.app_service import AppService, CreateAppParams
@@ -51,8 +52,9 @@ class TestOpsService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
         app_service = AppService()
         app = app_service.create_app(

@@ -74,8 +74,9 @@ class TestWorkflowRunService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app with realistic data
@@ -531,7 +532,7 @@ class TestWorkflowRunService:
             password="password123",
             interface_language="en-US",
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name="test_tenant")
+        TenantService.create_owner_tenant_if_not_exist(account, name="test_tenant", session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app
@@ -582,7 +583,7 @@ class TestWorkflowRunService:
             password="password123",
             interface_language="en-US",
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name="test_tenant")
+        TenantService.create_owner_tenant_if_not_exist(account, name="test_tenant", session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app
@@ -633,7 +634,7 @@ class TestWorkflowRunService:
             password="password123",
             interface_language="en-US",
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name="test_tenant")
+        TenantService.create_owner_tenant_if_not_exist(account, name="test_tenant", session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app

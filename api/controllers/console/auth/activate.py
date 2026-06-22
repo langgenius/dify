@@ -89,7 +89,9 @@ class ActivateCheckApi(Resource):
         workspaceId = args.workspace_id
         token = args.token
 
-        invitation = RegisterService.get_invitation_with_case_fallback(workspaceId, args.email, token)
+        invitation = RegisterService.get_invitation_with_case_fallback(
+            workspaceId, args.email, token, session=db.session
+        )
         if invitation:
             data = invitation.get("data", {})
             tenant = invitation.get("tenant", None)
@@ -137,7 +139,9 @@ class ActivateApi(Resource):
         args = ActivatePayload.model_validate(console_ns.payload)
 
         normalized_request_email = args.email.lower() if args.email else None
-        invitation = RegisterService.get_invitation_with_case_fallback(args.workspace_id, args.email, args.token)
+        invitation = RegisterService.get_invitation_with_case_fallback(
+            args.workspace_id, args.email, args.token, session=db.session
+        )
         if invitation is None:
             raise AlreadyActivateError()
 
@@ -184,6 +188,6 @@ class ActivateApi(Resource):
             account.status = AccountStatus.ACTIVE
             account.initialized_at = naive_utc_now()
 
-        TenantService.switch_tenant(account, tenant.id)
+        TenantService.switch_tenant(account, tenant.id, session=db.session)
 
         return {"result": "success"}

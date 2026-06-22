@@ -195,7 +195,7 @@ class OAuthCallback(Resource):
             db.session.commit()
 
         try:
-            TenantService.create_owner_tenant_if_not_exist(account)
+            TenantService.create_owner_tenant_if_not_exist(account, session=db.session)
         except Unauthorized:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Workspace not found.")
         except WorkSpaceNotAllowedCreateError:
@@ -206,6 +206,7 @@ class OAuthCallback(Resource):
 
         token_pair = AccountService.login(
             account=account,
+            session=db.session,
             ip_address=extract_remote_ip(request),
         )
 
@@ -240,12 +241,12 @@ def _generate_account(
     oauth_new_user = False
 
     if account:
-        tenants = TenantService.get_join_tenants(account)
+        tenants = TenantService.get_join_tenants(account, session=db.session)
         if not tenants:
             if not FeatureService.get_system_features().is_allow_create_workspace:
                 raise WorkSpaceNotAllowedCreateError()
             else:
-                new_tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+                new_tenant = TenantService.create_tenant(f"{account.name}'s Workspace", session=db.session)
                 TenantService.create_tenant_member(new_tenant, account, db.session, role="owner")
                 account.current_tenant = new_tenant
                 tenant_was_created.send(new_tenant)
@@ -272,9 +273,10 @@ def _generate_account(
             provider=provider,
             language=interface_language,
             timezone=timezone,
+            session=db.session,
         )
 
     # Link account
-    AccountService.link_account_integrate(provider, user_info.id, account)
+    AccountService.link_account_integrate(provider, user_info.id, account, session=db.session)
 
     return account, oauth_new_user
