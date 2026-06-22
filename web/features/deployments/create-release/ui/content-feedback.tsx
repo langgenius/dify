@@ -4,26 +4,14 @@ import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { UnsupportedDslNodesAlert } from '../../components/unsupported-dsl-nodes-alert'
 import {
-  createReleaseFormValuesAtom,
-  createReleaseSubmitUnsupportedDslNodesAtom,
+  createReleaseContentCheckAtom,
+  createReleaseUnsupportedDslNodesAtom,
 } from '../state'
-import {
-  useCreateReleaseSourceSelection,
-  useReleaseContentCheck,
-} from './use-release-content-check'
 
 export function ReleaseContentFeedback() {
   const { t } = useTranslation('deployments')
-  const formValues = useAtomValue(createReleaseFormValuesAtom)
-  const sourceSelection = useCreateReleaseSourceSelection(formValues)
-  const releaseContent = useReleaseContentCheck(sourceSelection)
-  const submitUnsupportedDslNodes = useAtomValue(createReleaseSubmitUnsupportedDslNodesAtom)
-  // Precheck reports unsupported nodes at pick time; the post-submit atom stays
-  // as the TOCTOU fallback when the content changes server-side between
-  // precheck and create.
-  const unsupportedDslNodes = releaseContent.unsupportedNodes.length > 0
-    ? releaseContent.unsupportedNodes
-    : submitUnsupportedDslNodes
+  const releaseContent = useAtomValue(createReleaseContentCheckAtom)
+  const unsupportedDslNodes = useAtomValue(createReleaseUnsupportedDslNodesAtom)
 
   return (
     <>

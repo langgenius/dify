@@ -5,27 +5,17 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import {
   closeCreateReleaseDialogAtom,
+  createReleaseCanCreateAtom,
+  createReleaseContentCheckAtom,
   createReleaseFormIsSubmittingAtom,
-  createReleaseFormValuesAtom,
 } from '../state'
-import {
-  createReleaseReadiness,
-  useCreateReleaseSourceSelection,
-  useReleaseContentCheck,
-} from './use-release-content-check'
 
 export function CreateReleaseActions() {
   const { t } = useTranslation('deployments')
   const closeDialog = useSetAtom(closeCreateReleaseDialogAtom)
-  const formValues = useAtomValue(createReleaseFormValuesAtom)
   const isSubmitting = useAtomValue(createReleaseFormIsSubmittingAtom)
-  const sourceSelection = useCreateReleaseSourceSelection(formValues)
-  const releaseContent = useReleaseContentCheck(sourceSelection)
-  const { canCreate, isCheckingReleaseContent } = createReleaseReadiness({
-    formValues,
-    isSubmitting,
-    releaseContent,
-  })
+  const canCreate = useAtomValue(createReleaseCanCreateAtom)
+  const isCheckingReleaseContent = useAtomValue(createReleaseContentCheckAtom).isCheckingReleaseContent
 
   function requestClose() {
     if (isSubmitting)

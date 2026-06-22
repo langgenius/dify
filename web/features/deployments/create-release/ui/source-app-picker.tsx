@@ -1,5 +1,5 @@
 'use client'
-import type { SourceAppPickerValue } from './source-app-picker-value'
+import type { SourceAppPickerValue } from '../state'
 import type { App } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -22,7 +22,6 @@ import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { TitleTooltip } from '../../components/title-tooltip'
-import { isWorkflowApp } from './source-app-mode'
 
 const SOURCE_APP_PAGE_SIZE = 20
 const SOURCE_APP_PICKER_SKELETON_KEYS = ['first-source-app', 'second-source-app', 'third-source-app']
@@ -161,7 +160,7 @@ export function SourceAppPicker({ value, onChange, ariaLabel, disabled = false }
     enabled: !disabled,
   })
 
-  const apps = data?.pages.flatMap(page => page.data).filter(isWorkflowApp) ?? []
+  const apps = data?.pages.flatMap(page => page.data) ?? []
 
   return (
     <Combobox<App>

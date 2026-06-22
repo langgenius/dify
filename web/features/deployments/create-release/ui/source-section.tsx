@@ -9,8 +9,9 @@ import { isDeploymentDslImportEnabled } from '../../shared/domain/feature-flags'
 import {
   createReleaseDslFileFieldAtom,
   createReleaseDslStateAtom,
-  createReleaseSourceAppFieldAtom,
-  createReleaseSourceModeFieldAtom,
+  createReleaseHasUnsupportedDslModeAtom,
+  createReleaseSelectedSourceAppAtom,
+  createReleaseSourceModeAtom,
   selectCreateReleaseSourceModeAtom,
   updateCreateReleaseDslFileAtom,
   updateCreateReleaseSourceAppAtom,
@@ -23,7 +24,7 @@ function selectedReleaseSourceMode(value: readonly ReleaseSourceMode[] | undefin
 
 export function ReleaseSourceSection() {
   const { t } = useTranslation('deployments')
-  const sourceModeField = useAtomValue(createReleaseSourceModeFieldAtom)
+  const releaseSourceMode = useAtomValue(createReleaseSourceModeAtom)
   const selectReleaseSourceMode = useSetAtom(selectCreateReleaseSourceModeAtom)
 
   return (
@@ -35,10 +36,10 @@ export function ReleaseSourceSection() {
         {isDeploymentDslImportEnabled && (
           <SegmentedControl<ReleaseSourceMode>
             aria-labelledby="release-source-mode-label"
-            value={[sourceModeField.value]}
+            value={[releaseSourceMode]}
             onValueChange={(value) => {
               const nextMode = selectedReleaseSourceMode(value)
-              if (!nextMode || nextMode === sourceModeField.value)
+              if (!nextMode || nextMode === releaseSourceMode)
                 return
 
               selectReleaseSourceMode(nextMode)
@@ -58,7 +59,7 @@ export function ReleaseSourceSection() {
       </div>
 
       <div className="min-h-12">
-        {sourceModeField.value === 'sourceApp' || !isDeploymentDslImportEnabled
+        {releaseSourceMode === 'sourceApp'
           ? <SourceAppField />
           : <DslFileField />}
       </div>
@@ -68,14 +69,14 @@ export function ReleaseSourceSection() {
 
 function SourceAppField() {
   const { t } = useTranslation('deployments')
-  const sourceAppField = useAtomValue(createReleaseSourceAppFieldAtom)
+  const sourceApp = useAtomValue(createReleaseSelectedSourceAppAtom)
   const updateSourceApp = useSetAtom(updateCreateReleaseSourceAppAtom)
   const sourceAppLocked = !isDeploymentDslImportEnabled
 
   return (
     <div className="flex min-h-12 items-center">
       <SourceAppPicker
-        value={sourceAppField.value}
+        value={sourceApp}
         onChange={updateSourceApp}
         ariaLabel={t('versions.sourceAppOption')}
         disabled={sourceAppLocked}
@@ -88,6 +89,7 @@ function DslFileField() {
   const { t } = useTranslation('deployments')
   const dslFileField = useAtomValue(createReleaseDslFileFieldAtom)
   const dslState = useAtomValue(createReleaseDslStateAtom)
+  const hasUnsupportedDslMode = useAtomValue(createReleaseHasUnsupportedDslModeAtom)
   const updateDslFile = useSetAtom(updateCreateReleaseDslFileAtom)
 
   return (
@@ -109,18 +111,15 @@ function DslFileField() {
           {t('versions.dslReadFailed')}
         </div>
       )}
-      <DslUnsupportedModeError />
+      <DslUnsupportedModeError hasUnsupportedDslMode={hasUnsupportedDslMode} />
     </div>
   )
 }
 
-function DslUnsupportedModeError() {
+function DslUnsupportedModeError({ hasUnsupportedDslMode }: {
+  hasUnsupportedDslMode: boolean
+}) {
   const { t } = useTranslation('deployments')
-  const dslState = useAtomValue(createReleaseDslStateAtom)
-  const hasUnsupportedDslMode = dslState.hasDslContent
-    && !dslState.isReadingDsl
-    && !dslState.dslReadError
-    && !dslState.isWorkflowDslContent
 
   if (!hasUnsupportedDslMode)
     return null
