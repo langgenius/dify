@@ -31,7 +31,7 @@ from extensions.ext_database import db
 from libs.login import current_account_with_tenant
 from models.dataset import Dataset
 from models.model import App
-from services.enterprise.rbac_service import RBACService    
+from services.enterprise.rbac_service import RBACService
 
 __all__ = ["RBACPermission", "RBACResourceScope", "rbac_permission_required"]
 
@@ -51,6 +51,7 @@ def openapi_rbac_permission_required[**P, R](
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
             from controllers.openapi.auth.data import AuthData
+
             auth_data: AuthData | None = cast(AuthData | None, kwargs.get("auth_data"))
             if not auth_data:
                 raise Forbidden()  # openapi auth pipeline is required
