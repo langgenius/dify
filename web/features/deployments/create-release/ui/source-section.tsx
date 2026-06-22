@@ -1,22 +1,20 @@
 'use client'
 
-import type { ReleaseSourceMode } from '../state/types'
+import type { ReleaseSourceMode } from '../state'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
 import { isDeploymentDslImportEnabled } from '../../shared/domain/feature-flags'
 import {
+  createReleaseDslFileFieldAtom,
   createReleaseDslStateAtom,
+  createReleaseSourceAppFieldAtom,
+  createReleaseSourceModeFieldAtom,
   selectCreateReleaseSourceModeAtom,
   updateCreateReleaseDslFileAtom,
   updateCreateReleaseSourceAppAtom,
 } from '../state'
-import {
-  createReleaseDslFileFieldAtom,
-  createReleaseSourceAppFieldAtom,
-  createReleaseSourceModeFieldAtom,
-} from '../state/use-create-release-form'
 import { SourceAppPicker } from './source-app-picker'
 
 function selectedReleaseSourceMode(value: readonly ReleaseSourceMode[] | undefined) {

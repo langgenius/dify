@@ -1,6 +1,6 @@
 'use client'
 
-import type { CreateReleaseFormValues } from '../state/types'
+import type { CreateReleaseFormValues } from '../state'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
@@ -12,16 +12,14 @@ import { isDeploymentDslImportEnabled } from '../../shared/domain/feature-flags'
 import {
   closeCreateReleaseDialogAtom,
   createReleaseDialogOpenAtom,
-  openCreateReleaseDialogAtom,
-  useCreateReleaseConfig,
-} from '../state'
-import {
   createReleaseFormAtom,
   createReleaseFormIsSubmittingAtom,
   createReleaseFormValuesAtom,
+  openCreateReleaseDialogAtom,
   setCreateReleaseFormFieldAtom,
   submitCreateReleaseFormAtom,
-} from '../state/use-create-release-form'
+  useCreateReleaseConfig,
+} from '../state'
 import { CreateReleaseActions } from './actions'
 import { ReleaseContentFeedback } from './content-feedback'
 import { ReleaseMetadataFields } from './metadata-fields'

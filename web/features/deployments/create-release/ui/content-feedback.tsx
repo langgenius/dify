@@ -4,9 +4,9 @@ import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { UnsupportedDslNodesAlert } from '../../components/unsupported-dsl-nodes-alert'
 import {
+  createReleaseFormValuesAtom,
   createReleaseSubmitUnsupportedDslNodesAtom,
 } from '../state'
-import { createReleaseFormValuesAtom } from '../state/use-create-release-form'
 import {
   useCreateReleaseSourceSelection,
   useReleaseContentCheck,

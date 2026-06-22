@@ -1,7 +1,6 @@
 'use client'
 
-import type { CreateReleaseDslState } from '../state'
-import type { CreateReleaseFormValues, ReleaseSourceMode } from '../state/types'
+import type { CreateReleaseDslState, CreateReleaseFormValues, ReleaseSourceMode } from '../state'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { consoleQuery } from '@/service/client'

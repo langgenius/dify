@@ -3,28 +3,43 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { useAtom, useSetAtom } from 'jotai'
+import { useAtom } from 'jotai'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   createReleaseDescriptionFieldAtom,
   createReleaseNameFieldAtom,
   RELEASE_NAME_REQUIRED_ERROR,
-  validateCreateReleaseFormAtom,
-} from '../state/use-create-release-form'
+} from '../state'
 
 const DESCRIPTION_MAX_LENGTH = 512
 const DESCRIPTION_WARN_THRESHOLD = 460
 
+function isValidationIssue(error: unknown): error is { message: string } {
+  return Boolean(
+    error
+    && typeof error === 'object'
+    && 'message' in error
+    && typeof error.message === 'string',
+  )
+}
+
 function hasReleaseNameRequiredError(errors: unknown[]) {
-  return errors.includes(RELEASE_NAME_REQUIRED_ERROR)
+  return errors.some((error) => {
+    if (error === RELEASE_NAME_REQUIRED_ERROR)
+      return true
+
+    if (Array.isArray(error))
+      return error.some(issue => isValidationIssue(issue) && issue.message === RELEASE_NAME_REQUIRED_ERROR)
+
+    return isValidationIssue(error) && error.message === RELEASE_NAME_REQUIRED_ERROR
+  })
 }
 
 export function ReleaseMetadataFields() {
   const { t } = useTranslation('deployments')
   const [releaseNameField, setReleaseNameField] = useAtom(createReleaseNameFieldAtom)
   const [releaseDescriptionField, setReleaseDescriptionField] = useAtom(createReleaseDescriptionFieldAtom)
-  const validateCreateReleaseForm = useSetAtom(validateCreateReleaseFormAtom)
   const releaseNameInputRef = useRef<HTMLInputElement>(null)
   const releaseNameErrors = releaseNameField.meta?.errors ?? []
 
@@ -48,12 +63,8 @@ export function ReleaseMetadataFields() {
           value={releaseNameField.value}
           aria-invalid={hasReleaseNameRequiredError(releaseNameErrors) || undefined}
           aria-describedby={hasReleaseNameRequiredError(releaseNameErrors) ? 'release-name-error' : undefined}
-          onBlur={() => {
-            void validateCreateReleaseForm('blur')
-          }}
           onChange={(event) => {
             setReleaseNameField(event.target.value)
-            void validateCreateReleaseForm('blur')
           }}
           className="h-9"
         />

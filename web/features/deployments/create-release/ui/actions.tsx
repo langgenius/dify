@@ -5,11 +5,9 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import {
   closeCreateReleaseDialogAtom,
-} from '../state'
-import {
   createReleaseFormIsSubmittingAtom,
   createReleaseFormValuesAtom,
-} from '../state/use-create-release-form'
+} from '../state'
 import {
   createReleaseReadiness,
   useCreateReleaseSourceSelection,
