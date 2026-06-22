@@ -165,6 +165,43 @@ describe('runApp', () => {
     expect(parsed.data.status).toBe('succeeded')
   })
 
+  it('workflow: strips <think> from outputs by default', async () => {
+    mock.setScenario('workflow-think')
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
+    await runApp(
+      { appId: 'app-2', inputs: { x: '1' } },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
+    )
+    expect(io.outBuf()).toBe('final answer\n')
+    expect(io.errBuf()).not.toContain('secret reasoning')
+  })
+
+  it('workflow --think: routes <think> to stderr, clean stdout', async () => {
+    mock.setScenario('workflow-think')
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
+    await runApp(
+      { appId: 'app-2', inputs: { x: '1' }, think: true },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
+    )
+    expect(io.outBuf()).toBe('final answer\n')
+    expect(io.errBuf()).toContain('secret reasoning')
+  })
+
+  it('--stream workflow -o json --think: strips outputs and routes thinking to stderr', async () => {
+    mock.setScenario('workflow-think')
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
+    await runApp(
+      { appId: 'app-2', inputs: { x: '1' }, stream: true, format: 'json', think: true },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
+    )
+    const parsed = JSON.parse(io.outBuf()) as { data: { outputs: { result: string } } }
+    expect(parsed.data.outputs.result).toBe('final answer')
+    expect(io.errBuf()).toContain('secret reasoning')
+  })
+
   it('stream-error scenario: error event surfaces typed BaseError', async () => {
     mock.setScenario('stream-error')
     const io = bufferStreams()
