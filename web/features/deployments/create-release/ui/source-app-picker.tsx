@@ -31,16 +31,20 @@ function sourceAppSearchText(app: App) {
   return `${app.name} ${app.id}`.toLowerCase()
 }
 
-function SourceAppTrigger({ open, app }: {
+function SourceAppTrigger({ open, app, disabled }: {
   open: boolean
   app?: SourceAppPickerValue
+  disabled: boolean
 }) {
   const { t } = useTranslation('deployments')
 
   return (
     <span
       className={cn(
-        'group flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-transparent bg-components-input-bg-normal px-3 text-left hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
+        'group flex h-10 items-center gap-2 rounded-lg border border-transparent bg-components-input-bg-normal px-3 text-left',
+        disabled
+          ? 'cursor-not-allowed text-components-input-text-disabled'
+          : 'cursor-pointer hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
         open && 'border-components-input-border-active bg-components-input-bg-active shadow-xs',
         app && 'pl-2',
       )}
@@ -70,6 +74,7 @@ function SourceAppTrigger({ open, app }: {
       <span
         className={cn(
           'i-ri-arrow-down-s-line size-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
+          disabled && 'opacity-50 group-hover:text-text-quaternary',
           open && 'text-text-secondary',
         )}
         aria-hidden="true"
@@ -123,10 +128,11 @@ function SourceAppPickerSkeleton() {
   )
 }
 
-export function SourceAppPicker({ value, onChange, ariaLabel }: {
+export function SourceAppPicker({ value, onChange, ariaLabel, disabled = false }: {
   value?: SourceAppPickerValue
   onChange: (app: App) => void
   ariaLabel?: string
+  disabled?: boolean
 }) {
   const { t } = useTranslation('deployments')
   const [isShow, setIsShow] = useState(false)
@@ -152,6 +158,7 @@ export function SourceAppPicker({ value, onChange, ariaLabel }: {
       initialPageParam: 1,
       placeholderData: keepPreviousData,
     }),
+    enabled: !disabled,
   })
 
   const apps = data?.pages.flatMap(page => page.data).filter(isWorkflowApp) ?? []
@@ -159,11 +166,18 @@ export function SourceAppPicker({ value, onChange, ariaLabel }: {
   return (
     <Combobox<App>
       items={apps}
-      open={isShow}
+      open={!disabled && isShow}
       inputValue={searchText}
-      onOpenChange={setIsShow}
-      onInputValueChange={setSearchText}
+      onOpenChange={(open) => {
+        setIsShow(disabled ? false : open)
+      }}
+      onInputValueChange={(value) => {
+        if (!disabled)
+          setSearchText(value)
+      }}
       onValueChange={(app) => {
+        if (disabled)
+          return
         if (!app)
           return
         onChange(app)
@@ -182,14 +196,14 @@ export function SourceAppPicker({ value, onChange, ariaLabel }: {
         return app.id
       }}
       filter={(app, query) => sourceAppSearchText(app).includes(query.toLowerCase())}
-      disabled={false}
+      disabled={disabled}
     >
       <ComboboxTrigger
         aria-label={ariaLabel ?? t('createModal.sourceApp')}
         icon={false}
         className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 data-open:bg-transparent"
       >
-        <SourceAppTrigger open={isShow} app={value} />
+        <SourceAppTrigger open={!disabled && isShow} app={value} disabled={disabled} />
       </ComboboxTrigger>
       <ComboboxContent
         placement="bottom-start"
