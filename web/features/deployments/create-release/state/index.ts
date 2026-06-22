@@ -1,7 +1,7 @@
 'use client'
 
-import type { SourceAppPickerValue } from '../ui/source-app-picker-value'
 import type { UnsupportedDslNode } from '../../shared/domain/error'
+import type { SourceAppPickerValue } from '../ui/source-app-picker-value'
 import { atom, useAtomValue } from 'jotai'
 import {
   atomWithForm,
@@ -20,7 +20,7 @@ export type CreateReleaseFormValues = {
   releaseDescription: string
 }
 
-export const DEFAULT_CREATE_RELEASE_FORM_VALUES: CreateReleaseFormValues = {
+const DEFAULT_CREATE_RELEASE_FORM_VALUES: CreateReleaseFormValues = {
   releaseSourceMode: 'sourceApp',
   sourceApp: undefined,
   dslFile: undefined,
@@ -59,7 +59,6 @@ export const createReleaseFormAtom = atomWithForm({
 
 const createReleaseFormAtoms = createFormAtoms(createReleaseFormAtom)
 
-export const createReleaseFormStateAtom = createReleaseFormAtoms.stateAtom
 export const createReleaseFormValuesAtom = createReleaseFormAtoms.valuesAtom
 export const createReleaseFormIsSubmittingAtom = createReleaseFormAtoms.isSubmittingAtom
 export const setCreateReleaseFormFieldAtom = createReleaseFormAtoms.setFieldAtom
@@ -109,7 +108,7 @@ export const clearCreateReleaseSubmissionErrorAtom = atom(null, (_get, set) => {
   set(createReleaseSubmitUnsupportedDslNodesAtom, [])
 })
 
-export const resetCreateReleaseDslFileAtom = atom(null, (get, set) => {
+const resetCreateReleaseDslFileAtom = atom(null, (get, set) => {
   set(createReleaseDslReadTokenAtom, get(createReleaseDslReadTokenAtom) + 1)
   set(createReleaseDslContentAtom, '')
   set(createReleaseDslReadingAtom, false)
@@ -128,7 +127,7 @@ export const closeCreateReleaseDialogAtom = atom(null, (_get, set) => {
   set(resetCreateReleaseDslFileAtom)
 })
 
-export const selectCreateReleaseDslFileAtom = atom(null, async (get, set, file?: File) => {
+const selectCreateReleaseDslFileAtom = atom(null, async (get, set, file?: File) => {
   const readToken = get(createReleaseDslReadTokenAtom) + 1
   set(createReleaseDslReadTokenAtom, readToken)
   set(createReleaseDslContentAtom, '')
