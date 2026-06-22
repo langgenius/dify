@@ -166,7 +166,9 @@ class TestTriggerProviderService:
         - Database state is correctly updated
         """
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(mock_external_service_dependencies,db_session_with_containers)
+        account, tenant = self._create_test_account_and_tenant(
+            mock_external_service_dependencies, db_session_with_containers
+        )
 
         provider_id = TriggerProviderID("test_org/test_plugin/test_provider")
         credential_type = CredentialType.API_KEY
@@ -264,7 +266,9 @@ class TestTriggerProviderService:
         - Merged credentials contain only new values
         """
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(mock_external_service_dependencies,db_session_with_containers)
+        account, tenant = self._create_test_account_and_tenant(
+            mock_external_service_dependencies, db_session_with_containers
+        )
 
         provider_id = TriggerProviderID("test_org/test_plugin/test_provider")
         credential_type = CredentialType.API_KEY
@@ -322,7 +326,9 @@ class TestTriggerProviderService:
         - Original credentials are preserved
         """
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(mock_external_service_dependencies, db_session_with_containers)
+        account, tenant = self._create_test_account_and_tenant(
+            mock_external_service_dependencies, db_session_with_containers
+        )
 
         provider_id = TriggerProviderID("test_org/test_plugin/test_provider")
         credential_type = CredentialType.API_KEY
@@ -378,7 +384,9 @@ class TestTriggerProviderService:
         - UNKNOWN_VALUE is used when HIDDEN_VALUE key doesn't exist in original credentials
         """
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(mock_external_service_dependencies,db_session_with_containers)
+        account, tenant = self._create_test_account_and_tenant(
+            mock_external_service_dependencies, db_session_with_containers
+        )
 
         provider_id = TriggerProviderID("test_org/test_plugin/test_provider")
         credential_type = CredentialType.API_KEY
@@ -436,7 +444,9 @@ class TestTriggerProviderService:
         - Original subscription state is preserved
         """
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(mock_external_service_dependencies,db_session_with_containers)
+        account, tenant = self._create_test_account_and_tenant(
+            mock_external_service_dependencies, db_session_with_containers
+        )
 
         provider_id = TriggerProviderID("test_org/test_plugin/test_provider")
         credential_type = CredentialType.API_KEY
@@ -486,7 +496,9 @@ class TestTriggerProviderService:
         - Proper error is raised when subscription doesn't exist
         """
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(mock_external_service_dependencies,db_session_with_containers)
+        account, tenant = self._create_test_account_and_tenant(
+            mock_external_service_dependencies, db_session_with_containers
+        )
 
         provider_id = TriggerProviderID("test_org/test_plugin/test_provider")
         fake_subscription_id = fake.uuid4()
@@ -510,7 +522,9 @@ class TestTriggerProviderService:
         - Error is raised when new name conflicts with existing subscription
         """
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(mock_external_service_dependencies,db_session_with_containers)
+        account, tenant = self._create_test_account_and_tenant(
+            mock_external_service_dependencies, db_session_with_containers
+        )
 
         provider_id = TriggerProviderID("test_org/test_plugin/test_provider")
         credential_type = CredentialType.API_KEY
