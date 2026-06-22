@@ -116,6 +116,7 @@ describe('InSiteMessageNotification', () => {
               main: 'Parsed body main',
               actions: [
                 { action: 'link', data: 'https://example.com/docs', text: 'Visit docs', type: 'primary' },
+                { action: 'close', text: 'Outline close', type: 'outline' },
                 { action: 'close', text: 'Dismiss now', type: 'default' },
                 { action: 'link', data: 'https://example.com/invalid', text: 100, type: 'primary' },
               ],
@@ -132,6 +133,7 @@ describe('InSiteMessageNotification', () => {
         expect(screen.getByText('Parsed body main')).toBeInTheDocument()
       })
       expect(screen.getByRole('button', { name: 'Visit docs' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Outline close' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Dismiss now' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Invalid' })).not.toBeInTheDocument()
 
