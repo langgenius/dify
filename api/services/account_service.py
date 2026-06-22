@@ -484,7 +484,7 @@ class AccountService:
         password: str | None = None,
         timezone: str | None = None,
         *,
-        session: scoped_session,
+        session: scoped_session | Session,
     ) -> Account:
         """Create an account and owner workspace."""
         account = AccountService.create_account(
@@ -592,7 +592,7 @@ class AccountService:
         session.commit()
 
     @staticmethod
-    def update_account(account: Account, *, session: scoped_session, **kwargs):
+    def update_account(account: Account, *, session: scoped_session | Session, **kwargs):
         """Update account fields"""
         account = session.merge(account)
         for field, value in kwargs.items():
@@ -618,7 +618,7 @@ class AccountService:
         return account
 
     @staticmethod
-    def update_login_info(account: Account, session: scoped_session, *, ip_address: str):
+    def update_login_info(account: Account, session: scoped_session | Session, *, ip_address: str):
         """Update last login time and ip"""
         account.last_login_at = naive_utc_now()
         account.last_login_ip = ip_address
@@ -626,7 +626,7 @@ class AccountService:
         session.commit()
 
     @staticmethod
-    def login(account: Account, *, session: scoped_session, ip_address: str | None = None) -> TokenPair:
+    def login(account: Account, *, session: scoped_session | Session, ip_address: str | None = None) -> TokenPair:
         if ip_address:
             AccountService.update_login_info(account=account, session=session, ip_address=ip_address)
 
@@ -1938,7 +1938,7 @@ class RegisterService:
         create_workspace_required: bool | None = True,
         timezone: str | None = None,
         *,
-        session: scoped_session,
+        session: scoped_session | Session,
     ) -> Account:
         """Register account"""
         session.begin_nested()
@@ -2000,7 +2000,7 @@ class RegisterService:
         role: str = "normal",
         inviter: Account | None = None,
         *,
-        session: scoped_session,
+        session: scoped_session | Session,
     ) -> str:
         if not inviter:
             raise ValueError("Inviter is required")
