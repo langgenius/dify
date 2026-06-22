@@ -20,6 +20,9 @@ vi.mock('@/service/client', () => ({
   consoleQuery: {
     agent: {
       byAgentId: {
+        get: {
+          queryKey: ({ input }: { input: { params: { agent_id: string } } }) => ['agent-detail', input.params.agent_id],
+        },
         copy: {
           post: {
             mutationOptions: () => ({
@@ -46,6 +49,9 @@ const createAgent = (overrides: Partial<AgentRosterListItem> = {}): AgentRosterL
   active_config_is_published: false,
   description: 'Find and summarize market materials.',
   id: 'agent-1',
+  icon: '🧸',
+  icon_background: '#F5F3FF',
+  icon_type: 'emoji',
   icon_url: null,
   mode: 'agent',
   name: 'Research Agent',
@@ -61,7 +67,7 @@ const renderList = (
 ) => {
   const queryClient = new QueryClient()
 
-  return render(
+  const result = render(
     <QueryClientProvider client={queryClient}>
       <AgentRosterList
         agents={agents}
@@ -77,6 +83,11 @@ const renderList = (
       />
     </QueryClientProvider>,
   )
+
+  return {
+    ...result,
+    queryClient,
+  }
 }
 
 describe('AgentRosterList', () => {
@@ -201,19 +212,96 @@ describe('AgentRosterList', () => {
     expect(screen.getByText(/agentV2\.roster\.references\.label/)).toBeInTheDocument()
   })
 
-  it('duplicates an agent from the card action menu', async () => {
+  it('opens a duplicate dialog from the card action menu', async () => {
     const user = userEvent.setup()
     renderList([createAgent()])
 
     await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
     await user.click(screen.getByRole('menuitem', { name: /common\.operation\.duplicate/ }))
 
+    const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.duplicateDialog.title' })
+    expect(within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.nameLabel/ })).toHaveAttribute('placeholder', 'Research Agent copy')
+    expect(within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.descriptionLabel/ })).toHaveValue('Find and summarize market materials.')
+    expect(duplicateAgentMutationFn).not.toHaveBeenCalled()
+  })
+
+  it('uses the latest cached agent detail when opening the duplicate dialog', async () => {
+    const user = userEvent.setup()
+    const { queryClient } = renderList([
+      createAgent({
+        description: null,
+      }),
+    ])
+    queryClient.setQueryData(['agent-detail', 'agent-1'], createAgent({
+      description: 'Summarize new market updates.',
+    }))
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: /common\.operation\.duplicate/ }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.duplicateDialog.title' })
+    expect(within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.descriptionLabel/ })).toHaveValue('Summarize new market updates.')
+  })
+
+  it('duplicates an agent with backend-generated naming when the dialog name is empty', async () => {
+    const user = userEvent.setup()
+    renderList([createAgent()])
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: /common\.operation\.duplicate/ }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.duplicateDialog.title' })
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.duplicate' }))
+
     expect(duplicateAgentMutationFn).toHaveBeenCalledWith(
       {
         params: {
           agent_id: 'agent-1',
         },
-        body: {},
+        body: {
+          description: 'Find and summarize market materials.',
+          icon: '🧸',
+          icon_background: '#F5F3FF',
+          icon_type: 'emoji',
+        },
+      },
+      expect.objectContaining({
+        client: expect.any(QueryClient),
+      }),
+    )
+    expect(duplicateAgentMutationFn.mock.calls[0]?.[0].body).not.toHaveProperty('name')
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith('agentV2.roster.duplicateSuccess')
+    })
+  })
+
+  it('duplicates an agent with the dialog name and description when provided', async () => {
+    const user = userEvent.setup()
+    renderList([createAgent()])
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: /common\.operation\.duplicate/ }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.duplicateDialog.title' })
+    const nameInput = within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.nameLabel/ })
+    const descriptionInput = within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.descriptionLabel/ })
+    await user.type(nameInput, ' Market Agent ')
+    await user.clear(descriptionInput)
+    await user.type(descriptionInput, ' Copied for market research ')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.duplicate' }))
+
+    expect(duplicateAgentMutationFn).toHaveBeenCalledWith(
+      {
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: {
+          name: 'Market Agent',
+          description: 'Copied for market research',
+          icon: '🧸',
+          icon_background: '#F5F3FF',
+          icon_type: 'emoji',
+        },
       },
       expect.objectContaining({
         client: expect.any(QueryClient),

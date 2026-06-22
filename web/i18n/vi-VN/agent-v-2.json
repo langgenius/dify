@@ -354,7 +354,6 @@
   "roster.deleteDialog.title": "Xóa {{name}}?",
   "roster.deleteFailed": "Xóa tác nhân thất bại.",
   "roster.deleteSuccess": "Đã xóa tác nhân.",
-  "roster.duplicateFailed": "Nhân bản tác nhân thất bại.",
   "roster.duplicateSuccess": "Đã nhân bản tác nhân.",
   "roster.editAgent": "Chỉnh sửa {{name}}",
   "roster.editDialog.description": "Cập nhật tên, mô tả và vai trò Roster cho tác nhân này.",

@@ -354,7 +354,6 @@
   "roster.deleteDialog.title": "Удалить {{name}}?",
   "roster.deleteFailed": "Не удалось удалить агента.",
   "roster.deleteSuccess": "Агент удалён.",
-  "roster.duplicateFailed": "Не удалось продублировать агента.",
   "roster.duplicateSuccess": "Агент продублирован.",
   "roster.editAgent": "Редактировать {{name}}",
   "roster.editDialog.description": "Обновите имя в Roster, описание и роль этого агента.",

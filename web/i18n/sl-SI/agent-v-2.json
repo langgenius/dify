@@ -354,7 +354,6 @@
   "roster.deleteDialog.title": "Izbrišem {{name}}?",
   "roster.deleteFailed": "Agenta ni bilo mogoče izbrisati.",
   "roster.deleteSuccess": "Agent izbrisan.",
-  "roster.duplicateFailed": "Agenta ni bilo mogoče podvojiti.",
   "roster.duplicateSuccess": "Agent podvojen.",
   "roster.editAgent": "Uredi {{name}}",
   "roster.editDialog.description": "Posodobite ime v Roster, opis in vlogo za tega agenta.",

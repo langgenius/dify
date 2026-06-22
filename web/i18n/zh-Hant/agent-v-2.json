@@ -354,7 +354,6 @@
   "roster.deleteDialog.title": "刪除 {{name}}？",
   "roster.deleteFailed": "智能體刪除失敗。",
   "roster.deleteSuccess": "智能體已刪除。",
-  "roster.duplicateFailed": "智能體複製失敗。",
   "roster.duplicateSuccess": "智能體已複製。",
   "roster.editAgent": "編輯 {{name}}",
   "roster.editDialog.description": "更新此智能體在 Roster 中的名稱、描述和角色。",

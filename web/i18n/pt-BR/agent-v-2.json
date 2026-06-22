@@ -354,7 +354,6 @@
   "roster.deleteDialog.title": "Excluir {{name}}?",
   "roster.deleteFailed": "Falha ao excluir o agente.",
   "roster.deleteSuccess": "Agente excluído.",
-  "roster.duplicateFailed": "Falha ao duplicar o agente.",
   "roster.duplicateSuccess": "Agente duplicado.",
   "roster.editAgent": "Editar {{name}}",
   "roster.editDialog.description": "Atualize o nome, a descrição e a função deste agente no roster.",

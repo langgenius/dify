@@ -354,7 +354,6 @@
   "roster.deleteDialog.title": "حذف {{name}}؟",
   "roster.deleteFailed": "فشل حذف الوكيل.",
   "roster.deleteSuccess": "تم حذف الوكيل.",
-  "roster.duplicateFailed": "فشل نسخ الوكيل.",
   "roster.duplicateSuccess": "تم نسخ الوكيل.",
   "roster.editAgent": "تعديل {{name}}",
   "roster.editDialog.description": "حدّث اسم Roster والوصف والدور لهذا الوكيل.",

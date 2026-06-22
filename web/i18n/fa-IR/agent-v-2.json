@@ -354,7 +354,6 @@
   "roster.deleteDialog.title": "حذف {{name}}؟",
   "roster.deleteFailed": "حذف عامل ناموفق بود.",
   "roster.deleteSuccess": "عامل حذف شد.",
-  "roster.duplicateFailed": "تکثیر عامل ناموفق بود.",
   "roster.duplicateSuccess": "عامل تکثیر شد.",
   "roster.editAgent": "ویرایش {{name}}",
   "roster.editDialog.description": "نام، توضیحات و نقش Roster این عامل را به‌روزرسانی کنید.",

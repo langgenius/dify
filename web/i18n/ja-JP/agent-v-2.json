@@ -354,7 +354,6 @@
   "roster.deleteDialog.title": "{{name}} を削除しますか？",
   "roster.deleteFailed": "エージェントの削除に失敗しました。",
   "roster.deleteSuccess": "エージェントを削除しました。",
-  "roster.duplicateFailed": "エージェントの複製に失敗しました。",
   "roster.duplicateSuccess": "エージェントを複製しました。",
   "roster.editAgent": "{{name}} を編集",
   "roster.editDialog.description": "このエージェントの Roster 名、説明、ロールを更新します。",

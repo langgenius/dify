@@ -354,7 +354,6 @@
   "roster.deleteDialog.title": "{{name}} silinsin mi?",
   "roster.deleteFailed": "Ajan silinemedi.",
   "roster.deleteSuccess": "Ajan silindi.",
-  "roster.duplicateFailed": "Ajan çoğaltılamadı.",
   "roster.duplicateSuccess": "Ajan çoğaltıldı.",
   "roster.editAgent": "{{name}} düzenle",
   "roster.editDialog.description": "Bu ajan için Roster adı, açıklaması ve rolünü güncelleyin.",

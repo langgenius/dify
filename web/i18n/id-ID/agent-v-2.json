@@ -354,7 +354,6 @@
   "roster.deleteDialog.title": "Hapus {{name}}?",
   "roster.deleteFailed": "Gagal menghapus agen.",
   "roster.deleteSuccess": "Agen dihapus.",
-  "roster.duplicateFailed": "Gagal menduplikasi agen.",
   "roster.duplicateSuccess": "Agen diduplikasi.",
   "roster.editAgent": "Edit {{name}}",
   "roster.editDialog.description": "Perbarui nama, deskripsi, dan peran Roster untuk agen ini.",
