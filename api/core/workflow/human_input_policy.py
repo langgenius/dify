@@ -9,7 +9,7 @@ from graphon.nodes.human_input.entities import FormInputConfig, SelectInputConfi
 from graphon.nodes.human_input.enums import ValueSourceType
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables import ArrayStringSegment
-from models.human_input import RecipientType
+from models.human_input import ApprovalChannel, RecipientType
 
 
 class HumanInputSurface(StrEnum):
@@ -68,7 +68,7 @@ class FormDisposition(NamedTuple):
     """
 
     form_token: str | None
-    approval_channels: list[str]
+    approval_channels: list[ApprovalChannel]
 
 
 def disposition_for_surface(
@@ -80,10 +80,12 @@ def disposition_for_surface(
         return FormDisposition(form_token=get_preferred_form_token(recipients), approval_channels=[])
     allowed = ALLOWED_RECIPIENT_TYPES_BY_SURFACE[surface]
     actionable = [(recipient_type, token) for recipient_type, token in recipients if recipient_type in allowed]
-    blocked_channels = {
-        recipient_type.approval_channel_label for recipient_type, _ in recipients if recipient_type not in allowed
-    }
-    return FormDisposition(form_token=get_preferred_form_token(actionable), approval_channels=sorted(blocked_channels))
+    return FormDisposition(
+        form_token=get_preferred_form_token(actionable),
+        approval_channels=sorted(
+            {recipient_type.approval_channel for recipient_type, _ in recipients if recipient_type not in allowed}
+        ),
+    )
 
 
 def enrich_human_input_pause_reasons(
