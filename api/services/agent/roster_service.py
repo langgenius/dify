@@ -3,6 +3,7 @@ from typing import Any, TypedDict
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 
+from core.app.entities.app_invoke_entities import InvokeFrom
 from libs.datetime_utils import naive_utc_now
 from libs.helper import to_timestamp
 from models.agent import (
@@ -18,8 +19,8 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig
-from models.enums import AppStatus
-from models.model import App, AppMode, IconType
+from models.enums import AppStatus, ConversationFromSource, ConversationStatus
+from models.model import App, AppMode, Conversation, IconType
 from models.workflow import Workflow
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
@@ -96,6 +97,7 @@ class AgentRosterService:
             "scope": agent.scope.value,
             "source": agent.source.value,
             "app_id": agent.app_id,
+            "debug_conversation_id": getattr(agent, "debug_conversation_id", None),
             "workflow_id": agent.workflow_id,
             "workflow_node_id": agent.workflow_node_id,
             "active_config_snapshot_id": agent.active_config_snapshot_id,
@@ -391,8 +393,37 @@ class AgentRosterService:
         self._session.add(revision)
         agent.active_config_snapshot_id = version.id
         agent.active_config_has_model = agent_soul_has_model(AgentSoulConfig())
+        agent.debug_conversation_id = self._create_agent_app_debug_conversation(
+            app_id=app_id,
+            account_id=account_id,
+        )
         self._session.flush()
         return agent
+
+    def _create_agent_app_debug_conversation(self, *, app_id: str, account_id: str) -> str:
+        """Create the stable console conversation used by Agent App debug mode."""
+
+        conversation = Conversation(
+            app_id=app_id,
+            app_model_config_id=None,
+            model_provider=None,
+            model_id="",
+            override_model_configs=None,
+            mode=AppMode.AGENT,
+            name="Agent Debugging Conversation",
+            inputs={},
+            introduction="",
+            system_instruction="",
+            system_instruction_tokens=0,
+            status=ConversationStatus.NORMAL,
+            invoke_from=InvokeFrom.DEBUGGER,
+            from_source=ConversationFromSource.CONSOLE,
+            from_end_user_id=None,
+            from_account_id=account_id,
+        )
+        self._session.add(conversation)
+        self._session.flush()
+        return conversation.id
 
     def load_app_backing_agents_by_app_id(self, *, tenant_id: str, app_ids: list[str]) -> dict[str, Agent]:
         """Return active app-backed Agents keyed by Agent App id."""
