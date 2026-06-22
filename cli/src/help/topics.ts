@@ -37,8 +37,8 @@ const EXTERNAL_HELP_TEXT = `difyctl: external-SSO bearer onboarding
   smaller dataset:
 
   1. Acquire a token through your SSO provider (out of band).
-  2. Hand it to the CLI:
-       difyctl auth login --external --token "$DIFY_TOKEN"
+  2. Hand it to the CLI via the DIFY_TOKEN environment variable:
+       export DIFY_TOKEN="<your-token>"
 
   3. List apps your subject is permitted to invoke:
        difyctl get app
