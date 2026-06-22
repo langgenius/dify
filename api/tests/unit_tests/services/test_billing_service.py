@@ -1030,8 +1030,8 @@ class TestBillingServiceAccountManagement:
     @pytest.fixture
     def mock_db_session(self):
         """Mock database session."""
-        with patch("services.billing_service.db.session") as mock_session:
-            yield mock_session
+        mock_session = MagicMock()
+        return mock_session
 
     def test_delete_account(self, mock_send_request):
         """Test account deletion."""
@@ -1115,7 +1115,7 @@ class TestBillingServiceAccountManagement:
         mock_db_session.scalar.return_value = mock_join
 
         # Act - should not raise exception
-        BillingService.is_tenant_owner_or_admin(current_user)
+        BillingService.is_tenant_owner_or_admin(mock_db_session, current_user)
 
     def test_is_tenant_owner_or_admin_admin(self, mock_db_session):
         """Test tenant owner/admin check for admin role."""
@@ -1130,7 +1130,7 @@ class TestBillingServiceAccountManagement:
         mock_db_session.scalar.return_value = mock_join
 
         # Act - should not raise exception
-        BillingService.is_tenant_owner_or_admin(current_user)
+        BillingService.is_tenant_owner_or_admin(mock_db_session, current_user)
 
     def test_is_tenant_owner_or_admin_normal_user_raises_error(self, mock_db_session):
         """Test tenant owner/admin check raises error for normal user."""
@@ -1146,7 +1146,7 @@ class TestBillingServiceAccountManagement:
 
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
-            BillingService.is_tenant_owner_or_admin(current_user)
+            BillingService.is_tenant_owner_or_admin(mock_db_session, current_user)
         assert "Only team owner or team admin can perform this action" in str(exc_info.value)
 
     def test_is_tenant_owner_or_admin_no_join_raises_error(self, mock_db_session):
@@ -1160,7 +1160,7 @@ class TestBillingServiceAccountManagement:
 
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
-            BillingService.is_tenant_owner_or_admin(current_user)
+            BillingService.is_tenant_owner_or_admin(mock_db_session, current_user)
         assert "Tenant account join not found" in str(exc_info.value)
 
 

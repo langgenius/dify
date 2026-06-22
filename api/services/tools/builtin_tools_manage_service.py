@@ -427,7 +427,7 @@ class BuiltinToolManageService:
                 if vis_str == "partial_members":
                     credential_entity.partial_member_list = list(
                         CredentialPermissionService.get_partial_member_list(
-                            provider.id, CredPermType.BUILTIN_TOOL_PROVIDER
+                            db.session, provider.id, CredPermType.BUILTIN_TOOL_PROVIDER
                         )
                     )
                 if provider.id in borrowed_ids:
