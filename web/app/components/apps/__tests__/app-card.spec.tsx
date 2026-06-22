@@ -393,6 +393,70 @@ describe('AppCard', () => {
       expect(screen.getByRole('link', { name: 'Test App' })).toBeInTheDocument()
     })
 
+    it('should render preview-only app card as a dimmed information-only card', () => {
+      const previewOnlyApp = createMockApp({
+        name: 'Preview Only App',
+        description: 'Only visible metadata',
+        author_name: 'Readonly Author',
+        created_by: 'another-user',
+        maintainer: 'another-user',
+        tags: [{ id: 'tag-preview', name: 'Readonly Tag', type: 'app' as const, binding_count: 0 }],
+        permission_keys: [AppACLPermission.Preview],
+      })
+
+      render(<AppCard app={previewOnlyApp} />)
+
+      const card = screen.getByRole('button', { name: 'Preview Only App' })
+      expect(card).toHaveClass('opacity-60')
+      expect(card).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByText('Only visible metadata')).toBeInTheDocument()
+      expect(screen.getByText('Readonly Author')).toBeInTheDocument()
+      const tagSelector = screen.getByLabelText('tag-selector')
+      expect(tagSelector).toBeInTheDocument()
+      expect(tagSelector).toHaveAttribute('data-can-bind-or-unbind-tags', 'false')
+      expect(screen.queryByRole('link', { name: 'Preview Only App' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'app.studio.starApp' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.operation.more' })).not.toBeInTheDocument()
+
+      fireEvent.click(tagSelector)
+
+      expect(toastMocks.record).not.toHaveBeenCalled()
+
+      fireEvent.click(card)
+
+      expect(toastMocks.record).toHaveBeenCalledWith({
+        type: 'warning',
+        message: 'app.noAccessResourcePermission',
+      })
+    })
+
+    it('should render preview-only starred app card as a dimmed information-only card', () => {
+      const previewOnlyApp = createMockApp({
+        name: 'Preview Only Starred App',
+        author_name: 'Readonly Author',
+        created_by: 'another-user',
+        maintainer: 'another-user',
+        permission_keys: [AppACLPermission.Preview],
+      })
+
+      render(<StarredAppCard app={previewOnlyApp} />)
+
+      const card = screen.getByRole('button', { name: 'Preview Only Starred App' })
+      expect(card).toHaveClass('opacity-60')
+      expect(card).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByText('Readonly Author')).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Preview Only Starred App' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'app.studio.starApp' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.operation.more' })).not.toBeInTheDocument()
+
+      fireEvent.click(card)
+
+      expect(toastMocks.record).toHaveBeenCalledWith({
+        type: 'warning',
+        message: 'app.noAccessResourcePermission',
+      })
+    })
+
     it('should display app name', () => {
       render(<AppCard app={mockApp} />)
       expect(screen.getByText('Test App')).toBeInTheDocument()
@@ -476,7 +540,22 @@ describe('AppCard', () => {
       expect(screen.getByLabelText('tag-selector')).toHaveAttribute('data-can-bind-or-unbind-tags', 'true')
     })
 
-    it('should not render tag selector without app edit or workspace tag management permission', () => {
+    it('should allow workspace app tag management permission to bind tags without app edit permission', () => {
+      mockAppContext.isCurrentWorkspaceEditor = false
+      mockAppContext.workspacePermissionKeys = ['app.tag.manage']
+      mockAppContext.userProfile = { id: 'user-2' }
+      const tagManageApp = createMockApp({
+        maintainer: 'user-1',
+        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: 0 }],
+        permission_keys: [AppACLPermission.ViewLayout],
+      })
+
+      render(<AppCard app={tagManageApp} />)
+
+      expect(screen.getByLabelText('tag-selector')).toHaveAttribute('data-can-bind-or-unbind-tags', 'true')
+    })
+
+    it('should render existing app tags as readonly without app edit or workspace tag management permission', () => {
       mockAppContext.isCurrentWorkspaceEditor = false
       mockAppContext.workspacePermissionKeys = []
       mockAppContext.userProfile = { id: 'user-2' }
@@ -488,7 +567,7 @@ describe('AppCard', () => {
 
       render(<AppCard app={readonlyApp} />)
 
-      expect(screen.queryByLabelText('tag-selector')).not.toBeInTheDocument()
+      expect(screen.getByLabelText('tag-selector')).toHaveAttribute('data-can-bind-or-unbind-tags', 'false')
     })
 
     it('should render with onRefresh callback', () => {

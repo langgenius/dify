@@ -9,6 +9,8 @@ import {
   getAppACLCapabilities,
   getDatasetACLCapabilities,
   hasEditPermissionForDataset,
+  hasOnlyAppPreviewPermission,
+  hasOnlyDatasetPreviewPermission,
   hasPermission,
 } from './permission'
 
@@ -129,6 +131,32 @@ describe('permission', () => {
       expect(capabilities.canAccessLayout).toBe(true)
       expect(capabilities.canComment).toBe(true)
       expect(capabilities.canTestAndRun).toBe(false)
+    })
+  })
+
+  describe('hasOnlyAppPreviewPermission', () => {
+    it('should return true when app ACL contains only preview permission', () => {
+      expect(hasOnlyAppPreviewPermission([AppACLPermission.Preview])).toBe(true)
+    })
+
+    it('should return false when app ACL contains preview permission and another permission', () => {
+      expect(hasOnlyAppPreviewPermission([
+        AppACLPermission.Preview,
+        AppACLPermission.ViewLayout,
+      ])).toBe(false)
+    })
+  })
+
+  describe('hasOnlyDatasetPreviewPermission', () => {
+    it('should return true when dataset ACL contains only preview permission', () => {
+      expect(hasOnlyDatasetPreviewPermission([DatasetACLPermission.Preview])).toBe(true)
+    })
+
+    it('should return false when dataset ACL contains preview permission and another permission', () => {
+      expect(hasOnlyDatasetPreviewPermission([
+        DatasetACLPermission.Preview,
+        DatasetACLPermission.Readonly,
+      ])).toBe(false)
     })
   })
 

@@ -2,6 +2,7 @@ import type { PermissionKey } from '@/models/access-control'
 import { DatasetPermission } from '@/models/datasets'
 
 export const AppACLPermission = {
+  Preview: 'app.acl.preview',
   ViewLayout: 'app.acl.view_layout',
   TestAndRun: 'app.acl.test_and_run',
   Edit: 'app.acl.edit',
@@ -13,6 +14,7 @@ export const AppACLPermission = {
 } as const
 
 export const DatasetACLPermission = {
+  Preview: 'dataset.acl.preview',
   Readonly: 'dataset.acl.readonly',
   Edit: 'dataset.acl.edit',
   ImportExportDSL: 'dataset.acl.import_export_dsl',
@@ -93,6 +95,14 @@ export const hasPermission = (permissionKeys: readonly PermissionKey[] | null | 
   }
   const singlePermissionKey = permissionKeySet
   return permissionKeys.includes(singlePermissionKey)
+}
+
+export const hasOnlyAppPreviewPermission = (permissionKeys: readonly PermissionKey[] | null | undefined) => {
+  return permissionKeys?.length === 1 && permissionKeys[0] === AppACLPermission.Preview
+}
+
+export const hasOnlyDatasetPreviewPermission = (permissionKeys: readonly PermissionKey[] | null | undefined) => {
+  return permissionKeys?.length === 1 && permissionKeys[0] === DatasetACLPermission.Preview
 }
 
 const shouldGrantMaintainerPermissions = (
