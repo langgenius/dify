@@ -243,7 +243,7 @@ class AccountService:
         )
 
     @staticmethod
-    def _refresh_account_last_active(account: Account, session: scoped_session) -> None:
+    def _refresh_account_last_active(account: Account, session: scoped_session | Session) -> None:
         now = naive_utc_now()
         refresh_before = now - ACCOUNT_LAST_ACTIVE_REFRESH_INTERVAL
 
@@ -308,7 +308,7 @@ class AccountService:
         return session.get(Account, account_id)
 
     @staticmethod
-    def load_user(user_id: str, session: scoped_session) -> None | Account:
+    def load_user(user_id: str, session: scoped_session | Session) -> None | Account:
         account = session.get(Account, user_id)
         if not account:
             return None
@@ -360,7 +360,7 @@ class AccountService:
         return token
 
     @staticmethod
-    def authenticate(email: str, password: str, invite_token: str | None = None, *, session: scoped_session) -> Account:
+    def authenticate(email: str, password: str, invite_token: str | None = None, *, session: scoped_session | Session) -> Account:
         """authenticate account with email and password"""
 
         account = session.scalar(select(Account).where(Account.email == email).limit(1))
@@ -391,7 +391,7 @@ class AccountService:
         return account
 
     @staticmethod
-    def update_account_password(account: Account, password: str, new_password: str, *, session: scoped_session):
+    def update_account_password(account: Account, password: str, new_password: str, *, session: scoped_session | Session):
         """update account password"""
         if account.password and not compare_password(password, account.password, account.password_salt):
             raise CurrentPasswordIncorrectError("Current password is incorrect.")
@@ -553,7 +553,7 @@ class AccountService:
         delete_account_task.delay(account.id)
 
     @staticmethod
-    def link_account_integrate(provider: str, open_id: str, account: Account, *, session: scoped_session):
+    def link_account_integrate(provider: str, open_id: str, account: Account, *, session: scoped_session | Session):
         """Link account integrate"""
         try:
             # Query whether there is an existing binding record for the same provider
@@ -582,7 +582,7 @@ class AccountService:
             raise LinkAccountIntegrateError("Failed to link account.") from e
 
     @staticmethod
-    def close_account(account: Account, *, session: scoped_session):
+    def close_account(account: Account, *, session: scoped_session | Session):
         """Close account"""
         account.status = AccountStatus.CLOSED
         session.commit()
@@ -601,7 +601,7 @@ class AccountService:
         return account
 
     @staticmethod
-    def update_account_email(account: Account, email: str, session: scoped_session) -> Account:
+    def update_account_email(account: Account, email: str, session: scoped_session | Session) -> Account:
         """Update account email"""
         account.email = email
         account_integrate = session.scalar(
@@ -645,7 +645,7 @@ class AccountService:
             AccountService._delete_refresh_token(refresh_token.decode("utf-8"), account.id)
 
     @staticmethod
-    def refresh_token(refresh_token: str, *, session: scoped_session) -> TokenPair:
+    def refresh_token(refresh_token: str, *, session: scoped_session | Session) -> TokenPair:
         # Verify the refresh token
         account_id = redis_client.get(AccountService._get_refresh_token_key(refresh_token))
         if not account_id:
@@ -666,7 +666,7 @@ class AccountService:
         return TokenPair(access_token=new_access_token, refresh_token=new_refresh_token, csrf_token=csrf_token)
 
     @staticmethod
-    def load_logged_in_account(*, account_id: str, session: scoped_session):
+    def load_logged_in_account(*, account_id: str, session: scoped_session | Session):
         return AccountService.load_user(account_id, session)
 
     @classmethod
@@ -1020,7 +1020,7 @@ class AccountService:
         TokenManager.revoke_token(token, "email_code_login")
 
     @classmethod
-    def get_user_through_email(cls, email: str, *, session: scoped_session):
+    def get_user_through_email(cls, email: str, *, session: scoped_session | Session):
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
             raise AccountRegisterError(
                 description=(
@@ -1228,7 +1228,7 @@ class AccountService:
         return False
 
     @staticmethod
-    def check_email_unique(email: str, *, session: scoped_session) -> bool:
+    def check_email_unique(email: str, *, session: scoped_session | Session) -> bool:
         return session.scalar(select(Account).where(Account.email == email).limit(1)) is None
 
 
@@ -1344,7 +1344,7 @@ class TenantService:
         return ta
 
     @staticmethod
-    def get_join_tenants(account: Account, *, session: scoped_session) -> list[Tenant]:
+    def get_join_tenants(account: Account, *, session: scoped_session | Session) -> list[Tenant]:
         """Get account join tenants"""
         return list(
             session.scalars(
@@ -1505,7 +1505,7 @@ class TenantService:
         ).first()
 
     @staticmethod
-    def get_current_tenant_by_account(account: Account, *, session: scoped_session):
+    def get_current_tenant_by_account(account: Account, *, session: scoped_session | Session):
         """Get tenant by account and add the role"""
         tenant = account.current_tenant
         if not tenant:
@@ -1523,7 +1523,7 @@ class TenantService:
         return tenant
 
     @staticmethod
-    def switch_tenant(account: Account, tenant_id: str | None = None, *, session: scoped_session):
+    def switch_tenant(account: Account, tenant_id: str | None = None, *, session: scoped_session | Session):
         """Switch the current workspace for the account"""
 
         # Ensure tenant_id is provided
@@ -1556,7 +1556,7 @@ class TenantService:
             session.commit()
 
     @staticmethod
-    def get_tenant_members(tenant: Tenant, *, session: scoped_session) -> list[Account]:
+    def get_tenant_members(tenant: Tenant, *, session: scoped_session | Session) -> list[Account]:
         """Get tenant members"""
         stmt = (
             select(Account, TenantAccountJoin.role)
@@ -1575,7 +1575,7 @@ class TenantService:
         return updated_accounts
 
     @staticmethod
-    def get_dataset_operator_members(tenant: Tenant, *, session: scoped_session) -> list[Account]:
+    def get_dataset_operator_members(tenant: Tenant, *, session: scoped_session | Session) -> list[Account]:
         """Get dataset admin members"""
         stmt = (
             select(Account, TenantAccountJoin.role)
@@ -1613,7 +1613,7 @@ class TenantService:
         )
 
     @staticmethod
-    def get_user_role(account: Account, tenant: Tenant, *, session: scoped_session) -> TenantAccountRole | None:
+    def get_user_role(account: Account, tenant: Tenant, *, session: scoped_session | Session) -> TenantAccountRole | None:
         """Get the role of the current account for a given tenant"""
         join = session.scalar(
             select(TenantAccountJoin)
@@ -1623,13 +1623,13 @@ class TenantService:
         return TenantAccountRole(join.role) if join else None
 
     @staticmethod
-    def get_tenant_count(*, session: scoped_session) -> int:
+    def get_tenant_count(*, session: scoped_session | Session) -> int:
         """Get tenant count"""
         return cast(int, session.scalar(select(func.count(Tenant.id))))
 
     @staticmethod
     def check_member_permission(
-        tenant: Tenant, operator: Account, member: Account | None, action: str, *, session: scoped_session
+        tenant: Tenant, operator: Account, member: Account | None, action: str, *, session: scoped_session | Session
     ):
         """Check member permission"""
         if action not in {"add", "remove", "update"}:
@@ -1683,7 +1683,7 @@ class TenantService:
                 raise NoPermissionError(f"No permission to {action} member.")
 
     @staticmethod
-    def remove_member_from_tenant(tenant: Tenant, account: Account, operator: Account, *, session: scoped_session):
+    def remove_member_from_tenant(tenant: Tenant, account: Account, operator: Account, *, session: scoped_session | Session):
         """Remove member from tenant.
 
         Apps and datasets maintained by the removed member are reassigned to
@@ -1854,11 +1854,11 @@ class TenantService:
         return tenant.custom_config_dict
 
     @staticmethod
-    def is_owner(account: Account, tenant: Tenant, *, session: scoped_session) -> bool:
+    def is_owner(account: Account, tenant: Tenant, *, session: scoped_session | Session) -> bool:
         return TenantService.get_user_role(account, tenant, session=session) == TenantAccountRole.OWNER
 
     @staticmethod
-    def is_member(account: Account, tenant: Tenant, *, session: scoped_session) -> bool:
+    def is_member(account: Account, tenant: Tenant, *, session: scoped_session | Session) -> bool:
         """Check if the account is a member of the tenant"""
         return TenantService.get_user_role(account, tenant, session=session) is not None
 
