@@ -331,7 +331,7 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
                     properties=payload.properties,
                 ),
             )
-            return 200
+            return "", 200
         except Exception as e:
             logger.exception("Error building provider credential", exc_info=e)
             raise ValueError(str(e)) from e
@@ -376,7 +376,7 @@ class TriggerSubscriptionUpdateApi(Resource):
                     name=request.name,
                     properties=request.properties,
                 )
-                return 200
+                return "", 200
 
             # For the rest cases(API_KEY, OAUTH2)
             # we need to call third party provider(e.g. GitHub) to rebuild the subscription
@@ -388,7 +388,7 @@ class TriggerSubscriptionUpdateApi(Resource):
                 credentials=request.credentials or subscription.credentials,
                 parameters=request.parameters or subscription.parameters,
             )
-            return 200
+            return "", 200
         except ValueError as e:
             raise BadRequest(str(e))
         except Exception as e:
