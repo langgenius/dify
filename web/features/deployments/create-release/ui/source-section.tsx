@@ -5,6 +5,7 @@ import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segm
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
+import { isDeploymentDslImportEnabled } from '../../shared/domain/feature-flags'
 import {
   clearCreateReleaseSubmissionErrorAtom,
   createReleaseDslStateAtom,
@@ -32,39 +33,41 @@ export function ReleaseSourceSection() {
             <label id="release-source-mode-label" className="system-xs-medium-uppercase text-text-tertiary">
               {t('versions.releaseSourceLabel')}
             </label>
-            <SegmentedControl<ReleaseSourceMode>
-              aria-labelledby="release-source-mode-label"
-              value={[modeField.state.value]}
-              onValueChange={(value) => {
-                const nextMode = selectedReleaseSourceMode(value)
-                if (!nextMode || nextMode === modeField.state.value)
-                  return
+            {isDeploymentDslImportEnabled && (
+              <SegmentedControl<ReleaseSourceMode>
+                aria-labelledby="release-source-mode-label"
+                value={[modeField.state.value]}
+                onValueChange={(value) => {
+                  const nextMode = selectedReleaseSourceMode(value)
+                  if (!nextMode || nextMode === modeField.state.value)
+                    return
 
-                clearSubmissionError()
-                modeField.handleChange(nextMode)
-                if (nextMode === 'sourceApp') {
-                  form.setFieldValue('dslFile', undefined)
-                  resetDslFile()
-                }
-                else {
-                  form.setFieldValue('sourceApp', undefined)
-                }
-              }}
-              className="shrink-0"
-            >
-              <SegmentedControlItem value="sourceApp" className="gap-1.5">
-                <span className="i-ri-apps-2-line size-4 shrink-0" aria-hidden="true" />
-                <span>{t('versions.sourceAppOption')}</span>
-              </SegmentedControlItem>
-              <SegmentedControlItem value="dsl" className="gap-1.5">
-                <span className="i-ri-upload-cloud-2-line size-4 shrink-0" aria-hidden="true" />
-                <span>{t('versions.manualDslOption')}</span>
-              </SegmentedControlItem>
-            </SegmentedControl>
+                  clearSubmissionError()
+                  modeField.handleChange(nextMode)
+                  if (nextMode === 'sourceApp') {
+                    form.setFieldValue('dslFile', undefined)
+                    resetDslFile()
+                  }
+                  else {
+                    form.setFieldValue('sourceApp', undefined)
+                  }
+                }}
+                className="shrink-0"
+              >
+                <SegmentedControlItem value="sourceApp" className="gap-1.5">
+                  <span className="i-ri-apps-2-line size-4 shrink-0" aria-hidden="true" />
+                  <span>{t('versions.sourceAppOption')}</span>
+                </SegmentedControlItem>
+                <SegmentedControlItem value="dsl" className="gap-1.5">
+                  <span className="i-ri-upload-cloud-2-line size-4 shrink-0" aria-hidden="true" />
+                  <span>{t('versions.manualDslOption')}</span>
+                </SegmentedControlItem>
+              </SegmentedControl>
+            )}
           </div>
 
           <div className="min-h-12">
-            {modeField.state.value === 'sourceApp'
+            {modeField.state.value === 'sourceApp' || !isDeploymentDslImportEnabled
               ? <SourceAppField />
               : <DslFileField />}
           </div>
@@ -78,6 +81,7 @@ function SourceAppField() {
   const { t } = useTranslation('deployments')
   const form = useCreateReleaseFormApi()
   const clearSubmissionError = useSetAtom(clearCreateReleaseSubmissionErrorAtom)
+  const sourceAppLocked = !isDeploymentDslImportEnabled
 
   return (
     <form.Field name="sourceApp">
@@ -90,6 +94,7 @@ function SourceAppField() {
               clearSubmissionError()
             }}
             ariaLabel={t('versions.sourceAppOption')}
+            disabled={sourceAppLocked}
           />
         </div>
       )}

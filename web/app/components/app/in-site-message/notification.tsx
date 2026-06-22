@@ -25,7 +25,7 @@ function isValidActionItem(value: unknown): value is InSiteMessageActionItem {
 
   return (
     typeof candidate.text === 'string'
-    && (candidate.type === 'primary' || candidate.type === 'default')
+    && (candidate.type === 'primary' || candidate.type === 'default' || candidate.type === 'outline')
     && (candidate.action === 'link' || candidate.action === 'close')
     && (candidate.data === undefined || typeof candidate.data !== 'function')
   )

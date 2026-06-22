@@ -284,10 +284,15 @@ const appContextValue: AppContextValue = {
   workspacePermissionKeys: ownerWorkspacePermissionKeys,
 }
 
-type MainNavSystemFeatures = NonNullable<Parameters<typeof renderWithSystemFeatures>[1]>['systemFeatures']
+type MainNavSystemFeatures = Exclude<NonNullable<Parameters<typeof renderWithSystemFeatures>[1]>['systemFeatures'], null | undefined>
+
+const defaultMainNavSystemFeatures: MainNavSystemFeatures = {
+  branding: { enabled: false },
+  enable_marketplace: true,
+}
 
 const renderMainNav = (
-  systemFeatures: MainNavSystemFeatures = { branding: { enabled: false } },
+  systemFeatures: MainNavSystemFeatures = defaultMainNavSystemFeatures,
   options: { store?: ReturnType<typeof createStore>, extra?: ReactNode } = {},
 ) => {
   const queryClient = createTestQueryClient()
@@ -295,12 +300,20 @@ const renderMainNav = (
   const currentAppContext = getMockAppContext() as AppContextValue
   queryClient.setQueryData(consoleQuery.workspaces.current.post.queryKey(), currentAppContext.currentWorkspace)
   queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
+  const resolvedSystemFeatures = {
+    ...defaultMainNavSystemFeatures,
+    ...systemFeatures,
+    branding: {
+      ...defaultMainNavSystemFeatures.branding,
+      ...systemFeatures.branding,
+    },
+  }
   return renderWithSystemFeatures(
     <JotaiProvider store={options.store}>
       <MainNav />
       {options.extra}
     </JotaiProvider>,
-    { systemFeatures, queryClient },
+    { systemFeatures: resolvedSystemFeatures, queryClient },
   )
 }
 
@@ -379,6 +392,12 @@ describe('MainNav', () => {
     renderMainNav()
 
     expect(screen.queryByRole('link', { name: /common.menus.roster/ })).not.toBeInTheDocument()
+  })
+
+  it('hides the marketplace entry when marketplace is disabled', () => {
+    renderMainNav({ enable_marketplace: false })
+
+    expect(screen.queryByRole('link', { name: /common.mainNav.marketplace/ })).not.toBeInTheDocument()
   })
 
   it('renders deployments in primary navigation when app deploy is enabled', () => {

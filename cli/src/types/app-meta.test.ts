@@ -9,8 +9,6 @@ function describeResp(): AppDescribeResponse {
       name: 'Greeter',
       description: '',
       mode: 'chat',
-      author: 'tester',
-      tags: [],
       updated_at: undefined,
       service_api_enabled: false,
       is_agent: false,

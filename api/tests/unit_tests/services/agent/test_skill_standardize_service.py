@@ -67,6 +67,10 @@ def test_standardize_creates_two_drive_owned_toolfiles_and_commits():
     assert [item.key for item in items] == ["pdf-toolkit/SKILL.md", "pdf-toolkit/.DIFY-SKILL-FULL.zip"]
     assert all(item.value_owned_by_drive for item in items)
     assert [item.file_ref.id for item in items] == ["md-tool-file", "zip-tool-file"]
+    assert items[0].is_skill is True
+    assert items[0].skill_metadata.name == "PDF Toolkit"
+    assert items[0].skill_metadata.manifest_files == ["SKILL.md", "scripts/run.py"]
+    assert items[1].is_skill is False
 
     # The returned skill ref carries stable drive paths + file ids.
     skill = result["skill"]

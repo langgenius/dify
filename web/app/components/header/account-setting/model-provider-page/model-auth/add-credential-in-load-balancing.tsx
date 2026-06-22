@@ -13,8 +13,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { ConfigurationMethodEnum, ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { Authorized } from '@/app/components/header/account-setting/model-provider-page/model-auth'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { hasPermission } from '@/utils/permission'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 
 type AddCredentialInLoadBalancingProps = {
   provider: ModelProvider
@@ -36,12 +35,11 @@ const AddCredentialInLoadBalancing = ({
   onRemove,
 }: AddCredentialInLoadBalancingProps) => {
   const { t } = useTranslation()
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const canUseCredential = hasPermission(workspacePermissionKeys, ['credential.use', 'credential.manage'])
-  const canManageCredential = hasPermission(workspacePermissionKeys, 'credential.manage')
+  const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const {
     available_credentials,
   } = modelCredential
+  const canOpenCredentialMenu = canUseCredential || canCreateCredential || (canManageCredential && !!available_credentials?.length)
   const isCustomModel = configurationMethod === ConfigurationMethodEnum.customizableModel
   const notAllowCustomCredential = provider.allow_custom_token === false
   const handleUpdate = useCallback((payload?: unknown, formValues?: Record<string, unknown>) => {
@@ -63,7 +61,7 @@ const AddCredentialInLoadBalancing = ({
     return Item
   }, [t])
 
-  if (!canUseCredential)
+  if (!canOpenCredentialMenu)
     return null
 
   return (
@@ -76,7 +74,7 @@ const AddCredentialInLoadBalancing = ({
         onUpdate: handleUpdate,
         onRemove,
       }}
-      triggerOnlyOpenModal={!available_credentials?.length && !notAllowCustomCredential && canManageCredential}
+      triggerOnlyOpenModal={!available_credentials?.length && !notAllowCustomCredential && canCreateCredential}
       items={[
         {
           title: isCustomModel ? '' : t('modelProvider.auth.apiKeys', { ns: 'common' }),
@@ -93,7 +91,7 @@ const AddCredentialInLoadBalancing = ({
           }
         : undefined}
       onItemClick={onSelectCredential}
-      hideAddAction={!canManageCredential}
+      hideAddAction={!canCreateCredential}
       placement="bottom-start"
       popupTitle={isCustomModel ? t('modelProvider.auth.modelCredentials', { ns: 'common' }) : ''}
     />
