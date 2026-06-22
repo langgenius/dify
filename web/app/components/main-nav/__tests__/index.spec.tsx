@@ -284,7 +284,7 @@ const appContextValue: AppContextValue = {
   workspacePermissionKeys: ownerWorkspacePermissionKeys,
 }
 
-type MainNavSystemFeatures = NonNullable<Parameters<typeof renderWithSystemFeatures>[1]>['systemFeatures']
+type MainNavSystemFeatures = Exclude<NonNullable<Parameters<typeof renderWithSystemFeatures>[1]>['systemFeatures'], null | undefined>
 
 const defaultMainNavSystemFeatures: MainNavSystemFeatures = {
   branding: { enabled: false },
