@@ -18,24 +18,69 @@ branch_labels = None
 depends_on = None
 
 
+def _is_pg(conn) -> bool:
+    return conn.dialect.name == "postgresql"
+
+
 def upgrade() -> None:
     with op.batch_alter_table("apps", schema=None) as batch_op:
         batch_op.add_column(sa.Column("maintainer", models.types.StringUUID(), nullable=True))
-        batch_op.create_index("app_tenant_maintainer_idx", ["tenant_id", "maintainer"], unique=False)
 
     with op.batch_alter_table("datasets", schema=None) as batch_op:
         batch_op.add_column(sa.Column("maintainer", models.types.StringUUID(), nullable=True))
-        batch_op.create_index("dataset_tenant_maintainer_idx", ["tenant_id", "maintainer"], unique=False)
 
-    op.execute(sa.text("UPDATE apps SET maintainer = created_by WHERE maintainer IS NULL"))
-    op.execute(sa.text("UPDATE datasets SET maintainer = created_by WHERE maintainer IS NULL"))
+    # `CREATE INDEX CONCURRENTLY` cannot run within a transaction; wrap it in
+    # `autocommit_block` on PostgreSQL so the composite indexes are built
+    # without blocking concurrent INSERT/UPDATE/DELETE on the hot `apps` and
+    # `datasets` tables. The data backfill itself is split into a separate
+    # revision (b7c8d9e0f1a2) so it can run in id-range batches with explicit
+    # commits between batches, instead of holding row locks for the full
+    # backfill duration. See migration 4474872b0ee6 for the established
+    # concurrent-index pattern.
+    conn = op.get_bind()
+    if _is_pg(conn):
+        with op.get_context().autocommit_block():
+            op.create_index(
+                op.f("app_tenant_maintainer_idx"),
+                "apps",
+                ["tenant_id", "maintainer"],
+                unique=False,
+                postgresql_concurrently=True,
+            )
+            op.create_index(
+                op.f("dataset_tenant_maintainer_idx"),
+                "datasets",
+                ["tenant_id", "maintainer"],
+                unique=False,
+                postgresql_concurrently=True,
+            )
+    else:
+        op.create_index(
+            op.f("app_tenant_maintainer_idx"),
+            "apps",
+            ["tenant_id", "maintainer"],
+            unique=False,
+        )
+        op.create_index(
+            op.f("dataset_tenant_maintainer_idx"),
+            "datasets",
+            ["tenant_id", "maintainer"],
+            unique=False,
+        )
 
 
 def downgrade() -> None:
+    conn = op.get_bind()
+    if _is_pg(conn):
+        with op.get_context().autocommit_block():
+            op.drop_index(op.f("app_tenant_maintainer_idx"), postgresql_concurrently=True)
+            op.drop_index(op.f("dataset_tenant_maintainer_idx"), postgresql_concurrently=True)
+    else:
+        op.drop_index(op.f("app_tenant_maintainer_idx"), table_name="apps")
+        op.drop_index(op.f("dataset_tenant_maintainer_idx"), table_name="datasets")
+
     with op.batch_alter_table("datasets", schema=None) as batch_op:
-        batch_op.drop_index("dataset_tenant_maintainer_idx")
         batch_op.drop_column("maintainer")
 
     with op.batch_alter_table("apps", schema=None) as batch_op:
-        batch_op.drop_index("app_tenant_maintainer_idx")
         batch_op.drop_column("maintainer")
