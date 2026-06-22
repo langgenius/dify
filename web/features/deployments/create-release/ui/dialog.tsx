@@ -8,6 +8,7 @@ import { ScopeProvider } from 'jotai-scope'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
+import { isDeploymentDslImportEnabled } from '../../shared/domain/feature-flags'
 import {
   closeCreateReleaseDialogAtom,
   createReleaseDialogOpenAtom,
@@ -87,13 +88,19 @@ function CreateReleaseDefaultSourceApp({ formValues }: {
   const defaultSourceApp = latestSourceAppId
     ? workflowSourceAppPickerValue(defaultSourceAppQuery.data, latestSourceAppId)
     : undefined
+  const sourceAppLocked = !isDeploymentDslImportEnabled
+  const releaseSourceMode = formValues.releaseSourceMode === 'dsl' && !isDeploymentDslImportEnabled
+    ? 'sourceApp'
+    : formValues.releaseSourceMode
 
   useEffect(() => {
-    if (!isDialogOpen || formValues.releaseSourceMode !== 'sourceApp' || formValues.sourceApp || !defaultSourceApp)
+    if (!isDialogOpen || releaseSourceMode !== 'sourceApp' || !defaultSourceApp)
+      return
+    if (formValues.sourceApp && (!sourceAppLocked || formValues.sourceApp.id === defaultSourceApp.id))
       return
 
     form.setFieldValue('sourceApp', defaultSourceApp)
-  }, [defaultSourceApp, form, formValues.releaseSourceMode, formValues.sourceApp, isDialogOpen])
+  }, [defaultSourceApp, form, formValues.sourceApp, isDialogOpen, releaseSourceMode, sourceAppLocked])
 
   return null
 }
