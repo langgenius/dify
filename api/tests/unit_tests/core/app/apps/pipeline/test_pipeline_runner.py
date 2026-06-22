@@ -53,7 +53,7 @@ def _build_app_generate_entity() -> SimpleNamespace:
     )
 
 
-def _patch_create_session(mocker: MockerFixture, session: MagicMock):
+def _patch_create_session(mocker: MockerFixture, session: MagicMock, *, events: list[str] | None = None):
     """Patch create_session() to yield ``session`` inside its ``with`` body and ``begin()`` block.
 
     The runner now obtains short-lived sessions via ``create_session()`` instead of the
@@ -61,8 +61,19 @@ def _patch_create_session(mocker: MockerFixture, session: MagicMock):
     hand back a context manager that yields the mock session.
     """
     session_context = MagicMock()
-    session_context.__enter__.return_value = session
-    session_context.__exit__.return_value = False
+
+    def enter_session():
+        if events is not None:
+            events.append("session_enter")
+        return session
+
+    def exit_session(*args):
+        if events is not None:
+            events.append("session_exit")
+        return False
+
+    session_context.__enter__.side_effect = enter_session
+    session_context.__exit__.side_effect = exit_session
     session.begin.return_value.__enter__.return_value = session
     session.begin.return_value.__exit__.return_value = False
     return mocker.patch.object(module, "create_session", return_value=session_context)
@@ -141,6 +152,9 @@ def test_update_document_status_on_failure(mocker, runner):
     assert document.indexing_status == "error"
     assert document.error == "boom"
     session.add.assert_called_once_with(document)
+    session.begin.assert_called_once()
+    session.begin.return_value.__enter__.assert_called_once()
+    session.begin.return_value.__exit__.assert_called_once()
 
 
 def test_run_pipeline_not_found(mocker: MockerFixture):
@@ -245,10 +259,11 @@ def test_run_normal_path_builds_graph(mocker: MockerFixture):
 
     pipeline = MagicMock(id="pipe")
     end_user = MagicMock(session_id="sess")
+    events = []
 
     session = MagicMock()
     session.get.side_effect = [end_user, pipeline]
-    _patch_create_session(mocker, session)
+    _patch_create_session(mocker, session, events=events)
 
     workflow = MagicMock(
         id="wf",
@@ -292,10 +307,11 @@ def test_run_normal_path_builds_graph(mocker: MockerFixture):
 
     workflow_entry = MagicMock()
     workflow_entry.graph_engine = MagicMock()
-    workflow_entry.run.return_value = []
+    workflow_entry.run.side_effect = lambda: events.append("workflow_run") or []
     mocker.patch.object(module, "WorkflowEntry", return_value=workflow_entry)
     mocker.patch.object(module, "WorkflowPersistenceLayer", return_value=MagicMock())
 
     runner.run()
 
+    assert events == ["session_enter", "session_exit", "workflow_run"]
     runner._init_rag_pipeline_graph.assert_called_once()

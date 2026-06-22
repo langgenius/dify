@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
 
@@ -288,7 +288,7 @@ class TestChatAppRunner:
         ):
             runner.run(app_generate_entity, DummyQueueManager(), SimpleNamespace(), SimpleNamespace(id="m1"))
 
-    def test_run_closes_scoped_session_before_llm_invoke(self):
+    def test_run_closes_scoped_session_before_stream_consumption(self):
         runner = ChatAppRunner()
         app_config = SimpleNamespace(
             app_id="app-1",
@@ -314,7 +314,14 @@ class TestChatAppRunner:
         events = []
         queue_manager = DummyQueueManager()
         model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = lambda **kwargs: events.append("invoke") or "invoke-result"
+
+        def invoke_stream():
+            events.append("first-chunk")
+            yield "chunk"
+
+        def invoke_llm(**kwargs):
+            events.append("invoke")
+            return invoke_stream()
 
         with (
             patched_create_session(return_value=SimpleNamespace(id="app-1", tenant_id="tenant-1")),
@@ -323,15 +330,20 @@ class TestChatAppRunner:
             patch.object(ChatAppRunner, "query_app_annotations_to_reply", return_value=None),
             patch.object(ChatAppRunner, "check_hosting_moderation", return_value=False),
             patch.object(ChatAppRunner, "recalc_llm_max_tokens"),
-            patch.object(ChatAppRunner, "_handle_invoke_result") as mock_handle,
+            patch.object(
+                ChatAppRunner,
+                "_handle_invoke_result",
+                side_effect=lambda invoke_result, **kwargs: list(invoke_result),
+            ) as mock_handle,
             patch("core.app.apps.chat.app_runner.ModelInstance", return_value=model_instance),
             patch("core.app.apps.chat.app_runner.db.session.close", side_effect=lambda: events.append("close")),
         ):
+            model_instance.invoke_llm.side_effect = invoke_llm
             runner.run(app_generate_entity, queue_manager, SimpleNamespace(), SimpleNamespace(id="m1"))
 
-        assert events == ["close", "invoke"]
+        assert events == ["close", "invoke", "first-chunk"]
         mock_handle.assert_called_once_with(
-            invoke_result="invoke-result",
+            invoke_result=ANY,
             queue_manager=queue_manager,
             stream=True,
             message_id="m1",

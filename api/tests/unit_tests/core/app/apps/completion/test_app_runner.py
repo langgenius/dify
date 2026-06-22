@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from pytest_mock import MockerFixture
@@ -139,7 +139,7 @@ class TestCompletionAppRunner:
         assert dataset_retrieval.retrieve.call_args.kwargs["query"] == "query_from_input"
         runner._handle_invoke_result.assert_called_once()
 
-    def test_run_closes_scoped_session_before_llm_invoke(self, runner, mocker: MockerFixture):
+    def test_run_closes_scoped_session_before_stream_consumption(self, runner, mocker: MockerFixture):
         app_record = MagicMock(id="app1", tenant_id="tenant")
         app_config = _build_app_config()
         app_generate_entity = _build_generate_entity(app_config)
@@ -150,19 +150,28 @@ class TestCompletionAppRunner:
         runner.moderation_for_inputs = MagicMock(return_value=(None, app_generate_entity.inputs, "query"))
         runner.check_hosting_moderation = MagicMock(return_value=False)
         runner.recalc_llm_max_tokens = MagicMock()
-        runner._handle_invoke_result = MagicMock()
+        runner._handle_invoke_result = MagicMock(side_effect=lambda invoke_result, **kwargs: list(invoke_result))
 
         model_instance = MagicMock()
-        model_instance.invoke_llm.side_effect = lambda **kwargs: events.append("invoke") or "invoke_result"
+
+        def invoke_stream():
+            events.append("first-chunk")
+            yield "chunk"
+
+        def invoke_llm(**kwargs):
+            events.append("invoke")
+            return invoke_stream()
+
+        model_instance.invoke_llm.side_effect = invoke_llm
         mocker.patch.object(module, "ModelInstance", return_value=model_instance)
         mocker.patch.object(module.db.session, "close", side_effect=lambda: events.append("close"))
 
         with patched_create_session(return_value=app_record):
             runner.run(app_generate_entity, queue_manager, MagicMock(id="msg"))
 
-        assert events == ["close", "invoke"]
+        assert events == ["close", "invoke", "first-chunk"]
         runner._handle_invoke_result.assert_called_once_with(
-            invoke_result="invoke_result",
+            invoke_result=ANY,
             queue_manager=queue_manager,
             stream=True,
             message_id="msg",

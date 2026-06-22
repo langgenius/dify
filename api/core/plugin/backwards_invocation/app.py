@@ -16,7 +16,14 @@ from core.db.session_factory import create_session
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from extensions.ext_database import db
 from models import Account, TenantAccountJoin
-from models.model import App, AppMode, AppModelConfig, EndUser
+from models.model import (
+    App,
+    AppMode,
+    AppModelConfig,
+    AppModelConfigDict,
+    EndUser,
+    load_annotation_reply_config,
+)
 from models.workflow import Workflow
 from services.end_user_service import EndUserService
 
@@ -38,11 +45,11 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
             features_dict: dict[str, Any] = workflow.features_dict
             user_input_form = workflow.user_input_form(to_old_structure=True)
         else:
-            app_model_config = cls._get_app_model_config(app)
-            if app_model_config is None:
+            app_model_config_dict = cls._get_app_model_config_dict(app)
+            if app_model_config_dict is None:
                 raise ValueError("unexpected app type")
 
-            features_dict = cast(dict[str, Any], app_model_config.to_dict())
+            features_dict = cast(dict[str, Any], app_model_config_dict)
 
             user_input_form = features_dict.get("user_input_form", [])
 
@@ -271,9 +278,9 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
             return workflow
 
     @classmethod
-    def _get_app_model_config(cls, app: App) -> AppModelConfig | None:
+    def _get_app_model_config_dict(cls, app: App) -> AppModelConfigDict | None:
         """
-        get app model config without relying on App.app_model_config's request-scoped session property
+        get app model config features without relying on request-scoped session-backed model properties
         """
         if not app.app_model_config_id:
             return None
@@ -284,6 +291,8 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                 .where(AppModelConfig.id == app.app_model_config_id, AppModelConfig.app_id == app.id)
                 .limit(1)
             )
-            if app_model_config:
-                session.expunge(app_model_config)
-            return app_model_config
+            if app_model_config is None:
+                return None
+
+            annotation_reply = load_annotation_reply_config(session, app_model_config.app_id)
+            return app_model_config.to_dict(annotation_reply=annotation_reply)

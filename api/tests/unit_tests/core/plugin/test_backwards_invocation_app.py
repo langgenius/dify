@@ -17,6 +17,16 @@ class _Chunk(BaseModel):
     value: int
 
 
+def _build_app_model_config(result: dict | None = None):
+    app_model_config = MagicMock()
+    app_model_config.app_id = "app-1"
+    app_model_config.to_dict.return_value = result or {
+        "user_input_form": [{"name": "bar"}],
+        "annotation_reply": {"enabled": False},
+    }
+    return app_model_config
+
+
 class TestBaseBackwardsInvocation:
     def test_convert_to_event_stream_with_generator_and_error(self):
         def _stream():
@@ -73,11 +83,10 @@ class TestPluginAppBackwardsInvocation:
         mapper.assert_called_once_with(features_dict={"feature": "v"}, user_input_form=[{"name": "foo"}])
 
     def test_fetch_app_info_model_config_path(self, mocker: MockerFixture):
-        model_config = MagicMock()
-        model_config.to_dict.return_value = {"user_input_form": [{"name": "bar"}], "k": "v"}
+        model_config_dict = {"user_input_form": [{"name": "bar"}], "k": "v"}
         app = MagicMock(mode=AppMode.COMPLETION)
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_app", return_value=app)
-        mocker.patch.object(PluginAppBackwardsInvocation, "_get_app_model_config", return_value=model_config)
+        mocker.patch.object(PluginAppBackwardsInvocation, "_get_app_model_config_dict", return_value=model_config_dict)
         mocker.patch(
             "core.plugin.backwards_invocation.app.get_parameters_from_feature_dict",
             return_value={"mapped": True},
@@ -395,12 +404,23 @@ class TestPluginAppBackwardsInvocation:
             "param_1": 1,
         }
 
-    def test_get_app_model_config_stays_inside_app_boundary(self, mocker: MockerFixture):
-        app_model_config = MagicMock(id="config")
+    def test_get_app_model_config_dict_uses_explicit_session_for_annotation_reply(self, mocker: MockerFixture):
+        annotation_reply = {"enabled": False}
+        app_model_config = _build_app_model_config()
         session = self.patch_create_session(mocker, return_value=app_model_config)
+        load_annotation_reply_config = mocker.patch(
+            "core.plugin.backwards_invocation.app.load_annotation_reply_config",
+            return_value=annotation_reply,
+        )
         app = SimpleNamespace(id="app-1", app_model_config_id="config-1")
 
-        assert PluginAppBackwardsInvocation._get_app_model_config(app) is app_model_config
+        result = PluginAppBackwardsInvocation._get_app_model_config_dict(app)
+
+        assert result is not None
+        assert result["user_input_form"] == [{"name": "bar"}]
+        assert result["annotation_reply"] == annotation_reply
+        load_annotation_reply_config.assert_called_once_with(session, "app-1")
+        app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
 
         stmt = session.scalar.call_args.args[0]
         compiled = str(stmt.compile(dialect=postgresql.dialect()))
