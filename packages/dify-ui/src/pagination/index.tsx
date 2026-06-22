@@ -355,7 +355,7 @@ export function PaginationPageJump({
     return (
       <span
         data-page-summary={`${pagination.page}/${pagination.totalPages}`}
-        className="inline-grid h-7 system-xs-medium tabular-nums after:invisible after:col-start-1 after:row-start-1 after:py-1.5 after:pr-3 after:pl-2 after:content-[attr(data-page-summary)]"
+        className="inline-grid h-7 system-xs-medium tabular-nums after:invisible after:col-start-1 after:row-start-1 after:py-1.5 after:pe-3 after:ps-2 after:content-[attr(data-page-summary)]"
       >
         <NumberField
           key={pagination.page}
@@ -483,9 +483,8 @@ export function PaginationPage({
       aria-current={current ? 'page' : undefined}
       aria-label={ariaLabel ?? (current ? `Page ${page}, current page` : `Go to page ${page}`)}
       className={cn(
-        'inline-flex h-8 min-w-8 touch-manipulation items-center justify-center rounded-lg px-1 py-2 system-sm-medium tabular-nums text-text-tertiary outline-hidden transition-colors hover:bg-components-button-ghost-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+        'inline-flex h-8 min-w-8 touch-manipulation items-center justify-center rounded-lg px-1 py-2 system-sm-medium tabular-nums text-text-tertiary outline-hidden hover:bg-components-button-ghost-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
         current && 'bg-components-button-tertiary-bg text-components-button-tertiary-text hover:bg-components-button-ghost-bg-hover',
-        'motion-reduce:transition-none',
         className,
       )}
       onClick={(event) => {

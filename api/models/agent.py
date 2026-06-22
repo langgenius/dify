@@ -38,6 +38,8 @@ class AgentScope(StrEnum):
 class AgentSource(StrEnum):
     """Origin that created or imported the Agent."""
 
+    # Created directly as a reusable Agent Roster asset.
+    ROSTER = "roster"
     # Created from an Agent App composer.
     AGENT_APP = "agent_app"
     # Created from a Workflow Agent Composer flow.
@@ -322,8 +324,10 @@ class AgentRuntimeSession(DefaultFieldsMixin, Base):
       ``workflow_id / workflow_run_id / node_id / binding_id /
       agent_config_snapshot_id / composition_layer_specs`` columns are set.
     - Agent App conversations: ``owner_type = conversation``; the
-      ``conversation_id`` and ``agent_config_snapshot_id`` columns are set and
-      the workflow columns stay NULL.
+      ``conversation_id`` column is set and the workflow columns stay NULL.
+      Published/web/API runs scope runtime state by ``agent_config_snapshot_id``;
+      console debugger runs may keep it NULL so prompt-only draft saves can reuse
+      the same preview conversation state while executing the latest Agent Soul.
 
     The snapshot is runtime state returned by Agent backend, kept separate from
     Agent Soul snapshots and workflow node-job config.
@@ -396,6 +400,12 @@ class AgentRuntimeSession(DefaultFieldsMixin, Base):
         default=AgentRuntimeSessionStatus.ACTIVE,
     )
     cleaned_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # ENG-637: when a run pauses for a dify.ask_human deferred call, these link
+    # the session to the awaiting HITL form and the deferred tool_call_id, so a
+    # resumed node can map the submitted form back into deferred_tool_results.
+    # Both NULL whenever the session is not paused on human input.
+    pending_form_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    pending_tool_call_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
 
 # Back-compat alias for the shipped workflow lifecycle code (PR #36724).
@@ -420,14 +430,17 @@ class AgentDriveFile(DefaultFieldsMixin, Base):
     synced. ``value_owned_by_drive`` gates physical cleanup: only drive-owned values
     (created by the agent runtime or Skill standardization, not shared with other
     business records) have their storage object + record deleted when the KV entry is
-    overwritten or removed; otherwise only the KV row is dropped. Lifecycle never relies
-    on ``UploadFile.used/used_by`` (not a reliable refcount).
+    overwritten or removed; otherwise only the KV row is dropped. Skills are represented
+    by the canonical ``<path>/SKILL.md`` row with ``is_skill=True`` and a serialized
+    ``skill_metadata`` string. Lifecycle never relies on ``UploadFile.used/used_by``
+    (not a reliable refcount).
     """
 
     __tablename__ = "agent_drive_files"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="agent_drive_file_pkey"),
         UniqueConstraint("tenant_id", "agent_id", "key", name="agent_drive_file_scope_key_unique"),
+        Index("agent_drive_files_tenant_agent_is_skill_key_idx", "tenant_id", "agent_id", "is_skill", "key"),
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -443,6 +456,8 @@ class AgentDriveFile(DefaultFieldsMixin, Base):
     value_owned_by_drive: Mapped[bool] = mapped_column(
         sa.Boolean, nullable=False, default=False, server_default=sa.text("false")
     )
+    is_skill: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False, server_default=sa.text("false"))
+    skill_metadata: Mapped[str | None] = mapped_column(LongText, nullable=True)
     size: Mapped[int | None] = mapped_column(sa.BigInteger, nullable=True)
     hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     mime_type: Mapped[str | None] = mapped_column(String(255), nullable=True)

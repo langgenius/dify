@@ -18,11 +18,17 @@ export const HooksStoreContextProvider = ({ children, ...restProps }: HooksStore
   const storeRef = useRef<HooksStore | undefined>(undefined)
   const d3Selection = useStore(s => s.d3Selection)
   const d3Zoom = useStore(s => s.d3Zoom)
+  const { accessControl } = restProps
 
   useEffect(() => {
     if (storeRef.current && d3Selection && d3Zoom)
       storeRef.current.getState().refreshAll(restProps)
   }, [d3Selection, d3Zoom])
+
+  useEffect(() => {
+    if (storeRef.current && accessControl)
+      storeRef.current.getState().refreshAll({ accessControl })
+  }, [accessControl])
 
   if (!storeRef.current)
     storeRef.current = createHooksStore(restProps)

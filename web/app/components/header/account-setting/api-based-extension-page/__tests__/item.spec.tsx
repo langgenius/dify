@@ -81,6 +81,26 @@ describe('Item Component', () => {
       // Assert
       expect(mockOnEdit).toHaveBeenCalledWith(mockData)
     })
+
+    it('should disable edit and delete actions when management is not allowed', () => {
+      // Act
+      render(<Item apiBasedExtension={mockData} onEdit={mockOnEdit} canManage={false} />)
+
+      // Assert
+      expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'common.operation.delete' })).toBeDisabled()
+    })
+
+    it('should not open edit or delete flows when management is not allowed', () => {
+      // Act
+      render(<Item apiBasedExtension={mockData} onEdit={mockOnEdit} canManage={false} />)
+      fireEvent.click(screen.getByText('common.operation.edit'))
+      fireEvent.click(screen.getByText('common.operation.delete'))
+
+      // Assert
+      expect(mockOnEdit).not.toHaveBeenCalled()
+      expect(screen.queryByText(/common\.operation\.delete.*Test Extension.*\?/i)).not.toBeInTheDocument()
+    })
   })
 
   describe('Deletion', () => {

@@ -10,7 +10,9 @@ to the agent drive (Agent Files §5.4 / §4):
 Both are stored as ``ToolFile`` records and bound via ``AgentDriveService.commit``
 with ``value_owned_by_drive=True`` (the drive owns their lifecycle). The returned
 skill ref records the stable drive paths + file ids (not just the raw upload id),
-so the Composer can reload the bound skill list.
+so the Composer can reload the bound skill list. The console ``/skills/upload``
+endpoints delegate to this service so "upload" now always means drive-backed skill
+normalization.
 """
 
 from __future__ import annotations
@@ -21,7 +23,7 @@ from typing import Any
 from core.tools.tool_file_manager import ToolFileManager
 from models.agent_config_entities import AgentSkillRefConfig
 from services.agent.skill_package_service import SkillPackageService
-from services.agent_drive_service import AgentDriveService, DriveCommitItem, DriveFileRef
+from services.agent_drive_service import AgentDriveService, DriveCommitItem, DriveFileRef, DriveSkillMetadata
 
 _FULL_ARCHIVE_NAME = ".DIFY-SKILL-FULL.zip"
 _SKILL_MD_NAME = "SKILL.md"
@@ -34,7 +36,7 @@ def slugify_skill_name(name: str) -> str:
 
 
 class SkillStandardizeService:
-    """Validate + standardize a Skill package into a per-agent drive."""
+    """Validate + standardize a Skill package into a per-agent drive upload result."""
 
     def __init__(
         self,
@@ -89,6 +91,12 @@ class SkillStandardizeService:
                     key=skill_md_key,
                     file_ref=DriveFileRef(kind="tool_file", id=md_tool_file.id),
                     value_owned_by_drive=True,
+                    is_skill=True,
+                    skill_metadata=DriveSkillMetadata(
+                        name=manifest.name,
+                        description=manifest.description,
+                        manifest_files=manifest.files,
+                    ),
                 ),
                 DriveCommitItem(
                     key=archive_key,

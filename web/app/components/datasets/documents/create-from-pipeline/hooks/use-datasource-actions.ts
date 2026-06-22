@@ -34,6 +34,7 @@ type DatasourceActionsParams = {
   clearWebsiteCrawlData: () => void
   clearOnlineDriveData: () => void
   setDatasource: (ds: Datasource) => void
+  canProcess?: boolean
 }
 
 /**
@@ -54,6 +55,7 @@ export const useDatasourceActions = ({
   clearWebsiteCrawlData,
   clearOnlineDriveData,
   setDatasource,
+  canProcess = true,
 }: DatasourceActionsParams) => {
   const isPreview = useRef(false)
   const formRef = useRef<{ submit: () => void } | null>(null)
@@ -170,6 +172,9 @@ export const useDatasourceActions = ({
 
   // Handle document processing
   const handleProcess = useCallback(async (data: Record<string, unknown>) => {
+    if (!canProcess)
+      return
+
     if (!datasource || !pipelineId)
       return
 
@@ -192,13 +197,16 @@ export const useDatasourceActions = ({
         })
       },
     })
-  }, [datasource, pipelineId, datasourceType, buildProcessDatasourceInfo, runPublishedPipeline, setBatchId, setDocuments, handleNextStep])
+  }, [canProcess, datasource, pipelineId, datasourceType, buildProcessDatasourceInfo, runPublishedPipeline, setBatchId, setDocuments, handleNextStep])
 
   // Form submission handlers
   const onClickProcess = useCallback(() => {
+    if (!canProcess)
+      return
+
     isPreview.current = false
     formRef.current?.submit()
-  }, [])
+  }, [canProcess])
 
   const onClickPreview = useCallback(() => {
     isPreview.current = true

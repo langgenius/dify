@@ -1,6 +1,6 @@
 {
   "events.actionNum": "{{num}} {{event}} INCLUSO",
-  "events.description": "Eventi a cui questo plugin trigger può iscriversi",
+  "events.description": "Eventi a cui questo integrazione trigger può iscriversi",
   "events.empty": "Nessun evento disponibile",
   "events.event": "Evento",
   "events.events": "Eventi",

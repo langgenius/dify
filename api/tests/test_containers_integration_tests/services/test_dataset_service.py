@@ -441,6 +441,7 @@ class TestDatasetServiceCreateRagPipelineDataset:
         assert created_dataset.name == entity.name
         assert created_dataset.runtime_mode == DatasetRuntimeMode.RAG_PIPELINE
         assert created_dataset.created_by == account.id
+        assert created_dataset.maintainer == account.id
         assert created_dataset.permission == DatasetPermissionEnum.ONLY_ME
         assert created_pipeline is not None
         assert created_pipeline.name == entity.name

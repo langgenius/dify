@@ -19,6 +19,11 @@ from controllers.common.schema import (
 from controllers.service_api import service_api_ns
 from controllers.service_api.dataset.error import PipelineRunError
 from controllers.service_api.dataset.rag_pipeline.serializers import serialize_upload_file
+from controllers.service_api.schema import (
+    event_stream_response,
+    json_or_event_stream_response,
+    multipart_file_params,
+)
 from controllers.service_api.wraps import DatasetApiResource
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -32,6 +37,7 @@ from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
 from services.file_service import FileService
 from services.rag_pipeline.entity.pipeline_service_api_entities import (
     DatasourceNodeRunApiEntity,
+    DatasourceType,
     PipelineRunApiEntity,
 )
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
@@ -39,14 +45,27 @@ from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 
 class DatasourceNodeRunPayload(BaseModel):
-    inputs: dict[str, Any]
-    datasource_type: str
-    credential_id: str | None = None
-    is_published: bool
+    inputs: dict[str, Any] = Field(description="Input variables for the datasource node.")
+    datasource_type: DatasourceType = Field(description="Type of the datasource.")
+    credential_id: str | None = Field(
+        default=None, description="Datasource credential ID. Uses the default if omitted."
+    )
+    is_published: bool = Field(
+        description=(
+            "Whether to run the published or draft version of the node. `true` runs the published version, "
+            "`false` runs the draft."
+        )
+    )
 
 
 class DatasourcePluginsQuery(BaseModel):
-    is_published: bool = True
+    is_published: bool = Field(
+        default=True,
+        description=(
+            "Whether to retrieve nodes from the published or draft pipeline. `true` returns nodes from the published "
+            "version, `false` returns nodes from the draft."
+        ),
+    )
 
 
 class DatasourceCredentialInfoResponse(ResponseModel):
@@ -95,13 +114,21 @@ register_response_schema_models(
 class DatasourcePluginsApi(DatasetApiResource):
     """Resource for datasource plugins."""
 
+    @service_api_ns.doc(
+        summary="List Datasource Plugins",
+        description=(
+            "List the datasource nodes configured in the knowledge pipeline. Each node includes the "
+            "plugin it uses plus the metadata needed to run it."
+        ),
+        tags=["Knowledge Pipeline"],
+        responses={
+            200: "List of datasource nodes configured in the pipeline.",
+            404: "`not_found` : Dataset not found.",
+        },
+    )
     @service_api_ns.doc(shortcut="list_rag_pipeline_datasource_plugins")
     @service_api_ns.doc(description="List all datasource plugins for a rag pipeline")
-    @service_api_ns.doc(
-        path={
-            "dataset_id": "Dataset ID",
-        }
-    )
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID."})
     @service_api_ns.doc(params=query_params_from_model(DatasourcePluginsQuery))
     @service_api_ns.doc(
         responses={
@@ -137,13 +164,22 @@ class DatasourcePluginsApi(DatasetApiResource):
 class DatasourceNodeRunApi(DatasetApiResource):
     """Resource for datasource node run."""
 
+    @service_api_ns.doc(
+        summary="Run Datasource Node",
+        description=(
+            "Execute a single datasource node within the knowledge pipeline. Returns a streaming "
+            "response with the node execution results."
+        ),
+        tags=["Knowledge Pipeline"],
+        responses={
+            200: "Streaming response with node execution events.",
+            404: "`not_found` : Dataset not found.",
+        },
+    )
+    @event_stream_response(service_api_ns)
     @service_api_ns.doc(shortcut="pipeline_datasource_node_run")
     @service_api_ns.doc(description="Run a datasource node for a rag pipeline")
-    @service_api_ns.doc(
-        path={
-            "dataset_id": "Dataset ID",
-        }
-    )
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID.", "node_id": "ID of the datasource node to execute."})
     @service_api_ns.doc(
         responses={
             200: "Datasource node run successfully",
@@ -195,13 +231,27 @@ class DatasourceNodeRunApi(DatasetApiResource):
 class PipelineRunApi(DatasetApiResource):
     """Resource for datasource node run."""
 
+    @service_api_ns.doc(
+        summary="Run Pipeline",
+        description=(
+            "Execute the full knowledge pipeline for a knowledge base. Supports both streaming and "
+            "blocking response modes."
+        ),
+        tags=["Knowledge Pipeline"],
+        responses={
+            200: (
+                "Pipeline execution result. Format depends on `response_mode`: streaming returns a "
+                "`text/event-stream`, blocking returns a JSON object."
+            ),
+            403: "`forbidden` : Forbidden.",
+            404: "`not_found` : Dataset not found.",
+            500: "`pipeline_run_error` : Pipeline execution failed.",
+        },
+    )
+    @json_or_event_stream_response(service_api_ns)
     @service_api_ns.doc(shortcut="pipeline_datasource_node_run")
     @service_api_ns.doc(description="Run a datasource node for a rag pipeline")
-    @service_api_ns.doc(
-        path={
-            "dataset_id": "Dataset ID",
-        }
-    )
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID."})
     @service_api_ns.doc(
         responses={
             200: "Pipeline run successfully",
@@ -248,8 +298,24 @@ class PipelineRunApi(DatasetApiResource):
 class KnowledgebasePipelineFileUploadApi(DatasetApiResource):
     """Resource for uploading a file to a knowledgebase pipeline."""
 
+    @service_api_ns.doc(
+        summary="Upload Pipeline File",
+        description="Upload a file for use in a knowledge pipeline. Accepts a single file via `multipart/form-data`.",
+        tags=["Knowledge Pipeline"],
+        responses={
+            201: "File uploaded successfully.",
+            400: (
+                "- `no_file_uploaded` : Please upload your file.\n"
+                "- `filename_not_exists_error` : The specified filename does not exist.\n"
+                "- `too_many_files` : Only one file is allowed."
+            ),
+            413: "`file_too_large` : File size exceeded.",
+            415: "`unsupported_file_type` : File type not allowed.",
+        },
+    )
     @service_api_ns.doc(shortcut="knowledgebase_pipeline_file_upload")
     @service_api_ns.doc(description="Upload a file to a knowledgebase pipeline")
+    @service_api_ns.doc(consumes=["multipart/form-data"], params=multipart_file_params(include_user=False))
     @service_api_ns.doc(
         responses={
             201: "File uploaded successfully",

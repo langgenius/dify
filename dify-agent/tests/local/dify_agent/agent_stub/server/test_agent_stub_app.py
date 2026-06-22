@@ -39,6 +39,8 @@ def test_create_agent_stub_app_exposes_same_stub_routes_as_module_app() -> None:
     assert "/agent-stub/connections" in created_paths
     assert "/agent-stub/files/upload-request" in created_paths
     assert "/agent-stub/files/download-request" in created_paths
+    assert "/agent-stub/drive/manifest" in created_paths
+    assert "/agent-stub/drive/commit" in created_paths
     assert created_paths == module_paths
 
 
@@ -88,3 +90,56 @@ def test_create_agent_stub_app_wires_configured_file_handler_for_upload_requests
 
     assert response.status_code == 200
     assert response.json() == {"upload_url": "https://files.example.com/upload"}
+
+
+def test_create_agent_stub_app_wires_configured_drive_handler_for_manifest_requests(monkeypatch) -> None:
+    settings = ServerSettings(
+        agent_stub_url="https://agent.example.com/agent-stub",
+        server_secret_key=_base64url_secret(b"1" * 32),
+        dify_api_base_url="https://api.example.com",
+        dify_api_inner_api_key="inner-secret",
+    )
+    token_codec = settings.create_agent_stub_token_codec()
+    assert token_codec is not None
+    token = token_codec.encode_connection_token(
+        _execution_context().model_copy(update={"agent_id": "agent-1"}), now=int(time.time()) - 1
+    )
+
+    original_async_client = httpx.AsyncClient
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert str(request.url) == (
+            "https://api.example.com/inner/api/drive/agent-agent-1/manifest"
+            "?tenant_id=tenant-1&prefix=skills%2F&include_download_url=false"
+        )
+        assert request.headers["X-Inner-Api-Key"] == "inner-secret"
+        return httpx.Response(
+            200,
+            json={
+                "items": [
+                    {
+                        "key": "skills/example/SKILL.md",
+                        "size": 12,
+                        "hash": "sha256:abc",
+                        "mime_type": "text/markdown",
+                        "file_kind": "tool_file",
+                        "file_id": "tool-file-1",
+                    }
+                ]
+            },
+        )
+
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.server.agent_stub_drive.httpx.AsyncClient",
+        lambda **kwargs: original_async_client(transport=httpx.MockTransport(handler), **kwargs),
+    )
+
+    client = TestClient(create_agent_stub_app(settings))
+    response = client.get(
+        "/agent-stub/drive/manifest",
+        headers={"Authorization": f"Bearer {token}"},
+        params={"prefix": "skills/"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["items"][0]["key"] == "skills/example/SKILL.md"

@@ -11,14 +11,9 @@ import { collaborationManager } from '../collaboration/core/collaboration-manage
 import { useEdgesInteractions } from '../hooks/use-edges-interactions'
 import { useNodesInteractions } from '../hooks/use-nodes-interactions'
 import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
-import { useWorkflowCanvasMaximize } from '../hooks/use-workflow-canvas-maximize'
 import { useWorkflowOrganize } from '../hooks/use-workflow-organize'
 import { useWorkflowMoveMode } from '../hooks/use-workflow-panel-interactions'
 import { useStore } from '../store/workflow'
-import {
-  subscribeWorkflowCommand,
-  WorkflowCommand,
-} from './commands'
 import { WORKFLOW_CANVAS_SHORTCUTS } from './definitions'
 
 const workflowHotkeyOptions = {
@@ -78,7 +73,6 @@ export const useWorkflowHotkeys = (): void => {
     isCommentModeAvailable,
   } = useWorkflowMoveMode()
   const { handleLayout } = useWorkflowOrganize()
-  const { handleToggleMaximizeCanvas } = useWorkflowCanvasMaximize()
 
   const {
     zoomTo,
@@ -119,10 +113,6 @@ export const useWorkflowHotkeys = (): void => {
     event.stopPropagation()
     handleNodesCopy()
   }, [handleNodesCopy, shouldHandleCopy])
-
-  const handleZenToggle = useCallback(() => {
-    handleToggleMaximizeCanvas()
-  }, [handleToggleMaximizeCanvas])
 
   const hotkeys = useMemo<UseHotkeyDefinition[]>(() => [
     ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.delete'], () => {
@@ -166,9 +156,6 @@ export const useWorkflowHotkeys = (): void => {
     ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.organize'], () => {
       handleLayout()
     }),
-    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.toggle-maximize'], () => {
-      handleToggleMaximizeCanvas()
-    }),
     ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.zoom-to-fit'], () => {
       fitView()
       handleSyncWorkflowDraft()
@@ -208,7 +195,6 @@ export const useWorkflowHotkeys = (): void => {
     handleNodesDuplicate,
     handleNodesPaste,
     handleSyncWorkflowDraft,
-    handleToggleMaximizeCanvas,
     historyShortcutsEnabled,
     isCommentModeAvailable,
     showDebugAndPreviewPanel,
@@ -243,8 +229,4 @@ export const useWorkflowHotkeys = (): void => {
         undimAllNodesRef.current()
     }
   }, [])
-
-  useEffect(() => {
-    return subscribeWorkflowCommand(WorkflowCommand.ToggleCanvasMaximize, handleZenToggle)
-  }, [handleZenToggle])
 }

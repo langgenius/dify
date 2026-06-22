@@ -61,6 +61,11 @@ let mockPublishedAt: string | undefined = '2024-01-01T00:00:00Z'
 let mockDraftUpdatedAt: string | undefined = '2024-06-01T00:00:00Z'
 let mockPipelineId: string | undefined = 'pipeline-123'
 let mockIsAllowPublishAsCustom = true
+let mockDatasetPermissionKeys = ['dataset.acl.use']
+let mockDatasetMaintainer: string | undefined
+let mockCurrentUserId = 'user-1'
+let mockIsLoadingWorkspacePermissionKeys = false
+let mockWorkspacePermissionKeys: string[] = []
 const mockUseBoolean = vi.hoisted(() => vi.fn())
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'ds-123' }),
@@ -130,6 +135,10 @@ vi.mock('@/app/components/base/premium-badge', () => ({
   default: ({ children }: { children: React.ReactNode }) => <span data-testid="premium-badge">{children}</span>,
 }))
 
+vi.mock('@/config', () => ({
+  IS_CLOUD_EDITION: true,
+}))
+
 vi.mock('@/app/components/workflow/hooks', () => ({
   useChecklistBeforePublish: () => ({
     handleCheckBeforePublish: mockHandleCheckBeforePublish,
@@ -137,7 +146,23 @@ vi.mock('@/app/components/workflow/hooks', () => ({
 }))
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: () => mockMutateDatasetRes,
+  useDatasetDetailContextWithSelector: (selector: (state: Record<string, unknown>) => unknown) => selector({
+    dataset: {
+      permission_keys: mockDatasetPermissionKeys,
+      maintainer: mockDatasetMaintainer,
+    },
+    mutateDatasetRes: mockMutateDatasetRes,
+  }),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: Record<string, unknown>) => unknown) => selector({
+    userProfile: {
+      id: mockCurrentUserId,
+    },
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -214,6 +239,11 @@ describe('Popup', () => {
     mockDraftUpdatedAt = '2024-06-01T00:00:00Z'
     mockPipelineId = 'pipeline-123'
     mockIsAllowPublishAsCustom = true
+    mockDatasetPermissionKeys = ['dataset.acl.use']
+    mockDatasetMaintainer = undefined
+    mockCurrentUserId = 'user-1'
+    mockIsLoadingWorkspacePermissionKeys = false
+    mockWorkspacePermissionKeys = []
     mockUseBoolean.mockImplementation((initial: boolean) => [initial, {
       setFalse: vi.fn(),
       setTrue: vi.fn(),
@@ -260,9 +290,10 @@ describe('Popup', () => {
     })
 
     it('should render "Publish As" button', () => {
-      render(<Popup />)
+      const { container } = render(<Popup />)
 
       expect(screen.getByText('pipeline.common.publishAs')).toBeInTheDocument()
+      expect(container.querySelector('.i-custom-vender-pipeline-pipeline-line')).toBeInTheDocument()
     })
   })
 
@@ -295,6 +326,14 @@ describe('Popup', () => {
   describe('Button disable states', () => {
     it('should disable add documents button when not published', () => {
       mockPublishedAt = undefined
+      render(<Popup />)
+
+      const btn = screen.getByText('pipeline.common.goToAddDocuments').closest('button')
+      expect(btn).toBeDisabled()
+    })
+
+    it('should disable add documents button when dataset cannot add documents', () => {
+      mockDatasetPermissionKeys = ['dataset.acl.edit']
       render(<Popup />)
 
       const btn = screen.getByText('pipeline.common.goToAddDocuments').closest('button')

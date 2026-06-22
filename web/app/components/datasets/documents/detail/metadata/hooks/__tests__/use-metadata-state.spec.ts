@@ -63,7 +63,7 @@ describe('useMetadataState', () => {
     const stableDocDetail = makeDoc()
 
     const { result } = renderHook(() =>
-      useMetadataState({ docDetail: stableDocDetail, onUpdate }), { wrapper })
+      useMetadataState({ docDetail: stableDocDetail, onUpdate, canEdit: true }), { wrapper })
 
     // --- Initialization ---
     expect(result.current.docType).toBe('book')
@@ -150,7 +150,7 @@ describe('useMetadataState', () => {
   // Verify empty doc type starts in editing mode
   it('should initialize in editing mode when no doc type exists', () => {
     const stableDocDetail = makeDoc({ doc_type: '' as FullDocumentDetail['doc_type'], doc_metadata: {} as FullDocumentDetail['doc_metadata'] })
-    const { result } = renderHook(() => useMetadataState({ docDetail: stableDocDetail }), { wrapper })
+    const { result } = renderHook(() => useMetadataState({ docDetail: stableDocDetail, canEdit: true }), { wrapper })
 
     expect(result.current.docType).toBe('')
     expect(result.current.editStatus).toBe(true)
@@ -167,7 +167,7 @@ describe('useMetadataState', () => {
 
   // Verify undefined docDetail handling
   it('should handle undefined docDetail gracefully', () => {
-    const { result } = renderHook(() => useMetadataState({ docDetail: undefined }), { wrapper })
+    const { result } = renderHook(() => useMetadataState({ docDetail: undefined, canEdit: true }), { wrapper })
 
     expect(result.current.docType).toBe('')
     expect(result.current.editStatus).toBe(true)

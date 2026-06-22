@@ -46,6 +46,11 @@ vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () =
   ),
 }))
 
+vi.mock('@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission', () => ({
+  default: () => ({ canInstallPlugin: true }),
+  useOptionalPluginInstallPermission: () => ({ canInstallPlugin: true }),
+}))
+
 vi.mock('../../utils', () => ({
   getPluginDetailLinkInMarketplace: (plugin: Plugin) => `/detail/${plugin.org}/${plugin.name}`,
   getPluginLinkInMarketplace: (plugin: Plugin, params: Record<string, string>) => `/marketplace/${plugin.org}/${plugin.name}?language=${params.language}&theme=${params.theme}`,
@@ -86,10 +91,10 @@ describe('CardWrapper', () => {
     </ThemeProvider>,
   )
 
-  it('renders plugin detail link when install button is hidden', () => {
+  it('renders a non-navigating card when install button is hidden', () => {
     renderCardWrapper()
 
-    expect(screen.getByRole('link')).toHaveAttribute('href', '/detail/dify/plugin-a')
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
     expect(screen.getByTestId('card-more-info')).toHaveTextContent('42:tag:search|tag:agent')
   })
 
@@ -97,9 +102,20 @@ describe('CardWrapper', () => {
     renderCardWrapper({ showInstallButton: true })
 
     expect(screen.getByRole('button', { name: 'plugin.detailPanel.operation.install' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'plugin.detailPanel.operation.detail' })).toHaveAttribute(
-      'href',
+    expect(screen.getByRole('button', { name: 'plugin.detailPanel.operation.detail' })).toBeInTheDocument()
+  })
+
+  it('opens marketplace detail from the detail action', () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+
+    renderCardWrapper({ showInstallButton: true })
+
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.detail' }))
+
+    expect(openSpy).toHaveBeenCalledWith(
       '/marketplace/dify/plugin-a?language=en-US&theme=system',
+      '_blank',
+      'noopener,noreferrer',
     )
   })
 

@@ -130,6 +130,19 @@ describe('NodeActionsDropdown', () => {
     expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-1', action: 'run' })
   })
 
+  it('should hide single-run actions when nodes are readonly', async () => {
+    const user = userEvent.setup()
+    mockUseNodesReadOnly.mockReturnValueOnce({
+      nodesReadOnly: true,
+    } as ReturnType<typeof useNodesReadOnly>)
+
+    renderComponent()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+
+    expect(screen.queryByText('workflow.panel.runThisStep')).not.toBeInTheDocument()
+  })
+
   it('should hide the help link when showHelpLink is false', async () => {
     const user = userEvent.setup()
     renderComponent(false)

@@ -106,6 +106,7 @@ describe('NodeSelector', () => {
     await user.click(trigger)
 
     const searchInput = screen.getByPlaceholderText('workflow.tabs.searchBlock')
+    expect(screen.queryByText('workflow.tabs.snippets')).not.toBeInTheDocument()
     expect(screen.getByText('LLM')).toBeInTheDocument()
     expect(screen.getByText('End')).toBeInTheDocument()
 
@@ -125,6 +126,40 @@ describe('NodeSelector', () => {
     const reopenedInput = screen.getByPlaceholderText('workflow.tabs.searchBlock') as HTMLInputElement
     expect(reopenedInput.value).toBe('')
     expect(screen.getByText('End')).toBeInTheDocument()
+  })
+
+  it('resets to the default tab after closing', async () => {
+    const user = userEvent.setup()
+
+    renderNodeSelector(
+      <NodeSelector
+        onSelect={vi.fn()}
+        blocks={[
+          createBlock(BlockEnum.LLM, 'LLM'),
+        ]}
+        availableBlocksTypes={[BlockEnum.LLM, BlockEnum.Start]}
+        showStartTab
+        trigger={open => (
+          <button type="button">
+            {open ? 'selector-open' : 'selector-closed'}
+          </button>
+        )}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'selector-closed' }))
+    await user.click(screen.getByText('workflow.tabs.start'))
+
+    expect(screen.getByPlaceholderText('workflow.tabs.searchTrigger')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'selector-open' }))
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText('workflow.tabs.searchTrigger')).not.toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: 'selector-closed' }))
+
+    expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toBeInTheDocument()
   })
 
   it('does not open or emit open changes when disabled', async () => {

@@ -111,9 +111,6 @@ const Right = ({
     if (blockType === BlockEnum.LLM)
       return node?.data?.prompt_template?.text || node?.data?.prompt_template?.[0].text
 
-    // if (blockType === BlockEnum.Agent) {
-    //   return node?.data?.agent_parameters?.instruction?.value
-    // }
     if (blockType === BlockEnum.Code)
       return node?.data?.code
   }, [canShowPromptGenerator])
@@ -139,12 +136,6 @@ const Right = ({
           }
           break
 
-        //  Agent is a plugin, may has many instructions, can not locate which one to update
-        // case BlockEnum.Agent:
-        //   if (draft?.agent_parameters?.instruction) {
-        //     draft.agent_parameters.instruction.value = res.modified
-        //   }
-        //   break
         case BlockEnum.Code:
           draft.code = res.modified
           break

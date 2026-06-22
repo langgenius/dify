@@ -13,18 +13,20 @@ SUPPORTED_AGENT_BACKEND_FEATURES = frozenset(
         "structured_output",
         "tools.dify_tools",
         "tools.cli_tools",
+        "knowledge",
         "env",
         "sandbox",
         # ENG-623: exposed at runtime as the dify.drive declaration layer
         # (an index the agent pulls through the back proxy).
         "skills_files",
+        # ENG-635: human involvement is exposed at runtime as the dify.ask_human
+        # deferred tool; a call pauses via the existing HITL form mechanism.
+        "human",
     }
 )
 
 RESERVED_AGENT_BACKEND_FEATURES = frozenset(
     {
-        "knowledge",
-        "human",
         "memory",
     }
 )
@@ -78,6 +80,9 @@ def build_runtime_feature_manifest(
             )
 
     reserved_status = dict.fromkeys(sorted(RESERVED_AGENT_BACKEND_FEATURES), "reserved_not_executed")
+    reserved_status["knowledge"] = (
+        "supported_by_knowledge_layer" if list_configured_knowledge_dataset_ids(agent_soul) else "not_configured"
+    )
     reserved_status["skills_files"] = (
         "supported_by_drive_manifest" if drive_manifest_enabled else "drive_manifest_disabled"
     )
@@ -85,6 +90,7 @@ def build_runtime_feature_manifest(
     reserved_status["tools.cli_tools"] = "supported_by_shell_bootstrap"
     reserved_status["env"] = "supported_by_shell_bootstrap"
     reserved_status["sandbox"] = "forwarded_to_shell_layer_config"
+    reserved_status["human"] = "supported_by_ask_human_hitl" if agent_soul.human.contacts else "not_configured"
 
     return {
         "supported": sorted(SUPPORTED_AGENT_BACKEND_FEATURES),
@@ -92,6 +98,17 @@ def build_runtime_feature_manifest(
         "reserved_status": reserved_status,
         "unsupported_runtime_warnings": warnings,
     }
+
+
+def list_configured_knowledge_dataset_ids(agent_soul: AgentSoulConfig) -> list[str]:
+    """Return the normalized knowledge dataset ids that can produce a runtime layer.
+
+    ``build_runtime_feature_manifest()`` and ``build_knowledge_layer_config()``
+    must stay aligned: both decide knowledge support from this effective,
+    non-blank dataset-id set rather than from raw
+    ``agent_soul.knowledge.datasets`` entries.
+    """
+    return [dataset_id for dataset in agent_soul.knowledge.datasets if (dataset_id := (dataset.id or "").strip())]
 
 
 def _get_nested(value: dict[str, Any], path: str) -> Any:

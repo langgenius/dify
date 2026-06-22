@@ -8,6 +8,8 @@ import {
   usePluginTaskList,
 } from '@/service/use-plugins'
 
+const isUnfinishedStatus = (status: PluginStatus['status']) => status === TaskStatus.pending || status === TaskStatus.running
+
 export const usePluginTaskStatus = () => {
   const {
     pluginTasks,
@@ -25,7 +27,7 @@ export const usePluginTaskStatus = () => {
   const runningPlugins: PluginStatus[] = []
 
   allPlugins.forEach((plugin) => {
-    if (plugin.status === TaskStatus.running)
+    if (isUnfinishedStatus(plugin.status))
       runningPlugins.push(plugin)
     if (plugin.status === TaskStatus.failed)
       errorPlugins.push(plugin)

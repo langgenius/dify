@@ -2,10 +2,9 @@ import { Button } from '@langgenius/dify-ui/button'
 import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useSetLocalStorage } from 'foxact/use-local-storage'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
+import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -23,7 +22,7 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
   const [email, setEmail] = useState(emailFromLink)
   const [loading, setLoading] = useState(false)
   const locale = useLocale()
-  const setCountdownLeftTime = useSetLocalStorage<string>(COUNT_DOWN_KEY, { raw: true })
+  const setCountdownLeftTime = useSetCountdownLeftTime()
 
   const handleGetEMailVerificationCode = async () => {
     try {

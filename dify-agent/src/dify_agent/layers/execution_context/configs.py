@@ -4,9 +4,11 @@ This layer carries both Dify product execution context (tenant, user, workflow,
 invoke source) and Agent backend runtime mode. The product-facing fields are
 used by trusted server-side boundaries such as the Agent Stub when they
 need to reconstruct Dify API file-access scope without granting the sandbox any
-direct inner-API credentials. Server-only plugin-daemon settings are injected
-by the runtime provider factory and therefore do not appear in this public
-schema.
+direct inner-API credentials. Knowledge-base layers also read ``user_from`` from
+this shared config so the inner Dify API can distinguish platform-user and
+end-user searches without making that caller identity model-controlled.
+Server-only plugin-daemon settings are injected by the runtime provider factory
+and therefore do not appear in this public schema.
 """
 
 from typing import ClassVar, Final, Literal, TypeAlias
@@ -42,7 +44,7 @@ class DifyExecutionContextLayerConfig(LayerConfig):
 
     tenant_id: str
     user_id: str | None = None
-    user_from: DifyExecutionContextUserFrom
+    user_from: DifyExecutionContextUserFrom | None = None
     app_id: str | None = None
     workflow_id: str | None = None
     workflow_run_id: str | None = None

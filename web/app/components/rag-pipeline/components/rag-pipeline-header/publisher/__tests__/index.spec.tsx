@@ -6,6 +6,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Publisher from '../index'
 import Popup from '../popup'
 
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: true,
+  }
+})
+
 const hotkeyHandlers = vi.hoisted(() => new Map<string, (event: KeyboardEvent) => void>())
 
 vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
@@ -85,10 +93,21 @@ vi.mock('@/app/components/workflow/hooks', () => ({
   }),
 }))
 
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: (selector: (state: { accessControl: { canReleaseAndVersion: boolean } }) => unknown) => selector({
+    accessControl: { canReleaseAndVersion: true },
+  }),
+}))
+
 const mockPublishedAt = vi.fn(() => null as number | null)
 const mockDraftUpdatedAt = vi.fn(() => 1700000000)
 const mockPipelineId = vi.fn(() => 'test-pipeline-id')
 const mockSetPublishedAt = vi.fn()
+let mockDatasetPermissionKeys = ['dataset.acl.use']
+let mockDatasetMaintainer: string | undefined
+let mockCurrentUserId = 'user-1'
+let mockIsLoadingWorkspacePermissionKeys = false
+let mockWorkspacePermissionKeys: string[] = []
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (s: Record<string, unknown>) => unknown) => {
@@ -109,9 +128,25 @@ vi.mock('@/app/components/workflow/store', () => ({
 const mockMutateDatasetRes = vi.fn()
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (selector: (s: Record<string, unknown>) => unknown) => {
-    const state = { mutateDatasetRes: mockMutateDatasetRes }
+    const state = {
+      dataset: {
+        permission_keys: mockDatasetPermissionKeys,
+        maintainer: mockDatasetMaintainer,
+      },
+      mutateDatasetRes: mockMutateDatasetRes,
+    }
     return selector(state)
   },
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: Record<string, unknown>) => unknown) => selector({
+    userProfile: {
+      id: mockCurrentUserId,
+    },
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
 }))
 
 const mockSetShowPricingModal = vi.fn()
@@ -239,6 +274,11 @@ describe('publisher', () => {
     mockPipelineId.mockReturnValue('test-pipeline-id')
     mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(true)
     mockHandleCheckBeforePublish.mockResolvedValue(true)
+    mockDatasetPermissionKeys = ['dataset.acl.use']
+    mockDatasetMaintainer = undefined
+    mockCurrentUserId = 'user-1'
+    mockIsLoadingWorkspacePermissionKeys = false
+    mockWorkspacePermissionKeys = []
   })
 
   describe('Publisher (index.tsx)', () => {

@@ -332,7 +332,9 @@ def test_email_delivery_method_extracts_variable_selectors() -> None:
     assert method.extract_variable_selectors() == [["start", "name"]]
 
 
-def test_email_delivery_method_extracts_variable_selectors_skips_short_selectors(monkeypatch) -> None:
+def test_email_delivery_method_extracts_variable_selectors_skips_short_selectors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     method = EmailDeliveryMethod(
         enabled=True,
         config=EmailDeliveryConfig(
