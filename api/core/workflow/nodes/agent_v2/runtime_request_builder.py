@@ -702,8 +702,6 @@ def build_drive_layer_config(
         for skill in skills_catalog
     ]
 
-    if not skills and not mentioned_skill_keys and not mentioned_file_keys:
-        return None, warnings
     return (
         DifyDriveLayerConfig(
             drive_ref=f"agent-{agent_id}",

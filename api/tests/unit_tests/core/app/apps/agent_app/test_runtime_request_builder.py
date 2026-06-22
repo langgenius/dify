@@ -275,6 +275,34 @@ class TestAgentAppDriveLayer:
         names = [layer.name for layer in result.request.composition.layers]
         assert names.index("drive") == names.index("execution_context") + 1
 
+    def test_drive_layer_injected_with_empty_catalog_and_shell_depends_on_it(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
+        )
+        monkeypatch.setattr("core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)
+        monkeypatch.setattr(
+            "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.list_skills",
+            lambda self, *, tenant_id, agent_id: [],
+        )
+        monkeypatch.setattr(
+            "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.manifest",
+            lambda self, *, tenant_id, agent_id, prefix="", include_download_url=False: [],
+        )
+        builder = AgentAppRuntimeRequestBuilder(
+            credentials_provider=_FakeCredentialsProvider(),
+            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(_soul_with_model()))
+
+        layers = {layer.name: layer for layer in result.request.composition.layers}
+        assert layers["drive"].config.drive_ref == "agent-agent-1"
+        assert layers["drive"].config.skills == []
+        assert layers[DIFY_SHELL_LAYER_ID].deps == {
+            "execution_context": "execution_context",
+            "drive": "drive",
+        }
+
     def test_no_drive_layer_when_flag_disabled(self):
         builder = AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
