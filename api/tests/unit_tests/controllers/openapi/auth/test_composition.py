@@ -1,16 +1,18 @@
 import uuid
 
 from controllers.openapi.auth.composition import account_pipeline, auth_router, external_sso_pipeline
-from controllers.openapi.auth.data import RequestContext
+from controllers.openapi.auth.data import RBACRequirement, RequestContext
 from controllers.openapi.auth.flow import When
 from controllers.openapi.auth.pipeline import AuthPipeline, PipelineRoute, PipelineRouter
 from controllers.openapi.auth.verify import (
     check_acl,
     check_private_app_permission,
+    check_rbac_permission,
     check_workspace_member,
     check_workspace_mismatch,
     check_workspace_role,
 )
+from core.rbac import RBACPermission, RBACResourceScope
 from libs.oauth_bearer import Scope, TokenType
 from models.account import TenantAccountRole
 from services.enterprise.enterprise_service import WebAppAccessMode
@@ -32,8 +34,8 @@ def test_account_pipeline_prepare_has_six_entries():
     assert len(account_pipeline._prepare) == 6
 
 
-def test_account_auth_list_has_seven_entries():
-    assert len(account_pipeline._auth) == 7
+def test_account_auth_list_has_eight_entries():
+    assert len(account_pipeline._auth) == 8
 
 
 def test_external_sso_pipeline_prepare_has_four_entries():
@@ -186,3 +188,40 @@ def test_management_scope_skips_webapp_checks_on_private_app():
     steps = _selected_webapp_steps(scope=Scope.APPS_READ, app_access_mode=WebAppAccessMode.PRIVATE)
     assert check_acl not in steps
     assert check_private_app_permission not in steps
+
+
+def _selected_auth_steps_with_rbac(rbac):
+    ctx = RequestContext(
+        token_type=TokenType.OAUTH_ACCOUNT,
+        scope=Scope.APPS_READ,
+        path_params={"app_id": str(uuid.uuid4())},
+        rbac=rbac,
+    )
+    selected = []
+    for step in account_pipeline._auth:
+        if isinstance(step, When):
+            if step.applies(ctx, None):
+                selected.append(step._step)
+        else:
+            selected.append(step)
+    return selected
+
+
+def test_account_pipeline_selects_rbac_step_when_required():
+    rbac = RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_VIEW_LAYOUT)
+    assert check_rbac_permission in _selected_auth_steps_with_rbac(rbac)
+
+
+def test_account_pipeline_skips_rbac_step_without_requirement():
+    assert check_rbac_permission not in _selected_auth_steps_with_rbac(None)
+
+
+def test_external_sso_pipeline_never_enforces_rbac():
+    # RBAC is a console (account) concern; external SSO callers are scope-gated.
+    rbac_steps = [
+        s._step
+        for s in external_sso_pipeline._auth
+        if isinstance(s, When) and s._step is check_rbac_permission
+    ]
+    assert rbac_steps == []
+    assert check_rbac_permission not in external_sso_pipeline._auth

@@ -11,7 +11,7 @@ from werkzeug.exceptions import Conflict, NotFound, UnprocessableEntity
 from configs import dify_config
 from controllers.common.app_access import AppAccessFilter, resolve_app_access_filter
 from controllers.common.fields import Parameters
-from controllers.common.wraps import RBACPermission, RBACResourceScope, openapi_rbac_permission_required
+from controllers.common.wraps import RBACPermission, RBACResourceScope
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
 from controllers.openapi._input_schema import EMPTY_INPUT_SCHEMA, build_input_schema, resolve_app_config
@@ -25,7 +25,7 @@ from controllers.openapi._models import (
     TagItem,
 )
 from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData
+from controllers.openapi.auth.data import AuthData, RBACRequirement
 from controllers.service_api.app.error import AppUnavailableError
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from extensions.ext_database import db
@@ -89,8 +89,11 @@ def parameters_payload(app: App) -> dict:
 
 @openapi_ns.route("/apps/<string:app_id>/describe")
 class AppDescribeApi(AppReadResource):
-    @auth_router.guard(scope=Scope.APPS_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
-    @openapi_rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @auth_router.guard(
+        scope=Scope.APPS_READ,
+        allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
+        rbac=RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_VIEW_LAYOUT),
+    )
     @returns(200, AppDescribeResponse, description="App description")
     @accepts(query=AppDescribeQuery)
     def get(self, app_id: str, *, auth_data: AuthData, query: AppDescribeQuery):

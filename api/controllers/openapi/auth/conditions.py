@@ -54,6 +54,7 @@ WEBAPP_RUN_SCOPED = request_cond(lambda ctx: ctx.scope == Scope.APPS_RUN)
 
 WORKSPACE_MEMBERSHIP_REQUIRED = request_cond(lambda ctx: ctx.workspace_membership)
 HAS_ALLOWED_ROLES = request_cond(lambda ctx: ctx.allowed_roles is not None)
+HAS_RBAC = request_cond(lambda ctx: ctx.rbac is not None)
 
 # Caller must belong to the resolved tenant: either an app-scoped path (tenant
 # from the app) or an explicit workspace-membership path (tenant from request).

@@ -5,6 +5,7 @@ from controllers.openapi.auth.conditions import (
     EDITION_EE,
     EDITION_SAAS,
     HAS_ALLOWED_ROLES,
+    HAS_RBAC,
     LOADED_APP_IS_PRIVATE,
     PATH_HAS_APP_ID,
     TOKEN_IS_OAUTH_ACCOUNT,
@@ -17,7 +18,8 @@ from controllers.openapi.auth.conditions import (
     data_cond,
     request_cond,
 )
-from controllers.openapi.auth.data import AuthData, Edition, RequestContext
+from controllers.openapi.auth.data import AuthData, Edition, RBACRequirement, RequestContext
+from core.rbac import RBACPermission, RBACResourceScope
 from libs.oauth_bearer import Scope, TokenType
 from models.account import TenantAccountRole
 from services.enterprise.enterprise_service import WebAppAccessMode
@@ -148,6 +150,22 @@ def test_webapp_run_scoped_false_for_management_scope():
 
 def test_webapp_run_scoped_false_when_scope_none():
     assert WEBAPP_RUN_SCOPED(_ctx()) is False
+
+
+def _rbac_req():
+    return RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN)
+
+
+def test_has_rbac_true():
+    assert HAS_RBAC(_ctx(rbac=_rbac_req())) is True
+
+
+def test_has_rbac_false():
+    assert HAS_RBAC(_ctx(rbac=None)) is False
+
+
+def test_has_rbac_default():
+    assert HAS_RBAC(_ctx()) is False
 
 
 def test_loaded_app_is_private():
