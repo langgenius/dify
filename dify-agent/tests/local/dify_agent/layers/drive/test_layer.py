@@ -25,7 +25,6 @@ def _build_layer(tmp_path: Path) -> DifyDriveLayer:
     layer = DifyDriveLayer.from_config_with_settings(
         DifyDriveLayerConfig(
             drive_ref="agent-1",
-            drive_base=str(tmp_path),
             skills=[
                 DifyDriveSkillConfig(
                     path="tender-analyzer",

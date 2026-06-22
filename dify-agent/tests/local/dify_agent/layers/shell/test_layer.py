@@ -239,7 +239,7 @@ def _execution_context_layer() -> DifyExecutionContextLayer:
 
 def _drive_layer() -> DifyDriveLayer:
     return DifyDriveLayer.from_config_with_settings(
-        DifyDriveLayerConfig(drive_ref="agent-1", drive_base="/mnt/drive"),
+        DifyDriveLayerConfig(drive_ref="agent-1"),
         inner_api_url="https://api.example.com",
         inner_api_key="secret",
     )

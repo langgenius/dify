@@ -13,6 +13,7 @@ from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubDriveFileRef,
     AgentStubFileMapping,
     agent_stub_connections_url,
+    agent_stub_drive_base_for_ref,
     agent_stub_drive_commit_url,
     agent_stub_drive_manifest_url,
     agent_stub_file_download_request_url,
@@ -58,6 +59,25 @@ def test_agent_stub_drive_request_urls_handle_trailing_slash() -> None:
     assert agent_stub_drive_commit_url("https://agent.example.com/agent-stub") == (
         "https://agent.example.com/agent-stub/drive/commit"
     )
+
+
+def test_agent_stub_drive_base_for_ref_uses_fixed_mount_with_drive_ref() -> None:
+    assert agent_stub_drive_base_for_ref("agent-1") == "/mnt/drive/agent-1"
+    assert agent_stub_drive_base_for_ref("shared/drive") == "/mnt/drive/shared/drive"
+
+
+def test_agent_stub_drive_base_for_ref_uses_default_without_drive_ref() -> None:
+    assert agent_stub_drive_base_for_ref(None) == "/mnt/drive"
+    assert agent_stub_drive_base_for_ref("  ") == "/mnt/drive"
+
+
+@pytest.mark.parametrize(
+    "drive_ref",
+    ["/agent-1", "../agent-1", "agent-1/..", "agent-1/./files", "agent-1//files"],
+)
+def test_agent_stub_drive_base_for_ref_rejects_unsafe_refs(drive_ref: str) -> None:
+    with pytest.raises(ValueError, match="safe relative path"):
+        _ = agent_stub_drive_base_for_ref(drive_ref)
 
 
 def test_normalize_agent_stub_api_base_url_rejects_query_and_fragment() -> None:

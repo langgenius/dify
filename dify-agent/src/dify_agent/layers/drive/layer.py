@@ -3,8 +3,9 @@
 The API backend sends the full drive skill catalog plus the ordered drive keys
 mentioned in the prompt. When the layer enters a run context it eagerly pulls
 those mentioned skills/files from the Dify inner drive bridge, materializes them
-under ``drive_base / drive_ref``, and contributes a concise prompt block
-describing what was loaded and what other skills remain available for lazy pull.
+under the fixed Agent Stub drive base for ``drive_ref``, and contributes a
+concise prompt block describing what was loaded and what other skills remain
+available for lazy pull.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ import httpx
 from typing_extensions import Self, override
 
 from agenton.layers import EmptyRuntimeState, Layer, LayerDeps, PlainLayer
+from dify_agent.agent_stub.protocol import agent_stub_drive_base_for_ref
 from dify_agent.layers.drive.configs import DIFY_DRIVE_LAYER_TYPE_ID, DifyDriveLayerConfig
 
 _SKILL_ARCHIVE_FILENAME = ".DIFY-SKILL-FULL.zip"
@@ -86,12 +88,6 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
     @override
     async def on_context_resume(self) -> None:
         await self._pull_mentioned_targets()
-
-    @property
-    def local_drive_base(self) -> str:
-        """Return the sandbox-local root for this configured drive ref."""
-        drive_root = Path(self.config.drive_base).expanduser().resolve()
-        return str(_resolve_drive_destination(drive_root, self.config.drive_ref))
 
     def build_prompt_context(self) -> str:
         sections: list[str] = []
@@ -212,7 +208,7 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
         return [deduplicated[key] for key in sorted(deduplicated)]
 
     async def _download_items(self, items: list[_DriveManifestItem]) -> dict[str, str]:
-        base_path = Path(self.local_drive_base)
+        base_path = Path(agent_stub_drive_base_for_ref(self.config.drive_ref))
         try:
             base_path.mkdir(parents=True, exist_ok=True)
         except OSError as exc:

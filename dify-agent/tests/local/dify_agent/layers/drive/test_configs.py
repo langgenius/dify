@@ -20,7 +20,6 @@ def test_layer_config_round_trips_manifest_entries() -> None:
     config = DifyDriveLayerConfig.model_validate(
         {
             "drive_ref": "agent-019e9112",
-            "drive_base": "/mnt/drive",
             "skills": [
                 {
                     "path": "tender-analyzer",
@@ -37,6 +36,7 @@ def test_layer_config_round_trips_manifest_entries() -> None:
 
     dumped = config.model_dump(mode="json")
     assert dumped["drive_ref"] == "agent-019e9112"
+    assert "drive_base" not in dumped
     assert dumped["skills"][0]["skill_md_key"] == "tender-analyzer/SKILL.md"
     assert dumped["mentioned_file_keys"] == ["files/sample.pdf"]
     assert "content" not in DifyDriveSkillConfig.model_fields
@@ -56,4 +56,4 @@ def test_drive_layer_is_registered_and_constructible_from_config() -> None:
 
     assert isinstance(layer, DifyDriveLayer)
     assert layer.config.drive_ref == "agent-1"
-    assert layer.local_drive_base == "/mnt/drive/agent-1"
+    assert not hasattr(layer, "local_drive_base")
