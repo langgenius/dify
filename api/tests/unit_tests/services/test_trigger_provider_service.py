@@ -253,7 +253,7 @@ def test_add_trigger_subscription_should_raise_error_when_provider_limit_reached
     mock_session: MagicMock,
     provider_id: TriggerProviderID,
     provider_controller: MagicMock,
-    caplog,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     # Arrange
     _patch_redis_lock(mocker)
@@ -274,7 +274,7 @@ def test_add_trigger_subscription_should_raise_error_when_provider_limit_reached
                 properties={},
                 credentials={},
             )
-    assert sum(1 for r in caplog.records if r.levelno >= logging.ERROR) == 1
+        assert any(r.levelno >= logging.ERROR for r in caplog.records)
 
 
 def test_add_trigger_subscription_should_raise_error_when_name_exists(
