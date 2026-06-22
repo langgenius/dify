@@ -1,11 +1,13 @@
 'use client'
 
 import type { App } from '@/types/app'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { formatTime } from '@/utils/time'
@@ -20,6 +22,8 @@ export function StarredAppCard({ app, onRefresh }: StarredAppCardProps) {
   const { t } = useTranslation()
   const currentUserId = useAppContextSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isRbacEnabled = systemFeatures.rbac_enabled
 
   const editTimeText = useMemo(() => {
     const timestamp = app.updated_at || app.created_at
@@ -36,6 +40,7 @@ export function StarredAppCard({ app, onRefresh }: StarredAppCardProps) {
     currentUserId,
     resourceMaintainer: app.maintainer,
     workspacePermissionKeys,
+    isRbacEnabled,
   })
 
   return (

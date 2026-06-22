@@ -13,11 +13,13 @@ import { AppCard } from '../app-card'
 import { StarredAppCard } from '../starred-app-card'
 
 let mockWebappAuthEnabled = false
+let mockRbacEnabled = true
 
 const render = (ui: React.ReactElement) => renderWithSystemFeatures(ui, {
   systemFeatures: {
     webapp_auth: { enabled: mockWebappAuthEnabled },
     branding: { enabled: false },
+    rbac_enabled: mockRbacEnabled,
   },
 })
 
@@ -377,6 +379,7 @@ describe('AppCard', () => {
     vi.clearAllMocks()
     mockOpenAsyncWindow.mockReset()
     mockWebappAuthEnabled = false
+    mockRbacEnabled = true
     mockDeleteMutationPending = false
     mockToggleStarMutationPending = false
     mockAppContext.isCurrentWorkspaceEditor = true
@@ -1765,6 +1768,23 @@ describe('AppCard', () => {
       })
       expect(screen.queryByText('app.accessControl')).not.toBeInTheDocument()
       expect(screen.getByText('common.settings.resourceAccess')).toBeInTheDocument()
+    })
+
+    it('should hide resource access option when RBAC is disabled', async () => {
+      mockRbacEnabled = false
+      const appWithAccessConfigPermission = createMockApp({
+        created_by: 'another-user',
+        maintainer: 'another-user',
+        permission_keys: [AppACLPermission.AccessConfig, AppACLPermission.Delete],
+      })
+      render(<AppCard app={appWithAccessConfigPermission} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+
+      await waitFor(() => {
+        expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
+      })
+      expect(screen.queryByText('common.settings.resourceAccess')).not.toBeInTheDocument()
     })
 
     it('should navigate to app access config when resource access is clicked', async () => {

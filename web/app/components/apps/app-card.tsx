@@ -297,6 +297,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const currentUserId = useAppContextSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
+  const isRbacEnabled = systemFeatures.rbac_enabled
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
 
@@ -316,7 +317,8 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
     currentUserId,
     resourceMaintainer,
     workspacePermissionKeys,
-  }), [currentUserId, resourceMaintainer, workspacePermissionKeys])
+    isRbacEnabled,
+  }), [currentUserId, isRbacEnabled, resourceMaintainer, workspacePermissionKeys])
   const appACLCapabilities = useMemo(() => getAppACLCapabilities(app.permission_keys, maintainerPermissionOptions), [app.permission_keys, maintainerPermissionOptions])
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
 
@@ -441,6 +443,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
         currentUserId,
         resourceMaintainer: getAppResourceMaintainer(newApp),
         workspacePermissionKeys,
+        isRbacEnabled,
       })
     }
     catch {
@@ -724,6 +727,7 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const currentUserId = useAppContextSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
+  const isRbacEnabled = systemFeatures.rbac_enabled
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
 
@@ -743,7 +747,8 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
     currentUserId,
     resourceMaintainer,
     workspacePermissionKeys,
-  }), [currentUserId, resourceMaintainer, workspacePermissionKeys])
+    isRbacEnabled,
+  }), [currentUserId, isRbacEnabled, resourceMaintainer, workspacePermissionKeys])
   const appACLCapabilities = useMemo(() => getAppACLCapabilities(app.permission_keys, maintainerPermissionOptions), [app.permission_keys, maintainerPermissionOptions])
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const canManageAppTags = hasPermission(workspacePermissionKeys, 'app.tag.manage')
@@ -871,6 +876,7 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
         currentUserId,
         resourceMaintainer: getAppResourceMaintainer(newApp),
         workspacePermissionKeys,
+        isRbacEnabled,
       })
     }
     catch {

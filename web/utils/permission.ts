@@ -36,6 +36,7 @@ export type ResourceMaintainerPermissionOptions = {
   currentUserId?: string | null
   resourceMaintainer?: string | null
   workspacePermissionKeys?: readonly PermissionKey[] | null
+  isRbacEnabled?: boolean
 }
 
 type AppACLCapabilities = {
@@ -131,7 +132,7 @@ export const getAppACLCapabilities = (
     canDelete: hasResourcePermission(permissionKeys, AppACLPermission.Delete, hasMaintainerPermissions),
     canReleaseAndVersion: hasResourcePermission(permissionKeys, AppACLPermission.ReleaseAndVersion, hasMaintainerPermissions),
     canMonitor: hasResourcePermission(permissionKeys, AppACLPermission.Monitor, hasMaintainerPermissions),
-    canAccessConfig: hasResourcePermission(permissionKeys, AppACLPermission.AccessConfig, hasMaintainerPermissions),
+    canAccessConfig: Boolean(options?.isRbacEnabled) && hasResourcePermission(permissionKeys, AppACLPermission.AccessConfig, hasMaintainerPermissions),
   }
 }
 
@@ -152,6 +153,6 @@ export const getDatasetACLCapabilities = (
     canDeleteFile: hasResourcePermission(permissionKeys, DatasetACLPermission.DeleteFile, hasMaintainerPermissions),
     canPipelineRelease: hasResourcePermission(permissionKeys, DatasetACLPermission.PipelineRelease, hasMaintainerPermissions),
     canDelete: hasResourcePermission(permissionKeys, DatasetACLPermission.Delete, hasMaintainerPermissions),
-    canAccessConfig: hasResourcePermission(permissionKeys, DatasetACLPermission.AccessConfig, hasMaintainerPermissions),
+    canAccessConfig: Boolean(options?.isRbacEnabled) && hasResourcePermission(permissionKeys, DatasetACLPermission.AccessConfig, hasMaintainerPermissions),
   }
 }
