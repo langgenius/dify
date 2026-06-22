@@ -21,6 +21,7 @@ from core.app.app_config.entities import (
     EasyUIBasedAppModelConfigFrom,
     PromptTemplateEntity,
 )
+from core.app.apps.agent_app.app_variable_projection import agent_app_variables_to_user_input_form
 from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig, AppModelConfigDict, Conversation
 
@@ -98,8 +99,7 @@ class AgentAppConfigManager(BaseAppConfigManager):
         # pipeline's bookkeeping (token counting, persistence).
         base["prompt_type"] = PromptTemplateEntity.PromptType.SIMPLE.value
         base["pre_prompt"] = agent_soul.prompt.system_prompt or ""
-        # Agent App takes the user message directly; no completion-style inputs form.
-        base.setdefault("user_input_form", [])
+        base["user_input_form"] = agent_app_variables_to_user_input_form(agent_soul.app_variables)
         return base
 
 
