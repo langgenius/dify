@@ -34,7 +34,7 @@ class FileRequestService:
 
     _access_controller: DatabaseFileAccessController
 
-    def __init__(self, access_controller: DatabaseFileAccessController | None = None) -> None:
+    def __init__(self, access_controller: DatabaseFileAccessController = None) -> None:
         self._access_controller = access_controller or DatabaseFileAccessController()
 
     def request_download_url(

@@ -50,11 +50,11 @@ class ScheduleServiceIntegrationFactory:
         db_session_with_containers: Session,
         *,
         tenant_id: str,
-        app_id: str | None = None,
+        app_id: str = None,
         node_id: str = "start",
         cron_expression: str = "30 10 * * *",
         timezone: str = "UTC",
-        next_run_at: datetime | None = None,
+        next_run_at: datetime = None,
     ) -> WorkflowSchedulePlan:
         schedule = WorkflowSchedulePlan(
             tenant_id=tenant_id,

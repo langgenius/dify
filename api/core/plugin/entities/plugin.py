@@ -104,12 +104,12 @@ class PluginDeclaration(BaseModel):
     tags: list[str] = Field(default_factory=list)
     repo: str | None = Field(default=None)
     verified: bool = Field(default=False)
-    tool: ToolProviderEntity | None = None
-    model: ProviderEntity | None = None
-    endpoint: EndpointProviderDeclaration | None = None
-    agent_strategy: AgentStrategyProviderEntity | None = None
-    datasource: DatasourceProviderEntity | None = None
-    trigger: TriggerProviderEntity | None = None
+    tool: ToolProviderEntity = None
+    model: ProviderEntity = None
+    endpoint: EndpointProviderDeclaration = None
+    agent_strategy: AgentStrategyProviderEntity = None
+    datasource: DatasourceProviderEntity = None
+    trigger: TriggerProviderEntity = None
     meta: Meta
 
     @field_validator("version")
@@ -184,7 +184,7 @@ class PluginDependency(BaseModel):
 
     class Marketplace(BaseModel):
         marketplace_plugin_unique_identifier: str
-        version: str | None = None
+        version: str = None
 
         @property
         def plugin_unique_identifier(self) -> str:
@@ -192,13 +192,13 @@ class PluginDependency(BaseModel):
 
     class Package(BaseModel):
         plugin_unique_identifier: str
-        version: str | None = None
+        version: str = None
 
     type: Type
     value: Github | Marketplace | Package
-    current_identifier: str | None = None
+    current_identifier: str = None
 
 
 class MissingPluginDependency(BaseModel):
     plugin_unique_identifier: str
-    current_identifier: str | None = None
+    current_identifier: str = None

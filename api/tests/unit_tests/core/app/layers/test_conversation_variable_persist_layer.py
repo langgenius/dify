@@ -15,7 +15,7 @@ from libs.datetime_utils import naive_utc_now
 
 
 class MockReadOnlyVariablePool:
-    def __init__(self, variables: dict[tuple[str, str], Segment] | None = None) -> None:
+    def __init__(self, variables: dict[tuple[str, str], Segment] = None) -> None:
         self._variables = variables or {}
 
     def get(self, selector: Sequence[str]) -> Segment | None:
@@ -32,7 +32,7 @@ class MockReadOnlyVariablePool:
 
 def _build_graph_runtime_state(
     variable_pool: MockReadOnlyVariablePool,
-    conversation_id: str | None = None,
+    conversation_id: str = None,
 ) -> ReadOnlyGraphRuntimeState:
     graph_runtime_state = Mock(spec=ReadOnlyGraphRuntimeState)
     if conversation_id is not None:

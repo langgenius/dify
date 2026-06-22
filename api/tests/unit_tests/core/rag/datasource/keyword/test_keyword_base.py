@@ -34,7 +34,7 @@ class _KeywordThatRaises(BaseKeyword):
 
 
 class _KeywordForHelpers(BaseKeyword):
-    def __init__(self, dataset, existing_ids: set[str] | None = None):
+    def __init__(self, dataset, existing_ids: set[str] = None):
         super().__init__(dataset)
         self._existing_ids = existing_ids or set()
 

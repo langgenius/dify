@@ -17,7 +17,7 @@ class ToolApiEntity(BaseModel):
     name: str  # identifier
     label: I18nObject  # label
     description: I18nObject
-    parameters: list[ToolParameter] | None = None
+    parameters: list[ToolParameter] = None
     labels: list[str] = Field(default_factory=list)
     output_schema: Mapping[str, object] = Field(default_factory=dict)
 

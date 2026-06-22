@@ -80,7 +80,7 @@ class StreamableHTTPTransport:
     def __init__(
         self,
         url: str,
-        headers: dict[str, Any] | None = None,
+        headers: dict[str, Any] = None,
         timeout: float | timedelta = 30,
         sse_read_timeout: float | timedelta = 60 * 5,
     ):
@@ -98,7 +98,7 @@ class StreamableHTTPTransport:
         self.sse_read_timeout = (
             sse_read_timeout.total_seconds() if isinstance(sse_read_timeout, timedelta) else sse_read_timeout
         )
-        self.session_id: str | None = None
+        self.session_id: str = None
         self.request_headers = {
             ACCEPT: f"{JSON}, {SSE}",
             CONTENT_TYPE: JSON,
@@ -161,8 +161,8 @@ class StreamableHTTPTransport:
         self,
         sse: ServerSentEvent,
         server_to_client_queue: ServerToClientQueue,
-        original_request_id: RequestId | None = None,
-        resumption_callback: Callable[[str], None] | None = None,
+        original_request_id: RequestId = None,
+        resumption_callback: Callable[[str], None] = None,
     ) -> bool:
         """Handle an SSE event, returning True if the response is complete."""
         if sse.event == "message":
@@ -481,7 +481,7 @@ class StreamableHTTPTransport:
 @contextmanager
 def streamablehttp_client(
     url: str,
-    headers: dict[str, Any] | None = None,
+    headers: dict[str, Any] = None,
     timeout: float | timedelta = 30,
     sse_read_timeout: float | timedelta = 60 * 5,
     terminate_on_close: bool = True,

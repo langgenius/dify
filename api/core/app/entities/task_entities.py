@@ -24,9 +24,9 @@ class AnnotationReply(BaseModel):
 
 
 class TaskStateMetadata(BaseModel):
-    annotation_reply: AnnotationReply | None = None
+    annotation_reply: AnnotationReply = None
     retriever_resources: Sequence[RetrievalSourceMetadata] = Field(default_factory=list)
-    usage: LLMUsage | None = None
+    usage: LLMUsage = None
 
 
 class TaskState(BaseModel):
@@ -51,8 +51,8 @@ class WorkflowTaskState(TaskState):
     """
 
     answer: str = ""
-    first_token_time: float | None = None
-    last_token_time: float | None = None
+    first_token_time: float = None
+    last_token_time: float = None
     is_streaming_response: bool = False
 
 
@@ -118,7 +118,7 @@ class MessageStreamResponse(StreamResponse):
     event: StreamEvent = StreamEvent.MESSAGE
     id: str
     answer: str
-    from_variable_selector: list[str] | None = None
+    from_variable_selector: list[str] = None
 
 
 class MessageAudioStreamResponse(StreamResponse):
@@ -147,7 +147,7 @@ class MessageEndStreamResponse(StreamResponse):
     event: StreamEvent = StreamEvent.MESSAGE_END
     id: str
     metadata: Mapping[str, object] = Field(default_factory=dict)
-    files: Sequence[Mapping[str, Any]] | None = None
+    files: Sequence[Mapping[str, Any]] = None
 
 
 class MessageFileStreamResponse(StreamResponse):
@@ -180,12 +180,12 @@ class AgentThoughtStreamResponse(StreamResponse):
     event: StreamEvent = StreamEvent.AGENT_THOUGHT
     id: str
     position: int
-    thought: str | None = None
-    observation: str | None = None
-    tool: str | None = None
+    thought: str = None
+    observation: str = None
+    tool: str = None
     tool_labels: Mapping[str, object] = Field(default_factory=dict)
-    tool_input: str | None = None
-    message_files: list[str] | None = None
+    tool_input: str = None
+    message_files: list[str] = None
 
 
 class AgentMessageStreamResponse(StreamResponse):
@@ -233,8 +233,8 @@ class WorkflowFinishStreamResponse(StreamResponse):
         id: str
         workflow_id: str
         status: WorkflowExecutionStatus
-        outputs: Mapping[str, Any] | None = None
-        error: str | None = None
+        outputs: Mapping[str, Any] = None
+        error: str = None
         elapsed_time: float
         total_tokens: int
         total_steps: int
@@ -287,7 +287,7 @@ class HumanInputRequiredResponse(StreamResponse):
         inputs: Sequence[FormInputConfig] = Field(default_factory=list)
         actions: Sequence[UserActionConfig] = Field(default_factory=list)
         display_in_ui: bool = False
-        form_token: str | None = None
+        form_token: str = None
         resolved_default_values: Mapping[str, Any] = Field(default_factory=dict)
         expiration_time: int = Field(..., description="Unix timestamp in seconds")
 
@@ -310,7 +310,7 @@ class HumanInputRequiredPauseReasonPayload(BaseModel):
     inputs: Sequence[FormInputConfig] = Field(default_factory=list)
     actions: Sequence[UserActionConfig] = Field(default_factory=list)
     display_in_ui: bool = False
-    form_token: str | None = None
+    form_token: str = None
     resolved_default_values: Mapping[str, Any] = Field(default_factory=dict)
     expiration_time: int
 
@@ -342,7 +342,7 @@ class HumanInputFormFilledResponse(StreamResponse):
         action_id: str
         action_text: str
 
-        submitted_data: Mapping[str, Any] | None = None
+        submitted_data: Mapping[str, Any] = None
 
     event: StreamEvent = StreamEvent.HUMAN_INPUT_FORM_FILLED
     workflow_run_id: str
@@ -379,14 +379,14 @@ class NodeStartStreamResponse(StreamResponse):
         node_type: str
         title: str
         index: int
-        predecessor_node_id: str | None = None
-        inputs: Mapping[str, Any] | None = None
+        predecessor_node_id: str = None
+        inputs: Mapping[str, Any] = None
         inputs_truncated: bool = False
         created_at: int
         extras: dict[str, object] = Field(default_factory=dict)
-        iteration_id: str | None = None
-        loop_id: str | None = None
-        agent_strategy: AgentStrategyInfo | None = None
+        iteration_id: str = None
+        loop_id: str = None
+        agent_strategy: AgentStrategyInfo = None
 
     event: StreamEvent = StreamEvent.NODE_STARTED
     workflow_run_id: str
@@ -428,22 +428,22 @@ class NodeFinishStreamResponse(StreamResponse):
         node_type: str
         title: str
         index: int
-        predecessor_node_id: str | None = None
-        inputs: Mapping[str, Any] | None = None
+        predecessor_node_id: str = None
+        inputs: Mapping[str, Any] = None
         inputs_truncated: bool = False
-        process_data: Mapping[str, Any] | None = None
+        process_data: Mapping[str, Any] = None
         process_data_truncated: bool = False
-        outputs: Mapping[str, Any] | None = None
+        outputs: Mapping[str, Any] = None
         outputs_truncated: bool = True
         status: WorkflowNodeExecutionStatus
-        error: str | None = None
+        error: str = None
         elapsed_time: float
-        execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] | None = None
+        execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] = None
         created_at: int
         finished_at: int
         files: Sequence[Mapping[str, Any]] | None = []
-        iteration_id: str | None = None
-        loop_id: str | None = None
+        iteration_id: str = None
+        loop_id: str = None
 
     event: StreamEvent = StreamEvent.NODE_FINISHED
     workflow_run_id: str
@@ -492,22 +492,22 @@ class NodeRetryStreamResponse(StreamResponse):
         node_type: str
         title: str
         index: int
-        predecessor_node_id: str | None = None
-        inputs: Mapping[str, Any] | None = None
+        predecessor_node_id: str = None
+        inputs: Mapping[str, Any] = None
         inputs_truncated: bool = False
-        process_data: Mapping[str, Any] | None = None
+        process_data: Mapping[str, Any] = None
         process_data_truncated: bool = False
-        outputs: Mapping[str, Any] | None = None
+        outputs: Mapping[str, Any] = None
         outputs_truncated: bool = False
         status: WorkflowNodeExecutionStatus
-        error: str | None = None
+        error: str = None
         elapsed_time: float
-        execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] | None = None
+        execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] = None
         created_at: int
         finished_at: int
         files: Sequence[Mapping[str, Any]] | None = []
-        iteration_id: str | None = None
-        loop_id: str | None = None
+        iteration_id: str = None
+        loop_id: str = None
         retry_index: int = 0
 
     event: StreamEvent = StreamEvent.NODE_RETRY
@@ -605,14 +605,14 @@ class IterationNodeCompletedStreamResponse(StreamResponse):
         node_id: str
         node_type: str
         title: str
-        outputs: Mapping | None = None
+        outputs: Mapping = None
         outputs_truncated: bool = False
         created_at: int
-        extras: dict[str, Any] | None = None
-        inputs: Mapping | None = None
+        extras: dict[str, Any] = None
+        inputs: Mapping = None
         inputs_truncated: bool = False
         status: WorkflowNodeExecutionStatus
-        error: str | None = None
+        error: str = None
         elapsed_time: float
         total_tokens: int
         execution_metadata: Mapping[str, object] = Field(default_factory=dict)
@@ -687,14 +687,14 @@ class LoopNodeCompletedStreamResponse(StreamResponse):
         node_id: str
         node_type: str
         title: str
-        outputs: Mapping | None = None
+        outputs: Mapping = None
         outputs_truncated: bool = False
         created_at: int
-        extras: dict[str, Any] | None = None
-        inputs: Mapping | None = None
+        extras: dict[str, Any] = None
+        inputs: Mapping = None
         inputs_truncated: bool = False
         status: WorkflowNodeExecutionStatus
-        error: str | None = None
+        error: str = None
         elapsed_time: float
         total_tokens: int
         execution_metadata: Mapping[str, object] = Field(default_factory=dict)
@@ -717,7 +717,7 @@ class TextChunkStreamResponse(StreamResponse):
         """
 
         text: str
-        from_variable_selector: list[str] | None = None
+        from_variable_selector: list[str] = None
 
     event: StreamEvent = StreamEvent.TEXT_CHUNK
     data: Data
@@ -779,7 +779,7 @@ class WorkflowAppStreamResponse(AppStreamResponse):
     WorkflowAppStreamResponse entity
     """
 
-    workflow_run_id: str | None = None
+    workflow_run_id: str = None
 
 
 class AppBlockingResponse(BaseModel):
@@ -872,8 +872,8 @@ class WorkflowAppBlockingResponse(AppBlockingResponse):
         id: str
         workflow_id: str
         status: WorkflowExecutionStatus
-        outputs: Mapping[str, Any] | None = None
-        error: str | None = None
+        outputs: Mapping[str, Any] = None
+        error: str = None
         elapsed_time: float
         total_tokens: int
         total_steps: int
@@ -897,8 +897,8 @@ class WorkflowAppPausedBlockingResponse(AppBlockingResponse):
         id: str
         workflow_id: str
         status: WorkflowExecutionStatus
-        outputs: Mapping[str, Any] | None = None
-        error: str | None = None
+        outputs: Mapping[str, Any] = None
+        error: str = None
         elapsed_time: float
         total_tokens: int
         total_steps: int
@@ -924,8 +924,8 @@ class AgentLogStreamResponse(StreamResponse):
         node_execution_id: str
         id: str
         label: str
-        parent_id: str | None = None
-        error: str | None = None
+        parent_id: str = None
+        error: str = None
         status: str
         data: Mapping[str, Any]
         metadata: Mapping[str, object] = Field(default_factory=dict)

@@ -346,8 +346,8 @@ class EnterpriseService:
             *,
             page: int,
             limit: int,
-            mode: str | None = None,
-            name: str | None = None,
+            mode: str = None,
+            name: str = None,
         ) -> dict:
             """Call EE InnerListExternallyAccessibleApps; returns raw camelCase response.
 

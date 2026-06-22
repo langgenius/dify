@@ -53,8 +53,8 @@ class AppMCPServerResponse(ResponseModel):
     description: str
     status: AppMCPServerStatus
     parameters: dict[str, Any] | list[Any] | str
-    created_at: int | None = None
-    updated_at: int | None = None
+    created_at: int = None
+    updated_at: int = None
 
     @field_validator("parameters", mode="before")
     @classmethod

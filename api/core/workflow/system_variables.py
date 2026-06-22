@@ -60,7 +60,7 @@ def system_variable_selector(key: str | SystemVariableKey) -> tuple[str, str]:
     return SYSTEM_VARIABLE_NODE_ID, system_variable_name(key)
 
 
-def _normalize_system_variable_values(values: Mapping[str, Any] | None = None, /, **kwargs: Any) -> dict[str, Any]:
+def _normalize_system_variable_values(values: Mapping[str, Any] = None, /, **kwargs: Any) -> dict[str, Any]:
     raw_values = dict(values or {})
     raw_values.update(kwargs)
 
@@ -78,7 +78,7 @@ def _normalize_system_variable_values(values: Mapping[str, Any] | None = None, /
     return normalized
 
 
-def build_system_variables(values: Mapping[str, Any] | None = None, /, **kwargs: Any) -> list[Variable]:
+def build_system_variables(values: Mapping[str, Any] = None, /, **kwargs: Any) -> list[Variable]:
     normalized = _normalize_system_variable_values(values, **kwargs)
 
     return [

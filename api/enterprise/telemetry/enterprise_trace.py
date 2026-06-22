@@ -306,8 +306,8 @@ class EnterpriseOtelTrace:
         info: WorkflowNodeTraceInfo,
         span_name: EnterpriseTelemetrySpan,
         request_type: str,
-        correlation_id_override: str | None = None,
-        trace_correlation_override_param: str | None = None,
+        correlation_id_override: str = None,
+        trace_correlation_override_param: str = None,
     ) -> None:
         metadata = self._metadata(info)
         tenant_id, app_id, user_id = self._context_ids(info, metadata)
@@ -655,7 +655,7 @@ class EnterpriseOtelTrace:
         metadata = self._metadata(info)
         tenant_id, app_id, user_id = self._context_ids(info, metadata)
         attrs = self._common_attrs(info)
-        duration: float | None = None
+        duration: float = None
         if info.start_time is not None and info.end_time is not None:
             duration = (info.end_time - info.start_time).total_seconds()
         error = info.error or (info.metadata.get("error") if info.metadata else None)
@@ -835,7 +835,7 @@ class EnterpriseOtelTrace:
         if node_execution_id:
             attrs["dify.node.execution_id"] = node_execution_id
 
-        duration: float | None = None
+        duration: float = None
         if info.start_time is not None and info.end_time is not None:
             duration = (info.end_time - info.start_time).total_seconds()
         error: str | None = metadata.get("error") if metadata else None

@@ -322,7 +322,7 @@ def make_dataset(**overrides) -> Dataset:
     return Dataset(**base)
 
 
-def make_tag(*, id: str, name: str, binding_count: int | None = None) -> Tag:
+def make_tag(*, id: str, name: str, binding_count: int = None) -> Tag:
     tag = Tag(tenant_id="tenant-1", type=TagType.KNOWLEDGE, name=name, created_by="account-1")
     tag.id = id
     if binding_count is not None:

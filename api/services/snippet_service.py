@@ -50,8 +50,8 @@ class SnippetService:
 
     def __init__(
         self,
-        session_maker: sessionmaker[Session] | Session | None = None,
-        session: Session | None = None,
+        session_maker: sessionmaker[Session] | Session = None,
+        session: Session = None,
     ):
         """Initialize SnippetService with repository dependencies."""
         if isinstance(session_maker, Session):
@@ -195,10 +195,10 @@ class SnippetService:
         session: scoped_session,
         page: int = 1,
         limit: int = 20,
-        keyword: str | None = None,
-        is_published: bool | None = None,
-        creators: list[str] | None = None,
-        tag_ids: list[str] | None = None,
+        keyword: str = None,
+        is_published: bool = None,
+        creators: list[str] = None,
+        tag_ids: list[str] = None,
     ) -> tuple[Sequence[CustomizedSnippet], int, bool]:
         """
         Get paginated list of snippets with optional search.
@@ -488,7 +488,7 @@ class SnippetService:
         graph: dict,
         unique_hash: str | None,
         account: Account,
-        input_fields: list[dict] | None = None,
+        input_fields: list[dict] = None,
     ) -> Workflow:
         """
         Sync draft workflow for snippet.
@@ -697,7 +697,7 @@ class SnippetService:
 
         return default_block_configs
 
-    def get_default_block_config(self, node_type: str, filters: dict | None = None) -> Mapping[str, object] | None:
+    def get_default_block_config(self, node_type: str, filters: dict = None) -> Mapping[str, object] | None:
         """
         Get default config for specific node type.
 

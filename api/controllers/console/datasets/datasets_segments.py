@@ -71,9 +71,9 @@ from tasks.batch_create_segment_to_index_task import batch_create_segment_to_ind
 class SegmentListQuery(BaseModel):
     limit: int = Field(default=20, ge=1, le=100)
     status: list[str] = Field(default_factory=list)
-    hit_count_gte: int | None = None
+    hit_count_gte: int = None
     enabled: str = Field(default="all")
-    keyword: str | None = None
+    keyword: str = None
     page: int = Field(default=1, ge=1)
 
 
@@ -83,24 +83,24 @@ class SegmentIdListQuery(BaseModel):
 
 class ChildChunkListQuery(BaseModel):
     limit: int = Field(default=20, ge=1, le=100)
-    keyword: str | None = None
+    keyword: str = None
     page: int = Field(default=1, ge=1)
 
 
 class SegmentCreatePayload(BaseModel):
     content: str
-    answer: str | None = None
-    keywords: list[str] | None = None
-    attachment_ids: list[str] | None = None
+    answer: str = None
+    keywords: list[str] = None
+    attachment_ids: list[str] = None
 
 
 class SegmentUpdatePayload(BaseModel):
     content: str
-    answer: str | None = None
-    keywords: list[str] | None = None
+    answer: str = None
+    keywords: list[str] = None
     regenerate_child_chunks: bool = False
-    attachment_ids: list[str] | None = None
-    summary: str | None = None  # Summary content for summary index
+    attachment_ids: list[str] = None
+    summary: str = None  # Summary content for summary index
 
 
 class BatchImportPayload(BaseModel):
@@ -619,7 +619,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
     @login_required
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
-    def get(self, job_id=None, dataset_id: UUID | None = None, document_id: UUID | None = None):
+    def get(self, job_id=None, dataset_id: UUID = None, document_id: UUID = None):
         if job_id is None:
             raise NotFound("The job does not exist.")
         job_id = str(job_id)

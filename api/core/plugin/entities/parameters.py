@@ -72,14 +72,14 @@ class PluginParameter(BaseModel):
     name: str = Field(..., description="The name of the parameter")
     label: I18nObject = Field(..., description="The label presented to the user")
     placeholder: I18nObject | None = Field(default=None, description="The placeholder presented to the user")
-    scope: str | None = None
-    auto_generate: PluginParameterAutoGenerate | None = None
-    template: PluginParameterTemplate | None = None
+    scope: str = None
+    auto_generate: PluginParameterAutoGenerate = None
+    template: PluginParameterTemplate = None
     required: bool = False
-    default: Union[float, int, str, bool, list, dict] | None = None
-    min: Union[float, int] | None = None
-    max: Union[float, int] | None = None
-    precision: int | None = None
+    default: Union[float, int, str, bool, list, dict] = None
+    min: Union[float, int] = None
+    max: Union[float, int] = None
+    precision: int = None
     options: list[PluginParameterOption] = Field(default_factory=list)
 
     @field_validator("options", mode="before")

@@ -39,9 +39,9 @@ class AgentToolRuntimeProvider(Protocol):
         tenant_id: str,
         app_id: str,
         agent_tool: AgentToolEntity,
-        user_id: str | None = None,
+        user_id: str = None,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
-        variable_pool: Any | None = None,
+        variable_pool: Any = None,
         allow_file_parameters: bool = False,
         use_default_for_missing_form_parameters: bool = False,
     ) -> Tool: ...
@@ -63,8 +63,8 @@ class WorkflowAgentPluginToolsBuilder:
     def __init__(
         self,
         *,
-        tool_runtime_provider: AgentToolRuntimeProvider | None = None,
-        provider_tools_lister: ProviderToolsLister | None = None,
+        tool_runtime_provider: AgentToolRuntimeProvider = None,
+        provider_tools_lister: ProviderToolsLister = None,
     ) -> None:
         self._tool_runtime_provider = tool_runtime_provider or ToolManager
         self._provider_tools_lister = provider_tools_lister or _list_provider_tool_names

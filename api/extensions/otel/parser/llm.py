@@ -99,7 +99,7 @@ class LLMNodeOTelParser:
         self._delegate = DefaultNodeOTelParser()
 
     def parse(
-        self, *, node: Node, span: "Span", error: Exception | None, result_event: GraphNodeEventBase | None = None
+        self, *, node: Node, span: "Span", error: Exception | None, result_event: GraphNodeEventBase = None
     ) -> None:
         self._delegate.parse(node=node, span=span, error=error, result_event=result_event)
 

@@ -36,11 +36,11 @@ class AliyunLogStore:
     Ensures only one instance exists to prevent multiple PG connection pools.
     """
 
-    _instance: AliyunLogStore | None = None
+    _instance: AliyunLogStore = None
     _initialized: bool = False
 
     # Track delayed PG connection for newly created projects
-    _pg_connection_timer: threading.Timer | None = None
+    _pg_connection_timer: threading.Timer = None
     _pg_connection_delay: int = 90  # delay seconds
 
     # Default tokenizer for text/json fields and full-text index
@@ -204,7 +204,7 @@ class AliyunLogStore:
         self.client.set_user_agent(enhanced_user_agent)
 
         # PG client will be initialized in init_project_logstore
-        self._pg_client: AliyunLogStorePG | None = None
+        self._pg_client: AliyunLogStorePG = None
         self._use_pg_protocol: bool = False
 
         self.__class__._initialized = True
@@ -832,10 +832,10 @@ class AliyunLogStore:
     def execute_sql(
         self,
         sql: str,
-        logstore: str | None = None,
+        logstore: str = None,
         query: str = "*",
-        from_time: int | None = None,
-        to_time: int | None = None,
+        from_time: int = None,
+        to_time: int = None,
         power_sql: bool = False,
     ) -> list[dict]:
         """

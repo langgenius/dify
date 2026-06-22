@@ -15,9 +15,9 @@ class TestWorkflowNodeExecutionModel:
 
     def create_mock_offload_data(
         self,
-        inputs_file_id: str | None = None,
-        outputs_file_id: str | None = None,
-        process_data_file_id: str | None = None,
+        inputs_file_id: str = None,
+        outputs_file_id: str = None,
+        process_data_file_id: str = None,
     ) -> WorkflowNodeExecutionOffload:
         """Create a mock offload data object."""
         offload = Mock(spec=WorkflowNodeExecutionOffload)

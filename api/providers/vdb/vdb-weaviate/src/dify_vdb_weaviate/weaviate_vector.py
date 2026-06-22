@@ -34,7 +34,7 @@ from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
 
-_weaviate_client: weaviate.WeaviateClient | None = None
+_weaviate_client: weaviate.WeaviateClient = None
 _weaviate_client_lock = threading.Lock()
 
 
@@ -76,8 +76,8 @@ class WeaviateConfig(BaseModel):
     """
 
     endpoint: str
-    grpc_endpoint: str | None = None
-    api_key: str | None = None
+    grpc_endpoint: str = None
+    api_key: str = None
     batch_size: int = 100
 
     @model_validator(mode="before")

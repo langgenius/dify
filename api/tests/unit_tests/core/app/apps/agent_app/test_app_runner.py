@@ -74,14 +74,14 @@ class _RecordingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
         self.cancelled_run_ids: list[str] = []
 
     @override
-    def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
+    def cancel_run(self, run_id: str, request: CancelRunRequest = None) -> CancelRunResponse:
         self.cancelled_run_ids.append(run_id)
         return super().cancel_run(run_id, request=request)
 
 
 class _StreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
     @override
-    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+    def stream_events(self, run_id: str, *, after: str = None) -> Iterator[RunEvent]:
         del after
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
         yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
@@ -110,7 +110,7 @@ class _StreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
 
 class _StreamingPartStartFakeAgentBackendRunClient(FakeAgentBackendRunClient):
     @override
-    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+    def stream_events(self, run_id: str, *, after: str = None) -> Iterator[RunEvent]:
         del after
         created_at = datetime(2026, 1, 1, tzinfo=UTC)
         yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
@@ -134,8 +134,8 @@ class _StreamingPartStartFakeAgentBackendRunClient(FakeAgentBackendRunClient):
 class _FakeSessionStore:
     def __init__(
         self,
-        loaded: CompositorSessionSnapshot | None = None,
-        loaded_session: StoredAgentAppSession | None = None,
+        loaded: CompositorSessionSnapshot = None,
+        loaded_session: StoredAgentAppSession = None,
     ) -> None:
         self.loaded = loaded
         self._loaded_session = loaded_session

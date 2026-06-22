@@ -141,7 +141,7 @@ class ComposerConfigValidator:
         cls,
         payload: ComposerSavePayload,
         *,
-        existing_dataset_ids: set[str] | None = None,
+        existing_dataset_ids: set[str] = None,
     ) -> dict[str, Any]:
         """ENG-617 §5.3/§5.4 soft findings — never block save.
 

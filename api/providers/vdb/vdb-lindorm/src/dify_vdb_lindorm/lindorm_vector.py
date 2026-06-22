@@ -37,8 +37,8 @@ class LindormOpenSearchParamsDict(TypedDict, total=False):
 
 class LindormVectorStoreConfig(BaseModel):
     hosts: str | None
-    username: str | None = None
-    password: str | None = None
+    username: str = None
+    password: str = None
     using_ugc: bool | None = False
     request_timeout: float | None = 1.0  # timeout units: s
 
@@ -67,7 +67,7 @@ class LindormVectorStoreConfig(BaseModel):
 
 class LindormVectorStore(BaseVector):
     def __init__(self, collection_name: str, config: LindormVectorStoreConfig, using_ugc: bool, **kwargs):
-        self._routing: str | None = None
+        self._routing: str = None
         if using_ugc:
             routing_value: str | None = kwargs.get("routing_value")
             if routing_value is None:
@@ -348,8 +348,8 @@ class LindormVectorStore(BaseVector):
     def create_collection(
         self,
         embeddings: list[list[float]],
-        metadatas: list[dict[str, Any]] | None = None,
-        index_params: dict[str, Any] | None = None,
+        metadatas: list[dict[str, Any]] = None,
+        index_params: dict[str, Any] = None,
     ):
         if not embeddings:
             raise ValueError(f"Embeddings list cannot be empty for collection create '{self._collection_name}'")

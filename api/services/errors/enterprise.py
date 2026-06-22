@@ -6,7 +6,7 @@ from services.errors.base import BaseServiceError
 class EnterpriseServiceError(BaseServiceError):
     """Base exception for enterprise service errors."""
 
-    def __init__(self, description: str = "", status_code: int | None = None):
+    def __init__(self, description: str = "", status_code: int = None):
         super().__init__(description)
         self.status_code = status_code
 

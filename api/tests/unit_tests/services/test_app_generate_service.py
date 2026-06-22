@@ -52,7 +52,7 @@ class _DummyRateLimit:
     def gen_request_key() -> str:
         return "dummy-request-id"
 
-    def enter(self, request_id: str | None = None) -> str:
+    def enter(self, request_id: str = None) -> str:
         return request_id or "dummy-request-id"
 
     def exit(self, request_id: str) -> None:

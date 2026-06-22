@@ -69,8 +69,8 @@ class ExecutionContext:
 
     def __init__(
         self,
-        app_context: AppContext | None = None,
-        context_vars: contextvars.Context | None = None,
+        app_context: AppContext = None,
+        context_vars: contextvars.Context = None,
         user: Any = None,
     ) -> None:
         self._app_context = app_context
@@ -125,7 +125,7 @@ class NullAppContext(AppContext):
     Null application context for non-framework environments.
     """
 
-    def __init__(self, config: dict[str, Any] | None = None) -> None:
+    def __init__(self, config: dict[str, Any] = None) -> None:
         self._config = config or {}
         self._extensions: dict[str, Any] = {}
 
@@ -156,8 +156,8 @@ class ExecutionContextBuilder:
     """
 
     def __init__(self) -> None:
-        self._app_context: AppContext | None = None
-        self._context_vars: contextvars.Context | None = None
+        self._app_context: AppContext = None
+        self._context_vars: contextvars.Context = None
         self._user: Any = None
 
     def with_app_context(self, app_context: AppContext) -> "ExecutionContextBuilder":
@@ -184,7 +184,7 @@ class ExecutionContextBuilder:
         )
 
 
-_capturer: Callable[[], IExecutionContext] | None = None
+_capturer: Callable[[], IExecutionContext] = None
 _tenant_context_providers: dict[tuple[str, str], Callable[[], BaseModel]] = {}
 
 

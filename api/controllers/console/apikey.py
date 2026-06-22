@@ -38,8 +38,8 @@ class ApiKeyItem(ResponseModel):
     id: str
     type: str
     token: str
-    last_used_at: int | None = None
-    created_at: int | None = None
+    last_used_at: int = None
+    created_at: int = None
 
     @field_validator("last_used_at", "created_at", mode="before")
     @classmethod
@@ -69,10 +69,10 @@ def _get_resource(resource_id, tenant_id, resource_model):
 class BaseApiKeyListResource(Resource):
     method_decorators = [account_initialization_required, login_required, setup_required]
 
-    resource_type: ApiTokenType | None = None
-    resource_model: type | None = None
-    resource_id_field: str | None = None
-    token_prefix: str | None = None
+    resource_type: ApiTokenType = None
+    resource_model: type = None
+    resource_id_field: str = None
+    token_prefix: str = None
     max_keys = 10
 
     def get(self, resource_id: str, current_tenant_id: str) -> dict[str, object]:
@@ -127,9 +127,9 @@ class BaseApiKeyListResource(Resource):
 class BaseApiKeyResource(Resource):
     method_decorators = [account_initialization_required, login_required, setup_required]
 
-    resource_type: ApiTokenType | None = None
-    resource_model: type | None = None
-    resource_id_field: str | None = None
+    resource_type: ApiTokenType = None
+    resource_model: type = None
+    resource_id_field: str = None
 
     def delete(
         self, resource_id: str, api_key_id: str, current_tenant_id: str, current_user: Account

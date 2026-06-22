@@ -18,40 +18,40 @@ from services.feature_service import FeatureService
 
 
 class AppSiteModelConfigResponse(ResponseModel):
-    opening_statement: str | None = None
+    opening_statement: str = None
     suggested_questions: Any
     suggested_questions_after_answer: Any
     more_like_this: Any
     model: Any
     user_input_form: Any
-    pre_prompt: str | None = None
+    pre_prompt: str = None
 
 
 class AppSiteResponse(ResponseModel):
-    title: str | None = None
-    chat_color_theme: str | None = None
-    chat_color_theme_inverted: bool | None = None
-    icon_type: str | None = None
-    icon: str | None = None
-    icon_background: str | None = None
-    icon_url: str | None = None
-    description: str | None = None
-    copyright: str | None = None
-    privacy_policy: str | None = None
-    custom_disclaimer: str | None = None
-    default_language: str | None = None
-    prompt_public: bool | None = None
-    show_workflow_steps: bool | None = None
-    use_icon_as_answer_icon: bool | None = None
+    title: str = None
+    chat_color_theme: str = None
+    chat_color_theme_inverted: bool = None
+    icon_type: str = None
+    icon: str = None
+    icon_background: str = None
+    icon_url: str = None
+    description: str = None
+    copyright: str = None
+    privacy_policy: str = None
+    custom_disclaimer: str = None
+    default_language: str = None
+    prompt_public: bool = None
+    show_workflow_steps: bool = None
+    use_icon_as_answer_icon: bool = None
 
 
 class AppSiteInfoResponse(ResponseModel):
     app_id: str
-    end_user_id: str | None = None
+    end_user_id: str = None
     enable_site: bool
     site: AppSiteResponse
     model_config_: AppSiteModelConfigResponse | None = Field(default=None, alias="model_config")
-    plan: str | None = None
+    plan: str = None
     can_replace_logo: bool
     custom_config: dict[str, Any] | None = Field(default=None)
 

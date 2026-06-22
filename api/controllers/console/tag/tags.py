@@ -59,8 +59,8 @@ class TagListQueryParam(BaseModel):
 class TagResponse(ResponseModel):
     id: str
     name: str
-    type: str | None = None
-    binding_count: str | None = None
+    type: str = None
+    binding_count: str = None
 
     @field_validator("type", mode="before")
     @classmethod

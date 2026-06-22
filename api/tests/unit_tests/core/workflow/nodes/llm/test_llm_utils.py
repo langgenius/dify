@@ -38,9 +38,9 @@ from graphon.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
 
 def _build_model_schema(
     *,
-    features: list[ModelFeature] | None = None,
-    model_properties: dict[ModelPropertyKey, object] | None = None,
-    parameter_rules: list[ParameterRule] | None = None,
+    features: list[ModelFeature] = None,
+    model_properties: dict[ModelPropertyKey, object] = None,
+    parameter_rules: list[ParameterRule] = None,
 ) -> AIModelEntity:
     return AIModelEntity(
         model="gpt-3.5-turbo",
@@ -53,7 +53,7 @@ def _build_model_schema(
     )
 
 
-def _build_model_instance(*, model_schema: AIModelEntity | None = None) -> mock.MagicMock:
+def _build_model_instance(*, model_schema: AIModelEntity = None) -> mock.MagicMock:
     model_instance = mock.MagicMock(spec=ModelInstance)
     model_instance.model_name = "gpt-3.5-turbo"
     model_instance.parameters = {}

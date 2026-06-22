@@ -21,31 +21,31 @@ from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
 class AgentLogQueryParams:
     page: int = 1
     limit: int = 20
-    keyword: str | None = None
+    keyword: str = None
     statuses: tuple[str, ...] = ()
     sources: tuple[str, ...] = ()
     sort_by: str = "updated_at"
     sort_order: str = "desc"
-    start: datetime | None = None
-    end: datetime | None = None
+    start: datetime = None
+    end: datetime = None
 
 
 @dataclass(frozen=True)
 class AgentStatisticsQueryParams:
-    source: str | None = None
-    start: datetime | None = None
-    end: datetime | None = None
+    source: str = None
+    start: datetime = None
+    end: datetime = None
     timezone: str = "UTC"
 
 
 @dataclass(frozen=True)
 class AgentSourceFilter:
     kind: str
-    app_id: str | None = None
-    workflow_id: str | None = None
-    workflow_version: str | None = None
-    node_id: str | None = None
-    invoke_from: InvokeFrom | None = None
+    app_id: str = None
+    workflow_id: str = None
+    workflow_version: str = None
+    node_id: str = None
+    invoke_from: InvokeFrom = None
 
 
 class AgentObservabilityService:
@@ -131,7 +131,7 @@ class AgentObservabilityService:
         return int(message.message_tokens or 0) + int(message.answer_tokens or 0)
 
     @classmethod
-    def serialize_log_message(cls, message: Message, conversation: Conversation | None = None) -> dict[str, Any]:
+    def serialize_log_message(cls, message: Message, conversation: Conversation = None) -> dict[str, Any]:
         invoke_from = message.invoke_from.value if message.invoke_from else None
         return {
             "id": message.id,

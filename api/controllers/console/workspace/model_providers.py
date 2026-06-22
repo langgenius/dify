@@ -31,11 +31,11 @@ from services.model_provider_service import ModelProviderService
 
 
 class ParserModelList(BaseModel):
-    model_type: ModelType | None = None
+    model_type: ModelType = None
 
 
 class ParserCredentialId(BaseModel):
-    credential_id: str | None = None
+    credential_id: str = None
 
     @field_validator("credential_id")
     @classmethod
@@ -97,7 +97,7 @@ class ProviderCredentialResponse(ResponseModel):
 
 class ProviderCredentialValidateResponse(ResponseModel):
     result: Literal["success", "error"]
-    error: str | None = None
+    error: str = None
 
 
 class ModelProviderPaymentCheckoutUrlResponse(ResponseModel):

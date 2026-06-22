@@ -53,7 +53,7 @@ class LoginPayload(LoginPayloadBase):
 
 class EmailCodeLoginSendPayload(BaseModel):
     email: EmailStr
-    language: str | None = None
+    language: str = None
 
 
 class EmailCodeLoginVerifyPayload(BaseModel):

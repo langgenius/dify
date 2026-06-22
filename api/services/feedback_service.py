@@ -16,11 +16,11 @@ class FeedbackService:
     def export_feedbacks(
         session: Session,
         app_id: str,
-        from_source: str | None = None,
-        rating: str | None = None,
-        has_comment: bool | None = None,
-        start_date: str | None = None,
-        end_date: str | None = None,
+        from_source: str = None,
+        rating: str = None,
+        has_comment: bool = None,
+        start_date: str = None,
+        end_date: str = None,
         format_type: str = "csv",
     ):
         """

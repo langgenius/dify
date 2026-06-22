@@ -35,8 +35,8 @@ class DifyOutputLayerConfig(LayerConfig):
     """
 
     json_schema: dict[str, JsonValue]
-    description: str | None = None
-    strict: bool | None = None
+    description: str = None
+    strict: bool = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 

@@ -42,10 +42,10 @@ class OpenSearchConfig(BaseModel):
     secure: bool = False  # use_ssl
     verify_certs: bool = True
     auth_method: AuthMethod = AuthMethod.BASIC
-    user: str | None = None
-    password: str | None = None
-    aws_region: str | None = None
-    aws_service: str | None = None
+    user: str = None
+    password: str = None
+    aws_region: str = None
+    aws_service: str = None
 
     @model_validator(mode="before")
     @classmethod
@@ -265,8 +265,8 @@ class OpenSearchVector(BaseVector):
     def create_collection(
         self,
         embeddings: list[list[float]],
-        metadatas: list[dict[str, Any]] | None = None,
-        index_params: dict[str, Any] | None = None,
+        metadatas: list[dict[str, Any]] = None,
+        index_params: dict[str, Any] = None,
     ):
         lock_name = f"vector_indexing_lock_{self._collection_name.lower()}"
         with redis_client.lock(lock_name, timeout=20):

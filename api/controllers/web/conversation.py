@@ -26,9 +26,9 @@ from services.web_conversation_service import WebConversationService
 
 
 class ConversationListQuery(BaseModel):
-    last_id: str | None = None
+    last_id: str = None
     limit: int = Field(default=20, ge=1, le=100)
-    pinned: bool | None = None
+    pinned: bool = None
     sort_by: Literal["created_at", "-created_at", "updated_at", "-updated_at"] = "-updated_at"
 
     @field_validator("last_id")

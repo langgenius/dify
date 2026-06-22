@@ -30,9 +30,9 @@ def _mock_get_trigger_provider(mocker: MockerFixture, provider: object | None) -
 
 def _encrypter_mock(
     *,
-    decrypted: dict[str, Any] | None = None,
-    encrypted: dict[str, Any] | None = None,
-    masked: dict[str, Any] | None = None,
+    decrypted: dict[str, Any] = None,
+    encrypted: dict[str, Any] = None,
+    masked: dict[str, Any] = None,
 ) -> MagicMock:
     enc = MagicMock()
     enc.decrypt.return_value = decrypted or {}

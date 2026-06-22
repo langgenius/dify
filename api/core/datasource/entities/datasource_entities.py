@@ -82,7 +82,7 @@ class DatasourceParameter(PluginParameter):
         name: str,
         typ: DatasourceParameterType,
         required: bool,
-        options: list[str] | None = None,
+        options: list[str] = None,
     ) -> DatasourceParameter:
         """
         get a simple datasource parameter
@@ -122,14 +122,14 @@ class DatasourceIdentity(BaseModel):
     name: str = Field(..., description="The name of the datasource")
     label: I18nObject = Field(..., description="The label of the datasource")
     provider: str = Field(..., description="The provider of the datasource")
-    icon: str | None = None
+    icon: str = None
 
 
 class DatasourceEntity(BaseModel):
     identity: DatasourceIdentity
     parameters: list[DatasourceParameter] = Field(default_factory=list)
     description: I18nObject = Field(..., description="The label of the datasource")
-    output_schema: dict[str, Any] | None = None
+    output_schema: dict[str, Any] = None
 
     @field_validator("parameters", mode="before")
     @classmethod
@@ -171,7 +171,7 @@ class DatasourceProviderEntity(BaseModel):
 
     identity: DatasourceProviderIdentity
     credentials_schema: list[ProviderConfig] = Field(default_factory=list)
-    oauth_schema: OAuthSchema | None = None
+    oauth_schema: OAuthSchema = None
     provider_type: DatasourceProviderType
 
 
@@ -191,8 +191,8 @@ class DatasourceInvokeMeta(BaseModel):
     """
 
     time_cost: float = Field(..., description="The time cost of the tool invoke")
-    error: str | None = None
-    tool_config: dict[str, Any] | None = None
+    error: str = None
+    tool_config: dict[str, Any] = None
 
     @classmethod
     def empty(cls) -> DatasourceInvokeMeta:

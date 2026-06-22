@@ -48,7 +48,7 @@ class AppQueueManager(ABC):
         q: queue.Queue[WorkflowQueueMessage | MessageQueueMessage | None] = queue.Queue()
 
         self._q = q
-        self._graph_runtime_state: GraphRuntimeState | None = None
+        self._graph_runtime_state: GraphRuntimeState = None
         self._stopped_cache: TTLCache[tuple, bool] = TTLCache(maxsize=1, ttl=1)
         self._cache_lock = threading.Lock()
 

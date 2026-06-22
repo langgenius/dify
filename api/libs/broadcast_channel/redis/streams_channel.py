@@ -107,7 +107,7 @@ class _StreamsSubscription(Subscription):
         self._lock = threading.Lock()
         self._closed: bool = False
         # self._closed = threading.Event()
-        self._listener: threading.Thread | None = None
+        self._listener: threading.Thread = None
 
     def _listen(self) -> None:
         """The `_listen` method handles the message retrieval loop. It requires a dedicated thread
@@ -137,7 +137,7 @@ class _StreamsSubscription(Subscription):
                         data = None
                         if isinstance(fields, dict):
                             data = fields.get(b"data")
-                        data_bytes: bytes | None = None
+                        data_bytes: bytes = None
                         match data:
                             case str():
                                 data_bytes = data.encode()

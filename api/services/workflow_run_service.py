@@ -32,7 +32,7 @@ class WorkflowRunService:
     _session_factory: sessionmaker
     _workflow_run_repo: APIWorkflowRunRepository
 
-    def __init__(self, session_factory: Engine | sessionmaker | None = None):
+    def __init__(self, session_factory: Engine | sessionmaker = None):
         """Initialize WorkflowRunService with repository dependencies."""
         match session_factory:
             case None:
@@ -127,8 +127,8 @@ class WorkflowRunService:
     def get_workflow_runs_count(
         self,
         app_model: App,
-        status: str | None = None,
-        time_range: str | None = None,
+        status: str = None,
+        time_range: str = None,
         triggered_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.DEBUGGING,
     ) -> dict[str, int]:
         """

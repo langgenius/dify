@@ -51,11 +51,11 @@ class AgentDriveFileByAgentQuery(BaseModel):
 
 class AgentDriveItemResponse(ResponseModel):
     key: str
-    size: int | None = None
-    mime_type: str | None = None
-    hash: str | None = None
+    size: int = None
+    mime_type: str = None
+    hash: str = None
     file_kind: str
-    created_at: int | None = None
+    created_at: int = None
 
 
 class AgentDriveListResponse(ResponseModel):
@@ -64,10 +64,10 @@ class AgentDriveListResponse(ResponseModel):
 
 class AgentDrivePreviewResponse(ResponseModel):
     key: str
-    size: int | None = None
+    size: int = None
     truncated: bool
     binary: bool
-    text: str | None = None
+    text: str = None
 
 
 class AgentDriveDownloadResponse(ResponseModel):

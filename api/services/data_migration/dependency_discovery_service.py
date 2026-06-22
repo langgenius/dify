@@ -10,8 +10,8 @@ from services.data_migration.entities import DependencyKind
 class DiscoveredDependency:
     kind: DependencyKind
     provider_id: str
-    provider_name: str | None = None
-    source: str | None = None
+    provider_name: str = None
+    source: str = None
 
 
 class DependencyDiscoveryService:

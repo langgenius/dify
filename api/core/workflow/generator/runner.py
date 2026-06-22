@@ -216,8 +216,8 @@ class WorkflowGenerator:
         instruction: str,
         ideal_output: str = "",
         tool_catalogue_text: str = "",
-        installed_tools: set[tuple[str, str]] | None = None,
-        current_graph: dict[str, Any] | None = None,
+        installed_tools: set[tuple[str, str]] = None,
+        current_graph: dict[str, Any] = None,
     ) -> WorkflowGenerateResultDict:
         """
         Run planner → builder → postprocess and return a graph payload.
@@ -380,7 +380,7 @@ class WorkflowGenerator:
         ``_TRANSIENT_INVOKE_ERRORS`` so they propagate on the first attempt —
         retrying a misconfigured model only adds latency and burns quota.
         """
-        last_exc: Exception | None = None
+        last_exc: Exception = None
         for attempt in range(_INVOKE_MAX_ATTEMPTS):
             try:
                 return model_instance.invoke_llm(
@@ -471,7 +471,7 @@ class WorkflowGenerator:
         instruction: str,
         ideal_output: str,
         tool_catalogue_text: str,
-        current_graph: dict[str, Any] | None = None,
+        current_graph: dict[str, Any] = None,
     ) -> PlannerResultDict:
         user_prompt = PLANNER_USER_PROMPT.format(
             mode=mode,
@@ -517,8 +517,8 @@ class WorkflowGenerator:
         ideal_output: str,
         plan_nodes: list[dict[str, Any]],
         tool_catalogue_text: str,
-        start_inputs: list[dict[str, Any]] | None = None,
-        current_graph: dict[str, Any] | None = None,
+        start_inputs: list[dict[str, Any]] = None,
+        current_graph: dict[str, Any] = None,
     ) -> GraphDict:
         user_prompt = BUILDER_USER_PROMPT.format(
             instruction=instruction.strip(),
@@ -1232,7 +1232,7 @@ class WorkflowGenerator:
         *,
         graph: GraphDict,
         mode: WorkflowGenerationMode,
-        installed_tools: set[tuple[str, str]] | None = None,
+        installed_tools: set[tuple[str, str]] = None,
     ) -> list[WorkflowGenerateErrorDict]:
         """
         Return a list of structured errors for every violation found.

@@ -91,7 +91,7 @@ class ExtractProcessor:
 
     @classmethod
     def extract(
-        cls, extract_setting: ExtractSetting, is_automatic: bool = False, file_path: str | None = None
+        cls, extract_setting: ExtractSetting, is_automatic: bool = False, file_path: str = None
     ) -> list[Document]:
         if extract_setting.datasource_type == DatasourceType.FILE:
             upload_file = extract_setting.upload_file
@@ -107,7 +107,7 @@ class ExtractProcessor:
                 file_extension = input_file.suffix.lower()
                 assert upload_file is not None, "upload_file is required"
                 etl_type = dify_config.ETL_TYPE
-                extractor: BaseExtractor | None = None
+                extractor: BaseExtractor = None
                 if etl_type == "Unstructured":
                     unstructured_api_url = dify_config.UNSTRUCTURED_API_URL or ""
                     unstructured_api_key = dify_config.UNSTRUCTURED_API_KEY or ""

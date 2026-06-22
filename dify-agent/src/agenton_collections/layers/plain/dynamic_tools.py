@@ -33,7 +33,7 @@ class _ObjectToolEntry[ObjectT]:
     """Tool entry whose first argument should be filled from ``ObjectLayer``."""
 
     tool_entry: _ObjectToolCallable[ObjectT]
-    object_type: type[ObjectT] | None = None
+    object_type: type[ObjectT] = None
 
 
 type _DynamicToolEntry[ObjectT] = Callable[..., Any] | _ObjectToolEntry[ObjectT]

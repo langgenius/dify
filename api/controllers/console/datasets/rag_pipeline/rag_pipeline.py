@@ -52,8 +52,8 @@ class PipelineTemplateItemResponse(ResponseModel):
     description: str
     position: int
     chunk_structure: str
-    copyright: str | None = None
-    privacy_policy: str | None = None
+    copyright: str = None
+    privacy_policy: str = None
 
 
 class PipelineTemplateListResponse(ResponseModel):
@@ -68,7 +68,7 @@ class PipelineTemplateDetailResponse(ResponseModel):
     chunk_structure: str
     export_data: str
     graph: dict[str, Any]
-    created_by: str | None = None
+    created_by: str = None
 
 
 class CustomizedPipelineTemplatePayload(BaseModel):

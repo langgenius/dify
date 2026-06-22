@@ -40,7 +40,7 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
     """
 
     @override
-    def get_pipeline_templates(self, language: str, current_tenant_id: str | None = None) -> dict[str, Any]:
+    def get_pipeline_templates(self, language: str, current_tenant_id: str = None) -> dict[str, Any]:
         current_tenant_id = resolve_tenant_id_fallback(current_tenant_id)
         return self.fetch_pipeline_templates_from_customized(tenant_id=current_tenant_id, language=language)
 

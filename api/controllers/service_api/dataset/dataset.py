@@ -244,7 +244,7 @@ class TagUnbindingPayload(BaseModel):
     """Accept the legacy single-tag Service API payload while exposing a normalized tag_ids list internally."""
 
     tag_ids: list[str] = Field(default_factory=list)
-    tag_id: str | None = None
+    tag_id: str = None
     target_id: str = Field(description="Knowledge base ID.")
 
     @classmethod
@@ -310,7 +310,7 @@ class KnowledgeTagResponse(ResponseModel):
     type: str
     # TODO: The public Service API docs expose binding_count as string|null.
     # Keep matching the old RESTX fields.String coercion until that contract is intentionally migrated.
-    binding_count: str | None = None
+    binding_count: str = None
 
 
 class KnowledgeTagListResponse(RootModel[list[KnowledgeTagResponse]]):
@@ -329,7 +329,7 @@ class DatasetListQuery(BaseModel):
 
 
 class DatasetDetailWithPartialMembersResponse(DatasetDetailResponse):
-    partial_member_list: list[str] | None = None
+    partial_member_list: list[str] = None
 
 
 # todo: duplicate code, but the partial_member_list has different nullability

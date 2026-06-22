@@ -44,9 +44,9 @@ class AdvancedPromptTransform(PromptTransform):
         context: str | None,
         memory_config: MemoryConfig | None,
         memory: TokenBufferMemory | None,
-        model_config: ModelConfigWithCredentialsEntity | None = None,
-        model_instance: ModelInstance | None = None,
-        image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
+        model_config: ModelConfigWithCredentialsEntity = None,
+        model_instance: ModelInstance = None,
+        image_detail_config: ImagePromptMessageContent.DETAIL = None,
     ) -> list[PromptMessage]:
         prompt_messages = []
 
@@ -89,9 +89,9 @@ class AdvancedPromptTransform(PromptTransform):
         context: str | None,
         memory_config: MemoryConfig | None,
         memory: TokenBufferMemory | None,
-        model_config: ModelConfigWithCredentialsEntity | None = None,
-        model_instance: ModelInstance | None = None,
-        image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
+        model_config: ModelConfigWithCredentialsEntity = None,
+        model_instance: ModelInstance = None,
+        image_detail_config: ImagePromptMessageContent.DETAIL = None,
     ) -> list[PromptMessage]:
         """
         Get completion model prompt messages.
@@ -152,9 +152,9 @@ class AdvancedPromptTransform(PromptTransform):
         context: str | None,
         memory_config: MemoryConfig | None,
         memory: TokenBufferMemory | None,
-        model_config: ModelConfigWithCredentialsEntity | None = None,
-        model_instance: ModelInstance | None = None,
-        image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
+        model_config: ModelConfigWithCredentialsEntity = None,
+        model_instance: ModelInstance = None,
+        image_detail_config: ImagePromptMessageContent.DETAIL = None,
     ) -> list[PromptMessage]:
         """
         Get chat model prompt messages.
@@ -292,8 +292,8 @@ class AdvancedPromptTransform(PromptTransform):
         role_prefix: MemoryConfig.RolePrefix,
         parser: PromptTemplateParser,
         prompt_inputs: Mapping[str, str],
-        model_config: ModelConfigWithCredentialsEntity | None = None,
-        model_instance: ModelInstance | None = None,
+        model_config: ModelConfigWithCredentialsEntity = None,
+        model_instance: ModelInstance = None,
     ) -> Mapping[str, str]:
         prompt_inputs = dict(prompt_inputs)
         if "#histories#" in parser.variable_keys:

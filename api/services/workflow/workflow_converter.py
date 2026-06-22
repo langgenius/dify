@@ -410,8 +410,8 @@ class WorkflowConverter:
         graph: WorkflowGraph,
         model_config: ModelConfigEntity,
         prompt_template: PromptTemplateEntity,
-        file_upload: FileUploadConfig | None = None,
-        external_data_variable_node_mapping: dict[str, str] | None = None,
+        file_upload: FileUploadConfig = None,
+        external_data_variable_node_mapping: dict[str, str] = None,
     ) -> _NodeType:
         """
         Convert to LLM Node
@@ -430,7 +430,7 @@ class WorkflowConverter:
         )
 
         role_prefix = None
-        prompts: Any | None = None
+        prompts: Any = None
 
         # Chat Model
         if model_config.mode == LLMMode.CHAT:
@@ -571,7 +571,7 @@ class WorkflowConverter:
         }
 
     def _replace_template_variables(
-        self, template: str, variables: list[dict], external_data_variable_node_mapping: dict[str, str] | None = None
+        self, template: str, variables: list[dict], external_data_variable_node_mapping: dict[str, str] = None
     ) -> str:
         """
         Replace Template Variables

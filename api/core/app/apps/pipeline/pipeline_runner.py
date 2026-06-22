@@ -47,7 +47,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
         system_user_id: str,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-        workflow_thread_pool_id: str | None = None,
+        workflow_thread_pool_id: str = None,
     ) -> None:
         """
         :param application_generate_entity: application generate entity
@@ -226,7 +226,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
         self,
         workflow: Workflow,
         graph_runtime_state: GraphRuntimeState,
-        start_node_id: str | None = None,
+        start_node_id: str = None,
         user_from: UserFrom = UserFrom.ACCOUNT,
         invoke_from: InvokeFrom = InvokeFrom.SERVICE_API,
     ) -> Graph:

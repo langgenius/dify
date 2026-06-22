@@ -54,7 +54,7 @@ class StructuredJSONFormatter(logging.Formatter):
         logging.CRITICAL: "ERROR",
     }
 
-    def __init__(self, service_name: str | None = None):
+    def __init__(self, service_name: str = None):
         super().__init__()
         self._service_name = service_name or dify_config.APPLICATION_NAME
 

@@ -25,9 +25,9 @@ class MCPToolProviderController(ToolProviderController[ToolProviderEntityWithPlu
         provider_id: str,
         tenant_id: str,
         server_url: str,
-        headers: dict[str, str] | None = None,
-        timeout: float | None = None,
-        sse_read_timeout: float | None = None,
+        headers: dict[str, str] = None,
+        timeout: float = None,
+        sse_read_timeout: float = None,
         identity_mode: IdentityMode = IdentityMode.OFF,
     ):
         super().__init__(entity)

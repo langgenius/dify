@@ -18,7 +18,7 @@ from services.rag_pipeline.rag_pipeline import RagPipelineService
 class Parser(BaseModel):
     inputs: dict[str, Any]
     datasource_type: str
-    credential_id: str | None = None
+    credential_id: str = None
 
 
 class DataSourceContentPreviewResponse(RootModel[Any]):

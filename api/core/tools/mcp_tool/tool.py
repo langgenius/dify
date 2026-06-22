@@ -42,9 +42,9 @@ class MCPTool(Tool):
         icon: str,
         server_url: str,
         provider_id: str,
-        headers: dict[str, str] | None = None,
-        timeout: float | None = None,
-        sse_read_timeout: float | None = None,
+        headers: dict[str, str] = None,
+        timeout: float = None,
+        sse_read_timeout: float = None,
         identity_mode: IdentityMode = IdentityMode.OFF,
     ):
         super().__init__(entity, runtime)
@@ -67,9 +67,9 @@ class MCPTool(Tool):
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
-        conversation_id: str | None = None,
-        app_id: str | None = None,
-        message_id: str | None = None,
+        conversation_id: str = None,
+        app_id: str = None,
+        message_id: str = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         result = self.invoke_remote_mcp_tool(tool_parameters, user_id=user_id, app_id=app_id)
 
@@ -272,8 +272,8 @@ class MCPTool(Tool):
     def invoke_remote_mcp_tool(
         self,
         tool_parameters: dict[str, Any],
-        user_id: str | None = None,
-        app_id: str | None = None,
+        user_id: str = None,
+        app_id: str = None,
     ) -> CallToolResult:
         # Fail closed: forwarding requires user_id (refuse before any DB I/O).
         if self._forwarding_requested and not user_id:

@@ -32,7 +32,7 @@ class Pagination(_RBACModel):
 
 class Paginated[T](_RBACModel):
     data: list[T] = Field(default_factory=list)
-    pagination: Pagination | None = None
+    pagination: Pagination = None
 
 
 class MembersInRole(_RBACModel):
@@ -72,7 +72,7 @@ class PermissionCatalogResponse(_RBACModel):
 
 class RBACRole(_RBACModel):
     id: str
-    tenant_id: str | None = None
+    tenant_id: str = None
     type: str
     category: str = ""
     name: str
@@ -176,7 +176,7 @@ class AccessPolicyAccount(BaseModel):
 
 
 class AccessMatrixItem(_RBACModel):
-    policy: AccessPolicy | None = None
+    policy: AccessPolicy = None
     roles: list[AccessPolicyRole] = Field(default_factory=list)
     accounts: list[AccessPolicyAccount] = Field(default_factory=list)
 
@@ -200,7 +200,7 @@ class DatasetAccessMatrix(_RBACModel):
 
 class WorkspaceAccessMatrix(_RBACModel):
     items: list[AccessMatrixItem] = Field(default_factory=list)
-    pagination: Pagination | None = None
+    pagination: Pagination = None
 
 
 class RoleBindingsResponse(_RBACModel):
@@ -614,11 +614,11 @@ class ReplaceBindings(_RBACModel):
 
 
 class ListOption(_RBACModel):
-    page_number: int | None = None
-    results_per_page: int | None = None
-    reverse: bool | None = None
+    page_number: int = None
+    results_per_page: int = None
+    reverse: bool = None
 
-    def to_params(self, extra: dict[str, Any] | None = None) -> dict[str, Any]:
+    def to_params(self, extra: dict[str, Any] = None) -> dict[str, Any]:
         params: dict[str, Any] = {}
         if self.page_number is not None:
             params["page_number"] = self.page_number
@@ -650,9 +650,9 @@ def _inner_call(
     endpoint: str,
     *,
     tenant_id: str,
-    account_id: str | None = None,
-    json: Any | None = None,
-    params: dict[str, Any] | None = None,
+    account_id: str = None,
+    json: Any = None,
+    params: dict[str, Any] = None,
 ) -> Any:
     """Thin wrapper around `EnterpriseRequest.send_inner_rbac_request`.
 
@@ -724,7 +724,7 @@ class RBACService:
     # ------------------------------------------------------------------
     class Catalog:
         @staticmethod
-        def workspace(tenant_id: str, account_id: str | None = None) -> PermissionCatalogResponse:
+        def workspace(tenant_id: str, account_id: str = None) -> PermissionCatalogResponse:
             data = _inner_call(
                 "GET",
                 f"{_INNER_PREFIX}/role-permissions/catalog",
@@ -734,7 +734,7 @@ class RBACService:
             return PermissionCatalogResponse.model_validate(data or {})
 
         @staticmethod
-        def app(tenant_id: str, account_id: str | None = None) -> PermissionCatalogResponse:
+        def app(tenant_id: str, account_id: str = None) -> PermissionCatalogResponse:
             data = _inner_call(
                 "GET",
                 f"{_INNER_PREFIX}/role-permissions/catalog/app",
@@ -744,7 +744,7 @@ class RBACService:
             return PermissionCatalogResponse.model_validate(data or {})
 
         @staticmethod
-        def dataset(tenant_id: str, account_id: str | None = None) -> PermissionCatalogResponse:
+        def dataset(tenant_id: str, account_id: str = None) -> PermissionCatalogResponse:
             data = _inner_call(
                 "GET",
                 f"{_INNER_PREFIX}/role-permissions/catalog/dataset",
@@ -760,10 +760,10 @@ class RBACService:
         @staticmethod
         def list(
             tenant_id: str,
-            account_id: str | None = None,
-            include_owner: int | None = None,
+            account_id: str = None,
+            include_owner: int = None,
             *,
-            options: ListOption | None = None,
+            options: ListOption = None,
         ) -> Paginated[RBACRole]:
             params = (options or ListOption()).to_params({"include_owner": include_owner})
             data = _inner_call(
@@ -782,9 +782,9 @@ class RBACService:
         @staticmethod
         def list_members_by_role(
             tenant_id: str,
-            role_id: str | None = None,
+            role_id: str = None,
             *,
-            options: ListOption | None = None,
+            options: ListOption = None,
         ) -> Paginated[MembersInRole]:
             params = (options or ListOption()).to_params({"role_id": role_id})
             data = _inner_call(
@@ -862,7 +862,7 @@ class RBACService:
             account_id: str | None,
             role_id: str,
             *,
-            options: ListOption | None = None,
+            options: ListOption = None,
         ) -> Paginated[RBACRoleAccount]:
             params = (options or ListOption()).to_params({"role_id": role_id})
             data = _inner_call(
@@ -885,10 +885,10 @@ class RBACService:
         @staticmethod
         def list(
             tenant_id: str,
-            account_id: str | None = None,
+            account_id: str = None,
             *,
-            resource_type: RBACResourceType | str | None = None,
-            options: ListOption | None = None,
+            resource_type: RBACResourceType | str = None,
+            options: ListOption = None,
         ) -> Paginated[AccessPolicy]:
             extra: dict[str, Any] = {}
             if resource_type is not None:
@@ -1361,9 +1361,9 @@ class RBACService:
         @staticmethod
         def app_matrix(
             tenant_id: str,
-            account_id: str | None = None,
+            account_id: str = None,
             *,
-            options: ListOption | None = None,
+            options: ListOption = None,
         ) -> WorkspaceAccessMatrix:
             data = _inner_call(
                 "GET",
@@ -1377,9 +1377,9 @@ class RBACService:
         @staticmethod
         def dataset_matrix(
             tenant_id: str,
-            account_id: str | None = None,
+            account_id: str = None,
             *,
-            options: ListOption | None = None,
+            options: ListOption = None,
         ) -> WorkspaceAccessMatrix:
             data = _inner_call(
                 "GET",
@@ -1582,8 +1582,8 @@ class RBACService:
             account_id: str | None,
             *,
             scene: str,
-            resource_type: str | None = None,
-            resource_id: str | None = None,
+            resource_type: str = None,
+            resource_id: str = None,
         ) -> bool:
             """Return ``True`` if the account is allowed, ``False`` otherwise."""
             if not dify_config.RBAC_ENABLED:
@@ -1656,8 +1656,8 @@ class RBACService:
             tenant_id: str,
             account_id: str | None,
             *,
-            app_id: str | None = None,
-            dataset_id: str | None = None,
+            app_id: str = None,
+            dataset_id: str = None,
         ) -> MyPermissionsResponse:
             if not dify_config.RBAC_ENABLED:
                 return _legacy_my_permissions(tenant_id, account_id)

@@ -35,16 +35,16 @@ class MilvusConfig(BaseModel):
     """
 
     uri: str  # Milvus server URI
-    token: str | None = None  # Optional token for authentication
-    user: str | None = None  # Username for authentication
-    password: str | None = None  # Password for authentication
+    token: str = None  # Optional token for authentication
+    user: str = None  # Username for authentication
+    password: str = None  # Password for authentication
     batch_size: int = 100  # Batch size for operations
     database: str = "default"  # Database name
     enable_hybrid_search: bool = False  # Flag to enable hybrid search
-    analyzer_params: str | None = None  # Analyzer params
+    analyzer_params: str = None  # Analyzer params
     secure: bool = False  # Enable one-way TLS to Milvus
-    server_pem_path: str | None = None  # Path to server certificate (PEM) for TLS verification
-    server_name: str | None = None  # Server name to verify against the certificate (SNI / CN)
+    server_pem_path: str = None  # Path to server certificate (PEM) for TLS verification
+    server_name: str = None  # Server name to verify against the certificate (SNI / CN)
 
     @model_validator(mode="before")
     @classmethod
@@ -92,7 +92,7 @@ class MilvusVector(BaseVector):
             self._load_collection_fields()
         self._hybrid_search_enabled = self._check_hybrid_search_support()  # Check if hybrid search is supported
 
-    def _load_collection_fields(self, fields: list[str] | None = None):
+    def _load_collection_fields(self, fields: list[str] = None):
         if fields is None:
             # Load collection fields from remote server
             collection_info = cast(dict[str, Any], self._client.describe_collection(self._collection_name))
@@ -318,8 +318,8 @@ class MilvusVector(BaseVector):
     def create_collection(
         self,
         embeddings: list[list[float]],
-        metadatas: list[dict[str, Any]] | None = None,
-        index_params: dict[str, Any] | None = None,
+        metadatas: list[dict[str, Any]] = None,
+        index_params: dict[str, Any] = None,
     ):
         """
         Create a new collection in Milvus with the specified schema and index parameters.

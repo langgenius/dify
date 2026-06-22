@@ -249,8 +249,8 @@ def create_ask_human_form(
     default_node_title: str,
     contacts: Sequence[AgentHumanContactConfig],
     repository: HumanInputFormRepository,
-    workflow_run_id: str | None = None,
-    conversation_id: str | None = None,
+    workflow_run_id: str = None,
+    conversation_id: str = None,
     display_in_ui: bool = True,
 ) -> AskHumanFormCreated:
     """Create a HITL form from an ask_human deferred call (caller verified tool_name).
@@ -302,7 +302,7 @@ def build_ask_human_pause_reason(
     workflow_run_id: str | None,
     contacts: Sequence[AgentHumanContactConfig],
     repository: HumanInputFormRepository,
-    conversation_id: str | None = None,
+    conversation_id: str = None,
     expected_tool_name: str = DEFAULT_ASK_HUMAN_TOOL_NAME,
     display_in_ui: bool = True,
 ) -> HumanInputRequired | None:

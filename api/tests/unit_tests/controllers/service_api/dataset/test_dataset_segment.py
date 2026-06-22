@@ -40,7 +40,7 @@ from models.enums import IndexingStatus, SegmentType
 from services.dataset_service import DocumentService, SegmentService
 
 
-def _segment_response_dict(summary: str | None = None):
+def _segment_response_dict(summary: str = None):
     return {
         "id": "seg-1",
         "position": 1,

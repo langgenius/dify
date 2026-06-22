@@ -75,8 +75,8 @@ class FakeRunnerShellctlClient:
         self,
         script: str,
         *,
-        cwd: str | None = None,
-        env: Mapping[str, str] | None = None,
+        cwd: str = None,
+        env: Mapping[str, str] = None,
         timeout: float = 10.0,
     ) -> JobResult:
         self.run_calls.append((script, cwd, env, timeout))
@@ -111,7 +111,7 @@ class FakeRunnerShellctlClient:
         job_id: str,
         *,
         force: bool = False,
-        grace_seconds: float | None = None,
+        grace_seconds: float = None,
     ) -> DeleteJobResponse:
         del job_id, force, grace_seconds
         raise AssertionError("delete() should not be called in this test")
@@ -122,11 +122,11 @@ def _request(
     *,
     include_history: bool = False,
     include_ask_human: bool = False,
-    ask_human_config: DifyAskHumanLayerConfig | None = None,
+    ask_human_config: DifyAskHumanLayerConfig = None,
     llm_layer_name: str = DIFY_AGENT_MODEL_LAYER_ID,
     execution_context_layer_name: str = "execution_context",
-    on_exit: LayerExitSignals | None = None,
-    output_config: Mapping[str, object] | DifyOutputLayerConfig | None = None,
+    on_exit: LayerExitSignals = None,
+    output_config: Mapping[str, object] | DifyOutputLayerConfig = None,
 ) -> CreateRunRequest:
     layers = [
         RunLayerSpec(
@@ -269,7 +269,7 @@ class RecordingTestModel(TestModel):
     seen_requests: list[list[ModelMessage]]
     failure: Exception | None
 
-    def __init__(self, *, custom_output_text: str = "done", failure: Exception | None = None) -> None:
+    def __init__(self, *, custom_output_text: str = "done", failure: Exception = None) -> None:
         super().__init__(call_tools=[], custom_output_text=custom_output_text)
         self.seen_requests = []
         self.failure = failure

@@ -64,7 +64,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
     def split_text(self, text: str) -> list[str]:
         """Split text into multiple components."""
 
-    def create_documents(self, texts: list[str], metadatas: list[dict[str, Any]] | None = None) -> list[Document]:
+    def create_documents(self, texts: list[str], metadatas: list[dict[str, Any]] = None) -> list[Document]:
         """Create documents from a list of texts."""
         _metadatas = metadatas or [{}] * len(texts)
         documents = []
@@ -189,7 +189,7 @@ class TokenTextSplitter(TextSplitter):
     def __init__(
         self,
         encoding_name: str = "gpt2",
-        model_name: str | None = None,
+        model_name: str = None,
         allowed_special: Literal["all"] | AbstractSet[str] = frozenset(),
         disallowed_special: Literal["all"] | AbstractSet[str] = "all",
         **kwargs: Any,
@@ -241,7 +241,7 @@ class RecursiveCharacterTextSplitter(TextSplitter):
 
     def __init__(
         self,
-        separators: list[str] | None = None,
+        separators: list[str] = None,
         keep_separator: bool = True,
         **kwargs: Any,
     ):

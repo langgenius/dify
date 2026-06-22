@@ -70,7 +70,7 @@ def _normalize_completion_params(completion_params: dict[str, object]) -> tuple[
 
 
 class WorkflowServiceInterface(Protocol):
-    def get_draft_workflow(self, app_model: App, workflow_id: str | None = None) -> Workflow | None:
+    def get_draft_workflow(self, app_model: App, workflow_id: str = None) -> Workflow | None:
         pass
 
     def get_node_last_run(self, app_model: App, workflow: Workflow, node_id: str) -> WorkflowNodeExecutionModel | None:
@@ -91,7 +91,7 @@ class StructuredOutputResultDict(TypedDict):
 class LLMGenerator:
     @classmethod
     def generate_conversation_name(
-        cls, tenant_id: str, query, conversation_id: str | None = None, app_id: str | None = None
+        cls, tenant_id: str, query, conversation_id: str = None, app_id: str = None
     ):
         prompt = CONVERSATION_TITLE_PROMPT
 
@@ -156,8 +156,8 @@ class LLMGenerator:
         tenant_id: str,
         histories: str,
         *,
-        instruction_prompt: str | None = None,
-        model_config: object | None = None,
+        instruction_prompt: str = None,
+        model_config: object = None,
     ) -> Sequence[str]:
         output_parser = SuggestedQuestionsAfterAnswerOutputParser(instruction_prompt=instruction_prompt)
         format_instructions = output_parser.get_format_instructions()

@@ -33,7 +33,7 @@ class TestDataFactory:
     """Factory helpers for constructing graph events used in tests."""
 
     @staticmethod
-    def create_graph_run_paused_event(outputs: dict[str, object] | None = None) -> GraphRunPausedEvent:
+    def create_graph_run_paused_event(outputs: dict[str, object] = None) -> GraphRunPausedEvent:
         return GraphRunPausedEvent(reasons=[SchedulingPause(message="test pause")], outputs=outputs or {})
 
     @staticmethod
@@ -41,7 +41,7 @@ class TestDataFactory:
         return GraphRunStartedEvent()
 
     @staticmethod
-    def create_graph_run_succeeded_event(outputs: dict[str, object] | None = None) -> GraphRunSucceededEvent:
+    def create_graph_run_succeeded_event(outputs: dict[str, object] = None) -> GraphRunSucceededEvent:
         return GraphRunSucceededEvent(outputs=outputs or {})
 
     @staticmethod
@@ -55,7 +55,7 @@ class TestDataFactory:
 class MockReadOnlyVariablePool:
     """Mock implementation of ReadOnlyVariablePool for testing."""
 
-    def __init__(self, variables: dict[tuple[str, str], object] | None = None):
+    def __init__(self, variables: dict[tuple[str, str], object] = None):
         self._variables = variables or {}
 
     def get(self, selector: Sequence[str]) -> Segment | None:
@@ -81,14 +81,14 @@ class MockReadOnlyGraphRuntimeState:
 
     def __init__(
         self,
-        start_at: float | None = None,
+        start_at: float = None,
         total_tokens: int = 0,
         node_run_steps: int = 0,
         ready_queue_size: int = 0,
         exceptions_count: int = 0,
-        outputs: dict[str, object] | None = None,
-        variables: dict[tuple[str, str], object] | None = None,
-        workflow_execution_id: str | None = None,
+        outputs: dict[str, object] = None,
+        variables: dict[tuple[str, str], object] = None,
+        workflow_execution_id: str = None,
     ):
         self._start_at = start_at or time()
         self._total_tokens = total_tokens

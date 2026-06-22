@@ -56,9 +56,9 @@ class ServerUrlValidationResult(BaseModel):
 
     needs_validation: bool
     validation_passed: bool = False
-    reconnect_result: ReconnectResult | None = None
-    encrypted_server_url: str | None = None
-    server_url_hash: str | None = None
+    reconnect_result: ReconnectResult = None
+    encrypted_server_url: str = None
+    server_url_hash: str = None
 
     @property
     def should_update_server_url(self) -> bool:
@@ -84,7 +84,7 @@ class MCPToolManageService:
     # ========== Provider CRUD Operations ==========
 
     def get_provider(
-        self, *, provider_id: str | None = None, server_identifier: str | None = None, tenant_id: str
+        self, *, provider_id: str = None, server_identifier: str = None, tenant_id: str
     ) -> MCPToolProvider:
         """
         Get MCP provider by ID or server identifier.
@@ -134,8 +134,8 @@ class MCPToolManageService:
         icon_background: str,
         server_identifier: str,
         configuration: MCPConfiguration,
-        authentication: MCPAuthentication | None = None,
-        headers: dict[str, str] | None = None,
+        authentication: MCPAuthentication = None,
+        headers: dict[str, str] = None,
         identity_mode: IdentityMode = IdentityMode.OFF,
     ) -> ToolProviderApiEntity:
         """Create a new MCP provider."""
@@ -192,10 +192,10 @@ class MCPToolManageService:
         icon_type: str,
         icon_background: str,
         server_identifier: str,
-        headers: dict[str, str] | None = None,
+        headers: dict[str, str] = None,
         configuration: MCPConfiguration,
-        authentication: MCPAuthentication | None = None,
-        validation_result: ServerUrlValidationResult | None = None,
+        authentication: MCPAuthentication = None,
+        validation_result: ServerUrlValidationResult = None,
         identity_mode: IdentityMode = IdentityMode.OFF,
     ) -> None:
         """
@@ -347,7 +347,7 @@ class MCPToolManageService:
     # ========== OAuth and Credentials Operations ==========
 
     def update_provider_credentials(
-        self, *, provider_id: str, tenant_id: str, credentials: dict[str, Any], authed: bool | None = None
+        self, *, provider_id: str, tenant_id: str, credentials: dict[str, Any], authed: bool = None
     ) -> None:
         """
         Update provider credentials with encryption.
@@ -536,9 +536,9 @@ class MCPToolManageService:
     def auth_with_actions(
         self,
         provider_entity: MCPProviderEntity,
-        authorization_code: str | None = None,
-        resource_metadata_url: str | None = None,
-        scope_hint: str | None = None,
+        authorization_code: str = None,
+        resource_metadata_url: str = None,
+        scope_hint: str = None,
     ) -> dict[str, str]:
         """
         Perform authentication and execute all resulting actions.

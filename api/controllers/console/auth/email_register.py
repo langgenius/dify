@@ -195,8 +195,8 @@ class EmailRegisterResetApi(Resource):
         self,
         email: str,
         password: str,
-        timezone: str | None = None,
-        language: str | None = None,
+        timezone: str = None,
+        language: str = None,
     ) -> Account:
         try:
             return AccountService.create_account_and_tenant(

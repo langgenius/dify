@@ -65,11 +65,11 @@ class DatasetServiceIntegrationDataFactory:
         provider: str = "vendor",
         indexing_technique: str | None = IndexTechniqueType.HIGH_QUALITY,
         permission: str = DatasetPermissionEnum.ONLY_ME,
-        retrieval_model: dict | None = None,
-        embedding_model_provider: str | None = None,
-        embedding_model: str | None = None,
-        collection_binding_id: str | None = None,
-        chunk_structure: str | None = None,
+        retrieval_model: dict = None,
+        embedding_model_provider: str = None,
+        embedding_model: str = None,
+        collection_binding_id: str = None,
+        chunk_structure: str = None,
     ) -> Dataset:
         """Create a dataset record with configurable SQL fields."""
         dataset = Dataset(

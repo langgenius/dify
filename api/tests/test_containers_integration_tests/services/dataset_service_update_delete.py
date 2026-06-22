@@ -31,7 +31,7 @@ class DatasetUpdateDeleteTestDataFactory:
     def create_account_with_tenant(
         db_session_with_containers: Session,
         role: TenantAccountRole = TenantAccountRole.NORMAL,
-        tenant: Tenant | None = None,
+        tenant: Tenant = None,
     ) -> tuple[Account, Tenant]:
         """Create a real account and tenant with specified role."""
         account = Account(

@@ -83,7 +83,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         invoke_from: InvokeFrom,
         workflow_run_id: str,
         streaming: Literal[False],
-        pause_state_config: PauseStateLayerConfig | None = None,
+        pause_state_config: PauseStateLayerConfig = None,
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -96,7 +96,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         invoke_from: InvokeFrom,
         workflow_run_id: str,
         streaming: Literal[True],
-        pause_state_config: PauseStateLayerConfig | None = None,
+        pause_state_config: PauseStateLayerConfig = None,
     ) -> Generator[Mapping | str, None, None]: ...
 
     @overload
@@ -109,7 +109,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         invoke_from: InvokeFrom,
         workflow_run_id: str,
         streaming: bool,
-        pause_state_config: PauseStateLayerConfig | None = None,
+        pause_state_config: PauseStateLayerConfig = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping, None, None]: ...
 
     def generate(
@@ -121,7 +121,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         invoke_from: InvokeFrom,
         workflow_run_id: str,
         streaming: bool = True,
-        pause_state_config: PauseStateLayerConfig | None = None,
+        pause_state_config: PauseStateLayerConfig = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping, None, None]:
         """
         Generate App response.
@@ -267,7 +267,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         graph_runtime_state: GraphRuntimeState,
-        pause_state_config: PauseStateLayerConfig | None = None,
+        pause_state_config: PauseStateLayerConfig = None,
     ):
         """
         Resume a paused advanced chat execution.
@@ -484,12 +484,12 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         application_generate_entity: AdvancedChatAppGenerateEntity,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-        conversation: Conversation | None = None,
-        message: Message | None = None,
+        conversation: Conversation = None,
+        message: Message = None,
         stream: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
-        pause_state_config: PauseStateLayerConfig | None = None,
-        graph_runtime_state: GraphRuntimeState | None = None,
+        pause_state_config: PauseStateLayerConfig = None,
+        graph_runtime_state: GraphRuntimeState = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
@@ -602,7 +602,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
-        graph_runtime_state: GraphRuntimeState | None = None,
+        graph_runtime_state: GraphRuntimeState = None,
     ):
         """
         Generate worker in a new thread.

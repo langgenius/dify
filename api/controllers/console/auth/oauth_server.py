@@ -31,10 +31,10 @@ class OAuthProviderRequest(BaseModel):
 class OAuthTokenRequest(BaseModel):
     client_id: str
     grant_type: str
-    code: str | None = None
-    client_secret: str | None = None
-    redirect_uri: str | None = None
-    refresh_token: str | None = None
+    code: str = None
+    client_secret: str = None
+    redirect_uri: str = None
+    refresh_token: str = None
 
 
 class OAuthProviderAppResponse(BaseModel):
@@ -57,7 +57,7 @@ class OAuthProviderTokenResponse(BaseModel):
 class OAuthProviderAccountResponse(BaseModel):
     name: str
     email: str
-    avatar: str | None = None
+    avatar: str = None
     interface_language: str
     timezone: str
 

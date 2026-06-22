@@ -104,7 +104,7 @@ class AgentRunRunner:
         run_id: str,
         plugin_daemon_http_client: httpx.AsyncClient,
         dify_api_http_client: httpx.AsyncClient,
-        layer_providers: tuple[LayerProviderInput, ...] | None = None,
+        layer_providers: tuple[LayerProviderInput, ...] = None,
     ) -> None:
         self.sink = sink
         self.request = request
@@ -167,9 +167,9 @@ class AgentRunRunner:
             raise AgentRunValidationError(str(exc)) from exc
 
         entered_run = False
-        output: JsonValue | None = None
-        deferred_tool_call: DeferredToolCallPayload | None = None
-        result_kind: Literal["output", "deferred_tool_call"] | None = None
+        output: JsonValue = None
+        deferred_tool_call: DeferredToolCallPayload = None
+        result_kind: Literal["output", "deferred_tool_call"] = None
         try:
             async with compositor.enter(configs=layer_configs, session_snapshot=self.request.session_snapshot) as run:
                 entered_run = True

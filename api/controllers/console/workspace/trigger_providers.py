@@ -50,7 +50,7 @@ class TriggerSubscriptionBuilderVerifyPayload(BaseModel):
 
 
 class TriggerSubscriptionBuilderUpdatePayload(BaseModel):
-    name: str | None = None
+    name: str = None
     parameters: dict[str, Any] | None = Field(default=None)
     properties: dict[str, Any] | None = Field(default=None)
     credentials: dict[str, Any] | None = Field(default=None)
@@ -64,7 +64,7 @@ class TriggerSubscriptionBuilderUpdatePayload(BaseModel):
 
 class TriggerOAuthClientPayload(BaseModel):
     client_params: dict[str, Any] | None = Field(default=None)
-    enabled: bool | None = None
+    enabled: bool = None
 
 
 class TriggerOAuthAuthorizeResponse(BaseModel):

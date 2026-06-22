@@ -64,8 +64,8 @@ class BaseAPIClient:
         self,
         method: str,
         endpoint: str,
-        query_params: dict[str, Any] | None = None,
-        data: dict[str, Any] | None = None,
+        query_params: dict[str, Any] = None,
+        data: dict[str, Any] = None,
         **kwargs,
     ) -> Response:
         stream = kwargs.pop("stream", False)
@@ -76,24 +76,24 @@ class BaseAPIClient:
 
         return self.session.request(method, url, params=query_params, json=data, **kwargs)
 
-    def _get(self, endpoint: str, query_params: dict[str, Any] | None = None, **kwargs):
+    def _get(self, endpoint: str, query_params: dict[str, Any] = None, **kwargs):
         return self._request("GET", endpoint, query_params=query_params, **kwargs)
 
     def _post(
-        self, endpoint: str, query_params: dict[str, Any] | None = None, data: dict[str, Any] | None = None, **kwargs
+        self, endpoint: str, query_params: dict[str, Any] = None, data: dict[str, Any] = None, **kwargs
     ):
         return self._request("POST", endpoint, query_params=query_params, data=data, **kwargs)
 
     def _put(
-        self, endpoint: str, query_params: dict[str, Any] | None = None, data: dict[str, Any] | None = None, **kwargs
+        self, endpoint: str, query_params: dict[str, Any] = None, data: dict[str, Any] = None, **kwargs
     ):
         return self._request("PUT", endpoint, query_params=query_params, data=data, **kwargs)
 
-    def _delete(self, endpoint: str, query_params: dict[str, Any] | None = None, **kwargs):
+    def _delete(self, endpoint: str, query_params: dict[str, Any] = None, **kwargs):
         return self._request("DELETE", endpoint, query_params=query_params, **kwargs)
 
     def _patch(
-        self, endpoint: str, query_params: dict[str, Any] | None = None, data: dict[str, Any] | None = None, **kwargs
+        self, endpoint: str, query_params: dict[str, Any] = None, data: dict[str, Any] = None, **kwargs
     ):
         return self._request("PATCH", endpoint, query_params=query_params, data=data, **kwargs)
 
@@ -141,7 +141,7 @@ class WaterCrawlAPIClient(BaseAPIClient):
 
         raise Exception(f"Unknown response type: {content_type}")
 
-    def get_crawl_requests_list(self, page: int | None = None, page_size: int | None = None):
+    def get_crawl_requests_list(self, page: int = None, page_size: int = None):
         query_params = {"page": page or 1, "page_size": page_size or 10}
         return self.process_response(
             self._get(
@@ -159,10 +159,10 @@ class WaterCrawlAPIClient(BaseAPIClient):
 
     def create_crawl_request(
         self,
-        url: list | str | None = None,
-        spider_options: SpiderOptions | None = None,
-        page_options: PageOptions | None = None,
-        plugin_options: dict[str, Any] | None = None,
+        url: list | str = None,
+        spider_options: SpiderOptions = None,
+        page_options: PageOptions = None,
+        plugin_options: dict[str, Any] = None,
     ):
         data = {
             # 'urls': url if isinstance(url, list) else [url],
@@ -204,7 +204,7 @@ class WaterCrawlAPIClient(BaseAPIClient):
         yield from generator
 
     def get_crawl_request_results(
-        self, item_id: str, page: int = 1, page_size: int = 25, query_params: dict[str, Any] | None = None
+        self, item_id: str, page: int = 1, page_size: int = 25, query_params: dict[str, Any] = None
     ):
         query_params = query_params or {}
         query_params.update({"page": page or 1, "page_size": page_size or 25})
@@ -215,8 +215,8 @@ class WaterCrawlAPIClient(BaseAPIClient):
     def scrape_url(
         self,
         url: str,
-        page_options: PageOptions | None = None,
-        plugin_options: dict[str, Any] | None = None,
+        page_options: PageOptions = None,
+        plugin_options: dict[str, Any] = None,
         sync: bool = True,
         prefetched: bool = True,
     ):

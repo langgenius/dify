@@ -34,14 +34,14 @@ from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 
 class RagPipelineImportPayload(BaseModel):
     mode: str
-    yaml_content: str | None = None
-    yaml_url: str | None = None
-    name: str | None = None
-    description: str | None = None
-    icon_type: str | None = None
-    icon: str | None = None
-    icon_background: str | None = None
-    pipeline_id: str | None = None
+    yaml_content: str = None
+    yaml_url: str = None
+    name: str = None
+    description: str = None
+    icon_type: str = None
+    icon: str = None
+    icon_background: str = None
+    pipeline_id: str = None
 
 
 class IncludeSecretQuery(BaseModel):
@@ -51,8 +51,8 @@ class IncludeSecretQuery(BaseModel):
 class RagPipelineImportResponse(ResponseModel):
     id: str
     status: ImportStatus
-    pipeline_id: str | None = None
-    dataset_id: str | None = None
+    pipeline_id: str = None
+    dataset_id: str = None
     current_dsl_version: str
     imported_dsl_version: str
     error: str = ""

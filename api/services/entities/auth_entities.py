@@ -46,7 +46,7 @@ class LoginPayloadBase(BaseModel):
 
 class ForgotPasswordSendPayload(BaseModel):
     email: EmailStr
-    language: str | None = None
+    language: str = None
 
 
 class ForgotPasswordCheckPayload(BaseModel):

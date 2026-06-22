@@ -154,7 +154,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
     def get_by_workflow_execution(
         self,
         workflow_execution_id: str,
-        order_config: OrderConfig | None = None,
+        order_config: OrderConfig = None,
     ) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve all workflow node executions for a workflow execution from cache.

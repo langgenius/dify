@@ -81,7 +81,7 @@ class DatasetsHitTestingBase:
 
     @staticmethod
     def get_and_validate_dataset(
-        dataset_id: str, current_user: Account | None = None, current_tenant_id: str | None = None
+        dataset_id: str, current_user: Account = None, current_tenant_id: str = None
     ) -> Dataset:
         current_user, _ = resolve_account_fallback(current_user, current_tenant_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -109,8 +109,8 @@ class DatasetsHitTestingBase:
     def perform_hit_testing(
         dataset: Dataset,
         args: dict[str, Any],
-        current_user: Account | None = None,
-        current_tenant_id: str | None = None,
+        current_user: Account = None,
+        current_tenant_id: str = None,
     ) -> dict[str, Any]:
         try:
             current_user, _ = resolve_account_fallback(current_user, current_tenant_id)

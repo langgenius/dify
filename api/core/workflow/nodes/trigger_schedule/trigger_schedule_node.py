@@ -21,7 +21,7 @@ class TriggerScheduleNode(Node[TriggerScheduleNodeData]):
 
     @classmethod
     @override
-    def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
+    def get_default_config(cls, filters: Mapping[str, object] = None) -> Mapping[str, object]:
         return {
             "type": TRIGGER_SCHEDULE_NODE_TYPE,
             "config": {

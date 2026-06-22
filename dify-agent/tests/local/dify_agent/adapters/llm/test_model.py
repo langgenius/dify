@@ -39,8 +39,8 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
     def make_provider(
         self,
         *,
-        user_id: str | None = None,
-        http_client: httpx.AsyncClient | None = None,
+        user_id: str = None,
+        http_client: httpx.AsyncClient = None,
     ) -> DifyPluginDaemonProvider:
         return DifyPluginDaemonProvider(
             tenant_id="tenant-1",

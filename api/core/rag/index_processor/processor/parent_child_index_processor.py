@@ -53,7 +53,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         return text_docs
 
     @override
-    def transform(self, documents: list[Document], current_user: Account | None = None, **kwargs) -> list[Document]:
+    def transform(self, documents: list[Document], current_user: Account = None, **kwargs) -> list[Document]:
         process_rule = kwargs.get("process_rule")
         if not process_rule:
             raise ValueError("No process rule found.")
@@ -133,7 +133,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         self,
         dataset: Dataset,
         documents: list[Document],
-        multimodal_documents: list[AttachmentDocument] | None = None,
+        multimodal_documents: list[AttachmentDocument] = None,
         with_keywords: bool = True,
         **kwargs,
     ) -> None:
@@ -350,7 +350,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         tenant_id: str,
         preview_texts: list[PreviewDetail],
         summary_index_setting: SummaryIndexSettingDict,
-        doc_language: str | None = None,
+        doc_language: str = None,
     ) -> list[PreviewDetail]:
         """
         For each parent chunk in preview_texts, concurrently call generate_summary to generate a summary

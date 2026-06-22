@@ -16,11 +16,11 @@ class MultipleRetrievalConfig(BaseModel):
     """
 
     top_k: int
-    score_threshold: float | None = None
+    score_threshold: float = None
     reranking_mode: str = "reranking_model"
     reranking_enable: bool = True
-    reranking_model: RerankingModelConfig | None = None
-    weights: WeightedScoreConfig | None = None
+    reranking_model: RerankingModelConfig = None
+    weights: WeightedScoreConfig = None
 
 
 class SingleRetrievalConfig(BaseModel):
@@ -41,11 +41,11 @@ class KnowledgeRetrievalNodeData(BaseNodeData):
     query_attachment_selector: list[str] | None | str = None
     dataset_ids: list[str]
     retrieval_mode: Literal["single", "multiple"]
-    multiple_retrieval_config: MultipleRetrievalConfig | None = None
-    single_retrieval_config: SingleRetrievalConfig | None = None
+    multiple_retrieval_config: MultipleRetrievalConfig = None
+    single_retrieval_config: SingleRetrievalConfig = None
     metadata_filtering_mode: Literal["disabled", "automatic", "manual"] | None = "disabled"
-    metadata_model_config: ModelConfig | None = None
-    metadata_filtering_conditions: MetadataFilteringCondition | None = None
+    metadata_model_config: ModelConfig = None
+    metadata_filtering_conditions: MetadataFilteringCondition = None
     vision: VisionConfig = Field(default_factory=VisionConfig)
 
     @property

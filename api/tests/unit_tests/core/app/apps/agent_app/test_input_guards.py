@@ -44,7 +44,7 @@ def _make_entity(query: str = "hello") -> SimpleNamespace:
     )
 
 
-def _patch_moderation(monkeypatch: pytest.MonkeyPatch, *, returns=None, raises: Exception | None = None) -> None:
+def _patch_moderation(monkeypatch: pytest.MonkeyPatch, *, returns=None, raises: Exception = None) -> None:
     class _FakeModeration:
         def check(self, **kwargs: Any):
             if raises is not None:

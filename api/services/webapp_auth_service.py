@@ -66,7 +66,7 @@ class WebAppAuthService:
 
     @classmethod
     def send_email_code_login_email(
-        cls, account: Account | None = None, email: str | None = None, language: str = "en-US"
+        cls, account: Account = None, email: str = None, language: str = "en-US"
     ):
         email = account.email if account else email
         if email is None:
@@ -133,7 +133,7 @@ class WebAppAuthService:
 
     @classmethod
     def is_app_require_permission_check(
-        cls, app_code: str | None = None, app_id: str | None = None, access_mode: str | None = None
+        cls, app_code: str = None, app_id: str = None, access_mode: str = None
     ) -> bool:
         """
         Check if the app requires permission check based on its access mode.
@@ -155,7 +155,7 @@ class WebAppAuthService:
         return False
 
     @classmethod
-    def get_app_auth_type(cls, app_code: str | None = None, access_mode: str | None = None) -> WebAppAuthType:
+    def get_app_auth_type(cls, app_code: str = None, access_mode: str = None) -> WebAppAuthType:
         """
         Get the authentication type for the app based on its access mode.
         """

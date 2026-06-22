@@ -45,7 +45,7 @@ class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
 
 
 class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter):
-    def __init__(self, fixed_separator: str = "\n\n", separators: list[str] | None = None, **kwargs: Any):
+    def __init__(self, fixed_separator: str = "\n\n", separators: list[str] = None, **kwargs: Any):
         """Create a new TextSplitter."""
         super().__init__(**kwargs)
         self._fixed_separator = codecs.decode(fixed_separator, "unicode_escape")

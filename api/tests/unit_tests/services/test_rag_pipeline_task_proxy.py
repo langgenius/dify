@@ -39,8 +39,8 @@ class RagPipelineTaskProxyTestDataFactory:
         tenant_id: str = "tenant-789",
         workflow_id: str = "workflow-101",
         streaming: bool = True,
-        workflow_execution_id: str | None = None,
-        workflow_thread_pool_id: str | None = None,
+        workflow_execution_id: str = None,
+        workflow_thread_pool_id: str = None,
     ) -> RagPipelineInvokeEntity:
         """Create RagPipelineInvokeEntity instance for testing."""
         return RagPipelineInvokeEntity(
@@ -58,7 +58,7 @@ class RagPipelineTaskProxyTestDataFactory:
     def create_rag_pipeline_task_proxy(
         dataset_tenant_id: str = "tenant-123",
         user_id: str = "user-456",
-        rag_pipeline_invoke_entities: list[RagPipelineInvokeEntity] | None = None,
+        rag_pipeline_invoke_entities: list[RagPipelineInvokeEntity] = None,
     ) -> RagPipelineTaskProxy:
         """Create RagPipelineTaskProxy instance for testing."""
         if rag_pipeline_invoke_entities is None:

@@ -46,7 +46,7 @@ class TestWorkflowDraftVariableService:
         return {}
 
     def _create_test_app(
-        self, db_session_with_containers: Session, mock_external_service_dependencies, fake: Faker | None = None
+        self, db_session_with_containers: Session, mock_external_service_dependencies, fake: Faker = None
     ):
         """
         Helper method to create a test app with realistic data for testing.
@@ -82,7 +82,7 @@ class TestWorkflowDraftVariableService:
         db_session_with_containers.commit()
         return app
 
-    def _create_test_workflow(self, db_session_with_containers: Session, app, fake: Faker | None = None):
+    def _create_test_workflow(self, db_session_with_containers: Session, app, fake: Faker = None):
         """
         Helper method to create a test workflow associated with an app.
 
@@ -124,7 +124,7 @@ class TestWorkflowDraftVariableService:
         name,
         value,
         variable_type: DraftVariableType = DraftVariableType.CONVERSATION,
-        user_id: str | None = None,
+        user_id: str = None,
         fake=None,
     ):
         """

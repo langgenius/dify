@@ -99,7 +99,7 @@ def _jsonify_form_definition(
     form: Form,
     *,
     inputs: Sequence[FormInputConfig] = (),
-    site_payload: dict | None = None,
+    site_payload: dict = None,
 ) -> Response:
     """Return the form payload (optionally with site) as a JSON response."""
     definition_payload = form.get_definition().model_dump(mode="json")

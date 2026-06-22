@@ -59,7 +59,7 @@ class _LazyEmbeddings(Embeddings):
 
     def __init__(self, dataset: Dataset):
         self._dataset = dataset
-        self._real: Embeddings | None = None
+        self._real: Embeddings = None
 
     def _ensure(self) -> Embeddings:
         if self._real is None:
@@ -99,7 +99,7 @@ class _LazyEmbeddings(Embeddings):
 
 
 class Vector:
-    def __init__(self, dataset: Dataset, attributes: list | None = None):
+    def __init__(self, dataset: Dataset, attributes: list = None):
         if attributes is None:
             # `is_summary` and `original_chunk_id` are stored on summary vectors
             # by `SummaryIndexService` and read back by `RetrievalService` to
@@ -159,7 +159,7 @@ class Vector:
             logger.warning("skip %d empty documents before vector embedding", skipped_count)
         return filtered_documents
 
-    def create(self, texts: list | None = None, **kwargs):
+    def create(self, texts: list = None, **kwargs):
         if texts:
             texts = self._filter_empty_text_documents(texts)
             if not texts:
@@ -180,7 +180,7 @@ class Vector:
                 self._vector_processor.create(texts=batch, embeddings=batch_embeddings, **kwargs)
             logger.info("Embedding %s texts took %s s", len(texts), time.time() - start)
 
-    def create_multimodal(self, file_documents: list | None = None, **kwargs):
+    def create_multimodal(self, file_documents: list = None, **kwargs):
         if file_documents:
             start = time.time()
             logger.info("start embedding %s files %s", len(file_documents), start)

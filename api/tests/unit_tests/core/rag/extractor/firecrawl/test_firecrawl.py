@@ -13,7 +13,7 @@ from core.rag.extractor.firecrawl.firecrawl_app import FirecrawlApp
 from core.rag.extractor.firecrawl.firecrawl_web_extractor import FirecrawlWebExtractor
 
 
-def _response(status_code: int, json_data: Mapping[str, Any] | None = None, text: str = "") -> MagicMock:
+def _response(status_code: int, json_data: Mapping[str, Any] = None, text: str = "") -> MagicMock:
     response = MagicMock()
     response.status_code = status_code
     response.text = text

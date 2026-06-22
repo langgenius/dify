@@ -32,8 +32,8 @@ class CodeExecutionError(Exception):
 
 class CodeExecutionResponse(BaseModel):
     class Data(BaseModel):
-        stdout: str | None = None
-        error: str | None = None
+        stdout: str = None
+        error: str = None
 
     code: int
     message: str

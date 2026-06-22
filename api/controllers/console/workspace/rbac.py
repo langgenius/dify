@@ -175,7 +175,7 @@ class _PaginationQuery(BaseModel):
     results_per_page: int | None = Field(
         default=None, ge=1, le=99999, validation_alias=AliasChoices("limit", "results_per_page")
     )
-    reverse: bool | None = None
+    reverse: bool = None
 
     def to_inner_options(self) -> svc.ListOption:
         return svc.ListOption.model_validate(self.model_dump())
@@ -194,7 +194,7 @@ def _pagination_options() -> svc.ListOption:
 
 
 def _legacy_workspace_roles(
-    options: svc.ListOption | None = None, *, include_owner: int = 0
+    options: svc.ListOption = None, *, include_owner: int = 0
 ) -> svc.Paginated[svc.RBACRole]:
     """Return the built-in legacy workspace roles in the RBAC list shape.
 

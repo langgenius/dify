@@ -34,10 +34,10 @@ class CrawlOptions:
     limit: int = 1
     crawl_sub_pages: bool = False
     only_main_content: bool = False
-    includes: str | None = None
-    excludes: str | None = None
-    prompt: str | None = None
-    max_depth: int | None = None
+    includes: str = None
+    excludes: str = None
+    prompt: str = None
+    max_depth: int = None
     use_sitemap: bool = True
 
     def get_include_paths(self) -> list[str]:
@@ -367,7 +367,7 @@ class WebsiteService:
     def _get_firecrawl_url_data(
         cls, job_id: str, url: str, api_key: str, config: dict[str, Any]
     ) -> dict[str, Any] | None:
-        crawl_data: list[FirecrawlDocumentData] | None = None
+        crawl_data: list[FirecrawlDocumentData] = None
         file_key = "website_files/" + job_id + ".txt"
         if storage.exists(file_key):
             stored_data = storage.load_once(file_key)

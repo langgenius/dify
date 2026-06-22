@@ -27,7 +27,7 @@ class PluginDaemonBasicResponse[T: BaseModel | dict | list | bool | str](BaseMod
 
     code: int
     message: str
-    data: T | None = None
+    data: T = None
 
 
 class InstallPluginMessage(BaseModel):
@@ -73,7 +73,7 @@ class PluginBasicBooleanResponse(BaseModel):
     """
 
     result: bool
-    credentials: dict[str, Any] | None = None
+    credentials: dict[str, Any] = None
 
 
 class PluginModelSchemaEntity(BaseModel):

@@ -27,7 +27,7 @@ def get_mocked_fetch_memory(memory_text: str):
         def get_history_prompt_messages(
             self,
             max_token_limit: int = 2000,
-            message_limit: int | None = None,
+            message_limit: int = None,
         ):
             return [UserPromptMessage(content=memory_text), AssistantPromptMessage(content="mocked answer")]
 

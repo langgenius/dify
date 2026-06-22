@@ -16,7 +16,7 @@ class TriggerEventNode(Node[TriggerEventNodeData]):
 
     @classmethod
     @override
-    def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
+    def get_default_config(cls, filters: Mapping[str, object] = None) -> Mapping[str, object]:
         return {
             "type": "plugin",
             "config": {

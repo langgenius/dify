@@ -41,7 +41,7 @@ class RunEventSink(Protocol):
         """Persist ``event`` and return its cursor id."""
         ...
 
-    async def update_status(self, run_id: str, status: RunStatus, error: str | None = None) -> None:
+    async def update_status(self, run_id: str, status: RunStatus, error: str = None) -> None:
         """Persist the current run status."""
         ...
 
@@ -65,7 +65,7 @@ class InMemoryRunEventSink:
         self.events[event.run_id].append(stored)
         return event_id
 
-    async def update_status(self, run_id: str, status: RunStatus, error: str | None = None) -> None:
+    async def update_status(self, run_id: str, status: RunStatus, error: str = None) -> None:
         """Record the latest status; timestamps are owned by run stores."""
         self.statuses[run_id] = status
         self.errors[run_id] = error
@@ -135,7 +135,7 @@ async def emit_run_failed(
     *,
     run_id: str,
     error: str,
-    reason: str | None = None,
+    reason: str = None,
 ) -> str:
     """Emit the terminal failure lifecycle event."""
     return await emit_run_event(

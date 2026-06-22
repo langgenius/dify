@@ -43,7 +43,7 @@ class IndexProcessorProtocol(Protocol):
         original_document_id: str,
         chunks: Mapping[str, Any],
         batch: Any,
-        summary_index_setting: dict[str, Any] | None = None,
+        summary_index_setting: dict[str, Any] = None,
     ) -> IndexingResultDict: ...
 
     def get_preview_output(
@@ -58,5 +58,5 @@ class IndexProcessorProtocol(Protocol):
 
 class SummaryIndexServiceProtocol(Protocol):
     def generate_and_vectorize_summary(
-        self, dataset_id: str, document_id: str, is_preview: bool, summary_index_setting: dict[str, Any] | None = None
+        self, dataset_id: str, document_id: str, is_preview: bool, summary_index_setting: dict[str, Any] = None
     ) -> None: ...

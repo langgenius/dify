@@ -40,7 +40,7 @@ class SQLAlchemyWorkflowTriggerLogRepository(WorkflowTriggerLogRepository):
         return trigger_log
 
     @override
-    def get_by_id(self, trigger_log_id: str, tenant_id: str | None = None) -> WorkflowTriggerLog | None:
+    def get_by_id(self, trigger_log_id: str, tenant_id: str = None) -> WorkflowTriggerLog | None:
         """Get a trigger log by its ID."""
         query = select(WorkflowTriggerLog).where(WorkflowTriggerLog.id == trigger_log_id)
 

@@ -73,7 +73,7 @@ class TestSendEmailCodeLoginMailTask:
                 "email_service_instance": mock_email_service_instance,
             }
 
-    def _create_test_account(self, db_session_with_containers: Session, fake: Faker | None = None):
+    def _create_test_account(self, db_session_with_containers: Session, fake: Faker = None):
         """
         Helper method to create a test account for testing.
 
@@ -100,7 +100,7 @@ class TestSendEmailCodeLoginMailTask:
 
         return account
 
-    def _create_test_tenant_and_account(self, db_session_with_containers: Session, fake: Faker | None = None):
+    def _create_test_tenant_and_account(self, db_session_with_containers: Session, fake: Faker = None):
         """
         Helper method to create a test tenant and account for testing.
 

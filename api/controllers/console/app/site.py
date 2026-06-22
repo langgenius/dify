@@ -57,16 +57,16 @@ class AppSiteUpdatePayload(BaseModel):
 class AppSiteResponse(ResponseModel):
     app_id: str
     access_token: str | None = Field(default=None, validation_alias="code")
-    code: str | None = None
+    code: str = None
     title: str
-    icon: str | None = None
-    icon_background: str | None = None
-    description: str | None = None
+    icon: str = None
+    icon_background: str = None
+    description: str = None
     default_language: str
-    customize_domain: str | None = None
-    copyright: str | None = None
-    privacy_policy: str | None = None
-    custom_disclaimer: str | None = None
+    customize_domain: str = None
+    copyright: str = None
+    privacy_policy: str = None
+    custom_disclaimer: str = None
     customize_token_strategy: str
     prompt_public: bool
     show_workflow_steps: bool

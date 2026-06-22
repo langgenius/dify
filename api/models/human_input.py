@@ -173,13 +173,13 @@ class StandaloneWebAppRecipientPayload(BaseModel):
 @final
 class ConsoleRecipientPayload(BaseModel):
     TYPE: Literal[RecipientType.CONSOLE] = RecipientType.CONSOLE
-    account_id: str | None = None
+    account_id: str = None
 
 
 @final
 class BackstageRecipientPayload(BaseModel):
     TYPE: Literal[RecipientType.BACKSTAGE] = RecipientType.BACKSTAGE
-    account_id: str | None = None
+    account_id: str = None
 
 
 @final

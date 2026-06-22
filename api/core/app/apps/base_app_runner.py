@@ -93,10 +93,10 @@ class AppRunner:
         inputs: Mapping[str, str],
         files: Sequence["File"],
         query: str = "",
-        context: str | None = None,
-        memory: TokenBufferMemory | None = None,
-        image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
-        context_files: list["File"] | None = None,
+        context: str = None,
+        memory: TokenBufferMemory = None,
+        image_detail_config: ImagePromptMessageContent.DETAIL = None,
+        context_files: list["File"] = None,
     ) -> tuple[list[PromptMessage], list[str] | None]:
         """
         Organize prompt messages
@@ -173,7 +173,7 @@ class AppRunner:
         prompt_messages: list,
         text: str,
         stream: bool,
-        usage: LLMUsage | None = None,
+        usage: LLMUsage = None,
     ):
         """
         Direct output
@@ -216,9 +216,9 @@ class AppRunner:
         queue_manager: AppQueueManager,
         stream: bool,
         agent: bool = False,
-        message_id: str | None = None,
-        user_id: str | None = None,
-        tenant_id: str | None = None,
+        message_id: str = None,
+        user_id: str = None,
+        tenant_id: str = None,
     ):
         """
         Handle invoke result
@@ -276,9 +276,9 @@ class AppRunner:
         invoke_result: Generator[LLMResultChunk, None, None],
         queue_manager: AppQueueManager,
         agent: bool,
-        message_id: str | None = None,
-        user_id: str | None = None,
-        tenant_id: str | None = None,
+        message_id: str = None,
+        user_id: str = None,
+        tenant_id: str = None,
     ):
         """
         Handle invoke result
@@ -456,7 +456,7 @@ class AppRunner:
         tenant_id: str,
         app_generate_entity: AppGenerateEntity,
         inputs: Mapping[str, Any],
-        query: str | None = None,
+        query: str = None,
         message_id: str,
     ) -> tuple[bool, Mapping[str, Any], str]:
         """

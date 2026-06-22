@@ -57,11 +57,11 @@ CURRENT_DSL_VERSION = "0.1.0"
 class RagPipelineImportInfo(BaseModel):
     id: str
     status: ImportStatus
-    pipeline_id: str | None = None
+    pipeline_id: str = None
     current_dsl_version: str = CURRENT_DSL_VERSION
     imported_dsl_version: str = ""
     error: str = ""
-    dataset_id: str | None = None
+    dataset_id: str = None
 
 
 class RagPipelinePendingData(BaseModel):
@@ -91,12 +91,12 @@ class RagPipelineDslService:
         *,
         account: Account,
         import_mode: str,
-        yaml_content: str | None = None,
-        yaml_url: str | None = None,
-        pipeline_id: str | None = None,
-        dataset: Dataset | None = None,
-        dataset_name: str | None = None,
-        icon_info: IconInfo | None = None,
+        yaml_content: str = None,
+        yaml_url: str = None,
+        pipeline_id: str = None,
+        dataset: Dataset = None,
+        dataset_name: str = None,
+        icon_info: IconInfo = None,
     ) -> RagPipelineImportInfo:
         """Import an app from YAML content or URL."""
         import_id = str(uuid.uuid4())
@@ -513,7 +513,7 @@ class RagPipelineDslService:
         pipeline: Pipeline | None,
         data: dict[str, Any],
         account: Account,
-        dependencies: list[PluginDependency] | None = None,
+        dependencies: list[PluginDependency] = None,
     ) -> Pipeline:
         """Create a new app or update an existing one."""
         if not account.current_tenant_id:

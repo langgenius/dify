@@ -219,9 +219,9 @@ class TestMCPClient:
         client = MCPClient(server_url="http://test.example.com")
 
         with patch.object(client, "cleanup") as mock_cleanup:
-            exc_type: type[BaseException] | None = None
-            exc_val: BaseException | None = None
-            exc_tb: TracebackType | None = None
+            exc_type: type[BaseException] = None
+            exc_val: BaseException = None
+            exc_tb: TracebackType = None
             client.__exit__(exc_type, exc_val, exc_tb)
 
             mock_cleanup.assert_called_once()

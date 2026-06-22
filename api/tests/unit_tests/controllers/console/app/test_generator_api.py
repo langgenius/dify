@@ -261,7 +261,7 @@ def _workflow_generate_payload() -> dict:
     }
 
 
-def _stub_workflow_service(monkeypatch: pytest.MonkeyPatch, returns=None, raises: Exception | None = None):
+def _stub_workflow_service(monkeypatch: pytest.MonkeyPatch, returns=None, raises: Exception = None):
     def _call(**_kwargs):
         if raises is not None:
             raise raises

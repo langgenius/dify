@@ -72,7 +72,7 @@ def test_get_default_config_with_malformed_http_request_config_raises_type_error
 
 
 def _build_http_node(
-    *, timeout: dict[str, int | None] | None = None, ssl_verify: bool | None = None
+    *, timeout: dict[str, int | None] = None, ssl_verify: bool = None
 ) -> HttpRequestNode:
     node_data: dict[str, Any] = {
         "type": "http-request",

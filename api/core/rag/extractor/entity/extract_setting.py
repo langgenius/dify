@@ -9,11 +9,11 @@ class NotionInfo(BaseModel):
     Notion import info.
     """
 
-    credential_id: str | None = None
+    credential_id: str = None
     notion_workspace_id: str | None = ""
     notion_obj_id: str
     notion_page_type: str
-    document: Document | None = None
+    document: Document = None
     tenant_id: str
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -39,8 +39,8 @@ class ExtractSetting(BaseModel):
     """
 
     datasource_type: str
-    upload_file: UploadFile | None = None
-    notion_info: NotionInfo | None = None
-    website_info: WebsiteInfo | None = None
-    document_model: str | None = None
+    upload_file: UploadFile = None
+    notion_info: NotionInfo = None
+    website_info: WebsiteInfo = None
+    document_model: str = None
     model_config = ConfigDict(arbitrary_types_allowed=True)

@@ -24,8 +24,8 @@ class _QueryResponse(BaseModel):
 
 
 class _RetrieveRecordResponse(BaseModel):
-    content: str | None = None
-    title: str | None = None
+    content: str = None
+    title: str = None
 
     model_config = ConfigDict(extra="allow")
 
@@ -46,8 +46,8 @@ class _DumpedDocumentResponse(BaseModel):
 class _DumpedSegmentResponse(BaseModel):
     id: str
     document_id: str
-    created_at: datetime | None = None
-    document: _DumpedDocumentResponse | None = None
+    created_at: datetime = None
+    document: _DumpedDocumentResponse = None
 
     model_config = ConfigDict(extra="allow")
 
@@ -66,8 +66,8 @@ def _create_dataset(
     db_session: Session,
     *,
     provider: str = "vendor",
-    tenant_id: str | None = None,
-    created_by: str | None = None,
+    tenant_id: str = None,
+    created_by: str = None,
     name: str = "test-dataset",
 ) -> Dataset:
     ds = Dataset(
@@ -87,8 +87,8 @@ def _create_dataset_document(
     *,
     name: str = "guide.md",
     data_source_type: str = DataSourceType.UPLOAD_FILE,
-    doc_type: str | None = None,
-    doc_metadata: dict[str, object] | None = None,
+    doc_type: str = None,
+    doc_metadata: dict[str, object] = None,
 ) -> DatasetDocument:
     tenant_id = str(uuid4())
     created_by = str(uuid4())
@@ -122,9 +122,9 @@ def _create_dataset_document(
 def _build_segment(
     *,
     document_id: str,
-    tenant_id: str | None = None,
-    dataset_id: str | None = None,
-    created_by: str | None = None,
+    tenant_id: str = None,
+    dataset_id: str = None,
+    created_by: str = None,
 ) -> DocumentSegment:
     return DocumentSegment(
         tenant_id=tenant_id or str(uuid4()),
@@ -139,7 +139,7 @@ def _build_segment(
     )
 
 
-def _create_segment(db_session: Session, *, document: DatasetDocument | None = None) -> DocumentSegment:
+def _create_segment(db_session: Session, *, document: DatasetDocument = None) -> DocumentSegment:
     segment = _build_segment(
         tenant_id=document.tenant_id if document else None,
         dataset_id=document.dataset_id if document else None,

@@ -43,7 +43,7 @@ from services.feature_service import FeatureService
 class MemberInvitePayload(BaseModel):
     emails: list[str] = Field(default_factory=list)
     role: str
-    language: str | None = None
+    language: str = None
 
 
 class MemberRoleUpdatePayload(BaseModel):
@@ -51,7 +51,7 @@ class MemberRoleUpdatePayload(BaseModel):
 
 
 class OwnerTransferEmailPayload(BaseModel):
-    language: str | None = None
+    language: str = None
 
 
 class OwnerTransferCheckPayload(BaseModel):
@@ -66,8 +66,8 @@ class OwnerTransferPayload(BaseModel):
 class MemberInviteResultResponse(ResponseModel):
     status: str
     email: str
-    url: str | None = None
-    message: str | None = None
+    url: str = None
+    message: str = None
 
 
 class MemberInviteResponse(ResponseModel):
@@ -181,7 +181,7 @@ class MemberListApi(Resource):
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[AccountWithRoleList.__name__])
     @with_current_user
-    def get(self, current_user: Account | None = None):
+    def get(self, current_user: Account = None):
         if current_user is None:
             current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:

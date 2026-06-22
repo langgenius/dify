@@ -57,7 +57,7 @@ class TencentSpanBuilder:
 
     @staticmethod
     def build_workflow_spans(
-        trace_info: WorkflowTraceInfo, trace_id: int, user_id: str, links: list | None = None
+        trace_info: WorkflowTraceInfo, trace_id: int, user_id: str, links: list = None
     ) -> list[SpanData]:
         """Build workflow-related spans"""
         spans = []
@@ -186,7 +186,7 @@ class TencentSpanBuilder:
 
     @staticmethod
     def build_message_span(
-        trace_info: MessageTraceInfo, trace_id: int, user_id: str, links: list | None = None
+        trace_info: MessageTraceInfo, trace_id: int, user_id: str, links: list = None
     ) -> SpanData:
         """Build message span."""
         links = links or []

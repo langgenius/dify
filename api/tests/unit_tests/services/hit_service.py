@@ -31,7 +31,7 @@ class HitTestingTestDataFactory:
         dataset_id: str = "dataset-123",
         tenant_id: str = "tenant-123",
         provider: str = "vendor",
-        retrieval_model: dict[str, Any] | None = None,
+        retrieval_model: dict[str, Any] = None,
         **kwargs,
     ) -> Mock:
         """
@@ -84,7 +84,7 @@ class HitTestingTestDataFactory:
     @staticmethod
     def create_document_mock(
         content: str = "Test document content",
-        metadata: dict[str, Any] | None = None,
+        metadata: dict[str, Any] = None,
         **kwargs,
     ) -> Mock:
         """

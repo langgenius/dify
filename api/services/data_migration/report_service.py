@@ -8,7 +8,7 @@ from services.data_migration.entities import ReportContext, ResourceIdMapping, R
 class MigrationReportService:
     """Render structured migration resource results into CLI-friendly summary lines."""
 
-    def render(self, items: list[ResourceReportItem], *, context: ReportContext | None = None) -> list[str]:
+    def render(self, items: list[ResourceReportItem], *, context: ReportContext = None) -> list[str]:
         counts = Counter((item.resource_type.value, item.status) for item in items)
         lines = self._render_context(context)
         lines.extend(

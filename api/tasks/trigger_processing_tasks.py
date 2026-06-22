@@ -308,7 +308,7 @@ def dispatch_triggered_workflow(
             return dispatched_count
 
         node_data: TriggerEventNodeData = TriggerEventNodeData.model_validate(event_node)
-        invoke_response: TriggerInvokeEventResponse | None = None
+        invoke_response: TriggerInvokeEventResponse = None
 
         with session_factory.create_session() as session:
             try:

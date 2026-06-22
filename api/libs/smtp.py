@@ -22,7 +22,7 @@ class SMTPClient:
         self.opportunistic_tls = opportunistic_tls
 
     def send(self, mail: dict[str, Any]):
-        smtp: smtplib.SMTP | None = None
+        smtp: smtplib.SMTP = None
         local_host = dify_config.SMTP_LOCAL_HOSTNAME
         try:
             if self.use_tls and not self.opportunistic_tls:

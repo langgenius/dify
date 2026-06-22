@@ -315,7 +315,7 @@ class TestTenantScopedContextRegistry:
 
     def test_tenant_provider_read_ok(self):
         class SandboxContext(BaseModel):
-            base_url: str | None = None
+            base_url: str = None
 
         register_context("workflow.sandbox", "t1", lambda: SandboxContext(base_url="http://t1"))
         register_context("workflow.sandbox", "t2", lambda: SandboxContext(base_url="http://t2"))

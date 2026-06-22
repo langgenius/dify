@@ -124,7 +124,7 @@ class QueueIterationCompletedEvent(AppQueueEvent):
     metadata: Mapping[str, object] = Field(default_factory=dict)
     steps: int = 0
 
-    error: str | None = None
+    error: str = None
 
 
 class QueueLoopStartEvent(AppQueueEvent):
@@ -179,7 +179,7 @@ class QueueLoopCompletedEvent(AppQueueEvent):
     metadata: Mapping[str, object] = Field(default_factory=dict)
     steps: int = 0
 
-    error: str | None = None
+    error: str = None
 
 
 class QueueTextChunkEvent(AppQueueEvent):
@@ -189,11 +189,11 @@ class QueueTextChunkEvent(AppQueueEvent):
 
     event: QueueEvent = QueueEvent.TEXT_CHUNK
     text: str
-    from_variable_selector: list[str] | None = None
+    from_variable_selector: list[str] = None
     """from variable selector"""
-    in_iteration_id: str | None = None
+    in_iteration_id: str = None
     """iteration id if node is in iteration"""
-    in_loop_id: str | None = None
+    in_loop_id: str = None
     """loop id if node is in loop"""
 
 
@@ -230,9 +230,9 @@ class QueueRetrieverResourcesEvent(AppQueueEvent):
 
     event: QueueEvent = QueueEvent.RETRIEVER_RESOURCES
     retriever_resources: Sequence[RetrievalSourceMetadata]
-    in_iteration_id: str | None = None
+    in_iteration_id: str = None
     """iteration id if node is in iteration"""
-    in_loop_id: str | None = None
+    in_loop_id: str = None
     """loop id if node is in loop"""
 
 
@@ -251,7 +251,7 @@ class QueueMessageEndEvent(AppQueueEvent):
     """
 
     event: QueueEvent = QueueEvent.MESSAGE_END
-    llm_result: LLMResult | None = None
+    llm_result: LLMResult = None
 
 
 class QueueAdvancedChatMessageEndEvent(AppQueueEvent):
@@ -311,10 +311,10 @@ class QueueNodeStartedEvent(AppQueueEvent):
     node_title: str
     node_type: NodeType
     node_run_index: int = 1  # FIXME(-LAN-): may not used
-    in_iteration_id: str | None = None
-    in_loop_id: str | None = None
+    in_iteration_id: str = None
+    in_loop_id: str = None
     start_at: datetime
-    agent_strategy: AgentStrategyInfo | None = None
+    agent_strategy: AgentStrategyInfo = None
 
     # FIXME(-LAN-): only for ToolNode, need to refactor
     provider_type: str  # should be a core.tools.entities.tool_entities.ToolProviderType
@@ -331,19 +331,19 @@ class QueueNodeSucceededEvent(AppQueueEvent):
     node_execution_id: str
     node_id: str
     node_type: NodeType
-    in_iteration_id: str | None = None
+    in_iteration_id: str = None
     """iteration id if node is in iteration"""
-    in_loop_id: str | None = None
+    in_loop_id: str = None
     """loop id if node is in loop"""
     start_at: datetime
-    finished_at: datetime | None = None
+    finished_at: datetime = None
 
     inputs: Mapping[str, object] = Field(default_factory=dict)
     process_data: Mapping[str, object] = Field(default_factory=dict)
     outputs: Mapping[str, object] = Field(default_factory=dict)
-    execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] | None = None
+    execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] = None
 
-    error: str | None = None
+    error: str = None
 
 
 class QueueAgentLogEvent(AppQueueEvent):
@@ -355,8 +355,8 @@ class QueueAgentLogEvent(AppQueueEvent):
     id: str
     label: str
     node_execution_id: str
-    parent_id: str | None = None
-    error: str | None = None
+    parent_id: str = None
+    error: str = None
     status: str
     data: Mapping[str, Any]
     metadata: Mapping[str, object] = Field(default_factory=dict)
@@ -371,7 +371,7 @@ class QueueNodeRetryEvent(QueueNodeStartedEvent):
     inputs: Mapping[str, object] = Field(default_factory=dict)
     process_data: Mapping[str, object] = Field(default_factory=dict)
     outputs: Mapping[str, object] = Field(default_factory=dict)
-    execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] | None = None
+    execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] = None
 
     error: str
     retry_index: int  # retry index
@@ -387,17 +387,17 @@ class QueueNodeExceptionEvent(AppQueueEvent):
     node_execution_id: str
     node_id: str
     node_type: NodeType
-    in_iteration_id: str | None = None
+    in_iteration_id: str = None
     """iteration id if node is in iteration"""
-    in_loop_id: str | None = None
+    in_loop_id: str = None
     """loop id if node is in loop"""
     start_at: datetime
-    finished_at: datetime | None = None
+    finished_at: datetime = None
 
     inputs: Mapping[str, object] = Field(default_factory=dict)
     process_data: Mapping[str, object] = Field(default_factory=dict)
     outputs: Mapping[str, object] = Field(default_factory=dict)
-    execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] | None = None
+    execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] = None
 
     error: str
 
@@ -412,17 +412,17 @@ class QueueNodeFailedEvent(AppQueueEvent):
     node_execution_id: str
     node_id: str
     node_type: NodeType
-    in_iteration_id: str | None = None
+    in_iteration_id: str = None
     """iteration id if node is in iteration"""
-    in_loop_id: str | None = None
+    in_loop_id: str = None
     """loop id if node is in loop"""
     start_at: datetime
-    finished_at: datetime | None = None
+    finished_at: datetime = None
 
     inputs: Mapping[str, object] = Field(default_factory=dict)
     process_data: Mapping[str, object] = Field(default_factory=dict)
     outputs: Mapping[str, object] = Field(default_factory=dict)
-    execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] | None = None
+    execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] = None
 
     error: str
 
@@ -511,7 +511,7 @@ class QueueHumanInputFormFilledEvent(AppQueueEvent):
 
     # Keep the field name aligned with Graphon so the app-layer bridge does not
     # need to translate between two equivalent payload names.
-    submitted_data: Mapping[str, Segment] | None = None
+    submitted_data: Mapping[str, Segment] = None
 
 
 class QueueHumanInputFormTimeoutEvent(AppQueueEvent):

@@ -37,7 +37,7 @@ class ModelInstance:
     Model instance class.
     """
 
-    def __init__(self, provider_model_bundle: ProviderModelBundle, model: str, credentials: dict | None = None) -> None:
+    def __init__(self, provider_model_bundle: ProviderModelBundle, model: str, credentials: dict = None) -> None:
         self.provider_model_bundle = provider_model_bundle
         self.model_name = model
         self.provider = provider_model_bundle.configuration.provider.provider
@@ -119,43 +119,43 @@ class ModelInstance:
     def invoke_llm(
         self,
         prompt_messages: Sequence[PromptMessage],
-        model_parameters: dict[str, Any] | None = None,
-        tools: Sequence[PromptMessageTool] | None = None,
-        stop: list[str] | None = None,
+        model_parameters: dict[str, Any] = None,
+        tools: Sequence[PromptMessageTool] = None,
+        stop: list[str] = None,
         stream: Literal[True] = True,
-        callbacks: list[Callback] | None = None,
+        callbacks: list[Callback] = None,
     ) -> Generator: ...
 
     @overload
     def invoke_llm(
         self,
         prompt_messages: list[PromptMessage],
-        model_parameters: dict[str, Any] | None = None,
-        tools: Sequence[PromptMessageTool] | None = None,
-        stop: list[str] | None = None,
+        model_parameters: dict[str, Any] = None,
+        tools: Sequence[PromptMessageTool] = None,
+        stop: list[str] = None,
         stream: Literal[False] = False,
-        callbacks: list[Callback] | None = None,
+        callbacks: list[Callback] = None,
     ) -> LLMResult: ...
 
     @overload
     def invoke_llm(
         self,
         prompt_messages: list[PromptMessage],
-        model_parameters: dict[str, Any] | None = None,
-        tools: Sequence[PromptMessageTool] | None = None,
-        stop: list[str] | None = None,
+        model_parameters: dict[str, Any] = None,
+        tools: Sequence[PromptMessageTool] = None,
+        stop: list[str] = None,
         stream: bool = True,
-        callbacks: list[Callback] | None = None,
+        callbacks: list[Callback] = None,
     ) -> Union[LLMResult, Generator]: ...
 
     def invoke_llm(
         self,
         prompt_messages: Sequence[PromptMessage],
-        model_parameters: dict[str, Any] | None = None,
-        tools: Sequence[PromptMessageTool] | None = None,
-        stop: Sequence[str] | None = None,
+        model_parameters: dict[str, Any] = None,
+        tools: Sequence[PromptMessageTool] = None,
+        stop: Sequence[str] = None,
         stream: bool = True,
-        callbacks: list[Callback] | None = None,
+        callbacks: list[Callback] = None,
     ) -> Union[LLMResult, Generator]:
         """
         Invoke large language model
@@ -186,7 +186,7 @@ class ModelInstance:
         )
 
     def get_llm_num_tokens(
-        self, prompt_messages: Sequence[PromptMessage], tools: Sequence[PromptMessageTool] | None = None
+        self, prompt_messages: Sequence[PromptMessage], tools: Sequence[PromptMessageTool] = None
     ) -> int:
         """
         Get number of tokens for llm
@@ -267,8 +267,8 @@ class ModelInstance:
         self,
         query: str,
         docs: list[str],
-        score_threshold: float | None = None,
-        top_n: int | None = None,
+        score_threshold: float = None,
+        top_n: int = None,
     ) -> RerankResult:
         """
         Invoke rerank model
@@ -295,8 +295,8 @@ class ModelInstance:
         self,
         query: MultimodalRerankInput,
         docs: list[MultimodalRerankInput],
-        score_threshold: float | None = None,
-        top_n: int | None = None,
+        score_threshold: float = None,
+        top_n: int = None,
     ) -> RerankResult:
         """
         Invoke rerank model
@@ -422,7 +422,7 @@ class ModelInstance:
             except Exception as e:
                 raise e
 
-    def get_tts_voices(self, language: str | None = None):
+    def get_tts_voices(self, language: str = None):
         """
         Invoke large language tts model voices
 
@@ -463,7 +463,7 @@ class ModelManager:
         self._enable_credentials_cache = enable_credentials_cache
 
     @classmethod
-    def for_tenant(cls, tenant_id: str, user_id: str | None = None) -> "ModelManager":
+    def for_tenant(cls, tenant_id: str, user_id: str = None) -> "ModelManager":
         return cls(provider_manager=create_plugin_provider_manager(tenant_id=tenant_id, user_id=user_id))
 
     def get_model_instance(
@@ -565,7 +565,7 @@ class LBModelManager:
         model_type: ModelType,
         model: str,
         load_balancing_configs: list[ModelLoadBalancingConfiguration],
-        managed_credentials: dict[str, Any] | None = None,
+        managed_credentials: dict[str, Any] = None,
     ):
         """
         Load balancing model manager

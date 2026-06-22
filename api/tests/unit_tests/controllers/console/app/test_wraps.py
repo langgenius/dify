@@ -16,7 +16,7 @@ class FakeSession:
     closed: bool
     scalar_called: bool
 
-    def __init__(self, app_model: object | None = None) -> None:
+    def __init__(self, app_model: object = None) -> None:
         self.app_model = app_model
         self.committed = False
         self.rolled_back = False

@@ -96,8 +96,8 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         app_id: str,
         triggered_from: WorkflowRunTriggeredFrom | Sequence[WorkflowRunTriggeredFrom],
         limit: int = 20,
-        last_id: str | None = None,
-        status: str | None = None,
+        last_id: str = None,
+        status: str = None,
     ) -> InfiniteScrollPagination:
         """
         Get paginated workflow runs with filtering.
@@ -177,8 +177,8 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         tenant_id: str,
         app_id: str,
         triggered_from: str,
-        status: str | None = None,
-        time_range: str | None = None,
+        status: str = None,
+        time_range: str = None,
     ) -> dict[str, int]:
         """
         Get workflow runs count statistics.
@@ -288,9 +288,9 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         end_before: datetime,
         last_seen: tuple[datetime, str] | None,
         batch_size: int,
-        run_types: Sequence[WorkflowType] | None = None,
-        tenant_ids: Sequence[str] | None = None,
-        workflow_ids: Sequence[str] | None = None,
+        run_types: Sequence[WorkflowType] = None,
+        tenant_ids: Sequence[str] = None,
+        workflow_ids: Sequence[str] = None,
     ) -> Sequence[WorkflowRun]:
         """
         Fetch ended workflow runs in a time window for archival and clean batching.
@@ -308,10 +308,10 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         end_before: datetime,
         last_seen: tuple[datetime, str] | None,
         batch_size: int,
-        run_types: Sequence[WorkflowType] | None = None,
-        tenant_ids: Sequence[str] | None = None,
-        workflow_ids: Sequence[str] | None = None,
-        upper_bound: tuple[datetime, str] | None = None,
+        run_types: Sequence[WorkflowType] = None,
+        tenant_ids: Sequence[str] = None,
+        workflow_ids: Sequence[str] = None,
+        upper_bound: tuple[datetime, str] = None,
     ) -> Sequence[WorkflowRunCleanupRef]:
         """
         Fetch lightweight ended workflow run refs in a time window for cleanup batching.
@@ -387,8 +387,8 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
     def delete_runs_with_related(
         self,
         runs: Sequence[WorkflowRun],
-        delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
-        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+        delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] = None,
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] = None,
     ) -> RunsWithRelatedCountsDict:
         """
         Delete workflow runs and their related records (node executions, offloads, app logs,
@@ -419,8 +419,8 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
     def delete_runs_with_related_by_ids(
         self,
         run_ids: Sequence[str],
-        delete_node_executions: Callable[[Session, Sequence[str]], tuple[int, int]] | None = None,
-        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+        delete_node_executions: Callable[[Session, Sequence[str]], tuple[int, int]] = None,
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] = None,
     ) -> RunsWithRelatedCountsDict:
         """
         Delete workflow runs and cleanup-owned related records by workflow run IDs.
@@ -467,8 +467,8 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
     def count_runs_with_related(
         self,
         runs: Sequence[WorkflowRun],
-        count_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
-        count_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+        count_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] = None,
+        count_trigger_logs: Callable[[Session, Sequence[str]], int] = None,
     ) -> RunsWithRelatedCountsDict:
         """
         Count workflow runs and their related records (node executions, offloads, app logs,
@@ -479,8 +479,8 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
     def count_runs_with_related_by_ids(
         self,
         run_ids: Sequence[str],
-        count_node_executions: Callable[[Session, Sequence[str]], tuple[int, int]] | None = None,
-        count_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+        count_node_executions: Callable[[Session, Sequence[str]], tuple[int, int]] = None,
+        count_trigger_logs: Callable[[Session, Sequence[str]], int] = None,
     ) -> RunsWithRelatedCountsDict:
         """
         Count workflow runs and cleanup-owned related records by workflow run IDs.
@@ -585,7 +585,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         self,
         expiration: datetime,
         resumption_expiration: datetime,
-        limit: int | None = None,
+        limit: int = None,
     ) -> Sequence[str]:
         """
         Clean up expired and old pause states.
@@ -612,8 +612,8 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         tenant_id: str,
         app_id: str,
         triggered_from: str,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
+        start_date: datetime = None,
+        end_date: datetime = None,
         timezone: str = "UTC",
     ) -> list[DailyRunsStats]:
         """
@@ -641,8 +641,8 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         tenant_id: str,
         app_id: str,
         triggered_from: str,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
+        start_date: datetime = None,
+        end_date: datetime = None,
         timezone: str = "UTC",
     ) -> list[DailyTerminalsStats]:
         """
@@ -670,8 +670,8 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         tenant_id: str,
         app_id: str,
         triggered_from: str,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
+        start_date: datetime = None,
+        end_date: datetime = None,
         timezone: str = "UTC",
     ) -> list[DailyTokenCostStats]:
         """
@@ -699,8 +699,8 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         tenant_id: str,
         app_id: str,
         triggered_from: str,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
+        start_date: datetime = None,
+        end_date: datetime = None,
         timezone: str = "UTC",
     ) -> list[AverageInteractionStats]:
         """

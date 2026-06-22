@@ -81,8 +81,8 @@ class WorkflowAgentSandboxUploadPayload(BaseModel):
 class SandboxFileEntryResponse(ResponseModel):
     name: str
     type: Literal["file", "dir", "symlink", "other"]
-    size: int | None = None
-    mtime: int | None = None
+    size: int = None
+    mtime: int = None
 
 
 class SandboxListResponse(ResponseModel):
@@ -93,10 +93,10 @@ class SandboxListResponse(ResponseModel):
 
 class SandboxReadResponse(ResponseModel):
     path: str
-    size: int | None = None
+    size: int = None
     truncated: bool
     binary: bool
-    text: str | None = None
+    text: str = None
 
 
 class SandboxToolFileResponse(ResponseModel):

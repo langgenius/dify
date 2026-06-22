@@ -28,7 +28,7 @@ from models.model import AppMode
 
 
 class _DummyParameterRule:
-    def __init__(self, name: str, use_template: str | None = None) -> None:
+    def __init__(self, name: str, use_template: str = None) -> None:
         self.name = name
         self.use_template = use_template
 

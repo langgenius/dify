@@ -7,4 +7,4 @@ class DocumentContext(BaseModel):
     """
 
     content: str
-    score: float | None = None
+    score: float = None

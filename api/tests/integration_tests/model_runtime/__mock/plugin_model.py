@@ -158,7 +158,7 @@ class MockModelClass(PluginModelClient):
     def mocked_chat_create_sync(
         model: str,
         prompt_messages: list[PromptMessage],
-        tools: list[PromptMessageTool] | None = None,
+        tools: list[PromptMessageTool] = None,
     ) -> LLMResult:
         tool_call = MockModelClass.generate_function_call(tools=tools)
 
@@ -187,7 +187,7 @@ class MockModelClass(PluginModelClient):
     def mocked_chat_create_stream(
         model: str,
         prompt_messages: list[PromptMessage],
-        tools: list[PromptMessageTool] | None = None,
+        tools: list[PromptMessageTool] = None,
     ) -> Generator[LLMResultChunk, None, None]:
         tool_call = MockModelClass.generate_function_call(tools=tools)
 
@@ -242,9 +242,9 @@ class MockModelClass(PluginModelClient):
         model: str,
         credentials: dict,
         prompt_messages: list[PromptMessage],
-        model_parameters: dict | None = None,
-        tools: list[PromptMessageTool] | None = None,
-        stop: list[str] | None = None,
+        model_parameters: dict = None,
+        tools: list[PromptMessageTool] = None,
+        stop: list[str] = None,
         stream: bool = True,
     ):
         return MockModelClass.mocked_chat_create_stream(model=model, prompt_messages=prompt_messages, tools=tools)

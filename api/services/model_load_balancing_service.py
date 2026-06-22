@@ -366,7 +366,7 @@ class ModelLoadBalancingService:
             credential_id = config.get("credential_id")
             enabled = config.get("enabled")
 
-            credential_record: ProviderCredential | ProviderModelCredential | None = None
+            credential_record: ProviderCredential | ProviderModelCredential = None
 
             if credential_id:
                 if config_from == "predefined-model":
@@ -503,7 +503,7 @@ class ModelLoadBalancingService:
         model: str,
         model_type: str,
         credentials: dict[str, Any],
-        config_id: str | None = None,
+        config_id: str = None,
     ):
         """
         Validate load balancing credentials.
@@ -562,8 +562,8 @@ class ModelLoadBalancingService:
         model_type: ModelType,
         model: str,
         credentials: dict[str, Any],
-        load_balancing_model_config: LoadBalancingModelConfig | None = None,
-        model_provider_factory: ModelProviderFactory | None = None,
+        load_balancing_model_config: LoadBalancingModelConfig = None,
+        model_provider_factory: ModelProviderFactory = None,
         validate: bool = True,
     ):
         """

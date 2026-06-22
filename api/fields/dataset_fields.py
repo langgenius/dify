@@ -149,22 +149,22 @@ dataset_detail_fields = {
 
 
 class DatasetRerankingModelResponse(ResponseModel):
-    reranking_provider_name: str | None = None
-    reranking_model_name: str | None = None
+    reranking_provider_name: str = None
+    reranking_model_name: str = None
 
 
 class DatasetKeywordSettingResponse(ResponseModel):
-    keyword_weight: float | None = None
+    keyword_weight: float = None
 
 
 class DatasetVectorSettingResponse(ResponseModel):
-    vector_weight: float | None = None
-    embedding_model_name: str | None = None
-    embedding_provider_name: str | None = None
+    vector_weight: float = None
+    embedding_model_name: str = None
+    embedding_provider_name: str = None
 
 
 class DatasetWeightedScoreResponse(ResponseModel):
-    weight_type: str | None = None
+    weight_type: str = None
     keyword_setting: DatasetKeywordSettingResponse = Field(default_factory=DatasetKeywordSettingResponse)
     vector_setting: DatasetVectorSettingResponse = Field(default_factory=DatasetVectorSettingResponse)
 
@@ -177,12 +177,12 @@ class DatasetWeightedScoreResponse(ResponseModel):
 class DatasetRetrievalModelResponse(ResponseModel):
     search_method: str
     reranking_enable: bool
-    reranking_mode: str | None = None
+    reranking_mode: str = None
     reranking_model: DatasetRerankingModelResponse = Field(default_factory=DatasetRerankingModelResponse)
-    weights: DatasetWeightedScoreResponse | None = None
+    weights: DatasetWeightedScoreResponse = None
     top_k: int
     score_threshold_enabled: bool
-    score_threshold: float | None = None
+    score_threshold: float = None
 
     @field_validator("reranking_model", mode="before")
     @classmethod
@@ -191,10 +191,10 @@ class DatasetRetrievalModelResponse(ResponseModel):
 
 
 class DatasetSummaryIndexSettingResponse(ResponseModel):
-    enable: bool | None = None
-    model_name: str | None = None
-    model_provider_name: str | None = None
-    summary_prompt: str | None = None
+    enable: bool = None
+    model_name: str = None
+    model_provider_name: str = None
+    summary_prompt: str = None
 
 
 class DatasetTagResponse(ResponseModel):
@@ -204,16 +204,16 @@ class DatasetTagResponse(ResponseModel):
 
 
 class DatasetExternalKnowledgeInfoResponse(ResponseModel):
-    external_knowledge_id: str | None = None
-    external_knowledge_api_id: str | None = None
-    external_knowledge_api_name: str | None = None
-    external_knowledge_api_endpoint: str | None = None
+    external_knowledge_id: str = None
+    external_knowledge_api_id: str = None
+    external_knowledge_api_name: str = None
+    external_knowledge_api_endpoint: str = None
 
 
 class DatasetExternalRetrievalModelResponse(ResponseModel):
     top_k: int
-    score_threshold: float | None = None
-    score_threshold_enabled: bool | None = None
+    score_threshold: float = None
+    score_threshold_enabled: bool = None
 
 
 class DatasetDocMetadataResponse(ResponseModel):
@@ -223,10 +223,10 @@ class DatasetDocMetadataResponse(ResponseModel):
 
 
 class DatasetIconInfoResponse(ResponseModel):
-    icon_type: str | None = None
-    icon: str | None = None
-    icon_background: str | None = None
-    icon_url: str | None = None
+    icon_type: str = None
+    icon: str = None
+    icon_background: str = None
+    icon_url: str = None
 
 
 class DatasetDetailResponse(ResponseModel):
@@ -247,7 +247,7 @@ class DatasetDetailResponse(ResponseModel):
     updated_at: int
     embedding_model: str | None
     embedding_model_provider: str | None
-    embedding_available: bool | None = None
+    embedding_available: bool = None
     retrieval_model_dict: DatasetRetrievalModelResponse
     summary_index_setting: DatasetSummaryIndexSettingResponse = Field(
         default_factory=DatasetSummaryIndexSettingResponse
@@ -270,7 +270,7 @@ class DatasetDetailResponse(ResponseModel):
     enable_api: bool
     is_multimodal: bool
     permission_keys: list[str] = Field(default_factory=list)
-    maintainer: str | None = None
+    maintainer: str = None
 
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod

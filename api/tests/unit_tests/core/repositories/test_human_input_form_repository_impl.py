@@ -288,15 +288,15 @@ class _DummyForm:
     form_definition: str
     rendered_content: str
     expiration_time: datetime
-    conversation_id: str | None = None
+    conversation_id: str = None
     form_kind: HumanInputFormKind = HumanInputFormKind.RUNTIME
     created_at: datetime = dataclasses.field(default_factory=naive_utc_now)
-    selected_action_id: str | None = None
-    submitted_data: str | None = None
-    submitted_at: datetime | None = None
-    submission_user_id: str | None = None
-    submission_end_user_id: str | None = None
-    completed_by_recipient_id: str | None = None
+    selected_action_id: str = None
+    submitted_data: str = None
+    submitted_at: datetime = None
+    submission_user_id: str = None
+    submission_end_user_id: str = None
+    completed_by_recipient_id: str = None
     status: HumanInputFormStatus = HumanInputFormStatus.WAITING
 
 
@@ -306,7 +306,7 @@ class _DummyRecipient:
     form_id: str
     recipient_type: RecipientType
     access_token: str
-    form: _DummyForm | None = None
+    form: _DummyForm = None
 
 
 class _FakeScalarResult:
@@ -331,9 +331,9 @@ class _FakeSession:
         self,
         *,
         scalars_result=None,
-        scalars_results: list[object] | None = None,
-        forms: dict[str, _DummyForm] | None = None,
-        recipients: dict[str, _DummyRecipient] | None = None,
+        scalars_results: list[object] = None,
+        forms: dict[str, _DummyForm] = None,
+        recipients: dict[str, _DummyRecipient] = None,
     ):
         if scalars_results is not None:
             self._scalars_queue = list(scalars_results)

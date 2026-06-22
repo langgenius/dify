@@ -18,9 +18,9 @@ class NodeMockConfig:
 
     node_id: str
     outputs: dict[str, Any] = field(default_factory=dict)
-    error: str | None = None
+    error: str = None
     delay: float = 0.0  # Simulated execution delay in seconds
-    custom_handler: Callable[..., dict[str, Any]] | None = None
+    custom_handler: Callable[..., dict[str, Any]] = None
 
 
 @dataclass

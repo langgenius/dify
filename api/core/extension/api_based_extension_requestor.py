@@ -27,7 +27,7 @@ class APIBasedExtensionRequestor:
         url = self.api_endpoint
 
         try:
-            mounts: dict[str, httpx.BaseTransport] | None = None
+            mounts: dict[str, httpx.BaseTransport] = None
             if dify_config.SSRF_PROXY_HTTP_URL and dify_config.SSRF_PROXY_HTTPS_URL:
                 mounts = {
                     "http://": httpx.HTTPTransport(proxy=dify_config.SSRF_PROXY_HTTP_URL),

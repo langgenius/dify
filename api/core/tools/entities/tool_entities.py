@@ -256,7 +256,7 @@ class ToolInvokeMessage(BaseModel):
         | VariableMessage
         | RetrieverResourceMessage
     )
-    meta: dict[str, Any] | None = None
+    meta: dict[str, Any] = None
 
     @field_validator("message", mode="before")
     @classmethod
@@ -288,7 +288,7 @@ class ToolInvokeMessage(BaseModel):
 class ToolInvokeMessageBinary(BaseModel):
     mimetype: str = Field(..., description="The mimetype of the binary")
     url: str = Field(..., description="The url of the binary")
-    file_var: dict[str, Any] | None = None
+    file_var: dict[str, Any] = None
 
 
 class ToolParameter(PluginParameter):
@@ -335,9 +335,9 @@ class ToolParameter(PluginParameter):
     type: ToolParameterType = Field(..., description="The type of the parameter")
     human_description: I18nObject | None = Field(default=None, description="The description presented to the user")
     form: ToolParameterForm = Field(..., description="The form of the parameter, schema/form/llm")
-    llm_description: str | None = None
+    llm_description: str = None
     # MCP object and array type parameters use this field to store the schema
-    input_schema: dict[str, Any] | None = None
+    input_schema: dict[str, Any] = None
 
     @classmethod
     def get_simple_instance(
@@ -346,7 +346,7 @@ class ToolParameter(PluginParameter):
         llm_description: str,
         typ: ToolParameterType,
         required: bool,
-        options: list[str] | None = None,
+        options: list[str] = None,
     ) -> ToolParameter:
         """
         get a simple tool parameter
@@ -400,7 +400,7 @@ class ToolIdentity(BaseModel):
     name: str = Field(..., description="The name of the tool")
     label: I18nObject = Field(..., description="The label of the tool")
     provider: str = Field(..., description="The provider of the tool")
-    icon: str | None = None
+    icon: str = None
 
 
 class ToolDescription(BaseModel):
@@ -411,7 +411,7 @@ class ToolDescription(BaseModel):
 class ToolEntity(BaseModel):
     identity: ToolIdentity
     parameters: list[ToolParameter] = Field(default_factory=list[ToolParameter])
-    description: ToolDescription | None = None
+    description: ToolDescription = None
     output_schema: Mapping[str, object] = Field(default_factory=dict)
     has_runtime_parameters: bool = Field(default=False, description="Whether the tool has runtime parameters")
 
@@ -431,9 +431,9 @@ class ToolEntity(BaseModel):
 
 class ToolProviderEntity(BaseModel):
     identity: ToolProviderIdentity
-    plugin_id: str | None = None
+    plugin_id: str = None
     credentials_schema: list[ProviderConfig] = Field(default_factory=list[ProviderConfig])
-    oauth_schema: OAuthSchema | None = None
+    oauth_schema: OAuthSchema = None
 
 
 class ToolProviderEntityWithPlugin(ToolProviderEntity):
@@ -462,8 +462,8 @@ class ToolInvokeMeta(BaseModel):
     """
 
     time_cost: float = Field(..., description="The time cost of the tool invoke")
-    error: str | None = None
-    tool_config: dict[str, Any] | None = None
+    error: str = None
+    tool_config: dict[str, Any] = None
 
     @classmethod
     def empty(cls) -> ToolInvokeMeta:
@@ -516,8 +516,8 @@ class ToolSelector(BaseModel):
         type: ToolParameter.ToolParameterType = Field(..., description="The type of the parameter")
         required: bool = Field(..., description="Whether the parameter is required")
         description: str = Field(..., description="The description of the parameter")
-        default: Union[int, float, str] | None = None
-        options: list[PluginParameterOption] | None = None
+        default: Union[int, float, str] = None
+        options: list[PluginParameterOption] = None
 
     provider_id: str = Field(..., description="The id of the provider")
     credential_id: str | None = Field(default=None, description="The id of the credential")

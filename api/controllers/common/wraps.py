@@ -112,7 +112,7 @@ def _is_resource_owned_by_current_user(
     return False
 
 
-def _extract_resource_id(resource_type: RBACResourceScope, path_args: dict[str, object] | None = None) -> str:
+def _extract_resource_id(resource_type: RBACResourceScope, path_args: dict[str, object] = None) -> str:
     """Extract the resource ID from matched path arguments.
 
     Some legacy route classes use neutral names such as ``resource_id`` for

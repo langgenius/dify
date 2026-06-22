@@ -44,7 +44,7 @@ def _make_pipeline(
     *,
     pipeline_id: str = "p1",
     tenant_id: str = "t1",
-    workflow_id: str | None = None,
+    workflow_id: str = None,
     is_published: bool = False,
 ) -> Pipeline:
     pipeline = Pipeline(tenant_id=tenant_id, name="Test Pipeline", description="test")
@@ -59,8 +59,8 @@ def _make_workflow(
     workflow_id: str = "wf-1",
     tenant_id: str = "t1",
     app_id: str = "p1",
-    graph: dict[str, object] | None = None,
-    features: dict[str, object] | None = None,
+    graph: dict[str, object] = None,
+    features: dict[str, object] = None,
     created_by: str = "u1",
 ) -> Workflow:
     workflow = Workflow(

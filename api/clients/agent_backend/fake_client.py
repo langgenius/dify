@@ -64,19 +64,19 @@ class FakeAgentBackendRunClient:
         self.request = request
         return CreateRunResponse(run_id=self.run_id, status="running")
 
-    def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
+    def cancel_run(self, run_id: str, request: CancelRunRequest = None) -> CancelRunResponse:
         """Return a deterministic cancellation response."""
         del request
         return CancelRunResponse(run_id=run_id, status="cancelled")
 
-    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+    def stream_events(self, run_id: str, *, after: str = None) -> Iterator[RunEvent]:
         """Yield the deterministic public ``RunEvent`` sequence for ``run_id``."""
         for event in self._events(run_id):
             if after is not None and event.id is not None and event.id <= after:
                 continue
             yield event
 
-    def wait_run(self, run_id: str, *, timeout_seconds: float | None = None) -> RunStatusResponse:
+    def wait_run(self, run_id: str, *, timeout_seconds: float = None) -> RunStatusResponse:
         """Return a deterministic terminal status; timeout is accepted for protocol parity."""
         del timeout_seconds
         match self.scenario:

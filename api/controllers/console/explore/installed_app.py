@@ -36,7 +36,7 @@ class InstalledAppCreatePayload(BaseModel):
 
 
 class InstalledAppUpdatePayload(BaseModel):
-    is_pinned: bool | None = None
+    is_pinned: bool = None
 
 
 class InstalledAppsListQuery(BaseModel):
@@ -84,12 +84,12 @@ def _published_app_filter():
 
 class InstalledAppInfoResponse(ResponseModel):
     id: str
-    name: str | None = None
-    mode: str | None = None
-    icon_type: str | None = None
-    icon: str | None = None
-    icon_background: str | None = None
-    use_icon_as_answer_icon: bool | None = None
+    name: str = None
+    mode: str = None
+    icon_type: str = None
+    icon: str = None
+    icon_background: str = None
+    use_icon_as_answer_icon: bool = None
 
     @field_validator("mode", "icon_type", mode="before")
     @classmethod
@@ -111,7 +111,7 @@ class InstalledAppResponse(ResponseModel):
     app: InstalledAppInfoResponse
     app_owner_tenant_id: str
     is_pinned: bool
-    last_used_at: int | None = None
+    last_used_at: int = None
     editable: bool
     uninstallable: bool
 

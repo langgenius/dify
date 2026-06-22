@@ -30,8 +30,8 @@ _WORKFLOW_RUN_ID = "a3f1b2c4-d5e6-4f78-9a0b-c1d2e3f4a5b6"
 
 def _make_workflow_trace_info(
     *,
-    message_id: str | None = None,
-    workflow_app_log_id: str | None = None,
+    message_id: str = None,
+    workflow_app_log_id: str = None,
     workflow_run_id: str = _WORKFLOW_RUN_ID,
 ) -> WorkflowTraceInfo:
     """Return a minimal WorkflowTraceInfo suitable for unit testing."""
@@ -137,7 +137,7 @@ class TestPrepareOpikUuid:
 
 
 class TestWorkflowTraceWithoutMessageId:
-    def _run(self, trace_info: WorkflowTraceInfo, node_executions: list | None = None):
+    def _run(self, trace_info: WorkflowTraceInfo, node_executions: list = None):
         instance = _make_opik_trace_instance()
         fake_repo = MagicMock()
         fake_repo.get_by_workflow_execution.return_value = node_executions or []
@@ -270,7 +270,7 @@ class TestWorkflowTraceWithoutMessageId:
 class TestWorkflowTraceWithMessageId:
     _MESSAGE_ID = str(uuid.uuid4())
 
-    def _run(self, trace_info: WorkflowTraceInfo, node_executions: list | None = None):
+    def _run(self, trace_info: WorkflowTraceInfo, node_executions: list = None):
         instance = _make_opik_trace_instance()
         fake_repo = MagicMock()
         fake_repo.get_by_workflow_execution.return_value = node_executions or []

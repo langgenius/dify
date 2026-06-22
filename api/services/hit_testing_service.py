@@ -110,7 +110,7 @@ class HitTestingService:
         account: Account,
         retrieval_model: dict[str, Any] | None,
         external_retrieval_model: dict[str, Any],
-        attachment_ids: list | None = None,
+        attachment_ids: list = None,
         limit: int = 10,
     ):
         start = time.perf_counter()
@@ -192,8 +192,8 @@ class HitTestingService:
         dataset: Dataset,
         query: str,
         account: Account,
-        external_retrieval_model: dict[str, Any] | None = None,
-        metadata_filtering_conditions: dict[str, Any] | None = None,
+        external_retrieval_model: dict[str, Any] = None,
+        metadata_filtering_conditions: dict[str, Any] = None,
     ):
         if dataset.provider != "external":
             return {

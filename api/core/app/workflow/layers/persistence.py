@@ -87,7 +87,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         workflow_info: PersistenceWorkflowInfo,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-        trace_manager: TraceQueueManager | None = None,
+        trace_manager: TraceQueueManager = None,
     ) -> None:
         super().__init__()
         self._application_generate_entity = application_generate_entity
@@ -96,7 +96,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         self._workflow_node_execution_repository = workflow_node_execution_repository
         self._trace_manager = trace_manager
 
-        self._workflow_execution: WorkflowExecution | None = None
+        self._workflow_execution: WorkflowExecution = None
         self._node_execution_cache: dict[str, WorkflowNodeExecution] = {}
         self._node_snapshots: dict[str, _NodeRuntimeSnapshot] = {}
         self._node_sequence: int = 0
@@ -371,9 +371,9 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         node_result: NodeRunResult,
         status: WorkflowNodeExecutionStatus,
         *,
-        error: str | None = None,
+        error: str = None,
         update_outputs: bool = True,
-        finished_at: datetime | None = None,
+        finished_at: datetime = None,
     ) -> None:
         actual_finished_at = finished_at or naive_utc_now()
         snapshot = self._node_snapshots.get(domain_execution.id)

@@ -35,7 +35,7 @@ def _build_public_model_identity(*, provider: str = "openai", model_name: str = 
     return SimpleNamespace(provider=provider, name=model_name)
 
 
-def _build_node_data(*, model: SimpleNamespace | None = None) -> SimpleNamespace:
+def _build_node_data(*, model: SimpleNamespace = None) -> SimpleNamespace:
     return SimpleNamespace(
         error_strategy=None,
         retry_config=SimpleNamespace(retry_enabled=False),
@@ -59,7 +59,7 @@ class _RunnableQuotaNode:
     node_type = BuiltinNodeTypes.LLM
     title = "LLM node"
 
-    def __init__(self, *, stop_event: threading.Event, node_data: SimpleNamespace | None = None) -> None:
+    def __init__(self, *, stop_event: threading.Event, node_data: SimpleNamespace = None) -> None:
         self.node_data = node_data or _build_node_data(model=_build_public_model_identity())
         self.graph_runtime_state = SimpleNamespace(stop_event=stop_event)
         self.original_run_called = False

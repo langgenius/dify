@@ -17,7 +17,7 @@ class ExternalDataTool(Extensible, ABC):
     variable: str
     """the tool variable name of app tool"""
 
-    def __init__(self, tenant_id: str, app_id: str, variable: str, config: dict[str, Any] | None = None):
+    def __init__(self, tenant_id: str, app_id: str, variable: str, config: dict[str, Any] = None):
         super().__init__(tenant_id, config)
         self.app_id = app_id
         self.variable = variable
@@ -35,7 +35,7 @@ class ExternalDataTool(Extensible, ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:
+    def query(self, inputs: Mapping[str, Any], query: str = None) -> str:
         """
         Query the external data tool.
 

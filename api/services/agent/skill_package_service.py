@@ -58,7 +58,7 @@ class SkillManifest(BaseModel):
     size: int  # total uncompressed bytes
     hash: str  # sha256 of the archive bytes
 
-    def to_skill_ref(self, *, file_id: str, path: str | None = None) -> AgentSkillRefConfig:
+    def to_skill_ref(self, *, file_id: str, path: str = None) -> AgentSkillRefConfig:
         """Build a config skill ref. ``path`` is the stable drive path (set by S6)."""
         return AgentSkillRefConfig.model_validate(
             {

@@ -16,7 +16,7 @@ from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 
 
-def installed_app_required[**P, R](view: Callable[Concatenate[InstalledApp, P], R] | None = None):
+def installed_app_required[**P, R](view: Callable[Concatenate[InstalledApp, P], R] = None):
     def decorator(view: Callable[Concatenate[InstalledApp, P], R]):
         @wraps(view)
         def decorated(installed_app_id: str, *args: P.args, **kwargs: P.kwargs):
@@ -45,7 +45,7 @@ def installed_app_required[**P, R](view: Callable[Concatenate[InstalledApp, P], 
     return decorator
 
 
-def user_allowed_to_access_app[**P, R](view: Callable[Concatenate[InstalledApp, P], R] | None = None):
+def user_allowed_to_access_app[**P, R](view: Callable[Concatenate[InstalledApp, P], R] = None):
     def decorator(view: Callable[Concatenate[InstalledApp, P], R]):
         @wraps(view)
         def decorated(installed_app: InstalledApp, *args: P.args, **kwargs: P.kwargs):
@@ -69,7 +69,7 @@ def user_allowed_to_access_app[**P, R](view: Callable[Concatenate[InstalledApp, 
     return decorator
 
 
-def trial_app_required[**P, R](view: Callable[Concatenate[App, P], R] | None = None):
+def trial_app_required[**P, R](view: Callable[Concatenate[App, P], R] = None):
     def decorator(view: Callable[Concatenate[App, P], R]):
         @wraps(view)
         def decorated(app_id: str, *args: P.args, **kwargs: P.kwargs):

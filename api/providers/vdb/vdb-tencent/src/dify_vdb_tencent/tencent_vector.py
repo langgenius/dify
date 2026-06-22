@@ -32,10 +32,10 @@ class TencentParamsDict(TypedDict):
 
 class TencentConfig(BaseModel):
     url: str
-    api_key: str | None = None
+    api_key: str = None
     timeout: float = 30
-    username: str | None = None
-    database: str | None = None
+    username: str = None
+    database: str = None
     index_type: str = "HNSW"
     metric_type: str = "IP"
     shard: int = 1

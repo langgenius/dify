@@ -23,7 +23,7 @@ class ErrorBodyFormatter(Protocol):
     def finalize(self, e: Exception, data: dict[str, Any], status_code: int) -> dict[str, Any]: ...
 
 
-def register_external_error_handlers(api: Api, body_formatter: ErrorBodyFormatter | None = None):
+def register_external_error_handlers(api: Api, body_formatter: ErrorBodyFormatter = None):
     def _finalize(e: Exception, data: dict[str, Any], status_code: int) -> dict[str, Any]:
         if body_formatter is None:
             return data
@@ -138,7 +138,7 @@ class ExternalApi(Api):
         self,
         app: Blueprint | Flask,
         *args,
-        error_body_formatter: ErrorBodyFormatter | None = None,
+        error_body_formatter: ErrorBodyFormatter = None,
         **kwargs,
     ):
         self._error_body_formatter = error_body_formatter
@@ -176,7 +176,7 @@ class ExternalApi(Api):
         return request.path == prefix or request.path.startswith(prefix.rstrip("/") + "/")
 
     @override
-    def _help_on_404(self, message: str | None = None) -> str | None:
+    def _help_on_404(self, message: str = None) -> str | None:
         # flask-restx appends route suggestions post-handler; with a canonical
         # formatter installed, that would corrupt the contract and enumerate
         # routes to unauthenticated callers.

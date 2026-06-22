@@ -78,7 +78,7 @@ def _build_install_task(*, task_id: str = "task-1", status: PluginInstallTaskSta
     )
 
 
-def _provider_cache_key(tenant_id: str, generation: int | None = None) -> str:
+def _provider_cache_key(tenant_id: str, generation: int = None) -> str:
     if generation is None:
         return f"plugin_model_providers:tenant_id:{tenant_id}"
 

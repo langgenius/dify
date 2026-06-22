@@ -145,8 +145,8 @@ class SubscriptionMonitor:
         self.completed = False
         self._lock = threading.Lock()
         self._condition = threading.Condition(self._lock)
-        self._monitor_thread: threading.Thread | None = None
-        self._start_time: float | None = None
+        self._monitor_thread: threading.Thread = None
+        self._start_time: float = None
 
     def start_monitoring(self) -> None:
         """Start monitoring the subscription in a separate thread."""
@@ -177,7 +177,7 @@ class SubscriptionMonitor:
         )
         self._monitor_thread.start()
 
-    def wait_for_messages(self, count: int, timeout: float | None = None) -> bool:
+    def wait_for_messages(self, count: int, timeout: float = None) -> bool:
         """
         Wait for a specific number of messages.
 
@@ -202,7 +202,7 @@ class SubscriptionMonitor:
 
             return len(self.messages) >= count
 
-    def wait_for_completion(self, timeout: float | None = None) -> bool:
+    def wait_for_completion(self, timeout: float = None) -> bool:
         """
         Wait for monitoring to complete.
 

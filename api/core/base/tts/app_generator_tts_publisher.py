@@ -53,7 +53,7 @@ def _process_future(
 
 
 class AppGeneratorTTSPublisher:
-    def __init__(self, tenant_id: str, voice: str, language: str | None = None):
+    def __init__(self, tenant_id: str, voice: str, language: str = None):
         self.logger = logging.getLogger(__name__)
         self.tenant_id = tenant_id
         self.msg_text = ""
@@ -70,7 +70,7 @@ class AppGeneratorTTSPublisher:
         if not voice or voice not in values:
             self.voice = self.voices[0].get("value")
         self.max_sentence = 2
-        self._last_audio_event: AudioTrunk | None = None
+        self._last_audio_event: AudioTrunk = None
         # FIXME better way to handle this threading.start
         threading.Thread(target=self._runtime).start()
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)

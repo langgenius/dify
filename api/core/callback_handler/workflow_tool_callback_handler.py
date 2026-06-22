@@ -14,9 +14,9 @@ class DifyWorkflowCallbackHandler(DifyAgentCallbackHandler):
         tool_name: str,
         tool_inputs: Mapping[str, Any],
         tool_outputs: Iterable[ToolInvokeMessage],
-        message_id: str | None = None,
-        timer: Any | None = None,
-        trace_manager: TraceQueueManager | None = None,
+        message_id: str = None,
+        timer: Any = None,
+        trace_manager: TraceQueueManager = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         for tool_output in tool_outputs:
             print_text("\n[on_tool_execution]\n", color=self.color)

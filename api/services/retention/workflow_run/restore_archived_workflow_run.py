@@ -83,7 +83,7 @@ class RestoreResult:
     tenant_id: str
     success: bool
     restored_counts: dict[str, int]
-    error: str | None = None
+    error: str = None
     elapsed_time: float = 0.0
 
 
@@ -108,7 +108,7 @@ class WorkflowRunRestore:
         if workers < 1:
             raise ValueError("workers must be at least 1")
         self.workers = workers
-        self.workflow_run_repo: APIWorkflowRunRepository | None = None
+        self.workflow_run_repo: APIWorkflowRunRepository = None
 
     def _restore_from_run(
         self,

@@ -91,8 +91,8 @@ def create_test_cases() -> list[TruncationTestCase]:
 
 def create_workflow_node_execution(
     execution_id: str = "test-execution-id",
-    inputs: dict[str, Any] | None = None,
-    outputs: dict[str, Any] | None = None,
+    inputs: dict[str, Any] = None,
+    outputs: dict[str, Any] = None,
 ) -> WorkflowNodeExecution:
     """Factory function to create a WorkflowNodeExecution for testing."""
     return WorkflowNodeExecution(

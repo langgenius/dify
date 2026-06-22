@@ -38,7 +38,7 @@ def _make_dataset_and_documents(
     dataset_id: str = "ds-1",
     document_id: str = "doc-1",
     indexing_technique: str = "high_quality",
-    summary_index_setting: dict | None = None,
+    summary_index_setting: dict = None,
     doc_form: str = "text_model",
     need_summary: bool = True,
 ):

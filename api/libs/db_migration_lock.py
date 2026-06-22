@@ -61,10 +61,10 @@ class DbMigrationAutoRenewLock:
         redis_client: redis.Redis | RedisCluster | RedisClientWrapper,
         name: str,
         ttl_seconds: float = 60,
-        renew_interval_seconds: float | None = None,
+        renew_interval_seconds: float = None,
         *,
-        logger: logging.Logger | None = None,
-        log_context: str | None = None,
+        logger: logging.Logger = None,
+        log_context: str = None,
     ) -> None:
         self._redis_client = redis_client
         self._name = name
@@ -160,7 +160,7 @@ class DbMigrationAutoRenewLock:
                     exc_info=True,
                 )
 
-    def release_safely(self, *, status: str | None = None) -> None:
+    def release_safely(self, *, status: str = None) -> None:
         """
         Stop heartbeat and release lock. Never raises.
 

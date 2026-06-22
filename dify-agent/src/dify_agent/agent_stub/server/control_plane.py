@@ -51,8 +51,8 @@ class AgentStubControlPlaneService:
     """
 
     token_codec: AgentStubTokenCodec | None
-    file_request_handler: AgentStubFileRequestHandler | None = None
-    drive_request_handler: AgentStubDriveRequestHandler | None = None
+    file_request_handler: AgentStubFileRequestHandler = None
+    drive_request_handler: AgentStubDriveRequestHandler = None
     connection_id_factory: Callable[[], str] = field(default=lambda: str(uuid4()))
 
     async def connect(self, *, authorization: str | None) -> AgentStubConnectResponse:

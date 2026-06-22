@@ -212,8 +212,8 @@ class TestAdvancedChatAppGeneratorInternals:
             workflow_run_id="run-id",
         )
 
-        captured_entity: AdvancedChatAppGenerateEntity | None = None
-        captured_graph_runtime_state: object | None = None
+        captured_entity: AdvancedChatAppGenerateEntity = None
+        captured_graph_runtime_state: object = None
 
         def _fake_generate(**kwargs):
             nonlocal captured_entity, captured_graph_runtime_state
@@ -1296,7 +1296,7 @@ class TestAdvancedChatAppGeneratorResume:
             "core.app.apps.advanced_chat.app_generator.TraceQueueManager",
             DummyTraceQueueManager,
         )
-        captured_entity: AdvancedChatAppGenerateEntity | None = None
+        captured_entity: AdvancedChatAppGenerateEntity = None
 
         def _fake_generate(**kwargs):
             nonlocal captured_entity
@@ -1343,7 +1343,7 @@ class TestAdvancedChatAppGeneratorResume:
             trace_manager=existing_trace_manager,
             workflow_run_id="run-id",
         )
-        captured_entity: AdvancedChatAppGenerateEntity | None = None
+        captured_entity: AdvancedChatAppGenerateEntity = None
 
         def _fake_generate(**kwargs):
             nonlocal captured_entity

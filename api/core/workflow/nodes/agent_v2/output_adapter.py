@@ -41,7 +41,7 @@ class WorkflowAgentOutputAdapter:
 
     _tool_file_rebacker: ToolFileRebacker | None
 
-    def __init__(self, *, tool_file_rebacker: ToolFileRebacker | None = None) -> None:
+    def __init__(self, *, tool_file_rebacker: ToolFileRebacker = None) -> None:
         self._tool_file_rebacker = tool_file_rebacker
 
     def build_success_result(
@@ -51,8 +51,8 @@ class WorkflowAgentOutputAdapter:
         inputs: dict[str, Any],
         process_data: dict[str, Any],
         metadata: dict[str, Any],
-        declared_outputs: Sequence[DeclaredOutputConfig] | None = None,
-        tenant_id: str | None = None,
+        declared_outputs: Sequence[DeclaredOutputConfig] = None,
+        tenant_id: str = None,
     ) -> NodeRunResult:
         """Build the successful node result from one backend terminal event.
 
@@ -139,8 +139,8 @@ class WorkflowAgentOutputAdapter:
         self,
         output: Any,
         *,
-        declared_outputs: Sequence[DeclaredOutputConfig] | None = None,
-        tenant_id: str | None = None,
+        declared_outputs: Sequence[DeclaredOutputConfig] = None,
+        tenant_id: str = None,
     ) -> dict[str, Any]:
         """Normalize backend output payloads into workflow-facing values.
 
@@ -167,8 +167,8 @@ class WorkflowAgentOutputAdapter:
         self,
         value: Any,
         *,
-        declared_output: DeclaredOutputConfig | None = None,
-        tenant_id: str | None = None,
+        declared_output: DeclaredOutputConfig = None,
+        tenant_id: str = None,
     ) -> Any:
         if isinstance(value, File | FileSegment | ArrayFileSegment):
             return value
@@ -190,7 +190,7 @@ class WorkflowAgentOutputAdapter:
         value: Any,
         *,
         declared_output: DeclaredOutputConfig,
-        tenant_id: str | None = None,
+        tenant_id: str = None,
     ) -> Any | None:
         if declared_output.type == DeclaredOutputType.FILE and isinstance(value, Mapping):
             return self._file_segment_from_payload(value, tenant_id=tenant_id)

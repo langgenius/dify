@@ -31,7 +31,7 @@ from graphon.enums import BuiltinNodeTypes, NodeType
 from tests.unit_tests.core.trigger.conftest import VALID_PROVIDER_ID
 
 
-def _make_poller_args(node_config: dict[str, Any] | None = None) -> dict[str, Any]:
+def _make_poller_args(node_config: dict[str, Any] = None) -> dict[str, Any]:
     return {
         "tenant_id": "t1",
         "user_id": "u1",

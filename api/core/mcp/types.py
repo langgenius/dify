@@ -35,7 +35,7 @@ RequestId = Annotated[int | str, Field(union_mode="left_to_right")]
 
 class RequestParams(BaseModel):
     class Meta(BaseModel):
-        progressToken: ProgressToken | None = None
+        progressToken: ProgressToken = None
         """
         If specified, the caller requests out-of-band progress notifications for
         this request (as represented by notifications/progress). The value of this
@@ -49,7 +49,7 @@ class RequestParams(BaseModel):
 
 
 class PaginatedRequestParams(RequestParams):
-    cursor: Cursor | None = None
+    cursor: Cursor = None
     """
     An opaque token representing the current pagination position.
     If provided, the server should return results starting after this cursor.
@@ -79,7 +79,7 @@ class PaginatedRequest[T: str](Request[PaginatedRequestParams | None, T]):
     """Base class for paginated requests,
     matching the schema's PaginatedRequest interface."""
 
-    params: PaginatedRequestParams | None = None
+    params: PaginatedRequestParams = None
 
 
 class Notification[NotificationParamsT: NotificationParams | dict[str, Any] | None, MethodT: str](BaseModel):
@@ -102,7 +102,7 @@ class Result(BaseModel):
 
 
 class PaginatedResult(Result):
-    nextCursor: Cursor | None = None
+    nextCursor: Cursor = None
     """
     An opaque token representing the pagination position after the last returned result.
     If present, there may be more results available.
@@ -115,14 +115,14 @@ class JSONRPCRequest(Request[dict[str, Any] | None, str]):
     jsonrpc: Literal["2.0"]
     id: RequestId
     method: str
-    params: dict[str, Any] | None = None
+    params: dict[str, Any] = None
 
 
 class JSONRPCNotification(Notification[dict[str, Any] | None, str]):
     """A notification which does not expect a response."""
 
     jsonrpc: Literal["2.0"]
-    params: dict[str, Any] | None = None
+    params: dict[str, Any] = None
 
 
 class JSONRPCResponse(BaseModel):
@@ -200,7 +200,7 @@ class BaseMetadata(BaseModel):
     name: str
     """The programmatic name of the entity."""
 
-    title: str | None = None
+    title: str = None
     """
     Intended for UI and end-user contexts — optimized to be human-readable and easily understood,
     even by those unfamiliar with domain-specific terminology.
@@ -221,7 +221,7 @@ class Implementation(BaseMetadata):
 class RootsCapability(BaseModel):
     """Capability for root operations."""
 
-    listChanged: bool | None = None
+    listChanged: bool = None
     """Whether the client supports notifications for changes to the roots list."""
     model_config = ConfigDict(extra="allow")
 
@@ -235,11 +235,11 @@ class SamplingCapability(BaseModel):
 class ClientCapabilities(BaseModel):
     """Capabilities a client may support."""
 
-    experimental: dict[str, dict[str, Any]] | None = None
+    experimental: dict[str, dict[str, Any]] = None
     """Experimental, non-standard capabilities that the client supports."""
-    sampling: SamplingCapability | None = None
+    sampling: SamplingCapability = None
     """Present if the client supports sampling from an LLM."""
-    roots: RootsCapability | None = None
+    roots: RootsCapability = None
     """Present if the client supports listing roots."""
     model_config = ConfigDict(extra="allow")
 
@@ -247,7 +247,7 @@ class ClientCapabilities(BaseModel):
 class PromptsCapability(BaseModel):
     """Capability for prompts operations."""
 
-    listChanged: bool | None = None
+    listChanged: bool = None
     """Whether this server supports notifications for changes to the prompt list."""
     model_config = ConfigDict(extra="allow")
 
@@ -255,9 +255,9 @@ class PromptsCapability(BaseModel):
 class ResourcesCapability(BaseModel):
     """Capability for resources operations."""
 
-    subscribe: bool | None = None
+    subscribe: bool = None
     """Whether this server supports subscribing to resource updates."""
-    listChanged: bool | None = None
+    listChanged: bool = None
     """Whether this server supports notifications for changes to the resource list."""
     model_config = ConfigDict(extra="allow")
 
@@ -265,7 +265,7 @@ class ResourcesCapability(BaseModel):
 class ToolsCapability(BaseModel):
     """Capability for tools operations."""
 
-    listChanged: bool | None = None
+    listChanged: bool = None
     """Whether this server supports notifications for changes to the tool list."""
     model_config = ConfigDict(extra="allow")
 
@@ -285,17 +285,17 @@ class CompletionsCapability(BaseModel):
 class ServerCapabilities(BaseModel):
     """Capabilities that a server may support."""
 
-    experimental: dict[str, dict[str, Any]] | None = None
+    experimental: dict[str, dict[str, Any]] = None
     """Experimental, non-standard capabilities that the server supports."""
-    logging: LoggingCapability | None = None
+    logging: LoggingCapability = None
     """Present if the server supports sending log messages to the client."""
-    prompts: PromptsCapability | None = None
+    prompts: PromptsCapability = None
     """Present if the server offers any prompt templates."""
-    resources: ResourcesCapability | None = None
+    resources: ResourcesCapability = None
     """Present if the server offers any resources to read."""
-    tools: ToolsCapability | None = None
+    tools: ToolsCapability = None
     """Present if the server offers any tools to call."""
-    completions: CompletionsCapability | None = None
+    completions: CompletionsCapability = None
     """Present if the server offers autocompletion suggestions for prompts and resources."""
     model_config = ConfigDict(extra="allow")
 
@@ -327,7 +327,7 @@ class InitializeResult(Result):
     """The version of the Model Context Protocol that the server wants to use."""
     capabilities: ServerCapabilities
     serverInfo: Implementation
-    instructions: str | None = None
+    instructions: str = None
     """Instructions describing how to use the server and its features."""
 
 
@@ -338,7 +338,7 @@ class InitializedNotification(Notification[NotificationParams | None, Literal["n
     """
 
     method: Literal["notifications/initialized"] = "notifications/initialized"
-    params: NotificationParams | None = None
+    params: NotificationParams = None
 
 
 class PingRequest(Request[RequestParams | None, Literal["ping"]]):
@@ -348,7 +348,7 @@ class PingRequest(Request[RequestParams | None, Literal["ping"]]):
     """
 
     method: Literal["ping"] = "ping"
-    params: RequestParams | None = None
+    params: RequestParams = None
 
 
 class ProgressNotificationParams(NotificationParams):
@@ -364,9 +364,9 @@ class ProgressNotificationParams(NotificationParams):
     The progress thus far. This should increase every time progress is made, even if the
     total is unknown.
     """
-    total: float | None = None
+    total: float = None
     """Total number of items to process (or total progress required), if known."""
-    message: str | None = None
+    message: str = None
     """
     Message related to progress. This should provide relevant human readable
     progress information.
@@ -391,8 +391,8 @@ class ListResourcesRequest(PaginatedRequest[Literal["resources/list"]]):
 
 
 class Annotations(BaseModel):
-    audience: list[Role] | None = None
-    priority: Annotated[float, Field(ge=0.0, le=1.0)] | None = None
+    audience: list[Role] = None
+    priority: Annotated[float, Field(ge=0.0, le=1.0)] = None
     model_config = ConfigDict(extra="allow")
 
 
@@ -401,18 +401,18 @@ class Resource(BaseMetadata):
 
     uri: Annotated[AnyUrl, UrlConstraints(host_required=False)]
     """The URI of this resource."""
-    description: str | None = None
+    description: str = None
     """A description of what this resource represents."""
-    mimeType: str | None = None
+    mimeType: str = None
     """The MIME type of this resource, if known."""
-    size: int | None = None
+    size: int = None
     """
     The size of the raw resource content, in bytes (i.e., before base64 encoding
     or any tokenization), if known.
 
     This can be used by Hosts to display file sizes and estimate context window usage.
     """
-    annotations: Annotations | None = None
+    annotations: Annotations = None
     meta: dict[str, Any] | None = Field(alias="_meta", default=None)
     """
     See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
@@ -429,14 +429,14 @@ class ResourceTemplate(BaseMetadata):
     A URI template (according to RFC 6570) that can be used to construct resource
     URIs.
     """
-    description: str | None = None
+    description: str = None
     """A human-readable description of what this template is for."""
-    mimeType: str | None = None
+    mimeType: str = None
     """
     The MIME type for all resources that match this template. This should only be
     included if all resources matching this template have the same type.
     """
-    annotations: Annotations | None = None
+    annotations: Annotations = None
     meta: dict[str, Any] | None = Field(alias="_meta", default=None)
     """
     See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
@@ -486,7 +486,7 @@ class ResourceContents(BaseModel):
 
     uri: Annotated[AnyUrl, UrlConstraints(host_required=False)]
     """The URI of this resource."""
-    mimeType: str | None = None
+    mimeType: str = None
     """The MIME type of this resource, if known."""
     meta: dict[str, Any] | None = Field(alias="_meta", default=None)
     """
@@ -528,7 +528,7 @@ class ResourceListChangedNotification(
     """
 
     method: Literal["notifications/resources/list_changed"] = "notifications/resources/list_changed"
-    params: NotificationParams | None = None
+    params: NotificationParams = None
 
 
 class SubscribeRequestParams(RequestParams):
@@ -604,9 +604,9 @@ class PromptArgument(BaseModel):
 
     name: str
     """The name of the argument."""
-    description: str | None = None
+    description: str = None
     """A human-readable description of the argument."""
-    required: bool | None = None
+    required: bool = None
     """Whether this argument must be provided."""
     model_config = ConfigDict(extra="allow")
 
@@ -614,9 +614,9 @@ class PromptArgument(BaseModel):
 class Prompt(BaseMetadata):
     """A prompt or prompt template that the server offers."""
 
-    description: str | None = None
+    description: str = None
     """An optional description of what this prompt provides."""
-    arguments: list[PromptArgument] | None = None
+    arguments: list[PromptArgument] = None
     """A list of arguments to use for templating the prompt."""
     meta: dict[str, Any] | None = Field(alias="_meta", default=None)
     """
@@ -637,7 +637,7 @@ class GetPromptRequestParams(RequestParams):
 
     name: str
     """The name of the prompt or prompt template."""
-    arguments: dict[str, str] | None = None
+    arguments: dict[str, str] = None
     """Arguments to use for templating the prompt."""
     model_config = ConfigDict(extra="allow")
 
@@ -655,7 +655,7 @@ class TextContent(BaseModel):
     type: Literal["text"]
     text: str
     """The text content of the message."""
-    annotations: Annotations | None = None
+    annotations: Annotations = None
     meta: dict[str, Any] | None = Field(alias="_meta", default=None)
     """
     See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
@@ -675,7 +675,7 @@ class ImageContent(BaseModel):
     The MIME type of the image. Different providers may support different
     image types.
     """
-    annotations: Annotations | None = None
+    annotations: Annotations = None
     meta: dict[str, Any] | None = Field(alias="_meta", default=None)
     """
     See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
@@ -695,7 +695,7 @@ class AudioContent(BaseModel):
     The MIME type of the audio. Different providers may support different
     audio types.
     """
-    annotations: Annotations | None = None
+    annotations: Annotations = None
     meta: dict[str, Any] | None = Field(alias="_meta", default=None)
     """
     See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
@@ -722,7 +722,7 @@ class EmbeddedResource(BaseModel):
 
     type: Literal["resource"]
     resource: TextResourceContents | BlobResourceContents
-    annotations: Annotations | None = None
+    annotations: Annotations = None
     meta: dict[str, Any] | None = Field(alias="_meta", default=None)
     """
     See [MCP specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/47339c03c143bb4ec01a26e721a1b8fe66634ebe/docs/specification/draft/basic/index.mdx#general-fields)
@@ -759,7 +759,7 @@ class PromptMessage(BaseModel):
 class GetPromptResult(Result):
     """The server's response to a prompts/get request from the client."""
 
-    description: str | None = None
+    description: str = None
     """An optional description for the prompt."""
     messages: list[PromptMessage]
 
@@ -773,7 +773,7 @@ class PromptListChangedNotification(
     """
 
     method: Literal["notifications/prompts/list_changed"] = "notifications/prompts/list_changed"
-    params: NotificationParams | None = None
+    params: NotificationParams = None
 
 
 class ListToolsRequest(PaginatedRequest[Literal["tools/list"]]):
@@ -794,16 +794,16 @@ class ToolAnnotations(BaseModel):
     received from untrusted servers.
     """
 
-    title: str | None = None
+    title: str = None
     """A human-readable title for the tool."""
 
-    readOnlyHint: bool | None = None
+    readOnlyHint: bool = None
     """
     If true, the tool does not modify its environment.
     Default: false
     """
 
-    destructiveHint: bool | None = None
+    destructiveHint: bool = None
     """
     If true, the tool may perform destructive updates to its environment.
     If false, the tool performs only additive updates.
@@ -811,7 +811,7 @@ class ToolAnnotations(BaseModel):
     Default: true
     """
 
-    idempotentHint: bool | None = None
+    idempotentHint: bool = None
     """
     If true, calling the tool repeatedly with the same arguments
     will have no additional effect on the its environment.
@@ -819,7 +819,7 @@ class ToolAnnotations(BaseModel):
     Default: false
     """
 
-    openWorldHint: bool | None = None
+    openWorldHint: bool = None
     """
     If true, this tool may interact with an "open world" of external
     entities. If false, the tool's domain of interaction is closed.
@@ -833,16 +833,16 @@ class ToolAnnotations(BaseModel):
 class Tool(BaseMetadata):
     """Definition for a tool the client can call."""
 
-    description: str | None = None
+    description: str = None
     """A human-readable description of the tool."""
     inputSchema: dict[str, Any]
     """A JSON Schema object defining the expected parameters for the tool."""
-    outputSchema: dict[str, Any] | None = None
+    outputSchema: dict[str, Any] = None
     """
     An optional JSON Schema object defining the structure of the tool's output
     returned in the structuredContent field of a CallToolResult.
     """
-    annotations: ToolAnnotations | None = None
+    annotations: ToolAnnotations = None
     """Optional additional tool information."""
     meta: dict[str, Any] | None = Field(alias="_meta", default=None)
     """
@@ -862,7 +862,7 @@ class CallToolRequestParams(RequestParams):
     """Parameters for calling a tool."""
 
     name: str
-    arguments: dict[str, Any] | None = None
+    arguments: dict[str, Any] = None
     model_config = ConfigDict(extra="allow")
 
 
@@ -877,7 +877,7 @@ class CallToolResult(Result):
     """The server's response to a tool call."""
 
     content: list[ContentBlock]
-    structuredContent: dict[str, Any] | None = None
+    structuredContent: dict[str, Any] = None
     """An optional JSON object that represents the structured result of the tool call."""
     isError: bool = False
 
@@ -889,7 +889,7 @@ class ToolListChangedNotification(Notification[NotificationParams | None, Litera
     """
 
     method: Literal["notifications/tools/list_changed"] = "notifications/tools/list_changed"
-    params: NotificationParams | None = None
+    params: NotificationParams = None
 
 
 LoggingLevel = Literal["debug", "info", "notice", "warning", "error", "critical", "alert", "emergency"]
@@ -915,7 +915,7 @@ class LoggingMessageNotificationParams(NotificationParams):
 
     level: LoggingLevel
     """The severity of this log message."""
-    logger: str | None = None
+    logger: str = None
     """An optional name of the logger issuing this message."""
     data: Any
     """
@@ -938,7 +938,7 @@ IncludeContext = Literal["none", "thisServer", "allServers"]
 class ModelHint(BaseModel):
     """Hints to use for model selection."""
 
-    name: str | None = None
+    name: str = None
     """A hint for a model name."""
 
     model_config = ConfigDict(extra="allow")
@@ -960,7 +960,7 @@ class ModelPreferences(BaseModel):
     balance them against other considerations.
     """
 
-    hints: list[ModelHint] | None = None
+    hints: list[ModelHint] = None
     """
     Optional hints to use for model selection.
 
@@ -971,21 +971,21 @@ class ModelPreferences(BaseModel):
     MAY still use the priorities to select from ambiguous matches.
     """
 
-    costPriority: float | None = None
+    costPriority: float = None
     """
     How much to prioritize cost when selecting a model. A value of 0 means cost
     is not important, while a value of 1 means cost is the most important
     factor.
     """
 
-    speedPriority: float | None = None
+    speedPriority: float = None
     """
     How much to prioritize sampling speed (latency) when selecting a model. A
     value of 0 means speed is not important, while a value of 1 means speed is
     the most important factor.
     """
 
-    intelligencePriority: float | None = None
+    intelligencePriority: float = None
     """
     How much to prioritize intelligence and capabilities when selecting a
     model. A value of 0 means intelligence is not important, while a value of 1
@@ -999,23 +999,23 @@ class CreateMessageRequestParams(RequestParams):
     """Parameters for creating a message."""
 
     messages: list[SamplingMessage]
-    modelPreferences: ModelPreferences | None = None
+    modelPreferences: ModelPreferences = None
     """
     The server's preferences for which model to select. The client MAY ignore
     these preferences.
     """
-    systemPrompt: str | None = None
+    systemPrompt: str = None
     """An optional system prompt the server wants to use for sampling."""
-    includeContext: IncludeContext | None = None
+    includeContext: IncludeContext = None
     """
     A request to include context from one or more MCP servers (including the caller), to
     be attached to the prompt.
     """
-    temperature: float | None = None
+    temperature: float = None
     maxTokens: int
     """The maximum number of tokens to sample, as requested by the server."""
-    stopSequences: list[str] | None = None
-    metadata: dict[str, Any] | None = None
+    stopSequences: list[str] = None
+    metadata: dict[str, Any] = None
     """Optional metadata to pass through to the LLM provider."""
     model_config = ConfigDict(extra="allow")
 
@@ -1037,7 +1037,7 @@ class CreateMessageResult(Result):
     content: TextContent | ImageContent | AudioContent
     model: str
     """The name of the model that generated the message."""
-    stopReason: StopReason | None = None
+    stopReason: StopReason = None
     """The reason why sampling stopped, if known."""
 
 
@@ -1072,7 +1072,7 @@ class CompletionArgument(BaseModel):
 class CompletionContext(BaseModel):
     """Additional, optional context for completions."""
 
-    arguments: dict[str, str] | None = None
+    arguments: dict[str, str] = None
     """Previously-resolved variables in a URI template or prompt."""
     model_config = ConfigDict(extra="allow")
 
@@ -1082,7 +1082,7 @@ class CompleteRequestParams(RequestParams):
 
     ref: ResourceTemplateReference | PromptReference
     argument: CompletionArgument
-    context: CompletionContext | None = None
+    context: CompletionContext = None
     """Additional, optional context for completions"""
     model_config = ConfigDict(extra="allow")
 
@@ -1099,12 +1099,12 @@ class Completion(BaseModel):
 
     values: list[str]
     """An array of completion values. Must not exceed 100 items."""
-    total: int | None = None
+    total: int = None
     """
     The total number of completion options available. This can exceed the number of
     values actually sent in the response.
     """
-    hasMore: bool | None = None
+    hasMore: bool = None
     """
     Indicates whether there are additional completion options beyond those provided in
     the current response, even if the exact total is unknown.
@@ -1130,7 +1130,7 @@ class ListRootsRequest(Request[RequestParams | None, Literal["roots/list"]]):
     """
 
     method: Literal["roots/list"] = "roots/list"
-    params: RequestParams | None = None
+    params: RequestParams = None
 
 
 class Root(BaseModel):
@@ -1142,7 +1142,7 @@ class Root(BaseModel):
     This restriction may be relaxed in future versions of the protocol to allow
     other URI schemes.
     """
-    name: str | None = None
+    name: str = None
     """
     An optional name for the root. This can be used to provide a human-readable
     identifier for the root, which may be useful for display purposes or for
@@ -1179,7 +1179,7 @@ class RootsListChangedNotification(
     """
 
     method: Literal["notifications/roots/list_changed"] = "notifications/roots/list_changed"
-    params: NotificationParams | None = None
+    params: NotificationParams = None
 
 
 class CancelledNotificationParams(NotificationParams):
@@ -1187,7 +1187,7 @@ class CancelledNotificationParams(NotificationParams):
 
     requestId: RequestId
     """The ID of the request to cancel."""
-    reason: str | None = None
+    reason: str = None
     """An optional string describing the reason for the cancellation."""
     model_config = ConfigDict(extra="allow")
 
@@ -1276,16 +1276,16 @@ ResumptionTokenUpdateCallback = Callable[[ResumptionToken], None]
 class ClientMessageMetadata:
     """Metadata specific to client messages."""
 
-    resumption_token: ResumptionToken | None = None
-    on_resumption_token_update: Callable[[ResumptionToken], None] | None = None
+    resumption_token: ResumptionToken = None
+    on_resumption_token_update: Callable[[ResumptionToken], None] = None
 
 
 @dataclass
 class ServerMessageMetadata:
     """Metadata specific to server messages."""
 
-    related_request_id: RequestId | None = None
-    request_context: object | None = None
+    related_request_id: RequestId = None
+    request_context: object = None
 
 
 MessageMetadata = ClientMessageMetadata | ServerMessageMetadata | None
@@ -1296,55 +1296,55 @@ class SessionMessage:
     """A message with specific metadata for transport-specific features."""
 
     message: JSONRPCMessage
-    metadata: MessageMetadata | None = None
+    metadata: MessageMetadata = None
 
 
 class OAuthClientMetadata(BaseModel):
     client_name: str
     redirect_uris: list[str]
-    grant_types: list[str] | None = None
-    response_types: list[str] | None = None
-    token_endpoint_auth_method: str | None = None
-    client_uri: str | None = None
-    scope: str | None = None
+    grant_types: list[str] = None
+    response_types: list[str] = None
+    token_endpoint_auth_method: str = None
+    client_uri: str = None
+    scope: str = None
 
 
 class OAuthClientInformation(BaseModel):
     client_id: str
-    client_secret: str | None = None
+    client_secret: str = None
 
 
 class OAuthClientInformationFull(OAuthClientInformation):
-    client_name: str | None = None
+    client_name: str = None
     redirect_uris: list[str]
-    scope: str | None = None
-    grant_types: list[str] | None = None
-    response_types: list[str] | None = None
-    token_endpoint_auth_method: str | None = None
+    scope: str = None
+    grant_types: list[str] = None
+    response_types: list[str] = None
+    token_endpoint_auth_method: str = None
 
 
 class OAuthTokens(BaseModel):
     access_token: str
     token_type: str
-    expires_in: int | None = None
-    refresh_token: str | None = None
-    scope: str | None = None
+    expires_in: int = None
+    refresh_token: str = None
+    scope: str = None
 
 
 class OAuthMetadata(BaseModel):
     authorization_endpoint: str
     token_endpoint: str
-    registration_endpoint: str | None = None
+    registration_endpoint: str = None
     response_types_supported: list[str]
-    grant_types_supported: list[str] | None = None
-    code_challenge_methods_supported: list[str] | None = None
-    scopes_supported: list[str] | None = None
+    grant_types_supported: list[str] = None
+    code_challenge_methods_supported: list[str] = None
+    scopes_supported: list[str] = None
 
 
 class ProtectedResourceMetadata(BaseModel):
     """OAuth 2.0 Protected Resource Metadata (RFC 9470)."""
 
-    resource: str | None = None
+    resource: str = None
     authorization_servers: list[str]
-    scopes_supported: list[str] | None = None
-    bearer_methods_supported: list[str] | None = None
+    scopes_supported: list[str] = None
+    bearer_methods_supported: list[str] = None

@@ -485,7 +485,7 @@ class OpsTraceManager:
     @classmethod
     def get_ops_trace_instance(
         cls,
-        app_id: UUID | str | None = None,
+        app_id: UUID | str = None,
     ):
         """
         Get ops trace through model config
@@ -737,11 +737,11 @@ class TraceTask:
     def __init__(
         self,
         trace_type: Any,
-        message_id: str | None = None,
+        message_id: str = None,
         workflow_execution: "WorkflowExecution | None" = None,
-        conversation_id: str | None = None,
-        user_id: str | None = None,
-        timer: Any | None = None,
+        conversation_id: str = None,
+        user_id: str = None,
+        timer: Any = None,
         **kwargs,
     ):
         self.trace_type = trace_type
@@ -806,7 +806,7 @@ class TraceTask:
         workflow_run_id: str | None,
         conversation_id: str | None,
         user_id: str | None,
-        total_tokens_override: int | None = None,
+        total_tokens_override: int = None,
     ):
         if not workflow_run_id:
             return {}
@@ -1403,7 +1403,7 @@ class TraceTask:
         if dumped_parent_trace_context:
             metadata["parent_trace_context"] = dumped_parent_trace_context
 
-        message_id: str | None = None
+        message_id: str = None
         conversation_id = node_data.get("conversation_id")
         workflow_execution_id = node_data.get("workflow_execution_id")
         if conversation_id and workflow_execution_id and not dumped_parent_trace_context:
@@ -1482,7 +1482,7 @@ class TraceTask:
             return {}
 
 
-trace_manager_timer: threading.Timer | None = None
+trace_manager_timer: threading.Timer = None
 trace_manager_queue: queue.Queue = queue.Queue()
 trace_manager_interval = int(os.getenv("TRACE_QUEUE_MANAGER_INTERVAL", 5))
 trace_manager_batch_size = int(os.getenv("TRACE_QUEUE_MANAGER_BATCH_SIZE", 100))

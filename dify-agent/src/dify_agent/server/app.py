@@ -32,7 +32,7 @@ from dify_agent.server.settings import ServerSettings
 from dify_agent.storage.redis_run_store import RedisRunStore
 
 
-def create_app(settings: ServerSettings | None = None) -> FastAPI:
+def create_app(settings: ServerSettings = None) -> FastAPI:
     """Build the FastAPI app with one shared Redis store and local scheduler."""
     resolved_settings = settings or ServerSettings()
     agent_stub_token_codec = resolved_settings.create_agent_stub_token_codec()

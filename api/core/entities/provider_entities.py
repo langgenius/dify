@@ -51,7 +51,7 @@ class SystemConfigurationStatus(StrEnum):
 
 class RestrictModel(BaseModel):
     model: str
-    base_model_name: str | None = None
+    base_model_name: str = None
     model_type: ModelType
 
     # pydantic configs
@@ -86,7 +86,7 @@ class SystemConfiguration(BaseModel):
     """
 
     enabled: bool
-    current_quota_type: ProviderQuotaType | None = None
+    current_quota_type: ProviderQuotaType = None
     quota_configurations: list[QuotaConfiguration] = []
     credentials: dict[str, Any] | None = Field(default=None)
 
@@ -97,8 +97,8 @@ class CustomProviderConfiguration(BaseModel):
     """
 
     credentials: dict[str, Any]
-    current_credential_id: str | None = None
-    current_credential_name: str | None = None
+    current_credential_id: str = None
+    current_credential_name: str = None
     available_credentials: list[CredentialConfiguration] = []
 
 
@@ -110,8 +110,8 @@ class CustomModelConfiguration(BaseModel):
     model: str
     model_type: ModelType
     credentials: dict[str, Any] | None
-    current_credential_id: str | None = None
-    current_credential_name: str | None = None
+    current_credential_id: str = None
+    current_credential_name: str = None
     available_model_credentials: list[CredentialConfiguration] = []
     unadded_to_model_list: bool = False
 
@@ -133,7 +133,7 @@ class CustomConfiguration(BaseModel):
     Model class for provider custom configuration.
     """
 
-    provider: CustomProviderConfiguration | None = None
+    provider: CustomProviderConfiguration = None
     models: list[CustomModelConfiguration] = []
     can_added_models: list[UnaddedModelConfiguration] = []
 
@@ -146,8 +146,8 @@ class ModelLoadBalancingConfiguration(BaseModel):
     id: str
     name: str
     credentials: dict[str, Any]
-    credential_source_type: str | None = None
-    credential_id: str | None = None
+    credential_source_type: str = None
+    credential_id: str = None
 
 
 class ModelSettings(BaseModel):
@@ -205,15 +205,15 @@ class ProviderConfig(BasicProviderConfig):
         value: str = Field(..., description="The value of the option")
         label: I18nObject = Field(..., description="The label of the option")
 
-    scope: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | None = None
+    scope: AppSelectorScope | ModelSelectorScope | ToolSelectorScope = None
     required: bool = False
-    default: Union[int, str, float, bool] | None = None
-    options: list[Option] | None = None
+    default: Union[int, str, float, bool] = None
+    options: list[Option] = None
     multiple: bool = False
-    label: I18nObject | None = None
-    help: I18nObject | None = None
-    url: str | None = None
-    placeholder: I18nObject | None = None
+    label: I18nObject = None
+    help: I18nObject = None
+    url: str = None
+    placeholder: I18nObject = None
 
     def to_basic_provider_config(self) -> BasicProviderConfig:
         return BasicProviderConfig(type=self.type, name=self.name)

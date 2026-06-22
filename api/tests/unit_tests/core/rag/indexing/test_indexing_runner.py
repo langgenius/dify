@@ -75,8 +75,8 @@ from models.dataset import Document as DatasetDocument
 
 
 def create_mock_dataset(
-    dataset_id: str | None = None,
-    tenant_id: str | None = None,
+    dataset_id: str = None,
+    tenant_id: str = None,
     indexing_technique: str = IndexTechniqueType.HIGH_QUALITY,
     embedding_provider: str = "openai",
     embedding_model: str = "text-embedding-ada-002",
@@ -110,9 +110,9 @@ def create_mock_dataset(
 
 
 def create_mock_dataset_document(
-    document_id: str | None = None,
-    dataset_id: str | None = None,
-    tenant_id: str | None = None,
+    document_id: str = None,
+    dataset_id: str = None,
+    tenant_id: str = None,
     doc_form: str = IndexStructureType.PARAGRAPH_INDEX,
     data_source_type: str = "upload_file",
     doc_language: str = "English",

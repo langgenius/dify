@@ -82,12 +82,12 @@ logger = logging.getLogger(__name__)
 class DatasetResponse(ResponseModel):
     id: str
     name: str
-    description: str | None = None
-    permission: str | None = None
-    data_source_type: str | None = None
-    indexing_technique: str | None = None
-    created_by: str | None = None
-    created_at: int | None = None
+    description: str = None
+    permission: str = None
+    data_source_type: str = None
+    indexing_technique: str = None
+    created_by: str = None
+    created_at: int = None
 
     @field_validator("data_source_type", "indexing_technique", mode="before")
     @classmethod
@@ -125,7 +125,7 @@ class GenerateSummaryPayload(BaseModel):
 
 
 class DocumentMetadataUpdatePayload(BaseModel):
-    doc_type: str | None = None
+    doc_type: str = None
     doc_metadata: Any = None
 
 

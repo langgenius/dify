@@ -73,8 +73,8 @@ type SegmentUnion = Annotated[
 
 def _build_variable_pool(
     *,
-    system_variables: list[Variable] | None = None,
-    environment_variables: list[Variable] | None = None,
+    system_variables: list[Variable] = None,
+    environment_variables: list[Variable] = None,
 ) -> VariablePool:
     variable_pool = VariablePool()
     add_variables_to_pool(

@@ -18,7 +18,7 @@ from dify_agent.agent_stub.server.grpc_runtime import start_agent_stub_grpc_serv
 from dify_agent.server.settings import ServerSettings
 
 
-def main(argv: list[str] | None = None) -> None:
+def main(argv: list[str] = None) -> None:
     """Run the standalone stub server with parsed uvicorn bind options.
 
     Args:

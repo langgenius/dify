@@ -44,7 +44,7 @@ class AgentStubTokenError(RuntimeError):
 class AgentStubShellClaims(BaseModel):
     """Optional shell-session claims embedded in Agent Stub tokens."""
 
-    session_id: str | None = None
+    session_id: str = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -60,7 +60,7 @@ class AgentStubTokenClaims(BaseModel):
     jti: str
     scope: list[str]
     execution_context: DifyExecutionContextLayerConfig
-    shell: AgentStubShellClaims | None = None
+    shell: AgentStubShellClaims = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -97,8 +97,8 @@ class AgentStubTokenCodec:
         self,
         execution_context: DifyExecutionContextLayerConfig,
         *,
-        session_id: str | None = None,
-        now: int | None = None,
+        session_id: str = None,
+        now: int = None,
     ) -> AgentStubTokenClaims:
         """Build the fixed-24h claim set for one Agent Stub connection token."""
         issued_at = _timestamp(now)
@@ -119,8 +119,8 @@ class AgentStubTokenCodec:
         self,
         execution_context: DifyExecutionContextLayerConfig,
         *,
-        session_id: str | None = None,
-        now: int | None = None,
+        session_id: str = None,
+        now: int = None,
     ) -> str:
         """Encode one fixed-24h Agent Stub compact JWE bearer token."""
         return self.encode_claims(self.build_connection_claims(execution_context, session_id=session_id, now=now))
@@ -136,7 +136,7 @@ class AgentStubTokenCodec:
         token.add_recipient(self._jwe_key)
         return token.serialize(compact=True)
 
-    def decode_authorization_header(self, authorization: str | None, *, now: int | None = None) -> AgentStubPrincipal:
+    def decode_authorization_header(self, authorization: str | None, *, now: int = None) -> AgentStubPrincipal:
         """Decode a ``Bearer <compact-jwe>`` header into a request principal."""
         if authorization is None or not authorization.startswith("Bearer "):
             raise AgentStubTokenError("Authorization must be a Bearer compact JWE token")
@@ -145,7 +145,7 @@ class AgentStubTokenCodec:
             raise AgentStubTokenError("Authorization bearer token must not be empty")
         return self.decode_token(token, now=now)
 
-    def decode_token(self, token: str, *, now: int | None = None) -> AgentStubPrincipal:
+    def decode_token(self, token: str, *, now: int = None) -> AgentStubPrincipal:
         """Decrypt and validate one compact JWE token string."""
         decrypted = jwe.JWE()
         try:

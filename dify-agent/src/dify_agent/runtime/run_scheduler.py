@@ -79,8 +79,8 @@ class RunScheduler:
         plugin_daemon_http_client: httpx.AsyncClient,
         dify_api_http_client: httpx.AsyncClient,
         shutdown_grace_seconds: float = 30,
-        layer_providers: tuple[LayerProviderInput, ...] | None = None,
-        runner_factory: RunRunnerFactory | None = None,
+        layer_providers: tuple[LayerProviderInput, ...] = None,
+        runner_factory: RunRunnerFactory = None,
     ) -> None:
         self.store = store
         self.shutdown_grace_seconds = shutdown_grace_seconds

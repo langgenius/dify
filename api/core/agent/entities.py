@@ -15,8 +15,8 @@ class AgentToolEntity(BaseModel):
     provider_id: str
     tool_name: str
     tool_parameters: dict[str, Any] = Field(default_factory=dict)
-    plugin_unique_identifier: str | None = None
-    credential_id: str | None = None
+    plugin_unique_identifier: str = None
+    credential_id: str = None
 
 
 class AgentPromptEntity(BaseModel):
@@ -50,11 +50,11 @@ class AgentScratchpadUnit(BaseModel):
                 "action_input": self.action_input,
             }
 
-    agent_response: str | None = None
-    thought: str | None = None
-    action_str: str | None = None
-    observation: str | None = None
-    action: Action | None = None
+    agent_response: str = None
+    thought: str = None
+    action_str: str = None
+    observation: str = None
+    action: Action = None
 
     def is_final(self) -> bool:
         """
@@ -81,8 +81,8 @@ class AgentEntity(BaseModel):
     provider: str
     model: str
     strategy: Strategy
-    prompt: AgentPromptEntity | None = None
-    tools: list[AgentToolEntity] | None = None
+    prompt: AgentPromptEntity = None
+    tools: list[AgentToolEntity] = None
     max_iteration: int = 10
 
 

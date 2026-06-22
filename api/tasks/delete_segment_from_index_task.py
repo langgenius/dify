@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 @shared_task(queue="dataset")
 def delete_segment_from_index_task(
-    index_node_ids: list, dataset_id: str, document_id: str, segment_ids: list, child_node_ids: list | None = None
+    index_node_ids: list, dataset_id: str, document_id: str, segment_ids: list, child_node_ids: list = None
 ):
     """
     Async Remove segment from index

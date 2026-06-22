@@ -411,10 +411,10 @@ class LegacyModelTypeMigrationService:
         *,
         apply: bool = False,
         concurrency: int = 1,
-        output: io.TextIOBase | None = None,
-        tables: Sequence[str] | None = None,
+        output: io.TextIOBase = None,
+        tables: Sequence[str] = None,
         model_types: Sequence[ModelType] = _SUPPORTED_MODEL_TYPES,
-        tenant_ids: Sequence[str] | None = None,
+        tenant_ids: Sequence[str] = None,
     ) -> None:
         if concurrency < 1:
             raise ValueError("concurrency must be greater than or equal to 1")
@@ -710,7 +710,7 @@ class Migration:
 
         seen_business_keys: dict[_ProviderModelBusinessKey, list[str]] = {}
         processed_groups = 0
-        last_id: str | None = None
+        last_id: str = None
 
         while True:
             candidates = self._load_provider_model_candidates(last_id)
@@ -946,7 +946,7 @@ class Migration:
 
         seen_business_keys: dict[_TenantDefaultModelBusinessKey, list[str]] = {}
         processed_groups = 0
-        last_id: str | None = None
+        last_id: str = None
 
         while True:
             candidates = self._load_tenant_default_model_candidates(last_id)
@@ -1154,7 +1154,7 @@ class Migration:
 
         seen_business_keys: dict[_ProviderModelSettingBusinessKey, list[str]] = {}
         processed_groups = 0
-        last_id: str | None = None
+        last_id: str = None
 
         while True:
             candidates = self._load_provider_model_setting_candidates(last_id)
@@ -1380,7 +1380,7 @@ class Migration:
 
         processed_inherit_groups = self._deduplicate_inherit_load_balancing_model_configs()
         processed_rows = 0
-        last_id: str | None = None
+        last_id: str = None
 
         while True:
             candidates = self._load_load_balancing_model_config_candidates(last_id)
@@ -1407,7 +1407,7 @@ class Migration:
     def _deduplicate_inherit_load_balancing_model_configs(self) -> int:
         seen_business_keys: dict[_LoadBalancingModelConfigInheritBusinessKey, list[str]] = {}
         processed_groups = 0
-        last_id: str | None = None
+        last_id: str = None
 
         while True:
             candidates = self._load_load_balancing_inherit_candidates(last_id)
@@ -1724,7 +1724,7 @@ class Migration:
         self, candidate: _RowWithRawModelType[LoadBalancingModelConfig]
     ) -> None:
         tx_id = self._new_tx_id()
-        processed_row_id: str | None = None
+        processed_row_id: str = None
 
         try:
             with _session_factory(self._engine) as session, session.begin():
@@ -1775,7 +1775,7 @@ class Migration:
 
         seen_business_keys: dict[_ProviderModelCredentialBusinessKey, list[str]] = {}
         processed_groups = 0
-        last_id: str | None = None
+        last_id: str = None
 
         while True:
             candidates = self._load_provider_model_credential_candidates(last_id)
@@ -2293,7 +2293,7 @@ class Migration:
     def _business_key_to_dict(self, business_key: _BusinessKey) -> dict[str, object]:
         return cast(dict[str, object], asdict(business_key))
 
-    def _row_to_dict(self, row: TypeBase, *, raw_model_type: str | None = None) -> dict[str, object]:
+    def _row_to_dict(self, row: TypeBase, *, raw_model_type: str = None) -> dict[str, object]:
         mapper = sa.inspect(row).mapper
         row_dict = {column.key: row.__dict__[column.key] for column in mapper.column_attrs}
         if raw_model_type is not None and "model_type" in row_dict:
@@ -2332,8 +2332,8 @@ class Migration:
         new_values: dict[str, object],
         *,
         tx_id: str,
-        business_key: _BusinessKey | None = None,
-        rewrite_source: dict[str, object] | None = None,
+        business_key: _BusinessKey = None,
+        rewrite_source: dict[str, object] = None,
     ) -> None:
         attrs: dict[str, object] = {
             "tenant_id": self._tenant_id,

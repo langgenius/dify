@@ -61,7 +61,7 @@ def _make_segment(
     content: str = "hello",
     index_node_id: str = "node-1",
     index_node_hash: str = "hash-1",
-    attachments: list[dict[str, str]] | None = None,
+    attachments: list[dict[str, str]] = None,
 ) -> MagicMock:
     segment = MagicMock(name="segment")
     segment.id = segment_id

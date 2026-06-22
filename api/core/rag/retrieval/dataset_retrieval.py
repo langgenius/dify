@@ -360,8 +360,8 @@ class DatasetRetrieval:
         show_retrieve_source: bool,
         hit_callback: DatasetIndexToolCallbackHandler,
         message_id: str,
-        memory: TokenBufferMemory | None = None,
-        inputs: Mapping[str, Any] | None = None,
+        memory: TokenBufferMemory = None,
+        inputs: Mapping[str, Any] = None,
         vision_enabled: bool = False,
     ) -> tuple[str | None, list[File] | None]:
         """
@@ -605,9 +605,9 @@ class DatasetRetrieval:
         model_instance: ModelInstance,
         model_config: ModelConfigWithCredentialsEntity,
         planning_strategy: PlanningStrategy,
-        message_id: str | None = None,
-        metadata_filter_document_ids: dict[str, list[str]] | None = None,
-        metadata_condition: MetadataFilteringCondition | None = None,
+        message_id: str = None,
+        metadata_filter_document_ids: dict[str, list[str]] = None,
+        metadata_condition: MetadataFilteringCondition = None,
     ):
         tools: list[PromptMessageTool] = []
         for dataset in available_datasets:
@@ -741,13 +741,13 @@ class DatasetRetrieval:
         top_k: int,
         score_threshold: float,
         reranking_mode: str,
-        reranking_model: RerankingModelDict | None = None,
-        weights: WeightsDict | None = None,
+        reranking_model: RerankingModelDict = None,
+        weights: WeightsDict = None,
         reranking_enable: bool = True,
-        message_id: str | None = None,
-        metadata_filter_document_ids: dict[str, list[str]] | None = None,
-        metadata_condition: MetadataFilteringCondition | None = None,
-        attachment_ids: list[str] | None = None,
+        message_id: str = None,
+        metadata_filter_document_ids: dict[str, list[str]] = None,
+        metadata_condition: MetadataFilteringCondition = None,
+        attachment_ids: list[str] = None,
     ):
         if not available_datasets:
             return []
@@ -883,8 +883,8 @@ class DatasetRetrieval:
         self,
         flask_app: Flask,
         documents: list[Document],
-        message_id: str | None = None,
-        timer: dict[str, Any] | None = None,
+        message_id: str = None,
+        timer: dict[str, Any] = None,
     ):
         """Handle retrieval end."""
         with flask_app.app_context():
@@ -1070,9 +1070,9 @@ class DatasetRetrieval:
         query: str,
         top_k: int,
         all_documents: list[Document],
-        document_ids_filter: list[str] | None = None,
-        metadata_condition: MetadataFilteringCondition | None = None,
-        attachment_ids: list[str] | None = None,
+        document_ids_filter: list[str] = None,
+        metadata_condition: MetadataFilteringCondition = None,
+        attachment_ids: list[str] = None,
     ):
         with flask_app.app_context():
             dataset_stmt = select(Dataset).where(Dataset.id == dataset_id)
@@ -1576,7 +1576,7 @@ class DatasetRetrieval:
         return filters
 
     def _fetch_model_config(
-        self, tenant_id: str, model: ModelConfig, user_id: str | None = None
+        self, tenant_id: str, model: ModelConfig, user_id: str = None
     ) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
         """
         Fetch model config
@@ -1748,8 +1748,8 @@ class DatasetRetrieval:
         query: str | None,
         attachment_id: str | None,
         dataset_count: int,
-        cancel_event: threading.Event | None = None,
-        thread_exceptions: list[Exception] | None = None,
+        cancel_event: threading.Event = None,
+        thread_exceptions: list[Exception] = None,
     ):
         try:
             with flask_app.app_context():

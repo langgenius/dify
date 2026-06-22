@@ -41,8 +41,8 @@ class ConversationService:
         last_id: str | None,
         limit: int,
         invoke_from: InvokeFrom,
-        include_ids: Sequence[str] | None = None,
-        exclude_ids: Sequence[str] | None = None,
+        include_ids: Sequence[str] = None,
+        exclude_ids: Sequence[str] = None,
         sort_by: str = "-updated_at",
     ) -> InfiniteScrollPagination:
         if not user:
@@ -214,7 +214,7 @@ class ConversationService:
         user: Account | EndUser | None,
         limit: int,
         last_id: str | None,
-        variable_name: str | None = None,
+        variable_name: str = None,
     ) -> InfiniteScrollPagination:
         conversation = cls.get_conversation(app_model, conversation_id, user)
 

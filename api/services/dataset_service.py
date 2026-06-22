@@ -150,8 +150,8 @@ class _EstimateRules(BaseModel):
 
 
 class _EstimateHierarchicalRules(_EstimateRules):
-    parent_mode: Literal["full-doc", "paragraph"] | None = None
-    subchunk_segmentation: _EstimateSegmentation | None = None
+    parent_mode: Literal["full-doc", "paragraph"] = None
+    subchunk_segmentation: _EstimateSegmentation = None
 
 
 class _SummaryIndexSettingDisabled(BaseModel):
@@ -174,7 +174,7 @@ class _AutomaticProcessRule(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     mode: Literal[ProcessRuleMode.AUTOMATIC]
-    summary_index_setting: _SummaryIndexSetting | None = None
+    summary_index_setting: _SummaryIndexSetting = None
 
     @field_validator("summary_index_setting", mode="before")
     @classmethod
@@ -192,7 +192,7 @@ class _CustomProcessRule(BaseModel):
 
     mode: Literal[ProcessRuleMode.CUSTOM]
     rules: _EstimateRules
-    summary_index_setting: _SummaryIndexSetting | None = None
+    summary_index_setting: _SummaryIndexSetting = None
 
     @field_validator("summary_index_setting", mode="before")
     @classmethod
@@ -210,7 +210,7 @@ class _HierarchicalProcessRule(BaseModel):
 
     mode: Literal[ProcessRuleMode.HIERARCHICAL]
     rules: _EstimateHierarchicalRules
-    summary_index_setting: _SummaryIndexSetting | None = None
+    summary_index_setting: _SummaryIndexSetting = None
 
     @field_validator("summary_index_setting", mode="before")
     @classmethod
@@ -248,13 +248,13 @@ class DatasetService:
     def get_datasets(
         page,
         per_page,
-        session: scoped_session | Session | None = None,
+        session: scoped_session | Session = None,
         tenant_id=None,
         user=None,
         search=None,
         tag_ids=None,
         include_all=False,
-        accessible_dataset_ids: list[str] | None = None,
+        accessible_dataset_ids: list[str] = None,
         include_own_datasets: bool = False,
     ):
         session = session or db.session
@@ -374,7 +374,7 @@ class DatasetService:
         ids,
         tenant_id,
         user=None,
-        accessible_dataset_ids: list[str] | None = None,
+        accessible_dataset_ids: list[str] = None,
         include_own_datasets: bool = False,
     ):
         # Check if ids is not empty to avoid WHERE false condition
@@ -403,14 +403,14 @@ class DatasetService:
         description: str | None,
         indexing_technique: str | None,
         account: Account,
-        permission: str | None = None,
+        permission: str = None,
         provider: str = "vendor",
-        external_knowledge_api_id: str | None = None,
-        external_knowledge_id: str | None = None,
-        embedding_model_provider: str | None = None,
-        embedding_model_name: str | None = None,
-        retrieval_model: RetrievalModel | None = None,
-        summary_index_setting: dict[str, Any] | None = None,
+        external_knowledge_api_id: str = None,
+        external_knowledge_id: str = None,
+        embedding_model_provider: str = None,
+        embedding_model_name: str = None,
+        retrieval_model: RetrievalModel = None,
+        summary_index_setting: dict[str, Any] = None,
     ):
         # check if dataset name already exists
         if db.session.scalar(select(Dataset).where(Dataset.name == name, Dataset.tenant_id == tenant_id).limit(1)):
@@ -1346,7 +1346,7 @@ class DatasetService:
                         raise NoPermissionError("You do not have permission to access this dataset.")
 
     @staticmethod
-    def check_dataset_operator_permission(user: Account | None = None, dataset: Dataset | None = None):
+    def check_dataset_operator_permission(user: Account = None, dataset: Dataset = None):
         if not dataset:
             raise ValueError("Dataset not found")
 
@@ -1595,7 +1595,7 @@ class DocumentService:
     }
 
     @staticmethod
-    def get_document(dataset_id: str, document_id: str | None = None) -> Document | None:
+    def get_document(dataset_id: str, document_id: str = None) -> Document | None:
         if document_id:
             document = db.session.scalar(
                 select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
@@ -2072,7 +2072,7 @@ class DocumentService:
         dataset: Dataset,
         knowledge_config: KnowledgeConfig,
         account: Account | Any,
-        dataset_process_rule: DatasetProcessRule | None = None,
+        dataset_process_rule: DatasetProcessRule = None,
         created_from: str = DocumentCreatedFrom.WEB,
     ) -> tuple[list[Document], str]:
         # check doc_form
@@ -2748,7 +2748,7 @@ class DocumentService:
         dataset: Dataset,
         document_data: KnowledgeConfig,
         account: Account,
-        dataset_process_rule: DatasetProcessRule | None = None,
+        dataset_process_rule: DatasetProcessRule = None,
         created_from: str = DocumentCreatedFrom.WEB,
     ):
         assert isinstance(current_user, Account)
@@ -4000,7 +4000,7 @@ class SegmentService:
 
     @classmethod
     def get_child_chunks(
-        cls, segment_id: str, document_id: str, dataset_id: str, page: int, limit: int, keyword: str | None = None
+        cls, segment_id: str, document_id: str, dataset_id: str, page: int, limit: int, keyword: str = None
     ):
         assert isinstance(current_user, Account)
 
@@ -4032,8 +4032,8 @@ class SegmentService:
         cls,
         document_id: str,
         tenant_id: str,
-        status_list: list[str] | None = None,
-        keyword: str | None = None,
+        status_list: list[str] = None,
+        keyword: str = None,
         page: int = 1,
         limit: int = 20,
     ):
@@ -4070,8 +4070,8 @@ class SegmentService:
         cls,
         document_id: str,
         dataset_id: str,
-        status: str | None = None,
-        enabled: bool | None = None,
+        status: str = None,
+        enabled: bool = None,
     ) -> Sequence[DocumentSegment]:
         """
         Get segments for a document in a dataset with optional filtering.

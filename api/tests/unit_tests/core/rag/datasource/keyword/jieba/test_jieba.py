@@ -42,14 +42,14 @@ class _FakeExecuteResult:
 
 class _FakeSelect:
     def __init__(self):
-        self.where_conditions: tuple | None = None
+        self.where_conditions: tuple = None
 
     def where(self, *conditions):
         self.where_conditions = conditions
         return self
 
 
-def _dataset_keyword_table(data_source_type: str = "database", keyword_table_dict: dict[str, Any] | None = None):
+def _dataset_keyword_table(data_source_type: str = "database", keyword_table_dict: dict[str, Any] = None):
     return SimpleNamespace(
         data_source_type=data_source_type,
         keyword_table_dict=keyword_table_dict,

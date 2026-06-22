@@ -86,7 +86,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         output_adapter: WorkflowAgentOutputAdapter,
         type_checker: PerOutputTypeChecker,
         failure_orchestrator: OutputFailureOrchestrator,
-        session_store: WorkflowAgentRuntimeSessionStore | None = None,
+        session_store: WorkflowAgentRuntimeSessionStore = None,
     ) -> None:
         super().__init__(
             node_id=node_id,
@@ -318,8 +318,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 # ENG-637: persist the awaiting-form id + deferred tool_call id
                 # next to the snapshot so the resumed node can rebuild
                 # deferred_tool_results from the submitted form.
-                pending_form_id: str | None = None
-                pending_tool_call_id: str | None = None
+                pending_form_id: str = None
+                pending_tool_call_id: str = None
                 if isinstance(pause_reason, HumanInputRequired):
                     pending_form_id = pause_reason.form_id
                     pending_tool_call_id = terminal_event.deferred_tool_call.tool_call_id
@@ -551,8 +551,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         snapshot: CompositorSessionSnapshot | None,
         runtime_layer_specs: list[RuntimeLayerSpec],
         metadata: dict[str, Any],
-        pending_form_id: str | None = None,
-        pending_tool_call_id: str | None = None,
+        pending_form_id: str = None,
+        pending_tool_call_id: str = None,
     ) -> None:
         if self._session_store is None:
             return

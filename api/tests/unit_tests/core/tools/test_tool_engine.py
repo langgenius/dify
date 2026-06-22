@@ -44,9 +44,9 @@ class _DummyTool(Tool):
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
-        conversation_id: str | None = None,
-        app_id: str | None = None,
-        message_id: str | None = None,
+        conversation_id: str = None,
+        app_id: str = None,
+        message_id: str = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         if self.raise_error:
             raise self.raise_error

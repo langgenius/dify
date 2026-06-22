@@ -26,9 +26,9 @@ class WeightedScoreConfig(BaseModel):
 
 class IconInfo(BaseModel):
     icon: str
-    icon_background: str | None = None
-    icon_type: str | None = None
-    icon_url: str | None = None
+    icon_background: str = None
+    icon_type: str = None
+    icon_url: str = None
 
 
 class PipelineTemplateInfoEntity(BaseModel):
@@ -42,8 +42,8 @@ class RagPipelineDatasetCreateEntity(BaseModel):
     description: str
     icon_info: IconInfo
     permission: str
-    partial_member_list: list[dict[str, str]] | None = None
-    yaml_content: str | None = None
+    partial_member_list: list[dict[str, str]] = None
+    yaml_content: str = None
 
 
 class RetrievalSetting(BaseModel):
@@ -57,8 +57,8 @@ class RetrievalSetting(BaseModel):
     score_threshold_enabled: bool = False
     reranking_mode: str | None = "reranking_model"
     reranking_enable: bool | None = True
-    reranking_model: RerankingModelConfig | None = None
-    weights: WeightedScoreConfig | None = None
+    reranking_model: RerankingModelConfig = None
+    weights: WeightedScoreConfig = None
 
 
 class KnowledgeConfiguration(BaseModel):
@@ -73,7 +73,7 @@ class KnowledgeConfiguration(BaseModel):
     keyword_number: int | None = 10
     retrieval_model: RetrievalSetting
     # add summary index setting
-    summary_index_setting: dict[str, object] | None = None
+    summary_index_setting: dict[str, object] = None
 
     @field_validator("embedding_model_provider", "embedding_model", mode="before")
     @classmethod

@@ -133,7 +133,7 @@ def build_oauth_authorization_server_metadata_discovery_urls(auth_server_url: st
 
 
 def discover_protected_resource_metadata(
-    prm_url: str | None, server_url: str, protocol_version: str | None = None
+    prm_url: str | None, server_url: str, protocol_version: str = None
 ) -> ProtectedResourceMetadata | None:
     """Discover OAuth 2.0 Protected Resource Metadata (RFC 9470)."""
     urls = build_protected_resource_metadata_discovery_urls(prm_url, server_url)
@@ -153,7 +153,7 @@ def discover_protected_resource_metadata(
 
 
 def discover_oauth_authorization_server_metadata(
-    auth_server_url: str | None, server_url: str, protocol_version: str | None = None
+    auth_server_url: str | None, server_url: str, protocol_version: str = None
 ) -> OAuthMetadata | None:
     """Discover OAuth 2.0 Authorization Server Metadata (RFC 8414)."""
     urls = build_oauth_authorization_server_metadata_discovery_urls(auth_server_url, server_url)
@@ -283,9 +283,9 @@ def check_support_resource_discovery(server_url: str) -> tuple[bool, str]:
 
 def discover_oauth_metadata(
     server_url: str,
-    resource_metadata_url: str | None = None,
-    scope_hint: str | None = None,
-    protocol_version: str | None = None,
+    resource_metadata_url: str = None,
+    scope_hint: str = None,
+    protocol_version: str = None,
 ) -> tuple[OAuthMetadata | None, ProtectedResourceMetadata | None, str | None]:
     """
     Discover OAuth metadata using RFC 8414/9470 standards.
@@ -320,7 +320,7 @@ def start_authorization(
     redirect_url: str,
     provider_id: str,
     tenant_id: str,
-    scope: str | None = None,
+    scope: str = None,
 ) -> tuple[str, str]:
     """Begins the authorization flow with secure Redis state storage."""
     response_type = "code"
@@ -473,7 +473,7 @@ def client_credentials_flow(
     server_url: str,
     metadata: OAuthMetadata | None,
     client_information: OAuthClientInformation,
-    scope: str | None = None,
+    scope: str = None,
 ) -> OAuthTokens:
     """Execute Client Credentials Flow to get access token."""
     grant_type = MCPSupportGrantType.CLIENT_CREDENTIALS.value
@@ -537,10 +537,10 @@ def register_client(
 
 def auth(
     provider: MCPProviderEntity,
-    authorization_code: str | None = None,
-    state_param: str | None = None,
-    resource_metadata_url: str | None = None,
-    scope_hint: str | None = None,
+    authorization_code: str = None,
+    state_param: str = None,
+    resource_metadata_url: str = None,
+    scope_hint: str = None,
 ) -> AuthResult:
     """
     Orchestrates the full auth flow with a server using secure Redis state storage.

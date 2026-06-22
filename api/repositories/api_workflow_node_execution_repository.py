@@ -37,8 +37,8 @@ class WorkflowNodeExecutionSnapshot:
     elapsed_time: float  # Execution elapsed time in seconds.
     created_at: datetime  # Execution created timestamp.
     finished_at: datetime | None  # Execution finished timestamp.
-    iteration_id: str | None = None  # Iteration id from execution metadata, if any.
-    loop_id: str | None = None  # Loop id from execution metadata, if any.
+    iteration_id: str = None  # Iteration id from execution metadata, if any.
+    loop_id: str = None  # Loop id from execution metadata, if any.
 
 
 class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Protocol):
@@ -134,7 +134,7 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
     def get_execution_by_id(
         self,
         execution_id: str,
-        tenant_id: str | None = None,
+        tenant_id: str = None,
     ) -> WorkflowNodeExecutionModel | None:
         """
         Get a workflow node execution by its ID.

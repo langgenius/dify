@@ -88,7 +88,7 @@ class DatasetPermissionIntegrationFactory:
         *,
         tenant_id: str,
         created_by: str,
-        name: str | None = None,
+        name: str = None,
         permission: DatasetPermissionEnum = DatasetPermissionEnum.ONLY_ME,
         indexing_technique: str | None = IndexTechniqueType.HIGH_QUALITY,
         enable_api: bool = True,

@@ -5,7 +5,7 @@ import httpx
 from configs.remote_settings_sources.nacos.http_request import NacosHttpClient
 
 
-def _ok_response(text: str = "ok", json_data: dict | None = None) -> MagicMock:
+def _ok_response(text: str = "ok", json_data: dict = None) -> MagicMock:
     response = MagicMock()
     response.text = text
     response.raise_for_status.return_value = None

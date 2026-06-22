@@ -20,7 +20,7 @@ class LogLevel(Enum):
 class Logger:
     """Logger class for formatted console output."""
 
-    def __init__(self, name: str | None = None, use_colors: bool = True):
+    def __init__(self, name: str = None, use_colors: bool = True):
         """Initialize logger.
 
         Args:
@@ -126,7 +126,7 @@ class Logger:
         sys.stdout.write(f"\r{message}... ")
         sys.stdout.flush()
 
-    def spinner_stop(self, success: bool = True, message: str | None = None) -> None:
+    def spinner_stop(self, success: bool = True, message: str = None) -> None:
         """Stop the spinner and show result."""
         if success:
             symbol = "✅" if message else "Done"
@@ -140,7 +140,7 @@ class Logger:
 class ProgressLogger:
     """Logger for tracking progress through multiple steps."""
 
-    def __init__(self, total_steps: int, logger: Logger | None = None):
+    def __init__(self, total_steps: int, logger: Logger = None):
         """Initialize progress logger.
 
         Args:

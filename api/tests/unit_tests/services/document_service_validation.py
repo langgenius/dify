@@ -151,7 +151,7 @@ class DocumentValidationTestDataFactory:
     def create_dataset_mock(
         dataset_id: str = "dataset-123",
         tenant_id: str = "tenant-123",
-        doc_form: str | None = None,
+        doc_form: str = None,
         indexing_technique: str = IndexTechniqueType.HIGH_QUALITY,
         embedding_model_provider: str = "openai",
         embedding_model: str = "text-embedding-ada-002",
@@ -185,8 +185,8 @@ class DocumentValidationTestDataFactory:
 
     @staticmethod
     def create_knowledge_config_mock(
-        data_source: DataSource | None = None,
-        process_rule: ProcessRule | None = None,
+        data_source: DataSource = None,
+        process_rule: ProcessRule = None,
         doc_form: str = IndexStructureType.PARAGRAPH_INDEX,
         indexing_technique: str = IndexTechniqueType.HIGH_QUALITY,
         **kwargs,
@@ -216,9 +216,9 @@ class DocumentValidationTestDataFactory:
     @staticmethod
     def create_data_source_mock(
         data_source_type: str = "upload_file",
-        file_ids: list[str] | None = None,
-        notion_info_list: list[NotionInfo] | None = None,
-        website_info_list: WebsiteInfo | None = None,
+        file_ids: list[str] = None,
+        notion_info_list: list[NotionInfo] = None,
+        website_info_list: WebsiteInfo = None,
     ) -> Mock:
         """
         Create a mock DataSource with specified attributes.
@@ -258,9 +258,9 @@ class DocumentValidationTestDataFactory:
     @staticmethod
     def create_process_rule_mock(
         mode: str = "custom",
-        pre_processing_rules: list[PreProcessingRule] | None = None,
-        segmentation: Segmentation | None = None,
-        parent_mode: str | None = None,
+        pre_processing_rules: list[PreProcessingRule] = None,
+        segmentation: Segmentation = None,
+        parent_mode: str = None,
     ) -> Mock:
         """
         Create a mock ProcessRule with specified attributes.

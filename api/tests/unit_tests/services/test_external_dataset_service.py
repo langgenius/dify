@@ -33,7 +33,7 @@ class ExternalDatasetServiceTestDataFactory:
         api_id: str = "api-123",
         tenant_id: str = "tenant-123",
         name: str = "Test API",
-        settings: dict[str, Any] | None = None,
+        settings: dict[str, Any] = None,
         **kwargs,
     ) -> Mock:
         """Create a mock ExternalKnowledgeApis object."""
@@ -122,8 +122,8 @@ class ExternalDatasetServiceTestDataFactory:
     def create_api_setting_mock(
         url: str = "https://api.example.com/retrieval",
         request_method: str = "post",
-        headers: dict[str, Any] | None = None,
-        params: dict[str, Any] | None = None,
+        headers: dict[str, Any] = None,
+        params: dict[str, Any] = None,
     ) -> ExternalKnowledgeApiSetting:
         """Create an ExternalKnowledgeApiSetting object."""
         if headers is None:

@@ -21,10 +21,10 @@ class CSVExtractor(BaseExtractor):
     def __init__(
         self,
         file_path: str,
-        encoding: str | None = None,
+        encoding: str = None,
         autodetect_encoding: bool = False,
-        source_column: str | None = None,
-        csv_args: dict[str, Any] | None = None,
+        source_column: str = None,
+        csv_args: dict[str, Any] = None,
     ):
         """Initialize with file path."""
         self._file_path = file_path

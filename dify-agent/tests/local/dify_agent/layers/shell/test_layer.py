@@ -28,7 +28,7 @@ def _job_result(
     *,
     status: JobStatusName = JobStatusName.RUNNING,
     done: bool = False,
-    exit_code: int | None = None,
+    exit_code: int = None,
     output: str = "",
     offset: int = 0,
     truncated: bool = False,
@@ -51,7 +51,7 @@ def _job_status(
     *,
     status: JobStatusName = JobStatusName.RUNNING,
     done: bool = False,
-    exit_code: int | None = None,
+    exit_code: int = None,
     offset: int = 0,
 ) -> JobStatusView:
     return JobStatusView(
@@ -66,7 +66,7 @@ def _job_status(
     )
 
 
-def _assert_error_observation(result: object, *, job_id: str | None = None, includes: str | None = None) -> None:
+def _assert_error_observation(result: object, *, job_id: str = None, includes: str = None) -> None:
     assert isinstance(result, dict)
     assert isinstance(result.get("error"), str)
     assert result["error"]
@@ -126,11 +126,11 @@ class FakeShellctlClient:
     def __init__(
         self,
         *,
-        run_handler: Callable[[str, str | None, Mapping[str, str] | None, float], JobResult] | None = None,
-        wait_handler: Callable[[str, int, float], JobResult] | None = None,
-        input_handler: Callable[[str, str, int, float], JobResult] | None = None,
-        terminate_handler: Callable[[str, float], JobStatusView] | None = None,
-        delete_handler: Callable[[str, bool, float | None], DeleteJobResponse] | None = None,
+        run_handler: Callable[[str, str | None, Mapping[str, str] | None, float], JobResult] = None,
+        wait_handler: Callable[[str, int, float], JobResult] = None,
+        input_handler: Callable[[str, str, int, float], JobResult] = None,
+        terminate_handler: Callable[[str, float], JobStatusView] = None,
+        delete_handler: Callable[[str, bool, float | None], DeleteJobResponse] = None,
     ) -> None:
         self._run_handler = run_handler
         self._wait_handler = wait_handler
@@ -149,8 +149,8 @@ class FakeShellctlClient:
         self,
         script: str,
         *,
-        cwd: str | None = None,
-        env: Mapping[str, str] | None = None,
+        cwd: str = None,
+        env: Mapping[str, str] = None,
         timeout: float = 10.0,
     ) -> JobResult:
         self.run_calls.append(RunCall(script=script, cwd=cwd, timeout=timeout, env=env))
@@ -185,7 +185,7 @@ class FakeShellctlClient:
         job_id: str,
         *,
         force: bool = False,
-        grace_seconds: float | None = None,
+        grace_seconds: float = None,
     ) -> DeleteJobResponse:
         self.delete_calls.append(DeleteCall(job_id=job_id, force=force, grace_seconds=grace_seconds))
         self.events.append(("delete", job_id))
@@ -199,7 +199,7 @@ class FakeShellctlClient:
 
 
 def _shell_layer(
-    *, client_factory: ShellctlClientFactory, config: DifyShellLayerConfig | None = None
+    *, client_factory: ShellctlClientFactory, config: DifyShellLayerConfig = None
 ) -> DifyShellLayer:
     return DifyShellLayer.from_config_with_settings(
         config or DifyShellLayerConfig(),

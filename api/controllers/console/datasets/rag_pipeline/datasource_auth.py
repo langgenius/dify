@@ -48,7 +48,7 @@ class DatasourceCredentialUpdatePayload(BaseModel):
 
 class DatasourceCustomClientPayload(BaseModel):
     client_params: dict[str, Any] | None = Field(default=None)
-    enable_oauth_custom_client: bool | None = None
+    enable_oauth_custom_client: bool = None
 
 
 class DatasourceDefaultPayload(BaseModel):

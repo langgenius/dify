@@ -20,7 +20,7 @@ class FakeRedis:
         self.values = {}
         self.streams = {}
 
-    async def set(self, key: str, value: object, *, ex: int | None = None) -> None:
+    async def set(self, key: str, value: object, *, ex: int = None) -> None:
         self.commands.append(("set", key, value, ex))
         self.values[key] = value
 
@@ -32,7 +32,7 @@ class FakeRedis:
         self.commands.append(("xadd", key, dict(fields)))
         return self._append_stream_entry(key, fields)
 
-    def pipeline(self, transaction: bool = True, shard_hint: str | None = None) -> "FakeRedisPipeline":
+    def pipeline(self, transaction: bool = True, shard_hint: str = None) -> "FakeRedisPipeline":
         self.commands.append(("pipeline", transaction, shard_hint))
         return FakeRedisPipeline(self)
 
@@ -43,7 +43,7 @@ class FakeRedis:
         return event_id
 
     async def xrange(
-        self, key: str, *, min: str = "-", count: int | None = None
+        self, key: str, *, min: str = "-", count: int = None
     ) -> list[tuple[str, dict[str, object]]]:
         self.commands.append(("xrange", key, min, count))
         entries = [entry for entry in self.streams.get(key, []) if self._is_after_min(entry[0], min)]

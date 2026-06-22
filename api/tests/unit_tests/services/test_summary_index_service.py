@@ -56,7 +56,7 @@ def _segment(*, has_document: bool = True) -> MagicMock:
     return segment
 
 
-def _summary_record(*, summary_content: str = "summary", node_id: str | None = None) -> MagicMock:
+def _summary_record(*, summary_content: str = "summary", node_id: str = None) -> MagicMock:
     record = MagicMock(spec=summary_module.DocumentSegmentSummary, name="summary_record")
     record.id = "sum-1"
     record.dataset_id = "dataset-1"

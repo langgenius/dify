@@ -27,7 +27,7 @@ def i18n(text: str = "test") -> I18nObject:
     return I18nObject(en_US=text, zh_Hans=text)
 
 
-def make_event(name: str = "test_event", parameters: list[EventParameter] | None = None) -> EventEntity:
+def make_event(name: str = "test_event", parameters: list[EventParameter] = None) -> EventEntity:
     return EventEntity(
         identity=EventIdentity(author="a", name=name, label=i18n(name)),
         description=i18n(name),
@@ -37,11 +37,11 @@ def make_event(name: str = "test_event", parameters: list[EventParameter] | None
 
 def make_provider_entity(
     name: str = "test_provider",
-    events: list[EventEntity] | None = None,
-    constructor: SubscriptionConstructor | None = None,
-    subscription_schema: list[ProviderConfig] | None = None,
+    events: list[EventEntity] = None,
+    constructor: SubscriptionConstructor = None,
+    subscription_schema: list[ProviderConfig] = None,
     icon: str | None = "icon.png",
-    icon_dark: str | None = None,
+    icon_dark: str = None,
 ) -> TriggerProviderEntity:
     return TriggerProviderEntity(
         identity=TriggerProviderIdentity(
@@ -59,7 +59,7 @@ def make_provider_entity(
 
 
 def make_controller(
-    entity: TriggerProviderEntity | None = None,
+    entity: TriggerProviderEntity = None,
     tenant_id: str = "tenant-1",
     provider_id: str = VALID_PROVIDER_ID,
 ) -> PluginTriggerProviderController:
@@ -85,8 +85,8 @@ def make_provider_config(
 
 
 def make_constructor(
-    credentials_schema: list[ProviderConfig] | None = None,
-    oauth_schema: OAuthSchema | None = None,
+    credentials_schema: list[ProviderConfig] = None,
+    oauth_schema: OAuthSchema = None,
 ) -> SubscriptionConstructor:
     return SubscriptionConstructor(
         parameters=[], credentials_schema=credentials_schema or [], oauth_schema=oauth_schema

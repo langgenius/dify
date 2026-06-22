@@ -22,7 +22,7 @@ class SimpleAccount(ResponseModel):
 
 
 class _AccountAvatar(ResponseModel):
-    avatar: str | None = None
+    avatar: str = None
 
     @computed_field(return_type=str | None)  # type: ignore[prop-decorator]
     @property
@@ -35,12 +35,12 @@ class Account(_AccountAvatar):
     name: str
     email: str
     is_password_set: bool
-    interface_language: str | None = None
-    interface_theme: str | None = None
-    timezone: str | None = None
-    last_login_at: int | None = None
-    last_login_ip: str | None = None
-    created_at: int | None = None
+    interface_language: str = None
+    interface_theme: str = None
+    timezone: str = None
+    last_login_at: int = None
+    last_login_ip: str = None
+    created_at: int = None
 
     @field_validator("last_login_at", "created_at", mode="before")
     @classmethod
@@ -52,9 +52,9 @@ class AccountWithRole(_AccountAvatar):
     id: str
     name: str
     email: str
-    last_login_at: int | None = None
-    last_active_at: int | None = None
-    created_at: int | None = None
+    last_login_at: int = None
+    last_active_at: int = None
+    created_at: int = None
     role: str
     roles: list[dict[str, str]] = Field(default_factory=list)
     status: str

@@ -31,7 +31,7 @@ def app():
     return app
 
 
-def _build_account(email: str, account_id: str = "acc", tenant: Tenant | None = None) -> Account:
+def _build_account(email: str, account_id: str = "acc", tenant: Tenant = None) -> Account:
     if tenant is None:
         tenant_obj = Tenant(name="Tenant")
         tenant_obj.id = "tenant-id"

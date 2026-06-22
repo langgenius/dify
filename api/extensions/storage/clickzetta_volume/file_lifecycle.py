@@ -52,9 +52,9 @@ class FileMetadata:
     modified_at: datetime
     version: int | None
     status: FileStatus
-    checksum: str | None = None
-    tags: dict[str, str] | None = None
-    parent_version: int | None = None
+    checksum: str = None
+    tags: dict[str, str] = None
+    parent_version: int = None
 
     def to_dict(self):
         """Convert to dictionary format"""
@@ -77,7 +77,7 @@ class FileMetadata:
 class FileLifecycleManager:
     """File lifecycle manager"""
 
-    def __init__(self, storage, dataset_id: str | None = None):
+    def __init__(self, storage, dataset_id: str = None):
         """Initialize lifecycle manager
 
         Args:
@@ -94,7 +94,7 @@ class FileLifecycleManager:
         # Get permission manager (if exists)
         self._permission_manager: Any | None = getattr(storage, "_permission_manager", None)
 
-    def save_with_lifecycle(self, filename: str, data: bytes, tags: dict[str, str] | None = None) -> FileMetadata:
+    def save_with_lifecycle(self, filename: str, data: bytes, tags: dict[str, str] = None) -> FileMetadata:
         """Save file and manage lifecycle
 
         Args:

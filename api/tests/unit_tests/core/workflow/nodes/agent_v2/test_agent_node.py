@@ -119,10 +119,10 @@ class FakeBindingResolver(WorkflowAgentBindingResolver):
 
 
 class FakeSessionStore:
-    def __init__(self, snapshot: CompositorSessionSnapshot | None = None) -> None:
+    def __init__(self, snapshot: CompositorSessionSnapshot = None) -> None:
         self.loaded_snapshot = snapshot
         # ENG-638: set to simulate resume after a submitted/timed-out form.
-        self.loaded_session: StoredWorkflowAgentSession | None = None
+        self.loaded_session: StoredWorkflowAgentSession = None
         self.saved: list[
             tuple[
                 WorkflowAgentSessionScope,
@@ -148,8 +148,8 @@ class FakeSessionStore:
         backend_run_id: str,
         snapshot: CompositorSessionSnapshot | None,
         runtime_layer_specs: list[RuntimeLayerSpec],
-        pending_form_id: str | None = None,
-        pending_tool_call_id: str | None = None,
+        pending_form_id: str = None,
+        pending_tool_call_id: str = None,
     ) -> None:
         self.saved.append(
             (scope, backend_run_id, snapshot, list(runtime_layer_specs), pending_form_id, pending_tool_call_id)
@@ -159,7 +159,7 @@ class FakeSessionStore:
         self,
         *,
         scope: WorkflowAgentSessionScope,
-        backend_run_id: str | None = None,
+        backend_run_id: str = None,
     ) -> None:
         self.cleaned.append((scope, backend_run_id))
 
@@ -193,9 +193,9 @@ class FileOutputBackendClient(FakeAgentBackendRunClient):
 def _node(
     *,
     scenario: FakeAgentBackendScenario = FakeAgentBackendScenario.SUCCESS,
-    session_store: FakeSessionStore | None = None,
-    declared_outputs: list[dict[str, object]] | None = None,
-    agent_backend_client: FakeAgentBackendRunClient | None = None,
+    session_store: FakeSessionStore = None,
+    declared_outputs: list[dict[str, object]] = None,
+    agent_backend_client: FakeAgentBackendRunClient = None,
 ) -> DifyAgentNode:
     graph_init_params = GraphInitParams(
         workflow_id="workflow-1",

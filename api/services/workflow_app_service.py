@@ -44,15 +44,15 @@ class WorkflowAppService:
         *,
         session: Session,
         app_model: App,
-        keyword: str | None = None,
-        status: WorkflowExecutionStatus | None = None,
-        created_at_before: datetime | None = None,
-        created_at_after: datetime | None = None,
+        keyword: str = None,
+        status: WorkflowExecutionStatus = None,
+        created_at_before: datetime = None,
+        created_at_after: datetime = None,
         page: int = 1,
         limit: int = 20,
         detail: bool = False,
-        created_by_end_user_session_id: str | None = None,
-        created_by_account: str | None = None,
+        created_by_end_user_session_id: str = None,
+        created_by_account: str = None,
     ):
         """
         Get paginate workflow app logs using SQLAlchemy 2.0 style

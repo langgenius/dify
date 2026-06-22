@@ -70,7 +70,7 @@ def publish_text_answer(
     queue_manager: AppQueueManager,
     model_name: str,
     answer: str,
-    user_query: str | None = None,
+    user_query: str = None,
 ) -> None:
     """Publish a complete assistant answer as one chunk + message-end.
 
@@ -98,7 +98,7 @@ def publish_text_delta(
     queue_manager: AppQueueManager,
     model_name: str,
     delta: str,
-    user_query: str | None = None,
+    user_query: str = None,
 ) -> None:
     """Publish one assistant text delta through the EasyUI chat pipeline."""
     if not delta:
@@ -117,7 +117,7 @@ def publish_message_end(
     queue_manager: AppQueueManager,
     model_name: str,
     answer: str,
-    user_query: str | None = None,
+    user_query: str = None,
 ) -> None:
     """Publish the terminal assistant result without emitting another delta."""
     prompt_messages = _prompt_messages_from_query(user_query)
@@ -419,8 +419,8 @@ class AgentAppRunner:
         backend_run_id: str,
         snapshot: Any,
         runtime_layer_specs: Any,
-        pending_form_id: str | None = None,
-        pending_tool_call_id: str | None = None,
+        pending_form_id: str = None,
+        pending_tool_call_id: str = None,
     ) -> None:
         try:
             self._session_store.save_active_snapshot(

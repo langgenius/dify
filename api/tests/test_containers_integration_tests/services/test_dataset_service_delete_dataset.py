@@ -55,8 +55,8 @@ class DatasetDeleteIntegrationDataFactory:
         indexing_technique: str | None,
         chunk_structure: str | None,
         index_struct: str | None = '{"type": "paragraph"}',
-        collection_binding_id: str | None = None,
-        pipeline_id: str | None = None,
+        collection_binding_id: str = None,
+        pipeline_id: str = None,
     ) -> Dataset:
         """Persist a dataset with delete_dataset-relevant fields configured."""
         dataset = Dataset(

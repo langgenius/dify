@@ -21,15 +21,15 @@ class _FakeBuiltinTool(BuiltinTool):
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
-        conversation_id: str | None = None,
-        app_id: str | None = None,
-        message_id: str | None = None,
+        conversation_id: str = None,
+        app_id: str = None,
+        message_id: str = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         yield self.create_text_message("ok")
 
 
 class _ConcreteBuiltinProvider(BuiltinToolProviderController):
-    last_validation: tuple[str, dict[str, Any]] | None = None
+    last_validation: tuple[str, dict[str, Any]] = None
 
     @override
     def _validate_credentials(self, user_id: str, credentials: dict[str, Any]):

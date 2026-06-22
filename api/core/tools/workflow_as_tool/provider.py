@@ -91,7 +91,7 @@ class WorkflowToolProviderController(ToolProviderController[ToolProviderEntity, 
         app: App,
         *,
         session: Session,
-        user: Account | None = None,
+        user: Account = None,
     ) -> WorkflowTool:
         """
         get db provider tool

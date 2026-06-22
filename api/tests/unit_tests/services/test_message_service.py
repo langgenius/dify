@@ -61,7 +61,7 @@ class TestMessageServiceFactory:
         conversation_id: str = "conv-001",
         query: str = "What is AI?",
         answer: str = "AI stands for Artificial Intelligence.",
-        created_at: datetime | None = None,
+        created_at: datetime = None,
     ) -> MagicMock:
         """Create a mock Message object."""
         message = MagicMock(spec=Message)

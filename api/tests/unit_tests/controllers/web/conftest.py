@@ -20,7 +20,7 @@ def app() -> Flask:
 class FakeSession:
     """Stand-in for db.session that returns pre-seeded objects by model class name."""
 
-    def __init__(self, mapping: dict[str, Any] | None = None):
+    def __init__(self, mapping: dict[str, Any] = None):
         self._mapping: dict[str, Any] = mapping or {}
 
     def get(self, model: type, _ident: object) -> Any:
@@ -37,7 +37,7 @@ class FakeSession:
 class FakeDB:
     """Minimal db stub exposing engine and session."""
 
-    def __init__(self, session: FakeSession | None = None):
+    def __init__(self, session: FakeSession = None):
         self.session = session or FakeSession()
         self.engine = object()
 

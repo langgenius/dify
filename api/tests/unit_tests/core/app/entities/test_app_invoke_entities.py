@@ -36,7 +36,7 @@ def _build_workflow_app_config(app_mode: AppMode) -> WorkflowUIBasedAppConfig:
     )
 
 
-def _create_workflow_generate_entity(trace_manager: TraceQueueManager | None = None) -> WorkflowAppGenerateEntity:
+def _create_workflow_generate_entity(trace_manager: TraceQueueManager = None) -> WorkflowAppGenerateEntity:
     return WorkflowAppGenerateEntity(
         task_id="workflow-task",
         app_config=_build_workflow_app_config(AppMode.WORKFLOW),
@@ -53,7 +53,7 @@ def _create_workflow_generate_entity(trace_manager: TraceQueueManager | None = N
 
 
 def _create_advanced_chat_generate_entity(
-    trace_manager: TraceQueueManager | None = None,
+    trace_manager: TraceQueueManager = None,
 ) -> AdvancedChatAppGenerateEntity:
     return AdvancedChatAppGenerateEntity(
         task_id="advanced-task",

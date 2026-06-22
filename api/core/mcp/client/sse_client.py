@@ -44,7 +44,7 @@ class SSETransport:
     def __init__(
         self,
         url: str,
-        headers: dict[str, Any] | None = None,
+        headers: dict[str, Any] = None,
         timeout: float = 5.0,
         sse_read_timeout: float = 1 * 60,
     ):
@@ -60,8 +60,8 @@ class SSETransport:
         self.headers = headers or {}
         self.timeout = timeout
         self.sse_read_timeout = sse_read_timeout
-        self.endpoint_url: str | None = None
-        self.event_source: EventSource | None = None
+        self.endpoint_url: str = None
+        self.event_source: EventSource = None
 
     def _validate_endpoint_url(self, endpoint_url: str) -> bool:
         """Validate that the endpoint URL matches the connection origin.
@@ -258,7 +258,7 @@ class SSETransport:
 @contextmanager
 def sse_client(
     url: str,
-    headers: dict[str, Any] | None = None,
+    headers: dict[str, Any] = None,
     timeout: float = 5.0,
     sse_read_timeout: float = 1 * 60,
 ) -> Generator[tuple[ReadQueue, WriteQueue], None, None]:
@@ -278,8 +278,8 @@ def sse_client(
     """
     transport = SSETransport(url, headers, timeout, sse_read_timeout)
 
-    read_queue: ReadQueue | None = None
-    write_queue: WriteQueue | None = None
+    read_queue: ReadQueue = None
+    write_queue: WriteQueue = None
 
     executor = ThreadPoolExecutor()
     try:

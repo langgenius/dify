@@ -355,7 +355,7 @@ class TestWorkflowAppGeneratorResume:
             "core.app.apps.workflow.app_generator.TraceQueueManager",
             DummyTraceQueueManager,
         )
-        captured_entity: WorkflowAppGenerateEntity | None = None
+        captured_entity: WorkflowAppGenerateEntity = None
 
         def _fake_generate(**kwargs):
             nonlocal captured_entity
@@ -405,7 +405,7 @@ class TestWorkflowAppGeneratorResume:
             workflow_execution_id="run-id",
             call_depth=0,
         )
-        captured_entity: WorkflowAppGenerateEntity | None = None
+        captured_entity: WorkflowAppGenerateEntity = None
 
         def _fake_generate(**kwargs):
             nonlocal captured_entity

@@ -90,7 +90,7 @@ class ProviderManager:
         self._model_runtime = model_runtime
         self._configurations_cache = {}
 
-    def clear_configurations_cache(self, tenant_id: str | None = None) -> None:
+    def clear_configurations_cache(self, tenant_id: str = None) -> None:
         """Drop assembled provider configurations cached on this manager instance."""
         if tenant_id is None:
             self._configurations_cache.clear()
@@ -576,7 +576,7 @@ class ProviderManager:
     def get_provider_available_credentials(
         tenant_id: str,
         provider_name: str,
-        user: Account | None = None,
+        user: Account = None,
     ) -> list[CredentialConfiguration]:
         """
         Get provider all credentials, filtered by visibility.
@@ -1151,8 +1151,8 @@ class ProviderManager:
     def _to_model_settings(
         self,
         provider_entity: ProviderEntity,
-        provider_model_settings: list[ProviderModelSetting] | None = None,
-        load_balancing_model_configs: list[LoadBalancingModelConfig] | None = None,
+        provider_model_settings: list[ProviderModelSetting] = None,
+        load_balancing_model_configs: list[LoadBalancingModelConfig] = None,
     ) -> list[ModelSettings]:
         """
         Convert to model settings.

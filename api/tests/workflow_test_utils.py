@@ -15,7 +15,7 @@ def build_test_run_context(
     user_id: str = "user",
     user_from: UserFrom | str = UserFrom.ACCOUNT,
     invoke_from: InvokeFrom | str = InvokeFrom.DEBUGGER,
-    extra_context: Mapping[str, Any] | None = None,
+    extra_context: Mapping[str, Any] = None,
 ) -> dict[str, Any]:
     normalized_user_from = user_from if isinstance(user_from, UserFrom) else UserFrom(user_from)
     normalized_invoke_from = invoke_from if isinstance(invoke_from, InvokeFrom) else InvokeFrom(invoke_from)
@@ -32,14 +32,14 @@ def build_test_run_context(
 def build_test_graph_init_params(
     *,
     workflow_id: str = "workflow",
-    graph_config: Mapping[str, Any] | None = None,
+    graph_config: Mapping[str, Any] = None,
     call_depth: int = 0,
     tenant_id: str = "tenant",
     app_id: str = "app",
     user_id: str = "user",
     user_from: UserFrom | str = UserFrom.ACCOUNT,
     invoke_from: InvokeFrom | str = InvokeFrom.DEBUGGER,
-    extra_context: Mapping[str, Any] | None = None,
+    extra_context: Mapping[str, Any] = None,
 ) -> GraphInitParams:
     return GraphInitParams(
         workflow_id=workflow_id,
@@ -59,8 +59,8 @@ def build_test_graph_init_params(
 def build_test_variable_pool(
     *,
     variables: list[Variable] | tuple[Variable, ...] = (),
-    node_id: str | None = None,
-    inputs: Mapping[str, Any] | None = None,
+    node_id: str = None,
+    inputs: Mapping[str, Any] = None,
 ) -> VariablePool:
     variable_pool = VariablePool()
     add_variables_to_pool(variable_pool, variables)

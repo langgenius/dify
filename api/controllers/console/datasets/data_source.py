@@ -59,9 +59,9 @@ class DataSourceNotionPreviewQuery(BaseModel):
 
 
 class DataSourceIntegrateIconResponse(ResponseModel):
-    type: str | None = None
-    url: str | None = None
-    emoji: str | None = None
+    type: str = None
+    url: str = None
+    emoji: str = None
 
 
 class DataSourceIntegratePageResponse(ResponseModel):

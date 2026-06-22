@@ -48,7 +48,7 @@ class WorkflowRunRestoreTestDataFactory:
         run_id: str = "run-123",
         tenant_id: str = "tenant-123",
         app_id: str = "app-123",
-        created_at: datetime | None = None,
+        created_at: datetime = None,
         **kwargs,
     ) -> Mock:
         """
@@ -78,7 +78,7 @@ class WorkflowRunRestoreTestDataFactory:
         run_id: str = "run-123",
         tenant_id: str = "tenant-123",
         app_id: str = "app-123",
-        created_at: datetime | None = None,
+        created_at: datetime = None,
         **kwargs,
     ) -> Mock:
         """
@@ -105,8 +105,8 @@ class WorkflowRunRestoreTestDataFactory:
 
     @staticmethod
     def create_archive_zip_mock(
-        manifest: dict | None = None,
-        tables_data: dict[str, list[dict]] | None = None,
+        manifest: dict = None,
+        tables_data: dict[str, list[dict]] = None,
     ) -> bytes:
         """
         Create a mock archive zip file in memory.

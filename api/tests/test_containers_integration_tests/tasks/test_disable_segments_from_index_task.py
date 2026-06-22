@@ -36,7 +36,7 @@ class TestDisableSegmentsFromIndexTask:
     and realistic testing environment with actual database interactions.
     """
 
-    def _create_test_account(self, db_session_with_containers: Session, fake: Faker | None = None):
+    def _create_test_account(self, db_session_with_containers: Session, fake: Faker = None):
         """
         Helper method to create a test account with realistic data.
 
@@ -83,7 +83,7 @@ class TestDisableSegmentsFromIndexTask:
 
         return account
 
-    def _create_test_dataset(self, db_session_with_containers: Session, account: Account, fake: Faker | None = None):
+    def _create_test_dataset(self, db_session_with_containers: Session, account: Account, fake: Faker = None):
         """
         Helper method to create a test dataset with realistic data.
 
@@ -118,7 +118,7 @@ class TestDisableSegmentsFromIndexTask:
         return dataset
 
     def _create_test_document(
-        self, db_session_with_containers: Session, dataset: Dataset, account: Account, fake: Faker | None = None
+        self, db_session_with_containers: Session, dataset: Dataset, account: Account, fake: Faker = None
     ):
         """
         Helper method to create a test document with realistic data.
@@ -220,7 +220,7 @@ class TestDisableSegmentsFromIndexTask:
         return segments
 
     def _create_dataset_process_rule(
-        self, db_session_with_containers: Session, dataset: Dataset, fake: Faker | None = None
+        self, db_session_with_containers: Session, dataset: Dataset, fake: Faker = None
     ):
         """
         Helper method to create a dataset process rule.

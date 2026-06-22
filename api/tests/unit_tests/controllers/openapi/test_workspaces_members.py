@@ -91,7 +91,7 @@ def _rule(app: Flask, path: str):
     return next(r for r in app.url_map.iter_rules() if r.rule == path)
 
 
-def _auth_ctx(account_id: uuid.UUID | None = None) -> AuthContext:
+def _auth_ctx(account_id: uuid.UUID = None) -> AuthContext:
     return AuthContext(
         subject_type=SubjectType.ACCOUNT,
         subject_email="caller@example.com",

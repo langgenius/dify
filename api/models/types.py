@@ -178,7 +178,7 @@ class EnumText[T: enum.StrEnum](TypeDecorator[T | None]):
     _length: int
     _enum_class: type[T]
 
-    def __init__(self, enum_class: type[T], length: int | None = None):
+    def __init__(self, enum_class: type[T], length: int = None):
         self._enum_class = enum_class
         max_enum_value_len = max(len(e.value) for e in enum_class)
         if length is not None:

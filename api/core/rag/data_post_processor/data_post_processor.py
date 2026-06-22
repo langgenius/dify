@@ -39,8 +39,8 @@ class DataPostProcessor:
         self,
         tenant_id: str,
         reranking_mode: str,
-        reranking_model: RerankingModelDict | None = None,
-        weights: WeightsDict | None = None,
+        reranking_model: RerankingModelDict = None,
+        weights: WeightsDict = None,
         reorder_enabled: bool = False,
     ):
         self.rerank_runner = self._get_rerank_runner(reranking_mode, tenant_id, reranking_model, weights)
@@ -50,8 +50,8 @@ class DataPostProcessor:
         self,
         query: str,
         documents: list[Document],
-        score_threshold: float | None = None,
-        top_n: int | None = None,
+        score_threshold: float = None,
+        top_n: int = None,
         query_type: QueryType = QueryType.TEXT_QUERY,
     ) -> list[Document]:
         if self.rerank_runner:
@@ -66,8 +66,8 @@ class DataPostProcessor:
         self,
         reranking_mode: str,
         tenant_id: str,
-        reranking_model: RerankingModelDict | None = None,
-        weights: WeightsDict | None = None,
+        reranking_model: RerankingModelDict = None,
+        weights: WeightsDict = None,
     ) -> BaseRerankRunner | None:
         if reranking_mode == RerankMode.WEIGHTED_SCORE and weights:
             runner = RerankRunnerFactory.create_rerank_runner(

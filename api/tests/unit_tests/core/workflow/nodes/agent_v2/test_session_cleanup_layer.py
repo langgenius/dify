@@ -66,7 +66,7 @@ def _stored_session(scope: WorkflowAgentSessionScope, *, index: int = 1) -> Stor
 class FakeSessionStore:
     """In-memory stand-in for ``WorkflowAgentRuntimeSessionStore``."""
 
-    def __init__(self, *, stored: list[StoredWorkflowAgentSession] | None = None) -> None:
+    def __init__(self, *, stored: list[StoredWorkflowAgentSession] = None) -> None:
         self._stored = stored if stored is not None else [_stored_session(_default_scope())]
         self.list_calls: list[str] = []
         self.cleaned: list[tuple[WorkflowAgentSessionScope, str | None]] = []
@@ -75,7 +75,7 @@ class FakeSessionStore:
         self.list_calls.append(workflow_run_id)
         return list(self._stored)
 
-    def mark_cleaned(self, *, scope: WorkflowAgentSessionScope, backend_run_id: str | None = None) -> None:
+    def mark_cleaned(self, *, scope: WorkflowAgentSessionScope, backend_run_id: str = None) -> None:
         self.cleaned.append((scope, backend_run_id))
 
 
@@ -101,8 +101,8 @@ class _WaitableFakeAgentBackendRunClient(FakeAgentBackendRunClient):
         *,
         run_id: str = "cleanup-run-1",
         wait_status: str = "succeeded",
-        wait_error: str | None = None,
-        wait_raises: Exception | None = None,
+        wait_error: str = None,
+        wait_raises: Exception = None,
     ) -> None:
         super().__init__(run_id=run_id)
         self._wait_status = wait_status
@@ -110,7 +110,7 @@ class _WaitableFakeAgentBackendRunClient(FakeAgentBackendRunClient):
         self._wait_raises = wait_raises
         self.wait_calls: list[tuple[str, float | None]] = []
 
-    def wait_run(self, run_id: str, *, timeout_seconds: float | None = None) -> RunStatusResponse:
+    def wait_run(self, run_id: str, *, timeout_seconds: float = None) -> RunStatusResponse:
         self.wait_calls.append((run_id, timeout_seconds))
         if self._wait_raises is not None:
             raise self._wait_raises
@@ -126,11 +126,11 @@ class _WaitableFakeAgentBackendRunClient(FakeAgentBackendRunClient):
 
     # Inherit ``create_run`` from FakeAgentBackendRunClient; the missing protocol
     # methods below are stub-only because the cleanup layer never calls them.
-    def cancel_run(self, run_id: str, request: CancelRunRequest | None = None):  # pragma: no cover
+    def cancel_run(self, run_id: str, request: CancelRunRequest = None):  # pragma: no cover
         del run_id, request
         raise NotImplementedError
 
-    def stream_events(self, run_id: str, *, after: str | None = None):  # pragma: no cover
+    def stream_events(self, run_id: str, *, after: str = None):  # pragma: no cover
         del run_id, after
         if False:
             yield cast(RunEvent, None)

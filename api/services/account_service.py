@@ -353,7 +353,7 @@ class AccountService:
         return token
 
     @staticmethod
-    def authenticate(email: str, password: str, invite_token: str | None = None) -> Account:
+    def authenticate(email: str, password: str, invite_token: str = None) -> Account:
         """authenticate account with email and password"""
 
         account = db.session.scalar(select(Account).where(Account.email == email).limit(1))
@@ -410,10 +410,10 @@ class AccountService:
         email: str,
         name: str,
         interface_language: str,
-        password: str | None = None,
+        password: str = None,
         interface_theme: str = "light",
         is_setup: bool | None = False,
-        timezone: str | None = None,
+        timezone: str = None,
     ) -> Account:
         """Create an account, preferring explicit user timezone over language-derived defaults."""
         if not FeatureService.get_system_features().is_allow_register and not is_setup:
@@ -465,7 +465,7 @@ class AccountService:
 
     @staticmethod
     def create_account_and_tenant(
-        email: str, name: str, interface_language: str, password: str | None = None, timezone: str | None = None
+        email: str, name: str, interface_language: str, password: str = None, timezone: str = None
     ) -> Account:
         """Create an account and owner workspace."""
         account = AccountService.create_account(
@@ -606,7 +606,7 @@ class AccountService:
         db.session.commit()
 
     @staticmethod
-    def login(account: Account, *, ip_address: str | None = None) -> TokenPair:
+    def login(account: Account, *, ip_address: str = None) -> TokenPair:
         if ip_address:
             AccountService.update_login_info(account=account, ip_address=ip_address)
 
@@ -656,8 +656,8 @@ class AccountService:
     @classmethod
     def send_reset_password_email(
         cls,
-        account: Account | None = None,
-        email: str | None = None,
+        account: Account = None,
+        email: str = None,
         language: str = "en-US",
         is_allow_register: bool = False,
     ):
@@ -690,8 +690,8 @@ class AccountService:
     @classmethod
     def send_email_register_email(
         cls,
-        account: Account | None = None,
-        email: str | None = None,
+        account: Account = None,
+        email: str = None,
         language: str = "en-US",
     ):
         account_email = account.email if account else email
@@ -725,10 +725,10 @@ class AccountService:
     def send_change_email_email(
         cls,
         account: Account,
-        email: str | None = None,
-        old_email: str | None = None,
+        email: str = None,
+        old_email: str = None,
         language: str = "en-US",
-        phase: str | None = None,
+        phase: str = None,
     ):
         account_email = email if email is not None else account.email
         if not phase:
@@ -773,8 +773,8 @@ class AccountService:
     @classmethod
     def send_change_email_completed_notify_email(
         cls,
-        account: Account | None = None,
-        email: str | None = None,
+        account: Account = None,
+        email: str = None,
         language: str = "en-US",
     ):
         account_email = account.email if account else email
@@ -789,8 +789,8 @@ class AccountService:
     @classmethod
     def send_owner_transfer_email(
         cls,
-        account: Account | None = None,
-        email: str | None = None,
+        account: Account = None,
+        email: str = None,
         language: str = "en-US",
         workspace_name: str | None = "",
     ):
@@ -818,8 +818,8 @@ class AccountService:
     @classmethod
     def send_old_owner_transfer_notify_email(
         cls,
-        account: Account | None = None,
-        email: str | None = None,
+        account: Account = None,
+        email: str = None,
         language: str = "en-US",
         workspace_name: str | None = "",
         new_owner_email: str = "",
@@ -839,8 +839,8 @@ class AccountService:
     @classmethod
     def send_new_owner_transfer_notify_email(
         cls,
-        account: Account | None = None,
-        email: str | None = None,
+        account: Account = None,
+        email: str = None,
         language: str = "en-US",
         workspace_name: str | None = "",
     ):
@@ -859,8 +859,8 @@ class AccountService:
     def generate_reset_password_token(
         cls,
         email: str,
-        account: Account | None = None,
-        code: str | None = None,
+        account: Account = None,
+        code: str = None,
         additional_data: dict[str, Any] = {},
     ):
         if not code:
@@ -875,7 +875,7 @@ class AccountService:
     def generate_email_register_token(
         cls,
         email: str,
-        code: str | None = None,
+        code: str = None,
         additional_data: dict[str, Any] = {},
     ):
         if not code:
@@ -902,8 +902,8 @@ class AccountService:
     def generate_owner_transfer_token(
         cls,
         email: str,
-        account: Account | None = None,
-        code: str | None = None,
+        account: Account = None,
+        code: str = None,
         additional_data: dict[str, Any] = {},
     ):
         if not code:
@@ -956,8 +956,8 @@ class AccountService:
     @classmethod
     def send_email_code_login_email(
         cls,
-        account: Account | None = None,
-        email: str | None = None,
+        account: Account = None,
+        email: str = None,
         language: str = "en-US",
     ):
         email = account.email if account else email
@@ -1256,7 +1256,7 @@ class TenantService:
         return tenant
 
     @staticmethod
-    def create_owner_tenant_if_not_exist(account: Account, name: str | None = None, is_setup: bool | None = False):
+    def create_owner_tenant_if_not_exist(account: Account, name: str = None, is_setup: bool | None = False):
         """Check if user have a workspace or not"""
         available_ta = db.session.scalar(
             select(TenantAccountJoin)
@@ -1499,7 +1499,7 @@ class TenantService:
         return tenant
 
     @staticmethod
-    def switch_tenant(account: Account, tenant_id: str | None = None):
+    def switch_tenant(account: Account, tenant_id: str = None):
         """Switch the current workspace for the account"""
 
         # Ensure tenant_id is provided
@@ -1883,14 +1883,14 @@ class RegisterService:
         cls,
         email: str,
         name: str,
-        password: str | None = None,
-        open_id: str | None = None,
-        provider: str | None = None,
-        language: str | None = None,
-        status: AccountStatus | None = None,
+        password: str = None,
+        open_id: str = None,
+        provider: str = None,
+        language: str = None,
+        status: AccountStatus = None,
         is_setup: bool | None = False,
         create_workspace_required: bool | None = True,
-        timezone: str | None = None,
+        timezone: str = None,
     ) -> Account:
         """Register account"""
         db.session.begin_nested()
@@ -1944,7 +1944,7 @@ class RegisterService:
 
     @classmethod
     def invite_new_member(
-        cls, tenant: Tenant, email: str, language: str | None, role: str = "normal", inviter: Account | None = None
+        cls, tenant: Tenant, email: str, language: str | None, role: str = "normal", inviter: Account = None
     ) -> str:
         if not inviter:
             raise ValueError("Inviter is required")
@@ -2082,7 +2082,7 @@ class RegisterService:
 
     @classmethod
     def get_invitation_by_token(
-        cls, token: str, workspace_id: str | None = None, email: str | None = None
+        cls, token: str, workspace_id: str = None, email: str = None
     ) -> InvitationData | None:
         if workspace_id is not None and email is not None:
             email_hash = sha256(email.encode()).hexdigest()

@@ -97,7 +97,7 @@ class TestConversationStatusCount:
         return run
 
     def _create_message(
-        self, db_session: Session, app: App, conversation: Conversation, workflow_run_id: str | None = None
+        self, db_session: Session, app: App, conversation: Conversation, workflow_run_id: str = None
     ) -> Message:
         message = Message(
             app_id=app.id,

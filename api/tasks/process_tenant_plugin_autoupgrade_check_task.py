@@ -100,7 +100,7 @@ def process_tenant_plugin_autoupgrade_check_task(
     upgrade_mode: TenantPluginAutoUpgradeStrategy.UpgradeMode,
     exclude_plugins: list[str],
     include_plugins: list[str],
-    category: PluginCategory | str | None = None,
+    category: PluginCategory | str = None,
 ):
     try:
         manager = PluginInstaller()

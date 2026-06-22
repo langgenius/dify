@@ -33,12 +33,12 @@ class QuotaCharge:
     success: bool
     charge_id: str | None  # reservation_id
     _quota_type: QuotaType
-    _tenant_id: str | None = None
-    _feature_key: str | None = None
+    _tenant_id: str = None
+    _feature_key: str = None
     _amount: int = 0
     _committed: bool = field(default=False, repr=False)
 
-    def commit(self, actual_amount: int | None = None) -> None:
+    def commit(self, actual_amount: int = None) -> None:
         """
         Confirm the consumption with actual amount.
 

@@ -33,7 +33,7 @@ _DEFAULT_DAEMON_TIMEOUT: float | httpx.Timeout | None = 600.0
 class PluginDaemonBasicResponse(BaseModel):
     code: int
     message: str
-    data: object | None = None
+    data: object = None
 
 
 @dataclass(slots=True)
@@ -163,7 +163,7 @@ class DifyPluginDaemonProvider(Provider[DifyPluginDaemonLLMClient]):
     plugin_id: str
     plugin_daemon_url: str
     plugin_daemon_api_key: str = field(repr=False)
-    user_id: str | None = None
+    user_id: str = None
     timeout: float | httpx.Timeout | None = _DEFAULT_DAEMON_TIMEOUT
     http_client: httpx.AsyncClient | None = field(default=None, repr=False)
     _client: DifyPluginDaemonLLMClient = field(init=False, repr=False)
@@ -217,8 +217,8 @@ def _raise_plugin_daemon_error(
     model_name: str,
     error_type: str,
     message: str,
-    status_code: int | None = None,
-    body: object | None = None,
+    status_code: int = None,
+    body: object = None,
 ) -> NoReturn:
     http_error_body = body or {"error_type": error_type, "message": message}
 

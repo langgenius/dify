@@ -33,8 +33,8 @@ class AuthAction(BaseModel):
 
     action_type: AuthActionType
     data: dict[str, Any]
-    provider_id: str | None = None
-    tenant_id: str | None = None
+    provider_id: str = None
+    tenant_id: str = None
 
 
 class AuthResult(BaseModel):
@@ -50,7 +50,7 @@ class OAuthCallbackState(BaseModel):
     provider_id: str
     tenant_id: str
     server_url: str
-    metadata: OAuthMetadata | None = None
+    metadata: OAuthMetadata = None
     client_information: OAuthClientInformation
     code_verifier: str
     redirect_uri: str

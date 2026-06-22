@@ -42,9 +42,9 @@ def _build_model_credential_schema() -> ModelCredentialSchema:
 def _build_provider_configuration(
     *,
     custom_provider: bool = False,
-    load_balancing_enabled: bool | None = None,
-    model_schema: ModelCredentialSchema | None = None,
-    provider_schema: ProviderCredentialSchema | None = None,
+    load_balancing_enabled: bool = None,
+    model_schema: ModelCredentialSchema = None,
+    provider_schema: ProviderCredentialSchema = None,
 ) -> MagicMock:
     provider_configuration = MagicMock()
     provider_configuration.provider = SimpleNamespace(

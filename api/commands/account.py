@@ -90,7 +90,7 @@ def reset_email(email, new_email, email_confirm):
 @click.option("--email", prompt=True, help="Tenant account email.")
 @click.option("--name", prompt=True, help="Workspace name.")
 @click.option("--language", prompt=True, help="Account language, default: en-US.")
-def create_tenant(email: str, language: str | None = None, name: str | None = None):
+def create_tenant(email: str, language: str = None, name: str = None):
     """
     Create tenant account
     """

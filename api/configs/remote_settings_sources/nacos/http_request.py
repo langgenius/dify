@@ -17,7 +17,7 @@ class NacosHttpClient:
         self.ak = os.getenv("DIFY_ENV_NACOS_ACCESS_KEY")
         self.sk = os.getenv("DIFY_ENV_NACOS_SECRET_KEY")
         self.server = os.getenv("DIFY_ENV_NACOS_SERVER_ADDR", "localhost:8848")
-        self.token: str | None = None
+        self.token: str = None
         self.token_ttl = 18000
         self.token_expire_time: float = 0
         # Bounded timeouts so a slow or unresponsive Nacos server cannot hang the API
@@ -28,7 +28,7 @@ class NacosHttpClient:
         )
 
     def http_request(
-        self, url: str, method: str = "GET", headers: dict[str, str] | None = None, params: dict[str, str] | None = None
+        self, url: str, method: str = "GET", headers: dict[str, str] = None, params: dict[str, str] = None
     ) -> str:
         if headers is None:
             headers = {}

@@ -46,7 +46,7 @@ from dify_agent.protocol import (
 _ResponseModelT = TypeVar("_ResponseModelT", bound=BaseModel)
 _TERMINAL_EVENT_TYPES = {"run_succeeded", "run_failed", "run_cancelled"}
 _TERMINAL_RUN_STATUSES = {"succeeded", "failed", "cancelled"}
-_function_tool_result_payload_key_cache: str | None = None
+_function_tool_result_payload_key_cache: str = None
 
 
 class DifyAgentClientError(RuntimeError):
@@ -235,10 +235,10 @@ class Client:
         *,
         base_url: str,
         timeout: float | httpx.Timeout = 30.0,
-        stream_timeout: float | httpx.Timeout | None = None,
-        headers: dict[str, str] | None = None,
-        sync_http_client: httpx.Client | None = None,
-        async_http_client: httpx.AsyncClient | None = None,
+        stream_timeout: float | httpx.Timeout = None,
+        headers: dict[str, str] = None,
+        sync_http_client: httpx.Client = None,
+        async_http_client: httpx.AsyncClient = None,
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout
@@ -333,7 +333,7 @@ class Client:
             raise DifyAgentClientError(f"create_run_sync request failed: {exc}") from exc
         return _parse_model_response(response, CreateRunResponse)
 
-    async def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
+    async def cancel_run(self, run_id: str, request: CancelRunRequest = None) -> CancelRunResponse:
         """Request explicit cancellation for ``run_id``.
 
         The server may accept cancellation only for active runs; unsupported
@@ -353,7 +353,7 @@ class Client:
             raise DifyAgentClientError(f"cancel_run request failed: {exc}") from exc
         return _parse_model_response(response, CancelRunResponse)
 
-    def cancel_run_sync(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
+    def cancel_run_sync(self, run_id: str, request: CancelRunRequest = None) -> CancelRunResponse:
         """Synchronous variant of ``cancel_run``."""
         request_model = request or CancelRunRequest()
         try:
@@ -487,9 +487,9 @@ class Client:
         self,
         run_id: str,
         *,
-        after: str | None = None,
+        after: str = None,
         reconnect: bool = True,
-        max_reconnects: int | None = None,
+        max_reconnects: int = None,
         reconnect_delay_seconds: float = 1.0,
         until_terminal: bool = True,
     ) -> AsyncIterator[RunEvent]:
@@ -535,9 +535,9 @@ class Client:
         self,
         run_id: str,
         *,
-        after: str | None = None,
+        after: str = None,
         reconnect: bool = True,
-        max_reconnects: int | None = None,
+        max_reconnects: int = None,
         reconnect_delay_seconds: float = 1.0,
         until_terminal: bool = True,
     ) -> Iterator[RunEvent]:
@@ -577,7 +577,7 @@ class Client:
         run_id: str,
         *,
         poll_interval_seconds: float = 1.0,
-        timeout_seconds: float | None = None,
+        timeout_seconds: float = None,
     ) -> RunStatusResponse:
         """Poll run status until it becomes terminal and return the final status."""
         _validate_wait_options(poll_interval_seconds, timeout_seconds)
@@ -596,7 +596,7 @@ class Client:
         run_id: str,
         *,
         poll_interval_seconds: float = 1.0,
-        timeout_seconds: float | None = None,
+        timeout_seconds: float = None,
     ) -> RunStatusResponse:
         """Synchronous variant of ``wait_run``."""
         _validate_wait_options(poll_interval_seconds, timeout_seconds)
@@ -688,7 +688,7 @@ class Client:
         """Build an absolute URL from the configured base and API path."""
         return f"{self._base_url}{path}"
 
-    def _merged_headers(self, extra: dict[str, str] | None = None) -> dict[str, str]:
+    def _merged_headers(self, extra: dict[str, str] = None) -> dict[str, str]:
         """Return per-request headers without mutating client defaults."""
         headers = dict(self._headers)
         if extra is not None:

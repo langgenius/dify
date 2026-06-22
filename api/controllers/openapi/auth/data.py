@@ -32,42 +32,42 @@ class ExternalIdentity(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     email: str
-    issuer: str | None = None
+    issuer: str = None
 
 
 class RequestContext(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     token_type: TokenType
-    scope: Scope | None = None
+    scope: Scope = None
     path_params: dict[str, str]
     workspace_membership: bool = False
-    allowed_roles: frozenset[TenantAccountRole] | None = None
+    allowed_roles: frozenset[TenantAccountRole] = None
 
 
 class AuthData(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    required_scope: Scope | None = None
+    required_scope: Scope = None
     token_type: TokenType
-    account_id: uuid.UUID | None = None
+    account_id: uuid.UUID = None
     token_hash: str
-    token_id: uuid.UUID | None = None
+    token_id: uuid.UUID = None
     scopes: frozenset[Scope]
     tenants: dict[str, bool] = Field(default_factory=dict)
-    external_identity: ExternalIdentity | None = None
+    external_identity: ExternalIdentity = None
     path_params: dict[str, str] = Field(default_factory=dict)
 
-    allowed_roles: frozenset[TenantAccountRole] | None = None
+    allowed_roles: frozenset[TenantAccountRole] = None
 
-    app: App | None = None
-    tenant: Tenant | None = None
-    app_access_mode: WebAppAccessMode | None = None
+    app: App = None
+    tenant: Tenant = None
+    app_access_mode: WebAppAccessMode = None
 
-    tenant_role: TenantAccountRole | None = None
+    tenant_role: TenantAccountRole = None
 
-    caller: Account | EndUser | None = None
-    caller_kind: Literal["account", "end_user"] | None = None
+    caller: Account | EndUser = None
+    caller_kind: Literal["account", "end_user"] = None
 
     def require_app_context(self) -> tuple[App, Account | EndUser, Literal["account", "end_user"]]:
         if self.app is None or self.caller is None or self.caller_kind is None:

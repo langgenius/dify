@@ -61,7 +61,7 @@ def _create_workflow_run(
     scope: _TestScope,
     *,
     status: WorkflowExecutionStatus,
-    created_at: datetime | None = None,
+    created_at: datetime = None,
 ) -> WorkflowRun:
     """Create and persist a workflow run bound to the current test scope."""
 

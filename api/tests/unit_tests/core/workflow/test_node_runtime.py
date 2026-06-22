@@ -47,7 +47,7 @@ from graphon.variables.segments import ArrayFileSegment, FileSegment
 from tests.workflow_test_utils import build_test_run_context
 
 
-def _build_model_schema(*, features: list[ModelFeature] | None = None) -> AIModelEntity:
+def _build_model_schema(*, features: list[ModelFeature] = None) -> AIModelEntity:
     return AIModelEntity(
         model="gpt-4o-mini",
         label=I18nObject(en_US="GPT-4o mini"),
@@ -63,7 +63,7 @@ class _ModelTypeInstanceStub(LargeLanguageModel):
         self,
         *,
         model_schema: AIModelEntity | None,
-        model_runtime: object | None = None,
+        model_runtime: object = None,
     ) -> None:
         self.model_runtime = model_runtime
         self.get_model_schema = Mock(return_value=model_schema)
@@ -74,7 +74,7 @@ class _ModelInstanceStub:
         self,
         *,
         model_schema: AIModelEntity | None,
-        model_runtime: object | None = None,
+        model_runtime: object = None,
         invoke_llm_result: object = sentinel.result,
         get_llm_num_tokens_result: int = 32,
     ) -> None:

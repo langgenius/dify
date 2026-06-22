@@ -11,7 +11,7 @@ from repositories.api_workflow_run_repository import WorkflowRunCleanupRef
 from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
 
 
-def make_ref(tenant_id: str = "t1", run_id: str = "r1", created_at: datetime.datetime | None = None):
+def make_ref(tenant_id: str = "t1", run_id: str = "r1", created_at: datetime.datetime = None):
     return WorkflowRunCleanupRef(
         id=run_id,
         tenant_id=tenant_id,

@@ -21,7 +21,7 @@ class ToolLabelManager:
 
     @classmethod
     def update_tool_labels(
-        cls, controller: ToolProviderController, labels: list[str], session: Session | None = None
+        cls, controller: ToolProviderController, labels: list[str], session: Session = None
     ) -> None:
         """
         Update tool labels

@@ -45,10 +45,10 @@ def _start_span_no_context(
     *,
     name: str,
     span_type: str,
-    parent_span: LiveSpan | None = None,
-    inputs: object | None = None,
-    attributes: SpanAttributes | None = None,
-    start_time_ns: int | None = None,
+    parent_span: LiveSpan = None,
+    inputs: object = None,
+    attributes: SpanAttributes = None,
+    start_time_ns: int = None,
 ) -> LiveSpan:
     """Start an MLflow span while preserving structured Dify attributes.
 

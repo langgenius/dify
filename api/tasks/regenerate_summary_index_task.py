@@ -241,7 +241,7 @@ def regenerate_summary_index_task(
                         )
 
                         for segment in segments:
-                            existing_summary_record: DocumentSegmentSummary | None = None
+                            existing_summary_record: DocumentSegmentSummary = None
                             try:
                                 # Get existing summary record
                                 existing_summary_record = session.scalar(

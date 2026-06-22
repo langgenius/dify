@@ -43,7 +43,7 @@ class DeliveryTestContext:
     rendered_content: str
     template_vars: dict[str, str] = field(default_factory=dict)
     recipients: list[DeliveryTestEmailRecipient] = field(default_factory=list)
-    variable_pool: VariablePool | None = None
+    variable_pool: VariablePool = None
 
 
 @dataclass(frozen=True)
@@ -82,7 +82,7 @@ class DeliveryTestHandler(Protocol):
 
 
 class DeliveryTestRegistry:
-    def __init__(self, handlers: list[DeliveryTestHandler] | None = None) -> None:
+    def __init__(self, handlers: list[DeliveryTestHandler] = None) -> None:
         self._handlers = list(handlers or [])
 
     def register(self, handler: DeliveryTestHandler) -> None:
@@ -105,7 +105,7 @@ class DeliveryTestRegistry:
 
 
 class HumanInputDeliveryTestService:
-    def __init__(self, registry: DeliveryTestRegistry | None = None) -> None:
+    def __init__(self, registry: DeliveryTestRegistry = None) -> None:
         self._registry = registry or DeliveryTestRegistry.default()
 
     def send_test(
@@ -118,7 +118,7 @@ class HumanInputDeliveryTestService:
 
 
 class EmailDeliveryTestHandler:
-    def __init__(self, session_factory: sessionmaker | Engine | None = None) -> None:
+    def __init__(self, session_factory: sessionmaker | Engine = None) -> None:
         match session_factory:
             case None:
                 session_factory = sessionmaker(bind=db.engine)

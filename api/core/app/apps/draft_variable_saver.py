@@ -22,7 +22,7 @@ class DraftVariableSaverFactory(Protocol):
         node_id: str,
         node_type: NodeType,
         node_execution_id: str,
-        enclosing_node_id: str | None = None,
+        enclosing_node_id: str = None,
     ) -> DraftVariableSaver:
         """Build a saver bound to a concrete node execution."""
         raise NotImplementedError

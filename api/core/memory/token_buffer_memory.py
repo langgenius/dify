@@ -35,7 +35,7 @@ class TokenBufferMemory:
     ):
         self.conversation = conversation
         self.model_instance = model_instance
-        self._workflow_run_repo: APIWorkflowRunRepository | None = None
+        self._workflow_run_repo: APIWorkflowRunRepository = None
 
     @property
     def workflow_run_repo(self) -> APIWorkflowRunRepository:
@@ -120,7 +120,7 @@ class TokenBufferMemory:
                 return AssistantPromptMessage(content=prompt_message_contents)
 
     def get_history_prompt_messages(
-        self, max_token_limit: int = 2000, message_limit: int | None = None
+        self, max_token_limit: int = 2000, message_limit: int = None
     ) -> Sequence[PromptMessage]:
         """
         Get history prompt messages.
@@ -211,7 +211,7 @@ class TokenBufferMemory:
         human_prefix: str = "Human",
         ai_prefix: str = "Assistant",
         max_token_limit: int = 2000,
-        message_limit: int | None = None,
+        message_limit: int = None,
     ) -> str:
         """
         Get history prompt text.

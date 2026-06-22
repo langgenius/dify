@@ -57,7 +57,7 @@ def _create_message(
     conversation_id: str,
     *,
     from_account_id: str | None,
-    from_end_user_id: str | None = None,
+    from_end_user_id: str = None,
     message_tokens: int = 1,
     answer_tokens: int = 1,
     total_price: Decimal = Decimal("0.01"),

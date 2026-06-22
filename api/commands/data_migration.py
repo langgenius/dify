@@ -749,6 +749,6 @@ def _with_output_path(context: ReportContext | None, output_path: str) -> Report
     )
 
 
-def _render_report(report_items: list[ResourceReportItem], *, context: ReportContext | None = None) -> None:
+def _render_report(report_items: list[ResourceReportItem], *, context: ReportContext = None) -> None:
     for line in MigrationReportService().render(report_items, context=context):
         click.echo(line)

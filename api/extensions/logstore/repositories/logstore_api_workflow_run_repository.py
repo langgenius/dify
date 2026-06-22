@@ -149,7 +149,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
     - Proper time range filtering for LogStore queries
     """
 
-    def __init__(self, session_maker: sessionmaker | None = None):
+    def __init__(self, session_maker: sessionmaker = None):
         """
         Initialize the repository with LogStore client.
 
@@ -171,8 +171,8 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         app_id: str,
         triggered_from: WorkflowRunTriggeredFrom | Sequence[WorkflowRunTriggeredFrom],
         limit: int = 20,
-        last_id: str | None = None,
-        status: str | None = None,
+        last_id: str = None,
+        status: str = None,
     ) -> InfiniteScrollPagination:
         """
         Get paginated workflow runs with filtering.
@@ -458,8 +458,8 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         tenant_id: str,
         app_id: str,
         triggered_from: str,
-        status: str | None = None,
-        time_range: str | None = None,
+        status: str = None,
+        time_range: str = None,
     ) -> dict[str, int]:
         """
         Get workflow runs count statistics grouped by status.
@@ -606,8 +606,8 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         tenant_id: str,
         app_id: str,
         triggered_from: str,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
+        start_date: datetime = None,
+        end_date: datetime = None,
         timezone: str = "UTC",
     ) -> list[DailyRunsStats]:
         """
@@ -665,8 +665,8 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         tenant_id: str,
         app_id: str,
         triggered_from: str,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
+        start_date: datetime = None,
+        end_date: datetime = None,
         timezone: str = "UTC",
     ) -> list[DailyTerminalsStats]:
         """
@@ -726,8 +726,8 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         tenant_id: str,
         app_id: str,
         triggered_from: str,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
+        start_date: datetime = None,
+        end_date: datetime = None,
         timezone: str = "UTC",
     ) -> list[DailyTokenCostStats]:
         """
@@ -787,8 +787,8 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         tenant_id: str,
         app_id: str,
         triggered_from: str,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
+        start_date: datetime = None,
+        end_date: datetime = None,
         timezone: str = "UTC",
     ) -> list[AverageInteractionStats]:
         """

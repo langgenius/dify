@@ -22,8 +22,8 @@ class RerankModelRunner(BaseRerankRunner):
         self,
         query: str,
         documents: list[Document],
-        score_threshold: float | None = None,
-        top_n: int | None = None,
+        score_threshold: float = None,
+        top_n: int = None,
         query_type: QueryType = QueryType.TEXT_QUERY,
     ) -> list[Document]:
         """
@@ -73,8 +73,8 @@ class RerankModelRunner(BaseRerankRunner):
         self,
         query: str,
         documents: list[Document],
-        score_threshold: float | None = None,
-        top_n: int | None = None,
+        score_threshold: float = None,
+        top_n: int = None,
     ) -> tuple[RerankResult, list[Document]]:
         """
         Fetch text rerank
@@ -111,8 +111,8 @@ class RerankModelRunner(BaseRerankRunner):
         self,
         query: str,
         documents: list[Document],
-        score_threshold: float | None = None,
-        top_n: int | None = None,
+        score_threshold: float = None,
+        top_n: int = None,
         query_type: QueryType = QueryType.TEXT_QUERY,
     ) -> tuple[RerankResult, list[Document]]:
         """

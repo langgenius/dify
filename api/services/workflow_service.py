@@ -104,7 +104,7 @@ class WorkflowService:
     Workflow Service
     """
 
-    def __init__(self, session_maker: sessionmaker | None = None):
+    def __init__(self, session_maker: sessionmaker = None):
         """Initialize WorkflowService with repository dependencies."""
         if session_maker is None:
             session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
@@ -142,7 +142,7 @@ class WorkflowService:
         return db.session.execute(stmt).scalar_one()
 
     def get_draft_workflow(
-        self, app_model: App, workflow_id: str | None = None, session: Session | None = None
+        self, app_model: App, workflow_id: str = None, session: Session = None
     ) -> Workflow | None:
         """
         Get draft workflow
@@ -169,7 +169,7 @@ class WorkflowService:
         return workflow
 
     def get_published_workflow_by_id(
-        self, app_model: App, workflow_id: str, session: Session | None = None
+        self, app_model: App, workflow_id: str, session: Session = None
     ) -> Workflow | None:
         """
         fetch published workflow by workflow_id
@@ -197,7 +197,7 @@ class WorkflowService:
             )
         return workflow
 
-    def get_published_workflow(self, app_model: App, session: Session | None = None) -> Workflow | None:
+    def get_published_workflow(self, app_model: App, session: Session = None) -> Workflow | None:
         """
         Get published workflow
 
@@ -831,7 +831,7 @@ class WorkflowService:
         return default_block_configs
 
     def get_default_block_config(
-        self, node_type: str, filters: Mapping[str, object] | None = None
+        self, node_type: str, filters: Mapping[str, object] = None
     ) -> Mapping[str, object]:
         """
         Get default config of node.
@@ -872,7 +872,7 @@ class WorkflowService:
         user_inputs: Mapping[str, Any],
         account: Account,
         query: str = "",
-        files: Sequence[File] | None = None,
+        files: Sequence[File] = None,
     ) -> WorkflowNodeExecutionModel:
         """
         Run draft workflow node
@@ -999,7 +999,7 @@ class WorkflowService:
         app_model: App,
         account: Account,
         node_id: str,
-        inputs: Mapping[str, Any] | None = None,
+        inputs: Mapping[str, Any] = None,
     ) -> Mapping[str, Any]:
         """
         Build a human input form preview for a draft workflow.
@@ -1055,7 +1055,7 @@ class WorkflowService:
         account: Account,
         node_id: str,
         form_inputs: Mapping[str, Any],
-        inputs: Mapping[str, Any] | None = None,
+        inputs: Mapping[str, Any] = None,
         action: str,
     ) -> Mapping[str, Any]:
         """
@@ -1141,7 +1141,7 @@ class WorkflowService:
         account: Account,
         node_id: str,
         delivery_method_id: str,
-        inputs: Mapping[str, Any] | None = None,
+        inputs: Mapping[str, Any] = None,
     ) -> None:
         draft_workflow = self.get_draft_workflow(app_model=app_model)
         if not draft_workflow:

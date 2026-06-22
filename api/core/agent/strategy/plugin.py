@@ -16,7 +16,7 @@ class PluginAgentStrategy(BaseAgentStrategy):
 
     tenant_id: str
     declaration: AgentStrategyEntity
-    meta_version: str | None = None
+    meta_version: str = None
 
     def __init__(self, tenant_id: str, declaration: AgentStrategyEntity, meta_version: str | None):
         self.tenant_id = tenant_id
@@ -40,10 +40,10 @@ class PluginAgentStrategy(BaseAgentStrategy):
         self,
         params: dict[str, Any],
         user_id: str,
-        conversation_id: str | None = None,
-        app_id: str | None = None,
-        message_id: str | None = None,
-        credentials: InvokeCredentials | None = None,
+        conversation_id: str = None,
+        app_id: str = None,
+        message_id: str = None,
+        credentials: InvokeCredentials = None,
     ) -> Generator[AgentInvokeMessage, None, None]:
         """
         Invoke the agent strategy.

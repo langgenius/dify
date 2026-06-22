@@ -25,7 +25,7 @@ class OrderConfig:
     """Configuration for ordering node execution instances."""
 
     order_by: list[str]
-    order_direction: Literal["asc", "desc"] | None = None
+    order_direction: Literal["asc", "desc"] = None
 
 
 class WorkflowExecutionRepository(Protocol):
@@ -40,7 +40,7 @@ class WorkflowNodeExecutionRepository(Protocol):
     def get_by_workflow_execution(
         self,
         workflow_execution_id: str,
-        order_config: OrderConfig | None = None,
+        order_config: OrderConfig = None,
     ) -> Sequence[WorkflowNodeExecution]: ...
 
 

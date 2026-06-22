@@ -28,7 +28,7 @@ class SystemEncrypter:
     using AES-CBC mode with a key derived from the application's SECRET_KEY.
     """
 
-    def __init__(self, secret_key: str | None = None):
+    def __init__(self, secret_key: str = None):
         """
         Initialize the encrypter.
 
@@ -130,7 +130,7 @@ class SystemEncrypter:
 
 
 # Factory function for creating encrypter instances
-def create_system_encrypter(secret_key: str | None = None) -> SystemEncrypter:
+def create_system_encrypter(secret_key: str = None) -> SystemEncrypter:
     """
     Create an encrypter instance.
 
@@ -144,7 +144,7 @@ def create_system_encrypter(secret_key: str | None = None) -> SystemEncrypter:
 
 
 # Global encrypter instance (for backward compatibility)
-_encrypter: SystemEncrypter | None = None
+_encrypter: SystemEncrypter = None
 
 
 def get_system_encrypter() -> SystemEncrypter:

@@ -59,8 +59,8 @@ class FakeShellctlClient:
         self,
         script: str,
         *,
-        cwd: str | None = None,
-        env: Mapping[str, str] | None = None,
+        cwd: str = None,
+        env: Mapping[str, str] = None,
         timeout: float = 10.0,
     ) -> JobResult:
         self.run_calls.append(RunCall(script=script, cwd=cwd, env=env, timeout=timeout))
@@ -80,7 +80,7 @@ class FakeShellctlClient:
         job_id: str,
         *,
         force: bool = False,
-        grace_seconds: float | None = None,
+        grace_seconds: float = None,
     ) -> DeleteJobResponse:
         del force, grace_seconds
         self.delete_calls.append(job_id)

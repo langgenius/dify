@@ -153,7 +153,7 @@ def _llm_only_parameter(*, name: str, description: str, default: JsonValue = Non
 
 def _invoke_stream_response(
     *,
-    error_payload: dict[str, object] | None = None,
+    error_payload: dict[str, object] = None,
     chunked_blob: bool = False,
 ) -> httpx.Response:
     if error_payload is not None:
@@ -181,7 +181,7 @@ def _invoke_stream_response(
 
 def _tool_transport(
     *,
-    invoke_error_payload: dict[str, object] | None = None,
+    invoke_error_payload: dict[str, object] = None,
     chunked_blob: bool = False,
 ) -> httpx.MockTransport:
     def handler(request: httpx.Request) -> httpx.Response:

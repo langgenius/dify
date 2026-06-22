@@ -117,7 +117,7 @@ class LoginApi(Resource):
             raise EmailPasswordLoginLimitError()
 
         invite_token = args.invite_token
-        invitation_data: InvitationDetailDict | None = None
+        invitation_data: InvitationDetailDict = None
         if invite_token:
             invitation_data = RegisterService.get_invitation_with_case_fallback(None, request_email, invite_token)
             if invitation_data is None:

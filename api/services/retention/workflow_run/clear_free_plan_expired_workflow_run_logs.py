@@ -207,9 +207,9 @@ class WorkflowRunCleanup:
         self,
         days: int,
         batch_size: int,
-        start_from: datetime.datetime | None = None,
-        end_before: datetime.datetime | None = None,
-        workflow_run_repo: APIWorkflowRunRepository | None = None,
+        start_from: datetime.datetime = None,
+        end_before: datetime.datetime = None,
+        workflow_run_repo: APIWorkflowRunRepository = None,
         dry_run: bool = False,
         task_label: str = "custom",
     ):
@@ -227,7 +227,7 @@ class WorkflowRunCleanup:
             raise ValueError("batch_size must be greater than 0.")
 
         self.batch_size = batch_size
-        self._cleanup_whitelist: set[str] | None = None
+        self._cleanup_whitelist: set[str] = None
         self.dry_run = dry_run
         self._metrics = WorkflowRunCleanupMetrics(
             dry_run=dry_run,
@@ -261,7 +261,7 @@ class WorkflowRunCleanup:
         total_runs_targeted = 0
         related_totals: RelatedCountsDict | None = self._empty_related_counts() if self.dry_run else None
         batch_index = 0
-        last_seen: tuple[datetime.datetime, str] | None = None
+        last_seen: tuple[datetime.datetime, str] = None
         status = "success"
         run_start = time.monotonic()
         max_batch_interval_ms = dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_MAX_INTERVAL

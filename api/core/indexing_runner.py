@@ -272,9 +272,9 @@ class IndexingRunner:
         tenant_id: str,
         extract_settings: list[ExtractSetting],
         tmp_processing_rule: Mapping[str, Any],
-        doc_form: str | None = None,
+        doc_form: str = None,
         doc_language: str = "English",
-        dataset_id: str | None = None,
+        dataset_id: str = None,
         indexing_technique: str = IndexTechniqueType.ECONOMY,
     ) -> IndexingEstimate:
         """
@@ -741,7 +741,7 @@ class IndexingRunner:
     def _update_document_index_status(
         document_id: str,
         after_indexing_status: IndexingStatus,
-        extra_update_params: Mapping[Any, Any] | None = None,
+        extra_update_params: Mapping[Any, Any] = None,
     ):
         """
         Update the document indexing status.
@@ -784,7 +784,7 @@ class IndexingRunner:
         text_docs: list[Document],
         doc_language: str,
         process_rule: Mapping[str, Any],
-        current_user: Account | None = None,
+        current_user: Account = None,
     ) -> list[Document]:
         # get embedding model instance
         embedding_model_instance = None

@@ -9,9 +9,9 @@ class OpikConfig(BaseTracingConfig):
     Model class for Opik tracing config.
     """
 
-    api_key: str | None = None
-    project: str | None = None
-    workspace: str | None = None
+    api_key: str = None
+    project: str = None
+    workspace: str = None
     url: str = "https://www.comet.com/opik/api/"
 
     @field_validator("project")

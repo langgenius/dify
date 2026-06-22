@@ -21,11 +21,11 @@ class GraphRuntimeStateSupport:
     """
 
     _base_task_pipeline: BasedGenerateTaskPipeline
-    _graph_runtime_state: GraphRuntimeState | None = None
+    _graph_runtime_state: GraphRuntimeState = None
 
     def _ensure_graph_runtime_initialized(
         self,
-        graph_runtime_state: GraphRuntimeState | None = None,
+        graph_runtime_state: GraphRuntimeState = None,
     ) -> GraphRuntimeState:
         """Validate and return the active graph runtime state."""
         return self._resolve_graph_runtime_state(graph_runtime_state)
@@ -38,7 +38,7 @@ class GraphRuntimeStateSupport:
 
     def _resolve_graph_runtime_state(
         self,
-        graph_runtime_state: GraphRuntimeState | None = None,
+        graph_runtime_state: GraphRuntimeState = None,
     ) -> GraphRuntimeState:
         """Return the cached runtime state or bootstrap it from the queue manager."""
         if graph_runtime_state is not None:

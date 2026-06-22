@@ -75,7 +75,7 @@ def _make_trace_metadata(
     workflow_span_id: int = 2,
     session_id: str = "s",
     user_id: str = "u",
-    links: list[Link] | None = None,
+    links: list[Link] = None,
 ) -> TraceMetadata:
     return TraceMetadata(
         trace_id=trace_id,

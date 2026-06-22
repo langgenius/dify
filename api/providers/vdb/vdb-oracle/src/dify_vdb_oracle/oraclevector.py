@@ -41,9 +41,9 @@ class OracleVectorConfig(BaseModel):
     user: str
     password: str
     dsn: str
-    config_dir: str | None = None
-    wallet_location: str | None = None
-    wallet_password: str | None = None
+    config_dir: str = None
+    wallet_location: str = None
+    wallet_password: str = None
     is_autonomous: bool = False
 
     @model_validator(mode="before")

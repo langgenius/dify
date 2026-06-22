@@ -27,7 +27,7 @@ class EnterpriseMetricHandler:
     and payload rehydration with fallback.
     """
 
-    def _increment_diagnostic_counter(self, counter_name: str, labels: dict[str, str] | None = None) -> None:
+    def _increment_diagnostic_counter(self, counter_name: str, labels: dict[str, str] = None) -> None:
         """Increment a diagnostic counter for operational monitoring.
 
         Args:

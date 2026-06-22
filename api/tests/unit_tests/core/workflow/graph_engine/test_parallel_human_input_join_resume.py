@@ -50,7 +50,7 @@ class PauseStateStore(Protocol):
 
 class InMemoryPauseStore:
     def __init__(self) -> None:
-        self._snapshot: str | None = None
+        self._snapshot: str = None
 
     def save(self, runtime_state: GraphRuntimeState) -> None:
         self._snapshot = runtime_state.dumps()
@@ -80,8 +80,8 @@ class StaticForm(HumanInputFormEntity):
     form_id: str
     rendered: str
     is_submitted: bool
-    action_id: str | None = None
-    data: Mapping[str, Any] | None = None
+    action_id: str = None
+    data: Mapping[str, Any] = None
     status_value: HumanInputFormStatus = HumanInputFormStatus.WAITING
     expiration: datetime = naive_utc_now() + timedelta(days=1)
 
@@ -257,7 +257,7 @@ def _run_graph(graph: Graph, runtime_state: GraphRuntimeState) -> list[object]:
     return list(engine.run())
 
 
-def _form(submitted: bool, action_id: str | None, data: Mapping[str, Any] | None = None) -> StaticForm:
+def _form(submitted: bool, action_id: str | None, data: Mapping[str, Any] = None) -> StaticForm:
     return StaticForm(
         form_id="form",
         rendered="rendered",

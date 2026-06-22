@@ -47,7 +47,7 @@ _EMPTY_PARAMETERS: dict[str, Any] = {
 class AppReadResource(Resource):
     """Base for per-app read endpoints; subclasses call `_load()` for membership/exists checks."""
 
-    def _load(self, app_id: str, workspace_id: str | None = None) -> App:
+    def _load(self, app_id: str, workspace_id: str = None) -> App:
         try:
             parsed_uuid = _uuid.UUID(app_id)
             is_uuid = True
@@ -114,8 +114,8 @@ class AppDescribeApi(AppReadResource):
             else None
         )
 
-        parameters: dict[str, Any] | None = None
-        input_schema: dict[str, Any] | None = None
+        parameters: dict[str, Any] = None
+        input_schema: dict[str, Any] = None
         if want_params:
             try:
                 parameters = parameters_payload(app)
@@ -152,7 +152,7 @@ class AppListApi(Resource):
         else:
             parsed_uuid = None
 
-        tenant_name: str | None = None
+        tenant_name: str = None
         if parsed_uuid is not None:
             app: App | None = AppService.get_visible_app_by_id(db.session, str(parsed_uuid))
             if app is None or str(app.tenant_id) != workspace_id:
@@ -172,7 +172,7 @@ class AppListApi(Resource):
             env = AppListResponse(page=1, limit=1, total=1, has_more=False, data=[item])
             return env
 
-        tag_ids: list[str] | None = None
+        tag_ids: list[str] = None
         if query.tag:
             tags = TagService.get_tag_by_tag_name("app", workspace_id, query.tag, db.session)
             if not tags:

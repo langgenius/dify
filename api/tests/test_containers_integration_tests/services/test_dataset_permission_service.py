@@ -29,7 +29,7 @@ class DatasetPermissionTestDataFactory:
     @staticmethod
     def create_account_with_tenant(
         role: TenantAccountRole = TenantAccountRole.NORMAL,
-        tenant: Tenant | None = None,
+        tenant: Tenant = None,
     ) -> tuple[Account, Tenant]:
         """Create a real account and tenant with specified role."""
         account = Account(

@@ -74,7 +74,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
     """
 
     _task_state: EasyUITaskState
-    _precomputed_event_type: StreamEvent | None = None
+    _precomputed_event_type: StreamEvent = None
 
     def __init__(
         self,
@@ -112,7 +112,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
             task_state=self._task_state,
         )
 
-        self._conversation_name_generate_thread: Thread | None = None
+        self._conversation_name_generate_thread: Thread = None
 
     def process(
         self,
@@ -213,7 +213,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         return None
 
     def _wrapper_process_stream_response(
-        self, trace_manager: TraceQueueManager | None = None
+        self, trace_manager: TraceQueueManager = None
     ) -> Generator[StreamResponse, None, None]:
         tenant_id = self._application_generate_entity.app_config.tenant_id
         task_id = self._application_generate_entity.task_id
@@ -256,7 +256,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
             yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
 
     def _process_stream_response(
-        self, publisher: AppGeneratorTTSPublisher | None, trace_manager: TraceQueueManager | None = None
+        self, publisher: AppGeneratorTTSPublisher | None, trace_manager: TraceQueueManager = None
     ) -> Generator[StreamResponse, None, None]:
         """
         Process stream response.
@@ -376,7 +376,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         if self._conversation_name_generate_thread:
             logger.debug("Conversation name generation running as daemon thread")
 
-    def _save_message(self, *, session: Session, trace_manager: TraceQueueManager | None = None):
+    def _save_message(self, *, session: Session, trace_manager: TraceQueueManager = None):
         """
         Save message.
         :return:

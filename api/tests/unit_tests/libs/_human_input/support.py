@@ -13,7 +13,7 @@ from libs.datetime_utils import naive_utc_now
 class HumanInputError(Exception):
     error_code: str = "unknown"
 
-    def __init__(self, message: str = "", error_code: str | None = None):
+    def __init__(self, message: str = "", error_code: str = None):
         super().__init__(message)
         self.message = message or self.__class__.__name__
         if error_code:
@@ -49,12 +49,12 @@ class HumanInputForm:
     user_actions: list[dict[str, Any]]
     timeout: int
     timeout_unit: TimeoutUnit
-    form_token: str | None = None
+    form_token: str = None
     created_at: datetime = field(default_factory=naive_utc_now)
-    expires_at: datetime | None = None
-    submitted_at: datetime | None = None
-    submitted_data: dict[str, Any] | None = None
-    submitted_action: str | None = None
+    expires_at: datetime = None
+    submitted_at: datetime = None
+    submitted_data: dict[str, Any] = None
+    submitted_action: str = None
 
     def __post_init__(self) -> None:
         if self.expires_at is None:
@@ -170,7 +170,7 @@ class FormService:
         user_actions,
         timeout: int,
         timeout_unit: TimeoutUnit,
-        form_token: str | None = None,
+        form_token: str = None,
     ) -> HumanInputForm:
         form = HumanInputForm(
             form_id=form_id,

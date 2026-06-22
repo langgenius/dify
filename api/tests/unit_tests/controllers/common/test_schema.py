@@ -55,14 +55,14 @@ class HelperQueryModel(BaseModel):
     page: int = 1
     limit: int = 20
     status: list[str] = Field(default_factory=list)
-    keyword: str | None = None
+    keyword: str = None
 
 
 class NullableSchemaModel(BaseModel):
-    name: str | None = None
-    tags: list[str] | None = None
-    owner: UserModel | None = None
-    ambiguous: int | str | None = None
+    name: str = None
+    tags: list[str] = None
+    owner: UserModel = None
+    ambiguous: int | str = None
 
 
 class ResponseAliasModel(BaseModel):

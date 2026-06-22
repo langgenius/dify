@@ -14,7 +14,7 @@ class BuildInRecommendAppRetrieval(RecommendAppRetrievalBase):
     Retrieval recommended app from buildin, the location  is constants/recommended_apps.json
     """
 
-    builtin_data: dict[str, Any] | None = None
+    builtin_data: dict[str, Any] = None
 
     @override
     def get_type(self) -> str:

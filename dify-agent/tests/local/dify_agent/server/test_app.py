@@ -102,9 +102,9 @@ class FakePluginDaemonHttpClient:
     def __init__(
         self,
         *,
-        timeout: object | None = None,
-        limits: object | None = None,
-        trust_env: bool | None = None,
+        timeout: object = None,
+        limits: object = None,
+        trust_env: bool = None,
     ) -> None:
         self.timeout = timeout
         self.limits = limits

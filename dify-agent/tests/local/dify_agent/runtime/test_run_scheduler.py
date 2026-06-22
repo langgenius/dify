@@ -24,7 +24,7 @@ from dify_agent.server.schemas import RunRecord
 def _request(
     user: str | list[str] = "hello",
     *,
-    output_config: Mapping[str, object] | DifyOutputLayerConfig | None = None,
+    output_config: Mapping[str, object] | DifyOutputLayerConfig = None,
 ) -> CreateRunRequest:
     layers = [RunLayerSpec(name="prompt", type="plain.prompt", config=PromptLayerConfig(user=user))]
     if output_config is not None:
@@ -78,7 +78,7 @@ class FakeStore:
         self.events[event.run_id].append(event.model_copy(update={"id": event_id}))
         return event_id
 
-    async def update_status(self, run_id: str, status: RunStatus, error: str | None = None) -> None:
+    async def update_status(self, run_id: str, status: RunStatus, error: str = None) -> None:
         self.statuses[run_id] = status
         self.errors[run_id] = error
 

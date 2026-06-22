@@ -48,7 +48,7 @@ def _workflow_run(
     app_id: str = "app-1",
     triggered_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.DEBUGGING,
     status: WorkflowExecutionStatus = WorkflowExecutionStatus.RUNNING,
-    nodes: list[dict[str, Any]] | None = None,
+    nodes: list[dict[str, Any]] = None,
 ):
     return SimpleNamespace(
         id=run_id,
@@ -67,11 +67,11 @@ def _execution(
     node_type: str = "agent",
     title: str = "",
     status: WorkflowNodeExecutionStatus = WorkflowNodeExecutionStatus.SUCCEEDED,
-    outputs: dict[str, Any] | None = None,
-    execution_metadata: dict[str, Any] | None = None,
+    outputs: dict[str, Any] = None,
+    execution_metadata: dict[str, Any] = None,
     index: int = 1,
-    created_at: datetime | None = None,
-    finished_at: datetime | None = None,
+    created_at: datetime = None,
+    finished_at: datetime = None,
 ):
     return SimpleNamespace(
         node_id=node_id,
@@ -103,7 +103,7 @@ def _non_agent_node(*, node_id: str = "tool-node-1", node_type: str = "tool", ti
 def _patch_session(
     *,
     workflow_run: SimpleNamespace | None,
-    executions: list[SimpleNamespace] | None = None,
+    executions: list[SimpleNamespace] = None,
 ):
     """Patch ``session_factory.create_session`` to return the configured rows.
 
@@ -138,7 +138,7 @@ def _stub_binding_resolver(*, declared_outputs: list[DeclaredOutputConfig]):
     return resolver
 
 
-def _make_service(declared_outputs: list[DeclaredOutputConfig] | None = None) -> NodeOutputInspectorService:
+def _make_service(declared_outputs: list[DeclaredOutputConfig] = None) -> NodeOutputInspectorService:
     return NodeOutputInspectorService(binding_resolver=_stub_binding_resolver(declared_outputs=declared_outputs or []))
 
 

@@ -42,7 +42,7 @@ class AgentBackendInternalEventBase(BaseModel):
     """Common fields preserved from public Dify Agent run events."""
 
     run_id: str
-    source_event_id: str | None = None
+    source_event_id: str = None
 
     model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
@@ -57,7 +57,7 @@ class AgentBackendStreamInternalEvent(AgentBackendInternalEventBase):
     """API-internal wrapper for one pydantic-ai stream event payload."""
 
     type: Literal[AgentBackendInternalEventType.STREAM_EVENT] = AgentBackendInternalEventType.STREAM_EVENT
-    event_kind: str | None = None
+    event_kind: str = None
     data: JsonValue
 
 
@@ -74,7 +74,7 @@ class AgentBackendDeferredToolCallInternalEvent(AgentBackendInternalEventBase):
 
     type: Literal[AgentBackendInternalEventType.DEFERRED_TOOL_CALL] = AgentBackendInternalEventType.DEFERRED_TOOL_CALL
     deferred_tool_call: DeferredToolCallPayload
-    message: str | None = None
+    message: str = None
     session_snapshot: CompositorSessionSnapshot
 
 
@@ -83,15 +83,15 @@ class AgentBackendRunFailedInternalEvent(AgentBackendInternalEventBase):
 
     type: Literal[AgentBackendInternalEventType.RUN_FAILED] = AgentBackendInternalEventType.RUN_FAILED
     error: str
-    reason: str | None = None
+    reason: str = None
 
 
 class AgentBackendRunCancelledInternalEvent(AgentBackendInternalEventBase):
     """API-internal terminal cancellation event."""
 
     type: Literal[AgentBackendInternalEventType.RUN_CANCELLED] = AgentBackendInternalEventType.RUN_CANCELLED
-    reason: str | None = None
-    message: str | None = None
+    reason: str = None
+    message: str = None
 
 
 type AgentBackendInternalEvent = Annotated[

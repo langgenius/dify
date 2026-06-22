@@ -11,10 +11,10 @@ SNIPPET_DIRECTIVE_PATTERN = re.compile(r"^```snippet\s+\{[^}]+\}\s*(?:```|\n```)
 @dataclass(frozen=True, slots=True)
 class SnippetDirective:
     path: str
-    title: str | None = None
-    fragment: str | None = None
-    highlight: str | None = None
-    extra_attrs: dict[str, str] | None = None
+    title: str = None
+    fragment: str = None
+    highlight: str = None
+    extra_attrs: dict[str, str] = None
 
 
 @dataclass(frozen=True, slots=True)

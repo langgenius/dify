@@ -130,7 +130,7 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
         }
 
         # Determine the response based on the type of exception
-        data: dict[str, JsonValue] | None = None
+        data: dict[str, JsonValue] = None
         for k, v in error_responses.items():
             if isinstance(e, k):
                 data = v

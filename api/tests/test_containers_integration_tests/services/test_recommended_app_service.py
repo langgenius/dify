@@ -45,8 +45,8 @@ class AppDetailKwargs(TypedDict, total=False):
 
 
 def _apps_response(
-    recommended_apps: list[RecommendedAppPayload] | None = None,
-    categories: list[str] | None = None,
+    recommended_apps: list[RecommendedAppPayload] = None,
+    categories: list[str] = None,
 ) -> AppsResponse:
     if recommended_apps is None:
         recommended_apps = [
@@ -81,7 +81,7 @@ def _mock_factory_for_apps(
     *,
     mode: str,
     result: AppsResponse,
-    fallback_result: AppsResponse | None = None,
+    fallback_result: AppsResponse = None,
 ) -> tuple[MagicMock, MagicMock]:
     retrieval_instance = MagicMock()
     retrieval_instance.get_recommended_apps_and_categories.return_value = result

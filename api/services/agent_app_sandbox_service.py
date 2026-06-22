@@ -44,8 +44,8 @@ class AgentAppSandboxService:
     def __init__(
         self,
         *,
-        session_store: AgentAppRuntimeSessionStore | None = None,
-        client_factory: Callable[[], Client] | None = None,
+        session_store: AgentAppRuntimeSessionStore = None,
+        client_factory: Callable[[], Client] = None,
     ) -> None:
         self._session_store = session_store or AgentAppRuntimeSessionStore()
         self._client_factory = client_factory or _default_client_factory
@@ -84,7 +84,7 @@ class AgentAppSandboxService:
 class WorkflowAgentSandboxService:
     """List/read/upload files in a workflow Agent node sandbox."""
 
-    def __init__(self, *, client_factory: Callable[[], Client] | None = None) -> None:
+    def __init__(self, *, client_factory: Callable[[], Client] = None) -> None:
         self._client_factory = client_factory or _default_client_factory
 
     def list_files(

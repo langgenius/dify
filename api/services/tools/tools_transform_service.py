@@ -216,8 +216,8 @@ class ToolTransformService:
     @staticmethod
     def workflow_provider_to_user_provider(
         provider_controller: WorkflowToolProviderController,
-        labels: list[str] | None = None,
-        workflow_app_id: str | None = None,
+        labels: list[str] = None,
+        workflow_app_id: str = None,
     ):
         """
         convert provider controller to user provider
@@ -244,7 +244,7 @@ class ToolTransformService:
     def mcp_provider_to_user_provider(
         db_provider: MCPToolProvider,
         for_list: bool = False,
-        user_name: str | None = None,
+        user_name: str = None,
         include_sensitive: bool = True,
     ) -> ToolProviderApiEntity:
         from core.entities.mcp_provider import MCPConfiguration
@@ -278,7 +278,7 @@ class ToolTransformService:
 
     @staticmethod
     def mcp_tool_to_user_tool(
-        mcp_provider: MCPToolProvider, tools: list[MCPTool], user_name: str | None = None
+        mcp_provider: MCPToolProvider, tools: list[MCPTool], user_name: str = None
     ) -> list[ToolApiEntity]:
         # Use provided user_name to avoid N+1 query, fallback to load_user() if not provided
         if user_name is None:
@@ -304,7 +304,7 @@ class ToolTransformService:
         provider_controller: ApiToolProviderController,
         db_provider: ApiToolProvider,
         decrypt_credentials: bool = True,
-        labels: list[str] | None = None,
+        labels: list[str] = None,
     ) -> ToolProviderApiEntity:
         """
         convert provider controller to user provider
@@ -363,7 +363,7 @@ class ToolTransformService:
     def convert_tool_entity_to_api_entity(
         tool: ApiToolBundle | WorkflowTool | Tool,
         tenant_id: str,
-        labels: list[str] | None = None,
+        labels: list[str] = None,
     ) -> ToolApiEntity:
         """
         convert tool to user tool
@@ -491,7 +491,7 @@ class ToolTransformService:
             return "string"
 
         def create_parameter(
-            name: str, description: str, param_type: str, required: bool, input_schema: dict[str, Any] | None = None
+            name: str, description: str, param_type: str, required: bool, input_schema: dict[str, Any] = None
         ) -> ToolParameter:
             """Create a ToolParameter instance with given attributes"""
             input_schema_dict: dict[str, Any] = {"input_schema": input_schema} if input_schema else {}

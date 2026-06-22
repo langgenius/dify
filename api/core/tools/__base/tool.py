@@ -48,9 +48,9 @@ class Tool(ABC):
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
-        conversation_id: str | None = None,
-        app_id: str | None = None,
-        message_id: str | None = None,
+        conversation_id: str = None,
+        app_id: str = None,
+        message_id: str = None,
     ) -> Generator[ToolInvokeMessage]:
         if self.runtime and self.runtime.runtime_parameters:
             tool_parameters.update(self.runtime.runtime_parameters)
@@ -99,17 +99,17 @@ class Tool(ABC):
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
-        conversation_id: str | None = None,
-        app_id: str | None = None,
-        message_id: str | None = None,
+        conversation_id: str = None,
+        app_id: str = None,
+        message_id: str = None,
     ) -> ToolInvokeMessage | list[ToolInvokeMessage] | Generator[ToolInvokeMessage, None, None]:
         pass
 
     def get_runtime_parameters(
         self,
-        conversation_id: str | None = None,
-        app_id: str | None = None,
-        message_id: str | None = None,
+        conversation_id: str = None,
+        app_id: str = None,
+        message_id: str = None,
     ) -> list[ToolParameter]:
         """
         get the runtime parameters
@@ -122,9 +122,9 @@ class Tool(ABC):
 
     def get_merged_runtime_parameters(
         self,
-        conversation_id: str | None = None,
-        app_id: str | None = None,
-        message_id: str | None = None,
+        conversation_id: str = None,
+        app_id: str = None,
+        message_id: str = None,
     ) -> list[ToolParameter]:
         """
         Get the effective parameter declarations for this tool.
@@ -161,9 +161,9 @@ class Tool(ABC):
 
     def get_llm_parameters_json_schema(
         self,
-        conversation_id: str | None = None,
-        app_id: str | None = None,
-        message_id: str | None = None,
+        conversation_id: str = None,
+        app_id: str = None,
+        message_id: str = None,
     ) -> dict[str, Any]:
         """Build the model-visible JSON schema from effective tool parameters.
 
@@ -254,7 +254,7 @@ class Tool(ABC):
             message=ToolInvokeMessage.TextMessage(text=text),
         )
 
-    def create_blob_message(self, blob: bytes, meta: dict[str, Any] | None = None) -> ToolInvokeMessage:
+    def create_blob_message(self, blob: bytes, meta: dict[str, Any] = None) -> ToolInvokeMessage:
         """
         create a blob message
 

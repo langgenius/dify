@@ -86,7 +86,7 @@ class AppExecutionParams(BaseModel):
     invoke_from: InvokeFrom
     streaming: bool = True
     call_depth: int = 0
-    root_node_id: str | None = None
+    root_node_id: str = None
     workflow_run_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
 
     @classmethod
@@ -99,8 +99,8 @@ class AppExecutionParams(BaseModel):
         invoke_from: InvokeFrom,
         streaming: bool = True,
         call_depth: int = 0,
-        root_node_id: str | None = None,
-        workflow_run_id: str | None = None,
+        root_node_id: str = None,
+        workflow_run_id: str = None,
     ):
         user_params: _Account | _EndUser
         match user:

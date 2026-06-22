@@ -84,7 +84,7 @@ class ArchiveResult:
     tenant_id: str
     success: bool
     tables: list[TableStats] = field(default_factory=list)
-    error: str | None = None
+    error: str = None
     elapsed_time: float = 0.0
 
 
@@ -137,14 +137,14 @@ class WorkflowRunArchiver:
         self,
         days: int = 90,
         batch_size: int = 100,
-        start_from: datetime.datetime | None = None,
-        end_before: datetime.datetime | None = None,
+        start_from: datetime.datetime = None,
+        end_before: datetime.datetime = None,
         workers: int = 1,
-        tenant_ids: Sequence[str] | None = None,
-        limit: int | None = None,
+        tenant_ids: Sequence[str] = None,
+        limit: int = None,
         dry_run: bool = False,
         delete_after_archive: bool = False,
-        workflow_run_repo: APIWorkflowRunRepository | None = None,
+        workflow_run_repo: APIWorkflowRunRepository = None,
     ):
         """
         Initialize the archiver.
@@ -215,7 +215,7 @@ class WorkflowRunArchiver:
             with session_maker() as session:
                 return self._archive_run(session, storage, run)
 
-        last_seen: tuple[datetime.datetime, str] | None = None
+        last_seen: tuple[datetime.datetime, str] = None
         archived_count = 0
 
         with ThreadPoolExecutor(max_workers=self.workers) as executor:

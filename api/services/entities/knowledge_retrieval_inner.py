@@ -69,9 +69,9 @@ class InnerKnowledgeRetrieveRetrievalConfig(BaseModel):
     score_threshold: float = 0.0
     reranking_mode: str = "reranking_model"
     reranking_enable: bool = True
-    reranking_model: InnerKnowledgeRetrieveRerankingModelConfig | None = None
-    weights: WeightsDict | None = None
-    model: InnerKnowledgeRetrieveModelConfig | None = None
+    reranking_model: InnerKnowledgeRetrieveRerankingModelConfig = None
+    weights: WeightsDict = None
+    model: InnerKnowledgeRetrieveModelConfig = None
 
     @model_validator(mode="after")
     def validate_mode_specific_fields(self) -> InnerKnowledgeRetrieveRetrievalConfig:
@@ -98,7 +98,7 @@ class InnerKnowledgeRetrieveMetadataConditions(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     logical_operator: Literal["and", "or"] | None = "and"
-    conditions: list[InnerKnowledgeRetrieveMetadataCondition] | None = None
+    conditions: list[InnerKnowledgeRetrieveMetadataCondition] = None
 
 
 class InnerKnowledgeRetrieveMetadataFilteringConfig(BaseModel):
@@ -114,7 +114,7 @@ class InnerKnowledgeRetrieveMetadataFilteringConfig(BaseModel):
 
     mode: Literal["disabled", "automatic", "manual"] = "disabled"
     metadata_model_config: InnerKnowledgeRetrieveModelConfig | None = Field(default=None, alias="model_config")
-    conditions: InnerKnowledgeRetrieveMetadataConditions | None = None
+    conditions: InnerKnowledgeRetrieveMetadataConditions = None
 
     @model_validator(mode="after")
     def validate_mode_specific_fields(self) -> InnerKnowledgeRetrieveMetadataFilteringConfig:
@@ -137,7 +137,7 @@ class InnerKnowledgeRetrieveRequest(BaseModel):
 
     caller: InnerKnowledgeRetrieveCaller
     dataset_ids: list[str]
-    query: str | None = None
+    query: str = None
     retrieval: InnerKnowledgeRetrieveRetrievalConfig
     metadata_filtering: InnerKnowledgeRetrieveMetadataFilteringConfig = Field(
         default_factory=InnerKnowledgeRetrieveMetadataFilteringConfig
@@ -191,7 +191,7 @@ class InnerKnowledgeRetrieveUsage(ResponseModel):
     prompt_price: str
     completion_price: str
     total_price: str
-    currency: str | None = None
+    currency: str = None
     latency: float | int
 
 

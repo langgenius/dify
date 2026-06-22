@@ -64,9 +64,9 @@ from libs.datetime_utils import naive_utc_now
 class _InMemoryFormEntity(HumanInputFormEntity):
     form_id: str
     rendered: str
-    token: str | None = None
-    action_id: str | None = None
-    data: Mapping[str, Any] | None = None
+    token: str = None
+    action_id: str = None
+    data: Mapping[str, Any] = None
     is_submitted: bool = False
     status_value: HumanInputFormStatus = HumanInputFormStatus.WAITING
     expiration: datetime = field(default_factory=lambda: naive_utc_now() + timedelta(days=1))
@@ -133,7 +133,7 @@ class InMemoryHumanInputFormRepository(HumanInputFormRepository):
     def get_form(self, node_id: str) -> HumanInputFormEntity | None:
         return self._forms_by_node_id.get(node_id)
 
-    def set_submission(self, *, action_id: str, form_data: Mapping[str, Any] | None = None) -> None:
+    def set_submission(self, *, action_id: str, form_data: Mapping[str, Any] = None) -> None:
         if not self.created_forms:
             raise AssertionError("no form has been created to attach submission data")
         entity = self.created_forms[-1]

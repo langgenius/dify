@@ -53,8 +53,8 @@ class SandboxFileEntry(BaseModel):
 
     name: str
     type: Literal["file", "dir", "symlink", "other"]
-    size: int | None = None
-    mtime: int | None = None
+    size: int = None
+    mtime: int = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -92,10 +92,10 @@ class SandboxReadResponse(BaseModel):
     """Text preview returned by ``/sandbox/files/read``."""
 
     path: str
-    size: int | None = None
+    size: int = None
     truncated: bool
     binary: bool
-    text: str | None = None
+    text: str = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 

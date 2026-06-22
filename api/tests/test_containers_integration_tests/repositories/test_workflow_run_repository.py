@@ -42,7 +42,7 @@ def _create_workflow_run(
     *,
     status: WorkflowExecutionStatus,
     triggered_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.DEBUGGING,
-    created_at_offset: timedelta | None = None,
+    created_at_offset: timedelta = None,
 ) -> WorkflowRun:
     """Create and persist a workflow run bound to the current test scope."""
     now = naive_utc_now()

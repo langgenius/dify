@@ -356,7 +356,7 @@ class DifyRetrieverAttachmentLoader(RetrieverAttachmentLoaderProtocol):
         self,
         *,
         file_reference_factory: FileReferenceFactoryProtocol,
-        segment_access_checker: Callable[[str], bool] | None = None,
+        segment_access_checker: Callable[[str], bool] = None,
     ) -> None:
         self._file_reference_factory = file_reference_factory
         self._segment_access_checker = segment_access_checker
@@ -403,7 +403,7 @@ class DifyToolFileManager(ToolFileManagerProtocol):
         self,
         run_context: Mapping[str, Any] | DifyRunContext,
         *,
-        conversation_id_getter: Callable[[], str | None] | None = None,
+        conversation_id_getter: Callable[[], str | None] = None,
     ) -> None:
         self._run_context = resolve_dify_run_context(run_context)
         self._manager = ToolFileManager()
@@ -415,7 +415,7 @@ class DifyToolFileManager(ToolFileManagerProtocol):
         *,
         file_binary: bytes,
         mimetype: str,
-        filename: str | None = None,
+        filename: str = None,
     ) -> Any:
         conversation_id = self._conversation_id_getter() if self._conversation_id_getter is not None else None
         return self._manager.create_file_by_raw(
@@ -438,7 +438,7 @@ class _WorkflowToolRuntimeSpec:
     provider_id: str
     tool_name: str
     tool_configurations: dict[str, Any]
-    credential_id: str | None = None
+    credential_id: str = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -450,9 +450,9 @@ class _WorkflowToolRuntimeBinding:
     """
 
     tool: Tool
-    conversation_id: str | None = None
-    parent_trace_context: ParentTraceContext | None = None
-    trace_session_id: str | None = None
+    conversation_id: str = None
+    parent_trace_context: ParentTraceContext = None
+    trace_session_id: str = None
 
 
 class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
@@ -475,7 +475,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         node_id: str,
         node_data: ToolNodeData,
         variable_pool,
-        node_execution_id: str | None = None,
+        node_execution_id: str = None,
     ) -> ToolRuntimeHandle:
         try:
             tool_runtime = ToolManager.get_workflow_tool_runtime(
@@ -495,8 +495,8 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         conversation_id = (
             None if variable_pool is None else get_system_text(variable_pool, SystemVariableKey.CONVERSATION_ID)
         )
-        parent_trace_context: ParentTraceContext | None = None
-        trace_session_id: str | None = None
+        parent_trace_context: ParentTraceContext = None
+        trace_session_id: str = None
         if self._is_workflow_tool_provider(node_data):
             outer_workflow_run_id = (
                 None
@@ -594,10 +594,10 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         self,
         *,
         provider_name: str,
-        default_icon: str | None = None,
+        default_icon: str = None,
     ) -> tuple[str | Mapping[str, str] | None, str | Mapping[str, str] | None]:
         icon: str | Mapping[str, str] | None = default_icon
-        icon_dark: str | Mapping[str, str] | None = None
+        icon_dark: str | Mapping[str, str] = None
 
         manager = PluginInstaller()
         plugins = manager.list_plugins(self._run_context.tenant_id)
@@ -764,9 +764,9 @@ class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
         self,
         run_context: Mapping[str, Any] | DifyRunContext,
         *,
-        workflow_execution_id_getter: Callable[[], str | None] | None = None,
-        conversation_id_getter: Callable[[], str | None] | None = None,
-        form_repository: HumanInputFormRepository | None = None,
+        workflow_execution_id_getter: Callable[[], str | None] = None,
+        conversation_id_getter: Callable[[], str | None] = None,
+        form_repository: HumanInputFormRepository = None,
     ) -> None:
         self._run_context = resolve_dify_run_context(run_context)
         self._workflow_execution_id_getter = workflow_execution_id_getter
@@ -923,7 +923,7 @@ def build_dify_llm_file_saver(
     *,
     run_context: Mapping[str, Any] | DifyRunContext,
     http_client: HttpClientProtocol,
-    conversation_id_getter: Callable[[], str | None] | None = None,
+    conversation_id_getter: Callable[[], str | None] = None,
 ) -> LLMFileSaver:
     from graphon.nodes.llm.file_saver import FileSaverImpl
 

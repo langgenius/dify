@@ -85,14 +85,14 @@ class RerankingModel(BaseModel):
 
 class NotionIcon(BaseModel):
     type: str
-    url: str | None = None
-    emoji: str | None = None
+    url: str = None
+    emoji: str = None
 
 
 class NotionPage(BaseModel):
     page_id: str
     page_name: str
-    page_icon: NotionIcon | None = None
+    page_icon: NotionIcon = None
     type: str
 
 
@@ -115,9 +115,9 @@ class FileInfo(BaseModel):
 
 class InfoList(BaseModel):
     data_source_type: Literal["upload_file", "notion_import", "website_crawl"]
-    notion_info_list: list[NotionInfo] | None = None
-    file_info_list: FileInfo | None = None
-    website_info_list: WebsiteInfo | None = None
+    notion_info_list: list[NotionInfo] = None
+    file_info_list: FileInfo = None
+    website_info_list: WebsiteInfo = None
 
 
 class DataSource(BaseModel):

@@ -67,7 +67,7 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
     expiration_time = datetime(2099, 1, 1, tzinfo=UTC)
 
     class _FakeDefinition:
-        def model_dump(self, mode: str | None = None):
+        def model_dump(self, mode: str = None):
             return {
                 "form_content": "Raw content",
                 "rendered_content": "Rendered {{#$output.name#}}",
@@ -213,7 +213,7 @@ def test_get_form_uses_runtime_select_options(monkeypatch: pytest.MonkeyPatch, a
     ]
 
     class _FakeDefinition:
-        def model_dump(self, mode: str | None = None):
+        def model_dump(self, mode: str = None):
             return {
                 "form_content": "Raw content",
                 "rendered_content": "Rendered",
@@ -337,7 +337,7 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
     expiration_time = datetime(2099, 1, 2, tzinfo=UTC)
 
     class _FakeDefinition:
-        def model_dump(self, mode: str | None = None):
+        def model_dump(self, mode: str = None):
             return {
                 "form_content": "Raw content",
                 "rendered_content": "Rendered",
@@ -457,7 +457,7 @@ def test_get_form_raises_forbidden_when_site_missing(monkeypatch: pytest.MonkeyP
     expiration_time = datetime(2099, 1, 3, tzinfo=UTC)
 
     class _FakeDefinition:
-        def model_dump(self, mode: str | None = None):
+        def model_dump(self, mode: str = None):
             return {
                 "form_content": "Raw content",
                 "rendered_content": "Rendered",

@@ -105,9 +105,9 @@ class AgentAppUpdatePayload(GenericUpdateAppPayload):
 class AgentAppPublishedReferenceResponse(BaseModel):
     app_id: str
     app_name: str
-    app_icon_type: str | None = None
-    app_icon: str | None = None
-    app_icon_background: str | None = None
+    app_icon_type: str = None
+    app_icon: str = None
+    app_icon_background: str = None
 
 
 class AgentLogsQuery(BaseModel):
@@ -184,16 +184,16 @@ class AgentStatisticsQuery(BaseModel):
 
 
 class AgentAppPartial(GenericAppPartial):
-    app_id: str | None = None
-    role: str | None = None
+    app_id: str = None
+    role: str = None
     active_config_is_published: bool = False
     published_reference_count: int = 0
     published_references: list[AgentAppPublishedReferenceResponse] = Field(default_factory=list)
 
 
 class AgentAppDetailWithSite(GenericAppDetailWithSite):
-    app_id: str | None = None
-    role: str | None = None
+    app_id: str = None
+    role: str = None
     active_config_is_published: bool = False
 
 
@@ -335,7 +335,7 @@ def _parse_observability_time_range(start: str | None, end: str | None, account:
         abort(400, description=str(exc))
 
 
-def _multi_query_values(name: str, legacy_name: str | None = None) -> list[str]:
+def _multi_query_values(name: str, legacy_name: str = None) -> list[str]:
     values: list[str] = []
     for query_name in (name, f"{name}[]"):
         values.extend(request.args.getlist(query_name))

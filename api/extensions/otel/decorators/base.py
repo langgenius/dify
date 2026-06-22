@@ -18,7 +18,7 @@ def _get_handler_instance(handler_class: type[SpanHandler]) -> SpanHandler:
     return _HANDLER_INSTANCES[handler_class]
 
 
-def trace_span[**P, R](handler_class: type[SpanHandler] | None = None) -> Callable[[Callable[P, R]], Callable[P, R]]:
+def trace_span[**P, R](handler_class: type[SpanHandler] = None) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """
     Decorator that traces a function with an OpenTelemetry span.
 

@@ -79,8 +79,8 @@ class ErrorBody(BaseModel):
     code: str
     message: str
     status: int
-    hint: str | None = None
-    details: list[ErrorDetail] | None = None
+    hint: str = None
+    details: list[ErrorDetail] = None
 
 
 _CODE_BY_STATUS: dict[int, OpenApiErrorCode] = {
@@ -115,14 +115,14 @@ class OpenApiError(HTTPException):
 
     code = 400
     error_code: OpenApiErrorCode = OpenApiErrorCode.UNKNOWN
-    hint: str | None = None
+    hint: str = None
 
     def __init__(
         self,
-        message: str | None = None,
+        message: str = None,
         *,
-        hint: str | None = None,
-        details: list[ErrorDetail] | None = None,
+        hint: str = None,
+        details: list[ErrorDetail] = None,
     ) -> None:
         super().__init__(description=message)
         if hint is not None:

@@ -45,7 +45,7 @@ class CompletionMessageExplorePayload(BaseModel):
     inputs: dict[str, Any]
     query: str = ""
     files: list[dict[str, Any]] | None = Field(default=None)
-    response_mode: Literal["blocking", "streaming"] | None = None
+    response_mode: Literal["blocking", "streaming"] = None
     retriever_from: str = Field(default="explore_app")
 
 
@@ -53,8 +53,8 @@ class ChatMessagePayload(BaseModel):
     inputs: dict[str, Any]
     query: str
     files: list[dict[str, Any]] | None = Field(default=None)
-    conversation_id: str | None = None
-    parent_message_id: str | None = None
+    conversation_id: str = None
+    parent_message_id: str = None
     retriever_from: str = Field(default="explore_app")
 
     @field_validator("conversation_id", "parent_message_id", mode="before")

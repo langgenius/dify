@@ -36,13 +36,13 @@ class ServerSettings(BaseSettings):
     plugin_daemon_url: str = "http://localhost:5002"
     plugin_daemon_api_key: str = ""
     dify_api_inner_url: str = "http://localhost:5001"
-    dify_api_base_url: str | None = None
-    dify_api_inner_api_key: str | None = None
-    shellctl_entrypoint: str | None = None
-    shellctl_auth_token: str | None = None
+    dify_api_base_url: str = None
+    dify_api_inner_api_key: str = None
+    shellctl_entrypoint: str = None
+    shellctl_auth_token: str = None
     agent_stub_url: str | None = Field(default=None, validation_alias="DIFY_AGENT_STUB_URL")
     agent_stub_grpc_bind_address: str | None = Field(default=None, validation_alias="DIFY_AGENT_STUB_GRPC_BIND_ADDRESS")
-    server_secret_key: str | None = None
+    server_secret_key: str = None
     outbound_http_connect_timeout: float = Field(default=10.0, ge=0)
     outbound_http_read_timeout: float = Field(default=600.0, ge=0)
     outbound_http_write_timeout: float = Field(default=30.0, ge=0)

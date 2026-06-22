@@ -112,7 +112,7 @@ class TestDatasetIndexingTaskIntegration:
         db_session_with_containers,
         *,
         document_count: int = 3,
-        document_ids: Sequence[str] | None = None,
+        document_ids: Sequence[str] = None,
     ) -> tuple[Dataset, list[Document]]:
         """Create a tenant dataset and waiting documents used by indexing tests."""
         fake = Faker()

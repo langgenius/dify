@@ -63,10 +63,10 @@ def current_account_with_tenant_optional() -> tuple[Account | None, str | None]:
 
 
 def resolve_account_fallback(
-    current_user: Account | None = None,
-    current_tenant_id: str | None = None,
+    current_user: Account = None,
+    current_tenant_id: str = None,
     *,
-    fallback_tenant_id: str | None = None,
+    fallback_tenant_id: str = None,
 ) -> tuple[Account, str]:
     """
     If the provided current user and tenant ID is None, fallback to current_account_with_tenant.
@@ -83,7 +83,7 @@ def resolve_account_fallback(
     return current_account_with_tenant()
 
 
-def resolve_tenant_id_fallback(current_tenant_id: str | None = None) -> str:
+def resolve_tenant_id_fallback(current_tenant_id: str = None) -> str:
     """
     If the provided tenant ID is None, fallback to the tenant resolved from current_account_with_tenant.
     This is useful for tenant-only service paths whose controllers are not all migrated to tenant injection yet.

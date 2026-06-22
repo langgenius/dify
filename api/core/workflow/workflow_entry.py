@@ -94,7 +94,7 @@ class _WorkflowChildEngineBuilder:
         graph_init_params: GraphInitParams,
         parent_graph_runtime_state: GraphRuntimeState,
         root_node_id: str,
-        variable_pool: VariablePool | None = None,
+        variable_pool: VariablePool = None,
     ) -> GraphEngine:
         """Build a child engine with a fresh runtime state and only child-safe layers."""
         child_graph_runtime_state = GraphRuntimeState(
@@ -166,7 +166,7 @@ class WorkflowEntry:
         call_depth: int,
         variable_pool: VariablePool,
         graph_runtime_state: GraphRuntimeState,
-        command_channel: CommandChannel | None = None,
+        command_channel: CommandChannel = None,
     ) -> None:
         """
         Init workflow entry
@@ -611,7 +611,7 @@ class WorkflowEntry:
         node.ensure_execution_id()
 
         def _gen():
-            error: Exception | None = None
+            error: Exception = None
             layer.on_node_run_start(node)
             try:
                 yield from node.run()

@@ -41,9 +41,9 @@ class SkillStandardizeService:
     def __init__(
         self,
         *,
-        package_service: SkillPackageService | None = None,
-        drive_service: AgentDriveService | None = None,
-        tool_file_manager: ToolFileManager | None = None,
+        package_service: SkillPackageService = None,
+        drive_service: AgentDriveService = None,
+        tool_file_manager: ToolFileManager = None,
     ) -> None:
         self._package = package_service or SkillPackageService()
         self._drive = drive_service or AgentDriveService()

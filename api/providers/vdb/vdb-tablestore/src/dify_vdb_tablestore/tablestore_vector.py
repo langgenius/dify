@@ -22,10 +22,10 @@ logger = logging.getLogger(__name__)
 
 
 class TableStoreConfig(BaseModel):
-    access_key_id: str | None = None
-    access_key_secret: str | None = None
-    instance_name: str | None = None
-    endpoint: str | None = None
+    access_key_id: str = None
+    access_key_secret: str = None
+    instance_name: str = None
+    endpoint: str = None
     normalize_full_text_bm25_score: bool | None = False
 
     @model_validator(mode="before")

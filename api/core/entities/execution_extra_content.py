@@ -21,7 +21,7 @@ class HumanInputFormDefinition(BaseModel):
     display_in_ui: bool = False
 
     # `form_token` is `None` if the corresponding form has been submitted.
-    form_token: str | None = None
+    form_token: str = None
     resolved_default_values: Mapping[str, Any] = Field(default_factory=dict)
     expiration_time: int
 
@@ -46,7 +46,7 @@ class HumanInputFormSubmissionData(BaseModel):
     #
     # For form submitted before this field is introduced, this field is populated from
     # the stored submission data.
-    submitted_data: Mapping[str, JsonValue] | None = None
+    submitted_data: Mapping[str, JsonValue] = None
 
 
 class HumanInputContent(BaseModel):
@@ -56,8 +56,8 @@ class HumanInputContent(BaseModel):
     submitted: bool
     # Both the form_defintion and the form_submission_data are present in
     # HumanInputContent. For historical records, the
-    form_definition: HumanInputFormDefinition | None = None
-    form_submission_data: HumanInputFormSubmissionData | None = None
+    form_definition: HumanInputFormDefinition = None
+    form_submission_data: HumanInputFormSubmissionData = None
     type: ExecutionContentType = Field(default=ExecutionContentType.HUMAN_INPUT)
 
 

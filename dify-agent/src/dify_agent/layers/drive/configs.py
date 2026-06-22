@@ -32,7 +32,7 @@ class DifyDriveSkillConfig(BaseModel):
     # "<slug>/SKILL.md" — the canonical entry document in the drive.
     skill_md_key: str
     # "<slug>/.DIFY-SKILL-FULL.zip" — full archive for restoring the complete skill.
-    archive_key: str | None = None
+    archive_key: str = None
 
 
 class DifyDriveFileConfig(BaseModel):
@@ -43,8 +43,8 @@ class DifyDriveFileConfig(BaseModel):
     name: str
     # "files/<filename>" — the drive key of the file value.
     key: str
-    size: int | None = None
-    mime_type: str | None = None
+    size: int = None
+    mime_type: str = None
 
 
 class DifyDriveLayerConfig(LayerConfig):

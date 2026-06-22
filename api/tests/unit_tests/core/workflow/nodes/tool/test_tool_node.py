@@ -30,7 +30,7 @@ class _StubToolRuntime:
         node_id: str,
         node_data: Any,
         variable_pool: Any,
-        node_execution_id: str | None = None,
+        node_execution_id: str = None,
     ) -> ToolRuntimeHandle:
         raise NotImplementedError
 
@@ -57,7 +57,7 @@ class _StubToolRuntime:
         self,
         *,
         provider_name: str,
-        default_icon: str | None = None,
+        default_icon: str = None,
     ) -> tuple[str | None, str | None]:
         return default_icon, None
 

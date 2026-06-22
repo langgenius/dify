@@ -133,7 +133,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
         is_preview: bool,
         batch: Any,
         chunks: Mapping[str, Any],
-        summary_index_setting: SummaryIndexSettingDict | None = None,
+        summary_index_setting: SummaryIndexSettingDict = None,
     ):
         if not document_id:
             raise KnowledgeIndexNodeError("document_id is required.")

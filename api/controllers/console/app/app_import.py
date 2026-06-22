@@ -81,7 +81,7 @@ class AppImportApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL, resource_required=False)
     @with_current_user
-    def post(self, current_user: Account | None = None):
+    def post(self, current_user: Account = None):
         args = AppImportPayload.model_validate(console_ns.payload)
         current_user = current_user if current_user is not None else _current_user_and_tenant_id(None)[0]
 
@@ -145,11 +145,11 @@ class AppImportConfirmApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL, resource_required=False)
     @with_current_user
-    def post(self, current_user: Account | None = None, import_id: str = ""):
+    def post(self, current_user: Account = None, import_id: str = ""):
         current_user = current_user if current_user is not None else _current_user_and_tenant_id(None)[0]
         redis_key = f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}"
         pending_data_raw = redis_client.get(redis_key)
-        pending_data: PendingData | None = None
+        pending_data: PendingData = None
         if pending_data_raw:
             pending_data = PendingData.model_validate_json(pending_data_raw)
 

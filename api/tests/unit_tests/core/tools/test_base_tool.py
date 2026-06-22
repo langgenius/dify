@@ -29,9 +29,9 @@ class DummyParameter:
     form: str = "llm"
     required: bool = False
     default: Any = None
-    options: list[Any] | None = None
-    llm_description: str | None = None
-    input_schema: dict[str, Any] | None = None
+    options: list[Any] = None
+    llm_description: str = None
+    input_schema: dict[str, Any] = None
 
 
 class DummyTool(Tool):
@@ -40,8 +40,8 @@ class DummyTool(Tool):
         self.result: ToolInvokeMessage | list[ToolInvokeMessage] | Generator[ToolInvokeMessage, None, None] = (
             self.create_text_message("default")
         )
-        self.runtime_parameter_overrides: list[Any] | None = None
-        self.last_invocation: dict[str, Any] | None = None
+        self.runtime_parameter_overrides: list[Any] = None
+        self.last_invocation: dict[str, Any] = None
 
     def tool_provider_type(self) -> ToolProviderType:
         return ToolProviderType.BUILT_IN
@@ -50,9 +50,9 @@ class DummyTool(Tool):
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
-        conversation_id: str | None = None,
-        app_id: str | None = None,
-        message_id: str | None = None,
+        conversation_id: str = None,
+        app_id: str = None,
+        message_id: str = None,
     ) -> ToolInvokeMessage | list[ToolInvokeMessage] | Generator[ToolInvokeMessage, None, None]:
         self.last_invocation = {
             "user_id": user_id,
@@ -65,9 +65,9 @@ class DummyTool(Tool):
 
     def get_runtime_parameters(
         self,
-        conversation_id: str | None = None,
-        app_id: str | None = None,
-        message_id: str | None = None,
+        conversation_id: str = None,
+        app_id: str = None,
+        message_id: str = None,
     ):
         if self.runtime_parameter_overrides is not None:
             return self.runtime_parameter_overrides
@@ -78,7 +78,7 @@ class DummyTool(Tool):
         )
 
 
-def _build_tool(runtime: ToolRuntime | None = None) -> DummyTool:
+def _build_tool(runtime: ToolRuntime = None) -> DummyTool:
     entity = ToolEntity(
         identity=ToolIdentity(author="test", name="dummy", label=I18nObject(en_US="dummy"), provider="test"),
         parameters=[],

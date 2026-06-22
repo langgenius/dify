@@ -53,8 +53,8 @@ class _ProviderUpdateFilters(BaseModel):
 
     tenant_id: str
     provider_name: str
-    provider_type: str | None = None
-    quota_type: str | None = None
+    provider_type: str = None
+    quota_type: str = None
 
 
 class _ProviderUpdateAdditionalFilters(BaseModel):
@@ -66,8 +66,8 @@ class _ProviderUpdateAdditionalFilters(BaseModel):
 class _ProviderUpdateValues(BaseModel):
     """Values to update in Provider records."""
 
-    last_used: datetime | None = None
-    quota_used: Any | None = None  # Can be Provider.quota_used + int expression
+    last_used: datetime = None
+    quota_used: Any = None  # Can be Provider.quota_used + int expression
 
 
 class _ProviderUpdateOperation(BaseModel):

@@ -12,9 +12,9 @@ class DatasourceRuntime(BaseModel):
     """
 
     tenant_id: str
-    datasource_id: str | None = None
-    invoke_from: InvokeFrom | None = None
-    datasource_invoke_from: DatasourceInvokeFrom | None = None
+    datasource_id: str = None
+    invoke_from: InvokeFrom = None
+    datasource_invoke_from: DatasourceInvokeFrom = None
     credentials: dict[str, Any] = Field(default_factory=dict)
     runtime_parameters: dict[str, Any] = Field(default_factory=dict)
 

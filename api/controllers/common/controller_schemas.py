@@ -98,7 +98,7 @@ class MessageFeedbackPayload(BaseModel):
 
 
 class SavedMessageListQuery(BaseModel):
-    last_id: UUIDStrOrEmpty | None = None
+    last_id: UUIDStrOrEmpty = None
     limit: int = Field(default=20, ge=1, le=100)
 
 
@@ -143,13 +143,13 @@ WorkflowInputFileList = Annotated[list[dict[str, Any]] | None, WithJsonSchema(WO
 
 
 class DefaultBlockConfigQuery(BaseModel):
-    q: str | None = None
+    q: str = None
 
 
 class WorkflowListQuery(BaseModel):
     page: int = Field(default=1, ge=1, le=99999)
     limit: int = Field(default=10, ge=1, le=100)
-    user_id: str | None = None
+    user_id: str = None
     named_only: bool = False
 
 

@@ -327,8 +327,8 @@ def _object_provider(value: str) -> LayerProvider[ObjectLayer[str]]:
 async def _enter_once(
     compositor: Compositor,
     *,
-    configs: dict[str, object] | None = None,
-    session_snapshot: object | None = None,
+    configs: dict[str, object] = None,
+    session_snapshot: object = None,
 ) -> None:
     async with compositor.enter(
         configs=configs,  # pyright: ignore[reportArgumentType]

@@ -54,10 +54,10 @@ def _execution(
     node_execution_id: str = "node-exec-id",
     workflow_run_id: str = "run-id",
     status: WorkflowNodeExecutionStatus = WorkflowNodeExecutionStatus.SUCCEEDED,
-    inputs: Mapping[str, Any] | None = None,
-    outputs: Mapping[str, Any] | None = None,
-    process_data: Mapping[str, Any] | None = None,
-    metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] | None = None,
+    inputs: Mapping[str, Any] = None,
+    outputs: Mapping[str, Any] = None,
+    process_data: Mapping[str, Any] = None,
+    metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] = None,
 ) -> WorkflowNodeExecution:
     return WorkflowNodeExecution(
         id=execution_id,
@@ -667,7 +667,7 @@ def test_get_db_models_by_workflow_run_orders_and_caches(monkeypatch: pytest.Mon
     class FakeStmt:
         def __init__(self) -> None:
             self.where_calls = 0
-            self.order_by_args: tuple[Any, ...] | None = None
+            self.order_by_args: tuple[Any, ...] = None
 
         def where(self, *_args: Any) -> FakeStmt:
             self.where_calls += 1

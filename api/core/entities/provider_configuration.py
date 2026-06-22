@@ -119,7 +119,7 @@ class ProviderConfiguration(BaseModel):
     def _get_original_provider_configurate_methods(self) -> list[ConfigurateMethod]:
         return list(self._original_provider_configurate_methods)
 
-    def _get_provider_schema(self, *, model_provider_factory: ModelProviderFactory | None = None) -> ProviderEntity:
+    def _get_provider_schema(self, *, model_provider_factory: ModelProviderFactory = None) -> ProviderEntity:
         """Resolve the provider schema lazily while preserving bound-runtime reuse."""
         if self._cached_provider_schema is None:
             if self.provider.models:
@@ -321,7 +321,7 @@ class ProviderConfiguration(BaseModel):
         )
 
     def _check_provider_credential_name_exists(
-        self, credential_name: str, session: Session, exclude_id: str | None = None
+        self, credential_name: str, session: Session, exclude_id: str = None
     ) -> bool:
         """
         not allowed same name when create or update a credential
@@ -335,7 +335,7 @@ class ProviderConfiguration(BaseModel):
             stmt = stmt.where(ProviderCredential.id != exclude_id)
         return session.execute(stmt).scalar_one_or_none() is not None
 
-    def get_provider_credential(self, credential_id: str | None = None) -> dict[str, Any] | None:
+    def get_provider_credential(self, credential_id: str = None) -> dict[str, Any] | None:
         """
         Get provider credentials.
 
@@ -841,7 +841,7 @@ class ProviderConfiguration(BaseModel):
         }
 
     def _check_custom_model_credential_name_exists(
-        self, model_type: ModelType, model: str, credential_name: str, session: Session, exclude_id: str | None = None
+        self, model_type: ModelType, model: str, credential_name: str, session: Session, exclude_id: str = None
     ) -> bool:
         """
         not allowed same name when create or update a credential
@@ -1454,7 +1454,7 @@ class ProviderConfiguration(BaseModel):
             credentials=credentials or {},
         )
 
-    def switch_preferred_provider_type(self, provider_type: ProviderType, session: Session | None = None):
+    def switch_preferred_provider_type(self, provider_type: ProviderType, session: Session = None):
         """
         Switch preferred provider type.
         :param provider_type:
@@ -1542,7 +1542,7 @@ class ProviderConfiguration(BaseModel):
         return None
 
     def get_provider_models(
-        self, model_type: ModelType | None = None, only_active: bool = False, model: str | None = None
+        self, model_type: ModelType = None, only_active: bool = False, model: str = None
     ) -> list[ModelWithProviderEntity]:
         """
         Get provider models.
@@ -1611,7 +1611,7 @@ class ProviderConfiguration(BaseModel):
         model_types: Sequence[ModelType],
         provider_schema: ProviderEntity,
         model_setting_map: dict[ModelType, dict[str, ModelSettings]],
-        model: str | None = None,
+        model: str = None,
     ) -> list[ModelWithProviderEntity]:
         """
         Get system provider models.
@@ -1731,7 +1731,7 @@ class ProviderConfiguration(BaseModel):
         model_types: Sequence[ModelType],
         provider_schema: ProviderEntity,
         model_setting_map: dict[ModelType, dict[str, ModelSettings]],
-        model: str | None = None,
+        model: str = None,
     ) -> list[ModelWithProviderEntity]:
         """
         Get custom provider models.
@@ -1874,7 +1874,7 @@ class ProviderConfigurations(BaseModel):
         super().__init__(tenant_id=tenant_id)
 
     def get_models(
-        self, provider: str | None = None, model_type: ModelType | None = None, only_active: bool = False
+        self, provider: str = None, model_type: ModelType = None, only_active: bool = False
     ) -> list[ModelWithProviderEntity]:
         """
         Get available models.

@@ -19,34 +19,34 @@ class DocumentMetadataResponse(ResponseModel):
     id: str
     name: str
     type: str
-    value: str | int | float | bool | None = None
+    value: str | int | float | bool = None
 
 
 class DocumentResponse(ResponseModel):
     id: str
-    position: int | None = None
-    data_source_type: str | None = None
+    position: int = None
+    data_source_type: str = None
     data_source_info: Any = Field(default=None, validation_alias="data_source_info_dict")
     data_source_detail_dict: Any = None
-    dataset_process_rule_id: str | None = None
+    dataset_process_rule_id: str = None
     name: str
-    created_from: str | None = None
-    created_by: str | None = None
-    created_at: int | None = None
-    tokens: int | None = None
-    indexing_status: str | None = None
-    error: str | None = None
-    enabled: bool | None = None
-    disabled_at: int | None = None
-    disabled_by: str | None = None
-    archived: bool | None = None
-    display_status: str | None = None
-    word_count: int | None = None
-    hit_count: int | None = None
-    doc_form: str | None = None
+    created_from: str = None
+    created_by: str = None
+    created_at: int = None
+    tokens: int = None
+    indexing_status: str = None
+    error: str = None
+    enabled: bool = None
+    disabled_at: int = None
+    disabled_by: str = None
+    archived: bool = None
+    display_status: str = None
+    word_count: int = None
+    hit_count: int = None
+    doc_form: str = None
     doc_metadata: list[DocumentMetadataResponse] = Field(default_factory=list, validation_alias="doc_metadata_details")
-    summary_index_status: str | None = None
-    need_summary: bool | None = None
+    summary_index_status: str = None
+    need_summary: bool = None
 
     @field_validator("data_source_type", "indexing_status", "display_status", "doc_form", mode="before")
     @classmethod
@@ -85,8 +85,8 @@ class DocumentStatusResponse(ResponseModel):
     paused_at: int | None
     error: str | None
     stopped_at: int | None
-    completed_segments: int | None = None
-    total_segments: int | None = None
+    completed_segments: int = None
+    total_segments: int = None
 
     @field_validator("indexing_status", mode="before")
     @classmethod

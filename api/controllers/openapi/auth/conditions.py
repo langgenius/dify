@@ -14,7 +14,7 @@ class Cond:
     def __init__(self, fn: CondFn) -> None:
         self._fn = fn
 
-    def __call__(self, ctx: RequestContext, data: AuthData | None = None) -> bool:
+    def __call__(self, ctx: RequestContext, data: AuthData = None) -> bool:
         return self._fn(ctx, data)
 
     def __and__(self, other: Cond) -> Cond:

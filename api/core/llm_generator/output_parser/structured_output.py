@@ -51,11 +51,11 @@ def invoke_llm_with_structured_output(
     model_instance: ModelInstance,
     prompt_messages: Sequence[PromptMessage],
     json_schema: Mapping[str, Any],
-    model_parameters: Mapping | None = None,
-    tools: Sequence[PromptMessageTool] | None = None,
-    stop: list[str] | None = None,
+    model_parameters: Mapping = None,
+    tools: Sequence[PromptMessageTool] = None,
+    stop: list[str] = None,
     stream: Literal[True],
-    callbacks: list[Callback] | None = None,
+    callbacks: list[Callback] = None,
 ) -> Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
 @overload
 def invoke_llm_with_structured_output(
@@ -65,11 +65,11 @@ def invoke_llm_with_structured_output(
     model_instance: ModelInstance,
     prompt_messages: Sequence[PromptMessage],
     json_schema: Mapping[str, Any],
-    model_parameters: Mapping | None = None,
-    tools: Sequence[PromptMessageTool] | None = None,
-    stop: list[str] | None = None,
+    model_parameters: Mapping = None,
+    tools: Sequence[PromptMessageTool] = None,
+    stop: list[str] = None,
     stream: Literal[False],
-    callbacks: list[Callback] | None = None,
+    callbacks: list[Callback] = None,
 ) -> LLMResultWithStructuredOutput: ...
 @overload
 def invoke_llm_with_structured_output(
@@ -79,11 +79,11 @@ def invoke_llm_with_structured_output(
     model_instance: ModelInstance,
     prompt_messages: Sequence[PromptMessage],
     json_schema: Mapping[str, Any],
-    model_parameters: Mapping | None = None,
-    tools: Sequence[PromptMessageTool] | None = None,
-    stop: list[str] | None = None,
+    model_parameters: Mapping = None,
+    tools: Sequence[PromptMessageTool] = None,
+    stop: list[str] = None,
     stream: bool = True,
-    callbacks: list[Callback] | None = None,
+    callbacks: list[Callback] = None,
 ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
 def invoke_llm_with_structured_output(
     *,
@@ -92,11 +92,11 @@ def invoke_llm_with_structured_output(
     model_instance: ModelInstance,
     prompt_messages: Sequence[PromptMessage],
     json_schema: Mapping[str, Any],
-    model_parameters: Mapping | None = None,
-    tools: Sequence[PromptMessageTool] | None = None,
-    stop: list[str] | None = None,
+    model_parameters: Mapping = None,
+    tools: Sequence[PromptMessageTool] = None,
+    stop: list[str] = None,
     stream: bool = True,
-    callbacks: list[Callback] | None = None,
+    callbacks: list[Callback] = None,
 ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]:
     """
     Invoke large language model with structured output
@@ -160,7 +160,7 @@ def invoke_llm_with_structured_output(
         def generator() -> Generator[LLMResultChunkWithStructuredOutput, None, None]:
             result_text: str = ""
             prompt_messages: Sequence[PromptMessage] = []
-            system_fingerprint: str | None = None
+            system_fingerprint: str = None
             for event in llm_result:
                 if isinstance(event, LLMResultChunk):
                     prompt_messages = event.prompt_messages

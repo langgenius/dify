@@ -51,7 +51,7 @@ class RequestInvokeTool(BaseModel):
     provider: str
     tool: str
     tool_parameters: dict[str, Any]
-    credential_id: str | None = None
+    credential_id: str = None
 
 
 class BaseRequestInvokeModel(BaseModel):
@@ -195,10 +195,10 @@ class RequestInvokeApp(BaseModel):
 
     app_id: str
     inputs: dict[str, Any]
-    query: str | None = None
+    query: str = None
     response_mode: Literal["blocking", "streaming"]
-    conversation_id: str | None = None
-    user: str | None = None
+    conversation_id: str = None
+    user: str = None
     files: list[dict] = Field(default_factory=list)
 
 
@@ -236,8 +236,8 @@ class RequestDownloadFileMapping(BaseModel):
     """File mapping accepted by trusted download-request control-plane APIs."""
 
     transfer_method: Literal["local_file", "tool_file", "datasource_file", "remote_url"]
-    reference: str | None = None
-    url: str | None = None
+    reference: str = None
+    url: str = None
 
     model_config = ConfigDict(extra="forbid")
 

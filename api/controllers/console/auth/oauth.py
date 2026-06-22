@@ -87,7 +87,7 @@ def _validated_language(value: str | None) -> str | None:
     return None
 
 
-def _preferred_interface_language(language: str | None = None) -> str:
+def _preferred_interface_language(language: str = None) -> str:
     if language:
         return language
 
@@ -232,8 +232,8 @@ def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> 
 def _generate_account(
     provider: str,
     user_info: OAuthUserInfo,
-    timezone: str | None = None,
-    language: str | None = None,
+    timezone: str = None,
+    language: str = None,
 ) -> tuple[Account, bool]:
     # Get account by openid or email.
     account = _get_account_by_openid_or_email(provider, user_info)

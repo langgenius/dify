@@ -43,7 +43,7 @@ def _node_constructor(*, return_value):
     return constructor
 
 
-def _build_llm_model_schema(*, features: list[ModelFeature] | None = None) -> AIModelEntity:
+def _build_llm_model_schema(*, features: list[ModelFeature] = None) -> AIModelEntity:
     return AIModelEntity(
         model="model",
         label=I18nObject(en_US="Model"),

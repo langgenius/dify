@@ -85,7 +85,7 @@ class LLMQuotaLayer(GraphEngineLayer):
 
     @override
     def on_node_run_end(
-        self, node: Node, error: Exception | None, result_event: GraphNodeEventBase | None = None
+        self, node: Node, error: Exception | None, result_event: GraphNodeEventBase = None
     ) -> None:
         if error is not None or not isinstance(result_event, NodeRunSucceededEvent) or not self._supports_quota(node):
             return

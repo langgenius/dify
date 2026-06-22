@@ -37,7 +37,7 @@ def clean_dataset_task(
     index_struct: str,
     collection_binding_id: str,
     doc_form: str,
-    pipeline_id: str | None = None,
+    pipeline_id: str = None,
 ):
     """
     Clean dataset when dataset deleted.

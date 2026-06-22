@@ -148,8 +148,8 @@ class BuiltinToolManageService:
         tenant_id: str,
         provider: str,
         credential_id: str,
-        credentials: dict[str, Any] | None = None,
-        name: str | None = None,
+        credentials: dict[str, Any] = None,
+        name: str = None,
     ):
         """
         update builtin tool provider
@@ -222,8 +222,8 @@ class BuiltinToolManageService:
         provider: str,
         credentials: dict[str, Any],
         expires_at: int = -1,
-        name: str | None = None,
-        visibility: str | None = None,
+        name: str = None,
+        visibility: str = None,
     ):
         """
         add builtin tool provider
@@ -347,8 +347,8 @@ class BuiltinToolManageService:
     def get_builtin_tool_provider_credentials(
         tenant_id: str,
         provider_name: str,
-        user: Account | None = None,
-        include_credential_ids: list[str] | None = None,
+        user: Account = None,
+        include_credential_ids: list[str] = None,
     ) -> list[ToolProviderCredentialApiEntity]:
         """
         get builtin tool provider credentials, filtered by visibility.
@@ -439,8 +439,8 @@ class BuiltinToolManageService:
     def get_builtin_tool_provider_credential_info(
         tenant_id: str,
         provider: str,
-        user: Account | None = None,
-        include_credential_ids: list[str] | None = None,
+        user: Account = None,
+        include_credential_ids: list[str] = None,
     ) -> ToolProviderCredentialInfoApiEntity:
         """
         get builtin tool provider credential info
@@ -581,7 +581,7 @@ class BuiltinToolManageService:
                 )
                 .limit(1)
             )
-            oauth_params: Mapping[str, Any] | None = None
+            oauth_params: Mapping[str, Any] = None
             if user_client:
                 oauth_params = encrypter.decrypt(user_client.oauth_params)
                 return oauth_params
@@ -739,8 +739,8 @@ class BuiltinToolManageService:
     def save_custom_oauth_client_params(
         tenant_id: str,
         provider: str,
-        client_params: dict[str, Any] | None = None,
-        enable_oauth_custom_client: bool | None = None,
+        client_params: dict[str, Any] = None,
+        enable_oauth_custom_client: bool = None,
     ):
         """
         setup oauth custom client

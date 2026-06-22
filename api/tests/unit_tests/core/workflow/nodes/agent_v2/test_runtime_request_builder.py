@@ -38,8 +38,8 @@ class FakeCredentialsProvider:
 
 class CapturingCredentialsProvider:
     def __init__(self) -> None:
-        self.provider_name: str | None = None
-        self.model_name: str | None = None
+        self.provider_name: str = None
+        self.model_name: str = None
 
     def fetch(self, provider_name: str, model_name: str) -> dict[str, object]:
         self.provider_name = provider_name
@@ -74,7 +74,7 @@ class FakePluginToolsBuilder:
         # Capture the runtime invocation source so tests can assert it was
         # threaded through from ``DifyRunContext.invoke_from`` rather than
         # hard-coded to a placeholder like ``VALIDATION``.
-        self.last_invoke_from: InvokeFrom | None = None
+        self.last_invoke_from: InvokeFrom = None
 
     def build(self, *, tenant_id, app_id, user_id, tools, invoke_from):
         assert tenant_id == "tenant-1"

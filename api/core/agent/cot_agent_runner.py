@@ -290,7 +290,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         action: AgentScratchpadUnit.Action,
         tool_instances: Mapping[str, Tool],
         message_file_ids: list[str],
-        trace_manager: TraceQueueManager | None = None,
+        trace_manager: TraceQueueManager = None,
     ) -> tuple[str, ToolInvokeMeta]:
         """
         handle invoke action
@@ -388,14 +388,14 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         return message
 
     def _organize_historic_prompt_messages(
-        self, current_session_messages: list[PromptMessage] | None = None
+        self, current_session_messages: list[PromptMessage] = None
     ) -> list[PromptMessage]:
         """
         organize historic prompt messages
         """
         result: list[PromptMessage] = []
         scratchpads: list[AgentScratchpadUnit] = []
-        current_scratchpad: AgentScratchpadUnit | None = None
+        current_scratchpad: AgentScratchpadUnit = None
 
         for message in self.history_prompt_messages:
             match message:

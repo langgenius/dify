@@ -52,7 +52,7 @@ class FailedOutput:
 
     declared: DeclaredOutputConfig
     failure_kind: OutputFailureKind
-    reason: str | None = None
+    reason: str = None
 
 
 @dataclass(frozen=True, slots=True)

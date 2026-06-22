@@ -90,7 +90,7 @@ class MockTokenBufferMemory:
         self.history_messages = history_messages or []
 
     def get_history_prompt_messages(
-        self, max_token_limit: int = 2000, message_limit: int | None = None
+        self, max_token_limit: int = 2000, message_limit: int = None
     ) -> Sequence[PromptMessage]:
         if message_limit is not None:
             return self.history_messages[-message_limit * 2 :]
@@ -117,9 +117,9 @@ def _build_prepared_llm_mock() -> mock.MagicMock:
 
 def _build_model_schema(
     *,
-    features: list[ModelFeature] | None = None,
-    model_properties: dict[ModelPropertyKey, object] | None = None,
-    parameter_rules: list[ParameterRule] | None = None,
+    features: list[ModelFeature] = None,
+    model_properties: dict[ModelPropertyKey, object] = None,
+    parameter_rules: list[ParameterRule] = None,
 ) -> AIModelEntity:
     return AIModelEntity(
         model="gpt-3.5-turbo",

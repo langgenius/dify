@@ -20,8 +20,8 @@ from models.human_input import HumanInputFormRecipient, RecipientType
 def load_form_tokens_by_form_id(
     form_ids: Sequence[str],
     *,
-    session: Session | None = None,
-    surface: HumanInputSurface | None = None,
+    session: Session = None,
+    surface: HumanInputSurface = None,
 ) -> dict[str, str]:
     """Load the preferred access token for each human input form."""
     unique_form_ids = list(dict.fromkeys(form_ids))
@@ -39,7 +39,7 @@ def _load_form_tokens_by_form_id(
     session: Session,
     form_ids: Sequence[str],
     *,
-    surface: HumanInputSurface | None = None,
+    surface: HumanInputSurface = None,
 ) -> dict[str, str]:
     recipients_by_form_id: dict[str, list[tuple[RecipientType, str]]] = {}
     stmt = select(HumanInputFormRecipient).where(HumanInputFormRecipient.form_id.in_(form_ids))

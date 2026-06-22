@@ -41,8 +41,8 @@ class AgentAppConfigManager(BaseAppConfigManager):
         *,
         app_model: App,
         agent_soul: AgentSoulConfig,
-        app_model_config: AppModelConfig | None = None,
-        conversation: Conversation | None = None,
+        app_model_config: AppModelConfig = None,
+        conversation: Conversation = None,
     ) -> AgentAppConfig:
         """Build the Agent App config from the Agent Soul (+ optional feature flags)."""
         config_dict = cls._synthesize_config_dict(agent_soul, app_model_config)

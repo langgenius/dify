@@ -12,8 +12,8 @@ class PromptTransform:
     def _resolve_model_runtime(
         self,
         *,
-        model_config: ModelConfigWithCredentialsEntity | None = None,
-        model_instance: ModelInstance | None = None,
+        model_config: ModelConfigWithCredentialsEntity = None,
+        model_instance: ModelInstance = None,
     ) -> tuple[ModelInstance, AIModelEntity]:
         if model_instance is None:
             if model_config is None:
@@ -42,8 +42,8 @@ class PromptTransform:
         memory_config: MemoryConfig,
         prompt_messages: list[PromptMessage],
         *,
-        model_config: ModelConfigWithCredentialsEntity | None = None,
-        model_instance: ModelInstance | None = None,
+        model_config: ModelConfigWithCredentialsEntity = None,
+        model_instance: ModelInstance = None,
     ) -> list[PromptMessage]:
         rest_tokens = self._calculate_rest_token(
             prompt_messages,
@@ -59,8 +59,8 @@ class PromptTransform:
         self,
         prompt_messages: list[PromptMessage],
         *,
-        model_config: ModelConfigWithCredentialsEntity | None = None,
-        model_instance: ModelInstance | None = None,
+        model_config: ModelConfigWithCredentialsEntity = None,
+        model_instance: ModelInstance = None,
     ) -> int:
         model_instance, model_schema = self._resolve_model_runtime(
             model_config=model_config,
@@ -93,8 +93,8 @@ class PromptTransform:
         memory: TokenBufferMemory,
         memory_config: MemoryConfig,
         max_token_limit: int,
-        human_prefix: str | None = None,
-        ai_prefix: str | None = None,
+        human_prefix: str = None,
+        ai_prefix: str = None,
     ) -> str:
         """Get memory messages."""
         kwargs: dict[str, Any] = {"max_token_limit": max_token_limit}

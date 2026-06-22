@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 class AudioService:
     @classmethod
-    def transcript_asr(cls, app_model: App, file: FileStorage | None, end_user: str | None = None):
+    def transcript_asr(cls, app_model: App, file: FileStorage | None, end_user: str = None):
         if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app_model.workflow
             if workflow is None:
@@ -77,13 +77,13 @@ class AudioService:
     def transcript_tts(
         cls,
         app_model: App,
-        text: str | None = None,
-        voice: str | None = None,
-        end_user: str | None = None,
-        message_id: str | None = None,
+        text: str = None,
+        voice: str = None,
+        end_user: str = None,
+        message_id: str = None,
         is_draft: bool = False,
     ):
-        def invoke_tts(text_content: str, app_model: App, voice: str | None = None, is_draft: bool = False):
+        def invoke_tts(text_content: str, app_model: App, voice: str = None, is_draft: bool = False):
             if voice is None:
                 if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
                     if is_draft:

@@ -54,7 +54,7 @@ class WorkspaceMembersIntegrationFactory:
         db_session_with_containers: Session,
         *,
         email_prefix: str,
-        tenant: Tenant | None = None,
+        tenant: Tenant = None,
         role: TenantAccountRole = TenantAccountRole.NORMAL,
         current: bool = False,
     ) -> Account:

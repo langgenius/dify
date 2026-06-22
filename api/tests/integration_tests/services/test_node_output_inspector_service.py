@@ -66,7 +66,7 @@ def _make_workflow_run(
     tenant_id: str,
     triggered_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.DEBUGGING,
     status: WorkflowExecutionStatus = WorkflowExecutionStatus.RUNNING,
-    graph: dict[str, Any] | None = None,
+    graph: dict[str, Any] = None,
 ) -> WorkflowRun:
     """Build a ``WorkflowRun`` row with all required fields populated."""
     return WorkflowRun(
@@ -94,8 +94,8 @@ def _make_execution(
     node_type: str = "agent",
     title: str = "",
     status: WorkflowNodeExecutionStatus = WorkflowNodeExecutionStatus.SUCCEEDED,
-    outputs: dict[str, Any] | None = None,
-    execution_metadata: dict[str, Any] | None = None,
+    outputs: dict[str, Any] = None,
+    execution_metadata: dict[str, Any] = None,
     index: int = 1,
 ) -> WorkflowNodeExecutionModel:
     """Build a ``WorkflowNodeExecutionModel`` row with all required fields."""

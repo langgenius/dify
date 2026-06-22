@@ -55,7 +55,7 @@ class PluginModelAssembly:
     _provider_manager: ProviderManager | None
     _model_manager: ModelManager | None
 
-    def __init__(self, *, tenant_id: str, user_id: str | None = None) -> None:
+    def __init__(self, *, tenant_id: str, user_id: str = None) -> None:
         self.tenant_id = tenant_id
         self.user_id = user_id
         self._model_runtime = None
@@ -105,12 +105,12 @@ class PluginModelAssembly:
         return self._model_manager
 
 
-def create_plugin_model_assembly(*, tenant_id: str, user_id: str | None = None) -> PluginModelAssembly:
+def create_plugin_model_assembly(*, tenant_id: str, user_id: str = None) -> PluginModelAssembly:
     """Create a request-scoped assembly that shares one plugin runtime across model views."""
     return PluginModelAssembly(tenant_id=tenant_id, user_id=user_id)
 
 
-def create_plugin_model_runtime(*, tenant_id: str, user_id: str | None = None) -> PluginModelRuntime:
+def create_plugin_model_runtime(*, tenant_id: str, user_id: str = None) -> PluginModelRuntime:
     """Create a plugin runtime with its client dependency fully composed."""
     from core.plugin.impl.model_runtime import PluginModelRuntime
 
@@ -122,16 +122,16 @@ def create_plugin_model_runtime(*, tenant_id: str, user_id: str | None = None) -
     )
 
 
-def create_plugin_model_provider_factory(*, tenant_id: str, user_id: str | None = None) -> ModelProviderFactory:
+def create_plugin_model_provider_factory(*, tenant_id: str, user_id: str = None) -> ModelProviderFactory:
     """Create a tenant-bound model provider factory for service flows."""
     return create_plugin_model_assembly(tenant_id=tenant_id, user_id=user_id).model_provider_factory
 
 
-def create_plugin_provider_manager(*, tenant_id: str, user_id: str | None = None) -> ProviderManager:
+def create_plugin_provider_manager(*, tenant_id: str, user_id: str = None) -> ProviderManager:
     """Create a tenant-bound provider manager for service flows."""
     return create_plugin_model_assembly(tenant_id=tenant_id, user_id=user_id).provider_manager
 
 
-def create_plugin_model_manager(*, tenant_id: str, user_id: str | None = None) -> ModelManager:
+def create_plugin_model_manager(*, tenant_id: str, user_id: str = None) -> ModelManager:
     """Create a tenant-bound model manager for service flows."""
     return create_plugin_model_assembly(tenant_id=tenant_id, user_id=user_id).model_manager

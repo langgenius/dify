@@ -113,7 +113,7 @@ class DatasourceNodeRunApiEntity(BaseModel):
     node_id: str
     inputs: dict[str, Any]
     datasource_type: DatasourceType
-    credential_id: str | None = None
+    credential_id: str = None
     is_published: bool
 
 

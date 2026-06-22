@@ -123,8 +123,8 @@ class AgentBackendOutputConfig(BaseModel):
     """
 
     json_schema: dict[str, JsonValue]
-    description: str | None = None
-    strict: bool | None = None
+    description: str = None
+    strict: bool = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -136,27 +136,27 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
     execution_context: DifyExecutionContextLayerConfig
     workflow_node_job_prompt: str
     user_prompt: str
-    agent_soul_prompt: str | None = None
+    agent_soul_prompt: str = None
     purpose: RunPurpose = "workflow_node"
-    idempotency_key: str | None = None
-    output: AgentBackendOutputConfig | None = None
-    tools: DifyPluginToolsLayerConfig | None = None
-    knowledge: DifyKnowledgeBaseLayerConfig | None = None
+    idempotency_key: str = None
+    output: AgentBackendOutputConfig = None
+    tools: DifyPluginToolsLayerConfig = None
+    knowledge: DifyKnowledgeBaseLayerConfig = None
     # Drive Skills & Files declaration (dify.drive) — an index the agent pulls
     # through the back proxy, never inline content; see AGENT_DRIVE_MANIFEST_ENABLED.
-    drive_config: DifyDriveLayerConfig | None = None
+    drive_config: DifyDriveLayerConfig = None
     # Human-in-the-loop ask_human deferred tool (dify.ask_human). Present only when
     # the Agent Soul configures human involvement; a deferred call ends the run and
     # the workflow pauses via the existing HITL form mechanism (ENG-635).
-    ask_human_config: DifyAskHumanLayerConfig | None = None
+    ask_human_config: DifyAskHumanLayerConfig = None
     # Inject the sandboxed shell layer (dify.shell). Requires the agent backend
     # to be wired with a shellctl entrypoint; see configs AGENT_SHELL_ENABLED.
     include_shell: bool = False
-    shell_config: DifyShellLayerConfig | None = None
-    session_snapshot: CompositorSessionSnapshot | None = None
+    shell_config: DifyShellLayerConfig = None
+    session_snapshot: CompositorSessionSnapshot = None
     # Human tool results fed back into a continuation run after a HITL submission
     # (ENG-638). Keyed by the original deferred tool_call_id.
-    deferred_tool_results: DeferredToolResultsPayload | None = None
+    deferred_tool_results: DeferredToolResultsPayload = None
     include_history: bool = True
     suspend_on_exit: bool = True
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
@@ -183,26 +183,26 @@ class AgentBackendAgentAppRunInput(BaseModel):
     model: AgentBackendModelConfig
     execution_context: DifyExecutionContextLayerConfig
     user_prompt: str
-    agent_soul_prompt: str | None = None
+    agent_soul_prompt: str = None
     purpose: RunPurpose = "agent_app"
-    idempotency_key: str | None = None
-    output: AgentBackendOutputConfig | None = None
-    tools: DifyPluginToolsLayerConfig | None = None
-    knowledge: DifyKnowledgeBaseLayerConfig | None = None
+    idempotency_key: str = None
+    output: AgentBackendOutputConfig = None
+    tools: DifyPluginToolsLayerConfig = None
+    knowledge: DifyKnowledgeBaseLayerConfig = None
     # Drive Skills & Files declaration (dify.drive) — an index the agent pulls
     # through the back proxy, never inline content; see AGENT_DRIVE_MANIFEST_ENABLED.
-    drive_config: DifyDriveLayerConfig | None = None
+    drive_config: DifyDriveLayerConfig = None
     # Human-in-the-loop ask_human deferred tool (dify.ask_human). Present only when
     # the Agent Soul configures human involvement (ENG-635).
-    ask_human_config: DifyAskHumanLayerConfig | None = None
+    ask_human_config: DifyAskHumanLayerConfig = None
     # Inject the sandboxed shell layer (dify.shell). Requires the agent backend
     # to be wired with a shellctl entrypoint; see configs AGENT_SHELL_ENABLED.
     include_shell: bool = False
-    shell_config: DifyShellLayerConfig | None = None
-    session_snapshot: CompositorSessionSnapshot | None = None
+    shell_config: DifyShellLayerConfig = None
+    session_snapshot: CompositorSessionSnapshot = None
     # Human tool results fed back into a continuation run after a HITL submission
     # (ENG-638). Keyed by the original deferred tool_call_id.
-    deferred_tool_results: DeferredToolResultsPayload | None = None
+    deferred_tool_results: DeferredToolResultsPayload = None
     include_history: bool = True
     suspend_on_exit: bool = True
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
@@ -373,8 +373,8 @@ class AgentBackendRunRequestBuilder:
         *,
         session_snapshot: CompositorSessionSnapshot,
         runtime_layer_specs: list[RuntimeLayerSpec],
-        idempotency_key: str | None = None,
-        metadata: dict[str, JsonValue] | None = None,
+        idempotency_key: str = None,
+        metadata: dict[str, JsonValue] = None,
     ) -> CreateRunRequest:
         """Build a lifecycle-only cleanup request that replays the prior layers.
 

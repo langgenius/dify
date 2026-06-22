@@ -70,7 +70,7 @@ class RateLimit:
         if timeout_requests:
             redis_client.hdel(self.active_requests_key, *timeout_requests)
 
-    def enter(self, request_id: str | None = None) -> str:
+    def enter(self, request_id: str = None) -> str:
         if self.disabled():
             return RateLimit._UNLIMITED_REQUEST_ID
         if time.time() - self.last_recalculate_time > RateLimit._ACTIVE_REQUESTS_COUNT_FLUSH_INTERVAL:

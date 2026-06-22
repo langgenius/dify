@@ -22,8 +22,8 @@ def list_permitted_apps(
     *,
     page: int,
     limit: int,
-    mode: str | None = None,
-    name: str | None = None,
+    mode: str = None,
+    name: str = None,
 ) -> PermittedAppsPage:
     try:
         body = EnterpriseService.WebAppAuth.list_externally_accessible_apps(

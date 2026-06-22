@@ -46,7 +46,7 @@ def parse_agent_stub_grpc_bind_address(value: str) -> AgentStubGRPCBindTarget:
 def derive_agent_stub_grpc_bind_target(
     *,
     public_url: str,
-    bind_address: str | None = None,
+    bind_address: str = None,
 ) -> AgentStubGRPCBindTarget:
     """Resolve the runtime gRPC bind target from public URL plus optional override."""
     if bind_address is not None:

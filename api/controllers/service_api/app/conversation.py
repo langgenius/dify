@@ -86,10 +86,10 @@ class ConversationVariableResponse(ResponseModel):
     id: str
     name: str
     value_type: str
-    value: str | None = None
-    description: str | None = None
-    created_at: int | None = None
-    updated_at: int | None = None
+    value: str = None
+    description: str = None
+    created_at: int = None
+    updated_at: int = None
 
     @field_validator("value_type", mode="before")
     @classmethod

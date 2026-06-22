@@ -14,9 +14,9 @@ def stream_topic_events(
     *,
     topic: Topic,
     idle_timeout: float,
-    ping_interval: float | None = None,
-    on_subscribe: Callable[[], None] | None = None,
-    terminal_events: Iterable[str | StreamEvent] | None = None,
+    ping_interval: float = None,
+    on_subscribe: Callable[[], None] = None,
+    terminal_events: Iterable[str | StreamEvent] = None,
 ) -> Generator[Mapping[str, Any] | str, None, None]:
     # send a PING event immediately to prevent the connection staying in pending state for a long time.
     #

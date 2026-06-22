@@ -79,7 +79,7 @@ def _mock_document(
     upload_file_id: str | None,
 ) -> SimpleNamespace:
     """Build a minimal document object used by the controller."""
-    data_source_info_dict: dict[str, object] | None = None
+    data_source_info_dict: dict[str, object] = None
     if upload_file_id is not None:
         data_source_info_dict = {"upload_file_id": upload_file_id}
     else:
@@ -135,7 +135,7 @@ def _mock_send_file(obj, **kwargs):  # type: ignore[no-untyped-def]
     class _ResponseMock(UserDict):
         def __init__(self, sent_file: object, send_file_kwargs: dict[str, object]) -> None:
             super().__init__({"_sent_file": sent_file, "_send_file_kwargs": send_file_kwargs})
-            self._on_close: object | None = None
+            self._on_close: object = None
 
         def call_on_close(self, func):  # type: ignore[no-untyped-def]
             self._on_close = func

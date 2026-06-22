@@ -136,7 +136,7 @@ class ParserDynamicOptions(BaseModel):
     provider: str
     action: str
     parameter: str
-    credential_id: str | None = None
+    credential_id: str = None
     provider_type: Literal["tool", "trigger"]
 
 
@@ -166,7 +166,7 @@ class PluginAutoUpgradeSettingsPayload(BaseModel):
 
 class PluginAutoUpgradeChangeResponse(ResponseModel):
     success: bool
-    message: str | None = None
+    message: str = None
 
 
 class PluginAutoUpgradeSettingsResponseModel(ResponseModel):
@@ -188,21 +188,21 @@ class PluginDeclarationResponse(ResponseModel):
     name: str
     description: I18nObject
     icon: str
-    icon_dark: str | None = None
+    icon_dark: str = None
     label: I18nObject
     category: PluginCategory
     created_at: datetime
     resource: Mapping[str, Any]
     plugins: Mapping[str, list[str] | None]
     tags: list[str] = Field(default_factory=list)
-    repo: str | None = None
+    repo: str = None
     verified: bool = False
-    tool: Mapping[str, Any] | None = None
-    model: ProviderEntityResponse | None = None
-    endpoint: Mapping[str, Any] | None = None
-    agent_strategy: Mapping[str, Any] | None = None
-    datasource: Mapping[str, Any] | None = None
-    trigger: Mapping[str, Any] | None = None
+    tool: Mapping[str, Any] = None
+    model: ProviderEntityResponse = None
+    endpoint: Mapping[str, Any] = None
+    agent_strategy: Mapping[str, Any] = None
+    datasource: Mapping[str, Any] = None
+    trigger: Mapping[str, Any] = None
     meta: Mapping[str, Any]
 
 
@@ -261,7 +261,7 @@ class PluginCategoryBuiltinToolResponse(ResponseModel):
     name: str
     label: I18nObject
     description: I18nObject
-    parameters: list[Mapping[str, Any]] | None = None
+    parameters: list[Mapping[str, Any]] = None
     labels: list[str]
     output_schema: Mapping[str, object]
 
@@ -332,7 +332,7 @@ class PluginDynamicOptionsResponse(ResponseModel):
 
 class PluginOperationSuccessResponse(ResponseModel):
     success: bool
-    message: str | None = None
+    message: str = None
 
 
 class PluginReadmeResponse(ResponseModel):

@@ -15,7 +15,7 @@ from dify_agent.agent_stub.server.router import create_agent_stub_router
 from dify_agent.server.settings import ServerSettings
 
 
-def create_agent_stub_app(settings: ServerSettings | None = None) -> FastAPI:
+def create_agent_stub_app(settings: ServerSettings = None) -> FastAPI:
     """Build the standalone FastAPI app for authenticated stub endpoints."""
     resolved_settings = settings or ServerSettings()
     app = FastAPI(title="Dify Agent Stub Server", version="0.1.0")

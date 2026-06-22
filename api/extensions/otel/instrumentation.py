@@ -29,7 +29,7 @@ class SupportsInstrument(Protocol):
 
 class SupportsFlaskInstrumentor(Protocol):
     def instrument_app(
-        self, app: DifyApp, response_hook: Callable[[Span, str, list], None] | None = None, **kwargs: object
+        self, app: DifyApp, response_hook: Callable[[Span, str, list], None] = None, **kwargs: object
     ) -> None: ...
 
 

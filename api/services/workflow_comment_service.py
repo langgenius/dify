@@ -179,7 +179,7 @@ class WorkflowCommentService:
                 mention.cache_mentioned_user_account(account_map.get(mention.mentioned_user_id))
 
     @staticmethod
-    def get_comment(tenant_id: str, app_id: str, comment_id: str, session: Session | None = None) -> WorkflowComment:
+    def get_comment(tenant_id: str, app_id: str, comment_id: str, session: Session = None) -> WorkflowComment:
         """Get a specific comment."""
 
         def _get_comment(session: Session) -> WorkflowComment:
@@ -216,7 +216,7 @@ class WorkflowCommentService:
         content: str,
         position_x: float,
         position_y: float,
-        mentioned_user_ids: list[str] | None = None,
+        mentioned_user_ids: list[str] = None,
     ) -> dict:
         """Create a new workflow comment and send mention notification emails."""
         WorkflowCommentService._validate_content(content)
@@ -270,9 +270,9 @@ class WorkflowCommentService:
         comment_id: str,
         user_id: str,
         content: str,
-        position_x: float | None = None,
-        position_y: float | None = None,
-        mentioned_user_ids: list[str] | None = None,
+        position_x: float = None,
+        position_y: float = None,
+        mentioned_user_ids: list[str] = None,
     ) -> dict:
         """Update a workflow comment and notify newly mentioned users.
 
@@ -393,7 +393,7 @@ class WorkflowCommentService:
 
     @staticmethod
     def create_reply(
-        comment_id: str, content: str, created_by: str, mentioned_user_ids: list[str] | None = None
+        comment_id: str, content: str, created_by: str, mentioned_user_ids: list[str] = None
     ) -> dict:
         """Add a reply to a workflow comment and notify mentioned users."""
         WorkflowCommentService._validate_content(content)
@@ -468,7 +468,7 @@ class WorkflowCommentService:
         reply_id: str,
         user_id: str,
         content: str,
-        mentioned_user_ids: list[str] | None = None,
+        mentioned_user_ids: list[str] = None,
     ) -> dict:
         """Update a comment reply and notify newly mentioned users."""
         WorkflowCommentService._validate_content(content)

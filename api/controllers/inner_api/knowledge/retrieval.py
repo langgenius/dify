@@ -27,9 +27,9 @@ class InnerKnowledgeRetrievalHttpError(BaseHTTPException):
     def __init__(
         self,
         *,
-        error_code: str | None = None,
-        description: str | None = None,
-        status_code: int | None = None,
+        error_code: str = None,
+        description: str = None,
+        status_code: int = None,
     ) -> None:
         if error_code is not None:
             self.error_code = error_code

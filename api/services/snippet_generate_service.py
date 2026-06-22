@@ -135,7 +135,7 @@ class SnippetGenerateService:
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
-        session_maker: sessionmaker[Session] | None = None,
+        session_maker: sessionmaker[Session] = None,
     ) -> Mapping[str, Any] | Generator[str, None, None]:
         """
         Run a snippet's draft workflow.
@@ -186,7 +186,7 @@ class SnippetGenerateService:
         user: Union[Account, EndUser],
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
-        session_maker: sessionmaker[Session] | None = None,
+        session_maker: sessionmaker[Session] = None,
     ) -> Mapping[str, Any]:
         """
         Run a snippet's published workflow in non-streaming (blocking) mode.
@@ -332,8 +332,8 @@ class SnippetGenerateService:
         user_inputs: Mapping[str, Any],
         account: Account,
         query: str = "",
-        files: Sequence[File] | None = None,
-        session_maker: sessionmaker[Session] | None = None,
+        files: Sequence[File] = None,
+        session_maker: sessionmaker[Session] = None,
     ) -> WorkflowNodeExecutionModel:
         """
         Run a single node in a snippet's draft workflow (single-step debugging).
@@ -376,7 +376,7 @@ class SnippetGenerateService:
         node_id: str,
         args: Mapping[str, Any],
         streaming: bool = True,
-        session_maker: sessionmaker[Session] | None = None,
+        session_maker: sessionmaker[Session] = None,
     ) -> Mapping[str, Any] | Generator[str, None, None]:
         """
         Run a single iteration node in a snippet's draft workflow.
@@ -419,7 +419,7 @@ class SnippetGenerateService:
         node_id: str,
         args: Any,
         streaming: bool = True,
-        session_maker: sessionmaker[Session] | None = None,
+        session_maker: sessionmaker[Session] = None,
     ) -> Mapping[str, Any] | Generator[str, None, None]:
         """
         Run a single loop node in a snippet's draft workflow.
@@ -455,7 +455,7 @@ class SnippetGenerateService:
         )
 
     @staticmethod
-    def parse_files(workflow: Workflow, files: list[dict] | None = None) -> Sequence[File]:
+    def parse_files(workflow: Workflow, files: list[dict] = None) -> Sequence[File]:
         """
         Parse file mappings into File objects based on workflow configuration.
 

@@ -58,8 +58,8 @@ class DismissNotificationPayload(BaseModel):
 
 
 class NotificationItemResponse(ResponseModel):
-    notification_id: str | None = None
-    frequency: str | None = None
+    notification_id: str = None
+    frequency: str = None
     lang: str
     title: str
     subtitle: str

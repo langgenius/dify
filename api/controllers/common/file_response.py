@@ -22,7 +22,7 @@ def _is_html_extension(extension: str | None) -> bool:
     return extension.lstrip(".").lower() in HTML_EXTENSIONS
 
 
-def is_html_content(mime_type: str | None, filename: str | None, extension: str | None = None) -> bool:
+def is_html_content(mime_type: str | None, filename: str | None, extension: str = None) -> bool:
     normalized_mime_type = _normalize_mime_type(mime_type)
     if normalized_mime_type in HTML_MIME_TYPES:
         return True
@@ -41,7 +41,7 @@ def enforce_download_for_html(
     *,
     mime_type: str | None,
     filename: str | None,
-    extension: str | None = None,
+    extension: str = None,
 ) -> bool:
     if not is_html_content(mime_type, filename, extension):
         return False

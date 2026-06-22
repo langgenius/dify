@@ -20,9 +20,9 @@ class LangSmithRunType(StrEnum):
 
 
 class LangSmithTokenUsage(BaseModel):
-    input_tokens: int | None = None
-    output_tokens: int | None = None
-    total_tokens: int | None = None
+    input_tokens: int = None
+    output_tokens: int = None
+    total_tokens: int = None
 
 
 class LangSmithMultiModel(BaseModel):

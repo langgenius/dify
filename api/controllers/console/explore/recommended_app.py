@@ -23,11 +23,11 @@ class RecommendedAppsQuery(BaseModel):
 
 class RecommendedAppInfoResponse(ResponseModel):
     id: str
-    name: str | None = None
-    mode: str | None = None
-    icon: str | None = None
-    icon_type: str | None = None
-    icon_background: str | None = None
+    name: str = None
+    mode: str = None
+    icon: str = None
+    icon_type: str = None
+    icon_background: str = None
 
     @staticmethod
     def _normalize_enum_like(value: Any) -> str | None:
@@ -49,16 +49,16 @@ class RecommendedAppInfoResponse(ResponseModel):
 
 
 class RecommendedAppResponse(ResponseModel):
-    app: RecommendedAppInfoResponse | None = None
+    app: RecommendedAppInfoResponse = None
     app_id: str
-    description: str | None = None
-    copyright: str | None = None
-    privacy_policy: str | None = None
-    custom_disclaimer: str | None = None
+    description: str = None
+    copyright: str = None
+    privacy_policy: str = None
+    custom_disclaimer: str = None
     categories: list[str] = Field(default_factory=list)
-    position: int | None = None
-    is_listed: bool | None = None
-    can_trial: bool | None = None
+    position: int = None
+    is_listed: bool = None
+    can_trial: bool = None
 
 
 class RecommendedAppListResponse(ResponseModel):

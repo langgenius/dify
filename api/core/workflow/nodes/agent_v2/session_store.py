@@ -48,8 +48,8 @@ class StoredWorkflowAgentSession:
     backend_run_id: str | None
     runtime_layer_specs: list[RuntimeLayerSpec] = field(default_factory=list)
     # ENG-637: set while the session is paused on a dify.ask_human deferred call.
-    pending_form_id: str | None = None
-    pending_tool_call_id: str | None = None
+    pending_form_id: str = None
+    pending_tool_call_id: str = None
 
 
 class WorkflowAgentRuntimeSessionStore:
@@ -124,8 +124,8 @@ class WorkflowAgentRuntimeSessionStore:
         backend_run_id: str,
         snapshot: CompositorSessionSnapshot | None,
         runtime_layer_specs: list[RuntimeLayerSpec],
-        pending_form_id: str | None = None,
-        pending_tool_call_id: str | None = None,
+        pending_form_id: str = None,
+        pending_tool_call_id: str = None,
     ) -> None:
         if scope.workflow_run_id is None or snapshot is None:
             return
@@ -175,7 +175,7 @@ class WorkflowAgentRuntimeSessionStore:
                 row.pending_tool_call_id = pending_tool_call_id
             session.commit()
 
-    def mark_cleaned(self, *, scope: WorkflowAgentSessionScope, backend_run_id: str | None = None) -> None:
+    def mark_cleaned(self, *, scope: WorkflowAgentSessionScope, backend_run_id: str = None) -> None:
         if scope.workflow_run_id is None:
             return
 

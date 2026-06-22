@@ -65,7 +65,7 @@ class SchemaResolver:
     _cache: dict[str, SchemaDict] = {}
     _cache_lock = threading.Lock()
 
-    def __init__(self, registry: SchemaRegistry | None = None, max_depth: int = 10):
+    def __init__(self, registry: SchemaRegistry = None, max_depth: int = 10):
         """
         Initialize the schema resolver
 
@@ -224,7 +224,7 @@ class SchemaResolver:
 
 
 def resolve_dify_schema_refs(
-    schema: SchemaType, registry: SchemaRegistry | None = None, max_depth: int = 30
+    schema: SchemaType, registry: SchemaRegistry = None, max_depth: int = 30
 ) -> SchemaType:
     """
     Resolve $ref references in Dify schema to actual schema content

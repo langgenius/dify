@@ -74,8 +74,8 @@ class AskHumanParagraphField(AskHumanFieldBase):
     """Free-text paragraph field."""
 
     type: Literal["paragraph"] = "paragraph"
-    placeholder: str | None = None
-    default: str | None = None
+    placeholder: str = None
+    default: str = None
 
 
 class AskHumanSelectField(AskHumanFieldBase):
@@ -83,7 +83,7 @@ class AskHumanSelectField(AskHumanFieldBase):
 
     type: Literal["select"] = "select"
     options: list[AskHumanSelectOption] = Field(default_factory=list)
-    default: str | None = None
+    default: str = None
 
     @model_validator(mode="after")
     def _validate_options(self) -> AskHumanSelectField:
@@ -168,9 +168,9 @@ class AskHumanToolArgs(BaseModel):
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
-    title: str | None = None
+    title: str = None
     question: str = Field(min_length=1)
-    markdown: str | None = None
+    markdown: str = None
     fields: list[AskHumanField] = Field(default_factory=list)
     actions: list[AskHumanAction] = Field(default_factory=list)
     urgency: AskHumanUrgency = "normal"
@@ -209,10 +209,10 @@ class AskHumanToolResult(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
     status: AskHumanResultStatus
-    action: AskHumanSelectedAction | None = None
+    action: AskHumanSelectedAction = None
     values: dict[str, JsonValue] = Field(default_factory=dict)
-    message: str | None = None
-    rendered_content: str | None = None
+    message: str = None
+    rendered_content: str = None
 
 
 __all__ = [

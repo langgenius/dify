@@ -49,7 +49,7 @@ class LayerRunSlot:
     layer: Layer[Any, Any, Any, Any, Any, Any]
     lifecycle_state: LifecycleState
     exit_intent: ExitIntent = ExitIntent.DELETE
-    active_resource_context: AbstractAsyncContextManager[None] | None = None
+    active_resource_context: AbstractAsyncContextManager[None] = None
 
 
 @dataclass(slots=True)
@@ -63,10 +63,10 @@ class CompositorRun(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPrompt
     """
 
     slots: OrderedDict[str, LayerRunSlot]
-    prompt_transformer: CompositorTransformer[LayerPromptT, PromptT] | None = None
-    user_prompt_transformer: CompositorTransformer[LayerUserPromptT, UserPromptT] | None = None
-    tool_transformer: CompositorTransformer[LayerToolT, ToolT] | None = None
-    session_snapshot: CompositorSessionSnapshot | None = None
+    prompt_transformer: CompositorTransformer[LayerPromptT, PromptT] = None
+    user_prompt_transformer: CompositorTransformer[LayerUserPromptT, UserPromptT] = None
+    tool_transformer: CompositorTransformer[LayerToolT, ToolT] = None
+    session_snapshot: CompositorSessionSnapshot = None
 
     @overload
     def get_layer(self, name: str) -> Layer[Any, Any, Any, Any, Any, Any]: ...
@@ -77,7 +77,7 @@ class CompositorRun(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPrompt
     def get_layer(
         self,
         name: str,
-        layer_type: type[LayerT] | None = None,
+        layer_type: type[LayerT] = None,
     ) -> Layer[Any, Any, Any, Any, Any, Any] | LayerT:
         """Return a live layer by node name and optionally validate its type."""
         try:
@@ -138,7 +138,7 @@ class CompositorRun(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPrompt
                 raise hook_error from enter_error
             raise
 
-    async def _exit_layers(self, wrapped_error: BaseException | None = None) -> None:
+    async def _exit_layers(self, wrapped_error: BaseException = None) -> None:
         hook_error = await self._exit_slots_reversed(list(self.slots.values()), wrapped_error=wrapped_error)
         self.session_snapshot = self.snapshot_session()
         if hook_error is not None:
@@ -170,14 +170,14 @@ class CompositorRun(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPrompt
         self,
         slots: Sequence[LayerRunSlot],
         *,
-        wrapped_error: BaseException | None = None,
+        wrapped_error: BaseException = None,
     ) -> BaseException | None:
-        hook_error: BaseException | None = None
+        hook_error: BaseException = None
         propagating_error = wrapped_error
         for slot in reversed(slots):
             if slot.lifecycle_state is not LifecycleState.ACTIVE:
                 continue
-            slot_error: BaseException | None = None
+            slot_error: BaseException = None
             if slot.exit_intent is ExitIntent.SUSPEND:
                 try:
                     await slot.layer.on_context_suspend()

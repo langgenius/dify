@@ -56,7 +56,7 @@ class ModelProviderService:
 
         return provider_configuration
 
-    def get_provider_list(self, tenant_id: str, model_type: str | None = None) -> list[ProviderResponse]:
+    def get_provider_list(self, tenant_id: str, model_type: str = None) -> list[ProviderResponse]:
         """
         get provider list.
 
@@ -173,7 +173,7 @@ class ModelProviderService:
         )
 
     def get_provider_credential(
-        self, tenant_id: str, provider: str, credential_id: str | None = None
+        self, tenant_id: str, provider: str, credential_id: str = None
     ) -> dict[str, Any] | None:
         """
         get provider credentials.

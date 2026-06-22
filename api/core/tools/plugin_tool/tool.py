@@ -18,7 +18,7 @@ class PluginTool(Tool):
         self.tenant_id = tenant_id
         self.icon = icon
         self.plugin_unique_identifier = plugin_unique_identifier
-        self.runtime_parameters: list[ToolParameter] | None = None
+        self.runtime_parameters: list[ToolParameter] = None
 
     @override
     def tool_provider_type(self) -> ToolProviderType:
@@ -29,9 +29,9 @@ class PluginTool(Tool):
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
-        conversation_id: str | None = None,
-        app_id: str | None = None,
-        message_id: str | None = None,
+        conversation_id: str = None,
+        app_id: str = None,
+        message_id: str = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         manager = PluginToolManager()
 
@@ -63,9 +63,9 @@ class PluginTool(Tool):
     @override
     def get_runtime_parameters(
         self,
-        conversation_id: str | None = None,
-        app_id: str | None = None,
-        message_id: str | None = None,
+        conversation_id: str = None,
+        app_id: str = None,
+        message_id: str = None,
     ) -> list[ToolParameter]:
         """
         get the runtime parameters

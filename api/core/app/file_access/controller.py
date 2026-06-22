@@ -41,7 +41,7 @@ class DatabaseFileAccessController(FileAccessControllerProtocol):
         self,
         stmt: Select[tuple[UploadFile]],
         *,
-        scope: FileAccessScope | None = None,
+        scope: FileAccessScope = None,
     ) -> Select[tuple[UploadFile]]:
         resolved_scope = scope or self.current_scope()
         if resolved_scope is None:
@@ -70,7 +70,7 @@ class DatabaseFileAccessController(FileAccessControllerProtocol):
         self,
         stmt: Select[tuple[ToolFile]],
         *,
-        scope: FileAccessScope | None = None,
+        scope: FileAccessScope = None,
     ) -> Select[tuple[ToolFile]]:
         resolved_scope = scope or self.current_scope()
         if resolved_scope is None:
@@ -88,7 +88,7 @@ class DatabaseFileAccessController(FileAccessControllerProtocol):
         *,
         session: Session,
         file_id: str,
-        scope: FileAccessScope | None = None,
+        scope: FileAccessScope = None,
     ) -> UploadFile | None:
         resolved_scope = scope or self.current_scope()
         if resolved_scope is None:
@@ -106,7 +106,7 @@ class DatabaseFileAccessController(FileAccessControllerProtocol):
         *,
         session: Session,
         file_id: str,
-        scope: FileAccessScope | None = None,
+        scope: FileAccessScope = None,
     ) -> ToolFile | None:
         resolved_scope = scope or self.current_scope()
         if resolved_scope is None:

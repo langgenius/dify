@@ -23,7 +23,7 @@ class VolumePermission(StrEnum):
 class VolumePermissionManager:
     """Volume permission manager"""
 
-    def __init__(self, connection_or_config, volume_type: str | None = None, volume_name: str | None = None):
+    def __init__(self, connection_or_config, volume_type: str = None, volume_name: str = None):
         """Initialize permission manager
 
         Args:
@@ -62,7 +62,7 @@ class VolumePermissionManager:
         self._permission_cache: dict[str, set[str]] = {}
         self._current_username = None  # Will get current username from connection
 
-    def check_permission(self, operation: VolumePermission, dataset_id: str | None = None) -> bool:
+    def check_permission(self, operation: VolumePermission, dataset_id: str = None) -> bool:
         """Check if user has permission to perform specific operation
 
         Args:
@@ -444,7 +444,7 @@ class VolumePermissionManager:
         """Get the volume type."""
         return self._volume_type
 
-    def get_permission_summary(self, dataset_id: str | None = None) -> dict[str, bool]:
+    def get_permission_summary(self, dataset_id: str = None) -> dict[str, bool]:
         """Get permission summary
 
         Args:
@@ -586,7 +586,7 @@ class VolumePermissionManager:
 
         return any(pattern in file_path_lower for pattern in sensitive_patterns)
 
-    def validate_operation(self, operation: str, dataset_id: str | None = None) -> bool:
+    def validate_operation(self, operation: str, dataset_id: str = None) -> bool:
         """Validate operation permission
 
         Args:
@@ -618,14 +618,14 @@ class VolumePermissionManager:
 class VolumePermissionError(Exception):
     """Volume permission error exception"""
 
-    def __init__(self, message: str, operation: str, volume_type: str, dataset_id: str | None = None):
+    def __init__(self, message: str, operation: str, volume_type: str, dataset_id: str = None):
         self.operation = operation
         self.volume_type = volume_type
         self.dataset_id = dataset_id
         super().__init__(message)
 
 
-def check_volume_permission(permission_manager: VolumePermissionManager, operation: str, dataset_id: str | None = None):
+def check_volume_permission(permission_manager: VolumePermissionManager, operation: str, dataset_id: str = None):
     """Permission check decorator function
 
     Args:

@@ -47,8 +47,8 @@ def is_recipient_type_allowed_for_surface(
 def get_preferred_form_token(
     recipients: Sequence[tuple[RecipientType, str]],
 ) -> str | None:
-    chosen_token: str | None = None
-    chosen_priority: int | None = None
+    chosen_token: str = None
+    chosen_priority: int = None
     for recipient_type, token in recipients:
         priority = _RECIPIENT_TOKEN_PRIORITY.get(recipient_type)
         if priority is None or not token:

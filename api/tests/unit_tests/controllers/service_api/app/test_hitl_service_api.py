@@ -56,7 +56,7 @@ class _DummyRateLimit:
         self.client_id = client_id
         self.max_active_requests = max_active_requests
 
-    def enter(self, request_id: str | None = None) -> str:
+    def enter(self, request_id: str = None) -> str:
         return request_id or "dummy-request-id"
 
     def exit(self, request_id: str) -> None:

@@ -16,9 +16,9 @@ class MCPConnectionError(MCPError):
 class MCPAuthError(MCPConnectionError):
     def __init__(
         self,
-        message: str | None = None,
+        message: str = None,
         response: "httpx.Response | None" = None,
-        www_authenticate_header: str | None = None,
+        www_authenticate_header: str = None,
     ):
         """
         MCP Authentication Error.
@@ -34,8 +34,8 @@ class MCPAuthError(MCPConnectionError):
         if response is not None:
             www_authenticate_header = response.headers.get("WWW-Authenticate")
 
-        self.resource_metadata_url: str | None = None
-        self.scope_hint: str | None = None
+        self.resource_metadata_url: str = None
+        self.scope_hint: str = None
 
         if www_authenticate_header:
             self.resource_metadata_url = self._extract_field(www_authenticate_header, "resource_metadata")

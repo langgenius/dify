@@ -28,8 +28,8 @@ class StubFileValidator:
     def __init__(
         self,
         *,
-        allowed: Mapping[str, set[str]] | None = None,
-        allowed_by_method: Mapping[tuple[str, str], set[str]] | None = None,
+        allowed: Mapping[str, set[str]] = None,
+        allowed_by_method: Mapping[tuple[str, str], set[str]] = None,
     ) -> None:
         # Mapping: tenant_id -> {file_id, ...}
         self._allowed = {tenant: set(ids) for tenant, ids in (allowed or {}).items()}
@@ -56,8 +56,8 @@ def _str_output(name: str = "summary", required: bool = True) -> DeclaredOutputC
 
 def _make_checker(
     *,
-    allowed: Mapping[str, set[str]] | None = None,
-    allowed_by_method: Mapping[tuple[str, str], set[str]] | None = None,
+    allowed: Mapping[str, set[str]] = None,
+    allowed_by_method: Mapping[tuple[str, str], set[str]] = None,
 ) -> PerOutputTypeChecker:
     return PerOutputTypeChecker(file_validator=StubFileValidator(allowed=allowed, allowed_by_method=allowed_by_method))
 

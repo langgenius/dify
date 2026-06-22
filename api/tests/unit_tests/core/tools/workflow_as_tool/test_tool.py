@@ -46,7 +46,7 @@ class StubSession:
     scalars_results: list[Any]
     expunge_calls: list[object]
 
-    def __init__(self, *, scalar_results: list[Any] | None = None, scalars_results: list[Any] | None = None) -> None:
+    def __init__(self, *, scalar_results: list[Any] = None, scalars_results: list[Any] = None) -> None:
         self.scalar_results = list(scalar_results or [])
         self.scalars_results = list(scalars_results or [])
         self.expunge_calls: list[object] = []

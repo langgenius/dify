@@ -59,10 +59,10 @@ class ImportRequest:
     """
 
     package: MigrationPackage
-    cli_target_tenant: str | None = None
-    config_target_tenant: str | None = None
-    operator_email: str | None = None
-    options_override: ImportOptions | None = None
+    cli_target_tenant: str = None
+    config_target_tenant: str = None
+    operator_email: str = None
+    options_override: ImportOptions = None
 
 
 class ImportTargetResolver:
@@ -146,7 +146,7 @@ class MigrationImportService:
 
     target_resolver: ImportTargetResolver
 
-    def __init__(self, *, target_resolver: ImportTargetResolver | None = None) -> None:
+    def __init__(self, *, target_resolver: ImportTargetResolver = None) -> None:
         self.target_resolver = target_resolver or ImportTargetResolver()
 
     def import_package(self, request: ImportRequest) -> ImportResult:
@@ -219,9 +219,9 @@ class MigrationImportService:
         report_items: list[ResourceReportItem],
         id_mapping: dict[str, str],
         id_mapping_details: list[ResourceIdMapping],
-        imported_workflow_ids: set[str] | None = None,
-        only_app_ids: set[str] | None = None,
-        skip_app_ids: set[str] | None = None,
+        imported_workflow_ids: set[str] = None,
+        only_app_ids: set[str] = None,
+        skip_app_ids: set[str] = None,
     ) -> None:
         account = db.session.get(Account, target.operator_id)
         tenant = db.session.get(Tenant, target.tenant_id)

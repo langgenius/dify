@@ -27,8 +27,8 @@ class DatasourceManagerProtocol(Protocol):
         parameters_for_log: dict[str, Any],
         datasource_info: dict[str, Any],
         variable_pool: Any,
-        datasource_param: DatasourceParameter | None = None,
-        online_drive_request: OnlineDriveDownloadFileParam | None = None,
+        datasource_param: DatasourceParameter = None,
+        online_drive_request: OnlineDriveDownloadFileParam = None,
     ) -> Generator[StreamChunkEvent | StreamCompletedEvent, None, None]: ...
 
     @classmethod

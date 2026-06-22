@@ -38,9 +38,9 @@ def _build_provider(
     provider: str,
     provider_name: str,
     supported_model_types: list[ModelType],
-    models: list[AIModelEntity] | None = None,
-    provider_credential_schema: ProviderCredentialSchema | None = None,
-    model_credential_schema: ModelCredentialSchema | None = None,
+    models: list[AIModelEntity] = None,
+    provider_credential_schema: ProviderCredentialSchema = None,
+    model_credential_schema: ModelCredentialSchema = None,
 ) -> ProviderEntity:
     return ProviderEntity(
         provider=provider,

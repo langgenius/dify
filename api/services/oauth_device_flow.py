@@ -108,11 +108,11 @@ class DeviceFlowState:
     client_id: str
     device_label: str
     status: DeviceFlowStatus
-    subject_email: str | None = None
-    account_id: str | None = None
-    subject_issuer: str | None = None
-    minted_token: str | None = None
-    token_id: str | None = None
+    subject_email: str = None
+    account_id: str = None
+    subject_issuer: str = None
+    minted_token: str = None
+    token_id: str = None
     created_at: str = ""
     created_ip: str = ""
     last_poll_at: str = ""
@@ -216,8 +216,8 @@ class DeviceFlowRedis:
         account_id: str | None,
         minted_token: str,
         token_id: str,
-        subject_issuer: str | None = None,
-        poll_payload: PollPayload | None = None,
+        subject_issuer: str = None,
+        poll_payload: PollPayload = None,
     ) -> None:
         state = self._load_state(device_code)
         if state is None:
@@ -463,7 +463,7 @@ MAX_TTL_DAYS = 365
 _TTL_ENV_VAR = "OAUTH_TTL_DAYS"
 
 
-def oauth_ttl_days(tenant_id: str | None = None) -> int:
+def oauth_ttl_days(tenant_id: str = None) -> int:
     """``OAUTH_TTL_DAYS`` env, else default. EE tenant-level lookup
     is deferred; when it lands it wins over the env (Redis-cached 60s).
     """

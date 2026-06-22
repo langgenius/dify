@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 class SuggestedQuestionsAfterAnswerOutputParser:
-    def __init__(self, instruction_prompt: str | None = None) -> None:
+    def __init__(self, instruction_prompt: str = None) -> None:
         self._instruction_prompt = self._build_instruction_prompt(instruction_prompt)
 
     @staticmethod

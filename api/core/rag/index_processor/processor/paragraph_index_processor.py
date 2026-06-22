@@ -72,7 +72,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         return text_docs
 
     @override
-    def transform(self, documents: list[Document], current_user: Account | None = None, **kwargs) -> list[Document]:
+    def transform(self, documents: list[Document], current_user: Account = None, **kwargs) -> list[Document]:
         process_rule = kwargs.get("process_rule")
         if not process_rule:
             raise ValueError("No process rule found.")
@@ -126,7 +126,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         self,
         dataset: Dataset,
         documents: list[Document],
-        multimodal_documents: list[AttachmentDocument] | None = None,
+        multimodal_documents: list[AttachmentDocument] = None,
         with_keywords: bool = True,
         **kwargs,
     ) -> None:
@@ -268,7 +268,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         tenant_id: str,
         preview_texts: list[PreviewDetail],
         summary_index_setting: SummaryIndexSettingDict,
-        doc_language: str | None = None,
+        doc_language: str = None,
     ) -> list[PreviewDetail]:
         """
         For each segment, concurrently call generate_summary to generate a summary
@@ -351,9 +351,9 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
     def generate_summary(
         tenant_id: str,
         text: str,
-        summary_index_setting: SummaryIndexSettingDict | None = None,
-        segment_id: str | None = None,
-        document_language: str | None = None,
+        summary_index_setting: SummaryIndexSettingDict = None,
+        segment_id: str = None,
+        document_language: str = None,
     ) -> tuple[str, LLMUsage]:
         """
         Generate summary for the given text using ModelInstance.invoke_llm and the default or custom summary prompt,

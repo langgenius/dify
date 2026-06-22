@@ -41,7 +41,7 @@ class TestWorkflowDeletion:
         session.flush()
         return tenant, account
 
-    def _create_app(self, session: Session, *, tenant: Tenant, account: Account, workflow_id: str | None = None) -> App:
+    def _create_app(self, session: Session, *, tenant: Tenant, account: Account, workflow_id: str = None) -> App:
         app = App(
             tenant_id=tenant.id,
             name=f"App {uuid4()}",

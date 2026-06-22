@@ -163,7 +163,7 @@ class TestDocumentIndexingSyncTask:
                 "indexing_runner": indexing_runner,
             }
 
-    def _create_notion_sync_context(self, db_session_with_containers: Session, *, data_source_info: dict | None = None):
+    def _create_notion_sync_context(self, db_session_with_containers: Session, *, data_source_info: dict = None):
         account, tenant = DocumentIndexingSyncTaskTestDataFactory.create_account_with_tenant(db_session_with_containers)
         dataset = DocumentIndexingSyncTaskTestDataFactory.create_dataset(
             db_session_with_containers,

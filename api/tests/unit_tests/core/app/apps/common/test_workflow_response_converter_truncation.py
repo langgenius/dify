@@ -61,7 +61,7 @@ class TestWorkflowResponseConverter:
             system_variables=system_variables,
         )
 
-    def create_node_started_event(self, *, node_execution_id: str | None = None) -> QueueNodeStartedEvent:
+    def create_node_started_event(self, *, node_execution_id: str = None) -> QueueNodeStartedEvent:
         """Create a QueueNodeStartedEvent for testing."""
         return QueueNodeStartedEvent(
             node_execution_id=node_execution_id or str(uuid.uuid4()),
@@ -79,7 +79,7 @@ class TestWorkflowResponseConverter:
         self,
         *,
         node_execution_id: str,
-        process_data: Mapping[str, Any] | None = None,
+        process_data: Mapping[str, Any] = None,
     ) -> QueueNodeSucceededEvent:
         """Create a QueueNodeSucceededEvent for testing."""
         return QueueNodeSucceededEvent(
@@ -99,7 +99,7 @@ class TestWorkflowResponseConverter:
         self,
         *,
         node_execution_id: str,
-        process_data: Mapping[str, Any] | None = None,
+        process_data: Mapping[str, Any] = None,
     ) -> QueueNodeRetryEvent:
         """Create a QueueNodeRetryEvent for testing."""
         return QueueNodeRetryEvent(

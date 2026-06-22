@@ -32,7 +32,7 @@ class RunRecord(BaseModel):
     status: _protocol_schemas.RunStatus
     created_at: datetime = Field(default_factory=_protocol_schemas.utc_now)
     updated_at: datetime = Field(default_factory=_protocol_schemas.utc_now)
-    error: str | None = None
+    error: str = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 

@@ -97,7 +97,7 @@ class EnvironmentVariableItemResponse(ResponseModel):
     id: str
     type: str
     name: str
-    description: str | None = None
+    description: str = None
     selector: list[str]
     value_type: str
     value: Any

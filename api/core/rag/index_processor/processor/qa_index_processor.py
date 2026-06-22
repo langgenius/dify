@@ -51,7 +51,7 @@ class QAIndexProcessor(BaseIndexProcessor):
         return text_docs
 
     @override
-    def transform(self, documents: list[Document], current_user: Account | None = None, **kwargs) -> list[Document]:
+    def transform(self, documents: list[Document], current_user: Account = None, **kwargs) -> list[Document]:
         preview = kwargs.get("preview")
         process_rule = kwargs.get("process_rule")
         if not process_rule:
@@ -143,7 +143,7 @@ class QAIndexProcessor(BaseIndexProcessor):
         self,
         dataset: Dataset,
         documents: list[Document],
-        multimodal_documents: list[AttachmentDocument] | None = None,
+        multimodal_documents: list[AttachmentDocument] = None,
         with_keywords: bool = True,
         **kwargs,
     ) -> None:
@@ -227,7 +227,7 @@ class QAIndexProcessor(BaseIndexProcessor):
         tenant_id: str,
         preview_texts: list[PreviewDetail],
         summary_index_setting: SummaryIndexSettingDict,
-        doc_language: str | None = None,
+        doc_language: str = None,
     ) -> list[PreviewDetail]:
         """
         QA model doesn't generate summaries, so this method returns preview_texts unchanged.

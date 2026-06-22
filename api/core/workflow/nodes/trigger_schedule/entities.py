@@ -27,9 +27,9 @@ class ScheduleConfig(BaseModel):
 
 
 class SchedulePlanUpdate(BaseModel):
-    node_id: str | None = None
-    cron_expression: str | None = None
-    timezone: str | None = None
+    node_id: str = None
+    cron_expression: str = None
+    timezone: str = None
 
 
 class VisualConfig(BaseModel):

@@ -134,8 +134,8 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         app_id: str,
         triggered_from: WorkflowRunTriggeredFrom | Sequence[WorkflowRunTriggeredFrom],
         limit: int = 20,
-        last_id: str | None = None,
-        status: str | None = None,
+        last_id: str = None,
+        status: str = None,
     ) -> InfiniteScrollPagination:
         """
         Get paginated workflow runs with filtering.
@@ -221,8 +221,8 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         tenant_id: str,
         app_id: str,
         triggered_from: str,
-        status: str | None = None,
-        time_range: str | None = None,
+        status: str = None,
+        time_range: str = None,
     ) -> dict[str, int]:
         """
         Get workflow runs count statistics grouped by status.
@@ -376,9 +376,9 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         end_before: datetime,
         last_seen: tuple[datetime, str] | None,
         batch_size: int,
-        run_types: Sequence[WorkflowType] | None = None,
-        tenant_ids: Sequence[str] | None = None,
-        workflow_ids: Sequence[str] | None = None,
+        run_types: Sequence[WorkflowType] = None,
+        tenant_ids: Sequence[str] = None,
+        workflow_ids: Sequence[str] = None,
     ) -> Sequence[WorkflowRun]:
         """
         Fetch ended workflow runs in a time window for archival and clean batching.
@@ -431,10 +431,10 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         end_before: datetime,
         last_seen: tuple[datetime, str] | None,
         batch_size: int,
-        run_types: Sequence[WorkflowType] | None = None,
-        tenant_ids: Sequence[str] | None = None,
-        workflow_ids: Sequence[str] | None = None,
-        upper_bound: tuple[datetime, str] | None = None,
+        run_types: Sequence[WorkflowType] = None,
+        tenant_ids: Sequence[str] = None,
+        workflow_ids: Sequence[str] = None,
+        upper_bound: tuple[datetime, str] = None,
     ) -> Sequence[WorkflowRunCleanupRef]:
         """
         Fetch lightweight ended workflow run refs in a time window for cleanup batching.
@@ -545,8 +545,8 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
     def delete_runs_with_related(
         self,
         runs: Sequence[WorkflowRun],
-        delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
-        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+        delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] = None,
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] = None,
     ) -> RunsWithRelatedCountsDict:
         if not runs:
             return {
@@ -603,8 +603,8 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
     def delete_runs_with_related_by_ids(
         self,
         run_ids: Sequence[str],
-        delete_node_executions: Callable[[Session, Sequence[str]], tuple[int, int]] | None = None,
-        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+        delete_node_executions: Callable[[Session, Sequence[str]], tuple[int, int]] = None,
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] = None,
     ) -> RunsWithRelatedCountsDict:
         if not run_ids:
             return self._empty_runs_with_related_counts()
@@ -775,8 +775,8 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
     def count_runs_with_related(
         self,
         runs: Sequence[WorkflowRun],
-        count_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
-        count_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+        count_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] = None,
+        count_trigger_logs: Callable[[Session, Sequence[str]], int] = None,
     ) -> RunsWithRelatedCountsDict:
         if not runs:
             return {
@@ -834,8 +834,8 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
     def count_runs_with_related_by_ids(
         self,
         run_ids: Sequence[str],
-        count_node_executions: Callable[[Session, Sequence[str]], tuple[int, int]] | None = None,
-        count_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+        count_node_executions: Callable[[Session, Sequence[str]], tuple[int, int]] = None,
+        count_trigger_logs: Callable[[Session, Sequence[str]], int] = None,
     ) -> RunsWithRelatedCountsDict:
         if not run_ids:
             return self._empty_runs_with_related_counts()
@@ -1186,7 +1186,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         self,
         expiration: datetime,
         resumption_expiration: datetime,
-        limit: int | None = None,
+        limit: int = None,
     ) -> Sequence[str]:
         """
         Clean up expired and old pause states.
@@ -1260,8 +1260,8 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         tenant_id: str,
         app_id: str,
         triggered_from: str,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
+        start_date: datetime = None,
+        end_date: datetime = None,
         timezone: str = "UTC",
     ) -> list[DailyRunsStats]:
         """
@@ -1309,8 +1309,8 @@ WHERE
         tenant_id: str,
         app_id: str,
         triggered_from: str,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
+        start_date: datetime = None,
+        end_date: datetime = None,
         timezone: str = "UTC",
     ) -> list[DailyTerminalsStats]:
         """
@@ -1358,8 +1358,8 @@ WHERE
         tenant_id: str,
         app_id: str,
         triggered_from: str,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
+        start_date: datetime = None,
+        end_date: datetime = None,
         timezone: str = "UTC",
     ) -> list[DailyTokenCostStats]:
         """
@@ -1412,8 +1412,8 @@ WHERE
         tenant_id: str,
         app_id: str,
         triggered_from: str,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
+        start_date: datetime = None,
+        end_date: datetime = None,
         timezone: str = "UTC",
     ) -> list[AverageInteractionStats]:
         """
@@ -1496,13 +1496,13 @@ class _PrivateWorkflowPauseEntity(WorkflowPauseEntity):
         *,
         pause_model: WorkflowPause,
         reason_models: Sequence[WorkflowPauseReason],
-        pause_reasons: Sequence[PauseReason] | None = None,
+        pause_reasons: Sequence[PauseReason] = None,
         human_input_form: Sequence = (),
     ) -> None:
         self._pause_model = pause_model
         self._reason_models = reason_models
         self._pause_reasons = pause_reasons
-        self._cached_state: bytes | None = None
+        self._cached_state: bytes = None
         self._human_input_form = human_input_form
 
     @property

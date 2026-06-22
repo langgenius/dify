@@ -320,8 +320,8 @@ class SSEParser:
 
     def __init__(self) -> None:
         self.data_buffer: list[str] = []
-        self.event_type: str | None = None
-        self.event_id: str | None = None
+        self.event_type: str = None
+        self.event_id: str = None
 
     def parse_line(self, line: str) -> SSEEvent | None:
         """Parse a single SSE line and return event if complete"""
@@ -725,7 +725,7 @@ def export_json_report(stats: MetricsSnapshot, duration: float, environment: obj
     report_file = reports_dir / f"sse_metrics_{timestamp}.json"
 
     # Access environment.stats.total attributes safely
-    locust_stats: LocustStats | None = None
+    locust_stats: LocustStats = None
     if hasattr(environment, "stats") and hasattr(environment.stats, "total"):
         total = environment.stats.total
         if hasattr(total, "num_requests") and total.num_requests > 0:

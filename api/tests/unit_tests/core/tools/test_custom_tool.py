@@ -15,7 +15,7 @@ from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvo
 from core.tools.errors import ToolInvokeError, ToolParameterValidationError, ToolProviderCredentialValidationError
 
 
-def _build_tool(*, openapi: dict[str, Any] | None = None) -> ApiTool:
+def _build_tool(*, openapi: dict[str, Any] = None) -> ApiTool:
     entity = ToolEntity(
         identity=ToolIdentity(
             author="author",

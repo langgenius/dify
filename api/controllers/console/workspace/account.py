@@ -70,7 +70,7 @@ from services.errors.account import CurrentPasswordIncorrectError as ServiceCurr
 class AccountInitPayload(BaseModel):
     interface_language: str
     timezone: str
-    invitation_code: str | None = None
+    invitation_code: str = None
 
     @field_validator("interface_language")
     @classmethod
@@ -118,7 +118,7 @@ class AccountTimezonePayload(BaseModel):
 
 
 class AccountPasswordPayload(BaseModel):
-    password: str | None = None
+    password: str = None
     new_password: str
     repeat_new_password: str
 
@@ -153,9 +153,9 @@ class EducationAutocompleteQuery(BaseModel):
 
 class ChangeEmailSendPayload(BaseModel):
     email: EmailStr
-    language: str | None = None
-    phase: str | None = None
-    token: str | None = None
+    language: str = None
+    phase: str = None
+    token: str = None
 
 
 class ChangeEmailValidityPayload(BaseModel):
@@ -200,9 +200,9 @@ def _serialize_account(account) -> dict[str, Any]:
 
 class AccountIntegrateResponse(ResponseModel):
     provider: str
-    created_at: int | None = None
+    created_at: int = None
     is_bound: bool
-    link: str | None = None
+    link: str = None
 
     @field_validator("created_at", mode="before")
     @classmethod
@@ -215,14 +215,14 @@ class AccountIntegrateListResponse(ResponseModel):
 
 
 class EducationVerifyResponse(ResponseModel):
-    token: str | None = None
+    token: str = None
 
 
 class EducationStatusResponse(ResponseModel):
-    result: bool | None = None
-    is_student: bool | None = None
-    expire_at: int | None = None
-    allow_refresh: bool | None = None
+    result: bool = None
+    is_student: bool = None
+    expire_at: int = None
+    allow_refresh: bool = None
 
     @field_validator("expire_at", mode="before")
     @classmethod
@@ -232,8 +232,8 @@ class EducationStatusResponse(ResponseModel):
 
 class EducationAutocompleteResponse(ResponseModel):
     data: list[str] = Field(default_factory=list)
-    curr_page: int | None = None
-    has_next: bool | None = None
+    curr_page: int = None
+    has_next: bool = None
 
 
 class EducationActivateResponse(RootModel[dict[str, Any]]):

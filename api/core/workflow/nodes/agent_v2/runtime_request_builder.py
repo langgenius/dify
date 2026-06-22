@@ -106,10 +106,10 @@ class WorkflowAgentRuntimeBuildContext:
     # Stage 4 §7 / D-4: 0 for the first run, then incremented per retry. Drives the
     # idempotency key so the backend treats each retry as a fresh request.
     attempt: int = 0
-    session_snapshot: CompositorSessionSnapshot | None = None
+    session_snapshot: CompositorSessionSnapshot = None
     # ENG-638: set when resuming after a submitted ask_human HITL form; threads
     # the human's answer back into the second Agent run keyed by tool_call_id.
-    deferred_tool_results: DeferredToolResultsPayload | None = None
+    deferred_tool_results: DeferredToolResultsPayload = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,8 +128,8 @@ class WorkflowAgentRuntimeRequestBuilder:
         self,
         *,
         credentials_provider: CredentialsProvider,
-        request_builder: AgentBackendRunRequestBuilder | None = None,
-        plugin_tools_builder: WorkflowAgentPluginToolsBuilder | None = None,
+        request_builder: AgentBackendRunRequestBuilder = None,
+        plugin_tools_builder: WorkflowAgentPluginToolsBuilder = None,
     ) -> None:
         self._credentials_provider = credentials_provider
         self._request_builder = request_builder or AgentBackendRunRequestBuilder()
@@ -181,7 +181,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 "cli_tool_count": len(agent_soul.tools.cli_tools),
             }
 
-        drive_config: DifyDriveLayerConfig | None = None
+        drive_config: DifyDriveLayerConfig = None
         if dify_config.AGENT_DRIVE_MANIFEST_ENABLED:
             drive_config, drive_warnings = build_drive_layer_config(agent_soul, agent_id=context.agent.id)
             append_runtime_warnings(metadata, drive_warnings)
@@ -414,8 +414,8 @@ class WorkflowAgentRuntimeRequestBuilder:
     def _schema_for_type(
         output_type: DeclaredOutputType,
         *,
-        array_item: DeclaredArrayItem | None = None,
-        children: Sequence[DeclaredOutputChildConfig] | None = None,
+        array_item: DeclaredArrayItem = None,
+        children: Sequence[DeclaredOutputChildConfig] = None,
     ) -> dict[str, Any]:
         match output_type:
             case DeclaredOutputType.STRING:

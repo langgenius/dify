@@ -176,8 +176,8 @@ class AgentDriveService:
         *,
         tenant_id: str,
         agent_id: str,
-        prefix: str | None = None,
-        key: str | None = None,
+        prefix: str = None,
+        key: str = None,
     ) -> list[str]:
         """Delete drive entries by exact ``key`` or by ``prefix`` (ENG-625 D5).
 

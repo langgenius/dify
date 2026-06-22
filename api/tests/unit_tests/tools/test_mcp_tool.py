@@ -21,7 +21,7 @@ from core.tools.mcp_tool.tool import MCPTool
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 
 
-def _make_mcp_tool(output_schema: dict[str, Any] | None = None) -> MCPTool:
+def _make_mcp_tool(output_schema: dict[str, Any] = None) -> MCPTool:
     identity = ToolIdentity(
         author="test",
         name="test_mcp_tool",

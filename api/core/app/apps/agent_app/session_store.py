@@ -58,8 +58,8 @@ class StoredAgentAppSession:
     runtime_layer_specs: list[RuntimeLayerSpec] = field(default_factory=list)
     # ENG-635: set while the conversation turn is paused on a dify.ask_human
     # deferred call, awaiting a HITL form submission.
-    pending_form_id: str | None = None
-    pending_tool_call_id: str | None = None
+    pending_form_id: str = None
+    pending_tool_call_id: str = None
 
 
 class AgentAppRuntimeSessionStore:
@@ -131,8 +131,8 @@ class AgentAppRuntimeSessionStore:
         backend_run_id: str,
         snapshot: CompositorSessionSnapshot | None,
         runtime_layer_specs: list[RuntimeLayerSpec],
-        pending_form_id: str | None = None,
-        pending_tool_call_id: str | None = None,
+        pending_form_id: str = None,
+        pending_tool_call_id: str = None,
     ) -> None:
         if snapshot is None:
             return
@@ -181,7 +181,7 @@ class AgentAppRuntimeSessionStore:
                 other_row.cleaned_at = naive_utc_now()
             session.commit()
 
-    def mark_cleaned(self, *, scope: AgentAppSessionScope, backend_run_id: str | None = None) -> None:
+    def mark_cleaned(self, *, scope: AgentAppSessionScope, backend_run_id: str = None) -> None:
         with session_factory.create_session() as session:
             row = session.scalar(self._active_stmt(scope))
             if row is None:

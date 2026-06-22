@@ -52,7 +52,7 @@ class DatasourceFileManager:
         conversation_id: str | None,
         file_binary: bytes,
         mimetype: str,
-        filename: str | None = None,
+        filename: str = None,
     ) -> UploadFile:
         extension = guess_extension(mimetype) or ".bin"
         unique_name = uuid4().hex
@@ -93,7 +93,7 @@ class DatasourceFileManager:
         user_id: str,
         tenant_id: str,
         file_url: str,
-        conversation_id: str | None = None,
+        conversation_id: str = None,
     ) -> ToolFile:
         # try to download image
         try:

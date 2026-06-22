@@ -34,7 +34,7 @@ def _create_dataset(db_session: Session, *, tenant_id: str, built_in_field_enabl
 
 
 def _create_document(
-    db_session: Session, *, dataset_id: str, tenant_id: str, doc_metadata: dict[str, str] | None = None
+    db_session: Session, *, dataset_id: str, tenant_id: str, doc_metadata: dict[str, str] = None
 ) -> Document:
     document = Document(
         tenant_id=tenant_id,

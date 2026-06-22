@@ -35,16 +35,16 @@ class TraceConfigPayload(BaseModel):
 
 
 class TraceAppConfigResponse(ResponseModel):
-    result: str | None = None
-    error: str | None = None
-    has_not_configured: bool | None = None
-    id: str | None = None
-    app_id: str | None = None
-    tracing_provider: str | None = None
+    result: str = None
+    error: str = None
+    has_not_configured: bool = None
+    id: str = None
+    app_id: str = None
+    tracing_provider: str = None
     tracing_config: dict[str, Any] | None = Field(default=None)
-    is_active: bool | None = None
-    created_at: str | None = None
-    updated_at: str | None = None
+    is_active: bool = None
+    created_at: str = None
+    updated_at: str = None
 
 
 register_schema_models(console_ns, TraceProviderQuery, TraceConfigPayload)

@@ -48,8 +48,8 @@ class ParserGetDefault(BaseModel):
 
 class Inner(BaseModel):
     model_type: ModelType
-    model: str | None = None
-    provider: str | None = None
+    model: str = None
+    provider: str = None
 
 
 class ParserPostDefault(BaseModel):
@@ -63,15 +63,15 @@ class ParserDeleteModels(BaseModel):
 
 class LoadBalancingPayload(BaseModel):
     configs: list[dict[str, Any]] | None = Field(default=None)
-    enabled: bool | None = None
+    enabled: bool = None
 
 
 class ParserPostModels(BaseModel):
     model: str
     model_type: ModelType
-    load_balancing: LoadBalancingPayload | None = None
-    config_from: str | None = None
-    credential_id: str | None = None
+    load_balancing: LoadBalancingPayload = None
+    config_from: str = None
+    credential_id: str = None
 
     @field_validator("credential_id")
     @classmethod
@@ -84,8 +84,8 @@ class ParserPostModels(BaseModel):
 class ParserGetCredentials(BaseModel):
     model: str
     model_type: ModelType
-    config_from: str | None = None
-    credential_id: str | None = None
+    config_from: str = None
+    credential_id: str = None
 
     @field_validator("credential_id")
     @classmethod
@@ -136,7 +136,7 @@ class ParserSwitch(BaseModel):
 
 
 class DefaultModelDataResponse(ResponseModel):
-    data: DefaultModelResponse | None = None
+    data: DefaultModelResponse = None
 
 
 class ModelWithProviderListResponse(ResponseModel):
@@ -154,15 +154,15 @@ class ModelCredentialLoadBalancingResponse(ResponseModel):
 
 class ModelCredentialResponse(ResponseModel):
     credentials: dict[str, Any] = Field(default_factory=dict)
-    current_credential_id: str | None = None
-    current_credential_name: str | None = None
+    current_credential_id: str = None
+    current_credential_name: str = None
     load_balancing: ModelCredentialLoadBalancingResponse
     available_credentials: list[CredentialConfiguration]
 
 
 class ModelCredentialValidateResponse(ResponseModel):
     result: str
-    error: str | None = None
+    error: str = None
 
 
 class ModelParameterRulesResponse(ResponseModel):

@@ -220,7 +220,7 @@ class BillingService:
 
     @classmethod
     def quota_reserve(
-        cls, tenant_id: str, feature_key: str, request_id: str, amount: int = 1, meta: dict | None = None
+        cls, tenant_id: str, feature_key: str, request_id: str, amount: int = 1, meta: dict = None
     ) -> QuotaReserveResult:
         """Reserve quota before task execution."""
         payload: dict = {
@@ -235,7 +235,7 @@ class BillingService:
 
     @classmethod
     def quota_commit(
-        cls, tenant_id: str, feature_key: str, reservation_id: str, actual_amount: int, meta: dict | None = None
+        cls, tenant_id: str, feature_key: str, reservation_id: str, actual_amount: int, meta: dict = None
     ) -> QuotaCommitResult:
         """Commit a reservation with actual consumption."""
         payload: dict = {
@@ -640,9 +640,9 @@ class BillingService:
         contents: list[LangContentDict],
         frequency: str = "once",
         status: str = "active",
-        notification_id: str | None = None,
-        start_time: str | None = None,
-        end_time: str | None = None,
+        notification_id: str = None,
+        start_time: str = None,
+        end_time: str = None,
     ) -> UpsertNotificationDict:
         """Create or update a notification.
 

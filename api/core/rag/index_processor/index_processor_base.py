@@ -50,7 +50,7 @@ class BaseIndexProcessor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def transform(self, documents: list[Document], current_user: Account | None = None, **kwargs) -> list[Document]:
+    def transform(self, documents: list[Document], current_user: Account = None, **kwargs) -> list[Document]:
         raise NotImplementedError
 
     @abstractmethod
@@ -59,7 +59,7 @@ class BaseIndexProcessor(ABC):
         tenant_id: str,
         preview_texts: list[PreviewDetail],
         summary_index_setting: SummaryIndexSettingDict,
-        doc_language: str | None = None,
+        doc_language: str = None,
     ) -> list[PreviewDetail]:
         """
         For each segment in preview_texts, generate a summary using LLM and attach it to the segment.
@@ -79,7 +79,7 @@ class BaseIndexProcessor(ABC):
         self,
         dataset: Dataset,
         documents: list[Document],
-        multimodal_documents: list[AttachmentDocument] | None = None,
+        multimodal_documents: list[AttachmentDocument] = None,
         with_keywords: bool = True,
         **kwargs,
     ) -> None:
@@ -136,7 +136,7 @@ class BaseIndexProcessor(ABC):
 
         return character_splitter
 
-    def _get_content_files(self, document: Document, current_user: Account | None = None) -> list[AttachmentDocument]:
+    def _get_content_files(self, document: Document, current_user: Account = None) -> list[AttachmentDocument]:
         """
         Get the content files from the document.
         """

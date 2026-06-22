@@ -58,8 +58,8 @@ CURRENT_DSL_VERSION = CURRENT_APP_DSL_VERSION
 class Import(BaseModel):
     id: str
     status: ImportStatus
-    app_id: str | None = None
-    app_mode: str | None = None
+    app_id: str = None
+    app_mode: str = None
     permission_keys: list[str] = Field(default_factory=list)
     current_dsl_version: str = CURRENT_DSL_VERSION
     imported_dsl_version: str = ""
@@ -69,17 +69,17 @@ class Import(BaseModel):
 class PendingData(BaseModel):
     import_mode: str
     yaml_content: str
-    name: str | None = None
-    description: str | None = None
-    icon_type: str | None = None
-    icon: str | None = None
-    icon_background: str | None = None
-    app_id: str | None = None
+    name: str = None
+    description: str = None
+    icon_type: str = None
+    icon: str = None
+    icon_background: str = None
+    app_id: str = None
 
 
 class CheckDependenciesPendingData(BaseModel):
     dependencies: list[PluginDependency]
-    app_id: str | None = None
+    app_id: str = None
 
 
 class AppDslService:
@@ -91,15 +91,15 @@ class AppDslService:
         *,
         account: Account,
         import_mode: str,
-        yaml_content: str | None = None,
-        yaml_url: str | None = None,
-        name: str | None = None,
-        description: str | None = None,
-        icon_type: str | None = None,
-        icon: str | None = None,
-        icon_background: str | None = None,
-        app_id: str | None = None,
-        import_app_id: str | None = None,
+        yaml_content: str = None,
+        yaml_url: str = None,
+        name: str = None,
+        description: str = None,
+        icon_type: str = None,
+        icon: str = None,
+        icon_background: str = None,
+        app_id: str = None,
+        import_app_id: str = None,
     ) -> Import:
         """Import an app from YAML content or URL."""
         import_id = str(uuid.uuid4())
@@ -383,13 +383,13 @@ class AppDslService:
         app: App | None,
         data: dict[str, Any],
         account: Account,
-        name: str | None = None,
-        description: str | None = None,
-        icon_type: str | None = None,
-        icon: str | None = None,
-        icon_background: str | None = None,
-        dependencies: list[PluginDependency] | None = None,
-        import_app_id: str | None = None,
+        name: str = None,
+        description: str = None,
+        icon_type: str = None,
+        icon: str = None,
+        icon_background: str = None,
+        dependencies: list[PluginDependency] = None,
+        import_app_id: str = None,
     ) -> App:
         """Create a new app or update an existing one."""
         app_data = data.get("app", {})
@@ -514,7 +514,7 @@ class AppDslService:
         return app
 
     @classmethod
-    def export_dsl(cls, app_model: App, include_secret: bool = False, workflow_id: str | None = None) -> str:
+    def export_dsl(cls, app_model: App, include_secret: bool = False, workflow_id: str = None) -> str:
         """
         Export app
         :param app_model: App instance
@@ -550,7 +550,7 @@ class AppDslService:
 
     @classmethod
     def _append_workflow_export_data(
-        cls, *, export_data: dict[str, Any], app_model: App, include_secret: bool, workflow_id: str | None = None
+        cls, *, export_data: dict[str, Any], app_model: App, include_secret: bool, workflow_id: str = None
     ):
         """
         Append workflow export data

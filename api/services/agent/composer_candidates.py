@@ -95,7 +95,7 @@ def previous_node_output_candidates(
                     )
             continue
 
-        declared: list[DeclaredOutputConfig] | None = None
+        declared: list[DeclaredOutputConfig] = None
         if kind == "agent" and str(data.get("version", "")) == "2":
             declared = declared_outputs_loader(nid)
         if declared is not None:

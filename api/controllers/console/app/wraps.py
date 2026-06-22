@@ -62,7 +62,7 @@ def with_session[T, **P, R](
 
 
 def with_session[T, **P, R](
-    view: Callable[Concatenate[T, Session, P], R] | None = None,
+    view: Callable[Concatenate[T, Session, P], R] = None,
     *,
     write: bool = True,
 ) -> (
@@ -106,7 +106,7 @@ def _get_injected_session(args: tuple[object, ...]) -> Session | None:
 def get_app_model[**P, R](
     view: Callable[P, R],
     *,
-    mode: AppMode | list[AppMode] | None = None,
+    mode: AppMode | list[AppMode] = None,
 ) -> Callable[P, R]: ...
 
 
@@ -114,14 +114,14 @@ def get_app_model[**P, R](
 def get_app_model[**P, R](
     view: None = None,
     *,
-    mode: AppMode | list[AppMode] | None = None,
+    mode: AppMode | list[AppMode] = None,
 ) -> Callable[[Callable[P, R]], Callable[P, R]]: ...
 
 
 def get_app_model[**P, R](
-    view: Callable[P, R] | None = None,
+    view: Callable[P, R] = None,
     *,
-    mode: AppMode | list[AppMode] | None = None,
+    mode: AppMode | list[AppMode] = None,
 ) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
     """Inject the App model for handlers that receive an `app_id` path parameter.
 
@@ -178,7 +178,7 @@ def get_app_model[**P, R](
 def get_app_model_with_trial[**P, R](
     view: Callable[P, R],
     *,
-    mode: AppMode | list[AppMode] | None = None,
+    mode: AppMode | list[AppMode] = None,
 ) -> Callable[P, R]: ...
 
 
@@ -186,14 +186,14 @@ def get_app_model_with_trial[**P, R](
 def get_app_model_with_trial[**P, R](
     view: None = None,
     *,
-    mode: AppMode | list[AppMode] | None = None,
+    mode: AppMode | list[AppMode] = None,
 ) -> Callable[[Callable[P, R]], Callable[P, R]]: ...
 
 
 def get_app_model_with_trial[**P, R](
-    view: Callable[P, R] | None = None,
+    view: Callable[P, R] = None,
     *,
-    mode: AppMode | list[AppMode] | None = None,
+    mode: AppMode | list[AppMode] = None,
 ) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
     def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
         @wraps(view_func)

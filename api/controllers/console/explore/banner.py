@@ -21,10 +21,10 @@ class BannerListQuery(BaseModel):
 class BannerResponse(ResponseModel):
     id: str
     content: Any
-    link: str | None = None
+    link: str = None
     sort: int
     status: str
-    created_at: str | None = None
+    created_at: str = None
 
 
 class BannerListResponse(RootModel[list[BannerResponse]]):

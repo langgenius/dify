@@ -266,7 +266,7 @@ class WorkflowCollaborationService:
         self._repository.set_leader(workflow_id, sid)
         self.broadcast_leader_change(workflow_id, sid)
 
-    def _select_graph_leader(self, workflow_id: str, preferred_sid: str | None = None) -> str | None:
+    def _select_graph_leader(self, workflow_id: str, preferred_sid: str = None) -> str | None:
         session_sids = [
             session["sid"]
             for session in self._repository.list_sessions(workflow_id)

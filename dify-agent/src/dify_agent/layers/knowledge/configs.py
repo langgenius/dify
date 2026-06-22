@@ -69,9 +69,9 @@ class DifyKnowledgeRetrievalConfig(BaseModel):
     score_threshold: float = 0.0
     reranking_mode: str = "reranking_model"
     reranking_enable: bool = True
-    reranking_model: DifyKnowledgeRerankingModelConfig | None = None
-    weights: dict[str, JsonValue] | None = None
-    model: DifyKnowledgeModelConfig | None = None
+    reranking_model: DifyKnowledgeRerankingModelConfig = None
+    weights: dict[str, JsonValue] = None
+    model: DifyKnowledgeModelConfig = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -107,7 +107,7 @@ class DifyKnowledgeMetadataCondition(BaseModel):
 
     name: str
     comparison_operator: DifyKnowledgeMetadataComparisonOperator
-    value: str | list[str] | int | float | None = None
+    value: str | list[str] | int | float = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -126,7 +126,7 @@ class DifyKnowledgeMetadataFilteringConfig(BaseModel):
 
     mode: Literal["disabled", "automatic", "manual"] = "disabled"
     metadata_model_config: DifyKnowledgeModelConfig | None = Field(default=None, alias="model_config")
-    conditions: DifyKnowledgeMetadataConditions | None = None
+    conditions: DifyKnowledgeMetadataConditions = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", populate_by_name=True)
 

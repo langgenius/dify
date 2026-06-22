@@ -22,25 +22,25 @@ class ComposerSaveStrategy(StrEnum):
 
 class ComposerBindingPayload(BaseModel):
     binding_type: Literal["roster_agent", "inline_agent"]
-    agent_id: str | None = None
-    current_snapshot_id: str | None = None
+    agent_id: str = None
+    current_snapshot_id: str = None
 
 
 class ComposerSoulLockPayload(BaseModel):
     locked: bool = True
-    unlocked_from_version_id: str | None = None
+    unlocked_from_version_id: str = None
 
 
 class ComposerSavePayload(BaseModel):
     variant: ComposerVariant
-    binding: ComposerBindingPayload | None = None
+    binding: ComposerBindingPayload = None
     soul_lock: ComposerSoulLockPayload = Field(default_factory=ComposerSoulLockPayload)
-    agent_soul: AgentSoulConfig | None = None
-    node_job: WorkflowNodeJobConfig | None = None
+    agent_soul: AgentSoulConfig = None
+    node_job: WorkflowNodeJobConfig = None
     save_strategy: ComposerSaveStrategy
-    version_note: str | None = None
-    idempotency_key: str | None = None
-    client_revision_id: str | None = None
+    version_note: str = None
+    idempotency_key: str = None
+    client_revision_id: str = None
     new_agent_name: str | None = Field(default=None, min_length=1, max_length=255)
 
     @model_validator(mode="after")
@@ -63,18 +63,18 @@ class RosterAgentCreatePayload(BaseModel):
     mode: Literal["agent"] = "agent"
     description: str = ""
     role: str = Field(default="", max_length=255)
-    icon_type: AgentIconType | None = None
+    icon_type: AgentIconType = None
     icon: str | None = Field(default=None, max_length=255)
     icon_background: str | None = Field(default=None, max_length=255)
     agent_soul: AgentSoulConfig = Field(default_factory=AgentSoulConfig)
-    version_note: str | None = None
+    version_note: str = None
 
 
 class RosterAgentUpdatePayload(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
-    description: str | None = None
+    description: str = None
     role: str | None = Field(default=None, max_length=255)
-    icon_type: AgentIconType | None = None
+    icon_type: AgentIconType = None
     icon: str | None = Field(default=None, max_length=255)
     icon_background: str | None = Field(default=None, max_length=255)
 
@@ -82,7 +82,7 @@ class RosterAgentUpdatePayload(BaseModel):
 class RosterListQuery(BaseModel):
     page: int = Field(default=1, ge=1)
     limit: int = Field(default=20, ge=1, le=100)
-    keyword: str | None = None
+    keyword: str = None
 
 
 class ComposerCandidateCapabilities(BaseModel):

@@ -43,19 +43,19 @@ class DifyExecutionContextLayerConfig(LayerConfig):
     """Public config for Dify execution identity and daemon transport context."""
 
     tenant_id: str
-    user_id: str | None = None
-    user_from: DifyExecutionContextUserFrom | None = None
-    app_id: str | None = None
-    workflow_id: str | None = None
-    workflow_run_id: str | None = None
-    node_id: str | None = None
-    node_execution_id: str | None = None
-    conversation_id: str | None = None
-    agent_id: str | None = None
-    agent_config_version_id: str | None = None
+    user_id: str = None
+    user_from: DifyExecutionContextUserFrom = None
+    app_id: str = None
+    workflow_id: str = None
+    workflow_run_id: str = None
+    node_id: str = None
+    node_execution_id: str = None
+    conversation_id: str = None
+    agent_id: str = None
+    agent_config_version_id: str = None
     agent_mode: DifyExecutionContextAgentMode
     invoke_from: DifyExecutionContextInvokeFrom
-    trace_id: str | None = None
+    trace_id: str = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 

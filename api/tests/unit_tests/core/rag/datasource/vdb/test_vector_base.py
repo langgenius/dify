@@ -8,7 +8,7 @@ from core.rag.models.document import Document
 
 
 class _DummyVector(BaseVector):
-    def __init__(self, collection_name: str, existing_ids: set[str] | None = None):
+    def __init__(self, collection_name: str, existing_ids: set[str] = None):
         super().__init__(collection_name)
         self._existing_ids = existing_ids or set()
 

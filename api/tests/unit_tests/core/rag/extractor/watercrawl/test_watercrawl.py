@@ -19,7 +19,7 @@ from core.rag.extractor.watercrawl.provider import WaterCrawlProvider
 
 def _response(
     status_code: int,
-    json_data: dict[str, Any] | None = None,
+    json_data: dict[str, Any] = None,
     content_type: str = "application/json",
     content: bytes = b"",
     text: str = "",

@@ -45,7 +45,7 @@ class _ImmediateThread:
 class _TestHitCallback(DatasetIndexToolCallbackHandler):
     def __init__(self):
         self.queries: list[tuple[str, str]] = []
-        self.documents: list[RagDocument] | None = None
+        self.documents: list[RagDocument] = None
         self.resources = None
 
     def on_query(self, query: str, dataset_id: str):

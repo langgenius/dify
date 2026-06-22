@@ -25,8 +25,8 @@ class MetadataService:
     def create_metadata(
         dataset_id: str,
         metadata_args: MetadataArgs,
-        current_user: Account | None = None,  # TODO: the service_api is not migrated yet
-        current_tenant_id: str | None = None,
+        current_user: Account = None,  # TODO: the service_api is not migrated yet
+        current_tenant_id: str = None,
     ) -> DatasetMetadata:
         # check if metadata name is too long
         if len(metadata_args.name) > 255:
@@ -62,8 +62,8 @@ class MetadataService:
         dataset_id: str,
         metadata_id: str,
         name: str,
-        current_user: Account | None = None,
-        current_tenant_id: str | None = None,  # TODO: the service_api is not migrated yet
+        current_user: Account = None,
+        current_tenant_id: str = None,  # TODO: the service_api is not migrated yet
     ) -> DatasetMetadata | None:
         # check if metadata name is too long
         if len(name) > 255:
@@ -233,8 +233,8 @@ class MetadataService:
     def update_documents_metadata(
         dataset: Dataset,
         metadata_args: MetadataOperationData,
-        current_user: Account | None = None,  # TODO: the service_api is not migrated yet
-        current_tenant_id: str | None = None,
+        current_user: Account = None,  # TODO: the service_api is not migrated yet
+        current_tenant_id: str = None,
     ):
         current_user, current_tenant_id = resolve_account_fallback(
             current_user, current_tenant_id, fallback_tenant_id=dataset.tenant_id

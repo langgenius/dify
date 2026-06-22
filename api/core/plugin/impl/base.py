@@ -70,10 +70,10 @@ class BasePluginClient:
         self,
         method: str,
         path: str,
-        headers: dict[str, str] | None = None,
-        data: bytes | dict[str, Any] | str | None = None,
-        params: dict[str, Any] | None = None,
-        files: dict[str, Any] | None = None,
+        headers: dict[str, str] = None,
+        data: bytes | dict[str, Any] | str = None,
+        params: dict[str, Any] = None,
+        files: dict[str, Any] = None,
     ) -> httpx.Response:
         """
         Make a request to the plugin daemon inner API.
@@ -171,10 +171,10 @@ class BasePluginClient:
         self,
         method: str,
         path: str,
-        params: dict[str, Any] | None = None,
-        headers: dict[str, str] | None = None,
-        data: bytes | dict[str, Any] | None = None,
-        files: dict[str, Any] | None = None,
+        params: dict[str, Any] = None,
+        headers: dict[str, str] = None,
+        data: bytes | dict[str, Any] = None,
+        files: dict[str, Any] = None,
     ) -> Generator[str, None, None]:
         """
         Make a stream request to the plugin daemon inner API
@@ -214,10 +214,10 @@ class BasePluginClient:
         method: str,
         path: str,
         type_: type[T],
-        headers: dict[str, str] | None = None,
-        data: bytes | dict[str, Any] | None = None,
-        params: dict[str, Any] | None = None,
-        files: dict[str, Any] | None = None,
+        headers: dict[str, str] = None,
+        data: bytes | dict[str, Any] = None,
+        params: dict[str, Any] = None,
+        files: dict[str, Any] = None,
     ) -> Generator[T, None, None]:
         """
         Make a stream request to the plugin daemon inner API and yield the response as a model.
@@ -230,10 +230,10 @@ class BasePluginClient:
         method: str,
         path: str,
         type_: type[T],
-        headers: dict[str, str] | None = None,
-        data: bytes | None = None,
-        params: dict[str, Any] | None = None,
-        files: dict[str, Any] | None = None,
+        headers: dict[str, str] = None,
+        data: bytes = None,
+        params: dict[str, Any] = None,
+        files: dict[str, Any] = None,
     ) -> T:
         """
         Make a request to the plugin daemon inner API and return the response as a model.
@@ -246,11 +246,11 @@ class BasePluginClient:
         method: str,
         path: str,
         type_: type[T],
-        headers: dict[str, str] | None = None,
-        data: bytes | dict[str, Any] | None = None,
-        params: dict[str, Any] | None = None,
-        files: dict[str, Any] | None = None,
-        transformer: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
+        headers: dict[str, str] = None,
+        data: bytes | dict[str, Any] = None,
+        params: dict[str, Any] = None,
+        files: dict[str, Any] = None,
+        transformer: Callable[[dict[str, Any]], dict[str, Any]] = None,
     ) -> T:
         """
         Make a request to the plugin daemon inner API and return the response as a model.
@@ -301,10 +301,10 @@ class BasePluginClient:
         method: str,
         path: str,
         type_: type[T],
-        headers: dict[str, str] | None = None,
-        data: bytes | dict[str, Any] | None = None,
-        params: dict[str, Any] | None = None,
-        files: dict[str, Any] | None = None,
+        headers: dict[str, str] = None,
+        data: bytes | dict[str, Any] = None,
+        params: dict[str, Any] = None,
+        files: dict[str, Any] = None,
     ) -> Generator[T, None, None]:
         """
         Make a stream request to the plugin daemon inner API and yield the response as a model.

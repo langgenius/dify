@@ -26,7 +26,7 @@ class LoadBalancingCredentialPayload(BaseModel):
 
 class LoadBalancingCredentialValidateResponse(ResponseModel):
     result: str
-    error: str | None = None
+    error: str = None
 
 
 register_schema_models(console_ns, LoadBalancingCredentialPayload)

@@ -63,7 +63,7 @@ class _TableTestChildEngineBuilder:
         graph_init_params: GraphInitParams,
         parent_graph_runtime_state: GraphRuntimeState,
         root_node_id: str,
-        variable_pool: VariablePool | None = None,
+        variable_pool: VariablePool = None,
     ) -> GraphEngine:
         child_graph_runtime_state = GraphRuntimeState(
             variable_pool=variable_pool if variable_pool is not None else parent_graph_runtime_state.variable_pool,
@@ -108,10 +108,10 @@ class WorkflowTestCase:
     query: str = ""
     description: str = ""
     timeout: float = 30.0
-    mock_config: MockConfig | None = None
+    mock_config: MockConfig = None
     use_auto_mock: bool = False
-    expected_event_sequence: Sequence[type[GraphEngineEvent]] | None = None
-    graph_factory: Callable[[], tuple[Graph, GraphRuntimeState]] | None = None
+    expected_event_sequence: Sequence[type[GraphEngineEvent]] = None
+    graph_factory: Callable[[], tuple[Graph, GraphRuntimeState]] = None
 
 
 @dataclass
@@ -120,15 +120,15 @@ class WorkflowTestResult:
 
     test_case: WorkflowTestCase
     success: bool
-    error: Exception | None = None
-    actual_outputs: dict[str, Any] | None = None
+    error: Exception = None
+    actual_outputs: dict[str, Any] = None
     execution_time: float = 0.0
-    event_sequence_match: bool | None = None
-    event_mismatch_details: str | None = None
+    event_sequence_match: bool = None
+    event_mismatch_details: str = None
     events: list[GraphEngineEvent] = field(default_factory=list)
-    graph: Graph | None = None
-    graph_runtime_state: GraphRuntimeState | None = None
-    validation_details: str | None = None
+    graph: Graph = None
+    graph_runtime_state: GraphRuntimeState = None
+    validation_details: str = None
 
 
 @dataclass
@@ -156,7 +156,7 @@ class TestSuiteResult:
 class WorkflowRunner:
     """Core workflow execution engine for tests."""
 
-    def __init__(self, fixtures_dir: Path | None = None):
+    def __init__(self, fixtures_dir: Path = None):
         """Initialize the workflow runner."""
         if fixtures_dir is None:
             # Use the new central fixtures location
@@ -187,9 +187,9 @@ class WorkflowRunner:
         self,
         fixture_data: dict[str, Any],
         query: str = "",
-        inputs: dict[str, Any] | None = None,
+        inputs: dict[str, Any] = None,
         use_mock_factory: bool = False,
-        mock_config: MockConfig | None = None,
+        mock_config: MockConfig = None,
     ) -> tuple[Graph, GraphRuntimeState]:
         """Create a Graph instance from fixture data."""
         workflow_config = fixture_data.get("workflow", {})
@@ -294,7 +294,7 @@ class TableTestRunner:
 
     def __init__(
         self,
-        fixtures_dir: Path | None = None,
+        fixtures_dir: Path = None,
         max_workers: int = 4,
         enable_logging: bool = False,
         log_level: str = "INFO",

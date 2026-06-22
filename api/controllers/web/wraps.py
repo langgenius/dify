@@ -22,7 +22,7 @@ from services.webapp_auth_service import WebAppAuthService
 
 
 def validate_jwt_token[**P, R](
-    view: Callable[Concatenate[App, EndUser, P], R] | None = None,
+    view: Callable[Concatenate[App, EndUser, P], R] = None,
 ) -> Callable[P, R] | Callable[[Callable[Concatenate[App, EndUser, P], R]], Callable[P, R]]:
     def decorator(view: Callable[Concatenate[App, EndUser, P], R]) -> Callable[P, R]:
         @wraps(view)
@@ -37,7 +37,7 @@ def validate_jwt_token[**P, R](
     return decorator
 
 
-def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) -> tuple[App, EndUser]:
+def decode_jwt_token(app_code: str = None, user_id: str = None) -> tuple[App, EndUser]:
     system_features = FeatureService.get_system_features()
     if not app_code:
         app_code = str(request.headers.get(HEADER_NAME_APP_CODE))

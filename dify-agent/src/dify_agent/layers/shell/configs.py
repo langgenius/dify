@@ -83,7 +83,7 @@ class DifyShellLayerConfig(LayerConfig):
     cli_tools: list[DifyShellCliToolConfig] = Field(default_factory=list)
     env: list[DifyShellEnvVarConfig] = Field(default_factory=list)
     secret_refs: list[DifyShellSecretRefConfig] = Field(default_factory=list)
-    sandbox: DifyShellSandboxConfig | None = None
+    sandbox: DifyShellSandboxConfig = None
 
 
 __all__ = [

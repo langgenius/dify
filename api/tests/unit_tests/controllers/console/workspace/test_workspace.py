@@ -41,9 +41,9 @@ def make_account(account_id: str = "u1") -> Account:
 def make_tenant(
     tenant_id: str = "t1",
     *,
-    name: str | None = None,
+    name: str = None,
     status: TenantStatus = TenantStatus.NORMAL,
-    custom_config: TenantCustomConfigDict | None = None,
+    custom_config: TenantCustomConfigDict = None,
 ) -> Tenant:
     tenant = Tenant(name=name or f"Tenant {tenant_id}", status=status)
     tenant.id = tenant_id

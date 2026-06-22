@@ -58,7 +58,7 @@ class AuthPipeline:
         *,
         scope: Scope | None,
         workspace_membership: bool = False,
-        allowed_roles: frozenset[TenantAccountRole] | None = None,
+        allowed_roles: frozenset[TenantAccountRole] = None,
     ) -> Any:
         req_ctx = RequestContext(
             token_type=identity.token_type,
@@ -107,7 +107,7 @@ class AuthPipeline:
 @dataclass(frozen=True)
 class PipelineRoute:
     pipeline: AuthPipeline
-    required_edition: frozenset[Edition] | None = None
+    required_edition: frozenset[Edition] = None
 
 
 class PipelineRouter:
@@ -124,11 +124,11 @@ class PipelineRouter:
     def guard(
         self,
         *,
-        scope: Scope | None = None,
-        allowed_token_types: frozenset[TokenType] | None = None,
-        edition: frozenset[Edition] | None = None,
+        scope: Scope = None,
+        allowed_token_types: frozenset[TokenType] = None,
+        edition: frozenset[Edition] = None,
         workspace_membership: bool = False,
-        allowed_roles: frozenset[TenantAccountRole] | None = None,
+        allowed_roles: frozenset[TenantAccountRole] = None,
     ) -> Callable:
         return self._make_decorator(
             scope=scope,
@@ -141,10 +141,10 @@ class PipelineRouter:
     def guard_workspace(
         self,
         *,
-        scope: Scope | None = None,
-        allowed_token_types: frozenset[TokenType] | None = None,
-        edition: frozenset[Edition] | None = None,
-        allowed_roles: frozenset[TenantAccountRole] | None = None,
+        scope: Scope = None,
+        allowed_token_types: frozenset[TokenType] = None,
+        edition: frozenset[Edition] = None,
+        allowed_roles: frozenset[TenantAccountRole] = None,
     ) -> Callable:
         return self._make_decorator(
             scope=scope,
@@ -191,7 +191,7 @@ class PipelineRouter:
         allowed_token_types: frozenset[TokenType] | None,
         edition: frozenset[Edition] | None,
         workspace_membership: bool = False,
-        allowed_roles: frozenset[TenantAccountRole] | None = None,
+        allowed_roles: frozenset[TenantAccountRole] = None,
     ) -> Any:
         # 404 not 403 — this edition doesn't expose the feature at all
         if edition is not None and current_edition() not in edition:

@@ -278,14 +278,14 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         }
 
     @classmethod
-    def get_system_model_max_tokens(cls, tenant_id: str, user_id: str | None = None) -> int:
+    def get_system_model_max_tokens(cls, tenant_id: str, user_id: str = None) -> int:
         """
         get system model max tokens
         """
         return ModelInvocationUtils.get_max_llm_context_tokens(tenant_id=tenant_id, user_id=user_id)
 
     @classmethod
-    def get_prompt_tokens(cls, tenant_id: str, prompt_messages: list[PromptMessage], user_id: str | None = None) -> int:
+    def get_prompt_tokens(cls, tenant_id: str, prompt_messages: list[PromptMessage], user_id: str = None) -> int:
         """
         get prompt tokens
         """

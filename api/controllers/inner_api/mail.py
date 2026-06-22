@@ -14,7 +14,7 @@ class InnerMailPayload(BaseModel):
     to: list[str] = Field(description="Recipient email addresses", min_length=1)
     subject: str
     body: str
-    substitutions: dict[str, Any] | None = None
+    substitutions: dict[str, Any] = None
 
 
 register_schema_model(inner_api_ns, InnerMailPayload)

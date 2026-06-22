@@ -14,14 +14,14 @@ class BuiltInPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
     Retrieval pipeline template from built-in, the location  is constants/pipeline_templates.json
     """
 
-    builtin_data: dict[str, Any] | None = None
+    builtin_data: dict[str, Any] = None
 
     @override
     def get_type(self) -> str:
         return PipelineTemplateType.BUILTIN
 
     @override
-    def get_pipeline_templates(self, language: str, current_tenant_id: str | None = None) -> dict[str, Any]:
+    def get_pipeline_templates(self, language: str, current_tenant_id: str = None) -> dict[str, Any]:
         del current_tenant_id
         result = self.fetch_pipeline_templates_from_builtin(language)
         return result

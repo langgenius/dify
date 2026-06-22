@@ -8,9 +8,9 @@ from core.ops.utils import replace_text_with_content
 
 
 class WeaveTokenUsage(BaseModel):
-    input_tokens: int | None = None
-    output_tokens: int | None = None
-    total_tokens: int | None = None
+    input_tokens: int = None
+    output_tokens: int = None
+    total_tokens: int = None
 
 
 class WeaveMultiModel(BaseModel):

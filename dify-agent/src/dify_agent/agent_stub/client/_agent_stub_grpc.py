@@ -55,7 +55,7 @@ def connect_agent_stub_grpc_sync(
     url: str,
     auth_jwe: str,
     argv: list[str],
-    metadata: dict[str, JsonValue] | None = None,
+    metadata: dict[str, JsonValue] = None,
     timeout: float | httpx.Timeout = 30.0,
 ):
     """Create one gRPC Agent Stub connection using the provided bearer JWE.

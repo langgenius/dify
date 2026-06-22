@@ -185,10 +185,10 @@ class ToolManager:
         provider_id: str,
         tool_name: str,
         tenant_id: str,
-        user_id: str | None = None,
+        user_id: str = None,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         tool_invoke_from: ToolInvokeFrom = ToolInvokeFrom.AGENT,
-        credential_id: str | None = None,
+        credential_id: str = None,
     ) -> BuiltinTool | PluginTool | ApiTool | WorkflowTool | MCPTool:
         """
         get the tool runtime
@@ -395,7 +395,7 @@ class ToolManager:
         tenant_id: str,
         app_id: str,
         agent_tool: AgentToolEntity,
-        user_id: str | None = None,
+        user_id: str = None,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         variable_pool: "VariablePool | None" = None,
         allow_file_parameters: bool = False,
@@ -446,7 +446,7 @@ class ToolManager:
         app_id: str,
         node_id: str,
         workflow_tool: WorkflowToolRuntimeSpec,
-        user_id: str | None = None,
+        user_id: str = None,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         variable_pool: "VariablePool | None" = None,
     ) -> Tool:
@@ -492,8 +492,8 @@ class ToolManager:
         provider: str,
         tool_name: str,
         tool_parameters: dict[str, Any],
-        user_id: str | None = None,
-        credential_id: str | None = None,
+        user_id: str = None,
+        credential_id: str = None,
     ) -> Tool:
         """
         get tool runtime from plugin

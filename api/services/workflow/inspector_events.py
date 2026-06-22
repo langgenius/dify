@@ -83,8 +83,8 @@ class InspectorMessage:
 
     kind: InspectorMessageKind
     workflow_run_id: str
-    node_id: str | None = None
-    status: str | None = None
+    node_id: str = None
+    status: str = None
 
     def to_json(self) -> str:
         return json.dumps(asdict(self), ensure_ascii=False)

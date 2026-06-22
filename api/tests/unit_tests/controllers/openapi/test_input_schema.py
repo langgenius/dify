@@ -94,7 +94,7 @@ from controllers.service_api.app.error import AppUnavailableError
 from models.model import AppMode
 
 
-def _stub_app(mode: AppMode, *, form: list[dict] | None = None, has_workflow: bool | None = None):
+def _stub_app(mode: AppMode, *, form: list[dict] = None, has_workflow: bool = None):
     """Returns a MagicMock whose .mode + workflow / app_model_config branch is wired up."""
     app = MagicMock()
     app.mode = mode

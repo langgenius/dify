@@ -26,9 +26,9 @@ class DocumentServiceIntegrationFactory:
     def create_dataset(
         db_session_with_containers,
         *,
-        tenant_id: str | None = None,
-        created_by: str | None = None,
-        name: str | None = None,
+        tenant_id: str = None,
+        created_by: str = None,
+        name: str = None,
     ) -> Dataset:
         resolved_created_by = created_by or str(uuid4())
         dataset = Dataset(
@@ -49,17 +49,17 @@ class DocumentServiceIntegrationFactory:
         dataset: Dataset,
         name: str = "doc.txt",
         position: int = 1,
-        tenant_id: str | None = None,
+        tenant_id: str = None,
         indexing_status: str = IndexingStatus.COMPLETED,
         enabled: bool = True,
         archived: bool = False,
         is_paused: bool = False,
         need_summary: bool = False,
         doc_form: str = IndexStructureType.PARAGRAPH_INDEX,
-        batch: str | None = None,
+        batch: str = None,
         data_source_type: str = DataSourceType.UPLOAD_FILE,
-        data_source_info: dict | None = None,
-        created_by: str | None = None,
+        data_source_info: dict = None,
+        created_by: str = None,
     ) -> Document:
         document = Document(
             tenant_id=tenant_id or dataset.tenant_id,
@@ -90,7 +90,7 @@ class DocumentServiceIntegrationFactory:
         *,
         tenant_id: str,
         created_by: str,
-        file_id: str | None = None,
+        file_id: str = None,
         name: str = "source.txt",
     ) -> UploadFile:
         upload_file = UploadFile(

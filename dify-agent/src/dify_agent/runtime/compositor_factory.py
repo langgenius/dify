@@ -56,10 +56,10 @@ def create_default_layer_providers(
     plugin_daemon_api_key: str = "",
     dify_api_inner_url: str = "http://localhost:5001",
     dify_api_inner_api_key: str = "",
-    shellctl_entrypoint: str | None = None,
-    shellctl_auth_token: str | None = None,
-    agent_stub_url: str | None = None,
-    agent_stub_token_codec: AgentStubTokenCodec | None = None,
+    shellctl_entrypoint: str = None,
+    shellctl_auth_token: str = None,
+    agent_stub_url: str = None,
+    agent_stub_token_codec: AgentStubTokenCodec = None,
 ) -> tuple[DifyAgentLayerProvider, ...]:
     """Return the server provider set of safe config-constructible layers.
 
@@ -70,7 +70,7 @@ def create_default_layer_providers(
     setting explicitly.
     """
     shellctl_token = shellctl_auth_token or ""
-    agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
+    agent_stub_token_factory: ShellAgentStubTokenFactory = None
     if agent_stub_token_codec is not None:
 
         def build_agent_stub_token(
@@ -128,7 +128,7 @@ def build_pydantic_ai_compositor(
     config: CompositorConfig,
     *,
     providers: Sequence[LayerProviderInput],
-    node_providers: Mapping[str, LayerProviderInput] | None = None,
+    node_providers: Mapping[str, LayerProviderInput] = None,
 ) -> Compositor[
     PydanticAIPrompt[object],
     PydanticAITool[object],

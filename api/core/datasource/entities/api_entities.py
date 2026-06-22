@@ -12,9 +12,9 @@ class DatasourceApiEntity(BaseModel):
     name: str  # identifier
     label: I18nObject  # label
     description: I18nObject
-    parameters: list[DatasourceParameter] | None = None
+    parameters: list[DatasourceParameter] = None
     labels: list[str] = Field(default_factory=list)
-    output_schema: dict[str, Any] | None = None
+    output_schema: dict[str, Any] = None
 
 
 ToolProviderTypeApiLiteral = Literal["builtin", "api", "workflow"] | None
@@ -45,8 +45,8 @@ class DatasourceProviderApiEntity(BaseModel):
     icon: str | dict
     label: I18nObject  # label
     type: str
-    masked_credentials: dict[str, Any] | None = None
-    original_credentials: dict[str, Any] | None = None
+    masked_credentials: dict[str, Any] = None
+    original_credentials: dict[str, Any] = None
     is_team_authorization: bool = False
     allow_delete: bool = True
     plugin_id: str | None = Field(default="", description="The plugin id of the datasource")

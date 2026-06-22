@@ -54,7 +54,7 @@ class OutputTypeCheckResult:
     declared_type: DeclaredOutputType
     status: OutputTypeCheckStatus
     value: Any
-    reason: str | None = None
+    reason: str = None
 
 
 @dataclass(frozen=True, slots=True)

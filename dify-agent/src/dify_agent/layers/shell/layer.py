@@ -180,8 +180,8 @@ class ShellctlClientProtocol(Protocol):
         self,
         script: str,
         *,
-        cwd: str | None = None,
-        env: dict[str, str] | None = None,
+        cwd: str = None,
+        env: dict[str, str] = None,
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
     ) -> JobResult: ...
 
@@ -213,7 +213,7 @@ class ShellctlClientProtocol(Protocol):
         job_id: str,
         *,
         force: bool = False,
-        grace_seconds: float | None = None,
+        grace_seconds: float = None,
     ) -> DeleteJobResponse: ...
 
     async def close(self) -> None: ...
@@ -238,8 +238,8 @@ class DifyShellRuntimeState(BaseModel):
     entry must belong to a tracked job id in the same runtime state.
     """
 
-    session_id: str | None = None
-    workspace_cwd: str | None = None
+    session_id: str = None
+    workspace_cwd: str = None
     job_ids: list[str] = Field(default_factory=list)
     job_offsets: dict[str, NonNegativeInt] = Field(default_factory=dict)
 
@@ -307,9 +307,9 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
     config: DifyShellLayerConfig
     shellctl_entrypoint: str
     shellctl_client_factory: ShellctlClientFactory
-    agent_stub_url: str | None = None
-    agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
-    _shellctl_client: ShellctlClientProtocol | None = None
+    agent_stub_url: str = None
+    agent_stub_token_factory: ShellAgentStubTokenFactory = None
+    _shellctl_client: ShellctlClientProtocol = None
 
     @classmethod
     @override
@@ -325,8 +325,8 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         *,
         shellctl_entrypoint: str | None,
         shellctl_client_factory: ShellctlClientFactory,
-        agent_stub_url: str | None = None,
-        agent_stub_token_factory: ShellAgentStubTokenFactory | None = None,
+        agent_stub_url: str = None,
+        agent_stub_token_factory: ShellAgentStubTokenFactory = None,
     ) -> Self:
         """Create the layer from public config plus server-only shell settings."""
         normalized_entrypoint = (shellctl_entrypoint or "").strip()
@@ -438,7 +438,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         """
         _ = self._require_client()
 
-        cleanup_job_id: str | None = None
+        cleanup_job_id: str = None
         identity = self._try_session_identity()
         if identity is not None:
             session_id, _workspace_cwd = identity
@@ -618,7 +618,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
     ) -> RemoteCommandResult:
         """Run a workspace-scoped script to completion and delete its job state."""
         client = self._require_client()
-        job_id: str | None = None
+        job_id: str = None
         try:
             result = await client.run(script, cwd=self._require_workspace_cwd(), env=env, timeout=timeout)
             job_id = result.job_id
@@ -805,7 +805,7 @@ def _job_status_observation(result: JobStatusView) -> ShellJobStatusObservation:
     }
 
 
-def _tool_error(message: str, *, job_id: str | None = None) -> ShellToolErrorObservation:
+def _tool_error(message: str, *, job_id: str = None) -> ShellToolErrorObservation:
     result: ShellToolErrorObservation = {"error": message}
     if job_id is not None:
         result["job_id"] = job_id

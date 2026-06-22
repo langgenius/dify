@@ -54,13 +54,13 @@ class SwitchWorkspacePayload(BaseModel):
 
 
 class WorkspaceCustomConfigPayload(BaseModel):
-    remove_webapp_brand: bool | None = None
-    replace_webapp_logo: str | None = None
+    remove_webapp_brand: bool = None
+    replace_webapp_logo: str = None
 
 
 class WorkspaceCustomConfigResponse(ResponseModel):
-    remove_webapp_brand: bool | None = None
-    replace_webapp_logo: str | None = None
+    remove_webapp_brand: bool = None
+    replace_webapp_logo: str = None
 
 
 class WorkspaceInfoPayload(BaseModel):
@@ -69,17 +69,17 @@ class WorkspaceInfoPayload(BaseModel):
 
 class TenantInfoResponse(ResponseModel):
     id: str
-    name: str | None = None
-    plan: str | None = None
-    status: str | None = None
-    created_at: int | None = None
-    role: str | None = None
-    in_trial: bool | None = None
-    trial_end_reason: str | None = None
-    custom_config: WorkspaceCustomConfigResponse | None = None
-    trial_credits: int | None = None
-    trial_credits_used: int | None = None
-    next_credit_reset_date: int | None = None
+    name: str = None
+    plan: str = None
+    status: str = None
+    created_at: int = None
+    role: str = None
+    in_trial: bool = None
+    trial_end_reason: str = None
+    custom_config: WorkspaceCustomConfigResponse = None
+    trial_credits: int = None
+    trial_credits_used: int = None
+    next_credit_reset_date: int = None
 
     @field_validator("plan", "status", "trial_end_reason", mode="before")
     @classmethod
@@ -98,10 +98,10 @@ class TenantInfoResponse(ResponseModel):
 
 class TenantListItemResponse(ResponseModel):
     id: str
-    name: str | None = None
-    plan: str | None = None
-    status: str | None = None
-    created_at: int | None = None
+    name: str = None
+    plan: str = None
+    status: str = None
+    created_at: int = None
     current: bool
 
     @field_validator("plan", "status", mode="before")
@@ -125,9 +125,9 @@ class TenantListResponse(ResponseModel):
 
 class WorkspaceListItemResponse(ResponseModel):
     id: str
-    name: str | None = None
-    status: str | None = None
-    created_at: int | None = None
+    name: str = None
+    status: str = None
+    created_at: int = None
 
     @field_validator("status", mode="before")
     @classmethod

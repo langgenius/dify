@@ -37,7 +37,7 @@ PREVIEW_WORDS_LIMIT = 3000
 class FileService:
     _session_maker: sessionmaker[Session]
 
-    def __init__(self, session_factory: sessionmaker | Engine | None = None):
+    def __init__(self, session_factory: sessionmaker | Engine = None):
         match session_factory:
             case Engine():
                 self._session_maker = sessionmaker(bind=session_factory)
@@ -53,7 +53,7 @@ class FileService:
         content: bytes,
         mimetype: str,
         user: Account | EndUser,
-        source: Literal["datasets"] | None = None,
+        source: Literal["datasets"] = None,
         source_url: str = "",
     ) -> UploadFile:
         # get file extension
@@ -339,7 +339,7 @@ class FileService:
         used_names: set[str] = set()
 
         # Build a ZIP in a temp file and keep it on disk until the caller finishes streaming it.
-        tmp_path: str | None = None
+        tmp_path: str = None
         try:
             with NamedTemporaryFile(mode="w+b", suffix=".zip", delete=False) as tmp:
                 tmp_path = tmp.name

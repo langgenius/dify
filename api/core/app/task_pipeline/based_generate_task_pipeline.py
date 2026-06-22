@@ -46,7 +46,7 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         self.output_moderation_handler = self._init_output_moderation()
         self.stream = stream
 
-    def handle_error(self, *, event: QueueErrorEvent, session: Session | None = None, message_id: str = ""):
+    def handle_error(self, *, event: QueueErrorEvent, session: Session = None, message_id: str = ""):
         logger.debug("error: %s", event.error)
         e = event.error
         err: Exception

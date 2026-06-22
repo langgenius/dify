@@ -16,8 +16,8 @@ STATUS_FORCELIST = [429, 500, 502, 503, 504]
 
 
 def create_ssrf_proxy_mcp_http_client(
-    headers: dict[str, str] | None = None,
-    timeout: httpx.Timeout | None = None,
+    headers: dict[str, str] = None,
+    timeout: httpx.Timeout = None,
 ) -> httpx.Client:
     """Create an HTTPX client with SSRF proxy configuration for MCP connections.
 

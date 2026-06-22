@@ -26,7 +26,7 @@ def extract_filename(url_or_path: str, content_disposition: str | None) -> str |
     Query strings and hash fragments are stripped from the URL before extracting the basename.
     Percent-encoded characters in the path are decoded safely.
     """
-    filename: str | None = None
+    filename: str = None
     if content_disposition:
         filename_star_match = re.search(r"filename\*=([^;]+)", content_disposition)
         if filename_star_match:

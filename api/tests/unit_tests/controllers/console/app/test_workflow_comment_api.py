@@ -83,7 +83,7 @@ class WriteCase:
     method_name: str
     path: str
     kwargs: dict[str, str]
-    payload: dict[str, object] | None = None
+    payload: dict[str, object] = None
 
 
 @dataclass(frozen=True)
@@ -95,8 +95,8 @@ class MutationResponseCase:
     service_method_name: str
     service_return: object
     expected_response: dict[str, object]
-    payload: dict[str, object] | None = None
-    expected_status: int | None = None
+    payload: dict[str, object] = None
+    expected_status: int = None
 
 
 def unwrap_response(result: object) -> tuple[dict[str, object], int | None]:

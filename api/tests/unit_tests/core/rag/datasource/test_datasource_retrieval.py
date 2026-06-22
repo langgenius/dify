@@ -21,7 +21,7 @@ def create_mock_document(
     doc_id: str,
     score: float = 0.8,
     provider: str = "dify",
-    additional_metadata: dict[str, Any] | None = None,
+    additional_metadata: dict[str, Any] = None,
 ) -> Document:
     """
     Create a mock Document object for testing.
@@ -62,7 +62,7 @@ def create_mock_document(
 
 
 class _ImmediateFuture:
-    def __init__(self, exception: Exception | None = None) -> None:
+    def __init__(self, exception: Exception = None) -> None:
         self._exception = exception
         self.cancel_called = False
 
@@ -153,10 +153,10 @@ class _SimpleRetrievalSegment:
     def __init__(
         self,
         segment,
-        child_chunks: list[_SimpleRetrievalChildChunk] | None = None,
-        score: float | None = None,
-        files: list[dict[str, str | int]] | None = None,
-        summary: str | None = None,
+        child_chunks: list[_SimpleRetrievalChildChunk] = None,
+        score: float = None,
+        files: list[dict[str, str | int]] = None,
+        summary: str = None,
     ) -> None:
         self.segment = segment
         self.child_chunks = child_chunks

@@ -15,27 +15,27 @@ type JSONValueType = JSONValue
 
 
 class SimpleFeedback(ResponseModel):
-    rating: str | None = None
+    rating: str = None
 
 
 class RetrieverResource(ResponseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
     message_id: str = Field(default_factory=lambda: str(uuid4()))
     position: int
-    dataset_id: str | None = None
-    dataset_name: str | None = None
-    document_id: str | None = None
-    document_name: str | None = None
-    data_source_type: str | None = None
-    segment_id: str | None = None
-    score: float | None = None
-    hit_count: int | None = None
-    word_count: int | None = None
-    segment_position: int | None = None
-    index_node_hash: str | None = None
-    content: str | None = None
-    summary: str | None = None
-    created_at: int | None = None
+    dataset_id: str = None
+    dataset_name: str = None
+    document_id: str = None
+    document_name: str = None
+    data_source_type: str = None
+    segment_id: str = None
+    score: float = None
+    hit_count: int = None
+    word_count: int = None
+    segment_position: int = None
+    index_node_hash: str = None
+    content: str = None
+    summary: str = None
+    created_at: int = None
 
     @field_validator("created_at", mode="before")
     @classmethod
@@ -46,17 +46,17 @@ class RetrieverResource(ResponseModel):
 class MessageListItem(ResponseModel):
     id: str
     conversation_id: str
-    parent_message_id: str | None = None
+    parent_message_id: str = None
     inputs: dict[str, JSONValueType]
     query: str
     answer: str = Field(validation_alias="re_sign_file_url_answer")
     feedback: SimpleFeedback | None = Field(default=None, validation_alias="user_feedback")
     retriever_resources: list[RetrieverResource]
-    created_at: int | None = None
+    created_at: int = None
     agent_thoughts: list[AgentThought]
     message_files: list[MessageFile]
     status: str
-    error: str | None = None
+    error: str = None
     extra_contents: list[ExecutionExtraContentDomainModel]
 
     @field_validator("inputs", mode="before")
@@ -96,7 +96,7 @@ class SavedMessageItem(ResponseModel):
     answer: str
     message_files: list[MessageFile]
     feedback: SimpleFeedback | None = Field(default=None, validation_alias="user_feedback")
-    created_at: int | None = None
+    created_at: int = None
 
     @field_validator("inputs", mode="before")
     @classmethod

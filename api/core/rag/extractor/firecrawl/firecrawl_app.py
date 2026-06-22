@@ -74,7 +74,7 @@ class FirecrawlApp:
             self._handle_error(response, "start crawl job")
             return ""  # unreachable
 
-    def map(self, url: str, params: dict[str, Any] | None = None) -> MapResponse:
+    def map(self, url: str, params: dict[str, Any] = None) -> MapResponse:
         # Documentation: https://docs.firecrawl.dev/api-reference/endpoint/map
         headers = self._prepare_headers()
         json_data: dict[str, Any] = {"url": url, "integration": "dify"}
@@ -174,7 +174,7 @@ class FirecrawlApp:
         return f"{self.base_url.rstrip('/')}/{path.lstrip('/')}"
 
     def _post_request(self, url, data, headers, retries=3, backoff_factor=0.5) -> httpx.Response:
-        response: httpx.Response | None = None
+        response: httpx.Response = None
         for attempt in range(retries):
             response = httpx.post(url, headers=headers, json=data)
             if response.status_code == 502:
@@ -185,7 +185,7 @@ class FirecrawlApp:
         return response
 
     def _get_request(self, url, headers, retries=3, backoff_factor=0.5) -> httpx.Response:
-        response: httpx.Response | None = None
+        response: httpx.Response = None
         for attempt in range(retries):
             response = httpx.get(url, headers=headers)
             if response.status_code == 502:
@@ -203,7 +203,7 @@ class FirecrawlApp:
             error_message = response.text or "Unknown error occurred"
         raise Exception(f"Failed to {action}. Status code: {response.status_code}. Error: {error_message}")  # type: ignore[return]
 
-    def search(self, query: str, params: dict[str, Any] | None = None) -> SearchResponse:
+    def search(self, query: str, params: dict[str, Any] = None) -> SearchResponse:
         # Documentation: https://docs.firecrawl.dev/api-reference/endpoint/search
         headers = self._prepare_headers()
         json_data: dict[str, Any] = {

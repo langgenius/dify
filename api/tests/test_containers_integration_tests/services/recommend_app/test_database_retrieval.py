@@ -48,7 +48,7 @@ def _create_recommended_app(
     *,
     app_id: str,
     category: str = "chat",
-    categories: list[str] | None = None,
+    categories: list[str] = None,
     language: str = "en-US",
     is_listed: bool = True,
     is_learn_dify: bool = False,

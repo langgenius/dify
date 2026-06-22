@@ -77,7 +77,7 @@ class SimpleResultStringListResponse(ResponseModel):
 
 class SimpleResultOptionalDataResponse(ResponseModel):
     result: str
-    data: str | None = None
+    data: str = None
 
 
 class AccessTokenData(ResponseModel):
@@ -157,7 +157,7 @@ class NewAppResponse(ResponseModel):
 
 
 class Parameters(BaseModel):
-    opening_statement: str | None = None
+    opening_statement: str = None
     suggested_questions: list[str]
     suggested_questions_after_answer: JSONObject
     speech_to_text: JSONObject
@@ -175,15 +175,15 @@ class Site(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     title: str
-    chat_color_theme: str | None = None
+    chat_color_theme: str = None
     chat_color_theme_inverted: bool
-    icon_type: str | None = None
-    icon: str | None = None
-    icon_background: str | None = None
-    description: str | None = None
-    copyright: str | None = None
-    privacy_policy: str | None = None
-    custom_disclaimer: str | None = None
+    icon_type: str = None
+    icon: str = None
+    icon_background: str = None
+    description: str = None
+    copyright: str = None
+    privacy_policy: str = None
+    custom_disclaimer: str = None
     default_language: str
     show_workflow_steps: bool
     use_icon_as_answer_icon: bool

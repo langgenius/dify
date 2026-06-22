@@ -34,11 +34,11 @@ class _FakeResponse:
         self,
         *,
         status_code: int = 200,
-        headers: dict[str, str] | None = None,
+        headers: dict[str, str] = None,
         method: str = "GET",
         content: bytes = b"",
         text: str = "",
-        error: Exception | None = None,
+        error: Exception = None,
     ) -> None:
         self.status_code = status_code
         self.headers = headers or {}

@@ -40,7 +40,7 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
     """
 
     @override
-    def get_pipeline_templates(self, language: str, current_tenant_id: str | None = None) -> dict[str, Any]:
+    def get_pipeline_templates(self, language: str, current_tenant_id: str = None) -> dict[str, Any]:
         del current_tenant_id
         return self.fetch_pipeline_templates_from_db(language)
 

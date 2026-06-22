@@ -55,8 +55,8 @@ class AskHumanResumeOutcome:
     * ``repause`` — the form is still waiting; re-emit this pause defensively.
     """
 
-    deferred_result: AskHumanToolResult | None = None
-    repause: HumanInputRequired | None = None
+    deferred_result: AskHumanToolResult = None
+    repause: HumanInputRequired = None
 
 
 def resolve_ask_human_form(*, form_id: str, tenant_id: str, node_id: str) -> AskHumanResumeOutcome | None:

@@ -20,14 +20,14 @@ class _BuiltinDummyTool(BuiltinTool):
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
-        conversation_id: str | None = None,
-        app_id: str | None = None,
-        message_id: str | None = None,
+        conversation_id: str = None,
+        app_id: str = None,
+        message_id: str = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         yield self.create_text_message("ok")
 
 
-def _build_tool(user_id: str | None = None) -> _BuiltinDummyTool:
+def _build_tool(user_id: str = None) -> _BuiltinDummyTool:
     entity = ToolEntity(
         identity=ToolIdentity(author="author", name="tool-a", label=I18nObject(en_US="tool-a"), provider="provider-a"),
         parameters=[],

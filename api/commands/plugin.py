@@ -405,7 +405,7 @@ def migrate_data_for_plugin():
     click.echo(click.style("Migrate data for plugin completed.", fg="green"))
 
 
-def _candidate_auto_upgrade_strategy_tenant_ids_stmt(limit: int | None = None):
+def _candidate_auto_upgrade_strategy_tenant_ids_stmt(limit: int = None):
     category_count = len(TenantPluginAutoUpgradeStrategy.PluginCategory)
     stmt = (
         select(TenantPluginAutoUpgradeStrategy.tenant_id)

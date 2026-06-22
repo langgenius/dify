@@ -66,9 +66,9 @@ def add_tenant_for_account(account: Account, *, role: str = "normal", name: str 
 def auth_for(
     account: Account,
     *,
-    app_model: object | None = None,
-    token_id: uuid.UUID | None = None,
-    caller_kind: Literal["account", "end_user"] | None = None,
+    app_model: object = None,
+    token_id: uuid.UUID = None,
+    caller_kind: Literal["account", "end_user"] = None,
 ) -> AuthData:
     """Build an AuthData for ``account`` (and optionally an app context).
 

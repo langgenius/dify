@@ -161,7 +161,7 @@ def query_params_from_request[ModelT: BaseModel](
     model: type[ModelT],
     *,
     list_fields: Iterable[str] = (),
-    args: QueryArgs | None = None,
+    args: QueryArgs = None,
     use_defaults_for_malformed_ints: bool = False,
 ) -> ModelT:
     """Validate query args with Pydantic while preserving Flask query parsing behavior.

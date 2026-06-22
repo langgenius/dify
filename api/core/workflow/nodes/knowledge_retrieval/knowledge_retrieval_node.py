@@ -218,8 +218,8 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         elif str(node_data.retrieval_mode) == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE:
             if node_data.multiple_retrieval_config is None:
                 raise ValueError("multiple_retrieval_config is required")
-            reranking_model: RerankingModelDict | None = None
-            weights: WeightsDict | None = None
+            reranking_model: RerankingModelDict = None
+            weights: WeightsDict = None
             match node_data.multiple_retrieval_config.reranking_mode:
                 case "reranking_model":
                     if node_data.multiple_retrieval_config.reranking_model:

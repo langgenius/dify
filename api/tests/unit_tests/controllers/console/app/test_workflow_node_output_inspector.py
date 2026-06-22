@@ -125,7 +125,7 @@ def _drain(stream: Iterator[str]) -> list[str]:
 def _parse(record: str) -> tuple[str, dict | None]:
     """Pull ``event`` + ``data`` (json-decoded) out of one SSE record."""
     event = None
-    data: dict | None = None
+    data: dict = None
     for line in record.rstrip("\n").split("\n"):
         if line.startswith("event: "):
             event = line[len("event: ") :]

@@ -52,9 +52,9 @@ def batch_create_segment_to_index_task(
     indexing_cache_key = f"segment_batch_import_{job_id}"
 
     # Initialize variables with default values
-    upload_file_key: str | None = None
-    dataset_config: dict[str, Any] | None = None
-    document_config: dict[str, Any] | None = None
+    upload_file_key: str = None
+    dataset_config: dict[str, Any] = None
+    document_config: dict[str, Any] = None
 
     with session_factory.create_session() as session:
         try:

@@ -34,28 +34,28 @@ def build_usage(pt=1, ct=1, tt=2) -> LLMUsage:
 
 
 class DummyMessage:
-    def __init__(self, content: str | None = None, tool_calls: list[Any] | None = None):
+    def __init__(self, content: str = None, tool_calls: list[Any] = None):
         self.content: str | None = content
         self.tool_calls: list[Any] = tool_calls or []
 
 
 class DummyDelta:
-    def __init__(self, message: DummyMessage | None = None, usage: LLMUsage | None = None):
+    def __init__(self, message: DummyMessage = None, usage: LLMUsage = None):
         self.message: DummyMessage | None = message
         self.usage: LLMUsage | None = usage
 
 
 class DummyChunk:
-    def __init__(self, message: DummyMessage | None = None, usage: LLMUsage | None = None):
+    def __init__(self, message: DummyMessage = None, usage: LLMUsage = None):
         self.delta: DummyDelta = DummyDelta(message=message, usage=usage)
 
 
 class DummyResult:
     def __init__(
         self,
-        message: DummyMessage | None = None,
-        usage: LLMUsage | None = None,
-        prompt_messages: list[DummyMessage] | None = None,
+        message: DummyMessage = None,
+        usage: LLMUsage = None,
+        prompt_messages: list[DummyMessage] = None,
     ):
         self.message: DummyMessage | None = message
         self.usage: LLMUsage | None = usage

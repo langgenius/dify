@@ -114,7 +114,7 @@ def _build_snapshot(status: WorkflowNodeExecutionStatus) -> WorkflowNodeExecutio
     )
 
 
-def _build_resumption_context(task_id: str, *, select_options: list[str] | None = None) -> WorkflowResumptionContext:
+def _build_resumption_context(task_id: str, *, select_options: list[str] = None) -> WorkflowResumptionContext:
     app_config = WorkflowUIBasedAppConfig(
         tenant_id="tenant-1",
         app_id="app-1",

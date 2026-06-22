@@ -115,7 +115,7 @@ class PipelineGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: bool = True,
         call_depth: int = 0,
-        workflow_thread_pool_id: str | None = None,
+        workflow_thread_pool_id: str = None,
         is_retry: bool = False,
     ) -> Mapping[str, Any] | Generator[Mapping | str, None, None] | None:
         # Add null check for dataset
@@ -293,7 +293,7 @@ class PipelineGenerator(BaseAppGenerator):
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         streaming: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
-        workflow_thread_pool_id: str | None = None,
+        workflow_thread_pool_id: str = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
@@ -556,7 +556,7 @@ class PipelineGenerator(BaseAppGenerator):
         variable_loader: VariableLoader,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-        workflow_thread_pool_id: str | None = None,
+        workflow_thread_pool_id: str = None,
     ) -> None:
         """
         Generate worker in a new thread.
@@ -794,8 +794,8 @@ class PipelineGenerator(BaseAppGenerator):
         user_id: str,
         all_files: list,
         datasource_info: Mapping[str, Any],
-        next_page_parameters: dict[str, Any] | None = None,
-        _visited_folder_ids: set[str] | None = None,
+        next_page_parameters: dict[str, Any] = None,
+        _visited_folder_ids: set[str] = None,
     ):
         """
         Get files in a folder.

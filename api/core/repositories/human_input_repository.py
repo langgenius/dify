@@ -66,7 +66,7 @@ class FormCreateParams:
     # ENG-635: the conversation this form belongs to. Set together with
     # workflow_execution_id for chatflow runs; set alone (workflow_execution_id None)
     # for Agent v2 chat ask_human forms, which have no workflow run.
-    conversation_id: str | None = None
+    conversation_id: str = None
 
 
 class HumanInputFormRecipientEntity(Protocol):
@@ -223,7 +223,7 @@ class HumanInputFormRecord:
     access_token: str | None
     # ENG-635: Agent v2 chat owner (NULL for workflow-owned forms). Trailing +
     # defaulted so existing record constructions stay source-compatible.
-    conversation_id: str | None = None
+    conversation_id: str = None
 
     @property
     def submitted(self) -> bool:
@@ -270,10 +270,10 @@ class HumanInputFormRepositoryImpl:
         self,
         *,
         tenant_id: str,
-        app_id: str | None = None,
-        workflow_execution_id: str | None = None,
-        invoke_source: str | None = None,
-        submission_actor_id: str | None = None,
+        app_id: str = None,
+        workflow_execution_id: str = None,
+        invoke_source: str = None,
+        submission_actor_id: str = None,
     ) -> None:
         self._tenant_id = tenant_id
         self._app_id = app_id
@@ -629,7 +629,7 @@ class HumanInputFormSubmissionRepository:
         *,
         form_id: str,
         timeout_status: HumanInputFormStatus,
-        reason: str | None = None,
+        reason: str = None,
     ) -> HumanInputFormRecord:
         with session_factory.create_session() as session, session.begin():
             form_model = session.get(HumanInputForm, form_id)

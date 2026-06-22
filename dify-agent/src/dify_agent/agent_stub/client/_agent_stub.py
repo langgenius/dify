@@ -27,9 +27,9 @@ def connect_agent_stub_sync(
     url: str,
     auth_jwe: str,
     argv: list[str],
-    metadata: dict[str, JsonValue] | None = None,
+    metadata: dict[str, JsonValue] = None,
     timeout: float | httpx.Timeout = 30.0,
-    sync_http_client: httpx.Client | None = None,
+    sync_http_client: httpx.Client = None,
 ):
     """Connect through HTTP or gRPC based on the configured Agent Stub URL."""
     endpoint = _parse_endpoint(url)
@@ -60,7 +60,7 @@ def request_agent_stub_file_upload_sync(
     filename: str,
     mimetype: str,
     timeout: float | httpx.Timeout = 30.0,
-    sync_http_client: httpx.Client | None = None,
+    sync_http_client: httpx.Client = None,
 ):
     """Request a signed upload URL through the selected Agent Stub transport."""
     endpoint = _parse_endpoint(url)
@@ -90,7 +90,7 @@ def request_agent_stub_file_download_sync(
     auth_jwe: str,
     file: AgentStubFileMapping,
     timeout: float | httpx.Timeout = 30.0,
-    sync_http_client: httpx.Client | None = None,
+    sync_http_client: httpx.Client = None,
 ):
     """Request a signed download URL through the selected Agent Stub transport."""
     endpoint = _parse_endpoint(url)
@@ -119,7 +119,7 @@ def request_agent_stub_drive_manifest_sync(
     prefix: str,
     include_download_url: bool,
     timeout: float | httpx.Timeout = 30.0,
-    sync_http_client: httpx.Client | None = None,
+    sync_http_client: httpx.Client = None,
 ):
     """Request one drive manifest through the HTTP Agent Stub transport.
 
@@ -146,7 +146,7 @@ def request_agent_stub_drive_commit_sync(
     auth_jwe: str,
     request: AgentStubDriveCommitRequest,
     timeout: float | httpx.Timeout = 30.0,
-    sync_http_client: httpx.Client | None = None,
+    sync_http_client: httpx.Client = None,
 ):
     """Commit one drive batch through the HTTP Agent Stub transport.
 

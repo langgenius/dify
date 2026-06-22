@@ -186,7 +186,7 @@ def _create_waiting_form(
 
 def _create_service(
     session_maker,
-    workflow_run_repository: MagicMock | None = None,
+    workflow_run_repository: MagicMock = None,
 ) -> HumanInputFileUploadService:
     return HumanInputFileUploadService(
         session_maker,

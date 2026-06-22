@@ -447,7 +447,7 @@ class AppAnnotationService:
         if not app:
             raise NotFound("App not found")
 
-        job_id: str | None = None  # Initialize to avoid unbound variable error
+        job_id: str = None  # Initialize to avoid unbound variable error
         try:
             # Quick row count check before full parsing (memory efficient)
             # Read only first chunk to estimate row count

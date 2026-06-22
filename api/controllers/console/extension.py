@@ -48,7 +48,7 @@ class APIBasedExtensionResponse(ResponseModel):
     name: str
     api_endpoint: str
     api_key: str
-    created_at: int | None = None
+    created_at: int = None
 
     @field_validator("api_key", mode="before")
     @classmethod

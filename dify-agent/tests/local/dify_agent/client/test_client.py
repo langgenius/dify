@@ -47,7 +47,7 @@ def _create_run_payload() -> dict[str, object]:
     }
 
 
-def _event_frame(event: RunEvent, *, event_id: str | None = None, exclude_id: bool = False) -> str:
+def _event_frame(event: RunEvent, *, event_id: str = None, exclude_id: bool = False) -> str:
     payload = RUN_EVENT_ADAPTER.dump_json(event, exclude={"id"} if exclude_id else None).decode()
     lines: list[str] = []
     if event_id is not None:

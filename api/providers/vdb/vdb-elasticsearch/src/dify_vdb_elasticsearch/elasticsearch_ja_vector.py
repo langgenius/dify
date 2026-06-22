@@ -23,8 +23,8 @@ class ElasticSearchJaVector(ElasticSearchVector):
     def create_collection(
         self,
         embeddings: list[list[float]],
-        metadatas: list[dict[Any, Any]] | None = None,
-        index_params: dict[str, Any] | None = None,
+        metadatas: list[dict[Any, Any]] = None,
+        index_params: dict[str, Any] = None,
     ):
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):

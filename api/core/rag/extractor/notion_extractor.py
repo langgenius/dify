@@ -36,9 +36,9 @@ class NotionExtractor(BaseExtractor):
         notion_obj_id: str,
         notion_page_type: str,
         tenant_id: str,
-        document_model: DocumentModel | None = None,
-        notion_access_token: str | None = None,
-        credential_id: str | None = None,
+        document_model: DocumentModel = None,
+        notion_access_token: str = None,
+        credential_id: str = None,
     ):
         self._notion_access_token = None
         self._document_model = document_model

@@ -18,7 +18,7 @@ class TestConversationVariableUpdater:
         *,
         conversation_id: str,
         variable: StringVariable,
-        app_id: str | None = None,
+        app_id: str = None,
     ) -> ConversationVariable:
         row = ConversationVariable(
             id=variable.id,

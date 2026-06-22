@@ -28,7 +28,7 @@ class RetrievalSegments(BaseModel):
 
     model_config = {"arbitrary_types_allowed": True}
     segment: DocumentSegment
-    child_chunks: list[RetrievalChildChunk] | None = None
-    score: float | None = None
-    files: list[AttachmentInfoDict] | None = None
-    summary: str | None = None  # Summary content if retrieved via summary index
+    child_chunks: list[RetrievalChildChunk] = None
+    score: float = None
+    files: list[AttachmentInfoDict] = None
+    summary: str = None  # Summary content if retrieved via summary index

@@ -19,12 +19,12 @@ class ExtensionModule(StrEnum):
 
 
 class ModuleExtension(BaseModel):
-    extension_class: Any | None = None
+    extension_class: Any = None
     name: str
-    label: dict[str, Any] | None = None
-    form_schema: list[dict[str, Any]] | None = None
+    label: dict[str, Any] = None
+    form_schema: list[dict[str, Any]] = None
     builtin: bool = True
-    position: int | None = None
+    position: int = None
 
 
 class Extensible:
@@ -32,9 +32,9 @@ class Extensible:
 
     name: str
     tenant_id: str
-    config: dict[str, Any] | None = None
+    config: dict[str, Any] = None
 
-    def __init__(self, tenant_id: str, config: dict[str, Any] | None = None):
+    def __init__(self, tenant_id: str, config: dict[str, Any] = None):
         self.tenant_id = tenant_id
         self.config = config
 

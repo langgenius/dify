@@ -235,7 +235,7 @@ class AppTracePayload(BaseModel):
 
 class AppTraceResponse(ResponseModel):
     enabled: bool
-    tracing_provider: str | None = None
+    tracing_provider: str = None
 
 
 type JSONValue = Any
@@ -249,10 +249,10 @@ class Tag(ResponseModel):
 
 class WorkflowPartial(ResponseModel):
     id: str
-    created_by: str | None = None
-    created_at: int | None = None
-    updated_by: str | None = None
-    updated_at: int | None = None
+    created_by: str = None
+    created_at: int = None
+    updated_by: str = None
+    updated_at: int = None
 
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
@@ -262,11 +262,11 @@ class WorkflowPartial(ResponseModel):
 
 class ModelConfigPartial(ResponseModel):
     model: JSONValue | None = Field(default=None, validation_alias=AliasChoices("model_dict", "model"))
-    pre_prompt: str | None = None
-    created_by: str | None = None
-    created_at: int | None = None
-    updated_by: str | None = None
-    updated_at: int | None = None
+    pre_prompt: str = None
+    created_by: str = None
+    created_at: int = None
+    updated_by: str = None
+    updated_at: int = None
 
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
@@ -275,7 +275,7 @@ class ModelConfigPartial(ResponseModel):
 
 
 class ModelConfig(ResponseModel):
-    opening_statement: str | None = None
+    opening_statement: str = None
     suggested_questions: JSONValue | None = Field(
         default=None, validation_alias=AliasChoices("suggested_questions_list", "suggested_questions")
     )
@@ -308,10 +308,10 @@ class ModelConfig(ResponseModel):
     user_input_form: JSONValue | None = Field(
         default=None, validation_alias=AliasChoices("user_input_form_list", "user_input_form")
     )
-    dataset_query_variable: str | None = None
-    pre_prompt: str | None = None
+    dataset_query_variable: str = None
+    pre_prompt: str = None
     agent_mode: JSONValue | None = Field(default=None, validation_alias=AliasChoices("agent_mode_dict", "agent_mode"))
-    prompt_type: str | None = None
+    prompt_type: str = None
     chat_prompt_config: JSONValue | None = Field(
         default=None, validation_alias=AliasChoices("chat_prompt_config_dict", "chat_prompt_config")
     )
@@ -324,10 +324,10 @@ class ModelConfig(ResponseModel):
     file_upload: JSONValue | None = Field(
         default=None, validation_alias=AliasChoices("file_upload_dict", "file_upload")
     )
-    created_by: str | None = None
-    created_at: int | None = None
-    updated_by: str | None = None
-    updated_at: int | None = None
+    created_by: str = None
+    created_at: int = None
+    updated_by: str = None
+    updated_at: int = None
 
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
@@ -337,28 +337,28 @@ class ModelConfig(ResponseModel):
 
 class Site(ResponseModel):
     access_token: str | None = Field(default=None, validation_alias="code")
-    code: str | None = None
-    title: str | None = None
-    icon_type: str | IconType | None = None
-    icon: str | None = None
-    icon_background: str | None = None
-    description: str | None = None
-    default_language: str | None = None
-    chat_color_theme: str | None = None
-    chat_color_theme_inverted: bool | None = None
-    customize_domain: str | None = None
-    copyright: str | None = None
-    privacy_policy: str | None = None
-    custom_disclaimer: str | None = None
-    customize_token_strategy: str | None = None
-    prompt_public: bool | None = None
-    app_base_url: str | None = None
-    show_workflow_steps: bool | None = None
-    use_icon_as_answer_icon: bool | None = None
-    created_by: str | None = None
-    created_at: int | None = None
-    updated_by: str | None = None
-    updated_at: int | None = None
+    code: str = None
+    title: str = None
+    icon_type: str | IconType = None
+    icon: str = None
+    icon_background: str = None
+    description: str = None
+    default_language: str = None
+    chat_color_theme: str = None
+    chat_color_theme_inverted: bool = None
+    customize_domain: str = None
+    copyright: str = None
+    privacy_policy: str = None
+    custom_disclaimer: str = None
+    customize_token_strategy: str = None
+    prompt_public: bool = None
+    app_base_url: str = None
+    show_workflow_steps: bool = None
+    use_icon_as_answer_icon: bool = None
+    created_by: str = None
+    created_at: int = None
+    updated_by: str = None
+    updated_at: int = None
 
     @computed_field(return_type=str | None)  # type: ignore
     @property
@@ -387,35 +387,35 @@ class DeletedTool(ResponseModel):
 class AppPartial(ResponseModel):
     id: str
     name: str
-    max_active_requests: int | None = None
+    max_active_requests: int = None
     description: str | None = Field(default=None, validation_alias=AliasChoices("desc_or_prompt", "description"))
     mode: str = Field(validation_alias="mode_compatible_with_agent")
-    icon_type: str | None = None
-    icon: str | None = None
-    icon_background: str | None = None
+    icon_type: str = None
+    icon: str = None
+    icon_background: str = None
     model_config_: ModelConfigPartial | None = Field(
         default=None,
         validation_alias=AliasChoices("app_model_config", "model_config"),
         alias="model_config",
     )
-    workflow: WorkflowPartial | None = None
-    use_icon_as_answer_icon: bool | None = None
-    created_by: str | None = None
-    created_at: int | None = None
-    updated_by: str | None = None
-    updated_at: int | None = None
+    workflow: WorkflowPartial = None
+    use_icon_as_answer_icon: bool = None
+    created_by: str = None
+    created_at: int = None
+    updated_by: str = None
+    updated_at: int = None
     tags: list[Tag] = Field(default_factory=list)
-    access_mode: str | None = None
-    create_user_name: str | None = None
-    author_name: str | None = None
-    has_draft_trigger: bool | None = None
+    access_mode: str = None
+    create_user_name: str = None
+    author_name: str = None
+    has_draft_trigger: bool = None
     permission_keys: list[str] = Field(default_factory=list)
     # For Agent App type: the roster Agent backing this app (None otherwise).
-    bound_agent_id: str | None = None
+    bound_agent_id: str = None
     # For Agent App responses exposed through /agent.
-    app_id: str | None = None
+    app_id: str = None
     is_starred: bool = False
-    maintainer: str | None = None
+    maintainer: str = None
 
     @computed_field(return_type=str | None)  # type: ignore
     @property
@@ -431,10 +431,10 @@ class AppPartial(ResponseModel):
 class AppDetail(ResponseModel):
     id: str
     name: str
-    description: str | None = None
+    description: str = None
     mode: str = Field(validation_alias="mode_compatible_with_agent")
-    icon: str | None = None
-    icon_background: str | None = None
+    icon: str = None
+    icon_background: str = None
     enable_site: bool
     enable_api: bool
     model_config_: ModelConfig | None = Field(
@@ -442,17 +442,17 @@ class AppDetail(ResponseModel):
         validation_alias=AliasChoices("app_model_config", "model_config"),
         alias="model_config",
     )
-    workflow: WorkflowPartial | None = None
-    tracing: JSONValue | None = None
-    use_icon_as_answer_icon: bool | None = None
-    created_by: str | None = None
-    created_at: int | None = None
-    updated_by: str | None = None
-    updated_at: int | None = None
-    access_mode: str | None = None
+    workflow: WorkflowPartial = None
+    tracing: JSONValue = None
+    use_icon_as_answer_icon: bool = None
+    created_by: str = None
+    created_at: int = None
+    updated_by: str = None
+    updated_at: int = None
+    access_mode: str = None
     tags: list[Tag] = Field(default_factory=list)
     permission_keys: list[str] = Field(default_factory=list)
-    maintainer: str | None = None
+    maintainer: str = None
 
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
@@ -461,15 +461,15 @@ class AppDetail(ResponseModel):
 
 
 class AppDetailWithSite(AppDetail):
-    icon_type: str | None = None
-    api_base_url: str | None = None
-    max_active_requests: int | None = None
+    icon_type: str = None
+    api_base_url: str = None
+    max_active_requests: int = None
     deleted_tools: list[DeletedTool] = Field(default_factory=list)
-    site: Site | None = None
+    site: Site = None
     # For Agent App type: the roster Agent backing this app (None otherwise).
-    bound_agent_id: str | None = None
+    bound_agent_id: str = None
     # For Agent App responses exposed through /agent.
-    app_id: str | None = None
+    app_id: str = None
 
     @computed_field(return_type=str | None)  # type: ignore
     @property
@@ -620,7 +620,7 @@ class AppListApi(Resource):
             has_default_preview = _has_app_list_permission(
                 permissions.app.default_permission_keys
             ) or _has_app_list_permission(permissions.workspace.permission_keys)
-            permission_app_ids: set[str] | None = None
+            permission_app_ids: set[str] = None
             if not has_default_preview:
                 permission_app_ids = {
                     override.resource_id

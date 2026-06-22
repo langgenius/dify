@@ -9,9 +9,9 @@ class ArizeConfig(BaseTracingConfig):
     Model class for Arize tracing config.
     """
 
-    api_key: str | None = None
-    space_id: str | None = None
-    project: str | None = None
+    api_key: str = None
+    space_id: str = None
+    project: str = None
     endpoint: str = "https://otlp.arize.com"
 
     @field_validator("project")
@@ -30,8 +30,8 @@ class PhoenixConfig(BaseTracingConfig):
     Model class for Phoenix tracing config.
     """
 
-    api_key: str | None = None
-    project: str | None = None
+    api_key: str = None
+    project: str = None
     endpoint: str = "https://app.phoenix.arize.com"
 
     @field_validator("project")

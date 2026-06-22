@@ -56,7 +56,7 @@ logger = logging.getLogger(__name__)
 @dataclasses.dataclass(frozen=True)
 class WorkflowDraftVariableList:
     variables: list[WorkflowDraftVariable]
-    total: int | None = None
+    total: int = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -96,7 +96,7 @@ class DraftVarLoader(VariableLoader):
         app_id: str,
         tenant_id: str,
         user_id: str,
-        fallback_variables: Sequence[VariableBase] | None = None,
+        fallback_variables: Sequence[VariableBase] = None,
     ):
         self._engine = engine
         self._app_id = app_id
@@ -279,7 +279,7 @@ class WorkflowDraftVariableService:
         limit: int,
         user_id: str,
         *,
-        exclude_node_ids: Set[str] | None = None,
+        exclude_node_ids: Set[str] = None,
     ) -> WorkflowDraftVariableList:
         criteria = [
             WorkflowDraftVariable.app_id == app_id,
@@ -356,8 +356,8 @@ class WorkflowDraftVariableService:
     def update_variable(
         self,
         variable: WorkflowDraftVariable,
-        name: str | None = None,
-        value: Segment | None = None,
+        name: str = None,
+        value: Segment = None,
     ) -> WorkflowDraftVariable:
         if not variable.editable:
             raise UpdateNotSupportedError(f"variable not support updating, id={variable.id}")
@@ -872,7 +872,7 @@ class DraftVariableSaver:
         node_type: NodeType,
         node_execution_id: str,
         user: Account,
-        enclosing_node_id: str | None = None,
+        enclosing_node_id: str = None,
     ):
         # Important: `node_execution_id` parameter refers to the primary key (`id`) of the
         # WorkflowNodeExecutionModel/WorkflowNodeExecution, not their `node_execution_id`
@@ -1160,8 +1160,8 @@ class DraftVariableSaver:
 
     def save(
         self,
-        process_data: Mapping[str, Any] | None = None,
-        outputs: Mapping[str, Any] | None = None,
+        process_data: Mapping[str, Any] = None,
+        outputs: Mapping[str, Any] = None,
     ):
         draft_vars: list[WorkflowDraftVariable] = []
         if outputs is None:

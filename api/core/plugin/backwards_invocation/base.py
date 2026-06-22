@@ -19,5 +19,5 @@ class BaseBackwardsInvocation:
 
 
 class BaseBackwardsInvocationResponse[T: dict | Mapping | str | bool | int | BaseModel](BaseModel):
-    data: T | None = None
+    data: T = None
     error: str = ""

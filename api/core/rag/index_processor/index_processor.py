@@ -60,7 +60,7 @@ class IndexProcessor:
         original_document_id: str,
         chunks: Mapping[str, Any],
         batch: Any,
-        summary_index_setting: SummaryIndexSettingDict | None = None,
+        summary_index_setting: SummaryIndexSettingDict = None,
     ) -> IndexingResultDict:
         with session_factory.create_session() as session:
             document = session.scalar(select(Document).where(Document.id == document_id).limit(1))

@@ -62,7 +62,7 @@ class DifyRunContext(BaseModel):
     user_id: str
     user_from: UserFrom
     invoke_from: InvokeFrom
-    trace_session_id: str | None = None
+    trace_session_id: str = None
 
 
 def build_dify_run_context(
@@ -72,8 +72,8 @@ def build_dify_run_context(
     user_id: str,
     user_from: UserFrom,
     invoke_from: InvokeFrom,
-    trace_session_id: str | None = None,
-    extra_context: Mapping[str, Any] | None = None,
+    trace_session_id: str = None,
+    extra_context: Mapping[str, Any] = None,
 ) -> dict[str, Any]:
     """
     Build graph run_context with the reserved Dify runtime payload.
@@ -122,7 +122,7 @@ class AppGenerateEntity(BaseModel):
 
     # app config
     app_config: Any = None
-    file_upload_config: FileUploadConfig | None = None
+    file_upload_config: FileUploadConfig = None
 
     inputs: Mapping[str, Any]
     files: Sequence[File]
@@ -167,7 +167,7 @@ class ConversationAppGenerateEntity(AppGenerateEntity):
     Base entity for conversation-based app generation.
     """
 
-    conversation_id: str | None = None
+    conversation_id: str = None
     is_new_conversation: bool = False
     parent_message_id: str | None = Field(
         default=None,
@@ -224,7 +224,7 @@ class AgentAppGenerateEntity(ChatAppGenerateEntity):
 
     agent_id: str
     agent_config_snapshot_id: str
-    agent_runtime_session_snapshot_id: str | None = None
+    agent_runtime_session_snapshot_id: str = None
 
 
 class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
@@ -235,7 +235,7 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
     # app config
     app_config: WorkflowUIBasedAppConfig = None  # type: ignore
 
-    workflow_run_id: str | None = None
+    workflow_run_id: str = None
     query: str
 
     class SingleIterationRunEntity(BaseModel):
@@ -246,7 +246,7 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
         node_id: str
         inputs: Mapping
 
-    single_iteration_run: SingleIterationRunEntity | None = None
+    single_iteration_run: SingleIterationRunEntity = None
 
     class SingleLoopRunEntity(BaseModel):
         """
@@ -256,7 +256,7 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
         node_id: str
         inputs: Mapping
 
-    single_loop_run: SingleLoopRunEntity | None = None
+    single_loop_run: SingleLoopRunEntity = None
 
 
 class WorkflowAppGenerateEntity(AppGenerateEntity):
@@ -276,7 +276,7 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
         node_id: str
         inputs: dict
 
-    single_iteration_run: SingleIterationRunEntity | None = None
+    single_iteration_run: SingleIterationRunEntity = None
 
     class SingleLoopRunEntity(BaseModel):
         """
@@ -286,7 +286,7 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
         node_id: str
         inputs: dict
 
-    single_loop_run: SingleLoopRunEntity | None = None
+    single_loop_run: SingleLoopRunEntity = None
 
 
 class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
@@ -300,9 +300,9 @@ class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
     datasource_info: Mapping[str, Any]
     dataset_id: str
     batch: str
-    document_id: str | None = None
-    original_document_id: str | None = None
-    start_node_id: str | None = None
+    document_id: str = None
+    original_document_id: str = None
+    start_node_id: str = None
 
 
 from core.ops.ops_trace_manager import TraceQueueManager

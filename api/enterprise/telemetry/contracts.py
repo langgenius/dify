@@ -70,4 +70,4 @@ class TelemetryEnvelope(BaseModel):
     tenant_id: str
     event_id: str
     payload: dict[str, Any]
-    metadata: dict[str, Any] | None = None
+    metadata: dict[str, Any] = None

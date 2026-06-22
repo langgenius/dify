@@ -11,7 +11,7 @@ class ParentTraceContext(BaseModel):
     """Typed parent trace context propagated from an outer workflow tool node."""
 
     parent_workflow_run_id: StrictStr
-    parent_node_execution_id: StrictStr | None = None
+    parent_node_execution_id: StrictStr = None
 
     model_config = ConfigDict(extra="forbid")
 

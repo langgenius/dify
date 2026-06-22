@@ -76,7 +76,7 @@ def _resolve_app_tenant_id(app_id: str) -> str:
     return resolved_tenant_id
 
 
-def _build_app_tenant_resolver(app_id: str, owner_tenant_id: str | None = None) -> Callable[[], str]:
+def _build_app_tenant_resolver(app_id: str, owner_tenant_id: str = None) -> Callable[[], str]:
     resolved_tenant_id = owner_tenant_id
 
     def resolve_owner_tenant_id() -> str:
@@ -1224,7 +1224,7 @@ class Conversation(Base):
     @property
     def model_config(self) -> AppModelConfigDict:
         model_config = cast(AppModelConfigDict, {})
-        app_model_config: AppModelConfig | None = None
+        app_model_config: AppModelConfig = None
 
         if self.mode == AppMode.ADVANCED_CHAT:
             if self.override_model_configs:
@@ -2311,9 +2311,9 @@ class UploadFile(TypeBase):
         created_by: str,
         created_at: datetime,
         used: bool,
-        used_by: str | None = None,
-        used_at: datetime | None = None,
-        hash: str | None = None,
+        used_by: str = None,
+        used_at: datetime = None,
+        hash: str = None,
         source_url: str = "",
     ):
         self.id = str(uuid.uuid4())

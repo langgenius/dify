@@ -36,7 +36,7 @@ class RemoteSettingsSourceFactory(PydanticBaseSettingsSource):
         if not remote_source_name:
             return {}
 
-        remote_source: RemoteSettingsSource | None = None
+        remote_source: RemoteSettingsSource = None
         match remote_source_name:
             case RemoteSettingsSourceName.APOLLO:
                 remote_source = ApolloSettingsSource(current_state)

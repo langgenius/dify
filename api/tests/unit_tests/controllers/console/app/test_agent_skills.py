@@ -33,7 +33,7 @@ def _raw(method):
     return inspect.unwrap(method)
 
 
-def _file_ctx(*, files: dict[str, bytes] | None = None):
+def _file_ctx(*, files: dict[str, bytes] = None):
     data = {name: (io.BytesIO(content), name) for name, content in (files or {}).items()}
     return app.test_request_context("/", method="POST", data=data, content_type="multipart/form-data")
 
@@ -138,7 +138,7 @@ def test_upload_maps_drive_error():
 # ── ENG-625: drive files commit + delete endpoints ────────────────────────────
 
 
-def _json_ctx(payload: dict | None = None, *, method: str = "POST", query_string: str = ""):
+def _json_ctx(payload: dict = None, *, method: str = "POST", query_string: str = ""):
     return app.test_request_context(f"/?{query_string}", method=method, json=payload or {})
 
 

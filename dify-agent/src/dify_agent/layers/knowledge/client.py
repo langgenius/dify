@@ -31,8 +31,8 @@ class DifyKnowledgeBaseClientError(RuntimeError):
         self,
         message: str,
         *,
-        status_code: int | None = None,
-        error_code: str | None = None,
+        status_code: int = None,
+        error_code: str = None,
         retryable: bool,
     ) -> None:
         self.status_code = status_code
@@ -64,21 +64,21 @@ class _DifyKnowledgeRetrieveRequest(BaseModel):
 
 class DifyKnowledgeResultMetadata(BaseModel):
     source: str | None = Field(default=None, alias="_source")
-    dataset_id: str | None = None
-    dataset_name: str | None = None
-    document_id: str | None = None
-    document_name: str | None = None
-    score: float | int | str | None = None
+    dataset_id: str = None
+    dataset_name: str = None
+    document_id: str = None
+    document_name: str = None
+    score: float | int | str = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow", populate_by_name=True)
 
 
 class DifyKnowledgeResult(BaseModel):
     metadata: DifyKnowledgeResultMetadata
-    title: str | None = None
-    files: list[JsonValue] | None = None
-    content: str | None = None
-    summary: str | None = None
+    title: str = None
+    files: list[JsonValue] = None
+    content: str = None
+    summary: str = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 

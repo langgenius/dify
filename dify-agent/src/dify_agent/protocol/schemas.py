@@ -137,10 +137,10 @@ class CreateRunRequest(BaseModel):
 
     composition: RunComposition
     purpose: RunPurpose = "workflow_node"
-    idempotency_key: str | None = None
+    idempotency_key: str = None
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
-    session_snapshot: CompositorSessionSnapshot | None = None
-    deferred_tool_results: DeferredToolResultsPayload | None = None
+    session_snapshot: CompositorSessionSnapshot = None
+    deferred_tool_results: DeferredToolResultsPayload = None
     on_exit: LayerExitSignals = Field(default_factory=LayerExitSignals)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
@@ -154,8 +154,8 @@ class CancelRunRequest(BaseModel):
     from model, tool, or infrastructure failures.
     """
 
-    reason: str | None = None
-    message: str | None = None
+    reason: str = None
+    message: str = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -214,7 +214,7 @@ class RunStatusResponse(BaseModel):
     status: RunStatus
     created_at: datetime
     updated_at: datetime
-    error: str | None = None
+    error: str = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -255,8 +255,8 @@ class DeferredToolCallPayload(BaseModel):
 class RunSucceededEventData(BaseModel):
     """Terminal success payload for final output or deferred tool continuation."""
 
-    output: JsonValue | None = None
-    deferred_tool_call: DeferredToolCallPayload | None = None
+    output: JsonValue = None
+    deferred_tool_call: DeferredToolCallPayload = None
     session_snapshot: CompositorSessionSnapshot
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
@@ -283,7 +283,7 @@ class RunFailedEventData(BaseModel):
     """Terminal failure payload shown to polling and SSE consumers."""
 
     error: str
-    reason: str | None = None
+    reason: str = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -291,8 +291,8 @@ class RunFailedEventData(BaseModel):
 class RunCancelledEventData(BaseModel):
     """Terminal cancellation payload for explicit user/operator cancellation."""
 
-    reason: str | None = None
-    message: str | None = None
+    reason: str = None
+    message: str = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -300,7 +300,7 @@ class RunCancelledEventData(BaseModel):
 class BaseRunEvent(BaseModel):
     """Shared append-only event envelope visible through polling and SSE."""
 
-    id: str | None = None
+    id: str = None
     run_id: str
     created_at: datetime = Field(default_factory=utc_now)
 
@@ -354,7 +354,7 @@ class RunEventsResponse(BaseModel):
 
     run_id: str
     events: list[RunEvent]
-    next_cursor: str | None = None
+    next_cursor: str = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 

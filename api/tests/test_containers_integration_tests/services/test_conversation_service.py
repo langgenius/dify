@@ -93,7 +93,7 @@ class ConversationServiceIntegrationTestDataFactory:
         user: Account | EndUser,
         *,
         invoke_from: InvokeFrom = InvokeFrom.WEB_APP,
-        updated_at: datetime | None = None,
+        updated_at: datetime = None,
     ):
         conversation = Conversation(
             app_id=app.id,
@@ -133,7 +133,7 @@ class ConversationServiceIntegrationTestDataFactory:
         *,
         query: str = "Test query",
         answer: str = "Test answer",
-        created_at: datetime | None = None,
+        created_at: datetime = None,
     ):
         message = Message(
             app_id=app.id,

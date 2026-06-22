@@ -37,7 +37,7 @@ class PluginDaemonBasicResponse(BaseModel):
 
     code: int
     message: str
-    data: object | None = None
+    data: object = None
 
 
 @dataclass(slots=True)
@@ -90,8 +90,8 @@ class DifyPluginToolInvokeMessage(BaseModel):
     class LogMessage(BaseModel):
         id: str
         label: str
-        parent_id: str | None = None
-        error: str | None = None
+        parent_id: str = None
+        error: str = None
         status: str
         data: Mapping[str, object] = Field(default_factory=dict)
         metadata: Mapping[str, object] = Field(default_factory=dict)
@@ -113,7 +113,7 @@ class DifyPluginToolInvokeMessage(BaseModel):
     message: (
         TextMessage | JsonMessage | BlobChunkMessage | BlobMessage | LogMessage | FileMessage | VariableMessage | None
     )
-    meta: dict[str, object] | None = None
+    meta: dict[str, object] = None
 
     @field_validator("message", mode="before")
     @classmethod
@@ -138,7 +138,7 @@ class DifyPluginToolClientError(Exception):
     error_type: str | None
     status_code: int | None
 
-    def __init__(self, message: str, *, error_type: str | None = None, status_code: int | None = None) -> None:
+    def __init__(self, message: str, *, error_type: str = None, status_code: int = None) -> None:
         super().__init__(message)
         self.error_type = error_type
         self.status_code = status_code
@@ -319,7 +319,7 @@ def _raise_tool_daemon_error(
     *,
     error_type: str,
     message: str,
-    status_code: int | None = None,
+    status_code: int = None,
 ) -> None:
     raise DifyPluginToolClientError(message, error_type=error_type, status_code=status_code)
 

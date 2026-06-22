@@ -54,8 +54,8 @@ class ActivationCheckData(BaseModel):
     workspace_name: str | None
     workspace_id: str | None
     email: str | None
-    account_status: str | None = None
-    requires_setup: bool | None = None
+    account_status: str = None
+    requires_setup: bool = None
 
 
 class ActivationCheckResponse(BaseModel):
@@ -165,7 +165,7 @@ class ActivateApi(Resource):
         if requires_setup is None:
             requires_setup = account.status == AccountStatus.PENDING
 
-        setup_fields: tuple[str, str, str] | None = None
+        setup_fields: tuple[str, str, str] = None
         if requires_setup:
             if not args.name or not args.interface_language or not args.timezone:
                 raise AlreadyActivateError()

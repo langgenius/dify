@@ -11,8 +11,8 @@ class MLflowConfig(BaseTracingConfig):
 
     tracking_uri: str = "http://localhost:5000"
     experiment_id: str = "0"  # Default experiment id in MLflow is 0
-    username: str | None = None
-    password: str | None = None
+    username: str = None
+    password: str = None
 
     @field_validator("tracking_uri")
     @classmethod
@@ -36,9 +36,9 @@ class DatabricksConfig(BaseTracingConfig):
 
     experiment_id: str
     host: str
-    client_id: str | None = None
-    client_secret: str | None = None
-    personal_access_token: str | None = None
+    client_id: str = None
+    client_secret: str = None
+    personal_access_token: str = None
 
     @field_validator("experiment_id")
     @classmethod

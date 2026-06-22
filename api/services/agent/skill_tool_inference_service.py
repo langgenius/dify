@@ -61,7 +61,7 @@ class CliToolSuggestion(BaseModel):
 class SkillToolInferenceResult(BaseModel):
     inferable: bool
     cli_tools: list[CliToolSuggestion] = Field(default_factory=list)
-    reason: str | None = None
+    reason: str = None
 
 
 _SYSTEM_PROMPT = """\
@@ -92,7 +92,7 @@ Respond with JSON only, matching exactly:
 class SkillToolInferenceService:
     """Single-shot LLM inference over a drive-stored SKILL.md."""
 
-    def __init__(self, *, drive_service: AgentDriveService | None = None) -> None:
+    def __init__(self, *, drive_service: AgentDriveService = None) -> None:
         self._drive = drive_service or AgentDriveService()
 
     def infer(self, *, tenant_id: str, agent_id: str, slug: str) -> dict[str, Any]:

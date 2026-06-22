@@ -202,11 +202,11 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._conversation_mode = conversation.mode
         self._message_id = message.id
         self._message_created_at = int(message.created_at.timestamp())
-        self._conversation_name_generate_thread: Thread | None = None
+        self._conversation_name_generate_thread: Thread = None
         self._recorded_files: list[Mapping[str, Any]] = []
         self._workflow_run_id: str = ""
         self._draft_var_saver_factory = draft_var_saver_factory
-        self._graph_runtime_state: GraphRuntimeState | None = None
+        self._graph_runtime_state: GraphRuntimeState = None
         self._message_saved_on_pause = False
         self._seed_graph_runtime_state_from_queue_manager()
 
@@ -349,7 +349,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         return None
 
     def _wrapper_process_stream_response(
-        self, trace_manager: TraceQueueManager | None = None
+        self, trace_manager: TraceQueueManager = None
     ) -> Generator[StreamResponse, None, None]:
         tts_publisher = None
         task_id = self._application_generate_entity.task_id
@@ -504,8 +504,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self,
         event: QueueTextChunkEvent,
         *,
-        tts_publisher: AppGeneratorTTSPublisher | None = None,
-        queue_message: Union[WorkflowQueueMessage, MessageQueueMessage] | None = None,
+        tts_publisher: AppGeneratorTTSPublisher = None,
+        queue_message: Union[WorkflowQueueMessage, MessageQueueMessage] = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle text chunk events."""
@@ -613,7 +613,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self,
         event: QueueWorkflowSucceededEvent,
         *,
-        trace_manager: TraceQueueManager | None = None,
+        trace_manager: TraceQueueManager = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle workflow succeeded events."""
@@ -636,7 +636,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self,
         event: QueueWorkflowPartialSuccessEvent,
         *,
-        trace_manager: TraceQueueManager | None = None,
+        trace_manager: TraceQueueManager = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle workflow partial success events."""
@@ -672,7 +672,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             if isinstance(reason, HumanInputRequired):
                 self._persist_human_input_extra_content(form_id=reason.form_id, node_id=reason.node_id)
         yield from responses
-        resolved_state: GraphRuntimeState | None = None
+        resolved_state: GraphRuntimeState = None
         try:
             resolved_state = self._ensure_graph_runtime_initialized()
         except ValueError:
@@ -690,7 +690,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self,
         event: QueueWorkflowFailedEvent,
         *,
-        trace_manager: TraceQueueManager | None = None,
+        trace_manager: TraceQueueManager = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle workflow failed events."""
@@ -718,8 +718,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self,
         event: QueueStopEvent,
         *,
-        graph_runtime_state: GraphRuntimeState | None = None,
-        trace_manager: TraceQueueManager | None = None,
+        graph_runtime_state: GraphRuntimeState = None,
+        trace_manager: TraceQueueManager = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle stop events."""
@@ -757,7 +757,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self,
         event: QueueAdvancedChatMessageEndEvent,
         *,
-        graph_runtime_state: GraphRuntimeState | None = None,
+        graph_runtime_state: GraphRuntimeState = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle advanced chat message end events."""
@@ -817,7 +817,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             event=event, task_id=self._application_generate_entity.task_id
         )
 
-    def _persist_human_input_extra_content(self, *, node_id: str | None = None, form_id: str | None = None) -> None:
+    def _persist_human_input_extra_content(self, *, node_id: str = None, form_id: str = None) -> None:
         if not self._workflow_run_id or not self._message_id:
             return
 
@@ -906,9 +906,9 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self,
         event: Any,
         *,
-        tts_publisher: AppGeneratorTTSPublisher | None = None,
-        trace_manager: TraceQueueManager | None = None,
-        queue_message: Union[WorkflowQueueMessage, MessageQueueMessage] | None = None,
+        tts_publisher: AppGeneratorTTSPublisher = None,
+        trace_manager: TraceQueueManager = None,
+        queue_message: Union[WorkflowQueueMessage, MessageQueueMessage] = None,
     ) -> Generator[StreamResponse, None, None]:
         """Dispatch events using elegant pattern matching."""
         handlers = self._get_event_handlers()
@@ -945,8 +945,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _process_stream_response(
         self,
-        tts_publisher: AppGeneratorTTSPublisher | None = None,
-        trace_manager: TraceQueueManager | None = None,
+        tts_publisher: AppGeneratorTTSPublisher = None,
+        trace_manager: TraceQueueManager = None,
     ) -> Generator[StreamResponse, None, None]:
         """
         Process stream response using elegant Fluent Python patterns.
@@ -1001,7 +1001,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if self._conversation_name_generate_thread:
             logger.debug("Conversation name generation running as daemon thread")
 
-    def _save_message(self, *, session: Session, graph_runtime_state: GraphRuntimeState | None = None):
+    def _save_message(self, *, session: Session, graph_runtime_state: GraphRuntimeState = None):
         message = self._get_message(session=session)
         if message is None:
             return

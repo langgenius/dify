@@ -79,11 +79,11 @@ def _validate_doc_form(value: str | None) -> str | None:
 class DatasetCreatePayload(BaseModel):
     name: str = Field(..., min_length=1, max_length=40)
     description: str = Field("", max_length=400)
-    indexing_technique: str | None = None
+    indexing_technique: str = None
     permission: DatasetPermissionEnum | None = DatasetPermissionEnum.ONLY_ME
     provider: str = "vendor"
-    external_knowledge_api_id: str | None = None
-    external_knowledge_id: str | None = None
+    external_knowledge_api_id: str = None
+    external_knowledge_id: str = None
 
     @field_validator("indexing_technique")
     @classmethod
@@ -101,16 +101,16 @@ class DatasetCreatePayload(BaseModel):
 class DatasetUpdatePayload(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=40)
     description: str | None = Field(None, max_length=400)
-    permission: DatasetPermissionEnum | None = None
-    indexing_technique: str | None = None
-    embedding_model: str | None = None
-    embedding_model_provider: str | None = None
+    permission: DatasetPermissionEnum = None
+    indexing_technique: str = None
+    embedding_model: str = None
+    embedding_model_provider: str = None
     retrieval_model: dict[str, Any] | None = Field(default=None)
     summary_index_setting: dict[str, Any] | None = Field(default=None)
-    partial_member_list: list[dict[str, str]] | None = None
+    partial_member_list: list[dict[str, str]] = None
     external_retrieval_model: dict[str, Any] | None = Field(default=None)
-    external_knowledge_id: str | None = None
-    external_knowledge_api_id: str | None = None
+    external_knowledge_id: str = None
+    external_knowledge_api_id: str = None
     icon_info: dict[str, Any] | None = Field(default=None)
     is_multimodal: bool | None = False
 
@@ -125,7 +125,7 @@ class IndexingEstimatePayload(BaseModel):
     process_rule: dict[str, Any]
     indexing_technique: str
     doc_form: str = "text_model"
-    dataset_id: str | None = None
+    dataset_id: str = None
     doc_language: str = "English"
 
     @field_validator("indexing_technique")
@@ -167,7 +167,7 @@ class DatasetListResponse(ResponseModel):
 
 
 class DatasetDetailWithPartialMembersResponse(DatasetDetailResponse):
-    partial_member_list: list[str] | None = None
+    partial_member_list: list[str] = None
 
 
 class DatasetQueryFileInfoResponse(ResponseModel):
@@ -182,7 +182,7 @@ class DatasetQueryFileInfoResponse(ResponseModel):
 class DatasetQueryContentResponse(ResponseModel):
     content_type: str
     content: str
-    file_info: DatasetQueryFileInfoResponse | None = None
+    file_info: DatasetQueryFileInfoResponse = None
 
 
 class DatasetQueryDetailResponse(ResponseModel):
@@ -216,7 +216,7 @@ class RelatedAppResponse(ResponseModel):
     icon_type: str | None
     icon: str | None
     icon_background: str | None
-    icon_url: str | None = None
+    icon_url: str = None
 
     @model_validator(mode="after")
     def _set_icon_url(self) -> "RelatedAppResponse":
@@ -240,8 +240,8 @@ class DocumentStatusResponse(ResponseModel):
     paused_at: int | None
     error: str | None
     stopped_at: int | None
-    completed_segments: int | None = None
-    total_segments: int | None = None
+    completed_segments: int = None
+    total_segments: int = None
 
     @field_validator(
         "processing_started_at",
@@ -268,8 +268,8 @@ class ErrorDocsResponse(DocumentStatusListResponse):
 
 class IndexingEstimatePreviewItemResponse(ResponseModel):
     content: str
-    child_chunks: list[str] | None = None
-    summary: str | None = None
+    child_chunks: list[str] = None
+    summary: str = None
 
 
 class IndexingEstimateQaPreviewItemResponse(ResponseModel):
@@ -280,7 +280,7 @@ class IndexingEstimateQaPreviewItemResponse(ResponseModel):
 class IndexingEstimateResponse(ResponseModel):
     total_segments: int
     preview: list[IndexingEstimatePreviewItemResponse]
-    qa_preview: list[IndexingEstimateQaPreviewItemResponse] | None = None
+    qa_preview: list[IndexingEstimateQaPreviewItemResponse] = None
 
 
 class RetrievalSettingResponse(ResponseModel):
@@ -418,7 +418,7 @@ class DatasetListApi(Resource):
             current_user.id,
         )
 
-        accessible_dataset_ids: list[str] | None = None
+        accessible_dataset_ids: list[str] = None
         include_own_datasets = False
         if dify_config.RBAC_ENABLED:
             whitelist_scope = enterprise_rbac_service.RBACService.DatasetAccess.whitelist_resources(
@@ -428,7 +428,7 @@ class DatasetListApi(Resource):
             has_default_readonly = _has_dataset_list_permission(
                 permissions.dataset.default_permission_keys
             ) or _has_dataset_list_permission(permissions.workspace.permission_keys)
-            permission_dataset_ids: set[str] | None = None
+            permission_dataset_ids: set[str] = None
             if not has_default_readonly:
                 permission_dataset_ids = {
                     override.resource_id

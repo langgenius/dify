@@ -11,7 +11,7 @@ class SimpleEndUser(ResponseModel):
     id: str
     type: str
     is_anonymous: bool
-    session_id: str | None = None
+    session_id: str = None
 
 
 class EndUserDetail(ResponseModel):
@@ -24,10 +24,10 @@ class EndUserDetail(ResponseModel):
 
     id: str
     tenant_id: str
-    app_id: str | None = None
+    app_id: str = None
     type: str
-    external_user_id: str | None = None
-    name: str | None = None
+    external_user_id: str = None
+    name: str = None
     is_anonymous: bool = Field(validation_alias="_is_anonymous")
     session_id: str
     created_at: datetime

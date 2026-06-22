@@ -22,7 +22,7 @@ class WebConversationService:
         last_id: str | None,
         limit: int,
         invoke_from: InvokeFrom,
-        pinned: bool | None = None,
+        pinned: bool = None,
         sort_by="-updated_at",
     ) -> InfiniteScrollPagination:
         if not user:

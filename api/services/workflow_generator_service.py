@@ -41,7 +41,7 @@ class WorkflowGeneratorService:
         instruction: str,
         model_config: ModelConfig,
         ideal_output: str = "",
-        current_graph: dict[str, Any] | None = None,
+        current_graph: dict[str, Any] = None,
     ) -> WorkflowGenerateResultDict:
         """
         Resolve a model instance for the tenant and run the generator.
@@ -73,7 +73,7 @@ class WorkflowGeneratorService:
         # sentinel rather than empty set, so we don't reject every tool
         # node just because we couldn't enumerate the catalogue).
         tool_catalogue_text = ""
-        installed_tools: set[tuple[str, str]] | None = None
+        installed_tools: set[tuple[str, str]] = None
         try:
             entries = build_tool_catalogue(tenant_id)
             tool_catalogue_text = format_tool_catalogue(entries)

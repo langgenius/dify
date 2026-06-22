@@ -97,7 +97,7 @@ class AgentLogMetaResponse(ResponseModel):
     status: str
     executor: str
     start_time: str
-    elapsed_time: float | None = None
+    elapsed_time: float = None
     total_tokens: int
     agent_mode: str
     iterations: int
@@ -105,7 +105,7 @@ class AgentLogMetaResponse(ResponseModel):
 
 class AgentToolCallResponse(ResponseModel):
     status: str
-    error: str | None = None
+    error: str = None
     time_cost: float | int
     tool_name: str
     tool_label: str
@@ -119,7 +119,7 @@ class AgentIterationLogResponse(ResponseModel):
     tokens: int
     tool_calls: list[AgentToolCallResponse]
     tool_raw: dict[str, Any]
-    thought: str | None = None
+    thought: str = None
     created_at: str
     files: list[Any] = Field(default_factory=list)
 
@@ -139,19 +139,19 @@ class AgentDriveFileResponse(ResponseModel):
     name: str
     drive_key: str
     file_id: str
-    size: int | None = None
-    mime_type: str | None = None
+    size: int = None
+    mime_type: str = None
 
 
 class AgentDriveFileCommitResponse(ResponseModel):
     file: AgentDriveFileResponse
-    config_version_id: str | None = None
+    config_version_id: str = None
 
 
 class AgentDriveDeleteResponse(ResponseModel):
     result: str
     removed_keys: list[str] = Field(default_factory=list)
-    config_version_id: str | None = None
+    config_version_id: str = None
 
 
 register_schema_models(console_ns, AgentLogQuery, AgentDriveFilePayload, AgentDriveDeleteFileByAgentQuery)

@@ -310,8 +310,8 @@ class ArchiveStorage:
 
 
 # Singleton instance (lazy initialization)
-_archive_storage: ArchiveStorage | None = None
-_export_storage: ArchiveStorage | None = None
+_archive_storage: ArchiveStorage = None
+_export_storage: ArchiveStorage = None
 
 
 def get_archive_storage() -> ArchiveStorage:

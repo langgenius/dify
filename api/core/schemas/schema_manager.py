@@ -7,7 +7,7 @@ from core.schemas.registry import SchemaRegistry
 class SchemaManager:
     """Schema manager provides high-level schema operations"""
 
-    def __init__(self, registry: SchemaRegistry | None = None):
+    def __init__(self, registry: SchemaRegistry = None):
         self.registry = registry or SchemaRegistry.default_registry()
 
     def get_all_schema_definitions(self, version: str = "v1") -> list[Mapping[str, Any]]:

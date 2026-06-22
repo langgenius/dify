@@ -98,7 +98,7 @@ class WorkflowAgentNodeValidator:
         *,
         session: Session,
         binding: WorkflowAgentNodeBinding,
-        topology: _WorkflowGraphTopology | None = None,
+        topology: _WorkflowGraphTopology = None,
     ) -> None:
         if binding.agent_id is None:
             raise WorkflowAgentNodeValidationError(f"Workflow Agent node {binding.node_id} is missing agent binding.")
@@ -157,7 +157,7 @@ class WorkflowAgentNodeValidator:
         session: Session,
         binding: WorkflowAgentNodeBinding,
         node_job: WorkflowNodeJobConfig,
-        topology: _WorkflowGraphTopology | None = None,
+        topology: _WorkflowGraphTopology = None,
     ) -> None:
         cls._validate_locked_agent_soul_not_overridden(binding=binding, node_job=node_job)
 

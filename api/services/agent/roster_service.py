@@ -79,8 +79,8 @@ class AgentRosterService:
     @staticmethod
     def serialize_agent(
         agent: Agent,
-        active_version: AgentConfigSnapshot | None = None,
-        published_references: list[AgentReferencingWorkflow] | None = None,
+        active_version: AgentConfigSnapshot = None,
+        published_references: list[AgentReferencingWorkflow] = None,
         active_config_is_published: bool = False,
     ) -> dict[str, Any]:
         published_references = published_references or []
@@ -143,7 +143,7 @@ class AgentRosterService:
         return payload
 
     @staticmethod
-    def _build_roster_agents_stmt(*, tenant_id: str, keyword: str | None = None):
+    def _build_roster_agents_stmt(*, tenant_id: str, keyword: str = None):
         stmt = select(Agent).where(
             Agent.tenant_id == tenant_id,
             Agent.scope == AgentScope.ROSTER,
@@ -157,7 +157,7 @@ class AgentRosterService:
         return stmt.order_by(Agent.updated_at.desc())
 
     def list_roster_agents(
-        self, *, tenant_id: str, page: int = 1, limit: int = 20, keyword: str | None = None
+        self, *, tenant_id: str, page: int = 1, limit: int = 20, keyword: str = None
     ) -> dict[str, Any]:
         stmt = self._build_roster_agents_stmt(tenant_id=tenant_id, keyword=keyword)
 
@@ -198,7 +198,7 @@ class AgentRosterService:
         }
 
     def list_invite_options(
-        self, *, tenant_id: str, page: int = 1, limit: int = 20, keyword: str | None = None, app_id: str | None = None
+        self, *, tenant_id: str, page: int = 1, limit: int = 20, keyword: str = None, app_id: str = None
     ) -> dict[str, Any]:
         stmt = self._build_roster_agents_stmt(tenant_id=tenant_id, keyword=keyword).where(
             Agent.active_config_has_model.is_(True)
@@ -336,8 +336,8 @@ class AgentRosterService:
         description: str = "",
         role: str = "",
         icon_type: Any = None,
-        icon: str | None = None,
-        icon_background: str | None = None,
+        icon: str = None,
+        icon_background: str = None,
     ) -> Agent:
         """Create the roster Agent that backs an Agent App, linked via ``app_id``.
 
@@ -464,11 +464,11 @@ class AgentRosterService:
         tenant_id: str,
         agent_id: str,
         account: Any,
-        name: str | None = None,
-        description: str | None = None,
+        name: str = None,
+        description: str = None,
         icon_type: Any = None,
-        icon: str | None = None,
-        icon_background: str | None = None,
+        icon: str = None,
+        icon_background: str = None,
     ) -> App:
         source_app = self.get_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         source_agent = self.get_app_backing_agent(tenant_id=tenant_id, app_id=source_app.id)

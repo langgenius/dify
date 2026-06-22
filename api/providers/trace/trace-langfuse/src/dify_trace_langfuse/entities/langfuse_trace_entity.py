@@ -189,15 +189,15 @@ class UnitEnum(StrEnum):
 
 
 class GenerationUsage(BaseModel):
-    promptTokens: int | None = None
-    completionTokens: int | None = None
-    total: int | None = None
-    input: int | None = None
-    output: int | None = None
-    unit: UnitEnum | None = None
-    inputCost: float | None = None
-    outputCost: float | None = None
-    totalCost: float | None = None
+    promptTokens: int = None
+    completionTokens: int = None
+    total: int = None
+    input: int = None
+    output: int = None
+    unit: UnitEnum = None
+    inputCost: float = None
+    outputCost: float = None
+    totalCost: float = None
 
     @field_validator("input", "output")
     @classmethod

@@ -35,10 +35,10 @@ class DocumentBatchUpdateIntegrationDataFactory:
     @staticmethod
     def create_dataset(
         db_session_with_containers: Session,
-        dataset_id: str | None = None,
-        tenant_id: str | None = None,
+        dataset_id: str = None,
+        tenant_id: str = None,
         name: str = "Test Dataset",
-        created_by: str | None = None,
+        created_by: str = None,
     ) -> Dataset:
         """Create and persist a dataset."""
         dataset = Dataset(
@@ -58,14 +58,14 @@ class DocumentBatchUpdateIntegrationDataFactory:
     def create_document(
         db_session_with_containers: Session,
         dataset: Dataset,
-        document_id: str | None = None,
+        document_id: str = None,
         name: str = "test_document.pdf",
         enabled: bool = True,
         archived: bool = False,
         indexing_status: str = "completed",
-        completed_at: datetime.datetime | None = None,
+        completed_at: datetime.datetime = None,
         position: int = 1,
-        created_by: str | None = None,
+        created_by: str = None,
         commit: bool = True,
         **kwargs,
     ) -> Document:
@@ -128,7 +128,7 @@ class DocumentBatchUpdateIntegrationDataFactory:
         return documents
 
     @staticmethod
-    def create_user(user_id: str | None = None) -> UserDouble:
+    def create_user(user_id: str = None) -> UserDouble:
         """Create a lightweight user for update metadata fields."""
         return UserDouble(id=user_id or str(uuid4()))
 

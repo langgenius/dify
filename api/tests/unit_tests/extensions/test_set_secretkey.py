@@ -7,7 +7,7 @@ from extensions import ext_set_secretkey
 
 
 class InMemoryStorage:
-    def __init__(self, files: dict[str, bytes] | None = None) -> None:
+    def __init__(self, files: dict[str, bytes] = None) -> None:
         self.files = files or {}
         self.saved_files: list[tuple[str, bytes]] = []
 

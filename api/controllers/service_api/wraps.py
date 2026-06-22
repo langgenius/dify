@@ -91,12 +91,12 @@ def validate_app_token[**P, R](view: Callable[P, R]) -> Callable[P, R]: ...
 
 @overload
 def validate_app_token[**P, R](
-    view: None = None, *, fetch_user_arg: FetchUserArg | None = None
+    view: None = None, *, fetch_user_arg: FetchUserArg = None
 ) -> Callable[[Callable[P, R]], Callable[P, R]]: ...
 
 
 def validate_app_token[**P, R](
-    view: Callable[P, R] | None = None, *, fetch_user_arg: FetchUserArg | None = None
+    view: Callable[P, R] = None, *, fetch_user_arg: FetchUserArg = None
 ) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
     def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
         @wraps(view_func)
@@ -350,7 +350,7 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
     return decorated
 
 
-def validate_and_get_api_token(scope: str | None = None):
+def validate_and_get_api_token(scope: str = None):
     """
     Validate and get API token with Redis caching.
 

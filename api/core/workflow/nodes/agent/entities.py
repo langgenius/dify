@@ -14,11 +14,11 @@ class AgentNodeData(BaseNodeData):
     agent_strategy_provider_name: str
     agent_strategy_name: str
     agent_strategy_label: str
-    memory: MemoryConfig | None = None
+    memory: MemoryConfig = None
     # The version of the tool parameter.
     # If this value is None, it indicates this is a previous version
     # and requires using the legacy parameter parsing rules.
-    tool_node_version: str | None = None
+    tool_node_version: str = None
 
     class AgentInput(BaseModel):
         value: Union[list[str], list[ToolSelector], Any]

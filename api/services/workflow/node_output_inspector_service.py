@@ -108,18 +108,18 @@ class CheckResultView(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     passed: bool
-    reason: str | None = None
+    reason: str = None
 
 
 class NodeOutputView(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str
-    type: DeclaredOutputType | None = None
+    type: DeclaredOutputType = None
     status: NodeOutputStatus
     value_preview: Any = Field(default=None)
-    type_check: CheckResultView | None = None
-    output_check: CheckResultView | None = None
+    type_check: CheckResultView = None
+    output_check: CheckResultView = None
     retried: int = 0
 
 
@@ -130,8 +130,8 @@ class NodeOutputsView(BaseModel):
     node_kind: str
     node_display_name: str
     node_status: NodeStatus
-    node_started_at: datetime | None = None
-    node_completed_at: datetime | None = None
+    node_started_at: datetime = None
+    node_completed_at: datetime = None
     outputs: list[NodeOutputView] = Field(default_factory=list)
 
 
@@ -148,7 +148,7 @@ class OutputPreviewView(BaseModel):
 
     node_id: str
     output_name: str
-    type: DeclaredOutputType | None = None
+    type: DeclaredOutputType = None
     status: NodeOutputStatus
     value: Any = Field(default=None)
 
@@ -417,7 +417,7 @@ class NodeOutputInspectorService:
     every load — the same scope guard regardless of trigger source.
     """
 
-    def __init__(self, binding_resolver: WorkflowAgentBindingResolver | None = None) -> None:
+    def __init__(self, binding_resolver: WorkflowAgentBindingResolver = None) -> None:
         self._binding_resolver = binding_resolver or WorkflowAgentBindingResolver()
 
     # ── public API ────────────────────────────────────────────────────────

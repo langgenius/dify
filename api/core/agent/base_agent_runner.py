@@ -61,8 +61,8 @@ class BaseAgentRunner(AppRunner):
         message: Message,
         user_id: str,
         model_instance: ModelInstance,
-        memory: TokenBufferMemory | None = None,
-        prompt_messages: list[PromptMessage] | None = None,
+        memory: TokenBufferMemory = None,
+        prompt_messages: list[PromptMessage] = None,
     ):
         self.tenant_id = tenant_id
         self.application_generate_entity = application_generate_entity
@@ -269,7 +269,7 @@ class BaseAgentRunner(AppRunner):
         tool_invoke_meta: Union[str, dict, None],
         answer: str | None,
         messages_ids: list[str],
-        llm_usage: LLMUsage | None = None,
+        llm_usage: LLMUsage = None,
     ):
         """
         Save agent thought

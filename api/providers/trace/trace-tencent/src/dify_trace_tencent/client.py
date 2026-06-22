@@ -115,14 +115,14 @@ class TencentTraceClient:
         # Store span contexts for parent-child relationships
         self.span_contexts: dict[int, trace_api.SpanContext] = {}
 
-        self.meter: Meter | None = None
-        self.meter_provider: MeterProvider | None = None
-        self.hist_llm_duration: Histogram | None = None
-        self.hist_token_usage: Histogram | None = None
-        self.hist_time_to_first_token: Histogram | None = None
-        self.hist_time_to_generate: Histogram | None = None
-        self.hist_trace_duration: Histogram | None = None
-        self.metric_reader: MetricReader | None = None
+        self.meter: Meter = None
+        self.meter_provider: MeterProvider = None
+        self.hist_llm_duration: Histogram = None
+        self.hist_token_usage: Histogram = None
+        self.hist_time_to_first_token: Histogram = None
+        self.hist_time_to_generate: Histogram = None
+        self.hist_trace_duration: Histogram = None
+        self.metric_reader: MetricReader = None
 
         # Metrics exporter and instruments
         try:
@@ -281,7 +281,7 @@ class TencentTraceClient:
             logger.exception("[Tencent APM] Failed to create span: %s", span_data.name)
 
     # Metrics recording API
-    def record_llm_duration(self, latency_seconds: float, attributes: dict[str, str] | None = None) -> None:
+    def record_llm_duration(self, latency_seconds: float, attributes: dict[str, str] = None) -> None:
         """Record LLM operation duration histogram in seconds."""
         try:
             if not hasattr(self, "hist_llm_duration") or self.hist_llm_duration is None:
@@ -415,7 +415,7 @@ class TencentTraceClient:
         except Exception:
             logger.debug("[Tencent APM] Failed to record time to generate", exc_info=True)
 
-    def record_trace_duration(self, duration_seconds: float, attributes: dict[str, str] | None = None) -> None:
+    def record_trace_duration(self, duration_seconds: float, attributes: dict[str, str] = None) -> None:
         """Record end-to-end trace duration histogram in seconds.
 
         Args:

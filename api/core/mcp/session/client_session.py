@@ -89,12 +89,12 @@ class ClientSession(
         self,
         read_stream: queue.Queue,
         write_stream: queue.Queue,
-        read_timeout_seconds: timedelta | None = None,
-        sampling_callback: SamplingFnT | None = None,
-        list_roots_callback: ListRootsFnT | None = None,
-        logging_callback: LoggingFnT | None = None,
-        message_handler: MessageHandlerFnT | None = None,
-        client_info: types.Implementation | None = None,
+        read_timeout_seconds: timedelta = None,
+        sampling_callback: SamplingFnT = None,
+        list_roots_callback: ListRootsFnT = None,
+        logging_callback: LoggingFnT = None,
+        message_handler: MessageHandlerFnT = None,
+        client_info: types.Implementation = None,
     ):
         super().__init__(
             read_stream,
@@ -161,7 +161,7 @@ class ClientSession(
         )
 
     @override
-    def send_progress_notification(self, progress_token: str | int, progress: float, total: float | None = None):
+    def send_progress_notification(self, progress_token: str | int, progress: float, total: float = None):
         """Send a progress notification."""
         self.send_notification(
             types.ClientNotification(
@@ -249,8 +249,8 @@ class ClientSession(
     def call_tool(
         self,
         name: str,
-        arguments: dict[str, Any] | None = None,
-        read_timeout_seconds: timedelta | None = None,
+        arguments: dict[str, Any] = None,
+        read_timeout_seconds: timedelta = None,
     ) -> types.CallToolResult:
         """Send a tools/call request."""
 
@@ -276,7 +276,7 @@ class ClientSession(
             types.ListPromptsResult,
         )
 
-    def get_prompt(self, name: str, arguments: dict[str, str] | None = None) -> types.GetPromptResult:
+    def get_prompt(self, name: str, arguments: dict[str, str] = None) -> types.GetPromptResult:
         """Send a prompts/get request."""
         return self.send_request(
             types.ClientRequest(

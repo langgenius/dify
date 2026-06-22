@@ -17,8 +17,8 @@ class FakeRepo:
     def __init__(
         self,
         batches: list[list[WorkflowRunCleanupRef]],
-        delete_result: dict[str, int] | None = None,
-        count_result: dict[str, int] | None = None,
+        delete_result: dict[str, int] = None,
+        count_result: dict[str, int] = None,
     ) -> None:
         self.batches = batches
         self.candidate_call_idx = 0
@@ -54,7 +54,7 @@ class FakeRepo:
         run_types=None,
         tenant_ids=None,
         workflow_ids=None,
-        upper_bound: tuple[datetime.datetime, str] | None = None,
+        upper_bound: tuple[datetime.datetime, str] = None,
     ) -> list[WorkflowRunCleanupRef]:
         self.cleanup_ref_calls.append(
             {
@@ -110,7 +110,7 @@ def create_cleanup(
     repo: FakeRepo,
     *,
     grace_period_days: int = 0,
-    whitelist: set[str] | None = None,
+    whitelist: set[str] = None,
     **kwargs: Any,
 ) -> WorkflowRunCleanup:
     monkeypatch.setattr(

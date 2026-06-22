@@ -54,10 +54,10 @@ def emit_telemetry_log(
     event_name: str | EnterpriseTelemetryEvent,
     attributes: dict[str, Any],
     signal: str = "metric_only",
-    trace_id_source: str | None = None,
-    span_id_source: str | None = None,
-    tenant_id: str | None = None,
-    user_id: str | None = None,
+    trace_id_source: str = None,
+    span_id_source: str = None,
+    tenant_id: str = None,
+    user_id: str = None,
 ) -> None:
     """Emit a structured log line for a telemetry event.
 
@@ -106,10 +106,10 @@ def emit_metric_only_event(
     *,
     event_name: str | EnterpriseTelemetryEvent,
     attributes: dict[str, Any],
-    trace_id_source: str | None = None,
-    span_id_source: str | None = None,
-    tenant_id: str | None = None,
-    user_id: str | None = None,
+    trace_id_source: str = None,
+    span_id_source: str = None,
+    tenant_id: str = None,
+    user_id: str = None,
 ) -> None:
     emit_telemetry_log(
         event_name=event_name,

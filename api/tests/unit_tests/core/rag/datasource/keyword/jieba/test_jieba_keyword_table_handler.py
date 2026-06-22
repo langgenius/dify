@@ -20,8 +20,8 @@ class _DummyTFIDF:
 def _install_fake_jieba_modules(
     monkeypatch,
     analyse_module: types.ModuleType,
-    jieba_attrs: dict[str, object] | None = None,
-    tfidf_module: types.ModuleType | None = None,
+    jieba_attrs: dict[str, object] = None,
+    tfidf_module: types.ModuleType = None,
 ):
     jieba_module = types.ModuleType("jieba")
     jieba_module.__path__ = []

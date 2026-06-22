@@ -9,7 +9,7 @@ class SnippetListQuery(BaseModel):
 
     page: int = Field(default=1, ge=1, le=99999)
     limit: int = Field(default=20, ge=1, le=100)
-    keyword: str | None = None
+    keyword: str = None
     is_published: bool | None = Field(default=None, description="Filter by published status")
     creators: list[str] | None = Field(
         default=None,
@@ -50,23 +50,23 @@ class SnippetListQuery(BaseModel):
 class IconInfo(BaseModel):
     """Icon information model."""
 
-    icon: str | None = None
-    icon_type: Literal["emoji", "image"] | None = None
-    icon_background: str | None = None
-    icon_url: str | None = None
+    icon: str = None
+    icon_type: Literal["emoji", "image"] = None
+    icon_background: str = None
+    icon_url: str = None
 
 
 class InputFieldDefinition(BaseModel):
     """Input field definition for snippet parameters."""
 
-    default: str | None = None
-    hint: bool | None = None
-    label: str | None = None
-    max_length: int | None = None
-    options: list[str] | None = None
-    placeholder: str | None = None
-    required: bool | None = None
-    type: str | None = None  # e.g., "text-input"
+    default: str = None
+    hint: bool = None
+    label: str = None
+    max_length: int = None
+    options: list[str] = None
+    placeholder: str = None
+    required: bool = None
+    type: str = None  # e.g., "text-input"
 
 
 class CreateSnippetPayload(BaseModel):
@@ -75,7 +75,7 @@ class CreateSnippetPayload(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=2000)
     type: Literal["node", "group"] = "node"
-    icon_info: IconInfo | None = None
+    icon_info: IconInfo = None
     graph: dict[str, Any] | None = Field(default=None)
     input_fields: list[InputFieldDefinition] | None = Field(default_factory=list)
 
@@ -85,14 +85,14 @@ class UpdateSnippetPayload(BaseModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=2000)
-    icon_info: IconInfo | None = None
+    icon_info: IconInfo = None
 
 
 class SnippetDraftSyncPayload(BaseModel):
     """Payload for syncing snippet draft workflow."""
 
     graph: dict[str, Any]
-    hash: str | None = None
+    hash: str = None
     conversation_variables: list[dict[str, Any]] | None = Field(
         default=None,
         description="Ignored. Snippet workflows do not persist conversation variables.",
@@ -110,7 +110,7 @@ class SnippetWorkflowListQuery(BaseModel):
 class WorkflowRunQuery(BaseModel):
     """Query parameters for workflow runs."""
 
-    last_id: str | None = None
+    last_id: str = None
     limit: int = Field(default=20, ge=1, le=100)
 
 

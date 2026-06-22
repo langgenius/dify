@@ -70,7 +70,7 @@ class ApiTokenCache:
     """
 
     @staticmethod
-    def make_active_key(token: str, scope: str | None = None) -> str:
+    def make_active_key(token: str, scope: str = None) -> str:
         """Generate Redis key for recording token usage."""
         return f"{ACTIVE_TOKEN_KEY_PREFIX}{scope}:{token}"
 
@@ -80,7 +80,7 @@ class ApiTokenCache:
         return f"tenant_tokens:{tenant_id}"
 
     @staticmethod
-    def _make_cache_key(token: str, scope: str | None = None) -> str:
+    def _make_cache_key(token: str, scope: str = None) -> str:
         """Generate cache key for the given token and scope."""
         scope_str = scope or "any"
         return f"{CACHE_KEY_PREFIX}:{scope_str}:{token}"
@@ -181,7 +181,7 @@ class ApiTokenCache:
 
     @staticmethod
     @redis_fallback(default_return=False)
-    def delete(token: str, scope: str | None = None) -> bool:
+    def delete(token: str, scope: str = None) -> bool:
         """Delete API token from cache."""
         if scope is None:
             pattern = f"{CACHE_KEY_PREFIX}:*:{token}"

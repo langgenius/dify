@@ -54,7 +54,7 @@ def _create_draft_variables(
     *,
     app_id: str,
     count: int,
-    file_id_by_index: dict[int, str] | None = None,
+    file_id_by_index: dict[int, str] = None,
 ) -> list[WorkflowDraftVariable]:
     variables: list[WorkflowDraftVariable] = []
     file_id_by_index = file_id_by_index or {}

@@ -225,7 +225,7 @@ class ExternalDatasetService:
         return response
 
     @staticmethod
-    def assembling_headers(authorization: Authorization, headers: dict[str, Any] | None = None) -> dict[str, Any]:
+    def assembling_headers(authorization: Authorization, headers: dict[str, Any] = None) -> dict[str, Any]:
         authorization = deepcopy(authorization)
         if headers:
             headers = deepcopy(headers)
@@ -309,7 +309,7 @@ class ExternalDatasetService:
         dataset_id: str,
         query: str,
         external_retrieval_parameters: dict[str, Any],
-        metadata_condition: MetadataFilteringCondition | None = None,
+        metadata_condition: MetadataFilteringCondition = None,
     ):
         """Fetch retrieval records from an external knowledge provider.
 

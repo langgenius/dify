@@ -30,8 +30,8 @@ class FreeHostingQuota(HostingQuota):
 
 class HostingProvider(BaseModel):
     enabled: bool = False
-    credentials: dict[str, Any] | None = None
-    quota_unit: QuotaUnit | None = None
+    credentials: dict[str, Any] = None
+    quota_unit: QuotaUnit = None
     quotas: list[HostingQuota] = []
 
 
@@ -42,7 +42,7 @@ class HostedModerationConfig(BaseModel):
 
 class HostingConfiguration:
     provider_map: dict[str, HostingProvider]
-    moderation_config: HostedModerationConfig | None = None
+    moderation_config: HostedModerationConfig = None
 
     def __init__(self):
         self.provider_map = {}

@@ -134,7 +134,7 @@ class AgentRuntimeSupport:
 
                         extra = tool.get("extra", {})
 
-                        runtime_variable_pool: VariablePool | None = None
+                        runtime_variable_pool: VariablePool = None
                         if node_data.version != "1" or node_data.tool_node_version is not None:
                             runtime_variable_pool = variable_pool
                         tool_runtime = ToolManager.get_agent_tool_runtime(

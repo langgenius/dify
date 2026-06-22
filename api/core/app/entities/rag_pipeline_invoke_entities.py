@@ -10,5 +10,5 @@ class RagPipelineInvokeEntity(BaseModel):
     tenant_id: str
     workflow_id: str
     streaming: bool
-    workflow_execution_id: str | None = None
-    workflow_thread_pool_id: str | None = None
+    workflow_execution_id: str = None
+    workflow_thread_pool_id: str = None

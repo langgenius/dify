@@ -59,7 +59,7 @@ class CSVSanitizer:
         return str_value
 
     @classmethod
-    def sanitize_dict(cls, data: dict[str, Any], fields_to_sanitize: list[str] | None = None) -> dict[str, Any]:
+    def sanitize_dict(cls, data: dict[str, Any], fields_to_sanitize: list[str] = None) -> dict[str, Any]:
         """
         Sanitize specified fields in a dictionary.
 

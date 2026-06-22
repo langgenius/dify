@@ -17,15 +17,15 @@ class ApiToolBundle(BaseModel):
     # method
     method: str
     # summary
-    summary: str | None = None
+    summary: str = None
     # operation_id
-    operation_id: str | None = None
+    operation_id: str = None
     # parameters
-    parameters: list[ToolParameter] | None = None
+    parameters: list[ToolParameter] = None
     # author
     author: str
     # icon
-    icon: str | None = None
+    icon: str = None
     # openapi operation
     openapi: dict[str, Any]
     # output schema

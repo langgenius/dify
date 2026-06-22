@@ -30,7 +30,7 @@ class AgentChatAppConfig(EasyUIBasedAppConfig):
     Agent Chatbot App Config Entity.
     """
 
-    agent: AgentEntity | None = None
+    agent: AgentEntity = None
 
 
 class AgentChatAppConfigManager(BaseAppConfigManager):
@@ -39,8 +39,8 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
         cls,
         app_model: App,
         app_model_config: AppModelConfig,
-        conversation: Conversation | None = None,
-        override_config_dict: AppModelConfigDict | None = None,
+        conversation: Conversation = None,
+        override_config_dict: AppModelConfigDict = None,
     ) -> AgentChatAppConfig:
         """
         Convert app model config to agent chat app config

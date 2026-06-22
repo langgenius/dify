@@ -96,7 +96,7 @@ def download_file_from_environment(
     *,
     transfer_method: str,
     reference_or_url: str,
-    directory: str | None = None,
+    directory: str = None,
 ) -> DownloadedFileResult:
     """Download one workflow file mapping into the sandbox filesystem."""
 

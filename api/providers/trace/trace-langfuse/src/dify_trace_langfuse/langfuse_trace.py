@@ -478,7 +478,7 @@ class LangFuseDataTrace(BaseTraceInstance):
     def _now_iso(self) -> str:
         return datetime.now(UTC).isoformat()
 
-    def add_trace(self, langfuse_trace_data: LangfuseTrace | None = None):
+    def add_trace(self, langfuse_trace_data: LangfuseTrace = None):
         data = filter_none_values(langfuse_trace_data.model_dump()) if langfuse_trace_data else {}
         try:
             body = TraceBody(
@@ -504,7 +504,7 @@ class LangFuseDataTrace(BaseTraceInstance):
         except Exception as e:
             raise ValueError(f"LangFuse Failed to create trace: {str(e)}")
 
-    def add_span(self, langfuse_span_data: LangfuseSpan | None = None):
+    def add_span(self, langfuse_span_data: LangfuseSpan = None):
         data = filter_none_values(langfuse_span_data.model_dump()) if langfuse_span_data else {}
         try:
             body = CreateSpanBody(
@@ -531,12 +531,12 @@ class LangFuseDataTrace(BaseTraceInstance):
         except Exception as e:
             raise ValueError(f"LangFuse Failed to create span: {str(e)}")
 
-    def update_span(self, span, langfuse_span_data: LangfuseSpan | None = None):
+    def update_span(self, span, langfuse_span_data: LangfuseSpan = None):
         format_span_data = filter_none_values(langfuse_span_data.model_dump()) if langfuse_span_data else {}
 
         span.end(**format_span_data)
 
-    def add_generation(self, langfuse_generation_data: LangfuseGeneration | None = None):
+    def add_generation(self, langfuse_generation_data: LangfuseGeneration = None):
         data = filter_none_values(langfuse_generation_data.model_dump()) if langfuse_generation_data else {}
         try:
             usage_data = data.pop("usage", None)
@@ -580,7 +580,7 @@ class LangFuseDataTrace(BaseTraceInstance):
         except Exception as e:
             raise ValueError(f"LangFuse Failed to create generation: {str(e)}")
 
-    def update_generation(self, generation, langfuse_generation_data: LangfuseGeneration | None = None):
+    def update_generation(self, generation, langfuse_generation_data: LangfuseGeneration = None):
         format_generation_data = (
             filter_none_values(langfuse_generation_data.model_dump()) if langfuse_generation_data else {}
         )

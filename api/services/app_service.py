@@ -47,16 +47,16 @@ class AppListBaseParams(BaseModel):
     limit: int = Field(default=20, ge=1, le=100)
     mode: Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"] = "all"
     sort_by: AppListSortBy = "last_modified"
-    name: str | None = None
-    tag_ids: list[str] | None = None
-    creator_ids: list[str] | None = None
-    is_created_by_me: bool | None = None
-    accessible_app_ids: list[str] | None = None
+    name: str = None
+    tag_ids: list[str] = None
+    creator_ids: list[str] = None
+    is_created_by_me: bool = None
+    accessible_app_ids: list[str] = None
     include_own_apps: bool = False
 
 
 class AppListParams(AppListBaseParams):
-    status: str | None = None
+    status: str = None
     openapi_visible: bool = False
 
 
@@ -66,15 +66,15 @@ class StarredAppListParams(AppListBaseParams):
 
 class CreateAppParams(BaseModel):
     name: str = Field(min_length=1)
-    description: str | None = None
+    description: str = None
     mode: Literal["chat", "agent-chat", "agent", "advanced-chat", "workflow", "completion"]
     agent_role: str = Field(default="", max_length=255)
-    icon_type: str | None = None
-    icon: str | None = None
-    icon_background: str | None = None
+    icon_type: str = None
+    icon: str = None
+    icon_background: str = None
     api_rph: int = 0
     api_rpm: int = 0
-    max_active_requests: int | None = None
+    max_active_requests: int = None
 
 
 class AppService:
@@ -557,14 +557,14 @@ class AppService:
         self,
         app: App,
         *,
-        name: str | None = None,
-        description: str | None = None,
-        role: str | None = None,
-        icon_type: IconType | str | None = None,
-        icon: str | None = None,
-        icon_background: str | None = None,
-        account_id: str | None = None,
-        updated_at: datetime | None = None,
+        name: str = None,
+        description: str = None,
+        role: str = None,
+        icon_type: IconType | str = None,
+        icon: str = None,
+        icon_background: str = None,
+        account_id: str = None,
+        updated_at: datetime = None,
     ) -> None:
         """Keep the Roster identity aligned with its Agent App shell.
 
@@ -671,7 +671,7 @@ class AppService:
         return app
 
     def update_app_icon(
-        self, app: App, icon: str, icon_background: str, icon_type: IconType | str | None = None
+        self, app: App, icon: str, icon_background: str, icon_type: IconType | str = None
     ) -> App:
         """
         Update app icon

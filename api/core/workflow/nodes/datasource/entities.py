@@ -12,8 +12,8 @@ class DatasourceEntity(BaseModel):
     provider_name: str  # redundancy
     provider_type: str
     datasource_name: str | None = "local_file"
-    datasource_configurations: dict[str, Any] | None = None
-    plugin_unique_identifier: str | None = None  # redundancy
+    datasource_configurations: dict[str, Any] = None
+    plugin_unique_identifier: str = None  # redundancy
 
 
 class DatasourceNodeData(BaseNodeData, DatasourceEntity):
@@ -22,7 +22,7 @@ class DatasourceNodeData(BaseNodeData, DatasourceEntity):
     class DatasourceInput(BaseModel):
         # TODO: check this type
         value: Union[Any, list[str]]
-        type: Literal["mixed", "variable", "constant"] | None = None
+        type: Literal["mixed", "variable", "constant"] = None
 
         @field_validator("type", mode="before")
         @classmethod
@@ -41,7 +41,7 @@ class DatasourceNodeData(BaseNodeData, DatasourceEntity):
                 raise ValueError("value must be a string, int, float, or bool")
             return typ
 
-    datasource_parameters: dict[str, DatasourceInput] | None = None
+    datasource_parameters: dict[str, DatasourceInput] = None
 
 
 class DatasourceParameter(BaseModel):

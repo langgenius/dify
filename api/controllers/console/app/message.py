@@ -123,26 +123,26 @@ class MessageDetailResponse(ResponseModel):
     conversation_id: str
     inputs: dict[str, JSONValue]
     query: str
-    message: JSONValue | None = None
-    message_tokens: int | None = None
+    message: JSONValue = None
+    message_tokens: int = None
     answer: str = Field(validation_alias="re_sign_file_url_answer")
-    answer_tokens: int | None = None
-    provider_response_latency: float | None = None
+    answer_tokens: int = None
+    provider_response_latency: float = None
     from_source: str
-    from_end_user_id: str | None = None
-    from_account_id: str | None = None
+    from_end_user_id: str = None
+    from_account_id: str = None
     feedbacks: list[Feedback] = Field(default_factory=list)
-    workflow_run_id: str | None = None
-    annotation: ConversationAnnotation | None = None
-    annotation_hit_history: ConversationAnnotationHitHistory | None = None
-    created_at: int | None = None
+    workflow_run_id: str = None
+    annotation: ConversationAnnotation = None
+    annotation_hit_history: ConversationAnnotationHitHistory = None
+    created_at: int = None
     agent_thoughts: list[AgentThought] = Field(default_factory=list)
     message_files: list[MessageFile] = Field(default_factory=list)
     extra_contents: list[ExecutionExtraContentDomainModel] = Field(default_factory=list)
     metadata: JSONValue | None = Field(default=None, validation_alias="message_metadata_dict")
     status: str
-    error: str | None = None
-    parent_message_id: str | None = None
+    error: str = None
+    parent_message_id: str = None
 
     @field_validator("inputs", mode="before")
     @classmethod

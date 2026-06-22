@@ -46,7 +46,7 @@ class IdentityMode(StrEnum):
 
 class MCPAuthentication(BaseModel):
     client_id: str
-    client_secret: str | None = None
+    client_secret: str = None
 
 
 class MCPConfiguration(BaseModel):
@@ -73,7 +73,7 @@ class MCPProviderEntity(BaseModel):
     # Authentication related
     authed: bool
     credentials: dict[str, Any]  # encrypted credentials
-    code_verifier: str | None = None  # for OAuth
+    code_verifier: str = None  # for OAuth
 
     # Tools and display info
     tools: list[dict[str, Any]]  # parsed tools list
@@ -161,7 +161,7 @@ class MCPProviderEntity(BaseModel):
             # If not JSON, assume it's a file path
             return file_helpers.get_signed_file_url(self.icon)
 
-    def to_api_response(self, user_name: str | None = None, include_sensitive: bool = True) -> dict[str, Any]:
+    def to_api_response(self, user_name: str = None, include_sensitive: bool = True) -> dict[str, Any]:
         """Convert to API response format
 
         Args:

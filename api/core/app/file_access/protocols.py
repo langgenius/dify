@@ -30,7 +30,7 @@ class FileAccessControllerProtocol(Protocol):
         self,
         stmt: Select[tuple[UploadFile]],
         *,
-        scope: FileAccessScope | None = None,
+        scope: FileAccessScope = None,
     ) -> Select[tuple[UploadFile]]:
         """Return an upload-file query constrained by the supplied access scope.
 
@@ -43,7 +43,7 @@ class FileAccessControllerProtocol(Protocol):
         self,
         stmt: Select[tuple[ToolFile]],
         *,
-        scope: FileAccessScope | None = None,
+        scope: FileAccessScope = None,
     ) -> Select[tuple[ToolFile]]:
         """Return a tool-file query constrained by the supplied access scope.
 
@@ -57,7 +57,7 @@ class FileAccessControllerProtocol(Protocol):
         *,
         session: Session,
         file_id: str,
-        scope: FileAccessScope | None = None,
+        scope: FileAccessScope = None,
     ) -> UploadFile | None:
         """Load one authorized upload-file record for the given identifier.
 
@@ -71,7 +71,7 @@ class FileAccessControllerProtocol(Protocol):
         *,
         session: Session,
         file_id: str,
-        scope: FileAccessScope | None = None,
+        scope: FileAccessScope = None,
     ) -> ToolFile | None:
         """Load one authorized tool-file record for the given identifier.
 

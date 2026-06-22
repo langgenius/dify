@@ -11,7 +11,7 @@ from werkzeug.exceptions import Forbidden
 from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType, require_workspace_member
 
 
-def _ctx(verified: dict[str, bool] | None = None, *, account: bool = True) -> AuthContext:
+def _ctx(verified: dict[str, bool] = None, *, account: bool = True) -> AuthContext:
     return AuthContext(
         subject_type=SubjectType.ACCOUNT if account else SubjectType.EXTERNAL_SSO,
         subject_email="e@example.com",

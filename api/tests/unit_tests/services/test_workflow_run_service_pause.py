@@ -58,7 +58,7 @@ class TestDataFactory:
         workflow_id: str = "workflow-101",
         workflow_execution_id: str = "workflow-execution-123",
         state_file_id: str = "file-456",
-        resumed_at: datetime | None = None,
+        resumed_at: datetime = None,
         **kwargs,
     ) -> MagicMock:
         """Create a mock WorkflowPauseModel object."""
@@ -78,7 +78,7 @@ class TestDataFactory:
 
     @staticmethod
     def create_pause_entity_mock(
-        pause_model: MagicMock | None = None,
+        pause_model: MagicMock = None,
     ) -> _PrivateWorkflowPauseEntity:
         """Create a mock _PrivateWorkflowPauseEntity object."""
         if pause_model is None:

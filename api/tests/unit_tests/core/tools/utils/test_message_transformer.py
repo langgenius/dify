@@ -15,7 +15,7 @@ class _FakeToolFile:
 class _FakeToolFileManager:
     """Fake ToolFileManager to capture the mimetype passed in."""
 
-    last_call: dict[str, Any] | None = None
+    last_call: dict[str, Any] = None
 
     def __init__(self, *args, **kwargs):
         pass
@@ -28,7 +28,7 @@ class _FakeToolFileManager:
         conversation_id: str | None,
         file_binary: bytes,
         mimetype: str,
-        filename: str | None = None,
+        filename: str = None,
     ):
         type(self).last_call = {
             "user_id": user_id,

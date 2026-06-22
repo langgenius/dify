@@ -102,7 +102,7 @@ class EnvironmentVariableResponseDict(TypedDict):
 class SyncDraftWorkflowPayload(BaseModel):
     graph: dict[str, Any]
     features: dict[str, Any]
-    hash: str | None = None
+    hash: str = None
     environment_variables: list[dict[str, Any]] = Field(
         default_factory=list,
     )
@@ -118,8 +118,8 @@ class BaseWorkflowRunPayload(BaseModel):
 class AdvancedChatWorkflowRunPayload(BaseWorkflowRunPayload):
     inputs: dict[str, Any] | None = Field(default=None)
     query: str = ""
-    conversation_id: str | None = None
-    parent_message_id: str | None = None
+    conversation_id: str = None
+    parent_message_id: str = None
 
     @field_validator("conversation_id", "parent_message_id")
     @classmethod
@@ -152,10 +152,10 @@ class PublishWorkflowPayload(BaseModel):
 
 
 class ConvertToWorkflowPayload(BaseModel):
-    name: str | None = None
-    icon_type: str | None = None
-    icon: str | None = None
-    icon_background: str | None = None
+    name: str = None
+    icon_type: str = None
+    icon: str = None
+    icon_background: str = None
 
 
 class WorkflowFeaturesPayload(BaseModel):
@@ -194,14 +194,14 @@ class PipelineVariableResponse(ResponseModel):
     variable: str
     type: str
     belong_to_node_id: str
-    max_length: int | None = None
+    max_length: int = None
     required: bool
-    unit: str | None = None
+    unit: str = None
     default_value: Any = Field(default=None)
-    options: list[str] | None = None
-    placeholder: str | None = None
-    tooltips: str | None = None
-    allowed_file_types: list[str] | None = None
+    options: list[str] = None
+    placeholder: str = None
+    tooltips: str = None
+    allowed_file_types: list[str] = None
     allowed_file_extensions: list[str] | None = Field(
         default=None, validation_alias=AliasChoices("allowed_file_extensions", "allow_file_extension")
     )
@@ -270,7 +270,7 @@ class WorkflowPaginationResponse(ResponseModel):
 class WorkflowOnlineUser(ResponseModel):
     user_id: str
     username: str
-    avatar: str | None = None
+    avatar: str = None
 
 
 class WorkflowOnlineUsersByApp(ResponseModel):
@@ -308,10 +308,10 @@ class HumanInputFormPreviewResponse(ResponseModel):
     form_content: str
     inputs: list[dict[str, Any]] = Field(default_factory=list)
     actions: list[dict[str, Any]] = Field(default_factory=list)
-    display_in_ui: bool | None = None
-    form_token: str | None = None
+    display_in_ui: bool = None
+    form_token: str = None
     resolved_default_values: dict[str, Any] = Field(default_factory=dict)
-    expiration_time: int | None = None
+    expiration_time: int = None
 
 
 class HumanInputFormSubmitResponse(RootModel[dict[str, Any]]):
@@ -375,7 +375,7 @@ register_response_schema_models(
 # TODO(QuantumGhost): Refactor existing node run API to handle file parameter parsing
 # at the controller level rather than in the workflow logic. This would improve separation
 # of concerns and make the code more maintainable.
-def _parse_file(workflow: Workflow, files: list[dict] | None = None) -> Sequence[File]:
+def _parse_file(workflow: Workflow, files: list[dict] = None) -> Sequence[File]:
     files = files or []
 
     file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
@@ -1533,7 +1533,7 @@ class DraftWorkflowTriggerRunApi(Resource):
             app_id=app_model.id,
             node_id=node_id,
         )
-        event: TriggerDebugEvent | None = None
+        event: TriggerDebugEvent = None
         try:
             event = poller.poll()
             if not event:
@@ -1598,7 +1598,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
         if not node_config:
             raise ValueError("Node data not found for node %s", node_id)
         node_type: NodeType = draft_workflow.get_node_type_from_node_config(node_config)
-        event: TriggerDebugEvent | None = None
+        event: TriggerDebugEvent = None
         # for schedule trigger, when run single node, just execute directly
         if node_type == TRIGGER_SCHEDULE_NODE_TYPE:
             event = TriggerDebugEvent(

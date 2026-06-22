@@ -51,7 +51,7 @@ class MessageContext:
     conversation_id: str
     message_id: str
     created_at: int
-    answer: str | None = None
+    answer: str = None
 
 
 @dataclass
@@ -60,7 +60,7 @@ class BufferState:
     stop_event: threading.Event
     done_event: threading.Event
     task_id_ready: threading.Event
-    task_id_hint: str | None = None
+    task_id_hint: str = None
 
 
 def build_workflow_event_stream(
@@ -70,7 +70,7 @@ def build_workflow_event_stream(
     tenant_id: str,
     app_id: str,
     session_maker: sessionmaker[Session],
-    human_input_surface: HumanInputSurface | None = None,
+    human_input_surface: HumanInputSurface = None,
     idle_timeout: float = 300,
     ping_interval: float = 10.0,
     close_on_pause: bool = True,
@@ -82,7 +82,7 @@ def build_workflow_event_stream(
         _get_message_context(session_maker, workflow_run.id) if app_mode == AppMode.ADVANCED_CHAT else None
     )
 
-    pause_entity: WorkflowPauseEntity | None = None
+    pause_entity: WorkflowPauseEntity = None
     if workflow_run.status == WorkflowExecutionStatus.PAUSED:
         try:
             pause_entity = workflow_run_repo.get_workflow_pause(workflow_run.id)
@@ -222,8 +222,8 @@ def _build_snapshot_events(
     message_context: MessageContext | None,
     pause_entity: WorkflowPauseEntity | None,
     resumption_context: WorkflowResumptionContext | None,
-    session_maker: sessionmaker[Session] | None = None,
-    human_input_surface: HumanInputSurface | None = None,
+    session_maker: sessionmaker[Session] = None,
+    human_input_surface: HumanInputSurface = None,
 ) -> list[Mapping[str, Any]]:
     events: list[Mapping[str, Any]] = []
     variable_pool = _load_variable_pool_from_resumption_context(resumption_context)
@@ -470,11 +470,11 @@ def _build_pause_event(
     pause_entity: WorkflowPauseEntity,
     resumption_context: WorkflowResumptionContext | None,
     session_maker: sessionmaker[Session] | None,
-    human_input_surface: HumanInputSurface | None = None,
+    human_input_surface: HumanInputSurface = None,
 ) -> dict[str, Any] | None:
     paused_nodes: list[str] = []
     outputs: dict[str, Any] = {}
-    variable_pool: ReadOnlyVariablePool | None = None
+    variable_pool: ReadOnlyVariablePool = None
     if resumption_context is not None:
         state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
         paused_nodes = state.get_paused_nodes()
@@ -604,7 +604,7 @@ def _is_terminal_event(
     event: Mapping[str, Any] | str,
     close_on_pause: bool = True,
     *,
-    include_paused: bool | None = None,
+    include_paused: bool = None,
 ) -> bool:
     if include_paused is not None:
         close_on_pause = include_paused

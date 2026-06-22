@@ -25,7 +25,7 @@ class _MissingGraphBuilder:
         graph_init_params: GraphInitParams,
         parent_graph_runtime_state: GraphRuntimeState,
         root_node_id: str,
-        variable_pool: VariablePool | None = None,
+        variable_pool: VariablePool = None,
     ) -> object:
         raise ChildGraphNotFoundError(f"child graph root node '{root_node_id}' not found")
 

@@ -36,7 +36,7 @@ class _DebuggerDraftVariableSaver:
         node_id: str,
         node_type: NodeType,
         node_execution_id: str,
-        enclosing_node_id: str | None = None,
+        enclosing_node_id: str = None,
     ) -> None:
         self._account = account
         self._app_id = app_id
@@ -296,7 +296,7 @@ class BaseAppGenerator:
                 node_id: str,
                 node_type: NodeType,
                 node_execution_id: str,
-                enclosing_node_id: str | None = None,
+                enclosing_node_id: str = None,
             ) -> DraftVariableSaver:
                 return _DebuggerDraftVariableSaver(
                     account=account,
@@ -313,7 +313,7 @@ class BaseAppGenerator:
                 node_id: str,
                 node_type: NodeType,
                 node_execution_id: str,
-                enclosing_node_id: str | None = None,
+                enclosing_node_id: str = None,
             ) -> DraftVariableSaver:
                 _ = app_id, node_id, node_type, node_execution_id, enclosing_node_id
                 return NoopDraftVariableSaver()

@@ -24,7 +24,7 @@ class CompletionAppConfig(EasyUIBasedAppConfig):
 class CompletionAppConfigManager(BaseAppConfigManager):
     @classmethod
     def get_app_config(
-        cls, app_model: App, app_model_config: AppModelConfig, override_config_dict: AppModelConfigDict | None = None
+        cls, app_model: App, app_model_config: AppModelConfig, override_config_dict: AppModelConfigDict = None
     ) -> CompletionAppConfig:
         """
         Convert app model config to completion app config

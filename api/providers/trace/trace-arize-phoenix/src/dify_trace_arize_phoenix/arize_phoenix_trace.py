@@ -258,7 +258,7 @@ def error_to_string(error: Exception | str | None) -> str:
     return error_message
 
 
-def set_span_status(current_span: Span, error: Exception | str | None = None):
+def set_span_status(current_span: Span, error: Exception | str = None):
     """Set the status of the current span based on the presence of an error for Arize/Phoenix."""
     if error:
         error_string = error_to_string(error)
@@ -436,7 +436,7 @@ def _build_node_title_by_id(trace_info: WorkflowTraceInfo) -> dict[str, str]:
 
 def _resolve_workflow_node_span_name(
     node_execution: _NodeExecutionLike,
-    node_title_by_id: Mapping[str, str] | None = None,
+    node_title_by_id: Mapping[str, str] = None,
 ) -> str:
     """Resolve the Phoenix workflow node span display name."""
     node_type = str(node_execution.node_type or "")
@@ -499,8 +499,8 @@ class _WrapperGroup:
     key: _WrapperGroupKey
     container_execution_id: str
     child_execution_ids: set[str] = field(default_factory=set)
-    start_time: datetime | None = None
-    end_time: datetime | None = None
+    start_time: datetime = None
+    end_time: datetime = None
     has_error: bool = False
 
 
@@ -556,7 +556,7 @@ def _node_execution_handled_exception(node_execution: object) -> bool:
     return status in {WorkflowNodeExecutionStatus.EXCEPTION, "exception"}
 
 
-def _record_exception_event(current_span: Span, error: Exception | str | None = None) -> None:
+def _record_exception_event(current_span: Span, error: Exception | str = None) -> None:
     if not error:
         return
 
@@ -791,7 +791,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             workflow_session_id,
         )
 
-        workflow_parent_carrier: dict[str, str] | None = None
+        workflow_parent_carrier: dict[str, str] = None
         if parent_node_execution_id:
             workflow_parent_carrier = _resolve_workflow_parent_carrier(parent_node_execution_id, parent_workflow_run_id)
 
@@ -1031,7 +1031,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                     context=workflow_span_context,
                 )
                 span_by_execution_id[execution_id] = node_span
-                node_span_error: Exception | str | None = None
+                node_span_error: Exception | str = None
                 try:
                     if node_execution.node_type == "tool":
                         parent_span_carrier: dict[str, str] = {}
@@ -1451,9 +1451,9 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         self,
         dify_trace_id: str | None,
         *,
-        root_span_name: str | None = None,
-        root_span_error: Exception | str | None = None,
-        root_span_attributes: Mapping[str, AttributeValue] | None = None,
+        root_span_name: str = None,
+        root_span_error: Exception | str = None,
+        root_span_attributes: Mapping[str, AttributeValue] = None,
     ):
         """Ensure a unique root span exists for the given Dify trace ID."""
         trace_key = str(dify_trace_id)

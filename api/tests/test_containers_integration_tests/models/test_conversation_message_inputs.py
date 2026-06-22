@@ -17,7 +17,7 @@ from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod
 from models.model import App, AppMode, Conversation, Message
 
 
-def _build_local_file_mapping(record_id: str, *, tenant_id: str | None = None) -> dict:
+def _build_local_file_mapping(record_id: str, *, tenant_id: str = None) -> dict:
     mapping: dict = {
         "dify_model_identity": FILE_MODEL_IDENTITY,
         "transfer_method": FileTransferMethod.LOCAL_FILE,

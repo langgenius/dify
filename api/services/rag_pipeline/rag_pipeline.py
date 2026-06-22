@@ -94,7 +94,7 @@ def _build_seeded_variable_pool(variables: Sequence[Variable]) -> VariablePool:
 
 
 class RagPipelineService:
-    def __init__(self, session_maker: sessionmaker | None = None):
+    def __init__(self, session_maker: sessionmaker = None):
         """Initialize RagPipelineService with repository dependencies."""
         if session_maker is None:
             session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
@@ -108,7 +108,7 @@ class RagPipelineService:
         cls,
         type: str = "built-in",
         language: str = "en-US",
-        current_tenant_id: str | None = None,
+        current_tenant_id: str = None,
     ) -> dict[str, Any]:
         if type == "built-in":
             mode = dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE
@@ -155,8 +155,8 @@ class RagPipelineService:
         cls,
         template_id: str,
         template_info: PipelineTemplateInfoEntity,
-        current_user: Account | None = None,
-        current_tenant_id: str | None = None,
+        current_user: Account = None,
+        current_tenant_id: str = None,
     ):
         """
         Update pipeline template.
@@ -196,7 +196,7 @@ class RagPipelineService:
         return customized_template
 
     @classmethod
-    def delete_customized_pipeline_template(cls, template_id: str, current_tenant_id: str | None = None):
+    def delete_customized_pipeline_template(cls, template_id: str, current_tenant_id: str = None):
         """
         Delete customized pipeline template.
         """
@@ -481,7 +481,7 @@ class RagPipelineService:
         return default_block_configs
 
     def get_default_block_config(
-        self, node_type: str, filters: dict[str, Any] | None = None
+        self, node_type: str, filters: dict[str, Any] = None
     ) -> Mapping[str, object] | None:
         """
         Get default config of node.
@@ -601,7 +601,7 @@ class RagPipelineService:
         account: Account,
         datasource_type: str,
         is_published: bool,
-        credential_id: str | None = None,
+        credential_id: str = None,
     ) -> Generator[Mapping[str, Any], None, None]:
         """
         Run published workflow datasource
@@ -769,7 +769,7 @@ class RagPipelineService:
         account: Account,
         datasource_type: str,
         is_published: bool,
-        credential_id: str | None = None,
+        credential_id: str = None,
     ) -> Mapping[str, Any]:
         """
         Run published workflow datasource
@@ -897,7 +897,7 @@ class RagPipelineService:
         try:
             node_instance, generator = getter()
 
-            node_run_result: NodeRunResult | None = None
+            node_run_result: NodeRunResult = None
             for event in generator:
                 if isinstance(event, (NodeRunSucceededEvent, NodeRunFailedEvent)):
                     node_run_result = event.node_run_result
@@ -1191,8 +1191,8 @@ class RagPipelineService:
         cls,
         pipeline_id: str,
         args: dict[str, Any],
-        current_user: Account | None = None,
-        current_tenant_id: str | None = None,
+        current_user: Account = None,
+        current_tenant_id: str = None,
     ):
         """
         Publish customized pipeline template
@@ -1477,7 +1477,7 @@ class RagPipelineService:
         if not pipeline:
             raise ValueError("Pipeline not found")
 
-        workflow: Workflow | None = None
+        workflow: Workflow = None
         if is_published:
             workflow = self.get_published_workflow(pipeline=pipeline)
         else:

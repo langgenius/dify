@@ -447,7 +447,7 @@ class Workflow(Base):  # bug
         return features
 
     def walk_nodes(
-        self, specific_node_type: NodeType | None = None
+        self, specific_node_type: NodeType = None
     ) -> Generator[tuple[str, Mapping[str, Any]], None, None]:
         """
         Walk through the workflow nodes, yield each node configuration.
@@ -1846,7 +1846,7 @@ class WorkflowDraftVariable(Base):
         value: Segment,
         node_execution_id: str | None,
         description: str = "",
-        file_id: str | None = None,
+        file_id: str = None,
     ) -> "WorkflowDraftVariable":
         variable = WorkflowDraftVariable()
         variable.id = str(uuid4())
@@ -1870,7 +1870,7 @@ class WorkflowDraftVariable(Base):
         cls,
         *,
         app_id: str,
-        user_id: str | None = None,
+        user_id: str = None,
         name: str,
         value: Segment,
         description: str = "",
@@ -1892,7 +1892,7 @@ class WorkflowDraftVariable(Base):
         cls,
         *,
         app_id: str,
-        user_id: str | None = None,
+        user_id: str = None,
         name: str,
         value: Segment,
         node_execution_id: str,
@@ -1914,14 +1914,14 @@ class WorkflowDraftVariable(Base):
         cls,
         *,
         app_id: str,
-        user_id: str | None = None,
+        user_id: str = None,
         node_id: str,
         name: str,
         value: Segment,
         node_execution_id: str,
         visible: bool = True,
         editable: bool = True,
-        file_id: str | None = None,
+        file_id: str = None,
     ) -> "WorkflowDraftVariable":
         variable = cls._new(
             app_id=app_id,

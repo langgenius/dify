@@ -52,16 +52,16 @@ def build_workflow_run_for_archived_log_model(api_or_ns: Namespace):
 
 class WorkflowRunForLogResponse(ResponseModel):
     id: str
-    version: str | None = None
-    status: str | None = None
-    triggered_from: str | None = None
-    error: str | None = None
-    elapsed_time: float | None = None
-    total_tokens: int | None = None
-    total_steps: int | None = None
-    created_at: int | None = None
-    finished_at: int | None = None
-    exceptions_count: int | None = None
+    version: str = None
+    status: str = None
+    triggered_from: str = None
+    error: str = None
+    elapsed_time: float = None
+    total_tokens: int = None
+    total_steps: int = None
+    created_at: int = None
+    finished_at: int = None
+    exceptions_count: int = None
 
     @field_validator("status", mode="before")
     @classmethod
@@ -78,10 +78,10 @@ class WorkflowRunForLogResponse(ResponseModel):
 
 class WorkflowRunForArchivedLogResponse(ResponseModel):
     id: str
-    status: str | None = None
-    triggered_from: str | None = None
-    elapsed_time: float | None = None
-    total_tokens: int | None = None
+    status: str = None
+    triggered_from: str = None
+    elapsed_time: float = None
+    total_tokens: int = None
 
     @field_validator("status", mode="before")
     @classmethod
@@ -93,16 +93,16 @@ class WorkflowRunForArchivedLogResponse(ResponseModel):
 
 class WorkflowRunForListResponse(ResponseModel):
     id: str
-    version: str | None = None
-    status: str | None = None
-    elapsed_time: float | None = None
-    total_tokens: int | None = None
-    total_steps: int | None = None
-    created_by_account: SimpleAccount | None = None
-    created_at: int | None = None
-    finished_at: int | None = None
-    exceptions_count: int | None = None
-    retry_index: int | None = None
+    version: str = None
+    status: str = None
+    elapsed_time: float = None
+    total_tokens: int = None
+    total_steps: int = None
+    created_by_account: SimpleAccount = None
+    created_at: int = None
+    finished_at: int = None
+    exceptions_count: int = None
+    retry_index: int = None
 
     @field_validator("status", mode="before")
     @classmethod
@@ -118,8 +118,8 @@ class WorkflowRunForListResponse(ResponseModel):
 
 
 class AdvancedChatWorkflowRunForListResponse(WorkflowRunForListResponse):
-    conversation_id: str | None = None
-    message_id: str | None = None
+    conversation_id: str = None
+    message_id: str = None
 
 
 class AdvancedChatWorkflowRunPaginationResponse(ResponseModel):
@@ -148,21 +148,21 @@ class WorkflowRunCountResponse(ResponseModel):
 
 class WorkflowRunDetailResponse(ResponseModel):
     id: str
-    version: str | None = None
+    version: str = None
     graph: Any = Field(validation_alias="graph_dict")
     inputs: Any = Field(validation_alias="inputs_dict")
-    status: str | None = None
+    status: str = None
     outputs: Any = Field(validation_alias="outputs_dict")
-    error: str | None = None
-    elapsed_time: float | None = None
-    total_tokens: int | None = None
-    total_steps: int | None = None
-    created_by_role: str | None = None
-    created_by_account: SimpleAccount | None = None
-    created_by_end_user: SimpleEndUser | None = None
-    created_at: int | None = None
-    finished_at: int | None = None
-    exceptions_count: int | None = None
+    error: str = None
+    elapsed_time: float = None
+    total_tokens: int = None
+    total_steps: int = None
+    created_by_role: str = None
+    created_by_account: SimpleAccount = None
+    created_by_end_user: SimpleEndUser = None
+    created_at: int = None
+    finished_at: int = None
+    exceptions_count: int = None
 
     @field_validator("status", mode="before")
     @classmethod
@@ -179,27 +179,27 @@ class WorkflowRunDetailResponse(ResponseModel):
 
 class WorkflowRunNodeExecutionResponse(ResponseModel):
     id: str
-    index: int | None = None
-    predecessor_node_id: str | None = None
-    node_id: str | None = None
-    node_type: str | None = None
-    title: str | None = None
+    index: int = None
+    predecessor_node_id: str = None
+    node_id: str = None
+    node_type: str = None
+    title: str = None
     inputs: Any = Field(default=None, validation_alias="inputs_dict")
     process_data: Any = Field(default=None, validation_alias="process_data_dict")
     outputs: Any = Field(default=None, validation_alias="outputs_dict")
-    status: str | None = None
-    error: str | None = None
-    elapsed_time: float | None = None
+    status: str = None
+    error: str = None
+    elapsed_time: float = None
     execution_metadata: Any = Field(default=None, validation_alias="execution_metadata_dict")
     extras: Any = None
-    created_at: int | None = None
-    created_by_role: str | None = None
-    created_by_account: SimpleAccount | None = None
-    created_by_end_user: SimpleEndUser | None = None
-    finished_at: int | None = None
-    inputs_truncated: bool | None = None
-    outputs_truncated: bool | None = None
-    process_data_truncated: bool | None = None
+    created_at: int = None
+    created_by_role: str = None
+    created_by_account: SimpleAccount = None
+    created_by_end_user: SimpleEndUser = None
+    finished_at: int = None
+    inputs_truncated: bool = None
+    outputs_truncated: bool = None
+    process_data_truncated: bool = None
 
     @field_validator("status", mode="before")
     @classmethod

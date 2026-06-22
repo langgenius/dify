@@ -48,7 +48,7 @@ def test_sse_message_without_id_stays_notification():
 class MockSSEClient:
     """Mock SSE client for testing."""
 
-    def __init__(self, url: str, headers: dict[str, Any] | None = None):
+    def __init__(self, url: str, headers: dict[str, Any] = None):
         self.url = url
         self.headers = headers or {}
         self.connected = False

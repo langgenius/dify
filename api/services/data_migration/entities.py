@@ -122,8 +122,8 @@ class MigrationMetadata:
     version: str
     source_scope: Literal["single"]
     source_tenants: list[SourceTenant]
-    target_tenant: TargetTenantSelector | None = None
-    created_at: str | None = None
+    target_tenant: TargetTenantSelector = None
+    created_at: str = None
     include_secrets: bool = False
     import_options: ImportOptions = field(default_factory=ImportOptions)
 
@@ -177,7 +177,7 @@ class MigrationPackage:
 class ExportSelection:
     source_tenant_name: str
     app_ids: list[str]
-    source_tenant_id: str | None = None
+    source_tenant_id: str = None
     export_all_apps: bool = False
     include_referenced_tools: bool = True
     additional_api_tools: list[str] = field(default_factory=list)
@@ -193,7 +193,7 @@ class ResourceReportItem:
     identifier: str
     name: str | None
     status: str
-    message: str | None = None
+    message: str = None
 
 
 @dataclass(frozen=True)
@@ -208,7 +208,7 @@ class ResourceIdMapping:
 class ExportResult:
     package: MigrationPackage
     report_items: list[ResourceReportItem]
-    report_context: ReportContext | None = None
+    report_context: ReportContext = None
 
 
 @dataclass(frozen=True)
@@ -223,17 +223,17 @@ class ImportTarget:
 class ImportResult:
     report_items: list[ResourceReportItem]
     id_mapping: dict[str, str] = field(default_factory=dict)
-    report_context: ReportContext | None = None
+    report_context: ReportContext = None
 
 
 @dataclass(frozen=True)
 class ReportContext:
-    output_path: str | None = None
-    source_scope: str | None = None
-    selected_app_count: int | None = None
-    include_secrets: bool | None = None
-    target_tenant: str | None = None
-    operator_email: str | None = None
+    output_path: str = None
+    source_scope: str = None
+    selected_app_count: int = None
+    include_secrets: bool = None
+    target_tenant: str = None
+    operator_email: str = None
     app_api_tokens_created: int = 0
     app_api_tokens_reused: int = 0
     id_mapping_count: int = 0

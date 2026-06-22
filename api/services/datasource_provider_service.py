@@ -53,7 +53,7 @@ class DatasourceProviderService:
         self.provider_manager = PluginDatasourceManager()
 
     @staticmethod
-    def _should_refresh_credentials(datasource_provider: DatasourceProvider, now: int | None = None) -> bool:
+    def _should_refresh_credentials(datasource_provider: DatasourceProvider, now: int = None) -> bool:
         current_time = int(time.time()) if now is None else now
         if datasource_provider.expires_at == -1:
             return False
@@ -196,7 +196,7 @@ class DatasourceProviderService:
         tenant_id: str,
         provider: str,
         plugin_id: str,
-        credential_id: str | None = None,
+        credential_id: str = None,
     ) -> dict[str, Any]:
         """
         Return decrypted datasource credentials.

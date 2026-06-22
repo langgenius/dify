@@ -153,23 +153,23 @@ class ChatRequest(BaseModel):
     inputs: dict
     query: str
     files: list | None = Field(default=None)
-    conversation_id: str | None = None
-    parent_message_id: str | None = None
+    conversation_id: str = None
+    parent_message_id: str = None
     retriever_from: str = "explore_app"
 
 
 class TextToSpeechRequest(BaseModel):
-    message_id: str | None = None
-    voice: str | None = None
-    text: str | None = None
-    streaming: bool | None = None
+    message_id: str = None
+    voice: str = None
+    text: str = None
+    streaming: bool = None
 
 
 class CompletionRequest(BaseModel):
     inputs: dict
     query: str = ""
     files: list | None = Field(default=None)
-    response_mode: Literal["blocking", "streaming"] | None = None
+    response_mode: Literal["blocking", "streaming"] = None
     retriever_from: str = "explore_app"
 
 

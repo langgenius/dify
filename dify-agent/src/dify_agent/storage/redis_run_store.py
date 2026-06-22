@@ -73,7 +73,7 @@ class RedisRunStore(RunEventSink):
             value = value.decode()
         return RunRecord.model_validate_json(value)
 
-    async def update_status(self, run_id: str, status: RunStatus, error: str | None = None) -> None:
+    async def update_status(self, run_id: str, status: RunStatus, error: str = None) -> None:
         """Update the status fields of an existing run record."""
         record = await self.get_run(run_id)
         updated = record.model_copy(update={"status": status, "updated_at": utc_now(), "error": error})

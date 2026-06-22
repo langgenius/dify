@@ -56,7 +56,7 @@ INIT_REQUEST = {
 class MockStreamableHTTPClient:
     """Mock StreamableHTTP client for testing."""
 
-    def __init__(self, url: str, headers: dict[str, Any] | None = None):
+    def __init__(self, url: str, headers: dict[str, Any] = None):
         self.url = url
         self.headers = headers or {}
         self.connected = False
@@ -482,7 +482,7 @@ def _make_request_msg(method: str = "ping", req_id: int = 1) -> JSONRPCMessage:
     return JSONRPCMessage(root=JSONRPCRequest(jsonrpc="2.0", id=req_id, method=method))
 
 
-def _make_response_msg(req_id: int = 1, result: dict | None = None) -> JSONRPCMessage:
+def _make_response_msg(req_id: int = 1, result: dict = None) -> JSONRPCMessage:
     return JSONRPCMessage(root=JSONRPCResponse(jsonrpc="2.0", id=req_id, result=result or {}))
 
 

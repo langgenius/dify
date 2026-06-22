@@ -63,10 +63,10 @@ def describe_tools(tools: Sequence[PlainToolType]) -> list[str]:
 
 def prompt_tool_provider(
     *,
-    prefix: list[str] | None = None,
-    user: list[str] | None = None,
-    suffix: list[str] | None = None,
-    tool_entries: list[ToolCallable] | None = None,
+    prefix: list[str] = None,
+    user: list[str] = None,
+    suffix: list[str] = None,
+    tool_entries: list[ToolCallable] = None,
 ) -> LayerProvider[PromptAndToolLayer]:
     return LayerProvider.from_factory(
         layer_type=PromptAndToolLayer,

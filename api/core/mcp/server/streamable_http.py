@@ -30,7 +30,7 @@ def handle_mcp_request(
     request: mcp_types.ClientRequest,
     user_input_form: list[VariableEntity],
     mcp_server: AppMCPServer,
-    end_user: EndUser | None = None,
+    end_user: EndUser = None,
     request_id: int | str = 1,
 ) -> mcp_types.JSONRPCResponse | mcp_types.JSONRPCError:
     """

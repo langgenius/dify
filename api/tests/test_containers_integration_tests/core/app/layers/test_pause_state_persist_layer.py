@@ -198,11 +198,11 @@ class TestPauseStatePersistenceLayerTestContainers:
 
     def _create_graph_runtime_state(
         self,
-        outputs: dict[str, object] | None = None,
+        outputs: dict[str, object] = None,
         total_tokens: int = 0,
         node_run_steps: int = 0,
-        variables: dict[tuple[str, str], object] | None = None,
-        workflow_run_id: str | None = None,
+        variables: dict[tuple[str, str], object] = None,
+        workflow_run_id: str = None,
     ) -> ReadOnlyGraphRuntimeState:
         """Create a real GraphRuntimeState for testing."""
         start_at = time()
@@ -234,9 +234,9 @@ class TestPauseStatePersistenceLayerTestContainers:
 
     def _create_generate_entity(
         self,
-        workflow_execution_id: str | None = None,
-        user_id: str | None = None,
-        workflow_id: str | None = None,
+        workflow_execution_id: str = None,
+        user_id: str = None,
+        workflow_id: str = None,
     ) -> WorkflowAppGenerateEntity:
         execution_id = workflow_execution_id or getattr(self, "test_workflow_run_id", str(uuid.uuid4()))
         wf_id = workflow_id or getattr(self, "test_workflow_id", str(uuid.uuid4()))
@@ -261,10 +261,10 @@ class TestPauseStatePersistenceLayerTestContainers:
 
     def _create_pause_state_persistence_layer(
         self,
-        workflow_run: WorkflowRun | None = None,
-        workflow: Workflow | None = None,
-        state_owner_user_id: str | None = None,
-        generate_entity: WorkflowAppGenerateEntity | None = None,
+        workflow_run: WorkflowRun = None,
+        workflow: Workflow = None,
+        state_owner_user_id: str = None,
+        generate_entity: WorkflowAppGenerateEntity = None,
     ) -> PauseStatePersistenceLayer:
         """Create PauseStatePersistenceLayer with real dependencies."""
         owner_id = state_owner_user_id

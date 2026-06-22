@@ -179,8 +179,8 @@ class AgentStubFileMapping(BaseModel):
     """Public file mapping used by download-request control-plane calls."""
 
     transfer_method: Literal["local_file", "tool_file", "datasource_file", "remote_url"]
-    reference: str | None = None
-    url: str | None = None
+    reference: str = None
+    url: str = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -213,7 +213,7 @@ class AgentStubFileDownloadResponse(BaseModel):
     """Response body containing download metadata plus the signed URL."""
 
     filename: str
-    mime_type: str | None = None
+    mime_type: str = None
     size: int
     download_url: str
 
@@ -251,14 +251,14 @@ class AgentStubDriveItem(BaseModel):
     """One manifest or commit item returned by the Agent Stub drive API."""
 
     key: str
-    size: int | None = None
-    hash: str | None = None
-    mime_type: str | None = None
+    size: int = None
+    hash: str = None
+    mime_type: str = None
     file_kind: Literal["upload_file", "tool_file"]
     file_id: str
-    created_at: int | None = None
-    download_url: str | None = None
-    value_owned_by_drive: bool | None = None
+    created_at: int = None
+    download_url: str = None
+    value_owned_by_drive: bool = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 

@@ -148,11 +148,11 @@ class DifyAskHumanLayer(PydanticAILayer[NoLayerDeps, object, DifyAskHumanLayerCo
         self,
         _ctx: RunContext[object],
         *,
-        title: str | None = None,
+        title: str = None,
         question: str,
-        markdown: str | None = None,
-        fields: list[AskHumanField] | None = None,
-        actions: list[AskHumanAction] | None = None,
+        markdown: str = None,
+        fields: list[AskHumanField] = None,
+        actions: list[AskHumanAction] = None,
         urgency: str = "normal",
     ) -> str:
         del title, question, markdown, fields, actions, urgency
@@ -162,11 +162,11 @@ class DifyAskHumanLayer(PydanticAILayer[NoLayerDeps, object, DifyAskHumanLayerCo
         self,
         _ctx: RunContext[object],
         *,
-        title: str | None = None,
+        title: str = None,
         question: str,
-        markdown: str | None = None,
-        fields: list[AskHumanField] | None = None,
-        actions: list[AskHumanAction] | None = None,
+        markdown: str = None,
+        fields: list[AskHumanField] = None,
+        actions: list[AskHumanAction] = None,
         urgency: str = "normal",
     ) -> None:
         try:
@@ -190,7 +190,7 @@ class DifyAskHumanLayer(PydanticAILayer[NoLayerDeps, object, DifyAskHumanLayerCo
         fields: list[AskHumanField],
         actions: list[AskHumanAction],
         urgency: str,
-        raw_args: str | dict[str, Any] | None = None,
+        raw_args: str | dict[str, Any] = None,
     ) -> AskHumanToolArgs:
         if raw_args is not None:
             args = _validate_tool_args_payload(raw_args)

@@ -83,7 +83,7 @@ class TriggerService:
             request: Request
         """
         timestamp = int(time.time())
-        subscription: TriggerSubscription | None = None
+        subscription: TriggerSubscription = None
         try:
             subscription = TriggerProviderService.get_subscription_by_endpoint(endpoint_id)
         except PluginNotFoundError:

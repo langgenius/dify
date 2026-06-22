@@ -47,7 +47,7 @@ def create_mock_document(
     doc_id: str,
     score: float = 0.8,
     provider: str = "dify",
-    additional_metadata: dict[str, Any] | None = None,
+    additional_metadata: dict[str, Any] = None,
 ) -> Document:
     """
     Create a mock Document object for testing.
@@ -2145,8 +2145,8 @@ class TestDocumentModel:
 
 
 def create_mock_dataset_methods(
-    dataset_id: str | None = None,
-    tenant_id: str | None = None,
+    dataset_id: str = None,
+    tenant_id: str = None,
     provider: str = "dify",
     indexing_technique: str = "high_quality",
     available_document_count: int = 10,
@@ -2187,7 +2187,7 @@ def create_mock_document_methods(
     doc_id: str,
     score: float = 0.8,
     provider: str = "dify",
-    additional_metadata: dict[str, Any] | None = None,
+    additional_metadata: dict[str, Any] = None,
 ) -> Document:
     """
     Create a mock Document object for testing.
@@ -4266,7 +4266,7 @@ def _doc(
     dataset_id: str = "dataset-1",
     document_id: str = "document-1",
     doc_id: str = "node-1",
-    extra: dict[str, Any] | None = None,
+    extra: dict[str, Any] = None,
 ) -> Document:
     metadata = {
         "score": score,
@@ -4414,7 +4414,7 @@ class TestRetrieveCoverage:
     def retrieval(self) -> DatasetRetrieval:
         return DatasetRetrieval()
 
-    def _build_model_config(self, features: list[ModelFeature] | None = None):
+    def _build_model_config(self, features: list[ModelFeature] = None):
         model_type_instance = Mock()
         model_type_instance.get_model_schema.return_value = SimpleNamespace(features=features or [])
         provider_bundle = SimpleNamespace(model_type_instance=model_type_instance)

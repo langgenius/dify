@@ -27,11 +27,11 @@ class OutputModeration(BaseModel):
     rule: ModerationRule
     queue_manager: AppQueueManager
 
-    thread: threading.Thread | None = None
+    thread: threading.Thread = None
     thread_running: bool = True
     buffer: str = ""
     is_final_chunk: bool = False
-    final_output: str | None = None
+    final_output: str = None
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def should_direct_output(self) -> bool:

@@ -69,12 +69,12 @@ class BaseRequest:
         cls,
         method: str,
         endpoint: str,
-        json: Any | None = None,
-        params: Mapping[str, Any] | None = None,
+        json: Any = None,
+        params: Mapping[str, Any] = None,
         *,
-        timeout: float | httpx.Timeout | None = None,
+        timeout: float | httpx.Timeout = None,
         raise_for_status: bool = False,
-        extra_headers: Mapping[str, str] | None = None,
+        extra_headers: Mapping[str, str] = None,
     ) -> Any:
         headers = {"Content-Type": "application/json", cls.secret_key_header: cls.secret_key}
         if extra_headers:
@@ -163,10 +163,10 @@ class EnterpriseRequest(BaseRequest):
         endpoint: str,
         *,
         tenant_id: str,
-        account_id: str | None = None,
-        json: Any | None = None,
-        params: Mapping[str, Any] | None = None,
-        timeout: float | httpx.Timeout | None = None,
+        account_id: str = None,
+        json: Any = None,
+        params: Mapping[str, Any] = None,
+        timeout: float | httpx.Timeout = None,
     ) -> Any:
         """Call an /inner/api/rbac/* endpoint on dify-enterprise.
 

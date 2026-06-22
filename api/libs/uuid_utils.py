@@ -74,7 +74,7 @@ def _create_uuidv7_bytes(timestamp_ms: int, random_bytes: bytes) -> bytes:
     return bytes(uuid_bytes)
 
 
-def uuidv7(timestamp_ms: int | None = None) -> uuid.UUID:
+def uuidv7(timestamp_ms: int = None) -> uuid.UUID:
     """Generate a UUID version 7 according to RFC 9562 specification.
 
     UUIDv7 features a time-ordered value field derived from the widely

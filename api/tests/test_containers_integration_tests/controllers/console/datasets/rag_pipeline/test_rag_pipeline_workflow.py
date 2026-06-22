@@ -195,7 +195,7 @@ def make_pipeline(
     *,
     id: str = "pipeline-1",
     tenant_id: str = "tenant-1",
-    workflow_id: str | None = None,
+    workflow_id: str = None,
     is_published: bool = False,
 ) -> Pipeline:
     pipeline = Pipeline(tenant_id=tenant_id, name="test-pipeline", description="test")

@@ -55,8 +55,8 @@ class SimplePromptTransform(PromptTransform):
         context: str | None,
         memory: TokenBufferMemory | None,
         model_config: ModelConfigWithCredentialsEntity,
-        image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
-        context_files: list["File"] | None = None,
+        image_detail_config: ImagePromptMessageContent.DETAIL = None,
+        context_files: list["File"] = None,
     ) -> tuple[list[PromptMessage], list[str] | None]:
         inputs = {key: str(value) for key, value in inputs.items()}
 
@@ -96,9 +96,9 @@ class SimplePromptTransform(PromptTransform):
         model_config: ModelConfigWithCredentialsEntity,
         pre_prompt: str,
         inputs: dict[str, Any],
-        query: str | None = None,
-        context: str | None = None,
-        histories: str | None = None,
+        query: str = None,
+        context: str = None,
+        histories: str = None,
     ) -> tuple[str, dict[str, Any]]:
         # get prompt template
         prompt_template_config = self.get_prompt_template(
@@ -195,8 +195,8 @@ class SimplePromptTransform(PromptTransform):
         files: Sequence["File"],
         memory: TokenBufferMemory | None,
         model_config: ModelConfigWithCredentialsEntity,
-        image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
-        context_files: list["File"] | None = None,
+        image_detail_config: ImagePromptMessageContent.DETAIL = None,
+        context_files: list["File"] = None,
     ) -> tuple[list[PromptMessage], list[str] | None]:
         prompt_messages: list[PromptMessage] = []
 
@@ -242,8 +242,8 @@ class SimplePromptTransform(PromptTransform):
         files: Sequence["File"],
         memory: TokenBufferMemory | None,
         model_config: ModelConfigWithCredentialsEntity,
-        image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
-        context_files: list["File"] | None = None,
+        image_detail_config: ImagePromptMessageContent.DETAIL = None,
+        context_files: list["File"] = None,
     ) -> tuple[list[PromptMessage], list[str] | None]:
         # get prompt
         prompt, prompt_rules = self._get_prompt_str_and_rules(
@@ -292,8 +292,8 @@ class SimplePromptTransform(PromptTransform):
         self,
         prompt: str,
         files: Sequence["File"],
-        image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
-        context_files: list["File"] | None = None,
+        image_detail_config: ImagePromptMessageContent.DETAIL = None,
+        context_files: list["File"] = None,
     ) -> UserPromptMessage:
         prompt_message_contents: list[PromptMessageContentUnionTypes] = []
         if files:

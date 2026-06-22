@@ -110,7 +110,7 @@ class WorkflowRunExportResponse(ResponseModel):
 class HumanInputPauseTypeResponse(ResponseModel):
     type: Literal["human_input"]
     form_id: str
-    backstage_input_url: str | None = None
+    backstage_input_url: str = None
 
 
 class PausedNodeResponse(ResponseModel):
@@ -120,7 +120,7 @@ class PausedNodeResponse(ResponseModel):
 
 
 class WorkflowPauseDetailsResponse(ResponseModel):
-    paused_at: str | None = None
+    paused_at: str = None
     paused_nodes: list[PausedNodeResponse]
 
 

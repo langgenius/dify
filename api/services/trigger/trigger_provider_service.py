@@ -152,7 +152,7 @@ class TriggerProviderService:
         parameters: Mapping[str, Any],
         properties: Mapping[str, Any],
         credentials: Mapping[str, str],
-        subscription_id: str | None = None,
+        subscription_id: str = None,
         credential_expires_at: int = -1,
         expires_at: int = -1,
     ) -> Mapping[str, Any]:
@@ -204,7 +204,7 @@ class TriggerProviderService:
                     if existing:
                         raise ValueError(f"Credential name '{name}' already exists for this provider")
 
-                    credential_encrypter: ProviderConfigEncrypter | None = None
+                    credential_encrypter: ProviderConfigEncrypter = None
                     if credential_type != CredentialType.UNAUTHORIZED:
                         credential_encrypter, _ = create_provider_encrypter(
                             tenant_id=tenant_id,
@@ -252,12 +252,12 @@ class TriggerProviderService:
         cls,
         tenant_id: str,
         subscription_id: str,
-        name: str | None = None,
-        properties: Mapping[str, Any] | None = None,
-        parameters: Mapping[str, Any] | None = None,
-        credentials: Mapping[str, Any] | None = None,
-        credential_expires_at: int | None = None,
-        expires_at: int | None = None,
+        name: str = None,
+        properties: Mapping[str, Any] = None,
+        parameters: Mapping[str, Any] = None,
+        credentials: Mapping[str, Any] = None,
+        credential_expires_at: int = None,
+        expires_at: int = None,
     ) -> None:
         """
         Update an existing trigger subscription.
@@ -350,12 +350,12 @@ class TriggerProviderService:
                 )
 
     @classmethod
-    def get_subscription_by_id(cls, tenant_id: str, subscription_id: str | None = None) -> TriggerSubscription | None:
+    def get_subscription_by_id(cls, tenant_id: str, subscription_id: str = None) -> TriggerSubscription | None:
         """
         Get a trigger subscription by the ID.
         """
         with Session(db.engine, expire_on_commit=False) as session:
-            subscription: TriggerSubscription | None = None
+            subscription: TriggerSubscription = None
             if subscription_id:
                 subscription = session.scalar(
                     select(TriggerSubscription)
@@ -525,7 +525,7 @@ class TriggerProviderService:
         cls,
         tenant_id: str,
         subscription_id: str,
-        now: int | None = None,
+        now: int = None,
     ) -> Mapping[str, Any]:
         """
         Refresh trigger subscription if expired.
@@ -634,7 +634,7 @@ class TriggerProviderService:
                 .limit(1)
             )
 
-            oauth_params: Mapping[str, Any] | None = None
+            oauth_params: Mapping[str, Any] = None
             if tenant_client:
                 encrypter, _ = create_provider_encrypter(
                     tenant_id=tenant_id,
@@ -691,8 +691,8 @@ class TriggerProviderService:
         cls,
         tenant_id: str,
         provider_id: TriggerProviderID,
-        client_params: Mapping[str, Any] | None = None,
-        enabled: bool | None = None,
+        client_params: Mapping[str, Any] = None,
+        enabled: bool = None,
     ) -> Mapping[str, Any]:
         """
         Save or update custom OAuth client parameters for a trigger provider.
@@ -923,7 +923,7 @@ class TriggerProviderService:
         subscription_id: str,
         credentials: Mapping[str, Any],
         parameters: Mapping[str, Any],
-        name: str | None = None,
+        name: str = None,
     ) -> None:
         """
         Create a subscription builder for rebuilding an existing subscription.

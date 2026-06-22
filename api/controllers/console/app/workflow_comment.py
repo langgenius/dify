@@ -70,8 +70,8 @@ class WorkflowCommentReply(ResponseModel):
     id: str
     content: str
     created_by: str
-    created_by_account: WorkflowCommentAccount | None = None
-    created_at: int | None = None
+    created_by_account: WorkflowCommentAccount = None
+    created_at: int = None
 
     @field_validator("created_at", mode="before")
     @classmethod
@@ -81,8 +81,8 @@ class WorkflowCommentReply(ResponseModel):
 
 class WorkflowCommentMention(ResponseModel):
     mentioned_user_id: str
-    mentioned_user_account: WorkflowCommentAccount | None = None
-    reply_id: str | None = None
+    mentioned_user_account: WorkflowCommentAccount = None
+    reply_id: str = None
 
 
 class WorkflowCommentBasic(ResponseModel):
@@ -91,13 +91,13 @@ class WorkflowCommentBasic(ResponseModel):
     position_y: float
     content: str
     created_by: str
-    created_by_account: WorkflowCommentAccount | None = None
-    created_at: int | None = None
-    updated_at: int | None = None
+    created_by_account: WorkflowCommentAccount = None
+    created_at: int = None
+    updated_at: int = None
     resolved: bool
-    resolved_at: int | None = None
-    resolved_by: str | None = None
-    resolved_by_account: WorkflowCommentAccount | None = None
+    resolved_at: int = None
+    resolved_by: str = None
+    resolved_by_account: WorkflowCommentAccount = None
     reply_count: int
     mention_count: int
     participants: list[WorkflowCommentAccount]
@@ -118,13 +118,13 @@ class WorkflowCommentDetail(ResponseModel):
     position_y: float
     content: str
     created_by: str
-    created_by_account: WorkflowCommentAccount | None = None
-    created_at: int | None = None
-    updated_at: int | None = None
+    created_by_account: WorkflowCommentAccount = None
+    created_at: int = None
+    updated_at: int = None
     resolved: bool
-    resolved_at: int | None = None
-    resolved_by: str | None = None
-    resolved_by_account: WorkflowCommentAccount | None = None
+    resolved_at: int = None
+    resolved_by: str = None
+    resolved_by_account: WorkflowCommentAccount = None
     replies: list[WorkflowCommentReply]
     mentions: list[WorkflowCommentMention]
 
@@ -136,7 +136,7 @@ class WorkflowCommentDetail(ResponseModel):
 
 class WorkflowCommentCreate(ResponseModel):
     id: str
-    created_at: int | None = None
+    created_at: int = None
 
     @field_validator("created_at", mode="before")
     @classmethod
@@ -146,7 +146,7 @@ class WorkflowCommentCreate(ResponseModel):
 
 class WorkflowCommentUpdate(ResponseModel):
     id: str
-    updated_at: int | None = None
+    updated_at: int = None
 
     @field_validator("updated_at", mode="before")
     @classmethod
@@ -157,8 +157,8 @@ class WorkflowCommentUpdate(ResponseModel):
 class WorkflowCommentResolve(ResponseModel):
     id: str
     resolved: bool
-    resolved_at: int | None = None
-    resolved_by: str | None = None
+    resolved_at: int = None
+    resolved_by: str = None
 
     @field_validator("resolved_at", mode="before")
     @classmethod
@@ -168,7 +168,7 @@ class WorkflowCommentResolve(ResponseModel):
 
 class WorkflowCommentReplyCreate(ResponseModel):
     id: str
-    created_at: int | None = None
+    created_at: int = None
 
     @field_validator("created_at", mode="before")
     @classmethod
@@ -178,7 +178,7 @@ class WorkflowCommentReplyCreate(ResponseModel):
 
 class WorkflowCommentReplyUpdate(ResponseModel):
     id: str
-    updated_at: int | None = None
+    updated_at: int = None
 
     @field_validator("updated_at", mode="before")
     @classmethod

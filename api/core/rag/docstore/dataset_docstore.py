@@ -19,7 +19,7 @@ class DatasetDocumentStore:
         self,
         dataset: Dataset,
         user_id: str,
-        document_id: str | None = None,
+        document_id: str = None,
     ):
         self._dataset = dataset
         self._user_id = user_id

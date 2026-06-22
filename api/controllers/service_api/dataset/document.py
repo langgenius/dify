@@ -282,36 +282,36 @@ class DocumentAndBatchResponse(ResponseModel):
 
 class DocumentDetailResponse(ResponseModel):
     id: str
-    position: int | None = None
-    data_source_type: str | None = None
+    position: int = None
+    data_source_type: str = None
     data_source_info: dict[str, Any] | None = Field(default=None)
-    dataset_process_rule_id: str | None = None
+    dataset_process_rule_id: str = None
     dataset_process_rule: dict[str, Any] | None = Field(default=None)
     document_process_rule: dict[str, Any] | None = Field(default=None)
-    name: str | None = None
-    created_from: str | None = None
-    created_by: str | None = None
-    created_at: int | None = None
-    tokens: int | None = None
-    indexing_status: str | None = None
-    completed_at: int | None = None
-    updated_at: int | None = None
-    indexing_latency: float | None = None
-    error: str | None = None
-    enabled: bool | None = None
-    disabled_at: int | None = None
-    disabled_by: str | None = None
-    archived: bool | None = None
-    doc_type: str | None = None
-    doc_metadata: list[DocumentMetadataResponse] | None = None
-    segment_count: int | None = None
-    average_segment_length: float | None = None
-    hit_count: int | None = None
-    display_status: str | None = None
-    doc_form: str | None = None
-    doc_language: str | None = None
-    summary_index_status: str | None = None
-    need_summary: bool | None = None
+    name: str = None
+    created_from: str = None
+    created_by: str = None
+    created_at: int = None
+    tokens: int = None
+    indexing_status: str = None
+    completed_at: int = None
+    updated_at: int = None
+    indexing_latency: float = None
+    error: str = None
+    enabled: bool = None
+    disabled_at: int = None
+    disabled_by: str = None
+    archived: bool = None
+    doc_type: str = None
+    doc_metadata: list[DocumentMetadataResponse] = None
+    segment_count: int = None
+    average_segment_length: float = None
+    hit_count: int = None
+    display_status: str = None
+    doc_form: str = None
+    doc_language: str = None
+    summary_index_status: str = None
+    need_summary: bool = None
 
 
 register_enum_models(service_api_ns, RetrievalMethod)

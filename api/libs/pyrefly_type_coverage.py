@@ -120,7 +120,7 @@ def main() -> int:
 
     args = sys.argv[1:]
 
-    base_file: str | None = None
+    base_file: str = None
     if "--base" in args:
         idx = args.index("--base")
         if idx + 1 >= len(args):

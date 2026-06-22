@@ -159,7 +159,7 @@ class AsyncWorkflowService:
         task_data_dict = task_data.model_dump(mode="json")
 
         try:
-            task: AsyncResult[Any] | None = None
+            task: AsyncResult[Any] = None
             if queue_name == QueuePriority.PROFESSIONAL:
                 task = execute_workflow_professional.delay(task_data_dict)
             elif queue_name == QueuePriority.TEAM:
@@ -235,7 +235,7 @@ class AsyncWorkflowService:
 
     @classmethod
     def get_trigger_log(
-        cls, workflow_trigger_log_id: str, tenant_id: str | None = None
+        cls, workflow_trigger_log_id: str, tenant_id: str = None
     ) -> WorkflowTriggerLogDict | None:
         """
         Get trigger log by ID
@@ -308,8 +308,8 @@ class AsyncWorkflowService:
     def _get_workflow(
         workflow_service: WorkflowService,
         app_model: App,
-        workflow_id: str | None = None,
-        session: Session | None = None,
+        workflow_id: str = None,
+        session: Session = None,
     ) -> Workflow:
         """
         Get workflow for the app

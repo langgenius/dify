@@ -83,14 +83,14 @@ class RedisClientWrapper:
         self,
         name: str | bytes,
         value: Any,
-        ex: int | None = None,
-        px: int | None = None,
+        ex: int = None,
+        px: int = None,
         nx: bool = False,
         xx: bool = False,
         keepttl: bool = False,
         get: bool = False,
-        exat: int | None = None,
-        pxat: int | None = None,
+        exat: int = None,
+        pxat: int = None,
     ) -> Any:
         return self._require_client().set(
             _serialize_redis_name_arg(name, self._get_prefix()),
@@ -147,10 +147,10 @@ class RedisClientWrapper:
     def lock(
         self,
         name: str,
-        timeout: float | None = None,
+        timeout: float = None,
         sleep: float = 0.1,
         blocking: bool = True,
-        blocking_timeout: float | None = None,
+        blocking_timeout: float = None,
         thread_local: bool = True,
     ) -> Any:
         return self._require_client().lock(
@@ -205,7 +205,7 @@ class RedisClientWrapper:
     def pubsub(self) -> PubSub:
         return self._require_client().pubsub()
 
-    def pipeline(self, transaction: bool = True, shard_hint: str | None = None) -> Any:
+    def pipeline(self, transaction: bool = True, shard_hint: str = None) -> Any:
         return self._require_client().pipeline(transaction=transaction, shard_hint=shard_hint)
 
     def __getattr__(self, item: str) -> Any:
@@ -213,7 +213,7 @@ class RedisClientWrapper:
 
 
 redis_client: RedisClientWrapper = RedisClientWrapper()
-_pubsub_redis_client: redis.Redis | RedisCluster | None = None
+_pubsub_redis_client: redis.Redis | RedisCluster = None
 
 
 class RedisSSLParamsDict(TypedDict):
@@ -469,7 +469,7 @@ def get_pubsub_broadcast_channel() -> BroadcastChannelProtocol:
     return RedisBroadcastChannel(_pubsub_redis_client, join_timeout_ms=join_timeout_ms)
 
 
-def redis_fallback[T](default_return: T | None = None):  # type: ignore
+def redis_fallback[T](default_return: T = None):  # type: ignore
     """
     decorator to handle Redis operation exceptions and return a default value when Redis is unavailable.
 

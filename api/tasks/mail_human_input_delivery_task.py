@@ -144,7 +144,7 @@ def _open_session(session_factory: sessionmaker | Session | None):
 
 
 @shared_task(queue="mail")
-def dispatch_human_input_email_task(form_id: str, node_title: str | None = None, session_factory=None):
+def dispatch_human_input_email_task(form_id: str, node_title: str = None, session_factory=None):
     if not mail.is_inited():
         return
 

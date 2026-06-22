@@ -19,7 +19,7 @@ class SummaryIndex:
         dataset_id: str,
         document_id: str,
         is_preview: bool,
-        summary_index_setting: SummaryIndexSettingDict | None = None,
+        summary_index_setting: SummaryIndexSettingDict = None,
     ) -> None:
         if is_preview:
             with session_factory.create_session() as session:

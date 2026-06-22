@@ -29,14 +29,14 @@ class Blob(BaseModel):
     Inspired by: https://developer.mozilla.org/en-US/docs/Web/API/Blob
     """
 
-    data: bytes | str | None = None  # Raw data
-    mimetype: str | None = None  # Not to be confused with a file extension
+    data: bytes | str = None  # Raw data
+    mimetype: str = None  # Not to be confused with a file extension
     encoding: str = "utf-8"  # Use utf-8 as default encoding, if decoding to string
     # Location where the original content was found
     # Represent location on the local file system
     # Useful for situations where downstream code assumes it must work with file paths
     # rather than in-memory content.
-    path: PathLike | None = None
+    path: PathLike = None
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
     @property
@@ -94,7 +94,7 @@ class Blob(BaseModel):
         path: PathLike,
         *,
         encoding: str = "utf-8",
-        mime_type: str | None = None,
+        mime_type: str = None,
         guess_type: bool = True,
     ) -> Blob:
         """Load the blob from a path like object.
@@ -123,8 +123,8 @@ class Blob(BaseModel):
         data: str | bytes,
         *,
         encoding: str = "utf-8",
-        mime_type: str | None = None,
-        path: str | None = None,
+        mime_type: str = None,
+        path: str = None,
     ) -> Blob:
         """Initialize the blob from in-memory data.
 

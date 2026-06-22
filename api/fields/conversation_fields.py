@@ -16,12 +16,12 @@ class MessageFile(ResponseModel):
     id: str
     filename: str
     type: str
-    url: str | None = None
-    mime_type: str | None = None
-    size: int | None = None
+    url: str = None
+    mime_type: str = None
+    size: int = None
     transfer_method: str
-    belongs_to: str | None = None
-    upload_file_id: str | None = None
+    belongs_to: str = None
+    upload_file_id: str = None
 
     @field_validator("transfer_method", mode="before")
     @classmethod
@@ -36,9 +36,9 @@ class SimpleConversation(ResponseModel):
     name: str
     inputs: dict[str, JSONValue]
     status: str
-    introduction: str | None = None
-    created_at: int | None = None
-    updated_at: int | None = None
+    introduction: str = None
+    created_at: int = None
+    updated_at: int = None
 
     @field_validator("inputs", mode="before")
     @classmethod
@@ -73,18 +73,18 @@ class SimpleAccount(ResponseModel):
 
 class Feedback(ResponseModel):
     rating: str
-    content: str | None = None
+    content: str = None
     from_source: str
-    from_end_user_id: str | None = None
-    from_account: SimpleAccount | None = None
+    from_end_user_id: str = None
+    from_account: SimpleAccount = None
 
 
 class ConversationAnnotation(ResponseModel):
     id: str
-    question: str | None = None
+    question: str = None
     content: str
-    account: SimpleAccount | None = None
-    created_at: int | None = None
+    account: SimpleAccount = None
+    created_at: int = None
 
     @field_validator("created_at", mode="before")
     @classmethod
@@ -94,8 +94,8 @@ class ConversationAnnotation(ResponseModel):
 
 class ConversationAnnotationHitHistory(ResponseModel):
     annotation_id: str = Field(validation_alias="id")
-    annotation_create_account: SimpleAccount | None = None
-    created_at: int | None = None
+    annotation_create_account: SimpleAccount = None
+    created_at: int = None
 
     @field_validator("created_at", mode="before")
     @classmethod
@@ -105,16 +105,16 @@ class ConversationAnnotationHitHistory(ResponseModel):
 
 class AgentThought(ResponseModel):
     id: str
-    chain_id: str | None = None
+    chain_id: str = None
     message_chain_id: str | None = Field(default=None, exclude=True, validation_alias="message_chain_id")
     message_id: str
     position: int
-    thought: str | None = None
-    tool: str | None = None
+    thought: str = None
+    tool: str = None
     tool_labels: JSONValue
-    tool_input: str | None = None
-    created_at: int | None = None
-    observation: str | None = None
+    tool_input: str = None
+    created_at: int = None
+    observation: str = None
     files: list[str]
 
     @field_validator("created_at", mode="before")
@@ -140,19 +140,19 @@ class MessageDetail(ResponseModel):
     answer_tokens: int
     provider_response_latency: float
     from_source: str
-    from_end_user_id: str | None = None
-    from_account_id: str | None = None
+    from_end_user_id: str = None
+    from_account_id: str = None
     feedbacks: list[Feedback]
-    workflow_run_id: str | None = None
-    annotation: ConversationAnnotation | None = None
-    annotation_hit_history: ConversationAnnotationHitHistory | None = None
-    created_at: int | None = None
+    workflow_run_id: str = None
+    annotation: ConversationAnnotation = None
+    annotation_hit_history: ConversationAnnotationHitHistory = None
+    created_at: int = None
     agent_thoughts: list[AgentThought]
     message_files: list[MessageFile]
     metadata: JSONValue = Field(validation_alias="message_metadata_dict")
     status: str
-    error: str | None = None
-    parent_message_id: str | None = None
+    error: str = None
+    parent_message_id: str = None
 
     @field_validator("inputs", mode="before")
     @classmethod
@@ -178,11 +178,11 @@ class StatusCount(ResponseModel):
 
 
 class ModelConfig(ResponseModel):
-    opening_statement: str | None = None
+    opening_statement: str = None
     suggested_questions: JSONValue | None = Field(default=None)
     model: JSONValue | None = Field(default=None)
     user_input_form: JSONValue | None = Field(default=None)
-    pre_prompt: str | None = None
+    pre_prompt: str = None
     agent_mode: JSONValue | None = Field(default=None)
 
 
@@ -191,7 +191,7 @@ class SimpleModelConfig(ResponseModel):
         default=None,
         validation_alias="model_dict",
     )
-    pre_prompt: str | None = None
+    pre_prompt: str = None
 
 
 class SimpleMessageDetail(ResponseModel):
@@ -215,17 +215,17 @@ class Conversation(ResponseModel):
     id: str
     status: str
     from_source: str
-    from_end_user_id: str | None = None
-    from_end_user_session_id: str | None = None
-    from_account_id: str | None = None
-    from_account_name: str | None = None
-    read_at: int | None = None
-    created_at: int | None = None
-    updated_at: int | None = None
-    annotation: ConversationAnnotation | None = None
+    from_end_user_id: str = None
+    from_end_user_session_id: str = None
+    from_account_id: str = None
+    from_account_name: str = None
+    read_at: int = None
+    created_at: int = None
+    updated_at: int = None
+    annotation: ConversationAnnotation = None
     model_config_: SimpleModelConfig | None = Field(default=None, alias="model_config")
-    user_feedback_stats: FeedbackStat | None = None
-    admin_feedback_stats: FeedbackStat | None = None
+    user_feedback_stats: FeedbackStat = None
+    admin_feedback_stats: FeedbackStat = None
     message: SimpleMessageDetail | None = Field(default=None, validation_alias="first_message")
 
     @field_validator("read_at", "created_at", "updated_at", mode="before")
@@ -246,9 +246,9 @@ class ConversationMessageDetail(ResponseModel):
     id: str
     status: str
     from_source: str
-    from_end_user_id: str | None = None
-    from_account_id: str | None = None
-    created_at: int | None = None
+    from_end_user_id: str = None
+    from_account_id: str = None
+    created_at: int = None
     model_config_: ModelConfig | None = Field(default=None, alias="model_config")
     message: MessageDetail | None = Field(default=None, validation_alias="first_message")
 
@@ -262,21 +262,21 @@ class ConversationWithSummary(ResponseModel):
     id: str
     status: str
     from_source: str
-    from_end_user_id: str | None = None
-    from_end_user_session_id: str | None = None
-    from_account_id: str | None = None
-    from_account_name: str | None = None
+    from_end_user_id: str = None
+    from_end_user_session_id: str = None
+    from_account_id: str = None
+    from_account_name: str = None
     name: str
     summary: str = Field(validation_alias="summary_or_query")
-    read_at: int | None = None
-    created_at: int | None = None
-    updated_at: int | None = None
+    read_at: int = None
+    created_at: int = None
+    updated_at: int = None
     annotated: bool
     model_config_: SimpleModelConfig | None = Field(default=None, alias="model_config")
     message_count: int
-    user_feedback_stats: FeedbackStat | None = None
-    admin_feedback_stats: FeedbackStat | None = None
-    status_count: StatusCount | None = None
+    user_feedback_stats: FeedbackStat = None
+    admin_feedback_stats: FeedbackStat = None
+    status_count: StatusCount = None
 
     @field_validator("read_at", "created_at", "updated_at", mode="before")
     @classmethod
@@ -296,16 +296,16 @@ class ConversationDetail(ResponseModel):
     id: str
     status: str
     from_source: str
-    from_end_user_id: str | None = None
-    from_account_id: str | None = None
-    created_at: int | None = None
-    updated_at: int | None = None
+    from_end_user_id: str = None
+    from_account_id: str = None
+    created_at: int = None
+    updated_at: int = None
     annotated: bool
-    introduction: str | None = None
+    introduction: str = None
     model_config_: ModelConfig | None = Field(default=None, alias="model_config")
     message_count: int
-    user_feedback_stats: FeedbackStat | None = None
-    admin_feedback_stats: FeedbackStat | None = None
+    user_feedback_stats: FeedbackStat = None
+    admin_feedback_stats: FeedbackStat = None
 
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod

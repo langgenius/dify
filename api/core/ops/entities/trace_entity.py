@@ -9,14 +9,14 @@ from core.helper.trace_id_helper import ParentTraceContext
 
 
 class BaseTraceInfo(BaseModel):
-    message_id: str | None = None
-    message_data: Any | None = None
-    inputs: Union[str, dict[str, Any], list[Any]] | None = None
-    outputs: Union[str, dict[str, Any], list[Any]] | None = None
-    start_time: datetime | None = None
-    end_time: datetime | None = None
+    message_id: str = None
+    message_data: Any = None
+    inputs: Union[str, dict[str, Any], list[Any]] = None
+    outputs: Union[str, dict[str, Any], list[Any]] = None
+    start_time: datetime = None
+    end_time: datetime = None
     metadata: dict[str, Any]
-    trace_id: str | None = None
+    trace_id: str = None
 
     @field_validator("inputs", "outputs")
     @classmethod
@@ -86,8 +86,8 @@ class BaseTraceInfo(BaseModel):
 
 class WorkflowTraceInfo(BaseTraceInfo):
     workflow_data: Any = None
-    conversation_id: str | None = None
-    workflow_app_log_id: str | None = None
+    conversation_id: str = None
+    workflow_app_log_id: str = None
     workflow_id: str
     tenant_id: str
     workflow_run_id: str
@@ -96,12 +96,12 @@ class WorkflowTraceInfo(BaseTraceInfo):
     workflow_run_inputs: Mapping[str, Any]
     workflow_run_outputs: Mapping[str, Any]
     workflow_run_version: str
-    error: str | None = None
+    error: str = None
     total_tokens: int
-    prompt_tokens: int | None = None
-    completion_tokens: int | None = None
+    prompt_tokens: int = None
+    completion_tokens: int = None
     file_list: list[str]
-    invoked_by: str | None = None
+    invoked_by: str = None
     query: str
     metadata: dict[str, Any]
 
@@ -111,12 +111,12 @@ class MessageTraceInfo(BaseTraceInfo):
     message_tokens: int
     answer_tokens: int
     total_tokens: int
-    error: str | None = None
-    file_list: Union[str, dict[str, Any], list[Any]] | None = None
-    message_file_data: Any | None = None
+    error: str = None
+    file_list: Union[str, dict[str, Any], list[Any]] = None
+    message_file_data: Any = None
     conversation_mode: str
-    gen_ai_server_time_to_first_token: float | None = None
-    llm_streaming_time_to_generate: float | None = None
+    gen_ai_server_time_to_first_token: float = None
+    llm_streaming_time_to_generate: float = None
     is_streaming_request: bool = False
 
 
@@ -129,24 +129,24 @@ class ModerationTraceInfo(BaseTraceInfo):
 
 class SuggestedQuestionTraceInfo(BaseTraceInfo):
     total_tokens: int
-    status: str | None = None
-    error: str | None = None
-    from_account_id: str | None = None
-    agent_based: bool | None = None
-    from_source: str | None = None
-    model_provider: str | None = None
-    model_id: str | None = None
+    status: str = None
+    error: str = None
+    from_account_id: str = None
+    agent_based: bool = None
+    from_source: str = None
+    model_provider: str = None
+    model_id: str = None
     suggested_question: list[str]
     level: str
-    status_message: str | None = None
-    workflow_run_id: str | None = None
+    status_message: str = None
+    workflow_run_id: str = None
 
     model_config = ConfigDict(protected_namespaces=())
 
 
 class DatasetRetrievalTraceInfo(BaseTraceInfo):
     documents: Any = None
-    error: str | None = None
+    error: str = None
 
 
 class ToolTraceInfo(BaseTraceInfo):
@@ -155,7 +155,7 @@ class ToolTraceInfo(BaseTraceInfo):
     tool_outputs: str
     metadata: dict[str, Any]
     message_file_data: Any = None
-    error: str | None = None
+    error: str = None
     tool_config: dict[str, Any]
     time_cost: Union[int, float]
     tool_parameters: dict[str, Any]
@@ -163,7 +163,7 @@ class ToolTraceInfo(BaseTraceInfo):
 
 
 class GenerateNameTraceInfo(BaseTraceInfo):
-    conversation_id: str | None = None
+    conversation_id: str = None
     tenant_id: str
 
 
@@ -172,7 +172,7 @@ class PromptGenerationTraceInfo(BaseTraceInfo):
 
     tenant_id: str
     user_id: str
-    app_id: str | None = None
+    app_id: str = None
 
     operation_type: str
     instruction: str
@@ -186,10 +186,10 @@ class PromptGenerationTraceInfo(BaseTraceInfo):
 
     latency: float
 
-    total_price: float | None = None
-    currency: str | None = None
+    total_price: float = None
+    currency: str = None
 
-    error: str | None = None
+    error: str = None
 
     model_config = ConfigDict(protected_namespaces=())
 
@@ -204,34 +204,34 @@ class WorkflowNodeTraceInfo(BaseTraceInfo):
     title: str
 
     status: str
-    error: str | None = None
+    error: str = None
     elapsed_time: float
 
     index: int
-    predecessor_node_id: str | None = None
+    predecessor_node_id: str = None
 
     total_tokens: int = 0
     total_price: float = 0.0
-    currency: str | None = None
+    currency: str = None
 
-    model_provider: str | None = None
-    model_name: str | None = None
-    prompt_tokens: int | None = None
-    completion_tokens: int | None = None
+    model_provider: str = None
+    model_name: str = None
+    prompt_tokens: int = None
+    completion_tokens: int = None
 
-    tool_name: str | None = None
+    tool_name: str = None
 
-    iteration_id: str | None = None
-    iteration_index: int | None = None
-    loop_id: str | None = None
-    loop_index: int | None = None
-    parallel_id: str | None = None
+    iteration_id: str = None
+    iteration_index: int = None
+    loop_id: str = None
+    loop_index: int = None
+    parallel_id: str = None
 
-    node_inputs: Mapping[str, Any] | None = None
-    node_outputs: Mapping[str, Any] | None = None
-    process_data: Mapping[str, Any] | None = None
+    node_inputs: Mapping[str, Any] = None
+    node_outputs: Mapping[str, Any] = None
+    process_data: Mapping[str, Any] = None
 
-    invoked_by: str | None = None
+    invoked_by: str = None
 
     model_config = ConfigDict(protected_namespaces=())
 

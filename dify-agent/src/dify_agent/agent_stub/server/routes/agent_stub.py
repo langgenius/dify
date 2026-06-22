@@ -29,8 +29,8 @@ from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
 
 def create_agent_stub_http_router(
     token_codec: AgentStubTokenCodec | None,
-    file_request_handler: AgentStubFileRequestHandler | None = None,
-    drive_request_handler: AgentStubDriveRequestHandler | None = None,
+    file_request_handler: AgentStubFileRequestHandler = None,
+    drive_request_handler: AgentStubDriveRequestHandler = None,
 ) -> APIRouter:
     """Create HTTP routes bound to the application's Agent Stub dependencies."""
     router = APIRouter(prefix="/agent-stub", tags=["agent-stub"])

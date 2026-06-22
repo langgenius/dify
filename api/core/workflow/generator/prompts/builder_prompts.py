@@ -330,7 +330,7 @@ _EDGE_HANDLES_SECTION = """\
 _CONTAINER_NODE_TYPES = frozenset({"iteration", "loop"})
 
 
-def build_node_config_cheatsheet(node_types: Iterable[str] | None = None) -> str:
+def build_node_config_cheatsheet(node_types: Iterable[str] = None) -> str:
     """
     Assemble the builder cheatsheet for exactly the node types in the plan.
 
@@ -697,7 +697,7 @@ def format_plan_block(plan_nodes: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def get_builder_system_prompt(mode: str, node_types: Iterable[str] | None = None) -> str:
+def get_builder_system_prompt(mode: str, node_types: Iterable[str] = None) -> str:
     """
     Build the builder system prompt for ``mode``, with a cheatsheet scoped to
     ``node_types`` (the planner's chosen node types).

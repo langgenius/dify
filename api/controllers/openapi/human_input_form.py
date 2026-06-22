@@ -85,8 +85,8 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
         _ensure_form_belongs_to_app(form, app_model)
         _ensure_form_is_allowed_for_openapi(form)
 
-        submission_user_id: str | None = None
-        submission_end_user_id: str | None = None
+        submission_user_id: str = None
+        submission_end_user_id: str = None
         if caller_kind == "account":
             submission_user_id = caller.id
         else:

@@ -162,9 +162,9 @@ class PluginModelClient(BasePluginClient):
         model: str,
         credentials: dict[str, Any],
         prompt_messages: list[PromptMessage],
-        model_parameters: dict[str, Any] | None = None,
-        tools: list[PromptMessageTool] | None = None,
-        stop: list[str] | None = None,
+        model_parameters: dict[str, Any] = None,
+        tools: list[PromptMessageTool] = None,
+        stop: list[str] = None,
         stream: bool = True,
     ) -> Generator[LLMResultChunk, None, None]:
         """
@@ -210,10 +210,10 @@ class PluginModelClient(BasePluginClient):
         model: str,
         credentials: dict[str, Any],
         prompt_messages: list[PromptMessage],
-        model_parameters: dict[str, Any] | None = None,
-        tools: list[PromptMessageTool] | None = None,
-        stop: list[str] | None = None,
-        json_schema: dict[str, Any] | None = None,
+        model_parameters: dict[str, Any] = None,
+        tools: list[PromptMessageTool] = None,
+        stop: list[str] = None,
+        json_schema: dict[str, Any] = None,
     ) -> LLMPollingResult:
         """Start an LLM polling request for plugin-backed long-running jobs."""
         try:
@@ -308,7 +308,7 @@ class PluginModelClient(BasePluginClient):
         model: str,
         credentials: dict[str, Any],
         prompt_messages: list[PromptMessage],
-        tools: list[PromptMessageTool] | None = None,
+        tools: list[PromptMessageTool] = None,
     ) -> int:
         """
         Get number of tokens for llm
@@ -475,8 +475,8 @@ class PluginModelClient(BasePluginClient):
         credentials: dict[str, Any],
         query: str,
         docs: list[str],
-        score_threshold: float | None = None,
-        top_n: int | None = None,
+        score_threshold: float = None,
+        top_n: int = None,
     ) -> RerankResult:
         """
         Invoke rerank
@@ -521,8 +521,8 @@ class PluginModelClient(BasePluginClient):
         credentials: dict[str, Any],
         query: MultimodalRerankInput,
         docs: list[MultimodalRerankInput],
-        score_threshold: float | None = None,
-        top_n: int | None = None,
+        score_threshold: float = None,
+        top_n: int = None,
     ) -> RerankResult:
         """
         Invoke multimodal rerank
@@ -609,7 +609,7 @@ class PluginModelClient(BasePluginClient):
         provider: str,
         model: str,
         credentials: dict[str, Any],
-        language: str | None = None,
+        language: str = None,
     ):
         """
         Get tts model voices

@@ -120,7 +120,7 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
     using LogStore SQL queries with optimized deduplication strategies.
     """
 
-    def __init__(self, session_maker: sessionmaker | None = None):
+    def __init__(self, session_maker: sessionmaker = None):
         """
         Initialize the repository with LogStore client.
 
@@ -348,7 +348,7 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
     def get_execution_by_id(
         self,
         execution_id: str,
-        tenant_id: str | None = None,
+        tenant_id: str = None,
     ) -> WorkflowNodeExecutionModel | None:
         """
         Get a workflow node execution by its ID.

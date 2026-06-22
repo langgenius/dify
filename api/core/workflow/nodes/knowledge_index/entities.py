@@ -21,8 +21,8 @@ class RetrievalSetting(BaseModel):
     score_threshold_enabled: bool = False
     reranking_mode: str = "reranking_model"
     reranking_enable: bool = True
-    reranking_model: RerankingModelConfig | None = None
-    weights: WeightedScoreConfig | None = None
+    reranking_model: RerankingModelConfig = None
+    weights: WeightedScoreConfig = None
 
 
 class FileInfo(BaseModel):
@@ -49,10 +49,10 @@ class OnlineDocumentInfo(BaseModel):
     """
 
     provider: str
-    workspace_id: str | None = None
+    workspace_id: str = None
     page_id: str
     page_type: str
-    icon: OnlineDocumentIcon | None = None
+    icon: OnlineDocumentIcon = None
 
 
 class WebsiteInfo(BaseModel):
@@ -99,8 +99,8 @@ class KnowledgeIndexNodeData(BaseNodeData):
     type: NodeType = KNOWLEDGE_INDEX_NODE_TYPE
     chunk_structure: str
     index_chunk_variable_selector: list[str]
-    indexing_technique: str | None = None
-    summary_index_setting: SummaryIndexSettingDict | None = None
+    indexing_technique: str = None
+    summary_index_setting: SummaryIndexSettingDict = None
 
     @field_validator("summary_index_setting", mode="before")
     @classmethod

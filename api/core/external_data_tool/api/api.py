@@ -52,7 +52,7 @@ class ApiExternalDataTool(ExternalDataTool):
             raise ValueError("api_based_extension_id is invalid")
 
     @override
-    def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:
+    def query(self, inputs: Mapping[str, Any], query: str = None) -> str:
         """
         Query the external data tool.
 

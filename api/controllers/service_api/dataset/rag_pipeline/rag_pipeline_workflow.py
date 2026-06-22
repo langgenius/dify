@@ -69,18 +69,18 @@ class DatasourcePluginsQuery(BaseModel):
 
 
 class DatasourceCredentialInfoResponse(ResponseModel):
-    id: str | None = None
-    name: str | None = None
-    type: str | None = None
-    is_default: bool | None = None
+    id: str = None
+    name: str = None
+    type: str = None
+    is_default: bool = None
 
 
 class DatasourcePluginResponse(ResponseModel):
-    node_id: str | None = None
-    plugin_id: str | None = None
-    provider_name: str | None = None
-    datasource_type: str | None = None
-    title: str | None = None
+    node_id: str = None
+    plugin_id: str = None
+    provider_name: str = None
+    datasource_type: str = None
+    title: str = None
     user_input_variables: list[dict[str, Any]] = Field(default_factory=list)
     credentials: list[DatasourceCredentialInfoResponse]
 
@@ -94,9 +94,9 @@ class PipelineUploadFileResponse(ResponseModel):
     name: str
     size: int
     extension: str
-    mime_type: str | None = None
+    mime_type: str = None
     created_by: str
-    created_at: str | None = None
+    created_at: str = None
 
 
 register_schema_model(service_api_ns, DatasourceNodeRunPayload)

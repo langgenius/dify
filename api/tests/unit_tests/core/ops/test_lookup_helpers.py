@@ -281,12 +281,12 @@ class TestLookupCredentialName:
 class TestLookupLlmCredentialInfo:
     """Tests for _lookup_llm_credential_info(tenant_id, provider, model, model_type)."""
 
-    def _provider_record(self, credential_id: str | None = None) -> MagicMock:
+    def _provider_record(self, credential_id: str = None) -> MagicMock:
         record = MagicMock()
         record.credential_id = credential_id
         return record
 
-    def _model_record(self, credential_id: str | None = None) -> MagicMock:
+    def _model_record(self, credential_id: str = None) -> MagicMock:
         record = MagicMock()
         record.credential_id = credential_id
         return record

@@ -114,8 +114,8 @@ class MigrationExportService:
     def __init__(
         self,
         *,
-        package_service: MigrationPackageService | None = None,
-        dependency_discovery_service: DependencyDiscoveryService | None = None,
+        package_service: MigrationPackageService = None,
+        dependency_discovery_service: DependencyDiscoveryService = None,
     ) -> None:
         self.package_service = package_service or MigrationPackageService()
         self.dependency_discovery_service = dependency_discovery_service or DependencyDiscoveryService()

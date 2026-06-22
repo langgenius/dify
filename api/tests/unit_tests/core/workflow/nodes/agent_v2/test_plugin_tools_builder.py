@@ -31,19 +31,19 @@ class FakeRuntimeProvider:
         # latter lets tests exercise the error-mapping branches in
         # ``WorkflowAgentPluginToolsBuilder._fetch_tool_runtime``.
         self.tool = tool
-        self.last_agent_tool: AgentToolEntity | None = None
-        self.last_invoke_from: InvokeFrom | None = None
-        self.last_allow_file_parameters: bool | None = None
-        self.last_use_default_for_missing_form_parameters: bool | None = None
+        self.last_agent_tool: AgentToolEntity = None
+        self.last_invoke_from: InvokeFrom = None
+        self.last_allow_file_parameters: bool = None
+        self.last_use_default_for_missing_form_parameters: bool = None
 
     def get_agent_tool_runtime(
         self,
         tenant_id: str,
         app_id: str,
         agent_tool: AgentToolEntity,
-        user_id: str | None = None,
+        user_id: str = None,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
-        variable_pool: Any | None = None,
+        variable_pool: Any = None,
         allow_file_parameters: bool = False,
         use_default_for_missing_form_parameters: bool = False,
     ) -> Tool:
@@ -74,14 +74,14 @@ class FakeTool(Tool):
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
-        conversation_id: str | None = None,
-        app_id: str | None = None,
-        message_id: str | None = None,
+        conversation_id: str = None,
+        app_id: str = None,
+        message_id: str = None,
     ) -> ToolInvokeMessage | list[ToolInvokeMessage] | Generator[ToolInvokeMessage, None, None]:
         raise NotImplementedError
 
 
-def _tool(*, runtime_parameters: dict[str, Any] | None = None) -> FakeTool:
+def _tool(*, runtime_parameters: dict[str, Any] = None) -> FakeTool:
     if runtime_parameters is None:
         runtime_parameters = {"region": "us"}
     parameters = [

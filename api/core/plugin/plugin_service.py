@@ -88,7 +88,7 @@ class PluginService:
     ENDPOINT_RECONCILIATION_PAGE_SIZE = 100
 
     @classmethod
-    def _get_plugin_model_providers_cache_key(cls, tenant_id: str, generation: int | None = None) -> str:
+    def _get_plugin_model_providers_cache_key(cls, tenant_id: str, generation: int = None) -> str:
         if generation is None:
             return f"{cls.PLUGIN_MODEL_PROVIDERS_REDIS_KEY_PREFIX}{tenant_id}"
 
@@ -194,7 +194,7 @@ class PluginService:
 
     @classmethod
     def _load_cached_plugin_model_providers(
-        cls, tenant_id: str, *, client: PluginModelClient | None = None
+        cls, tenant_id: str, *, client: PluginModelClient = None
     ) -> tuple[ProviderEntity, ...] | None:
         generation = cls._load_plugin_model_providers_generation(tenant_id)
         if generation is not None:
@@ -278,7 +278,7 @@ class PluginService:
 
     @classmethod
     def fetch_plugin_model_providers(
-        cls, *, tenant_id: str, client: PluginModelClient | None = None
+        cls, *, tenant_id: str, client: PluginModelClient = None
     ) -> Sequence[ProviderEntity]:
         """
         Fetch plugin model providers through the tenant-scoped plugin cache.

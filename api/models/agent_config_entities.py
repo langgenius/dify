@@ -135,8 +135,8 @@ class AgentFileRefConfig(AgentFlexibleConfig):
     name: str | None = Field(default=None, max_length=255)
     type: str | None = Field(default=None, max_length=64)
     transfer_method: str | None = Field(default=None, max_length=64)
-    url: str | None = None
-    remote_url: str | None = None
+    url: str = None
+    remote_url: str = None
     # Drive key once the file is committed to the agent drive ("files/<name>",
     # ENG-625). Files without it are plain upload references and stay invisible
     # to the runtime drive manifest.
@@ -146,9 +146,9 @@ class AgentFileRefConfig(AgentFlexibleConfig):
 class AgentSkillRefConfig(AgentFlexibleConfig):
     id: str | None = Field(default=None, max_length=255)
     name: str | None = Field(default=None, max_length=255)
-    description: str | None = None
+    description: str = None
     file_id: str | None = Field(default=None, max_length=255)
-    path: str | None = None
+    path: str = None
     # Standardization outputs (ENG-594) — previously riding along via
     # ``extra="allow"``, promoted to the explicit schema because the runtime
     # drive manifest (ENG-623) keys off them.
@@ -158,13 +158,13 @@ class AgentSkillRefConfig(AgentFlexibleConfig):
     full_archive_file_id: str | None = Field(default=None, max_length=255)
     # Zip member path listing from standardization (ENG-371): lets infer-tools
     # show the model strong signals like ``scripts/*.sh`` without unpacking.
-    manifest_files: list[str] | None = None
+    manifest_files: list[str] = None
 
 
 class AgentPermissionConfig(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    allowed: bool | None = None
+    allowed: bool = None
     status: str | None = Field(default=None, max_length=64)
     state: str | None = Field(default=None, max_length=64)
 
@@ -194,7 +194,7 @@ class AgentSecretRefConfig(AgentFlexibleConfig):
     credential_id: str | None = Field(default=None, max_length=255)
     provider_credential_id: str | None = Field(default=None, max_length=255)
     provider: str | None = Field(default=None, max_length=255)
-    permission: AgentPermissionConfig | None = None
+    permission: AgentPermissionConfig = None
     permission_status: str | None = Field(default=None, max_length=64)
 
 
@@ -211,17 +211,17 @@ class AgentCliToolConfig(AgentFlexibleConfig):
     name: str | None = Field(default=None, max_length=255)
     tool_name: str | None = Field(default=None, max_length=255)
     label: str | None = Field(default=None, max_length=255)
-    description: str | None = None
-    command: str | None = None
+    description: str = None
+    command: str = None
     install_commands: list[str] = Field(default_factory=list)
-    install_command: str | None = None
-    install: str | None = None
-    setup_command: str | None = None
+    install_command: str = None
+    install: str = None
+    setup_command: str = None
     invoke_metadata: dict[str, Any] = Field(default_factory=dict)
     env: AgentCliToolEnvConfig = Field(default_factory=AgentCliToolEnvConfig)
-    pre_authorized: bool | None = None
-    authorization_status: AgentCliToolAuthorizationStatus | None = None
-    permission: AgentPermissionConfig | None = None
+    pre_authorized: bool = None
+    authorization_status: AgentCliToolAuthorizationStatus = None
+    permission: AgentPermissionConfig = None
     dangerous: bool = False
     dangerous_command: bool = False
     requires_confirmation: bool = False
@@ -229,7 +229,7 @@ class AgentCliToolConfig(AgentFlexibleConfig):
     dangerous_accepted: bool = False
     risk_accepted: bool = False
     approved: bool = False
-    risk_level: AgentCliToolRiskLevel | None = None
+    risk_level: AgentCliToolRiskLevel = None
     # Slug of the skill an infer-tools suggestion came from (ENG-371); drives
     # the "inferred from <skill>" badge. Plain provenance metadata — saving an
     # inferred tool still passes every composer validation rule.
@@ -239,14 +239,14 @@ class AgentCliToolConfig(AgentFlexibleConfig):
 class AgentKnowledgeDatasetConfig(AgentFlexibleConfig):
     id: str | None = Field(default=None, max_length=255)
     name: str | None = Field(default=None, max_length=255)
-    description: str | None = None
+    description: str = None
 
 
 class AgentKnowledgeQueryConfig(AgentFlexibleConfig):
-    query: str | None = None
+    query: str = None
     top_k: int | None = Field(default=None, ge=1)
     score_threshold: float | None = Field(default=None, ge=0, le=1)
-    score_threshold_enabled: bool | None = None
+    score_threshold_enabled: bool = None
 
 
 class AgentHumanContactConfig(AgentFlexibleConfig):
@@ -264,12 +264,12 @@ class AgentHumanContactConfig(AgentFlexibleConfig):
 class AgentHumanToolConfig(AgentFlexibleConfig):
     enabled: bool = True
     name: str | None = Field(default=None, max_length=255)
-    description: str | None = None
+    description: str = None
 
 
 class AgentSandboxProviderConfig(AgentFlexibleConfig):
-    image: str | None = None
-    working_dir: str | None = None
+    image: str = None
+    working_dir: str = None
     env: list[AgentEnvVariableConfig] = Field(default_factory=list)
     cpu: int | None = Field(default=None, ge=1)
 
@@ -278,7 +278,7 @@ class AgentMemoryArtifactConfig(AgentFlexibleConfig):
     id: str | None = Field(default=None, max_length=255)
     type: str | None = Field(default=None, max_length=64)
     name: str | None = Field(default=None, max_length=255)
-    url: str | None = None
+    url: str = None
 
 
 class AgentModelResponseFormatConfig(AgentFlexibleConfig):
@@ -288,13 +288,13 @@ class AgentModelResponseFormatConfig(AgentFlexibleConfig):
 class AgentSoulModelSettings(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    temperature: float | None = None
-    top_p: float | None = None
-    presence_penalty: float | None = None
-    frequency_penalty: float | None = None
-    max_tokens: int | None = None
-    stop: list[str] | None = None
-    response_format: AgentModelResponseFormatConfig | None = None
+    temperature: float = None
+    top_p: float = None
+    presence_penalty: float = None
+    frequency_penalty: float = None
+    max_tokens: int = None
+    stop: list[str] = None
+    response_format: AgentModelResponseFormatConfig = None
 
 
 class AgentFeatureToggleConfig(AgentFlexibleConfig):
@@ -302,47 +302,47 @@ class AgentFeatureToggleConfig(AgentFlexibleConfig):
 
 
 class AgentTextToSpeechFeatureConfig(AgentFeatureToggleConfig):
-    language: str | None = None
-    voice: str | None = None
-    autoPlay: str | None = None
+    language: str = None
+    voice: str = None
+    autoPlay: str = None
 
 
 class AgentSuggestedQuestionsAfterAnswerFeatureConfig(AgentFeatureToggleConfig):
-    prompt: str | None = None
-    model: AgentSoulModelConfig | None = None
+    prompt: str = None
+    model: AgentSoulModelConfig = None
 
 
 class AgentModerationIOConfig(AgentFlexibleConfig):
     enabled: bool = False
-    preset_response: str | None = None
+    preset_response: str = None
 
 
 class AgentModerationProviderConfig(AgentFlexibleConfig):
-    keywords: str | None = None
-    api_based_extension_id: str | None = None
-    inputs_config: AgentModerationIOConfig | None = None
-    outputs_config: AgentModerationIOConfig | None = None
+    keywords: str = None
+    api_based_extension_id: str = None
+    inputs_config: AgentModerationIOConfig = None
+    outputs_config: AgentModerationIOConfig = None
 
 
 class AgentSensitiveWordAvoidanceFeatureConfig(AgentFeatureToggleConfig):
-    type: str | None = None
-    config: AgentModerationProviderConfig | None = None
+    type: str = None
+    config: AgentModerationProviderConfig = None
 
 
 class AgentSoulAppFeaturesConfig(AgentFlexibleConfig):
-    opening_statement: str | None = None
-    suggested_questions: list[str] | None = None
-    suggested_questions_after_answer: AgentSuggestedQuestionsAfterAnswerFeatureConfig | None = None
-    speech_to_text: AgentFeatureToggleConfig | None = None
-    text_to_speech: AgentTextToSpeechFeatureConfig | None = None
-    retriever_resource: AgentFeatureToggleConfig | None = None
-    sensitive_word_avoidance: AgentSensitiveWordAvoidanceFeatureConfig | None = None
+    opening_statement: str = None
+    suggested_questions: list[str] = None
+    suggested_questions_after_answer: AgentSuggestedQuestionsAfterAnswerFeatureConfig = None
+    speech_to_text: AgentFeatureToggleConfig = None
+    text_to_speech: AgentTextToSpeechFeatureConfig = None
+    retriever_resource: AgentFeatureToggleConfig = None
+    sensitive_word_avoidance: AgentSensitiveWordAvoidanceFeatureConfig = None
 
 
 class WorkflowPreviousNodeOutputRef(AgentFlexibleConfig):
-    selector: list[JsonPrimitive] | None = None
-    variable_selector: list[JsonPrimitive] | None = None
-    value_selector: list[JsonPrimitive] | None = None
+    selector: list[JsonPrimitive] = None
+    variable_selector: list[JsonPrimitive] = None
+    value_selector: list[JsonPrimitive] = None
     node_id: str | None = Field(default=None, max_length=255)
     output: str | None = Field(default=None, max_length=255)
     name: str | None = Field(default=None, max_length=255)
@@ -353,7 +353,7 @@ class WorkflowPreviousNodeOutputRef(AgentFlexibleConfig):
 class WorkflowNodeJobMetadata(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    file_refs: list[AgentFileRefConfig] | None = None
+    file_refs: list[AgentFileRefConfig] = None
     agent_soul: dict[str, Any] | None = Field(default=None)
 
 
@@ -411,12 +411,12 @@ class AgentSoulDifyToolConfig(BaseModel):
     # applies to all of them. Mention form: ``[§tool:<provider>/*§]``.
     tool_name: str | None = Field(default=None, min_length=1, max_length=255)
     credential_type: Literal["api-key", "oauth2", "unauthorized"] = "api-key"
-    credential_ref: AgentSoulDifyToolCredentialRef | None = None
+    credential_ref: AgentSoulDifyToolCredentialRef = None
     # Reserved for a future user-rename UX. Accepted but currently rejected at
     # validation time so frontend cannot silently believe a rename took effect
     # (see :meth:`_validate_provider_and_credentials`).
     name: str | None = Field(default=None, max_length=255)
-    description: str | None = None
+    description: str = None
     runtime_parameters: dict[str, RuntimeParameterValue] = Field(default_factory=dict)
 
     @model_validator(mode="before")
@@ -459,7 +459,7 @@ class AgentSoulToolsConfig(BaseModel):
 
 class AgentSoulKnowledgeConfig(BaseModel):
     datasets: list[AgentKnowledgeDatasetConfig] = Field(default_factory=list)
-    query_mode: AgentKnowledgeQueryMode | None = None
+    query_mode: AgentKnowledgeQueryMode = None
     query_config: AgentKnowledgeQueryConfig = Field(default_factory=AgentKnowledgeQueryConfig)
 
 
@@ -474,13 +474,13 @@ class AgentSoulEnvConfig(BaseModel):
 
 
 class AgentSoulSandboxConfig(BaseModel):
-    provider: str | None = None
+    provider: str = None
     config: AgentSandboxProviderConfig = Field(default_factory=AgentSandboxProviderConfig)
 
 
 class AgentSoulMemoryConfig(BaseModel):
-    scope: str | None = None
-    budget: str | None = None
+    scope: str = None
+    budget: str = None
     artifacts: list[AgentMemoryArtifactConfig] = Field(default_factory=list)
 
 
@@ -498,7 +498,7 @@ class AgentSoulModelConfig(BaseModel):
     plugin_id: str = Field(min_length=1, max_length=255)
     model_provider: str = Field(min_length=1, max_length=255)
     model: str = Field(min_length=1, max_length=255)
-    credential_ref: AgentSoulModelCredentialRef | None = None
+    credential_ref: AgentSoulModelCredentialRef = None
     model_settings: AgentSoulModelSettings = Field(default_factory=AgentSoulModelSettings)
 
 
@@ -521,7 +521,7 @@ class AgentSoulConfig(BaseModel):
     env: AgentSoulEnvConfig = Field(default_factory=AgentSoulEnvConfig)
     sandbox: AgentSoulSandboxConfig = Field(default_factory=AgentSoulSandboxConfig)
     memory: AgentSoulMemoryConfig = Field(default_factory=AgentSoulMemoryConfig)
-    model: AgentSoulModelConfig | None = None
+    model: AgentSoulModelConfig = None
     app_features: AgentSoulAppFeaturesConfig = Field(default_factory=AgentSoulAppFeaturesConfig)
     app_variables: list[AppVariableConfig] = Field(default_factory=list)
     misc_legacy: AgentSoulAppFeaturesConfig = Field(default_factory=AgentSoulAppFeaturesConfig)
@@ -547,7 +547,7 @@ class DeclaredArrayItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     type: DeclaredOutputType
-    description: str | None = None
+    description: str = None
     children: DeclaredOutputChildren = Field(default_factory=list)
 
     @model_validator(mode="after")
@@ -570,10 +570,10 @@ class DeclaredOutputChildConfig(BaseModel):
 
     name: str = Field(min_length=1, max_length=255)
     type: DeclaredOutputType
-    description: str | None = None
+    description: str = None
     required: bool = True
-    file: DeclaredOutputFileConfig | None = None
-    array_item: DeclaredArrayItem | None = None
+    file: DeclaredOutputFileConfig = None
+    array_item: DeclaredArrayItem = None
     children: DeclaredOutputChildren = Field(default_factory=list)
 
     @model_validator(mode="after")
@@ -609,11 +609,11 @@ class DeclaredOutputCheckConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     enabled: bool = False
-    prompt: str | None = None
-    benchmark_file_ref: AgentFileRefConfig | None = None
+    prompt: str = None
+    benchmark_file_ref: AgentFileRefConfig = None
     # Reserved for stage 4.1: pick a different model than Agent Soul's for the check.
     # Stage 4 leaves this Optional and unused by FileOutputCheckExecutor.
-    model_ref: AgentSoulModelConfig | None = None
+    model_ref: AgentSoulModelConfig = None
 
     @model_validator(mode="after")
     def _require_prompt_and_benchmark_when_enabled(self) -> DeclaredOutputCheckConfig:
@@ -670,15 +670,15 @@ class DeclaredOutputConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    id: str | None = None
+    id: str = None
     name: str = Field(min_length=1, max_length=255)
     type: DeclaredOutputType
-    description: str | None = None
+    description: str = None
     required: bool = True
-    file: DeclaredOutputFileConfig | None = None
-    array_item: DeclaredArrayItem | None = None
+    file: DeclaredOutputFileConfig = None
+    array_item: DeclaredArrayItem = None
     children: DeclaredOutputChildren = Field(default_factory=list)
-    check: DeclaredOutputCheckConfig | None = None
+    check: DeclaredOutputCheckConfig = None
     failure_strategy: DeclaredOutputFailureStrategy = Field(default_factory=DeclaredOutputFailureStrategy)
 
     @field_validator("failure_strategy", mode="before")

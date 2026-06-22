@@ -34,14 +34,14 @@ class DeleteResult:
             "pause_reasons": 0,
         }
     )
-    error: str | None = None
+    error: str = None
     elapsed_time: float = 0.0
 
 
 class ArchivedWorkflowRunDeletion:
     def __init__(self, dry_run: bool = False):
         self.dry_run = dry_run
-        self.workflow_run_repo: APIWorkflowRunRepository | None = None
+        self.workflow_run_repo: APIWorkflowRunRepository = None
 
     def delete_by_run_id(self, run_id: str) -> DeleteResult:
         start_time = time.time()

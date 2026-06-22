@@ -151,7 +151,7 @@ class SummaryIndexService:
         summary_record: DocumentSegmentSummary,
         segment: DocumentSegment,
         dataset: Dataset,
-        session: Session | None = None,
+        session: Session = None,
     ) -> None:
         """
         Vectorize summary and store in vector database.
@@ -756,7 +756,7 @@ class SummaryIndexService:
         dataset: Dataset,
         document: DatasetDocument,
         summary_index_setting: SummaryIndexSettingDict,
-        segment_ids: list[str] | None = None,
+        segment_ids: list[str] = None,
         only_parent_chunks: bool = False,
     ) -> list[DocumentSegmentSummary]:
         """
@@ -864,8 +864,8 @@ class SummaryIndexService:
     @staticmethod
     def disable_summaries_for_segments(
         dataset: Dataset,
-        segment_ids: list[str] | None = None,
-        disabled_by: str | None = None,
+        segment_ids: list[str] = None,
+        disabled_by: str = None,
     ) -> None:
         """
         Disable summary records and remove vectors from vector database for segments.
@@ -923,7 +923,7 @@ class SummaryIndexService:
     @staticmethod
     def enable_summaries_for_segments(
         dataset: Dataset,
-        segment_ids: list[str] | None = None,
+        segment_ids: list[str] = None,
     ) -> None:
         """
         Enable summary records and re-add vectors to vector database for segments.
@@ -1008,7 +1008,7 @@ class SummaryIndexService:
     @staticmethod
     def delete_summaries_for_segments(
         dataset: Dataset,
-        segment_ids: list[str] | None = None,
+        segment_ids: list[str] = None,
     ) -> None:
         """
         Delete summary records and vectors for segments (used only for actual deletion scenarios).
@@ -1267,7 +1267,7 @@ class SummaryIndexService:
 
     @staticmethod
     def get_document_summaries(
-        document_id: str, dataset_id: str, segment_ids: list[str] | None = None
+        document_id: str, dataset_id: str, segment_ids: list[str] = None
     ) -> list[DocumentSegmentSummary]:
         """
         Get all summary records for a document.

@@ -26,7 +26,7 @@ def _install_trace_manager(
     trace_instance: MagicMock,
     *,
     enterprise_enabled: bool = False,
-    enterprise_trace_cls: MagicMock | None = None,
+    enterprise_trace_cls: MagicMock = None,
 ) -> dict[str, ModuleType]:
     ops_trace_manager_module = ModuleType("core.ops.ops_trace_manager")
 

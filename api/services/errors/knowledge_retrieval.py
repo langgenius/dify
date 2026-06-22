@@ -10,7 +10,7 @@ class InnerKnowledgeRetrievalServiceError(BaseServiceError):
     status_code = 500
     default_description = "Knowledge retrieval failed."
 
-    def __init__(self, description: str | None = None):
+    def __init__(self, description: str = None):
         self.description = description or self.default_description
         ValueError.__init__(self, self.description)
 

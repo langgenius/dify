@@ -442,7 +442,7 @@ class WeaveDataTrace(BaseTraceInstance):
             return dt.replace(tzinfo=UTC)
         return dt
 
-    def start_call(self, run_data: WeaveTraceModel, parent_run_id: str | None = None):
+    def start_call(self, run_data: WeaveTraceModel, parent_run_id: str = None):
         inputs = run_data.inputs
         if inputs is None:
             inputs = {}

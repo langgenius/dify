@@ -49,8 +49,8 @@ class WorkflowTriggerResponse(ResponseModel):
     provider_name: str
     icon: str
     status: str
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    created_at: datetime = None
+    updated_at: datetime = None
 
     @field_validator("id", "trigger_type", "title", "node_id", "provider_name", "icon", "status", mode="before")
     @classmethod
@@ -70,7 +70,7 @@ class WebhookTriggerResponse(ResponseModel):
     webhook_url: str
     webhook_debug_url: str
     node_id: str
-    created_at: datetime | None = None
+    created_at: datetime = None
 
     @field_validator("id", "webhook_id", "webhook_url", "webhook_debug_url", "node_id", mode="before")
     @classmethod

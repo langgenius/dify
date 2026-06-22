@@ -140,8 +140,8 @@ class WorkflowResponseConverter:
             self._truncator = VariableTruncator.default()
 
         self._node_snapshots: dict[NodeExecutionId, _NodeSnapshot] = {}
-        self._workflow_execution_id: str | None = None
-        self._workflow_started_at: datetime | None = None
+        self._workflow_execution_id: str = None
+        self._workflow_started_at: datetime = None
 
     # ------------------------------------------------------------------
     # Workflow lifecycle helpers
@@ -159,7 +159,7 @@ class WorkflowResponseConverter:
         handled = WorkflowEntry.handle_special_values(inputs)
         return dict(handled or {})
 
-    def _ensure_workflow_run_id(self, workflow_run_id: str | None = None) -> str:
+    def _ensure_workflow_run_id(self, workflow_run_id: str = None) -> str:
         """Return the memoized workflow run id, optionally seeding it during start events."""
         if workflow_run_id is not None:
             self._workflow_execution_id = workflow_run_id
@@ -262,7 +262,7 @@ class WorkflowResponseConverter:
         workflow_id: str,
         status: WorkflowExecutionStatus,
         graph_runtime_state: GraphRuntimeState,
-        error: str | None = None,
+        error: str = None,
         exceptions_count: int = 0,
     ) -> WorkflowFinishStreamResponse:
         run_id = self._ensure_workflow_run_id()

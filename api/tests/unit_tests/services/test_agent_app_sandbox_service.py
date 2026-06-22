@@ -46,7 +46,7 @@ def _runtime_layer_specs() -> list[RuntimeLayerSpec]:
 class FakeStore:
     def __init__(self, session: StoredAgentAppSession | None) -> None:
         self.session = session
-        self.scope: tuple[str, str, str] | None = None
+        self.scope: tuple[str, str, str] = None
 
     def load_active_session_for_conversation(self, *, tenant_id: str, app_id: str, conversation_id: str):
         self.scope = (tenant_id, app_id, conversation_id)
@@ -158,13 +158,13 @@ def _runtime_session_table() -> Generator[None, None, None]:
 
 def _insert_workflow_session(
     *,
-    runtime_layer_specs: str | None = None,
+    runtime_layer_specs: str = None,
     workflow_run_id: str = "run-1",
     node_id: str = "node-1",
     node_execution_id: str = "node-exec-1",
     binding_id: str = "binding-1",
     backend_run_id: str = "backend-run-1",
-    updated_at: datetime | None = None,
+    updated_at: datetime = None,
     session_id: str = "abc1234",
 ) -> None:
     default_runtime_layer_specs = (

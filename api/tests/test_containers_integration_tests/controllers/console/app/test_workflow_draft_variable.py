@@ -25,8 +25,8 @@ def _create_draft_workflow(
     tenant_id: str,
     account_id: str,
     *,
-    environment_variables: list | None = None,
-    conversation_variables: list | None = None,
+    environment_variables: list = None,
+    conversation_variables: list = None,
 ) -> Workflow:
     workflow = Workflow.new(
         tenant_id=tenant_id,

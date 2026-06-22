@@ -141,7 +141,7 @@ class DockerComposeStack:
     def _warm_up(self) -> None:
         for url in self.warmup_urls:
             deadline = time.monotonic() + 30.0
-            last_error: Exception | None = None
+            last_error: Exception = None
             while time.monotonic() < deadline:
                 try:
                     with urllib.request.urlopen(url, timeout=5) as response:

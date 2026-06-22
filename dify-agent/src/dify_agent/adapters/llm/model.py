@@ -161,7 +161,7 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
         messages: list[ModelMessage],
         model_settings: ModelSettings | None,
         model_request_parameters: ModelRequestParameters,
-        run_context: object | None = None,
+        run_context: object = None,
     ) -> AsyncGenerator[StreamedResponse, None]:
         del run_context
         prepared_settings, prepared_params = self.prepare_request(model_settings, model_request_parameters)

@@ -30,10 +30,10 @@ _FILE_REFERENCE_PREFIX = "dify-file-ref:"
 @dataclass(frozen=True)
 class FileReference:
     record_id: str
-    storage_key: str | None = None
+    storage_key: str = None
 
 
-def build_file_reference(*, record_id: str, storage_key: str | None = None) -> str:
+def build_file_reference(*, record_id: str, storage_key: str = None) -> str:
     """Build one canonical opaque ``dify-file-ref:...`` string.
 
     New external/runtime contracts should emit this value instead of exposing

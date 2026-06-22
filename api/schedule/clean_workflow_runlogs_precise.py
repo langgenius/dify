@@ -58,7 +58,7 @@ def clean_workflow_runlogs_precise() -> None:
         total_deleted = 0
         failed_batches = 0
         batch_count = 0
-        last_seen: tuple[datetime.datetime, str] | None = None
+        last_seen: tuple[datetime.datetime, str] = None
         while True:
             run_rows = workflow_run_repo.get_runs_batch_by_time_range(
                 start_from=None,

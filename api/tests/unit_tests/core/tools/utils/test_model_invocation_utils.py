@@ -26,7 +26,7 @@ from graphon.model_runtime.errors.invoke import (
 )
 
 
-def _mock_model_instance(*, schema: dict[str, Any] | None = None) -> SimpleNamespace:
+def _mock_model_instance(*, schema: dict[str, Any] = None) -> SimpleNamespace:
     model_type_instance = Mock()
     model_type_instance.get_model_schema.return_value = (
         SimpleNamespace(model_properties=schema or {}) if schema is not None else None

@@ -95,7 +95,7 @@ def drive_push(
     _run_drive_push(local_path=local_path, drive_path=drive_path, recursive=recursive)
 
 
-def main(argv: list[str] | None = None) -> None:
+def main(argv: list[str] = None) -> None:
     """Run the ``dify-agent`` CLI with optional argv injection for tests."""
     args = list(sys.argv[1:] if argv is None else argv)
     if args[:1] == ["connect"] and not _is_help_request(args[1:]):

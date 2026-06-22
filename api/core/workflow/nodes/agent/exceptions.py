@@ -9,7 +9,7 @@ class AgentNodeError(Exception):
 class AgentStrategyError(AgentNodeError):
     """Exception raised when there's an error with the agent strategy."""
 
-    def __init__(self, message: str, strategy_name: str | None = None, provider_name: str | None = None):
+    def __init__(self, message: str, strategy_name: str = None, provider_name: str = None):
         self.strategy_name = strategy_name
         self.provider_name = provider_name
         super().__init__(message)
@@ -18,7 +18,7 @@ class AgentStrategyError(AgentNodeError):
 class AgentStrategyNotFoundError(AgentStrategyError):
     """Exception raised when the specified agent strategy is not found."""
 
-    def __init__(self, strategy_name: str, provider_name: str | None = None):
+    def __init__(self, strategy_name: str, provider_name: str = None):
         super().__init__(
             f"Agent strategy '{strategy_name}' not found"
             + (f" for provider '{provider_name}'" if provider_name else ""),
@@ -30,7 +30,7 @@ class AgentStrategyNotFoundError(AgentStrategyError):
 class AgentInvocationError(AgentNodeError):
     """Exception raised when there's an error invoking the agent."""
 
-    def __init__(self, message: str, original_error: Exception | None = None):
+    def __init__(self, message: str, original_error: Exception = None):
         self.original_error = original_error
         super().__init__(message)
 
@@ -38,7 +38,7 @@ class AgentInvocationError(AgentNodeError):
 class AgentParameterError(AgentNodeError):
     """Exception raised when there's an error with agent parameters."""
 
-    def __init__(self, message: str, parameter_name: str | None = None):
+    def __init__(self, message: str, parameter_name: str = None):
         self.parameter_name = parameter_name
         super().__init__(message)
 
@@ -46,7 +46,7 @@ class AgentParameterError(AgentNodeError):
 class AgentVariableError(AgentNodeError):
     """Exception raised when there's an error with variables in the agent node."""
 
-    def __init__(self, message: str, variable_name: str | None = None):
+    def __init__(self, message: str, variable_name: str = None):
         self.variable_name = variable_name
         super().__init__(message)
 
@@ -68,7 +68,7 @@ class AgentInputTypeError(AgentNodeError):
 class ToolFileError(AgentNodeError):
     """Exception raised when there's an error with a tool file."""
 
-    def __init__(self, message: str, file_id: str | None = None):
+    def __init__(self, message: str, file_id: str = None):
         self.file_id = file_id
         super().__init__(message)
 
@@ -83,7 +83,7 @@ class ToolFileNotFoundError(ToolFileError):
 class AgentMessageTransformError(AgentNodeError):
     """Exception raised when there's an error transforming agent messages."""
 
-    def __init__(self, message: str, original_error: Exception | None = None):
+    def __init__(self, message: str, original_error: Exception = None):
         self.original_error = original_error
         super().__init__(message)
 
@@ -91,7 +91,7 @@ class AgentMessageTransformError(AgentNodeError):
 class AgentModelError(AgentNodeError):
     """Exception raised when there's an error with the model used by the agent."""
 
-    def __init__(self, message: str, model_name: str | None = None, provider: str | None = None):
+    def __init__(self, message: str, model_name: str = None, provider: str = None):
         self.model_name = model_name
         self.provider = provider
         super().__init__(message)
@@ -100,7 +100,7 @@ class AgentModelError(AgentNodeError):
 class AgentMemoryError(AgentNodeError):
     """Exception raised when there's an error with the agent's memory."""
 
-    def __init__(self, message: str, conversation_id: str | None = None):
+    def __init__(self, message: str, conversation_id: str = None):
         self.conversation_id = conversation_id
         super().__init__(message)
 
@@ -111,9 +111,9 @@ class AgentVariableTypeError(AgentNodeError):
     def __init__(
         self,
         message: str,
-        variable_name: str | None = None,
-        expected_type: str | None = None,
-        actual_type: str | None = None,
+        variable_name: str = None,
+        expected_type: str = None,
+        actual_type: str = None,
     ):
         self.variable_name = variable_name
         self.expected_type = expected_type

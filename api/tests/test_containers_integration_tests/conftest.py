@@ -69,11 +69,11 @@ class DifyTestContainers:
 
     def __init__(self) -> None:
         """Initialize container management with default configurations."""
-        self.network: Network | None = None
-        self.postgres: PostgresContainer | None = None
-        self.redis: RedisContainer | None = None
-        self.dify_sandbox: DockerContainer | None = None
-        self.dify_plugin_daemon: DockerContainer | None = None
+        self.network: Network = None
+        self.postgres: PostgresContainer = None
+        self.redis: RedisContainer = None
+        self.dify_sandbox: DockerContainer = None
+        self.dify_plugin_daemon: DockerContainer = None
         self._containers_started = False
         logger.info("DifyTestContainers initialized - ready to manage test containers")
 

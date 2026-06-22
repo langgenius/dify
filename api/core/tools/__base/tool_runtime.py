@@ -16,10 +16,10 @@ class ToolRuntime(BaseModel):
     """
 
     tenant_id: str
-    user_id: str | None = None
-    tool_id: str | None = None
-    invoke_from: InvokeFrom | None = None
-    tool_invoke_from: ToolInvokeFrom | None = None
+    user_id: str = None
+    tool_id: str = None
+    invoke_from: InvokeFrom = None
+    tool_invoke_from: ToolInvokeFrom = None
     credentials: dict[str, Any] = Field(default_factory=dict)
     credential_type: CredentialType = Field(default=CredentialType.API_KEY)
     runtime_parameters: dict[str, Any] = Field(default_factory=dict)

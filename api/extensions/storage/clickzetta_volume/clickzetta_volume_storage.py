@@ -33,7 +33,7 @@ class ClickZettaVolumeConfig(BaseModel):
     vcluster: str = "default_ap"
     schema_name: str = "dify"
     volume_type: str = "table"  # table|user|external
-    volume_name: str | None = None  # For external volumes
+    volume_name: str = None  # For external volumes
     table_prefix: str = "dataset_"  # Prefix for table volume names
     dify_prefix: str = "dify_km"  # Directory prefix for User Volume
     permission_check: bool = True  # Enable/disable permission checking
@@ -48,7 +48,7 @@ class ClickZettaVolumeConfig(BaseModel):
         """
 
         # Helper function to get environment variable with fallback
-        def get_env_with_fallback(volume_key: str, fallback_key: str, default: str | None = None) -> str:
+        def get_env_with_fallback(volume_key: str, fallback_key: str, default: str = None) -> str:
             # First try CLICKZETTA_VOLUME_* specific config
             volume_value = values.get(volume_key.lower().replace("clickzetta_volume_", ""))
             if volume_value:
@@ -119,7 +119,7 @@ class ClickZettaVolumeStorage(BaseStorage):
         """
         self._config = config
         self._connection = None
-        self._permission_manager: VolumePermissionManager | None = None
+        self._permission_manager: VolumePermissionManager = None
         self._init_connection()
         self._init_permission_manager()
 
@@ -153,7 +153,7 @@ class ClickZettaVolumeStorage(BaseStorage):
             logger.exception("Failed to initialize permission manager")
             raise
 
-    def _get_volume_path(self, filename: str, dataset_id: str | None = None) -> str:
+    def _get_volume_path(self, filename: str, dataset_id: str = None) -> str:
         """Get the appropriate volume path based on volume type."""
         if self._config.volume_type == "user":
             # Add dify prefix for User Volume to organize files
@@ -178,7 +178,7 @@ class ClickZettaVolumeStorage(BaseStorage):
         else:
             raise ValueError(f"Unsupported volume type: {self._config.volume_type}")
 
-    def _get_volume_sql_prefix(self, dataset_id: str | None = None) -> str:
+    def _get_volume_sql_prefix(self, dataset_id: str = None) -> str:
         """Get SQL prefix for volume operations."""
         if self._config.volume_type == "user":
             return "USER VOLUME"

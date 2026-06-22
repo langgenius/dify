@@ -99,7 +99,7 @@ class TestTriggerProviderService:
         credential_type: CredentialType,
         credentials: dict[str, str],
         mock_external_service_dependencies: MockExternalServiceDependencies,
-        name: str | None = None,
+        name: str = None,
     ) -> TriggerSubscription:
         """
         Helper method to create a test trigger subscription.

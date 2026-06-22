@@ -463,7 +463,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
     def get_db_models_by_workflow_run(
         self,
         workflow_run_id: str,
-        order_config: OrderConfig | None = None,
+        order_config: OrderConfig = None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     ) -> Sequence[WorkflowNodeExecutionModel]:
         """
@@ -525,7 +525,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
     def get_by_workflow_execution(
         self,
         workflow_execution_id: str,
-        order_config: OrderConfig | None = None,
+        order_config: OrderConfig = None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     ) -> Sequence[WorkflowNodeExecution]:
         """

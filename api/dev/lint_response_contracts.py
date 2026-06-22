@@ -287,7 +287,7 @@ def model_name_from_dump_response(node: ast.AST) -> str | None:
 
 
 def actual_kind_from_expr(
-    expr: ast.AST | None, variable_models: dict[str, str] | None = None
+    expr: ast.AST | None, variable_models: dict[str, str] = None
 ) -> tuple[ActualKind, str | None]:
     if expr is None:
         return "none", None

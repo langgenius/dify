@@ -63,7 +63,7 @@ class DatasourceManager:
             provider_entity = manager.fetch_datasource_provider(tenant_id, provider_id)
             if not provider_entity:
                 raise DatasourceProviderNotFoundError(f"plugin provider {provider_id} not found")
-            controller: DatasourcePluginProviderController | None = None
+            controller: DatasourcePluginProviderController = None
             match datasource_type:
                 case DatasourceProviderType.ONLINE_DOCUMENT:
                     controller = OnlineDocumentDatasourcePluginProviderController(
@@ -150,8 +150,8 @@ class DatasourceManager:
         provider: str,
         plugin_id: str,
         credential_id: str,
-        datasource_param: DatasourceParameter | None = None,
-        online_drive_request: OnlineDriveDownloadFileParam | None = None,
+        datasource_param: DatasourceParameter = None,
+        online_drive_request: OnlineDriveDownloadFileParam = None,
     ) -> Generator[DatasourceMessage, None, Any]:
         """
         Pull-based streaming of domain messages from datasource plugins.
@@ -227,8 +227,8 @@ class DatasourceManager:
         parameters_for_log: dict[str, Any],
         datasource_info: dict[str, Any],
         variable_pool: Any,
-        datasource_param: DatasourceParameter | None = None,
-        online_drive_request: OnlineDriveDownloadFileParam | None = None,
+        datasource_param: DatasourceParameter = None,
+        online_drive_request: OnlineDriveDownloadFileParam = None,
     ) -> Generator[StreamChunkEvent | StreamCompletedEvent, None, None]:
         ds_type = DatasourceProviderType.value_of(datasource_type)
 
@@ -250,7 +250,7 @@ class DatasourceManager:
         )
 
         variables: dict[str, Any] = {}
-        file_out: File | None = None
+        file_out: File = None
 
         for message in transformed:
             mtype = message.type

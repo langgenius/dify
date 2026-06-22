@@ -128,8 +128,8 @@ class MessageService:
         user: Account | EndUser | None,
         last_id: str | None,
         limit: int,
-        conversation_id: str | None = None,
-        include_ids: list | None = None,
+        conversation_id: str = None,
+        include_ids: list = None,
     ) -> InfiniteScrollPagination:
         if not user:
             return InfiniteScrollPagination(data=[], limit=limit, has_more=False)

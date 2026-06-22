@@ -41,7 +41,7 @@ class DifyCredentialsProvider:
         self,
         *,
         run_context: DifyRunContext,
-        provider_manager: ProviderManager | None = None,
+        provider_manager: ProviderManager = None,
     ) -> None:
         self.tenant_id = run_context.tenant_id
         if provider_manager is None:
@@ -92,7 +92,7 @@ class DifyModelFactory:
         self,
         *,
         run_context: DifyRunContext,
-        model_manager: ModelManager | None = None,
+        model_manager: ModelManager = None,
     ) -> None:
         self.tenant_id = run_context.tenant_id
         if model_manager is None:

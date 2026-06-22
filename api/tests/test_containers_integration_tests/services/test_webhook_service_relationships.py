@@ -129,7 +129,7 @@ class WebhookServiceRelationshipFactory:
         app: App,
         account: Account,
         node_id: str,
-        webhook_id: str | None = None,
+        webhook_id: str = None,
     ) -> WorkflowWebhookTrigger:
         webhook_trigger = WorkflowWebhookTrigger(
             app_id=app.id,

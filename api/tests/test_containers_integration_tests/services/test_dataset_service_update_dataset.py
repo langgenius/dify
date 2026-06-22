@@ -65,9 +65,9 @@ class DatasetUpdateTestDataFactory:
         indexing_technique: str = IndexTechniqueType.HIGH_QUALITY,
         retrieval_model: str = "old_model",
         permission: str = "only_me",
-        embedding_model_provider: str | None = None,
-        embedding_model: str | None = None,
-        collection_binding_id: str | None = None,
+        embedding_model_provider: str = None,
+        embedding_model: str = None,
+        collection_binding_id: str = None,
     ) -> Dataset:
         """Create a real dataset."""
         dataset = Dataset(
@@ -95,7 +95,7 @@ class DatasetUpdateTestDataFactory:
         dataset_id: str,
         created_by: str,
         external_knowledge_id: str = "old_knowledge_id",
-        external_knowledge_api_id: str | None = None,
+        external_knowledge_api_id: str = None,
     ) -> ExternalKnowledgeBindings:
         """Create a real external knowledge binding."""
         if external_knowledge_api_id is None:
@@ -116,7 +116,7 @@ class DatasetUpdateTestDataFactory:
         db_session_with_containers: Session,
         tenant_id: str,
         created_by: str,
-        api_id: str | None = None,
+        api_id: str = None,
         name: str = "test-api",
     ) -> ExternalKnowledgeApis:
         """Create a real external knowledge API template for tenant-scoped update validation."""

@@ -45,9 +45,9 @@ def connect_agent_stub_http_sync(
     base_url: str,
     auth_jwe: str,
     argv: list[str],
-    metadata: dict[str, JsonValue] | None = None,
+    metadata: dict[str, JsonValue] = None,
     timeout: float | httpx.Timeout = 30.0,
-    sync_http_client: httpx.Client | None = None,
+    sync_http_client: httpx.Client = None,
 ) -> AgentStubConnectResponse:
     """Create one HTTP Agent Stub connection using the provided bearer JWE.
 
@@ -79,7 +79,7 @@ def request_agent_stub_file_upload_http_sync(
     filename: str,
     mimetype: str,
     timeout: float | httpx.Timeout = 30.0,
-    sync_http_client: httpx.Client | None = None,
+    sync_http_client: httpx.Client = None,
 ) -> AgentStubFileUploadResponse:
     """Request one signed upload URL from the HTTP Agent Stub endpoint."""
 
@@ -105,7 +105,7 @@ def request_agent_stub_file_download_http_sync(
     auth_jwe: str,
     file: AgentStubFileMapping,
     timeout: float | httpx.Timeout = 30.0,
-    sync_http_client: httpx.Client | None = None,
+    sync_http_client: httpx.Client = None,
 ) -> AgentStubFileDownloadResponse:
     """Request one signed download URL from the HTTP Agent Stub endpoint."""
 
@@ -136,7 +136,7 @@ def request_agent_stub_drive_manifest_http_sync(
     prefix: str,
     include_download_url: bool,
     timeout: float | httpx.Timeout = 30.0,
-    sync_http_client: httpx.Client | None = None,
+    sync_http_client: httpx.Client = None,
 ) -> AgentStubDriveManifestResponse:
     """Request one drive manifest from the HTTP Agent Stub endpoint."""
 
@@ -163,7 +163,7 @@ def request_agent_stub_drive_commit_http_sync(
     auth_jwe: str,
     request: AgentStubDriveCommitRequest,
     timeout: float | httpx.Timeout = 30.0,
-    sync_http_client: httpx.Client | None = None,
+    sync_http_client: httpx.Client = None,
 ) -> AgentStubDriveCommitResponse:
     """Commit one drive batch through the HTTP Agent Stub endpoint."""
 
@@ -186,7 +186,7 @@ def upload_file_to_signed_url_sync(
     file_obj: BinaryIO,
     mimetype: str,
     timeout: float | httpx.Timeout = 120.0,
-    sync_http_client: httpx.Client | None = None,
+    sync_http_client: httpx.Client = None,
 ) -> dict[str, object]:
     """Upload one local file directly to a signed Dify API data-plane URL."""
 
@@ -219,7 +219,7 @@ def download_file_bytes_from_signed_url_sync(
     *,
     download_url: str,
     timeout: float | httpx.Timeout = 120.0,
-    sync_http_client: httpx.Client | None = None,
+    sync_http_client: httpx.Client = None,
 ) -> bytes:
     """Download one file directly from a signed Dify API data-plane URL."""
 

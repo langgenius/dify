@@ -94,10 +94,10 @@ class ConversationServiceVariableIntegrationFactory:
         app: App,
         user: Account | EndUser,
         *,
-        name: str | None = None,
+        name: str = None,
         invoke_from: InvokeFrom = InvokeFrom.WEB_APP,
-        created_at: datetime | None = None,
-        updated_at: datetime | None = None,
+        created_at: datetime = None,
+        updated_at: datetime = None,
     ) -> Conversation:
         conversation = Conversation(
             app_id=app.id,
@@ -137,7 +137,7 @@ class ConversationServiceVariableIntegrationFactory:
         app: App,
         conversation: Conversation,
         variable: StringVariable | FloatVariable | IntegerVariable,
-        created_at: datetime | None = None,
+        created_at: datetime = None,
     ) -> ConversationVariable:
         row = ConversationVariable.from_variable(app_id=app.id, conversation_id=conversation.id, variable=variable)
         if created_at is not None:

@@ -14,8 +14,8 @@ from models.dataset import Dataset
 
 
 def create_mock_dataset(
-    dataset_id: str | None = None,
-    tenant_id: str | None = None,
+    dataset_id: str = None,
+    tenant_id: str = None,
     provider: str = "dify",
     indexing_technique: str = "high_quality",
     available_document_count: int = 10,
@@ -56,7 +56,7 @@ def create_mock_document(
     doc_id: str,
     score: float = 0.8,
     provider: str = "dify",
-    additional_metadata: dict[str, Any] | None = None,
+    additional_metadata: dict[str, Any] = None,
 ) -> Document:
     """
     Create a mock Document object for testing.

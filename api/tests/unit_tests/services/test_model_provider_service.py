@@ -23,8 +23,8 @@ def _create_service_with_mocked_manager() -> tuple[ModelProviderService, MagicMo
 def _build_provider_configuration(
     *,
     provider_name: str = "openai",
-    supported_model_types: list[ModelType] | None = None,
-    custom_models: list[Any] | None = None,
+    supported_model_types: list[ModelType] = None,
+    custom_models: list[Any] = None,
     custom_config_available: bool = True,
 ) -> SimpleNamespace:
     if supported_model_types is None:

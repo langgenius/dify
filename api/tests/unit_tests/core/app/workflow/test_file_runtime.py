@@ -21,9 +21,9 @@ from models import ToolFile, UploadFile
 def _build_file(
     *,
     transfer_method: FileTransferMethod,
-    reference: str | None = None,
-    remote_url: str | None = None,
-    extension: str | None = None,
+    reference: str = None,
+    remote_url: str = None,
+    extension: str = None,
 ) -> File:
     return File(
         file_id="file-id",

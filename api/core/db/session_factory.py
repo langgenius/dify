@@ -1,7 +1,7 @@
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-_session_maker: sessionmaker[Session] | None = None
+_session_maker: sessionmaker[Session] = None
 
 
 def configure_session_factory(engine: Engine, expire_on_commit: bool = False):

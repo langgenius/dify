@@ -19,7 +19,7 @@ class ModelConfigEntity(BaseModel):
 
     provider: str
     model: str
-    mode: str | None = None
+    mode: str = None
     parameters: dict[str, Any] = Field(default_factory=dict)
     stop: list[str] = Field(default_factory=list)
 
@@ -55,7 +55,7 @@ class AdvancedCompletionPromptTemplateEntity(BaseModel):
         assistant: str
 
     prompt: str
-    role_prefix: RolePrefixEntity | None = None
+    role_prefix: RolePrefixEntity = None
 
 
 class PromptTemplateEntity(BaseModel):
@@ -86,9 +86,9 @@ class PromptTemplateEntity(BaseModel):
             raise ValueError(f"invalid prompt type value {value}")
 
     prompt_type: PromptType
-    simple_prompt_template: str | None = None
-    advanced_chat_prompt_template: AdvancedChatPromptTemplateEntity | None = None
-    advanced_completion_prompt_template: AdvancedCompletionPromptTemplateEntity | None = None
+    simple_prompt_template: str = None
+    advanced_chat_prompt_template: AdvancedChatPromptTemplateEntity = None
+    advanced_completion_prompt_template: AdvancedCompletionPromptTemplateEntity = None
 
 
 class RagPipelineVariableEntity(WorkflowVariableEntity):
@@ -96,8 +96,8 @@ class RagPipelineVariableEntity(WorkflowVariableEntity):
     Rag Pipeline Variable Entity.
     """
 
-    tooltips: str | None = None
-    placeholder: str | None = None
+    tooltips: str = None
+    placeholder: str = None
     belong_to_node_id: str
 
 
@@ -145,18 +145,18 @@ class DatasetRetrieveConfigEntity(BaseModel):
                     return mode
             raise ValueError(f"invalid retrieve strategy value {value}")
 
-    query_variable: str | None = None  # Only when app mode is completion
+    query_variable: str = None  # Only when app mode is completion
 
     retrieve_strategy: RetrieveStrategy
-    top_k: int | None = None
+    top_k: int = None
     score_threshold: float | None = 0.0
     rerank_mode: str | None = "reranking_model"
-    reranking_model: RerankingModelDict | None = None
-    weights: WeightsDict | None = None
+    reranking_model: RerankingModelDict = None
+    weights: WeightsDict = None
     reranking_enabled: bool | None = True
     metadata_filtering_mode: Literal["disabled", "automatic", "manual"] | None = "disabled"
-    metadata_model_config: ModelConfig | None = None
-    metadata_filtering_conditions: MetadataFilteringCondition | None = None
+    metadata_model_config: ModelConfig = None
+    metadata_filtering_conditions: MetadataFilteringCondition = None
 
 
 class DatasetEntity(BaseModel):
@@ -183,8 +183,8 @@ class TextToSpeechEntity(BaseModel):
     """
 
     enabled: bool
-    voice: str | None = None
-    language: str | None = None
+    voice: str = None
+    language: str = None
 
 
 class TracingConfigEntity(BaseModel):
@@ -197,15 +197,15 @@ class TracingConfigEntity(BaseModel):
 
 
 class AppAdditionalFeatures(BaseModel):
-    file_upload: FileUploadConfig | None = None
-    opening_statement: str | None = None
+    file_upload: FileUploadConfig = None
+    opening_statement: str = None
     suggested_questions: list[str] = []
     suggested_questions_after_answer: bool = False
     show_retrieve_source: bool = False
     more_like_this: bool = False
     speech_to_text: bool = False
-    text_to_speech: TextToSpeechEntity | None = None
-    trace_config: TracingConfigEntity | None = None
+    text_to_speech: TextToSpeechEntity = None
+    trace_config: TracingConfigEntity = None
 
 
 class AppConfig(BaseModel):
@@ -216,9 +216,9 @@ class AppConfig(BaseModel):
     tenant_id: str
     app_id: str
     app_mode: AppMode
-    additional_features: AppAdditionalFeatures | None = None
+    additional_features: AppAdditionalFeatures = None
     variables: list[WorkflowVariableEntity] = []
-    sensitive_word_avoidance: SensitiveWordAvoidanceEntity | None = None
+    sensitive_word_avoidance: SensitiveWordAvoidanceEntity = None
 
 
 class EasyUIBasedAppModelConfigFrom(StrEnum):
@@ -239,11 +239,11 @@ class EasyUIBasedAppConfig(AppConfig):
     app_model_config_from: EasyUIBasedAppModelConfigFrom
     # Optional: an Agent App has no legacy app_model_config row, so the id may be
     # absent (persistence then stores NULL for the conversation's id).
-    app_model_config_id: str | None = None
+    app_model_config_id: str = None
     app_model_config_dict: dict[str, Any]
     model: ModelConfigEntity
     prompt_template: PromptTemplateEntity
-    dataset: DatasetEntity | None = None
+    dataset: DatasetEntity = None
     external_data_variables: list[ExternalDataVariableEntity] = []
 
 

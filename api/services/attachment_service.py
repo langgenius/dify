@@ -13,7 +13,7 @@ PREVIEW_WORDS_LIMIT = 3000
 class AttachmentService:
     _session_maker: sessionmaker
 
-    def __init__(self, session_factory: sessionmaker | Engine | None = None):
+    def __init__(self, session_factory: sessionmaker | Engine = None):
         match session_factory:
             case Engine():
                 self._session_maker = sessionmaker(bind=session_factory)

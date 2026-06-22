@@ -35,9 +35,9 @@ class TestStorageKeyLoader:
         tenant_id: str,
         user_id: str,
         *,
-        file_id: str | None = None,
-        storage_key: str | None = None,
-        override_tenant_id: str | None = None,
+        file_id: str = None,
+        storage_key: str = None,
+        override_tenant_id: str = None,
     ) -> UploadFile:
         """Create and flush an UploadFile record for testing."""
         upload_file = UploadFile(
@@ -65,9 +65,9 @@ class TestStorageKeyLoader:
         user_id: str,
         conversation_id: str,
         *,
-        file_id: str | None = None,
-        file_key: str | None = None,
-        override_tenant_id: str | None = None,
+        file_id: str = None,
+        file_key: str = None,
+        override_tenant_id: str = None,
     ) -> ToolFile:
         """Create and flush a ToolFile record for testing."""
         tool_file = ToolFile(
@@ -91,7 +91,7 @@ class TestStorageKeyLoader:
         related_id: str,
         transfer_method: FileTransferMethod,
         *,
-        override_tenant_id: str | None = None,
+        override_tenant_id: str = None,
     ) -> File:
         """Build a File value-object for testing."""
         remote_url = "https://example.com/test_file.txt" if transfer_method == FileTransferMethod.REMOTE_URL else None

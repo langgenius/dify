@@ -33,8 +33,8 @@ PAYLOAD_SIZE_THRESHOLD_BYTES = 1 * 1024 * 1024
 # Routing table — authoritative mapping for all editions
 # ---------------------------------------------------------------------------
 
-_case_to_trace_task: dict[TelemetryCase, TraceTaskName] | None = None
-_case_routing: dict[TelemetryCase, CaseRoute] | None = None
+_case_to_trace_task: dict[TelemetryCase, TraceTaskName] = None
+_case_routing: dict[TelemetryCase, CaseRoute] = None
 
 
 def _get_case_to_trace_task() -> dict[TelemetryCase, TraceTaskName]:
@@ -152,7 +152,7 @@ def emit(
     case: TelemetryCase,
     context: dict[str, Any],
     payload: dict[str, Any],
-    trace_manager: TraceQueueManager | None = None,
+    trace_manager: TraceQueueManager = None,
 ) -> None:
     """Route a telemetry event to the correct pipeline.
 

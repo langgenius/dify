@@ -18,7 +18,7 @@ class DatasourceFileMessageTransformer:
         messages: Generator[DatasourceMessage, None, None],
         user_id: str,
         tenant_id: str,
-        conversation_id: str | None = None,
+        conversation_id: str = None,
     ) -> Generator[DatasourceMessage, None, None]:
         """
         Transform datasource message and handle file download

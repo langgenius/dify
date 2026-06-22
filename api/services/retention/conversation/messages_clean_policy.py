@@ -74,8 +74,8 @@ class BillingSandboxPolicy(MessagesCleanPolicy):
         self,
         plan_provider: Callable[[Sequence[str]], dict[str, SubscriptionPlan]],
         graceful_period_days: int = 21,
-        tenant_whitelist: Sequence[str] | None = None,
-        current_timestamp: int | None = None,
+        tenant_whitelist: Sequence[str] = None,
+        current_timestamp: int = None,
     ) -> None:
         self._graceful_period_days = graceful_period_days
         self._tenant_whitelist: Sequence[str] = tenant_whitelist or []
@@ -181,7 +181,7 @@ class BillingSandboxPolicy(MessagesCleanPolicy):
 
 def create_message_clean_policy(
     graceful_period_days: int = 21,
-    current_timestamp: int | None = None,
+    current_timestamp: int = None,
 ) -> MessagesCleanPolicy:
     """
     Factory function to create the appropriate message clean policy.

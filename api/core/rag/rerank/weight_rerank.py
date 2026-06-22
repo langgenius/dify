@@ -25,8 +25,8 @@ class WeightRerankRunner(BaseRerankRunner):
         self,
         query: str,
         documents: list[Document],
-        score_threshold: float | None = None,
-        top_n: int | None = None,
+        score_threshold: float = None,
+        top_n: int = None,
         query_type: QueryType = QueryType.TEXT_QUERY,
     ) -> list[Document]:
         """

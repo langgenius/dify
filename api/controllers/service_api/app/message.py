@@ -41,10 +41,10 @@ class AppFeedbackResponse(ResponseModel):
     conversation_id: str
     message_id: str
     rating: str
-    content: str | None = None
+    content: str = None
     from_source: str
-    from_end_user_id: str | None = None
-    from_account_id: str | None = None
+    from_end_user_id: str = None
+    from_account_id: str = None
     created_at: str
     updated_at: str
 

@@ -20,7 +20,7 @@ class TestExternalDataTool:
                 return super().validate_config(tenant_id, config)
 
             @override
-            def query(self, inputs: Mapping[str, Any], query: str | None = None):
+            def query(self, inputs: Mapping[str, Any], query: str = None):
                 return super().query(inputs, query)
 
         tool = ConcreteTool(tenant_id="tenant_1", app_id="app_1", variable="var_1", config={"key": "value"})
@@ -38,7 +38,7 @@ class TestExternalDataTool:
                 pass
 
             @override
-            def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:
+            def query(self, inputs: Mapping[str, Any], query: str = None) -> str:
                 return ""
 
         tool = ConcreteTool(tenant_id="tenant_1", app_id="app_1", variable="var_1")
@@ -55,7 +55,7 @@ class TestExternalDataTool:
                 return super().validate_config(tenant_id, config)
 
             @override
-            def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:
+            def query(self, inputs: Mapping[str, Any], query: str = None) -> str:
                 return ""
 
         with pytest.raises(NotImplementedError):
@@ -69,7 +69,7 @@ class TestExternalDataTool:
                 pass
 
             @override
-            def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:
+            def query(self, inputs: Mapping[str, Any], query: str = None) -> str:
                 return super().query(inputs, query)
 
         tool = ConcreteTool(tenant_id="tenant_1", app_id="app_1", variable="var_1")

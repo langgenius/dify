@@ -167,7 +167,7 @@ class DatasetServiceUnitDataFactory:
         built_in_field_enabled: bool = False,
         doc_form: str | None = "text_model",
         enable_api: bool = False,
-        summary_index_setting: dict[str, Any] | None = None,
+        summary_index_setting: dict[str, Any] = None,
         **kwargs,
     ) -> Mock:
         dataset = Mock(spec=Dataset)
@@ -215,12 +215,12 @@ class DatasetServiceUnitDataFactory:
         archived: bool = False,
         enabled: bool = True,
         data_source_type: str = "upload_file",
-        data_source_info_dict: dict[str, Any] | None = None,
-        data_source_info: str | None = None,
+        data_source_info_dict: dict[str, Any] = None,
+        data_source_info: str = None,
         doc_form: str = "text_model",
         need_summary: bool = True,
         position: int = 0,
-        doc_metadata: dict[str, Any] | None = None,
+        doc_metadata: dict[str, Any] = None,
         name: str = "Document",
         **kwargs,
     ) -> Mock:
@@ -278,7 +278,7 @@ def _make_dataset(
     *,
     dataset_id: str = "dataset-1",
     tenant_id: str = "tenant-1",
-    data_source_type: str | None = None,
+    data_source_type: str = None,
     indexing_technique: str | None = "economy",
     latest_process_rule=None,
 ) -> Mock:
@@ -341,7 +341,7 @@ def _make_segment(
     content: str = "segment content",
     word_count: int = 15,
     enabled: bool = True,
-    keywords: list[str] | None = None,
+    keywords: list[str] = None,
     index_node_id: str = "node-1",
     dataset_id: str = "dataset-1",
     document_id: str = "doc-1",
@@ -378,9 +378,9 @@ def _make_child_chunk() -> ChildChunk:
 
 def _make_upload_knowledge_config(
     *,
-    original_document_id: str | None = None,
-    file_ids: list[str] | None = None,
-    process_rule: ProcessRule | None = None,
+    original_document_id: str = None,
+    file_ids: list[str] = None,
+    process_rule: ProcessRule = None,
     data_source: DataSource | object | None = _UNSET,
 ) -> KnowledgeConfig:
     if data_source is _UNSET:
@@ -440,7 +440,7 @@ def _make_knowledge_configuration(
     embedding_model_provider: str = "provider",
     embedding_model: str = "embedding-model",
     keyword_number: int = 8,
-    summary_index_setting: dict | None = None,
+    summary_index_setting: dict = None,
 ) -> KnowledgeConfiguration:
     return KnowledgeConfiguration(
         chunk_structure=chunk_structure,

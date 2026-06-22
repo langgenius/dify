@@ -111,7 +111,7 @@ class EmailDeliveryConfig(BaseModel):
         *,
         body: str,
         url: str | None,
-        variable_pool: VariablePool | None = None,
+        variable_pool: VariablePool = None,
     ) -> str:
         templated_body = cls.replace_url_placeholder(body, url)
         if variable_pool is None:

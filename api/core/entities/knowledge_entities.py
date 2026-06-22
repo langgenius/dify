@@ -5,8 +5,8 @@ from pydantic import BaseModel, Field, field_validator
 
 class PreviewDetail(BaseModel):
     content: str
-    summary: str | None = None
-    child_chunks: list[str] | None = None
+    summary: str = None
+    child_chunks: list[str] = None
 
 
 class QAPreviewDetail(BaseModel):
@@ -17,7 +17,7 @@ class QAPreviewDetail(BaseModel):
 class IndexingEstimate(BaseModel):
     total_segments: int
     preview: list[PreviewDetail]
-    qa_preview: list[QAPreviewDetail] | None = None
+    qa_preview: list[QAPreviewDetail] = None
 
 
 class PipelineDataset(BaseModel):
@@ -39,10 +39,10 @@ class PipelineDocument(BaseModel):
     id: str
     position: int
     data_source_type: str
-    data_source_info: dict[str, Any] | None = None
+    data_source_info: dict[str, Any] = None
     name: str
     indexing_status: str
-    error: str | None = None
+    error: str = None
     enabled: bool
 
 

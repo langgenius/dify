@@ -45,7 +45,7 @@ class EventParameter(BaseModel):
         default=None, description="The auto generate of the parameter"
     )
     template: PluginParameterTemplate | None = Field(default=None, description="The template of the parameter")
-    scope: str | None = None
+    scope: str = None
     required: bool = False
     multiple: bool = Field(
         default=False,
@@ -54,9 +54,9 @@ class EventParameter(BaseModel):
     default: Union[int, float, str, list[Any], None] = None
     min: Union[float, int, None] = None
     max: Union[float, int, None] = None
-    precision: int | None = None
-    options: list[PluginParameterOption] | None = None
-    description: I18nObject | None = None
+    precision: int = None
+    options: list[PluginParameterOption] = None
+    description: I18nObject = None
 
 
 class TriggerProviderIdentity(BaseModel):

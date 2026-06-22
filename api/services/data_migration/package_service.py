@@ -52,8 +52,8 @@ class MigrationPackageService:
         source_tenant_id: str,
         source_tenant_name: str,
         include_secrets: bool,
-        import_options: ImportOptions | None = None,
-        target_tenant: TargetTenantSelector | None = None,
+        import_options: ImportOptions = None,
+        target_tenant: TargetTenantSelector = None,
     ) -> MigrationPackage:
         return MigrationPackage(
             metadata=MigrationMetadata(

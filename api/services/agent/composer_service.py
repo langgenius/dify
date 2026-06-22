@@ -290,7 +290,7 @@ class AgentComposerService:
         *,
         tenant_id: str,
         payload: ComposerSavePayload,
-        agent_id: str | None = None,
+        agent_id: str = None,
     ) -> dict[str, Any]:
         """ENG-617 soft findings, with DB-backed dataset existence for placeholders.
 
@@ -306,7 +306,7 @@ class AgentComposerService:
                 for mention in parse_prompt_mentions(payload.agent_soul.prompt.system_prompt)
                 if mention.kind == MentionKind.KNOWLEDGE
             }
-        existing_dataset_ids: set[str] | None = None
+        existing_dataset_ids: set[str] = None
         if mentioned_ids:
             existing_dataset_ids = set(cls._dataset_rows(tenant_id=tenant_id, dataset_ids=sorted(mentioned_ids)))
         findings = ComposerConfigValidator.collect_soft_findings(payload, existing_dataset_ids=existing_dataset_ids)
@@ -323,10 +323,10 @@ class AgentComposerService:
         tenant_id: str,
         agent_id: str,
         account_id: str,
-        skill_slug: str | None = None,
-        file_key: str | None = None,
-        app_id: str | None = None,
-        node_id: str | None = None,
+        skill_slug: str = None,
+        file_key: str = None,
+        app_id: str = None,
+        node_id: str = None,
     ) -> str | None:
         """Drop the soul refs backed by a drive skill/file before the drive rows go.
 
@@ -345,7 +345,7 @@ class AgentComposerService:
         )
         agent_soul = AgentSoulConfig.model_validate(current_snapshot.config_snapshot_dict)
 
-        removed_display: str | None = None
+        removed_display: str = None
         if skill_slug is not None:
             kept_skills = []
             for skill in agent_soul.skills_files.skills:
@@ -398,8 +398,8 @@ class AgentComposerService:
         agent_id: str,
         account_id: str,
         file_ref: AgentFileRefConfig,
-        app_id: str | None = None,
-        node_id: str | None = None,
+        app_id: str = None,
+        node_id: str = None,
     ) -> str | None:
         """Add or replace one drive-backed file ref in the active Agent Soul.
 
@@ -556,8 +556,8 @@ class AgentComposerService:
         except ValueError:
             workflow = None
 
-        node_job: WorkflowNodeJobConfig | None = None
-        agent_soul: AgentSoulConfig | None = None
+        node_job: WorkflowNodeJobConfig = None
+        agent_soul: AgentSoulConfig = None
         if workflow is not None:
             binding = cls._get_workflow_binding(tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id)
             if binding is not None:
@@ -1109,7 +1109,7 @@ class AgentComposerService:
         agent_soul: AgentSoulConfig,
         operation: AgentConfigRevisionOperation,
         version_note: str | None,
-        previous_snapshot_id: str | None = None,
+        previous_snapshot_id: str = None,
     ) -> AgentConfigSnapshot:
         next_version = (
             db.session.scalar(

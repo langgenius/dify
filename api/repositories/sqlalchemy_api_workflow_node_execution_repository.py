@@ -217,7 +217,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
     def get_execution_by_id(
         self,
         execution_id: str,
-        tenant_id: str | None = None,
+        tenant_id: str = None,
     ) -> WorkflowNodeExecutionModel | None:
         """
         Get a workflow node execution by its ID.

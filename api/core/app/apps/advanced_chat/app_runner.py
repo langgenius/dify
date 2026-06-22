@@ -72,7 +72,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
-        graph_runtime_state: GraphRuntimeState | None = None,
+        graph_runtime_state: GraphRuntimeState = None,
     ):
         super().__init__(
             queue_manager=queue_manager,
@@ -333,7 +333,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         tenant_id: str,
         app_generate_entity: AppGenerateEntity,
         inputs: Mapping[str, Any],
-        query: str | None = None,
+        query: str = None,
         message_id: str,
     ) -> tuple[bool, Mapping[str, Any], str]:
         """

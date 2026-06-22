@@ -65,8 +65,8 @@ class LayerNode:
         name: str,
         implementation: LayerProviderInput,
         *,
-        deps: Mapping[str, str] | None = None,
-        metadata: Mapping[str, JsonValue] | None = None,
+        deps: Mapping[str, str] = None,
+        metadata: Mapping[str, JsonValue] = None,
     ) -> None:
         if not name:
             raise ValueError("Layer node name must not be empty.")
@@ -106,9 +106,9 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, 
         self,
         nodes: Sequence[LayerNode],
         *,
-        prompt_transformer: CompositorTransformer[LayerPromptT, PromptT] | None = None,
-        user_prompt_transformer: CompositorTransformer[LayerUserPromptT, UserPromptT] | None = None,
-        tool_transformer: CompositorTransformer[LayerToolT, ToolT] | None = None,
+        prompt_transformer: CompositorTransformer[LayerPromptT, PromptT] = None,
+        user_prompt_transformer: CompositorTransformer[LayerUserPromptT, UserPromptT] = None,
+        tool_transformer: CompositorTransformer[LayerToolT, ToolT] = None,
     ) -> None:
         self._nodes = tuple(nodes)
         self.prompt_transformer = prompt_transformer
@@ -127,10 +127,10 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, 
         conf: CompositorConfigValue,
         *,
         providers: Sequence[LayerProviderInput],
-        node_providers: Mapping[str, LayerProviderInput] | None = None,
-        prompt_transformer: CompositorTransformer[LayerPromptT, PromptT] | None = None,
-        user_prompt_transformer: CompositorTransformer[LayerUserPromptT, UserPromptT] | None = None,
-        tool_transformer: CompositorTransformer[LayerToolT, ToolT] | None = None,
+        node_providers: Mapping[str, LayerProviderInput] = None,
+        prompt_transformer: CompositorTransformer[LayerPromptT, PromptT] = None,
+        user_prompt_transformer: CompositorTransformer[LayerUserPromptT, UserPromptT] = None,
+        tool_transformer: CompositorTransformer[LayerToolT, ToolT] = None,
     ) -> "Compositor[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, LayerUserPromptT]":
         """Create a reusable compositor plan from serializable graph config.
 
@@ -179,8 +179,8 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, 
     async def enter(
         self,
         *,
-        configs: Mapping[str, LayerConfigInput] | None = None,
-        session_snapshot: CompositorSessionSnapshotValue | None = None,
+        configs: Mapping[str, LayerConfigInput] = None,
+        session_snapshot: CompositorSessionSnapshotValue = None,
     ) -> AsyncGenerator[CompositorRun[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, LayerUserPromptT]]:
         """Create a fresh run, enter layers in graph order, and yield it.
 
@@ -191,7 +191,7 @@ class Compositor(Generic[PromptT, ToolT, LayerPromptT, LayerToolT, UserPromptT, 
         """
         run = self._create_run(configs=configs, session_snapshot=session_snapshot)
         await run._enter_layers()
-        body_error: BaseException | None = None
+        body_error: BaseException = None
         try:
             yield run
         except BaseException as exc:

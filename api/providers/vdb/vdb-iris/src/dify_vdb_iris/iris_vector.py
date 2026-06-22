@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 # Singleton connection pool to minimize IRIS license usage
 _pool_lock = threading.Lock()
-_pool_instance: IrisConnectionPool | None = None
+_pool_instance: IrisConnectionPool = None
 
 
 def get_iris_pool(config: IrisVectorConfig) -> IrisConnectionPool:

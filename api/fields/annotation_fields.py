@@ -10,10 +10,10 @@ from libs.helper import to_timestamp
 
 class Annotation(ResponseModel):
     id: str
-    question: str | None = None
+    question: str = None
     answer: str | None = Field(default=None, validation_alias="content")
-    hit_count: int | None = None
-    created_at: int | None = None
+    hit_count: int = None
+    created_at: int = None
 
     @field_validator("created_at", mode="before")
     @classmethod
@@ -35,10 +35,10 @@ class AnnotationExportList(ResponseModel):
 
 class AnnotationHitHistory(ResponseModel):
     id: str
-    source: str | None = None
-    score: float | None = None
-    question: str | None = None
-    created_at: int | None = None
+    source: str = None
+    score: float = None
+    question: str = None
+    created_at: int = None
     match: str | None = Field(default=None, validation_alias="annotation_question")
     response: str | None = Field(default=None, validation_alias="annotation_content")
 

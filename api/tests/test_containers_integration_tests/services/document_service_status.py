@@ -40,19 +40,19 @@ class DocumentStatusTestDataFactory:
     @staticmethod
     def create_document(
         db_session_with_containers,
-        document_id: str | None = None,
-        dataset_id: str | None = None,
-        tenant_id: str | None = None,
+        document_id: str = None,
+        dataset_id: str = None,
+        tenant_id: str = None,
         name: str = "Test Document",
         indexing_status: str = "completed",
         is_paused: bool = False,
         enabled: bool = True,
         archived: bool = False,
-        paused_by: str | None = None,
-        paused_at: datetime.datetime | None = None,
+        paused_by: str = None,
+        paused_at: datetime.datetime = None,
         data_source_type: str = "upload_file",
-        data_source_info: dict | None = None,
-        doc_metadata: dict | None = None,
+        data_source_info: dict = None,
+        doc_metadata: dict = None,
         **kwargs,
     ) -> Document:
         """
@@ -116,8 +116,8 @@ class DocumentStatusTestDataFactory:
     @staticmethod
     def create_dataset(
         db_session_with_containers,
-        dataset_id: str | None = None,
-        tenant_id: str | None = None,
+        dataset_id: str = None,
+        tenant_id: str = None,
         name: str = "Test Dataset",
         built_in_field_enabled: bool = False,
         **kwargs,
@@ -157,8 +157,8 @@ class DocumentStatusTestDataFactory:
 
     @staticmethod
     def create_user_mock(
-        user_id: str | None = None,
-        tenant_id: str | None = None,
+        user_id: str = None,
+        tenant_id: str = None,
         **kwargs,
     ) -> Account:
         """
@@ -184,7 +184,7 @@ class DocumentStatusTestDataFactory:
         db_session_with_containers,
         tenant_id: str,
         created_by: str,
-        file_id: str | None = None,
+        file_id: str = None,
         name: str = "test_file.pdf",
         **kwargs,
     ) -> UploadFile:

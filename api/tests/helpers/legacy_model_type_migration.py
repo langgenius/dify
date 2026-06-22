@@ -115,7 +115,7 @@ def fetch_table_rows(
     engine: Engine,
     table_name: str,
     *,
-    tenant_id: str | None = None,
+    tenant_id: str = None,
 ) -> list[dict[str, object]]:
     sql = f"SELECT * FROM {table_name}"
     params: dict[str, object] = {}

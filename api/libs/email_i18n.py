@@ -180,7 +180,7 @@ class EmailI18nService:
         email_type: EmailType,
         language_code: str,
         to: str,
-        template_context: dict[str, Any] | None = None,
+        template_context: dict[str, Any] = None,
     ):
         """
         Send internationalized email with branding support.
@@ -608,7 +608,7 @@ def get_default_email_i18n_service() -> EmailI18nService:
 
 
 # Global instance
-_email_i18n_service: EmailI18nService | None = None
+_email_i18n_service: EmailI18nService = None
 
 
 def get_email_i18n_service() -> EmailI18nService:

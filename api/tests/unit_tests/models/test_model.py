@@ -85,7 +85,7 @@ def test_image_preview_misspelled_not_replaced():
     assert out == original
 
 
-def _build_local_file_mapping(record_id: str, *, tenant_id: str | None = None) -> dict[str, object]:
+def _build_local_file_mapping(record_id: str, *, tenant_id: str = None) -> dict[str, object]:
     mapping: dict[str, object] = {
         "dify_model_identity": FILE_MODEL_IDENTITY,
         "transfer_method": FileTransferMethod.LOCAL_FILE,

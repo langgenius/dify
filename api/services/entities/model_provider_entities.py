@@ -52,11 +52,11 @@ class CustomConfigurationResponse(BaseModel):
     """
 
     status: CustomConfigurationStatus
-    current_credential_id: str | None = None
-    current_credential_name: str | None = None
-    available_credentials: list[CredentialConfiguration] | None = None
-    custom_models: list[CustomModelConfiguration] | None = None
-    can_added_models: list[UnaddedModelConfiguration] | None = None
+    current_credential_id: str = None
+    current_credential_name: str = None
+    available_credentials: list[CredentialConfiguration] = None
+    custom_models: list[CustomModelConfiguration] = None
+    can_added_models: list[UnaddedModelConfiguration] = None
 
 
 class SystemConfigurationResponse(BaseModel):
@@ -65,7 +65,7 @@ class SystemConfigurationResponse(BaseModel):
     """
 
     enabled: bool
-    current_quota_type: ProviderQuotaType | None = None
+    current_quota_type: ProviderQuotaType = None
     quota_configurations: list[QuotaConfiguration] = []
 
 
@@ -77,15 +77,15 @@ class ProviderResponse(BaseModel):
     tenant_id: str
     provider: str
     label: I18nObject
-    description: I18nObject | None = None
-    icon_small: I18nObject | None = None
-    icon_small_dark: I18nObject | None = None
-    background: str | None = None
-    help: ProviderHelpEntity | None = None
+    description: I18nObject = None
+    icon_small: I18nObject = None
+    icon_small_dark: I18nObject = None
+    background: str = None
+    help: ProviderHelpEntity = None
     supported_model_types: Sequence[ModelType]
     configurate_methods: list[ConfigurateMethod]
-    provider_credential_schema: ProviderCredentialSchema | None = None
-    model_credential_schema: ModelCredentialSchema | None = None
+    provider_credential_schema: ProviderCredentialSchema = None
+    model_credential_schema: ModelCredentialSchema = None
     preferred_provider_type: ProviderType
     custom_configuration: CustomConfigurationResponse
     system_configuration: SystemConfigurationResponse
@@ -118,8 +118,8 @@ class ProviderWithModelsResponse(BaseModel):
     tenant_id: str
     provider: str
     label: I18nObject
-    icon_small: I18nObject | None = None
-    icon_small_dark: I18nObject | None = None
+    icon_small: I18nObject = None
+    icon_small_dark: I18nObject = None
     status: CustomConfigurationStatus
     models: list[ProviderModelWithStatusEntity]
 
@@ -144,7 +144,7 @@ class PriceConfigResponse(BaseModel):
     """Serialized pricing info with codegen-safe decimal string patterns."""
 
     input: CodegenSafeDecimal
-    output: CodegenSafeDecimal | None = None
+    output: CodegenSafeDecimal = None
     unit: CodegenSafeDecimal
     currency: str
 
@@ -153,12 +153,12 @@ class AIModelEntityResponse(BaseModel):
     model: str
     label: I18nObject
     model_type: ModelType
-    features: list[ModelFeature] | None = None
+    features: list[ModelFeature] = None
     fetch_from: FetchFrom
     model_properties: dict[ModelPropertyKey, Any]
     deprecated: bool = False
     parameter_rules: list[ParameterRule] = []
-    pricing: PriceConfigResponse | None = None
+    pricing: PriceConfigResponse = None
 
 
 class SimpleProviderEntityResponse(BaseModel):
@@ -169,8 +169,8 @@ class SimpleProviderEntityResponse(BaseModel):
     provider: str
     provider_name: str = ""
     label: I18nObject
-    icon_small: I18nObject | None = None
-    icon_small_dark: I18nObject | None = None
+    icon_small: I18nObject = None
+    icon_small_dark: I18nObject = None
     supported_model_types: Sequence[ModelType]
     tenant_id: str
     models: list[AIModelEntityResponse] = []
@@ -198,16 +198,16 @@ class ProviderEntityResponse(BaseModel):
     provider: str
     provider_name: str = ""
     label: I18nObject
-    description: I18nObject | None = None
-    icon_small: I18nObject | None = None
-    icon_small_dark: I18nObject | None = None
-    background: str | None = None
-    help: ProviderHelpEntity | None = None
+    description: I18nObject = None
+    icon_small: I18nObject = None
+    icon_small_dark: I18nObject = None
+    background: str = None
+    help: ProviderHelpEntity = None
     supported_model_types: Sequence[ModelType]
     configurate_methods: list[ConfigurateMethod]
     models: list[AIModelEntityResponse] = []
-    provider_credential_schema: ProviderCredentialSchema | None = None
-    model_credential_schema: ModelCredentialSchema | None = None
+    provider_credential_schema: ProviderCredentialSchema = None
+    model_credential_schema: ModelCredentialSchema = None
     position: dict[str, list[str]] | None = {}
 
     model_config = ConfigDict(from_attributes=True, protected_namespaces=())

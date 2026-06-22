@@ -11,7 +11,7 @@ class AuthorizationConfig(BaseModel):
 
 class Authorization(BaseModel):
     type: Literal["no-auth", "api-key"]
-    config: AuthorizationConfig | None = None
+    config: AuthorizationConfig = None
 
 
 class ProcessStatusSetting(BaseModel):
@@ -22,5 +22,5 @@ class ProcessStatusSetting(BaseModel):
 class ExternalKnowledgeApiSetting(BaseModel):
     url: str
     request_method: str
-    headers: dict[str, Any] | None = None
-    params: dict[str, Any] | None = None
+    headers: dict[str, Any] = None
+    params: dict[str, Any] = None

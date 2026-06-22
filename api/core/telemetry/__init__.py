@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from core.ops.ops_trace_manager import TraceQueueManager
 
 
-def emit(event: TelemetryEvent, trace_manager: TraceQueueManager | None = None) -> None:
+def emit(event: TelemetryEvent, trace_manager: TraceQueueManager = None) -> None:
     """Emit a telemetry event.
 
     Translates the ``TelemetryEvent`` (keyed by ``TraceTaskName``) into a

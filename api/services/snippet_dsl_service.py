@@ -47,7 +47,7 @@ class ImportStatus(StrEnum):
 class SnippetImportInfo(BaseModel):
     id: str
     status: ImportStatus
-    snippet_id: str | None = None
+    snippet_id: str = None
     current_dsl_version: str = CURRENT_DSL_VERSION
     imported_dsl_version: str = ""
     error: str = ""
@@ -84,8 +84,8 @@ def _check_version_compatibility(imported_version: str) -> ImportStatus:
 class SnippetPendingData(BaseModel):
     import_mode: str
     yaml_content: str
-    name: str | None = None
-    description: str | None = None
+    name: str = None
+    description: str = None
     snippet_id: str | None
 
 
@@ -106,11 +106,11 @@ class SnippetDslService:
         *,
         account: Account,
         import_mode: str,
-        yaml_content: str | None = None,
-        yaml_url: str | None = None,
-        snippet_id: str | None = None,
-        name: str | None = None,
-        description: str | None = None,
+        yaml_content: str = None,
+        yaml_url: str = None,
+        snippet_id: str = None,
+        name: str = None,
+        description: str = None,
     ) -> SnippetImportInfo:
         """Import a snippet from YAML content or URL."""
         import_id = str(uuid.uuid4())
@@ -403,9 +403,9 @@ class SnippetDslService:
         snippet: CustomizedSnippet | None,
         data: dict,
         account: Account,
-        name: str | None = None,
-        description: str | None = None,
-        dependencies: list[PluginDependency] | None = None,
+        name: str = None,
+        description: str = None,
+        dependencies: list[PluginDependency] = None,
     ) -> CustomizedSnippet:
         """
         Create or update snippet from DSL data

@@ -117,8 +117,8 @@ class WorkflowBasedAppRunner:
         workflow_id: str = "",
         tenant_id: str = "",
         user_id: str = "",
-        root_node_id: str | None = None,
-        trace_session_id: str | None = None,
+        root_node_id: str = None,
+        trace_session_id: str = None,
     ) -> Graph:
         """
         Init graph
@@ -169,11 +169,11 @@ class WorkflowBasedAppRunner:
     def _prepare_single_node_execution(
         self,
         workflow: Workflow,
-        single_iteration_run: Any | None = None,
-        single_loop_run: Any | None = None,
+        single_iteration_run: Any = None,
+        single_loop_run: Any = None,
         *,
         user_id: str,
-        trace_session_id: str | None = None,
+        trace_session_id: str = None,
     ) -> tuple[Graph, VariablePool, GraphRuntimeState]:
         """
         Prepare graph, variable pool, and runtime state for single node execution
@@ -241,7 +241,7 @@ class WorkflowBasedAppRunner:
         node_type_label: str = "node",  # 'iteration' or 'loop' for error messages
         *,
         user_id: str = "",
-        trace_session_id: str | None = None,
+        trace_session_id: str = None,
     ) -> tuple[Graph, VariablePool]:
         """
         Get graph and variable pool for single node execution (iteration or loop).

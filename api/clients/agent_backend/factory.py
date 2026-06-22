@@ -10,7 +10,7 @@ from clients.agent_backend.fake_client import FakeAgentBackendRunClient, FakeAge
 
 def create_agent_backend_run_client(
     *,
-    base_url: str | None = None,
+    base_url: str = None,
     use_fake: bool = False,
     fake_scenario: str | FakeAgentBackendScenario = FakeAgentBackendScenario.SUCCESS,
 ) -> AgentBackendRunClient:

@@ -323,9 +323,9 @@ def _build_response(
     url: str,
     status_code: int,
     content: bytes = b"",
-    content_length: int | None = None,
-    content_type: str | None = None,
-    filename: str | None = None,
+    content_length: int = None,
+    content_type: str = None,
+    filename: str = None,
 ) -> httpx.Response:
     headers: dict[str, str] = {}
     if content_type:

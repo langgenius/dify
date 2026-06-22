@@ -40,10 +40,10 @@ class AppMessageExportFeedback(BaseModel):
     conversation_id: str
     message_id: str
     rating: str
-    content: str | None = None
+    content: str = None
     from_source: str
-    from_end_user_id: str | None = None
-    from_account_id: str | None = None
+    from_end_user_id: str = None
+    from_account_id: str = None
     created_at: str
     updated_at: str
 
@@ -121,7 +121,7 @@ class AppMessageExportService:
         end_before: datetime.datetime,
         filename: str,
         *,
-        start_from: datetime.datetime | None = None,
+        start_from: datetime.datetime = None,
         batch_size: int = 1000,
         use_cloud_storage: bool = False,
         dry_run: bool = False,
@@ -208,7 +208,7 @@ class AppMessageExportService:
         stats.batches = (stats.total_messages + self._batch_size - 1) // self._batch_size
 
     def _iter_record_batches(self) -> Generator[list[AppMessageExportRecord], None, None]:
-        cursor: tuple[datetime.datetime, str] | None = None
+        cursor: tuple[datetime.datetime, str] = None
         while True:
             rows, cursor = self._fetch_batch(cursor)
             if not rows:

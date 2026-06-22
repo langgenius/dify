@@ -34,11 +34,11 @@ class MCPClientWithAuthRetry(MCPClient):
     def __init__(
         self,
         server_url: str,
-        headers: dict[str, str] | None = None,
-        timeout: float | None = None,
-        sse_read_timeout: float | None = None,
-        provider_entity: MCPProviderEntity | None = None,
-        authorization_code: str | None = None,
+        headers: dict[str, str] = None,
+        timeout: float = None,
+        sse_read_timeout: float = None,
+        provider_entity: MCPProviderEntity = None,
+        authorization_code: str = None,
         by_server_id: bool = False,
         forward_identity_active: bool = False,
     ):

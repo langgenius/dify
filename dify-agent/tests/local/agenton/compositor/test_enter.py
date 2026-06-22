@@ -260,10 +260,10 @@ def test_existing_snapshot_model_instances_are_revalidated_before_factory_runs()
 
 
 class RuntimeState(BaseModel):
-    runtime_id: int | None = None
-    resumed_runtime_id: int | None = None
-    deleted_runtime_id: int | None = None
-    body_value: str | None = None
+    runtime_id: int = None
+    resumed_runtime_id: int = None
+    deleted_runtime_id: int = None
+    body_value: str = None
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
@@ -400,7 +400,7 @@ class ResourceState(BaseModel):
 @dataclass(slots=True)
 class ParentResourceLayer(PlainLayer[NoLayerDeps, EmptyLayerConfig, ResourceState]):
     events: list[str] = field(default_factory=list)
-    live_resource: object | None = None
+    live_resource: object = None
 
     @override
     @asynccontextmanager
@@ -438,7 +438,7 @@ class ChildResourceDeps(NoLayerDeps):
 @dataclass(slots=True)
 class ChildResourceLayer(PlainLayer[ChildResourceDeps, EmptyLayerConfig, ResourceState]):
     events: list[str] = field(default_factory=list)
-    live_resource: object | None = None
+    live_resource: object = None
 
     @override
     @asynccontextmanager
@@ -533,7 +533,7 @@ class ResumeResourceState(BaseModel):
 class SuspendResumeResourceLayer(PlainLayer[NoLayerDeps, EmptyLayerConfig, ResumeResourceState]):
     events: list[str]
     next_resource_id: Iterator[int]
-    live_resource: str | None = None
+    live_resource: str = None
 
     @override
     @asynccontextmanager
@@ -972,8 +972,8 @@ def test_resource_context_exits_when_delete_hook_raises() -> None:
 async def _enter_once(
     compositor: Compositor,
     *,
-    configs: dict[str, object] | None = None,
-    session_snapshot: object | None = None,
+    configs: dict[str, object] = None,
+    session_snapshot: object = None,
 ) -> None:
     async with compositor.enter(
         configs=configs,  # pyright: ignore[reportArgumentType]

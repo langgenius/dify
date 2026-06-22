@@ -48,8 +48,8 @@ def _create_workflow_run(
     *,
     status: WorkflowExecutionStatus = WorkflowExecutionStatus.SUCCEEDED,
     created_at: datetime,
-    tenant_id: str | None = None,
-    workflow_id: str | None = None,
+    tenant_id: str = None,
+    workflow_id: str = None,
     workflow_type: str = WorkflowType.WORKFLOW,
 ) -> WorkflowRun:
     workflow_run = WorkflowRun(

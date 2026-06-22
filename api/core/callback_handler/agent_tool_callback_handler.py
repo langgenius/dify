@@ -23,7 +23,7 @@ def get_colored_text(text: str, color: str) -> str:
     return f"\u001b[{color_str}m\033[1;3m{text}\u001b[0m"
 
 
-def print_text(text: str, color: str | None = None, end: str = "", file: TextIO | None = None):
+def print_text(text: str, color: str = None, end: str = "", file: TextIO = None):
     """Print text with highlighting and no end characters."""
     text_to_print = get_colored_text(text, color) if color else text
     print(text_to_print, end=end, file=file)
@@ -37,7 +37,7 @@ class DifyAgentCallbackHandler(BaseModel):
     color: str | None = ""
     current_loop: int = 1
 
-    def __init__(self, color: str | None = None):
+    def __init__(self, color: str = None):
         super().__init__()
         """Initialize callback handler."""
         # use a specific color is not specified
@@ -58,9 +58,9 @@ class DifyAgentCallbackHandler(BaseModel):
         tool_name: str,
         tool_inputs: Mapping[str, Any],
         tool_outputs: Iterable[ToolInvokeMessage] | str,
-        message_id: str | None = None,
-        timer: Any | None = None,
-        trace_manager: TraceQueueManager | None = None,
+        message_id: str = None,
+        timer: Any = None,
+        trace_manager: TraceQueueManager = None,
     ):
         """If not the final action, print out observation."""
         if dify_config.DEBUG:
@@ -98,7 +98,7 @@ class DifyAgentCallbackHandler(BaseModel):
             else:
                 print_text("\n[on_agent_start] \nCurrent Loop: " + str(self.current_loop) + "\n", color=self.color)
 
-    def on_agent_finish(self, color: str | None = None, **kwargs: Any):
+    def on_agent_finish(self, color: str = None, **kwargs: Any):
         """Run on agent end."""
         if dify_config.DEBUG:
             print_text("\n[on_agent_finish]\n Loop: " + str(self.current_loop) + "\n", color=self.color)

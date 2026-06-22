@@ -158,7 +158,7 @@ class HumanInputService:
     def __init__(
         self,
         session_factory: sessionmaker[Session] | Engine,
-        form_repository: HumanInputFormSubmissionRepository | None = None,
+        form_repository: HumanInputFormSubmissionRepository = None,
     ):
         if isinstance(session_factory, Engine):
             session_factory = sessionmaker(bind=session_factory)
@@ -198,8 +198,8 @@ class HumanInputService:
         form_token: str,
         selected_action_id: str,
         form_data: Mapping[str, JsonValue],
-        submission_end_user_id: str | None = None,
-        submission_user_id: str | None = None,
+        submission_end_user_id: str = None,
+        submission_user_id: str = None,
     ):
         form = self.get_form_by_token(form_token)
         if form is None or form.recipient_type != recipient_type:
@@ -321,7 +321,7 @@ class HumanInputService:
 
         return runtime_state.variable_pool
 
-    def _is_globally_expired(self, form: Form, *, now: datetime | None = None) -> bool:
+    def _is_globally_expired(self, form: Form, *, now: datetime = None) -> bool:
         global_timeout_seconds = dify_config.HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS
         if global_timeout_seconds <= 0:
             return False

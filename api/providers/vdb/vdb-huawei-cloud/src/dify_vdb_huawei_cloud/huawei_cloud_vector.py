@@ -39,8 +39,8 @@ def create_ssl_context() -> ssl.SSLContext:
 
 class HuaweiCloudVectorConfig(BaseModel):
     hosts: str
-    username: str | None = None
-    password: str | None = None
+    username: str = None
+    password: str = None
 
     @model_validator(mode="before")
     @classmethod
@@ -177,8 +177,8 @@ class HuaweiCloudVector(BaseVector):
     def create_collection(
         self,
         embeddings: list[list[float]],
-        metadatas: list[dict[Any, Any]] | None = None,
-        index_params: dict[str, Any] | None = None,
+        metadatas: list[dict[Any, Any]] = None,
+        index_params: dict[str, Any] = None,
     ):
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):

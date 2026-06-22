@@ -148,7 +148,7 @@ class BaseSession[
         receive_request_type: type[ReceiveRequestT],
         receive_notification_type: type[ReceiveNotificationT],
         # If none, reading will never time out
-        read_timeout_seconds: timedelta | None = None,
+        read_timeout_seconds: timedelta = None,
     ):
         self._read_stream = read_stream
         self._write_stream = write_stream
@@ -159,8 +159,8 @@ class BaseSession[
         self._session_read_timeout_seconds = read_timeout_seconds
         self._in_flight = {}
         # Initialize executor and future to None for proper cleanup checks
-        self._executor: ThreadPoolExecutor | None = None
-        self._receiver_future: Future | None = None
+        self._executor: ThreadPoolExecutor = None
+        self._receiver_future: Future = None
 
     def __enter__(self) -> Self:
         # The thread pool is dedicated to running `_receive_loop`. Setting `max_workers` to 1
@@ -200,8 +200,8 @@ class BaseSession[
         self,
         request: SendRequestT,
         result_type: type[T],
-        request_read_timeout_seconds: timedelta | None = None,
-        metadata: MessageMetadata | None = None,
+        request_read_timeout_seconds: timedelta = None,
+        metadata: MessageMetadata = None,
     ) -> T:
         """
         Sends a request and wait for a response. Raises an McpError if the
@@ -272,7 +272,7 @@ class BaseSession[
     def send_notification(
         self,
         notification: SendNotificationT,
-        related_request_id: RequestId | None = None,
+        related_request_id: RequestId = None,
     ):
         """
         Emits a notification, which is a one-way message that does not expect
@@ -411,7 +411,7 @@ class BaseSession[
         to listen on the message stream.
         """
 
-    def send_progress_notification(self, progress_token: str | int, progress: float, total: float | None = None):
+    def send_progress_notification(self, progress_token: str | int, progress: float, total: float = None):
         """
         Sends a progress notification for a request that is currently being
         processed.

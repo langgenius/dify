@@ -22,7 +22,7 @@ class MarkdownExtractor(BaseExtractor):
         file_path: str,
         remove_hyperlinks: bool = False,
         remove_images: bool = False,
-        encoding: str | None = None,
+        encoding: str = None,
         autodetect_encoding: bool = True,
     ):
         """Initialize with file path."""

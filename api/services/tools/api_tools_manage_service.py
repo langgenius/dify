@@ -94,7 +94,7 @@ class ApiToolManageService:
 
     @staticmethod
     def convert_schema_to_tool_bundles(
-        schema: str, extra_info: dict[str, Any] | None = None
+        schema: str, extra_info: dict[str, Any] = None
     ) -> tuple[list[ApiToolBundle], ApiProviderSchemaType]:
         """
         convert schema to tool bundles
@@ -237,7 +237,7 @@ class ApiToolManageService:
         """
 
         # create new session with automatic transaction management
-        provider: ApiToolProvider | None = None
+        provider: ApiToolProvider = None
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             provider = _session.scalar(
                 select(ApiToolProvider)
@@ -443,7 +443,7 @@ class ApiToolManageService:
             raise ValueError(f"invalid tool name {tool_name}")
 
         # create new session with automatic transaction management to get the provider
-        provider: ApiToolProvider | None = None
+        provider: ApiToolProvider = None
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             provider = _session.scalar(
                 select(ApiToolProvider)

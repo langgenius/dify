@@ -11,32 +11,32 @@ from libs.helper import to_timestamp
 class UploadConfig(ResponseModel):
     file_size_limit: int
     batch_count_limit: int
-    file_upload_limit: int | None = None
+    file_upload_limit: int = None
     image_file_size_limit: int
     video_file_size_limit: int
     audio_file_size_limit: int
     workflow_file_upload_limit: int
     image_file_batch_limit: int
     single_chunk_attachment_limit: int
-    attachment_image_file_size_limit: int | None = None
+    attachment_image_file_size_limit: int = None
 
 
 class FileResponse(ResponseModel):
     id: str
-    reference: str | None = None
+    reference: str = None
     name: str
     size: int
-    extension: str | None = None
-    mime_type: str | None = None
-    created_by: str | None = None
-    created_at: int | None = None
-    preview_url: str | None = None
-    source_url: str | None = None
-    original_url: str | None = None
-    user_id: str | None = None
-    tenant_id: str | None = None
-    conversation_id: str | None = None
-    file_key: str | None = None
+    extension: str = None
+    mime_type: str = None
+    created_by: str = None
+    created_at: int = None
+    preview_url: str = None
+    source_url: str = None
+    original_url: str = None
+    user_id: str = None
+    tenant_id: str = None
+    conversation_id: str = None
+    file_key: str = None
 
     @field_validator("created_at", mode="before")
     @classmethod
@@ -55,11 +55,11 @@ class FileWithSignedUrl(ResponseModel):
     id: str
     name: str
     size: int
-    extension: str | None = None
-    url: str | None = None
-    mime_type: str | None = None
-    created_by: str | None = None
-    created_at: int | None = None
+    extension: str = None
+    url: str = None
+    mime_type: str = None
+    created_by: str = None
+    created_at: int = None
 
     @field_validator("created_at", mode="before")
     @classmethod

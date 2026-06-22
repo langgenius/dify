@@ -31,8 +31,8 @@ class ApolloClient:
         cluster: str = "default",
         secret: str = "",
         start_hot_update: bool = True,
-        change_listener: Callable[[str, str, str, Any], None] | None = None,
-        _notification_map: dict[str, int] | None = None,
+        change_listener: Callable[[str, str, str, Any], None] = None,
+        _notification_map: dict[str, int] = None,
     ):
         # Core routing parameters
         self.config_url = config_url
@@ -53,12 +53,12 @@ class ApolloClient:
         self._hash: dict[str, str] = {}
         self._pull_timeout = 75
         self._cache_file_path = os.path.expanduser("~") + "/.dify/config/remote-settings/apollo/cache/"
-        self._long_poll_thread: threading.Thread | None = None
+        self._long_poll_thread: threading.Thread = None
         self._change_listener = change_listener  # "add" "delete" "update"
         if _notification_map is None:
             _notification_map = {"application": -1}
         self._notification_map = _notification_map
-        self.last_release_key: str | None = None
+        self.last_release_key: str = None
         # Private startup method
         self._path_checker()
         if start_hot_update:

@@ -36,7 +36,7 @@ class HumanInputFormDefinitionResponse(ResponseModel):
     inputs: list[dict[str, Any]] = Field(default_factory=list)
     resolved_default_values: dict[str, str]
     user_actions: list[dict[str, Any]] = Field(default_factory=list)
-    expiration_time: int | None = None
+    expiration_time: int = None
 
 
 class HumanInputFormSubmitResponse(ResponseModel):

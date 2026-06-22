@@ -56,7 +56,7 @@ class ConfigHelper:
 
     """Helper class for reading and writing configuration files."""
 
-    def __init__(self, base_dir: Path | None = None):
+    def __init__(self, base_dir: Path = None):
         """Initialize ConfigHelper with base directory.
 
         Args:

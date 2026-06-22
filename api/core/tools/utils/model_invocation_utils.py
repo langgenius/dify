@@ -34,7 +34,7 @@ class ModelInvocationUtils:
     @staticmethod
     def get_max_llm_context_tokens(
         tenant_id: str,
-        user_id: str | None = None,
+        user_id: str = None,
     ) -> int:
         """
         get max llm context tokens of the model
@@ -61,7 +61,7 @@ class ModelInvocationUtils:
         return max_tokens
 
     @staticmethod
-    def calculate_tokens(tenant_id: str, prompt_messages: list[PromptMessage], user_id: str | None = None) -> int:
+    def calculate_tokens(tenant_id: str, prompt_messages: list[PromptMessage], user_id: str = None) -> int:
         """
         calculate tokens from prompt messages and model parameters
         """
@@ -85,7 +85,7 @@ class ModelInvocationUtils:
         tool_type: ToolProviderType,
         tool_name: str,
         prompt_messages: list[PromptMessage],
-        caller_user_id: str | None = None,
+        caller_user_id: str = None,
     ) -> LLMResult:
         """
         invoke model with parameters in user's own context

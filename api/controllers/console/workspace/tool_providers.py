@@ -64,7 +64,7 @@ def is_valid_url(url: str) -> bool:
 
 
 class ToolProviderListQuery(BaseModel):
-    type: Literal["builtin", "model", "api", "workflow", "mcp"] | None = None
+    type: Literal["builtin", "model", "api", "workflow", "mcp"] = None
 
 
 class BuiltinToolCredentialDeletePayload(BaseModel):
@@ -75,7 +75,7 @@ class BuiltinToolAddPayload(BaseModel):
     credentials: dict[str, Any]
     name: str | None = Field(default=None, max_length=30)
     type: CredentialType
-    visibility: str | None = None
+    visibility: str = None
 
 
 class BuiltinToolUpdatePayload(BaseModel):
@@ -90,8 +90,8 @@ class ApiToolProviderBasePayload(BaseModel):
     schema_: str = Field(alias="schema")
     provider: str
     icon: dict[str, Any]
-    privacy_policy: str | None = None
-    labels: list[str] | None = None
+    privacy_policy: str = None
+    labels: list[str] = None
     custom_disclaimer: str = ""
 
 
@@ -128,7 +128,7 @@ class ApiToolSchemaPayload(BaseModel):
 
 class ApiToolTestPayload(BaseModel):
     tool_name: str
-    provider_name: str | None = None
+    provider_name: str = None
     credentials: dict[str, Any]
     parameters: dict[str, Any]
     schema_type: ApiProviderSchemaType
@@ -142,7 +142,7 @@ class WorkflowToolBasePayload(BaseModel):
     icon: dict[str, Any]
     parameters: list[WorkflowToolParameterConfiguration] = Field(default_factory=list)
     privacy_policy: str | None = ""
-    labels: list[str] | None = None
+    labels: list[str] = None
 
     @field_validator("name")
     @classmethod
@@ -178,8 +178,8 @@ class WorkflowToolDeletePayload(BaseModel):
 
 
 class WorkflowToolGetQuery(BaseModel):
-    workflow_tool_id: str | None = None
-    workflow_app_id: str | None = None
+    workflow_tool_id: str = None
+    workflow_app_id: str = None
 
     @field_validator("workflow_tool_id", "workflow_app_id")
     @classmethod
@@ -225,7 +225,7 @@ class MCPProviderBasePayload(BaseModel):
     authentication: dict[str, Any] | None = Field(default_factory=dict)
     # None means "leave unchanged" on update; the controller resolves it to a
     # concrete IdentityMode before calling the service (see _resolve_identity_mode).
-    identity_mode: IdentityMode | None = None
+    identity_mode: IdentityMode = None
 
 
 def _resolve_identity_mode(requested: IdentityMode | None, *, current: IdentityMode) -> IdentityMode:
@@ -263,7 +263,7 @@ class MCPProviderDeletePayload(BaseModel):
 
 class MCPAuthPayload(BaseModel):
     provider_id: str
-    authorization_code: str | None = None
+    authorization_code: str = None
 
 
 class MCPCallbackQuery(BaseModel):

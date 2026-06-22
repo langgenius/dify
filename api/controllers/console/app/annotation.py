@@ -74,9 +74,9 @@ class CreateAnnotationPayload(BaseModel):
 
 
 class UpdateAnnotationPayload(BaseModel):
-    question: str | None = None
-    answer: str | None = None
-    content: str | None = None
+    question: str = None
+    answer: str = None
+    content: str = None
     annotation_reply: dict[str, Any] | None = Field(default=None)
 
 
@@ -99,22 +99,22 @@ class AnnotationFilePayload(BaseModel):
 
 
 class AnnotationJobStatusResponse(ResponseModel):
-    job_id: str | None = None
-    job_status: str | None = None
-    error_msg: str | None = None
-    record_count: int | None = None
+    job_id: str = None
+    job_status: str = None
+    error_msg: str = None
+    record_count: int = None
 
 
 class AnnotationEmbeddingModelResponse(ResponseModel):
-    embedding_provider_name: str | None = None
-    embedding_model_name: str | None = None
+    embedding_provider_name: str = None
+    embedding_model_name: str = None
 
 
 class AnnotationSettingResponse(ResponseModel):
-    id: str | None = None
+    id: str = None
     enabled: bool
-    score_threshold: float | None = None
-    embedding_model: AnnotationEmbeddingModelResponse | None = None
+    score_threshold: float = None
+    embedding_model: AnnotationEmbeddingModelResponse = None
 
 
 register_schema_models(

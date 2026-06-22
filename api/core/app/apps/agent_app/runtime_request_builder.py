@@ -67,9 +67,9 @@ class AgentAppRuntimeBuildContext:
     conversation_id: str
     user_query: str
     idempotency_key: str
-    session_snapshot: CompositorSessionSnapshot | None = None
+    session_snapshot: CompositorSessionSnapshot = None
     # ENG-638: set when resuming a chat turn after a submitted ask_human form.
-    deferred_tool_results: DeferredToolResultsPayload | None = None
+    deferred_tool_results: DeferredToolResultsPayload = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,8 +86,8 @@ class AgentAppRuntimeRequestBuilder:
         self,
         *,
         credentials_provider: CredentialsProvider,
-        request_builder: AgentBackendRunRequestBuilder | None = None,
-        plugin_tools_builder: WorkflowAgentPluginToolsBuilder | None = None,
+        request_builder: AgentBackendRunRequestBuilder = None,
+        plugin_tools_builder: WorkflowAgentPluginToolsBuilder = None,
     ) -> None:
         self._credentials_provider = credentials_provider
         self._request_builder = request_builder or AgentBackendRunRequestBuilder()

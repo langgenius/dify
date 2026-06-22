@@ -18,9 +18,9 @@ class MCPClient:
     def __init__(
         self,
         server_url: str,
-        headers: dict[str, str] | None = None,
-        timeout: float | None = None,
-        sse_read_timeout: float | None = None,
+        headers: dict[str, str] = None,
+        timeout: float = None,
+        sse_read_timeout: float = None,
     ):
         self.server_url = server_url
         self.headers = headers or {}
@@ -28,7 +28,7 @@ class MCPClient:
         self.sse_read_timeout = sse_read_timeout
 
         # Initialize session and client objects
-        self._session: ClientSession | None = None
+        self._session: ClientSession = None
         self._exit_stack = ExitStack()
         self._initialized = False
 

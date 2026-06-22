@@ -116,7 +116,7 @@ class MockCeleryGroup:
     def __init__(self) -> None:
         self.collected: list[dict[str, Any]] = []
         self._applied = False
-        self.last_apply_async_kwargs: dict[str, Any] | None = None
+        self.last_apply_async_kwargs: dict[str, Any] = None
 
     def __call__(self, items: Any) -> MockCeleryGroup:
         self.collected = list(items)

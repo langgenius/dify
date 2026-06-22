@@ -104,7 +104,7 @@ def expect_user_json(namespace: Namespace):
     return decorator
 
 
-def multipart_file_params(*, include_user: bool, file_description: str | None = None) -> dict[str, dict[str, object]]:
+def multipart_file_params(*, include_user: bool, file_description: str = None) -> dict[str, dict[str, object]]:
     file_param = deepcopy(FILE_FORM_PARAM)
     if file_description is not None:
         file_param["description"] = file_description

@@ -24,7 +24,7 @@ from controllers.openapi import openapi_ns
 from controllers.openapi._errors import ErrorBody
 
 
-def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | None = None) -> Callable:
+def accepts(*, query: type[BaseModel] = None, body: type[BaseModel] = None) -> Callable:
     """Validate ``query``/``body`` against the models and inject them as keyword-only kwargs.
 
     Emits the matching Swagger schema from the same models, so doc and enforcement
@@ -59,7 +59,7 @@ def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | Non
     return decorator
 
 
-def returns(code: int, model: type[BaseModel], description: str | None = None) -> Callable:
+def returns(code: int, model: type[BaseModel], description: str = None) -> Callable:
     """Serialise the handler's returned model and emit the response schema.
 
     Accepts a ``BaseModel`` (serialised with ``code``) or a ``(model, status[, headers])``

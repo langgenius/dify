@@ -55,7 +55,7 @@ class DifyAskHumanLayerConfig(LayerConfig):
 
     enabled: bool = True
     tool_name: str = "ask_human"
-    tool_description: str | None = None
+    tool_description: str = None
     max_fields: int = Field(default=8, ge=0)
     max_actions: int = Field(default=4, ge=1)
     allowed_field_types: list[AskHumanFieldType] = Field(default_factory=lambda: ["paragraph", "select"])

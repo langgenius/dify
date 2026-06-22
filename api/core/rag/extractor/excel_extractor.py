@@ -60,10 +60,10 @@ class ExcelExtractor(BaseExtractor):
     def __init__(
         self,
         file_path: str,
-        tenant_id: str | None = None,
-        user_id: str | None = None,
-        source_file_id: str | None = None,
-        encoding: str | None = None,
+        tenant_id: str = None,
+        user_id: str = None,
+        source_file_id: str = None,
+        encoding: str = None,
         autodetect_encoding: bool = False,
     ):
         """Initialize with file path."""
@@ -349,7 +349,7 @@ class ExcelExtractor(BaseExtractor):
 
         # Choose the best candidate header row.
 
-        best_candidate: Candidate | None = None
+        best_candidate: Candidate = None
 
         # Strategy: prefer the first row with >= 2 non-empty columns; otherwise fallback.
 

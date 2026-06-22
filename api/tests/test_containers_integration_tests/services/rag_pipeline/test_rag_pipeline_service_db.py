@@ -68,7 +68,7 @@ class TestRagPipelineServiceGetPipeline:
         return pipeline
 
     def _create_dataset(
-        self, db_session: Session, tenant_id: str, created_by: str, pipeline_id: str | None = None
+        self, db_session: Session, tenant_id: str, created_by: str, pipeline_id: str = None
     ) -> Dataset:
         dataset = Dataset(
             tenant_id=tenant_id,

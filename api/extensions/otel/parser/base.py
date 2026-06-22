@@ -89,7 +89,7 @@ class NodeOTelParser(Protocol):
     """Parser interface for node-specific OpenTelemetry enrichment."""
 
     def parse(
-        self, *, node: Node, span: "Span", error: Exception | None, result_event: GraphNodeEventBase | None = None
+        self, *, node: Node, span: "Span", error: Exception | None, result_event: GraphNodeEventBase = None
     ) -> None: ...
 
 
@@ -97,7 +97,7 @@ class DefaultNodeOTelParser:
     """Fallback parser used when no node-specific parser is registered."""
 
     def parse(
-        self, *, node: Node, span: "Span", error: Exception | None, result_event: GraphNodeEventBase | None = None
+        self, *, node: Node, span: "Span", error: Exception | None, result_event: GraphNodeEventBase = None
     ) -> None:
         span.set_attribute("node.id", node.id)
         if node.execution_id:

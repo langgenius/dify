@@ -118,11 +118,11 @@ class RetrievalService:
         query: str,
         top_k: int = 4,
         score_threshold: float | None = 0.0,
-        reranking_model: RerankingModelDict | None = None,
+        reranking_model: RerankingModelDict = None,
         reranking_mode: str = "reranking_model",
-        weights: WeightsDict | None = None,
-        document_ids_filter: list[str] | None = None,
-        attachment_ids: list[str] | None = None,
+        weights: WeightsDict = None,
+        document_ids_filter: list[str] = None,
+        attachment_ids: list[str] = None,
     ):
         if not query and not attachment_ids:
             return []
@@ -194,8 +194,8 @@ class RetrievalService:
         cls,
         dataset_id: str,
         query: str,
-        external_retrieval_model: dict[str, Any] | None = None,
-        metadata_filtering_conditions: dict[str, Any] | None = None,
+        external_retrieval_model: dict[str, Any] = None,
+        metadata_filtering_conditions: dict[str, Any] = None,
     ):
         stmt = select(Dataset).where(Dataset.id == dataset_id)
         dataset = db.session.scalar(stmt)
@@ -291,7 +291,7 @@ class RetrievalService:
         top_k: int,
         all_documents: list[Document],
         exceptions: list[str],
-        document_ids_filter: list[str] | None = None,
+        document_ids_filter: list[str] = None,
     ):
         with flask_app.app_context():
             try:
@@ -322,7 +322,7 @@ class RetrievalService:
         all_documents: list[Document],
         retrieval_method: RetrievalMethod,
         exceptions: list[str],
-        document_ids_filter: list[str] | None = None,
+        document_ids_filter: list[str] = None,
         query_type: QueryType = QueryType.TEXT_QUERY,
     ):
         with flask_app.app_context():
@@ -424,7 +424,7 @@ class RetrievalService:
         all_documents: list[Document],
         retrieval_method: str,
         exceptions: list[str],
-        document_ids_filter: list[str] | None = None,
+        document_ids_filter: list[str] = None,
     ):
         with flask_app.app_context():
             try:
@@ -730,7 +730,7 @@ class RetrievalService:
 
                 # Extract child_chunks, ensuring it's a list or None
                 raw_child_chunks = record.get("child_chunks")
-                child_chunks_list: list[RetrievalChildChunk] | None = None
+                child_chunks_list: list[RetrievalChildChunk] = None
                 if isinstance(raw_child_chunks, list):
                     # Sort by score descending
                     sorted_chunks = sorted(raw_child_chunks, key=lambda x: x.get("score", 0.0), reverse=True)
@@ -783,14 +783,14 @@ class RetrievalService:
         dataset: Dataset,
         all_documents: list[Document],
         exceptions: list[str],
-        query: str | None = None,
+        query: str = None,
         top_k: int = 4,
         score_threshold: float | None = 0.0,
-        reranking_model: RerankingModelDict | None = None,
+        reranking_model: RerankingModelDict = None,
         reranking_mode: str = "reranking_model",
-        weights: WeightsDict | None = None,
-        document_ids_filter: list[str] | None = None,
-        attachment_id: str | None = None,
+        weights: WeightsDict = None,
+        document_ids_filter: list[str] = None,
+        attachment_id: str = None,
     ):
         if not query and not attachment_id:
             return

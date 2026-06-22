@@ -63,7 +63,7 @@ class TestWorkflowAssociatedDataFactory:
         app_id: str = "app-123",
         tenant_id: str = "tenant-456",
         mode: str = AppMode.WORKFLOW,
-        workflow_id: str | None = None,
+        workflow_id: str = None,
         **kwargs,
     ) -> MagicMock:
         """
@@ -95,9 +95,9 @@ class TestWorkflowAssociatedDataFactory:
         app_id: str = "app-123",
         version: str = Workflow.VERSION_DRAFT,
         workflow_type: str = WorkflowType.WORKFLOW,
-        graph: dict[str, Any] | None = None,
-        features: dict[str, Any] | None = None,
-        unique_hash: str | None = None,
+        graph: dict[str, Any] = None,
+        features: dict[str, Any] = None,
+        unique_hash: str = None,
         **kwargs,
     ) -> MagicMock:
         """

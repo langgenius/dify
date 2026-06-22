@@ -20,7 +20,7 @@ if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
 
 
-_CONTROLLER_MODULE: ModuleType | None = None
+_CONTROLLER_MODULE: ModuleType = None
 
 
 @contextmanager

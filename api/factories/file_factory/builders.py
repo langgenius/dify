@@ -72,7 +72,7 @@ def build_from_mapping(
     *,
     mapping: FileMappingInput,
     tenant_id: str,
-    config: FileUploadConfig | None = None,
+    config: FileUploadConfig = None,
     strict_type_validation: bool = False,
     access_controller: FileAccessControllerProtocol,
 ) -> File:
@@ -131,7 +131,7 @@ def build_from_mapping(
 def build_from_mappings(
     *,
     mappings: Sequence[Mapping[str, Any]],
-    config: FileUploadConfig | None = None,
+    config: FileUploadConfig = None,
     tenant_id: str,
     strict_type_validation: bool = False,
     access_controller: FileAccessControllerProtocol,

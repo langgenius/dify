@@ -30,9 +30,9 @@ from .. import console_ns
 
 
 class ConversationListQuery(BaseModel):
-    last_id: UUIDStrOrEmpty | None = None
+    last_id: UUIDStrOrEmpty = None
     limit: int = Field(default=20, ge=1, le=100)
-    pinned: bool | None = None
+    pinned: bool = None
 
 
 register_schema_models(console_ns, ConversationListQuery, ConversationRenamePayload)

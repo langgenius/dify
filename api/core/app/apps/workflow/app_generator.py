@@ -102,11 +102,11 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: Literal[True],
         call_depth: int,
-        workflow_run_id: str | uuid.UUID | None = None,
-        triggered_from: WorkflowRunTriggeredFrom | None = None,
-        root_node_id: str | None = None,
+        workflow_run_id: str | uuid.UUID = None,
+        triggered_from: WorkflowRunTriggeredFrom = None,
+        root_node_id: str = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
-        pause_state_config: PauseStateLayerConfig | None = None,
+        pause_state_config: PauseStateLayerConfig = None,
     ) -> Generator[Mapping[str, Any] | str, None, None]: ...
 
     @overload
@@ -120,11 +120,11 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: Literal[False],
         call_depth: int,
-        workflow_run_id: str | uuid.UUID | None = None,
-        triggered_from: WorkflowRunTriggeredFrom | None = None,
-        root_node_id: str | None = None,
+        workflow_run_id: str | uuid.UUID = None,
+        triggered_from: WorkflowRunTriggeredFrom = None,
+        root_node_id: str = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
-        pause_state_config: PauseStateLayerConfig | None = None,
+        pause_state_config: PauseStateLayerConfig = None,
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -138,11 +138,11 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: bool,
         call_depth: int,
-        workflow_run_id: str | uuid.UUID | None = None,
-        triggered_from: WorkflowRunTriggeredFrom | None = None,
-        root_node_id: str | None = None,
+        workflow_run_id: str | uuid.UUID = None,
+        triggered_from: WorkflowRunTriggeredFrom = None,
+        root_node_id: str = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
-        pause_state_config: PauseStateLayerConfig | None = None,
+        pause_state_config: PauseStateLayerConfig = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]: ...
 
     def generate(
@@ -155,11 +155,11 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: bool = True,
         call_depth: int = 0,
-        workflow_run_id: str | uuid.UUID | None = None,
-        triggered_from: WorkflowRunTriggeredFrom | None = None,
-        root_node_id: str | None = None,
+        workflow_run_id: str | uuid.UUID = None,
+        triggered_from: WorkflowRunTriggeredFrom = None,
+        root_node_id: str = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
-        pause_state_config: PauseStateLayerConfig | None = None,
+        pause_state_config: PauseStateLayerConfig = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]:
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
             files: Sequence[Mapping[str, Any]] = args.get("files") or []
@@ -278,7 +278,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
-        pause_state_config: PauseStateLayerConfig | None = None,
+        pause_state_config: PauseStateLayerConfig = None,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
@@ -324,10 +324,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         streaming: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
-        root_node_id: str | None = None,
+        root_node_id: str = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
-        graph_runtime_state: GraphRuntimeState | None = None,
-        pause_state_config: PauseStateLayerConfig | None = None,
+        graph_runtime_state: GraphRuntimeState = None,
+        pause_state_config: PauseStateLayerConfig = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
@@ -587,9 +587,9 @@ class WorkflowAppGenerator(BaseAppGenerator):
         variable_loader: VariableLoader,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-        root_node_id: str | None = None,
+        root_node_id: str = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
-        graph_runtime_state: GraphRuntimeState | None = None,
+        graph_runtime_state: GraphRuntimeState = None,
     ) -> None:
         """
         Generate worker in a new thread.

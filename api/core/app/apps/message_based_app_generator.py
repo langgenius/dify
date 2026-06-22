@@ -89,7 +89,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 logger.exception("Failed to handle response, conversation_id: %s", conversation.id)
                 raise e
 
-    def _get_app_model_config(self, app_model: App, conversation: Conversation | None = None) -> AppModelConfig:
+    def _get_app_model_config(self, app_model: App, conversation: Conversation = None) -> AppModelConfig:
         if conversation:
             stmt = select(AppModelConfig).where(
                 AppModelConfig.id == conversation.app_model_config_id, AppModelConfig.app_id == app_model.id
@@ -117,7 +117,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             AgentChatAppGenerateEntity,
             AdvancedChatAppGenerateEntity,
         ],
-        conversation: Conversation | None = None,
+        conversation: Conversation = None,
     ) -> tuple[Conversation, Message]:
         """
         Initialize generate records
@@ -312,7 +312,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         app_mode: AppMode,
         workflow_run_id: str,
         idle_timeout=300,
-        on_subscribe: Callable[[], None] | None = None,
+        on_subscribe: Callable[[], None] = None,
     ) -> Generator[Mapping | str, None, None]:
         topic = cls.get_response_topic(app_mode, workflow_run_id)
         return stream_topic_events(

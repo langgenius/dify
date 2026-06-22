@@ -21,8 +21,8 @@ from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
 def create_agent_stub_router(
     *,
     token_codec: AgentStubTokenCodec | None,
-    file_request_handler: AgentStubFileRequestHandler | None = None,
-    drive_request_handler: AgentStubDriveRequestHandler | None = None,
+    file_request_handler: AgentStubFileRequestHandler = None,
+    drive_request_handler: AgentStubDriveRequestHandler = None,
 ) -> APIRouter:
     """Build the embeddable stub router from pre-built server dependencies."""
     return create_agent_stub_http_router(token_codec, file_request_handler, drive_request_handler)

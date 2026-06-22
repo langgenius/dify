@@ -7,7 +7,7 @@ from croniter import croniter
 def calculate_next_run_at(
     cron_expression: str,
     timezone: str,
-    base_time: datetime | None = None,
+    base_time: datetime = None,
 ) -> datetime:
     """
     Calculate the next run time for a cron expression in a specific timezone.

@@ -53,10 +53,10 @@ class ToolEngine:
         message: Message,
         invoke_from: InvokeFrom,
         agent_tool_callback: DifyAgentCallbackHandler,
-        trace_manager: TraceQueueManager | None = None,
-        conversation_id: str | None = None,
-        app_id: str | None = None,
-        message_id: str | None = None,
+        trace_manager: TraceQueueManager = None,
+        conversation_id: str = None,
+        app_id: str = None,
+        message_id: str = None,
     ) -> tuple[str, list[str], ToolInvokeMeta]:
         """
         Agent invokes the tool with the given arguments.
@@ -161,9 +161,9 @@ class ToolEngine:
         user_id: str,
         workflow_tool_callback: DifyWorkflowCallbackHandler,
         workflow_call_depth: int,
-        conversation_id: str | None = None,
-        app_id: str | None = None,
-        message_id: str | None = None,
+        conversation_id: str = None,
+        app_id: str = None,
+        message_id: str = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         """
         Workflow invokes the tool with the given arguments.
@@ -203,9 +203,9 @@ class ToolEngine:
         tool: Tool,
         tool_parameters: dict[str, Any],
         user_id: str,
-        conversation_id: str | None = None,
-        app_id: str | None = None,
-        message_id: str | None = None,
+        conversation_id: str = None,
+        app_id: str = None,
+        message_id: str = None,
     ) -> Generator[ToolInvokeMessage | ToolInvokeMeta, None, None]:
         """
         Invoke the tool with the given arguments.

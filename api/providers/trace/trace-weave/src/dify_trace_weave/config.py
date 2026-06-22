@@ -10,10 +10,10 @@ class WeaveConfig(BaseTracingConfig):
     """
 
     api_key: str
-    entity: str | None = None
+    entity: str = None
     project: str
     endpoint: str = "https://trace.wandb.ai"
-    host: str | None = None
+    host: str = None
 
     @field_validator("endpoint")
     @classmethod

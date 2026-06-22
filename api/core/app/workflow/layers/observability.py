@@ -55,7 +55,7 @@ class ObservabilityLayer(GraphEngineLayer):
         self._parsers: dict[NodeType, NodeOTelParser] = {}
         self._default_parser: NodeOTelParser = cast(NodeOTelParser, DefaultNodeOTelParser())
         self._is_disabled: bool = False
-        self._tracer: Tracer | None = None
+        self._tracer: Tracer = None
         self._build_parser_registry()
         self._init_tracer()
 
@@ -122,7 +122,7 @@ class ObservabilityLayer(GraphEngineLayer):
 
     @override
     def on_node_run_end(
-        self, node: Node, error: Exception | None, result_event: GraphNodeEventBase | None = None
+        self, node: Node, error: Exception | None, result_event: GraphNodeEventBase = None
     ) -> None:
         """
         Called when a node finishes execution.

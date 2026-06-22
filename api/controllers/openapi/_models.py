@@ -20,7 +20,7 @@ class UsageInfo(BaseModel):
 
 
 class MessageMetadata(BaseModel):
-    usage: UsageInfo | None = None
+    usage: UsageInfo = None
     retriever_resources: list[dict[str, Any]] = []
 
 
@@ -45,13 +45,13 @@ class TagItem(BaseModel):
 class AppListRow(BaseModel):
     id: str
     name: str
-    description: str | None = None
+    description: str = None
     mode: AppMode
     tags: list[TagItem] = []
-    updated_at: str | None = None
-    created_by_name: str | None = None
-    workspace_id: str | None = None
-    workspace_name: str | None = None
+    updated_at: str = None
+    created_by_name: str = None
+    workspace_id: str = None
+    workspace_name: str = None
 
 
 class AppListResponse(BaseModel):
@@ -73,20 +73,20 @@ class PermittedExternalAppsListResponse(BaseModel):
 class AppInfoResponse(BaseModel):
     id: str
     name: str
-    description: str | None = None
+    description: str = None
     mode: str
-    author: str | None = None
+    author: str = None
     tags: list[TagItem] = []
 
 
 class AppDescribeInfo(AppInfoResponse):
-    updated_at: str | None = None
+    updated_at: str = None
     service_api_enabled: bool
     is_agent: bool = False
 
 
 class AppDescribeResponse(BaseModel):
-    info: AppDescribeInfo | None = None
+    info: AppDescribeInfo = None
     parameters: dict[str, Any] | None = Field(default=None)
     input_schema: dict[str, Any] | None = Field(default=None)
 
@@ -119,12 +119,12 @@ class WorkflowRunData(BaseModel):
     workflow_id: str
     status: str
     outputs: dict[str, Any] = Field(default_factory=dict)
-    error: str | None = None
-    elapsed_time: float | None = None
-    total_tokens: int | None = None
-    total_steps: int | None = None
-    created_at: int | None = None
-    finished_at: int | None = None
+    error: str = None
+    elapsed_time: float = None
+    total_tokens: int = None
+    total_steps: int = None
+    created_at: int = None
+    finished_at: int = None
 
 
 class WorkflowRunResponse(BaseModel):
@@ -150,21 +150,21 @@ class DeviceTokenResponse(BaseModel):
     token: str
     expires_at: str
     subject_type: Literal["account", "external_sso"]
-    account: AccountPayload | None = None
+    account: AccountPayload = None
     workspaces: list[WorkspacePayload] = []
-    default_workspace_id: str | None = None
+    default_workspace_id: str = None
     token_id: str
-    subject_email: str | None = None
-    subject_issuer: str | None = None
+    subject_email: str = None
+    subject_issuer: str = None
 
 
 class AccountResponse(BaseModel):
     subject_type: str
-    subject_email: str | None = None
-    subject_issuer: str | None = None
-    account: AccountPayload | None = None
+    subject_email: str = None
+    subject_issuer: str = None
+    account: AccountPayload = None
     workspaces: list[WorkspacePayload] = []
-    default_workspace_id: str | None = None
+    default_workspace_id: str = None
 
 
 class SessionRow(BaseModel):
@@ -172,9 +172,9 @@ class SessionRow(BaseModel):
     prefix: str
     client_id: str
     device_label: str
-    created_at: str | None = None
-    last_used_at: str | None = None
-    expires_at: str | None = None
+    created_at: str = None
+    last_used_at: str = None
+    expires_at: str = None
 
 
 class SessionListResponse(BaseModel):
@@ -216,7 +216,7 @@ class WorkspaceDetailResponse(BaseModel):
     role: str
     status: str
     current: bool
-    created_at: str | None = None
+    created_at: str = None
 
 
 class DeviceCodeResponse(BaseModel):
@@ -230,7 +230,7 @@ class DeviceCodeResponse(BaseModel):
 class DeviceLookupResponse(BaseModel):
     valid: bool
     expires_in_remaining: int = 0
-    client_id: str | None = None
+    client_id: str = None
 
 
 class DeviceMutateResponse(BaseModel):
@@ -292,19 +292,19 @@ class AppListQuery(BaseModel):
     workspace_id: UUIDStr
     page: int = Field(1, ge=1)
     limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
-    mode: AppMode | None = None
+    mode: AppMode = None
     name: str | None = Field(None, max_length=200)
     tag: str | None = Field(None, max_length=100)
 
 
 class AppRunRequest(BaseModel):
     inputs: dict[str, Any]
-    query: str | None = None
+    query: str = None
     files: list[dict[str, Any]] | None = Field(default=None)
-    conversation_id: UUIDStrOrEmpty | None = None
+    conversation_id: UUIDStrOrEmpty = None
     auto_generate_name: bool = True
-    workflow_id: str | None = None
-    workspace_id: UUIDStrOrEmpty | None = None
+    workflow_id: str = None
+    workspace_id: UUIDStrOrEmpty = None
 
     @field_validator("conversation_id", mode="before")
     @classmethod
@@ -344,7 +344,7 @@ class PermittedExternalAppsListQuery(BaseModel):
 
     page: int = Field(1, ge=1)
     limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
-    mode: AppMode | None = None
+    mode: AppMode = None
     name: str | None = Field(None, max_length=200)
 
 
@@ -378,7 +378,7 @@ class MemberResponse(BaseModel):
     email: str
     role: str
     status: str
-    avatar: str | None = None
+    avatar: str = None
 
 
 class MemberListResponse(BaseModel):
@@ -484,4 +484,4 @@ class HumanInputFormDefinitionResponse(BaseModel):
     inputs: list[dict[str, Any]] = Field(default_factory=list)
     resolved_default_values: dict[str, str]
     user_actions: list[dict[str, Any]] = Field(default_factory=list)
-    expiration_time: int | None = None
+    expiration_time: int = None

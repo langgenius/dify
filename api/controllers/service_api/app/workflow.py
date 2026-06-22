@@ -127,12 +127,12 @@ class WorkflowRunResponse(ResponseModel):
     status: str
     inputs: dict | list | str | int | float | bool | None = Field(default=None)
     outputs: dict = Field(default_factory=dict)
-    error: str | None = None
-    total_steps: int | None = None
-    total_tokens: int | None = None
-    created_at: int | None = None
-    finished_at: int | None = None
-    elapsed_time: float | int | None = None
+    error: str = None
+    total_steps: int = None
+    total_tokens: int = None
+    created_at: int = None
+    finished_at: int = None
+    elapsed_time: float | int = None
 
     @field_validator("created_at", "finished_at", mode="before")
     @classmethod
@@ -142,16 +142,16 @@ class WorkflowRunResponse(ResponseModel):
 
 class WorkflowRunForLogResponse(ResponseModel):
     id: str
-    version: str | None = None
-    status: str | None = None
-    triggered_from: str | None = None
-    error: str | None = None
-    elapsed_time: float | int | None = None
-    total_tokens: int | None = None
-    total_steps: int | None = None
-    created_at: int | None = None
-    finished_at: int | None = None
-    exceptions_count: int | None = None
+    version: str = None
+    status: str = None
+    triggered_from: str = None
+    error: str = None
+    elapsed_time: float | int = None
+    total_tokens: int = None
+    total_steps: int = None
+    created_at: int = None
+    finished_at: int = None
+    exceptions_count: int = None
 
     @field_validator("status", "triggered_from", mode="before")
     @classmethod
@@ -166,13 +166,13 @@ class WorkflowRunForLogResponse(ResponseModel):
 
 class WorkflowAppLogPartialResponse(ResponseModel):
     id: str
-    workflow_run: WorkflowRunForLogResponse | None = None
+    workflow_run: WorkflowRunForLogResponse = None
     details: dict | list | str | int | float | bool | None = Field(default=None)
-    created_from: str | None = None
-    created_by_role: str | None = None
-    created_by_account: SimpleAccount | None = None
-    created_by_end_user: SimpleEndUser | None = None
-    created_at: int | None = None
+    created_from: str = None
+    created_by_role: str = None
+    created_by_account: SimpleAccount = None
+    created_by_end_user: SimpleEndUser = None
+    created_at: int = None
 
     @field_validator("created_from", "created_by_role", mode="before")
     @classmethod

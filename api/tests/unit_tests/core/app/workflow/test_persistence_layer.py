@@ -52,10 +52,10 @@ def _naive_utc_now() -> datetime:
 
 
 def _make_layer(
-    system_variables: list | None = None,
+    system_variables: list = None,
     *,
-    extras: dict | None = None,
-    trace_manager: object | None = None,
+    extras: dict = None,
+    trace_manager: object = None,
 ):
     system_variables = system_variables or build_system_variables(
         workflow_execution_id="run-id",
@@ -242,7 +242,7 @@ class TestWorkflowPersistenceLayer:
             workflow_run_id: str | None,
             conversation_id: str | None,
             user_id: str | None,
-            total_tokens_override: int | None = None,
+            total_tokens_override: int = None,
         ):
             captured["trace_type"] = self.trace_type
             captured["external_trace_id"] = self.kwargs.get("external_trace_id")

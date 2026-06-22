@@ -36,7 +36,7 @@ class RedisSubscriptionBase(Subscription):
         self._closed = threading.Event()
         self._queue: queue.Queue[bytes] = queue.Queue(maxsize=1024)
         self._dropped_count = 0
-        self._listener_thread: threading.Thread | None = None
+        self._listener_thread: threading.Thread = None
         self._start_lock = threading.Lock()
         self._started = False
         # Max time close() will wait for the listener thread to finish before

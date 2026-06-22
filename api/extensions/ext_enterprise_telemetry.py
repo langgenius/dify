@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_exporter: EnterpriseExporter | None = None
+_exporter: EnterpriseExporter = None
 
 
 def is_enabled() -> bool:

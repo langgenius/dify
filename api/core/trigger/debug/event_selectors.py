@@ -231,7 +231,7 @@ def create_event_poller(
 def select_trigger_debug_events(
     draft_workflow: Workflow, app_model: App, user_id: str, node_ids: list[str]
 ) -> TriggerDebugEvent | None:
-    event: TriggerDebugEvent | None = None
+    event: TriggerDebugEvent = None
     for node_id in node_ids:
         node_config = draft_workflow.get_node_config_by_id(node_id=node_id)
         if not node_config:

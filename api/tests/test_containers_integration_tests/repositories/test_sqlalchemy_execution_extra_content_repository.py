@@ -176,9 +176,9 @@ def _create_submitted_form(
     action_title: str = "Approve",
     node_title: str = "Approval",
     form_content: str = "content",
-    rendered_content: str | None = None,
-    inputs: list[dict] | None = None,
-    submitted_data: dict | None = None,
+    rendered_content: str = None,
+    inputs: list[dict] = None,
+    submitted_data: dict = None,
 ) -> HumanInputForm:
     expiration_time = naive_utc_now() + timedelta(days=1)
     form_definition = FormDefinition(
@@ -213,7 +213,7 @@ def _create_waiting_form(
     scope: _TestScope,
     *,
     workflow_run_id: str,
-    default_values: dict | None = None,
+    default_values: dict = None,
 ) -> HumanInputForm:
     expiration_time = naive_utc_now() + timedelta(days=1)
     form_definition = FormDefinition(

@@ -177,7 +177,7 @@ class MessagesCleanService:
         self,
         policy: MessagesCleanPolicy,
         end_before: datetime.datetime,
-        start_from: datetime.datetime | None = None,
+        start_from: datetime.datetime = None,
         batch_size: int = 1000,
         dry_run: bool = False,
         task_label: str = "custom",
@@ -350,7 +350,7 @@ class MessagesCleanService:
 
         # Cursor-based pagination using (created_at, id) to avoid infinite loops
         # and ensure proper ordering with time-based filtering
-        _cursor: tuple[datetime.datetime, str] | None = None
+        _cursor: tuple[datetime.datetime, str] = None
 
         logger.info(
             "clean_messages: start cleaning messages (dry_run=%s), start_from=%s, end_before=%s",

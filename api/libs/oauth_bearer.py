@@ -490,8 +490,8 @@ def check_workspace_membership(
     account_id: uuid.UUID | str,
     tenant_id: str,
     token_hash: str,
-    membership_cache: dict[str, bool] | None = None,
-    cached_verdicts: dict[str, bool] | None = None,
+    membership_cache: dict[str, bool] = None,
+    cached_verdicts: dict[str, bool] = None,
 ) -> None:
     """Layer-0 enforcement core. Raises `Forbidden` on deny, returns on allow.
 
@@ -548,7 +548,7 @@ def require_workspace_member(ctx: AuthContext, tenant_id: str) -> None:
 # ============================================================================
 
 
-_authenticator: BearerAuthenticator | None = None
+_authenticator: BearerAuthenticator = None
 
 
 def bind_authenticator(authenticator: BearerAuthenticator) -> None:

@@ -47,7 +47,7 @@ class AnnotationListQuery(BaseModel):
 class AnnotationJobStatusResponse(ResponseModel):
     job_id: str
     job_status: str
-    error_msg: str | None = None
+    error_msg: str = None
 
 
 ANNOTATION_REPLY_ACTION_PARAM = {

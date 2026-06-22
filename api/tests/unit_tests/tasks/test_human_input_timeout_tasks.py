@@ -47,11 +47,11 @@ class _FakeSessionFactory:
 
 
 class _FakeFormRepo:
-    def __init__(self, form_map: dict[str, Any] | None = None):
+    def __init__(self, form_map: dict[str, Any] = None):
         self.calls: list[dict[str, Any]] = []
         self._form_map = form_map or {}
 
-    def mark_timeout(self, *, form_id: str, timeout_status: HumanInputFormStatus, reason: str | None = None):
+    def mark_timeout(self, *, form_id: str, timeout_status: HumanInputFormStatus, reason: str = None):
         self.calls.append(
             {
                 "form_id": form_id,
@@ -89,7 +89,7 @@ def _build_form(
     expiration_time: datetime,
     workflow_run_id: str | None,
     node_id: str,
-    conversation_id: str | None = None,
+    conversation_id: str = None,
 ) -> SimpleNamespace:
     return SimpleNamespace(
         id=form_id,

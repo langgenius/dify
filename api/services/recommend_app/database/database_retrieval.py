@@ -88,7 +88,7 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
 
     @classmethod
     def _fetch_listed_recommended_apps(
-        cls, language: str, *, is_learn_dify: bool | None = None
+        cls, language: str, *, is_learn_dify: bool = None
     ) -> list[RecommendedApp]:
         filters = [RecommendedApp.is_listed.is_(True), RecommendedApp.language == language]
         if is_learn_dify is not None:

@@ -24,18 +24,18 @@ logger = logging.getLogger(__name__)
 
 class ElasticSearchConfig(BaseModel):
     # Regular Elasticsearch config
-    host: str | None = None
-    port: int | None = None
-    username: str | None = None
-    password: str | None = None
+    host: str = None
+    port: int = None
+    username: str = None
+    password: str = None
 
     # Elastic Cloud specific config
-    cloud_url: str | None = None  # Cloud URL for Elasticsearch Cloud
-    api_key: str | None = None
+    cloud_url: str = None  # Cloud URL for Elasticsearch Cloud
+    api_key: str = None
 
     # Common config
     use_cloud: bool = False
-    ca_certs: str | None = None
+    ca_certs: str = None
     verify_certs: bool = False
     request_timeout: int = 100000
     retry_on_timeout: bool = True
@@ -266,8 +266,8 @@ class ElasticSearchVector(BaseVector):
     def create_collection(
         self,
         embeddings: list[list[float]],
-        metadatas: list[dict[Any, Any]] | None = None,
-        index_params: dict[str, Any] | None = None,
+        metadatas: list[dict[Any, Any]] = None,
+        index_params: dict[str, Any] = None,
     ):
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):

@@ -51,15 +51,15 @@ class _SuccessfulClient:
         assert isinstance(request, CreateRunRequest)
         return CreateRunResponse(run_id="run-1", status="running")
 
-    def cancel_run_sync(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
+    def cancel_run_sync(self, run_id: str, request: CancelRunRequest = None) -> CancelRunResponse:
         del request
         return CancelRunResponse(run_id=run_id, status="cancelled")
 
-    def stream_events_sync(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+    def stream_events_sync(self, run_id: str, *, after: str = None) -> Iterator[RunEvent]:
         del after
         yield RunStartedEvent(id="1-0", run_id=run_id)
 
-    def wait_run_sync(self, run_id: str, *, timeout_seconds: float | None = None) -> RunStatusResponse:
+    def wait_run_sync(self, run_id: str, *, timeout_seconds: float = None) -> RunStatusResponse:
         del timeout_seconds
         return RunStatusResponse.model_validate(
             {
@@ -113,7 +113,7 @@ def test_dify_agent_backend_run_client_maps_http_error():
 def test_dify_agent_backend_run_client_maps_timeout_error():
     class TimeoutClient(_SuccessfulClient):
         @override
-        def wait_run_sync(self, run_id: str, *, timeout_seconds: float | None = None) -> RunStatusResponse:
+        def wait_run_sync(self, run_id: str, *, timeout_seconds: float = None) -> RunStatusResponse:
             raise DifyAgentTimeoutError("timeout")
 
     with pytest.raises(AgentBackendTransportError) as exc_info:
@@ -125,7 +125,7 @@ def test_dify_agent_backend_run_client_maps_timeout_error():
 def test_dify_agent_backend_run_client_maps_stream_error():
     class StreamClient(_SuccessfulClient):
         @override
-        def stream_events_sync(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+        def stream_events_sync(self, run_id: str, *, after: str = None) -> Iterator[RunEvent]:
             raise DifyAgentStreamError("bad stream")
             yield
 

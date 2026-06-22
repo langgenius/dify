@@ -40,11 +40,11 @@ class WorkflowToolManageService:
         description: str,
         parameters: list[WorkflowToolParameterConfiguration],
         privacy_policy: str = "",
-        labels: list[str] | None = None,
+        labels: list[str] = None,
         import_id: str = "",
     ):
         # check if the name is unique
-        existing_workflow_tool_provider: WorkflowToolProvider | None = None
+        existing_workflow_tool_provider: WorkflowToolProvider = None
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             # query if the name or app_id exists
             existing_workflow_tool_provider = _session.scalar(
@@ -62,7 +62,7 @@ class WorkflowToolManageService:
             raise ValueError(f"Tool with name {name} or app_id {workflow_app_id} already exists")
 
         # query the app
-        app: App | None = None
+        app: App = None
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             app = _session.scalar(select(App).where(App.id == workflow_app_id, App.tenant_id == tenant_id).limit(1))
 
@@ -124,7 +124,7 @@ class WorkflowToolManageService:
         description: str,
         parameters: list[WorkflowToolParameterConfiguration],
         privacy_policy: str = "",
-        labels: list[str] | None = None,
+        labels: list[str] = None,
     ):
         """
         Update a workflow tool.
@@ -142,7 +142,7 @@ class WorkflowToolManageService:
         :return: the updated tool
         """
 
-        existing_workflow_tool_provider: WorkflowToolProvider | None = None
+        existing_workflow_tool_provider: WorkflowToolProvider = None
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             # query if the name exists for other tools
             existing_workflow_tool_provider = _session.scalar(
@@ -160,7 +160,7 @@ class WorkflowToolManageService:
             raise ValueError(f"Tool with name {name} already exists")
 
         # query the workflow tool provider
-        workflow_tool_provider: WorkflowToolProvider | None = None
+        workflow_tool_provider: WorkflowToolProvider = None
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             workflow_tool_provider = _session.scalar(
                 select(WorkflowToolProvider)
@@ -173,7 +173,7 @@ class WorkflowToolManageService:
             raise ValueError(f"Tool {workflow_tool_id} not found")
 
         # query the app
-        app: App | None = None
+        app: App = None
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             app = _session.scalar(
                 select(App).where(App.id == workflow_tool_provider.app_id, App.tenant_id == tenant_id).limit(1)
@@ -300,7 +300,7 @@ class WorkflowToolManageService:
         :return: the tool
         """
 
-        tool_provider: WorkflowToolProvider | None = None
+        tool_provider: WorkflowToolProvider = None
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             tool_provider = _session.scalar(
                 select(WorkflowToolProvider)
@@ -341,7 +341,7 @@ class WorkflowToolManageService:
         if db_tool is None:
             raise ValueError("Tool not found")
 
-        workflow_app: App | None = None
+        workflow_app: App = None
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             workflow_app = _session.scalar(
                 select(App).where(App.id == db_tool.app_id, App.tenant_id == db_tool.tenant_id).limit(1)
@@ -392,7 +392,7 @@ class WorkflowToolManageService:
         :return: the list of tools
         """
 
-        provider: WorkflowToolProvider | None = None
+        provider: WorkflowToolProvider = None
         with sessionmaker(db.engine, expire_on_commit=False).begin() as _session:
             provider = _session.scalar(
                 select(WorkflowToolProvider)

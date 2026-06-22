@@ -54,9 +54,9 @@ class UrlQdrantParams(BaseModel):
 
 class QdrantConfig(BaseModel):
     endpoint: str
-    api_key: str | None = None
+    api_key: str = None
     timeout: float = 20
-    root_path: str | None = None
+    root_path: str = None
     grpc_port: int = 6334
     prefer_grpc: bool = False
     replication_factor: int = 1
@@ -191,10 +191,10 @@ class QdrantVector(BaseVector):
         self,
         texts: Iterable[str],
         embeddings: list[list[float]],
-        metadatas: list[dict] | None = None,
-        ids: Sequence[str] | None = None,
+        metadatas: list[dict] = None,
+        ids: Sequence[str] = None,
         batch_size: int = 64,
-        group_id: str | None = None,
+        group_id: str = None,
     ) -> Generator[tuple[list[str], list[rest.PointStruct]], None, None]:
         from qdrant_client.http import models as rest
 

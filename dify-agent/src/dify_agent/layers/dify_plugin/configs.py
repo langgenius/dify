@@ -95,8 +95,8 @@ class DifyPluginToolParameter(BaseModel):
     form: DifyPluginToolParameterForm
     required: bool = False
     default: DifyPluginToolValue = None
-    llm_description: str | None = None
-    input_schema: dict[str, JsonValue] | None = None
+    llm_description: str = None
+    input_schema: dict[str, JsonValue] = None
     options: list[DifyPluginToolOption] = Field(default_factory=list)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore", from_attributes=True)
@@ -109,7 +109,7 @@ class DifyPluginLLMLayerConfig(LayerConfig):
     model_provider: str
     model: str
     credentials: dict[str, DifyPluginCredentialValue] = Field(default_factory=dict)
-    model_settings: ModelSettings | None = None
+    model_settings: ModelSettings = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
@@ -137,8 +137,8 @@ class DifyPluginToolConfig(LayerConfig):
     provider: str
     tool_name: str
     credential_type: DifyPluginToolCredentialType
-    name: str | None = None
-    description: str | None = None
+    name: str = None
+    description: str = None
     credentials: dict[str, DifyPluginCredentialValue] = Field(default_factory=dict)
     runtime_parameters: dict[str, DifyPluginToolValue] = Field(default_factory=dict)
     parameters: list[DifyPluginToolParameter] = Field(default_factory=list)

@@ -69,7 +69,7 @@ class ToolFileMessageTransformer:
         messages: Generator[ToolInvokeMessage, None, None],
         user_id: str,
         tenant_id: str,
-        conversation_id: str | None = None,
+        conversation_id: str = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         """
         Transform tool message and handle file download
@@ -206,8 +206,8 @@ class ToolFileMessageTransformer:
     def _with_tool_file_meta(
         meta: dict[str, Any] | None,
         *,
-        tool_file_id: str | None = None,
-        url: str | None = None,
+        tool_file_id: str = None,
+        url: str = None,
     ) -> dict[str, Any]:
         normalized_meta = meta.copy() if meta is not None else {}
         resolved_tool_file_id = tool_file_id or ToolFileMessageTransformer._extract_tool_file_id(url)

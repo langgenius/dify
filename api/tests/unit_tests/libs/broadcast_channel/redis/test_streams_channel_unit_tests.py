@@ -30,7 +30,7 @@ class FakeStreamsRedis:
         self._dollar_snapshots: dict[str, int] = {}
 
     # Publisher API
-    def xadd(self, key: str, fields: dict[str, Any], *, maxlen: int | None = None) -> str:
+    def xadd(self, key: str, fields: dict[str, Any], *, maxlen: int = None) -> str:
         """Append entry to stream; accept optional maxlen for API compatibility.
 
         The test double ignores maxlen trimming semantics; only records the entry.
@@ -45,7 +45,7 @@ class FakeStreamsRedis:
         self._expire_calls[key] = self._expire_calls.get(key, 0) + 1
 
     # Consumer API
-    def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
+    def xread(self, streams: dict[str, Any], block: int = None, count: int = None):
         # Expect a single key
         assert len(streams) == 1
         key, last_id = next(iter(streams.items()))
@@ -80,7 +80,7 @@ class BlockingRedis:
     def __init__(self) -> None:
         self._release = threading.Event()
 
-    def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
+    def xread(self, streams: dict[str, Any], block: int = None, count: int = None):
         self._release.wait(timeout=block / 1000.0 if block else None)
         return []
 
@@ -287,7 +287,7 @@ class TestStreamsSubscription:
                 self._fields = fields
                 self._calls = 0
 
-            def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
+            def xread(self, streams: dict[str, Any], block: int = None, count: int = None):
                 self._calls += 1
                 if self._calls == 1:
                     key = next(iter(streams))
@@ -405,7 +405,7 @@ class TestStreamsSubscription:
         original_join = listener.join
         original_is_alive = listener.is_alive
 
-        def delayed_join(timeout: float | None = None) -> None:
+        def delayed_join(timeout: float = None) -> None:
             original_join(0.01)
 
         listener.join = delayed_join  # type: ignore[method-assign]

@@ -92,7 +92,7 @@ class MessageCycleManager:
         extras = self._application_generate_entity.extras
         auto_generate_conversation_name = extras.get("auto_generate_conversation_name", True)
 
-        thread: Thread | None = None
+        thread: Thread = None
         if auto_generate_conversation_name and is_first_message:
             # start generate thread
             # time.sleep not block other logic
@@ -244,8 +244,8 @@ class MessageCycleManager:
         self,
         answer: str,
         message_id: str,
-        from_variable_selector: list[str] | None = None,
-        event_type: StreamEvent | None = None,
+        from_variable_selector: list[str] = None,
+        event_type: StreamEvent = None,
     ) -> MessageStreamResponse:
         """
         Message to stream response.

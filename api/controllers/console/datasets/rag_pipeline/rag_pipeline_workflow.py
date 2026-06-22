@@ -71,7 +71,7 @@ logger = logging.getLogger(__name__)
 
 class DraftWorkflowSyncPayload(BaseModel):
     graph: dict[str, Any]
-    hash: str | None = None
+    hash: str = None
     environment_variables: list[dict[str, Any]] | None = Field(default=None)
     conversation_variables: list[dict[str, Any]] | None = Field(default=None)
     rag_pipeline_variables: list[dict[str, Any]] | None = Field(default=None)
@@ -89,7 +89,7 @@ class NodeRunRequiredPayload(BaseModel):
 class DatasourceNodeRunPayload(BaseModel):
     inputs: dict[str, Any]
     datasource_type: str
-    credential_id: str | None = None
+    credential_id: str = None
 
 
 class DraftWorkflowRunPayload(BaseModel):
@@ -102,7 +102,7 @@ class DraftWorkflowRunPayload(BaseModel):
 class PublishedWorkflowRunPayload(DraftWorkflowRunPayload):
     is_preview: bool = False
     response_mode: Literal["streaming", "blocking"] = "streaming"
-    original_document_id: str | None = None
+    original_document_id: str = None
 
 
 class NodeIdQuery(BaseModel):
@@ -110,7 +110,7 @@ class NodeIdQuery(BaseModel):
 
 
 class WorkflowRunQuery(BaseModel):
-    last_id: UUIDStrOrEmpty | None = None
+    last_id: UUIDStrOrEmpty = None
     limit: int = Field(default=20, ge=1, le=100)
 
 

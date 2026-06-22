@@ -70,11 +70,11 @@ class _PluginStructuredOutputModelInstance:
         self,
         *,
         prompt_messages: Sequence[PromptMessage],
-        model_parameters: dict[str, Any] | None = None,
-        tools: Sequence[PromptMessageTool] | None = None,
-        stop: Sequence[str] | None = None,
+        model_parameters: dict[str, Any] = None,
+        tools: Sequence[PromptMessageTool] = None,
+        stop: Sequence[str] = None,
         stream: bool = True,
-        callbacks: object | None = None,
+        callbacks: object = None,
     ) -> LLMResult | Generator[LLMResultChunk, None, None]:
         del callbacks
         if stream:

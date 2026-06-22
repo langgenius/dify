@@ -27,7 +27,7 @@ class _Result:
         self,
         status: ImportStatus,
         app_id: str | None = "app-1",
-        permission_keys: list[str] | None = None,
+        permission_keys: list[str] = None,
     ):
         self.status = status
         self.app_id = app_id

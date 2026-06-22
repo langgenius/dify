@@ -32,7 +32,7 @@ class DuplicateDocumentIndexingTaskProxyTestDataFactory:
 
     @staticmethod
     def create_duplicate_document_task_proxy(
-        tenant_id: str = "tenant-123", dataset_id: str = "dataset-456", document_ids: list[str] | None = None
+        tenant_id: str = "tenant-123", dataset_id: str = "dataset-456", document_ids: list[str] = None
     ) -> DuplicateDocumentIndexingTaskProxy:
         """Create DuplicateDocumentIndexingTaskProxy instance for testing."""
         if document_ids is None:

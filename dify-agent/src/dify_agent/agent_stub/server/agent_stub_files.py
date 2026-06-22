@@ -73,8 +73,8 @@ class AgentStubFileRequestError(RuntimeError):
 class _BackwardsInvocationEnvelope(BaseModel):
     """Minimal parser for Dify API plugin-style inner API envelopes."""
 
-    data: object | None = None
-    error: str | None = None
+    data: object = None
+    error: str = None
 
     model_config = ConfigDict(extra="ignore")
 

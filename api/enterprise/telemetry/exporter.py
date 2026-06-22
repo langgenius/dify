@@ -176,12 +176,12 @@ class EnterpriseExporter:
         self,
         name: str,
         attributes: dict[str, Any],
-        correlation_id: str | None = None,
-        span_id_source: str | None = None,
-        start_time: datetime | None = None,
-        end_time: datetime | None = None,
-        trace_correlation_override: str | None = None,
-        parent_span_id_source: str | None = None,
+        correlation_id: str = None,
+        span_id_source: str = None,
+        start_time: datetime = None,
+        end_time: datetime = None,
+        trace_correlation_override: str = None,
+        parent_span_id_source: str = None,
     ) -> None:
         """Export an OTEL span with optional deterministic IDs and real timestamps.
 
@@ -203,7 +203,7 @@ class EnterpriseExporter:
         set_span_id_source(span_id_source)
 
         try:
-            parent_context: Context | None = None
+            parent_context: Context = None
             # A span is the "root" of its correlation group when span_id_source == correlation_id
             # (i.e. a workflow root span).  All other spans are children.
             if parent_span_id_source:

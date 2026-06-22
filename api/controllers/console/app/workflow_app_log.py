@@ -66,16 +66,16 @@ class WorkflowAppLogQuery(BaseModel):
 
 class WorkflowRunForLogResponse(ResponseModel):
     id: str
-    version: str | None = None
-    status: str | None = None
-    triggered_from: str | None = None
-    error: str | None = None
-    elapsed_time: float | None = None
-    total_tokens: int | None = None
-    total_steps: int | None = None
-    created_at: int | None = None
-    finished_at: int | None = None
-    exceptions_count: int | None = None
+    version: str = None
+    status: str = None
+    triggered_from: str = None
+    error: str = None
+    elapsed_time: float = None
+    total_tokens: int = None
+    total_steps: int = None
+    created_at: int = None
+    finished_at: int = None
+    exceptions_count: int = None
 
     @field_validator("status", mode="before")
     @classmethod
@@ -94,10 +94,10 @@ class WorkflowRunForLogResponse(ResponseModel):
 
 class WorkflowRunForArchivedLogResponse(ResponseModel):
     id: str
-    status: str | None = None
-    triggered_from: str | None = None
-    elapsed_time: float | None = None
-    total_tokens: int | None = None
+    status: str = None
+    triggered_from: str = None
+    elapsed_time: float = None
+    total_tokens: int = None
 
     @field_validator("status", mode="before")
     @classmethod
@@ -111,13 +111,13 @@ class WorkflowRunForArchivedLogResponse(ResponseModel):
 
 class WorkflowAppLogPartialResponse(ResponseModel):
     id: str
-    workflow_run: WorkflowRunForLogResponse | None = None
+    workflow_run: WorkflowRunForLogResponse = None
     details: Any = None
-    created_from: str | None = None
-    created_by_role: str | None = None
-    created_by_account: SimpleAccount | None = None
-    created_by_end_user: SimpleEndUser | None = None
-    created_at: int | None = None
+    created_from: str = None
+    created_by_role: str = None
+    created_by_account: SimpleAccount = None
+    created_by_end_user: SimpleEndUser = None
+    created_at: int = None
 
     @field_validator("created_at", mode="before")
     @classmethod
@@ -127,11 +127,11 @@ class WorkflowAppLogPartialResponse(ResponseModel):
 
 class WorkflowArchivedLogPartialResponse(ResponseModel):
     id: str
-    workflow_run: WorkflowRunForArchivedLogResponse | None = None
+    workflow_run: WorkflowRunForArchivedLogResponse = None
     trigger_metadata: Any = None
-    created_by_account: SimpleAccount | None = None
-    created_by_end_user: SimpleEndUser | None = None
-    created_at: int | None = None
+    created_by_account: SimpleAccount = None
+    created_by_end_user: SimpleEndUser = None
+    created_at: int = None
 
     @field_validator("created_at", mode="before")
     @classmethod
