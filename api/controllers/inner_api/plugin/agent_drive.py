@@ -4,7 +4,9 @@ These endpoints are called by the dify-agent server (not the sandbox) with the
 inner API key. The drive ref is the URL segment ``agent-<agent_id>``; the
 path-like file key travels in the query/body, never as a URL path segment (so
 its ``/`` characters do not collide with routing). Drive-owned semantics:
-tenant scoped, no user-level FileAccessScope.
+tenant scoped, no user-level FileAccessScope. Commit still canonicalizes the
+trusted execution-context user through the same EndUser lookup as plugin file
+upload before validating ToolFile ownership.
 """
 
 from flask import request
@@ -13,6 +15,7 @@ from pydantic import BaseModel, ValidationError
 
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
+from controllers.inner_api.plugin.wraps import get_user
 from controllers.inner_api.wraps import plugin_inner_api_only
 from services.agent_drive_service import (
     AgentDriveError,
@@ -87,9 +90,10 @@ class AgentDriveCommitApi(Resource):
                 body = _CommitRequest.model_validate(request.get_json(silent=True) or {})
             except ValidationError as exc:
                 raise AgentDriveError("invalid_request", str(exc), status_code=400) from exc
+            user = get_user(body.tenant_id, body.user_id)
             items = AgentDriveService().commit(
                 tenant_id=body.tenant_id,
-                user_id=body.user_id,
+                user_id=user.id,
                 agent_id=agent_id,
                 items=body.items,
             )

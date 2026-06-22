@@ -8,6 +8,7 @@ controller's request parsing + error mapping, not auth (tested separately).
 from __future__ import annotations
 
 import inspect
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -95,11 +96,35 @@ def test_commit_parses_body_and_returns_items():
         "items": [{"key": "a.txt", "file_ref": {"kind": "tool_file", "id": "tf-1"}}],
     }
     with app.test_request_context("/", method="POST", json=payload):
-        with patch(f"{_MOD}.AgentDriveService") as svc:
+        with (
+            patch(f"{_MOD}.get_user", return_value=SimpleNamespace(id="user-1")) as get_user,
+            patch(f"{_MOD}.AgentDriveService") as svc,
+        ):
             svc.return_value.commit.return_value = [{"key": "a.txt"}]
             result = raw(AgentDriveCommitApi(), "agent-agent-1")
     assert result == {"items": [{"key": "a.txt"}]}
+    assert get_user.call_args.args == ("tenant-1", "user-1")
     assert svc.return_value.commit.call_args.kwargs["agent_id"] == "agent-1"
+    assert svc.return_value.commit.call_args.kwargs["user_id"] == "user-1"
+
+
+def test_commit_canonicalizes_user_before_service_call():
+    raw = _raw(AgentDriveCommitApi.post)
+    payload = {
+        "tenant_id": "tenant-1",
+        "user_id": "session-1",
+        "items": [{"key": "a.txt", "file_ref": {"kind": "tool_file", "id": "tf-1"}}],
+    }
+    with app.test_request_context("/", method="POST", json=payload):
+        with (
+            patch(f"{_MOD}.get_user", return_value=SimpleNamespace(id="end-user-1")),
+            patch(f"{_MOD}.AgentDriveService") as svc,
+        ):
+            svc.return_value.commit.return_value = [{"key": "a.txt"}]
+            result = raw(AgentDriveCommitApi(), "agent-agent-1")
+
+    assert result == {"items": [{"key": "a.txt"}]}
+    assert svc.return_value.commit.call_args.kwargs["user_id"] == "end-user-1"
 
 
 def test_commit_invalid_body_is_400():
@@ -118,7 +143,10 @@ def test_commit_maps_service_error():
         "items": [{"key": "a.txt", "file_ref": {"kind": "tool_file", "id": "tf-1"}}],
     }
     with app.test_request_context("/", method="POST", json=payload):
-        with patch(f"{_MOD}.AgentDriveService") as svc:
+        with (
+            patch(f"{_MOD}.get_user", return_value=SimpleNamespace(id="user-1")),
+            patch(f"{_MOD}.AgentDriveService") as svc,
+        ):
             svc.return_value.commit.side_effect = AgentDriveError("source_not_found", "nope", status_code=404)
             body, status = raw(AgentDriveCommitApi(), "agent-agent-1")
     assert status == 404
