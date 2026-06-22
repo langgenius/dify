@@ -186,6 +186,7 @@ class AgentStatisticsQuery(BaseModel):
 
 class AgentAppPartial(GenericAppPartial):
     app_id: str | None = None
+    debug_conversation_id: str | None = None
     role: str | None = None
     active_config_is_published: bool = False
     published_reference_count: int = 0
@@ -194,6 +195,7 @@ class AgentAppPartial(GenericAppPartial):
 
 class AgentAppDetailWithSite(GenericAppDetailWithSite):
     app_id: str | None = None
+    debug_conversation_id: str | None = None
     role: str | None = None
     active_config_is_published: bool = False
 
@@ -262,6 +264,7 @@ def _serialize_agent_app_detail(app_model) -> dict:
     payload.pop("bound_agent_id", None)
     payload["app_id"] = str(app_model.id)
     payload["id"] = agent.id
+    payload["debug_conversation_id"] = agent.debug_conversation_id
     payload["role"] = agent.role or ""
     payload["active_config_is_published"] = roster_service.active_config_is_published(
         tenant_id=app_model.tenant_id,
@@ -301,6 +304,7 @@ def _serialize_agent_app_pagination(app_pagination, *, tenant_id: str) -> dict:
         if agent:
             item["app_id"] = app_id
             item["id"] = agent.id
+            item["debug_conversation_id"] = agent.debug_conversation_id
             item["role"] = agent.role or ""
             item["active_config_is_published"] = active_config_is_published_by_agent_id.get(agent.id, False)
             published_references = published_references_by_agent_id.get(agent.id, [])

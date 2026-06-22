@@ -219,14 +219,22 @@ def test_agent_app_list_and_create_use_agent_route(
         roster_controller.AgentRosterService,
         "load_app_backing_agents_by_app_id",
         lambda _self, **kwargs: {
-            "app-list": SimpleNamespace(id="agent-list", role="List role", active_config_snapshot_id=None)
+            "app-list": SimpleNamespace(
+                id="agent-list",
+                role="List role",
+                debug_conversation_id="debug-conversation-list",
+                active_config_snapshot_id=None,
+            )
         },
     )
     monkeypatch.setattr(
         roster_controller.AgentRosterService,
         "get_app_backing_agent",
         lambda _self, **kwargs: SimpleNamespace(
-            id="agent-created", role="Created role", active_config_snapshot_id=None
+            id="agent-created",
+            role="Created role",
+            debug_conversation_id="debug-conversation-created",
+            active_config_snapshot_id=None,
         ),
     )
     monkeypatch.setattr(
@@ -263,6 +271,7 @@ def test_agent_app_list_and_create_use_agent_route(
     assert listed["total"] == 1
     assert listed["data"][0]["id"] == "agent-list"
     assert listed["data"][0]["app_id"] == "app-list"
+    assert listed["data"][0]["debug_conversation_id"] == "debug-conversation-list"
     assert listed["data"][0]["role"] == "List role"
     assert listed["data"][0]["active_config_is_published"] is False
     assert listed["data"][0]["published_reference_count"] == 1
@@ -296,6 +305,7 @@ def test_agent_app_list_and_create_use_agent_route(
     assert status == 201
     assert created["id"] == "agent-created"
     assert created["app_id"] == "app-created"
+    assert created["debug_conversation_id"] == "debug-conversation-created"
     assert created["role"] == "Created role"
     assert created["active_config_is_published"] is False
     assert "bound_agent_id" not in created
@@ -336,7 +346,12 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
     monkeypatch.setattr(
         roster_controller.AgentRosterService,
         "get_app_backing_agent",
-        lambda _self, **kwargs: SimpleNamespace(id=agent_id, role="Resolved role", active_config_snapshot_id=None),
+        lambda _self, **kwargs: SimpleNamespace(
+            id=agent_id,
+            role="Resolved role",
+            debug_conversation_id="debug-conversation-detail",
+            active_config_snapshot_id=None,
+        ),
     )
     monkeypatch.setattr(
         roster_controller.FeatureService,
@@ -361,6 +376,7 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
     detail = unwrap(AgentAppApi.get)(AgentAppApi(), "tenant-1", agent_id)
     assert detail["id"] == agent_id
     assert detail["app_id"] == "app-1"
+    assert detail["debug_conversation_id"] == "debug-conversation-detail"
     assert detail["role"] == "Resolved role"
     assert detail["active_config_is_published"] is False
     assert "bound_agent_id" not in detail
@@ -374,6 +390,7 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
     assert updated["name"] == "Renamed"
     assert updated["id"] == agent_id
     assert updated["app_id"] == "app-1"
+    assert updated["debug_conversation_id"] == "debug-conversation-detail"
     assert updated["role"] == "Resolved role"
     assert updated["active_config_is_published"] is False
     assert "bound_agent_id" not in updated
@@ -445,7 +462,12 @@ def test_agent_app_update_rejects_empty_role(app: Flask, monkeypatch: pytest.Mon
     monkeypatch.setattr(
         roster_controller.AgentRosterService,
         "get_app_backing_agent",
-        lambda _self, **kwargs: SimpleNamespace(id=agent_id, role="", active_config_snapshot_id=None),
+        lambda _self, **kwargs: SimpleNamespace(
+            id=agent_id,
+            role="",
+            debug_conversation_id="debug-conversation-detail",
+            active_config_snapshot_id=None,
+        ),
     )
     monkeypatch.setattr(
         roster_controller.FeatureService,
