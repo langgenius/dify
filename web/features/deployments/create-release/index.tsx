@@ -2,16 +2,21 @@
 
 import type { ButtonProps } from '@langgenius/dify-ui/button'
 import { Button } from '@langgenius/dify-ui/button'
-import { DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { useTranslation } from 'react-i18next'
 import {
   createReleaseAppInstanceIdAtom,
+  createReleaseDialogOpenAtom,
   createReleaseLocalAtoms,
+  isCreatingReleaseAtom,
+  openCreateReleaseDialogAtom,
+  requestCloseCreateReleaseDialogAtom,
 } from './state'
-import { CreateReleaseDialog } from './ui/dialog'
+import { CreateReleaseDialogContent } from './ui/dialog'
 
-function CreateReleaseTrigger({
+function CreateReleaseScopedControl({
   variant,
   size,
   label,
@@ -23,19 +28,39 @@ function CreateReleaseTrigger({
   className?: string
 }) {
   const { t } = useTranslation('deployments')
+  const open = useAtomValue(createReleaseDialogOpenAtom)
+  const isCreatingRelease = useAtomValue(isCreatingReleaseAtom)
+  const openDialog = useSetAtom(openCreateReleaseDialogAtom)
+  const requestCloseDialog = useSetAtom(requestCloseCreateReleaseDialogAtom)
+
+  function handleDialogOpenChange(nextOpen: boolean) {
+    if (nextOpen) {
+      openDialog()
+      return
+    }
+
+    if (!isCreatingRelease)
+      requestCloseDialog()
+  }
 
   return (
-    <DialogTrigger
-      render={(
-        <Button
-          size={size}
-          variant={variant}
-          className={className}
-        />
-      )}
+    <Dialog
+      open={open}
+      onOpenChange={handleDialogOpenChange}
     >
-      {label ?? t('versions.createRelease')}
-    </DialogTrigger>
+      <DialogTrigger
+        render={(
+          <Button
+            size={size}
+            variant={variant}
+            className={className}
+          />
+        )}
+      >
+        {label ?? t('versions.createRelease')}
+      </DialogTrigger>
+      {open && <CreateReleaseDialogContent />}
+    </Dialog>
   )
 }
 
@@ -61,14 +86,12 @@ export function CreateReleaseControl({
       ]}
       name="CreateRelease"
     >
-      <CreateReleaseDialog>
-        <CreateReleaseTrigger
-          variant={variant}
-          size={size}
-          label={label}
-          className={className}
-        />
-      </CreateReleaseDialog>
+      <CreateReleaseScopedControl
+        variant={variant}
+        size={size}
+        label={label}
+        className={className}
+      />
     </ScopeProvider>
   )
 }

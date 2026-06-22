@@ -69,7 +69,6 @@ export function ReleaseSourceSection() {
 }
 
 function SourceAppField() {
-  const { t } = useTranslation('deployments')
   const sourceApp = useAtomValue(createReleaseSelectedSourceAppAtom)
   const updateSourceApp = useSetAtom(updateCreateReleaseSourceAppAtom)
   const sourceAppLocked = !isDeploymentDslImportEnabled
@@ -79,7 +78,6 @@ function SourceAppField() {
       <SourceAppPicker
         value={sourceApp}
         onChange={updateSourceApp}
-        ariaLabel={t('versions.sourceAppOption')}
         disabled={sourceAppLocked}
       />
     </div>
@@ -91,7 +89,6 @@ function DslFileField() {
   const dslFileField = useAtomValue(createReleaseDslFileFieldAtom)
   const isReadingDsl = useAtomValue(isReadingCreateReleaseDslAtom)
   const dslReadError = useAtomValue(createReleaseDslReadErrorAtom)
-  const hasUnsupportedDslMode = useAtomValue(createReleaseHasUnsupportedDslModeAtom)
   const updateDslFile = useSetAtom(updateCreateReleaseDslFileAtom)
 
   return (
@@ -113,15 +110,14 @@ function DslFileField() {
           {t('versions.dslReadFailed')}
         </div>
       )}
-      <DslUnsupportedModeError hasUnsupportedDslMode={hasUnsupportedDslMode} />
+      <DslUnsupportedModeError />
     </div>
   )
 }
 
-function DslUnsupportedModeError({ hasUnsupportedDslMode }: {
-  hasUnsupportedDslMode: boolean
-}) {
+function DslUnsupportedModeError() {
   const { t } = useTranslation('deployments')
+  const hasUnsupportedDslMode = useAtomValue(createReleaseHasUnsupportedDslModeAtom)
 
   if (!hasUnsupportedDslMode)
     return null

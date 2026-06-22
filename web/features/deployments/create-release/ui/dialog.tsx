@@ -1,7 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
-import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
@@ -9,12 +8,9 @@ import { useTranslation } from 'react-i18next'
 import { deploymentErrorMessage } from '../../shared/domain/error'
 import {
   closeCreateReleaseDialogAtom,
-  createReleaseDialogOpenAtom,
   createReleaseFormAtom,
   createReleaseFormIsSubmittingAtom,
   CreateReleaseSubmissionBlockedError,
-  isCreatingReleaseAtom,
-  openCreateReleaseDialogAtom,
   requestCloseCreateReleaseDialogAtom,
   submitCreateReleaseFormAtom,
 } from '../state'
@@ -45,7 +41,7 @@ function CreateReleaseCloseButton() {
   )
 }
 
-function CreateReleaseDialogForm() {
+export function CreateReleaseDialogContent() {
   return (
     <ScopeProvider atoms={[createReleaseFormAtom]}>
       <CreateReleaseDialogSurface />
@@ -110,31 +106,5 @@ function CreateReleaseDialogSurface() {
         <CreateReleaseActions />
       </form>
     </DialogContent>
-  )
-}
-
-export function CreateReleaseDialog({ children }: {
-  children: ReactNode
-}) {
-  const open = useAtomValue(createReleaseDialogOpenAtom)
-  const isCreatingRelease = useAtomValue(isCreatingReleaseAtom)
-  const openDialog = useSetAtom(openCreateReleaseDialogAtom)
-  const requestCloseDialog = useSetAtom(requestCloseCreateReleaseDialogAtom)
-
-  function handleDialogOpenChange(nextOpen: boolean) {
-    if (nextOpen) {
-      openDialog()
-      return
-    }
-
-    if (!isCreatingRelease)
-      requestCloseDialog()
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
-      {children}
-      {open && <CreateReleaseDialogForm />}
-    </Dialog>
   )
 }

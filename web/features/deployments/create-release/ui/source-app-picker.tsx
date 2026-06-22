@@ -30,21 +30,18 @@ function sourceAppSearchText(app: App) {
   return `${app.name} ${app.id}`.toLowerCase()
 }
 
-function SourceAppTrigger({ open, app, disabled }: {
-  open: boolean
+function SourceAppTrigger({ app }: {
   app?: SourceAppPickerValue
-  disabled: boolean
 }) {
   const { t } = useTranslation('deployments')
 
   return (
     <span
       className={cn(
-        'group flex h-10 items-center gap-2 rounded-lg border border-transparent bg-components-input-bg-normal px-3 text-left',
-        disabled
-          ? 'cursor-not-allowed text-components-input-text-disabled'
-          : 'cursor-pointer hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
-        open && 'border-components-input-border-active bg-components-input-bg-active shadow-xs',
+        'flex h-10 items-center gap-2 rounded-lg border border-transparent bg-components-input-bg-normal px-3 text-left',
+        'cursor-pointer hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
+        'group-data-disabled/combobox-trigger:cursor-not-allowed group-data-disabled/combobox-trigger:text-components-input-text-disabled group-data-disabled/combobox-trigger:hover:border-transparent group-data-disabled/combobox-trigger:hover:bg-components-input-bg-normal',
+        'group-data-popup-open/combobox-trigger:border-components-input-border-active group-data-popup-open/combobox-trigger:bg-components-input-bg-active group-data-popup-open/combobox-trigger:shadow-xs',
         app && 'pl-2',
       )}
     >
@@ -72,9 +69,9 @@ function SourceAppTrigger({ open, app, disabled }: {
       </TitleTooltip>
       <span
         className={cn(
-          'i-ri-arrow-down-s-line size-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
-          disabled && 'opacity-50 group-hover:text-text-quaternary',
-          open && 'text-text-secondary',
+          'i-ri-arrow-down-s-line size-4 shrink-0 text-text-quaternary group-hover/combobox-trigger:text-text-secondary',
+          'group-data-disabled/combobox-trigger:text-text-quaternary group-data-disabled/combobox-trigger:opacity-50',
+          'group-data-popup-open/combobox-trigger:text-text-secondary',
         )}
         aria-hidden="true"
       />
@@ -127,10 +124,9 @@ function SourceAppPickerSkeleton() {
   )
 }
 
-export function SourceAppPicker({ value, onChange, ariaLabel, disabled = false }: {
+export function SourceAppPicker({ value, onChange, disabled = false }: {
   value?: SourceAppPickerValue
   onChange: (app: App) => void
-  ariaLabel?: string
   disabled?: boolean
 }) {
   const { t } = useTranslation('deployments')
@@ -198,11 +194,11 @@ export function SourceAppPicker({ value, onChange, ariaLabel, disabled = false }
       disabled={disabled}
     >
       <ComboboxTrigger
-        aria-label={ariaLabel ?? t('createModal.sourceApp')}
+        aria-label={t('versions.sourceAppOption')}
         icon={false}
         className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 data-open:bg-transparent"
       >
-        <SourceAppTrigger open={!disabled && isShow} app={value} disabled={disabled} />
+        <SourceAppTrigger app={value} />
       </ComboboxTrigger>
       <ComboboxContent
         placement="bottom-start"
