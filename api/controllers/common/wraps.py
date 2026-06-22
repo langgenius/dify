@@ -30,10 +30,38 @@ from extensions.ext_database import db
 from libs.login import current_account_with_tenant
 from models.dataset import Dataset
 from models.model import App
+from controllers.openapi.auth.data import AuthData
 from services.enterprise.rbac_service import RBACService
 
 __all__ = ["RBACPermission", "RBACResourceScope", "rbac_permission_required"]
 
+
+
+def openapi_rbac_permission_required[**P, R](
+    resource_type: RBACResourceScope,
+    scene: RBACPermission,
+    *,
+    resource_required: bool = True,
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    """RBAC guard for OpenAPI endpoints that may be called by either an Account or an EndUser."""
+    inner = rbac_permission_required(resource_type, scene, resource_required=resource_required)
+
+    def decorator(view: Callable[P, R]) -> Callable[P, R]:
+        guarded = inner(view)
+
+        @wraps(view)
+        def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+            auth_data: AuthData | None = kwargs.get("auth_data")
+            if not auth_data:
+                raise Forbidden() # openapi auth pipeline is required
+            if auth_data.caller_kind == "end_user":
+                # end_user is handled by openapi scope control
+                return view(*args, **kwargs)
+            return guarded(*args, **kwargs)
+
+        return decorated
+
+    return decorator
 
 def rbac_permission_required[**P, R](
     resource_type: RBACResourceScope,
