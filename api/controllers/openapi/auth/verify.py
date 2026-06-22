@@ -40,7 +40,7 @@ def check_workspace_mismatch(data: AuthData) -> None:
 
 
 def check_workspace_role(data: AuthData) -> None:
-    if dify_config.RBAC_ENABLED:
+    if dify_config.RBAC_ENABLED and data.rbac is not None:
         # fine-grained permission check is performed by RBAC
         return
     if data.allowed_roles is None:
