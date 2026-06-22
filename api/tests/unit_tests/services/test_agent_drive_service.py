@@ -517,7 +517,17 @@ def test_delete_by_key_cleans_drive_owned_value():
         )
         storage_mock.delete.assert_called_once()
 
-    assert removed == [{"key": "files/doomed.txt", "file_kind": "tool_file", "file_id": tf, "value_owned_by_drive": True, "is_skill": False, "skill_metadata": None, "removed": True}]
+    assert removed == [
+        {
+            "key": "files/doomed.txt",
+            "file_kind": "tool_file",
+            "file_id": tf,
+            "value_owned_by_drive": True,
+            "is_skill": False,
+            "skill_metadata": None,
+            "removed": True,
+        }
+    ]
     with session_factory.create_session() as session:
         assert session.scalar(select(ToolFile).where(ToolFile.id == tf)) is None
         assert list(session.scalars(select(AgentDriveFile))) == []
@@ -542,7 +552,10 @@ def test_commit_null_batch_removes_multiple_skill_keys():
             ],
         )
 
-    assert sorted(item["key"] for item in removed) == ["tender-analyzer/.DIFY-SKILL-FULL.zip", "tender-analyzer/SKILL.md"]
+    assert sorted(item["key"] for item in removed) == [
+        "tender-analyzer/.DIFY-SKILL-FULL.zip",
+        "tender-analyzer/SKILL.md",
+    ]
     with session_factory.create_session() as session:
         # both skill ToolFiles physically removed, the unrelated file untouched
         assert session.scalar(select(ToolFile).where(ToolFile.id == md)) is None
@@ -650,6 +663,68 @@ def test_preview_unknown_key_is_404():
         AgentDriveService().preview(tenant_id=TENANT, agent_id=AGENT, key="ghost/SKILL.md")
     assert exc_info.value.code == "drive_key_not_found"
     assert exc_info.value.status_code == 404
+
+
+def test_inspect_skill_uses_skill_metadata_manifest_files():
+    tf = _seed_tool_file(name="SKILL.md")
+    AgentDriveService().commit(
+        tenant_id=TENANT,
+        user_id=USER,
+        agent_id=AGENT,
+        items=[
+            DriveCommitItem(
+                key="pdf-toolkit/SKILL.md",
+                file_ref={"kind": "tool_file", "id": tf},
+                is_skill=True,
+                skill_metadata=DriveSkillMetadata(
+                    name="PDF Toolkit",
+                    description="Reads PDFs.",
+                    manifest_files=["SKILL.md", "scripts/extract.py", "references/guide.md"],
+                ),
+            )
+        ],
+    )
+
+    with patch("services.agent_drive_service.storage") as storage_mock:
+        storage_mock.load_stream.return_value = iter([b"---\nname: PDF Toolkit\n---\nUse it.\n"])
+        result = AgentDriveService().inspect_skill(tenant_id=TENANT, agent_id=AGENT, skill_path="pdf-toolkit")
+
+    assert result["source"] == "skill_md"
+    assert result["name"] == "PDF Toolkit"
+    assert [file["path"] for file in result["files"]] == [
+        "SKILL.md",
+        "references/guide.md",
+        "scripts/extract.py",
+    ]
+    assert result["files"][0]["drive_key"] == "pdf-toolkit/SKILL.md"
+    assert result["files"][1]["available_in_drive"] is False
+    assert result["file_tree"][0]["name"] == "references"
+    assert result["skill_md"]["text"].startswith("---\nname: PDF Toolkit")
+    assert result["warnings"] == []
+
+
+def test_inspect_skill_falls_back_to_drive_keys_without_manifest_files():
+    tf = _seed_tool_file(name="SKILL.md")
+    AgentDriveService().commit(
+        tenant_id=TENANT,
+        user_id=USER,
+        agent_id=AGENT,
+        items=[
+            DriveCommitItem(
+                key="pdf-toolkit/SKILL.md",
+                file_ref={"kind": "tool_file", "id": tf},
+                is_skill=True,
+                skill_metadata=DriveSkillMetadata(name="PDF Toolkit", description="Reads PDFs."),
+            )
+        ],
+    )
+
+    with patch("services.agent_drive_service.storage") as storage_mock:
+        storage_mock.load_stream.return_value = iter([b"# PDF Toolkit\n"])
+        result = AgentDriveService().inspect_skill(tenant_id=TENANT, agent_id=AGENT, skill_path="pdf-toolkit")
+
+    assert [file["path"] for file in result["files"]] == ["SKILL.md"]
+    assert result["warnings"] == ["manifest_files_unavailable"]
 
 
 def test_preview_rejects_cross_tenant_agent():

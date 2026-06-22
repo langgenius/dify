@@ -18,10 +18,12 @@ from controllers.console.app.agent_drive_inspector import (
     AgentDriveDownloadByAgentApi,
     AgentDriveListApi,
     AgentDriveListByAgentApi,
-    AgentDriveSkillListApi,
-    AgentDriveSkillListByAgentApi,
     AgentDrivePreviewApi,
     AgentDrivePreviewByAgentApi,
+    AgentDriveSkillInspectApi,
+    AgentDriveSkillInspectByAgentApi,
+    AgentDriveSkillListApi,
+    AgentDriveSkillListByAgentApi,
 )
 from services.agent_drive_service import AgentDriveError
 
@@ -117,6 +119,37 @@ def test_skill_list_by_agent_calls_list_skills_and_returns_catalog_shape():
     assert drive.return_value.list_skills.call_args.kwargs == {"tenant_id": "tenant-1", "agent_id": "agent-1"}
 
 
+def test_skill_inspect_by_agent_calls_inspect_skill_and_returns_detail_shape():
+    raw = _raw(AgentDriveSkillInspectByAgentApi.get)
+    with app.test_request_context("/"):
+        with (
+            patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP) as resolve_app,
+            patch(f"{_MOD}.AgentDriveService") as drive,
+        ):
+            drive.return_value.inspect_skill.return_value = {
+                "path": "tender-analyzer",
+                "skill_md_key": "tender-analyzer/SKILL.md",
+                "archive_key": "tender-analyzer/.DIFY-SKILL-FULL.zip",
+                "name": "Tender Analyzer",
+                "description": "Parses RFPs.",
+                "source": "skill_md",
+                "files": [],
+                "file_tree": [],
+                "skill_md": {"key": "tender-analyzer/SKILL.md", "truncated": False, "binary": False, "text": "# hi"},
+                "warnings": [],
+            }
+            response = raw(AgentDriveSkillInspectByAgentApi(), "tenant-1", "agent-1", "tender-analyzer")
+
+    body = response.get_json()
+    assert body["source"] == "skill_md"
+    resolve_app.assert_called_once_with(tenant_id="tenant-1", agent_id="agent-1")
+    assert drive.return_value.inspect_skill.call_args.kwargs == {
+        "tenant_id": "tenant-1",
+        "agent_id": "agent-1",
+        "skill_path": "tender-analyzer",
+    }
+
+
 def test_list_resolves_workflow_node_binding_agent():
     raw = _raw(AgentDriveListApi.get)
     with app.test_request_context("/?node_id=agent-node-1"):
@@ -144,6 +177,34 @@ def test_skill_list_resolves_workflow_node_binding_agent():
             raw(AgentDriveSkillListApi(), _APP)
 
     assert drive.return_value.list_skills.call_args.kwargs["agent_id"] == "wf-agent-9"
+    assert composer.resolve_workflow_node_agent_id.call_args.kwargs["node_id"] == "agent-node-1"
+
+
+def test_skill_inspect_resolves_workflow_node_binding_agent():
+    raw = _raw(AgentDriveSkillInspectApi.get)
+    with app.test_request_context("/?node_id=agent-node-1"):
+        with (
+            patch(f"{_MOD}.AgentComposerService") as composer,
+            patch(f"{_MOD}.AgentDriveService") as drive,
+        ):
+            composer.resolve_workflow_node_agent_id.return_value = "wf-agent-9"
+            drive.return_value.inspect_skill.return_value = {
+                "path": "tender-analyzer",
+                "skill_md_key": "tender-analyzer/SKILL.md",
+                "archive_key": None,
+                "name": "Tender Analyzer",
+                "description": "Parses RFPs.",
+                "source": "skill_md",
+                "files": [],
+                "file_tree": [],
+                "skill_md": {"key": "tender-analyzer/SKILL.md", "truncated": False, "binary": False, "text": "# hi"},
+                "warnings": [],
+            }
+            response = raw(AgentDriveSkillInspectApi(), _APP, "tender-analyzer")
+
+    assert response.get_json()["source"] == "skill_md"
+    assert drive.return_value.inspect_skill.call_args.kwargs["agent_id"] == "wf-agent-9"
+    assert drive.return_value.inspect_skill.call_args.kwargs["skill_path"] == "tender-analyzer"
     assert composer.resolve_workflow_node_agent_id.call_args.kwargs["node_id"] == "agent-node-1"
 
 

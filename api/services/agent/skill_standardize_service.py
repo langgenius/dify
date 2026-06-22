@@ -92,7 +92,11 @@ class SkillStandardizeService:
                     file_ref=DriveFileRef(kind="tool_file", id=md_tool_file.id),
                     value_owned_by_drive=True,
                     is_skill=True,
-                    skill_metadata=DriveSkillMetadata(name=manifest.name, description=manifest.description),
+                    skill_metadata=DriveSkillMetadata(
+                        name=manifest.name,
+                        description=manifest.description,
+                        manifest_files=manifest.files,
+                    ),
                 ),
                 DriveCommitItem(
                     key=archive_key,

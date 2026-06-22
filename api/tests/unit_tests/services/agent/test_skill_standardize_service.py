@@ -83,6 +83,7 @@ def test_standardize_creates_two_drive_owned_toolfiles_and_commits():
     assert items[0].is_skill is True
     assert items[0].skill_metadata is not None
     assert items[0].skill_metadata.name == "PDF Toolkit"
+    assert items[0].skill_metadata.manifest_files == ["SKILL.md", "scripts/run.py"]
     assert items[1].is_skill is False
 
     # The returned upload response carries only the drive-derived fields the UI needs.
