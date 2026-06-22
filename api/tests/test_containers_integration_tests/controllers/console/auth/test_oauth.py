@@ -615,6 +615,7 @@ class TestAccountGeneration:
             provider="github",
             language="zh-Hans",
             timezone="Asia/Shanghai",
+            session=ANY
         )
 
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None)
@@ -646,6 +647,7 @@ class TestAccountGeneration:
             provider="github",
             language="zh-Hans",
             timezone=None,
+            session=ANY
         )
 
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email")
@@ -680,4 +682,4 @@ class TestAccountGeneration:
             mock_tenant_service.create_tenant_member.assert_called_once_with(
                 mock_new_tenant, mock_account, ANY, role="owner"
             )
-            mock_event.send.assert_called_once_with(mock_new_tenant)
+            mock_event.send.assert_called_once_with(mock_new_tenant, ANY)

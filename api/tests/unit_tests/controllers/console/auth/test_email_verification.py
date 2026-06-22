@@ -8,6 +8,7 @@ This module tests the email code login mechanism including:
 - Workspace creation for new users
 """
 
+from unittest.mock import ANY
 import base64
 from unittest.mock import MagicMock, patch
 
@@ -368,6 +369,7 @@ class TestEmailCodeLoginApi:
             name="newuser@example.com",
             interface_language="en-US",
             timezone="Asia/Shanghai",
+            session=ANY
         )
 
     @patch("controllers.console.wraps.db")

@@ -1,3 +1,4 @@
+from unittest.mock import ANY
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -97,6 +98,7 @@ def test_generate_account_prefers_state_language_over_accept_language(
         provider="github",
         language="zh-Hans",
         timezone=None,
+        session=ANY,
     )
     mock_link_account.assert_called_once_with("github", "github-123", account)
 
