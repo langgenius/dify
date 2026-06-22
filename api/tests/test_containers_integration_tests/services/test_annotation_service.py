@@ -280,7 +280,9 @@ class TestAnnotationService:
             "question": fake.sentence(),
             "answer": fake.text(max_nb_chars=200),
         }
-        updated_annotation = AppAnnotationService.update_app_annotation_directly(updated_args, app.id, annotation.id, db_session_with_containers)
+        updated_annotation = AppAnnotationService.update_app_annotation_directly(
+            updated_args, app.id, annotation.id, db_session_with_containers
+        )
 
         # Verify annotation was updated correctly
         assert updated_annotation.id == annotation.id
@@ -1225,7 +1227,9 @@ class TestAnnotationService:
             "question": fake.sentence(),
             "answer": fake.text(max_nb_chars=200),
         }
-        updated_annotation = AppAnnotationService.update_app_annotation_directly(updated_args, app.id, annotation.id, db_session_with_containers)
+        updated_annotation = AppAnnotationService.update_app_annotation_directly(
+            updated_args, app.id, annotation.id, db_session_with_containers
+        )
 
         # Verify annotation was updated correctly
         assert updated_annotation.id == annotation.id
