@@ -21,6 +21,7 @@ const mockFormatForDisplay = vi.hoisted(() => vi.fn((hotkey: string) => `display
 const mockFormatTimeFromNow = vi.hoisted(() => vi.fn(() => 'just now'))
 const mockFormatTime = vi.hoisted(() => vi.fn((timestamp: number) => `formatted:${timestamp}`))
 const workflowReferences = vi.hoisted(() => ({
+  fetchCount: 0,
   data: [] as AgentReferencingWorkflowResponse[],
 }))
 
@@ -56,7 +57,7 @@ vi.mock('@/service/client', () => ({
             queryOptions: ({ input }: { input: { params: { agent_id: string } } }) => ({
               queryKey: ['agent-referencing-workflows', input],
               queryFn: async () => ({
-                data: workflowReferences.data,
+                data: (workflowReferences.fetchCount++, workflowReferences.data),
               }),
             }),
           },
@@ -170,6 +171,7 @@ describe('AgentConfigurePublishBar', () => {
     vi.clearAllMocks()
     hotkeyRegistrations.clear()
     workflowReferences.data = []
+    workflowReferences.fetchCount = 0
     vi.spyOn(console, 'log').mockImplementation(() => {})
   })
 
@@ -346,14 +348,20 @@ describe('AgentConfigurePublishBar', () => {
     expect(screen.queryByRole('region', {
       name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
     })).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(workflowReferences.fetchCount).toBe(1)
+    })
 
-    fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
+    const publishButton = screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ })
+    fireEvent.click(publishButton)
 
     expect(onPublish).not.toHaveBeenCalled()
+    expect(publishButton).not.toHaveAttribute('aria-busy')
     const impactDetails = await screen.findByRole('region', {
       name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
     })
     expect(impactDetails).toBeInTheDocument()
+    expect(workflowReferences.fetchCount).toBe(1)
     expect(screen.getAllByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ })).toHaveLength(1)
     expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishImpact.cancel' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.versionHistory' })).toHaveClass('group-data-open/publish-bar:hidden')

@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse, AgentReferencingWorkflowResponse, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse, AgentReferencingWorkflowResponse, AgentReferencingWorkflowsResponse, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
@@ -8,7 +8,7 @@ import { CollapsiblePanel, CollapsibleRoot } from '@langgenius/dify-ui/collapsib
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useConfigPublishPayload, useHasAgentComposerUnpublishedChanges } from '@/features/agent-v2/agent-composer/store'
@@ -27,7 +27,7 @@ export type AgentConfigurePublishPayload = {
 type AgentConfigurePublishState = 'draft' | 'publishing' | 'published' | 'unpublished'
 
 type PublishBarMode = { status: 'compact' }
-  | { status: 'checkingReferences' }
+  | { status: 'resolvingReferences' }
   | { status: 'confirmingImpact', references: AgentReferencingWorkflowResponse[] }
 
 type AgentConfigurePublishBarProps = {
@@ -97,18 +97,9 @@ export function AgentConfigurePublishBar({
 }: AgentConfigurePublishBarProps) {
   const { t } = useTranslation('agentV2')
   const { formatTimeFromNow } = useFormatTimeFromNow()
+  const queryClient = useQueryClient()
   const [publishBarMode, setPublishBarMode] = useState<PublishBarMode>({ status: 'compact' })
   const hasUnpublishedChanges = useHasAgentComposerUnpublishedChanges()
-  const workflowReferencesQuery = useQuery({
-    ...consoleQuery.agent.byAgentId.referencingWorkflows.get.queryOptions({
-      input: {
-        params: {
-          agent_id: agentId,
-        },
-      },
-    }),
-    enabled: false,
-  })
   const publishPayload = useConfigPublishPayload({
     agentId,
     baseConfig: agentSoulConfig,
@@ -121,7 +112,18 @@ export function AgentConfigurePublishBar({
     isPublishing,
   })
   const canPublish = publishState === 'draft' || publishState === 'unpublished'
-  const isCheckingReferences = publishBarMode.status === 'checkingReferences'
+  const workflowReferencesQueryOptions = consoleQuery.agent.byAgentId.referencingWorkflows.get.queryOptions({
+    input: {
+      params: {
+        agent_id: agentId,
+      },
+    },
+  })
+  const workflowReferencesQuery = useQuery({
+    ...workflowReferencesQueryOptions,
+    enabled: canPublish && !selectedVersionSnapshot,
+  })
+  const isResolvingReferences = publishBarMode.status === 'resolvingReferences'
 
   const handlePublish = () => {
     if (!canPublish)
@@ -132,7 +134,7 @@ export function AgentConfigurePublishBar({
   }
 
   const handlePublishRequest = async () => {
-    if (!canPublish || isCheckingReferences)
+    if (!canPublish || isResolvingReferences)
       return
 
     if (publishBarMode.status === 'confirmingImpact') {
@@ -140,10 +142,10 @@ export function AgentConfigurePublishBar({
       return
     }
 
-    setPublishBarMode({ status: 'checkingReferences' })
+    setPublishBarMode({ status: 'resolvingReferences' })
     try {
-      const result = await workflowReferencesQuery.refetch()
-      const references = result.data?.data ?? []
+      const cachedReferences = queryClient.getQueryData<AgentReferencingWorkflowsResponse>(workflowReferencesQueryOptions.queryKey)
+      const references = (cachedReferences ?? workflowReferencesQuery.data ?? await workflowReferencesQuery.refetch().then(result => result.data))?.data ?? []
 
       if (references.length > 0) {
         setPublishBarMode({ status: 'confirmingImpact', references })
@@ -153,7 +155,7 @@ export function AgentConfigurePublishBar({
       handlePublish()
     }
     finally {
-      setPublishBarMode(currentMode => currentMode.status === 'checkingReferences' ? { status: 'compact' } : currentMode)
+      setPublishBarMode(currentMode => currentMode.status === 'resolvingReferences' ? { status: 'compact' } : currentMode)
     }
   }
 
@@ -246,7 +248,6 @@ export function AgentConfigurePublishBar({
           actionIcon={currentStateMeta.actionIcon}
           actionLabel={currentStateMeta.actionLabel}
           dotStatus={currentStateMeta.dotStatus}
-          isCheckingReferences={isCheckingReferences}
           isPublishing={publishState === 'publishing'}
           metaLabel={currentStateMeta.metaLabel}
           showShortcut={currentStateMeta.showShortcut}
@@ -287,7 +288,6 @@ function PublishBarActions({
   actionIcon,
   actionLabel,
   dotStatus,
-  isCheckingReferences,
   isPublishing,
   metaLabel,
   showShortcut,
@@ -300,7 +300,6 @@ function PublishBarActions({
   actionIcon: string | null
   actionLabel: string
   dotStatus: 'disabled' | 'success' | 'warning'
-  isCheckingReferences: boolean
   isPublishing: boolean
   metaLabel: string
   showShortcut: boolean
@@ -344,7 +343,7 @@ function PublishBarActions({
         type="button"
         variant="primary"
         disabled={!canPublish}
-        loading={isPublishing || isCheckingReferences}
+        loading={isPublishing}
         className="h-8 gap-1 rounded-lg px-3"
         onClick={() => {
           void onPublishRequest()
