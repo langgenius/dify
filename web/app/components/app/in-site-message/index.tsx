@@ -7,7 +7,7 @@ import { trackEvent } from '@/app/components/base/amplitude'
 import { MarkdownWithDirective } from '@/app/components/base/markdown-with-directive'
 
 type InSiteMessageAction = 'link' | 'close'
-type InSiteMessageButtonType = 'primary' | 'default' | 'outlined'
+type InSiteMessageButtonType = 'primary' | 'default' | 'outline'
 
 export type InSiteMessageActionItem = {
   action: InSiteMessageAction
@@ -57,7 +57,7 @@ const DEFAULT_HEADER_BG_URL = '/in-site-message/header-bg.svg'
 function resolveButtonVariant(type: InSiteMessageButtonType) {
   if (type === 'primary')
     return 'primary'
-  if (type === 'outlined')
+  if (type === 'outline')
     return 'secondary'
   return 'ghost'
 }
