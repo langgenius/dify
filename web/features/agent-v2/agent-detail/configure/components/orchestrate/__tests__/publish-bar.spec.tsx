@@ -110,6 +110,15 @@ const publishedReferences: AgentReferencingWorkflowResponse[] = [
   },
 ]
 
+function createDeferredPromise() {
+  let resolve!: () => void
+  const promise = new Promise<void>((promiseResolve) => {
+    resolve = promiseResolve
+  })
+
+  return { promise, resolve }
+}
+
 function renderPublishBar({
   activeConfigIsPublished,
   activeConfigSnapshot,
@@ -379,8 +388,11 @@ describe('AgentConfigurePublishBar', () => {
   })
 
   it('should publish from the fixed toolbar action after affected workflow details expand', async () => {
-    const { onPublish } = renderPublishBar({
+    const publishDeferred = createDeferredPromise()
+    const onPublish = vi.fn<PublishHandler>(() => publishDeferred.promise)
+    renderPublishBar({
       activeConfigSnapshot,
+      onPublish,
       prompt: 'Updated system prompt',
       usedByAppReferences: publishedReferences,
     })
@@ -394,6 +406,23 @@ describe('AgentConfigurePublishBar', () => {
     expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
       agent_id: 'agent-1',
     }))
+    expect(screen.getByRole('region', {
+      name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
+    })).toBeInTheDocument()
+    expect(await screen.findByRole('button', {
+      name: 'agentV2.agentDetail.configure.publishBar.publishing',
+    })).toHaveAttribute('aria-busy', 'true')
+
+    await act(async () => {
+      publishDeferred.resolve()
+      await publishDeferred.promise
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByRole('region', {
+        name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
+      })).not.toBeInTheDocument()
+    })
   })
 
   it('should collapse affected workflow details from the expanded footer cancel action', async () => {
