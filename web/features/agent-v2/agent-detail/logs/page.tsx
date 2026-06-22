@@ -2,7 +2,7 @@
 
 import type { SourceFilterValue } from './components/source-picker'
 import { Pagination } from '@langgenius/dify-ui/pagination'
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -83,22 +83,25 @@ export function AgentLogsPage({
       },
     },
   }))
-  const logsQuery = useQuery(consoleQuery.agent.byAgentId.logs.get.queryOptions({
-    input: {
-      params: {
-        agent_id: agentId,
+  const logsQuery = useQuery({
+    ...consoleQuery.agent.byAgentId.logs.get.queryOptions({
+      input: {
+        params: {
+          agent_id: agentId,
+        },
+        query: {
+          ...getPeriodQuery(period),
+          page,
+          limit,
+          keyword: keyword.trim() || undefined,
+          ...(source.length > 0 ? { sources: source } : {}),
+          sort_by: sort.field,
+          sort_order: sort.order,
+        },
       },
-      query: {
-        ...getPeriodQuery(period),
-        page,
-        limit,
-        keyword: keyword.trim() || undefined,
-        ...(source.length > 0 ? { sources: source } : {}),
-        sort_by: sort.field,
-        sort_order: sort.order,
-      },
-    },
-  }))
+    }),
+    placeholderData: keepPreviousData,
+  })
   const logs = logsQuery.data?.data ?? []
   const totalPages = Math.max(Math.ceil((logsQuery.data?.total ?? 0) / limit), 1)
   const currentPage = logsQuery.data?.page ?? page

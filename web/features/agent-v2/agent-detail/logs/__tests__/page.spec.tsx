@@ -63,6 +63,37 @@ const emptyLogsResponse: AgentLogListResponse = {
   total: 0,
 }
 
+const populatedLogsResponse: AgentLogListResponse = {
+  data: [
+    {
+      conversation_id: 'conversation-1',
+      created_at: 1781660000,
+      end_user_id: 'end-user-1',
+      id: 'log-1',
+      message_count: 3,
+      operation_rate: null,
+      source: {
+        app_icon: '📙',
+        app_icon_background: '#FFF4ED',
+        app_icon_type: 'emoji',
+        app_id: 'webapp-app-id',
+        app_name: 'Book Translation',
+        id: 'webapp:webapp-app-id',
+        type: 'webapp',
+      },
+      status: 'success',
+      title: 'Previous conversation',
+      unread: false,
+      updated_at: 1781661000,
+      user_rate: null,
+    },
+  ],
+  has_more: false,
+  limit: 25,
+  page: 1,
+  total: 1,
+}
+
 const logSourcesResponse: AgentLogSourceListResponse = {
   data: [],
   groups: [
@@ -206,6 +237,34 @@ describe('AgentLogsPage', () => {
           sort_order: 'asc',
         }))
       })
+    })
+
+    it('should keep existing log rows visible while filter changes refetch', async () => {
+      const user = userEvent.setup()
+      let resolveNextLogs: (value: AgentLogListResponse) => void = () => undefined
+      const nextLogsPromise = new Promise<AgentLogListResponse>((resolve) => {
+        resolveNextLogs = resolve
+      })
+      mocks.logsQueryFn
+        .mockResolvedValueOnce(populatedLogsResponse)
+        .mockReturnValueOnce(nextLogsPromise)
+
+      renderPage()
+
+      expect(await screen.findByText('Previous conversation')).toBeInTheDocument()
+
+      await user.click(await screen.findByRole('combobox', { name: 'agentV2.agentDetail.logs.filters.source.label' }))
+      await user.click(await screen.findByRole('option', { name: /Book Translation/ }))
+
+      await waitFor(() => {
+        expect(getLatestLogsQueryInput().input.query).toEqual(expect.objectContaining({
+          sources: ['webapp:webapp-app-id'],
+        }))
+      })
+
+      expect(screen.getByText('Previous conversation')).toBeInTheDocument()
+
+      resolveNextLogs(emptyLogsResponse)
     })
   })
 })
