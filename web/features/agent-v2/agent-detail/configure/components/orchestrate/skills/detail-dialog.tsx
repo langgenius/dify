@@ -217,7 +217,7 @@ export function AgentSkillDetailDialog({
   const fileCount = detail.fileCount ?? countAgentFileNodes(detail.files)
 
   return (
-    <DialogContent className="flex h-[min(720px,calc(100dvh-2rem))] max-h-none w-[min(960px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl p-0">
+    <DialogContent backdropProps={{ forceRender: true }} backdropClassName="fixed" className="flex h-[min(720px,calc(100dvh-2rem))] max-h-none w-[min(960px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl p-0">
       <DialogCloseButton className="top-5 right-5" />
       <div className="shrink-0 border-b-[0.5px] border-components-panel-border-subtle pt-6 pr-14 pb-3 pl-6">
         <DialogTitle className="title-xl-semi-bold text-text-primary">
