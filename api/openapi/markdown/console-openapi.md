@@ -12066,6 +12066,7 @@ Default namespace
 | bound_agent_id | string |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
+| debug_conversation_id | string |  | No |
 | deleted_tools | [ [DeletedTool](#deletedtool) ] |  | No |
 | description | string |  | No |
 | enable_api | boolean |  | Yes |
@@ -12129,6 +12130,7 @@ default (the config form sends the full desired feature state on save).
 | create_user_name | string |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
+| debug_conversation_id | string |  | No |
 | description | string |  | No |
 | has_draft_trigger | boolean |  | No |
 | icon | string |  | No |
