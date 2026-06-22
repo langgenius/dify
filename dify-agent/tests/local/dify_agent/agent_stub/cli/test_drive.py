@@ -23,7 +23,7 @@ from dify_agent.agent_stub.protocol.agent_stub import (
 
 
 def test_list_drive_from_environment_returns_manifest_json_model(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
     captured: dict[str, object] = {}
 
@@ -56,7 +56,7 @@ def test_list_drive_from_environment_returns_manifest_json_model(monkeypatch: py
 
 
 def test_list_drive_from_environment_returns_human_readable_listing(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
     captured: dict[str, object] = {}
 
@@ -99,7 +99,7 @@ def test_pull_drive_from_environment_writes_files_under_drive_base(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
     captured: dict[str, object] = {}
 
@@ -146,7 +146,7 @@ def test_pull_drive_from_environment_auto_extracts_skill_archive(
         archive.writestr("nested/helper.py", "print('x')\n")
     archive_bytes = archive_buffer.getvalue()
 
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
     monkeypatch.setattr(
         "dify_agent.agent_stub.cli._drive.request_agent_stub_drive_manifest_sync",
@@ -182,7 +182,7 @@ def test_pull_drive_from_environment_rejects_traversal_keys(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
     monkeypatch.setattr(
         "dify_agent.agent_stub.cli._drive.request_agent_stub_drive_manifest_sync",
@@ -215,7 +215,7 @@ def test_pull_drive_from_environment_rejects_skill_archive_path_traversal(
         archive.writestr("../escape.txt", "escape")
     archive_bytes = archive_buffer.getvalue()
 
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
     monkeypatch.setattr(
         "dify_agent.agent_stub.cli._drive.request_agent_stub_drive_manifest_sync",
@@ -252,7 +252,7 @@ def test_pull_drive_from_environment_rejects_skill_archive_absolute_entry(
         archive.writestr("/escape.txt", "escape")
     archive_bytes = archive_buffer.getvalue()
 
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
     monkeypatch.setattr(
         "dify_agent.agent_stub.cli._drive.request_agent_stub_drive_manifest_sync",
@@ -290,7 +290,7 @@ def test_pull_drive_from_environment_rejects_skill_archive_symlink_entry(
         archive.writestr(symlink_info, "outside.txt")
     archive_bytes = archive_buffer.getvalue()
 
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
     monkeypatch.setattr(
         "dify_agent.agent_stub.cli._drive.request_agent_stub_drive_manifest_sync",
@@ -323,7 +323,7 @@ def test_pull_drive_from_environment_rejects_invalid_skill_archive(
 ) -> None:
     archive_bytes = b"not-a-zip"
 
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
     monkeypatch.setattr(
         "dify_agent.agent_stub.cli._drive.request_agent_stub_drive_manifest_sync",
@@ -354,7 +354,7 @@ def test_pull_drive_from_environment_rejects_missing_download_url(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
     monkeypatch.setattr(
         "dify_agent.agent_stub.cli._drive.request_agent_stub_drive_manifest_sync",
@@ -380,7 +380,7 @@ def test_pull_drive_from_environment_rejects_size_mismatch(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
     monkeypatch.setattr(
         "dify_agent.agent_stub.cli._drive.request_agent_stub_drive_manifest_sync",
@@ -411,7 +411,7 @@ def test_pull_drive_from_environment_requests_multiple_targets_and_deduplicates_
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
     captured_prefixes: list[str] = []
 
@@ -474,7 +474,7 @@ def test_pull_drive_from_environment_without_targets_preserves_whole_drive_pull(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
     captured_prefixes: list[str] = []
     monkeypatch.setattr(
@@ -489,7 +489,7 @@ def test_pull_drive_from_environment_without_targets_preserves_whole_drive_pull(
 def test_push_drive_from_environment_commits_single_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     source = tmp_path / "report.pdf"
     source.write_bytes(b"report")
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
     monkeypatch.setattr(
         "dify_agent.agent_stub.cli._drive.upload_tool_file_resource_from_environment",
@@ -538,7 +538,7 @@ def test_push_drive_from_environment_requires_skill_md_for_non_recursive_directo
 ) -> None:
     skill_dir = tmp_path / "skill"
     skill_dir.mkdir()
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
 
     with pytest.raises(AgentStubValidationError, match="SKILL.md"):
@@ -553,7 +553,7 @@ def test_push_drive_from_environment_standardizes_non_recursive_skill_directory(
     skill_dir.mkdir()
     (skill_dir / "SKILL.md").write_text("# Example\n", encoding="utf-8")
     (skill_dir / "helper.py").write_text("print('x')\n", encoding="utf-8")
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
 
     uploaded_paths: list[str] = []
@@ -608,7 +608,7 @@ def test_push_drive_from_environment_non_recursive_archive_excludes_transient_en
     pycache_dir = skill_dir / "__pycache__"
     pycache_dir.mkdir()
     (pycache_dir / "helper.pyc").write_bytes(b"compiled")
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
 
     archive_entries: list[str] = []
@@ -659,7 +659,7 @@ def test_push_drive_from_environment_non_recursive_rejects_symlinked_archive_ent
     outside = tmp_path / "outside.txt"
     outside.write_text("outside", encoding="utf-8")
     (skill_dir / "linked.txt").symlink_to(outside)
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
 
     with pytest.raises(AgentStubValidationError, match="symlink"):
@@ -675,7 +675,7 @@ def test_push_drive_from_environment_rejects_symlinked_recursive_files(
     outside = tmp_path / "outside.txt"
     outside.write_text("outside", encoding="utf-8")
     (root / "linked.txt").symlink_to(outside)
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
 
     with pytest.raises(AgentStubValidationError, match="symlink"):
@@ -692,7 +692,7 @@ def test_push_drive_from_environment_recursive_keeps_user_files_that_skill_packa
     node_modules_dir = root / "node_modules"
     node_modules_dir.mkdir()
     (node_modules_dir / "module.js").write_text("export default 1\n", encoding="utf-8")
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
 
     uploaded_paths: list[str] = []

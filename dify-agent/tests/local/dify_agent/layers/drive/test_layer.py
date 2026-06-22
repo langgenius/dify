@@ -45,8 +45,8 @@ def _build_layer(tmp_path: Path) -> DifyDriveLayer:
             mentioned_skill_keys=["tender-analyzer/SKILL.md"],
             mentioned_file_keys=["files/report.pdf"],
         ),
-        dify_api_inner_url="https://api.example.com",
-        dify_api_inner_api_key="secret",
+        inner_api_url="https://api.example.com",
+        inner_api_key="secret",
     )
     layer.bind_deps({"execution_context": _FakeExecutionContextLayer("tenant-1")})
     return layer

@@ -50,8 +50,8 @@ def test_layer_config_rejects_unknown_fields() -> None:
 def test_drive_layer_is_registered_and_constructible_from_config() -> None:
     layer = DifyDriveLayer.from_config_with_settings(
         DifyDriveLayerConfig(drive_ref="agent-1", skills=[], mentioned_skill_keys=[], mentioned_file_keys=[]),
-        dify_api_inner_url="https://api.example.com",
-        dify_api_inner_api_key="secret",
+        inner_api_url="https://api.example.com",
+        inner_api_key="secret",
     )
 
     assert isinstance(layer, DifyDriveLayer)
