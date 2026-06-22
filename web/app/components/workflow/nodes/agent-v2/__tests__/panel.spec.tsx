@@ -346,14 +346,17 @@ describe('agent/panel', () => {
     expect(mockUseAgentRosterDetail).toHaveBeenCalledWith(undefined)
     expect(mockUseWorkflowInlineAgentDetail).toHaveBeenCalledWith('agent-node', 'inline-agent-1')
     expect(screen.queryByText('Workflow Agent 1')).not.toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.name')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.type')).toBeInTheDocument()
+    const trigger = screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ })
+    expect(within(trigger).getByText('workflow.nodes.agent.roster.inlineSetup.name')).toBeInTheDocument()
+    expect(within(trigger).getByText('workflow.nodes.agent.roster.inlineSetup.type')).toBeInTheDocument()
+    const panel = screen.getByRole('dialog', { name: 'workflow.nodes.agent.roster.inlineSetup.name' })
+    const panelRobotIcon = panel.querySelector('.i-custom-vender-agent-v2-robot-3')
     expect(container.querySelector('.i-custom-vender-agent-v2-robot-3')).toHaveClass('size-5')
     expect(container.querySelector('.i-custom-vender-agent-v2-robot-3')?.parentElement).toHaveClass('size-8', 'rounded-full', 'bg-background-default-burn')
-    expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.title')).toBeInTheDocument()
+    expect(panelRobotIcon).toHaveClass('size-5')
+    expect(panelRobotIcon?.parentElement).toHaveClass('size-9', 'rounded-full', 'bg-background-default-burn')
+    expect(screen.queryByText('workflow.nodes.agent.roster.inlineSetup.title')).not.toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.description')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ })).toBeInTheDocument()
-    expect(screen.getByRole('dialog', { name: 'workflow.nodes.agent.roster.inlineSetup.title' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'inline-orchestrate-panel' })).toBeInTheDocument()
     expect(mockOrchestrateDrawerPanelProps.at(-1)).toMatchObject({
       agentId: 'inline-agent-1',
@@ -399,9 +402,11 @@ describe('agent/panel', () => {
       />,
     )
 
-    const panel = screen.getByRole('dialog', { name: 'Workflow Agent 1' })
+    const panel = screen.getByRole('dialog', { name: 'workflow.nodes.agent.roster.inlineSetup.name' })
     expect(panel).toBeInTheDocument()
     expect(panel.querySelector('header')).not.toHaveClass('h-[108px]')
+    expect(panel.querySelector('.i-custom-vender-agent-v2-robot-3')?.parentElement).toHaveClass('size-9', 'rounded-full', 'bg-background-default-burn')
+    expect(within(panel).queryByText('Workflow Agent 1')).not.toBeInTheDocument()
     expect(within(panel).getByText('workflow.nodes.agent.roster.inlineSetup.type')).toBeInTheDocument()
     expect(within(panel).queryByText('workflow.nodes.agent.roster.inlineSetup.title')).not.toBeInTheDocument()
     expect(within(panel).queryByText('workflow.nodes.agent.roster.inlineSetup.description')).not.toBeInTheDocument()
@@ -430,8 +435,7 @@ describe('agent/panel', () => {
 
     expect(mockUseWorkflowInlineAgentDetail).toHaveBeenCalledWith('agent-node', 'inline-agent-1')
     expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
-    expect(screen.queryByText('workflow.nodes.agent.roster.inlineSetup.name')).not.toBeInTheDocument()
-    expect(screen.getByRole('dialog', { name: 'workflow.nodes.agent.roster.inlineSetup.title' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'workflow.nodes.agent.roster.inlineSetup.name' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'inline-orchestrate-panel' })).toBeInTheDocument()
     expect(mockOrchestrateDrawerPanelProps.at(-1)).toMatchObject({
       agentId: 'inline-agent-1',
