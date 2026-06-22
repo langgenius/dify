@@ -620,6 +620,13 @@ class TestMyPermissions:
         assert out.dataset.default_permission_keys == dataset_keys
         assert out.app.overrides == []
         assert out.dataset.overrides == []
+        if role == "owner":
+            assert "billing.view" in out.workspace.permission_keys
+            assert "snippets.management" in out.workspace.permission_keys
+            assert "app.acl.preview" in out.workspace.permission_keys
+            assert "dataset.acl.preview" in out.workspace.permission_keys
+            assert "app.acl.preview" in out.app.default_permission_keys
+            assert "dataset.acl.preview" in out.dataset.default_permission_keys
 
     @pytest.mark.parametrize(
         ("role", "expected_snippet_keys"),
@@ -700,13 +707,41 @@ class TestMemberRoles:
                 }
             ],
         }
-        out = svc.RBACService.MemberRoles.get("tenant-1", "acct-1", "acct-2")
+        with patch(f"{MODULE}.dify_config.RBAC_ENABLED", True):
+            out = svc.RBACService.MemberRoles.get("tenant-1", "acct-1", "acct-2")
         call = _call_args(mock_send)
         assert call.method == "GET"
         assert call.endpoint == "/rbac/members/rbac-roles"
         assert call.params == {"account_id": "acct-2"}
         assert out.account_id == "acct-2"
         assert out.roles[0].name == "Member"
+
+    def test_get_legacy_role_includes_permission_keys(self, mock_send: MagicMock):
+        session = MagicMock()
+        session.scalar.return_value = svc.TenantAccountRole.EDITOR
+
+        with (
+            patch(f"{MODULE}.dify_config.RBAC_ENABLED", False),
+            patch(f"{MODULE}.session_factory.create_session") as create_session,
+        ):
+            create_session.return_value.__enter__.return_value = session
+            out = svc.RBACService.MemberRoles.get("tenant-1", "acct-1", "acct-2")
+
+        mock_send.assert_not_called()
+        assert out.account_id == "acct-2"
+        assert out.roles[0].name == "editor"
+        assert out.roles[0].permission_keys == list(
+            dict.fromkeys(
+                [
+                    *svc._LEGACY_WORKSPACE_EDITOR_KEYS,
+                    *svc._LEGACY_APP_EDITOR_KEYS,
+                    *svc._LEGACY_DATASET_EDITOR_KEYS,
+                ]
+            )
+        )
+        assert "snippets.create_and_modify" in out.roles[0].permission_keys
+        assert "app.acl.preview" in out.roles[0].permission_keys
+        assert "dataset.acl.preview" in out.roles[0].permission_keys
 
     def test_replace(self, mock_send: MagicMock):
         mock_send.return_value = {"account_id": "acct-2", "roles": []}
