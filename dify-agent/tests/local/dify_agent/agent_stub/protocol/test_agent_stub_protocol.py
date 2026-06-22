@@ -164,8 +164,8 @@ def test_agent_stub_drive_commit_request_validates_file_refs() -> None:
     with pytest.raises(ValidationError, match="tool_file"):
         _ = AgentStubDriveFileRef(kind="bad_kind", id="tool-file-1")  # pyright: ignore[reportArgumentType]
 
-    with pytest.raises(ValidationError, match="file_ref"):
-        _ = AgentStubDriveCommitItem.model_validate({"key": "skills/example/SKILL.md"})
+    item_without_file_ref = AgentStubDriveCommitItem.model_validate({"key": "skills/example/SKILL.md"})
+    assert item_without_file_ref.file_ref is None
 
 
 @pytest.mark.parametrize("transfer_method", ["tool_file", "local_file", "datasource_file"])
