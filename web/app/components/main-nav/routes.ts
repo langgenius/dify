@@ -10,13 +10,14 @@ export type MainNavRouteConfig = {
   icon: string
   activeIcon: string
   visibility: MainNavRouteVisibility
-  feature?: 'agentV2'
+  feature?: 'agentV2' | 'marketplace'
 }
 
 export type MainNavRouteVisibilityOptions = {
   agentV2Enabled: boolean
   canUseAppDeploy: boolean
   isCurrentWorkspaceDatasetOperator: boolean
+  marketplaceEnabled: boolean
 }
 
 function isPathUnderRoute(pathname: string, route: string) {
@@ -78,6 +79,7 @@ export const MAIN_NAV_ROUTES = [
     icon: 'i-custom-vender-main-nav-marketplace',
     activeIcon: 'i-custom-vender-main-nav-marketplace-active',
     visibility: 'all',
+    feature: 'marketplace',
   },
   {
     key: 'deployments',
@@ -92,6 +94,9 @@ export const MAIN_NAV_ROUTES = [
 
 export function isMainNavRouteVisible(route: MainNavRouteConfig, options: MainNavRouteVisibilityOptions) {
   if (route.feature === 'agentV2' && !options.agentV2Enabled)
+    return false
+
+  if (route.feature === 'marketplace' && !options.marketplaceEnabled)
     return false
 
   if (route.visibility === 'all')

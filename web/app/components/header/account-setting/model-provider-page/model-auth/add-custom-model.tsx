@@ -24,8 +24,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { hasPermission } from '@/utils/permission'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import ModelIcon from '../model-icon'
 import { useAuth } from './hooks/use-auth'
 import { useCanAddedModels } from './hooks/use-custom-models'
@@ -46,9 +45,7 @@ const AddCustomModel = ({
   const [open, setOpen] = useState(false)
   const canAddedModels = useCanAddedModels(provider)
   const noModels = !canAddedModels.length
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const canUseCredential = hasPermission(workspacePermissionKeys, ['credential.use', 'credential.manage'])
-  const canManageCredential = hasPermission(workspacePermissionKeys, 'credential.manage')
+  const { canUseCredential, canCreateCredential } = useCredentialPermissions()
   const {
     handleOpenModal: handleOpenModalForAddNewCustomModel,
   } = useAuth(
@@ -73,7 +70,9 @@ const AddCustomModel = ({
   )
   const notAllowCustomCredential = provider.allow_custom_token === false
   const renderTrigger = useCallback((open?: boolean, onClick?: () => void) => {
-    const disabled = (noModels && !canManageCredential) || (!noModels && !canUseCredential)
+    const disabled = noModels
+      ? !canCreateCredential
+      : !canUseCredential && !canCreateCredential
     const item = (
       <Button
         variant="ghost"
@@ -99,10 +98,10 @@ const AddCustomModel = ({
       )
     }
     return item
-  }, [canManageCredential, canUseCredential, t, notAllowCustomCredential, noModels])
+  }, [canCreateCredential, canUseCredential, t, notAllowCustomCredential, noModels])
 
   if (noModels) {
-    return renderTrigger(false, notAllowCustomCredential || !canManageCredential ? undefined : handleOpenModalForAddNewCustomModel)
+    return renderTrigger(false, notAllowCustomCredential || !canCreateCredential ? undefined : handleOpenModalForAddNewCustomModel)
   }
 
   return (
@@ -125,7 +124,11 @@ const AddCustomModel = ({
               canAddedModels.map(model => (
                 <div
                   key={model.model}
-                  className="flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
+                  className={cn(
+                    'flex h-8 items-center rounded-lg px-2',
+                    canUseCredential ? 'cursor-pointer hover:bg-state-base-hover' : 'cursor-not-allowed opacity-50',
+                  )}
+                  aria-disabled={!canUseCredential}
                   onClick={() => {
                     if (!canUseCredential)
                       return
@@ -151,7 +154,7 @@ const AddCustomModel = ({
             }
           </div>
           {
-            !notAllowCustomCredential && canManageCredential && (
+            !notAllowCustomCredential && canCreateCredential && (
               <div
                 className="flex cursor-pointer items-center border-t border-t-divider-subtle p-3 system-xs-medium text-text-accent-light-mode-only"
                 onClick={() => {
