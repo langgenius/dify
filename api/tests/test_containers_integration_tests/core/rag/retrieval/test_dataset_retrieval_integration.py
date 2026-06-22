@@ -298,7 +298,9 @@ class TestGetAvailableDatasetsIntegration:
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account1, name=fake.company(), session=db_session_with_containers)
+        TenantService.create_owner_tenant_if_not_exist(
+            account1, name=fake.company(), session=db_session_with_containers
+        )
         tenant1 = account1.current_tenant
 
         account2 = AccountService.create_account(
@@ -308,7 +310,9 @@ class TestGetAvailableDatasetsIntegration:
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account2, name=fake.company(), session=db_session_with_containers)
+        TenantService.create_owner_tenant_if_not_exist(
+            account2, name=fake.company(), session=db_session_with_containers
+        )
         tenant2 = account2.current_tenant
 
         # Create dataset for tenant1

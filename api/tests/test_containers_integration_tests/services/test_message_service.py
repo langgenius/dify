@@ -651,7 +651,9 @@ class TestMessageService:
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(other_account, name=fake.company(), session=db_session_with_containers)
+        TenantService.create_owner_tenant_if_not_exist(
+            other_account, name=fake.company(), session=db_session_with_containers
+        )
 
         # Test getting message with different user
         with pytest.raises(MessageNotExistsError):

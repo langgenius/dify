@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.entities.entities import Subscription as TriggerSubscriptionEntity
-from extensions.ext_database import db
 from models.account import Account, Tenant
 from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription
@@ -55,7 +54,8 @@ class TestTriggerProviderService:
 
     def _create_test_account_and_tenant(
         self,
-        mock_external_service_dependencies: MockExternalServiceDependencies,db_session_with_containers: Session,
+        mock_external_service_dependencies: MockExternalServiceDependencies,
+        db_session_with_containers: Session,
     ) -> tuple[Account, Tenant]:
         """
         Helper method to create a test account and tenant for testing.

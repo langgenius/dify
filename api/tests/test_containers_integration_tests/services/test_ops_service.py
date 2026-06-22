@@ -9,7 +9,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.ops.entities.config_entity import TracingProviderEnum
-from extensions.ext_database import db
 from models.model import TraceAppConfig
 from services.account_service import AccountService, TenantService
 from services.app_service import AppService, CreateAppParams

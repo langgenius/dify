@@ -576,7 +576,9 @@ class TestAppService:
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(first_account, name=fake.company(), session=db_session_with_containers)
+        TenantService.create_owner_tenant_if_not_exist(
+            first_account, name=fake.company(), session=db_session_with_containers
+        )
         tenant = first_account.current_tenant
         second_account = AccountService.create_account(
             email=fake.email(),

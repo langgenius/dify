@@ -491,7 +491,9 @@ class TestLogoutApi:
 
     @patch("controllers.console.auth.login.AccountService.logout")
     @patch("controllers.console.auth.login.flask_login.logout_user")
-    def test_successful_logout(self, mock_logout_user: MagicMock, mock_service_logout: MagicMock, app: Flask, mock_account):
+    def test_successful_logout(
+        self, mock_logout_user: MagicMock, mock_service_logout: MagicMock, app: Flask, mock_account
+    ):
         """
         Test successful logout flow.
 

@@ -1,8 +1,7 @@
 from __future__ import annotations
-from typing import Generator
 
 import uuid
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from typing import Literal
 from unittest.mock import patch
@@ -13,7 +12,6 @@ from flask import Flask
 from sqlalchemy.orm import Session
 
 from controllers.openapi.auth.data import AuthData
-from extensions.ext_database import db
 from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType, reset_auth_ctx, set_auth_ctx
 from models import Account, Tenant
 from services.account_service import AccountService, TenantService
@@ -50,13 +48,17 @@ def make_account(db_session_with_containers: Session) -> Callable[..., Account]:
                 session=db_session_with_containers,
             )
             if with_owner_tenant:
-                TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+                TenantService.create_owner_tenant_if_not_exist(
+                    account, name=fake.company(), session=db_session_with_containers
+                )
         return account
 
     return _make
 
 
-def add_tenant_for_account(account: Account, *, session: Session, role: str = "normal", name: str = "Second WS") -> Tenant:
+def add_tenant_for_account(
+    account: Account, *, session: Session, role: str = "normal", name: str = "Second WS"
+) -> Tenant:
     """Create an additional tenant and join ``account`` to it (real service calls)."""
     with patch("services.account_service.FeatureService") as mock_feature_service:
         mock_feature_service.get_system_features.return_value.is_allow_create_workspace = True

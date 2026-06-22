@@ -147,7 +147,9 @@ class TestAppDslService:
                 password=generate_valid_password(fake),
                 session=db_session_with_containers,
             )
-            TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+            TenantService.create_owner_tenant_if_not_exist(
+                account, name=fake.company(), session=db_session_with_containers
+            )
             tenant = account.current_tenant
             app_args = CreateAppParams(
                 name=fake.company(),

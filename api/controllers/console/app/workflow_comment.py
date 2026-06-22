@@ -3,7 +3,7 @@ from datetime import datetime
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter, computed_field, field_validator
-from extensions.ext_database import db
+
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
@@ -17,6 +17,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.member_fields import AccountWithRole
 from libs.helper import build_avatar_url, dump_response, to_timestamp

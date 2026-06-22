@@ -358,7 +358,9 @@ class TestAccountService:
         )
 
         with pytest.raises(CurrentPasswordIncorrectError):
-            AccountService.update_account_password(account, wrong_password, new_password, session=db_session_with_containers)
+            AccountService.update_account_password(
+                account, wrong_password, new_password, session=db_session_with_containers
+            )
 
     def test_update_account_password_invalid_new_password(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -498,7 +500,9 @@ class TestAccountService:
         )
 
         # Link with new provider
-        AccountService.link_account_integrate("new-google", "google_open_id_123", account, session=db_session_with_containers)
+        AccountService.link_account_integrate(
+            "new-google", "google_open_id_123", account, session=db_session_with_containers
+        )
 
         # Verify integration was created
         from models import AccountIntegrate
@@ -534,10 +538,14 @@ class TestAccountService:
         )
 
         # Link with provider first time
-        AccountService.link_account_integrate("exists-google", "google_open_id_123", account, session=db_session_with_containers)
+        AccountService.link_account_integrate(
+            "exists-google", "google_open_id_123", account, session=db_session_with_containers
+        )
 
         # Link with same provider but different open_id (should update)
-        AccountService.link_account_integrate("exists-google", "google_open_id_456", account, session=db_session_with_containers)
+        AccountService.link_account_integrate(
+            "exists-google", "google_open_id_456", account, session=db_session_with_containers
+        )
 
         # Verify integration was updated
         from models import AccountIntegrate
@@ -801,7 +809,9 @@ class TestAccountService:
         initial_token_pair = AccountService.login(account, session=db_session_with_containers)
 
         # Refresh token
-        new_token_pair = AccountService.refresh_token(initial_token_pair.refresh_token, session=db_session_with_containers)
+        new_token_pair = AccountService.refresh_token(
+            initial_token_pair.refresh_token, session=db_session_with_containers
+        )
 
         assert isinstance(new_token_pair, TokenPair)
         assert new_token_pair.access_token == "new_mock_access_token"
@@ -985,7 +995,9 @@ class TestAccountService:
         )
 
         # Load logged in account
-        loaded_account = AccountService.load_logged_in_account(account_id=account.id, session=db_session_with_containers)
+        loaded_account = AccountService.load_logged_in_account(
+            account_id=account.id, session=db_session_with_containers
+        )
 
         assert loaded_account is not None
         assert loaded_account.id == account.id
@@ -1758,7 +1770,9 @@ class TestTenantService:
         TenantService.create_tenant_member(tenant, member_account, db_session_with_containers, role="normal")
 
         # Check owner permission to add member (should succeed)
-        TenantService.check_member_permission(tenant, owner_account, member_account, "add", session=db_session_with_containers)
+        TenantService.check_member_permission(
+            tenant, owner_account, member_account, "add", session=db_session_with_containers
+        )
 
     def test_check_member_permission_invalid_action(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -1792,7 +1806,9 @@ class TestTenantService:
 
         # Try to check permission with invalid action
         with pytest.raises(Exception, match="Invalid action"):
-            TenantService.check_member_permission(tenant, account, None, invalid_action, session=db_session_with_containers)
+            TenantService.check_member_permission(
+                tenant, account, None, invalid_action, session=db_session_with_containers
+            )
 
     def test_check_member_permission_operate_self(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -1825,7 +1841,9 @@ class TestTenantService:
 
         # Try to check permission to operate self
         with pytest.raises(Exception, match="Cannot operate self"):
-            TenantService.check_member_permission(tenant, account, account, "remove", session=db_session_with_containers)
+            TenantService.check_member_permission(
+                tenant, account, account, "remove", session=db_session_with_containers
+            )
 
     def test_remove_member_from_tenant_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -1895,7 +1913,9 @@ class TestTenantService:
         ):
             mock_sync.return_value = True
 
-            TenantService.remove_member_from_tenant(tenant, member_account, owner_account, session=db_session_with_containers)
+            TenantService.remove_member_from_tenant(
+                tenant, member_account, owner_account, session=db_session_with_containers
+            )
 
             # Verify sync was called
             mock_sync.assert_called_once_with(
@@ -1992,7 +2012,9 @@ class TestTenantService:
 
         # Try to remove non-member
         with pytest.raises(Exception, match="Member not in tenant"):
-            TenantService.remove_member_from_tenant(tenant, non_member_account, owner_account, session=db_session_with_containers)
+            TenantService.remove_member_from_tenant(
+                tenant, non_member_account, owner_account, session=db_session_with_containers
+            )
 
     def test_update_member_role_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
@@ -2033,7 +2055,9 @@ class TestTenantService:
         TenantService.create_tenant_member(tenant, member_account, db_session_with_containers, role="normal")
 
         # Update member role
-        TenantService.update_member_role(tenant, member_account, "admin", owner_account, session=db_session_with_containers)
+        TenantService.update_member_role(
+            tenant, member_account, "admin", owner_account, session=db_session_with_containers
+        )
 
         # Verify role was updated
         from models.account import TenantAccountJoin
@@ -2084,7 +2108,9 @@ class TestTenantService:
         TenantService.create_tenant_member(tenant, member_account, db_session_with_containers, role="admin")
 
         # Update member role to owner
-        TenantService.update_member_role(tenant, member_account, "owner", owner_account, session=db_session_with_containers)
+        TenantService.update_member_role(
+            tenant, member_account, "owner", owner_account, session=db_session_with_containers
+        )
 
         # Verify roles were updated correctly
         from models.account import TenantAccountJoin
@@ -2144,7 +2170,9 @@ class TestTenantService:
 
         # Try to update member role to already assigned role
         with pytest.raises(Exception, match="The provided role is already assigned to the member"):
-            TenantService.update_member_role(tenant, member_account, "admin", owner_account, session=db_session_with_containers)
+            TenantService.update_member_role(
+                tenant, member_account, "admin", owner_account, session=db_session_with_containers
+            )
 
     def test_get_tenant_count_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
@@ -2245,7 +2273,9 @@ class TestTenantService:
         db_session_with_containers.commit()
 
         # Try to create owner tenant again (should not create new one)
-        TenantService.create_owner_tenant_if_not_exist(account, name=new_workspace_name, session=db_session_with_containers)
+        TenantService.create_owner_tenant_if_not_exist(
+            account, name=new_workspace_name, session=db_session_with_containers
+        )
 
         # Verify no new tenant was created
         tenant_joins = db_session_with_containers.query(TenantAccountJoin).filter_by(account_id=account.id).all()
@@ -2279,7 +2309,9 @@ class TestTenantService:
 
         # Try to create owner tenant (should fail)
         with pytest.raises(WorkSpaceNotAllowedCreateError):  # WorkSpaceNotAllowedCreateError exception
-            TenantService.create_owner_tenant_if_not_exist(account, name=workspace_name, session=db_session_with_containers)
+            TenantService.create_owner_tenant_if_not_exist(
+                account, name=workspace_name, session=db_session_with_containers
+            )
 
     def test_get_tenant_members_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
@@ -2945,7 +2977,9 @@ class TestRegisterService:
         )
         assert tenant_join is None
 
-        invitation = RegisterService.get_invitation_if_token_valid(None, None, token, session=db_session_with_containers)
+        invitation = RegisterService.get_invitation_if_token_valid(
+            None, None, token, session=db_session_with_containers
+        )
         assert invitation is not None
         assert invitation["account"].id == existing_account.id
         assert invitation["data"]["role"] == "admin"
