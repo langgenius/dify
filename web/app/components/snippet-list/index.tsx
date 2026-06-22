@@ -1,5 +1,6 @@
 'use client'
 
+import type { SnippetPublishStatus } from './components/snippet-publish-status-filter'
 import type { SnippetListItem } from '@/types/snippet'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
@@ -18,6 +19,7 @@ import { StudioListHeader } from '../apps/studio-list-header'
 import { canAccessSnippets } from '../snippets/utils/permission'
 import SnippetCard from './components/snippet-card'
 import SnippetCreateButton from './components/snippet-create-button'
+import SnippetPublishStatusFilter from './components/snippet-publish-status-filter'
 import { SNIPPET_LIST_SEARCH_DEBOUNCE_MS } from './constants'
 import { useSnippetsQueryState } from './hooks/use-snippets-query-state'
 
@@ -26,6 +28,14 @@ const TagManagementModal = dynamic(() => import('@/features/tag-management/compo
 })
 
 const SNIPPET_CARD_SKELETON_KEYS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth']
+
+const toSnippetPublishedQuery = (publishStatus: SnippetPublishStatus) => {
+  if (publishStatus === 'published')
+    return true
+  if (publishStatus === 'draft')
+    return false
+  return undefined
+}
 
 type SnippetCardSkeletonProps = {
   count: number
@@ -59,16 +69,22 @@ const SnippetList = () => {
   const containerRef = useRef<HTMLDivElement>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
+  const [publishStatus, setPublishStatus] = useState<SnippetPublishStatus>('all')
 
   useDocumentTitle(t('tabs.snippets', { ns: 'workflow' }))
 
-  const snippetListQuery = useMemo(() => ({
-    page: 1,
-    limit: 30,
-    keyword: debouncedKeywords,
-    ...(tagIDs.length ? { tag_ids: tagIDs } : {}),
-    ...(creatorIDs.length ? { creator_ids: creatorIDs } : {}),
-  }), [creatorIDs, debouncedKeywords, tagIDs])
+  const snippetListQuery = useMemo(() => {
+    const isPublished = toSnippetPublishedQuery(publishStatus)
+
+    return {
+      page: 1,
+      limit: 30,
+      keyword: debouncedKeywords,
+      ...(tagIDs.length ? { tag_ids: tagIDs } : {}),
+      ...(creatorIDs.length ? { creator_ids: creatorIDs } : {}),
+      ...(typeof isPublished === 'boolean' ? { is_published: isPublished } : {}),
+    }
+  }, [creatorIDs, debouncedKeywords, publishStatus, tagIDs])
   const canQuerySnippetList = canAccessSnippets(workspacePermissionKeys)
 
   const {
@@ -143,6 +159,10 @@ const SnippetList = () => {
             <CreatorsFilter
               value={creatorIDs}
               onChange={setCreatorIDs}
+            />
+            <SnippetPublishStatusFilter
+              value={publishStatus}
+              onChange={setPublishStatus}
             />
             <TagFilter type="snippet" value={tagIDs} onChange={setTagIDs} onOpenTagManagement={() => setShowTagManagementModal(true)} />
             <div className="relative w-50">
