@@ -1878,7 +1878,14 @@ class RegisterService:
 
     @classmethod
     def setup(
-        cls, email: str, name: str, password: str, ip_address: str, language: str | None, *, session: scoped_session | Session
+        cls,
+        email: str,
+        name: str,
+        password: str,
+        ip_address: str,
+        language: str | None,
+        *,
+        session: scoped_session | Session,
     ):
         """
         Setup dify
