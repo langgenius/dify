@@ -447,6 +447,7 @@ class AccountPasswordApi(Resource):
         args = AccountPasswordPayload.model_validate(payload)
 
         try:
+            assert args.password is not None
             AccountService.update_account_password(current_user, args.password, args.new_password, session=db.session)
         except ServiceCurrentPasswordIncorrectError:
             raise CurrentPasswordIncorrectError()
