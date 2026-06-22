@@ -198,7 +198,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       if (file && file.progress < 80 && file.progress >= 0)
         handleUpdateFile({ ...file, progress: file.progress + 20 })
       else
-        clearTimeout(timer)
+        clearInterval(timer)
     }, 200)
   }, [fileStore, handleUpdateFile])
   const handleLoadFileFromLink = useCallback((url: string) => {
