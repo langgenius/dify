@@ -135,9 +135,7 @@ class TestResolveAppAccessFilter:
         assert flt.accessible_app_ids == {"app-1"}
 
     def test_whitelist_union_with_override_apps(self, monkeypatch: pytest.MonkeyPatch):
-        self._patch_whitelist(
-            monkeypatch, ResourceWhitelistResources(unrestricted=False, resource_ids=["app-5"])
-        )
+        self._patch_whitelist(monkeypatch, ResourceWhitelistResources(unrestricted=False, resource_ids=["app-5"]))
         permissions = _permissions(
             app_overrides=[ResourcePermissionKeys(resource_id="app-1", permission_keys=["app.acl.preview"])],
         )

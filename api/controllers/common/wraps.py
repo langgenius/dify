@@ -39,7 +39,6 @@ if TYPE_CHECKING:
 __all__ = ["RBACPermission", "RBACResourceScope", "rbac_permission_required"]
 
 
-
 def openapi_rbac_permission_required[**P, R](
     resource_type: RBACResourceScope,
     scene: RBACPermission,
@@ -54,9 +53,9 @@ def openapi_rbac_permission_required[**P, R](
 
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
-            auth_data: "AuthData | None" = kwargs.get("auth_data")
+            auth_data: AuthData | None = kwargs.get("auth_data")
             if not auth_data:
-                raise Forbidden() # openapi auth pipeline is required
+                raise Forbidden()  # openapi auth pipeline is required
             if auth_data.caller_kind == "end_user":
                 # end_user is handled by openapi scope control
                 return view(*args, **kwargs)
@@ -65,6 +64,7 @@ def openapi_rbac_permission_required[**P, R](
         return decorated
 
     return decorator
+
 
 def rbac_permission_required[**P, R](
     resource_type: RBACResourceScope,
