@@ -355,7 +355,7 @@ export function PaginationPageJump({
     return (
       <span
         data-page-summary={`${pagination.page}/${pagination.totalPages}`}
-        className="inline-grid h-7 system-xs-medium tabular-nums after:invisible after:col-start-1 after:row-start-1 after:py-1.5 after:pr-3 after:pl-2 after:content-[attr(data-page-summary)]"
+        className="inline-grid h-7 system-xs-medium tabular-nums after:invisible after:col-start-1 after:row-start-1 after:py-1.5 after:pe-3 after:ps-2 after:content-[attr(data-page-summary)]"
       >
         <NumberField
           key={pagination.page}

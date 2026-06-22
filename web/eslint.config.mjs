@@ -197,7 +197,7 @@ export default antfu(
         'error',
         {
           name: 'localStorage',
-          message: 'Do not use localStorage directly. Use foxact/use-local-storage instead.',
+          message: 'Do not use localStorage directly. Use a foxact storage boundary instead; prefer feature-owned createLocalStorageState for shared storage.',
         },
       ],
       'no-restricted-properties': [
@@ -205,19 +205,19 @@ export default antfu(
         {
           object: 'window',
           property: 'localStorage',
-          message: 'Do not use window.localStorage directly. Use foxact/use-local-storage instead.',
+          message: 'Do not use window.localStorage directly. Use a foxact storage boundary instead; prefer feature-owned createLocalStorageState for shared storage.',
         },
         {
           object: 'globalThis',
           property: 'localStorage',
-          message: 'Do not use globalThis.localStorage directly. Use foxact/use-local-storage instead.',
+          message: 'Do not use globalThis.localStorage directly. Use a foxact storage boundary instead; prefer feature-owned createLocalStorageState for shared storage.',
         },
       ],
       'no-restricted-syntax': [
         'error',
         {
           selector: 'ImportDeclaration[source.value="ahooks"] ImportSpecifier[imported.name="useLocalStorageState"]',
-          message: 'Do not use ahooks useLocalStorageState. Use foxact/use-local-storage instead.',
+          message: 'Do not use ahooks useLocalStorageState. Use foxact storage hooks instead.',
         },
       ],
     },

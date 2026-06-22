@@ -516,6 +516,7 @@
   "modelProvider.ttsModel.key": "Metinden Konuşmaya Modeli",
   "modelProvider.ttsModel.tip": "Konuşmada metinden konuşmaya giriş için varsayılan modeli ayarlayın.",
   "modelProvider.upgradeForLoadBalancing": "Yük Dengelemeyi etkinleştirmek için planınızı yükseltin.",
+  "navigation.skipToMain": "Ana içeriğe geç",
   "noData": "Veri yok",
   "operation.add": "Ekle",
   "operation.added": "Eklendi",

@@ -366,7 +366,7 @@ export const AppSidebar: Story = {
                     ))}
                   </VerticalContent>
                 </ScrollAreaViewport>
-                <ScrollAreaScrollbar className="data-[orientation=vertical]:my-2 data-[orientation=vertical]:me-1">
+                <ScrollAreaScrollbar>
                   <ScrollAreaThumb />
                 </ScrollAreaScrollbar>
               </ScrollAreaRoot>

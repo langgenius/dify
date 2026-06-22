@@ -238,14 +238,6 @@ vi.mock('@/service/use-apps', () => ({
   }),
 }))
 
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    NEED_REFRESH_APP_LIST_KEY: 'needRefreshAppList',
-  }
-})
-
 vi.mock('@/hooks/use-pay', () => ({
   CheckModal: () => null,
 }))

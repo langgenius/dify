@@ -6,7 +6,6 @@ import type { Plugin } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
 import { cn } from '@langgenius/dify-ui/cn'
 import { createPreviewCardHandle, PreviewCard, PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
-import { useLocalStorage } from 'foxact/use-local-storage'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -15,6 +14,7 @@ import useWorkspacePluginInstallPermission from '@/app/components/plugins/instal
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import Action from '@/app/components/workflow/block-selector/market-place-plugin/action'
+import { useFeaturedTriggersCollapsed } from '@/app/components/workflow/block-selector/storage'
 import { useGetLanguage } from '@/context/i18n'
 import Link from '@/next/link'
 import { formatNumber } from '@/utils/format'
@@ -41,8 +41,6 @@ type FeaturedTriggerPreviewPayload = {
   description: string
 }
 
-const STORAGE_KEY = 'workflow_triggers_featured_collapsed'
-
 const FeaturedTriggers = ({
   plugins,
   providerMap,
@@ -56,7 +54,7 @@ const FeaturedTriggers = ({
   const triggerActionPreviewCardHandle = useMemo(() => createPreviewCardHandle<TriggerPluginActionPreviewPayload>(), [])
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT)
   const [visibleCountPlugins, setVisibleCountPlugins] = useState(plugins)
-  const [isCollapsed, setIsCollapsed] = useLocalStorage<boolean>(STORAGE_KEY, false)
+  const [isCollapsed, setIsCollapsed] = useFeaturedTriggersCollapsed()
 
   if (visibleCountPlugins !== plugins) {
     setVisibleCountPlugins(plugins)

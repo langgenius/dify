@@ -1778,7 +1778,7 @@ class DocumentService:
             invalid_source_message="Document does not have an uploaded file to download.",
             missing_file_message="Uploaded file not found.",
         )
-        upload_files_by_id = FileService.get_upload_files_by_ids(document.tenant_id, [upload_file_id])
+        upload_files_by_id = FileService.get_upload_files_by_ids(db.session(), document.tenant_id, [upload_file_id])
         upload_file = upload_files_by_id.get(upload_file_id)
         if not upload_file:
             raise NotFound("Uploaded file not found.")
@@ -1817,7 +1817,7 @@ class DocumentService:
             upload_file_ids.append(upload_file_id)
             upload_file_ids_by_document_id[document_id] = upload_file_id
 
-        upload_files_by_id = FileService.get_upload_files_by_ids(tenant_id, upload_file_ids)
+        upload_files_by_id = FileService.get_upload_files_by_ids(db.session(), tenant_id, upload_file_ids)
         missing_upload_file_ids: set[str] = set(upload_file_ids) - set(upload_files_by_id.keys())
         if missing_upload_file_ids:
             raise NotFound("Only uploaded-file documents can be downloaded as ZIP.")

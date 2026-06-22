@@ -4,10 +4,9 @@ import type { AppListQuery, AppListSortBy } from '@/contract/console/apps'
 import { cn } from '@langgenius/dify-ui/cn'
 import { keepPreviousData, useInfiniteQuery, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
-import { useLocalStorage } from 'foxact/use-local-storage'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { useNeedRefreshAppList } from '@/app/components/apps/storage'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -63,7 +62,7 @@ function List({
   const [showNewAppModal, setShowNewAppModal] = useState(false)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   const [droppedDSLFile, setDroppedDSLFile] = useState<File | undefined>()
-  const [needsRefreshAppList, setNeedsRefreshAppList] = useLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, '0', { raw: true })
+  const [needsRefreshAppList, setNeedsRefreshAppList] = useNeedRefreshAppList()
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
 
   const handleDSLFileDropped = useCallback((file: File) => {

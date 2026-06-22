@@ -64,7 +64,9 @@ class TestCacheEmbeddingMultimodalDocuments:
             usage=usage,
         )
 
-    def test_embed_single_multimodal_document_cache_miss(self, mock_model_instance, sample_multimodal_result):
+    def test_embed_single_multimodal_document_cache_miss(
+        self, mock_model_instance, sample_multimodal_result: EmbeddingResult
+    ):
         """Test embedding a single multimodal document when cache is empty."""
         cache_embedding = CacheEmbedding(mock_model_instance)
         documents = [{"file_id": "file123", "content": "test content"}]

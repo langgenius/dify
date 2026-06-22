@@ -7,6 +7,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
 
 from constants import HIDDEN_VALUE
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
 from libs.login import login_required
@@ -126,7 +127,7 @@ class APIBasedExtensionAPI(Resource):
     def get(self, current_tenant_id: str):
         return [
             _serialize_api_based_extension(extension)
-            for extension in APIBasedExtensionService.get_all_by_tenant_id(current_tenant_id)
+            for extension in APIBasedExtensionService.get_all_by_tenant_id(db.session(), current_tenant_id)
         ]
 
     @console_ns.doc("create_api_based_extension")
@@ -147,7 +148,12 @@ class APIBasedExtensionAPI(Resource):
             api_key=payload.api_key,
         )
 
-        return _serialize_saved_api_based_extension(APIBasedExtensionService.save(extension_data), payload.api_key), 201
+        return (
+            _serialize_saved_api_based_extension(
+                APIBasedExtensionService.save(db.session(), extension_data), payload.api_key
+            ),
+            201,
+        )
 
 
 @console_ns.route("/api-based-extension/<uuid:id>")
@@ -164,7 +170,7 @@ class APIBasedExtensionDetailAPI(Resource):
         api_based_extension_id = str(id)
 
         return _serialize_api_based_extension(
-            APIBasedExtensionService.get_with_tenant_id(current_tenant_id, api_based_extension_id)
+            APIBasedExtensionService.get_with_tenant_id(db.session(), current_tenant_id, api_based_extension_id)
         )
 
     @console_ns.doc("update_api_based_extension")
@@ -179,7 +185,9 @@ class APIBasedExtensionDetailAPI(Resource):
     def post(self, current_tenant_id: str, id: UUID):
         api_based_extension_id = str(id)
 
-        extension_data_from_db = APIBasedExtensionService.get_with_tenant_id(current_tenant_id, api_based_extension_id)
+        extension_data_from_db = APIBasedExtensionService.get_with_tenant_id(
+            db.session(), current_tenant_id, api_based_extension_id
+        )
 
         payload = APIBasedExtensionPayload.model_validate(console_ns.payload or {})
         api_key_for_response = extension_data_from_db.api_key
@@ -192,7 +200,7 @@ class APIBasedExtensionDetailAPI(Resource):
             api_key_for_response = payload.api_key
 
         return _serialize_saved_api_based_extension(
-            APIBasedExtensionService.save(extension_data_from_db),
+            APIBasedExtensionService.save(db.session(), extension_data_from_db),
             api_key_for_response,
         )
 
@@ -207,8 +215,10 @@ class APIBasedExtensionDetailAPI(Resource):
     def delete(self, current_tenant_id: str, id: UUID):
         api_based_extension_id = str(id)
 
-        extension_data_from_db = APIBasedExtensionService.get_with_tenant_id(current_tenant_id, api_based_extension_id)
+        extension_data_from_db = APIBasedExtensionService.get_with_tenant_id(
+            db.session(), current_tenant_id, api_based_extension_id
+        )
 
-        APIBasedExtensionService.delete(extension_data_from_db)
+        APIBasedExtensionService.delete(db.session(), extension_data_from_db)
 
         return "", 204
