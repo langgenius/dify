@@ -16,7 +16,7 @@ APP MODES
                          JSON object via --inputs.
   agent-chat             Conversational with autonomous tool use.
 
-HITL PAUSE (exit code 2)
+HITL PAUSE (exit code 0 — success-with-pending)
   When a workflow pauses for human input, stdout receives a JSON object
   with status "paused", form_token, workflow_run_id, and resolved_default_values.
   Resume with:
