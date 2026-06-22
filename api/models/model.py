@@ -774,7 +774,7 @@ class AppModelConfig(TypeBase):
 
     @property
     def annotation_reply_dict(self) -> AnnotationReplyConfig:
-        return load_annotation_reply_config(db.session, self.app_id)
+        return load_annotation_reply_config(db.session(), self.app_id)
 
     @property
     def more_like_this_dict(self) -> EnabledConfig:
