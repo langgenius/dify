@@ -14,7 +14,9 @@ type QueryResult = {
 type QueryOptions = {
   enabled?: boolean
   input?: unknown
+  queryFn?: () => unknown
   queryKey?: readonly unknown[]
+  retry?: boolean
 }
 
 type MutationResult = {
@@ -42,7 +44,9 @@ vi.mock('jotai-tanstack-query', async (importOriginal) => {
       const options = createOptions(get)
       const queryKey = Array.isArray(options.queryKey) ? options.queryKey[0] : undefined
       const queryName = typeof queryKey === 'string' ? queryKey : 'unknown'
-      const queryResult = mockQueryResults.current.get(queryName)
+      const queryResult = options.enabled === false
+        ? undefined
+        : mockQueryResults.current.get(queryName)
 
       return {
         ...options,
@@ -172,6 +176,14 @@ function setPrecheckReleaseResult(overrides: {
   })
 }
 
+function setDslFileContentResult(overrides: QueryResult = {}) {
+  mockQueryResults.current.set('createReleaseDslFileContent', {
+    data: workflowDsl(),
+    isSuccess: true,
+    ...overrides,
+  })
+}
+
 describe('create release state', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -241,7 +253,8 @@ describe('create release state', () => {
     const { state, store, unsubscribe } = await mountedStore()
     const file = new File([workflowDsl()], 'workflow.yml', { type: 'text/yaml' })
 
-    await store.set(state.updateCreateReleaseDslFileAtom, file)
+    store.set(state.updateCreateReleaseDslFileAtom, file)
+    setDslFileContentResult()
 
     expect(store.get(state.createReleaseDslFileFieldAtom).value).toBe(file)
     expect(store.get(state.createReleaseDslContentAtom)).toBe(workflowDsl())
@@ -257,7 +270,8 @@ describe('create release state', () => {
     const { state, store, unsubscribe } = await mountedStore()
     const file = new File([workflowDsl()], 'workflow.yml', { type: 'text/yaml' })
 
-    await store.set(state.updateCreateReleaseDslFileAtom, file)
+    store.set(state.updateCreateReleaseDslFileAtom, file)
+    setDslFileContentResult()
     store.set(state.selectCreateReleaseSourceModeAtom, 'sourceApp')
 
     expect(store.get(state.createReleaseSourceModeFieldAtom).value).toBe('sourceApp')
@@ -275,13 +289,13 @@ describe('create release state', () => {
   it('should capture DSL file read failures and clear them when opening or closing the dialog', async () => {
     const { state, store, unsubscribe } = await mountedStore()
     const file = new File(['broken'], 'broken.yml', { type: 'text/yaml' })
-    const readError = new Error('read failed')
-    Object.defineProperty(file, 'text', {
-      configurable: true,
-      value: vi.fn().mockRejectedValue(readError),
-    })
 
-    await store.set(state.updateCreateReleaseDslFileAtom, file)
+    store.set(state.updateCreateReleaseDslFileAtom, file)
+    setDslFileContentResult({
+      data: undefined,
+      isError: true,
+      isSuccess: false,
+    })
 
     expect(store.get(state.createReleaseDslReadErrorAtom)).toBe(true)
 

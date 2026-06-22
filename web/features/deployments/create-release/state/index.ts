@@ -106,11 +106,7 @@ export const createReleaseDescriptionFieldAtom = createReleaseFormAtoms.fieldAto
 // Dialog and source primitives
 export const createReleaseAppInstanceIdAtom = atom<string | undefined>(undefined)
 export const createReleaseDialogOpenAtom = atom(false)
-
-export const createReleaseDslContentAtom = atom('')
-export const createReleaseDslReadErrorAtom = atom(false)
-export const isReadingCreateReleaseDslAtom = atom(false)
-const createReleaseDslReadTokenAtom = atom(0)
+const createReleaseDslFileReadVersionAtom = atom(0)
 
 function requiredAppInstanceId(get: Getter) {
   const appInstanceId = get(createReleaseAppInstanceIdAtom)
@@ -161,6 +157,25 @@ function defaultSourceApp(get: Getter) {
   return workflowSourceAppPickerValue(get(defaultSourceAppQueryAtom).data, latestSourceAppId)
 }
 
+const createReleaseDslFileContentQueryAtom = atomWithQuery((get) => {
+  const file = get(createReleaseDslFileFieldAtom).value
+  const fileReadVersion = get(createReleaseDslFileReadVersionAtom)
+
+  return {
+    queryKey: [
+      'createReleaseDslFileContent',
+      fileReadVersion,
+      file,
+      file?.name ?? '',
+      file?.size ?? 0,
+      file?.lastModified ?? 0,
+    ],
+    queryFn: async () => file ? await file.text() : '',
+    enabled: Boolean(file),
+    retry: false,
+  }
+})
+
 // Source derived state
 function effectiveCreateReleaseSourceMode(get: Getter) {
   return deploymentReleaseSourceMode(get(createReleaseSourceModeFieldAtom).value)
@@ -168,6 +183,21 @@ function effectiveCreateReleaseSourceMode(get: Getter) {
 
 export const createReleaseSourceModeAtom = atom((get) => {
   return effectiveCreateReleaseSourceMode(get)
+})
+
+export const createReleaseDslContentAtom = atom((get) => {
+  return get(createReleaseDslFileContentQueryAtom).data ?? ''
+})
+
+export const createReleaseDslReadErrorAtom = atom((get) => {
+  return Boolean(get(createReleaseDslFileFieldAtom).value && get(createReleaseDslFileContentQueryAtom).isError)
+})
+
+export const isReadingCreateReleaseDslAtom = atom((get) => {
+  const file = get(createReleaseDslFileFieldAtom).value
+  const dslFileContentQuery = get(createReleaseDslFileContentQueryAtom)
+
+  return Boolean(file && (dslFileContentQuery.isLoading || dslFileContentQuery.isFetching))
 })
 
 export const createReleaseHasDslContentAtom = atom((get) => {
@@ -311,10 +341,8 @@ export const createReleaseCanCreateAtom = atom((get) => {
 
 // Actions
 const resetCreateReleaseDslFileAtom = atom(null, (get, set) => {
-  set(createReleaseDslReadTokenAtom, get(createReleaseDslReadTokenAtom) + 1)
-  set(createReleaseDslContentAtom, '')
-  set(createReleaseDslReadErrorAtom, false)
-  set(isReadingCreateReleaseDslAtom, false)
+  set(createReleaseDslFileFieldAtom, undefined)
+  set(createReleaseDslFileReadVersionAtom, get(createReleaseDslFileReadVersionAtom) + 1)
 })
 
 export const openCreateReleaseDialogAtom = atom(null, (_get, set) => {
@@ -327,42 +355,11 @@ export const closeCreateReleaseDialogAtom = atom(null, (_get, set) => {
   set(resetCreateReleaseDslFileAtom)
 })
 
-const selectCreateReleaseDslFileAtom = atom(null, async (get, set, file?: File) => {
-  const readToken = get(createReleaseDslReadTokenAtom) + 1
-  set(createReleaseDslReadTokenAtom, readToken)
-  set(createReleaseDslContentAtom, '')
-  set(createReleaseDslReadErrorAtom, false)
-  set(isReadingCreateReleaseDslAtom, false)
-
-  if (!file)
-    return
-
-  set(isReadingCreateReleaseDslAtom, true)
-  try {
-    const content = await file.text()
-    if (get(createReleaseDslReadTokenAtom) !== readToken)
-      return
-
-    set(createReleaseDslContentAtom, content)
-  }
-  catch {
-    if (get(createReleaseDslReadTokenAtom) !== readToken)
-      return
-
-    set(createReleaseDslReadErrorAtom, true)
-  }
-  finally {
-    if (get(createReleaseDslReadTokenAtom) === readToken)
-      set(isReadingCreateReleaseDslAtom, false)
-  }
-})
-
 export const selectCreateReleaseSourceModeAtom = atom(null, (_get, set, releaseSourceMode: ReleaseSourceMode) => {
   const effectiveReleaseSourceMode = deploymentReleaseSourceMode(releaseSourceMode)
   set(createReleaseSourceModeFieldAtom, effectiveReleaseSourceMode)
 
   if (effectiveReleaseSourceMode === 'sourceApp') {
-    set(createReleaseDslFileFieldAtom, undefined)
     set(resetCreateReleaseDslFileAtom)
     return
   }
@@ -376,7 +373,7 @@ export const updateCreateReleaseSourceAppAtom = atom(null, (_get, set, sourceApp
 
 export const updateCreateReleaseDslFileAtom = atom(null, (get, set, dslFile: CreateReleaseFormValues['dslFile']) => {
   set(createReleaseDslFileFieldAtom, dslFile)
-  return set(selectCreateReleaseDslFileAtom, dslFile)
+  set(createReleaseDslFileReadVersionAtom, get(createReleaseDslFileReadVersionAtom) + 1)
 })
 
 // Submission
@@ -454,8 +451,5 @@ export const submitCreateReleaseFormAtom = atom(null, (get, set) => {
 // Scoped atoms
 export const createReleaseLocalAtoms = [
   createReleaseDialogOpenAtom,
-  createReleaseDslContentAtom,
-  createReleaseDslReadErrorAtom,
-  isReadingCreateReleaseDslAtom,
-  createReleaseDslReadTokenAtom,
+  createReleaseDslFileReadVersionAtom,
 ] as const
