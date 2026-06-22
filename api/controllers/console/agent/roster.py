@@ -3,10 +3,12 @@ from uuid import UUID
 from flask import abort, request
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, field_validator
+from sqlalchemy import func, select
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_app_model
+from controllers.console.apikey import ApiKeyItem, ApiKeyList, BaseApiKeyListResource, BaseApiKeyResource
 from controllers.console.app.app import (
     AppDetailWithSite as GenericAppDetailWithSite,
 )
@@ -25,9 +27,13 @@ from controllers.console.app.app import (
     UpdateAppPayload as GenericUpdateAppPayload,
 )
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
     enterprise_license_required,
+    is_admin_or_owner_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -49,7 +55,8 @@ from libs.datetime_utils import parse_time_range
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
-from models.model import IconType
+from models.enums import ApiTokenType
+from models.model import ApiToken, App, IconType
 from services.agent.errors import AgentNotFoundError
 from services.agent.observability_service import (
     AgentLogQueryParams,
@@ -101,6 +108,27 @@ class AgentAppUpdatePayload(GenericUpdateAppPayload):
         if not role:
             raise ValueError("Agent role is required.")
         return role
+
+
+class AgentApiStatusPayload(BaseModel):
+    enable_api: bool = Field(..., description="Enable or disable Agent service API")
+
+
+class AgentApiAccessResponse(BaseModel):
+    enabled: bool
+    service_api_base_url: str
+    streaming_only: bool = True
+    chat_endpoint: str
+    stop_endpoint: str
+    conversations_endpoint: str
+    messages_endpoint: str
+    files_upload_endpoint: str
+    parameters_endpoint: str
+    info_endpoint: str
+    meta_endpoint: str
+    api_rpm: int
+    api_rph: int
+    api_key_count: int
 
 
 class AgentAppPublishedReferenceResponse(BaseModel):
@@ -210,6 +238,7 @@ register_schema_models(
     console_ns,
     AgentAppCreatePayload,
     AgentAppUpdatePayload,
+    AgentApiStatusPayload,
     CopyAppPayload,
     AgentInviteOptionsQuery,
     AgentLogsQuery,
@@ -221,6 +250,7 @@ register_schema_models(
 register_response_schema_models(
     console_ns,
     AgentAppPagination,
+    AgentApiAccessResponse,
     AgentAppPublishedReferenceResponse,
     AgentAppDetailWithSite,
     AgentAppPartial,
@@ -327,6 +357,38 @@ def _serialize_agent_app_pagination(app_pagination, *, tenant_id: str) -> dict:
 
 def _resolve_agent_app_model(*, tenant_id: str, agent_id: UUID):
     return resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+
+
+def _agent_api_key_count(app_id: str) -> int:
+    return (
+        db.session.scalar(
+            select(func.count(ApiToken.id)).where(
+                ApiToken.type == ApiTokenType.APP,
+                ApiToken.app_id == app_id,
+            )
+        )
+        or 0
+    )
+
+
+def _serialize_agent_api_access(app_model: App) -> dict:
+    base_url = app_model.api_base_url
+    response = AgentApiAccessResponse(
+        enabled=bool(app_model.enable_api),
+        service_api_base_url=base_url,
+        chat_endpoint=f"{base_url}/chat-messages",
+        stop_endpoint=f"{base_url}/chat-messages/{{task_id}}/stop",
+        conversations_endpoint=f"{base_url}/conversations",
+        messages_endpoint=f"{base_url}/messages",
+        files_upload_endpoint=f"{base_url}/files/upload",
+        parameters_endpoint=f"{base_url}/parameters",
+        info_endpoint=f"{base_url}/info",
+        meta_endpoint=f"{base_url}/meta",
+        api_rpm=app_model.api_rpm or 0,
+        api_rph=app_model.api_rph or 0,
+        api_key_count=_agent_api_key_count(str(app_model.id)),
+    )
+    return response.model_dump(mode="json")
 
 
 def _agent_observability_service() -> AgentObservabilityService:
@@ -483,6 +545,77 @@ class AgentAppCopyApi(Resource):
             icon_background=args.icon_background,
         )
         return _serialize_agent_app_detail(copied_app), 201
+
+
+@console_ns.route("/agent/<uuid:agent_id>/api-access")
+class AgentApiAccessApi(Resource):
+    @console_ns.response(200, "Agent service API access", console_ns.models[AgentApiAccessResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_tenant_id
+    def get(self, tenant_id: str, agent_id: UUID):
+        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        return _serialize_agent_api_access(app_model)
+
+
+@console_ns.route("/agent/<uuid:agent_id>/api-enable")
+class AgentApiStatusApi(Resource):
+    @console_ns.expect(console_ns.models[AgentApiStatusPayload.__name__])
+    @console_ns.response(200, "Agent service API status updated", console_ns.models[AgentApiAccessResponse.__name__])
+    @console_ns.response(403, "Insufficient permissions")
+    @setup_required
+    @login_required
+    @is_admin_or_owner_required
+    @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
+    @with_current_tenant_id
+    def post(self, tenant_id: str, agent_id: UUID):
+        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        args = AgentApiStatusPayload.model_validate(console_ns.payload)
+        app_model = AppService().update_app_api_status(app_model, args.enable_api)
+        return _serialize_agent_api_access(app_model)
+
+
+@console_ns.route("/agent/<uuid:agent_id>/api-keys")
+class AgentApiKeyListApi(BaseApiKeyListResource):
+    resource_type = ApiTokenType.APP
+    resource_model = App
+    resource_id_field = "app_id"
+    token_prefix = "app-"
+
+    @console_ns.response(200, "Agent service API keys", console_ns.models[ApiKeyList.__name__])
+    @with_current_tenant_id
+    def get(self, tenant_id: str, agent_id: UUID) -> dict[str, object]:
+        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        return dump_response(ApiKeyList, self._get_api_key_list(str(app_model.id), tenant_id))
+
+    @console_ns.response(201, "Agent service API key created", console_ns.models[ApiKeyItem.__name__])
+    @console_ns.response(400, "Maximum keys exceeded")
+    @with_current_tenant_id
+    @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
+    def post(self, tenant_id: str, agent_id: UUID) -> tuple[dict[str, object], int]:
+        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        return dump_response(ApiKeyItem, self._create_api_key(str(app_model.id), tenant_id)), 201
+
+
+@console_ns.route("/agent/<uuid:agent_id>/api-keys/<uuid:api_key_id>")
+class AgentApiKeyApi(BaseApiKeyResource):
+    resource_type = ApiTokenType.APP
+    resource_model = App
+    resource_id_field = "app_id"
+
+    @console_ns.response(204, "Agent service API key deleted")
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
+    def delete(
+        self, tenant_id: str, current_user: Account, agent_id: UUID, api_key_id: UUID
+    ) -> tuple[str, int]:
+        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        self._delete_api_key(str(app_model.id), str(api_key_id), tenant_id, current_user)
+        return "", 204
 
 
 @console_ns.route("/agent/invite-options")
