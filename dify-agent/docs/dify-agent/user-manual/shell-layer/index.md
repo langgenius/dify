@@ -78,9 +78,9 @@ do not need dependencies. To inject `DIFY_AGENT_STUB_API_BASE_URL`,
 `shell.run` jobs, declare the execution-context layer as the shell layer's
 `execution_context` dependency. When the run also includes `dify.drive`, declare
 it as the shell layer's `drive` dependency; the injected drive base is then
-computed from that drive config as `<drive_base>/<drive_ref>`, for example
-`/mnt/drive/agent-123`. Without a drive dependency, the CLI keeps the historical
-`/mnt/drive` fallback. A typical run still also includes:
+computed from the fixed Agent Stub drive mount and the drive reference, for
+example `/mnt/drive/agent-123`. Without a drive dependency, the CLI keeps the
+historical `/mnt/drive` fallback. A typical run still also includes:
 
 - a prompt layer that supplies the task;
 - an execution-context layer carrying tenant/user context;

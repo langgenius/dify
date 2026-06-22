@@ -46,6 +46,17 @@ class AgentStubEndpoint:
         return self.scheme == "grpc"
 
 
+def agent_stub_drive_base_for_ref(drive_ref: str | None) -> str:
+    """Return the fixed sandbox-local Agent Stub drive base for one drive ref."""
+    normalized_ref = (drive_ref or "").strip()
+    if not normalized_ref:
+        return DEFAULT_AGENT_STUB_DRIVE_BASE
+    drive_ref_parts = normalized_ref.split("/")
+    if normalized_ref.startswith("/") or any(part in {"", ".", ".."} for part in drive_ref_parts):
+        raise ValueError("Agent Stub drive_ref must be a safe relative path")
+    return f"{DEFAULT_AGENT_STUB_DRIVE_BASE.rstrip('/')}/{'/'.join(drive_ref_parts)}"
+
+
 def parse_agent_stub_endpoint(url: str) -> AgentStubEndpoint:
     """Parse one Agent Stub endpoint URL for HTTP or gRPC transport selection.
 
@@ -323,6 +334,7 @@ __all__ = [
     "AgentStubFileUploadResponse",
     "AgentStubURLScheme",
     "agent_stub_connections_url",
+    "agent_stub_drive_base_for_ref",
     "agent_stub_drive_commit_url",
     "agent_stub_drive_manifest_url",
     "agent_stub_file_download_request_url",

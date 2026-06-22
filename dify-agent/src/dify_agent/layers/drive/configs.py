@@ -41,10 +41,6 @@ class DifyDriveLayerConfig(LayerConfig):
     # derived from execution context so a shared (non-agent-bound) drive stays
     # possible later.
     drive_ref: str
-    # Local root for all drive materialization. The runtime uses
-    # ``<drive_base>/<drive_ref>`` as the per-drive sandbox directory so multiple
-    # drives can coexist without key collisions.
-    drive_base: str = "/mnt/drive"
     skills: list[DifyDriveSkillConfig] = Field(default_factory=list)
     mentioned_skill_keys: list[str] = Field(default_factory=list)
     mentioned_file_keys: list[str] = Field(default_factory=list)

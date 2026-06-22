@@ -171,7 +171,7 @@ type ShellInterruptToolResult = ShellJobStatusObservation | ShellToolErrorObserv
 class DifyShellLayerDeps(LayerDeps):
     """Optional direct-layer dependencies used by the shell runtime layer.
 
-    The drive dependency supplies the drive-specific local base for injected
+    The drive dependency supplies the drive ref for injected
     Agent Stub CLI commands; the execution context supplies the token principal.
     """
 
@@ -769,7 +769,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         drive_layer = self.deps.drive
         return build_shell_agent_stub_env(
             agent_stub_api_base_url=self.agent_stub_api_base_url,
-            agent_stub_drive_base=drive_layer.local_drive_base if drive_layer is not None else None,
+            agent_stub_drive_ref=drive_layer.config.drive_ref if drive_layer is not None else None,
             execution_context=execution_context,
             token_factory=self.agent_stub_token_factory,
             session_id=self.runtime_state.session_id,

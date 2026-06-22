@@ -21,6 +21,7 @@ const mockFormatForDisplay = vi.hoisted(() => vi.fn((hotkey: string) => `display
 const mockFormatTimeFromNow = vi.hoisted(() => vi.fn(() => 'just now'))
 const mockFormatTime = vi.hoisted(() => vi.fn((timestamp: number) => `formatted:${timestamp}`))
 const workflowReferences = vi.hoisted(() => ({
+  fetchCount: 0,
   data: [] as AgentReferencingWorkflowResponse[],
 }))
 
@@ -56,7 +57,7 @@ vi.mock('@/service/client', () => ({
             queryOptions: ({ input }: { input: { params: { agent_id: string } } }) => ({
               queryKey: ['agent-referencing-workflows', input],
               queryFn: async () => ({
-                data: workflowReferences.data,
+                data: (workflowReferences.fetchCount++, workflowReferences.data),
               }),
             }),
           },
@@ -65,49 +66,6 @@ vi.mock('@/service/client', () => ({
     },
   },
 }))
-
-vi.mock('@langgenius/dify-ui/popover', async () => {
-  const React = await import('react')
-  const ReactDOM = await import('react-dom')
-  const PopoverContext = React.createContext<{
-    open: boolean
-    onOpenChange?: (open: boolean) => void
-  }>({
-    open: false,
-  })
-
-  return {
-    Popover: ({
-      children,
-      open,
-      onOpenChange,
-    }: {
-      children: React.ReactNode
-      open?: boolean
-      onOpenChange?: (open: boolean) => void
-    }) => (
-      <PopoverContext value={{ open: !!open, onOpenChange }}>
-        {children}
-      </PopoverContext>
-    ),
-    PopoverContent: ({
-      children,
-    }: {
-      children: React.ReactNode
-    }) => {
-      const context = React.use(PopoverContext)
-      if (!context.open)
-        return null
-
-      return ReactDOM.createPortal(<div data-testid="publish-impact-popover">{children}</div>, document.body)
-    },
-    PopoverTrigger: ({
-      render: trigger,
-    }: {
-      render: React.ReactElement
-    }) => trigger,
-  }
-})
 
 const activeConfigSnapshot: AgentConfigSnapshotSummaryResponse = {
   id: 'snapshot-1',
@@ -131,6 +89,7 @@ const originalDraftWithFile = {
 const publishedReferences: AgentReferencingWorkflowResponse[] = [
   {
     app_id: 'app-python',
+    app_updated_at: 1710000100,
     app_mode: 'workflow',
     app_name: 'Python bug fixer',
     workflow_id: 'workflow-python',
@@ -144,6 +103,7 @@ const publishedReferences: AgentReferencingWorkflowResponse[] = [
     app_icon_type: 'emoji',
     app_mode: 'workflow',
     app_name: 'Translation Workflow',
+    app_updated_at: 1710000200,
     workflow_id: 'workflow-translation',
     workflow_version: '1',
     node_ids: ['node-translation'],
@@ -211,6 +171,7 @@ describe('AgentConfigurePublishBar', () => {
     vi.clearAllMocks()
     hotkeyRegistrations.clear()
     workflowReferences.data = []
+    workflowReferences.fetchCount = 0
     vi.spyOn(console, 'log').mockImplementation(() => {})
   })
 
@@ -267,7 +228,7 @@ describe('AgentConfigurePublishBar', () => {
 
     expect(screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate')).toBeInTheDocument()
     expect(screen.getByText(/agentV2\.agentDetail\.configure\.publishBar\.publishedAt/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' })).toBeDisabled()
     expect(screen.queryByText('display:Mod')).not.toBeInTheDocument()
     expect(mockFormatTimeFromNow).toHaveBeenCalledWith(1710000000 * 1000)
     expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
@@ -286,6 +247,7 @@ describe('AgentConfigurePublishBar', () => {
     })
 
     expect(screen.getByText('agentV2.agentDetail.configure.publishBar.unpublishedChanges')).toBeInTheDocument()
+    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.saved')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ })).toBeInTheDocument()
     expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
       expect.objectContaining({ enabled: true, ignoreInputs: false }),
@@ -298,6 +260,9 @@ describe('AgentConfigurePublishBar', () => {
         agent_id: 'agent-1',
       }))
     })
+    expect(screen.queryByRole('region', {
+      name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
+    })).not.toBeInTheDocument()
   })
 
   it('should publish the current draft payload from the unpublished changes state', async () => {
@@ -366,46 +331,54 @@ describe('AgentConfigurePublishBar', () => {
 
     expect(screen.getByText('agentV2.agentDetail.configure.publishBar.publishing')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.publishing' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.publishing' })).toHaveAttribute('aria-busy', 'true')
     expect(screen.queryByText('display:Mod')).not.toBeInTheDocument()
     expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
       expect.objectContaining({ enabled: false, ignoreInputs: false }),
     )
   })
 
-  it('should show affected workflow references when clicking a publishable agent in use', async () => {
+  it('should expand affected workflow details above the publish toolbar when clicking a publishable agent in use', async () => {
     const { onPublish } = renderPublishBar({
       activeConfigSnapshot,
       prompt: 'Updated system prompt',
       usedByAppReferences: publishedReferences,
     })
 
-    expect(screen.queryByTestId('publish-impact-popover')).not.toBeInTheDocument()
-    const publishBar = screen.getByText('agentV2.agentDetail.configure.publishBar.unpublishedChanges').closest('[aria-hidden]')
-    expect(publishBar).toHaveAttribute('aria-hidden', 'false')
+    expect(screen.queryByRole('region', {
+      name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
+    })).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(workflowReferences.fetchCount).toBe(1)
+    })
 
-    fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
+    const publishButton = screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ })
+    fireEvent.click(publishButton)
 
     expect(onPublish).not.toHaveBeenCalled()
-    const impactPopover = await screen.findByTestId('publish-impact-popover')
-    expect(impactPopover).toBeInTheDocument()
-    expect(publishBar).toHaveAttribute('aria-hidden', 'false')
-    await waitFor(() => {
-      expect(publishBar).toHaveAttribute('aria-hidden', 'true')
-      expect(publishBar).toHaveClass('opacity-0')
+    expect(publishButton).not.toHaveAttribute('aria-busy')
+    const impactDetails = await screen.findByRole('region', {
+      name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
     })
+    expect(impactDetails).toBeInTheDocument()
+    expect(workflowReferences.fetchCount).toBe(1)
+    expect(screen.getAllByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ })).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishImpact.cancel' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.versionHistory' })).toHaveClass('group-data-open/publish-bar:hidden')
     expect(screen.getByText(/agentV2\.agentDetail\.configure\.publishImpact\.title/)).toBeInTheDocument()
     expect(screen.getByText(/agentV2\.agentDetail\.configure\.publishImpact\.descriptionPrefix/)).toBeInTheDocument()
     expect(screen.getByText(/agentV2\.agentDetail\.configure\.publishImpact\.workflowCount/)).toBeInTheDocument()
     expect(screen.getByText('Python bug fixer')).toBeInTheDocument()
     expect(screen.getByText('Translation Workflow')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Python bug fixer' })).toHaveAttribute('target', '_blank')
-    expect(screen.getByRole('link', { name: 'Python bug fixer' })).toHaveAttribute('rel', 'noopener noreferrer')
-    expect(within(impactPopover).getByText('display:Mod')).toBeInTheDocument()
-    expect(within(impactPopover).getByText('display:Shift')).toBeInTheDocument()
-    expect(within(impactPopover).getByText('display:P')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Python bug fixer/ })).toHaveAttribute('target', '_blank')
+    expect(screen.getByRole('link', { name: /Python bug fixer/ })).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(within(impactDetails).getAllByText('just now')).toHaveLength(2)
+    expect(screen.getByText('display:Mod')).toBeInTheDocument()
+    expect(screen.getByText('display:Shift')).toBeInTheDocument()
+    expect(screen.getByText('display:P')).toBeInTheDocument()
   })
 
-  it('should publish from the affected workflow popover action', async () => {
+  it('should publish from the fixed toolbar action after affected workflow details expand', async () => {
     const { onPublish } = renderPublishBar({
       activeConfigSnapshot,
       prompt: 'Updated system prompt',
@@ -413,16 +386,39 @@ describe('AgentConfigurePublishBar', () => {
     })
 
     fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
-    fireEvent.click(within(await screen.findByTestId('publish-impact-popover')).getByRole('button', {
-      name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
-    }))
+    expect(await screen.findByRole('region', {
+      name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
+    })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
 
     expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
       agent_id: 'agent-1',
     }))
   })
 
-  it('should open the affected workflow popover from the publish shortcut before publishing', async () => {
+  it('should collapse affected workflow details from the expanded footer cancel action', async () => {
+    const { onPublish } = renderPublishBar({
+      activeConfigSnapshot,
+      prompt: 'Updated system prompt',
+      usedByAppReferences: publishedReferences,
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
+    expect(await screen.findByRole('region', {
+      name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
+    })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishImpact.cancel' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('region', {
+        name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
+      })).not.toBeInTheDocument()
+    })
+    expect(onPublish).not.toHaveBeenCalled()
+  })
+
+  it('should show affected workflow details from the publish shortcut before publishing', async () => {
     const { onPublish } = renderPublishBar({
       activeConfigSnapshot,
       prompt: 'Updated system prompt',
@@ -435,7 +431,9 @@ describe('AgentConfigurePublishBar', () => {
     })
 
     expect(onPublish).not.toHaveBeenCalled()
-    expect(await screen.findByTestId('publish-impact-popover')).toBeInTheDocument()
+    expect(await screen.findByRole('region', {
+      name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
+    })).toBeInTheDocument()
 
     await act(async () => {
       await hotkeyRegistrations.get('Mod+Shift+P')?.callback({ preventDefault: vi.fn() })

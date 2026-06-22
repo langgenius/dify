@@ -1,21 +1,23 @@
 'use client'
 
-import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse, AgentReferencingWorkflowResponse, AgentReferencingWorkflowsResponse, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
+import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
+import { CollapsiblePanel, CollapsibleRoot } from '@langgenius/dify-ui/collapsible'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { formatForDisplay } from '@tanstack/react-hotkeys'
-import { useEffect, useRef, useState } from 'react'
+import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useConfigPublishPayload, useHasAgentComposerUnpublishedChanges } from '@/features/agent-v2/agent-composer/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import useTimestamp from '@/hooks/use-timestamp'
-import { AgentPublishImpactPopover } from './publish-impact-popover'
+import { consoleQuery } from '@/service/client'
+import { AgentPublishImpactDetails } from './publish-impact-details'
 
 const PUBLISH_AGENT_HOTKEY = 'Mod+Shift+P' satisfies RegisterableHotkey
-const PUBLISH_IMPACT_BAR_HIDE_DELAY = 160
 
 export type AgentConfigurePublishPayload = {
   agent_id: string
@@ -23,6 +25,10 @@ export type AgentConfigurePublishPayload = {
 }
 
 type AgentConfigurePublishState = 'draft' | 'publishing' | 'published' | 'unpublished'
+
+type PublishBarMode = { status: 'compact' }
+  | { status: 'resolvingReferences' }
+  | { status: 'confirmingImpact', references: AgentReferencingWorkflowResponse[] }
 
 type AgentConfigurePublishBarProps = {
   agentId: string
@@ -91,8 +97,8 @@ export function AgentConfigurePublishBar({
 }: AgentConfigurePublishBarProps) {
   const { t } = useTranslation('agentV2')
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const [shouldHidePublishBar, setShouldHidePublishBar] = useState(false)
-  const hidePublishBarTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const queryClient = useQueryClient()
+  const [publishBarMode, setPublishBarMode] = useState<PublishBarMode>({ status: 'compact' })
   const hasUnpublishedChanges = useHasAgentComposerUnpublishedChanges()
   const publishPayload = useConfigPublishPayload({
     agentId,
@@ -106,34 +112,60 @@ export function AgentConfigurePublishBar({
     isPublishing,
   })
   const canPublish = publishState === 'draft' || publishState === 'unpublished'
-
-  const handleImpactPopoverOpenChange = (open: boolean) => {
-    if (hidePublishBarTimerRef.current)
-      clearTimeout(hidePublishBarTimerRef.current)
-
-    if (!open) {
-      setShouldHidePublishBar(false)
-      return
-    }
-
-    hidePublishBarTimerRef.current = setTimeout(() => {
-      setShouldHidePublishBar(true)
-    }, PUBLISH_IMPACT_BAR_HIDE_DELAY)
-  }
+  const workflowReferencesQueryOptions = consoleQuery.agent.byAgentId.referencingWorkflows.get.queryOptions({
+    input: {
+      params: {
+        agent_id: agentId,
+      },
+    },
+  })
+  const workflowReferencesQuery = useQuery({
+    ...workflowReferencesQueryOptions,
+    enabled: canPublish && !selectedVersionSnapshot,
+  })
+  const isResolvingReferences = publishBarMode.status === 'resolvingReferences'
 
   const handlePublish = () => {
     if (!canPublish)
       return
 
+    setPublishBarMode({ status: 'compact' })
     void onPublish?.(publishPayload)
   }
 
-  useEffect(() => {
-    return () => {
-      if (hidePublishBarTimerRef.current)
-        clearTimeout(hidePublishBarTimerRef.current)
+  const handlePublishRequest = async () => {
+    if (!canPublish || isResolvingReferences)
+      return
+
+    if (publishBarMode.status === 'confirmingImpact') {
+      handlePublish()
+      return
     }
-  }, [])
+
+    setPublishBarMode({ status: 'resolvingReferences' })
+    try {
+      const cachedReferences = queryClient.getQueryData<AgentReferencingWorkflowsResponse>(workflowReferencesQueryOptions.queryKey)
+      const references = (cachedReferences ?? workflowReferencesQuery.data ?? await workflowReferencesQuery.refetch().then(result => result.data))?.data ?? []
+
+      if (references.length > 0) {
+        setPublishBarMode({ status: 'confirmingImpact', references })
+        return
+      }
+
+      handlePublish()
+    }
+    finally {
+      setPublishBarMode(currentMode => currentMode.status === 'resolvingReferences' ? { status: 'compact' } : currentMode)
+    }
+  }
+
+  useHotkey(PUBLISH_AGENT_HOTKEY, (event) => {
+    event.preventDefault()
+    void handlePublishRequest()
+  }, {
+    enabled: canPublish && !selectedVersionSnapshot,
+    ignoreInputs: false,
+  })
 
   if (selectedVersionSnapshot) {
     return (
@@ -164,7 +196,7 @@ export function AgentConfigurePublishBar({
       statusLabel: t('agentDetail.configure.publishBar.draft'),
     },
     publishing: {
-      actionIcon: 'i-ri-loader-2-line animate-spin motion-reduce:animate-none',
+      actionIcon: null,
       actionLabel: t('agentDetail.configure.publishBar.publishing'),
       dotStatus: 'disabled',
       metaLabel: savedMeta,
@@ -196,60 +228,133 @@ export function AgentConfigurePublishBar({
     statusLabel: string
   }>
   const currentStateMeta = stateMeta[publishState]
+  const isConfirmingImpact = publishBarMode.status === 'confirmingImpact' && canPublish
+  const impactReferences = publishBarMode.status === 'confirmingImpact' ? publishBarMode.references : []
 
   return (
-    <div className="flex h-16 shrink-0 items-center justify-center px-4 pt-2 pb-3">
-      <div
-        className={cn(
-          'flex max-w-full min-w-0 items-center gap-2 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]',
-          shouldHidePublishBar && 'pointer-events-none opacity-0',
-        )}
-        aria-hidden={shouldHidePublishBar}
+    <PublishBarBottomActions>
+      <CollapsibleRoot
+        open={isConfirmingImpact}
+        className="group/publish-bar pointer-events-auto w-full overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]"
       >
-        <div className="flex min-w-0 items-center gap-1 px-2 system-xs-regular text-text-tertiary">
-          <span className="flex size-4 shrink-0 items-center justify-center">
-            <StatusDot size="small" status={currentStateMeta.dotStatus} />
-          </span>
-          <span className="shrink-0">{currentStateMeta.statusLabel}</span>
-          <span aria-hidden className="shrink-0">·</span>
-          <span className="min-w-0 truncate">
-            {currentStateMeta.metaLabel}
-          </span>
-        </div>
-        <button
-          type="button"
-          aria-label={t('agentDetail.configure.publishBar.versionHistory')}
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          onClick={onOpenVersions}
-        >
-          <span aria-hidden className="i-ri-history-line size-4" />
-        </button>
-        <AgentPublishImpactPopover
+        <CollapsiblePanel className="system-sm-regular text-text-secondary">
+          <AgentPublishImpactDetails
+            publishActionLabel={currentStateMeta.actionLabel}
+            agentName={agentName}
+            references={impactReferences}
+          />
+        </CollapsiblePanel>
+        <PublishBarActions
+          actionIcon={currentStateMeta.actionIcon}
           actionLabel={currentStateMeta.actionLabel}
-          actionShortcut={currentStateMeta.showShortcut ? <PublishShortcut /> : null}
-          hotkey={PUBLISH_AGENT_HOTKEY}
-          agentId={agentId}
-          agentName={agentName}
-          disabled={!canPublish}
-          onOpenChange={handleImpactPopoverOpenChange}
-          onPublish={handlePublish}
-          trigger={(
-            <Button
-              type="button"
-              variant="primary"
-              aria-disabled={!canPublish}
-              className="h-8 gap-1 rounded-lg px-3 aria-disabled:cursor-not-allowed"
-              onClick={handlePublish}
-            >
-              {currentStateMeta.actionIcon && (
-                <span aria-hidden className={cn('size-4 shrink-0', currentStateMeta.actionIcon)} />
-              )}
-              <span className="shrink-0">{currentStateMeta.actionLabel}</span>
-              {currentStateMeta.showShortcut && <PublishShortcut />}
-            </Button>
-          )}
+          dotStatus={currentStateMeta.dotStatus}
+          isPublishing={publishState === 'publishing'}
+          metaLabel={currentStateMeta.metaLabel}
+          showShortcut={currentStateMeta.showShortcut}
+          statusLabel={currentStateMeta.statusLabel}
+          canPublish={canPublish}
+          onCancelImpact={() => setPublishBarMode({ status: 'compact' })}
+          onOpenVersions={onOpenVersions}
+          onPublishRequest={handlePublishRequest}
         />
+      </CollapsibleRoot>
+    </PublishBarBottomActions>
+  )
+}
+
+function PublishBarBottomActions({
+  children,
+}: {
+  children: ReactNode
+}) {
+  return (
+    <div
+      className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex h-[72px] flex-col items-center justify-end px-4 pt-4 pb-2 transition-[height] duration-150 ease-out has-[[data-open]]:h-[307px] motion-reduce:transition-none"
+    >
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-t from-components-panel-bg to-components-panel-bg-transparent [mask-image:linear-gradient(to_top,black,transparent)] backdrop-blur-[2px] [-webkit-mask-image:linear-gradient(to_top,black,transparent)]"
+      />
+      <div
+        className="relative z-10 flex w-full max-w-[506px] flex-col items-center justify-end transition-[max-width] duration-150 ease-out has-[[data-open]]:max-w-96 motion-reduce:transition-none"
+      >
+        {children}
       </div>
+    </div>
+  )
+}
+
+function PublishBarActions({
+  actionIcon,
+  actionLabel,
+  dotStatus,
+  isPublishing,
+  metaLabel,
+  showShortcut,
+  statusLabel,
+  canPublish,
+  onCancelImpact,
+  onOpenVersions,
+  onPublishRequest,
+}: {
+  actionIcon: string | null
+  actionLabel: string
+  dotStatus: 'disabled' | 'success' | 'warning'
+  isPublishing: boolean
+  metaLabel: string
+  showShortcut: boolean
+  statusLabel: string
+  canPublish: boolean
+  onCancelImpact: () => void
+  onOpenVersions: () => void
+  onPublishRequest: () => void | Promise<void>
+}) {
+  const { t } = useTranslation('agentV2')
+
+  return (
+    <div className="flex w-full min-w-0 items-center justify-between gap-2 p-2 group-data-open/publish-bar:justify-end group-data-open/publish-bar:px-4 group-data-open/publish-bar:pt-2 group-data-open/publish-bar:pb-4">
+      <div className="flex min-w-0 flex-1 items-center gap-1 px-2 system-xs-regular text-text-tertiary group-data-open/publish-bar:hidden">
+        <span className="flex size-4 shrink-0 items-center justify-center">
+          <StatusDot size="small" status={dotStatus} />
+        </span>
+        <span className="shrink-0">{statusLabel}</span>
+        <span aria-hidden className="shrink-0">·</span>
+        <span className="min-w-0 truncate">
+          {metaLabel}
+        </span>
+      </div>
+      <button
+        type="button"
+        aria-label={t('agentDetail.configure.publishBar.versionHistory')}
+        className="flex size-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary group-data-open/publish-bar:hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+        onClick={onOpenVersions}
+      >
+        <span aria-hidden className="i-ri-history-line size-4" />
+      </button>
+      <Button
+        type="button"
+        variant="secondary"
+        className="hidden h-8 min-w-18 rounded-lg px-3 group-data-open/publish-bar:inline-flex"
+        onClick={onCancelImpact}
+      >
+        {t('agentDetail.configure.publishImpact.cancel')}
+      </Button>
+      <Button
+        type="button"
+        variant="primary"
+        disabled={!canPublish}
+        loading={isPublishing}
+        className="h-8 gap-1 rounded-lg px-3"
+        onClick={() => {
+          void onPublishRequest()
+        }}
+      >
+        {actionIcon && (
+          <span aria-hidden className={`${actionIcon} size-4 shrink-0`} />
+        )}
+        <span className="shrink-0">{actionLabel}</span>
+        {showShortcut && <PublishShortcut />}
+      </Button>
     </div>
   )
 }
@@ -269,8 +374,8 @@ function AgentVersionRestoreBar({
     : formatTime(version.created_at, t('roster.dateTimeFormat'))
 
   return (
-    <div className="flex h-16 shrink-0 items-center justify-center px-4 pt-2 pb-3">
-      <div className="flex max-w-full min-w-0 items-center gap-2 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-2 pr-2.5 pl-2 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
+    <PublishBarBottomActions>
+      <div className="pointer-events-auto flex max-w-full min-w-0 items-center gap-2 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-2 pr-2.5 pl-2 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
         <div className="flex min-w-0 flex-col justify-center gap-0.5 pr-4 pl-2">
           <div className="flex min-w-0 items-center gap-1">
             <p className="min-w-0 truncate system-sm-semibold text-text-primary">
@@ -306,6 +411,6 @@ function AgentVersionRestoreBar({
           <span className="shrink-0">{t('agentDetail.versionHistory.exitVersions')}</span>
         </Button>
       </div>
-    </div>
+    </PublishBarBottomActions>
   )
 }
