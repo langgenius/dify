@@ -105,7 +105,28 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
       render: trigger,
     }: {
       render: React.ReactElement
-    }) => trigger,
+    }) => {
+      const context = React.use(PopoverContext)
+      const typedTrigger = trigger as React.ReactElement<{
+        onClick?: (event: React.MouseEvent<HTMLButtonElement> & { preventBaseUIHandler?: () => void }) => void | Promise<void>
+      }>
+      const handleClick = async (event: React.MouseEvent<HTMLButtonElement> & { preventBaseUIHandler?: () => void }) => {
+        let baseUIHandlerPrevented = false
+        event.preventBaseUIHandler = () => {
+          baseUIHandlerPrevented = true
+        }
+
+        await typedTrigger.props.onClick?.(event)
+
+        if (!baseUIHandlerPrevented)
+          context.onOpenChange?.(!context.open)
+      }
+
+      return React.createElement(typedTrigger.type, {
+        ...typedTrigger.props,
+        onClick: handleClick,
+      })
+    },
   }
 })
 
@@ -267,7 +288,7 @@ describe('AgentConfigurePublishBar', () => {
 
     expect(screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate')).toBeInTheDocument()
     expect(screen.getByText(/agentV2\.agentDetail\.configure\.publishBar\.publishedAt/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' })).toBeDisabled()
     expect(screen.queryByText('display:Mod')).not.toBeInTheDocument()
     expect(mockFormatTimeFromNow).toHaveBeenCalledWith(1710000000 * 1000)
     expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
@@ -298,6 +319,7 @@ describe('AgentConfigurePublishBar', () => {
         agent_id: 'agent-1',
       }))
     })
+    expect(screen.queryByTestId('publish-impact-popover')).not.toBeInTheDocument()
   })
 
   it('should publish the current draft payload from the unpublished changes state', async () => {
@@ -366,6 +388,7 @@ describe('AgentConfigurePublishBar', () => {
 
     expect(screen.getByText('agentV2.agentDetail.configure.publishBar.publishing')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.publishing' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.publishing' })).toHaveAttribute('aria-busy', 'true')
     expect(screen.queryByText('display:Mod')).not.toBeInTheDocument()
     expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
       expect.objectContaining({ enabled: false, ignoreInputs: false }),
@@ -380,19 +403,13 @@ describe('AgentConfigurePublishBar', () => {
     })
 
     expect(screen.queryByTestId('publish-impact-popover')).not.toBeInTheDocument()
-    const publishBar = screen.getByText('agentV2.agentDetail.configure.publishBar.unpublishedChanges').closest('[aria-hidden]')
-    expect(publishBar).toHaveAttribute('aria-hidden', 'false')
 
     fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
 
     expect(onPublish).not.toHaveBeenCalled()
     const impactPopover = await screen.findByTestId('publish-impact-popover')
     expect(impactPopover).toBeInTheDocument()
-    expect(publishBar).toHaveAttribute('aria-hidden', 'false')
-    await waitFor(() => {
-      expect(publishBar).toHaveAttribute('aria-hidden', 'true')
-      expect(publishBar).toHaveClass('opacity-0')
-    })
+    expect(screen.getAllByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ })).toHaveLength(2)
     expect(screen.getByText(/agentV2\.agentDetail\.configure\.publishImpact\.title/)).toBeInTheDocument()
     expect(screen.getByText(/agentV2\.agentDetail\.configure\.publishImpact\.descriptionPrefix/)).toBeInTheDocument()
     expect(screen.getByText(/agentV2\.agentDetail\.configure\.publishImpact\.workflowCount/)).toBeInTheDocument()

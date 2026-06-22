@@ -2,28 +2,33 @@
 
 import type { AgentIconType, AgentReferencingWorkflowResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
-import type { MouseEvent, ReactElement, ReactNode } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useQuery } from '@tanstack/react-query'
-import { cloneElement, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 
+type PopoverTriggerClickEvent = MouseEvent<HTMLButtonElement> & {
+  preventBaseUIHandler?: () => void
+}
+
+type PublishStep = 'idle' | 'checking' | 'confirming'
+
 type AgentPublishImpactPopoverProps = {
   actionLabel: string
+  actionIcon?: string | null
   actionShortcut?: ReactNode
   hotkey: RegisterableHotkey
   agentId: string
   agentName?: string | null
   disabled?: boolean
-  trigger: ReactElement<{
-    onClick?: (event: MouseEvent<HTMLElement>) => void
-  }>
-  onOpenChange?: (open: boolean) => void
+  loading?: boolean
   onPublish: () => void
 }
 
@@ -31,18 +36,17 @@ const getWorkflowReferenceHref = (reference: AgentReferencingWorkflowResponse) =
 
 export function AgentPublishImpactPopover({
   actionLabel,
+  actionIcon,
   actionShortcut,
   hotkey,
   agentId,
   agentName,
   disabled = false,
-  trigger,
-  onOpenChange,
+  loading = false,
   onPublish,
 }: AgentPublishImpactPopoverProps) {
   const { t } = useTranslation('agentV2')
-  const [open, setOpen] = useState(false)
-  const [isCheckingReferences, setIsCheckingReferences] = useState(false)
+  const [publishStep, setPublishStep] = useState<PublishStep>('idle')
   const workflowReferencesQuery = useQuery({
     ...consoleQuery.agent.byAgentId.referencingWorkflows.get.queryOptions({
       input: {
@@ -54,14 +58,11 @@ export function AgentPublishImpactPopover({
     enabled: false,
   })
   const publishedReferences = workflowReferencesQuery.data?.data ?? []
-
-  const updateOpen = (nextOpen: boolean) => {
-    setOpen(nextOpen)
-    onOpenChange?.(nextOpen)
-  }
+  const open = publishStep === 'confirming'
+  const isCheckingReferences = publishStep === 'checking'
 
   const handlePublish = () => {
-    updateOpen(false)
+    setPublishStep('idle')
     onPublish()
   }
 
@@ -74,20 +75,26 @@ export function AgentPublishImpactPopover({
       return
     }
 
-    setIsCheckingReferences(true)
+    setPublishStep('checking')
     try {
       const result = await workflowReferencesQuery.refetch()
       const references = result.data?.data ?? []
       if (references.length > 0) {
-        updateOpen(true)
+        setPublishStep('confirming')
         return
       }
 
+      setPublishStep('idle')
       onPublish()
     }
     finally {
-      setIsCheckingReferences(false)
+      setPublishStep(currentStep => currentStep === 'checking' ? 'idle' : currentStep)
     }
+  }
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen)
+      setPublishStep('idle')
   }
 
   useHotkey(hotkey, (event) => {
@@ -98,20 +105,28 @@ export function AgentPublishImpactPopover({
     ignoreInputs: false,
   })
 
-  if (disabled)
-    return trigger
+  const triggerButton = (
+    <PublishImpactTriggerButton
+      actionIcon={actionIcon}
+      actionLabel={actionLabel}
+      actionShortcut={actionShortcut}
+      disabled={disabled}
+      loading={loading || isCheckingReferences}
+      onClick={async (event) => {
+        event.preventBaseUIHandler?.()
+        event.preventDefault()
+        await handlePublishRequest()
+      }}
+    />
+  )
 
-  const triggerWithImpact = cloneElement(trigger, {
-    onClick: async (event: MouseEvent<HTMLElement>) => {
-      event.preventDefault()
-      await handlePublishRequest()
-    },
-  })
+  if (disabled)
+    return triggerButton
 
   return (
-    <Popover open={open} onOpenChange={updateOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
-        render={triggerWithImpact}
+        render={triggerButton}
       />
       <PopoverContent
         placement="top-end"
@@ -152,7 +167,7 @@ export function AgentPublishImpactPopover({
               type="button"
               variant="secondary"
               className="h-8 min-w-18 rounded-lg px-3"
-              onClick={() => updateOpen(false)}
+              onClick={() => setPublishStep('idle')}
             >
               {t('agentDetail.configure.publishImpact.cancel')}
             </Button>
@@ -169,6 +184,39 @@ export function AgentPublishImpactPopover({
         </div>
       </PopoverContent>
     </Popover>
+  )
+}
+
+function PublishImpactTriggerButton({
+  actionIcon,
+  actionLabel,
+  actionShortcut,
+  disabled,
+  loading,
+  onClick,
+}: {
+  actionIcon?: string | null
+  actionLabel: string
+  actionShortcut?: ReactNode
+  disabled?: boolean
+  loading?: boolean
+  onClick: (event: PopoverTriggerClickEvent) => void | Promise<void>
+}) {
+  return (
+    <Button
+      type="button"
+      variant="primary"
+      disabled={disabled}
+      loading={loading}
+      className="h-8 gap-1 rounded-lg px-3"
+      onClick={onClick}
+    >
+      {actionIcon && (
+        <span aria-hidden className={cn('size-4 shrink-0', actionIcon)} />
+      )}
+      <span className="shrink-0">{actionLabel}</span>
+      {actionShortcut}
+    </Button>
   )
 }
 

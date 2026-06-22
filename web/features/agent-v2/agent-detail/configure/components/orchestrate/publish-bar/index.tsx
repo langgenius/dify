@@ -3,11 +3,9 @@
 import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
-import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useConfigPublishPayload, useHasAgentComposerUnpublishedChanges } from '@/features/agent-v2/agent-composer/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -15,7 +13,6 @@ import useTimestamp from '@/hooks/use-timestamp'
 import { AgentPublishImpactPopover } from './publish-impact-popover'
 
 const PUBLISH_AGENT_HOTKEY = 'Mod+Shift+P' satisfies RegisterableHotkey
-const PUBLISH_IMPACT_BAR_HIDE_DELAY = 160
 
 export type AgentConfigurePublishPayload = {
   agent_id: string
@@ -91,8 +88,6 @@ export function AgentConfigurePublishBar({
 }: AgentConfigurePublishBarProps) {
   const { t } = useTranslation('agentV2')
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const [shouldHidePublishBar, setShouldHidePublishBar] = useState(false)
-  const hidePublishBarTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const hasUnpublishedChanges = useHasAgentComposerUnpublishedChanges()
   const publishPayload = useConfigPublishPayload({
     agentId,
@@ -107,33 +102,12 @@ export function AgentConfigurePublishBar({
   })
   const canPublish = publishState === 'draft' || publishState === 'unpublished'
 
-  const handleImpactPopoverOpenChange = (open: boolean) => {
-    if (hidePublishBarTimerRef.current)
-      clearTimeout(hidePublishBarTimerRef.current)
-
-    if (!open) {
-      setShouldHidePublishBar(false)
-      return
-    }
-
-    hidePublishBarTimerRef.current = setTimeout(() => {
-      setShouldHidePublishBar(true)
-    }, PUBLISH_IMPACT_BAR_HIDE_DELAY)
-  }
-
   const handlePublish = () => {
     if (!canPublish)
       return
 
     void onPublish?.(publishPayload)
   }
-
-  useEffect(() => {
-    return () => {
-      if (hidePublishBarTimerRef.current)
-        clearTimeout(hidePublishBarTimerRef.current)
-    }
-  }, [])
 
   if (selectedVersionSnapshot) {
     return (
@@ -164,7 +138,7 @@ export function AgentConfigurePublishBar({
       statusLabel: t('agentDetail.configure.publishBar.draft'),
     },
     publishing: {
-      actionIcon: 'i-ri-loader-2-line animate-spin motion-reduce:animate-none',
+      actionIcon: null,
       actionLabel: t('agentDetail.configure.publishBar.publishing'),
       dotStatus: 'disabled',
       metaLabel: savedMeta,
@@ -199,13 +173,7 @@ export function AgentConfigurePublishBar({
 
   return (
     <div className="flex h-16 shrink-0 items-center justify-center px-4 pt-2 pb-3">
-      <div
-        className={cn(
-          'flex max-w-full min-w-0 items-center gap-2 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]',
-          shouldHidePublishBar && 'pointer-events-none opacity-0',
-        )}
-        aria-hidden={shouldHidePublishBar}
-      >
+      <div className="flex max-w-full min-w-0 items-center gap-2 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
         <div className="flex min-w-0 items-center gap-1 px-2 system-xs-regular text-text-tertiary">
           <span className="flex size-4 shrink-0 items-center justify-center">
             <StatusDot size="small" status={currentStateMeta.dotStatus} />
@@ -226,28 +194,14 @@ export function AgentConfigurePublishBar({
         </button>
         <AgentPublishImpactPopover
           actionLabel={currentStateMeta.actionLabel}
+          actionIcon={currentStateMeta.actionIcon}
           actionShortcut={currentStateMeta.showShortcut ? <PublishShortcut /> : null}
           hotkey={PUBLISH_AGENT_HOTKEY}
           agentId={agentId}
           agentName={agentName}
           disabled={!canPublish}
-          onOpenChange={handleImpactPopoverOpenChange}
+          loading={publishState === 'publishing'}
           onPublish={handlePublish}
-          trigger={(
-            <Button
-              type="button"
-              variant="primary"
-              aria-disabled={!canPublish}
-              className="h-8 gap-1 rounded-lg px-3 aria-disabled:cursor-not-allowed"
-              onClick={handlePublish}
-            >
-              {currentStateMeta.actionIcon && (
-                <span aria-hidden className={cn('size-4 shrink-0', currentStateMeta.actionIcon)} />
-              )}
-              <span className="shrink-0">{currentStateMeta.actionLabel}</span>
-              {currentStateMeta.showShortcut && <PublishShortcut />}
-            </Button>
-          )}
         />
       </div>
     </div>
