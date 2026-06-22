@@ -132,7 +132,7 @@ describe('runGetApp', () => {
   })
 
   it('external login lists via permitted-external client without workspace', async () => {
-    const list = vi.fn().mockResolvedValue({ page: 1, limit: 20, total: 1, has_more: false, data: [{ id: 'x', name: 'X', description: null, mode: 'chat', tags: [], updated_at: null, created_by_name: null, workspace_id: 'w', workspace_name: 'W' }] })
+    const list = vi.fn().mockResolvedValue({ page: 1, limit: 20, total: 1, has_more: false, data: [{ id: 'x', name: 'X', description: null, mode: 'chat', updated_at: null, workspace_id: 'w', workspace_name: 'W' }] })
     const { PermittedExternalAppsClient } = await import('@/api/permitted-external-apps')
     vi.spyOn(PermittedExternalAppsClient.prototype, 'list').mockImplementation(list)
     const active: ActiveContext = { host: 'h', email: 'e', ctx: { account: { id: 'a', email: 'e', name: 'n' }, external_subject: { email: 'e', issuer: 'i' } } }

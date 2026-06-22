@@ -13,7 +13,7 @@ export class PermittedExternalAppsClient implements AppReader {
     this.orpc = createOpenApiClient(http)
   }
 
-  // workspaceId/tag are ignored: the external grant is not workspace-scoped.
+  // workspaceId is ignored: the external grant is not workspace-scoped.
   async list(q: ListQuery): Promise<AppListResponse> {
     return this.orpc.permittedExternalApps.get({
       query: {

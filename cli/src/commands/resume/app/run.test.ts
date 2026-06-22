@@ -7,7 +7,7 @@ import { bufferStreams } from '@/sys/io/streams'
 import { resumeApp } from './run.js'
 
 const DESCRIBE_RESULT = {
-  info: { id: 'app-2', name: 'X', mode: 'workflow', description: '', tags: [], author: '', updated_at: null, service_api_enabled: true, is_agent: false },
+  info: { id: 'app-2', name: 'X', mode: 'workflow', description: '', updated_at: null, service_api_enabled: true, is_agent: false },
   parameters: null,
   input_schema: null,
 }

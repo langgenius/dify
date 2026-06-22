@@ -384,7 +384,7 @@ describe('runApp', () => {
   })
 
   it('external login: mode pre-flight calls PermittedExternalAppsClient.describe, not AppsClient.describe', async () => {
-    const describeResult = { info: { id: 'app-1', name: 'X', mode: 'chat', description: '', tags: [], author: '', updated_at: null, service_api_enabled: true, is_agent: false }, parameters: null, input_schema: null }
+    const describeResult = { info: { id: 'app-1', name: 'X', mode: 'chat', description: '', updated_at: null, service_api_enabled: true, is_agent: false }, parameters: null, input_schema: null }
     const externalDescribe = vi.fn().mockResolvedValue(describeResult)
     const { PermittedExternalAppsClient } = await import('@/api/permitted-external-apps')
     const { AppsClient } = await import('@/api/apps')
