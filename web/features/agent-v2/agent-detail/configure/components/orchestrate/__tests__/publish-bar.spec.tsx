@@ -478,4 +478,23 @@ describe('AgentConfigurePublishBar', () => {
       agent_id: 'agent-1',
     }))
   })
+
+  it('should publish directly from the publish shortcut when no workflows reference the agent', async () => {
+    const { onPublish } = renderPublishBar({
+      activeConfigSnapshot,
+      prompt: 'Updated system prompt',
+    })
+    const publishShortcut = hotkeyRegistrations.get('Mod+Shift+P')
+
+    await act(async () => {
+      await publishShortcut?.callback({ preventDefault: vi.fn() })
+    })
+
+    expect(screen.queryByRole('region', {
+      name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
+    })).not.toBeInTheDocument()
+    expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
+      agent_id: 'agent-1',
+    }))
+  })
 })
