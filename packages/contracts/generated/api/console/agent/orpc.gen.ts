@@ -86,6 +86,8 @@ import {
   zPostAgentByAgentIdSkillsUploadBody,
   zPostAgentByAgentIdSkillsUploadPath,
   zPostAgentByAgentIdSkillsUploadResponse,
+  zPostAgentByAgentIdVersionsByVersionIdRestorePath,
+  zPostAgentByAgentIdVersionsByVersionIdRestoreResponse,
   zPostAgentResponse,
   zPutAgentByAgentIdBody,
   zPutAgentByAgentIdComposerBody,
@@ -690,6 +692,21 @@ export const statistics = {
   summary,
 }
 
+export const post10 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAgentByAgentIdVersionsByVersionIdRestore',
+    path: '/agent/{agent_id}/versions/{version_id}/restore',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostAgentByAgentIdVersionsByVersionIdRestorePath }))
+  .output(zPostAgentByAgentIdVersionsByVersionIdRestoreResponse)
+
+export const restore = {
+  post: post10,
+}
+
 export const get17 = oc
   .route({
     inputStructure: 'detailed',
@@ -703,6 +720,7 @@ export const get17 = oc
 
 export const byVersionId = {
   get: get17,
+  restore,
 }
 
 export const get18 = oc
@@ -787,7 +805,7 @@ export const get20 = oc
   .input(z.object({ query: zGetAgentQuery.optional() }))
   .output(zGetAgentResponse)
 
-export const post10 = oc
+export const post11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -801,7 +819,7 @@ export const post10 = oc
 
 export const agent = {
   get: get20,
-  post: post10,
+  post: post11,
   inviteOptions,
   byAgentId,
 }
