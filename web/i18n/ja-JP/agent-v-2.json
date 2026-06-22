@@ -290,6 +290,7 @@
   "agentDetail.monitoring.dateRangeLabel": "日付範囲",
   "agentDetail.monitoring.description": "ワークフロー全体での再利用可能なエージェントのアクティビティ、コスト、対話品質を追跡します。",
   "agentDetail.monitoring.learnMore": "詳細を見る",
+  "agentDetail.monitoring.loadFailed": "モニタリングデータの読み込みに失敗しました",
   "agentDetail.monitoring.metrics.activeUsers.explanation": "このエージェントを使ったワークフローをトリガーしたユニークエンドユーザー数。",
   "agentDetail.monitoring.metrics.activeUsers.title": "アクティブユーザー",
   "agentDetail.monitoring.metrics.avgSessionInteractions.explanation": "このアクセスポイントにおけるユーザーとエージェントの連続通信回数。",

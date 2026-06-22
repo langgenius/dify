@@ -290,6 +290,7 @@
   "agentDetail.monitoring.dateRangeLabel": "Zakres dat",
   "agentDetail.monitoring.description": "Śledź aktywność, koszt i jakość interakcji reużywalnego agenta w workflow.",
   "agentDetail.monitoring.learnMore": "Dowiedz się więcej",
+  "agentDetail.monitoring.loadFailed": "Nie udało się wczytać danych monitorowania",
   "agentDetail.monitoring.metrics.activeUsers.explanation": "Unikalni użytkownicy końcowi, którzy uruchomili workflow z tym agentem.",
   "agentDetail.monitoring.metrics.activeUsers.title": "Aktywni użytkownicy",
   "agentDetail.monitoring.metrics.avgSessionInteractions.explanation": "Liczba ciągłych interakcji użytkownik-agent dla tego punktu dostępu.",

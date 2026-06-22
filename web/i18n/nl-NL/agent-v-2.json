@@ -290,6 +290,7 @@
   "agentDetail.monitoring.dateRangeLabel": "Datumbereik",
   "agentDetail.monitoring.description": "Volg de activiteit, kosten en interactiekwaliteit van de herbruikbare agent over workflows heen.",
   "agentDetail.monitoring.learnMore": "Meer informatie",
+  "agentDetail.monitoring.loadFailed": "Monitoringgegevens laden mislukt",
   "agentDetail.monitoring.metrics.activeUsers.explanation": "Unieke eindgebruikers die workflows met deze agent hebben getriggerd.",
   "agentDetail.monitoring.metrics.activeUsers.title": "Actieve gebruikers",
   "agentDetail.monitoring.metrics.avgSessionInteractions.explanation": "Aaneengesloten communicatie tussen gebruiker en agent voor dit toegangspunt.",

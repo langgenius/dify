@@ -290,6 +290,7 @@
   "agentDetail.monitoring.dateRangeLabel": "Date range",
   "agentDetail.monitoring.description": "Track the reusable agent activity, cost, and interaction quality across workflows.",
   "agentDetail.monitoring.learnMore": "Learn more",
+  "agentDetail.monitoring.loadFailed": "Failed to load monitoring data",
   "agentDetail.monitoring.metrics.activeUsers.explanation": "Unique end users who triggered workflows using this agent.",
   "agentDetail.monitoring.metrics.activeUsers.title": "Active Users",
   "agentDetail.monitoring.metrics.avgSessionInteractions.explanation": "Continuous user-agent communication count for this access point.",

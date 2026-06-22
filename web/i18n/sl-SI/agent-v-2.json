@@ -290,6 +290,7 @@
   "agentDetail.monitoring.dateRangeLabel": "Datumsko obdobje",
   "agentDetail.monitoring.description": "Sledite aktivnosti, stroškom in kakovosti interakcije ponovno uporabnega agenta v potekih dela.",
   "agentDetail.monitoring.learnMore": "Več informacij",
+  "agentDetail.monitoring.loadFailed": "Podatkov spremljanja ni bilo mogoče naložiti",
   "agentDetail.monitoring.metrics.activeUsers.explanation": "Edinstveni končni uporabniki, ki so sprožili poteke dela s tem agentom.",
   "agentDetail.monitoring.metrics.activeUsers.title": "Aktivni uporabniki",
   "agentDetail.monitoring.metrics.avgSessionInteractions.explanation": "Število neprekinjenih interakcij med uporabnikom in agentom za to dostopno točko.",

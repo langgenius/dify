@@ -290,6 +290,7 @@
   "agentDetail.monitoring.dateRangeLabel": "Діапазон дат",
   "agentDetail.monitoring.description": "Відстежуйте активність перевикористовного агента, вартість і якість взаємодії в робочих процесах.",
   "agentDetail.monitoring.learnMore": "Дізнатися більше",
+  "agentDetail.monitoring.loadFailed": "Не вдалося завантажити дані моніторингу",
   "agentDetail.monitoring.metrics.activeUsers.explanation": "Унікальні кінцеві користувачі, що запускали робочі процеси з цим агентом.",
   "agentDetail.monitoring.metrics.activeUsers.title": "Активні користувачі",
   "agentDetail.monitoring.metrics.avgSessionInteractions.explanation": "Кількість безперервних взаємодій користувача з агентом для цієї точки доступу.",

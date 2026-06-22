@@ -290,6 +290,7 @@
   "agentDetail.monitoring.dateRangeLabel": "日期范围",
   "agentDetail.monitoring.description": "跟踪可复用智能体在工作流中的活跃度、成本和交互质量。",
   "agentDetail.monitoring.learnMore": "了解更多",
+  "agentDetail.monitoring.loadFailed": "监控数据加载失败",
   "agentDetail.monitoring.metrics.activeUsers.explanation": "触发过使用此智能体的工作流的独立终端用户数。",
   "agentDetail.monitoring.metrics.activeUsers.title": "活跃用户",
   "agentDetail.monitoring.metrics.avgSessionInteractions.explanation": "此访问入口下用户与智能体的连续沟通次数。",

@@ -290,6 +290,7 @@
   "agentDetail.monitoring.dateRangeLabel": "Interval de date",
   "agentDetail.monitoring.description": "Urmăriți activitatea, costul și calitatea interacțiunii agentului reutilizabil în toate workflow-urile.",
   "agentDetail.monitoring.learnMore": "Aflați mai multe",
+  "agentDetail.monitoring.loadFailed": "Nu s-au putut încărca datele de monitorizare",
   "agentDetail.monitoring.metrics.activeUsers.explanation": "Utilizatori finali unici care au declanșat workflow-uri folosind acest agent.",
   "agentDetail.monitoring.metrics.activeUsers.title": "Utilizatori activi",
   "agentDetail.monitoring.metrics.avgSessionInteractions.explanation": "Numărul de comunicări continue utilizator-agent pentru acest punct de acces.",

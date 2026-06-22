@@ -290,6 +290,7 @@
   "agentDetail.monitoring.dateRangeLabel": "نطاق التاريخ",
   "agentDetail.monitoring.description": "تتبّع نشاط وتكلفة وجودة تفاعل الوكيل القابل لإعادة الاستخدام عبر سير العمل.",
   "agentDetail.monitoring.learnMore": "اعرف المزيد",
+  "agentDetail.monitoring.loadFailed": "تعذر تحميل بيانات المراقبة",
   "agentDetail.monitoring.metrics.activeUsers.explanation": "المستخدمون النهائيون الفريدون الذين شغّلوا سير العمل باستخدام هذا الوكيل.",
   "agentDetail.monitoring.metrics.activeUsers.title": "المستخدمون النشطون",
   "agentDetail.monitoring.metrics.avgSessionInteractions.explanation": "عدد التواصل المستمر بين المستخدم والوكيل لنقطة الوصول هذه.",

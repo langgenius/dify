@@ -290,6 +290,7 @@
   "agentDetail.monitoring.dateRangeLabel": "Intervallo di date",
   "agentDetail.monitoring.description": "Monitora l’attività, il costo e la qualità dell’interazione dell’agente riutilizzabile in tutti i workflow.",
   "agentDetail.monitoring.learnMore": "Scopri di più",
+  "agentDetail.monitoring.loadFailed": "Impossibile caricare i dati di monitoraggio",
   "agentDetail.monitoring.metrics.activeUsers.explanation": "Utenti finali unici che hanno attivato workflow utilizzando questo agente.",
   "agentDetail.monitoring.metrics.activeUsers.title": "Utenti attivi",
   "agentDetail.monitoring.metrics.avgSessionInteractions.explanation": "Conteggio della comunicazione continua tra utente e agente per questo punto di accesso.",
