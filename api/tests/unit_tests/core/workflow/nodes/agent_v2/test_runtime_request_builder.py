@@ -871,6 +871,17 @@ def _mock_drive_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
+def _mock_empty_drive_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.list_skills",
+        lambda self, *, tenant_id, agent_id: [],
+    )
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.manifest",
+        lambda self, *, tenant_id, agent_id, prefix="", include_download_url=False: [],
+    )
+
+
 def test_build_drive_layer_config_catalogs_drive_skills_and_mentions(monkeypatch: pytest.MonkeyPatch):
     from core.workflow.nodes.agent_v2.runtime_request_builder import build_drive_layer_config
 
@@ -886,21 +897,44 @@ def test_build_drive_layer_config_catalogs_drive_skills_and_mentions(monkeypatch
     assert warnings == []
 
 
-def test_build_drive_layer_config_skips_when_nothing_configured(monkeypatch: pytest.MonkeyPatch):
+def test_build_drive_layer_config_emits_drive_ref_when_catalog_is_empty(monkeypatch: pytest.MonkeyPatch):
     from core.workflow.nodes.agent_v2.runtime_request_builder import build_drive_layer_config
 
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.list_skills",
-        lambda self, *, tenant_id, agent_id: [],
-    )
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.manifest",
-        lambda self, *, tenant_id, agent_id, prefix="", include_download_url=False: [],
-    )
+    _mock_empty_drive_catalog(monkeypatch)
     soul = AgentSoulConfig(
         model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test")
     )
-    assert build_drive_layer_config(soul, tenant_id="tenant-1", agent_id="agent-1") == (None, [])
+    config, warnings = build_drive_layer_config(soul, tenant_id="tenant-1", agent_id="agent-1")
+
+    assert config is not None
+    assert config.drive_ref == "agent-agent-1"
+    assert config.skills == []
+    assert config.mentioned_skill_keys == []
+    assert config.mentioned_file_keys == []
+    assert warnings == []
+
+
+def test_workflow_run_request_contains_drive_layer_with_empty_catalog(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
+    )
+    monkeypatch.setattr("core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)
+    _mock_empty_drive_catalog(monkeypatch)
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(_context())
+
+    dumped = result.request.model_dump(mode="json")
+    layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
+    assert layers["drive"]["config"] == {
+        "drive_ref": "agent-agent-1",
+        "skills": [],
+        "mentioned_skill_keys": [],
+        "mentioned_file_keys": [],
+    }
+    assert layers[DIFY_SHELL_LAYER_ID]["deps"] == {
+        "execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID,
+        "drive": "drive",
+    }
 
 
 def test_build_drive_layer_config_requires_agent_identity():
