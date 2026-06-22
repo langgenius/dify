@@ -215,7 +215,7 @@ class TestTriggerSubscriptionBuilderApis:
                 return_value=None,
             ),
         ):
-            assert method(api, "t1", mock_user(), "github", "b1") == 200
+            assert method(api, "t1", mock_user(), "github", "b1") == ("", 200)
 
 
 class TestTriggerSubscriptionCrud:
@@ -239,7 +239,7 @@ class TestTriggerSubscriptionCrud:
             ),
             patch("controllers.console.workspace.trigger_providers.TriggerProviderService.update_trigger_subscription"),
         ):
-            assert method(api, "t1", "s1") == 200
+            assert method(api, "t1", "s1") == ("", 200)
 
     def test_update_not_found(self, app: Flask) -> None:
         api = TriggerSubscriptionUpdateApi()
@@ -275,7 +275,7 @@ class TestTriggerSubscriptionCrud:
                 "controllers.console.workspace.trigger_providers.TriggerProviderService.rebuild_trigger_subscription"
             ),
         ):
-            assert method(api, "t1", "s1") == 200
+            assert method(api, "t1", "s1") == ("", 200)
 
     def test_delete_subscription(self, app: Flask) -> None:
         api = TriggerSubscriptionDeleteApi()
