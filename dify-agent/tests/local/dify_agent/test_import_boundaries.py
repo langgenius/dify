@@ -159,6 +159,14 @@ def test_agent_stub_client_and_protocol_imports_are_client_safe() -> None:
     )
 
 
+def test_server_settings_import_does_not_import_agent_stub_app() -> None:
+    _run_import_check(
+        blocked_imports=["dify_agent.agent_stub.server.app"],
+        imports=["dify_agent.server.settings"],
+        assertions=["assert hasattr(dify_agent_server_settings, 'ServerSettings')"],
+    )
+
+
 def test_agenton_collection_roots_do_not_eagerly_import_pydantic_ai_implementations() -> None:
     _run_import_check(
         blocked_imports=[
