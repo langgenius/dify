@@ -3,8 +3,8 @@ from __future__ import annotations
 from flask import request
 from werkzeug.exceptions import Forbidden, NotFound, UnprocessableEntity
 
-from controllers.openapi.auth.data import AuthData
 from configs import dify_config
+from controllers.openapi.auth.data import AuthData
 from extensions.ext_database import db
 from libs.oauth_bearer import Scope, TokenType
 from services.account_service import AccountService, TenantService
