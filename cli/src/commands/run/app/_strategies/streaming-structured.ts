@@ -1,7 +1,7 @@
 import type { RunContext, RunStrategy } from './index'
 import type { SseEvent } from '@/http/sse'
 import { buildRunBody } from '@/api/app-run'
-import { chatConversationHint, newAppRunObject, RUN_MODES } from '@/commands/run/app/handlers'
+import { CHAT_MODES, chatConversationHint, newAppRunObject } from '@/commands/run/app/handlers'
 import { renderHitlHint, renderHitlOutput } from '@/commands/run/app/hitl-render'
 import { collect, HitlPauseError } from '@/commands/run/app/sse-collector'
 import { formatted, stringifyOutput } from '@/framework/output'
@@ -9,8 +9,6 @@ import { handle, unhandle } from '@/sys/index'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
 import { startSpinner } from '@/sys/io/spinner'
 import { extractThinkBlocks, stripThinkBlocks } from '@/sys/io/think-filter'
-
-const CHAT_MODES: ReadonlySet<string> = new Set([RUN_MODES.Chat, RUN_MODES.AgentChat, RUN_MODES.AdvancedChat])
 
 async function* captureTaskId(
   iter: AsyncIterable<SseEvent>,

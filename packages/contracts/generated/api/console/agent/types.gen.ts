@@ -315,6 +315,11 @@ export type AgentConfigSnapshotDetailResponse = {
   version_note?: string | null
 }
 
+export type AgentConfigSnapshotRestoreResponse = {
+  active_config_snapshot_id: string
+  result: 'success'
+}
+
 export type AgentAppPartial = {
   access_mode?: string | null
   active_config_is_published?: boolean
@@ -1176,6 +1181,7 @@ export type AgentUserSatisfactionRateStatisticResponse = {
 
 export type AgentConfigRevisionOperation
   = | 'create_version'
+    | 'restore_version'
     | 'save_current_version'
     | 'save_new_agent'
     | 'save_new_version'
@@ -2274,3 +2280,20 @@ export type GetAgentByAgentIdVersionsByVersionIdResponses = {
 
 export type GetAgentByAgentIdVersionsByVersionIdResponse
   = GetAgentByAgentIdVersionsByVersionIdResponses[keyof GetAgentByAgentIdVersionsByVersionIdResponses]
+
+export type PostAgentByAgentIdVersionsByVersionIdRestoreData = {
+  body?: never
+  path: {
+    agent_id: string
+    version_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/versions/{version_id}/restore'
+}
+
+export type PostAgentByAgentIdVersionsByVersionIdRestoreResponses = {
+  200: AgentConfigSnapshotRestoreResponse
+}
+
+export type PostAgentByAgentIdVersionsByVersionIdRestoreResponse
+  = PostAgentByAgentIdVersionsByVersionIdRestoreResponses[keyof PostAgentByAgentIdVersionsByVersionIdRestoreResponses]

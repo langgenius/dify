@@ -1,4 +1,5 @@
 import dataclasses
+import logging
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock
 
@@ -672,7 +673,7 @@ def test_enqueue_resume_workflow_not_found(mocker: MockerFixture, mock_session_f
     assert "WorkflowRun not found" in str(excinfo.value)
 
 
-def test_enqueue_resume_app_not_found(mocker: MockerFixture, mock_session_factory):
+def test_enqueue_resume_app_not_found(mocker, mock_session_factory, caplog):
     session_factory, session = mock_session_factory
     service = HumanInputService(session_factory)
 
@@ -687,10 +688,10 @@ def test_enqueue_resume_app_not_found(mocker: MockerFixture, mock_session_factor
     )
 
     session.execute.return_value.scalar_one_or_none.return_value = None
-    logger_spy = mocker.patch("services.human_input_service.logger")
 
-    service.enqueue_resume("workflow-run-id")
-    logger_spy.error.assert_called_once()
+    with caplog.at_level(logging.ERROR, logger="services.human_input_service"):
+        service.enqueue_resume("workflow-run-id")
+        assert any(r.levelno >= logging.ERROR for r in caplog.records)
 
 
 def test_is_globally_expired_zero_timeout(
