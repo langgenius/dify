@@ -57,20 +57,10 @@ class AppAccessFilter:
         return self.can_manage_own_apps and maintainer is not None and maintainer == account_id
 
     def apply_to_params(self, params: AppListBaseParams) -> None:
-        """Push this filter into ``AppListParams`` for a paginated query.
-
-        Leaves ``params`` untouched when unrestricted so the service returns all
-        workspace apps.
-        """
-        if self.accessible_app_ids:
-            params.accessible_app_ids = sorted(self.accessible_app_ids)
-            params.include_own_apps = self.can_manage_own_apps
-        elif self.accessible_app_ids is not None and self.can_manage_own_apps:
-            # No whitelisted apps, but the caller may still see apps they own.
-            params.is_created_by_me = True
-        elif self.accessible_app_ids is not None:
-            # No whitelisted apps and no own-app fallback: see nothing.
-            params.accessible_app_ids = []
+        if self.accessible_app_ids is None:
+            return
+        params.accessible_app_ids = sorted(self.accessible_app_ids)
+        params.include_own_apps = self.can_manage_own_apps
 
 
 def resolve_app_access_filter(

@@ -80,16 +80,20 @@ class TestAppAccessFilterApplyToParams:
         assert params.accessible_app_ids == ["a", "b"]
         assert params.include_own_apps is True
 
-    def test_empty_set_with_manage_falls_back_to_own_apps(self):
+    def test_empty_set_with_manage_falls_back_to_maintained_apps(self):
+        # Own-app fallback must use maintainer (include_own_apps), consistent
+        # with is_app_accessible — not created_by (is_created_by_me).
         params = AppListParams()
         AppAccessFilter(accessible_app_ids=set(), can_manage_own_apps=True).apply_to_params(params)
-        assert params.is_created_by_me is True
-        assert params.accessible_app_ids is None
+        assert params.accessible_app_ids == []
+        assert params.include_own_apps is True
+        assert params.is_created_by_me is None
 
     def test_empty_set_without_manage_sees_nothing(self):
         params = AppListParams()
         AppAccessFilter(accessible_app_ids=set(), can_manage_own_apps=False).apply_to_params(params)
         assert params.accessible_app_ids == []
+        assert params.include_own_apps is False
         assert params.is_created_by_me is None
 
 
