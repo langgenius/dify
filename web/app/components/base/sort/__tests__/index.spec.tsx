@@ -43,7 +43,7 @@ describe('Sort component — real portal integration', () => {
 
     const sortButton = getSortButton()
     expect(sortButton).toBeInstanceOf(HTMLElement)
-    expect(sortButton.querySelector('svg')).toBeInTheDocument()
+    expect(sortButton.querySelector('.i-ri-sort-asc')).toBeInTheDocument()
   })
 
   it('opens and closes the menu', async () => {
