@@ -1209,9 +1209,7 @@ def test_resolve_current_user_agent_debug_conversation_uses_agent_or_backing_app
 
     assert explicit_id == "debug-agent-1"
     assert fallback_id == "debug-backing-agent"
-    assert calls[1] == {
-        "get_or_create": {"tenant_id": "tenant-1", "agent_id": "agent-1", "account_id": "account-1"}
-    }
+    assert calls[1] == {"get_or_create": {"tenant_id": "tenant-1", "agent_id": "agent-1", "account_id": "account-1"}}
     assert calls[3] == {"get_app_backing_agent": {"tenant_id": "tenant-1", "app_id": "app-1"}}
     assert calls[4] == {
         "get_or_create": {"tenant_id": "tenant-1", "agent_id": "backing-agent", "account_id": "account-1"}
