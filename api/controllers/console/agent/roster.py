@@ -49,7 +49,7 @@ from libs.datetime_utils import parse_time_range
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
-from models.model import IconType
+from models.model import AppMode, IconType
 from services.agent.errors import AgentNotFoundError
 from services.agent.observability_service import (
     AgentLogQueryParams,
@@ -367,7 +367,7 @@ class AgentAppListApi(Resource):
         params = AppListParams(
             page=args.page,
             limit=args.limit,
-            mode="agent",
+            mode=AppMode.AGENT,
             name=args.name,
             tag_ids=args.tag_ids,
             creator_ids=args.creator_ids,

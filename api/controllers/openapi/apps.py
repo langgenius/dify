@@ -193,7 +193,7 @@ class AppListApi(Resource):
         params = AppListParams(
             page=query.page,
             limit=query.limit,
-            mode=query.mode.value if query.mode else "all",  # type:ignore
+            mode=AppMode(query.mode.value) if query.mode else "all",
             name=query.name,
             status="normal",
             # Visibility gate pushed into the query — pagination.total stays
