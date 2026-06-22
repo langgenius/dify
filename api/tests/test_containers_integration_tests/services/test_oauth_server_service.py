@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from typing import cast
-from unittest.mock import MagicMock, patch, ANY
+from unittest.mock import ANY, MagicMock, patch
 from uuid import uuid4
 
 import pytest
