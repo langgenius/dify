@@ -20,6 +20,7 @@ Private helpers
 
 from collections.abc import Callable
 from functools import wraps
+from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
@@ -30,8 +31,10 @@ from extensions.ext_database import db
 from libs.login import current_account_with_tenant
 from models.dataset import Dataset
 from models.model import App
-from controllers.openapi.auth.data import AuthData
 from services.enterprise.rbac_service import RBACService
+
+if TYPE_CHECKING:
+    from controllers.openapi.auth.data import AuthData
 
 __all__ = ["RBACPermission", "RBACResourceScope", "rbac_permission_required"]
 
@@ -51,7 +54,7 @@ def openapi_rbac_permission_required[**P, R](
 
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
-            auth_data: AuthData | None = kwargs.get("auth_data")
+            auth_data: "AuthData | None" = kwargs.get("auth_data")
             if not auth_data:
                 raise Forbidden() # openapi auth pipeline is required
             if auth_data.caller_kind == "end_user":
