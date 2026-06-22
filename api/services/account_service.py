@@ -1792,7 +1792,7 @@ class TenantService:
 
     @staticmethod
     def update_member_role(
-        tenant: Tenant, member: Account, new_role: str, operator: Account, *, session: scoped_session
+        tenant: Tenant, member: Account, new_role: str, operator: Account, *, session: scoped_session | Session
     ):
         """Update member role"""
         TenantService.check_member_permission(tenant, operator, member, "update", session=session)
@@ -2104,7 +2104,7 @@ class RegisterService:
 
     @classmethod
     def get_invitation_if_token_valid(
-        cls, workspace_id: str | None, email: str | None, token: str, *, session: scoped_session
+        cls, workspace_id: str | None, email: str | None, token: str, *, session: scoped_session | Session
     ) -> InvitationDetailDict | None:
         invitation_data = cls.get_invitation_by_token(token, workspace_id, email)
         if not invitation_data:
@@ -2157,7 +2157,7 @@ class RegisterService:
 
     @classmethod
     def get_invitation_with_case_fallback(
-        cls, workspace_id: str | None, email: str | None, token: str, *, session: scoped_session
+        cls, workspace_id: str | None, email: str | None, token: str, *, session: scoped_session | Session
     ) -> InvitationDetailDict | None:
         invitation = cls.get_invitation_if_token_valid(workspace_id, email, token, session=session)
         if invitation or not email or email == email.lower():
