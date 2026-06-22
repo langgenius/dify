@@ -4,25 +4,18 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import {
-  closeCreateReleaseDialogAtom,
-  createReleaseCanCreateAtom,
+  createReleaseContentReadyAtom,
   createReleaseFormIsSubmittingAtom,
   isCheckingCreateReleaseContentAtom,
+  requestCloseCreateReleaseDialogAtom,
 } from '../state'
 
 export function CreateReleaseActions() {
   const { t } = useTranslation('deployments')
-  const closeDialog = useSetAtom(closeCreateReleaseDialogAtom)
+  const requestCloseDialog = useSetAtom(requestCloseCreateReleaseDialogAtom)
   const isSubmitting = useAtomValue(createReleaseFormIsSubmittingAtom)
-  const canCreate = useAtomValue(createReleaseCanCreateAtom)
+  const releaseContentReady = useAtomValue(createReleaseContentReadyAtom)
   const isCheckingReleaseContent = useAtomValue(isCheckingCreateReleaseContentAtom)
-
-  function requestClose() {
-    if (isSubmitting)
-      return
-
-    closeDialog()
-  }
 
   return (
     <div className="flex items-center justify-end gap-4 border-t border-divider-subtle bg-background-default-subtle px-6 py-4">
@@ -34,12 +27,12 @@ export function CreateReleaseActions() {
           onPointerDown={(event) => {
             event.preventDefault()
             event.stopPropagation()
-            requestClose()
+            requestCloseDialog()
           }}
           onClick={(event) => {
             event.preventDefault()
             event.stopPropagation()
-            requestClose()
+            requestCloseDialog()
           }}
         >
           {t('versions.cancelCreate')}
@@ -48,7 +41,8 @@ export function CreateReleaseActions() {
           type="submit"
           variant="primary"
           className="min-w-22"
-          disabled={!canCreate}
+          disabled={!releaseContentReady}
+          loading={isSubmitting}
         >
           {isSubmitting ? t('versions.creating') : isCheckingReleaseContent ? t('versions.checkingReleaseContent') : t('versions.create')}
         </Button>

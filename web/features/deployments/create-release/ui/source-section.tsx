@@ -104,7 +104,7 @@ function DslFileField() {
         className="mt-0"
       />
       {isReadingDsl && (
-        <div className="system-xs-regular text-text-tertiary">
+        <div role="status" className="system-xs-regular text-text-tertiary">
           {t('versions.dslReading')}
         </div>
       )}

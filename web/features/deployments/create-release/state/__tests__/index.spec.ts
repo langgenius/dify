@@ -309,7 +309,7 @@ describe('create release state', () => {
     unsubscribe()
   })
 
-  it('should derive create readiness from release name and content precheck', async () => {
+  it('should derive content readiness from release content precheck', async () => {
     const { state, store, unsubscribe } = await mountedStore()
     store.set(state.createReleaseAppInstanceIdAtom, 'app-instance-1')
     store.set(state.openCreateReleaseDialogAtom)
@@ -317,11 +317,21 @@ describe('create release state', () => {
     setPrecheckReleaseResult()
 
     expect(store.get(state.createReleaseContentReadyAtom)).toBe(true)
-    expect(store.get(state.createReleaseCanCreateAtom)).toBe(false)
 
     store.set(state.createReleaseNameFieldAtom, 'Release 1')
 
-    expect(store.get(state.createReleaseCanCreateAtom)).toBe(true)
+    expect(store.get(state.createReleaseContentReadyAtom)).toBe(true)
+
+    unsubscribe()
+  })
+
+  it('should close the dialog through the close request action', async () => {
+    const { state, store, unsubscribe } = await mountedStore()
+
+    store.set(state.openCreateReleaseDialogAtom)
+    store.set(state.requestCloseCreateReleaseDialogAtom)
+
+    expect(store.get(state.createReleaseDialogOpenAtom)).toBe(false)
 
     unsubscribe()
   })

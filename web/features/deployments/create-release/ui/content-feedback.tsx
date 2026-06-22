@@ -22,7 +22,7 @@ export function ReleaseContentFeedback() {
       <UnsupportedDslNodesAlert nodes={unsupportedDslNodes} />
 
       {isCheckingReleaseContent && (
-        <div className="rounded-lg border border-divider-subtle bg-background-default-subtle px-3 py-2 system-sm-regular text-text-tertiary">
+        <div role="status" className="rounded-lg border border-divider-subtle bg-background-default-subtle px-3 py-2 system-sm-regular text-text-tertiary">
           {t('versions.checkingReleaseContent')}
         </div>
       )}

@@ -2,13 +2,12 @@
 
 import type { ButtonProps } from '@langgenius/dify-ui/button'
 import { Button } from '@langgenius/dify-ui/button'
-import { useSetAtom } from 'jotai'
+import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { ScopeProvider } from 'jotai-scope'
 import { useTranslation } from 'react-i18next'
 import {
   createReleaseAppInstanceIdAtom,
   createReleaseLocalAtoms,
-  openCreateReleaseDialogAtom,
 } from './state'
 import { CreateReleaseDialog } from './ui/dialog'
 
@@ -24,17 +23,19 @@ function CreateReleaseTrigger({
   className?: string
 }) {
   const { t } = useTranslation('deployments')
-  const openDialog = useSetAtom(openCreateReleaseDialogAtom)
 
   return (
-    <Button
-      size={size}
-      variant={variant}
-      className={className}
-      onClick={openDialog}
+    <DialogTrigger
+      render={(
+        <Button
+          size={size}
+          variant={variant}
+          className={className}
+        />
+      )}
     >
       {label ?? t('versions.createRelease')}
-    </Button>
+    </DialogTrigger>
   )
 }
 
@@ -60,13 +61,14 @@ export function CreateReleaseControl({
       ]}
       name="CreateRelease"
     >
-      <CreateReleaseTrigger
-        variant={variant}
-        size={size}
-        label={label}
-        className={className}
-      />
-      <CreateReleaseDialog />
+      <CreateReleaseDialog>
+        <CreateReleaseTrigger
+          variant={variant}
+          size={size}
+          label={label}
+          className={className}
+        />
+      </CreateReleaseDialog>
     </ScopeProvider>
   )
 }

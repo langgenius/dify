@@ -331,14 +331,6 @@ export const createReleaseContentReadyAtom = atom((get) => {
     && get(createReleaseUnsupportedDslNodesAtom).length === 0
 })
 
-export const createReleaseCanCreateAtom = atom((get) => {
-  return Boolean(
-    get(createReleaseNameFieldAtom).value.trim()
-    && get(createReleaseContentReadyAtom)
-    && !get(createReleaseFormIsSubmittingAtom),
-  )
-})
-
 // Actions
 const resetCreateReleaseDslFileAtom = atom(null, (get, set) => {
   set(createReleaseDslFileFieldAtom, undefined)
@@ -353,6 +345,13 @@ export const openCreateReleaseDialogAtom = atom(null, (_get, set) => {
 export const closeCreateReleaseDialogAtom = atom(null, (_get, set) => {
   set(createReleaseDialogOpenAtom, false)
   set(resetCreateReleaseDslFileAtom)
+})
+
+export const requestCloseCreateReleaseDialogAtom = atom(null, (get, set) => {
+  if (get(createReleaseFormIsSubmittingAtom))
+    return
+
+  set(closeCreateReleaseDialogAtom)
 })
 
 export const selectCreateReleaseSourceModeAtom = atom(null, (_get, set, releaseSourceMode: ReleaseSourceMode) => {
@@ -380,6 +379,10 @@ export const updateCreateReleaseDslFileAtom = atom(null, (get, set, dslFile: Cre
 const createReleaseMutationAtom = atomWithMutation(() =>
   consoleQuery.enterprise.releaseService.createRelease.mutationOptions(),
 )
+
+export const isCreatingReleaseAtom = atom((get) => {
+  return get(createReleaseMutationAtom).isPending
+})
 
 export class CreateReleaseSubmissionBlockedError extends Error {
   reason: 'unsupportedDslMode'
