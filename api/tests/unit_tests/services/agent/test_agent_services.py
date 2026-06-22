@@ -1045,10 +1045,91 @@ def test_agent_app_visible_versions_exclude_draft_saves():
     agent_app_operations = AgentRosterService._visible_version_operations(agent_app)
     roster_operations = AgentRosterService._visible_version_operations(roster_agent)
 
-    assert agent_app_operations == {AgentConfigRevisionOperation.SAVE_NEW_VERSION}
+    assert agent_app_operations == {
+        AgentConfigRevisionOperation.SAVE_NEW_VERSION,
+        AgentConfigRevisionOperation.RESTORE_VERSION,
+    }
     assert AgentConfigRevisionOperation.SAVE_CURRENT_VERSION not in agent_app_operations
     assert AgentConfigRevisionOperation.CREATE_VERSION in roster_operations
+    assert AgentConfigRevisionOperation.RESTORE_VERSION in roster_operations
     assert AgentConfigRevisionOperation.SAVE_CURRENT_VERSION not in roster_operations
+
+
+def test_restore_roster_agent_version_switches_active_snapshot(monkeypatch: pytest.MonkeyPatch):
+    fake_session = FakeSession(scalar=["version-2", 6])
+    service = AgentRosterService(fake_session)
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Analyst",
+        description="old",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="version-4",
+    )
+    version = AgentConfigSnapshot(
+        id="version-2",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version=2,
+        config_snapshot=_agent_soul_with_model(),
+    )
+
+    monkeypatch.setattr(service, "_get_agent", lambda **kwargs: agent)
+    monkeypatch.setattr(service, "_get_version", lambda **kwargs: version)
+
+    restored = service.restore_agent_version(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version_id="version-2",
+        account_id="account-1",
+    )
+
+    assert restored == {"result": "success", "active_config_snapshot_id": "version-2"}
+    assert agent.active_config_snapshot_id == "version-2"
+    assert agent.active_config_has_model is True
+    assert agent.updated_by == "account-1"
+    assert fake_session.commits == 1
+    revision = fake_session.added[0]
+    assert revision.tenant_id == "tenant-1"
+    assert revision.agent_id == "agent-1"
+    assert revision.previous_snapshot_id == "version-4"
+    assert revision.current_snapshot_id == "version-2"
+    assert revision.revision == 7
+    assert revision.operation == AgentConfigRevisionOperation.RESTORE_VERSION
+    assert revision.created_by == "account-1"
+
+
+def test_restore_roster_agent_version_rejects_invisible_versions(monkeypatch: pytest.MonkeyPatch):
+    fake_session = FakeSession(scalar=[None])
+    service = AgentRosterService(fake_session)
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Analyst",
+        description="old",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="version-4",
+    )
+
+    monkeypatch.setattr(service, "_get_agent", lambda **kwargs: agent)
+
+    with pytest.raises(roster_service.AgentVersionNotFoundError):
+        service.restore_agent_version(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            version_id="version-2",
+            account_id="account-1",
+        )
+
+    assert agent.active_config_snapshot_id == "version-4"
+    assert fake_session.added == []
+    assert fake_session.commits == 0
 
 
 def test_app_list_all_excludes_agent_apps_by_default():

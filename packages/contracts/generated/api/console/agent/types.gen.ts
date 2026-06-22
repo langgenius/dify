@@ -152,6 +152,25 @@ export type AgentDriveSkillListResponse = {
   items?: Array<AgentDriveSkillItemResponse>
 }
 
+export type AgentDriveSkillInspectResponse = {
+  archive_key?: string | null
+  created_at?: number | null
+  description: string
+  file_tree?: Array<{
+    [key: string]: unknown
+  }>
+  files?: Array<AgentDriveSkillFileResponse>
+  hash?: string | null
+  mime_type?: string | null
+  name: string
+  path: string
+  size?: number | null
+  skill_md: AgentDriveSkillMarkdownResponse
+  skill_md_key: string
+  source: string
+  warnings?: Array<string>
+}
+
 export type AgentAppFeaturesPayload = {
   opening_statement?: string | null
   retriever_resource?: AgentFeatureToggleConfig | null
@@ -292,6 +311,11 @@ export type AgentConfigSnapshotDetailResponse = {
   summary?: string | null
   version: number
   version_note?: string | null
+}
+
+export type AgentConfigSnapshotRestoreResponse = {
+  active_config_snapshot_id: string
+  result: 'success'
 }
 
 export type AgentAppPartial = {
@@ -540,6 +564,22 @@ export type AgentDriveSkillItemResponse = {
   path: string
   size?: number | null
   skill_md_key: string
+}
+
+export type AgentDriveSkillFileResponse = {
+  available_in_drive: boolean
+  drive_key?: string | null
+  name: string
+  path: string
+  type: string
+}
+
+export type AgentDriveSkillMarkdownResponse = {
+  binary: boolean
+  key: string
+  size?: number | null
+  text?: string | null
+  truncated: boolean
 }
 
 export type AgentFeatureToggleConfig = {
@@ -1088,6 +1128,7 @@ export type AgentUserSatisfactionRateStatisticResponse = {
 
 export type AgentConfigRevisionOperation
   = | 'create_version'
+    | 'restore_version'
     | 'save_current_version'
     | 'save_new_agent'
     | 'save_new_version'
@@ -1818,6 +1859,23 @@ export type GetAgentByAgentIdDriveSkillsResponses = {
 export type GetAgentByAgentIdDriveSkillsResponse
   = GetAgentByAgentIdDriveSkillsResponses[keyof GetAgentByAgentIdDriveSkillsResponses]
 
+export type GetAgentByAgentIdDriveSkillsBySkillPathInspectData = {
+  body?: never
+  path: {
+    agent_id: string
+    skill_path: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/drive/skills/{skill_path}/inspect'
+}
+
+export type GetAgentByAgentIdDriveSkillsBySkillPathInspectResponses = {
+  200: AgentDriveSkillInspectResponse
+}
+
+export type GetAgentByAgentIdDriveSkillsBySkillPathInspectResponse
+  = GetAgentByAgentIdDriveSkillsBySkillPathInspectResponses[keyof GetAgentByAgentIdDriveSkillsBySkillPathInspectResponses]
+
 export type PostAgentByAgentIdFeaturesData = {
   body: AgentAppFeaturesPayload
   path: {
@@ -2169,3 +2227,20 @@ export type GetAgentByAgentIdVersionsByVersionIdResponses = {
 
 export type GetAgentByAgentIdVersionsByVersionIdResponse
   = GetAgentByAgentIdVersionsByVersionIdResponses[keyof GetAgentByAgentIdVersionsByVersionIdResponses]
+
+export type PostAgentByAgentIdVersionsByVersionIdRestoreData = {
+  body?: never
+  path: {
+    agent_id: string
+    version_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/versions/{version_id}/restore'
+}
+
+export type PostAgentByAgentIdVersionsByVersionIdRestoreResponses = {
+  200: AgentConfigSnapshotRestoreResponse
+}
+
+export type PostAgentByAgentIdVersionsByVersionIdRestoreResponse
+  = PostAgentByAgentIdVersionsByVersionIdRestoreResponses[keyof PostAgentByAgentIdVersionsByVersionIdRestoreResponses]

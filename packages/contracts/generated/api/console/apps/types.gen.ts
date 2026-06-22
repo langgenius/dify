@@ -197,6 +197,25 @@ export type AgentDriveSkillListResponse = {
   items?: Array<AgentDriveSkillItemResponse>
 }
 
+export type AgentDriveSkillInspectResponse = {
+  archive_key?: string | null
+  created_at?: number | null
+  description: string
+  file_tree?: Array<{
+    [key: string]: unknown
+  }>
+  files?: Array<AgentDriveSkillFileResponse>
+  hash?: string | null
+  mime_type?: string | null
+  name: string
+  path: string
+  size?: number | null
+  skill_md: AgentDriveSkillMarkdownResponse
+  skill_md_key: string
+  source: string
+  warnings?: Array<string>
+}
+
 export type AgentDriveDeleteResponse = {
   removed_keys?: Array<string>
   result: string
@@ -1293,6 +1312,22 @@ export type AgentDriveSkillItemResponse = {
   path: string
   size?: number | null
   skill_md_key: string
+}
+
+export type AgentDriveSkillFileResponse = {
+  available_in_drive: boolean
+  drive_key?: string | null
+  name: string
+  path: string
+  type: string
+}
+
+export type AgentDriveSkillMarkdownResponse = {
+  binary: boolean
+  key: string
+  size?: number | null
+  text?: string | null
+  truncated: boolean
 }
 
 export type AgentDriveFileResponse = {
@@ -3108,6 +3143,25 @@ export type GetAppsByAppIdAgentDriveSkillsResponses = {
 
 export type GetAppsByAppIdAgentDriveSkillsResponse
   = GetAppsByAppIdAgentDriveSkillsResponses[keyof GetAppsByAppIdAgentDriveSkillsResponses]
+
+export type GetAppsByAppIdAgentDriveSkillsBySkillPathInspectData = {
+  body?: never
+  path: {
+    app_id: string
+    skill_path: string
+  }
+  query?: {
+    node_id?: string
+  }
+  url: '/apps/{app_id}/agent/drive/skills/{skill_path}/inspect'
+}
+
+export type GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponses = {
+  200: AgentDriveSkillInspectResponse
+}
+
+export type GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponse
+  = GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponses[keyof GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponses]
 
 export type DeleteAppsByAppIdAgentFilesData = {
   body?: never

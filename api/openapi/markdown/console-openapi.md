@@ -591,6 +591,22 @@ List drive-backed skills for an Agent App
 | ---- | ----------- | ------ |
 | 200 | Drive skills | **application/json**: [AgentDriveSkillListResponse](#agentdriveskilllistresponse)<br> |
 
+### [GET] /agent/{agent_id}/drive/skills/{skill_path}/inspect
+Inspect one drive-backed skill for slash-menu hover/detail UI
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| skill_path | path | Skill path/slug, e.g. tender-analyzer | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Drive skill inspect view | **application/json**: [AgentDriveSkillInspectResponse](#agentdriveskillinspectresponse)<br> |
+
 ### [POST] /agent/{agent_id}/features
 Update an Agent App's presentation features (opener, follow-up, citations, ...)
 
@@ -919,6 +935,20 @@ Infer CLI tool + ENV suggestions from a standardized Agent App skill
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent version detail | **application/json**: [AgentConfigSnapshotDetailResponse](#agentconfigsnapshotdetailresponse)<br> |
+
+### [POST] /agent/{agent_id}/versions/{version_id}/restore
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+| version_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent version restored | **application/json**: [AgentConfigSnapshotRestoreResponse](#agentconfigsnapshotrestoreresponse)<br> |
 
 ### [GET] /all-workspaces
 #### Parameters
@@ -1485,6 +1515,23 @@ List drive-backed skills for the bound agent
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Drive skills | **application/json**: [AgentDriveSkillListResponse](#agentdriveskilllistresponse)<br> |
+
+### [GET] /apps/{app_id}/agent/drive/skills/{skill_path}/inspect
+Inspect one drive-backed skill for slash-menu hover/detail UI
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| skill_path | path | Skill path/slug, e.g. tender-analyzer | Yes | string |
+| node_id | query | Workflow node ID (workflow composer variant) | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Drive skill inspect view | **application/json**: [AgentDriveSkillInspectResponse](#agentdriveskillinspectresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/agent/files
 Delete one drive file by key via drive commit-null semantics
@@ -12338,6 +12385,13 @@ Audit operation recorded for Agent Soul version/revision changes.
 | ---- | ---- | ----------- | -------- |
 | data | [ [AgentConfigSnapshotSummaryResponse](#agentconfigsnapshotsummaryresponse) ] |  | Yes |
 
+#### AgentConfigSnapshotRestoreResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active_config_snapshot_id | string |  | Yes |
+| result | string |  | Yes |
+
 #### AgentConfigSnapshotSummaryResponse
 
 | Name | Type | Description | Required |
@@ -12443,6 +12497,35 @@ Audit operation recorded for Agent Soul version/revision changes.
 | text | string |  | No |
 | truncated | boolean |  | Yes |
 
+#### AgentDriveSkillFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| available_in_drive | boolean |  | Yes |
+| drive_key | string |  | No |
+| name | string |  | Yes |
+| path | string |  | Yes |
+| type | string |  | Yes |
+
+#### AgentDriveSkillInspectResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| archive_key | string |  | No |
+| created_at | integer |  | No |
+| description | string |  | Yes |
+| file_tree | [ object ] |  | No |
+| files | [ [AgentDriveSkillFileResponse](#agentdriveskillfileresponse) ] |  | No |
+| hash | string |  | No |
+| mime_type | string |  | No |
+| name | string |  | Yes |
+| path | string |  | Yes |
+| size | integer |  | No |
+| skill_md | [AgentDriveSkillMarkdownResponse](#agentdriveskillmarkdownresponse) |  | Yes |
+| skill_md_key | string |  | Yes |
+| source | string |  | Yes |
+| warnings | [ string ] |  | No |
+
 #### AgentDriveSkillItemResponse
 
 | Name | Type | Description | Required |
@@ -12462,6 +12545,16 @@ Audit operation recorded for Agent Soul version/revision changes.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | items | [ [AgentDriveSkillItemResponse](#agentdriveskillitemresponse) ] |  | No |
+
+#### AgentDriveSkillMarkdownResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| binary | boolean |  | Yes |
+| key | string |  | Yes |
+| size | integer |  | No |
+| text | string |  | No |
+| truncated | boolean |  | Yes |
 
 #### AgentEnvVariableConfig
 

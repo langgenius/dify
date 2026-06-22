@@ -226,6 +226,7 @@
   "newAppFromTemplate.sidebar.Workflow": "Рабочий процесс",
   "newAppFromTemplate.sidebar.Writing": "Пишущий",
   "noAccessPermission": "Нет разрешения на доступ к веб-приложению",
+  "noAccessResourcePermission": "Нет разрешения на доступ к этому ресурсу",
   "noUserInputNode": "Отсутствует узел ввода пользователя",
   "notPublishedYet": "Приложение ещё не опубликовано",
   "openInExplore": "Открыть в разделе «Обзор»",

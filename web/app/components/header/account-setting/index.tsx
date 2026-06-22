@@ -3,6 +3,7 @@ import type { AccountSettingTab } from '@/app/components/header/account-setting/
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import BillingPage from '@/app/components/billing/billing-page'
@@ -13,6 +14,7 @@ import {
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { BillingPermission, hasPermission } from '@/utils/permission'
 import AccessRulesPage from './access-rules-page'
@@ -51,12 +53,18 @@ export default function AccountSetting({
   const resetModelProviderListExpanded = useResetModelProviderListExpanded()
   const { t } = useTranslation()
   const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { workspacePermissionKeys } = useAppContext()
-  const canManageWorkspaceRoles = hasPermission(workspacePermissionKeys, 'workspace.role.manage')
+  const isRbacEnabled = systemFeatures.rbac_enabled
+  const canManageWorkspaceRoles = isRbacEnabled && hasPermission(workspacePermissionKeys, 'workspace.role.manage')
   const canViewBilling = enableBilling && hasPermission(workspacePermissionKeys, BillingPermission.View)
-  const activeMenu = activeTab === ACCOUNT_SETTING_TAB.BILLING && !canViewBilling
-    ? ACCOUNT_SETTING_TAB.LANGUAGE
-    : activeTab
+  const activeMenu = (() => {
+    if (activeTab === ACCOUNT_SETTING_TAB.BILLING && !canViewBilling)
+      return ACCOUNT_SETTING_TAB.LANGUAGE
+    if ((activeTab === ACCOUNT_SETTING_TAB.PERMISSIONS || activeTab === ACCOUNT_SETTING_TAB.ACCESS_RULES) && !canManageWorkspaceRoles)
+      return ACCOUNT_SETTING_TAB.MEMBERS
+    return activeTab
+  })()
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   const settingItems: GroupItem[] = [

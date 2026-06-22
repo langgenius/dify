@@ -36,6 +36,7 @@ from extensions.ext_database import db
 from fields.agent_fields import (
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
+    AgentConfigSnapshotRestoreResponse,
     AgentInviteOptionsResponse,
     AgentLogListResponse,
     AgentLogMessageListResponse,
@@ -223,6 +224,7 @@ register_response_schema_models(
     AgentAppPartial,
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
+    AgentConfigSnapshotRestoreResponse,
     AgentInviteOptionsResponse,
     AgentLogListResponse,
     AgentLogMessageListResponse,
@@ -647,5 +649,26 @@ class AgentRosterVersionDetailApi(Resource):
                 tenant_id=tenant_id,
                 agent_id=str(agent_id),
                 version_id=str(version_id),
+            ),
+        )
+
+
+@console_ns.route("/agent/<uuid:agent_id>/versions/<uuid:version_id>/restore")
+class AgentRosterVersionRestoreApi(Resource):
+    @console_ns.response(200, "Agent version restored", console_ns.models[AgentConfigSnapshotRestoreResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, current_user: Account, agent_id: UUID, version_id: UUID):
+        return dump_response(
+            AgentConfigSnapshotRestoreResponse,
+            _agent_roster_service().restore_agent_version(
+                tenant_id=tenant_id,
+                agent_id=str(agent_id),
+                version_id=str(version_id),
+                account_id=current_user.id,
             ),
         )

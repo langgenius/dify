@@ -954,6 +954,48 @@ export const zAgentDriveSkillListResponse = z.object({
 })
 
 /**
+ * AgentDriveSkillFileResponse
+ */
+export const zAgentDriveSkillFileResponse = z.object({
+  available_in_drive: z.boolean(),
+  drive_key: z.string().nullish(),
+  name: z.string(),
+  path: z.string(),
+  type: z.string(),
+})
+
+/**
+ * AgentDriveSkillMarkdownResponse
+ */
+export const zAgentDriveSkillMarkdownResponse = z.object({
+  binary: z.boolean(),
+  key: z.string(),
+  size: z.int().nullish(),
+  text: z.string().nullish(),
+  truncated: z.boolean(),
+})
+
+/**
+ * AgentDriveSkillInspectResponse
+ */
+export const zAgentDriveSkillInspectResponse = z.object({
+  archive_key: z.string().nullish(),
+  created_at: z.int().nullish(),
+  description: z.string(),
+  file_tree: z.array(z.record(z.string(), z.unknown())).optional(),
+  files: z.array(zAgentDriveSkillFileResponse).optional(),
+  hash: z.string().nullish(),
+  mime_type: z.string().nullish(),
+  name: z.string(),
+  path: z.string(),
+  size: z.int().nullish(),
+  skill_md: zAgentDriveSkillMarkdownResponse,
+  skill_md_key: z.string(),
+  source: z.string(),
+  warnings: z.array(z.string()).optional(),
+})
+
+/**
  * AgentDriveFileResponse
  */
 export const zAgentDriveFileResponse = z.object({
@@ -3886,6 +3928,21 @@ export const zGetAppsByAppIdAgentDriveSkillsQuery = z.object({
  * Drive skills
  */
 export const zGetAppsByAppIdAgentDriveSkillsResponse = zAgentDriveSkillListResponse
+
+export const zGetAppsByAppIdAgentDriveSkillsBySkillPathInspectPath = z.object({
+  app_id: z.uuid(),
+  skill_path: z.string(),
+})
+
+export const zGetAppsByAppIdAgentDriveSkillsBySkillPathInspectQuery = z.object({
+  node_id: z.string().optional(),
+})
+
+/**
+ * Drive skill inspect view
+ */
+export const zGetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponse
+  = zAgentDriveSkillInspectResponse
 
 export const zDeleteAppsByAppIdAgentFilesPath = z.object({
   app_id: z.uuid(),

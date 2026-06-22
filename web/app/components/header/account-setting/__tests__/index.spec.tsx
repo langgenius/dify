@@ -183,11 +183,13 @@ describe('AccountSetting', () => {
     initialTab?: AccountSettingTab
     onCancel?: () => void
     onTabChange?: (tab: AccountSettingTab) => void
+    rbacEnabled?: boolean
   }) => {
     const {
       initialTab = ACCOUNT_SETTING_TAB.MEMBERS,
       onCancel = mockOnCancel,
       onTabChange = mockOnTabChange,
+      rbacEnabled = true,
     } = props ?? {}
 
     const StatefulAccountSetting = () => {
@@ -211,6 +213,7 @@ describe('AccountSetting', () => {
         branding: { enabled: false },
         enable_marketplace: true,
         enable_collaboration_mode: false,
+        rbac_enabled: rbacEnabled,
       },
     })
   }
@@ -402,6 +405,26 @@ describe('AccountSetting', () => {
       expect(screen.getByRole('button', { name: 'common.settings.members' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'common.settings.rolesAndPermissions' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'common.settings.resourceAccess' })).not.toBeInTheDocument()
+    })
+
+    it('should hide role and resource access entries when RBAC is disabled', () => {
+      // Act
+      renderAccountSetting({ rbacEnabled: false })
+
+      // Assert
+      expect(screen.getByRole('button', { name: 'common.settings.members' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.settings.rolesAndPermissions' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.settings.resourceAccess' })).not.toBeInTheDocument()
+    })
+
+    it('should not render direct role pages when RBAC is disabled', () => {
+      // Act
+      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.ACCESS_RULES, rbacEnabled: false })
+
+      // Assert
+      expect(screen.queryByTestId('access-rules-page')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('permissions-page')).not.toBeInTheDocument()
+      expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(0)
     })
 
     it('should hide billing and custom tabs when disabled', () => {

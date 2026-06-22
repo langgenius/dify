@@ -1,11 +1,19 @@
 import type { DataSet, RelatedAppResponse } from '@/models/datasets'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { DatasetACLPermission } from '@/utils/permission'
 import DatasetDetailSection from '../dataset-detail-section'
 
 let mockPathname = '/datasets/dataset-1/documents'
 let mockDataset: DataSet | undefined
 let mockRelatedApps: RelatedAppResponse | undefined
+let mockIsRbacEnabled = true
+
+const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) => renderWithSystemFeatures(ui, {
+  systemFeatures: {
+    rbac_enabled: mockIsRbacEnabled,
+  },
+})
 
 vi.mock('@/next/navigation', () => ({
   usePathname: () => mockPathname,
@@ -77,6 +85,7 @@ describe('DatasetDetailSection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPathname = '/datasets/dataset-1/documents'
+    mockIsRbacEnabled = true
     mockDataset = createDataset()
     mockRelatedApps = {
       data: [],
@@ -115,6 +124,17 @@ describe('DatasetDetailSection', () => {
   })
 
   it('should hide resource access navigation when dataset access config permission is missing', () => {
+    render(<DatasetDetailSection expand />)
+
+    expect(screen.queryByRole('link', { name: 'common.settings.resourceAccess' })).not.toBeInTheDocument()
+  })
+
+  it('should hide resource access navigation when RBAC is disabled', () => {
+    mockIsRbacEnabled = false
+    mockDataset = createDataset({
+      permission_keys: [DatasetACLPermission.AccessConfig],
+    })
+
     render(<DatasetDetailSection expand />)
 
     expect(screen.queryByRole('link', { name: 'common.settings.resourceAccess' })).not.toBeInTheDocument()
