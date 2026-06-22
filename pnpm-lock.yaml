@@ -16,8 +16,8 @@ catalogs:
       specifier: 9.0.0
       version: 9.0.0
     '@base-ui/react':
-      specifier: 1.5.0
-      version: 1.5.0
+      specifier: 1.6.0
+      version: 1.6.0
     '@chromatic-com/storybook':
       specifier: 5.2.1
       version: 5.2.1
@@ -166,6 +166,9 @@ catalogs:
       specifier: 4.3.1
       version: 4.3.1
     '@tanstack/eslint-plugin-query':
+      specifier: 5.101.0
+      version: 5.101.0
+    '@tanstack/query-core':
       specifier: 5.101.0
       version: 5.101.0
     '@tanstack/react-form':
@@ -393,6 +396,12 @@ catalogs:
     jotai:
       specifier: 2.20.1
       version: 2.20.1
+    jotai-scope:
+      specifier: 0.11.0
+      version: 0.11.0
+    jotai-tanstack-query:
+      specifier: 0.11.0
+      version: 0.11.0
     js-audio-recorder:
       specifier: 1.0.7
       version: 1.0.7
@@ -855,7 +864,7 @@ importers:
     devDependencies:
       '@base-ui/react':
         specifier: 'catalog:'
-        version: 1.5.0(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 1.6.0(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@chromatic-com/storybook':
         specifier: 'catalog:'
         version: 5.2.1(storybook@10.4.4(@testing-library/dom@10.4.1)(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(vite-plus@0.1.24(@types/node@25.9.3)(@vitest/coverage-v8@4.1.8)(@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(esbuild@0.28.1)(happy-dom@20.10.3)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)))
@@ -1029,7 +1038,7 @@ importers:
         version: 1.32.1(@amplitude/rrweb@2.0.0-alpha.40)
       '@base-ui/react':
         specifier: 'catalog:'
-        version: 1.5.0(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 1.6.0(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@emoji-mart/data':
         specifier: 'catalog:'
         version: 1.2.1
@@ -1096,6 +1105,9 @@ importers:
       '@tailwindcss/typography':
         specifier: 'catalog:'
         version: 0.5.20(tailwindcss@4.3.1)
+      '@tanstack/query-core':
+        specifier: 'catalog:'
+        version: 5.101.0
       '@tanstack/react-form':
         specifier: 'catalog:'
         version: 1.33.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -1189,6 +1201,12 @@ importers:
       jotai:
         specifier: 'catalog:'
         version: 2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.17)(react@19.2.7)
+      jotai-scope:
+        specifier: 'catalog:'
+        version: 0.11.0(jotai@2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)
+      jotai-tanstack-query:
+        specifier: 'catalog:'
+        version: 0.11.0(@tanstack/query-core@5.101.0)(@tanstack/react-query@5.101.0(react@19.2.7))(jotai@2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)
       js-audio-recorder:
         specifier: 'catalog:'
         version: 1.0.7
@@ -1811,8 +1829,8 @@ packages:
     resolution: {integrity: sha512-4zBIxpPzowiZpusoFkyGVwakdRJUyuH5PxQ/PrqghfdFWWasvnCdPfQXHrenDai+gyLARulZjZowCOj6fjT4pA==}
     engines: {node: '>=6.9.0'}
 
-  '@base-ui/react@1.5.0':
-    resolution: {integrity: sha512-z1gSAlced1yY+iM+mHDEtIkD8UI3Ebs52MuBPxvV6f5hRutk+xvCH/wuB7hDqDzK9JG5FoMz5nhrqtSs1wjt1A==}
+  '@base-ui/react@1.6.0':
+    resolution: {integrity: sha512-/jzjTWJYXhRFO45Bev9lc3cHbmjzCMpUqbMZ2AgKy/z25mY9B6shGSNcXcjQar9n5doM0KYW1W8fcFv2jZBuMw==}
     engines: {node: '>=14.0.0'}
     peerDependencies:
       '@date-fns/tz': ^1.2.0
@@ -1828,8 +1846,8 @@ packages:
       date-fns:
         optional: true
 
-  '@base-ui/utils@0.2.9':
-    resolution: {integrity: sha512-x/PDDCYzoqPpjrdyb3VcyylTI2IjUXEtYDGi5foh7KsnmNJIIaVwA2GLgDH1dps1GgXiJbA60hM+AyuTfQzIvw==}
+  '@base-ui/utils@0.3.1':
+    resolution: {integrity: sha512-gFFiltORVmW/N6IILTGxizP3PBpVpysqML1ALY5Vk0mH+7faVkCknOU31goYHN5Aoek2dkjxva1XOD2Ce9WuIg==}
     peerDependencies:
       '@types/react': ^17 || ^18 || ^19
       react: ^17 || ^18 || ^19
@@ -7198,6 +7216,26 @@ packages:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
 
+  jotai-scope@0.11.0:
+    resolution: {integrity: sha512-ofiW0Z0i3lTw509Gx0+T6fqsDPMDxMn+AHmNs9iF9OA8CmK1/0xRprPxuZ89UZdBzt6jcrTYdunNZSF2255zJQ==}
+    engines: {node: '>=14.0.0'}
+    peerDependencies:
+      jotai: '>=2.20.0'
+      react: '>=16.0.0'
+
+  jotai-tanstack-query@0.11.0:
+    resolution: {integrity: sha512-Ys0u0IuuS6/okUJOulFTdCVfVaeKbm1+lKVSN9zHhIxtrAXl9FM4yu7fNvxM6fSz/NCE9tZOKR0MQ3hvplaH8A==}
+    peerDependencies:
+      '@tanstack/query-core': '*'
+      '@tanstack/react-query': '*'
+      jotai: '>=2.0.0'
+      react: ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      '@tanstack/react-query':
+        optional: true
+      react:
+        optional: true
+
   jotai@2.20.1:
     resolution: {integrity: sha512-dnuKfU/GLi8B28RRMjQ3AfoN7kfzP8o41+AX2FmITZqEMY8PHnjABq+VkEooomLwYaGjda+pgy0yFSjaHX/ZPg==}
     engines: {node: '>=12.20.0'}
@@ -10138,10 +10176,10 @@ snapshots:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
 
-  '@base-ui/react@1.5.0(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@base-ui/react@1.6.0(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@babel/runtime': 7.29.2
-      '@base-ui/utils': 0.2.9(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@base-ui/utils': 0.3.1(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@floating-ui/react-dom': 2.1.8(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@floating-ui/utils': 0.2.11
       react: 19.2.7
@@ -10150,7 +10188,7 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.2.17
 
-  '@base-ui/utils@0.2.9(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@base-ui/utils@0.3.1(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@babel/runtime': 7.29.2
       '@floating-ui/utils': 0.2.11
@@ -16182,6 +16220,19 @@ snapshots:
 
   jiti@2.7.0: {}
 
+  jotai-scope@0.11.0(jotai@2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.17)(react@19.2.7))(react@19.2.7):
+    dependencies:
+      jotai: 2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.17)(react@19.2.7)
+      react: 19.2.7
+
+  jotai-tanstack-query@0.11.0(@tanstack/query-core@5.101.0)(@tanstack/react-query@5.101.0(react@19.2.7))(jotai@2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.17)(react@19.2.7))(react@19.2.7):
+    dependencies:
+      '@tanstack/query-core': 5.101.0
+      jotai: 2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.17)(react@19.2.7)
+    optionalDependencies:
+      '@tanstack/react-query': 5.101.0(react@19.2.7)
+      react: 19.2.7
+
   jotai@2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.17)(react@19.2.7):
     optionalDependencies:
       '@babel/core': 7.29.7
@@ -19270,7 +19321,7 @@ time:
   '@amplitude/analytics-browser@2.44.1': '2026-06-11T23:28:53.586Z'
   '@amplitude/plugin-session-replay-browser@1.32.1': '2026-06-13T00:09:40.086Z'
   '@antfu/eslint-config@9.0.0': '2026-05-11T06:18:58.474Z'
-  '@base-ui/react@1.5.0': '2026-05-19T13:22:48.843Z'
+  '@base-ui/react@1.6.0': '2026-06-18T12:04:15.326Z'
   '@chromatic-com/storybook@5.2.1': '2026-05-14T07:49:29.364Z'
   '@cucumber/cucumber@13.0.0': '2026-06-02T07:10:03.122Z'
   '@egoist/tailwindcss-icons@1.9.2': '2026-01-31T10:48:44.594Z'
@@ -19321,6 +19372,7 @@ time:
   '@tailwindcss/typography@0.5.20': '2026-06-08T10:34:41.124Z'
   '@tailwindcss/vite@4.3.1': '2026-06-12T17:59:45.667Z'
   '@tanstack/eslint-plugin-query@5.101.0': '2026-06-02T19:24:31.866Z'
+  '@tanstack/query-core@5.101.0': '2026-06-02T19:24:32.202Z'
   '@tanstack/react-form@1.33.0': '2026-05-28T17:05:42.660Z'
   '@tanstack/react-hotkeys@0.10.0': '2026-04-25T12:28:06.989Z'
   '@tanstack/react-query@5.101.0': '2026-06-02T19:24:39.383Z'
@@ -19397,6 +19449,8 @@ time:
   i18next@26.3.1: '2026-06-03T14:14:17.016Z'
   iconify-import-svg@0.2.0: '2026-04-20T06:18:25.132Z'
   immer@11.1.8: '2026-05-08T15:09:33.021Z'
+  jotai-scope@0.11.0: '2026-05-13T18:43:15.331Z'
+  jotai-tanstack-query@0.11.0: '2025-08-01T02:55:49.826Z'
   jotai@2.20.1: '2026-06-11T06:30:45.782Z'
   js-audio-recorder@1.0.7: '2021-01-09T10:20:49.923Z'
   js-cookie@3.0.8: '2026-05-29T10:51:39.065Z'

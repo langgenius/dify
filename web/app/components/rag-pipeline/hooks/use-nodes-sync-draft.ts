@@ -5,6 +5,7 @@ import { useStoreApi } from 'reactflow'
 import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import {
   useNodesReadOnly,
+  useNodesReadOnlyByCanEdit,
 } from '@/app/components/workflow/hooks/use-workflow'
 import {
   useWorkflowStore,
@@ -14,10 +15,9 @@ import { postWithKeepalive } from '@/service/fetch'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { usePipelineRefreshDraft } from '.'
 
-export const useNodesSyncDraft = () => {
+const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
-  const { getNodesReadOnly } = useNodesReadOnly()
   const { handleRefreshWorkflowDraft } = usePipelineRefreshDraft()
 
   const getPostParams = useCallback(() => {
@@ -122,4 +122,16 @@ export const useNodesSyncDraft = () => {
     doSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
   }
+}
+
+export const useNodesSyncDraftByCanEdit = (canEdit: boolean) => {
+  const { getNodesReadOnly } = useNodesReadOnlyByCanEdit(canEdit)
+
+  return useNodesSyncDraftBase(getNodesReadOnly)
+}
+
+export const useNodesSyncDraft = () => {
+  const { getNodesReadOnly } = useNodesReadOnly()
+
+  return useNodesSyncDraftBase(getNodesReadOnly)
 }

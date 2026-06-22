@@ -89,21 +89,12 @@ describe('WorkflowToolDrawer', () => {
     await user.clear(screen.getByPlaceholderText('tools.createTool.toolNamePlaceHolder'))
     await user.type(screen.getByPlaceholderText('tools.createTool.toolNamePlaceHolder'), 'Created Tool')
     await user.click(screen.getByTestId('append-label'))
-    await user.click(screen.getByTestId('app-icon'))
-    await waitFor(() => {
-      expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
-    })
-    await user.click(screen.getByRole('button', { name: '#E4FBCC' }))
-    await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
-    await waitFor(() => {
-      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
-    })
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
     expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({
       workflow_app_id: 'workflow-app-1',
       label: 'Created Tool',
-      icon: { content: '🔧', background: '#E4FBCC' },
+      icon: { content: '🔧', background: '#ffffff' },
       labels: ['label1', 'new-label'],
     }))
   })

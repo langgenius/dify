@@ -31,8 +31,8 @@ vi.mock('../loop-log', () => ({
   },
 }))
 
-vi.mock('../agent-log', () => ({
-  AgentResultPanel: ({ agentOrToolLogItemStack }: { agentOrToolLogItemStack: AgentLogItemWithChildren[] }) => {
+vi.mock('../agent-log/agent-result-panel', () => ({
+  default: ({ agentOrToolLogItemStack }: { agentOrToolLogItemStack: AgentLogItemWithChildren[] }) => {
     mocks.agentPanel(agentOrToolLogItemStack)
     return <div data-testid="agent-result-panel">{agentOrToolLogItemStack.length}</div>
   },

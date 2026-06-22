@@ -12,6 +12,7 @@ let currentPath = '/billing'
 
 const push = vi.fn()
 let isCurrentWorkspaceManager = true
+let workspacePermissionKeys = ['billing.manage']
 let assignedHref = ''
 const originalLocation = window.location
 
@@ -42,11 +43,12 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     userProfile: { email: 'user@example.com' },
     isCurrentWorkspaceManager,
+    workspacePermissionKeys,
   }),
 }))
 
-vi.mock('foxact/use-local-storage', () => ({
-  useSetLocalStorage: () => setEducationVerifyingMock,
+vi.mock('@/app/education-apply/storage', () => ({
+  useSetEducationVerifying: () => setEducationVerifyingMock,
 }))
 
 vi.mock('@/service/billing', () => ({
@@ -127,6 +129,7 @@ describe('PlanComp', () => {
     currentPath = '/billing'
     isPending = false
     isCurrentWorkspaceManager = true
+    workspacePermissionKeys = ['billing.manage']
     mockConfig.isCloudEdition = true
     assignedHref = ''
     providerContextMock.mockReturnValue({
@@ -255,8 +258,9 @@ describe('PlanComp', () => {
     expect(screen.queryByText('education.useEducationDiscount')).not.toBeInTheDocument()
   })
 
-  it('does not show education discount button for non-manager sandbox education accounts', () => {
+  it('does not show education discount button without billing manage permission', () => {
     isCurrentWorkspaceManager = false
+    workspacePermissionKeys = []
     providerContextMock.mockReturnValue({
       plan: { ...planMock, type: Plan.sandbox },
       enableEducationPlan: true,

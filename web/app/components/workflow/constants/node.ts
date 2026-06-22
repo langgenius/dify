@@ -1,3 +1,4 @@
+import agentV2Default from '@/app/components/workflow/nodes/agent-v2/default'
 import agentDefault from '@/app/components/workflow/nodes/agent/default'
 import assignerDefault from '@/app/components/workflow/nodes/assigner/default'
 import codeDefault from '@/app/components/workflow/nodes/code/default'
@@ -26,6 +27,7 @@ export const WORKFLOW_COMMON_NODES = [
   llmDefault,
   knowledgeRetrievalDefault,
   agentDefault,
+  agentV2Default,
   questionClassifierDefault,
   ifElseDefault,
   iterationDefault,

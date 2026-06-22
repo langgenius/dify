@@ -196,16 +196,17 @@ class WorkflowTool(Tool):
                 return usage_candidate
 
         for value in payload.values():
-            if isinstance(value, Mapping):
-                found = cls._extract_usage_dict(value)
-                if found is not None:
-                    return found
-            elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-                for item in value:
-                    if isinstance(item, Mapping):
-                        found = cls._extract_usage_dict(item)
-                        if found is not None:
-                            return found
+            match value:
+                case _ if isinstance(value, Mapping):
+                    found = cls._extract_usage_dict(value)
+                    if found is not None:
+                        return found
+                case _ if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+                    for item in value:
+                        if isinstance(item, Mapping):
+                            found = cls._extract_usage_dict(item)
+                            if found is not None:
+                                return found
         return None
 
     @override
@@ -393,24 +394,25 @@ class WorkflowTool(Tool):
         files: list[File] = []
         result = {}
         for key, value in outputs.items():
-            if isinstance(value, list):
-                for item in value:
-                    if isinstance(item, dict) and item.get("dify_model_identity") == FILE_MODEL_IDENTITY:
-                        item = self._update_file_mapping(item)
-                        file = build_from_mapping(
-                            mapping=item,
-                            tenant_id=str(self.runtime.tenant_id),
-                            access_controller=_file_access_controller,
-                        )
-                        files.append(file)
-            elif isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
-                value = self._update_file_mapping(value)
-                file = build_from_mapping(
-                    mapping=value,
-                    tenant_id=str(self.runtime.tenant_id),
-                    access_controller=_file_access_controller,
-                )
-                files.append(file)
+            match value:
+                case list():
+                    for item in value:
+                        if isinstance(item, dict) and item.get("dify_model_identity") == FILE_MODEL_IDENTITY:
+                            item = self._update_file_mapping(item)
+                            file = build_from_mapping(
+                                mapping=item,
+                                tenant_id=str(self.runtime.tenant_id),
+                                access_controller=_file_access_controller,
+                            )
+                            files.append(file)
+                case dict() if value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
+                    value = self._update_file_mapping(value)
+                    file = build_from_mapping(
+                        mapping=value,
+                        tenant_id=str(self.runtime.tenant_id),
+                        access_controller=_file_access_controller,
+                    )
+                    files.append(file)
 
             result[key] = value
 

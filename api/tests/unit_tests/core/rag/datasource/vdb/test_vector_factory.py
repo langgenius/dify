@@ -9,7 +9,7 @@ import pytest
 from core.rag.models.document import Document
 
 
-def _register_fake_factory_module(monkeypatch, module_path: str, class_name: str):
+def _register_fake_factory_module(monkeypatch: pytest.MonkeyPatch, module_path: str, class_name: str):
     fake_module = types.ModuleType(module_path)
     fake_cls = type(class_name, (), {})
     setattr(fake_module, class_name, fake_cls)

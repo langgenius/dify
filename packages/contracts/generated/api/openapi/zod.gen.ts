@@ -263,6 +263,7 @@ export const zImport = z.object({
   error: z.string().optional().default(''),
   id: z.string(),
   imported_dsl_version: z.string().optional().default(''),
+  permission_keys: z.array(z.string()).optional(),
   status: zImportStatus,
 })
 

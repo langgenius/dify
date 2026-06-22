@@ -12,7 +12,13 @@ from sqlalchemy.orm import sessionmaker
 from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
+    account_initialization_required,
+    rbac_permission_required,
+    setup_required,
+)
 from extensions.ext_database import db
 from fields._value_type_serializer import serialize_value_type
 from fields.base import ResponseModel
@@ -93,6 +99,7 @@ class ConversationVariablesApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=AppMode.ADVANCED_CHAT)
     def get(self, app_model: App):
         args = ConversationVariablesQuery.model_validate(request.args.to_dict(flat=True))

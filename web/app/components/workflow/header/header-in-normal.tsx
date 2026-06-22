@@ -11,6 +11,7 @@ import {
   useNodesReadOnly,
   useWorkflowRun,
 } from '../hooks'
+import { useHooksStore } from '../hooks-store'
 import {
   useStore,
   useWorkflowStore,
@@ -43,6 +44,7 @@ const HeaderInNormal = ({
 }: HeaderInNormalProps) => {
   const workflowStore = useWorkflowStore()
   const { nodesReadOnly } = useNodesReadOnly()
+  const canReleaseAndVersion = useHooksStore(s => s.accessControl.canReleaseAndVersion)
   const { handleNodeSelect } = useNodesInteractions()
   const setShowWorkflowVersionHistoryPanel = useStore(s => s.setShowWorkflowVersionHistoryPanel)
   const setShowEnvPanel = useStore(s => s.setShowEnvPanel)
@@ -94,7 +96,7 @@ const HeaderInNormal = ({
           </div>
         )}
         {components?.middle}
-        <VersionHistoryButton onClick={onStartRestoring} />
+        {canReleaseAndVersion && <VersionHistoryButton onClick={onStartRestoring} />}
       </div>
     </div>
   )

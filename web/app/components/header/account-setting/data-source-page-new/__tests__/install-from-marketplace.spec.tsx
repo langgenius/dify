@@ -58,6 +58,12 @@ vi.mock('../hooks', () => ({
   useMarketplaceAllPlugins: vi.fn(),
 }))
 
+vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
+  usePluginSettingsAccess: () => ({
+    canInstallPlugin: true,
+  }),
+}))
+
 describe('InstallFromMarketplace Component', () => {
   const mockProviders: DataSourceAuth[] = [
     {

@@ -98,6 +98,7 @@ export const zSystemFeatureModel = z.object({
     login_page_logo: '',
     workspace_logo: '',
   }),
+  enable_app_deploy: z.boolean().default(false),
   enable_change_email: z.boolean().default(true),
   enable_collaboration_mode: z.boolean().default(true),
   enable_creators_platform: z.boolean().default(false),
@@ -125,6 +126,7 @@ export const zSystemFeatureModel = z.object({
     restrict_to_marketplace_only: false,
   }),
   plugin_manager: zPluginManagerModel.default({ enabled: false }),
+  rbac_enabled: z.boolean().default(false),
   sso_enforced_for_signin: z.boolean().default(false),
   sso_enforced_for_signin_protocol: z.string().default(''),
   webapp_auth: zWebAppAuthModel.default({

@@ -23,6 +23,8 @@ const DebugWithMultipleModel = () => {
     mode,
     inputs,
     modelConfig,
+    readonly,
+    canTestAndRun = false,
   } = useDebugConfigurationContext()
   const speech2text = useFeatures(s => s.features.speech2text)
   const file = useFeatures(s => s.features.file)
@@ -35,6 +37,8 @@ const DebugWithMultipleModel = () => {
   const isChatMode = mode === AppModeEnum.CHAT || mode === AppModeEnum.AGENT_CHAT
 
   const handleSend = useCallback((message: string, files?: FileEntity[]) => {
+    if (!canTestAndRun)
+      return
     if (checkCanSend && !checkCanSend())
       return
 
@@ -45,7 +49,7 @@ const DebugWithMultipleModel = () => {
         files,
       },
     } as any)
-  }, [eventEmitter, checkCanSend])
+  }, [canTestAndRun, eventEmitter, checkCanSend])
 
   const twoLine = multipleModelConfigs.length === 2
   const threeLine = multipleModelConfigs.length === 3
@@ -141,7 +145,10 @@ const DebugWithMultipleModel = () => {
         <div className="shrink-0 px-6 pb-0">
           <ChatInputArea
             botName="Bot"
+            readonly={!canTestAndRun}
+            disabled={!canTestAndRun}
             showFeatureBar
+            featureBarReadonly={readonly}
             showFileUpload={false}
             onFeatureBarClick={setShowAppConfigureFeaturesModal}
             onSend={handleSend}
