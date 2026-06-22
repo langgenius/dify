@@ -16,6 +16,7 @@ import {
 import { IS_CE_EDITION } from '@/config'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useProviderContextSelector } from '@/context/provider-context'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { renderI18nObject } from '@/i18n-config'
 import { consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'
@@ -69,8 +70,9 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const showModelProvider = systemConfig.enabled && MODEL_PROVIDER_QUOTA_GET_PAID.includes(currentProviderName as ModelProviderQuotaGetPaid) && !IS_CE_EDITION
   const canManagePlugins = hasPermission(workspacePermissionKeys, 'plugin.manage')
-  const canUseCredentials = hasPermission(workspacePermissionKeys, ['credential.manage', 'credential.use'])
-  const showCredential = supportsPredefinedModel && canUseCredentials
+  const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
+  const canAccessCredentials = canUseCredential || canCreateCredential || canManageCredential
+  const showCredential = supportsPredefinedModel && canAccessCredentials
   const showCustomModelActions = supportsCustomizableModel && canManagePlugins
 
   const refreshModelList = useCallback((targetProviderName: string) => {

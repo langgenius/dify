@@ -46,6 +46,7 @@
   "group.credential": "凭据",
   "group.dataset": "知识库",
   "group.dataset_acl": "知识库访问权限",
+  "group.integration": "集成",
   "group.plugin": "插件",
   "group.tool_mcp": "工具与MCP",
   "group.workspace": "工作空间",
