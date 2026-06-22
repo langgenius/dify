@@ -1,5 +1,4 @@
-from unittest.mock import ANY
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask

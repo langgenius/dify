@@ -615,7 +615,7 @@ class TestAccountGeneration:
             provider="github",
             language="zh-Hans",
             timezone="Asia/Shanghai",
-            session=ANY
+            session=ANY,
         )
 
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None)
@@ -647,7 +647,7 @@ class TestAccountGeneration:
             provider="github",
             language="zh-Hans",
             timezone=None,
-            session=ANY
+            session=ANY,
         )
 
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email")

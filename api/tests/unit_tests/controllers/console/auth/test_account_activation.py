@@ -8,8 +8,7 @@ This module tests the account activation mechanism including:
 - Initial login after activation
 """
 
-from unittest.mock import ANY
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -68,7 +67,9 @@ class TestActivateCheckApi:
         assert response["data"]["email"] == "invitee@example.com"
 
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
-    def test_check_valid_invitation_token_includes_account_status(self, mock_get_invitation: MagicMock, app: Flask, mock_invitation: MagicMock):
+    def test_check_valid_invitation_token_includes_account_status(
+        self, mock_get_invitation: MagicMock, app: Flask, mock_invitation: MagicMock
+    ):
         mock_account = MagicMock()
         mock_account.status = AccountStatus.ACTIVE
         mock_invitation["account"] = mock_account
@@ -104,7 +105,9 @@ class TestActivateCheckApi:
         assert response["is_valid"] is False
 
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
-    def test_check_token_without_workspace_id(self, mock_get_invitation: MagicMock, app: Flask, mock_invitation: MagicMock):
+    def test_check_token_without_workspace_id(
+        self, mock_get_invitation: MagicMock, app: Flask, mock_invitation: MagicMock
+    ):
         """
         Test checking token without workspace ID.
 
@@ -146,7 +149,9 @@ class TestActivateCheckApi:
         mock_get_invitation.assert_called_once_with("workspace-123", None, "valid_token", ANY)
 
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
-    def test_check_token_normalizes_email_to_lowercase(self, mock_get_invitation: MagicMock, app: Flask, mock_invitation: MagicMock):
+    def test_check_token_normalizes_email_to_lowercase(
+        self, mock_get_invitation: MagicMock, app: Flask, mock_invitation: MagicMock
+    ):
         """Ensure token validation uses lowercase emails."""
         mock_get_invitation.return_value = mock_invitation
 

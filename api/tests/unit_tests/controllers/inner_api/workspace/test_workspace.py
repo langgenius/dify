@@ -6,10 +6,9 @@ Auth/setup decorators are tested separately in test_auth_wraps.py;
 handler tests use inspect.unwrap() to bypass them and focus on business logic.
 """
 
-from unittest.mock import ANY
 import inspect
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
