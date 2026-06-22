@@ -1,9 +1,14 @@
 'use client'
 
 import type { UnsupportedDslNode } from '../../shared/domain/error'
-import type { CreateReleaseForm } from './use-create-release-form'
+import type { CreateReleaseFormValues, ReleaseSourceMode } from './types'
 import { atom, useAtomValue } from 'jotai'
 import { encodeDslContent, isWorkflowDsl } from '../../shared/domain/dsl'
+import {
+  createReleaseDslFileFieldAtom,
+  createReleaseSourceAppFieldAtom,
+  createReleaseSourceModeFieldAtom,
+} from './use-create-release-form'
 
 type CreateReleaseConfig = {
   appInstanceId: string
@@ -20,7 +25,6 @@ export type CreateReleaseDslState = {
 
 export const createReleaseConfigAtom = atom<CreateReleaseConfig | undefined>(undefined)
 export const createReleaseDialogOpenAtom = atom(false)
-export const createReleaseFormAtom = atom<CreateReleaseForm | undefined>(undefined)
 export const createReleaseSubmitUnsupportedDslNodesAtom = atom<UnsupportedDslNode[]>([])
 
 const createReleaseDslContentAtom = atom('')
@@ -90,6 +94,30 @@ export const selectCreateReleaseDslFileAtom = atom(null, async (get, set, file?:
   }
 })
 
+export const selectCreateReleaseSourceModeAtom = atom(null, (_get, set, releaseSourceMode: ReleaseSourceMode) => {
+  set(clearCreateReleaseSubmissionErrorAtom)
+  set(createReleaseSourceModeFieldAtom, releaseSourceMode)
+
+  if (releaseSourceMode === 'sourceApp') {
+    set(createReleaseDslFileFieldAtom, undefined)
+    set(resetCreateReleaseDslFileAtom)
+    return
+  }
+
+  set(createReleaseSourceAppFieldAtom, undefined)
+})
+
+export const updateCreateReleaseSourceAppAtom = atom(null, (_get, set, sourceApp: CreateReleaseFormValues['sourceApp']) => {
+  set(createReleaseSourceAppFieldAtom, sourceApp)
+  set(clearCreateReleaseSubmissionErrorAtom)
+})
+
+export const updateCreateReleaseDslFileAtom = atom(null, (get, set, dslFile: CreateReleaseFormValues['dslFile']) => {
+  set(createReleaseDslFileFieldAtom, dslFile)
+  set(clearCreateReleaseSubmissionErrorAtom)
+  return set(selectCreateReleaseDslFileAtom, dslFile)
+})
+
 export const createReleaseDslStateAtom = atom((get): CreateReleaseDslState => {
   const dslContent = get(createReleaseDslContentAtom)
   const hasDslContent = Boolean(dslContent.trim())
@@ -111,12 +139,4 @@ export function useCreateReleaseConfig() {
     throw new Error('Missing create release config.')
 
   return config
-}
-
-export function useCreateReleaseFormApi() {
-  const form = useAtomValue(createReleaseFormAtom)
-  if (!form)
-    throw new Error('Missing create release form.')
-
-  return form
 }

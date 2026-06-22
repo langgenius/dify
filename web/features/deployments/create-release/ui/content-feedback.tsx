@@ -1,32 +1,20 @@
 'use client'
 
-import type { CreateReleaseFormValues } from '../state/types'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { UnsupportedDslNodesAlert } from '../../components/unsupported-dsl-nodes-alert'
 import {
   createReleaseSubmitUnsupportedDslNodesAtom,
-  useCreateReleaseFormApi,
 } from '../state'
+import { createReleaseFormValuesAtom } from '../state/use-create-release-form'
 import {
   useCreateReleaseSourceSelection,
   useReleaseContentCheck,
 } from './use-release-content-check'
 
 export function ReleaseContentFeedback() {
-  const form = useCreateReleaseFormApi()
-
-  return (
-    <form.Subscribe selector={state => state.values}>
-      {formValues => <ReleaseContentFeedbackContent formValues={formValues} />}
-    </form.Subscribe>
-  )
-}
-
-function ReleaseContentFeedbackContent({ formValues }: {
-  formValues: CreateReleaseFormValues
-}) {
   const { t } = useTranslation('deployments')
+  const formValues = useAtomValue(createReleaseFormValuesAtom)
   const sourceSelection = useCreateReleaseSourceSelection(formValues)
   const releaseContent = useReleaseContentCheck(sourceSelection)
   const submitUnsupportedDslNodes = useAtomValue(createReleaseSubmitUnsupportedDslNodesAtom)
