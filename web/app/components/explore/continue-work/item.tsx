@@ -1,6 +1,12 @@
 'use client'
 
 import type { App } from '@/types/app'
+<<<<<<< Updated upstream
+=======
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
+>>>>>>> Stashed changes
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
@@ -9,6 +15,7 @@ import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { getRedirectionPath } from '@/utils/app-redirection'
+import { hasOnlyAppPreviewPermission } from '@/utils/permission'
 
 type ContinueWorkItemProps = {
   app: App
@@ -22,14 +29,31 @@ const ContinueWorkItem = ({
   const currentUserId = useAppContextSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
   const updatedAt = (app.updated_at || app.created_at) * 1000
+  const isPreviewOnly = hasOnlyAppPreviewPermission(app.permission_keys)
   const href = getRedirectionPath(app, {
     currentUserId,
     resourceMaintainer: app.maintainer,
     workspacePermissionKeys,
   })
+  const cardClassName = cn(
+    'flex min-w-0 items-center gap-3 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-4 pt-4 pb-4 shadow-xs shadow-shadow-shadow-3',
+    isPreviewOnly && 'cursor-not-allowed opacity-60',
+  )
 
-  return (
-    <Link href={href} className="flex min-w-0 items-center gap-3 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-4 pt-4 pb-4 shadow-xs shadow-shadow-shadow-3">
+  const showPreviewOnlyAccessWarning = () => {
+    toast.warning(t('noAccessResourcePermission', { ns: 'app' }))
+  }
+
+  const handlePreviewOnlyCardKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ')
+      return
+
+    event.preventDefault()
+    showPreviewOnlyAccessWarning()
+  }
+
+  const cardContent = (
+    <>
       <div className="relative shrink-0">
         <AppIcon
           size="large"
@@ -54,6 +78,28 @@ const ContinueWorkItem = ({
           <span className="min-w-0 truncate">{t('continueWork.editedAt', { ns: 'explore', time: formatTimeFromNow(updatedAt) })}</span>
         </div>
       </div>
+    </>
+  )
+
+  if (isPreviewOnly) {
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label={app.name}
+        aria-disabled="true"
+        className={cardClassName}
+        onClick={showPreviewOnlyAccessWarning}
+        onKeyDown={handlePreviewOnlyCardKeyDown}
+      >
+        {cardContent}
+      </div>
+    )
+  }
+
+  return (
+    <Link href={href} className={cardClassName}>
+      {cardContent}
     </Link>
   )
 }
