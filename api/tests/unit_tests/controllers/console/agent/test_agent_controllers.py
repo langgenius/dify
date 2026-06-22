@@ -20,6 +20,10 @@ from controllers.console.agent.composer import (
     WorkflowAgentComposerValidateApi,
 )
 from controllers.console.agent.roster import (
+    AgentApiAccessApi,
+    AgentApiKeyApi,
+    AgentApiKeyListApi,
+    AgentApiStatusApi,
     AgentAppApi,
     AgentAppCopyApi,
     AgentAppListApi,
@@ -150,6 +154,10 @@ def test_agent_v2_console_routes_are_agent_id_first() -> None:
         "/agent/<uuid:agent_id>/sandbox/files",
         "/agent/<uuid:agent_id>/skills/upload",
         "/agent/<uuid:agent_id>/files",
+        "/agent/<uuid:agent_id>/api-access",
+        "/agent/<uuid:agent_id>/api-enable",
+        "/agent/<uuid:agent_id>/api-keys",
+        "/agent/<uuid:agent_id>/api-keys/<uuid:api_key_id>",
         "/agent/<uuid:agent_id>/chat-messages",
         "/agent/<uuid:agent_id>/chat-messages/<string:task_id>/stop",
         "/agent/<uuid:agent_id>/feedbacks",
@@ -177,6 +185,7 @@ def test_agent_v2_console_routes_are_agent_id_first() -> None:
         "/apps/<uuid:app_id>/agent-features",
         "/apps/<uuid:app_id>/agent-referencing-workflows",
         "/apps/<uuid:app_id>/agent-sandbox/files",
+        "/apps/<uuid:agent_id>/api-access",
     ):
         assert route not in paths
 
@@ -446,6 +455,127 @@ def test_agent_app_copy_uses_agent_id_and_returns_agent_detail(
         "icon_type": "emoji",
         "icon": "sparkles",
         "icon_background": "#fff",
+    }
+
+
+def test_agent_api_access_uses_agent_id_and_returns_service_api_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    agent_id = "00000000-0000-0000-0000-000000000001"
+    app_model = SimpleNamespace(
+        id="app-1",
+        enable_api=True,
+        api_base_url="https://api.example.test/v1",
+        api_rpm=60,
+        api_rph=600,
+    )
+    monkeypatch.setattr(roster_controller, "_resolve_agent_app_model", lambda **kwargs: app_model)
+    monkeypatch.setattr(roster_controller, "_agent_api_key_count", lambda app_id: 2)
+
+    response = unwrap(AgentApiAccessApi.get)(AgentApiAccessApi(), "tenant-1", agent_id)
+
+    assert response == {
+        "enabled": True,
+        "service_api_base_url": "https://api.example.test/v1",
+        "streaming_only": True,
+        "chat_endpoint": "https://api.example.test/v1/chat-messages",
+        "stop_endpoint": "https://api.example.test/v1/chat-messages/{task_id}/stop",
+        "conversations_endpoint": "https://api.example.test/v1/conversations",
+        "messages_endpoint": "https://api.example.test/v1/messages",
+        "files_upload_endpoint": "https://api.example.test/v1/files/upload",
+        "parameters_endpoint": "https://api.example.test/v1/parameters",
+        "info_endpoint": "https://api.example.test/v1/info",
+        "meta_endpoint": "https://api.example.test/v1/meta",
+        "api_rpm": 60,
+        "api_rph": 600,
+        "api_key_count": 2,
+    }
+
+
+def test_agent_api_status_and_key_routes_resolve_backing_app(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    agent_id = "00000000-0000-0000-0000-000000000001"
+    api_key_id = "00000000-0000-0000-0000-000000000002"
+    app_model = SimpleNamespace(
+        id="app-1",
+        enable_api=False,
+        api_base_url="https://api.example.test/v1",
+        api_rpm=0,
+        api_rph=0,
+    )
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(roster_controller, "_resolve_agent_app_model", lambda **kwargs: app_model)
+    monkeypatch.setattr(roster_controller, "_agent_api_key_count", lambda app_id: 1)
+
+    class FakeAppService:
+        def update_app_api_status(self, app_obj: object, enable_api: bool) -> object:
+            captured["enable"] = {"app": app_obj, "enable_api": enable_api}
+            app_model.enable_api = enable_api
+            return app_model
+
+    monkeypatch.setattr(roster_controller, "AppService", FakeAppService)
+
+    def fake_get_api_key_list(self, resource_id: str, tenant_id: str):
+        captured["list_keys"] = {"resource_id": resource_id, "tenant_id": tenant_id}
+        return roster_controller.ApiKeyList(data=[])
+
+    def fake_create_api_key(self, resource_id: str, tenant_id: str):
+        captured["create_key"] = {"resource_id": resource_id, "tenant_id": tenant_id}
+        return SimpleNamespace(
+            id=api_key_id,
+            type="app",
+            token="app-test-token",
+            last_used_at=None,
+            created_at=None,
+        )
+
+    def fake_delete_api_key(self, resource_id: str, key_id: str, tenant_id: str, current_user: object) -> None:
+        captured["delete_key"] = {
+            "resource_id": resource_id,
+            "api_key_id": key_id,
+            "tenant_id": tenant_id,
+            "current_user": current_user,
+        }
+
+    monkeypatch.setattr(AgentApiKeyListApi, "_get_api_key_list", fake_get_api_key_list)
+    monkeypatch.setattr(AgentApiKeyListApi, "_create_api_key", fake_create_api_key)
+    monkeypatch.setattr(AgentApiKeyApi, "_delete_api_key", fake_delete_api_key)
+
+    with app.test_request_context(
+        "/console/api/agent/00000000-0000-0000-0000-000000000001/api-enable",
+        json={"enable_api": True},
+    ):
+        enabled = unwrap(AgentApiStatusApi.post)(AgentApiStatusApi(), "tenant-1", agent_id)
+    assert enabled["enabled"] is True
+    assert captured["enable"] == {"app": app_model, "enable_api": True}
+
+    keys = unwrap(AgentApiKeyListApi.get)(AgentApiKeyListApi(), "tenant-1", agent_id)
+    assert keys == {"data": []}
+    assert captured["list_keys"] == {"resource_id": "app-1", "tenant_id": "tenant-1"}
+
+    created, status = unwrap(AgentApiKeyListApi.post)(AgentApiKeyListApi(), "tenant-1", agent_id)
+    assert status == 201
+    assert created["id"] == api_key_id
+    assert created["token"] == "app-test-token"
+    assert captured["create_key"] == {"resource_id": "app-1", "tenant_id": "tenant-1"}
+
+    current_user = SimpleNamespace(id="account-1", is_admin_or_owner=True)
+    deleted, delete_status = unwrap(AgentApiKeyApi.delete)(
+        AgentApiKeyApi(),
+        "tenant-1",
+        current_user,
+        agent_id,
+        api_key_id,
+    )
+    assert (deleted, delete_status) == ("", 204)
+    assert captured["delete_key"] == {
+        "resource_id": "app-1",
+        "api_key_id": api_key_id,
+        "tenant_id": "tenant-1",
+        "current_user": current_user,
     }
 
 
