@@ -23,7 +23,7 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
-from models.model import IconType
+from models.model import SUPPORTED_APP_TYPES, AppMode, IconType
 from models.workflow import Workflow
 from services.agent import composer_service, roster_service
 from services.agent.agent_soul_state import agent_soul_has_model
@@ -1052,13 +1052,20 @@ def test_agent_app_visible_versions_exclude_draft_saves():
     assert AgentConfigRevisionOperation.SAVE_CURRENT_VERSION not in roster_operations
 
 
-def test_app_list_all_excludes_agent_apps_by_default():
+def test_app_list_all_restricts_to_supported_app_types():
     filters = AppService._build_app_list_filters(
         "account-1", "tenant-1", AppListParams(mode="all"), FakeSession(scalar=None, scalars=None)
     )
     sql = " ".join(str(filter_) for filter_ in filters)
 
-    assert "apps.mode != :mode_1" in sql
+    # "all" is positive membership over the listable types — agent and other
+    # non-app modes are excluded by not being in the set, not by a `!=` clause.
+    assert "apps.mode IN" in sql
+    assert "!=" not in sql
+
+    mode_filter = next(f for f in filters if "apps.mode IN" in str(f))
+    assert set(mode_filter.right.value) == set(SUPPORTED_APP_TYPES)
+    assert AppMode.AGENT not in mode_filter.right.value
 
 
 def test_validator_dict_helpers_wrap_validation_errors():

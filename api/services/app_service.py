@@ -26,7 +26,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models import Account, AppStar
 from models.agent import Agent, AgentIconType, AgentScope, AgentSource, AgentStatus
-from models.model import App, AppMode, AppModelConfig, IconType, Site
+from models.model import SUPPORTED_APP_TYPES, App, AppMode, AppModelConfig, IconType, Site
 from models.tools import ApiToolProvider
 from services.agent.errors import AgentNameConflictError
 from services.billing_service import BillingService
@@ -45,7 +45,10 @@ AppListSortBy = Literal["last_modified", "recently_created", "earliest_created"]
 class AppListBaseParams(BaseModel):
     page: int = Field(default=1, ge=1)
     limit: int = Field(default=20, ge=1, le=100)
-    mode: Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"] = "all"
+    # Internal service param: accept any real AppMode plus the "all" sentinel.
+    # Each caller-facing surface (openapi AppListQuery, console AppListMode) enforces
+    # its own narrower accepted set; this layer just filters.
+    mode: AppMode | Literal["all"] = "all"
     sort_by: AppListSortBy = "last_modified"
     name: str | None = None
     tag_ids: list[str] | None = None
@@ -84,20 +87,12 @@ class AppService:
     ) -> list[sa.ColumnElement[bool]]:
         filters = [App.tenant_id == tenant_id, App.is_universal == False]
 
-        if params.mode == "workflow":
-            filters.append(App.mode == AppMode.WORKFLOW)
-        elif params.mode == "completion":
-            filters.append(App.mode == AppMode.COMPLETION)
-        elif params.mode == "chat":
-            filters.append(App.mode == AppMode.CHAT)
-        elif params.mode == "advanced-chat":
-            filters.append(App.mode == AppMode.ADVANCED_CHAT)
-        elif params.mode == "agent-chat":
-            filters.append(App.mode == AppMode.AGENT_CHAT)
-        elif params.mode == "agent":
-            filters.append(App.mode == AppMode.AGENT)
-        elif params.mode == "all":
-            filters.append(App.mode != AppMode.AGENT)
+        if params.mode == "all":
+            # "all" means all listable app types — positive membership, so
+            # roster-owned agent apps and non-app runtime modes never leak in.
+            filters.append(App.mode.in_(SUPPORTED_APP_TYPES))
+        else:
+            filters.append(App.mode == params.mode)
 
         if isinstance(params, AppListParams):
             if params.status:

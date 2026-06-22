@@ -19,6 +19,7 @@ import pytest
 
 from models.enums import ConversationFromSource
 from models.model import (
+    SUPPORTED_APP_TYPES,
     App,
     AppAnnotationHitHistory,
     AppAnnotationSetting,
@@ -29,6 +30,7 @@ from models.model import (
     Message,
     MessageAnnotation,
     Site,
+    SupportedAppType,
 )
 
 
@@ -113,6 +115,24 @@ class TestAppModelValidation:
 
         with pytest.raises(ValueError, match="invalid mode value"):
             AppMode.value_of("invalid_mode")
+
+    def test_supported_app_type_is_the_listable_subset(self):
+        """SupportedAppType is the curated listable subset of AppMode."""
+        assert {t.value for t in SupportedAppType} == {
+            "completion",
+            "chat",
+            "advanced-chat",
+            "workflow",
+            "agent-chat",
+        }
+
+    def test_supported_app_type_is_strict_subset_of_app_mode(self):
+        """Every SupportedAppType maps to a real AppMode; non-app/runtime modes stay out."""
+        assert set(SUPPORTED_APP_TYPES) <= set(AppMode)
+        # roster-owned agent and non-app runtime modes are excluded.
+        assert AppMode.AGENT not in SUPPORTED_APP_TYPES
+        assert AppMode.RAG_PIPELINE not in SUPPORTED_APP_TYPES
+        assert AppMode.CHANNEL not in SUPPORTED_APP_TYPES
 
     def test_icon_type_validation(self):
         """Test icon type enum values."""

@@ -8,7 +8,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum, auto
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, Literal, NotRequired, TypedDict, cast, override
+from typing import TYPE_CHECKING, Any, Final, Literal, NotRequired, TypedDict, cast, override
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -386,6 +386,30 @@ class AppMode(StrEnum):
             if mode.value == value:
                 return mode
         raise ValueError(f"invalid mode value {value}")
+
+
+class SupportedAppType(StrEnum):
+    """App types the ``app`` usage face (``get app``) lists and filters.
+
+    A curated subset of :class:`AppMode`: the real, user-facing app categories.
+    Excludes runtime-only mode tags that are not standalone apps
+    (``rag-pipeline`` is a knowledge ``Pipeline``; ``channel`` is unused) and the
+    roster-owned ``agent`` type (surfaced through the roster, not this list).
+
+    Members reference ``AppMode.*.value`` so the subset relationship is
+    type-checked: dropping a member from ``AppMode`` breaks this at import.
+    This is the single source for the listable set — params, filters, and the
+    generated CLI whitelist all derive from it.
+    """
+
+    COMPLETION = AppMode.COMPLETION.value
+    CHAT = AppMode.CHAT.value
+    ADVANCED_CHAT = AppMode.ADVANCED_CHAT.value
+    WORKFLOW = AppMode.WORKFLOW.value
+    AGENT_CHAT = AppMode.AGENT_CHAT.value
+
+
+SUPPORTED_APP_TYPES: Final[tuple[AppMode, ...]] = tuple(AppMode(t.value) for t in SupportedAppType)
 
 
 class IconType(StrEnum):

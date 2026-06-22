@@ -7,7 +7,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, uuid_value
-from models.model import AppMode
+from models.model import AppMode, SupportedAppType
 
 # Server-side cap on `limit` query param for /openapi/v1/* list endpoints.
 MAX_PAGE_LIMIT = 200
@@ -287,12 +287,12 @@ class AppDescribeQuery(BaseModel):
 
 
 class AppListQuery(BaseModel):
-    """mode is a closed enum."""
+    """mode is a closed enum of listable app types."""
 
     workspace_id: UUIDStr
     page: int = Field(1, ge=1)
     limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
-    mode: AppMode | None = None
+    mode: SupportedAppType | None = None
     name: str | None = Field(None, max_length=200)
     tag: str | None = Field(None, max_length=100)
 
@@ -344,7 +344,7 @@ class PermittedExternalAppsListQuery(BaseModel):
 
     page: int = Field(1, ge=1)
     limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
-    mode: AppMode | None = None
+    mode: SupportedAppType | None = None
     name: str | None = Field(None, max_length=200)
 
 

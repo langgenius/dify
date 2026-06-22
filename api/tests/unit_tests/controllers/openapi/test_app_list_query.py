@@ -4,7 +4,7 @@ Runs against the model directly, not the HTTP layer. Pins:
 - defaults match the plan (page=1, limit=20).
 - workspace_id is required.
 - numeric bounds enforced (page >= 1, limit in [1, MAX_PAGE_LIMIT]).
-- mode validates against the AppMode enum.
+- mode validates against the SupportedAppType enum (listable app types only).
 - name and tag have length caps.
 """
 
@@ -63,15 +63,24 @@ def test_limit_caps_at_max_page_limit():
         )
 
 
-def test_mode_whitelisted_against_app_mode():
-    # Valid mode passes.
-    q = AppListQuery.model_validate({"workspace_id": "00000000-0000-0000-0000-000000000001", "mode": "chat"})
-    assert q.mode is not None
-    assert q.mode.value == "chat"
+def test_mode_whitelisted_against_supported_app_type():
+    # Every listable app type passes.
+    for mode in ("completion", "chat", "advanced-chat", "workflow", "agent-chat"):
+        q = AppListQuery.model_validate({"workspace_id": "00000000-0000-0000-0000-000000000001", "mode": mode})
+        assert q.mode is not None
+        assert q.mode.value == mode
 
-    # Invalid mode rejects.
+    # Unknown value rejects.
     with pytest.raises(ValidationError):
         AppListQuery.model_validate({"workspace_id": "00000000-0000-0000-0000-000000000001", "mode": "not-a-mode"})
+
+
+@pytest.mark.parametrize("mode", ["rag-pipeline", "channel", "agent"])
+def test_mode_rejects_non_listable_app_modes(mode: str):
+    """rag-pipeline (a knowledge Pipeline), channel (unused) and agent (roster-owned)
+    are AppMode members but not standalone listable apps — the `app` face rejects them."""
+    with pytest.raises(ValidationError):
+        AppListQuery.model_validate({"workspace_id": "00000000-0000-0000-0000-000000000001", "mode": mode})
 
 
 def test_name_length_capped():

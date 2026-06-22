@@ -178,6 +178,18 @@ describe('E2E / difyctl get app (list)', () => {
     expect(result.exitCode, '--mode chatbot should cause non-zero exit').not.toBe(0)
   })
 
+  it('[P0] non-listable AppMode values are intercepted client-side', async () => {
+    // Regression: rag-pipeline (a knowledge Pipeline), channel (unused) and agent
+    // (roster-owned) are AppMode members but not listable app types. The old CLI
+    // whitelist advertised rag-pipeline/channel, so the CLI forwarded them and the
+    // server replied 400. The whitelist now derives from SupportedAppType, so the
+    // CLI rejects them before any HTTP call.
+    for (const mode of ['rag-pipeline', 'channel', 'agent']) {
+      const result = await fx.r(['get', 'app', '--mode', mode])
+      expect(result.exitCode, `--mode ${mode} should be rejected client-side`).not.toBe(0)
+    }
+  })
+
   // ── workspace override ────────────────────────────────────────────────────
 
   it('[P0] -w overrides the default workspace', async () => {

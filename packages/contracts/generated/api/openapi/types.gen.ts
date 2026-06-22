@@ -77,7 +77,7 @@ export type AppInfoResponse = {
 
 export type AppListQuery = {
   limit?: number
-  mode?: AppMode | null
+  mode?: SupportedAppType | null
   name?: string | null
   page?: number
   tag?: string | null
@@ -359,7 +359,7 @@ export type Package = {
 
 export type PermittedExternalAppsListQuery = {
   limit?: number
-  mode?: AppMode | null
+  mode?: SupportedAppType | null
   name?: string | null
   page?: number
 }
@@ -409,6 +409,8 @@ export type SessionRow = {
   last_used_at?: string | null
   prefix: string
 }
+
+export type SupportedAppType = 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
 
 export type TagItem = {
   name: string
@@ -598,15 +600,7 @@ export type GetAppsData = {
   path?: never
   query: {
     limit?: number
-    mode?:
-      | 'advanced-chat'
-      | 'agent'
-      | 'agent-chat'
-      | 'channel'
-      | 'chat'
-      | 'completion'
-      | 'rag-pipeline'
-      | 'workflow'
+    mode?: 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
     name?: string
     page?: number
     tag?: string
@@ -915,15 +909,7 @@ export type GetPermittedExternalAppsData = {
   path?: never
   query?: {
     limit?: number
-    mode?:
-      | 'advanced-chat'
-      | 'agent'
-      | 'agent-chat'
-      | 'channel'
-      | 'chat'
-      | 'completion'
-      | 'rag-pipeline'
-      | 'workflow'
+    mode?: 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
     name?: string
     page?: number
   }
