@@ -28,6 +28,7 @@ from controllers.console.agent.roster import (
     AgentLogsApi,
     AgentLogSourcesApi,
     AgentRosterVersionDetailApi,
+    AgentRosterVersionRestoreApi,
     AgentRosterVersionsApi,
     AgentStatisticsSummaryApi,
 )
@@ -158,6 +159,9 @@ def test_agent_v2_console_routes_are_agent_id_first() -> None:
         "/agent/<uuid:agent_id>/logs/<uuid:conversation_id>/messages",
         "/agent/<uuid:agent_id>/log-sources",
         "/agent/<uuid:agent_id>/statistics/summary",
+        "/agent/<uuid:agent_id>/versions",
+        "/agent/<uuid:agent_id>/versions/<uuid:version_id>",
+        "/agent/<uuid:agent_id>/versions/<uuid:version_id>/restore",
         "/agent/invite-options",
     ):
         assert route in paths
@@ -513,6 +517,13 @@ def test_agent_versions_call_services(app: Flask, monkeypatch: pytest.MonkeyPatc
             ],
         },
     )
+    captured_restore: dict[str, object] = {}
+
+    def restore_agent_version(_self, **kwargs):
+        captured_restore.update(kwargs)
+        return {"result": "success", "active_config_snapshot_id": kwargs["version_id"]}
+
+    monkeypatch.setattr(roster_controller.AgentRosterService, "restore_agent_version", restore_agent_version)
 
     assert (
         unwrap(AgentRosterVersionsApi.get)(AgentRosterVersionsApi(), "tenant-1", agent_id)["data"][0]["id"]
@@ -523,6 +534,16 @@ def test_agent_versions_call_services(app: Flask, monkeypatch: pytest.MonkeyPatc
     )
     assert version_detail["id"] == version_id
     assert version_detail["agent_id"] == agent_id
+    restored = unwrap(AgentRosterVersionRestoreApi.post)(
+        AgentRosterVersionRestoreApi(), "tenant-1", SimpleNamespace(id="account-1"), agent_id, version_id
+    )
+    assert restored == {"result": "success", "active_config_snapshot_id": version_id}
+    assert captured_restore == {
+        "tenant_id": "tenant-1",
+        "agent_id": agent_id,
+        "version_id": version_id,
+        "account_id": "account-1",
+    }
 
 
 def test_agent_observability_routes_resolve_app_from_agent_id(

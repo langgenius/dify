@@ -83,6 +83,8 @@ class AgentConfigRevisionOperation(StrEnum):
     SAVE_NEW_AGENT = "save_new_agent"
     # Promotes a workflow-only Agent into the reusable Agent Roster.
     SAVE_TO_ROSTER = "save_to_roster"
+    # Switches the Agent's current published config back to an existing version.
+    RESTORE_VERSION = "restore_version"
 
 
 class WorkflowAgentBindingType(StrEnum):
