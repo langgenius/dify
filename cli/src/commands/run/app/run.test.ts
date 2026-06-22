@@ -1,11 +1,12 @@
 import type { DifyMock } from '@test/fixtures/dify-mock/server'
 import type { ActiveContext } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { startMock } from '@test/fixtures/dify-mock/server'
 import { testHttpClient } from '@test/fixtures/http-client'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { loadAppInfoCache } from '@/cache/app-info'
 import { resumeApp } from '@/commands/resume/app/run'
 import { ENV_CACHE_DIR } from '@/store/dir'
@@ -417,5 +418,36 @@ describe('runApp', () => {
     const docInput = runInputs.doc as Record<string, unknown>
     expect(docInput.transfer_method).toBe('remote_url')
     expect(docInput.url).toBe('https://example.com/override.pdf')
+  })
+
+  it('external login: mode pre-flight calls PermittedExternalAppsClient.describe, not AppsClient.describe', async () => {
+    const describeResult = { info: { id: 'app-1', name: 'X', mode: 'chat', description: '', updated_at: null, service_api_enabled: true, is_agent: false }, parameters: null, input_schema: null }
+    const externalDescribe = vi.fn().mockResolvedValue(describeResult)
+    const { PermittedExternalAppsClient } = await import('@/api/permitted-external-apps')
+    const { AppsClient } = await import('@/api/apps')
+    const externalSpy = vi.spyOn(PermittedExternalAppsClient.prototype, 'describe').mockImplementation(externalDescribe)
+    const accountSpy = vi.spyOn(AppsClient.prototype, 'describe')
+    const io = bufferStreams()
+    const http = { baseURL: mock.url, request: vi.fn().mockResolvedValue({ answer: 'echo: hi', conversation_id: 'conv-1', message_id: 'msg-1', mode: 'chat', metadata: {} }) } as unknown as HttpClient
+    const activeExt: ActiveContext = {
+      host: mock.url,
+      email: 'sso@x.io',
+      ctx: {
+        account: { id: 'acct-1', email: 'sso@x.io', name: 'SSO User' },
+        external_subject: { email: 'sso@x.io', issuer: 'https://issuer.example.com' },
+      },
+    }
+    try {
+      await runApp(
+        { appId: 'app-1', message: 'hi' },
+        { active: activeExt, http, host: mock.url, io },
+      )
+    }
+    catch {
+      // run may fail due to mocked http; we only care about which describe was called
+    }
+    expect(externalSpy).toHaveBeenCalled()
+    expect(accountSpy).not.toHaveBeenCalled()
+    vi.restoreAllMocks()
   })
 })
