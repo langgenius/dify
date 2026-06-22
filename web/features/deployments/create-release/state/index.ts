@@ -1,9 +1,6 @@
 'use client'
 
-import type {
-  CreateReleaseResponse,
-  ReleaseContentMatch,
-} from '@dify/contracts/enterprise/types.gen'
+import type { CreateReleaseResponse } from '@dify/contracts/enterprise/types.gen'
 import type { Getter } from 'jotai/vanilla'
 import type { UnsupportedDslNode } from '../../shared/domain/error'
 import type { App } from '@/types/app'
@@ -31,27 +28,6 @@ export type CreateReleaseFormValues = {
   releaseDescription: string
 }
 
-export type CreateReleaseDslState = {
-  dslContent: string
-  dslReadError: boolean
-  encodedDslContent: string
-  hasDslContent: boolean
-  isReadingDsl: boolean
-  isWorkflowDslContent: boolean
-}
-
-export type CreateReleaseContentCheck = {
-  isCheckingReleaseContent: boolean
-  matchedRelease?: ReleaseContentMatch
-  releaseContentCheckFailed: boolean
-  releaseContentReady: boolean
-  unsupportedNodes: UnsupportedDslNode[]
-}
-
-type CreateReleaseDslReadState = Pick<CreateReleaseDslState, 'dslContent' | 'dslReadError' | 'isReadingDsl'> & {
-  readToken: number
-}
-
 const DEFAULT_CREATE_RELEASE_FORM_VALUES: CreateReleaseFormValues = {
   releaseSourceMode: 'sourceApp',
   sourceApp: undefined,
@@ -68,15 +44,6 @@ function deploymentReleaseSourceMode(mode: ReleaseSourceMode): ReleaseSourceMode
   return mode === 'dsl' && !isDeploymentDslImportEnabled
     ? 'sourceApp'
     : mode
-}
-
-function emptyCreateReleaseDslReadState(readToken: number): CreateReleaseDslReadState {
-  return {
-    dslContent: '',
-    dslReadError: false,
-    isReadingDsl: false,
-    readToken,
-  }
 }
 
 function workflowSourceAppPickerValue(value: unknown, fallbackId: string): SourceAppPickerValue | undefined {
@@ -140,7 +107,10 @@ export const createReleaseDescriptionFieldAtom = createReleaseFormAtoms.fieldAto
 export const createReleaseAppInstanceIdAtom = atom<string | undefined>(undefined)
 export const createReleaseDialogOpenAtom = atom(false)
 
-const createReleaseDslReadStateAtom = atom<CreateReleaseDslReadState>(emptyCreateReleaseDslReadState(0))
+const createReleaseDslContentStateAtom = atom('')
+const createReleaseDslReadErrorStateAtom = atom(false)
+const createReleaseDslReadingAtom = atom(false)
+const createReleaseDslReadTokenAtom = atom(0)
 
 function requiredAppInstanceId(get: Getter) {
   const appInstanceId = get(createReleaseAppInstanceIdAtom)
@@ -196,31 +166,38 @@ function effectiveCreateReleaseSourceMode(get: Getter) {
   return deploymentReleaseSourceMode(get(createReleaseSourceModeFieldAtom).value)
 }
 
-function createReleaseDslState(get: Getter): CreateReleaseDslState {
-  const {
-    dslContent,
-    dslReadError,
-    isReadingDsl,
-  } = get(createReleaseDslReadStateAtom)
-  const hasDslContent = Boolean(dslContent.trim())
-  const isWorkflowDslContent = hasDslContent ? isWorkflowDsl(dslContent) : false
-
-  return {
-    dslContent,
-    dslReadError,
-    encodedDslContent: hasDslContent && isWorkflowDslContent ? encodeDslContent(dslContent) : '',
-    hasDslContent,
-    isReadingDsl,
-    isWorkflowDslContent,
-  }
-}
-
 export const createReleaseSourceModeAtom = atom((get) => {
   return effectiveCreateReleaseSourceMode(get)
 })
 
-export const createReleaseDslStateAtom = atom((get): CreateReleaseDslState => {
-  return createReleaseDslState(get)
+export const createReleaseDslContentAtom = atom((get) => {
+  return get(createReleaseDslContentStateAtom)
+})
+
+export const createReleaseDslReadErrorAtom = atom((get) => {
+  return get(createReleaseDslReadErrorStateAtom)
+})
+
+export const isReadingCreateReleaseDslAtom = atom((get) => {
+  return get(createReleaseDslReadingAtom)
+})
+
+export const createReleaseHasDslContentAtom = atom((get) => {
+  return Boolean(get(createReleaseDslContentStateAtom).trim())
+})
+
+export const createReleaseIsWorkflowDslContentAtom = atom((get) => {
+  const dslContent = get(createReleaseDslContentStateAtom)
+
+  return get(createReleaseHasDslContentAtom) ? isWorkflowDsl(dslContent) : false
+})
+
+export const createReleaseEncodedDslContentAtom = atom((get) => {
+  const dslContent = get(createReleaseDslContentStateAtom)
+
+  return get(createReleaseHasDslContentAtom) && get(createReleaseIsWorkflowDslContentAtom)
+    ? encodeDslContent(dslContent)
+    : ''
 })
 
 export const createReleaseSelectedSourceAppAtom = atom((get) => {
@@ -246,12 +223,10 @@ function hasUnsupportedDslMode(get: Getter) {
   if (effectiveCreateReleaseSourceMode(get) !== 'dsl')
     return false
 
-  const dslState = createReleaseDslState(get)
-
-  return dslState.hasDslContent
-    && !dslState.isReadingDsl
-    && !dslState.dslReadError
-    && !dslState.isWorkflowDslContent
+  return get(createReleaseHasDslContentAtom)
+    && !get(isReadingCreateReleaseDslAtom)
+    && !get(createReleaseDslReadErrorAtom)
+    && !get(createReleaseIsWorkflowDslContentAtom)
 }
 
 export const createReleaseHasUnsupportedDslModeAtom = atom((get) => {
@@ -264,11 +239,10 @@ function canCheckReleaseSourceContent(get: Getter) {
   if (!isDeploymentDslImportEnabled)
     return false
 
-  const dslState = createReleaseDslState(get)
   return Boolean(
-    dslState.hasDslContent
-    && !dslState.isReadingDsl
-    && !dslState.dslReadError
+    get(createReleaseHasDslContentAtom)
+    && !get(isReadingCreateReleaseDslAtom)
+    && !get(createReleaseDslReadErrorAtom)
     && !hasUnsupportedDslMode(get),
   )
 }
@@ -285,7 +259,6 @@ function canCheckReleaseContent(get: Getter) {
 const precheckReleaseQueryAtom = atomWithQuery((get) => {
   const appInstanceId = get(createReleaseAppInstanceIdAtom)
   const releaseSourceMode = effectiveCreateReleaseSourceMode(get)
-  const dslState = createReleaseDslState(get)
   const sourceAppId = selectedSourceAppId(get)
   const canCheck = canCheckReleaseContent(get)
 
@@ -295,7 +268,7 @@ const precheckReleaseQueryAtom = atomWithQuery((get) => {
         body: {
           appInstanceId: appInstanceId ?? '',
           ...(releaseSourceMode === 'dsl'
-            ? { dsl: dslState.encodedDslContent }
+            ? { dsl: get(createReleaseEncodedDslContentAtom) }
             : { sourceAppId: sourceAppId ?? '' }),
         },
       },
@@ -305,39 +278,55 @@ const precheckReleaseQueryAtom = atomWithQuery((get) => {
   }
 })
 
-export const createReleaseContentCheckAtom = atom((get): CreateReleaseContentCheck => {
+export const isCheckingCreateReleaseContentAtom = atom((get) => {
   const canCheck = canCheckReleaseContent(get)
   const precheckReleaseQuery = get(precheckReleaseQueryAtom)
-  const isCheckingReleaseContent = canCheck && (precheckReleaseQuery.isLoading || precheckReleaseQuery.isFetching)
-  const releaseContentCheckFailed = canCheck && precheckReleaseQuery.isError
-  const unsupportedNodes = (canCheck ? precheckReleaseQuery.data?.unsupportedNodes : undefined) ?? []
 
-  return {
-    isCheckingReleaseContent,
-    matchedRelease: canCheck ? precheckReleaseQuery.data?.matchedRelease : undefined,
-    releaseContentCheckFailed,
-    releaseContentReady: canCheck
-      && precheckReleaseQuery.isSuccess
-      && !isCheckingReleaseContent
-      && !releaseContentCheckFailed
-      && Boolean(precheckReleaseQuery.data?.canCreate)
-      && unsupportedNodes.length === 0,
-    unsupportedNodes,
-  }
+  return canCheck && (precheckReleaseQuery.isLoading || precheckReleaseQuery.isFetching)
+})
+
+export const createReleaseMatchedReleaseAtom = atom((get) => {
+  return canCheckReleaseContent(get)
+    ? get(precheckReleaseQueryAtom).data?.matchedRelease
+    : undefined
+})
+
+export const createReleaseContentCheckFailedAtom = atom((get) => {
+  return canCheckReleaseContent(get) && get(precheckReleaseQueryAtom).isError
+})
+
+export const createReleaseUnsupportedDslNodesAtom = atom((get): UnsupportedDslNode[] => {
+  return canCheckReleaseContent(get)
+    ? get(precheckReleaseQueryAtom).data?.unsupportedNodes ?? []
+    : []
+})
+
+export const createReleaseContentReadyAtom = atom((get) => {
+  const canCheck = canCheckReleaseContent(get)
+  const precheckReleaseQuery = get(precheckReleaseQueryAtom)
+
+  return canCheck
+    && precheckReleaseQuery.isSuccess
+    && !get(isCheckingCreateReleaseContentAtom)
+    && !get(createReleaseContentCheckFailedAtom)
+    && Boolean(precheckReleaseQuery.data?.canCreate)
+    && get(createReleaseUnsupportedDslNodesAtom).length === 0
 })
 
 export const createReleaseCanCreateAtom = atom((get) => {
   return Boolean(
     get(createReleaseNameFieldAtom).value.trim()
-    && get(createReleaseContentCheckAtom).releaseContentReady
+    && get(createReleaseContentReadyAtom)
     && !get(createReleaseFormIsSubmittingAtom),
   )
 })
 
 // Actions
 const resetCreateReleaseDslFileAtom = atom(null, (get, set) => {
-  const readToken = get(createReleaseDslReadStateAtom).readToken + 1
-  set(createReleaseDslReadStateAtom, emptyCreateReleaseDslReadState(readToken))
+  set(createReleaseDslReadTokenAtom, get(createReleaseDslReadTokenAtom) + 1)
+  set(createReleaseDslContentStateAtom, '')
+  set(createReleaseDslReadErrorStateAtom, false)
+  set(createReleaseDslReadingAtom, false)
 })
 
 export const openCreateReleaseDialogAtom = atom(null, (_get, set) => {
@@ -351,34 +340,32 @@ export const closeCreateReleaseDialogAtom = atom(null, (_get, set) => {
 })
 
 const selectCreateReleaseDslFileAtom = atom(null, async (get, set, file?: File) => {
-  const readToken = get(createReleaseDslReadStateAtom).readToken + 1
-  set(createReleaseDslReadStateAtom, emptyCreateReleaseDslReadState(readToken))
+  const readToken = get(createReleaseDslReadTokenAtom) + 1
+  set(createReleaseDslReadTokenAtom, readToken)
+  set(createReleaseDslContentStateAtom, '')
+  set(createReleaseDslReadErrorStateAtom, false)
+  set(createReleaseDslReadingAtom, false)
 
   if (!file)
     return
 
-  set(createReleaseDslReadStateAtom, {
-    ...emptyCreateReleaseDslReadState(readToken),
-    isReadingDsl: true,
-  })
+  set(createReleaseDslReadingAtom, true)
   try {
     const content = await file.text()
-    if (get(createReleaseDslReadStateAtom).readToken !== readToken)
+    if (get(createReleaseDslReadTokenAtom) !== readToken)
       return
 
-    set(createReleaseDslReadStateAtom, {
-      ...emptyCreateReleaseDslReadState(readToken),
-      dslContent: content,
-    })
+    set(createReleaseDslContentStateAtom, content)
   }
   catch {
-    if (get(createReleaseDslReadStateAtom).readToken !== readToken)
+    if (get(createReleaseDslReadTokenAtom) !== readToken)
       return
 
-    set(createReleaseDslReadStateAtom, {
-      ...emptyCreateReleaseDslReadState(readToken),
-      dslReadError: true,
-    })
+    set(createReleaseDslReadErrorStateAtom, true)
+  }
+  finally {
+    if (get(createReleaseDslReadTokenAtom) === readToken)
+      set(createReleaseDslReadingAtom, false)
   }
 })
 
@@ -421,15 +408,13 @@ export class CreateReleaseSubmissionBlockedError extends Error {
 
 const createReleaseSubmissionAtom = atom(null, async (get, set, value: CreateReleaseFormValues) => {
   const releaseSourceMode = effectiveCreateReleaseSourceMode(get)
-  const dslState = createReleaseDslState(get)
   const sourceAppId = selectedSourceAppId(get)
-  const releaseContent = get(createReleaseContentCheckAtom)
   const submittedReleaseName = value.releaseName.trim()
 
-  if (releaseContent.isCheckingReleaseContent || !submittedReleaseName)
+  if (get(isCheckingCreateReleaseContentAtom) || !submittedReleaseName)
     return undefined
 
-  if (!canCheckReleaseSourceContent(get) || !releaseContent.releaseContentReady)
+  if (!canCheckReleaseSourceContent(get) || !get(createReleaseContentReadyAtom))
     return undefined
 
   const appInstanceId = requiredAppInstanceId(get)
@@ -441,13 +426,13 @@ const createReleaseSubmissionAtom = atom(null, async (get, set, value: CreateRel
   }
 
   if (releaseSourceMode === 'dsl') {
-    if (!dslState.isWorkflowDslContent)
+    if (!get(createReleaseIsWorkflowDslContentAtom))
       throw new CreateReleaseSubmissionBlockedError('unsupportedDslMode')
 
     return await get(createReleaseMutationAtom).mutateAsync({
       body: {
         ...commonCreateReleaseRequest,
-        dsl: dslState.encodedDslContent,
+        dsl: get(createReleaseEncodedDslContentAtom),
       },
     })
   }
@@ -481,5 +466,8 @@ export const submitCreateReleaseFormAtom = atom(null, (get, set) => {
 // Scoped atoms
 export const createReleaseLocalAtoms = [
   createReleaseDialogOpenAtom,
-  createReleaseDslReadStateAtom,
+  createReleaseDslContentStateAtom,
+  createReleaseDslReadErrorStateAtom,
+  createReleaseDslReadingAtom,
+  createReleaseDslReadTokenAtom,
 ] as const

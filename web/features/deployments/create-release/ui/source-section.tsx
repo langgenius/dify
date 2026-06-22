@@ -8,10 +8,11 @@ import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
 import { isDeploymentDslImportEnabled } from '../../shared/domain/feature-flags'
 import {
   createReleaseDslFileFieldAtom,
-  createReleaseDslStateAtom,
+  createReleaseDslReadErrorAtom,
   createReleaseHasUnsupportedDslModeAtom,
   createReleaseSelectedSourceAppAtom,
   createReleaseSourceModeAtom,
+  isReadingCreateReleaseDslAtom,
   selectCreateReleaseSourceModeAtom,
   updateCreateReleaseDslFileAtom,
   updateCreateReleaseSourceAppAtom,
@@ -88,7 +89,8 @@ function SourceAppField() {
 function DslFileField() {
   const { t } = useTranslation('deployments')
   const dslFileField = useAtomValue(createReleaseDslFileFieldAtom)
-  const dslState = useAtomValue(createReleaseDslStateAtom)
+  const isReadingDsl = useAtomValue(isReadingCreateReleaseDslAtom)
+  const dslReadError = useAtomValue(createReleaseDslReadErrorAtom)
   const hasUnsupportedDslMode = useAtomValue(createReleaseHasUnsupportedDslModeAtom)
   const updateDslFile = useSetAtom(updateCreateReleaseDslFileAtom)
 
@@ -101,12 +103,12 @@ function DslFileField() {
         }}
         className="mt-0"
       />
-      {dslState.isReadingDsl && (
+      {isReadingDsl && (
         <div className="system-xs-regular text-text-tertiary">
           {t('versions.dslReading')}
         </div>
       )}
-      {dslState.dslReadError && (
+      {dslReadError && (
         <div role="alert" className="system-xs-regular text-util-colors-red-red-600">
           {t('versions.dslReadFailed')}
         </div>

@@ -243,13 +243,12 @@ describe('create release state', () => {
 
     await store.set(state.updateCreateReleaseDslFileAtom, file)
 
-    const dslState = store.get(state.createReleaseDslStateAtom)
     expect(store.get(state.createReleaseDslFileFieldAtom).value).toBe(file)
-    expect(dslState.dslContent).toBe(workflowDsl())
-    expect(dslState.hasDslContent).toBe(true)
-    expect(dslState.isReadingDsl).toBe(false)
-    expect(dslState.isWorkflowDslContent).toBe(true)
-    expect(dslState.encodedDslContent).not.toBe('')
+    expect(store.get(state.createReleaseDslContentAtom)).toBe(workflowDsl())
+    expect(store.get(state.createReleaseHasDslContentAtom)).toBe(true)
+    expect(store.get(state.isReadingCreateReleaseDslAtom)).toBe(false)
+    expect(store.get(state.createReleaseIsWorkflowDslContentAtom)).toBe(true)
+    expect(store.get(state.createReleaseEncodedDslContentAtom)).not.toBe('')
 
     unsubscribe()
   })
@@ -263,14 +262,12 @@ describe('create release state', () => {
 
     expect(store.get(state.createReleaseSourceModeFieldAtom).value).toBe('sourceApp')
     expect(store.get(state.createReleaseDslFileFieldAtom).value).toBeUndefined()
-    expect(store.get(state.createReleaseDslStateAtom)).toEqual({
-      dslContent: '',
-      dslReadError: false,
-      encodedDslContent: '',
-      hasDslContent: false,
-      isReadingDsl: false,
-      isWorkflowDslContent: false,
-    })
+    expect(store.get(state.createReleaseDslContentAtom)).toBe('')
+    expect(store.get(state.createReleaseDslReadErrorAtom)).toBe(false)
+    expect(store.get(state.createReleaseEncodedDslContentAtom)).toBe('')
+    expect(store.get(state.createReleaseHasDslContentAtom)).toBe(false)
+    expect(store.get(state.isReadingCreateReleaseDslAtom)).toBe(false)
+    expect(store.get(state.createReleaseIsWorkflowDslContentAtom)).toBe(false)
 
     unsubscribe()
   })
@@ -286,11 +283,11 @@ describe('create release state', () => {
 
     await store.set(state.updateCreateReleaseDslFileAtom, file)
 
-    expect(store.get(state.createReleaseDslStateAtom).dslReadError).toBe(true)
+    expect(store.get(state.createReleaseDslReadErrorAtom)).toBe(true)
 
     store.set(state.openCreateReleaseDialogAtom)
     expect(store.get(state.createReleaseDialogOpenAtom)).toBe(true)
-    expect(store.get(state.createReleaseDslStateAtom).dslReadError).toBe(false)
+    expect(store.get(state.createReleaseDslReadErrorAtom)).toBe(false)
 
     store.set(state.closeCreateReleaseDialogAtom)
     expect(store.get(state.createReleaseDialogOpenAtom)).toBe(false)
@@ -305,7 +302,7 @@ describe('create release state', () => {
     setDefaultSourceApp()
     setPrecheckReleaseResult()
 
-    expect(store.get(state.createReleaseContentCheckAtom).releaseContentReady).toBe(true)
+    expect(store.get(state.createReleaseContentReadyAtom)).toBe(true)
     expect(store.get(state.createReleaseCanCreateAtom)).toBe(false)
 
     store.set(state.createReleaseNameFieldAtom, 'Release 1')
@@ -325,7 +322,7 @@ describe('create release state', () => {
       unsupportedNodes: [{ id: 'precheck-node' }],
     })
 
-    expect(store.get(state.createReleaseContentCheckAtom).unsupportedNodes).toEqual([{ id: 'precheck-node' }])
+    expect(store.get(state.createReleaseUnsupportedDslNodesAtom)).toEqual([{ id: 'precheck-node' }])
 
     unsubscribe()
   })

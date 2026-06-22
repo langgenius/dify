@@ -6,8 +6,8 @@ import { useTranslation } from 'react-i18next'
 import {
   closeCreateReleaseDialogAtom,
   createReleaseCanCreateAtom,
-  createReleaseContentCheckAtom,
   createReleaseFormIsSubmittingAtom,
+  isCheckingCreateReleaseContentAtom,
 } from '../state'
 
 export function CreateReleaseActions() {
@@ -15,7 +15,7 @@ export function CreateReleaseActions() {
   const closeDialog = useSetAtom(closeCreateReleaseDialogAtom)
   const isSubmitting = useAtomValue(createReleaseFormIsSubmittingAtom)
   const canCreate = useAtomValue(createReleaseCanCreateAtom)
-  const isCheckingReleaseContent = useAtomValue(createReleaseContentCheckAtom).isCheckingReleaseContent
+  const isCheckingReleaseContent = useAtomValue(isCheckingCreateReleaseContentAtom)
 
   function requestClose() {
     if (isSubmitting)
