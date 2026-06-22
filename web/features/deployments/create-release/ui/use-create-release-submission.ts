@@ -1,7 +1,7 @@
 'use client'
 
 import type { CreateReleaseResponse } from '@dify/contracts/enterprise/types.gen'
-import type { CreateReleaseFormValues } from '../state/types'
+import type { CreateReleaseFormValues } from '../state'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useSetAtom } from 'jotai'
