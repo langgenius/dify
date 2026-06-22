@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
@@ -33,6 +33,15 @@ const composerPutMutationOptions = vi.hoisted(() => vi.fn((options?: {
     return data
   },
 })))
+
+function createDeferredPromise<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((promiseResolve) => {
+    resolve = promiseResolve
+  })
+
+  return { promise, resolve }
+}
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
@@ -212,5 +221,37 @@ describe('useAgentConfigureSync', () => {
       active_config_is_published: true,
       name: 'Agent',
     })
+  })
+
+  it('should expose publishing status from the publish mutation while publish is pending', async () => {
+    const publishDeferred = createDeferredPromise<{ agent_soul: Record<string, unknown> }>()
+    composerPutMutationFn.mockReturnValueOnce(publishDeferred.promise)
+    const { result } = renderUseAgentConfigureSync()
+    const publishPayload = {
+      agent_id: 'agent-1',
+      config_snapshot: {
+        prompt: {
+          system_prompt: 'Published prompt',
+        },
+      },
+    }
+
+    let publishPromise!: Promise<void>
+    act(() => {
+      publishPromise = result.current.publishDraft(publishPayload)
+    })
+
+    await waitFor(() => {
+      expect(result.current.isPublishing).toBe(true)
+    })
+
+    await act(async () => {
+      publishDeferred.resolve({
+        agent_soul: publishPayload.config_snapshot,
+      })
+      await publishPromise
+    })
+
+    expect(result.current.isPublishing).toBe(false)
   })
 })

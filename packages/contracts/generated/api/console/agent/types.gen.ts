@@ -29,6 +29,7 @@ export type AgentAppDetailWithSite = {
   bound_agent_id?: string | null
   created_at?: number | null
   created_by?: string | null
+  debug_conversation_id?: string | null
   deleted_tools?: Array<DeletedTool>
   description?: string | null
   enable_api: boolean
@@ -327,6 +328,7 @@ export type AgentAppPartial = {
   create_user_name?: string | null
   created_at?: number | null
   created_by?: string | null
+  debug_conversation_id?: string | null
   description?: string | null
   has_draft_trigger?: boolean | null
   icon?: string | null
@@ -1448,6 +1450,7 @@ export type AgentAppDetailWithSiteWritable = {
   bound_agent_id?: string | null
   created_at?: number | null
   created_by?: string | null
+  debug_conversation_id?: string | null
   deleted_tools?: Array<DeletedTool>
   description?: string | null
   enable_api: boolean
@@ -1481,6 +1484,7 @@ export type AgentAppPartialWritable = {
   create_user_name?: string | null
   created_at?: number | null
   created_by?: string | null
+  debug_conversation_id?: string | null
   description?: string | null
   has_draft_trigger?: boolean | null
   icon?: string | null

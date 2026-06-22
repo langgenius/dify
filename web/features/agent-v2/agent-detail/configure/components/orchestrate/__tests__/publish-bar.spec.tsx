@@ -110,6 +110,15 @@ const publishedReferences: AgentReferencingWorkflowResponse[] = [
   },
 ]
 
+function createDeferredPromise() {
+  let resolve!: () => void
+  const promise = new Promise<void>((promiseResolve) => {
+    resolve = promiseResolve
+  })
+
+  return { promise, resolve }
+}
+
 function renderPublishBar({
   activeConfigIsPublished,
   activeConfigSnapshot,
@@ -142,7 +151,9 @@ function renderPublishBar({
   store.set(agentComposerPromptAtom, prompt)
   setupStore?.(store)
 
-  render(
+  const renderPublishBarTree = (nextProps?: {
+    isPublishing?: boolean
+  }) => (
     <QueryClientProvider client={queryClient}>
       <JotaiProvider store={store}>
         <AgentConfigurePublishBar
@@ -151,18 +162,21 @@ function renderPublishBar({
           activeConfigSnapshot={activeConfigSnapshot}
           draftSavedAt={draftSavedAt}
           agentName="Iris"
-          isPublishing={isPublishing}
+          isPublishing={nextProps?.isPublishing ?? isPublishing}
           selectedVersionSnapshot={selectedVersionSnapshot}
           onPublish={onPublish}
           onExitVersions={vi.fn()}
           onOpenVersions={vi.fn()}
         />
       </JotaiProvider>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   )
+  const view = render(renderPublishBarTree())
 
   return {
+    ...view,
     onPublish,
+    rerenderPublishBar: renderPublishBarTree,
   }
 }
 
@@ -379,8 +393,11 @@ describe('AgentConfigurePublishBar', () => {
   })
 
   it('should publish from the fixed toolbar action after affected workflow details expand', async () => {
-    const { onPublish } = renderPublishBar({
+    const publishDeferred = createDeferredPromise()
+    const onPublish = vi.fn<PublishHandler>(() => publishDeferred.promise)
+    const { rerender, rerenderPublishBar } = renderPublishBar({
       activeConfigSnapshot,
+      onPublish,
       prompt: 'Updated system prompt',
       usedByAppReferences: publishedReferences,
     })
@@ -394,6 +411,24 @@ describe('AgentConfigurePublishBar', () => {
     expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
       agent_id: 'agent-1',
     }))
+    expect(screen.getByRole('region', {
+      name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
+    })).toBeInTheDocument()
+    rerender(rerenderPublishBar({ isPublishing: true }))
+    expect(await screen.findByRole('button', {
+      name: 'agentV2.agentDetail.configure.publishBar.publishing',
+    })).toHaveAttribute('aria-busy', 'true')
+
+    await act(async () => {
+      publishDeferred.resolve()
+      await publishDeferred.promise
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByRole('region', {
+        name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
+      })).not.toBeInTheDocument()
+    })
   })
 
   it('should collapse affected workflow details from the expanded footer cancel action', async () => {
@@ -439,6 +474,25 @@ describe('AgentConfigurePublishBar', () => {
       await hotkeyRegistrations.get('Mod+Shift+P')?.callback({ preventDefault: vi.fn() })
     })
 
+    expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
+      agent_id: 'agent-1',
+    }))
+  })
+
+  it('should publish directly from the publish shortcut when no workflows reference the agent', async () => {
+    const { onPublish } = renderPublishBar({
+      activeConfigSnapshot,
+      prompt: 'Updated system prompt',
+    })
+    const publishShortcut = hotkeyRegistrations.get('Mod+Shift+P')
+
+    await act(async () => {
+      await publishShortcut?.callback({ preventDefault: vi.fn() })
+    })
+
+    expect(screen.queryByRole('region', {
+      name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
+    })).not.toBeInTheDocument()
     expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
       agent_id: 'agent-1',
     }))

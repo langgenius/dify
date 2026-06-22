@@ -14,6 +14,7 @@ from dify_agent.layers.dify_plugin import (
     DifyPluginToolConfig,
     DifyPluginToolsLayerConfig,
 )
+from dify_agent.layers.drive import DifyDriveLayerConfig
 from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
 from dify_agent.layers.knowledge import DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID, DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID
@@ -42,7 +43,7 @@ from clients.agent_backend import (
     extract_runtime_layer_specs,
     redact_for_agent_backend_log,
 )
-from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
+from clients.agent_backend.request_builder import DIFY_DRIVE_LAYER_ID, DIFY_SHELL_LAYER_ID
 
 
 def _run_input() -> AgentBackendWorkflowNodeRunInput:
@@ -331,6 +332,22 @@ def test_workflow_request_builder_adds_shell_layer_when_include_shell():
     assert shell_config.env[0].name == "PROJECT_NAME"
 
 
+def test_workflow_request_builder_binds_shell_to_drive_when_configured():
+    run_input = _run_input()
+    run_input.include_shell = True
+    run_input.drive_config = DifyDriveLayerConfig(drive_ref="agent-agent-1")
+
+    request = AgentBackendRunRequestBuilder().build_for_workflow_node(run_input)
+    layers = {layer.name: layer for layer in request.composition.layers}
+    layer_names = [layer.name for layer in request.composition.layers]
+
+    assert layers[DIFY_SHELL_LAYER_ID].deps == {
+        "execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID,
+        "drive": DIFY_DRIVE_LAYER_ID,
+    }
+    assert layer_names.index(DIFY_DRIVE_LAYER_ID) < layer_names.index(DIFY_SHELL_LAYER_ID)
+
+
 def test_agent_app_request_builder_omits_shell_layer_by_default():
     request = AgentBackendRunRequestBuilder().build_for_agent_app(_agent_app_input())
     assert DIFY_SHELL_LAYER_ID not in {layer.name for layer in request.composition.layers}
@@ -348,6 +365,21 @@ def test_agent_app_request_builder_adds_shell_layer_when_include_shell():
     assert layers[DIFY_SHELL_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
     shell_config = cast(DifyShellLayerConfig, layers[DIFY_SHELL_LAYER_ID].config)
     assert shell_config.env[0].name == "APP_ENV"
+
+
+def test_agent_app_request_builder_binds_shell_to_drive_when_configured():
+    run_input = _agent_app_input(include_shell=True)
+    run_input.drive_config = DifyDriveLayerConfig(drive_ref="agent-agent-1")
+
+    request = AgentBackendRunRequestBuilder().build_for_agent_app(run_input)
+    layers = {layer.name: layer for layer in request.composition.layers}
+    layer_names = [layer.name for layer in request.composition.layers]
+
+    assert layers[DIFY_SHELL_LAYER_ID].deps == {
+        "execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID,
+        "drive": DIFY_DRIVE_LAYER_ID,
+    }
+    assert layer_names.index(DIFY_DRIVE_LAYER_ID) < layer_names.index(DIFY_SHELL_LAYER_ID)
 
 
 def test_agent_app_request_builder_adds_knowledge_layer_when_configured():

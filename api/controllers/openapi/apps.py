@@ -8,7 +8,10 @@ from typing import Any, cast
 from flask_restx import Resource
 from werkzeug.exceptions import Conflict, NotFound, UnprocessableEntity
 
+from configs import dify_config
+from controllers.common.app_access import AppAccessFilter, resolve_app_access_filter
 from controllers.common.fields import Parameters
+from controllers.common.wraps import RBACPermission, RBACResourceScope
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
 from controllers.openapi._input_schema import EMPTY_INPUT_SCHEMA, build_input_schema, resolve_app_config
@@ -21,7 +24,7 @@ from controllers.openapi._models import (
     AppListRow,
 )
 from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData
+from controllers.openapi.auth.data import AuthData, RBACRequirement
 from controllers.service_api.app.error import AppUnavailableError
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from extensions.ext_database import db
@@ -121,7 +124,11 @@ def build_app_describe_response(app: App, fields: set[str] | None) -> AppDescrib
 
 @openapi_ns.route("/apps/<string:app_id>/describe")
 class AppDescribeApi(AppReadResource):
-    @auth_router.guard(scope=Scope.APPS_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
+    @auth_router.guard(
+        scope=Scope.APPS_READ,
+        allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
+        rbac=RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_VIEW_LAYOUT),
+    )
     @returns(200, AppDescribeResponse, description="App description")
     @accepts(query=AppDescribeQuery)
     def get(self, app_id: str, *, auth_data: AuthData, query: AppDescribeQuery):
@@ -148,10 +155,27 @@ class AppListApi(Resource):
         else:
             parsed_uuid = None
 
+        # Compute RBAC-accessible app IDs when RBAC is enabled and the caller is an account.
+        # ``None`` means unrestricted (caller can see all apps in the workspace);
+        # an empty set or list means the caller has no accessible apps.
+        # End-users bypass RBAC here — their access is controlled by scope upstream.
+        apply_rbac_filter = (
+            dify_config.RBAC_ENABLED and auth_data.caller_kind != "end_user" and auth_data.account_id is not None
+        )
+        access_filter = AppAccessFilter.unrestricted()
+        if apply_rbac_filter:
+            access_filter = resolve_app_access_filter(workspace_id, str(auth_data.account_id))
+
         tenant_name: str | None = None
         if parsed_uuid is not None:
             app: App | None = AppService.get_visible_app_by_id(db.session, str(parsed_uuid))
             if app is None or str(app.tenant_id) != workspace_id:
+                return empty
+            # Apply RBAC visibility to the UUID fast-path the same way the service
+            # layer does for paginated queries (id in accessible set OR own app).
+            if apply_rbac_filter and not access_filter.is_app_accessible(
+                str(app.id), str(app.maintainer) if app.maintainer else None, str(auth_data.account_id)
+            ):
                 return empty
             tenant_name = TenantService.get_tenant_name(db.session, workspace_id)
             item = AppListRow(
@@ -176,6 +200,9 @@ class AppListApi(Resource):
             # consistent across pages because invisible rows never count.
             openapi_visible=True,
         )
+
+        if apply_rbac_filter:
+            access_filter.apply_to_params(params)
 
         pagination = AppService().get_paginate_apps(str(auth_data.account_id), workspace_id, params, db.session)
         if pagination is None:
