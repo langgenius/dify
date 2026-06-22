@@ -83,7 +83,7 @@ class ApiKeyAuthDataSourceBinding(Resource):
     @login_required
     @account_initialization_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_CREATE, resource_required=False)
     @console_ns.expect(console_ns.models[ApiKeyAuthBindingPayload.__name__])
     @with_current_tenant_id
     def post(self, current_tenant_id: str):
