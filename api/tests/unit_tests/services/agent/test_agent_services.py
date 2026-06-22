@@ -533,6 +533,100 @@ def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch
     assert inline_agent.updated_by == "account-1"
 
 
+def test_node_job_only_switches_roster_binding_to_inline_agent(monkeypatch: pytest.MonkeyPatch):
+    fake_session = FakeSession()
+    monkeypatch.setattr(composer_service.db, "session", fake_session)
+    created_agent = SimpleNamespace(id="inline-agent-1", active_config_snapshot_id="inline-version-1")
+    captured: dict[str, object] = {}
+
+    def fake_create_workflow_only_agent(**kwargs):
+        captured.update(kwargs)
+        return created_agent
+
+    monkeypatch.setattr(AgentComposerService, "_create_workflow_only_agent", fake_create_workflow_only_agent)
+    existing_node_job = WorkflowNodeJobConfig(workflow_prompt="keep the existing task")
+    binding = WorkflowAgentNodeBinding(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        workflow_version="draft",
+        node_id="node-1",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+        agent_id="roster-agent-1",
+        current_snapshot_id="roster-version-1",
+        node_job_config=existing_node_job,
+        created_by="account-1",
+        updated_by="account-1",
+    )
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": ComposerVariant.WORKFLOW.value,
+            "save_strategy": ComposerSaveStrategy.NODE_JOB_ONLY.value,
+            "binding": {"binding_type": WorkflowAgentBindingType.INLINE_AGENT.value},
+            "agent_soul": {"prompt": {"system_prompt": "start from scratch"}},
+        }
+    )
+
+    updated_binding = AgentComposerService._save_node_job_only(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        node_id="node-1",
+        account_id="account-1",
+        binding=binding,
+        payload=payload,
+    )
+
+    assert updated_binding is binding
+    assert binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT
+    assert binding.agent_id == "inline-agent-1"
+    assert binding.current_snapshot_id == "inline-version-1"
+    assert binding.node_job_config is existing_node_job
+    assert binding.updated_by == "account-1"
+    assert captured["tenant_id"] == "tenant-1"
+    assert captured["app_id"] == "app-1"
+    assert captured["workflow_id"] == "workflow-1"
+    assert captured["node_id"] == "node-1"
+    assert captured["account_id"] == "account-1"
+    assert captured["agent_soul"].prompt.system_prompt == "start from scratch"
+    assert fake_session.flushes == 1
+
+
+def test_node_job_only_rejects_start_from_scratch_with_existing_inline_binding_id():
+    binding = WorkflowAgentNodeBinding(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        workflow_version="draft",
+        node_id="node-1",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+        agent_id="roster-agent-1",
+        current_snapshot_id="roster-version-1",
+        node_job_config=WorkflowNodeJobConfig(),
+    )
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": ComposerVariant.WORKFLOW.value,
+            "save_strategy": ComposerSaveStrategy.NODE_JOB_ONLY.value,
+            "binding": {
+                "binding_type": WorkflowAgentBindingType.INLINE_AGENT.value,
+                "agent_id": "existing-inline-agent",
+            },
+        }
+    )
+
+    with pytest.raises(ValueError, match="Start from Scratch"):
+        AgentComposerService._save_node_job_only(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_id="workflow-1",
+            node_id="node-1",
+            account_id="account-1",
+            binding=binding,
+            payload=payload,
+        )
+
+
 def test_node_job_only_rejects_inline_binding_pointing_to_roster_agent(monkeypatch: pytest.MonkeyPatch):
     fake_session = FakeSession()
     monkeypatch.setattr(composer_service.db, "session", fake_session)
