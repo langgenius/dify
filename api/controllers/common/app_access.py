@@ -1,23 +1,3 @@
-"""Shared RBAC app-id access filtering for app list/read endpoints.
-
-The console (`controllers/console/app/app.py`) and OpenAPI
-(`controllers/openapi/apps.py`) app-listing endpoints both need to translate a
-caller's enterprise RBAC permissions into the set of apps they may see. This
-module centralises that translation so the two controllers stay in sync.
-
-The core abstraction is :class:`AppAccessFilter`, computed by
-:func:`resolve_app_access_filter`. It exposes:
-
-- ``accessible_app_ids``: ``None`` means *unrestricted* (the caller may see
-  every app in the workspace); a concrete set (possibly empty) enumerates the
-  only apps the caller may preview.
-- ``can_manage_own_apps``: whether the caller may also see apps they maintain,
-  regardless of the whitelist (``app.create_and_management``).
-
-Callers decide *when* to apply the filter (e.g. the OpenAPI controller skips it
-for end-user tokens); this module only computes and applies the result.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Sequence
