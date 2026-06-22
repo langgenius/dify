@@ -122,10 +122,7 @@ def test_soul_resolver_resolves_each_kind(soul: AgentSoulConfig):
 
     expanded = expand_prompt_mentions(prompt, resolver)
 
-    assert expanded == (
-        "Use tavily_search, run ffmpeg, "
-        "ground in 产品手册, ask EMAIL · David Hayes."
-    )
+    assert expanded == ("Use tavily_search, run ffmpeg, ground in 产品手册, ask EMAIL · David Hayes.")
 
 
 def test_soul_resolver_unknown_ids_degrade(soul: AgentSoulConfig):

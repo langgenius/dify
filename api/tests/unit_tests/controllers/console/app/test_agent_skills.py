@@ -239,9 +239,9 @@ def test_files_delete_updates_soul_then_drive():
         with (
             patch(f"{_MOD}.AgentDriveService") as drive,
         ):
-            drive.return_value.commit.side_effect = lambda **kw: calls.append("drive") or [
-                {"key": "files/sample.pdf", "removed": True}
-            ]
+            drive.return_value.commit.side_effect = lambda **kw: (
+                calls.append("drive") or [{"key": "files/sample.pdf", "removed": True}]
+            )
             body = raw(AgentDriveFilesApi(), _USER, _APP)
 
     assert calls == ["drive"]

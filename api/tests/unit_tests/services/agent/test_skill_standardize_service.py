@@ -44,15 +44,15 @@ def test_standardize_creates_two_drive_owned_toolfiles_and_commits():
     drive.commit.return_value = []
     drive.list_skills.return_value = [
         {
-            'path': 'pdf-toolkit',
-            'skill_md_key': 'pdf-toolkit/SKILL.md',
-            'archive_key': 'pdf-toolkit/.DIFY-SKILL-FULL.zip',
-            'name': 'PDF Toolkit',
-            'description': 'Work with PDFs.',
-            'size': len(_SKILL_MD),
-            'mime_type': 'text/markdown',
-            'hash': None,
-            'created_at': None,
+            "path": "pdf-toolkit",
+            "skill_md_key": "pdf-toolkit/SKILL.md",
+            "archive_key": "pdf-toolkit/.DIFY-SKILL-FULL.zip",
+            "name": "PDF Toolkit",
+            "description": "Work with PDFs.",
+            "size": len(_SKILL_MD),
+            "mime_type": "text/markdown",
+            "hash": None,
+            "created_at": None,
         },
     ]
 

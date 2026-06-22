@@ -18,10 +18,10 @@ from controllers.console.app.agent_drive_inspector import (
     AgentDriveDownloadByAgentApi,
     AgentDriveListApi,
     AgentDriveListByAgentApi,
-    AgentDriveSkillListApi,
-    AgentDriveSkillListByAgentApi,
     AgentDrivePreviewApi,
     AgentDrivePreviewByAgentApi,
+    AgentDriveSkillListApi,
+    AgentDriveSkillListByAgentApi,
 )
 from services.agent_drive_service import AgentDriveError
 

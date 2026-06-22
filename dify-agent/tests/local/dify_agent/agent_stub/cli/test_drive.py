@@ -458,7 +458,9 @@ def test_pull_drive_from_environment_requests_multiple_targets_and_deduplicates_
     monkeypatch.setattr("dify_agent.agent_stub.cli._drive.request_agent_stub_drive_manifest_sync", fake_manifest)
     monkeypatch.setattr(
         "dify_agent.agent_stub.cli._drive.download_file_bytes_from_signed_url_sync",
-        lambda *, download_url: downloaded_urls.append(download_url) or (b"hello" if download_url.endswith("skill-md") else b"a"),
+        lambda *, download_url: (
+            downloaded_urls.append(download_url) or (b"hello" if download_url.endswith("skill-md") else b"a")
+        ),
     )
 
     results = pull_drive_from_environment(targets=["skills/foo", "files/a.txt"], drive_base=str(tmp_path))

@@ -193,8 +193,11 @@ export type AgentDrivePreviewResponse = {
   truncated: boolean
 }
 
+export type AgentDriveSkillListResponse = {
+  items?: Array<AgentDriveSkillItemResponse>
+}
+
 export type AgentDriveDeleteResponse = {
-  config_version_id?: string | null
   removed_keys?: Array<string>
   result: string
 }
@@ -204,7 +207,6 @@ export type AgentDriveFilePayload = {
 }
 
 export type AgentDriveFileCommitResponse = {
-  config_version_id?: string | null
   file: AgentDriveFileResponse
 }
 
@@ -212,14 +214,6 @@ export type AgentLogResponse = {
   files?: Array<unknown>
   iterations: Array<AgentIterationLogResponse>
   meta: AgentLogMetaResponse
-}
-
-export type AgentUploadedSkillResponse = {
-  archive_key?: string | null
-  description: string
-  name: string
-  path: string
-  skill_md_key: string
 }
 
 export type AgentSkillUploadResponse = {
@@ -1282,9 +1276,23 @@ export type AgentDriveItemResponse = {
   created_at?: number | null
   file_kind: string
   hash?: string | null
+  is_skill?: boolean | null
   key: string
   mime_type?: string | null
   size?: number | null
+  skill_metadata?: string | null
+}
+
+export type AgentDriveSkillItemResponse = {
+  archive_key?: string | null
+  created_at?: number | null
+  description: string
+  hash?: string | null
+  mime_type?: string | null
+  name: string
+  path: string
+  size?: number | null
+  skill_md_key: string
 }
 
 export type AgentDriveFileResponse = {
@@ -1325,18 +1333,12 @@ export type SkillManifest = {
   size: number
 }
 
-export type AgentSkillRefConfig = {
-  description?: string | null
-  file_id?: string | null
-  full_archive_file_id?: string | null
-  full_archive_key?: string | null
-  id?: string | null
-  manifest_files?: Array<string> | null
-  name?: string | null
-  path?: string | null
-  skill_md_file_id?: string | null
-  skill_md_key?: string | null
-  [key: string]: unknown
+export type AgentUploadedSkillResponse = {
+  archive_key?: string | null
+  description: string
+  name: string
+  path: string
+  skill_md_key: string
 }
 
 export type CliToolSuggestion = {
@@ -2398,21 +2400,6 @@ export type AgentSandboxProviderConfig = {
   [key: string]: unknown
 }
 
-export type AgentFileRefConfig = {
-  drive_key?: string | null
-  file_id?: string | null
-  id?: string | null
-  name?: string | null
-  reference?: string | null
-  remote_url?: string | null
-  tenant_id?: string | null
-  transfer_method?: string | null
-  type?: string | null
-  upload_file_id?: string | null
-  url?: string | null
-  [key: string]: unknown
-}
-
 export type AgentSoulDifyToolConfig = {
   credential_ref?: AgentSoulDifyToolCredentialRef | null
   credential_type?: 'api-key' | 'oauth2' | 'unauthorized'
@@ -2436,6 +2423,21 @@ export type AgentSoulDifyToolConfig = {
       | null
   }
   tool_name?: string | null
+}
+
+export type AgentFileRefConfig = {
+  drive_key?: string | null
+  file_id?: string | null
+  id?: string | null
+  name?: string | null
+  reference?: string | null
+  remote_url?: string | null
+  tenant_id?: string | null
+  transfer_method?: string | null
+  type?: string | null
+  upload_file_id?: string | null
+  url?: string | null
+  [key: string]: unknown
 }
 
 export type OutputErrorStrategy = 'default_value' | 'fail_branch' | 'stop'
@@ -3087,6 +3089,25 @@ export type GetAppsByAppIdAgentDriveFilesPreviewResponses = {
 
 export type GetAppsByAppIdAgentDriveFilesPreviewResponse
   = GetAppsByAppIdAgentDriveFilesPreviewResponses[keyof GetAppsByAppIdAgentDriveFilesPreviewResponses]
+
+export type GetAppsByAppIdAgentDriveSkillsData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    node_id?: string
+    prefix?: string
+  }
+  url: '/apps/{app_id}/agent/drive/skills'
+}
+
+export type GetAppsByAppIdAgentDriveSkillsResponses = {
+  200: AgentDriveSkillListResponse
+}
+
+export type GetAppsByAppIdAgentDriveSkillsResponse
+  = GetAppsByAppIdAgentDriveSkillsResponses[keyof GetAppsByAppIdAgentDriveSkillsResponses]
 
 export type DeleteAppsByAppIdAgentFilesData = {
   body?: never

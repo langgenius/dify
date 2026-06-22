@@ -314,7 +314,9 @@ class TestAgentAppDriveLayer:
             ],
         )
         soul = _soul_with_model()
-        soul.prompt.system_prompt = "Use [§skill:tender-analyzer%2FSKILL.md:Tender Analyzer§] and [§file:files%2Fsample.pdf:sample.pdf§]."
+        soul.prompt.system_prompt = (
+            "Use [§skill:tender-analyzer%2FSKILL.md:Tender Analyzer§] and [§file:files%2Fsample.pdf:sample.pdf§]."
+        )
         builder = AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
             plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
@@ -385,7 +387,9 @@ class TestAgentAppDriveLayer:
             ],
         )
         soul = _soul_with_model()
-        soul.prompt.system_prompt = "Use [§skill:tender-analyzer%2FSKILL.md:Tender Analyzer§] and [§file:files%2Fsample.pdf:sample.pdf§]"
+        soul.prompt.system_prompt = (
+            "Use [§skill:tender-analyzer%2FSKILL.md:Tender Analyzer§] and [§file:files%2Fsample.pdf:sample.pdf§]"
+        )
         builder = AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
             plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]

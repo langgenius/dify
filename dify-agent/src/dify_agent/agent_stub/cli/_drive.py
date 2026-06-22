@@ -139,11 +139,7 @@ def pull_drive_from_environment(
     base_path = Path(drive_base).expanduser().resolve()
     base_path.mkdir(parents=True, exist_ok=True)
     written_paths: list[Path] = []
-    deduplicated_items = {
-        item.key: item
-        for response in responses
-        for item in response.items
-    }
+    deduplicated_items = {item.key: item for response in responses for item in response.items}
     for item in [deduplicated_items[key] for key in sorted(deduplicated_items)]:
         download_url = item.download_url
         if not isinstance(download_url, str) or not download_url:

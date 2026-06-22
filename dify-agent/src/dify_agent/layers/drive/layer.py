@@ -104,9 +104,7 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
             skill = next((item for item in self.config.skills if item.skill_md_key == skill_key), None)
             if skill is None:
                 continue
-            loaded_skill_sections.append(
-                f"Path: {skill.path}\nName: {skill.name}\nSKILL.md:\n{body}"
-            )
+            loaded_skill_sections.append(f"Path: {skill.path}\nName: {skill.name}\nSKILL.md:\n{body}")
         if loaded_skill_sections:
             sections.append("Loaded mentioned skills:\n\n" + "\n\n".join(loaded_skill_sections))
 

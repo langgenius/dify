@@ -517,7 +517,17 @@ def test_delete_by_key_cleans_drive_owned_value():
         )
         storage_mock.delete.assert_called_once()
 
-    assert removed == [{"key": "files/doomed.txt", "file_kind": "tool_file", "file_id": tf, "value_owned_by_drive": True, "is_skill": False, "skill_metadata": None, "removed": True}]
+    assert removed == [
+        {
+            "key": "files/doomed.txt",
+            "file_kind": "tool_file",
+            "file_id": tf,
+            "value_owned_by_drive": True,
+            "is_skill": False,
+            "skill_metadata": None,
+            "removed": True,
+        }
+    ]
     with session_factory.create_session() as session:
         assert session.scalar(select(ToolFile).where(ToolFile.id == tf)) is None
         assert list(session.scalars(select(AgentDriveFile))) == []
@@ -542,7 +552,10 @@ def test_commit_null_batch_removes_multiple_skill_keys():
             ],
         )
 
-    assert sorted(item["key"] for item in removed) == ["tender-analyzer/.DIFY-SKILL-FULL.zip", "tender-analyzer/SKILL.md"]
+    assert sorted(item["key"] for item in removed) == [
+        "tender-analyzer/.DIFY-SKILL-FULL.zip",
+        "tender-analyzer/SKILL.md",
+    ]
     with session_factory.create_session() as session:
         # both skill ToolFiles physically removed, the unrelated file untouched
         assert session.scalar(select(ToolFile).where(ToolFile.id == md)) is None

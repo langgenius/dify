@@ -2259,8 +2259,7 @@ def _drive_soul(**overrides):
     base = {
         "prompt": {
             "system_prompt": (
-                "Use [§skill:tender-analyzer%2FSKILL.md:Tender Analyzer§] "
-                "and [§file:files%2Fsample.pdf:sample.pdf§]."
+                "Use [§skill:tender-analyzer%2FSKILL.md:Tender Analyzer§] and [§file:files%2Fsample.pdf:sample.pdf§]."
             )
         },
     }
