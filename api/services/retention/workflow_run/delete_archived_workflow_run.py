@@ -173,9 +173,7 @@ class ArchivedWorkflowRunDeletion:
                 )
             )
             run_ids = [archive_log.workflow_run_id for archive_log in archive_logs]
-            runs_by_id = {
-                run.id: run for run in session.query(WorkflowRun).filter(WorkflowRun.id.in_(run_ids)).all()
-            }
+            runs_by_id = {run.id: run for run in session.query(WorkflowRun).where(WorkflowRun.id.in_(run_ids)).all()}
         for archive_log in archive_logs:
             run = runs_by_id.get(archive_log.workflow_run_id)
             if run is None:

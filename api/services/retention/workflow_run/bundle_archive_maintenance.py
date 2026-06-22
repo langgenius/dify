@@ -723,8 +723,7 @@ class WorkflowRunBundleArchiveMaintenance:
         ids: list[str] = []
         for chunk in WorkflowRunBundleArchiveMaintenance._chunks(run_ids, _CHUNK_SIZE):
             ids.extend(
-                str(row_id)
-                for row_id in session.scalars(select(model.id).where(model.workflow_run_id.in_(chunk)))
+                str(row_id) for row_id in session.scalars(select(model.id).where(model.workflow_run_id.in_(chunk)))
             )
         return ids
 
@@ -815,21 +814,15 @@ class WorkflowRunBundleArchiveMaintenance:
 
     @staticmethod
     def _mark_deleted(storage: ArchiveStorage, object_prefix: str) -> None:
-        WorkflowRunBundleArchiveMaintenance._put_marker(
-            storage, object_prefix, ARCHIVE_BUNDLE_DELETED_MARKER_NAME
-        )
+        WorkflowRunBundleArchiveMaintenance._put_marker(storage, object_prefix, ARCHIVE_BUNDLE_DELETED_MARKER_NAME)
 
     @staticmethod
     def _mark_restored(storage: ArchiveStorage, object_prefix: str) -> None:
-        WorkflowRunBundleArchiveMaintenance._delete_marker(
-            storage, object_prefix, ARCHIVE_BUNDLE_DELETED_MARKER_NAME
-        )
+        WorkflowRunBundleArchiveMaintenance._delete_marker(storage, object_prefix, ARCHIVE_BUNDLE_DELETED_MARKER_NAME)
         WorkflowRunBundleArchiveMaintenance._delete_marker(
             storage, object_prefix, ARCHIVE_BUNDLE_RESTORE_STARTED_MARKER_NAME
         )
-        WorkflowRunBundleArchiveMaintenance._put_marker(
-            storage, object_prefix, ARCHIVE_BUNDLE_RESTORED_MARKER_NAME
-        )
+        WorkflowRunBundleArchiveMaintenance._put_marker(storage, object_prefix, ARCHIVE_BUNDLE_RESTORED_MARKER_NAME)
 
     @staticmethod
     def _put_marker(storage: ArchiveStorage, object_prefix: str, marker_name: str) -> None:
