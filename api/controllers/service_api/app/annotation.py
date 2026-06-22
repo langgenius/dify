@@ -313,5 +313,5 @@ class AnnotationUpdateDeleteApi(Resource):
     @edit_permission_required
     def delete(self, app_model: App, annotation_id: UUID):
         """Delete an annotation."""
-        AppAnnotationService.delete_app_annotation(app_model.id, str(annotation_id))
+        AppAnnotationService.delete_app_annotation(app_model.id, str(annotation_id), db.session)
         return "", 204

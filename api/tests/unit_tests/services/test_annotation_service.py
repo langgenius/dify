@@ -640,7 +640,7 @@ class TestAppAnnotationServiceDirectManipulation:
             mock_db.session.scalars.return_value = scalars_result
 
             # Act
-            AppAnnotationService.delete_app_annotation(app.id, annotation.id)
+            AppAnnotationService.delete_app_annotation(app.id, annotation.id, mock_db.session)
 
             # Assert
             mock_db.session.delete.assert_any_call(annotation)
@@ -667,7 +667,7 @@ class TestAppAnnotationServiceDirectManipulation:
 
             # Act & Assert
             with pytest.raises(NotFound):
-                AppAnnotationService.delete_app_annotation("app-1", "ann-1")
+                AppAnnotationService.delete_app_annotation("app-1", "ann-1", mock_db.session)
 
     def test_delete_app_annotation_should_raise_not_found_when_annotation_missing(self) -> None:
         """Test delete raises NotFound when annotation is missing."""
@@ -684,7 +684,7 @@ class TestAppAnnotationServiceDirectManipulation:
 
             # Act & Assert
             with pytest.raises(NotFound):
-                AppAnnotationService.delete_app_annotation(app.id, "ann-1")
+                AppAnnotationService.delete_app_annotation(app.id, "ann-1", mock_db.session)
 
     def test_delete_app_annotations_in_batch_should_return_zero_when_none_found(self) -> None:
         """Test batch delete returns zero when no annotations found."""

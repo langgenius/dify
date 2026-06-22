@@ -567,7 +567,7 @@ class TestAnnotationService:
         annotation_id = annotation.id
 
         # Delete the annotation
-        AppAnnotationService.delete_app_annotation(app.id, annotation_id)
+        AppAnnotationService.delete_app_annotation(app.id, annotation_id, db_session_with_containers)
 
         # Verify annotation was deleted
 
@@ -595,7 +595,7 @@ class TestAnnotationService:
 
         # Try to delete annotation with non-existent app
         with pytest.raises(NotFound, match="App not found"):
-            AppAnnotationService.delete_app_annotation(non_existent_app_id, annotation_id)
+            AppAnnotationService.delete_app_annotation(non_existent_app_id, annotation_id, db_session_with_containers)
 
     def test_delete_app_annotation_annotation_not_found(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -609,7 +609,7 @@ class TestAnnotationService:
 
         # Try to delete non-existent annotation
         with pytest.raises(NotFound, match="Annotation not found"):
-            AppAnnotationService.delete_app_annotation(app.id, non_existent_annotation_id)
+            AppAnnotationService.delete_app_annotation(app.id, non_existent_annotation_id, db_session_with_containers)
 
     def test_enable_app_annotation_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -1295,7 +1295,7 @@ class TestAnnotationService:
         mock_external_service_dependencies["delete_task"].delay.reset_mock()
 
         # Delete the annotation
-        AppAnnotationService.delete_app_annotation(app.id, annotation_id)
+        AppAnnotationService.delete_app_annotation(app.id, annotation_id, db_session_with_containers)
 
         # Verify annotation was deleted
         deleted_annotation = (

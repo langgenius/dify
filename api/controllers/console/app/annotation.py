@@ -401,7 +401,7 @@ class AnnotationUpdateDeleteApi(Resource):
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @console_ns.response(204, "Annotation deleted successfully")
     def delete(self, app_id: UUID, annotation_id: UUID):
-        AppAnnotationService.delete_app_annotation(str(app_id), str(annotation_id))
+        AppAnnotationService.delete_app_annotation(str(app_id), str(annotation_id), db.session)
         return "", 204
 
 
