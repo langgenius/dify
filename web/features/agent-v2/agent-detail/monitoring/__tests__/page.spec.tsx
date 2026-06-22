@@ -1,7 +1,7 @@
 import type { AgentLogSourceListResponse, AgentStatisticSummaryEnvelopeResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { EChartsOption } from 'echarts'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentMonitoringPage } from '../page'
 
@@ -250,7 +250,7 @@ describe('AgentMonitoringPage', () => {
 
     renderPage()
 
-    await user.click(await screen.findByRole('combobox', { name: /sourceTrigger/ }))
+    await user.click(await screen.findByRole('combobox', { name: /metadata.sourceLabel/ }))
     await user.click(await screen.findByRole('option', { name: /Book Translation/ }))
 
     await waitFor(() => {
@@ -258,6 +258,11 @@ describe('AgentMonitoringPage', () => {
         source: 'webapp:webapp-app-id',
       }))
     })
+
+    const sourceTrigger = screen.getByRole('combobox', { name: /Book Translation/ })
+
+    expect(within(sourceTrigger).getByText(/metadata.sourceLabel/)).toHaveClass('system-sm-regular', 'text-text-tertiary')
+    expect(within(sourceTrigger).getByText('Book Translation')).toHaveClass('system-sm-medium', 'text-text-secondary')
   })
 
   it('should keep previous statistics visible while a source filter refetches', async () => {
@@ -274,7 +279,7 @@ describe('AgentMonitoringPage', () => {
 
     expect(await screen.findByText('1.3k')).toBeInTheDocument()
 
-    await user.click(await screen.findByRole('combobox', { name: /sourceTrigger/ }))
+    await user.click(await screen.findByRole('combobox', { name: /metadata.sourceLabel/ }))
     await user.click(await screen.findByRole('option', { name: /Book Translation/ }))
 
     await waitFor(() => {

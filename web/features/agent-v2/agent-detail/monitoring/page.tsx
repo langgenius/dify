@@ -4,11 +4,18 @@ import type { AgentLogSourceResponse } from '@dify/contracts/api/console/agent/t
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Chip from '@/app/components/base/chip'
 import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/client'
 import { AgentMonitoringChart } from './chart'
@@ -16,6 +23,10 @@ import { getAgentMonitoringMetrics } from './metrics'
 import { AgentMonitoringTimeRangePicker } from './time-range-picker'
 
 type SourceFilterValue = 'all' | AgentLogSourceResponse['id']
+type SourceFilterItem = {
+  value: SourceFilterValue
+  name: string
+}
 type AgentMonitoringPageProps = {
   agentId: string
 }
@@ -65,20 +76,14 @@ export function AgentMonitoringPage({
     placeholderData: keepPreviousData,
   })
   const sources = (logSourcesQuery.data?.groups ?? []).flatMap(group => group.sources ?? [])
-  const sourceItems = [
+  const sourceItems: SourceFilterItem[] = [
     {
       value: 'all' as const,
       name: t('agentDetail.monitoring.sources.all'),
-      triggerName: t('agentDetail.monitoring.sourceTrigger', {
-        name: t('agentDetail.monitoring.sources.all'),
-      }),
     },
     ...sources.map(source => ({
       value: source.id,
       name: source.app_name,
-      triggerName: t('agentDetail.monitoring.sourceTrigger', {
-        name: source.app_name,
-      }),
     })),
   ]
   const metrics = getAgentMonitoringMetrics(statisticsQuery.data, period.query)
@@ -115,12 +120,10 @@ export function AgentMonitoringPage({
             onChange={setPeriod}
           />
 
-          <Chip
-            showLeftIcon={false}
-            className="min-w-53"
-            panelClassName="w-61"
+          <AgentMonitoringSourceFilter
             value={sourceFilter}
             items={sourceItems}
+            label={t('agentDetail.metadata.sourceLabel')}
             onSelect={(item) => {
               setSourceFilter(item.value)
             }}
@@ -173,6 +176,85 @@ export function AgentMonitoringPage({
         )}
       </ScrollArea>
     </section>
+  )
+}
+
+function AgentMonitoringSourceFilter({
+  value,
+  items,
+  label,
+  onSelect,
+  onClear,
+}: {
+  value: SourceFilterValue
+  items: SourceFilterItem[]
+  label: string
+  onSelect: (item: SourceFilterItem) => void
+  onClear: () => void
+}) {
+  const { t } = useTranslation('common')
+  const selectedItem = items.find(item => Object.is(item.value, value))
+  const selectedName = selectedItem?.name ?? ''
+  const triggerLabel = selectedName ? `${label} ${selectedName}` : label
+  const clearLabel = selectedName
+    ? `${t('operation.clear')} ${triggerLabel}`
+    : t('operation.clear')
+
+  return (
+    <Select
+      value={selectedItem?.value ?? null}
+      itemToStringLabel={(itemValue: SourceFilterValue) => items.find(item => Object.is(item.value, itemValue))?.name ?? ''}
+      itemToStringValue={itemValue => String(itemValue)}
+      onValueChange={(nextValue) => {
+        if (nextValue === null)
+          return
+        const selected = items.find(item => Object.is(item.value, nextValue))
+        if (selected)
+          onSelect(selected)
+      }}
+    >
+      <div className="relative w-fit max-w-full">
+        <SelectTrigger
+          aria-label={triggerLabel}
+          className="h-auto min-h-8 w-fit max-w-full min-w-53 cursor-pointer items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 py-1 pr-6 shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover! focus-visible:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:border-components-button-secondary-border-hover! data-popup-open:bg-components-button-secondary-bg-hover! data-popup-open:hover:border-components-button-secondary-border-hover data-popup-open:hover:bg-components-button-secondary-bg-hover! [&>*:last-child]:hidden"
+        >
+          <span className="flex min-w-0 grow items-center gap-1 text-left">
+            <span className="flex min-w-0 grow items-center gap-1 px-1">
+              <span className="shrink-0 system-sm-regular text-text-tertiary">
+                {label}
+              </span>
+              <span className="truncate system-sm-medium text-text-secondary">
+                {selectedName}
+              </span>
+            </span>
+          </span>
+        </SelectTrigger>
+        <button
+          type="button"
+          aria-label={clearLabel}
+          className="group/clear absolute top-1/2 right-1.5 flex size-5 -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center rounded-md border-none bg-transparent p-0 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
+          onClick={onClear}
+        >
+          <span aria-hidden className="i-ri-close-circle-fill block size-3.5 text-text-quaternary group-hover/clear:text-text-tertiary" />
+        </button>
+        <SelectContent
+          placement="bottom-start"
+          sideOffset={4}
+          popupClassName="relative w-61 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-0 text-sm text-text-secondary shadow-lg outline-hidden backdrop-blur-[5px] focus:outline-hidden focus-visible:outline-hidden"
+          listClassName="max-h-72 p-1"
+        >
+          {items.map(item => (
+            <SelectItem
+              key={item.value}
+              value={item.value}
+            >
+              <SelectItemText title={item.name}>{item.name}</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </div>
+    </Select>
   )
 }
 
