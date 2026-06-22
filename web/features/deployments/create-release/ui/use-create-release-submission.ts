@@ -65,7 +65,7 @@ export function useCreateReleaseSubmission(formValues: CreateReleaseFormValues) 
       if (!canCheckReleaseSourceContent(sourceSelection) || !releaseContent.releaseContentReady)
         return
 
-      if (value.releaseSourceMode === 'dsl') {
+      if (sourceSelection.releaseSourceMode === 'dsl') {
         if (!sourceSelection.isWorkflowDslContent) {
           toast.error(t('versions.dslUnsupportedMode'))
           return

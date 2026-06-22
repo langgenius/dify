@@ -5,6 +5,7 @@ import type { CreateReleaseFormValues, ReleaseSourceMode } from '../state/types'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { consoleQuery } from '@/service/client'
+import { isDeploymentDslImportEnabled } from '../../shared/domain/feature-flags'
 import {
   createReleaseDialogOpenAtom,
   createReleaseDslStateAtom,
@@ -21,17 +22,20 @@ function createReleaseSourceSelection(
   formValues: CreateReleaseFormValues,
   dslState: CreateReleaseDslState,
 ): CreateReleaseSourceSelection {
-  const hasUnsupportedDslMode = formValues.releaseSourceMode === 'dsl'
+  const releaseSourceMode = formValues.releaseSourceMode === 'dsl' && !isDeploymentDslImportEnabled
+    ? 'sourceApp'
+    : formValues.releaseSourceMode
+  const hasUnsupportedDslMode = releaseSourceMode === 'dsl'
     && dslState.hasDslContent
     && !dslState.isReadingDsl
     && !dslState.dslReadError
     && !dslState.isWorkflowDslContent
-  const selectedSourceAppId = formValues.releaseSourceMode === 'sourceApp' ? formValues.sourceApp?.id : undefined
+  const selectedSourceAppId = releaseSourceMode === 'sourceApp' ? formValues.sourceApp?.id : undefined
 
   return {
     ...dslState,
     hasUnsupportedDslMode,
-    releaseSourceMode: formValues.releaseSourceMode,
+    releaseSourceMode,
     selectedSourceAppId,
   }
 }
@@ -39,6 +43,8 @@ function createReleaseSourceSelection(
 export function canCheckReleaseSourceContent(releaseSource: CreateReleaseSourceSelection) {
   if (releaseSource.releaseSourceMode === 'sourceApp')
     return Boolean(releaseSource.selectedSourceAppId)
+  if (!isDeploymentDslImportEnabled)
+    return false
 
   return Boolean(
     releaseSource.hasDslContent
