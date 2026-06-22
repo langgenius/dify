@@ -19,9 +19,9 @@ const PreviewContainer: FC<PreviewContainerProps> = (props) => {
         <header className="border-b border-divider-subtle pt-4 pr-4 pb-3 pl-5">
           {header}
         </header>
-        <main className={cn('w-full grow overflow-y-auto px-6 py-5', mainClassName)}>
+        <div className={cn('w-full grow overflow-y-auto px-6 py-5', mainClassName)}>
           {children}
-        </main>
+        </div>
       </div>
     </div>
   )

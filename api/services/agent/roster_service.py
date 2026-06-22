@@ -666,12 +666,16 @@ class AgentRosterService:
     @staticmethod
     def _visible_version_operations(agent: Agent) -> set[AgentConfigRevisionOperation]:
         if agent.source == AgentSource.AGENT_APP:
-            return {AgentConfigRevisionOperation.SAVE_NEW_VERSION}
+            return {
+                AgentConfigRevisionOperation.SAVE_NEW_VERSION,
+                AgentConfigRevisionOperation.RESTORE_VERSION,
+            }
         return {
             AgentConfigRevisionOperation.CREATE_VERSION,
             AgentConfigRevisionOperation.SAVE_NEW_VERSION,
             AgentConfigRevisionOperation.SAVE_NEW_AGENT,
             AgentConfigRevisionOperation.SAVE_TO_ROSTER,
+            AgentConfigRevisionOperation.RESTORE_VERSION,
         }
 
     def active_config_is_published(self, *, tenant_id: str, agent: Agent) -> bool:
@@ -764,6 +768,46 @@ class AgentRosterService:
         ]
         return result
 
+    def restore_agent_version(
+        self, *, tenant_id: str, agent_id: str, version_id: str, account_id: str
+    ) -> dict[str, Any]:
+        agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
+        visible_version_ids = self._visible_version_ids_stmt(tenant_id=tenant_id, agent_id=agent_id, agent=agent)
+        visible_version_id = self._session.scalar(
+            select(AgentConfigSnapshot.id)
+            .where(
+                AgentConfigSnapshot.tenant_id == tenant_id,
+                AgentConfigSnapshot.agent_id == agent_id,
+                AgentConfigSnapshot.id == version_id,
+                AgentConfigSnapshot.id.in_(select(visible_version_ids.c.current_snapshot_id)),
+            )
+            .limit(1)
+        )
+        if not visible_version_id:
+            raise AgentVersionNotFoundError()
+
+        version = self._get_version(tenant_id=tenant_id, agent_id=agent_id, version_id=version_id)
+        if agent.active_config_snapshot_id == version.id:
+            return {"result": "success", "active_config_snapshot_id": version.id}
+
+        previous_snapshot_id = agent.active_config_snapshot_id
+        agent.active_config_snapshot_id = version.id
+        agent.active_config_has_model = agent_soul_has_model(version.config_snapshot)
+        agent.updated_by = account_id
+        self._session.add(
+            AgentConfigRevision(
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                previous_snapshot_id=previous_snapshot_id,
+                current_snapshot_id=version.id,
+                revision=self._next_revision(tenant_id=tenant_id, agent_id=agent_id),
+                operation=AgentConfigRevisionOperation.RESTORE_VERSION,
+                created_by=account_id,
+            )
+        )
+        self._session.commit()
+        return {"result": "success", "active_config_snapshot_id": version.id}
+
     def _get_agent(self, *, tenant_id: str, agent_id: str, roster_only: bool = False) -> Agent:
         stmt = select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id)
         if roster_only:
@@ -788,6 +832,17 @@ class AgentRosterService:
         if not version:
             raise AgentVersionNotFoundError()
         return version
+
+    def _next_revision(self, *, tenant_id: str, agent_id: str) -> int:
+        return (
+            self._session.scalar(
+                select(func.max(AgentConfigRevision.revision)).where(
+                    AgentConfigRevision.tenant_id == tenant_id,
+                    AgentConfigRevision.agent_id == agent_id,
+                )
+            )
+            or 0
+        ) + 1
 
     def _load_published_active_snapshot_agent_ids(self, *, tenant_id: str, agents: list[Agent]) -> set[str]:
         predicates = [

@@ -79,6 +79,14 @@ export const zAgentSandboxUploadPayload = z.object({
 })
 
 /**
+ * AgentConfigSnapshotRestoreResponse
+ */
+export const zAgentConfigSnapshotRestoreResponse = z.object({
+  active_config_snapshot_id: z.string(),
+  result: z.literal('success'),
+})
+
+/**
  * IconType
  */
 export const zIconType = z.enum(['emoji', 'image', 'link'])
@@ -286,9 +294,11 @@ export const zAgentDriveItemResponse = z.object({
   created_at: z.int().nullish(),
   file_kind: z.string(),
   hash: z.string().nullish(),
+  is_skill: z.boolean().nullish(),
   key: z.string(),
   mime_type: z.string().nullish(),
   size: z.int().nullish(),
+  skill_metadata: z.string().nullish(),
 })
 
 /**
@@ -296,6 +306,70 @@ export const zAgentDriveItemResponse = z.object({
  */
 export const zAgentDriveListResponse = z.object({
   items: z.array(zAgentDriveItemResponse).optional(),
+})
+
+/**
+ * AgentDriveSkillItemResponse
+ */
+export const zAgentDriveSkillItemResponse = z.object({
+  archive_key: z.string().nullish(),
+  created_at: z.int().nullish(),
+  description: z.string(),
+  hash: z.string().nullish(),
+  mime_type: z.string().nullish(),
+  name: z.string(),
+  path: z.string(),
+  size: z.int().nullish(),
+  skill_md_key: z.string(),
+})
+
+/**
+ * AgentDriveSkillListResponse
+ */
+export const zAgentDriveSkillListResponse = z.object({
+  items: z.array(zAgentDriveSkillItemResponse).optional(),
+})
+
+/**
+ * AgentDriveSkillFileResponse
+ */
+export const zAgentDriveSkillFileResponse = z.object({
+  available_in_drive: z.boolean(),
+  drive_key: z.string().nullish(),
+  name: z.string(),
+  path: z.string(),
+  type: z.string(),
+})
+
+/**
+ * AgentDriveSkillMarkdownResponse
+ */
+export const zAgentDriveSkillMarkdownResponse = z.object({
+  binary: z.boolean(),
+  key: z.string(),
+  size: z.int().nullish(),
+  text: z.string().nullish(),
+  truncated: z.boolean(),
+})
+
+/**
+ * AgentDriveSkillInspectResponse
+ */
+export const zAgentDriveSkillInspectResponse = z.object({
+  archive_key: z.string().nullish(),
+  created_at: z.int().nullish(),
+  description: z.string(),
+  file_tree: z.array(z.record(z.string(), z.unknown())).optional(),
+  files: z.array(zAgentDriveSkillFileResponse).optional(),
+  hash: z.string().nullish(),
+  mime_type: z.string().nullish(),
+  name: z.string(),
+  path: z.string(),
+  size: z.int().nullish(),
+  skill_md: zAgentDriveSkillMarkdownResponse,
+  skill_md_key: z.string(),
+  source: z.string(),
+  warnings: z.array(z.string()).optional(),
 })
 
 /**
@@ -1117,6 +1191,7 @@ export const zAgentStatisticSummaryEnvelopeResponse = z.object({
  */
 export const zAgentConfigRevisionOperation = z.enum([
   'create_version',
+  'restore_version',
   'save_current_version',
   'save_new_agent',
   'save_new_version',
@@ -2304,6 +2379,26 @@ export const zGetAgentByAgentIdDriveFilesPreviewQuery = z.object({
  */
 export const zGetAgentByAgentIdDriveFilesPreviewResponse = zAgentDrivePreviewResponse
 
+export const zGetAgentByAgentIdDriveSkillsPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Drive skills
+ */
+export const zGetAgentByAgentIdDriveSkillsResponse = zAgentDriveSkillListResponse
+
+export const zGetAgentByAgentIdDriveSkillsBySkillPathInspectPath = z.object({
+  agent_id: z.uuid(),
+  skill_path: z.string(),
+})
+
+/**
+ * Drive skill inspect view
+ */
+export const zGetAgentByAgentIdDriveSkillsBySkillPathInspectResponse
+  = zAgentDriveSkillInspectResponse
+
 export const zPostAgentByAgentIdFeaturesBody = zAgentAppFeaturesPayload
 
 export const zPostAgentByAgentIdFeaturesPath = z.object({
@@ -2530,3 +2625,14 @@ export const zGetAgentByAgentIdVersionsByVersionIdPath = z.object({
  * Agent version detail
  */
 export const zGetAgentByAgentIdVersionsByVersionIdResponse = zAgentConfigSnapshotDetailResponse
+
+export const zPostAgentByAgentIdVersionsByVersionIdRestorePath = z.object({
+  agent_id: z.uuid(),
+  version_id: z.uuid(),
+})
+
+/**
+ * Agent version restored
+ */
+export const zPostAgentByAgentIdVersionsByVersionIdRestoreResponse
+  = zAgentConfigSnapshotRestoreResponse
