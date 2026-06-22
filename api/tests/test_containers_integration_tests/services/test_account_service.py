@@ -843,7 +843,7 @@ class TestAccountService:
         TenantService.create_owner_tenant_if_not_exist(account=account, name=tenant_name, is_setup=True)
 
         # Load user
-        loaded_user = AccountService.load_user(account.id)
+        loaded_user = AccountService.load_user(account.id, db_session_with_containers)
 
         assert loaded_user is not None
         assert loaded_user.id == account.id
@@ -855,7 +855,7 @@ class TestAccountService:
         """
         fake = Faker()
         non_existent_user_id = fake.uuid4()
-        loaded_user = AccountService.load_user(non_existent_user_id)
+        loaded_user = AccountService.load_user(non_existent_user_id, db_session_with_containers)
         assert loaded_user is None
 
     def test_load_user_banned_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
@@ -884,7 +884,7 @@ class TestAccountService:
         db_session_with_containers.commit()
 
         with pytest.raises(Unauthorized):  # Unauthorized exception
-            AccountService.load_user(account.id)
+            AccountService.load_user(account.id, db_session_with_containers)
 
     def test_get_account_jwt_token(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """

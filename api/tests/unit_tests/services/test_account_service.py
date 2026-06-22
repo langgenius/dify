@@ -447,7 +447,7 @@ class TestAccountService:
             mock_datetime.UTC = "UTC"
 
             # Execute test
-            result = AccountService.load_user("user-123")
+            result = AccountService.load_user("user-123", mock_db_dependencies["db"].session)
 
             # Verify results
             assert result == mock_account
@@ -459,7 +459,7 @@ class TestAccountService:
         mock_db_dependencies["db"].session.get.return_value = None
 
         # Execute test
-        result = AccountService.load_user("non-existent-user")
+        result = AccountService.load_user("non-existent-user", mock_db_dependencies["db"].session)
 
         # Verify results
         assert result is None
@@ -500,7 +500,7 @@ class TestAccountService:
             mock_naive_utc_now.return_value = mock_now
 
             # Execute test
-            result = AccountService.load_user("user-123")
+            result = AccountService.load_user("user-123", mock_db_dependencies["db"].session)
 
             # Verify results
             assert result == mock_account
@@ -525,7 +525,7 @@ class TestAccountService:
             mock_datetime.UTC = "UTC"
 
             # Execute test
-            result = AccountService.load_user("user-123")
+            result = AccountService.load_user("user-123", mock_db_dependencies["db"].session)
 
             # Verify results
             assert result is None

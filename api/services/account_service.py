@@ -301,15 +301,15 @@ class AccountService:
         return session.get(Account, account_id)
 
     @staticmethod
-    def load_user(user_id: str) -> None | Account:
-        account = db.session.get(Account, user_id)
+    def load_user(user_id: str, session: scoped_session) -> None | Account:
+        account = session.get(Account, user_id)
         if not account:
             return None
 
         if account.status == AccountStatus.BANNED:
             raise Unauthorized("Account is banned.")
 
-        current_tenant = db.session.scalar(
+        current_tenant = session.scalar(
             select(TenantAccountJoin)
             .where(TenantAccountJoin.account_id == account.id, TenantAccountJoin.current == True)
             .limit(1)
@@ -317,7 +317,7 @@ class AccountService:
         if current_tenant:
             account.set_tenant_id(current_tenant.tenant_id)
         else:
-            available_ta = db.session.scalar(
+            available_ta = session.scalar(
                 select(TenantAccountJoin)
                 .where(TenantAccountJoin.account_id == account.id)
                 .order_by(TenantAccountJoin.id.asc())
@@ -329,13 +329,13 @@ class AccountService:
             account.set_tenant_id(available_ta.tenant_id)
             available_ta.current = True
             available_ta.last_opened_at = naive_utc_now()
-            db.session.commit()
+            session.commit()
 
         AccountService._refresh_account_last_active(account)
         # NOTE: make sure account is accessible outside of a db session
         # This ensures that it will work correctly after upgrading to Flask version 3.1.2
-        db.session.refresh(account)
-        db.session.close()
+        session.refresh(account)
+        session.close()
         return account
 
     @staticmethod
@@ -635,7 +635,7 @@ class AccountService:
         if not account_id:
             raise ValueError("Invalid refresh token")
 
-        account = AccountService.load_user(account_id.decode("utf-8"))
+        account = AccountService.load_user(account_id.decode("utf-8"), db.session)
         if not account:
             raise ValueError("Invalid account")
 
@@ -651,7 +651,7 @@ class AccountService:
 
     @staticmethod
     def load_logged_in_account(*, account_id: str):
-        return AccountService.load_user(account_id)
+        return AccountService.load_user(account_id, db.session)
 
     @classmethod
     def send_reset_password_email(

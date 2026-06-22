@@ -91,4 +91,4 @@ class OAuthServerService:
 
         user_id_str = user_account_id.decode("utf-8")
 
-        return AccountService.load_user(user_id_str)
+        return AccountService.load_user(user_id_str, db.session)

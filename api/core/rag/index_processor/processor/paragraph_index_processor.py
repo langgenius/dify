@@ -226,7 +226,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                         all_multimodal_documents.append(file_document)
                     doc.attachments = attachments
                 else:
-                    account = AccountService.load_user(document.created_by)
+                    account = AccountService.load_user(document.created_by, db.session)
                     if not account:
                         raise ValueError("Invalid account")
                     doc.attachments = self._get_content_files(doc, current_user=account)
