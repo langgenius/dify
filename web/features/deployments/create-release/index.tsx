@@ -6,7 +6,7 @@ import { useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { useTranslation } from 'react-i18next'
 import {
-  createReleaseConfigAtom,
+  createReleaseAppInstanceIdAtom,
   createReleaseLocalAtoms,
   openCreateReleaseDialogAtom,
 } from './state'
@@ -55,7 +55,7 @@ export function CreateReleaseControl({
     <ScopeProvider
       key={appInstanceId}
       atoms={[
-        [createReleaseConfigAtom, { appInstanceId }],
+        [createReleaseAppInstanceIdAtom, appInstanceId],
         ...createReleaseLocalAtoms,
       ]}
       name="CreateRelease"

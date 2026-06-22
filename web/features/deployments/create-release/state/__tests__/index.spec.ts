@@ -223,7 +223,7 @@ describe('create release state', () => {
 
   it('should derive default source app selection from the latest release source', async () => {
     const { state, store, unsubscribe } = await mountedStore()
-    store.set(state.createReleaseConfigAtom, { appInstanceId: 'app-instance-1' })
+    store.set(state.createReleaseAppInstanceIdAtom, 'app-instance-1')
     store.set(state.openCreateReleaseDialogAtom)
     setDefaultSourceApp()
 
@@ -300,7 +300,7 @@ describe('create release state', () => {
 
   it('should derive create readiness from release name and content precheck', async () => {
     const { state, store, unsubscribe } = await mountedStore()
-    store.set(state.createReleaseConfigAtom, { appInstanceId: 'app-instance-1' })
+    store.set(state.createReleaseAppInstanceIdAtom, 'app-instance-1')
     store.set(state.openCreateReleaseDialogAtom)
     setDefaultSourceApp()
     setPrecheckReleaseResult()
@@ -317,7 +317,7 @@ describe('create release state', () => {
 
   it('should expose unsupported nodes from release content precheck', async () => {
     const { state, store, unsubscribe } = await mountedStore()
-    store.set(state.createReleaseConfigAtom, { appInstanceId: 'app-instance-1' })
+    store.set(state.createReleaseAppInstanceIdAtom, 'app-instance-1')
     store.set(state.openCreateReleaseDialogAtom)
     setDefaultSourceApp()
     setPrecheckReleaseResult({
@@ -338,7 +338,7 @@ describe('create release state', () => {
       },
     }
     mockCreateReleaseMutation.current.mutateAsync.mockResolvedValue(response)
-    store.set(state.createReleaseConfigAtom, { appInstanceId: 'app-instance-1' })
+    store.set(state.createReleaseAppInstanceIdAtom, 'app-instance-1')
     store.set(state.openCreateReleaseDialogAtom)
     setDefaultSourceApp()
     setPrecheckReleaseResult()
@@ -365,7 +365,7 @@ describe('create release state', () => {
     const { state, store, unsubscribe } = await mountedStore()
     const submitError = new Error('submit failed')
     mockCreateReleaseMutation.current.mutateAsync.mockRejectedValue(submitError)
-    store.set(state.createReleaseConfigAtom, { appInstanceId: 'app-instance-1' })
+    store.set(state.createReleaseAppInstanceIdAtom, 'app-instance-1')
     store.set(state.openCreateReleaseDialogAtom)
     setDefaultSourceApp()
     setPrecheckReleaseResult()

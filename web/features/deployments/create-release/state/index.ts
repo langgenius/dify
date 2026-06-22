@@ -7,7 +7,7 @@ import type {
 import type { Getter } from 'jotai/vanilla'
 import type { UnsupportedDslNode } from '../../shared/domain/error'
 import type { App } from '@/types/app'
-import { atom, useAtomValue } from 'jotai'
+import { atom } from 'jotai'
 import {
   atomWithForm,
   createFormAtoms,
@@ -46,10 +46,6 @@ export type CreateReleaseContentCheck = {
   releaseContentCheckFailed: boolean
   releaseContentReady: boolean
   unsupportedNodes: UnsupportedDslNode[]
-}
-
-export type CreateReleaseConfig = {
-  appInstanceId: string
 }
 
 type CreateReleaseDslReadState = Pick<CreateReleaseDslState, 'dslContent' | 'dslReadError' | 'isReadingDsl'> & {
@@ -141,36 +137,32 @@ export const createReleaseNameFieldAtom = createReleaseFormAtoms.fieldAtom('rele
 export const createReleaseDescriptionFieldAtom = createReleaseFormAtoms.fieldAtom('releaseDescription')
 
 // Dialog and source primitives
-export const createReleaseConfigAtom = atom<CreateReleaseConfig | undefined>(undefined)
+export const createReleaseAppInstanceIdAtom = atom<string | undefined>(undefined)
 export const createReleaseDialogOpenAtom = atom(false)
 
 const createReleaseDslReadStateAtom = atom<CreateReleaseDslReadState>(emptyCreateReleaseDslReadState(0))
 
-function optionalConfig(get: Getter) {
-  return get(createReleaseConfigAtom)
-}
+function requiredAppInstanceId(get: Getter) {
+  const appInstanceId = get(createReleaseAppInstanceIdAtom)
+  if (!appInstanceId)
+    throw new Error('Missing create release app instance id.')
 
-function requiredConfig(get: Getter) {
-  const config = optionalConfig(get)
-  if (!config)
-    throw new Error('Missing create release config.')
-
-  return config
+  return appInstanceId
 }
 
 // Query and remote data
 const latestSourceReleaseQueryAtom = atomWithQuery((get) => {
-  const config = optionalConfig(get)
+  const appInstanceId = get(createReleaseAppInstanceIdAtom)
 
   return consoleQuery.enterprise.releaseService.listReleases.queryOptions({
     input: {
-      params: { appInstanceId: config?.appInstanceId ?? '' },
+      params: { appInstanceId: appInstanceId ?? '' },
       query: {
         pageNumber: 1,
         resultsPerPage: DEFAULT_SOURCE_RELEASE_PAGE_SIZE,
       },
     },
-    enabled: Boolean(config?.appInstanceId && get(createReleaseDialogOpenAtom)),
+    enabled: Boolean(appInstanceId && get(createReleaseDialogOpenAtom)),
   })
 })
 
@@ -283,7 +275,7 @@ function canCheckReleaseSourceContent(get: Getter) {
 
 function canCheckReleaseContent(get: Getter) {
   return Boolean(
-    optionalConfig(get)?.appInstanceId
+    get(createReleaseAppInstanceIdAtom)
     && get(createReleaseDialogOpenAtom)
     && canCheckReleaseSourceContent(get),
   )
@@ -291,7 +283,7 @@ function canCheckReleaseContent(get: Getter) {
 
 // Release content check
 const precheckReleaseQueryAtom = atomWithQuery((get) => {
-  const config = optionalConfig(get)
+  const appInstanceId = get(createReleaseAppInstanceIdAtom)
   const releaseSourceMode = effectiveCreateReleaseSourceMode(get)
   const dslState = createReleaseDslState(get)
   const sourceAppId = selectedSourceAppId(get)
@@ -301,7 +293,7 @@ const precheckReleaseQueryAtom = atomWithQuery((get) => {
     ...consoleQuery.enterprise.releaseService.precheckRelease.queryOptions({
       input: {
         body: {
-          appInstanceId: config?.appInstanceId ?? '',
+          appInstanceId: appInstanceId ?? '',
           ...(releaseSourceMode === 'dsl'
             ? { dsl: dslState.encodedDslContent }
             : { sourceAppId: sourceAppId ?? '' }),
@@ -440,9 +432,9 @@ const createReleaseSubmissionAtom = atom(null, async (get, set, value: CreateRel
   if (!canCheckReleaseSourceContent(get) || !releaseContent.releaseContentReady)
     return undefined
 
-  const config = requiredConfig(get)
+  const appInstanceId = requiredAppInstanceId(get)
   const commonCreateReleaseRequest = {
-    appInstanceId: config.appInstanceId,
+    appInstanceId,
     displayName: submittedReleaseName,
     description: value.releaseDescription.trim() || undefined,
     createAppInstance: false,
@@ -491,11 +483,3 @@ export const createReleaseLocalAtoms = [
   createReleaseDialogOpenAtom,
   createReleaseDslReadStateAtom,
 ] as const
-
-export function useCreateReleaseConfig() {
-  const config = useAtomValue(createReleaseConfigAtom)
-  if (!config)
-    throw new Error('Missing create release config.')
-
-  return config
-}
