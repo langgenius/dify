@@ -3,19 +3,15 @@
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { UnsupportedDslNodesAlert } from '../../components/unsupported-dsl-nodes-alert'
-import {
-  createReleaseContentCheckAtom,
-  createReleaseUnsupportedDslNodesAtom,
-} from '../state'
+import { createReleaseContentCheckAtom } from '../state'
 
 export function ReleaseContentFeedback() {
   const { t } = useTranslation('deployments')
   const releaseContent = useAtomValue(createReleaseContentCheckAtom)
-  const unsupportedDslNodes = useAtomValue(createReleaseUnsupportedDslNodesAtom)
 
   return (
     <>
-      <UnsupportedDslNodesAlert nodes={unsupportedDslNodes} />
+      <UnsupportedDslNodesAlert nodes={releaseContent.unsupportedNodes} />
 
       {releaseContent.isCheckingReleaseContent && (
         <div className="rounded-lg border border-divider-subtle bg-background-default-subtle px-3 py-2 system-sm-regular text-text-tertiary">

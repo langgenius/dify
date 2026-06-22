@@ -17,7 +17,6 @@ import * as z from 'zod'
 import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { encodeDslContent, isWorkflowDsl } from '../../shared/domain/dsl'
-import { unsupportedDslNodeError } from '../../shared/domain/error'
 import { isDeploymentDslImportEnabled } from '../../shared/domain/feature-flags'
 
 export type ReleaseSourceMode = 'sourceApp' | 'dsl'
@@ -146,8 +145,6 @@ export const createReleaseConfigAtom = atom<CreateReleaseConfig | undefined>(und
 export const createReleaseDialogOpenAtom = atom(false)
 
 const createReleaseDslReadStateAtom = atom<CreateReleaseDslReadState>(emptyCreateReleaseDslReadState(0))
-
-export const createReleaseSubmitUnsupportedDslNodesAtom = atom<UnsupportedDslNode[]>([])
 
 function optionalConfig(get: Getter) {
   return get(createReleaseConfigAtom)
@@ -337,14 +334,6 @@ export const createReleaseContentCheckAtom = atom((get): CreateReleaseContentChe
   }
 })
 
-export const createReleaseUnsupportedDslNodesAtom = atom((get): UnsupportedDslNode[] => {
-  const unsupportedNodes = get(createReleaseContentCheckAtom).unsupportedNodes
-  if (unsupportedNodes.length > 0)
-    return unsupportedNodes
-
-  return get(createReleaseSubmitUnsupportedDslNodesAtom)
-})
-
 export const createReleaseCanCreateAtom = atom((get) => {
   return Boolean(
     get(createReleaseNameFieldAtom).value.trim()
@@ -354,24 +343,18 @@ export const createReleaseCanCreateAtom = atom((get) => {
 })
 
 // Actions
-const clearCreateReleaseSubmissionErrorAtom = atom(null, (_get, set) => {
-  set(createReleaseSubmitUnsupportedDslNodesAtom, [])
-})
-
 const resetCreateReleaseDslFileAtom = atom(null, (get, set) => {
   const readToken = get(createReleaseDslReadStateAtom).readToken + 1
   set(createReleaseDslReadStateAtom, emptyCreateReleaseDslReadState(readToken))
 })
 
 export const openCreateReleaseDialogAtom = atom(null, (_get, set) => {
-  set(clearCreateReleaseSubmissionErrorAtom)
   set(resetCreateReleaseDslFileAtom)
   set(createReleaseDialogOpenAtom, true)
 })
 
 export const closeCreateReleaseDialogAtom = atom(null, (_get, set) => {
   set(createReleaseDialogOpenAtom, false)
-  set(clearCreateReleaseSubmissionErrorAtom)
   set(resetCreateReleaseDslFileAtom)
 })
 
@@ -409,7 +392,6 @@ const selectCreateReleaseDslFileAtom = atom(null, async (get, set, file?: File) 
 
 export const selectCreateReleaseSourceModeAtom = atom(null, (_get, set, releaseSourceMode: ReleaseSourceMode) => {
   const effectiveReleaseSourceMode = deploymentReleaseSourceMode(releaseSourceMode)
-  set(clearCreateReleaseSubmissionErrorAtom)
   set(createReleaseSourceModeFieldAtom, effectiveReleaseSourceMode)
 
   if (effectiveReleaseSourceMode === 'sourceApp') {
@@ -423,12 +405,10 @@ export const selectCreateReleaseSourceModeAtom = atom(null, (_get, set, releaseS
 
 export const updateCreateReleaseSourceAppAtom = atom(null, (_get, set, sourceApp: CreateReleaseFormValues['sourceApp']) => {
   set(createReleaseSourceAppFieldAtom, sourceApp)
-  set(clearCreateReleaseSubmissionErrorAtom)
 })
 
 export const updateCreateReleaseDslFileAtom = atom(null, (get, set, dslFile: CreateReleaseFormValues['dslFile']) => {
   set(createReleaseDslFileFieldAtom, dslFile)
-  set(clearCreateReleaseSubmissionErrorAtom)
   return set(selectCreateReleaseDslFileAtom, dslFile)
 })
 
@@ -457,52 +437,38 @@ const createReleaseSubmissionAtom = atom(null, async (get, set, value: CreateRel
   if (releaseContent.isCheckingReleaseContent || !submittedReleaseName)
     return undefined
 
-  set(clearCreateReleaseSubmissionErrorAtom)
+  if (!canCheckReleaseSourceContent(get) || !releaseContent.releaseContentReady)
+    return undefined
 
-  try {
-    if (!canCheckReleaseSourceContent(get) || !releaseContent.releaseContentReady)
-      return undefined
+  const config = requiredConfig(get)
+  const commonCreateReleaseRequest = {
+    appInstanceId: config.appInstanceId,
+    displayName: submittedReleaseName,
+    description: value.releaseDescription.trim() || undefined,
+    createAppInstance: false,
+  }
 
-    const config = requiredConfig(get)
-    const commonCreateReleaseRequest = {
-      appInstanceId: config.appInstanceId,
-      displayName: submittedReleaseName,
-      description: value.releaseDescription.trim() || undefined,
-      createAppInstance: false,
-    }
-
-    if (releaseSourceMode === 'dsl') {
-      if (!dslState.isWorkflowDslContent)
-        throw new CreateReleaseSubmissionBlockedError('unsupportedDslMode')
-
-      return await get(createReleaseMutationAtom).mutateAsync({
-        body: {
-          ...commonCreateReleaseRequest,
-          dsl: dslState.encodedDslContent,
-        },
-      })
-    }
-
-    if (!sourceAppId)
-      return undefined
+  if (releaseSourceMode === 'dsl') {
+    if (!dslState.isWorkflowDslContent)
+      throw new CreateReleaseSubmissionBlockedError('unsupportedDslMode')
 
     return await get(createReleaseMutationAtom).mutateAsync({
       body: {
         ...commonCreateReleaseRequest,
-        sourceAppId,
+        dsl: dslState.encodedDslContent,
       },
     })
   }
-  catch (error) {
-    const unsupportedError = await unsupportedDslNodeError(error)
-    if (unsupportedError?.nodes.length) {
-      set(createReleaseSubmitUnsupportedDslNodesAtom, unsupportedError.nodes)
 
-      return undefined
-    }
+  if (!sourceAppId)
+    return undefined
 
-    throw error
-  }
+  return await get(createReleaseMutationAtom).mutateAsync({
+    body: {
+      ...commonCreateReleaseRequest,
+      sourceAppId,
+    },
+  })
 })
 
 export const submitCreateReleaseFormAtom = atom(null, (get, set) => {
@@ -524,7 +490,6 @@ export const submitCreateReleaseFormAtom = atom(null, (get, set) => {
 export const createReleaseLocalAtoms = [
   createReleaseDialogOpenAtom,
   createReleaseDslReadStateAtom,
-  createReleaseSubmitUnsupportedDslNodesAtom,
 ] as const
 
 export function useCreateReleaseConfig() {

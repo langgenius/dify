@@ -172,19 +172,6 @@ function setPrecheckReleaseResult(overrides: {
   })
 }
 
-function unsupportedDslNodeResponse() {
-  return new Response(JSON.stringify({
-    reason: 'APPDEPLOY_UNSUPPORTED_DSL_NODE_TYPE',
-    metadata: {
-      unsupported_nodes: [
-        { id: 'node-1' },
-      ],
-    },
-  }), {
-    status: 400,
-  })
-}
-
 describe('create release state', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -300,18 +287,13 @@ describe('create release state', () => {
     await store.set(state.updateCreateReleaseDslFileAtom, file)
 
     expect(store.get(state.createReleaseDslStateAtom).dslReadError).toBe(true)
-    expect(store.get(state.createReleaseSubmitUnsupportedDslNodesAtom)).toEqual([])
 
-    store.set(state.createReleaseSubmitUnsupportedDslNodesAtom, [{ id: 'node-1' }])
     store.set(state.openCreateReleaseDialogAtom)
     expect(store.get(state.createReleaseDialogOpenAtom)).toBe(true)
     expect(store.get(state.createReleaseDslStateAtom).dslReadError).toBe(false)
-    expect(store.get(state.createReleaseSubmitUnsupportedDslNodesAtom)).toEqual([])
 
-    store.set(state.createReleaseSubmitUnsupportedDslNodesAtom, [{ type: 'unsupported' }])
     store.set(state.closeCreateReleaseDialogAtom)
     expect(store.get(state.createReleaseDialogOpenAtom)).toBe(false)
-    expect(store.get(state.createReleaseSubmitUnsupportedDslNodesAtom)).toEqual([])
 
     unsubscribe()
   })
@@ -333,7 +315,7 @@ describe('create release state', () => {
     unsubscribe()
   })
 
-  it('should prefer precheck unsupported nodes over submit fallback nodes', async () => {
+  it('should expose unsupported nodes from release content precheck', async () => {
     const { state, store, unsubscribe } = await mountedStore()
     store.set(state.createReleaseConfigAtom, { appInstanceId: 'app-instance-1' })
     store.set(state.openCreateReleaseDialogAtom)
@@ -342,22 +324,8 @@ describe('create release state', () => {
       canCreate: false,
       unsupportedNodes: [{ id: 'precheck-node' }],
     })
-    store.set(state.createReleaseSubmitUnsupportedDslNodesAtom, [{ id: 'submit-node' }])
 
-    expect(store.get(state.createReleaseUnsupportedDslNodesAtom)).toEqual([{ id: 'precheck-node' }])
-
-    unsubscribe()
-  })
-
-  it('should use submit fallback nodes when precheck has no unsupported nodes', async () => {
-    const { state, store, unsubscribe } = await mountedStore()
-    store.set(state.createReleaseConfigAtom, { appInstanceId: 'app-instance-1' })
-    store.set(state.openCreateReleaseDialogAtom)
-    setDefaultSourceApp()
-    setPrecheckReleaseResult()
-    store.set(state.createReleaseSubmitUnsupportedDslNodesAtom, [{ id: 'submit-node' }])
-
-    expect(store.get(state.createReleaseUnsupportedDslNodesAtom)).toEqual([{ id: 'submit-node' }])
+    expect(store.get(state.createReleaseContentCheckAtom).unsupportedNodes).toEqual([{ id: 'precheck-node' }])
 
     unsubscribe()
   })
@@ -393,19 +361,17 @@ describe('create release state', () => {
     unsubscribe()
   })
 
-  it('should capture unsupported DSL nodes returned by create release submission', async () => {
+  it('should propagate create release submission errors', async () => {
     const { state, store, unsubscribe } = await mountedStore()
-    mockCreateReleaseMutation.current.mutateAsync.mockRejectedValue(unsupportedDslNodeResponse())
+    const submitError = new Error('submit failed')
+    mockCreateReleaseMutation.current.mutateAsync.mockRejectedValue(submitError)
     store.set(state.createReleaseConfigAtom, { appInstanceId: 'app-instance-1' })
     store.set(state.openCreateReleaseDialogAtom)
     setDefaultSourceApp()
     setPrecheckReleaseResult()
     store.set(state.createReleaseNameFieldAtom, 'Release 1')
 
-    const result = await store.set(state.submitCreateReleaseFormAtom)
-
-    expect(result).toBeUndefined()
-    expect(store.get(state.createReleaseSubmitUnsupportedDslNodesAtom)).toEqual([{ id: 'node-1' }])
+    await expect(store.set(state.submitCreateReleaseFormAtom)).rejects.toThrow(submitError)
 
     unsubscribe()
   })
