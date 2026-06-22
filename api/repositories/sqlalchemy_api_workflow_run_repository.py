@@ -56,6 +56,7 @@ from repositories.types import (
     DailyTerminalsStats,
     DailyTokenCostStats,
 )
+from services.retention.workflow_run.tenant_prefix import tenant_prefix_condition
 
 logger = logging.getLogger(__name__)
 
@@ -84,23 +85,8 @@ _HEX_SHARD_VALUES = {
 }
 
 
-def _tenant_prefix_bounds(prefix: str) -> tuple[str, str | None]:
-    prefix_value = int(prefix, 16)
-    lower_bound = f"{prefix}0000000-0000-0000-0000-000000000000"
-    if prefix_value == 15:
-        return lower_bound, None
-    upper_bound = f"{prefix_value + 1:x}0000000-0000-0000-0000-000000000000"
-    return lower_bound, upper_bound
-
-
 def _tenant_prefix_condition(prefixes: Sequence[str]) -> sa.ColumnElement[bool]:
-    conditions = []
-    for prefix in prefixes:
-        lower_bound, upper_bound = _tenant_prefix_bounds(prefix)
-        condition = WorkflowRun.tenant_id >= lower_bound
-        if upper_bound is not None:
-            condition = sa.and_(condition, WorkflowRun.tenant_id < upper_bound)
-        conditions.append(condition)
+    conditions = [tenant_prefix_condition(WorkflowRun.tenant_id, prefix) for prefix in prefixes]
     return sa.or_(*conditions)
 
 

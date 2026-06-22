@@ -25,7 +25,7 @@ import sqlalchemy as sa
 from sqlalchemy import delete, func, inspect, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import CursorResult
-from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_database import db
 from libs.archive_storage import ArchiveStorage, ArchiveStorageNotConfiguredError, get_archive_storage
@@ -149,7 +149,7 @@ class BundleOperationSummary:
         return self.archive_bytes / self.elapsed_time
 
 
-TABLE_MODELS: dict[str, type[DeclarativeBase] | Any] = {
+TABLE_MODELS: dict[str, Any] = {
     "workflow_runs": WorkflowRun,
     "workflow_app_logs": WorkflowAppLog,
     "workflow_node_executions": WorkflowNodeExecutionModel,
@@ -660,7 +660,7 @@ class WorkflowRunBundleArchiveMaintenance:
         total = 0
         for chunk in self._chunks(records, _CHUNK_SIZE):
             converted = [self._prepare_insert_record(model, record) for record in chunk]
-            stmt = pg_insert(model.__table__).values(converted)
+            stmt = pg_insert(cast(Any, model.__table__)).values(converted)
             stmt = stmt.on_conflict_do_nothing(index_elements=["id"])
             result = session.execute(stmt)
             total += cast(CursorResult, result).rowcount or 0
@@ -668,7 +668,7 @@ class WorkflowRunBundleArchiveMaintenance:
 
     def _prepare_insert_record(
         self,
-        model: type[DeclarativeBase] | Any,
+        model: Any,
         record: dict[str, Any],
     ) -> dict[str, Any]:
         table = model.__table__
@@ -715,7 +715,7 @@ class WorkflowRunBundleArchiveMaintenance:
     @staticmethod
     def _select_ids_by_run_ids(
         session: Session,
-        model: type[DeclarativeBase] | Any,
+        model: Any,
         run_ids: Sequence[str],
     ) -> list[str]:
         if not run_ids:
@@ -723,15 +723,14 @@ class WorkflowRunBundleArchiveMaintenance:
         ids: list[str] = []
         for chunk in WorkflowRunBundleArchiveMaintenance._chunks(run_ids, _CHUNK_SIZE):
             ids.extend(
-                str(row_id)
-                for row_id in session.scalars(select(model.id).where(model.workflow_run_id.in_(chunk)))
+                str(row_id) for row_id in session.scalars(select(model.id).where(model.workflow_run_id.in_(chunk)))
             )
         return ids
 
     @staticmethod
     def _count_by_run_ids(
         session: Session,
-        model: type[DeclarativeBase] | Any,
+        model: Any,
         run_ids: Sequence[str],
     ) -> int:
         return WorkflowRunBundleArchiveMaintenance._count_by_column(
@@ -741,7 +740,7 @@ class WorkflowRunBundleArchiveMaintenance:
     @staticmethod
     def _count_by_column(
         session: Session,
-        model: type[DeclarativeBase] | Any,
+        model: Any,
         column: Any,
         values: Sequence[str],
     ) -> int:
@@ -749,13 +748,13 @@ class WorkflowRunBundleArchiveMaintenance:
             return 0
         total = 0
         for chunk in WorkflowRunBundleArchiveMaintenance._chunks(values, _CHUNK_SIZE):
-            total += int(session.scalar(select(func.count()).select_from(model).where(column.in_(chunk))) or 0)
+            total += session.scalar(select(func.count()).select_from(model).where(column.in_(chunk))) or 0
         return total
 
     def _load_records_by_run_ids(
         self,
         session: Session,
-        model: type[DeclarativeBase] | Any,
+        model: Any,
         run_ids: Sequence[str],
     ) -> list[dict[str, Any]]:
         return self._load_records_by_column(session, model, self._run_id_column(model), run_ids)
@@ -763,7 +762,7 @@ class WorkflowRunBundleArchiveMaintenance:
     def _load_records_by_column(
         self,
         session: Session,
-        model: type[DeclarativeBase] | Any,
+        model: Any,
         column: Any,
         values: Sequence[str],
     ) -> list[dict[str, Any]]:
@@ -777,7 +776,7 @@ class WorkflowRunBundleArchiveMaintenance:
     @staticmethod
     def _delete_by_run_ids(
         session: Session,
-        model: type[DeclarativeBase] | Any,
+        model: Any,
         run_ids: Sequence[str],
     ) -> int:
         return WorkflowRunBundleArchiveMaintenance._delete_by_column(
@@ -785,7 +784,7 @@ class WorkflowRunBundleArchiveMaintenance:
         )
 
     @staticmethod
-    def _run_id_column(model: type[DeclarativeBase] | Any) -> Any:
+    def _run_id_column(model: Any) -> Any:
         if model is WorkflowRun:
             return WorkflowRun.id
         return model.workflow_run_id
@@ -793,7 +792,7 @@ class WorkflowRunBundleArchiveMaintenance:
     @staticmethod
     def _delete_by_column(
         session: Session,
-        model: type[DeclarativeBase] | Any,
+        model: Any,
         column: Any,
         values: Sequence[str],
     ) -> int:
@@ -815,21 +814,15 @@ class WorkflowRunBundleArchiveMaintenance:
 
     @staticmethod
     def _mark_deleted(storage: ArchiveStorage, object_prefix: str) -> None:
-        WorkflowRunBundleArchiveMaintenance._put_marker(
-            storage, object_prefix, ARCHIVE_BUNDLE_DELETED_MARKER_NAME
-        )
+        WorkflowRunBundleArchiveMaintenance._put_marker(storage, object_prefix, ARCHIVE_BUNDLE_DELETED_MARKER_NAME)
 
     @staticmethod
     def _mark_restored(storage: ArchiveStorage, object_prefix: str) -> None:
-        WorkflowRunBundleArchiveMaintenance._delete_marker(
-            storage, object_prefix, ARCHIVE_BUNDLE_DELETED_MARKER_NAME
-        )
+        WorkflowRunBundleArchiveMaintenance._delete_marker(storage, object_prefix, ARCHIVE_BUNDLE_DELETED_MARKER_NAME)
         WorkflowRunBundleArchiveMaintenance._delete_marker(
             storage, object_prefix, ARCHIVE_BUNDLE_RESTORE_STARTED_MARKER_NAME
         )
-        WorkflowRunBundleArchiveMaintenance._put_marker(
-            storage, object_prefix, ARCHIVE_BUNDLE_RESTORED_MARKER_NAME
-        )
+        WorkflowRunBundleArchiveMaintenance._put_marker(storage, object_prefix, ARCHIVE_BUNDLE_RESTORED_MARKER_NAME)
 
     @staticmethod
     def _put_marker(storage: ArchiveStorage, object_prefix: str, marker_name: str) -> None:

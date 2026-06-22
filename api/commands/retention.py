@@ -12,6 +12,7 @@ from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpi
 from services.retention.conversation.messages_clean_policy import create_message_clean_policy
 from services.retention.conversation.messages_clean_service import MessagesCleanService
 from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
+from services.retention.workflow_run.tenant_prefix import tenant_prefix_condition
 from tasks.remove_app_and_related_data_task import delete_draft_variables_batch
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,12 @@ class WorkflowRunArchivePlanRow(TypedDict):
     workflow_node_executions: int
     paid_tenants: int
     unpaid_tenants: int
+
+
+class WorkflowRunArchiveTenantPlan(TypedDict):
+    archive_tenant_ids: list[str] | None
+    paid_tenant_ids: list[str]
+    unpaid_tenant_ids: list[str]
 
 
 def _parse_tenant_prefixes(prefixes: str | None) -> list[str]:
@@ -43,23 +50,6 @@ def _parse_tenant_prefixes(prefixes: str | None) -> list[str]:
     return sorted(set(parsed))
 
 
-def _tenant_prefix_bounds(prefix: str) -> tuple[str, str | None]:
-    prefix_value = int(prefix, 16)
-    lower_bound = f"{prefix}0000000-0000-0000-0000-000000000000"
-    if prefix_value == 15:
-        return lower_bound, None
-    upper_bound = f"{prefix_value + 1:x}0000000-0000-0000-0000-000000000000"
-    return lower_bound, upper_bound
-
-
-def _tenant_prefix_condition(column, prefix: str):
-    lower_bound, upper_bound = _tenant_prefix_bounds(prefix)
-    condition = column >= lower_bound
-    if upper_bound is not None:
-        condition = sa.and_(condition, column < upper_bound)
-    return condition
-
-
 def _get_archive_candidate_tenant_ids_by_prefix(
     prefix: str,
     *,
@@ -74,7 +64,7 @@ def _get_archive_candidate_tenant_ids_by_prefix(
         WorkflowRun.created_at < end_before,
         WorkflowRun.status.in_(WorkflowExecutionStatus.ended_values()),
         WorkflowRun.type.in_(WorkflowRunArchiver.ARCHIVED_TYPE),
-        _tenant_prefix_condition(WorkflowRun.tenant_id, prefix),
+        tenant_prefix_condition(WorkflowRun.tenant_id, prefix),
     ]
     if start_from is not None:
         conditions.append(WorkflowRun.created_at >= start_from)
@@ -82,7 +72,7 @@ def _get_archive_candidate_tenant_ids_by_prefix(
     tenant_ids = db.session.scalars(
         sa.select(WorkflowRun.tenant_id).where(*conditions).distinct().order_by(WorkflowRun.tenant_id)
     ).all()
-    return [str(tenant_id) for tenant_id in tenant_ids]
+    return list(tenant_ids)
 
 
 def _filter_paid_workflow_archive_tenant_ids(tenant_ids: list[str]) -> tuple[list[str], list[str]]:
@@ -112,7 +102,7 @@ def _resolve_archive_tenant_ids_from_plan(
     tenant_prefixes: list[str],
     start_from: datetime.datetime | None,
     end_before: datetime.datetime,
-) -> tuple[list[str] | None, list[str] | None, int, int]:
+) -> WorkflowRunArchiveTenantPlan:
     """
     Resolve the archive tenant scope once before scanning workflow_runs.
 
@@ -133,10 +123,18 @@ def _resolve_archive_tenant_ids_from_plan(
                 )
             )
     else:
-        return None, None, 0, 0
+        return WorkflowRunArchiveTenantPlan(
+            archive_tenant_ids=None,
+            paid_tenant_ids=[],
+            unpaid_tenant_ids=[],
+        )
 
     paid_tenant_ids, unpaid_tenant_ids = _filter_paid_workflow_archive_tenant_ids(requested_tenant_ids)
-    return paid_tenant_ids, paid_tenant_ids, len(paid_tenant_ids), len(unpaid_tenant_ids)
+    return WorkflowRunArchiveTenantPlan(
+        archive_tenant_ids=paid_tenant_ids,
+        paid_tenant_ids=paid_tenant_ids,
+        unpaid_tenant_ids=unpaid_tenant_ids,
+    )
 
 
 def _resolve_archive_time_range(
@@ -360,24 +358,24 @@ def archive_workflow_runs_plan(
         tenant_ids = _get_archive_candidate_tenant_ids_by_prefix(
             prefix,
             start_from=start_from,
-            end_before=end_before,
+            end_before=plan_end_before,
         )
         total_tenants = len(tenant_ids)
         paid_tenant_ids, unpaid_tenant_ids = _filter_paid_workflow_archive_tenant_ids(tenant_ids)
 
         run_conditions = [
-            WorkflowRun.created_at < end_before,
+            WorkflowRun.created_at < plan_end_before,
             WorkflowRun.status.in_(WorkflowExecutionStatus.ended_values()),
             WorkflowRun.type.in_(WorkflowRunArchiver.ARCHIVED_TYPE),
-            _tenant_prefix_condition(WorkflowRun.tenant_id, prefix),
+            tenant_prefix_condition(WorkflowRun.tenant_id, prefix),
         ]
         if start_from is not None:
             run_conditions.append(WorkflowRun.created_at >= start_from)
-        workflow_runs = int(
+        workflow_runs = (
             db.session.scalar(sa.select(sa.func.count()).select_from(WorkflowRun).where(*run_conditions)) or 0
         )
         candidate_runs = sa.select(WorkflowRun.id).where(*run_conditions).subquery()
-        workflow_node_executions = int(
+        workflow_node_executions = (
             db.session.scalar(
                 sa.select(sa.func.count())
                 .select_from(WorkflowNodeExecutionModel)
@@ -399,7 +397,7 @@ def archive_workflow_runs_plan(
 
     click.echo(
         click.style(
-            f"Workflow archive plan for runs before {end_before.isoformat()}"
+            f"Workflow archive plan for runs before {plan_end_before.isoformat()}"
             f"{f' and at/after {start_from.isoformat()}' if start_from else ''}.",
             fg="white",
         )
@@ -535,8 +533,7 @@ def archive_workflow_runs(
     except click.UsageError as e:
         click.echo(click.style(e.message, fg="red"))
         return
-    if end_before is None:
-        end_before = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=before_days)
+    plan_end_before = end_before or datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=before_days)
     if workers < 1:
         click.echo(click.style("workers must be at least 1.", fg="red"))
         return
@@ -551,18 +548,21 @@ def archive_workflow_runs(
         return
 
     try:
-        planned_tenant_ids, planned_paid_tenant_ids, paid_tenants, unpaid_tenants = (
-            _resolve_archive_tenant_ids_from_plan(
-                tenant_ids=tenant_ids,
-                tenant_prefixes=parsed_tenant_prefixes,
-                start_from=start_from,
-                end_before=plan_end_before,
-            )
+        tenant_plan = _resolve_archive_tenant_ids_from_plan(
+            tenant_ids=tenant_ids,
+            tenant_prefixes=parsed_tenant_prefixes,
+            start_from=start_from,
+            end_before=plan_end_before,
         )
     except Exception:
         logger.exception("Failed to resolve workflow archive tenant plan")
         click.echo(click.style("Failed to resolve workflow archive tenant plan.", fg="red"))
         return
+
+    planned_tenant_ids = tenant_plan["archive_tenant_ids"]
+    planned_paid_tenant_ids = tenant_plan["paid_tenant_ids"] if planned_tenant_ids is not None else None
+    paid_tenants = len(tenant_plan["paid_tenant_ids"])
+    unpaid_tenants = len(tenant_plan["unpaid_tenant_ids"])
     if planned_tenant_ids is not None:
         click.echo(
             click.style(
