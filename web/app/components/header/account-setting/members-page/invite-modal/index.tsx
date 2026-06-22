@@ -1,10 +1,10 @@
 'use client'
-import type { RoleKey } from './role-selector'
 import type { InvitationResult } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useQueryClient } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,6 +13,7 @@ import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { inviteMember } from '@/service/common'
+import { commonQueryKeys } from '@/service/use-common'
 import RoleSelector from './role-selector'
 import 'react-multi-email/dist/style.css'
 
@@ -28,6 +29,7 @@ const InviteModal = ({
   onSend,
 }: IInviteModalProps) => {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const licenseLimit = useProviderContextSelector(s => s.licenseLimit)
   const refreshLicenseLimit = useProviderContextSelector(s => s.refreshLicenseLimit)
   const [emails, setEmails] = useState<string[]>([])
@@ -36,7 +38,7 @@ const InviteModal = ({
   const isLimitExceeded = isLimited && (usedSize > licenseLimit.workspace_members.limit)
 
   const locale = useLocale()
-  const [role, setRole] = useState<RoleKey>('normal')
+  const [role, setRole] = useState<string>('')
 
   const [isSubmitting, {
     setTrue: setIsSubmitting,
@@ -56,6 +58,7 @@ const InviteModal = ({
 
         if (result === 'success') {
           refreshLicenseLimit()
+          void queryClient.invalidateQueries({ queryKey: commonQueryKeys.members })
           onCancel()
           onSend(invitation_results)
         }
@@ -66,7 +69,7 @@ const InviteModal = ({
       toast.error(t('members.emailInvalid', { ns: 'common' }))
     }
     setIsSubmitted()
-  }, [isLimitExceeded, emails, role, locale, onCancel, onSend, t, isSubmitting, refreshLicenseLimit, setIsSubmitted, setIsSubmitting])
+  }, [isLimitExceeded, emails, role, locale, onCancel, onSend, t, isSubmitting, refreshLicenseLimit, queryClient, setIsSubmitted, setIsSubmitting])
 
   return (
     <Dialog
@@ -78,7 +81,7 @@ const InviteModal = ({
     >
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className="w-[400px] px-8 py-6"
+        className="w-100 overflow-visible px-8 py-6"
       >
         <DialogCloseButton className="top-6 right-8" />
         <div className="mb-2 pr-8">
@@ -144,7 +147,7 @@ const InviteModal = ({
             tabIndex={0}
             className="w-full"
             onClick={handleSend}
-            disabled={!emails.length || isLimitExceeded || isSubmitting}
+            disabled={!emails.length || !role || isLimitExceeded || isSubmitting}
             variant="primary"
           >
             {t('members.sendInvite', { ns: 'common' })}

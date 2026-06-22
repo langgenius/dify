@@ -15,7 +15,7 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLearnDifyVisibleValue, useSetLearnDifyHidden } from '@/app/components/explore/learn-dify/atoms'
+import { useLearnDifyHiddenValue, useSetLearnDifyHidden } from '@/app/components/explore/learn-dify/storage'
 import AccountAbout from '@/app/components/header/account-about'
 import Compliance from '@/app/components/header/account-dropdown/compliance'
 import { ExternalLinkIndicator, MenuItemContent } from '@/app/components/header/account-dropdown/menu-item-content'
@@ -52,7 +52,7 @@ const HelpMenu = ({
   const docLink = useDocLink()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { langGeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
-  const learnDifyVisible = useLearnDifyVisibleValue()
+  const learnDifyHidden = useLearnDifyHiddenValue()
   const setLearnDifyHidden = useSetLearnDifyHidden()
   const [aboutVisible, setAboutVisible] = useState(false)
   const [open, setOpen] = useState(false)
@@ -96,7 +96,7 @@ const HelpMenu = ({
                 />
               </DropdownMenuLinkItem>
               <DropdownMenuCheckboxItem
-                checked={learnDifyVisible}
+                checked={!learnDifyHidden}
                 closeOnClick={false}
                 className="mx-0 h-8 gap-1 px-0 py-1 pr-2 pl-3"
                 onCheckedChange={checked => setLearnDifyHidden(!checked)}
@@ -109,13 +109,13 @@ const HelpMenu = ({
                   aria-hidden
                   className={cn(
                     'relative inline-flex h-4 w-7 shrink-0 items-center rounded-[5px] p-0.5 transition-colors',
-                    learnDifyVisible ? 'bg-components-toggle-bg' : 'bg-components-toggle-bg-unchecked',
+                    !learnDifyHidden ? 'bg-components-toggle-bg' : 'bg-components-toggle-bg-unchecked',
                   )}
                 >
                   <span
                     className={cn(
                       'block h-3 w-2.5 rounded-[3px] bg-components-toggle-knob shadow-sm transition-transform',
-                      learnDifyVisible && 'translate-x-3.5',
+                      !learnDifyHidden && 'translate-x-3.5',
                     )}
                   />
                 </span>

@@ -8,10 +8,10 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useSetLocalStorage } from 'foxact/use-local-storage'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resetUser } from '@/app/components/base/amplitude/utils'
+import { useSetEducationExpiredHasNoticed, useSetEducationReverifyHasNoticed, useSetEducationReverifyPrevExpireAt } from '@/app/education-apply/storage'
 import { useAppContext } from '@/context/app-context'
 import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
@@ -27,9 +27,6 @@ type AccountDropdownProps = {
   variant?: 'default' | 'mainNav'
 }
 
-const EDUCATION_REVERIFY_PREV_EXPIRE_AT_KEY = 'education-reverify-prev-expire-at'
-const EDUCATION_REVERIFY_HAS_NOTICED_KEY = 'education-reverify-has-noticed'
-const EDUCATION_EXPIRED_HAS_NOTICED_KEY = 'education-expired-has-noticed'
 const mainNavMenuPopupClassName = 'w-60 max-w-80 overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]'
 
 export default function AppSelector({
@@ -41,9 +38,9 @@ export default function AppSelector({
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
   const { t } = useTranslation()
   const { userProfile, langGeniusVersionInfo } = useAppContext()
-  const clearEducationReverifyPrevExpireAt = useSetLocalStorage<number>(EDUCATION_REVERIFY_PREV_EXPIRE_AT_KEY)
-  const clearEducationReverifyHasNoticed = useSetLocalStorage<boolean>(EDUCATION_REVERIFY_HAS_NOTICED_KEY)
-  const clearEducationExpiredHasNoticed = useSetLocalStorage<boolean>(EDUCATION_EXPIRED_HAS_NOTICED_KEY)
+  const clearEducationReverifyPrevExpireAt = useSetEducationReverifyPrevExpireAt()
+  const clearEducationReverifyHasNoticed = useSetEducationReverifyHasNoticed()
+  const clearEducationExpiredHasNoticed = useSetEducationExpiredHasNoticed()
 
   const { mutateAsync: logout } = useLogout()
 

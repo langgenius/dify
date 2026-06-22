@@ -34,10 +34,11 @@ class WorkflowRunService:
 
     def __init__(self, session_factory: Engine | sessionmaker | None = None):
         """Initialize WorkflowRunService with repository dependencies."""
-        if session_factory is None:
-            session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
-        elif isinstance(session_factory, Engine):
-            session_factory = sessionmaker(bind=session_factory, expire_on_commit=False)
+        match session_factory:
+            case None:
+                session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
+            case Engine():
+                session_factory = sessionmaker(bind=session_factory, expire_on_commit=False)
 
         self._session_factory = session_factory
         self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(

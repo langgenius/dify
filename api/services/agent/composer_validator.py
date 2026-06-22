@@ -18,6 +18,7 @@ from services.agent.prompt_mentions import (
 from services.entities.agent_entities import (
     AgentSoulConfig,
     ComposerSavePayload,
+    ComposerSaveStrategy,
     ComposerVariant,
     WorkflowNodeJobConfig,
 )
@@ -50,7 +51,12 @@ _DANGEROUS_ACK_KEYS = (
 class ComposerConfigValidator:
     @classmethod
     def validate_save_payload(cls, payload: ComposerSavePayload) -> None:
-        if payload.variant == ComposerVariant.WORKFLOW and payload.soul_lock.locked and payload.agent_soul is not None:
+        if (
+            payload.variant == ComposerVariant.WORKFLOW
+            and payload.soul_lock.locked
+            and payload.agent_soul is not None
+            and payload.save_strategy != ComposerSaveStrategy.NODE_JOB_ONLY
+        ):
             raise AgentSoulLockedError()
 
         if payload.agent_soul is not None:
@@ -328,16 +334,17 @@ class ComposerConfigValidator:
 
     @classmethod
     def _reject_plaintext_secrets(cls, value: Any, *, path: str) -> None:
-        if isinstance(value, dict):
-            for key, nested in value.items():
-                normalized_key = key.lower().replace("-", "_")
-                nested_path = f"{path}.{key}"
-                if normalized_key in _PLAINTEXT_SECRET_KEYS and isinstance(nested, str) and nested:
-                    raise PlaintextSecretNotAllowedError(f"Plaintext secret is not allowed at {nested_path}")
-                cls._reject_plaintext_secrets(nested, path=nested_path)
-        elif isinstance(value, list):
-            for index, nested in enumerate(value):
-                cls._reject_plaintext_secrets(nested, path=f"{path}[{index}]")
+        match value:
+            case dict():
+                for key, nested in value.items():
+                    normalized_key = key.lower().replace("-", "_")
+                    nested_path = f"{path}.{key}"
+                    if normalized_key in _PLAINTEXT_SECRET_KEYS and isinstance(nested, str) and nested:
+                        raise PlaintextSecretNotAllowedError(f"Plaintext secret is not allowed at {nested_path}")
+                    cls._reject_plaintext_secrets(nested, path=nested_path)
+            case list():
+                for index, nested in enumerate(value):
+                    cls._reject_plaintext_secrets(nested, path=f"{path}[{index}]")
 
     @classmethod
     def _has_install_command(cls, entry: dict[str, Any]) -> bool:

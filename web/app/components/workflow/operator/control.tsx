@@ -34,6 +34,7 @@ const Control = () => {
     handleModeHand,
     handleModeComment,
     isCommentModeAvailable,
+    canUseCommentMode,
   } = useWorkflowMoveMode()
   const { handleLayout } = useWorkflowOrganize()
   const { handleAddNote } = useOperator()
@@ -103,11 +104,11 @@ const Control = () => {
           <button
             type="button"
             aria-label={t('common.commentMode', { ns: 'workflow' })}
-            disabled={nodesReadOnly}
+            disabled={!canUseCommentMode}
             className={cn(
               'ml-px flex size-8 cursor-pointer items-center justify-center rounded-lg',
               controlMode === ControlMode.Comment ? 'bg-state-accent-active text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
-              `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
+              `${!canUseCommentMode && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
             )}
             onClick={handleModeComment}
           >

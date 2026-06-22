@@ -1,4 +1,5 @@
 'use client'
+import type { ComponentProps, KeyboardEvent, MouseEvent } from 'react'
 import type { ToolWithProvider } from '../../workflow/types'
 import {
   AlertDialog,
@@ -14,7 +15,7 @@ import { useBoolean } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Icon from '@/app/components/plugins/card/base/card-icon'
-import { useAppContext } from '@/context/app-context'
+import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useDeleteMCP, useUpdateMCP } from '@/service/use-tools'
 import OperationDropdown from './detail/operation-dropdown'
@@ -28,6 +29,15 @@ type Props = Readonly<{
   onDeleted: () => void
 }>
 
+type MCPModalConfirmPayload = Parameters<ComponentProps<typeof MCPModal>['onConfirm']>[0]
+type MutationResult = {
+  result?: string
+}
+
+const isMCPCardActionTarget = (target: EventTarget | null) => {
+  return target instanceof HTMLElement && Boolean(target.closest('[data-mcp-card-action]'))
+}
+
 const MCPCard = ({
   currentProvider,
   data,
@@ -37,7 +47,7 @@ const MCPCard = ({
 }: Props) => {
   const { t } = useTranslation()
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const canManageMCP = useCanManageMCP()
   const isConfigured = data.is_team_authorization && data.tools.length > 0
   const updatedAtText = data.updated_at
     ? `${t('mcp.updateTime', { ns: 'tools' })} ${formatTimeFromNow(data.updated_at * 1000)}`
@@ -63,30 +73,60 @@ const MCPCard = ({
     setFalse: hideDeleting,
   }] = useBoolean(false)
 
-  const handleUpdate = useCallback(async (form: any) => {
+  const handleUpdate = useCallback(async (form: MCPModalConfirmPayload) => {
+    if (!canManageMCP)
+      return
+
     const res = await updateMCP({
       ...form,
       provider_id: data.id,
-    })
-    if ((res as any)?.result === 'success') {
+    }) as MutationResult
+    if (res.result === 'success') {
       hideUpdateModal()
       onUpdate(data.id)
     }
-  }, [data, updateMCP, hideUpdateModal, onUpdate])
+  }, [canManageMCP, data, updateMCP, hideUpdateModal, onUpdate])
 
   const handleDelete = useCallback(async () => {
+    if (!canManageMCP)
+      return
+
     showDeleting()
-    const res = await deleteMCP(data.id)
+    const res = await deleteMCP(data.id) as MutationResult
     hideDeleting()
-    if ((res as any)?.result === 'success') {
+    if (res.result === 'success') {
       hideDeleteConfirm()
       onDeleted()
     }
-  }, [showDeleting, deleteMCP, data.id, hideDeleting, hideDeleteConfirm, onDeleted])
+  }, [canManageMCP, showDeleting, deleteMCP, data.id, hideDeleting, hideDeleteConfirm, onDeleted])
+
+  const handleSelectProvider = useCallback(() => {
+    handleSelect(data.id)
+  }, [data.id, handleSelect])
+
+  const handleCardClick = useCallback((event: MouseEvent<HTMLDivElement>) => {
+    if (isMCPCardActionTarget(event.target))
+      return
+
+    handleSelectProvider()
+  }, [handleSelectProvider])
+
+  const handleCardKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
+    if (isMCPCardActionTarget(event.target))
+      return
+    if (event.key !== 'Enter' && event.key !== ' ')
+      return
+
+    event.preventDefault()
+    handleSelectProvider()
+  }, [handleSelectProvider])
 
   return (
     <div
-      onClick={() => handleSelect(data.id)}
+      role="button"
+      tabIndex={0}
+      onClick={handleCardClick}
+      onKeyDown={handleCardKeyDown}
       className={cn(
         'group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
         currentProvider?.id === data.id && 'border-components-option-card-option-selected-border bg-components-panel-on-panel-item-bg-hover',
@@ -124,8 +164,8 @@ const MCPCard = ({
           </div>
         )}
       </div>
-      {isCurrentWorkspaceManager && (
-        <div className={cn('absolute top-2.5 right-2.5 hidden group-hover:block', isOperationShow && 'block')} onClick={e => e.stopPropagation()}>
+      {canManageMCP && (
+        <div data-mcp-card-action className={cn('absolute top-2.5 right-2.5 hidden group-hover:block', isOperationShow && 'block')}>
           <OperationDropdown
             inCard
             onOpenChange={setIsOperationShow}
@@ -134,7 +174,7 @@ const MCPCard = ({
           />
         </div>
       )}
-      {isShowUpdateModal && (
+      {canManageMCP && isShowUpdateModal && (
         <MCPModal
           data={data}
           show={isShowUpdateModal}
@@ -142,7 +182,7 @@ const MCPCard = ({
           onHide={hideUpdateModal}
         />
       )}
-      <AlertDialog open={isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
+      <AlertDialog open={canManageMCP && isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">

@@ -90,7 +90,7 @@ class TestMessageServicePaginationByFirstId:
         return TestMessageServiceFactory()
 
     # Test 01: No user provided
-    def test_pagination_by_first_id_no_user(self, factory):
+    def test_pagination_by_first_id_no_user(self, factory: TestMessageServiceFactory):
         """Test pagination returns empty result when no user is provided."""
         # Arrange
         app = factory.create_app_mock()
@@ -111,7 +111,7 @@ class TestMessageServicePaginationByFirstId:
         assert result.has_more is False
 
     # Test 02: No conversation_id provided
-    def test_pagination_by_first_id_no_conversation(self, factory):
+    def test_pagination_by_first_id_no_conversation(self, factory: TestMessageServiceFactory):
         """Test pagination returns empty result when no conversation_id is provided."""
         # Arrange
         app = factory.create_app_mock()
@@ -137,7 +137,7 @@ class TestMessageServicePaginationByFirstId:
     @patch("services.message_service.db")
     @patch("services.message_service.ConversationService")
     def test_pagination_by_first_id_without_first_id_desc(
-        self, mock_conversation_service, mock_db, mock_create_repo, factory
+        self, mock_conversation_service, mock_db, mock_create_repo, factory: TestMessageServiceFactory
     ):
         """Test basic pagination without first_id in descending order."""
         # Arrange
@@ -180,7 +180,7 @@ class TestMessageServicePaginationByFirstId:
     @patch("services.message_service.db")
     @patch("services.message_service.ConversationService")
     def test_pagination_by_first_id_without_first_id_asc(
-        self, mock_conversation_service, mock_db, mock_create_repo, factory
+        self, mock_conversation_service, mock_db, mock_create_repo, factory: TestMessageServiceFactory
     ):
         """Test basic pagination without first_id in ascending order."""
         # Arrange
@@ -222,7 +222,9 @@ class TestMessageServicePaginationByFirstId:
     @patch("services.message_service._create_execution_extra_content_repository")
     @patch("services.message_service.db")
     @patch("services.message_service.ConversationService")
-    def test_pagination_by_first_id_with_first_id(self, mock_conversation_service, mock_db, mock_create_repo, factory):
+    def test_pagination_by_first_id_with_first_id(
+        self, mock_conversation_service, mock_db, mock_create_repo, factory: TestMessageServiceFactory
+    ):
         """Test pagination with first_id to get messages before a specific message."""
         # Arrange
         app = factory.create_app_mock()
@@ -265,7 +267,9 @@ class TestMessageServicePaginationByFirstId:
     # Test 06: First message not found
     @patch("services.message_service.db")
     @patch("services.message_service.ConversationService")
-    def test_pagination_by_first_id_first_message_not_exists(self, mock_conversation_service, mock_db, factory):
+    def test_pagination_by_first_id_first_message_not_exists(
+        self, mock_conversation_service, mock_db, factory: TestMessageServiceFactory
+    ):
         """Test error handling when first_id doesn't exist."""
         # Arrange
         app = factory.create_app_mock()
@@ -290,7 +294,9 @@ class TestMessageServicePaginationByFirstId:
     @patch("services.message_service._create_execution_extra_content_repository")
     @patch("services.message_service.db")
     @patch("services.message_service.ConversationService")
-    def test_pagination_by_first_id_has_more_true(self, mock_conversation_service, mock_db, mock_create_repo, factory):
+    def test_pagination_by_first_id_has_more_true(
+        self, mock_conversation_service, mock_db, mock_create_repo, factory: TestMessageServiceFactory
+    ):
         """Test has_more flag is True when results exceed limit."""
         # Arrange
         app = factory.create_app_mock()
@@ -327,7 +333,9 @@ class TestMessageServicePaginationByFirstId:
     # Test 08: Empty conversation
     @patch("services.message_service.db")
     @patch("services.message_service.ConversationService")
-    def test_pagination_by_first_id_empty_conversation(self, mock_conversation_service, mock_db, factory):
+    def test_pagination_by_first_id_empty_conversation(
+        self, mock_conversation_service, mock_db, factory: TestMessageServiceFactory
+    ):
         """Test pagination with conversation that has no messages."""
         # Arrange
         app = factory.create_app_mock()
@@ -370,7 +378,7 @@ class TestMessageServicePaginationByLastId:
         return TestMessageServiceFactory()
 
     # Test 09: No user provided
-    def test_pagination_by_last_id_no_user(self, factory):
+    def test_pagination_by_last_id_no_user(self, factory: TestMessageServiceFactory):
         """Test pagination returns empty result when no user is provided."""
         # Arrange
         app = factory.create_app_mock()
@@ -391,7 +399,7 @@ class TestMessageServicePaginationByLastId:
 
     # Test 10: Basic pagination without last_id
     @patch("services.message_service.db")
-    def test_pagination_by_last_id_without_last_id(self, mock_db, factory):
+    def test_pagination_by_last_id_without_last_id(self, mock_db, factory: TestMessageServiceFactory):
         """Test basic pagination without last_id."""
         # Arrange
         app = factory.create_app_mock()
@@ -422,7 +430,7 @@ class TestMessageServicePaginationByLastId:
 
     # Test 11: Pagination with last_id
     @patch("services.message_service.db")
-    def test_pagination_by_last_id_with_last_id(self, mock_db, factory):
+    def test_pagination_by_last_id_with_last_id(self, mock_db, factory: TestMessageServiceFactory):
         """Test pagination with last_id to get messages after a specific message."""
         # Arrange
         app = factory.create_app_mock()
@@ -459,7 +467,7 @@ class TestMessageServicePaginationByLastId:
 
     # Test 12: Last message not found
     @patch("services.message_service.db")
-    def test_pagination_by_last_id_last_message_not_exists(self, mock_db, factory):
+    def test_pagination_by_last_id_last_message_not_exists(self, mock_db, factory: TestMessageServiceFactory):
         """Test error handling when last_id doesn't exist."""
         # Arrange
         app = factory.create_app_mock()
@@ -479,7 +487,9 @@ class TestMessageServicePaginationByLastId:
     # Test 13: Pagination with conversation_id filter
     @patch("services.message_service.ConversationService")
     @patch("services.message_service.db")
-    def test_pagination_by_last_id_with_conversation_filter(self, mock_db, mock_conversation_service, factory):
+    def test_pagination_by_last_id_with_conversation_filter(
+        self, mock_db, mock_conversation_service, factory: TestMessageServiceFactory
+    ):
         """Test pagination filtered by conversation_id."""
         # Arrange
         app = factory.create_app_mock()
@@ -515,7 +525,7 @@ class TestMessageServicePaginationByLastId:
 
     # Test 14: Pagination with include_ids filter
     @patch("services.message_service.db")
-    def test_pagination_by_last_id_with_include_ids(self, mock_db, factory):
+    def test_pagination_by_last_id_with_include_ids(self, mock_db, factory: TestMessageServiceFactory):
         """Test pagination filtered by include_ids."""
         # Arrange
         app = factory.create_app_mock()
@@ -545,7 +555,7 @@ class TestMessageServicePaginationByLastId:
 
     # Test 15: Has_more flag when results exceed limit
     @patch("services.message_service.db")
-    def test_pagination_by_last_id_has_more_true(self, mock_db, factory):
+    def test_pagination_by_last_id_has_more_true(self, mock_db, factory: TestMessageServiceFactory):
         """Test has_more flag is True when results exceed limit."""
         # Arrange
         app = factory.create_app_mock()
@@ -592,7 +602,7 @@ class TestMessageServiceUtilities:
 
     # Test 17: attach_message_extra_contents with messages
     @patch("services.message_service._create_execution_extra_content_repository")
-    def test_attach_message_extra_contents_with_messages(self, mock_create_repo, factory):
+    def test_attach_message_extra_contents_with_messages(self, mock_create_repo, factory: TestMessageServiceFactory):
         """Test attach_message_extra_contents correctly attaches content."""
         # Arrange
         messages = [factory.create_message_mock(message_id="msg-1"), factory.create_message_mock(message_id="msg-2")]
@@ -618,7 +628,9 @@ class TestMessageServiceUtilities:
 
     # Test 18: attach_message_extra_contents with index out of bounds
     @patch("services.message_service._create_execution_extra_content_repository")
-    def test_attach_message_extra_contents_index_out_of_bounds(self, mock_create_repo, factory):
+    def test_attach_message_extra_contents_index_out_of_bounds(
+        self, mock_create_repo, factory: TestMessageServiceFactory
+    ):
         """Test attach_message_extra_contents handles missing content lists."""
         # Arrange
         messages = [factory.create_message_mock(message_id="msg-1")]
@@ -659,7 +671,7 @@ class TestMessageServiceGetMessage:
 
     # Test 20: get_message success for EndUser
     @patch("services.message_service.db")
-    def test_get_message_end_user_success(self, mock_db, factory):
+    def test_get_message_end_user_success(self, mock_db, factory: TestMessageServiceFactory):
         """Test get_message returns message for EndUser."""
         # Arrange
         app = factory.create_app_mock()
@@ -676,7 +688,7 @@ class TestMessageServiceGetMessage:
 
     # Test 21: get_message success for Account (Admin)
     @patch("services.message_service.db")
-    def test_get_message_account_success(self, mock_db, factory):
+    def test_get_message_account_success(self, mock_db, factory: TestMessageServiceFactory):
         """Test get_message returns message for Account."""
         # Arrange
         from models import Account
@@ -696,7 +708,7 @@ class TestMessageServiceGetMessage:
 
     # Test 22: get_message not found
     @patch("services.message_service.db")
-    def test_get_message_not_found(self, mock_db, factory):
+    def test_get_message_not_found(self, mock_db, factory: TestMessageServiceFactory):
         """Test get_message raises MessageNotExistsError when not found."""
         # Arrange
         app = factory.create_app_mock()
@@ -720,7 +732,7 @@ class TestMessageServiceFeedback:
     # Test 23: create_feedback - new feedback for EndUser
     @patch("services.message_service.db")
     @patch.object(MessageService, "get_message")
-    def test_create_feedback_new_end_user(self, mock_get_message, mock_db, factory):
+    def test_create_feedback_new_end_user(self, mock_get_message, mock_db, factory: TestMessageServiceFactory):
         """Test creating new feedback for an end user."""
         # Arrange
         app = factory.create_app_mock()
@@ -748,7 +760,7 @@ class TestMessageServiceFeedback:
     # Test 24: create_feedback - update feedback for Account
     @patch("services.message_service.db")
     @patch.object(MessageService, "get_message")
-    def test_create_feedback_update_account(self, mock_get_message, mock_db, factory):
+    def test_create_feedback_update_account(self, mock_get_message, mock_db, factory: TestMessageServiceFactory):
         """Test updating existing feedback for an account."""
         # Arrange
         from models import Account, MessageFeedback
@@ -779,7 +791,7 @@ class TestMessageServiceFeedback:
     # Test 25: create_feedback - delete feedback (rating is None)
     @patch("services.message_service.db")
     @patch.object(MessageService, "get_message")
-    def test_create_feedback_delete(self, mock_get_message, mock_db, factory):
+    def test_create_feedback_delete(self, mock_get_message, mock_db, factory: TestMessageServiceFactory):
         """Test deleting feedback by passing rating=None."""
         # Arrange
         app = factory.create_app_mock()
@@ -805,7 +817,7 @@ class TestMessageServiceFeedback:
 
     # Test 26: get_all_messages_feedbacks
     @patch("services.message_service.db")
-    def test_get_all_messages_feedbacks(self, mock_db, factory):
+    def test_get_all_messages_feedbacks(self, mock_db, factory: TestMessageServiceFactory):
         """Test get_all_messages_feedbacks returns list of dicts."""
         # Arrange
         app = factory.create_app_mock()
@@ -830,7 +842,7 @@ class TestMessageServiceSuggestedQuestions:
         return TestMessageServiceFactory()
 
     # Test 27: get_suggested_questions_after_answer - user is None
-    def test_get_suggested_questions_user_none(self, factory):
+    def test_get_suggested_questions_user_none(self, factory: TestMessageServiceFactory):
         app = factory.create_app_mock()
         with pytest.raises(ValueError, match="user cannot be None"):
             MessageService.get_suggested_questions_after_answer(
@@ -856,7 +868,7 @@ class TestMessageServiceSuggestedQuestions:
         mock_config_manager,
         mock_workflow_service,
         mock_model_manager,
-        factory,
+        factory: TestMessageServiceFactory,
     ):
         """Test successful suggested questions generation in Advanced Chat mode."""
         from core.app.entities.app_invoke_entities import InvokeFrom
@@ -896,14 +908,14 @@ class TestMessageServiceSuggestedQuestions:
     @patch("services.message_service.ConversationService")
     def test_get_suggested_questions_chat_app_success(
         self,
-        mock_conversation_service,
-        mock_get_message,
-        mock_trace_manager,
-        mock_llm_gen,
-        mock_memory,
-        mock_model_manager,
-        mock_db,
-        factory,
+        mock_conversation_service: MagicMock,
+        mock_get_message: MagicMock,
+        mock_trace_manager: MagicMock,
+        mock_llm_gen: MagicMock,
+        mock_memory: MagicMock,
+        mock_model_manager: MagicMock,
+        mock_db: MagicMock,
+        factory: TestMessageServiceFactory,
     ):
         """Test successful suggested questions generation in basic Chat mode."""
         # Arrange
@@ -942,14 +954,14 @@ class TestMessageServiceSuggestedQuestions:
     @patch("services.message_service.ConversationService")
     def test_get_suggested_questions_chat_app_uses_frontend_model_and_prompt(
         self,
-        mock_conversation_service,
-        mock_get_message,
-        mock_trace_manager,
-        mock_llm_gen,
-        mock_memory,
-        mock_model_manager,
-        mock_db,
-        factory,
+        mock_conversation_service: MagicMock,
+        mock_get_message: MagicMock,
+        mock_trace_manager: MagicMock,
+        mock_llm_gen: MagicMock,
+        mock_memory: MagicMock,
+        mock_model_manager: MagicMock,
+        mock_db: MagicMock,
+        factory: TestMessageServiceFactory,
     ):
         """Test suggested question generation uses frontend configured model and prompt."""
         from core.app.entities.app_invoke_entities import InvokeFrom
@@ -1015,14 +1027,14 @@ class TestMessageServiceSuggestedQuestions:
     @patch("services.message_service.ConversationService")
     def test_get_suggested_questions_chat_app_invalid_frontend_model_fallback_to_default(
         self,
-        mock_conversation_service,
-        mock_get_message,
-        mock_trace_manager,
-        mock_llm_gen,
-        mock_memory,
-        mock_model_manager,
-        mock_db,
-        factory,
+        mock_conversation_service: MagicMock,
+        mock_get_message: MagicMock,
+        mock_trace_manager: MagicMock,
+        mock_llm_gen: MagicMock,
+        mock_memory: MagicMock,
+        mock_model_manager: MagicMock,
+        mock_db: MagicMock,
+        factory: TestMessageServiceFactory,
     ):
         """Test invalid frontend configured model falls back to tenant default model."""
         app = factory.create_app_mock(mode=AppMode.CHAT)
@@ -1066,14 +1078,14 @@ class TestMessageServiceSuggestedQuestions:
     @patch("services.message_service.ConversationService")
     def test_get_suggested_questions_chat_app_uses_compatible_override_model_config(
         self,
-        mock_conversation_service,
-        mock_get_message,
-        mock_trace_manager,
-        mock_llm_gen,
-        mock_memory,
-        mock_model_manager,
-        mock_db,
-        factory,
+        mock_conversation_service: MagicMock,
+        mock_get_message: MagicMock,
+        mock_trace_manager: MagicMock,
+        mock_llm_gen: MagicMock,
+        mock_memory: MagicMock,
+        mock_model_manager: MagicMock,
+        mock_db: MagicMock,
+        factory: TestMessageServiceFactory,
     ):
         """Test legacy override configs are normalized before suggested questions reads them."""
         app = factory.create_app_mock(mode=AppMode.CHAT)
@@ -1174,7 +1186,12 @@ class TestMessageServiceSuggestedQuestions:
     @patch.object(MessageService, "get_message")
     @patch("services.message_service.ConversationService")
     def test_get_suggested_questions_disabled_error(
-        self, mock_conversation_service, mock_get_message, mock_config_manager, mock_workflow_service, factory
+        self,
+        mock_conversation_service,
+        mock_get_message,
+        mock_config_manager,
+        mock_workflow_service,
+        factory: TestMessageServiceFactory,
     ):
         """Test SuggestedQuestionsAfterAnswerDisabledError is raised when feature is disabled."""
         # Arrange

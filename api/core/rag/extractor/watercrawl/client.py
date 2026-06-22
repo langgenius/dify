@@ -12,6 +12,8 @@ from core.rag.extractor.watercrawl.exceptions import (
     WaterCrawlPermissionError,
 )
 
+WATERCRAWL_REQUEST_TIMEOUT: httpx.Timeout = httpx.Timeout(30.0, connect=5.0)
+
 
 class SpiderOptions(TypedDict):
     max_depth: int
@@ -48,7 +50,7 @@ class BaseAPIClient:
             "User-Agent": "WaterCrawl-Plugin",
             "Accept-Language": "en-US",
         }
-        return httpx.Client(headers=headers, timeout=None)
+        return httpx.Client(headers=headers, timeout=WATERCRAWL_REQUEST_TIMEOUT)
 
     def _request(
         self,

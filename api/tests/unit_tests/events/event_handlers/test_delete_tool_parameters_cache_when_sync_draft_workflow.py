@@ -1,11 +1,16 @@
 import logging
 from types import SimpleNamespace
 
+import pytest
+
 from core.tools.errors import ToolProviderNotFoundError
 from events.event_handlers import delete_tool_parameters_cache_when_sync_draft_workflow as handler_module
 
 
-def test_missing_tool_provider_does_not_log_error_traceback(monkeypatch, caplog):
+def test_missing_tool_provider_does_not_log_error_traceback(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+):
     app = SimpleNamespace(id="workflow-id", tenant_id="tenant-id")
     workflow = SimpleNamespace(
         graph_dict={

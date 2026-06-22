@@ -3,6 +3,7 @@ import type { ToolsContentInset } from '../content-inset'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useMemo, useState } from 'react'
+import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
 import ToolCardSkeletonGrid from '@/app/components/tools/provider/tool-card-skeleton'
 import {
   useAllToolProviders,
@@ -27,7 +28,8 @@ const MCPList = ({
   onCreatedProviderHandled,
   showCreateCard = true,
 }: Props) => {
-  const { data: list = [] as ToolWithProvider[], isLoading, refetch } = useAllToolProviders()
+  const canManageMCP = useCanManageMCP()
+  const { data: list = [] as ToolWithProvider[], isLoading, refetch } = useAllToolProviders(canManageMCP)
   const [isTriggerAuthorize, setIsTriggerAuthorize] = useState<boolean>(false)
 
   const filteredList = useMemo(() => {
@@ -47,13 +49,16 @@ const MCPList = ({
   }, [list, currentProviderID])
 
   const handleCreate = async (provider: ToolWithProvider) => {
+    if (!canManageMCP)
+      return
+
     await refetch() // update list
     setCurrentProviderID(provider.id)
     setIsTriggerAuthorize(true)
   }
 
   useEffect(() => {
-    if (!createdProviderId)
+    if (!canManageMCP || !createdProviderId)
       return
 
     let isActive = true
@@ -78,15 +83,21 @@ const MCPList = ({
     return () => {
       isActive = false
     }
-  }, [createdProviderId, onCreatedProviderHandled, refetch])
+  }, [canManageMCP, createdProviderId, onCreatedProviderHandled, refetch])
 
   const handleUpdate = async (providerID: string) => {
+    if (!canManageMCP)
+      return
+
     await refetch() // update list
     setCurrentProviderID(providerID)
     setIsTriggerAuthorize(true)
   }
   const contentPaddingClassName = toolsContentInsetClassNames[contentInset]
   const contentFrameClassName = cn(contentPaddingClassName, toolsUnifiedContentFrameClassName)
+  if (!canManageMCP)
+    return null
+
   return (
     <>
       <div

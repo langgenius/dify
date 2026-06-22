@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import logging
-from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
 from sqlalchemy.orm import Session
 
-from core.app.entities.app_invoke_entities import InvokeFrom
 from models import TenantAccountRole
 from models.account import Account, Tenant, TenantAccountJoin
+from models.enums import EndUserType
 from models.model import App, DefaultEndUserSessionID, EndUser
 from services.end_user_service import EndUserService
 
@@ -72,7 +71,7 @@ class TestEndUserServiceFactory:
         tenant_id: str,
         app_id: str,
         session_id: str,
-        invoke_type: InvokeFrom,
+        invoke_type: EndUserType,
         is_anonymous: bool = False,
     ):
         end_user = EndUser(
@@ -120,7 +119,7 @@ class TestEndUserServiceGetOrCreateEndUser:
         assert result.tenant_id == app.tenant_id
         assert result.app_id == app.id
         assert result.session_id == user_id
-        assert result.type == InvokeFrom.SERVICE_API
+        assert result.type == EndUserType.SERVICE_API
         assert result.is_anonymous is False
 
     def test_get_or_create_end_user_without_user_id(
@@ -148,7 +147,7 @@ class TestEndUserServiceGetOrCreateEndUser:
             tenant_id=app.tenant_id,
             app_id=app.id,
             session_id=user_id,
-            invoke_type=InvokeFrom.SERVICE_API,
+            invoke_type=EndUserType.SERVICE_API,
         )
 
         # Act
@@ -163,7 +162,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
     Unit tests for EndUserService.get_or_create_end_user_by_type method.
 
     This test suite covers:
-    - Creating end users with different InvokeFrom types
+    - Creating end users with different EndUserType values
     - Type migration for legacy users
     - Query ordering and prioritization
     - Session management
@@ -186,22 +185,22 @@ class TestEndUserServiceGetOrCreateEndUserByType:
 
         # Act
         result = EndUserService.get_or_create_end_user_by_type(
-            type=InvokeFrom.SERVICE_API,
+            type=EndUserType.SERVICE_API,
             tenant_id=tenant_id,
             app_id=app_id,
             user_id=user_id,
         )
 
         # Assert
-        assert result.type == InvokeFrom.SERVICE_API
+        assert result.type == EndUserType.SERVICE_API
         assert result.tenant_id == tenant_id
         assert result.app_id == app_id
         assert result.session_id == user_id
 
-    def test_create_end_user_web_app_type(
+    def test_create_end_user_browser_type(
         self, db_session_with_containers: Session, factory: TestEndUserServiceFactory
     ):
-        """Test creating new end user with WEB_APP type."""
+        """Test creating new end user with BROWSER type."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
         tenant_id = app.tenant_id
@@ -210,14 +209,14 @@ class TestEndUserServiceGetOrCreateEndUserByType:
 
         # Act
         result = EndUserService.get_or_create_end_user_by_type(
-            type=InvokeFrom.WEB_APP,
+            type=EndUserType.BROWSER,
             tenant_id=tenant_id,
             app_id=app_id,
             user_id=user_id,
         )
 
         # Assert
-        assert result.type == InvokeFrom.WEB_APP
+        assert result.type == EndUserType.BROWSER
 
     def test_upgrade_legacy_end_user_type(
         self, caplog: pytest.LogCaptureFixture, db_session_with_containers: Session, factory: TestEndUserServiceFactory
@@ -235,12 +234,12 @@ class TestEndUserServiceGetOrCreateEndUserByType:
             tenant_id=tenant_id,
             app_id=app_id,
             session_id=user_id,
-            invoke_type=InvokeFrom.SERVICE_API,
+            invoke_type=EndUserType.SERVICE_API,
         )
         with caplog.at_level(logging.INFO, logger="services.end_user_service"):
             # Act - Request with different type
             result = EndUserService.get_or_create_end_user_by_type(
-                type=InvokeFrom.WEB_APP,
+                type=EndUserType.BROWSER,
                 tenant_id=tenant_id,
                 app_id=app_id,
                 user_id=user_id,
@@ -248,7 +247,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
 
         # Assert
         assert result.id == existing_user.id
-        assert result.type == InvokeFrom.WEB_APP  # Type should be updated
+        assert result.type == EndUserType.BROWSER  # Type should be updated
         matching_logs = [
             record
             for record in caplog.records
@@ -259,9 +258,8 @@ class TestEndUserServiceGetOrCreateEndUserByType:
 
         assert len(matching_logs) == 1
 
-    @patch("services.end_user_service.logger")
     def test_get_existing_end_user_matching_type(
-        self, mock_logger, db_session_with_containers: Session, factory: TestEndUserServiceFactory
+        self, db_session_with_containers: Session, factory: TestEndUserServiceFactory, caplog
     ):
         """Test retrieving existing end user with matching type."""
         # Arrange
@@ -275,21 +273,23 @@ class TestEndUserServiceGetOrCreateEndUserByType:
             tenant_id=tenant_id,
             app_id=app_id,
             session_id=user_id,
-            invoke_type=InvokeFrom.SERVICE_API,
+            invoke_type=EndUserType.SERVICE_API,
         )
 
         # Act - Request with same type
-        result = EndUserService.get_or_create_end_user_by_type(
-            type=InvokeFrom.SERVICE_API,
-            tenant_id=tenant_id,
-            app_id=app_id,
-            user_id=user_id,
-        )
+        with caplog.at_level(logging.INFO, logger="services.end_user_service"):
+            result = EndUserService.get_or_create_end_user_by_type(
+                type=EndUserType.SERVICE_API,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                user_id=user_id,
+            )
 
         # Assert
         assert result.id == existing_user.id
-        assert result.type == InvokeFrom.SERVICE_API
-        mock_logger.info.assert_not_called()
+        assert result.type == EndUserType.SERVICE_API
+        # No legacy-upgrade log should be emitted when the existing user's type already matches.
+        assert [record for record in caplog.records if record.levelno == logging.INFO] == []
 
     def test_create_anonymous_user_with_default_session(
         self, db_session_with_containers: Session, factory: TestEndUserServiceFactory
@@ -302,7 +302,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
 
         # Act
         result = EndUserService.get_or_create_end_user_by_type(
-            type=InvokeFrom.SERVICE_API,
+            type=EndUserType.SERVICE_API,
             tenant_id=tenant_id,
             app_id=app_id,
             user_id=None,
@@ -329,19 +329,19 @@ class TestEndUserServiceGetOrCreateEndUserByType:
             tenant_id=tenant_id,
             app_id=app_id,
             session_id=user_id,
-            invoke_type=InvokeFrom.WEB_APP,
+            invoke_type=EndUserType.BROWSER,
         )
         matching = factory.create_end_user(
             db_session_with_containers,
             tenant_id=tenant_id,
             app_id=app_id,
             session_id=user_id,
-            invoke_type=InvokeFrom.SERVICE_API,
+            invoke_type=EndUserType.SERVICE_API,
         )
 
         # Act
         result = EndUserService.get_or_create_end_user_by_type(
-            type=InvokeFrom.SERVICE_API,
+            type=EndUserType.SERVICE_API,
             tenant_id=tenant_id,
             app_id=app_id,
             user_id=user_id,
@@ -363,7 +363,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
 
         # Act
         result = EndUserService.get_or_create_end_user_by_type(
-            type=InvokeFrom.SERVICE_API,
+            type=EndUserType.SERVICE_API,
             tenant_id=tenant_id,
             app_id=app_id,
             user_id=user_id,
@@ -376,16 +376,16 @@ class TestEndUserServiceGetOrCreateEndUserByType:
     @pytest.mark.parametrize(
         "invoke_type",
         [
-            InvokeFrom.SERVICE_API,
-            InvokeFrom.WEB_APP,
-            InvokeFrom.EXPLORE,
-            InvokeFrom.DEBUGGER,
+            EndUserType.SERVICE_API,
+            EndUserType.BROWSER,
+            EndUserType.OPENAPI,
+            EndUserType.TRIGGER,
         ],
     )
     def test_create_end_user_with_different_invoke_types(
-        self, db_session_with_containers: Session, invoke_type: InvokeFrom, factory: TestEndUserServiceFactory
+        self, db_session_with_containers: Session, invoke_type: EndUserType, factory: TestEndUserServiceFactory
     ):
-        """Test creating end users with different InvokeFrom types."""
+        """Test creating end users with different EndUserType values."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
         tenant_id = app.tenant_id
@@ -421,7 +421,7 @@ class TestEndUserServiceGetEndUserById:
             tenant_id=app.tenant_id,
             app_id=app.id,
             session_id=f"session-{uuid4()}",
-            invoke_type=InvokeFrom.SERVICE_API,
+            invoke_type=EndUserType.SERVICE_API,
         )
 
         result = EndUserService.get_end_user_by_id(
@@ -487,7 +487,7 @@ class TestEndUserServiceCreateBatch:
 
     def test_create_batch_empty_app_ids(self, db_session_with_containers: Session):
         result = EndUserService.create_end_user_batch(
-            type=InvokeFrom.SERVICE_API, tenant_id=str(uuid4()), app_ids=[], user_id="user-1"
+            type=EndUserType.SERVICE_API, tenant_id=str(uuid4()), app_ids=[], user_id="user-1"
         )
         assert result == {}
 
@@ -499,14 +499,14 @@ class TestEndUserServiceCreateBatch:
         user_id = f"user-{uuid4()}"
 
         result = EndUserService.create_end_user_batch(
-            type=InvokeFrom.SERVICE_API, tenant_id=tenant_id, app_ids=app_ids, user_id=user_id
+            type=EndUserType.SERVICE_API, tenant_id=tenant_id, app_ids=app_ids, user_id=user_id
         )
 
         assert len(result) == 3
         for app_id in app_ids:
             assert app_id in result
             assert result[app_id].session_id == user_id
-            assert result[app_id].type == InvokeFrom.SERVICE_API
+            assert result[app_id].type == EndUserType.SERVICE_API
 
     def test_create_batch_default_session_id(
         self, db_session_with_containers: Session, factory: TestEndUserServiceFactory
@@ -515,7 +515,7 @@ class TestEndUserServiceCreateBatch:
         app_ids = [a.id for a in apps]
 
         result = EndUserService.create_end_user_batch(
-            type=InvokeFrom.SERVICE_API, tenant_id=tenant_id, app_ids=app_ids, user_id=""
+            type=EndUserType.SERVICE_API, tenant_id=tenant_id, app_ids=app_ids, user_id=""
         )
 
         assert len(result) == 2
@@ -531,7 +531,7 @@ class TestEndUserServiceCreateBatch:
         user_id = f"user-{uuid4()}"
 
         result = EndUserService.create_end_user_batch(
-            type=InvokeFrom.SERVICE_API, tenant_id=tenant_id, app_ids=app_ids, user_id=user_id
+            type=EndUserType.SERVICE_API, tenant_id=tenant_id, app_ids=app_ids, user_id=user_id
         )
 
         assert len(result) == 2
@@ -545,12 +545,12 @@ class TestEndUserServiceCreateBatch:
 
         # Create batch first time
         first_result = EndUserService.create_end_user_batch(
-            type=InvokeFrom.SERVICE_API, tenant_id=tenant_id, app_ids=app_ids, user_id=user_id
+            type=EndUserType.SERVICE_API, tenant_id=tenant_id, app_ids=app_ids, user_id=user_id
         )
 
         # Create batch second time — should return existing users
         second_result = EndUserService.create_end_user_batch(
-            type=InvokeFrom.SERVICE_API, tenant_id=tenant_id, app_ids=app_ids, user_id=user_id
+            type=EndUserType.SERVICE_API, tenant_id=tenant_id, app_ids=app_ids, user_id=user_id
         )
 
         assert len(second_result) == 2
@@ -565,7 +565,7 @@ class TestEndUserServiceCreateBatch:
 
         # Create for first 2 apps
         first_result = EndUserService.create_end_user_batch(
-            type=InvokeFrom.SERVICE_API,
+            type=EndUserType.SERVICE_API,
             tenant_id=tenant_id,
             app_ids=[apps[0].id, apps[1].id],
             user_id=user_id,
@@ -573,7 +573,7 @@ class TestEndUserServiceCreateBatch:
 
         # Create for all 3 apps — should reuse first 2, create 3rd
         all_result = EndUserService.create_end_user_batch(
-            type=InvokeFrom.SERVICE_API,
+            type=EndUserType.SERVICE_API,
             tenant_id=tenant_id,
             app_ids=[a.id for a in apps],
             user_id=user_id,
@@ -586,10 +586,10 @@ class TestEndUserServiceCreateBatch:
 
     @pytest.mark.parametrize(
         "invoke_type",
-        [InvokeFrom.SERVICE_API, InvokeFrom.WEB_APP, InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER],
+        [EndUserType.SERVICE_API, EndUserType.BROWSER, EndUserType.OPENAPI, EndUserType.TRIGGER],
     )
     def test_create_batch_all_invoke_types(
-        self, db_session_with_containers: Session, invoke_type: InvokeFrom, factory: TestEndUserServiceFactory
+        self, db_session_with_containers: Session, invoke_type: EndUserType, factory: TestEndUserServiceFactory
     ):
         tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory, count=1)
         user_id = f"user-{uuid4()}"

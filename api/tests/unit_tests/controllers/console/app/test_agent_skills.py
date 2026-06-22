@@ -10,7 +10,7 @@ from __future__ import annotations
 import inspect
 import io
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from flask import Flask
 
@@ -18,8 +18,6 @@ from controllers.console.app.agent import (
     AgentDriveFilesByAgentApi,
     AgentSkillByAgentApi,
     AgentSkillInferToolsByAgentApi,
-    AgentSkillStandardizeApi,
-    AgentSkillStandardizeByAgentApi,
     AgentSkillUploadApi,
     AgentSkillUploadByAgentApi,
 )
@@ -45,47 +43,39 @@ _APP = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT, bou
 _WORKFLOW_APP = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW, bound_agent_id=None)
 
 
-def test_upload_validates_and_returns_skill_ref():
+def test_upload_standardizes_into_drive_and_returns_skill_ref():
     raw = _raw(AgentSkillUploadApi.post)
-    manifest = MagicMock()
-    manifest.to_skill_ref.return_value.model_dump.return_value = {"name": "S", "file_id": "uf-1"}
-    manifest.model_dump.return_value = {"name": "S"}
 
     with _file_ctx(files={"file": b"zip-bytes"}):
         with (
-            patch(f"{_MOD}.SkillPackageService") as pkg,
-            patch(f"{_MOD}.FileService") as fs,
-            patch(f"{_MOD}.db"),
+            patch(f"{_MOD}.SkillStandardizeService") as svc,
         ):
-            pkg.return_value.validate_and_extract.return_value = manifest
-            fs.return_value.upload_file.return_value = SimpleNamespace(id="uf-1")
+            svc.return_value.standardize.return_value = {
+                "skill": {"path": "skill-a", "skill_md_key": "skill-a/SKILL.md"},
+                "manifest": {"name": "Skill A"},
+            }
             body, status = raw(AgentSkillUploadApi(), _USER, _APP)
 
     assert status == 201
-    assert body["skill"] == {"name": "S", "file_id": "uf-1"}
-    manifest.to_skill_ref.assert_called_once_with(file_id="uf-1")
+    assert body["skill"] == {"path": "skill-a", "skill_md_key": "skill-a/SKILL.md"}
+    assert svc.return_value.standardize.call_args.kwargs["agent_id"] == "agent-1"
 
 
-def test_upload_by_agent_resolves_app_and_returns_skill_ref():
+def test_upload_by_agent_resolves_app_and_standardizes_into_drive():
     raw = _raw(AgentSkillUploadByAgentApi.post)
-    manifest = MagicMock()
-    manifest.to_skill_ref.return_value.model_dump.return_value = {"name": "S", "file_id": "uf-1"}
-    manifest.model_dump.return_value = {"name": "S"}
 
     with _file_ctx(files={"file": b"zip-bytes"}):
         with (
             patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP) as resolve_app,
-            patch(f"{_MOD}.SkillPackageService") as pkg,
-            patch(f"{_MOD}.FileService") as fs,
-            patch(f"{_MOD}.db"),
+            patch(f"{_MOD}.SkillStandardizeService") as svc,
         ):
-            pkg.return_value.validate_and_extract.return_value = manifest
-            fs.return_value.upload_file.return_value = SimpleNamespace(id="uf-1")
+            svc.return_value.standardize.return_value = {"skill": {"path": "skill-a"}, "manifest": {}}
             body, status = raw(AgentSkillUploadByAgentApi(), "tenant-1", _USER, "agent-1")
 
     assert status == 201
-    assert body["skill"] == {"name": "S", "file_id": "uf-1"}
+    assert body["skill"] == {"path": "skill-a"}
     resolve_app.assert_called_once_with(tenant_id="tenant-1", agent_id="agent-1")
+    assert svc.return_value.standardize.call_args.kwargs["agent_id"] == "agent-1"
 
 
 def test_upload_no_file_is_400():
@@ -99,8 +89,8 @@ def test_upload_no_file_is_400():
 def test_upload_maps_package_error():
     raw = _raw(AgentSkillUploadApi.post)
     with _file_ctx(files={"file": b"bad"}):
-        with patch(f"{_MOD}.SkillPackageService") as pkg:
-            pkg.return_value.validate_and_extract.side_effect = SkillPackageError(
+        with patch(f"{_MOD}.SkillStandardizeService") as svc:
+            svc.return_value.standardize.side_effect = SkillPackageError(
                 "missing_skill_md", "no SKILL.md", status_code=400
             )
             body, status = raw(AgentSkillUploadApi(), _USER, _APP)
@@ -108,44 +98,17 @@ def test_upload_maps_package_error():
     assert body["code"] == "missing_skill_md"
 
 
-def test_standardize_returns_result():
-    raw = _raw(AgentSkillStandardizeApi.post)
-    with _file_ctx(files={"file": b"zip"}):
-        with patch(f"{_MOD}.SkillStandardizeService") as svc:
-            svc.return_value.standardize.return_value = {"skill": {"path": "s"}, "manifest": {}}
-            body, status = raw(AgentSkillStandardizeApi(), _USER, _APP)
-    assert status == 201
-    assert body["skill"] == {"path": "s"}
-    assert svc.return_value.standardize.call_args.kwargs["agent_id"] == "agent-1"
-
-
-def test_standardize_by_agent_resolves_app():
-    raw = _raw(AgentSkillStandardizeByAgentApi.post)
-    with _file_ctx(files={"file": b"zip"}):
-        with (
-            patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP) as resolve_app,
-            patch(f"{_MOD}.SkillStandardizeService") as svc,
-        ):
-            svc.return_value.standardize.return_value = {"skill": {"path": "s"}, "manifest": {}}
-            body, status = raw(AgentSkillStandardizeByAgentApi(), "tenant-1", _USER, "agent-1")
-
-    assert status == 201
-    assert body["skill"] == {"path": "s"}
-    resolve_app.assert_called_once_with(tenant_id="tenant-1", agent_id="agent-1")
-    assert svc.return_value.standardize.call_args.kwargs["agent_id"] == "agent-1"
-
-
-def test_standardize_no_bound_agent_is_400():
-    raw = _raw(AgentSkillStandardizeApi.post)
+def test_upload_no_bound_agent_is_400():
+    raw = _raw(AgentSkillUploadApi.post)
     app_without_agent = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT, bound_agent_id=None)
     with _file_ctx(files={"file": b"zip"}):
-        body, status = raw(AgentSkillStandardizeApi(), _USER, app_without_agent)
+        body, status = raw(AgentSkillUploadApi(), _USER, app_without_agent)
     assert status == 400
     assert body["code"] == "agent_not_bound"
 
 
-def test_standardize_resolves_workflow_node_agent():
-    raw = _raw(AgentSkillStandardizeApi.post)
+def test_upload_resolves_workflow_node_agent():
+    raw = _raw(AgentSkillUploadApi.post)
     with app.test_request_context(
         "/?node_id=agent-node-1", method="POST", data={"file": (io.BytesIO(b"zip"), "skill.zip")}
     ):
@@ -155,19 +118,19 @@ def test_standardize_resolves_workflow_node_agent():
         ):
             composer.resolve_workflow_node_agent_id.return_value = "wf-agent-1"
             svc.return_value.standardize.return_value = {"skill": {"path": "s"}, "manifest": {}}
-            body, status = raw(AgentSkillStandardizeApi(), _USER, _WORKFLOW_APP)
+            body, status = raw(AgentSkillUploadApi(), _USER, _WORKFLOW_APP)
 
     assert status == 201
     assert body["skill"] == {"path": "s"}
     assert svc.return_value.standardize.call_args.kwargs["agent_id"] == "wf-agent-1"
 
 
-def test_standardize_maps_drive_error():
-    raw = _raw(AgentSkillStandardizeApi.post)
+def test_upload_maps_drive_error():
+    raw = _raw(AgentSkillUploadApi.post)
     with _file_ctx(files={"file": b"zip"}):
         with patch(f"{_MOD}.SkillStandardizeService") as svc:
             svc.return_value.standardize.side_effect = AgentDriveError("source_not_found", "nope", status_code=404)
-            body, status = raw(AgentSkillStandardizeApi(), _USER, _APP)
+            body, status = raw(AgentSkillUploadApi(), _USER, _APP)
     assert status == 404
     assert body["code"] == "source_not_found"
 

@@ -2,6 +2,8 @@ import logging
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+import pytest
+
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
 
@@ -132,7 +134,7 @@ class TestAnnotationReplyFeature:
         _, _, _, _, _, _, _, from_source, _ = mock_annotation_service.add_annotation_history.call_args[0]
         assert from_source == "console"
 
-    def test_query_logs_and_returns_none_on_exception(self, caplog):
+    def test_query_logs_and_returns_none_on_exception(self, caplog: pytest.LogCaptureFixture):
         feature = AnnotationReplyFeature()
         annotation_setting = SimpleNamespace(
             score_threshold=None,
