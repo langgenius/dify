@@ -301,3 +301,18 @@ class TestValidateAgentModeAndSetDefaults:
         updated, _ = AgentChatAppConfigManager.validate_agent_mode_and_set_defaults("tenant", config)
         assert updated["agent_mode"]["tools"][0]["dataset"]["enabled"] is False
         assert updated["agent_mode"]["tools"][1]["enabled"] is False
+
+    def test_empty_tool_entry_is_skipped(self):
+        # A malformed empty `{}` tool entry must be skipped, not crash with
+        # IndexError on list(tool.keys())[0] — same guard as the sibling
+        # dataset/manager.py (#37669) and variables/manager.py (#37671).
+        config = {
+            "agent_mode": {
+                "enabled": True,
+                "strategy": PlanningStrategy.ROUTER.value,
+                "tools": [{}],
+            }
+        }
+        updated, keys = AgentChatAppConfigManager.validate_agent_mode_and_set_defaults("tenant", config)
+        assert keys == ["agent_mode"]
+        assert updated["agent_mode"]["tools"] == [{}]
