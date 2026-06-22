@@ -373,6 +373,49 @@ class TestSegmentAttachmentCleanup:
 class TestEdgeCases:
     """Test edge cases and boundary conditions."""
 
+    def test_clean_dataset_task_deletes_orphan_segments_without_documents(
+        self,
+        dataset_id: str,
+        tenant_id: str,
+        collection_binding_id: str,
+        mock_db_session,
+        mock_storage,
+        mock_index_processor_factory,
+        mock_get_image_upload_file_ids,
+        mock_segment,
+    ):
+        """
+        Test dataset cleanup deletes segments even when document rows are already gone.
+
+        Scenario:
+        - Document deletion and dataset deletion run as separate async tasks
+        - The document row is already deleted before clean_dataset_task runs
+        - Dataset-scoped document_segments still exist and must be removed
+
+        Expected behavior:
+        - Orphan document_segments are still deleted by dataset_id cleanup
+        """
+        documents_result = MagicMock()
+        documents_result.all.return_value = []
+        segments_result = MagicMock()
+        segments_result.all.return_value = [mock_segment]
+        image_files_result = MagicMock()
+        image_files_result.all.return_value = []
+        mock_db_session.session.scalars.side_effect = [documents_result, segments_result, image_files_result]
+
+        clean_dataset_task(
+            dataset_id=dataset_id,
+            tenant_id=tenant_id,
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            index_struct='{"type": "paragraph"}',
+            collection_binding_id=collection_binding_id,
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
+        )
+
+        mock_get_image_upload_file_ids.assert_called_once_with(mock_segment.content)
+        execute_sqls = [" ".join(str(c[0][0]).split()) for c in mock_db_session.session.execute.call_args_list]
+        assert any("DELETE FROM document_segments" in sql for sql in execute_sqls)
+
     def test_clean_dataset_task_session_always_closed(
         self,
         dataset_id: str,

@@ -109,6 +109,11 @@ def clean_dataset_task(
                 for document in documents:
                     session.delete(document)
 
+            # Segments may outlive their documents when document deletion and dataset deletion
+            # race in separate async tasks. Always clean dataset-scoped segments even if the
+            # document rows are already gone, otherwise quota calculation can keep seeing
+            # orphaned document_segments after the dataset has been deleted.
+            if segments:
                 segment_ids = [segment.id for segment in segments]
                 for segment in segments:
                     image_upload_file_ids = get_image_upload_file_ids(segment.content)
