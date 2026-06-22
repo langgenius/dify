@@ -610,9 +610,7 @@ class AgentApiKeyApi(BaseApiKeyResource):
     @with_current_user
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
-    def delete(
-        self, tenant_id: str, current_user: Account, agent_id: UUID, api_key_id: UUID
-    ) -> tuple[str, int]:
+    def delete(self, tenant_id: str, current_user: Account, agent_id: UUID, api_key_id: UUID) -> tuple[str, int]:
         app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         self._delete_api_key(str(app_model.id), str(api_key_id), tenant_id, current_user)
         return "", 204
