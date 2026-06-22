@@ -891,9 +891,7 @@ class AgentComposerService:
         return binding
 
     @classmethod
-    def _is_start_from_scratch_request(
-        cls, *, binding: WorkflowAgentNodeBinding, payload: ComposerSavePayload
-    ) -> bool:
+    def _is_start_from_scratch_request(cls, *, binding: WorkflowAgentNodeBinding, payload: ComposerSavePayload) -> bool:
         return (
             binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
             and payload.binding is not None
