@@ -248,6 +248,11 @@ def test_agent_app_list_and_create_use_agent_route(
     )
     monkeypatch.setattr(
         roster_controller.AgentRosterService,
+        "get_or_create_agent_app_debug_conversation_id",
+        lambda _self, **kwargs: "debug-conversation-detail",
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentRosterService,
         "load_published_references_by_agent_id",
         lambda _self, **kwargs: {
             "agent-list": [
@@ -265,6 +270,16 @@ def test_agent_app_list_and_create_use_agent_route(
                 }
             ]
         },
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentRosterService,
+        "load_or_create_agent_app_debug_conversation_ids_by_agent_id",
+        lambda _self, **kwargs: {"agent-list": "debug-conversation-list"},
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentRosterService,
+        "get_or_create_agent_app_debug_conversation_id",
+        lambda _self, **kwargs: "debug-conversation-created",
     )
     monkeypatch.setattr(
         roster_controller.FeatureService,
@@ -382,7 +397,7 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
 
     monkeypatch.setattr(roster_controller, "AppService", FakeAppService)
 
-    detail = unwrap(AgentAppApi.get)(AgentAppApi(), "tenant-1", agent_id)
+    detail = unwrap(AgentAppApi.get)(AgentAppApi(), "tenant-1", SimpleNamespace(id=account_id), agent_id)
     assert detail["id"] == agent_id
     assert detail["app_id"] == "app-1"
     assert detail["debug_conversation_id"] == "debug-conversation-detail"
@@ -394,7 +409,7 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
         "/console/api/agent/00000000-0000-0000-0000-000000000001",
         json={"name": "Renamed", "description": "", "role": "Reviewer", "icon_type": "emoji", "icon": "R"},
     ):
-        updated = unwrap(AgentAppApi.put)(AgentAppApi(), "tenant-1", agent_id)
+        updated = unwrap(AgentAppApi.put)(AgentAppApi(), "tenant-1", SimpleNamespace(id=account_id), agent_id)
 
     assert updated["name"] == "Renamed"
     assert updated["id"] == agent_id
@@ -429,7 +444,7 @@ def test_agent_app_copy_uses_agent_id_and_returns_agent_detail(
     monkeypatch.setattr(
         roster_controller,
         "_serialize_agent_app_detail",
-        lambda app_model: {"id": "copied-agent", "app_id": app_model.id, "name": app_model.name},
+        lambda app_model, **_kwargs: {"id": "copied-agent", "app_id": app_model.id, "name": app_model.name},
     )
 
     with app.test_request_context(
@@ -620,7 +635,7 @@ def test_agent_app_update_rejects_empty_role(app: Flask, monkeypatch: pytest.Mon
         json={"name": "Renamed", "description": "", "role": "", "icon_type": "emoji", "icon": "R"},
     ):
         with pytest.raises(ValueError, match="String should have at least 1 character"):
-            unwrap(AgentAppApi.put)(AgentAppApi(), "tenant-1", agent_id)
+            unwrap(AgentAppApi.put)(AgentAppApi(), "tenant-1", SimpleNamespace(id="account-1"), agent_id)
 
 
 def test_invite_options_get_parses_app_id(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -8,6 +8,7 @@ from models.agent import (
     Agent,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
+    AgentDebugConversation,
     AgentKind,
     AgentScope,
     AgentSource,
@@ -1447,7 +1448,6 @@ class TestAgentAppBackingAgent:
         assert agent.agent_kind == AgentKind.DIFY_AGENT
         assert agent.name == "Iris"
         assert agent.role == "research assistant"
-        assert agent.debug_conversation_id is not None
         # A v1 snapshot + revision are seeded and wired as the active version.
         snapshots = [a for a in session.added if isinstance(a, AgentConfigSnapshot)]
         assert len(snapshots) == 1
@@ -1459,12 +1459,18 @@ class TestAgentAppBackingAgent:
         assert len(revisions) == 1
         conversations = [a for a in session.added if isinstance(a, Conversation)]
         assert len(conversations) == 1
-        assert agent.debug_conversation_id == conversations[0].id
         assert conversations[0].app_id == "app-1"
         assert conversations[0].mode == "agent"
         assert conversations[0].status == ConversationStatus.NORMAL
         assert conversations[0].from_source == ConversationFromSource.CONSOLE
         assert conversations[0].from_account_id == "account-1"
+        debug_mappings = [a for a in session.added if isinstance(a, AgentDebugConversation)]
+        assert len(debug_mappings) == 1
+        assert debug_mappings[0].tenant_id == "tenant-1"
+        assert debug_mappings[0].agent_id == agent.id
+        assert debug_mappings[0].app_id == "app-1"
+        assert debug_mappings[0].account_id == "account-1"
+        assert debug_mappings[0].conversation_id == conversations[0].id
         # Caller (AppService.create_app) owns the commit — helper must not commit.
         assert session.commits == 0
 

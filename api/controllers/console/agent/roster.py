@@ -271,7 +271,7 @@ def _agent_roster_service() -> AgentRosterService:
     return AgentRosterService(db.session)
 
 
-def _serialize_agent_app_detail(app_model) -> dict:
+def _serialize_agent_app_detail(app_model, *, current_user: Account) -> dict:
     """Serialize an Agent App detail using roster-only DTOs.
 
     `/agent` responses are roster-shaped rather than raw app-shaped: `id`
@@ -294,7 +294,11 @@ def _serialize_agent_app_detail(app_model) -> dict:
     payload.pop("bound_agent_id", None)
     payload["app_id"] = str(app_model.id)
     payload["id"] = agent.id
-    payload["debug_conversation_id"] = agent.debug_conversation_id
+    payload["debug_conversation_id"] = roster_service.get_or_create_agent_app_debug_conversation_id(
+        tenant_id=app_model.tenant_id,
+        agent_id=agent.id,
+        account_id=current_user.id,
+    )
     payload["role"] = agent.role or ""
     payload["active_config_is_published"] = roster_service.active_config_is_published(
         tenant_id=app_model.tenant_id,
@@ -303,7 +307,7 @@ def _serialize_agent_app_detail(app_model) -> dict:
     return payload
 
 
-def _serialize_agent_app_pagination(app_pagination, *, tenant_id: str) -> dict:
+def _serialize_agent_app_pagination(app_pagination, *, tenant_id: str, current_user: Account) -> dict:
     """Serialize Agent App lists with roster-shaped items.
 
     Each item starts from the shared App list shape, then drops
@@ -326,6 +330,11 @@ def _serialize_agent_app_pagination(app_pagination, *, tenant_id: str) -> dict:
         tenant_id=tenant_id,
         agent_ids=[agent.id for agent in agents_by_app_id.values()],
     )
+    debug_conversation_ids_by_agent_id = roster_service.load_or_create_agent_app_debug_conversation_ids_by_agent_id(
+        tenant_id=tenant_id,
+        agents=list(agents_by_app_id.values()),
+        account_id=current_user.id,
+    )
     payload = AgentAppPagination.model_validate(app_pagination, from_attributes=True).model_dump(mode="json")
     for item in payload["data"]:
         app_id = item["id"]
@@ -334,7 +343,7 @@ def _serialize_agent_app_pagination(app_pagination, *, tenant_id: str) -> dict:
         if agent:
             item["app_id"] = app_id
             item["id"] = agent.id
-            item["debug_conversation_id"] = agent.debug_conversation_id
+            item["debug_conversation_id"] = debug_conversation_ids_by_agent_id.get(agent.id)
             item["role"] = agent.role or ""
             item["active_config_is_published"] = active_config_is_published_by_agent_id.get(agent.id, False)
             published_references = published_references_by_agent_id.get(agent.id, [])
@@ -442,7 +451,11 @@ class AgentAppListApi(Resource):
             empty = AgentAppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
             return empty.model_dump(mode="json")
 
-        return _serialize_agent_app_pagination(app_pagination, tenant_id=current_tenant_id)
+        return _serialize_agent_app_pagination(
+            app_pagination,
+            tenant_id=current_tenant_id,
+            current_user=current_user,
+        )
 
     @console_ns.expect(console_ns.models[AgentAppCreatePayload.__name__])
     @console_ns.response(201, "Agent app created successfully", console_ns.models[AgentAppDetailWithSite.__name__])
@@ -467,7 +480,7 @@ class AgentAppListApi(Resource):
         )
 
         app = AppService().create_app(current_tenant_id, params, current_user)
-        return _serialize_agent_app_detail(app), 201
+        return _serialize_agent_app_detail(app, current_user=current_user), 201
 
 
 @console_ns.route("/agent/<uuid:agent_id>")
@@ -477,10 +490,11 @@ class AgentAppApi(Resource):
     @login_required
     @account_initialization_required
     @enterprise_license_required
+    @with_current_user
     @with_current_tenant_id
-    def get(self, tenant_id: str, agent_id: UUID):
+    def get(self, tenant_id: str, current_user: Account, agent_id: UUID):
         app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
-        return _serialize_agent_app_detail(app_model)
+        return _serialize_agent_app_detail(app_model, current_user=current_user)
 
     @console_ns.expect(console_ns.models[AgentAppUpdatePayload.__name__])
     @console_ns.response(200, "Agent app updated successfully", console_ns.models[AgentAppDetailWithSite.__name__])
@@ -490,8 +504,9 @@ class AgentAppApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @with_current_user
     @with_current_tenant_id
-    def put(self, tenant_id: str, agent_id: UUID):
+    def put(self, tenant_id: str, current_user: Account, agent_id: UUID):
         app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         args = AgentAppUpdatePayload.model_validate(console_ns.payload)
         args_dict: AppService.ArgsDict = {
@@ -505,7 +520,7 @@ class AgentAppApi(Resource):
             "role": args.role,
         }
         updated = AppService().update_app(app_model, args_dict)
-        return _serialize_agent_app_detail(updated)
+        return _serialize_agent_app_detail(updated, current_user=current_user)
 
     @console_ns.response(204, "Agent app deleted successfully")
     @console_ns.response(403, "Insufficient permissions")
@@ -544,7 +559,7 @@ class AgentAppCopyApi(Resource):
             icon=args.icon,
             icon_background=args.icon_background,
         )
-        return _serialize_agent_app_detail(copied_app), 201
+        return _serialize_agent_app_detail(copied_app, current_user=current_user), 201
 
 
 @console_ns.route("/agent/<uuid:agent_id>/api-access")
