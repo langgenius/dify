@@ -4,6 +4,7 @@ from flask import request
 from werkzeug.exceptions import Forbidden, NotFound, UnprocessableEntity
 
 from controllers.openapi.auth.data import AuthData
+from configs import dify_config
 from extensions.ext_database import db
 from libs.oauth_bearer import Scope, TokenType
 from services.account_service import AccountService, TenantService
@@ -38,6 +39,9 @@ def check_workspace_mismatch(data: AuthData) -> None:
 
 
 def check_workspace_role(data: AuthData) -> None:
+    if dify_config.RBAC_ENABLED:
+        # fine-grained permission check is performed by RBAC
+        return
     if data.allowed_roles is None:
         return
     if data.tenant_role is None:

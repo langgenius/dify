@@ -10,6 +10,7 @@ from controllers.openapi.auth.conditions import (
     TOKEN_IS_OAUTH_ACCOUNT,
     TOKEN_IS_OAUTH_EXTERNAL_SSO,
     WEBAPP_AUTH_ENABLED,
+    WEBAPP_RUN_SCOPED,
     WORKSPACE_MEMBERSHIP_REQUIRED,
     Cond,
     config_cond,
@@ -17,7 +18,7 @@ from controllers.openapi.auth.conditions import (
     request_cond,
 )
 from controllers.openapi.auth.data import AuthData, Edition, RequestContext
-from libs.oauth_bearer import TokenType
+from libs.oauth_bearer import Scope, TokenType
 from models.account import TenantAccountRole
 from services.enterprise.enterprise_service import WebAppAccessMode
 
@@ -135,6 +136,18 @@ def test_webapp_auth_enabled():
     mock_features.webapp_auth.enabled = True
     with patch("controllers.openapi.auth.conditions.FeatureService.get_system_features", return_value=mock_features):
         assert WEBAPP_AUTH_ENABLED(_ctx()) is True
+
+
+def test_webapp_run_scoped_true_for_apps_run():
+    assert WEBAPP_RUN_SCOPED(_ctx(scope=Scope.APPS_RUN)) is True
+
+
+def test_webapp_run_scoped_false_for_management_scope():
+    assert WEBAPP_RUN_SCOPED(_ctx(scope=Scope.APPS_READ)) is False
+
+
+def test_webapp_run_scoped_false_when_scope_none():
+    assert WEBAPP_RUN_SCOPED(_ctx()) is False
 
 
 def test_loaded_app_is_private():

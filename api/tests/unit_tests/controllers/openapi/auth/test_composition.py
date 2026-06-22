@@ -5,12 +5,15 @@ from controllers.openapi.auth.data import RequestContext
 from controllers.openapi.auth.flow import When
 from controllers.openapi.auth.pipeline import AuthPipeline, PipelineRoute, PipelineRouter
 from controllers.openapi.auth.verify import (
+    check_acl,
+    check_private_app_permission,
     check_workspace_member,
     check_workspace_mismatch,
     check_workspace_role,
 )
-from libs.oauth_bearer import TokenType
+from libs.oauth_bearer import Scope, TokenType
 from models.account import TenantAccountRole
+from services.enterprise.enterprise_service import WebAppAccessMode
 
 
 def test_account_pipeline_is_auth_pipeline():
@@ -132,3 +135,54 @@ def test_app_path_selects_workspace_mismatch_check():
 def test_workspace_path_skips_workspace_mismatch_check():
     steps = _selected_auth_steps(app_id=False, workspace_membership=True, allowed_roles=None)
     assert check_workspace_mismatch not in steps
+
+
+def _selected_webapp_steps(*, scope, app_access_mode):
+    """Select auth steps for an EE, webapp-auth-enabled, app-scoped request.
+
+    Patches the config-backed conditions (edition + webapp_auth) so the gating
+    reduces to PATH_HAS_APP_ID, LOADED_APP_IS_PRIVATE, and the request scope.
+    """
+    from unittest.mock import MagicMock, patch
+
+    from controllers.openapi.auth.data import AuthData, Edition
+
+    ctx = RequestContext(
+        token_type=TokenType.OAUTH_ACCOUNT,
+        scope=scope,
+        path_params={"app_id": str(uuid.uuid4())},
+    )
+    data = AuthData(
+        token_type=TokenType.OAUTH_ACCOUNT,
+        token_hash="x",
+        scopes=frozenset({scope}) if scope is not None else frozenset(),
+        app_access_mode=app_access_mode,
+    )
+    features = MagicMock()
+    features.webapp_auth.enabled = True
+    selected = []
+    with (
+        patch("controllers.openapi.auth.conditions.current_edition", return_value=Edition.EE),
+        patch("controllers.openapi.auth.conditions.FeatureService.get_system_features", return_value=features),
+    ):
+        for step in account_pipeline._auth:
+            if isinstance(step, When):
+                if step.applies(ctx, data):
+                    selected.append(step._step)
+            else:
+                selected.append(step)
+    return selected
+
+
+def test_apps_run_scope_selects_webapp_checks():
+    steps = _selected_webapp_steps(scope=Scope.APPS_RUN, app_access_mode=WebAppAccessMode.PRIVATE)
+    assert check_acl in steps
+    assert check_private_app_permission in steps
+
+
+def test_management_scope_skips_webapp_checks_on_private_app():
+    # Export DSL et al. carry an app_id but use a management scope; the webapp
+    # end-user ACL / private-app gate must not block workspace members.
+    steps = _selected_webapp_steps(scope=Scope.APPS_READ, app_access_mode=WebAppAccessMode.PRIVATE)
+    assert check_acl not in steps
+    assert check_private_app_permission not in steps
