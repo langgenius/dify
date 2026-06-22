@@ -665,7 +665,7 @@ class TestAccountService:
         )
 
         # Update login info
-        AccountService.update_login_info(account, ip_address=ip_address)
+        AccountService.update_login_info(account, db_session_with_containers, ip_address=ip_address)
 
         # Verify login info was updated
 
