@@ -98,8 +98,8 @@ class DifyApiAgentStubFileRequestHandler:
     contract without exposing raw ``httpx`` or Pydantic exceptions.
     """
 
-    dify_api_base_url: str
-    dify_api_inner_api_key: str
+    inner_api_url: str
+    inner_api_key: str
     timeout: httpx.Timeout | float = 30.0
 
     async def create_upload_request(
@@ -174,13 +174,13 @@ class DifyApiAgentStubFileRequestHandler:
         return execution_context
 
     async def _post_inner_api(self, path: str, payload: Mapping[str, Any]) -> dict[str, Any]:
-        url = f"{self.dify_api_base_url.rstrip('/')}{path}"
+        url = f"{self.inner_api_url.rstrip('/')}{path}"
         async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True, trust_env=False) as client:
             try:
                 response = await client.post(
                     url,
                     json=dict(payload),
-                    headers={"X-Inner-Api-Key": self.dify_api_inner_api_key},
+                    headers={"X-Inner-Api-Key": self.inner_api_key},
                 )
             except httpx.TimeoutException as exc:
                 raise AgentStubFileRequestError(504, "Dify API file request timed out") from exc

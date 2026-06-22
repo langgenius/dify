@@ -13,9 +13,9 @@ from typing import Protocol
 from dify_agent.agent_stub.protocol.agent_stub import (
     AGENT_STUB_AUTH_JWE_ENV_VAR,
     AGENT_STUB_DRIVE_BASE_ENV_VAR,
-    AGENT_STUB_URL_ENV_VAR,
+    AGENT_STUB_API_BASE_URL_ENV_VAR,
     DEFAULT_AGENT_STUB_DRIVE_BASE,
-    normalize_agent_stub_url,
+    normalize_agent_stub_api_base_url,
 )
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 
@@ -28,7 +28,7 @@ class ShellAgentStubTokenFactory(Protocol):
 
 def build_shell_agent_stub_env(
     *,
-    agent_stub_url: str | None,
+    agent_stub_api_base_url: str | None,
     agent_stub_drive_base: str | None = None,
     execution_context: DifyExecutionContextLayerConfig | None,
     token_factory: ShellAgentStubTokenFactory | None,
@@ -41,10 +41,10 @@ def build_shell_agent_stub_env(
     ``<drive_base>/<drive_ref>`` path. It remains optional so shell-only runs keep
     the CLI's historical fallback.
     """
-    if agent_stub_url is None or execution_context is None or token_factory is None:
+    if agent_stub_api_base_url is None or execution_context is None or token_factory is None:
         return None
     return {
-        AGENT_STUB_URL_ENV_VAR: normalize_agent_stub_url(agent_stub_url),
+        AGENT_STUB_API_BASE_URL_ENV_VAR: normalize_agent_stub_api_base_url(agent_stub_api_base_url),
         AGENT_STUB_AUTH_JWE_ENV_VAR: token_factory(execution_context, session_id=session_id),
         AGENT_STUB_DRIVE_BASE_ENV_VAR: (agent_stub_drive_base or "").strip() or DEFAULT_AGENT_STUB_DRIVE_BASE,
     }
@@ -53,7 +53,7 @@ def build_shell_agent_stub_env(
 __all__ = [
     "AGENT_STUB_AUTH_JWE_ENV_VAR",
     "AGENT_STUB_DRIVE_BASE_ENV_VAR",
-    "AGENT_STUB_URL_ENV_VAR",
+    "AGENT_STUB_API_BASE_URL_ENV_VAR",
     "ShellAgentStubTokenFactory",
     "build_shell_agent_stub_env",
 ]

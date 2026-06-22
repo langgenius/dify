@@ -11,7 +11,7 @@ from agenton.layers import LifecycleState
 from dify_agent.agent_stub.server.shell_agent_stub_env import (
     AGENT_STUB_AUTH_JWE_ENV_VAR,
     AGENT_STUB_DRIVE_BASE_ENV_VAR,
-    AGENT_STUB_URL_ENV_VAR,
+    AGENT_STUB_API_BASE_URL_ENV_VAR,
 )
 from dify_agent.layers.drive import DifyDriveLayerConfig
 from dify_agent.layers.drive.layer import DifyDriveLayer
@@ -240,8 +240,8 @@ def _execution_context_layer() -> DifyExecutionContextLayer:
 def _drive_layer() -> DifyDriveLayer:
     return DifyDriveLayer.from_config_with_settings(
         DifyDriveLayerConfig(drive_ref="agent-1", drive_base="/mnt/drive"),
-        dify_api_inner_url="https://api.example.com",
-        dify_api_inner_api_key="secret",
+        inner_api_url="https://api.example.com",
+        inner_api_key="secret",
     )
 
 
@@ -620,7 +620,7 @@ def test_shell_layer_injects_agent_stub_env_only_for_user_visible_shell_run() ->
         DifyShellLayerConfig(),
         shellctl_entrypoint="http://shellctl",
         shellctl_client_factory=lambda _entrypoint: client,
-        agent_stub_url="https://agent.example.com/agent-stub",
+        agent_stub_api_base_url="https://agent.example.com/agent-stub",
         agent_stub_token_factory=lambda execution_context, *, session_id: (
             f"token-for:{execution_context.tenant_id}:{session_id}"
         ),
@@ -643,7 +643,7 @@ def test_shell_layer_injects_agent_stub_env_only_for_user_visible_shell_run() ->
     internal_run_calls = [call for call in client.run_calls if not call.script.endswith("\npwd")]
 
     assert user_run_call.env == {
-        AGENT_STUB_URL_ENV_VAR: "https://agent.example.com/agent-stub",
+        AGENT_STUB_API_BASE_URL_ENV_VAR: "https://agent.example.com/agent-stub",
         AGENT_STUB_AUTH_JWE_ENV_VAR: f"token-for:tenant-1:{layer.runtime_state.session_id}",
         AGENT_STUB_DRIVE_BASE_ENV_VAR: "/mnt/drive/agent-1",
     }
@@ -736,7 +736,7 @@ def test_run_remote_script_can_inject_agent_stub_env_for_server_owned_uploads() 
         del timeout
         assert cwd == "~/workspace/abc12ff"
         assert env == {
-            AGENT_STUB_URL_ENV_VAR: "https://agent.example.com/agent-stub",
+            AGENT_STUB_API_BASE_URL_ENV_VAR: "https://agent.example.com/agent-stub",
             AGENT_STUB_AUTH_JWE_ENV_VAR: "token-for:tenant-1:abc12ff",
             AGENT_STUB_DRIVE_BASE_ENV_VAR: "/mnt/drive/agent-1",
         }
@@ -747,7 +747,7 @@ def test_run_remote_script_can_inject_agent_stub_env_for_server_owned_uploads() 
         DifyShellLayerConfig(),
         shellctl_entrypoint="http://shellctl",
         shellctl_client_factory=lambda _entrypoint: client,
-        agent_stub_url="https://agent.example.com/agent-stub",
+        agent_stub_api_base_url="https://agent.example.com/agent-stub",
         agent_stub_token_factory=lambda execution_context, *, session_id: (
             f"token-for:{execution_context.tenant_id}:{session_id}"
         ),
@@ -777,7 +777,7 @@ def test_run_remote_script_raises_when_agent_stub_env_is_unavailable() -> None:
         DifyShellLayerConfig(),
         shellctl_entrypoint="http://shellctl",
         shellctl_client_factory=lambda _entrypoint: client,
-        agent_stub_url="https://agent.example.com/agent-stub",
+        agent_stub_api_base_url="https://agent.example.com/agent-stub",
         agent_stub_token_factory=lambda execution_context, *, session_id: (
             f"token-for:{execution_context.tenant_id}:{session_id}"
         ),
@@ -807,7 +807,7 @@ def test_shell_layer_skips_agent_stub_env_without_execution_context_dependency()
         DifyShellLayerConfig(),
         shellctl_entrypoint="http://shellctl",
         shellctl_client_factory=lambda _entrypoint: client,
-        agent_stub_url="https://agent.example.com/agent-stub",
+        agent_stub_api_base_url="https://agent.example.com/agent-stub",
         agent_stub_token_factory=lambda execution_context, *, session_id: (
             f"token-for:{execution_context.tenant_id}:{session_id}"
         ),
