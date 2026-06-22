@@ -5,7 +5,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
-import { useAppContext } from '@/context/app-context'
+import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { getRedirectionPath } from '@/utils/app-redirection'
@@ -19,9 +19,14 @@ const ContinueWorkItem = ({
 }: ContinueWorkItemProps) => {
   const { t } = useTranslation()
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const currentUserId = useAppContextSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
   const updatedAt = (app.updated_at || app.created_at) * 1000
-  const href = getRedirectionPath(Boolean(isCurrentWorkspaceEditor), app)
+  const href = getRedirectionPath(app, {
+    currentUserId,
+    resourceMaintainer: app.maintainer,
+    workspacePermissionKeys,
+  })
 
   return (
     <Link href={href} className="flex min-w-0 items-center gap-3 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-4 pt-4 pb-4 shadow-xs shadow-shadow-shadow-3">

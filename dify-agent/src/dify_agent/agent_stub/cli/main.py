@@ -1,11 +1,11 @@
 """Typer entry point for the client-safe ``dify-agent`` console script.
 
-The CLI supports an explicit ``connect`` command and treats unknown bare
-commands as Agent Stub forwards. When the injected Agent Stub environment
-variables are missing, that path intentionally surfaces a clear missing-env
-error instead of Typer's generic unknown-command message. The module depends
-only on client-safe code so importing the console entry point does not pull in
-FastAPI, Redis, shellctl, or JWE runtime dependencies.
+The CLI supports explicit ``connect``, ``file``, and ``drive`` commands and
+treats unknown bare commands as Agent Stub forwards. When the injected Agent
+Stub environment variables are missing, that path intentionally surfaces a
+clear missing-env error instead of Typer's generic unknown-command message. The
+module depends only on client-safe code so importing the console entry point
+does not pull in FastAPI, Redis, shellctl, or JWE runtime dependencies.
 """
 
 from __future__ import annotations
@@ -16,6 +16,11 @@ import typer
 from typer.main import get_command
 
 from dify_agent.agent_stub.cli._agent_stub import connect_from_environment
+from dify_agent.agent_stub.cli._drive import (
+    list_drive_from_environment,
+    pull_drive_from_environment,
+    push_drive_from_environment,
+)
 from dify_agent.agent_stub.cli._env import MissingAgentStubEnvironmentError, has_agent_stub_environment
 from dify_agent.agent_stub.cli._files import download_file_from_environment, upload_file_from_environment
 from dify_agent.agent_stub.client._errors import AgentStubClientError
@@ -27,8 +32,10 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 file_app = typer.Typer(help="Upload or download workflow files through the Agent Stub.")
+drive_app = typer.Typer(help="List, pull, or push agent drive files through the Agent Stub.")
 app.add_typer(file_app, name="file")
-_KNOWN_ROOT_COMMANDS = frozenset({"connect", "file"})
+app.add_typer(drive_app, name="drive")
+_KNOWN_ROOT_COMMANDS = frozenset({"connect", "drive", "file"})
 
 
 @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
@@ -58,6 +65,34 @@ def download(
         reference_or_url=reference_or_url,
         directory=directory,
     )
+
+
+@drive_app.command("list")
+def drive_list(
+    path_prefix: str = typer.Argument("", metavar="PATH_PREFIX"),
+    json_output: bool = typer.Option(False, "--json", help="Emit the drive manifest as JSON."),
+) -> None:
+    """List drive files visible to the current sandbox execution."""
+    _run_drive_list(path_prefix=path_prefix, json_output=json_output)
+
+
+@drive_app.command("pull")
+def drive_pull(
+    path_prefix: str = typer.Argument("", metavar="PATH_PREFIX"),
+    drive_base: str = typer.Option("/mnt/drive", "--drive-base", help="Local base directory for pulled drive files."),
+) -> None:
+    """Pull drive files into one local directory tree."""
+    _run_drive_pull(path_prefix=path_prefix, drive_base=drive_base)
+
+
+@drive_app.command("push")
+def drive_push(
+    local_path: str = typer.Argument(..., metavar="LOCAL_PATH"),
+    drive_path: str = typer.Argument(..., metavar="DRIVE_PATH"),
+    recursive: bool = typer.Option(False, "-r", "--recursive", help="Recursively upload directory contents."),
+) -> None:
+    """Upload one local file or directory into the agent drive."""
+    _run_drive_push(local_path=local_path, drive_path=drive_path, recursive=recursive)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -153,6 +188,48 @@ def _run_file_download(*, transfer_method: str, reference_or_url: str, directory
         typer.echo(str(exc), err=True)
         raise SystemExit(1) from exc
     typer.echo(str(response.path))
+
+
+def _run_drive_list(*, path_prefix: str, json_output: bool) -> None:
+    try:
+        response = list_drive_from_environment(prefix=path_prefix, json_output=json_output)
+    except MissingAgentStubEnvironmentError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(2) from exc
+    except AgentStubClientError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(1) from exc
+    if json_output:
+        if isinstance(response, str):
+            raise RuntimeError("drive list JSON output expected a manifest response")
+        typer.echo(response.model_dump_json())
+        return
+    typer.echo(response)
+
+
+def _run_drive_pull(*, path_prefix: str, drive_base: str) -> None:
+    try:
+        response = pull_drive_from_environment(prefix=path_prefix, drive_base=drive_base)
+    except MissingAgentStubEnvironmentError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(2) from exc
+    except AgentStubClientError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(1) from exc
+    for path in response:
+        typer.echo(str(path))
+
+
+def _run_drive_push(*, local_path: str, drive_path: str, recursive: bool) -> None:
+    try:
+        response = push_drive_from_environment(local_path=local_path, drive_path=drive_path, recursive=recursive)
+    except MissingAgentStubEnvironmentError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(2) from exc
+    except AgentStubClientError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(1) from exc
+    typer.echo(response.model_dump_json())
 
 
 __all__ = ["app", "main"]

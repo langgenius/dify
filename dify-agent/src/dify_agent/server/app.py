@@ -37,6 +37,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     resolved_settings = settings or ServerSettings()
     agent_stub_token_codec = resolved_settings.create_agent_stub_token_codec()
     agent_stub_file_request_handler = resolved_settings.create_agent_stub_file_request_handler()
+    agent_stub_drive_request_handler = resolved_settings.create_agent_stub_drive_request_handler()
     layer_providers = create_default_layer_providers(
         plugin_daemon_url=resolved_settings.plugin_daemon_url,
         plugin_daemon_api_key=resolved_settings.plugin_daemon_api_key,
@@ -106,6 +107,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         create_agent_stub_router(
             token_codec=agent_stub_token_codec,
             file_request_handler=agent_stub_file_request_handler,
+            drive_request_handler=agent_stub_drive_request_handler,
         )
     )
     return app
@@ -135,12 +137,7 @@ def create_dify_api_inner_http_client(settings: ServerSettings) -> httpx.AsyncCl
 def _create_shared_http_client(settings: ServerSettings) -> httpx.AsyncClient:
     """Build one shared HTTP client using generic outbound timeout/pool settings."""
     return httpx.AsyncClient(
-        timeout=httpx.Timeout(
-            connect=settings.outbound_http_connect_timeout,
-            read=settings.outbound_http_read_timeout,
-            write=settings.outbound_http_write_timeout,
-            pool=settings.outbound_http_pool_timeout,
-        ),
+        timeout=settings.create_outbound_http_timeout(),
         limits=httpx.Limits(
             max_connections=settings.outbound_http_max_connections,
             max_keepalive_connections=settings.outbound_http_max_keepalive_connections,

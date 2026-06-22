@@ -2,10 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 import secrets
+from typing import cast
 
+import httpx
 import pytest
 from pydantic import ValidationError
 
+from dify_agent.agent_stub.server.agent_stub_drive import DifyApiAgentStubDriveRequestHandler
 from dify_agent.agent_stub.server.agent_stub_files import DifyApiAgentStubFileRequestHandler
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
 from dify_agent.server.settings import ServerSettings
@@ -179,3 +182,29 @@ def test_server_settings_create_agent_stub_file_request_handler_returns_handler_
     assert isinstance(handler, DifyApiAgentStubFileRequestHandler)
     assert handler.dify_api_base_url == "https://api.example.com"
     assert handler.dify_api_inner_api_key == "inner-secret"
+
+
+def test_server_settings_create_agent_stub_drive_request_handler_returns_none_without_full_settings() -> None:
+    assert ServerSettings().create_agent_stub_drive_request_handler() is None
+
+
+def test_server_settings_create_agent_stub_drive_request_handler_returns_handler_when_configured() -> None:
+    settings = ServerSettings(
+        dify_api_base_url="https://api.example.com",
+        dify_api_inner_api_key="inner-secret",
+        outbound_http_connect_timeout=11,
+        outbound_http_read_timeout=22,
+        outbound_http_write_timeout=33,
+        outbound_http_pool_timeout=44,
+    )
+
+    handler = settings.create_agent_stub_drive_request_handler()
+
+    assert isinstance(handler, DifyApiAgentStubDriveRequestHandler)
+    assert handler.dify_api_base_url == "https://api.example.com"
+    assert handler.dify_api_inner_api_key == "inner-secret"
+    timeout = cast(httpx.Timeout, handler.timeout)
+    assert timeout.connect == 11
+    assert timeout.read == 22
+    assert timeout.write == 33
+    assert timeout.pool == 44

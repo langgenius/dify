@@ -20,7 +20,7 @@ type ExploreAppListData = {
   allList: App[]
 }
 
-export const useExploreAppList = () => {
+export const useExploreAppList = (options: { enabled?: boolean } = {}) => {
   const locale = useLocale()
   const exploreAppsInput = locale
     ? { query: { language: locale } }
@@ -36,6 +36,7 @@ export const useExploreAppList = () => {
         allList: [...recommended_apps].sort((a, b) => a.position - b.position),
       }
     },
+    enabled: options.enabled,
   })
 }
 

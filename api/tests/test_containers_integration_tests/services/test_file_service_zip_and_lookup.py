@@ -69,7 +69,7 @@ def test_build_upload_files_zip_tempfile_sanitizes_and_dedupes_names(monkeypatch
 
 def test_get_upload_files_by_ids_returns_empty_when_no_ids(db_session_with_containers: Session) -> None:
     """Ensure empty input returns an empty mapping without hitting the database."""
-    assert FileService.get_upload_files_by_ids(str(uuid4()), []) == {}
+    assert FileService.get_upload_files_by_ids(db_session_with_containers, str(uuid4()), []) == {}
 
 
 def test_get_upload_files_by_ids_returns_id_keyed_mapping(db_session_with_containers: Session) -> None:
@@ -78,7 +78,7 @@ def test_get_upload_files_by_ids_returns_id_keyed_mapping(db_session_with_contai
     file1 = _create_upload_file(db_session_with_containers, tenant_id=tenant_id, key="k1", name="file1.txt")
     file2 = _create_upload_file(db_session_with_containers, tenant_id=tenant_id, key="k2", name="file2.txt")
 
-    result = FileService.get_upload_files_by_ids(tenant_id, [file1.id, file1.id, file2.id])
+    result = FileService.get_upload_files_by_ids(db_session_with_containers, tenant_id, [file1.id, file1.id, file2.id])
 
     assert set(result.keys()) == {file1.id, file2.id}
     assert result[file1.id].id == file1.id
@@ -92,6 +92,6 @@ def test_get_upload_files_by_ids_filters_by_tenant(db_session_with_containers: S
     file_a = _create_upload_file(db_session_with_containers, tenant_id=tenant_a, key="ka", name="a.txt")
     _create_upload_file(db_session_with_containers, tenant_id=tenant_b, key="kb", name="b.txt")
 
-    result = FileService.get_upload_files_by_ids(tenant_a, [file_a.id])
+    result = FileService.get_upload_files_by_ids(db_session_with_containers, tenant_a, [file_a.id])
 
     assert set(result.keys()) == {file_a.id}

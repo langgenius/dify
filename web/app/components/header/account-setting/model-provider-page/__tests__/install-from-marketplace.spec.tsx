@@ -59,6 +59,12 @@ vi.mock('../hooks', () => ({
   })),
 }))
 
+vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
+  usePluginSettingsAccess: () => ({
+    canInstallPlugin: true,
+  }),
+}))
+
 describe('InstallFromMarketplace', () => {
   const mockProviders = [] as ModelProvider[]
 

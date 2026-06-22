@@ -19,13 +19,20 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 }))
 
 const mockPush = vi.fn()
+const mockOpenAccessConfig = vi.fn()
+const mockCloseAccessConfig = vi.fn()
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }))
 
+let mockAppContextState = {
+  isCurrentWorkspaceDatasetOperator: false,
+  userProfile: { id: 'user-1' },
+  workspacePermissionKeys: [] as string[],
+}
 vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { isCurrentWorkspaceDatasetOperator: boolean }) => boolean) => selector({ isCurrentWorkspaceDatasetOperator: false }),
+  useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector(mockAppContextState),
 }))
 
 vi.mock('../hooks/use-dataset-card-state', () => ({
@@ -33,11 +40,14 @@ vi.mock('../hooks/use-dataset-card-state', () => ({
     modalState: {
       showRenameModal: false,
       showConfirmDelete: false,
+      showAccessConfig: false,
       confirmMessage: '',
     },
     openRenameModal: vi.fn(),
     closeRenameModal: vi.fn(),
     closeConfirmDelete: vi.fn(),
+    openAccessConfig: mockOpenAccessConfig,
+    closeAccessConfig: mockCloseAccessConfig,
     handleExportPipeline: vi.fn(),
     detectIsUsedByApp: vi.fn(),
     onConfirmDelete: vi.fn(),
@@ -51,15 +61,29 @@ vi.mock('../components/dataset-card-header', () => ({
   default: ({ dataset }: { dataset: DataSet }) => <div data-testid="card-header">{dataset.name}</div>,
 }))
 vi.mock('../components/dataset-card-modals', () => ({
-  default: () => <div data-testid="card-modals" />,
+  default: ({ onCloseAccessConfig }: { onCloseAccessConfig?: () => void }) => (
+    <div data-testid="card-modals" data-has-close-access-config={typeof onCloseAccessConfig === 'function'} />
+  ),
 }))
 vi.mock('@/features/tag-management/components/dataset-card-tags', () => ({
-  DatasetCardTags: ({ onClick }: { onClick: (e: React.MouseEvent) => void }) => (
-    <div data-testid="tag-area" onClick={onClick} />
+  DatasetCardTags: ({
+    onClick,
+    canBindOrUnbindTags,
+  }: {
+    onClick: (e: React.MouseEvent) => void
+    canBindOrUnbindTags?: boolean
+  }) => (
+    <div
+      data-testid="tag-area"
+      data-can-bind-or-unbind-tags={String(Boolean(canBindOrUnbindTags))}
+      onClick={onClick}
+    />
   ),
 }))
 vi.mock('../components/operations-dropdown', () => ({
-  default: () => <div data-testid="operations-dropdown" />,
+  default: ({ openAccessConfig }: { openAccessConfig?: () => void }) => (
+    <div data-testid="operations-dropdown" data-has-open-access-config={typeof openAccessConfig === 'function'} />
+  ),
 }))
 
 // Factory function for DataSet mock data
@@ -90,6 +114,11 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
 describe('DatasetCard Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockAppContextState = {
+      isCurrentWorkspaceDatasetOperator: false,
+      userProfile: { id: 'user-1' },
+      workspacePermissionKeys: [],
+    }
   })
 
   // Integration tests for Description component
@@ -253,12 +282,34 @@ describe('DatasetCard Component', () => {
     expect(card).toHaveClass('hover:bg-components-card-bg-alt')
   })
 
+  it('should pass access config handlers to operations and modals', () => {
+    const dataset = createMockDataset()
+    render(<DatasetCard dataset={dataset} />)
+
+    expect(screen.getByTestId('operations-dropdown')).toHaveAttribute('data-has-open-access-config', 'true')
+    expect(screen.getByTestId('card-modals')).toHaveAttribute('data-has-close-access-config', 'true')
+  })
+
   it('should navigate to hitTesting for external provider', () => {
-    const dataset = createMockDataset({ provider: 'external' })
+    const dataset = createMockDataset({
+      provider: 'external',
+      permission_keys: ['dataset.acl.retrieval_recall'],
+    })
     render(<DatasetCard dataset={dataset} />)
 
     fireEvent.click(screen.getByText('Test Dataset'))
     expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/hitTesting')
+  })
+
+  it('should navigate to settings for external provider when retrieval recall permission is missing', () => {
+    const dataset = createMockDataset({
+      provider: 'external',
+      permission_keys: [],
+    })
+    render(<DatasetCard dataset={dataset} />)
+
+    fireEvent.click(screen.getByText('Test Dataset'))
+    expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/settings')
   })
 
   it('should navigate to pipeline for unpublished pipeline', () => {
@@ -277,5 +328,21 @@ describe('DatasetCard Component', () => {
     fireEvent.click(tagArea)
     // Tag area click should not trigger card navigation
     expect(mockPush).not.toHaveBeenCalled()
+  })
+
+  it('should allow tag binding when dataset has edit ACL', () => {
+    const dataset = createMockDataset({ permission_keys: ['dataset.acl.edit'] })
+
+    render(<DatasetCard dataset={dataset} />)
+
+    expect(screen.getByTestId('tag-area')).toHaveAttribute('data-can-bind-or-unbind-tags', 'true')
+  })
+
+  it('should not allow tag binding when dataset lacks edit ACL', () => {
+    const dataset = createMockDataset({ permission_keys: ['dataset.acl.readonly'] })
+
+    render(<DatasetCard dataset={dataset} />)
+
+    expect(screen.getByTestId('tag-area')).toHaveAttribute('data-can-bind-or-unbind-tags', 'false')
   })
 })

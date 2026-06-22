@@ -3,7 +3,6 @@ import type { CredentialFormSchemaBase } from '../header/account-setting/model-p
 import type { AutoUpdateConfig } from './reference-setting-modal/auto-update-setting/types'
 import type { TypeWithI18N } from '@/app/components/base/form/types'
 import type { Collection, ToolCredential } from '@/app/components/tools/types'
-import type { AgentFeature } from '@/app/components/workflow/nodes/agent/types'
 import type { Locale } from '@/i18n-config'
 
 export enum PluginCategoryEnum {
@@ -566,6 +565,12 @@ export type StrategyDetail = {
   output_schema: Record<string, any>
   features: AgentFeature[]
 }
+
+const AgentFeature = {
+  HISTORY_MESSAGES: 'history-messages',
+} as const
+
+type AgentFeature = typeof AgentFeature[keyof typeof AgentFeature]
 
 type Identity = {
   author: string

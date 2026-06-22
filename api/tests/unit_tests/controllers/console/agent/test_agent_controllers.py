@@ -1,4 +1,4 @@
-from inspect import unwrap
+from inspect import getsource, unwrap
 from types import SimpleNamespace
 from typing import Any, cast
 
@@ -24,7 +24,9 @@ from controllers.console.agent.roster import (
     AgentAppCopyApi,
     AgentAppListApi,
     AgentInviteOptionsApi,
+    AgentLogMessagesApi,
     AgentLogsApi,
+    AgentLogSourcesApi,
     AgentRosterVersionDetailApi,
     AgentRosterVersionsApi,
     AgentStatisticsSummaryApi,
@@ -93,6 +95,7 @@ def _agent_app_composer_response() -> dict:
 def _app_detail_obj(**overrides):
     data = {
         "id": "app-1",
+        "tenant_id": "tenant-1",
         "name": "Iris",
         "description": "Agent app",
         "mode_compatible_with_agent": "agent",
@@ -116,7 +119,6 @@ def _app_detail_obj(**overrides):
         "deleted_tools": [],
         "site": None,
         "bound_agent_id": "00000000-0000-0000-0000-000000000001",
-        "tenant_id": "tenant-1",
     }
     data.update(overrides)
     return SimpleNamespace(**data)
@@ -153,6 +155,8 @@ def test_agent_v2_console_routes_are_agent_id_first() -> None:
         "/agent/<uuid:agent_id>/chat-messages/<uuid:message_id>/suggested-questions",
         "/agent/<uuid:agent_id>/messages/<uuid:message_id>",
         "/agent/<uuid:agent_id>/logs",
+        "/agent/<uuid:agent_id>/logs/<uuid:conversation_id>/messages",
+        "/agent/<uuid:agent_id>/log-sources",
         "/agent/<uuid:agent_id>/statistics/summary",
         "/agent/invite-options",
     ):
@@ -173,6 +177,11 @@ def test_agent_v2_console_routes_are_agent_id_first() -> None:
         assert route not in paths
 
 
+def test_agent_app_write_routes_do_not_reuse_app_billing_quota() -> None:
+    for route_class in (AgentAppListApi, AgentAppCopyApi):
+        assert '@cloud_edition_billing_resource_check("apps")' not in getsource(route_class)
+
+
 @pytest.fixture
 def account_id() -> str:
     return "account-1"
@@ -187,7 +196,7 @@ def test_agent_app_list_and_create_use_agent_route(
         def get_app(self, app_obj: object) -> object:
             return app_obj
 
-        def get_paginate_apps(self, user_id: str, tenant_id: str, params) -> object:
+        def get_paginate_apps(self, user_id: str, tenant_id: str, params, session) -> object:
             captured["list"] = {"user_id": user_id, "tenant_id": tenant_id, "params": params}
             return SimpleNamespace(
                 page=1,
@@ -270,7 +279,13 @@ def test_agent_app_list_and_create_use_agent_route(
 
     with app.test_request_context(
         "/console/api/agent",
-        json={"name": "Iris", "description": "Agent app", "icon_type": "emoji", "icon": "robot"},
+        json={
+            "name": "Iris",
+            "description": "Agent app",
+            "role": "Coordinator",
+            "icon_type": "emoji",
+            "icon": "robot",
+        },
     ):
         created, status = unwrap(AgentAppListApi.post)(AgentAppListApi(), "tenant-1", SimpleNamespace(id=account_id))
 
@@ -283,6 +298,23 @@ def test_agent_app_list_and_create_use_agent_route(
     create_call = cast(dict[str, object], captured["create"])
     create_params = cast(Any, create_call["params"])
     assert create_params.mode == "agent"
+    assert create_params.agent_role == "Coordinator"
+
+
+def test_agent_app_create_requires_role(app: Flask, account_id: str) -> None:
+    with app.test_request_context(
+        "/console/api/agent",
+        json={"name": "Iris", "description": "Agent app", "icon_type": "emoji", "icon": "robot"},
+    ):
+        with pytest.raises(ValueError, match="Field required"):
+            unwrap(AgentAppListApi.post)(AgentAppListApi(), "tenant-1", SimpleNamespace(id=account_id))
+
+    with app.test_request_context(
+        "/console/api/agent",
+        json={"name": "Iris", "description": "Agent app", "role": "   ", "icon_type": "emoji", "icon": "robot"},
+    ):
+        with pytest.raises(ValueError, match="Agent role is required"):
+            unwrap(AgentAppListApi.post)(AgentAppListApi(), "tenant-1", SimpleNamespace(id=account_id))
 
 
 def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
@@ -331,7 +363,7 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
 
     with app.test_request_context(
         "/console/api/agent/00000000-0000-0000-0000-000000000001",
-        json={"name": "Renamed", "description": "", "icon_type": "emoji", "icon": "R"},
+        json={"name": "Renamed", "description": "", "role": "Reviewer", "icon_type": "emoji", "icon": "R"},
     ):
         updated = unwrap(AgentAppApi.put)(AgentAppApi(), "tenant-1", agent_id)
 
@@ -343,6 +375,7 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
     assert "bound_agent_id" not in updated
     update_call = cast(dict[str, object], captured["update"])
     assert update_call["app"] is app_model
+    assert cast(dict[str, object], update_call["args"])["role"] == "Reviewer"
 
     deleted, status = unwrap(AgentAppApi.delete)(AgentAppApi(), "tenant-1", agent_id)
     assert (deleted, status) == ("", 204)
@@ -393,6 +426,45 @@ def test_agent_app_copy_uses_agent_id_and_returns_agent_detail(
         "icon": "sparkles",
         "icon_background": "#fff",
     }
+
+
+def test_agent_app_update_rejects_empty_role(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    agent_id = "00000000-0000-0000-0000-000000000001"
+    app_model = _app_detail_obj(id="app-1", bound_agent_id=agent_id)
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        roster_controller.AgentRosterService,
+        "get_agent_app_model",
+        lambda _self, **kwargs: app_model,
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentRosterService,
+        "get_app_backing_agent",
+        lambda _self, **kwargs: SimpleNamespace(id=agent_id, role="", active_config_snapshot_id=None),
+    )
+    monkeypatch.setattr(
+        roster_controller.FeatureService,
+        "get_system_features",
+        lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+    )
+
+    class FakeAppService:
+        def get_app(self, app_obj: object) -> object:
+            return app_obj
+
+        def update_app(self, app_obj: object, args: dict[str, object]) -> object:
+            captured["update"] = {"app": app_obj, "args": args}
+            return _app_detail_obj(id="app-1", name=args["name"], bound_agent_id=agent_id)
+
+    monkeypatch.setattr(roster_controller, "AppService", FakeAppService)
+
+    with app.test_request_context(
+        "/console/api/agent/00000000-0000-0000-0000-000000000001",
+        json={"name": "Renamed", "description": "", "role": "", "icon_type": "emoji", "icon": "R"},
+    ):
+        with pytest.raises(ValueError, match="String should have at least 1 character"):
+            unwrap(AgentAppApi.put)(AgentAppApi(), "tenant-1", agent_id)
 
 
 def test_invite_options_get_parses_app_id(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -461,21 +533,59 @@ def test_agent_observability_routes_resolve_app_from_agent_id(
     captured: dict[str, object] = {}
 
     class FakeObservabilityService:
-        def list_logs(self, *, app, params):
-            captured["logs"] = {"app": app, "params": params}
+        def list_logs(self, *, app, agent_id, params):
+            captured["logs"] = {"app": app, "agent_id": agent_id, "params": params}
+            return {
+                "data": [
+                    {
+                        "conversation_id": "conversation-1",
+                        "id": "conversation-1",
+                        "title": "Debug",
+                        "end_user_id": "end-user-1",
+                        "message_count": 2,
+                        "user_rate": None,
+                        "operation_rate": None,
+                        "unread": True,
+                        "source": {
+                            "id": "webapp:app-1",
+                            "type": "webapp",
+                            "app_id": "app-1",
+                            "app_name": "Iris",
+                            "app_icon_type": "emoji",
+                            "app_icon": "robot",
+                            "app_icon_background": "#fff",
+                            "workflow_id": None,
+                            "workflow_version": None,
+                            "node_id": None,
+                        },
+                        "status": "success",
+                        "created_at": 1,
+                        "updated_at": 2,
+                    }
+                ],
+                "page": 2,
+                "limit": 5,
+                "total": 6,
+                "has_more": False,
+            }
+
+        def list_log_messages(self, *, app, agent_id, conversation_id, params):
+            captured["messages"] = {
+                "app": app,
+                "agent_id": agent_id,
+                "conversation_id": conversation_id,
+                "params": params,
+            }
             return {
                 "data": [
                     {
                         "id": "message-1",
                         "message_id": "message-1",
                         "conversation_id": "conversation-1",
-                        "conversation_name": "Debug",
                         "query": "hello",
                         "answer": "hi",
                         "status": "success",
                         "error": None,
-                        "source": "explore",
-                        "from_source": "console",
                         "from_end_user_id": None,
                         "from_account_id": account_id,
                         "message_tokens": 1,
@@ -488,14 +598,34 @@ def test_agent_observability_routes_resolve_app_from_agent_id(
                         "updated_at": 2,
                     }
                 ],
-                "page": 2,
-                "limit": 5,
-                "total": 6,
+                "page": 1,
+                "limit": 20,
+                "total": 1,
                 "has_more": False,
             }
 
-        def get_statistics_summary(self, *, app, params):
-            captured["statistics"] = {"app": app, "params": params}
+        def list_log_sources(self, *, app, agent_id):
+            captured["sources"] = {"app": app, "agent_id": agent_id}
+            return {
+                "data": [
+                    {
+                        "id": "webapp:app-1",
+                        "type": "webapp",
+                        "app_id": "app-1",
+                        "app_name": "Iris",
+                        "app_icon_type": "emoji",
+                        "app_icon": "robot",
+                        "app_icon_background": "#fff",
+                        "workflow_id": None,
+                        "workflow_version": None,
+                        "node_id": None,
+                    }
+                ],
+                "groups": [{"type": "webapp", "label": "WEBAPP", "sources": []}],
+            }
+
+        def get_statistics_summary(self, *, app, agent_id, params):
+            captured["statistics"] = {"app": app, "agent_id": agent_id, "params": params}
             return {
                 "source": "all",
                 "summary": {
@@ -528,19 +658,52 @@ def test_agent_observability_routes_resolve_app_from_agent_id(
     account = SimpleNamespace(id=account_id, timezone="UTC")
     with app.test_request_context(
         "/console/api/agent/00000000-0000-0000-0000-000000000001/logs"
-        "?page=2&limit=5&keyword=hello&status=success&source=console"
+        "?page=2&limit=5&keyword=hello&statuses[]=success&statuses[]=failed&sources[]=webapp:app-1"
+        "&sources[]=workflow:app-2:workflow-1:v1:node-1&sort_by=created_at&sort_order=asc"
     ):
         logs = unwrap(AgentLogsApi.get)(AgentLogsApi(), "tenant-1", account, agent_id)
 
-    assert logs["data"][0]["id"] == "message-1"
+    assert logs["data"][0]["id"] == "conversation-1"
+    assert logs["data"][0]["source"]["id"] == "webapp:app-1"
     logs_call = cast(dict[str, object], captured["logs"])
     assert logs_call["app"] is app_model
+    assert logs_call["agent_id"] == agent_id
     logs_params = cast(Any, logs_call["params"])
     assert logs_params.page == 2
     assert logs_params.limit == 5
     assert logs_params.keyword == "hello"
-    assert logs_params.status == "success"
-    assert logs_params.source == "console"
+    assert logs_params.statuses == ("success", "failed")
+    assert logs_params.sources == ("webapp:app-1", "workflow:app-2:workflow-1:v1:node-1")
+    assert logs_params.sort_by == "created_at"
+    assert logs_params.sort_order == "asc"
+
+    with app.test_request_context(
+        "/console/api/agent/00000000-0000-0000-0000-000000000001/logs/00000000-0000-0000-0000-000000000002/messages"
+    ):
+        messages = unwrap(AgentLogMessagesApi.get)(
+            AgentLogMessagesApi(),
+            "tenant-1",
+            account,
+            agent_id,
+            "00000000-0000-0000-0000-000000000002",
+        )
+
+    assert messages["data"][0]["id"] == "message-1"
+    messages_call = cast(dict[str, object], captured["messages"])
+    assert messages_call["app"] is app_model
+    assert messages_call["agent_id"] == agent_id
+    assert messages_call["conversation_id"] == "00000000-0000-0000-0000-000000000002"
+    messages_params = cast(Any, messages_call["params"])
+    assert messages_params.sources == ()
+    assert messages_params.statuses == ()
+
+    with app.test_request_context("/console/api/agent/00000000-0000-0000-0000-000000000001/log-sources"):
+        sources = unwrap(AgentLogSourcesApi.get)(AgentLogSourcesApi(), "tenant-1", account, agent_id)
+
+    assert sources["data"][0]["id"] == "webapp:app-1"
+    sources_call = cast(dict[str, object], captured["sources"])
+    assert sources_call["app"] is app_model
+    assert sources_call["agent_id"] == agent_id
 
     with app.test_request_context(
         "/console/api/agent/00000000-0000-0000-0000-000000000001/statistics/summary?source=api"
@@ -550,6 +713,7 @@ def test_agent_observability_routes_resolve_app_from_agent_id(
     assert statistics["summary"]["total_messages"] == 1
     stats_call = cast(dict[str, object], captured["statistics"])
     assert stats_call["app"] is app_model
+    assert stats_call["agent_id"] == agent_id
     stats_params = cast(Any, stats_call["params"])
     assert stats_params.source == "api"
     assert stats_params.timezone == "UTC"
