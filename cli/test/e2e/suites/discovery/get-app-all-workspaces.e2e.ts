@@ -61,7 +61,7 @@ describe('E2E / difyctl get app -A (all-workspaces)', () => {
 
   eeIt('[EE][P0] -o wide output contains WORKSPACE column and JSON has workspace_id (3.92)', async () => {
     // Spec 3.92: WORKSPACE column (priority:1) appears only in -o wide mode.
-    // Default table shows priority:0 columns only (NAME/ID/MODE/TAGS/UPDATED).
+    // Default table shows priority:0 columns only (NAME/ID/MODE/UPDATED).
     const wideResult = await withRetry(
       () => fx.r(['get', 'app', '-A', '-o', 'wide']),
       { attempts: 3, delayMs: 2000 },

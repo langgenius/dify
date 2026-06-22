@@ -8,7 +8,6 @@
  *   DIFY_E2E_WORKFLOW_APP_ID — echo-workflow app
  */
 
-import { Buffer } from 'node:buffer'
 import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
 import {
   assertErrorEnvelope,
@@ -99,8 +98,8 @@ describe('E2E / difyctl get app (list)', () => {
   it('[P1] -o wide outputs extended fields', async () => {
     const result = await fx.r(['get', 'app', '-o', 'wide'])
     assertExitCode(result, 0)
-    // wide adds AUTHOR and WORKSPACE columns
-    expect(result.stdout).toMatch(/AUTHOR|WORKSPACE/i)
+    // wide adds the WORKSPACE column
+    expect(result.stdout).toMatch(/WORKSPACE/i)
   })
 
   it('[P1] output is pipe-friendly in JSON mode', async () => {
@@ -345,115 +344,5 @@ describe('E2E / difyctl get app (list)', () => {
     finally {
       await networkTmp.cleanup()
     }
-  })
-
-  it('[P1] --tag filter returns only apps that carry the specified tag (3.20)', async () => {
-    // Spec 3.20: --tag performs exact tag-name match.
-    //
-    // Before asserting: ensure echo-chat app has the 'e2e-test' tag.
-    //  1. GET /console/api/tags?type=app&keyword=e2e-test  → find or confirm tag exists
-    //  2. POST /console/api/tags                           → create tag when absent
-    //  3. GET /console/api/apps/<id>                       → check existing bindings
-    //  4. POST /console/api/tag-bindings                   → bind when not yet bound
-
-    const base = E.host.replace(/\/$/, '')
-
-    // ── Console login: obtain cookie + CSRF (console API rejects dfoa_ Bearer) ──
-    const passwordB64 = Buffer.from(E.password, 'utf8').toString('base64')
-    const loginRes = await fetch(`${base}/console/api/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: E.email, password: passwordB64, remember_me: false }),
-    })
-    expect(loginRes.ok, `console login failed: ${loginRes.status}`).toBe(true)
-
-    // Helper: extract cookie string + csrf from Set-Cookie array
-    function parseCookies(res: Response): { cookieString: string, csrfToken: string } {
-      const setCookies = res.headers.getSetCookie?.() ?? []
-      const cookieString = setCookies.map(kv => kv.split(';')[0]).join('; ')
-      const csrfPair = setCookies.map(kv => kv.split(';')[0]).filter((p): p is string => typeof p === 'string' && p.includes('csrf_token='))[0]
-      const csrfToken = csrfPair !== undefined
-        ? csrfPair.slice(csrfPair.indexOf('csrf_token=') + 'csrf_token='.length)
-        : ''
-      return { cookieString, csrfToken }
-    }
-
-    let { cookieString, csrfToken } = parseCookies(loginRes)
-
-    // ── Switch to the workspace that contains the test fixtures ──────────────
-    // E.workspaceId is resolved by global-setup; tag-bindings scope to the active workspace.
-    const switchRes = await fetch(`${base}/console/api/workspaces/switch`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Cookie': cookieString, 'X-CSRF-Token': csrfToken },
-      body: JSON.stringify({ tenant_id: E.workspaceId }),
-    })
-    // After workspace switch the server issues fresh cookies; use them for all subsequent calls.
-    if (switchRes.ok && switchRes.headers.getSetCookie?.().length) {
-      const switched = parseCookies(switchRes)
-      cookieString = switched.cookieString
-      csrfToken = switched.csrfToken
-    }
-
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Cookie': cookieString,
-      'X-CSRF-Token': csrfToken,
-    }
-
-    // ── Step 1: find the 'e2e-test' app tag ──────────────────────────────────
-    const tagsRes = await fetch(`${base}/console/api/tags?type=app&keyword=e2e-test`, { headers })
-    expect(tagsRes.ok, `GET /tags failed: ${tagsRes.status}`).toBe(true)
-    const tagsList = await tagsRes.json() as Array<{ id: string, name: string }>
-    let tagId = tagsList.find(t => t.name === 'e2e-test')?.id
-
-    // ── Step 2: create the tag if it doesn't exist yet ───────────────────────
-    if (!tagId) {
-      const createRes = await fetch(`${base}/console/api/tags`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ name: 'e2e-test', type: 'app' }),
-      })
-      expect(createRes.ok, `POST /tags failed: ${createRes.status}`).toBe(true)
-      const created = await createRes.json() as { id: string, name: string }
-      tagId = created.id
-    }
-
-    expect(tagId, 'tag id must be resolved').toBeTruthy()
-
-    // ── Step 3 & 4: bind tag idempotently (tag-bindings is idempotent on duplicates) ──
-    const bindRes = await fetch(`${base}/console/api/tag-bindings`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        tag_ids: [tagId],
-        target_id: E.chatAppId,
-        type: 'app',
-      }),
-    })
-    // Accept 200 (bound) or 409/4xx if already bound — binding is idempotent
-    expect(
-      bindRes.ok || bindRes.status === 409,
-      `POST /tag-bindings failed unexpectedly: ${bindRes.status}`,
-    ).toBe(true)
-
-    // ── Assertion: difyctl --tag e2e-test returns echo-chat ──────────────────
-    const result = await fx.r(['get', 'app', '--tag', 'e2e-test', '-o', 'json'])
-    assertExitCode(result, 0)
-    const parsed = assertJson<{ data: Array<{ id: string, name: string, tags: Array<{ name: string }> }> }>(result)
-
-    // echo-chat must appear in the filtered list
-    const echoChatInResult = parsed.data.find(app => app.id === E.chatAppId)
-    expect(
-      echoChatInResult,
-      `echo-chat (id=${E.chatAppId}) should appear in --tag e2e-test results`,
-    ).toBeDefined()
-
-    // Every returned app must carry the e2e-test tag
-    parsed.data.forEach(app =>
-      expect(
-        app.tags.some(t => t.name === 'e2e-test'),
-        `app "${app.name}" should carry the e2e-test tag`,
-      ).toBe(true),
-    )
   })
 })
