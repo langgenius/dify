@@ -14,7 +14,9 @@ import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { AppModeEnum } from '@/types/app'
+import { getAppACLCapabilities, hasPermission } from '@/utils/permission'
 import AppIcon from '../../base/app-icon'
 import { AppInfoDetailDrawer } from './app-info-detail-drawer'
 import { getAppModeLabel } from './app-mode-labels'
@@ -36,53 +38,73 @@ const AppInfoDetailPanel = ({
   exportCheck,
 }: AppInfoDetailPanelProps) => {
   const { t } = useTranslation()
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const appACLCapabilities = useMemo(() => getAppACLCapabilities(appDetail.permission_keys, {
+    currentUserId,
+    resourceMaintainer: appDetail.maintainer,
+    workspacePermissionKeys,
+  }), [appDetail.maintainer, appDetail.permission_keys, currentUserId, workspacePermissionKeys])
+  const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
 
   const primaryOperations = useMemo<Operation[]>(() => [
-    {
-      id: 'edit',
-      title: t('editApp', { ns: 'app' }),
-      icon: <RiEditLine />,
-      onClick: () => openModal('edit'),
-    },
-    {
-      id: 'duplicate',
-      title: t('duplicate', { ns: 'app' }),
-      icon: <RiFileCopy2Line />,
-      onClick: () => openModal('duplicate'),
-    },
-    {
-      id: 'export',
-      title: t('export', { ns: 'app' }),
-      icon: <RiFileDownloadLine />,
-      onClick: exportCheck,
-    },
-  ], [t, openModal, exportCheck])
+    ...(appACLCapabilities.canEdit
+      ? [{
+          id: 'edit',
+          title: t('editApp', { ns: 'app' }),
+          icon: <RiEditLine />,
+          onClick: () => openModal('edit'),
+        }]
+      : []),
+    ...(canCreateApp
+      ? [{
+          id: 'duplicate',
+          title: t('duplicate', { ns: 'app' }),
+          icon: <RiFileCopy2Line />,
+          onClick: () => openModal('duplicate'),
+        }]
+      : []),
+    ...(appACLCapabilities.canImportExportDSL
+      ? [{
+          id: 'export',
+          title: t('export', { ns: 'app' }),
+          icon: <RiFileDownloadLine />,
+          onClick: exportCheck,
+        }]
+      : []),
+  ], [appACLCapabilities, canCreateApp, t, openModal, exportCheck])
 
   const secondaryOperations = useMemo<Operation[]>(() => [
-    ...(appDetail.mode === AppModeEnum.ADVANCED_CHAT || appDetail.mode === AppModeEnum.WORKFLOW)
+    ...(appACLCapabilities.canImportExportDSL && (appDetail.mode === AppModeEnum.ADVANCED_CHAT || appDetail.mode === AppModeEnum.WORKFLOW)
       ? [{
           id: 'import',
           title: t('common.importDSL', { ns: 'workflow' }),
           icon: <RiFileUploadLine />,
           onClick: () => openModal('importDSL'),
         }]
-      : [],
-    {
-      id: 'divider-1',
-      title: '',
-      icon: <></>,
-      onClick: () => {},
-      type: 'divider' as const,
-    },
-    {
-      id: 'delete',
-      title: t('operation.delete', { ns: 'common' }),
-      icon: <RiDeleteBinLine />,
-      onClick: () => openModal('delete'),
-    },
-  ], [appDetail.mode, t, openModal])
+      : []),
+    ...(appACLCapabilities.canDelete
+      ? [
+          {
+            id: 'divider-1',
+            title: '',
+            icon: <></>,
+            onClick: () => {},
+            type: 'divider' as const,
+          },
+          {
+            id: 'delete',
+            title: t('operation.delete', { ns: 'common' }),
+            icon: <RiDeleteBinLine />,
+            onClick: () => openModal('delete'),
+          },
+        ]
+      : []),
+  ], [appACLCapabilities, appDetail.mode, t, openModal])
 
   const switchOperation = useMemo(() => {
+    if (!appACLCapabilities.canEdit)
+      return null
     if (appDetail.mode !== AppModeEnum.COMPLETION && appDetail.mode !== AppModeEnum.CHAT)
       return null
     return {
@@ -91,7 +113,7 @@ const AppInfoDetailPanel = ({
       icon: <RiExchange2Line />,
       onClick: () => openModal('switch'),
     }
-  }, [appDetail.mode, t, openModal])
+  }, [appACLCapabilities.canEdit, appDetail.mode, t, openModal])
 
   return (
     <AppInfoDetailDrawer

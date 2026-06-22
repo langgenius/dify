@@ -24,6 +24,7 @@ import PremiumBadge from '@/app/components/base/premium-badge'
 import { useChecklistBeforePublish } from '@/app/components/workflow/hooks'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { IS_CLOUD_EDITION } from '@/config'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContextSelector } from '@/context/provider-context'
@@ -35,6 +36,7 @@ import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { useInvalid } from '@/service/use-base'
 import { publishedPipelineInfoQueryKeyPrefix } from '@/service/use-pipeline'
 import { usePublishWorkflow } from '@/service/use-workflow'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 
 const PUBLISH_SHORTCUT = ['Mod', 'Shift', 'P']
 type PopupProps = {
@@ -60,7 +62,11 @@ const Popup = ({
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
   const pipelineId = useStore(s => s.pipelineId)
+  const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
   const mutateDatasetRes = useDatasetDetailContextWithSelector(s => s.mutateDatasetRes)
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const isLoadingWorkspacePermissionKeys = useAppContextWithSelector(state => state.isLoadingWorkspacePermissionKeys)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const [published, setPublished] = useState(false)
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
@@ -69,6 +75,12 @@ const Popup = ({
   const isAllowPublishAsCustomKnowledgePipelineTemplate = useProviderContextSelector(s => s.isAllowPublishAsCustomKnowledgePipelineTemplate)
   const setShowPricingModal = useModalContextSelector(s => s.setShowPricingModal)
   const apiReferenceUrl = useDatasetApiAccessUrl()
+  const canAddDocumentsToDataset = getDatasetACLCapabilities(dataset?.permission_keys, {
+    currentUserId,
+    resourceMaintainer: dataset?.maintainer,
+    workspacePermissionKeys,
+  }).canUse
+  const isAddDocumentsDisabled = !publishedAt || isLoadingWorkspacePermissionKeys || !canAddDocumentsToDataset
   const [localConfirmVisible, { setFalse: hideLocalConfirm, setTrue: showLocalConfirm }] = useBoolean(false)
   const confirmVisible = controlledConfirmVisible ?? localConfirmVisible
   const showConfirm = onShowConfirm ?? showLocalConfirm
@@ -141,8 +153,11 @@ const Popup = ({
     handlePublish()
   })
   const goToAddDocuments = useCallback(() => {
+    if (isAddDocumentsDisabled)
+      return
+
     push(`/datasets/${datasetId}/documents/create-from-pipeline`)
-  }, [datasetId, push])
+  }, [datasetId, isAddDocumentsDisabled, push])
   const handleClickPublishAsKnowledgePipeline = useCallback(() => {
     onRequestClose?.()
     if (!isAllowPublishAsCustomKnowledgePipelineTemplate) {
@@ -193,7 +208,7 @@ const Popup = ({
         </Button>
       </div>
       <div className="border-t-[0.5px] border-t-divider-regular p-4 pt-3">
-        <Button className="mb-1 w-full hover:bg-state-accent-hover hover:text-text-accent" variant="tertiary" onClick={goToAddDocuments} disabled={!publishedAt}>
+        <Button className="mb-1 w-full hover:bg-state-accent-hover hover:text-text-accent" variant="tertiary" onClick={goToAddDocuments} disabled={isAddDocumentsDisabled}>
           <div className="flex grow items-center">
             <RiPlayCircleLine className="mr-2 size-4" />
             {t('common.goToAddDocuments', { ns: 'pipeline' })}

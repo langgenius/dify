@@ -42,6 +42,7 @@
   "filter.period.today": "Hôm nay",
   "filter.period.yearToDate": "Năm hiện tại",
   "filter.sortBy": "Sắp xếp theo:",
+  "monitoring.description": "Giám sát ghi lại trạng thái hoạt động của ứng dụng, bao gồm hiệu suất, hoạt động người dùng và chi phí.",
   "promptLog": "Nhật ký lời nhắc",
   "runDetail.fileListDetail": "Chi tiết",
   "runDetail.fileListLabel": "Chi tiết tệp",

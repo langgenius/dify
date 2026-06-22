@@ -22,8 +22,11 @@ from controllers.console.app.error import (
 )
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -113,8 +116,9 @@ class CompletionMessageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.COMPLETION)
     @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @get_app_model(mode=AppMode.COMPLETION)
     def post(self, current_user: Account, app_model: App):
         args_model = CompletionMessagePayload.model_validate(console_ns.payload)
         args = args_model.model_dump(exclude_none=True, by_alias=True)
@@ -159,8 +163,8 @@ class CompletionMessageStopApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.COMPLETION)
     @with_current_user_id
+    @get_app_model(mode=AppMode.COMPLETION)
     def post(self, current_user_id: str, app_model: App, task_id: str):
 
         AppTaskService.stop_task(
@@ -185,9 +189,10 @@ class ChatMessageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT])
     @edit_permission_required
     @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT])
     def post(self, current_user: Account, app_model: App):
         return _create_chat_message(current_user=current_user, app_model=app_model)
 
@@ -205,6 +210,7 @@ class AgentChatMessageApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @with_current_user
     @with_current_tenant_id
     def post(self, current_tenant_id: str, current_user: Account, agent_id: UUID):
@@ -221,8 +227,8 @@ class ChatMessageStopApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @with_current_user_id
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def post(self, current_user_id: str, app_model: App, task_id: str):
         return _stop_chat_message(current_user_id=current_user_id, app_model=app_model, task_id=task_id)
 

@@ -20,14 +20,12 @@ export type AccountResponse = {
 }
 
 export type AppDescribeInfo = {
-  author?: string | null
   description?: string | null
   id: string
   is_agent?: boolean
   mode: string
   name: string
   service_api_enabled: boolean
-  tags?: Array<TagItem>
   updated_at?: string | null
 }
 
@@ -66,13 +64,11 @@ export type AppDslImportPayload = {
   yaml_url?: string | null
 }
 
-export type AppInfoResponse = {
-  author?: string | null
+export type AppInfo = {
   description?: string | null
   id: string
   mode: string
   name: string
-  tags?: Array<TagItem>
 }
 
 export type AppListQuery = {
@@ -80,7 +76,6 @@ export type AppListQuery = {
   mode?: AppMode | null
   name?: string | null
   page?: number
-  tag?: string | null
   workspace_id: string
 }
 
@@ -93,12 +88,10 @@ export type AppListResponse = {
 }
 
 export type AppListRow = {
-  created_by_name?: string | null
   description?: string | null
   id: string
   mode: AppMode
   name: string
-  tags?: Array<TagItem>
   updated_at?: string | null
   workspace_id?: string | null
   workspace_name?: string | null
@@ -257,6 +250,7 @@ export type Import = {
   error?: string
   id: string
   imported_dsl_version?: string
+  permission_keys?: Array<string>
   status: ImportStatus
 }
 
@@ -331,6 +325,7 @@ export type OpenApiErrorCode
     | 'file_too_large'
     | 'filename_not_exists'
     | 'forbidden'
+    | 'form_not_found'
     | 'internal_server_error'
     | 'invalid_param'
     | 'member_license_exceeded'
@@ -343,6 +338,7 @@ export type OpenApiErrorCode
     | 'provider_not_initialize'
     | 'provider_quota_exceeded'
     | 'rate_limit_error'
+    | 'recipient_surface_mismatch'
     | 'request_entity_too_large'
     | 'too_many_files'
     | 'too_many_requests'
@@ -407,10 +403,6 @@ export type SessionRow = {
   id: string
   last_used_at?: string | null
   prefix: string
-}
-
-export type TagItem = {
-  name: string
 }
 
 export type TaskStopResponse = {
@@ -608,7 +600,6 @@ export type GetAppsData = {
       | 'workflow'
     name?: string
     page?: number
-    tag?: string
     workspace_id: string
   }
   url: '/apps'
@@ -943,6 +934,32 @@ export type GetPermittedExternalAppsResponses = {
 
 export type GetPermittedExternalAppsResponse
   = GetPermittedExternalAppsResponses[keyof GetPermittedExternalAppsResponses]
+
+export type GetPermittedExternalAppsByAppIdDescribeData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    fields?: string
+  }
+  url: '/permitted-external-apps/{app_id}/describe'
+}
+
+export type GetPermittedExternalAppsByAppIdDescribeErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetPermittedExternalAppsByAppIdDescribeError
+  = GetPermittedExternalAppsByAppIdDescribeErrors[keyof GetPermittedExternalAppsByAppIdDescribeErrors]
+
+export type GetPermittedExternalAppsByAppIdDescribeResponses = {
+  200: AppDescribeResponse
+}
+
+export type GetPermittedExternalAppsByAppIdDescribeResponse
+  = GetPermittedExternalAppsByAppIdDescribeResponses[keyof GetPermittedExternalAppsByAppIdDescribeResponses]
 
 export type GetWorkspacesData = {
   body?: never

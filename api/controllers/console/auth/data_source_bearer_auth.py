@@ -11,7 +11,15 @@ from services.auth.api_key_auth_service import ApiKeyAuthService
 
 from .. import console_ns
 from ..auth.error import ApiKeyAuthFailedError
-from ..wraps import account_initialization_required, is_admin_or_owner_required, setup_required, with_current_tenant_id
+from ..wraps import (
+    RBACPermission,
+    RBACResourceScope,
+    account_initialization_required,
+    is_admin_or_owner_required,
+    rbac_permission_required,
+    setup_required,
+    with_current_tenant_id,
+)
 
 
 class ApiKeyAuthBindingPayload(BaseModel):
@@ -75,6 +83,7 @@ class ApiKeyAuthDataSourceBinding(Resource):
     @login_required
     @account_initialization_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @console_ns.expect(console_ns.models[ApiKeyAuthBindingPayload.__name__])
     @with_current_tenant_id
     def post(self, current_tenant_id: str):
@@ -95,6 +104,7 @@ class ApiKeyAuthDataSourceBindingDelete(Resource):
     @login_required
     @account_initialization_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @console_ns.response(204, "Binding deleted successfully")
     @with_current_tenant_id
     def delete(self, current_tenant_id: str, binding_id: UUID):

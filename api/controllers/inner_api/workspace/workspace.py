@@ -48,7 +48,7 @@ class EnterpriseWorkspace(Resource):
             return {"message": "owner account not found."}, 404
 
         tenant = TenantService.create_tenant(args.name, is_from_dashboard=True)
-        TenantService.create_tenant_member(tenant, account, role="owner")
+        TenantService.create_tenant_member(tenant, account, db.session, role="owner")
 
         tenant_was_created.send(tenant)
 

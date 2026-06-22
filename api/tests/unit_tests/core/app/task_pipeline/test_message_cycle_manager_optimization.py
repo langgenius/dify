@@ -1,5 +1,6 @@
 """Unit tests for the message cycle manager optimization."""
 
+import logging
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -344,7 +345,9 @@ class TestMessageCycleManagerOptimization:
         db_session.close.assert_called_once()
         mock_redis.setex.assert_called_once()
 
-    def test_generate_conversation_name_worker_falls_back_when_generation_fails(self, message_cycle_manager):
+    def test_generate_conversation_name_worker_falls_back_when_generation_fails(
+        self, message_cycle_manager, caplog: pytest.LogCaptureFixture
+    ):
         """Fallback to truncated query when LLM generation fails."""
         flask_app = Flask(__name__)
         conversation = SimpleNamespace(
@@ -362,19 +365,19 @@ class TestMessageCycleManagerOptimization:
             patch("core.app.task_pipeline.message_cycle_manager.redis_client") as mock_redis,
             patch("core.app.task_pipeline.message_cycle_manager.LLMGenerator") as mock_llm_generator,
             patch("core.app.task_pipeline.message_cycle_manager.dify_config") as mock_dify_config,
-            patch("core.app.task_pipeline.message_cycle_manager.logger") as mock_logger,
         ):
             mock_db.session = db_session
             mock_redis.get.return_value = None
             mock_llm_generator.generate_conversation_name.side_effect = RuntimeError("generation failed")
             mock_dify_config.DEBUG = True
 
-            message_cycle_manager._generate_conversation_name_worker(flask_app, "conv-1", long_query)
+            with caplog.at_level(logging.ERROR, logger="core.app.task_pipeline.message_cycle_manager"):
+                message_cycle_manager._generate_conversation_name_worker(flask_app, "conv-1", long_query)
 
         assert conversation.name == (long_query[:47] + "...")
         db_session.commit.assert_called_once()
         db_session.close.assert_called_once()
-        mock_logger.exception.assert_called_once()
+        assert any(record.levelno == logging.ERROR for record in caplog.records)
 
     def test_handle_annotation_reply_sets_metadata(self, message_cycle_manager):
         """Populate task metadata from annotation reply events.

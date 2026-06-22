@@ -3,18 +3,21 @@ import type { AccountSettingTab } from '@/app/components/header/account-setting/
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
-import { useCallback, useState } from 'react'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
 import {
   ACCOUNT_SETTING_TAB,
-
 } from '@/app/components/header/account-setting/constants'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { BillingPermission, hasPermission } from '@/utils/permission'
+import AccessRulesPage from './access-rules-page'
 import { ApiBasedExtensionPage } from './api-based-extension-page'
 import DataSourcePage from './data-source-page-new'
 import LanguagePage from './language-page'
@@ -22,6 +25,7 @@ import MembersPage from './members-page'
 import ModelProviderPage from './model-provider-page'
 import { useResetModelProviderListExpanded } from './model-provider-page/atoms'
 import UsageLimitsPage from './usage-limits-page'
+import PermissionsPage from './permissions-page'
 
 const iconClassName = `
   w-4 h-4 mr-2
@@ -48,10 +52,21 @@ export default function AccountSetting({
   onTabChangeAction,
 }: IAccountSettingProps) {
   const resetModelProviderListExpanded = useResetModelProviderListExpanded()
-  const activeMenu = activeTab
   const { t } = useTranslation()
   const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
-  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { workspacePermissionKeys } = useAppContext()
+  const isRbacEnabled = systemFeatures.rbac_enabled
+  const canManageWorkspaceRoles = isRbacEnabled && hasPermission(workspacePermissionKeys, 'workspace.role.manage')
+  const canViewBilling = enableBilling && hasPermission(workspacePermissionKeys, BillingPermission.View)
+  const activeMenu = (() => {
+    if (activeTab === ACCOUNT_SETTING_TAB.BILLING && !canViewBilling)
+      return ACCOUNT_SETTING_TAB.LANGUAGE
+    if ((activeTab === ACCOUNT_SETTING_TAB.PERMISSIONS || activeTab === ACCOUNT_SETTING_TAB.ACCESS_RULES) && !canManageWorkspaceRoles)
+      return ACCOUNT_SETTING_TAB.MEMBERS
+    return activeTab
+  })()
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   const settingItems: GroupItem[] = [
     {
@@ -65,6 +80,19 @@ export default function AccountSetting({
       name: t('settings.members', { ns: 'common' }),
       icon: <span className={cn('i-ri-group-2-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-group-2-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.PERMISSIONS,
+      name: t('settings.rolesAndPermissions', { ns: 'common' }),
+      icon: <span className={cn('i-ri-shield-user-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-shield-user-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.ACCESS_RULES,
+      name: t('settings.resourceAccess', { ns: 'common' }),
+      description: t('settings.resourceAccessDescription', { ns: 'common' }),
+      icon: <span className={cn('i-ri-lock-2-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-lock-2-fill', iconClassName)} />,
     },
     {
       key: ACCOUNT_SETTING_TAB.BILLING,
@@ -165,7 +193,12 @@ export default function AccountSetting({
 
     visibleTabs.push(ACCOUNT_SETTING_TAB.MEMBERS)
 
-    if (enableBilling)
+    if (canManageWorkspaceRoles) {
+      visibleTabs.push(ACCOUNT_SETTING_TAB.PERMISSIONS)
+      visibleTabs.push(ACCOUNT_SETTING_TAB.ACCESS_RULES)
+    }
+
+    if (canViewBilling)
       visibleTabs.push(ACCOUNT_SETTING_TAB.BILLING)
 
     if (enableReplaceWebAppLogo || enableBilling)
@@ -264,6 +297,7 @@ export default function AccountSetting({
             <div className="mt-1 system-2xs-medium-uppercase text-text-tertiary">ESC</div>
           </div>
           <ScrollArea
+            ref={scrollContainerRef}
             className="h-full min-h-0 flex-1 bg-components-panel-bg"
             slotClassNames={{
               viewport: 'overscroll-contain',
@@ -271,10 +305,10 @@ export default function AccountSetting({
             }}
           >
             <div className="sticky top-0 z-20 mx-8 flex min-h-[60px] items-end bg-components-panel-bg pt-8 pb-2">
-              <div className="shrink-0 title-2xl-semi-bold text-text-primary">
+              <div className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
                 {activeItem?.title ?? activeItem?.name}
                 {activeItem?.description && (
-                  <div className="mt-1 system-sm-regular text-text-tertiary">{activeItem?.description}</div>
+                  <div className="mt-1 system-sm-regular wrap-break-word whitespace-normal text-text-tertiary">{activeItem?.description}</div>
                 )}
               </div>
             </div>
@@ -286,6 +320,8 @@ export default function AccountSetting({
                 />
               )}
               {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.PERMISSIONS && <PermissionsPage containerRef={scrollContainerRef} />}
+              {activeMenu === ACCOUNT_SETTING_TAB.ACCESS_RULES && <AccessRulesPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.DATA_SOURCE && <DataSourcePage />}
               {activeMenu === ACCOUNT_SETTING_TAB.API_BASED_EXTENSION && <ApiBasedExtensionPage />}

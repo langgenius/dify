@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models import App
+from models.enums import EndUserType
 from models.model import EndUser
 from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
@@ -451,7 +452,7 @@ class TestAppGenerateService:
         end_user = EndUser(
             tenant_id=account.current_tenant.id,
             app_id=app.id,
-            type="normal",
+            type=EndUserType.BROWSER,
             external_user_id=fake.uuid4(),
             name=fake.name(),
             is_anonymous=False,
@@ -836,7 +837,7 @@ class TestAppGenerateService:
         end_user = EndUser(
             tenant_id=account.current_tenant.id,
             app_id=app.id,
-            type="normal",
+            type=EndUserType.BROWSER,
             external_user_id=fake.uuid4(),
             name=fake.name(),
             is_anonymous=False,

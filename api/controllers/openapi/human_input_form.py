@@ -12,16 +12,20 @@ import logging
 
 from flask import Response
 from flask_restx import Resource
-from werkzeug.exceptions import BadRequest, NotFound
+from werkzeug.exceptions import BadRequest
 
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
 from controllers.common.schema import register_schema_models
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
+from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
 from controllers.openapi._models import FormSubmitResponse, HumanInputFormDefinitionResponse
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData
-from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
+from core.workflow.human_input_policy import (
+    HumanInputSurface,
+    is_recipient_type_allowed_for_surface,
+)
 from extensions.ext_database import db
 from libs.helper import to_timestamp
 from libs.oauth_bearer import Scope
@@ -47,12 +51,12 @@ def _jsonify_form_definition(form) -> Response:
 
 def _ensure_form_belongs_to_app(form, app_model: App) -> None:
     if form.app_id != app_model.id or form.tenant_id != app_model.tenant_id:
-        raise NotFound("Form not found")
+        raise HumanInputFormNotFound()
 
 
 def _ensure_form_is_allowed_for_openapi(form) -> None:
     if not is_recipient_type_allowed_for_surface(form.recipient_type, HumanInputSurface.OPENAPI):
-        raise NotFound("Form not found")
+        raise RecipientSurfaceMismatch()
 
 
 @openapi_ns.route("/apps/<string:app_id>/form/human_input/<string:form_token>")
@@ -60,11 +64,11 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
     @openapi_ns.response(200, "Form definition", openapi_ns.models[HumanInputFormDefinitionResponse.__name__])
     @auth_router.guard(scope=Scope.APPS_RUN)
     def get(self, app_id: str, form_token: str, *, auth_data: AuthData):
-        app_model, caller, caller_kind = auth_data.require_app_context()
+        app_model, _caller, _caller_kind = auth_data.require_app_context()
         service = HumanInputService(db.engine)
         form = service.get_form_by_token(form_token)
         if form is None:
-            raise NotFound("Form not found")
+            raise HumanInputFormNotFound()
 
         _ensure_form_belongs_to_app(form, app_model)
         _ensure_form_is_allowed_for_openapi(form)
@@ -80,7 +84,7 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
         service = HumanInputService(db.engine)
         form = service.get_form_by_token(form_token)
         if form is None:
-            raise NotFound("Form not found")
+            raise HumanInputFormNotFound()
 
         _ensure_form_belongs_to_app(form, app_model)
         _ensure_form_is_allowed_for_openapi(form)
@@ -106,6 +110,6 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
                 submission_end_user_id=submission_end_user_id,
             )
         except FormNotFoundError:
-            raise NotFound("Form not found")
+            raise HumanInputFormNotFound()
 
         return FormSubmitResponse()

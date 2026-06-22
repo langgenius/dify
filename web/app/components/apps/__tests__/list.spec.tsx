@@ -65,13 +65,22 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-const mockIsCurrentWorkspaceEditor = vi.fn(() => true)
 const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
+let mockWorkspacePermissionKeys = ['app.create_and_management']
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
     isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator(),
     userProfile: { id: 'creator-1' },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
+  useSelector: (selector: (state: {
+    isCurrentWorkspaceDatasetOperator: boolean
+    userProfile: { id: string }
+    workspacePermissionKeys: string[]
+  }) => unknown) => selector({
+    isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator(),
+    userProfile: { id: 'creator-1' },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -229,14 +238,6 @@ vi.mock('@/service/use-apps', () => ({
   }),
 }))
 
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    NEED_REFRESH_APP_LIST_KEY: 'needRefreshAppList',
-  }
-})
-
 vi.mock('@/hooks/use-pay', () => ({
   CheckModal: () => null,
 }))
@@ -276,6 +277,9 @@ vi.mock('@/next/dynamic', () => ({
 }))
 
 vi.mock('../app-card', () => ({
+  AppCard: ({ app }: { app: { id: string, name: string } }) => {
+    return React.createElement('div', { 'data-testid': `app-card-${app.id}`, 'role': 'article' }, app.name)
+  },
   AppCardActionBar: ({ app, onRefresh }: { app: { id: string }, onRefresh?: () => void }) => {
     return React.createElement('button', {
       'data-testid': `app-card-action-bar-${app.id}`,
@@ -352,8 +356,8 @@ const openAppSortSelect = async (user = userEvent.setup()) => {
 describe('List', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCurrentWorkspaceEditor.mockReturnValue(true)
     mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(false)
+    mockWorkspacePermissionKeys = ['app.create_and_management']
     mockDragging = false
     mockOnDSLFileDropped = null
     mockServiceState.error = null
@@ -417,18 +421,16 @@ describe('List', () => {
       expect(screen.getByRole('button', { name: 'common.operation.create' }))!.toBeInTheDocument()
     })
 
-    it('should render sort filter before search and the snippets link', () => {
+    it('should render sort filter before search and hide the snippets link', () => {
       renderList()
 
       const sortButton = screen.getByRole('button', { name: 'Sort by Last modified' })
       const searchInput = screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' })
-      const snippetsLink = screen.getByRole('link', { name: 'app.studio.viewSnippets' })
       const createButton = screen.getByRole('button', { name: 'common.operation.create' })
 
-      expect(snippetsLink).toHaveAttribute('href', '/snippets')
       expect(sortButton.compareDocumentPosition(searchInput) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(searchInput.compareDocumentPosition(snippetsLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(snippetsLink.compareDocumentPosition(createButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(searchInput.compareDocumentPosition(createButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(screen.queryByRole('link', { name: 'app.studio.viewSnippets' })).not.toBeInTheDocument()
     })
 
     it('should render app cards when apps exist', () => {
@@ -492,7 +494,7 @@ describe('List', () => {
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
     })
 
-    it('should render drop DSL hint for editors', () => {
+    it('should render drop DSL hint when app creation permission is available', () => {
       renderList()
       expect(screen.getByText('app.newApp.dropDSLToCreateApp'))!.toBeInTheDocument()
     })
@@ -739,8 +741,8 @@ describe('List', () => {
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
     })
 
-    it('should not render create button for non-editors', () => {
-      mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+    it('should not render create button without app creation permission', () => {
+      mockWorkspacePermissionKeys = []
 
       renderList()
 
@@ -748,17 +750,17 @@ describe('List', () => {
     })
   })
 
-  describe('Non-Editor User', () => {
-    it('should not render new app card for non-editors', () => {
-      mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+  describe('User Without App Creation Permission', () => {
+    it('should not render new app card without app creation permission', () => {
+      mockWorkspacePermissionKeys = []
 
       renderList()
 
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
     })
 
-    it('should not render drop DSL hint for non-editors', () => {
-      mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+    it('should not render drop DSL hint without app creation permission', () => {
+      mockWorkspacePermissionKeys = []
 
       renderList()
 

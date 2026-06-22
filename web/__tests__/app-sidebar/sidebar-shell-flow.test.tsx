@@ -4,9 +4,9 @@ import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AppDetailNav from '@/app/components/app-sidebar'
 
-const mockSetAppSidebarExpand = vi.fn()
+const mockSetDetailSidebarMode = vi.fn()
 
-let mockAppSidebarExpand = 'expand'
+let mockDetailSidebarMode = 'expand'
 let mockPathname = '/app/app-1/logs'
 let mockSelectedSegment = 'logs'
 let mockIsHovering = true
@@ -18,24 +18,8 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    appDetail: {
-      id: 'app-1',
-      name: 'Demo App',
-      mode: 'chat',
-      icon: '🤖',
-      icon_type: 'emoji',
-      icon_background: '#FFEAD5',
-      icon_url: null,
-    },
-    appSidebarExpand: mockAppSidebarExpand,
-    setAppSidebarExpand: mockSetAppSidebarExpand,
-  }),
-}))
-
-vi.mock('zustand/react/shallow', () => ({
-  useShallow: (selector: unknown) => selector,
+vi.mock('@/app/components/main-nav/storage', () => ({
+  useDetailSidebarMode: () => [mockDetailSidebarMode, mockSetDetailSidebarMode],
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -129,7 +113,7 @@ describe('App Sidebar Shell Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
-    mockAppSidebarExpand = 'expand'
+    mockDetailSidebarMode = 'expand'
     mockPathname = '/app/app-1/logs'
     mockSelectedSegment = 'logs'
     mockIsHovering = true
@@ -145,13 +129,13 @@ describe('App Sidebar Shell Flow', () => {
     expect(logsLink.className).toContain('bg-components-menu-item-bg-active')
 
     fireEvent.click(screen.getByRole('button'))
-    expect(mockSetAppSidebarExpand).toHaveBeenCalledWith('collapse')
+    expect(mockSetDetailSidebarMode).toHaveBeenCalledWith('collapse')
 
     const preventDefault = vi.fn()
     hotkeyHandler?.({ preventDefault })
 
     expect(preventDefault).toHaveBeenCalled()
-    expect(mockSetAppSidebarExpand).toHaveBeenCalledWith('collapse')
+    expect(mockSetDetailSidebarMode).toHaveBeenCalledWith('collapse')
   })
 
   it('keeps the normal sidebar on workflow routes', () => {

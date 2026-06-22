@@ -8,7 +8,10 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import VersionInfoModal from '@/app/components/app/app-publisher/version-info-modal'
 import Divider from '@/app/components/base/divider'
+import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
+import { Plan } from '@/app/components/billing/type'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { useProviderContext } from '@/context/provider-context'
 import { useDeleteWorkflow, useInvalidAllLastRun, useResetWorkflowVersionHistory, useRestoreWorkflow, useUpdateWorkflow, useWorkflowVersionHistory } from '@/service/use-workflow'
 import { useDSL, useWorkflowRefreshDraft, useWorkflowRun } from '../../hooks'
 import { useHooksStore } from '../../hooks-store'
@@ -43,8 +46,11 @@ export const VersionHistoryPanel = ({
   const [isOnlyShowNamedVersions, setIsOnlyShowNamedVersions] = useState(false)
   const [operatedItem, setOperatedItem] = useState<VersionHistory>()
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false)
+  const [isRestorePlanUpgradeModalOpen, setIsRestorePlanUpgradeModalOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
+  const { plan, enableBilling } = useProviderContext()
+  const canUseWorkflowVersionAction = !enableBilling || plan.type !== Plan.sandbox
   const workflowStore = useWorkflowStore()
   const { handleRestoreFromPublishedWorkflow, handleLoadBackupDraft } = useWorkflowRun()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
@@ -54,6 +60,7 @@ export const VersionHistoryPanel = ({
   const setCurrentVersion = useStore(s => s.setCurrentVersion)
   const userProfile = useAppContextSelector(s => s.userProfile)
   const configsMap = useHooksStore(s => s.configsMap)
+  const canImportExportDSL = useHooksStore(s => s.accessControl.canImportExportDSL)
   const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
   const {
     deleteAllInspectVars,
@@ -111,6 +118,10 @@ export const VersionHistoryPanel = ({
     setOperatedItem(item)
     switch (operation) {
       case VersionHistoryContextMenuOptions.restore:
+        if (!canUseWorkflowVersionAction) {
+          setIsRestorePlanUpgradeModalOpen(true)
+          break
+        }
         setRestoreConfirmOpen(true)
         break
       case VersionHistoryContextMenuOptions.edit:
@@ -124,10 +135,16 @@ export const VersionHistoryPanel = ({
         toast.success(t('versionHistory.action.copyIdSuccess', { ns: 'workflow' }))
         break
       case VersionHistoryContextMenuOptions.exportDSL:
+        if (!canUseWorkflowVersionAction) {
+          setIsRestorePlanUpgradeModalOpen(true)
+          break
+        }
+        if (!canImportExportDSL)
+          return
         handleExportDSL?.(false, item.id)
         break
     }
-  }, [t, handleExportDSL])
+  }, [canUseWorkflowVersionAction, canImportExportDSL, t, handleExportDSL])
 
   const handleCancel = useCallback((operation: VersionHistoryContextMenuOptions) => {
     switch (operation) {
@@ -293,6 +310,7 @@ export const VersionHistoryPanel = ({
                           latestVersionId={latestVersionId || ''}
                           onClick={handleVersionClick}
                           handleClickActionMenuItem={handleClickActionMenuItem.bind(null, item)}
+                          canImportExportDSL={canImportExportDSL}
                           isLast={isLast}
                         />
                       )
@@ -328,6 +346,14 @@ export const VersionHistoryPanel = ({
           versionInfo={operatedItem!}
           onClose={handleCancel.bind(null, VersionHistoryContextMenuOptions.restore)}
           onRestore={handleRestore}
+        />
+      )}
+      {isRestorePlanUpgradeModalOpen && (
+        <PlanUpgradeModal
+          show
+          onClose={() => setIsRestorePlanUpgradeModalOpen(false)}
+          title={t('upgrade.workflowRestore.title', { ns: 'billing' })!}
+          description={t('upgrade.workflowRestore.description', { ns: 'billing' })!}
         />
       )}
       {deleteConfirmOpen && (

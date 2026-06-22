@@ -1,6 +1,6 @@
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
 from models.enums import CreatorUserRole
@@ -12,11 +12,11 @@ from services.message_service import MessageService
 class SavedMessageService:
     @classmethod
     def pagination_by_last_id(
-        cls, app_model: App, user: Account | EndUser | None, last_id: str | None, limit: int
+        cls, session: Session, app_model: App, user: Account | EndUser | None, last_id: str | None, limit: int
     ) -> InfiniteScrollPagination:
         if not user:
             raise ValueError("User is required")
-        saved_messages = db.session.scalars(
+        saved_messages = session.scalars(
             select(SavedMessage)
             .where(
                 SavedMessage.app_id == app_model.id,
@@ -32,10 +32,10 @@ class SavedMessageService:
         )
 
     @classmethod
-    def save(cls, app_model: App, user: Account | EndUser | None, message_id: str):
+    def save(cls, session: Session, app_model: App, user: Account | EndUser | None, message_id: str):
         if not user:
             return
-        saved_message = db.session.scalar(
+        saved_message = session.scalar(
             select(SavedMessage)
             .where(
                 SavedMessage.app_id == app_model.id,
@@ -58,14 +58,14 @@ class SavedMessageService:
             created_by=user.id,
         )
 
-        db.session.add(saved_message)
-        db.session.commit()
+        session.add(saved_message)
+        session.commit()
 
     @classmethod
-    def delete(cls, app_model: App, user: Account | EndUser | None, message_id: str):
+    def delete(cls, session: Session, app_model: App, user: Account | EndUser | None, message_id: str):
         if not user:
             return
-        saved_message = db.session.scalar(
+        saved_message = session.scalar(
             select(SavedMessage)
             .where(
                 SavedMessage.app_id == app_model.id,
@@ -79,5 +79,5 @@ class SavedMessageService:
         if not saved_message:
             return
 
-        db.session.delete(saved_message)
-        db.session.commit()
+        session.delete(saved_message)
+        session.commit()

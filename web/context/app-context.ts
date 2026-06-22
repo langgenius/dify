@@ -17,7 +17,9 @@ export type AppContextValue = {
   langGeniusVersionInfo: LangGeniusVersionResponse
   useSelector: typeof useSelector
   isLoadingCurrentWorkspace: boolean
+  isLoadingWorkspacePermissionKeys?: boolean
   isValidatingCurrentWorkspace: boolean
+  workspacePermissionKeys: string[]
 }
 
 export const userProfilePlaceholder = {
@@ -65,7 +67,9 @@ export const AppContext = createContext<AppContextValue>({
   langGeniusVersionInfo: initialLangGeniusVersionInfo,
   useSelector,
   isLoadingCurrentWorkspace: false,
+  isLoadingWorkspacePermissionKeys: false,
   isValidatingCurrentWorkspace: false,
+  workspacePermissionKeys: [],
 })
 
 export function useSelector<T>(selector: (value: AppContextValue) => T): T {

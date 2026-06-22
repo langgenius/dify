@@ -13,8 +13,11 @@ from controllers.common.schema import query_params_from_model, register_schema_m
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_user,
 )
@@ -97,9 +100,10 @@ class CompletionConversationApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.COMPLETION)
     @edit_permission_required
     @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model(mode=AppMode.COMPLETION)
     def get(self, current_user: Account, app_model: App):
         args = CompletionConversationQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -169,9 +173,10 @@ class CompletionConversationDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.COMPLETION)
     @edit_permission_required
     @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model(mode=AppMode.COMPLETION)
     def get(self, current_user: Account, app_model: App, conversation_id: UUID):
         conversation_id_str = str(conversation_id)
         return ConversationMessageDetailResponse.model_validate(
@@ -187,9 +192,10 @@ class CompletionConversationDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.COMPLETION)
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
+    @get_app_model(mode=AppMode.COMPLETION)
     def delete(self, current_user: Account, app_model: App, conversation_id: UUID):
         conversation_id_str = str(conversation_id)
 
@@ -212,9 +218,10 @@ class ChatConversationApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @edit_permission_required
     @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def get(self, current_user: Account, app_model: App):
         args = ChatConversationQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -323,9 +330,10 @@ class ChatConversationDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @edit_permission_required
     @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def get(self, current_user: Account, app_model: App, conversation_id: UUID):
         conversation_id_str = str(conversation_id)
         return ConversationDetailResponse.model_validate(
@@ -340,10 +348,11 @@ class ChatConversationDetailApi(Resource):
     @console_ns.response(404, "Conversation not found")
     @setup_required
     @login_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def delete(self, current_user: Account, app_model: App, conversation_id: UUID):
         conversation_id_str = str(conversation_id)
 
