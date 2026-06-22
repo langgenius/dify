@@ -12,6 +12,7 @@ import io
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import pytest
 from flask import Flask
 
 from controllers.console.app.agent import (
@@ -238,7 +239,9 @@ def test_files_delete_updates_soul_then_drive():
         with (
             patch(f"{_MOD}.AgentDriveService") as drive,
         ):
-            drive.return_value.commit.side_effect = lambda **kw: calls.append("drive") or [{"key": "files/sample.pdf", "removed": True}]
+            drive.return_value.commit.side_effect = lambda **kw: calls.append("drive") or [
+                {"key": "files/sample.pdf", "removed": True}
+            ]
             body = raw(AgentDriveFilesApi(), _USER, _APP)
 
     assert calls == ["drive"]
@@ -285,12 +288,8 @@ def test_files_delete_survives_drive_failure():
             patch(f"{_MOD}.AgentDriveService") as drive,
         ):
             drive.return_value.commit.side_effect = RuntimeError("storage down")
-            try:
+            with pytest.raises(RuntimeError, match="storage down"):
                 raw(AgentDriveFilesApi(), _USER, _APP)
-            except RuntimeError as exc:
-                assert str(exc) == "storage down"
-            else:
-                raise AssertionError("expected RuntimeError")
 
 
 def test_skill_delete_uses_slug_prefix_and_is_idempotent():

@@ -23,8 +23,7 @@ import json
 import logging
 import re
 import urllib.parse
-from typing import TypedDict
-from typing import Any, Literal
+from typing import Any, Literal, TypedDict
 from urllib.parse import unquote
 
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -236,16 +235,15 @@ class AgentDriveService:
                     .order_by(AgentDriveFile.key)
                 )
             )
-            archive_keys = {
-                key
-                for key in session.scalars(
+            archive_keys = set(
+                session.scalars(
                     select(AgentDriveFile.key).where(
                         AgentDriveFile.tenant_id == tenant_id,
                         AgentDriveFile.agent_id == agent_id,
                         AgentDriveFile.key.in_([self._skill_archive_key(row.key) for row in skill_rows]),
                     )
                 )
-            }
+            )
 
         skills: list[AgentDriveSkillInfo] = []
         for row in skill_rows:
@@ -254,7 +252,9 @@ class AgentDriveService:
                 {
                     "path": self._skill_path_from_key(row.key),
                     "skill_md_key": row.key,
-                    "archive_key": self._skill_archive_key(row.key) if self._skill_archive_key(row.key) in archive_keys else None,
+                    "archive_key": (
+                        self._skill_archive_key(row.key) if self._skill_archive_key(row.key) in archive_keys else None
+                    ),
                     "name": metadata.name,
                     "description": metadata.description,
                     "size": row.size,
@@ -678,8 +678,8 @@ class AgentDriveService:
 
 __all__ = [
     "AgentDriveError",
-    "AgentDriveSkillInfo",
     "AgentDriveService",
+    "AgentDriveSkillInfo",
     "DriveCommitItem",
     "DriveFileRef",
     "DriveSkillMetadata",

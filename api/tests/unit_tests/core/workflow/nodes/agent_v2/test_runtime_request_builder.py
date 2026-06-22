@@ -834,7 +834,12 @@ def test_mentions_expand_in_soul_and_job_prompts_without_token_leak():
 
 def _soul_with_drive_skill() -> AgentSoulConfig:
     return AgentSoulConfig(
-        prompt={"system_prompt": "You are careful. Use [§skill:tender-analyzer%2FSKILL.md:Tender Analyzer§] and [§file:files%2Fsample.pdf:sample.pdf§]."},
+        prompt={
+            "system_prompt": (
+                "You are careful. Use [§skill:tender-analyzer%2FSKILL.md:Tender Analyzer§] "
+                "and [§file:files%2Fsample.pdf:sample.pdf§]."
+            )
+        },
         model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
     )
 
