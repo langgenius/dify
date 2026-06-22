@@ -36,7 +36,10 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--reload", action="store_true")
     args = parser.parse_args(argv)
     settings = ServerSettings()
-    if settings.agent_stub_api_base_url is not None and parse_agent_stub_endpoint(settings.agent_stub_api_base_url).is_grpc:
+    if (
+        settings.agent_stub_api_base_url is not None
+        and parse_agent_stub_endpoint(settings.agent_stub_api_base_url).is_grpc
+    ):
         asyncio.run(_serve_grpc(settings=settings, host=args.host, port=args.port))
         return
     uvicorn.run(
