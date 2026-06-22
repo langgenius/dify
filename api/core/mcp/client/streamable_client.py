@@ -14,6 +14,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import timedelta
+from http import HTTPStatus
 from typing import Any, cast
 
 import httpx
@@ -294,13 +295,13 @@ class StreamableHTTPTransport:
             headers=headers,
         ) as response:
             match response.status_code:
-                case 202:
+                case HTTPStatus.ACCEPTED:
                     logger.debug("Received 202 Accepted")
                     return
-                case 204:
+                case HTTPStatus.NO_CONTENT:
                     logger.debug("Received 204 No Content")
                     return
-                case 404:
+                case HTTPStatus.NOT_FOUND:
                     if isinstance(message.root, JSONRPCRequest):
                         error_msg = (
                             f"MCP server URL returned 404 Not Found: {self.url} "
