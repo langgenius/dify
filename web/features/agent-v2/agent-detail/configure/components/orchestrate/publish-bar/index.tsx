@@ -99,7 +99,6 @@ export function AgentConfigurePublishBar({
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
   const [publishBarMode, setPublishBarMode] = useState<PublishBarMode>({ status: 'compact' })
-  const [publishRequestIsPending, setPublishRequestIsPending] = useState(false)
   const hasUnpublishedChanges = useHasAgentComposerUnpublishedChanges()
   const publishPayload = useConfigPublishPayload({
     agentId,
@@ -112,14 +111,13 @@ export function AgentConfigurePublishBar({
     isDirty: hasUnpublishedChanges,
     isPublishing: false,
   })
-  const publishIsPending = isPublishing || publishRequestIsPending
   const publishState = getPublishState({
     activeConfigIsPublished,
     activeConfigSnapshot,
     isDirty: hasUnpublishedChanges,
-    isPublishing: publishIsPending,
+    isPublishing,
   })
-  const canPublish = !publishIsPending && (publishableState === 'draft' || publishableState === 'unpublished')
+  const canPublish = !isPublishing && (publishableState === 'draft' || publishableState === 'unpublished')
   const workflowReferencesQueryOptions = consoleQuery.agent.byAgentId.referencingWorkflows.get.queryOptions({
     input: {
       params: {
@@ -137,14 +135,8 @@ export function AgentConfigurePublishBar({
     if (!canPublish)
       return
 
-    setPublishRequestIsPending(true)
-    try {
-      await onPublish?.(publishPayload)
-      setPublishBarMode({ status: 'compact' })
-    }
-    finally {
-      setPublishRequestIsPending(false)
-    }
+    await onPublish?.(publishPayload)
+    setPublishBarMode({ status: 'compact' })
   }
 
   const handlePublishRequest = async () => {
@@ -242,7 +234,7 @@ export function AgentConfigurePublishBar({
     statusLabel: string
   }>
   const currentStateMeta = stateMeta[publishState]
-  const isConfirmingImpact = publishBarMode.status === 'confirmingImpact' && (canPublish || publishIsPending)
+  const isConfirmingImpact = publishBarMode.status === 'confirmingImpact' && (canPublish || isPublishing)
   const impactReferences = publishBarMode.status === 'confirmingImpact' ? publishBarMode.references : []
 
   return (
@@ -262,7 +254,7 @@ export function AgentConfigurePublishBar({
           actionIcon={currentStateMeta.actionIcon}
           actionLabel={currentStateMeta.actionLabel}
           dotStatus={currentStateMeta.dotStatus}
-          isPublishing={publishIsPending}
+          isPublishing={isPublishing}
           metaLabel={currentStateMeta.metaLabel}
           showShortcut={currentStateMeta.showShortcut}
           statusLabel={currentStateMeta.statusLabel}

@@ -151,7 +151,9 @@ function renderPublishBar({
   store.set(agentComposerPromptAtom, prompt)
   setupStore?.(store)
 
-  render(
+  const renderPublishBarTree = (nextProps?: {
+    isPublishing?: boolean
+  }) => (
     <QueryClientProvider client={queryClient}>
       <JotaiProvider store={store}>
         <AgentConfigurePublishBar
@@ -160,18 +162,21 @@ function renderPublishBar({
           activeConfigSnapshot={activeConfigSnapshot}
           draftSavedAt={draftSavedAt}
           agentName="Iris"
-          isPublishing={isPublishing}
+          isPublishing={nextProps?.isPublishing ?? isPublishing}
           selectedVersionSnapshot={selectedVersionSnapshot}
           onPublish={onPublish}
           onExitVersions={vi.fn()}
           onOpenVersions={vi.fn()}
         />
       </JotaiProvider>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   )
+  const view = render(renderPublishBarTree())
 
   return {
+    ...view,
     onPublish,
+    rerenderPublishBar: renderPublishBarTree,
   }
 }
 
@@ -390,7 +395,7 @@ describe('AgentConfigurePublishBar', () => {
   it('should publish from the fixed toolbar action after affected workflow details expand', async () => {
     const publishDeferred = createDeferredPromise()
     const onPublish = vi.fn<PublishHandler>(() => publishDeferred.promise)
-    renderPublishBar({
+    const { rerender, rerenderPublishBar } = renderPublishBar({
       activeConfigSnapshot,
       onPublish,
       prompt: 'Updated system prompt',
@@ -409,6 +414,7 @@ describe('AgentConfigurePublishBar', () => {
     expect(screen.getByRole('region', {
       name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
     })).toBeInTheDocument()
+    rerender(rerenderPublishBar({ isPublishing: true }))
     expect(await screen.findByRole('button', {
       name: 'agentV2.agentDetail.configure.publishBar.publishing',
     })).toHaveAttribute('aria-busy', 'true')
