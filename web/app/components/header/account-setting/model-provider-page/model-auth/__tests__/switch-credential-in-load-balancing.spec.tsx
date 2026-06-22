@@ -4,6 +4,12 @@ import userEvent from '@testing-library/user-event'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import SwitchCredentialInLoadBalancing from '../switch-credential-in-load-balancing'
 
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: ['credential.use', 'credential.manage'],
+  }),
+}))
+
 // Mock components
 vi.mock('../authorized', () => ({
   default: ({ renderTrigger, onItemClick, items }: { renderTrigger: () => React.ReactNode, onItemClick: (c: unknown) => void, items: { credentials: unknown[] }[] }) => (

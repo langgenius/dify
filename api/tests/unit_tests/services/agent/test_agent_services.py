@@ -460,7 +460,7 @@ def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.Monk
     assert new_version_binding.current_snapshot_id == "new-version-1"
 
 
-def test_node_job_only_updates_inline_agent_soul(monkeypatch):
+def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch):
     fake_session = FakeSession()
     monkeypatch.setattr(composer_service.db, "session", fake_session)
     inline_agent = SimpleNamespace(
@@ -532,7 +532,7 @@ def test_node_job_only_updates_inline_agent_soul(monkeypatch):
     assert inline_agent.updated_by == "account-1"
 
 
-def test_node_job_only_rejects_inline_binding_pointing_to_roster_agent(monkeypatch):
+def test_node_job_only_rejects_inline_binding_pointing_to_roster_agent(monkeypatch: pytest.MonkeyPatch):
     fake_session = FakeSession()
     monkeypatch.setattr(composer_service.db, "session", fake_session)
     current_snapshot = AgentConfigSnapshot(
@@ -579,7 +579,7 @@ def test_node_job_only_rejects_inline_binding_pointing_to_roster_agent(monkeypat
         )
 
 
-def test_composer_create_agents_syncs_active_config_has_model(monkeypatch):
+def test_composer_create_agents_syncs_active_config_has_model(monkeypatch: pytest.MonkeyPatch):
     fake_session = FakeSession()
     monkeypatch.setattr(composer_service.db, "session", fake_session)
     monkeypatch.setattr(
@@ -916,14 +916,16 @@ def test_published_references_include_app_display_fields_and_sort_by_updated_at(
 
 
 def test_roster_update_archive_versions_and_detail(monkeypatch: pytest.MonkeyPatch):
-    listed_version = AgentConfigSnapshot(id="version-2", agent_id="agent-1", version=2)
+    listed_version = AgentConfigSnapshot(id="version-4", agent_id="agent-1", version=4)
     listed_version_created_at = datetime(2026, 1, 5, 3, 4, 5, tzinfo=UTC)
     listed_version.created_at = listed_version_created_at
+    older_listed_version = AgentConfigSnapshot(id="version-2", agent_id="agent-1", version=2)
+    older_listed_version.created_at = datetime(2026, 1, 4, 3, 4, 5, tzinfo=UTC)
     revision_created_at = datetime(2026, 1, 6, 3, 4, 5, tzinfo=UTC)
     revision = SimpleNamespace(
         id="revision-1",
         previous_snapshot_id=None,
-        current_snapshot_id="version-1",
+        current_snapshot_id="version-2",
         revision=1,
         operation=AgentConfigRevisionOperation.CREATE_VERSION,
         summary=None,
@@ -931,7 +933,10 @@ def test_roster_update_archive_versions_and_detail(monkeypatch: pytest.MonkeyPat
         created_by="account-1",
         created_at=revision_created_at,
     )
-    fake_session = FakeSession(scalar=["visible-revision"], scalars=[[listed_version], [revision]])
+    fake_session = FakeSession(
+        scalar=["visible-revision"],
+        scalars=[[listed_version, older_listed_version], [older_listed_version, listed_version], [revision]],
+    )
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -942,7 +947,7 @@ def test_roster_update_archive_versions_and_detail(monkeypatch: pytest.MonkeyPat
         source=AgentSource.AGENT_APP,
         status=AgentStatus.ACTIVE,
     )
-    version = AgentConfigSnapshot(id="version-1", agent_id="agent-1", version=1, config_snapshot='{"prompt":{}}')
+    version = AgentConfigSnapshot(id="version-2", agent_id="agent-1", version=2, config_snapshot='{"prompt":{}}')
     version.created_at = datetime(2026, 1, 4, 3, 4, 5, tzinfo=UTC)
 
     service = AgentRosterService(fake_session)
@@ -962,12 +967,21 @@ def test_roster_update_archive_versions_and_detail(monkeypatch: pytest.MonkeyPat
     )
     service.archive_roster_agent(tenant_id="tenant-1", agent_id="agent-1", account_id="account-1")
     versions = service.list_agent_versions(tenant_id="tenant-1", agent_id="agent-1")
-    detail = service.get_agent_version_detail(tenant_id="tenant-1", agent_id="agent-1", version_id="version-1")
+    detail = service.get_agent_version_detail(tenant_id="tenant-1", agent_id="agent-1", version_id="version-2")
 
     assert updated["description"] == "new"
     assert agent.status == AgentStatus.ARCHIVED
-    assert versions[0]["id"] == "version-2"
+    assert versions[0]["id"] == "version-4"
+    assert versions[0]["version"] == 2
+    assert versions[0]["display_version"] == 2
+    assert versions[0]["snapshot_version"] == 4
+    assert versions[1]["id"] == "version-2"
+    assert versions[1]["version"] == 1
+    assert versions[1]["snapshot_version"] == 2
     assert versions[0]["created_at"] == int(listed_version_created_at.timestamp())
+    assert detail["version"] == 1
+    assert detail["display_version"] == 1
+    assert detail["snapshot_version"] == 2
     assert detail["config_snapshot"] == {"prompt": {}}
     assert detail["created_at"] == int(version.created_at.timestamp())
     assert detail["revisions"][0]["created_at"] == int(revision_created_at.timestamp())
@@ -1247,6 +1261,7 @@ class TestAgentAppBackingAgent:
             app_id="app-1",
             name="Iris",
             description="clarifier",
+            role="research assistant",
         )
 
         # Agent is bound to the app and is a roster/agent_app entry.
@@ -1256,6 +1271,7 @@ class TestAgentAppBackingAgent:
         assert agent.status == AgentStatus.ACTIVE
         assert agent.agent_kind == AgentKind.DIFY_AGENT
         assert agent.name == "Iris"
+        assert agent.role == "research assistant"
         # A v1 snapshot + revision are seeded and wired as the active version.
         snapshots = [a for a in session.added if isinstance(a, AgentConfigSnapshot)]
         assert len(snapshots) == 1
@@ -1308,7 +1324,7 @@ class TestAgentAppBackingAgent:
         with pytest.raises(roster_service.AgentNotFoundError):
             service.get_agent_app_model(tenant_id="tenant-1", agent_id="agent-x")
 
-    def test_duplicate_agent_app_copies_app_config_and_active_soul(self, monkeypatch):
+    def test_duplicate_agent_app_copies_app_config_and_active_soul(self, monkeypatch: pytest.MonkeyPatch):
         source_config = SimpleNamespace(
             opening_statement="hello",
             suggested_questions='["q1"]',
@@ -1447,7 +1463,7 @@ class TestAgentAppBackingAgent:
         assert target_agent.updated_by == "account-1"
         assert session.commits == 1
 
-    def test_duplicate_agent_app_inherits_webapp_access_mode(self, monkeypatch):
+    def test_duplicate_agent_app_inherits_webapp_access_mode(self, monkeypatch: pytest.MonkeyPatch):
         source_app = SimpleNamespace(
             id="source-app",
             tenant_id="tenant-1",
@@ -1506,7 +1522,7 @@ class TestAgentAppBackingAgent:
         assert duplicated is target_app
         assert access_mode_updates == [("target-app", "private")]
 
-    def test_duplicate_agent_app_falls_back_to_public_access_mode(self, monkeypatch):
+    def test_duplicate_agent_app_falls_back_to_public_access_mode(self, monkeypatch: pytest.MonkeyPatch):
         source_app = SimpleNamespace(
             id="source-app",
             tenant_id="tenant-1",
@@ -2554,7 +2570,7 @@ def test_save_workflow_composer_guards_drive_refs_for_existing_agent_strategies(
     assert guarded["agent_id"] == "agent-1"
 
 
-def test_save_workflow_composer_guards_drive_refs_for_inline_node_job_only(monkeypatch):
+def test_save_workflow_composer_guards_drive_refs_for_inline_node_job_only(monkeypatch: pytest.MonkeyPatch):
     payload = ComposerSavePayload.model_validate(
         {
             "variant": "workflow",
@@ -2611,7 +2627,7 @@ def test_save_workflow_composer_guards_drive_refs_for_inline_node_job_only(monke
     assert guarded == {"tenant_id": "t-1", "agent_id": "agent-1"}
 
 
-def test_save_workflow_composer_skips_drive_refs_for_roster_node_job_only(monkeypatch):
+def test_save_workflow_composer_skips_drive_refs_for_roster_node_job_only(monkeypatch: pytest.MonkeyPatch):
     payload = ComposerSavePayload.model_validate(
         {
             "variant": "workflow",
@@ -2665,7 +2681,7 @@ def test_save_workflow_composer_skips_drive_refs_for_roster_node_job_only(monkey
     assert result == {"state": "ok", "validation": {"warnings": []}}
 
 
-def test_remove_drive_refs_noop_when_skill_slug_unmatched(monkeypatch):
+def test_remove_drive_refs_noop_when_skill_slug_unmatched(monkeypatch: pytest.MonkeyPatch):
     soul_dict = {"skills_files": {"skills": [{"name": "Other", "skill_md_key": "other/SKILL.md"}], "files": []}}
     _, captured, committed = _patch_remove_drive_refs_env(monkeypatch, soul_dict=soul_dict)
     assert (

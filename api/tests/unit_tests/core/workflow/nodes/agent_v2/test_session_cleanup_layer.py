@@ -315,7 +315,7 @@ def test_cleanup_layer_fans_out_to_every_active_session():
     assert {entry[1] for entry in session_store.cleaned} == {"cleanup-run-many"}
 
 
-def test_cleanup_layer_warns_when_http_enabled_but_client_missing(caplog):
+def test_cleanup_layer_warns_when_http_enabled_but_client_missing(caplog: pytest.LogCaptureFixture):
     """The HTTP cleanup branch must defensively skip when no client was wired.
 
     This is the deployment-misconfig path: ``_HTTP_CLEANUP_SUPPORTED`` was
@@ -347,7 +347,7 @@ def test_cleanup_layer_warns_when_http_enabled_but_client_missing(caplog):
     assert any("no agent backend client is wired in" in record.message for record in caplog.records)
 
 
-def test_cleanup_layer_skips_workflow_terminal_when_workflow_run_id_missing(caplog):
+def test_cleanup_layer_skips_workflow_terminal_when_workflow_run_id_missing(caplog: pytest.LogCaptureFixture):
     """``workflow_run_id`` is the keying field; without it the fanout cannot
     target a row, so the layer logs a warning and bails."""
     import logging

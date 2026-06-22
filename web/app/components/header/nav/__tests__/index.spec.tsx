@@ -102,6 +102,7 @@ describe('Nav Component', () => {
     vi.mocked(useAppStore).mockReturnValue(mockSetAppDetail)
     vi.mocked(useAppContext).mockReturnValue({
       isCurrentWorkspaceEditor: true,
+      workspacePermissionKeys: ['app.create_and_management', 'dataset.create_and_management'],
     } as unknown as AppContextValue)
   })
 
@@ -292,6 +293,7 @@ describe('Nav Component', () => {
     it('should not show create button if NOT an editor', async () => {
       vi.mocked(useAppContext).mockReturnValue({
         isCurrentWorkspaceEditor: false,
+        workspacePermissionKeys: [],
       } as unknown as AppContextValue)
       render(<Nav {...defaultProps} curNav={curNav} />)
       const selectorButton = screen.getByRole('button', { name: /Item 1/i })

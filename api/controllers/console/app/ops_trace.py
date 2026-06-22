@@ -9,7 +9,13 @@ from controllers.common.schema import query_params_from_model, register_response
 from controllers.console import console_ns
 from controllers.console.app.error import TracingConfigCheckError, TracingConfigIsExist, TracingConfigNotExist
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
+    account_initialization_required,
+    rbac_permission_required,
+    setup_required,
+)
 from fields.base import ResponseModel
 from libs.login import login_required
 from models import App
@@ -64,6 +70,7 @@ class TraceAppConfigApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
     def get(self, app_model: App):
         args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore

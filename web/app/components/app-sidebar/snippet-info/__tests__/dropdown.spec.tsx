@@ -12,8 +12,15 @@ const mockToastError = vi.fn()
 const mockUpdateMutate = vi.fn()
 const mockExportMutateAsync = vi.fn()
 const mockDeleteMutate = vi.fn()
+let mockWorkspacePermissionKeys: string[] = ['snippets.create_and_modify', 'snippets.management']
 let mockDropdownOpen = false
 let mockDropdownOnOpenChange: ((open: boolean) => void) | undefined
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
+}))
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -156,6 +163,7 @@ const mockSnippet: SnippetDetail = {
 describe('SnippetInfoDropdown', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWorkspacePermissionKeys = ['snippets.create_and_modify', 'snippets.management']
     mockDropdownOpen = false
     mockDropdownOnOpenChange = undefined
   })
@@ -166,6 +174,35 @@ describe('SnippetInfoDropdown', () => {
       render(<SnippetInfoDropdown snippet={mockSnippet} />)
 
       expect(screen.getByRole('button')).toBeInTheDocument()
+    })
+
+    it('should render nothing without snippet create or management permission', () => {
+      mockWorkspacePermissionKeys = []
+
+      render(<SnippetInfoDropdown snippet={mockSnippet} />)
+
+      expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    })
+
+    it('should split edit from export and delete actions by snippet permission', async () => {
+      const user = userEvent.setup()
+      mockWorkspacePermissionKeys = ['snippets.create_and_modify']
+
+      const { unmount } = render(<SnippetInfoDropdown snippet={mockSnippet} />)
+      await user.click(screen.getByRole('button'))
+
+      expect(screen.getByText('snippet.menu.editInfo')).toBeInTheDocument()
+      expect(screen.queryByText('snippet.menu.exportSnippet')).not.toBeInTheDocument()
+      expect(screen.queryByText('snippet.menu.deleteSnippet')).not.toBeInTheDocument()
+
+      unmount()
+      mockWorkspacePermissionKeys = ['snippets.management']
+      render(<SnippetInfoDropdown snippet={mockSnippet} />)
+      await user.click(screen.getByRole('button'))
+
+      expect(screen.queryByText('snippet.menu.editInfo')).not.toBeInTheDocument()
+      expect(screen.getByText('snippet.menu.exportSnippet')).toBeInTheDocument()
+      expect(screen.getByText('snippet.menu.deleteSnippet')).toBeInTheDocument()
     })
   })
 
@@ -207,6 +244,7 @@ describe('SnippetInfoDropdown', () => {
   describe('Export Snippet', () => {
     it('should export and download the snippet yaml', async () => {
       const user = userEvent.setup()
+      mockWorkspacePermissionKeys = ['snippets.management']
       mockExportMutateAsync.mockResolvedValue('yaml: content')
 
       render(<SnippetInfoDropdown snippet={mockSnippet} />)
@@ -226,6 +264,7 @@ describe('SnippetInfoDropdown', () => {
 
     it('should show an error toast when export fails', async () => {
       const user = userEvent.setup()
+      mockWorkspacePermissionKeys = ['snippets.management']
       mockExportMutateAsync.mockRejectedValue(new Error('export failed'))
 
       render(<SnippetInfoDropdown snippet={mockSnippet} />)

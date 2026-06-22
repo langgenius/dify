@@ -6,6 +6,32 @@ from collections.abc import Iterator
 import pytest
 from flask import Flask
 
+USER_PROPERTY_SCHEMA = {
+    "description": (
+        "User identifier, unique within the application. This identifier scopes data access; resources created with "
+        "one `user` value are only visible when queried with the same `user` value."
+    ),
+    "type": "string",
+}
+GENERIC_FILE_SCHEMA = {"description": "The file to upload.", "format": "binary", "type": "string"}
+DOCUMENT_CREATE_DATA_SCHEMA = {
+    "description": (
+        "JSON string containing configuration. Accepts the same fields as "
+        "[Create Document by Text](/api-reference/documents/create-document-by-text) (`indexing_technique`, "
+        "`doc_form`, `doc_language`, `process_rule`, `retrieval_model`, `embedding_model`, "
+        "`embedding_model_provider`) except `name` and `text`."
+    ),
+    "type": "string",
+}
+DOCUMENT_UPDATE_DATA_SCHEMA = {
+    "description": (
+        "JSON string containing document update settings such as `doc_form`, `doc_language`, `process_rule`, "
+        "`retrieval_model`, `embedding_model`, and `embedding_model_provider`. `name` and `text` are not used "
+        "for file updates."
+    ),
+    "type": "string",
+}
+
 
 def _schema_refs(value: object) -> set[str]:
     refs: set[str] = set()
@@ -180,11 +206,12 @@ def test_service_document_file_routes_document_multipart_form_data(monkeypatch: 
     create_schema = _multipart_form_schema(create_operation)
     create_properties = create_schema["properties"]
     assert isinstance(create_properties, dict)
-    assert create_properties["file"] == {"type": "string", "format": "binary"}
-    assert create_properties["data"] == {
-        "description": "Optional JSON string with document creation settings.",
+    assert create_properties["file"] == {
+        "description": "Document file to upload.",
+        "format": "binary",
         "type": "string",
     }
+    assert create_properties["data"] == DOCUMENT_CREATE_DATA_SCHEMA
     assert create_schema["required"] == ["file"]
     assert create_operation["requestBody"]["required"] is True
 
@@ -197,11 +224,12 @@ def test_service_document_file_routes_document_multipart_form_data(monkeypatch: 
         update_schema = _multipart_form_schema(update_operation)
         update_properties = update_schema["properties"]
         assert isinstance(update_properties, dict)
-        assert update_properties["file"] == {"type": "string", "format": "binary"}
-        assert update_properties["data"] == {
-            "description": "Optional JSON string with document update settings.",
+        assert update_properties["file"] == {
+            "description": "Replacement document file to upload.",
+            "format": "binary",
             "type": "string",
         }
+        assert update_properties["data"] == DOCUMENT_UPDATE_DATA_SCHEMA
         assert "required" not in update_schema
         assert update_operation["requestBody"]["required"] is False
 
@@ -228,7 +256,7 @@ def test_service_openapi_merges_public_api_reference_descriptions(monkeypatch: p
     rename_operation = payload["paths"]["/conversations/{c_id}/name"]["post"]
     assert rename_operation["summary"] == "Rename Conversation"
     assert rename_operation["tags"] == ["Conversations"]
-    assert _parameters_by_name(rename_operation)["c_id"]["description"] == "Conversation ID"
+    assert _parameters_by_name(rename_operation)["c_id"]["description"] == "Conversation ID."
 
 
 def test_service_document_list_documents_query_params_render(monkeypatch: pytest.MonkeyPatch):
@@ -277,7 +305,7 @@ def test_service_openapi_documents_decorator_user_contracts(monkeypatch: pytest.
     )
     for path, method in required_json_user_operations:
         schema = _json_body_schema(payload, paths[path][method])
-        assert schema["properties"]["user"] == {"description": "End user identifier", "type": "string"}
+        assert schema["properties"]["user"] == USER_PROPERTY_SCHEMA
         assert "user" in schema["required"]
 
     optional_json_user_operations = (
@@ -288,7 +316,7 @@ def test_service_openapi_documents_decorator_user_contracts(monkeypatch: pytest.
     )
     for path, method in optional_json_user_operations:
         schema = _json_body_schema(payload, paths[path][method])
-        assert schema["properties"]["user"] == {"description": "End user identifier", "type": "string"}
+        assert schema["properties"]["user"] == USER_PROPERTY_SCHEMA
         assert "user" not in schema.get("required", [])
 
     messages_params = _parameters_by_name(paths["/messages"]["get"])
@@ -316,12 +344,22 @@ def test_service_openapi_documents_app_multipart_contracts(monkeypatch: pytest.M
 
     for path in ("/files/upload", "/audio-to-text"):
         schema = _multipart_form_schema(paths[path]["post"])
-        assert schema["properties"]["file"] == {"format": "binary", "type": "string"}
-        assert schema["properties"]["user"] == {"description": "End user identifier", "type": "string"}
+        if path == "/audio-to-text":
+            assert schema["properties"]["file"] == {
+                "description": (
+                    "Audio file to transcribe. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, "
+                    "`audio/wav`, and `audio/amr`. File size limit is `30 MB`."
+                ),
+                "format": "binary",
+                "type": "string",
+            }
+        else:
+            assert schema["properties"]["file"] == GENERIC_FILE_SCHEMA
+        assert schema["properties"]["user"] == USER_PROPERTY_SCHEMA
         assert schema["required"] == ["file"]
 
     pipeline_schema = _multipart_form_schema(paths["/datasets/pipeline/file-upload"]["post"])
-    assert pipeline_schema["properties"]["file"] == {"format": "binary", "type": "string"}
+    assert pipeline_schema["properties"]["file"] == GENERIC_FILE_SCHEMA
     assert pipeline_schema["required"] == ["file"]
 
 
@@ -385,14 +423,14 @@ def test_service_openapi_documents_uuid_params_and_deprecated_routes(monkeypatch
 
     dataset_params = _parameters_by_name(paths["/datasets/{dataset_id}"]["get"])
     assert dataset_params["dataset_id"]["schema"] == {
-        "description": "Dataset ID",
+        "description": "Knowledge base ID.",
         "format": "uuid",
         "type": "string",
     }
 
     conversation_params = _parameters_by_name(paths["/conversations/{c_id}"]["delete"])
     assert conversation_params["c_id"]["schema"] == {
-        "description": "Conversation ID",
+        "description": "Conversation ID.",
         "format": "uuid",
         "type": "string",
     }
@@ -447,7 +485,7 @@ def test_service_openapi_documents_conditional_payload_schemas(monkeypatch: pyte
     assert manual_name_branch["properties"]["name"]["pattern"] == r".*\S.*"
     assert manual_name_branch["required"] == ["name"]
     for branch in rename_schema["anyOf"]:
-        assert branch["properties"]["user"] == {"description": "End user identifier", "type": "string"}
+        assert branch["properties"]["user"] == USER_PROPERTY_SCHEMA
 
     document_update_schema = payload["components"]["schemas"]["DocumentTextUpdate"]
     with_text_branch, without_text_branch = document_update_schema["anyOf"]

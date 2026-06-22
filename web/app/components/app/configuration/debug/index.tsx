@@ -77,7 +77,7 @@ const Debug: FC<IDebug> = ({
 }) => {
   const { t } = useTranslation()
   const {
-    readonly,
+    canTestAndRun = false,
     appId,
     mode,
     modelModeType,
@@ -303,6 +303,9 @@ const Debug: FC<IDebug> = ({
   }
 
   const handleSendTextCompletion = () => {
+    if (!canTestAndRun)
+      return
+
     if (debugWithMultipleModel) {
       eventEmitter?.emit({
         type: APP_CHAT_WITH_MULTIPLE_MODEL,
@@ -404,7 +407,7 @@ const Debug: FC<IDebug> = ({
                       <Button
                         variant="ghost-accent"
                         onClick={() => onMultipleModelConfigsChange(true, [...multipleModelConfigs, { id: `${Date.now()}`, model: '', provider: '', parameters: {} }])}
-                        disabled={multipleModelConfigs.length >= 4}
+                        disabled={multipleModelConfigs.length >= 4 || !canTestAndRun}
                       >
                         <RiAddLine className="mr-1 size-3.5" />
                         {t('modelProvider.addModel', { ns: 'common' })}
@@ -420,7 +423,7 @@ const Debug: FC<IDebug> = ({
             {mode !== AppModeEnum.COMPLETION && (
               <>
                 {
-                  !readonly && (
+                  canTestAndRun && (
                     <Tooltip>
                       <TooltipTrigger render={<ActionButton onClick={clearConversation}><RefreshCcw01 className="size-4" /></ActionButton>} />
                       <TooltipContent>
@@ -434,7 +437,7 @@ const Debug: FC<IDebug> = ({
                   varList.length > 0 && (
                     <div className="relative mr-2 ml-1">
                       <Tooltip>
-                        <TooltipTrigger render={<ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => !readonly && setExpanded(!expanded)}><RiEqualizer2Line className="size-4" /></ActionButton>} />
+                        <TooltipTrigger render={<ActionButton state={expanded ? ActionButtonState.Active : undefined} disabled={!canTestAndRun} onClick={() => setExpanded(!expanded)}><RiEqualizer2Line className="size-4" /></ActionButton>} />
                         <TooltipContent>
                           {t('panel.userInputField', { ns: 'workflow' })}
                         </TooltipContent>

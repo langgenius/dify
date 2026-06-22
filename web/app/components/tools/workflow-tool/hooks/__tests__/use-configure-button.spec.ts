@@ -4,13 +4,6 @@ import { act, renderHook } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
 import { isParametersOutdated, useConfigureButton } from '../use-configure-button'
 
-const mockIsCurrentWorkspaceManager = vi.fn(() => true)
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
-  }),
-}))
-
 const mockCreateWorkflowToolProvider = vi.fn()
 const mockSaveWorkflowToolProvider = vi.fn()
 vi.mock('@/service/tools', () => ({
@@ -197,7 +190,6 @@ describe('isParametersOutdated', () => {
 describe('useConfigureButton', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCurrentWorkspaceManager.mockReturnValue(true)
     mockUseWorkflowToolDetailByAppID.mockImplementation((_appId: string, enabled: boolean) => ({
       data: enabled ? createMockDetail() : undefined,
       isLoading: false,
@@ -212,12 +204,6 @@ describe('useConfigureButton', () => {
     it('should return workflow tool state without owning drawer visibility', () => {
       const { result } = renderHook(() => useConfigureButton(createDefaultOptions()))
       expect(result.current.payload).toMatchObject({ workflow_app_id: 'app-123' })
-    })
-
-    it('should forward isCurrentWorkspaceManager from context', () => {
-      mockIsCurrentWorkspaceManager.mockReturnValue(false)
-      const { result } = renderHook(() => useConfigureButton(createDefaultOptions()))
-      expect(result.current.isCurrentWorkspaceManager).toBe(false)
     })
 
     it('should forward isLoading from query hook', () => {

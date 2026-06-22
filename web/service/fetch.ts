@@ -156,7 +156,6 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
         redirect: 'follow',
       } as const
   const { params, body, headers: headersFromProps, ...init } = { ...baseOptions, ...options }
-  const headers = new Headers(headersFromProps || {})
 
   const {
     isPublicAPI = false,
@@ -168,6 +167,8 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     fetchCompat = false,
     request,
   } = otherOptions
+
+  const headers = new Headers(headersFromProps || {})
 
   let base: string
   if (isMarketplaceAPI)
@@ -259,15 +260,15 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
  * standard `base()` fetch wrapper.
  */
 export function postWithKeepalive(url: string, body: Record<string, unknown>): void {
-  const headers: Record<string, string> = {
+  const headers = new Headers({
     'Content-Type': ContentType.json,
     [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
-  }
+  })
 
   // Add Authorization header if an access token is available
   const accessToken = getWebAppAccessToken()
   if (accessToken)
-    headers.Authorization = `Bearer ${accessToken}`
+    headers.set('Authorization', `Bearer ${accessToken}`)
 
   globalThis.fetch(url, {
     method: 'POST',

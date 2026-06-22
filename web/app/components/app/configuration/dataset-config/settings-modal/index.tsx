@@ -21,7 +21,6 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
-import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
 import { DatasetPermission } from '@/models/datasets'
 import { updateDatasetSetting } from '@/service/datasets'
@@ -30,6 +29,7 @@ import { RetrievalChangeTip, RetrievalSection } from './retrieval-section'
 
 type SettingsModalProps = {
   currentDataset: DataSet
+  height?: string
   onCancel: () => void
   onSave: (newDataset: DataSet) => void
 }
@@ -44,6 +44,7 @@ const labelClass = `
 
 const SettingsModal: FC<SettingsModalProps> = ({
   currentDataset,
+  height = 'calc(100vh - 72px)',
   onCancel,
   onSave,
 }) => {
@@ -55,7 +56,6 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const isExternal = currentDataset.provider === 'external'
   const openIntegrationsSetting = useIntegrationsSetting()
   const [loading, setLoading] = useState(false)
-  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
   const [localeCurrentDataset, setLocaleCurrentDataset] = useState({ ...currentDataset })
   const [topK, setTopK] = useState(localeCurrentDataset?.external_retrieval_model.top_k ?? 2)
   const [scoreThreshold, setScoreThreshold] = useState(localeCurrentDataset?.external_retrieval_model.score_threshold ?? 0.5)
@@ -186,9 +186,9 @@ const SettingsModal: FC<SettingsModalProps> = ({
 
   return (
     <div
-      className="flex w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
+      className="flex min-h-0 w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
       style={{
-        height: 'calc(100vh - 72px)',
+        height,
       }}
       ref={ref}
     >
@@ -238,7 +238,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
           </div>
           <div className="w-full">
             <PermissionSelector
-              disabled={!localeCurrentDataset?.embedding_available || isCurrentWorkspaceDatasetOperator}
+              disabled={!localeCurrentDataset?.embedding_available}
               permission={localeCurrentDataset.permission}
               value={selectedMemberIDs}
               onChange={v => handleValueChange('permission', v!)}

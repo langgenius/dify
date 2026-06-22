@@ -1,9 +1,9 @@
 import type { DataSet, RelatedAppResponse } from '@/models/datasets'
 import { render, screen } from '@testing-library/react'
+import { DatasetACLPermission } from '@/utils/permission'
 import DatasetDetailSection from '../dataset-detail-section'
 
 let mockPathname = '/datasets/dataset-1/documents'
-let mockIsDatasetOperator = false
 let mockDataset: DataSet | undefined
 let mockRelatedApps: RelatedAppResponse | undefined
 
@@ -13,7 +13,8 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
-    isCurrentWorkspaceDatasetOperator: mockIsDatasetOperator,
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [],
   }),
 }))
 
@@ -27,7 +28,12 @@ vi.mock('../dataset-info', () => ({
 }))
 
 vi.mock('../nav-link', () => ({
-  default: ({ name, href }: { name: string, href: string }) => <a href={href}>{name}</a>,
+  default: ({ name, href, disabled }: { name: string, href: string, disabled?: boolean }) => {
+    if (disabled)
+      return <button disabled>{name}</button>
+
+    return <a href={href}>{name}</a>
+  },
 }))
 
 vi.mock('../../datasets/extra-info', () => ({
@@ -63,6 +69,7 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
     score_threshold: 0,
   },
   enable_api: true,
+  permission_keys: [DatasetACLPermission.Edit],
   ...overrides,
 } as DataSet)
 
@@ -70,7 +77,6 @@ describe('DatasetDetailSection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPathname = '/datasets/dataset-1/documents'
-    mockIsDatasetOperator = false
     mockDataset = createDataset()
     mockRelatedApps = {
       data: [],
@@ -86,5 +92,48 @@ describe('DatasetDetailSection', () => {
     expect(extraInfo).toHaveAttribute('data-expand', 'true')
     expect(extraInfo).toHaveAttribute('data-document-count', '120')
     expect(extraInfo.parentElement).toHaveClass('mt-auto', 'shrink-0')
+  })
+
+  it('should hide dataset stats and API access when dataset edit permission is missing', () => {
+    mockDataset = createDataset({
+      permission_keys: [DatasetACLPermission.Readonly],
+    })
+
+    render(<DatasetDetailSection expand />)
+
+    expect(screen.queryByTestId('extra-info')).not.toBeInTheDocument()
+  })
+
+  it('should render resource access navigation when dataset access config permission is granted', () => {
+    mockDataset = createDataset({
+      permission_keys: [DatasetACLPermission.AccessConfig],
+    })
+
+    render(<DatasetDetailSection expand />)
+
+    expect(screen.getByRole('link', { name: 'common.settings.resourceAccess' })).toHaveAttribute('href', '/datasets/dataset-1/access-config')
+  })
+
+  it('should hide resource access navigation when dataset access config permission is missing', () => {
+    render(<DatasetDetailSection expand />)
+
+    expect(screen.queryByRole('link', { name: 'common.settings.resourceAccess' })).not.toBeInTheDocument()
+  })
+
+  it('should render hit testing navigation as a link when retrieval recall permission is granted', () => {
+    mockDataset = createDataset({
+      permission_keys: [DatasetACLPermission.RetrievalRecall],
+    })
+
+    render(<DatasetDetailSection expand />)
+
+    expect(screen.getByRole('link', { name: 'common.datasetMenus.hitTesting' })).toHaveAttribute('href', '/datasets/dataset-1/hitTesting')
+  })
+
+  it('should disable hit testing navigation when retrieval recall permission is missing', () => {
+    render(<DatasetDetailSection expand />)
+
+    expect(screen.getByRole('button', { name: 'common.datasetMenus.hitTesting' })).toBeDisabled()
+    expect(screen.queryByRole('link', { name: 'common.datasetMenus.hitTesting' })).not.toBeInTheDocument()
   })
 })

@@ -29,8 +29,8 @@ vi.mock('@/context/i18n', () => ({
 
 // Mock the ExternalKnowledgeAPICard to avoid mocking its internal dependencies
 vi.mock('../../external-knowledge-api-card', () => ({
-  default: ({ api }: { api: ExternalAPIItem }) => (
-    <div data-testid={`api-card-${api.id}`}>{api.name}</div>
+  default: ({ api, canManageExternalKnowledgeApi }: { api: ExternalAPIItem, canManageExternalKnowledgeApi: boolean }) => (
+    <div data-testid={`api-card-${api.id}`} data-can-manage-external-knowledge-api={canManageExternalKnowledgeApi}>{api.name}</div>
   ),
 }))
 
@@ -38,6 +38,7 @@ vi.mock('../../external-knowledge-api-card', () => ({
 
 describe('ExternalAPIPanel', () => {
   const defaultProps = {
+    canManageExternalKnowledgeApi: true,
     onClose: vi.fn(),
   }
 
@@ -69,6 +70,11 @@ describe('ExternalAPIPanel', () => {
     it('should render create button', () => {
       render(<ExternalAPIPanel {...defaultProps} />)
       expect(screen.getByText('dataset.createExternalAPI'))!.toBeInTheDocument()
+    })
+
+    it('should hide create button when external knowledge API management is unavailable', () => {
+      render(<ExternalAPIPanel {...defaultProps} canManageExternalKnowledgeApi={false} />)
+      expect(screen.queryByText('dataset.createExternalAPI')).not.toBeInTheDocument()
     })
 
     it('should render close button', () => {
@@ -123,6 +129,7 @@ describe('ExternalAPIPanel', () => {
       render(<ExternalAPIPanel {...defaultProps} />)
       expect(screen.getByTestId('api-card-api-1'))!.toBeInTheDocument()
       expect(screen.getByTestId('api-card-api-2'))!.toBeInTheDocument()
+      expect(screen.getByTestId('api-card-api-1')).toHaveAttribute('data-can-manage-external-knowledge-api', 'true')
       expect(screen.getByText('Test API 1'))!.toBeInTheDocument()
       expect(screen.getByText('Test API 2'))!.toBeInTheDocument()
     })
@@ -131,7 +138,7 @@ describe('ExternalAPIPanel', () => {
   describe('User Interactions', () => {
     it('should call onClose when close button is clicked', () => {
       const onClose = vi.fn()
-      render(<ExternalAPIPanel onClose={onClose} />)
+      render(<ExternalAPIPanel canManageExternalKnowledgeApi={true} onClose={onClose} />)
       // Find the close button (ActionButton with close icon)
       const buttons = screen.getAllByRole('button')
       const closeButton = buttons.find(btn => btn.querySelector('svg[class*="ri-close"]'))
