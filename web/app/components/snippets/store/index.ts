@@ -11,14 +11,11 @@ type SnippetNavigationState = {
 }
 
 type SnippetDetailUIState = {
-  fields: SnippetInputField[]
-  setFields: (fields: SnippetInputField[]) => void
   setNavigationState: (state: SnippetNavigationState) => void
   reset: () => void
 } & SnippetNavigationState
 
 const initialState = {
-  fields: [] as SnippetInputField[],
   readonly: true,
   snippet: undefined,
   snippetId: undefined,
@@ -27,7 +24,6 @@ const initialState = {
 
 export const useSnippetDetailStore = create<SnippetDetailUIState>(set => ({
   ...initialState,
-  setFields: fields => set({ fields }),
   setNavigationState: state => set(state),
   reset: () => set(initialState),
 }))

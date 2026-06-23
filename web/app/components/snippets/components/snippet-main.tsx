@@ -8,8 +8,8 @@ import { toast } from '@langgenius/dify-ui/toast'
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -23,6 +23,7 @@ import {
   initialEdges,
   initialNodes,
 } from '@/app/components/workflow/utils'
+import { useSnippetDraftStore } from '../draft-store'
 import { useConfigsMap } from '../hooks/use-configs-map'
 import { useGetRunAndTraceUrl } from '../hooks/use-get-run-and-trace-url'
 import { useInspectVarsCrud } from '../hooks/use-inspect-vars-crud'
@@ -136,16 +137,12 @@ const SnippetMain = ({
   const effectiveDraftNodes = localDraftState?.nodes ?? draftNodes
   const effectiveDraftEdges = localDraftState?.edges ?? draftEdges
   const effectiveDraftViewport = localDraftState?.viewport ?? draftViewport
-  const currentInputFieldsRef = useRef<SnippetInputField[]>(effectiveDraftPayload.inputFields)
   const { graph, snippet } = effectiveDraftPayload
   const canSave = currentCanvasNodeCount > 0
-  const getCurrentInputFields = useCallback(() => currentInputFieldsRef.current, [])
   const {
     doSyncWorkflowDraft: syncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
-  } = useNodesSyncDraft(snippetId, {
-    getInputFields: getCurrentInputFields,
-  })
+  } = useNodesSyncDraft(snippetId)
   const workflowStore = useWorkflowStore()
   const { handleRefreshWorkflowDraft } = useSnippetRefreshDraft(snippetId)
   const {
@@ -197,12 +194,17 @@ const SnippetMain = ({
   }, [workflowAvailableNodesMetaData])
   const {
     reset,
-    setFields,
     setNavigationState,
   } = useSnippetDetailStore(useShallow(state => ({
     reset: state.reset,
-    setFields: state.setFields,
     setNavigationState: state.setNavigationState,
+  })))
+  const {
+    hydrateDraft,
+    setInputFields,
+  } = useSnippetDraftStore(useShallow(state => ({
+    hydrateDraft: state.hydrateDraft,
+    setInputFields: state.setInputFields,
   })))
   const {
     fields,
@@ -224,10 +226,12 @@ const SnippetMain = ({
     return () => reset()
   }, [reset, snippetId])
 
-  useEffect(() => {
-    currentInputFieldsRef.current = effectiveDraftPayload.inputFields
-    setFields(effectiveDraftPayload.inputFields)
-  }, [effectiveDraftPayload.inputFields, setFields, snippetId])
+  useLayoutEffect(() => {
+    hydrateDraft({
+      snippetId,
+      inputFields: effectiveDraftPayload.inputFields,
+    })
+  }, [effectiveDraftPayload.inputFields, hydrateDraft, snippetId])
 
   useEffect(() => {
     workflowStore.setState({ canvasReadOnly: false })
@@ -254,7 +258,6 @@ const SnippetMain = ({
   ) => syncWorkflowDraft(...args), [syncWorkflowDraft])
 
   const handleFieldsChange = useCallback((nextFields: SnippetInputField[]) => {
-    currentInputFieldsRef.current = nextFields
     handleSnippetFieldsChange(nextFields)
   }, [handleSnippetFieldsChange])
 
@@ -286,7 +289,6 @@ const SnippetMain = ({
       ? syncedDraftPayload.input_fields as SnippetInputField[]
       : fields
 
-    currentInputFieldsRef.current = inputFields
     setLocalDraftState({
       payload: {
         ...draftPayload,
@@ -297,8 +299,8 @@ const SnippetMain = ({
       edges: initialEdges(draftGraph.edges, draftGraph.nodes),
       viewport: draftGraph.viewport,
     })
-    setFields(inputFields)
-  }, [draftPayload, fields, setFields])
+    setInputFields(inputFields)
+  }, [draftPayload, fields, setInputFields])
 
   const hooksStore = useMemo(() => {
     return {

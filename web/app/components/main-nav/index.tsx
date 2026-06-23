@@ -15,6 +15,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
 import { SnippetSidebarContent } from '@/app/components/snippets/components/snippet-sidebar'
+import { useSnippetDraftStore } from '@/app/components/snippets/draft-store'
 import { useSnippetDetailStore } from '@/app/components/snippets/store'
 import { useAppContext } from '@/context/app-context'
 import { AgentDetailSection, AgentDetailTop } from '@/features/agent-v2/agent-detail/navigation'
@@ -101,11 +102,11 @@ const MainNav = ({
   const showSnippetDetailNavigation = isSnippetDetailPathname(pathname)
   const showDetailNavigation = showAppDetailNavigation || showDatasetDetailNavigation || showAgentDetailNavigation || showDeploymentDetailNavigation || showSnippetDetailNavigation
   const snippetNavigation = useSnippetDetailStore(useShallow(state => ({
-    fields: state.fields,
     onFieldsChange: state.onFieldsChange,
     readonly: state.readonly,
     snippet: state.snippet,
   })))
+  const snippetInputFields = useSnippetDraftStore(state => state.inputFields)
   const { hasAppDetail, setAppDetail } = useAppStore(useShallow(state => ({
     hasAppDetail: !!state.appDetail,
     setAppDetail: state.setAppDetail,
@@ -307,7 +308,7 @@ const MainNav = ({
                       ? (
                           <SnippetSidebarContent
                             snippet={snippetNavigation.snippet}
-                            fields={snippetNavigation.fields}
+                            fields={snippetInputFields}
                             readonly={snippetNavigation.readonly}
                             onFieldsChange={snippetNavigation.onFieldsChange}
                           />

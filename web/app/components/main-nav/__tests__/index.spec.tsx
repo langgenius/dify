@@ -28,13 +28,12 @@ import { DETAIL_SIDEBAR_STORAGE_KEY } from '../storage'
 const activeEdgeClassName = 'before:pointer-events-none'
 
 type SnippetNavigationTestState = {
-  fields: SnippetInputField[]
   onFieldsChange?: (fields: SnippetInputField[]) => void
   readonly: boolean
   snippet?: SnippetDetail
 }
 
-const { mockIsAgentV2Enabled, mockSnippetFieldsChange, mockSwitchWorkspace, mockToastSuccess, hotkeyRegistrations, snippetNavigationState } = vi.hoisted(() => ({
+const { mockIsAgentV2Enabled, mockSnippetFieldsChange, mockSwitchWorkspace, mockToastSuccess, hotkeyRegistrations, snippetDraftState, snippetNavigationState } = vi.hoisted(() => ({
   mockSwitchWorkspace: vi.fn(),
   mockSnippetFieldsChange: vi.fn(),
   mockToastSuccess: vi.fn(),
@@ -43,8 +42,10 @@ const { mockIsAgentV2Enabled, mockSnippetFieldsChange, mockSwitchWorkspace, mock
     handler: (event: { preventDefault: () => void }) => void
     options?: { ignoreInputs?: boolean }
   }>(),
+  snippetDraftState: {
+    inputFields: [],
+  } as { inputFields: SnippetInputField[] },
   snippetNavigationState: {
-    fields: [],
     readonly: true,
     snippet: undefined,
     onFieldsChange: undefined,
@@ -202,6 +203,10 @@ vi.mock('@/features/deployments/detail/deployment-sidebar', () => ({
 
 vi.mock('@/app/components/snippets/store', () => ({
   useSnippetDetailStore: (selector: (state: SnippetNavigationTestState) => unknown) => selector(snippetNavigationState),
+}))
+
+vi.mock('@/app/components/snippets/draft-store', () => ({
+  useSnippetDraftStore: (selector: (state: typeof snippetDraftState) => unknown) => selector(snippetDraftState),
 }))
 
 vi.mock('@/app/components/snippets/components/snippet-sidebar', () => ({
@@ -423,7 +428,7 @@ describe('MainNav', () => {
     })
     mockSwitchWorkspace.mockReturnValue(new Promise(() => {}))
     hotkeyRegistrations.clear()
-    snippetNavigationState.fields = []
+    snippetDraftState.inputFields = []
     snippetNavigationState.onFieldsChange = undefined
     snippetNavigationState.readonly = true
     snippetNavigationState.snippet = undefined
@@ -634,7 +639,7 @@ describe('MainNav', () => {
 
   it('replaces global navigation with snippet detail navigation on snippet routes', () => {
     mockPathname = '/snippets/snippet-1/orchestrate'
-    snippetNavigationState.fields = snippetFields
+    snippetDraftState.inputFields = snippetFields
     snippetNavigationState.onFieldsChange = mockSnippetFieldsChange
     snippetNavigationState.readonly = false
     snippetNavigationState.snippet = snippet
@@ -661,7 +666,7 @@ describe('MainNav', () => {
 
   it('collapses snippet detail navigation from the top-right toggle', () => {
     mockPathname = '/snippets/snippet-1/orchestrate'
-    snippetNavigationState.fields = snippetFields
+    snippetDraftState.inputFields = snippetFields
     snippetNavigationState.onFieldsChange = mockSnippetFieldsChange
     snippetNavigationState.snippet = snippet
 

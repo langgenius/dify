@@ -1,8 +1,8 @@
 import type { SnippetInputField } from '@/models/snippet'
 import { useCallback } from 'react'
 import { useShallow } from 'zustand/react/shallow'
+import { useSnippetDraftStore } from '../../draft-store'
 import { useNodesSyncDraft } from '../../hooks/use-nodes-sync-draft'
-import { useSnippetDetailStore } from '../../store'
 
 type UseSnippetInputFieldActionsOptions = {
   canEdit?: boolean
@@ -15,25 +15,25 @@ export const useSnippetInputFieldActions = ({
 }: UseSnippetInputFieldActionsOptions) => {
   const { syncInputFieldsDraft } = useNodesSyncDraft(snippetId)
   const {
-    fields,
-    setFields,
-  } = useSnippetDetailStore(useShallow(state => ({
-    fields: state.fields,
-    setFields: state.setFields,
+    inputFields,
+    setInputFields,
+  } = useSnippetDraftStore(useShallow(state => ({
+    inputFields: state.inputFields,
+    setInputFields: state.setInputFields,
   })))
 
   const handleFieldsChange = useCallback((newFields: SnippetInputField[]) => {
     if (!canEdit)
       return
 
-    setFields(newFields)
+    setInputFields(newFields)
     void syncInputFieldsDraft(newFields, {
-      onRefresh: setFields,
+      onRefresh: setInputFields,
     })
-  }, [canEdit, setFields, syncInputFieldsDraft])
+  }, [canEdit, setInputFields, syncInputFieldsDraft])
 
   return {
-    fields,
+    fields: inputFields,
     handleFieldsChange,
   }
 }

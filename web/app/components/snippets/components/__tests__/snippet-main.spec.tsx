@@ -6,13 +6,13 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { PipelineInputVarType } from '@/models/pipeline'
+import { useSnippetDraftStore } from '../../draft-store'
 import SnippetMain from '../snippet-main'
 
 const mockSyncInputFieldsDraft = vi.fn()
 const mockDoSyncWorkflowDraft = vi.fn()
 const mockSyncWorkflowDraftWhenPageClose = vi.fn()
 const mockReset = vi.fn()
-const mockSetFields = vi.fn()
 const mockSetNavigationState = vi.fn()
 const mockPublishSnippetMutateAsync = vi.fn()
 const mockFetchInspectVars = vi.fn()
@@ -52,11 +52,9 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 let capturedHooksStore: Record<string, unknown> | undefined
 let capturedWorkflowNodes: WorkflowProps['nodes'] | undefined
 let snippetDetailStoreState: {
-  fields: SnippetInputField[]
   onFieldsChange?: (fields: SnippetInputField[]) => void
   readonly: boolean
   reset: typeof mockReset
-  setFields: typeof mockSetFields
   setNavigationState: typeof mockSetNavigationState
   snippet?: SnippetDetail
   snippetId?: string
@@ -277,11 +275,10 @@ describe('SnippetMain', () => {
     })
     capturedHooksStore = undefined
     capturedWorkflowNodes = undefined
+    useSnippetDraftStore.getState().reset()
     snippetDetailStoreState = {
-      fields: [...payload.inputFields],
       readonly: true,
       reset: mockReset,
-      setFields: mockSetFields,
       setNavigationState: mockSetNavigationState,
     }
   })

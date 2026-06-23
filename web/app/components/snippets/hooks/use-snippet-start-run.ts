@@ -3,7 +3,7 @@ import { useCallback } from 'react'
 import { useWorkflowInteractions } from '@/app/components/workflow/hooks'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
-import { useSnippetDetailStore } from '../store'
+import { useSnippetDraftStore } from '../draft-store'
 
 type UseSnippetStartRunOptions = {
   handleRun: (params: SnippetDraftRunPayload) => void
@@ -38,7 +38,7 @@ export const useSnippetStartRun = ({
 
     setShowDebugAndPreviewPanel(true)
 
-    const currentInputFields = useSnippetDetailStore.getState().fields
+    const currentInputFields = useSnippetDraftStore.getState().inputFields
 
     if (currentInputFields.length > 0) {
       setShowInputsPanel(true)
