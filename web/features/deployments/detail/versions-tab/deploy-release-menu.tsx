@@ -9,11 +9,9 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
 import { TitleTooltip } from '../../components/title-tooltip'
 import { openDeployDrawerAtom } from '../../deploy-drawer/state'
 import { isUndeployedDeploymentRow } from '../../shared/domain/runtime-status'
@@ -24,11 +22,12 @@ import {
   releaseUsageCount,
 } from './deploy-release-menu-utils'
 import { EditReleaseDialog } from './edit-release-dialog'
-import { exportReleaseDsl } from './release-dsl-export'
 import {
+  deleteReleaseMutationAtom,
   deployReleaseMenuAppInstanceQueryAtom,
   deployReleaseMenuEnvironmentDeploymentsQueryAtom,
   deployReleaseMenuOpenReleaseIdAtom,
+  exportReleaseDslMutationAtom,
   setDeployReleaseMenuOpenAtom,
 } from './state'
 
@@ -44,11 +43,11 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
   const setDeployReleaseMenuOpen = useSetAtom(setDeployReleaseMenuOpenAtom)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [isExportingDsl, setIsExportingDsl] = useState(false)
   const open = openReleaseMenuId === releaseId
   const environmentDeploymentsQuery = useAtomValue(deployReleaseMenuEnvironmentDeploymentsQueryAtom)
   const appInstanceQuery = useAtomValue(deployReleaseMenuAppInstanceQueryAtom)
-  const deleteRelease = useMutation(consoleQuery.enterprise.releaseService.deleteRelease.mutationOptions())
+  const deleteRelease = useAtomValue(deleteReleaseMutationAtom)
+  const exportReleaseDslMutation = useAtomValue(exportReleaseDslMutationAtom)
 
   const environments = (environmentDeploymentsQuery.data?.environmentDeployments ?? [])
     .map(row => row.environment)
@@ -59,12 +58,14 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
   if (!targetRelease)
     return null
 
-  const targetReleaseName = targetRelease.displayName
+  const release = targetRelease
+  const targetReleaseName = release.displayName
   const deleteUsageCount = releaseUsageCount(releaseId, deploymentRows)
   const isCheckingDeleteUsage = open && environmentDeploymentsQuery.isLoading
   const hasDeleteUsageCheckFailed = open && environmentDeploymentsQuery.isError
   const isReleaseInUse = deleteUsageCount > 0
   const isDeletingRelease = deleteRelease.isPending
+  const isExportingDsl = exportReleaseDslMutation.isPending
   const deleteDisabledReason = isCheckingDeleteUsage
     ? t('versions.disabledReason.checkingDeployments')
     : hasDeleteUsageCheckFailed
@@ -78,21 +79,21 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
     setDeployReleaseMenuOpen({ releaseId, open: nextOpen })
   }
 
-  const handleExportDsl = async () => {
+  function handleExportDsl() {
     if (isExportingDsl)
       return
 
-    setIsExportingDsl(true)
-    try {
-      await exportReleaseDsl({ release: targetRelease, releaseId, appInstanceName })
-      handleOpenChange(false)
-    }
-    catch {
-      toast.error(t('versions.exportDslFailed'))
-    }
-    finally {
-      setIsExportingDsl(false)
-    }
+    exportReleaseDslMutation.mutate(
+      { release, releaseId, appInstanceName },
+      {
+        onSuccess: () => {
+          handleOpenChange(false)
+        },
+        onError: () => {
+          toast.error(t('versions.exportDslFailed'))
+        },
+      },
+    )
   }
 
   function handleDeleteRelease() {
@@ -123,7 +124,7 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
     environmentDeployments: environmentDeploymentsQuery.data?.environmentDeployments ?? [],
     releaseRows,
     releaseId,
-    targetRelease,
+    targetRelease: release,
     t,
   })
 
@@ -224,14 +225,14 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
       </DropdownMenu>
 
       <EditReleaseDialog
-        release={targetRelease}
+        release={release}
         open={showEditDialog}
         onOpenChange={setShowEditDialog}
       />
 
       <DeleteReleaseDialog
         open={showDeleteConfirm}
-        release={targetRelease}
+        release={release}
         isDeleting={isDeletingRelease}
         onOpenChange={setShowDeleteConfirm}
         onConfirm={handleDeleteRelease}

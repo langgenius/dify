@@ -123,6 +123,14 @@ async function loadState() {
   return await import('../index')
 }
 
+function workflowDsl() {
+  return [
+    'app:',
+    '  mode: workflow',
+    '  name: Imported guide',
+  ].join('\n')
+}
+
 describe('create deployment guide state', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -214,5 +222,25 @@ describe('create deployment guide state', () => {
     expect(store.get(state.instanceNameAtom)).toMatch(/^Customer Service-[a-z]{4}$/)
     expect(store.get(state.releaseNameAtom)).toBe('Initial Release')
     expect(store.get(state.stepAtom)).toBe('release')
+  })
+
+  it('should read selected DSL file content through the file content query', async () => {
+    const state = await loadState()
+    const store = createStore()
+    const text = vi.fn().mockResolvedValue(workflowDsl())
+    const file = new File([], 'workflow.yml', { type: 'text/yaml' })
+    Object.defineProperty(file, 'text', { value: text })
+
+    store.set(state.selectDslFileAtom, file)
+    mockQueryResults.current.set('createGuideDslFileContent', {
+      data: workflowDsl(),
+      isSuccess: true,
+    })
+
+    expect(text).not.toHaveBeenCalled()
+    expect(store.get(state.dslFileAtom)).toBe(file)
+    expect(store.get(state.dslDefaultAppNameAtom)).toBe('Imported guide')
+    expect(store.get(state.isReadingDslAtom)).toBe(false)
+    expect(store.get(state.dslReadErrorAtom)).toBe(false)
   })
 })

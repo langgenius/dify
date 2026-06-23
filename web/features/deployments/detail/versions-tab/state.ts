@@ -1,12 +1,19 @@
 'use client'
 
-import type { ListReleaseSummariesResponse } from '@dify/contracts/enterprise/types.gen'
-import { keepPreviousData, skipToken } from '@tanstack/react-query'
+import type { ListReleaseSummariesResponse, Release } from '@dify/contracts/enterprise/types.gen'
+import { keepPreviousData, mutationOptions, skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
-import { atomWithQuery } from 'jotai-tanstack-query'
+import { atomWithMutation, atomWithQuery } from 'jotai-tanstack-query'
 import { consoleQuery } from '@/service/client'
 import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
 import { RELEASE_HISTORY_PAGE_SIZE } from '../../shared/domain/pagination'
+import { exportReleaseDsl } from './release-dsl-export'
+
+type ExportReleaseDslInput = {
+  release: Release
+  releaseId: string
+  appInstanceName?: string
+}
 
 export const releaseHistoryCurrentPageAtom = atom(0)
 export const deployReleaseMenuOpenReleaseIdAtom = atom<string | undefined>(undefined)
@@ -57,6 +64,21 @@ export const deployReleaseMenuAppInstanceQueryAtom = atomWithQuery((get) => {
     enabled: Boolean(appInstanceId && openReleaseId),
   })
 })
+
+export const deleteReleaseMutationAtom = atomWithMutation(() =>
+  consoleQuery.enterprise.releaseService.deleteRelease.mutationOptions(),
+)
+
+export const updateReleaseMutationAtom = atomWithMutation(() =>
+  consoleQuery.enterprise.releaseService.updateRelease.mutationOptions(),
+)
+
+export const exportReleaseDslMutationAtom = atomWithMutation(() =>
+  mutationOptions({
+    mutationKey: ['deployments', 'release-dsl-export'],
+    mutationFn: (input: ExportReleaseDslInput) => exportReleaseDsl(input),
+  }),
+)
 
 export const setReleaseHistoryCurrentPageAtom = atom(null, (_get, set, page: number) => {
   set(releaseHistoryCurrentPageAtom, Math.max(page, 0))

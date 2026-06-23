@@ -15,10 +15,9 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useAtomValue } from 'jotai'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
 import {
   DetailTable,
   DetailTableBody,
@@ -32,6 +31,7 @@ import {
 import {
   API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES,
 } from '../../table-styles'
+import { createDeleteApiKeyMutationAtom } from './state'
 
 function ApiKeyName({ apiKey }: {
   apiKey: ApiKey
@@ -70,7 +70,8 @@ function RevokeApiKeyButton({ apiKey }: {
 }) {
   const { t } = useTranslation('deployments')
   const [showRevokeConfirm, setShowRevokeConfirm] = useState(false)
-  const revokeApiKey = useMutation(consoleQuery.enterprise.accessService.deleteApiKey.mutationOptions())
+  const deleteApiKeyMutationAtom = useMemo(() => createDeleteApiKeyMutationAtom(), [])
+  const revokeApiKey = useAtomValue(deleteApiKeyMutationAtom)
   const isRevoking = revokeApiKey.isPending
   const apiKeyName = apiKey.displayName
 

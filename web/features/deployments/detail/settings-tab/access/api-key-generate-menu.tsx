@@ -23,11 +23,11 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
 import { generateApiTokenName } from './api-token-name'
+import { createApiKeyMutationAtom } from './state'
 
 export function ApiKeyGenerateMenu({
   appInstanceId,
@@ -51,7 +51,7 @@ export function ApiKeyGenerateMenu({
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string>()
   const [draftName, setDraftName] = useState('')
   const [nameError, setNameError] = useState(false)
-  const generateApiKey = useMutation(consoleQuery.enterprise.accessService.createApiKey.mutationOptions())
+  const generateApiKey = useAtomValue(createApiKeyMutationAtom)
   const selectableEnvironments = environments
   const selectedEnvironment = selectedEnvironmentId
     ? selectableEnvironments.find(env => env.id === selectedEnvironmentId)

@@ -2,7 +2,7 @@
 
 import { skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
-import { atomWithQuery } from 'jotai-tanstack-query'
+import { atomWithMutation, atomWithQuery } from 'jotai-tanstack-query'
 import { consoleQuery } from '@/service/client'
 import { deploymentRouteAppInstanceIdAtom } from '../route-state'
 import { deploymentStatusPollingInterval } from '../shared/domain/runtime-status'
@@ -59,3 +59,9 @@ export const deploymentSourceAppQueryAtom = atomWithQuery((get) => {
     enabled: Boolean(sourceAppId),
   })
 })
+
+export function createUndeployDeploymentMutationAtom() {
+  return atomWithMutation(() =>
+    consoleQuery.enterprise.deploymentService.undeploy.mutationOptions(),
+  )
+}

@@ -3,13 +3,16 @@ import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AccessChannelsSection } from '../channels-section'
 
-const mockUseMutation = vi.hoisted(() => vi.fn())
+const mockToggleAccessChannel = vi.hoisted(() => vi.fn())
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+vi.mock('../state', async () => {
+  const { atom } = await import('jotai')
+
   return {
-    ...actual,
-    useMutation: (...args: unknown[]) => mockUseMutation(...args),
+    updateAccessChannelsMutationAtom: atom({
+      isPending: false,
+      mutate: mockToggleAccessChannel,
+    }),
   }
 })
 
@@ -38,10 +41,6 @@ function createEndpoint(endpointUrl: string): AccessEndpoint {
 describe('AccessChannelsSection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseMutation.mockReturnValue({
-      isPending: false,
-      mutate: vi.fn(),
-    })
   })
 
   it('should render channel descriptions when access channels are enabled', () => {
