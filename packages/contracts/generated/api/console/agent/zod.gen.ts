@@ -3,6 +3,51 @@
 import * as z from 'zod'
 
 /**
+ * AgentApiAccessResponse
+ */
+export const zAgentApiAccessResponse = z.object({
+  api_key_count: z.int(),
+  api_rph: z.int(),
+  api_rpm: z.int(),
+  chat_endpoint: z.string(),
+  conversations_endpoint: z.string(),
+  enabled: z.boolean(),
+  files_upload_endpoint: z.string(),
+  info_endpoint: z.string(),
+  messages_endpoint: z.string(),
+  meta_endpoint: z.string(),
+  parameters_endpoint: z.string(),
+  service_api_base_url: z.string(),
+  stop_endpoint: z.string(),
+  streaming_only: z.boolean().optional().default(true),
+})
+
+/**
+ * AgentApiStatusPayload
+ */
+export const zAgentApiStatusPayload = z.object({
+  enable_api: z.boolean(),
+})
+
+/**
+ * ApiKeyItem
+ */
+export const zApiKeyItem = z.object({
+  created_at: z.int().nullish(),
+  id: z.string(),
+  last_used_at: z.int().nullish(),
+  token: z.string(),
+  type: z.string(),
+})
+
+/**
+ * ApiKeyList
+ */
+export const zApiKeyList = z.object({
+  data: z.array(zApiKeyItem),
+})
+
+/**
  * SuggestedQuestionsResponse
  */
 export const zSuggestedQuestionsResponse = z.object({
@@ -2256,6 +2301,54 @@ export const zPutAgentByAgentIdPath = z.object({
  * Agent app updated successfully
  */
 export const zPutAgentByAgentIdResponse = zAgentAppDetailWithSite
+
+export const zGetAgentByAgentIdApiAccessPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Agent service API access
+ */
+export const zGetAgentByAgentIdApiAccessResponse = zAgentApiAccessResponse
+
+export const zPostAgentByAgentIdApiEnableBody = zAgentApiStatusPayload
+
+export const zPostAgentByAgentIdApiEnablePath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Agent service API status updated
+ */
+export const zPostAgentByAgentIdApiEnableResponse = zAgentApiAccessResponse
+
+export const zGetAgentByAgentIdApiKeysPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Agent service API keys
+ */
+export const zGetAgentByAgentIdApiKeysResponse = zApiKeyList
+
+export const zPostAgentByAgentIdApiKeysPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Agent service API key created
+ */
+export const zPostAgentByAgentIdApiKeysResponse = zApiKeyItem
+
+export const zDeleteAgentByAgentIdApiKeysByApiKeyIdPath = z.object({
+  agent_id: z.uuid(),
+  api_key_id: z.uuid(),
+})
+
+/**
+ * Agent service API key deleted
+ */
+export const zDeleteAgentByAgentIdApiKeysByApiKeyIdResponse = z.void()
 
 export const zGetAgentByAgentIdChatMessagesPath = z.object({
   agent_id: z.uuid(),

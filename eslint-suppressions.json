@@ -2610,11 +2610,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/zendesk/utils.ts": {
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
   "web/app/components/billing/header-billing-btn/index.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1

@@ -613,6 +613,7 @@
   "versions.releaseDescriptionLabel": "描述",
   "versions.releaseDescriptionPlaceholder": "描述这个版本",
   "versions.releaseHistory": "版本历史",
+  "versions.releaseNameConflict": "此版本名称已存在，请选择其他名称。",
   "versions.releaseNameLabel": "版本名称",
   "versions.releaseNamePlaceholder": "版本名称",
   "versions.releaseNameRequired": "请输入版本名称。",

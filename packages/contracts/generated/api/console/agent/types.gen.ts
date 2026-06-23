@@ -74,6 +74,39 @@ export type AgentAppUpdatePayload = {
   use_icon_as_answer_icon?: boolean | null
 }
 
+export type AgentApiAccessResponse = {
+  api_key_count: number
+  api_rph: number
+  api_rpm: number
+  chat_endpoint: string
+  conversations_endpoint: string
+  enabled: boolean
+  files_upload_endpoint: string
+  info_endpoint: string
+  messages_endpoint: string
+  meta_endpoint: string
+  parameters_endpoint: string
+  service_api_base_url: string
+  stop_endpoint: string
+  streaming_only?: boolean
+}
+
+export type AgentApiStatusPayload = {
+  enable_api: boolean
+}
+
+export type ApiKeyList = {
+  data: Array<ApiKeyItem>
+}
+
+export type ApiKeyItem = {
+  created_at?: number | null
+  id: string
+  last_used_at?: number | null
+  token: string
+  type: string
+}
+
 export type MessageInfiniteScrollPaginationResponse = {
   data: Array<MessageDetailResponse>
   has_more: boolean
@@ -1698,6 +1731,95 @@ export type PutAgentByAgentIdResponses = {
 }
 
 export type PutAgentByAgentIdResponse = PutAgentByAgentIdResponses[keyof PutAgentByAgentIdResponses]
+
+export type GetAgentByAgentIdApiAccessData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/api-access'
+}
+
+export type GetAgentByAgentIdApiAccessResponses = {
+  200: AgentApiAccessResponse
+}
+
+export type GetAgentByAgentIdApiAccessResponse
+  = GetAgentByAgentIdApiAccessResponses[keyof GetAgentByAgentIdApiAccessResponses]
+
+export type PostAgentByAgentIdApiEnableData = {
+  body: AgentApiStatusPayload
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/api-enable'
+}
+
+export type PostAgentByAgentIdApiEnableErrors = {
+  403: unknown
+}
+
+export type PostAgentByAgentIdApiEnableResponses = {
+  200: AgentApiAccessResponse
+}
+
+export type PostAgentByAgentIdApiEnableResponse
+  = PostAgentByAgentIdApiEnableResponses[keyof PostAgentByAgentIdApiEnableResponses]
+
+export type GetAgentByAgentIdApiKeysData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/api-keys'
+}
+
+export type GetAgentByAgentIdApiKeysResponses = {
+  200: ApiKeyList
+}
+
+export type GetAgentByAgentIdApiKeysResponse
+  = GetAgentByAgentIdApiKeysResponses[keyof GetAgentByAgentIdApiKeysResponses]
+
+export type PostAgentByAgentIdApiKeysData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/api-keys'
+}
+
+export type PostAgentByAgentIdApiKeysErrors = {
+  400: unknown
+}
+
+export type PostAgentByAgentIdApiKeysResponses = {
+  201: ApiKeyItem
+}
+
+export type PostAgentByAgentIdApiKeysResponse
+  = PostAgentByAgentIdApiKeysResponses[keyof PostAgentByAgentIdApiKeysResponses]
+
+export type DeleteAgentByAgentIdApiKeysByApiKeyIdData = {
+  body?: never
+  path: {
+    agent_id: string
+    api_key_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/api-keys/{api_key_id}'
+}
+
+export type DeleteAgentByAgentIdApiKeysByApiKeyIdResponses = {
+  204: void
+}
+
+export type DeleteAgentByAgentIdApiKeysByApiKeyIdResponse
+  = DeleteAgentByAgentIdApiKeysByApiKeyIdResponses[keyof DeleteAgentByAgentIdApiKeysByApiKeyIdResponses]
 
 export type GetAgentByAgentIdChatMessagesData = {
   body?: never
