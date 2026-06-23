@@ -1,7 +1,8 @@
-import type { AgentConfigSnapshotSummaryResponse, AgentPublishedReferenceResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentConfigSnapshotSummaryResponse, AgentReferencingWorkflowResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { ComponentProps } from 'react'
 import type { Mock } from 'vitest'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { agentComposerDraftAtom, agentComposerOriginalDraftAtom, agentComposerPublishedDraftAtom } from '@/features/agent-v2/agent-composer/store'
@@ -18,6 +19,9 @@ const hotkeyRegistrations = vi.hoisted(() => new Map<string, {
 
 const mockFormatForDisplay = vi.hoisted(() => vi.fn((hotkey: string) => `display:${hotkey}`))
 const mockFormatTimeFromNow = vi.hoisted(() => vi.fn(() => 'just now'))
+const workflowReferences = vi.hoisted(() => ({
+  data: [] as AgentReferencingWorkflowResponse[],
+}))
 
 vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
@@ -36,8 +40,28 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    agent: {
+      byAgentId: {
+        referencingWorkflows: {
+          get: {
+            queryOptions: ({ input }: { input: { params: { agent_id: string } } }) => ({
+              queryKey: ['agent-referencing-workflows', input],
+              queryFn: async () => ({
+                data: workflowReferences.data,
+              }),
+            }),
+          },
+        },
+      },
+    },
+  },
+}))
+
 vi.mock('@langgenius/dify-ui/popover', async () => {
   const React = await import('react')
+  const ReactDOM = await import('react-dom')
   const PopoverContext = React.createContext<{
     open: boolean
     onOpenChange?: (open: boolean) => void
@@ -68,7 +92,7 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
       if (!context.open)
         return null
 
-      return <div data-testid="publish-impact-popover">{children}</div>
+      return ReactDOM.createPortal(<div data-testid="publish-impact-popover">{children}</div>, document.body)
     },
     PopoverTrigger: ({
       render: trigger,
@@ -96,60 +120,73 @@ const originalDraftWithFile = {
   ],
 } satisfies typeof defaultAgentSoulConfigFormState
 
-const publishedReferences: AgentPublishedReferenceResponse[] = [
+const publishedReferences: AgentReferencingWorkflowResponse[] = [
   {
     app_id: 'app-python',
     app_mode: 'workflow',
     app_name: 'Python bug fixer',
     workflow_id: 'workflow-python',
     workflow_version: '1',
+    node_ids: ['node-python'],
   },
   {
     app_id: 'app-translation',
+    app_icon: 'T',
+    app_icon_background: '#E0F2FE',
+    app_icon_type: 'emoji',
     app_mode: 'workflow',
     app_name: 'Translation Workflow',
     workflow_id: 'workflow-translation',
     workflow_version: '1',
+    node_ids: ['node-translation'],
   },
 ]
 
 function renderPublishBar({
+  activeConfigIsPublished,
   activeConfigSnapshot,
   draftSavedAt,
   isPublishing,
   onPublish = vi.fn<PublishHandler>(),
   prompt = '',
-  publishedReferenceCount,
-  publishedReferences,
   setupStore,
+  usedByAppReferences = [],
 }: {
+  activeConfigIsPublished?: boolean
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   draftSavedAt?: number
   isPublishing?: boolean
   onPublish?: PublishMock
   prompt?: string
-  publishedReferenceCount?: number
-  publishedReferences?: AgentPublishedReferenceResponse[]
   setupStore?: (store: ReturnType<typeof createStore>) => void
+  usedByAppReferences?: AgentReferencingWorkflowResponse[]
 } = {}) {
+  workflowReferences.data = usedByAppReferences
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  })
   const store = createStore()
   store.set(agentComposerPromptAtom, prompt)
   setupStore?.(store)
 
   render(
-    <JotaiProvider store={store}>
-      <AgentConfigurePublishBar
-        agentId="agent-1"
-        activeConfigSnapshot={activeConfigSnapshot}
-        draftSavedAt={draftSavedAt}
-        agentName="Iris"
-        isPublishing={isPublishing}
-        publishedReferenceCount={publishedReferenceCount}
-        publishedReferences={publishedReferences}
-        onPublish={onPublish}
-        onOpenVersions={vi.fn()}
-      />
-    </JotaiProvider>,
+    <QueryClientProvider client={queryClient}>
+      <JotaiProvider store={store}>
+        <AgentConfigurePublishBar
+          agentId="agent-1"
+          activeConfigIsPublished={activeConfigIsPublished}
+          activeConfigSnapshot={activeConfigSnapshot}
+          draftSavedAt={draftSavedAt}
+          agentName="Iris"
+          isPublishing={isPublishing}
+          onPublish={onPublish}
+          onOpenVersions={vi.fn()}
+        />
+      </JotaiProvider>
+    </QueryClientProvider>,
   )
 
   return {
@@ -161,6 +198,7 @@ describe('AgentConfigurePublishBar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     hotkeyRegistrations.clear()
+    workflowReferences.data = []
     vi.spyOn(console, 'log').mockImplementation(() => {})
   })
 
@@ -191,7 +229,10 @@ describe('AgentConfigurePublishBar', () => {
   })
 
   it('should render published state from the active snapshot and disable publish logic', () => {
-    const { onPublish } = renderPublishBar({ activeConfigSnapshot })
+    const { onPublish } = renderPublishBar({
+      activeConfigIsPublished: true,
+      activeConfigSnapshot,
+    })
 
     expect(screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate')).toBeInTheDocument()
     expect(screen.getByText(/agentV2\.agentDetail\.configure\.publishBar\.publishedAt/)).toBeInTheDocument()
@@ -207,7 +248,28 @@ describe('AgentConfigurePublishBar', () => {
     expect(onPublish).not.toHaveBeenCalled()
   })
 
-  it('should publish the current draft payload from the unpublished changes state', () => {
+  it('should initialize unpublished state when active config is not published', async () => {
+    const { onPublish } = renderPublishBar({
+      activeConfigIsPublished: false,
+      activeConfigSnapshot,
+    })
+
+    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.unpublishedChanges')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ })).toBeInTheDocument()
+    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
+      expect.objectContaining({ enabled: true, ignoreInputs: false }),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
+
+    await waitFor(() => {
+      expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
+        agent_id: 'agent-1',
+      }))
+    })
+  })
+
+  it('should publish the current draft payload from the unpublished changes state', async () => {
     const { onPublish } = renderPublishBar({
       activeConfigSnapshot,
       prompt: 'Updated system prompt',
@@ -217,14 +279,16 @@ describe('AgentConfigurePublishBar', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
 
-    expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
-      agent_id: 'agent-1',
-      config_snapshot: expect.objectContaining({
-        prompt: expect.objectContaining({
-          system_prompt: 'Updated system prompt',
+    await waitFor(() => {
+      expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
+        agent_id: 'agent-1',
+        config_snapshot: expect.objectContaining({
+          prompt: expect.objectContaining({
+            system_prompt: 'Updated system prompt',
+          }),
         }),
-      }),
-    }))
+      }))
+    })
   })
 
   it('should mark non-prompt draft changes as unpublished', () => {
@@ -277,20 +341,27 @@ describe('AgentConfigurePublishBar', () => {
     )
   })
 
-  it('should show affected workflow references when clicking a publishable agent in use', () => {
+  it('should show affected workflow references when clicking a publishable agent in use', async () => {
     const { onPublish } = renderPublishBar({
       activeConfigSnapshot,
       prompt: 'Updated system prompt',
-      publishedReferenceCount: 2,
-      publishedReferences,
+      usedByAppReferences: publishedReferences,
     })
 
     expect(screen.queryByTestId('publish-impact-popover')).not.toBeInTheDocument()
+    const publishBar = screen.getByText('agentV2.agentDetail.configure.publishBar.unpublishedChanges').closest('[aria-hidden]')
+    expect(publishBar).toHaveAttribute('aria-hidden', 'false')
 
     fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
 
     expect(onPublish).not.toHaveBeenCalled()
-    expect(screen.getByTestId('publish-impact-popover')).toBeInTheDocument()
+    const impactPopover = await screen.findByTestId('publish-impact-popover')
+    expect(impactPopover).toBeInTheDocument()
+    expect(publishBar).toHaveAttribute('aria-hidden', 'false')
+    await waitFor(() => {
+      expect(publishBar).toHaveAttribute('aria-hidden', 'true')
+      expect(publishBar).toHaveClass('opacity-0')
+    })
     expect(screen.getByText(/agentV2\.agentDetail\.configure\.publishImpact\.title/)).toBeInTheDocument()
     expect(screen.getByText(/agentV2\.agentDetail\.configure\.publishImpact\.descriptionPrefix/)).toBeInTheDocument()
     expect(screen.getByText(/agentV2\.agentDetail\.configure\.publishImpact\.workflowCount/)).toBeInTheDocument()
@@ -298,20 +369,46 @@ describe('AgentConfigurePublishBar', () => {
     expect(screen.getByText('Translation Workflow')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Python bug fixer' })).toHaveAttribute('target', '_blank')
     expect(screen.getByRole('link', { name: 'Python bug fixer' })).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(within(impactPopover).getByText('display:Mod')).toBeInTheDocument()
+    expect(within(impactPopover).getByText('display:Shift')).toBeInTheDocument()
+    expect(within(impactPopover).getByText('display:P')).toBeInTheDocument()
   })
 
-  it('should publish from the affected workflow popover action', () => {
+  it('should publish from the affected workflow popover action', async () => {
     const { onPublish } = renderPublishBar({
       activeConfigSnapshot,
       prompt: 'Updated system prompt',
-      publishedReferenceCount: 2,
-      publishedReferences,
+      usedByAppReferences: publishedReferences,
     })
 
     fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
-    fireEvent.click(within(screen.getByTestId('publish-impact-popover')).getByRole('button', {
+    fireEvent.click(within(await screen.findByTestId('publish-impact-popover')).getByRole('button', {
       name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
     }))
+
+    expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
+      agent_id: 'agent-1',
+    }))
+  })
+
+  it('should open the affected workflow popover from the publish shortcut before publishing', async () => {
+    const { onPublish } = renderPublishBar({
+      activeConfigSnapshot,
+      prompt: 'Updated system prompt',
+      usedByAppReferences: publishedReferences,
+    })
+    const publishShortcut = hotkeyRegistrations.get('Mod+Shift+P')
+
+    await act(async () => {
+      await publishShortcut?.callback({ preventDefault: vi.fn() })
+    })
+
+    expect(onPublish).not.toHaveBeenCalled()
+    expect(await screen.findByTestId('publish-impact-popover')).toBeInTheDocument()
+
+    await act(async () => {
+      await hotkeyRegistrations.get('Mod+Shift+P')?.callback({ preventDefault: vi.fn() })
+    })
 
     expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
       agent_id: 'agent-1',

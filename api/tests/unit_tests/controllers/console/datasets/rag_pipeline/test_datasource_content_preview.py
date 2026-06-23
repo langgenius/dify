@@ -1,3 +1,4 @@
+from inspect import unwrap
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -9,12 +10,6 @@ from controllers.console.datasets.rag_pipeline.datasource_content_preview import
 )
 from models import Account
 from models.dataset import Pipeline
-
-
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 def make_account() -> Account:

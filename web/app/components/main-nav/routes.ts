@@ -1,6 +1,6 @@
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 
-type MainNavRouteVisibility = 'all' | 'notDatasetOperator' | 'editorOrDatasetOperator' | 'appDeployEditor'
+type MainNavRouteVisibility = 'all' | 'notDatasetOperator' | 'appDeployEditor'
 
 export type MainNavRouteConfig = {
   key: string
@@ -10,14 +10,14 @@ export type MainNavRouteConfig = {
   icon: string
   activeIcon: string
   visibility: MainNavRouteVisibility
-  feature?: 'agentV2'
+  feature?: 'agentV2' | 'marketplace'
 }
 
 export type MainNavRouteVisibilityOptions = {
   agentV2Enabled: boolean
   canUseAppDeploy: boolean
   isCurrentWorkspaceDatasetOperator: boolean
-  isCurrentWorkspaceEditor: boolean
+  marketplaceEnabled: boolean
 }
 
 function isPathUnderRoute(pathname: string, route: string) {
@@ -32,7 +32,7 @@ export const MAIN_NAV_ROUTES = [
     active: (path: string) => path === '/' || path === '/explore/apps',
     icon: 'i-custom-vender-main-nav-home',
     activeIcon: 'i-custom-vender-main-nav-home-active',
-    visibility: 'notDatasetOperator',
+    visibility: 'all',
   },
   {
     key: 'apps',
@@ -41,7 +41,7 @@ export const MAIN_NAV_ROUTES = [
     active: (path: string) => isPathUnderRoute(path, '/apps') || isPathUnderRoute(path, '/app') || isPathUnderRoute(path, '/snippets'),
     icon: 'i-custom-vender-main-nav-studio',
     activeIcon: 'i-custom-vender-main-nav-studio-active',
-    visibility: 'notDatasetOperator',
+    visibility: 'all',
   },
   {
     key: 'roster',
@@ -60,7 +60,7 @@ export const MAIN_NAV_ROUTES = [
     active: (path: string) => isPathUnderRoute(path, '/datasets'),
     icon: 'i-custom-vender-main-nav-knowledge',
     activeIcon: 'i-custom-vender-main-nav-knowledge-active',
-    visibility: 'editorOrDatasetOperator',
+    visibility: 'all',
   },
   {
     key: 'integrations',
@@ -69,7 +69,7 @@ export const MAIN_NAV_ROUTES = [
     active: (path: string) => isPathUnderRoute(path, '/integrations') || isPathUnderRoute(path, '/tools'),
     icon: 'i-custom-vender-main-nav-integrations',
     activeIcon: 'i-custom-vender-main-nav-integrations-active',
-    visibility: 'notDatasetOperator',
+    visibility: 'all',
   },
   {
     key: 'marketplace',
@@ -79,6 +79,7 @@ export const MAIN_NAV_ROUTES = [
     icon: 'i-custom-vender-main-nav-marketplace',
     activeIcon: 'i-custom-vender-main-nav-marketplace-active',
     visibility: 'all',
+    feature: 'marketplace',
   },
   {
     key: 'deployments',
@@ -95,14 +96,14 @@ export function isMainNavRouteVisible(route: MainNavRouteConfig, options: MainNa
   if (route.feature === 'agentV2' && !options.agentV2Enabled)
     return false
 
+  if (route.feature === 'marketplace' && !options.marketplaceEnabled)
+    return false
+
   if (route.visibility === 'all')
     return true
 
   if (route.visibility === 'notDatasetOperator')
     return !options.isCurrentWorkspaceDatasetOperator
-
-  if (route.visibility === 'editorOrDatasetOperator')
-    return options.isCurrentWorkspaceEditor || options.isCurrentWorkspaceDatasetOperator
 
   return options.canUseAppDeploy
 }

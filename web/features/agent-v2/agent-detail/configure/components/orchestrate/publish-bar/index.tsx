@@ -1,17 +1,20 @@
 'use client'
 
-import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse, AgentPublishedReferenceResponse, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { formatForDisplay } from '@tanstack/react-hotkeys'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useConfigPublishPayload, useHasAgentComposerUnpublishedChanges } from '@/features/agent-v2/agent-composer/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AgentPublishImpactPopover } from './publish-impact-popover'
 
-const PUBLISH_AGENT_HOTKEY = 'Mod+Shift+P'
+const PUBLISH_AGENT_HOTKEY = 'Mod+Shift+P' satisfies RegisterableHotkey
+const PUBLISH_IMPACT_BAR_HIDE_DELAY = 160
 
 export type AgentConfigurePublishPayload = {
   agent_id: string
@@ -22,6 +25,7 @@ type AgentConfigurePublishState = 'draft' | 'publishing' | 'published' | 'unpubl
 
 type AgentConfigurePublishBarProps = {
   agentId: string
+  activeConfigIsPublished?: boolean
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentSoulConfig?: AgentConfigSnapshotDetailResponse['config_snapshot']
   agentName?: string | null
@@ -31,17 +35,17 @@ type AgentConfigurePublishBarProps = {
   }
   draftSavedAt?: number
   isPublishing?: boolean
-  publishedReferenceCount?: number
-  publishedReferences?: AgentPublishedReferenceResponse[]
   onPublish?: (payload: AgentConfigurePublishPayload) => void | Promise<void>
   onOpenVersions: () => void
 }
 
 function getPublishState({
+  activeConfigIsPublished,
   activeConfigSnapshot,
   isDirty,
   isPublishing,
 }: {
+  activeConfigIsPublished?: boolean
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   isDirty: boolean
   isPublishing: boolean
@@ -52,7 +56,7 @@ function getPublishState({
   if (!activeConfigSnapshot)
     return 'draft'
 
-  if (isDirty)
+  if (!activeConfigIsPublished || isDirty)
     return 'unpublished'
 
   return 'published'
@@ -70,19 +74,20 @@ function PublishShortcut() {
 
 export function AgentConfigurePublishBar({
   agentId,
+  activeConfigIsPublished,
   activeConfigSnapshot,
   agentSoulConfig,
   agentName,
   currentModel,
   draftSavedAt,
   isPublishing = false,
-  publishedReferenceCount = 0,
-  publishedReferences = [],
   onPublish,
   onOpenVersions,
 }: AgentConfigurePublishBarProps) {
   const { t } = useTranslation('agentV2')
   const { formatTimeFromNow } = useFormatTimeFromNow()
+  const [shouldHidePublishBar, setShouldHidePublishBar] = useState(false)
+  const hidePublishBarTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const hasUnpublishedChanges = useHasAgentComposerUnpublishedChanges()
   const publishPayload = useConfigPublishPayload({
     agentId,
@@ -90,11 +95,26 @@ export function AgentConfigurePublishBar({
     currentModel,
   })
   const publishState = getPublishState({
+    activeConfigIsPublished,
     activeConfigSnapshot,
     isDirty: hasUnpublishedChanges,
     isPublishing,
   })
   const canPublish = publishState === 'draft' || publishState === 'unpublished'
+
+  const handleImpactPopoverOpenChange = (open: boolean) => {
+    if (hidePublishBarTimerRef.current)
+      clearTimeout(hidePublishBarTimerRef.current)
+
+    if (!open) {
+      setShouldHidePublishBar(false)
+      return
+    }
+
+    hidePublishBarTimerRef.current = setTimeout(() => {
+      setShouldHidePublishBar(true)
+    }, PUBLISH_IMPACT_BAR_HIDE_DELAY)
+  }
 
   const handlePublish = () => {
     if (!canPublish)
@@ -103,13 +123,12 @@ export function AgentConfigurePublishBar({
     void onPublish?.(publishPayload)
   }
 
-  useHotkey(PUBLISH_AGENT_HOTKEY, (event) => {
-    event.preventDefault()
-    handlePublish()
-  }, {
-    enabled: canPublish,
-    ignoreInputs: false,
-  })
+  useEffect(() => {
+    return () => {
+      if (hidePublishBarTimerRef.current)
+        clearTimeout(hidePublishBarTimerRef.current)
+    }
+  }, [])
 
   const publishedMeta = activeConfigSnapshot?.created_at
     ? t('agentDetail.configure.publishBar.publishedAt', {
@@ -166,7 +185,13 @@ export function AgentConfigurePublishBar({
 
   return (
     <div className="flex h-16 shrink-0 items-center justify-center px-4 pt-2 pb-3">
-      <div className="flex max-w-full min-w-0 items-center gap-2 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
+      <div
+        className={cn(
+          'flex max-w-full min-w-0 items-center gap-2 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]',
+          shouldHidePublishBar && 'pointer-events-none opacity-0',
+        )}
+        aria-hidden={shouldHidePublishBar}
+      >
         <div className="flex min-w-0 items-center gap-1 px-2 system-xs-regular text-text-tertiary">
           <span className="flex size-4 shrink-0 items-center justify-center">
             <StatusDot size="small" status={currentStateMeta.dotStatus} />
@@ -187,10 +212,12 @@ export function AgentConfigurePublishBar({
         </button>
         <AgentPublishImpactPopover
           actionLabel={currentStateMeta.actionLabel}
+          actionShortcut={currentStateMeta.showShortcut ? <PublishShortcut /> : null}
+          hotkey={PUBLISH_AGENT_HOTKEY}
+          agentId={agentId}
           agentName={agentName}
           disabled={!canPublish}
-          publishedReferenceCount={publishedReferenceCount}
-          publishedReferences={publishedReferences}
+          onOpenChange={handleImpactPopoverOpenChange}
           onPublish={handlePublish}
           trigger={(
             <Button

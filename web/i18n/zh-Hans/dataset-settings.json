@@ -27,6 +27,7 @@
   "form.numberOfKeywords": "关键词数量",
   "form.onSearchResults": "没有成员匹配您的搜索查询。\n请尝试其他关键词。",
   "form.permissions": "可见权限",
+  "form.permissionsAccessConfig": "前往访问配置",
   "form.permissionsAllMember": "所有团队成员",
   "form.permissionsInvitedMembers": "部分团队成员",
   "form.permissionsOnlyMe": "只有我",

@@ -55,8 +55,13 @@ export const useWebAppStore = create<WebAppStore>(set => ({
 const getShareCodeFromRedirectUrl = (redirectUrl: string | null): string | null => {
   if (!redirectUrl || redirectUrl.length === 0)
     return null
-  const url = new URL(`${window.location.origin}${decodeURIComponent(redirectUrl)}`)
-  return url.pathname.split('/').pop() || null
+  try {
+    const url = new URL(decodeURIComponent(redirectUrl), 'https://dify.local')
+    return url.pathname.split('/').pop() || null
+  }
+  catch {
+    return null
+  }
 }
 const getShareCodeFromPathname = (pathname: string): string | null => {
   const code = pathname.split('/').pop() || null

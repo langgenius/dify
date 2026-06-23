@@ -17,12 +17,16 @@ from controllers.common.schema import (
 from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
 )
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.dataset_fields import (
     dataset_detail_fields,
@@ -40,6 +44,7 @@ from fields.dataset_fields import (
 from libs.login import login_required
 from models import Account
 from services.dataset_service import DatasetService
+from services.enterprise import rbac_service as enterprise_rbac_service
 from services.external_knowledge_service import ExternalDatasetService
 from services.hit_testing_service import HitTestingService
 from services.knowledge_service import BedrockRetrievalSetting, ExternalDatasetTestService
@@ -319,6 +324,7 @@ class ExternalDatasetCreateApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EXTERNAL_CONNECT)
     @with_current_user
     @with_current_tenant_id
     def post(self, current_tenant_id: str, current_user: Account):
@@ -339,7 +345,16 @@ class ExternalDatasetCreateApi(Resource):
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
 
-        return marshal(dataset, dataset_detail_fields), 201
+        item = marshal(dataset, dataset_detail_fields)
+        dataset_id_str = item["id"]
+        permission_keys_map = enterprise_rbac_service.RBACService.DatasetPermissions.batch_get(
+            str(current_tenant_id),
+            current_user.id,
+            [dataset_id_str],
+        )
+        item["permission_keys"] = permission_keys_map.get(dataset_id_str, [])
+
+        return item, 201
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/external-hit-testing")
@@ -359,6 +374,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_PIPELINE_TEST)
     def post(self, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -375,6 +391,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
 
         try:
             response = HitTestingService.external_retrieve(
+                session=db.session,
                 dataset=dataset,
                 query=payload.query,
                 account=current_user,

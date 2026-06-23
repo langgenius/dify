@@ -36,7 +36,7 @@ const scrollAreaThumbClassName = cn(
   'data-[orientation=vertical]:w-1',
   'data-[orientation=horizontal]:h-1',
   'group-data-hovering/scrollbar:bg-state-base-handle-hover',
-  'group-data-scrolling/scrollbar:bg-state-base-handle-hover',
+  'data-scrolling:bg-state-base-handle-hover',
   'active:bg-state-base-handle-hover',
 )
 

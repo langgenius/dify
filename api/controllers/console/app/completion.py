@@ -22,8 +22,11 @@ from controllers.console.app.error import (
 )
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -37,12 +40,15 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id
+from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
 from libs.login import login_required
 from models import Account
 from models.model import App, AppMode
+from services.agent.errors import AgentNotFoundError
+from services.agent.roster_service import AgentRosterService
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
@@ -113,8 +119,9 @@ class CompletionMessageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.COMPLETION)
     @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @get_app_model(mode=AppMode.COMPLETION)
     def post(self, current_user: Account, app_model: App):
         args_model = CompletionMessagePayload.model_validate(console_ns.payload)
         args = args_model.model_dump(exclude_none=True, by_alias=True)
@@ -159,8 +166,8 @@ class CompletionMessageStopApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.COMPLETION)
     @with_current_user_id
+    @get_app_model(mode=AppMode.COMPLETION)
     def post(self, current_user_id: str, app_model: App, task_id: str):
 
         AppTaskService.stop_task(
@@ -185,11 +192,13 @@ class ChatMessageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT])
     @edit_permission_required
     @with_current_user
-    def post(self, current_user: Account, app_model: App):
-        return _create_chat_message(current_user=current_user, app_model=app_model)
+    @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT])
+    def post(self, current_tenant_id: str, current_user: Account, app_model: App):
+        return _create_chat_message(current_tenant_id=current_tenant_id, current_user=current_user, app_model=app_model)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/chat-messages")
@@ -205,11 +214,17 @@ class AgentChatMessageApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @with_current_user
     @with_current_tenant_id
     def post(self, current_tenant_id: str, current_user: Account, agent_id: UUID):
         app_model = resolve_agent_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
-        return _create_chat_message(current_user=current_user, app_model=app_model)
+        return _create_chat_message(
+            current_tenant_id=current_tenant_id,
+            current_user=current_user,
+            app_model=app_model,
+            agent_id=str(agent_id),
+        )
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-messages/<string:task_id>/stop")
@@ -221,8 +236,8 @@ class ChatMessageStopApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @with_current_user_id
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def post(self, current_user_id: str, app_model: App, task_id: str):
         return _stop_chat_message(current_user_id=current_user_id, app_model=app_model, task_id=task_id)
 
@@ -243,10 +258,44 @@ class AgentChatMessageStopApi(Resource):
         return _stop_chat_message(current_user_id=current_user_id, app_model=app_model, task_id=task_id)
 
 
-def _create_chat_message(*, current_user: Account, app_model: App):
+def _resolve_current_user_agent_debug_conversation_id(
+    *, current_tenant_id: str, current_user: Account, app_model: App, agent_id: str | None
+) -> str:
+    roster_service = AgentRosterService(db.session)
+    if agent_id:
+        return roster_service.get_or_create_agent_app_debug_conversation_id(
+            tenant_id=current_tenant_id,
+            agent_id=agent_id,
+            account_id=current_user.id,
+        )
+
+    agent = roster_service.get_app_backing_agent(tenant_id=current_tenant_id, app_id=str(app_model.id))
+    if agent is None:
+        raise AgentNotFoundError()
+    return roster_service.get_or_create_agent_app_debug_conversation_id(
+        tenant_id=current_tenant_id,
+        agent_id=agent.id,
+        account_id=current_user.id,
+    )
+
+
+def _create_chat_message(
+    *, current_user: Account, app_model: App, current_tenant_id: str | None = None, agent_id: str | None = None
+):
     raw_payload = console_ns.payload or {}
     args_model = ChatMessagePayload.model_validate(raw_payload)
     args = args_model.model_dump(exclude_none=True, by_alias=True)
+
+    if AppMode.value_of(app_model.mode) == AppMode.AGENT:
+        debug_conversation_id = _resolve_current_user_agent_debug_conversation_id(
+            current_tenant_id=current_tenant_id or app_model.tenant_id,
+            current_user=current_user,
+            app_model=app_model,
+            agent_id=agent_id,
+        )
+        if args_model.conversation_id and args_model.conversation_id != debug_conversation_id:
+            raise NotFound("Conversation Not Exists.")
+        args["conversation_id"] = debug_conversation_id
 
     streaming = _resolve_debugger_chat_streaming(
         app_mode=AppMode.value_of(app_model.mode),

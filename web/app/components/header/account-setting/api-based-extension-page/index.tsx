@@ -6,7 +6,9 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { consoleQuery } from '@/service/client'
+import { hasPermission } from '@/utils/permission'
 import { Empty } from './empty'
 import { Item } from './item'
 import { ApiBasedExtensionModal } from './modal'
@@ -49,6 +51,8 @@ export function ApiBasedExtensionPage({
   layout,
 }: ApiBasedExtensionPageProps = {}) {
   const { t } = useTranslation()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canManage = hasPermission(workspacePermissionKeys, 'api_extension.manage')
   const { data: apiBasedExtensions = [], isPending: isLoading } = useQuery(consoleQuery.apiBasedExtension.get.queryOptions())
   const [dialogState, setDialogState] = useState<ApiBasedExtensionDialogState>(null)
   const [keywords, setKeywords] = useState('')
@@ -67,11 +71,17 @@ export function ApiBasedExtensionPage({
   const hasSearchKeywords = keywords.trim().length > 0
 
   const handleOpenApiBasedExtensionModal = () => {
+    if (!canManage)
+      return
+
     setDialogState({
       mode: 'create',
     })
   }
   const handleEditApiBasedExtension = (apiBasedExtension: ApiBasedExtensionResponse) => {
+    if (!canManage)
+      return
+
     setDialogState({
       mode: 'edit',
       apiBasedExtension,
@@ -94,6 +104,7 @@ export function ApiBasedExtensionPage({
       />
       <Button
         variant="secondary"
+        disabled={!canManage}
         onClick={handleOpenApiBasedExtensionModal}
       >
         <span className="mr-1 i-ri-add-line size-4" aria-hidden="true" />
@@ -128,6 +139,7 @@ export function ApiBasedExtensionPage({
               key={item.id}
               apiBasedExtension={item}
               onEdit={handleEditApiBasedExtension}
+              canManage={canManage}
             />
           ))
         )

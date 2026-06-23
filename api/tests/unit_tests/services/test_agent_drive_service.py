@@ -23,6 +23,7 @@ from services.agent_drive_service import (
     AgentDriveError,
     AgentDriveService,
     DriveCommitItem,
+    DriveSkillMetadata,
     normalize_drive_key,
     parse_agent_drive_ref,
 )
@@ -66,6 +67,7 @@ def _tables() -> Generator[None, None, None]:
     yield
     with session_factory.create_session() as session:
         session.execute(delete(AgentDriveFile))
+        session.execute(delete(UploadFile))
         session.execute(delete(ToolFile))
         session.execute(delete(Agent))
         session.commit()
@@ -493,6 +495,20 @@ def test_download_url_signs_external_audience():
     assert url == "https://signed.example/x"
     # console downloads are for browsers: external signing, never the internal URL
     assert resolver.call_args.kwargs["for_external"] is True
+    assert resolver.call_args.kwargs["as_attachment"] is True
+
+
+def test_upload_file_download_url_uses_attachment_filename():
+    upload_file_id = _seed_upload_file(name="report.pdf")
+    _commit_upload("files/report.pdf", upload_file_id)
+
+    with patch("services.agent_drive_service.DifyWorkflowFileRuntime") as runtime_cls:
+        runtime_cls.return_value.resolve_upload_file_url.return_value = "https://files.example/report.pdf"
+        url = AgentDriveService().download_url(tenant_id=TENANT, agent_id=AGENT, key="files/report.pdf")
+
+    assert url == "https://files.example/report.pdf"
+    assert runtime_cls.return_value.resolve_upload_file_url.call_args.kwargs["for_external"] is True
+    assert runtime_cls.return_value.resolve_upload_file_url.call_args.kwargs["as_attachment"] is True
 
 
 def test_manifest_items_carry_created_at_for_inspector():
@@ -500,3 +516,104 @@ def test_manifest_items_carry_created_at_for_inspector():
     _commit("files/x.txt", tf)
     items = AgentDriveService().manifest(tenant_id=TENANT, agent_id=AGENT)
     assert items[0]["created_at"] is None or isinstance(items[0]["created_at"], int)
+
+
+# ── DIFY-2517: skill catalog / inspect ───────────────────────────────────────
+
+
+def _commit_skill(*, manifest_files: list[str] | None = None) -> None:
+    md = _seed_tool_file(name="SKILL.md")
+    zf = _seed_tool_file(name="full.zip")
+    AgentDriveService().commit(
+        tenant_id=TENANT,
+        user_id=USER,
+        agent_id=AGENT,
+        items=[
+            DriveCommitItem(
+                key="pdf-toolkit/SKILL.md",
+                file_ref={"kind": "tool_file", "id": md},
+                value_owned_by_drive=True,
+                is_skill=True,
+                skill_metadata=DriveSkillMetadata(
+                    name="PDF Toolkit",
+                    description="Work with PDFs.",
+                    manifest_files=manifest_files,
+                ),
+            ),
+            DriveCommitItem(
+                key="pdf-toolkit/.DIFY-SKILL-FULL.zip",
+                file_ref={"kind": "tool_file", "id": zf},
+                value_owned_by_drive=True,
+            ),
+        ],
+    )
+
+
+def test_list_skills_uses_canonical_skill_rows():
+    _commit_skill(manifest_files=["SKILL.md", "scripts/run.py"])
+
+    skills = AgentDriveService().list_skills(tenant_id=TENANT, agent_id=AGENT)
+
+    created_at = skills[0].pop("created_at")
+    assert skills == [
+        {
+            "path": "pdf-toolkit",
+            "skill_md_key": "pdf-toolkit/SKILL.md",
+            "archive_key": "pdf-toolkit/.DIFY-SKILL-FULL.zip",
+            "name": "PDF Toolkit",
+            "description": "Work with PDFs.",
+            "size": 5,
+            "mime_type": "text/plain",
+            "hash": None,
+        }
+    ]
+    assert created_at is None or isinstance(created_at, int)
+
+
+def test_inspect_skill_returns_manifest_files_and_file_tree():
+    _commit_skill(manifest_files=["SKILL.md", "references/guide.md", "scripts/run.py"])
+
+    with patch("services.agent_drive_service.storage") as storage_mock:
+        storage_mock.load_stream.return_value = iter([b"# PDF Toolkit\n"])
+        result = AgentDriveService().inspect_skill(tenant_id=TENANT, agent_id=AGENT, skill_path="pdf-toolkit")
+
+    assert result["source"] == "skill_md"
+    assert result["warnings"] == []
+    assert [file["path"] for file in result["files"]] == ["SKILL.md", "references/guide.md", "scripts/run.py"]
+    assert result["files"][0]["available_in_drive"] is True
+    assert result["files"][1]["available_in_drive"] is False
+    assert result["file_tree"][0]["name"] == "references"
+    assert result["file_tree"][1]["name"] == "scripts"
+    assert result["file_tree"][2]["name"] == "SKILL.md"
+    assert result["skill_md"]["text"] == "# PDF Toolkit\n"
+
+
+def test_inspect_skill_falls_back_to_drive_keys_when_manifest_missing():
+    _commit_skill(manifest_files=None)
+
+    with patch("services.agent_drive_service.storage") as storage_mock:
+        storage_mock.load_stream.return_value = iter([b"# PDF Toolkit\n"])
+        result = AgentDriveService().inspect_skill(tenant_id=TENANT, agent_id=AGENT, skill_path="pdf-toolkit")
+
+    assert result["warnings"] == ["manifest_files_unavailable"]
+    assert [file["path"] for file in result["files"]] == ["SKILL.md"]
+
+
+def test_skill_metadata_rejects_non_canonical_rows():
+    tf = _seed_tool_file(name="not-skill.md")
+    with pytest.raises(AgentDriveError) as exc_info:
+        AgentDriveService().commit(
+            tenant_id=TENANT,
+            user_id=USER,
+            agent_id=AGENT,
+            items=[
+                DriveCommitItem(
+                    key="files/not-skill.md",
+                    file_ref={"kind": "tool_file", "id": tf},
+                    value_owned_by_drive=True,
+                    is_skill=True,
+                    skill_metadata=DriveSkillMetadata(name="Bad"),
+                )
+            ],
+        )
+    assert exc_info.value.code == "invalid_skill_key"

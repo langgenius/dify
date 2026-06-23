@@ -8,8 +8,11 @@ from controllers.common.controller_schemas import MetadataUpdatePayload
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     enterprise_license_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -52,6 +55,7 @@ class DatasetMetadataCreateApi(Resource):
     @console_ns.expect(console_ns.models[MetadataArgs.__name__])
     @with_current_user
     @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     def post(self, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         metadata_args = MetadataArgs.model_validate(console_ns.payload or {})
 
@@ -71,6 +75,7 @@ class DatasetMetadataCreateApi(Resource):
     @console_ns.response(
         200, "Metadata retrieved successfully", console_ns.models[DatasetMetadataListResponse.__name__]
     )
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
     def get(self, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -90,6 +95,7 @@ class DatasetMetadataApi(Resource):
     @console_ns.expect(console_ns.models[MetadataUpdatePayload.__name__])
     @with_current_user
     @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     def patch(self, current_tenant_id: str, current_user: Account, dataset_id: UUID, metadata_id: UUID):
         payload = MetadataUpdatePayload.model_validate(console_ns.payload or {})
         name = payload.name
@@ -112,6 +118,7 @@ class DatasetMetadataApi(Resource):
     @enterprise_license_required
     @console_ns.response(204, "Metadata deleted successfully")
     @with_current_user
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     def delete(self, current_user: Account, dataset_id: UUID, metadata_id: UUID):
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
@@ -149,6 +156,7 @@ class DatasetMetadataBuiltInFieldActionApi(Resource):
     @enterprise_license_required
     @console_ns.response(204, "Action completed successfully")
     @with_current_user
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     def post(self, current_user: Account, dataset_id: UUID, action: Literal["enable", "disable"]):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -177,6 +185,7 @@ class DocumentMetadataEditApi(Resource):
         "Documents metadata updated successfully",
     )
     @with_current_user
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     def post(self, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)

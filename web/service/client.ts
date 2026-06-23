@@ -361,6 +361,30 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
         },
       },
       byAgentId: {
+        copy: {
+          post: {
+            mutationOptions: {
+              onSuccess: (copiedAgent, _variables, _onMutateResult, context) => {
+                context.client.setQueryData(
+                  consoleQuery.agent.byAgentId.get.queryKey({
+                    input: {
+                      params: {
+                        agent_id: copiedAgent.id,
+                      },
+                    },
+                  }),
+                  copiedAgent,
+                )
+                context.client.invalidateQueries({
+                  queryKey: consoleQuery.agent.get.key(),
+                })
+                context.client.invalidateQueries({
+                  queryKey: consoleQuery.agent.inviteOptions.get.key(),
+                })
+              },
+            },
+          },
+        },
         put: {
           mutationOptions: {
             onSuccess: (updatedAgent, variables, _onMutateResult, context) => {

@@ -10,6 +10,10 @@ vi.mock('@/service/access-control', () => ({
   useSearchForWhiteListCandidates: (...args: unknown[]) => mockUseSearchForWhiteListCandidates(...args),
 }))
 
+vi.mock('@/service/access-control/use-app-access-control', () => ({
+  useSearchForWhiteListCandidates: (...args: unknown[]) => mockUseSearchForWhiteListCandidates(...args),
+}))
+
 const createGroup = (overrides: Partial<AccessControlGroup> = {}): AccessControlGroup => ({
   id: 'group-1',
   name: 'Group One',

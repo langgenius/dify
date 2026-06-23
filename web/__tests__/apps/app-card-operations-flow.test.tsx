@@ -17,6 +17,7 @@ import { AppCard } from '@/app/components/apps/app-card'
 import { AccessMode } from '@/models/access-control'
 import { exportAppConfig, updateAppInfo } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
+import { AppACLPermission } from '@/utils/permission'
 
 let mockIsCurrentWorkspaceEditor = true
 let mockSystemFeatures = {
@@ -82,6 +83,17 @@ vi.mock('@/next/dynamic', () => ({
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: mockIsCurrentWorkspaceEditor ? ['app.create_and_management'] : [],
+  }),
+  useSelector: <T,>(selector: (state: {
+    isCurrentWorkspaceEditor: boolean
+    userProfile: { id: string }
+    workspacePermissionKeys: string[]
+  }) => T): T => selector({
+    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: mockIsCurrentWorkspaceEditor ? ['app.create_and_management'] : [],
   }),
 }))
 
@@ -121,7 +133,7 @@ vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: vi.fn().mockResolvedValue({ environment_variables: [] }),
 }))
 
-vi.mock('@/service/access-control', () => ({
+vi.mock('@/service/access-control/use-app-access-control', () => ({
   useGetUserCanAccessApp: () => ({ data: { result: true }, isLoading: false }),
 }))
 
@@ -234,6 +246,14 @@ const createMockApp = (overrides: Partial<App> = {}): App => ({
   tags: overrides.tags ?? [],
   access_mode: overrides.access_mode ?? AccessMode.PUBLIC,
   max_active_requests: overrides.max_active_requests ?? null,
+  created_by: overrides.created_by ?? 'user-1',
+  permission_keys: overrides.permission_keys ?? [
+    AppACLPermission.Edit,
+    AppACLPermission.ImportExportDSL,
+    AppACLPermission.Delete,
+    AppACLPermission.ReleaseAndVersion,
+    AppACLPermission.AccessConfig,
+  ],
 })
 
 const mockOnRefresh = vi.fn()
@@ -350,12 +370,11 @@ describe('App Card Operations Flow', () => {
 
   // -- Access mode display --
   describe('Access Mode Display', () => {
-    it('should not render operations menu for non-editor users', () => {
+    it('should not render operations menu when user has no app permissions', () => {
       mockIsCurrentWorkspaceEditor = false
-      renderAppCard({ name: 'Readonly App' })
+      renderAppCard({ name: 'Readonly App', created_by: 'another-user', permission_keys: [] })
 
-      expect(screen.queryByText('app.editApp')).not.toBeInTheDocument()
-      expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.operation.more' })).not.toBeInTheDocument()
     })
   })
 
