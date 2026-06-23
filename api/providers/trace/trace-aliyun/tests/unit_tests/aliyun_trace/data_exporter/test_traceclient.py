@@ -1,3 +1,4 @@
+import logging
 import time
 import uuid
 from datetime import datetime
@@ -142,9 +143,8 @@ class TestTraceClient:
             mock_notify.assert_called_once()
 
     @patch("dify_trace_aliyun.data_exporter.traceclient.OTLPSpanExporter")
-    @patch("dify_trace_aliyun.data_exporter.traceclient.logger")
     def test_add_span_queue_full(
-        self, mock_logger: MagicMock, mock_exporter_class: MagicMock, trace_client_factory: type[TraceClient]
+        self, mock_exporter_class: MagicMock, trace_client_factory: type[TraceClient], caplog: pytest.LogCaptureFixture
     ):
         client = trace_client_factory(service_name="test-service", endpoint="http://test-endpoint", max_queue_size=1)
 
@@ -164,12 +164,15 @@ class TestTraceClient:
         client.add_span(span_data)
         assert len(client.queue) == 1
 
-        client.add_span(span_data)
-        assert len(client.queue) == 1
-        mock_logger.warning.assert_called_with("Queue is full, likely spans will be dropped.")
+        with caplog.at_level(logging.WARNING):
+            client.add_span(span_data)
+            assert len(client.queue) == 1
+            assert "Queue is full, likely spans will be dropped." in caplog.text
 
     @patch("dify_trace_aliyun.data_exporter.traceclient.OTLPSpanExporter")
-    def test_export_batch_error(self, mock_exporter_class: MagicMock, trace_client_factory: type[TraceClient]):
+    def test_export_batch_error(
+        self, mock_exporter_class: MagicMock, trace_client_factory: type[TraceClient], caplog: pytest.LogCaptureFixture
+    ):
         mock_exporter = mock_exporter_class.return_value
         mock_exporter.export.side_effect = Exception("Export failed")
 
@@ -177,9 +180,9 @@ class TestTraceClient:
         mock_span = MagicMock(spec=ReadableSpan)
         client.queue.append(mock_span)
 
-        with patch("dify_trace_aliyun.data_exporter.traceclient.logger") as mock_logger:
+        with caplog.at_level(logging.WARNING):
             client._export_batch()
-            mock_logger.warning.assert_called()
+            assert "Error exporting spans" in caplog.text
 
     @patch("dify_trace_aliyun.data_exporter.traceclient.OTLPSpanExporter")
     def test_worker_loop(self, mock_exporter_class: MagicMock, trace_client_factory: type[TraceClient]):

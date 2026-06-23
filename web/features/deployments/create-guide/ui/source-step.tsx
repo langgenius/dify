@@ -19,9 +19,9 @@ import {
   dslFileAtom,
   dslReadErrorAtom,
   dslUnsupportedModeAtom,
+  effectiveMethodAtom,
   effectiveSelectedAppAtom,
   isReadingDslAtom,
-  methodAtom,
   selectDslFileAtom,
   selectMethodAtom,
   selectSourceAppAtom,
@@ -31,12 +31,13 @@ import {
   sourceSearchTextAtom,
   unsupportedDslNodesAtom,
 } from '@/features/deployments/create-guide/state'
+import { isDeploymentDslImportEnabled } from '@/features/deployments/shared/domain/feature-flags'
 import { StepShell } from './layout'
 
 const sourceAppSkeletonKeys = ['first-source-app', 'second-source-app', 'third-source-app']
 
 export function SourceStepContent() {
-  const method = useAtomValue(methodAtom)
+  const method = useAtomValue(effectiveMethodAtom)
   const unsupportedDslNodes = useAtomValue(unsupportedDslNodesAtom)
 
   return (
@@ -55,7 +56,7 @@ export function SourceStepContent() {
 
 function SourceMethodSection() {
   const { t } = useTranslation('deployments')
-  const method = useAtomValue(methodAtom)
+  const method = useAtomValue(effectiveMethodAtom)
   const selectMethod = useSetAtom(selectMethodAtom)
 
   return (
@@ -76,12 +77,14 @@ function SourceMethodSection() {
           title={t('createGuide.methods.bindApp.title')}
           description={t('createGuide.methods.bindApp.description')}
         />
-        <SourceMethodCard
-          value="importDsl"
-          icon="i-ri-file-code-line"
-          title={t('createGuide.methods.importDsl.title')}
-          description={t('createGuide.methods.importDsl.description')}
-        />
+        {isDeploymentDslImportEnabled && (
+          <SourceMethodCard
+            value="importDsl"
+            icon="i-ri-file-code-line"
+            title={t('createGuide.methods.importDsl.title')}
+            description={t('createGuide.methods.importDsl.description')}
+          />
+        )}
       </RadioGroup>
     </StepShell>
   )

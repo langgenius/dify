@@ -15,7 +15,7 @@ vi.mock('@/context/app-context', () => ({
 // Mock useLocale and useDocLink
 vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
-  useDocLink: () => (path: string) => `https://docs.dify.ai/en/${path?.startsWith('/') ? path.slice(1) : path}`,
+  useDocLink: () => (path?: string) => `https://docs.dify.ai/en${path?.startsWith('/use-dify/') ? `/cloud${path}` : path || ''}`,
 }))
 
 // Mock getLanguage
@@ -132,7 +132,7 @@ describe('CustomCreateCard', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       const docLink = screen.getByText('tools.swaggerAPIAsToolTip').closest('a')
-      expect(docLink).toHaveAttribute('href', 'https://docs.dify.ai/en/use-dify/workspace/tools#custom-tool')
+      expect(docLink).toHaveAttribute('href', 'https://docs.dify.ai/en/cloud/use-dify/workspace/tools#custom-tool')
       expect(docLink).toHaveAttribute('target', '_blank')
       expect(docLink).toHaveAttribute('rel', 'noopener noreferrer')
     })

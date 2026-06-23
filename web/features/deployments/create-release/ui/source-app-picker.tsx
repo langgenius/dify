@@ -1,5 +1,5 @@
 'use client'
-import type { SourceAppPickerValue } from './source-app-picker-value'
+import type { SourceAppPickerValue } from '../state'
 import type { App } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -22,7 +22,6 @@ import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { TitleTooltip } from '../../components/title-tooltip'
-import { isWorkflowApp } from './source-app-mode'
 
 const SOURCE_APP_PAGE_SIZE = 20
 const SOURCE_APP_PICKER_SKELETON_KEYS = ['first-source-app', 'second-source-app', 'third-source-app']
@@ -31,8 +30,7 @@ function sourceAppSearchText(app: App) {
   return `${app.name} ${app.id}`.toLowerCase()
 }
 
-function SourceAppTrigger({ open, app }: {
-  open: boolean
+function SourceAppTrigger({ app }: {
   app?: SourceAppPickerValue
 }) {
   const { t } = useTranslation('deployments')
@@ -40,8 +38,10 @@ function SourceAppTrigger({ open, app }: {
   return (
     <span
       className={cn(
-        'group flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-transparent bg-components-input-bg-normal px-3 text-left hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
-        open && 'border-components-input-border-active bg-components-input-bg-active shadow-xs',
+        'flex h-10 items-center gap-2 rounded-lg border border-transparent bg-components-input-bg-normal px-3 text-left',
+        'cursor-pointer hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
+        'group-data-disabled/combobox-trigger:cursor-not-allowed group-data-disabled/combobox-trigger:text-components-input-text-disabled group-data-disabled/combobox-trigger:hover:border-transparent group-data-disabled/combobox-trigger:hover:bg-components-input-bg-normal',
+        'group-data-popup-open/combobox-trigger:border-components-input-border-active group-data-popup-open/combobox-trigger:bg-components-input-bg-active group-data-popup-open/combobox-trigger:shadow-xs',
         app && 'pl-2',
       )}
     >
@@ -69,8 +69,9 @@ function SourceAppTrigger({ open, app }: {
       </TitleTooltip>
       <span
         className={cn(
-          'i-ri-arrow-down-s-line size-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
-          open && 'text-text-secondary',
+          'i-ri-arrow-down-s-line size-4 shrink-0 text-text-quaternary group-hover/combobox-trigger:text-text-secondary',
+          'group-data-disabled/combobox-trigger:text-text-quaternary group-data-disabled/combobox-trigger:opacity-50',
+          'group-data-popup-open/combobox-trigger:text-text-secondary',
         )}
         aria-hidden="true"
       />
@@ -123,10 +124,10 @@ function SourceAppPickerSkeleton() {
   )
 }
 
-export function SourceAppPicker({ value, onChange, ariaLabel }: {
+export function SourceAppPicker({ value, onChange, disabled = false }: {
   value?: SourceAppPickerValue
   onChange: (app: App) => void
-  ariaLabel?: string
+  disabled?: boolean
 }) {
   const { t } = useTranslation('deployments')
   const [isShow, setIsShow] = useState(false)
@@ -152,18 +153,26 @@ export function SourceAppPicker({ value, onChange, ariaLabel }: {
       initialPageParam: 1,
       placeholderData: keepPreviousData,
     }),
+    enabled: !disabled,
   })
 
-  const apps = data?.pages.flatMap(page => page.data).filter(isWorkflowApp) ?? []
+  const apps = data?.pages.flatMap(page => page.data) ?? []
 
   return (
     <Combobox<App>
       items={apps}
-      open={isShow}
+      open={!disabled && isShow}
       inputValue={searchText}
-      onOpenChange={setIsShow}
-      onInputValueChange={setSearchText}
+      onOpenChange={(open) => {
+        setIsShow(disabled ? false : open)
+      }}
+      onInputValueChange={(value) => {
+        if (!disabled)
+          setSearchText(value)
+      }}
       onValueChange={(app) => {
+        if (disabled)
+          return
         if (!app)
           return
         onChange(app)
@@ -182,14 +191,14 @@ export function SourceAppPicker({ value, onChange, ariaLabel }: {
         return app.id
       }}
       filter={(app, query) => sourceAppSearchText(app).includes(query.toLowerCase())}
-      disabled={false}
+      disabled={disabled}
     >
       <ComboboxTrigger
-        aria-label={ariaLabel ?? t('createModal.sourceApp')}
+        aria-label={t('versions.sourceAppOption')}
         icon={false}
         className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 data-open:bg-transparent"
       >
-        <SourceAppTrigger open={isShow} app={value} />
+        <SourceAppTrigger app={value} />
       </ComboboxTrigger>
       <ComboboxContent
         placement="bottom-start"

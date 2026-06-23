@@ -42,12 +42,14 @@ describe('InSiteMessage', () => {
     it('should render title, subtitle, markdown content, and action buttons', () => {
       const actions: InSiteMessageActionItem[] = [
         { action: 'close', action_name: 'dismiss', text: 'Close', type: 'default' },
+        { action: 'close', action_name: 'outline', text: 'Outline', type: 'outline' },
         { action: 'link', action_name: 'learn_more', text: 'Learn more', type: 'primary', data: 'https://example.com' },
       ]
 
       renderComponent(actions, { className: 'custom-message' })
 
       const closeButton = screen.getByRole('button', { name: 'Close' })
+      const outlineButton = screen.getByRole('button', { name: 'Outline' })
       const learnMoreButton = screen.getByRole('button', { name: 'Learn more' })
       const panel = closeButton.closest('div.fixed')
       const titleElement = panel?.querySelector('.title-3xl-bold')
@@ -59,6 +61,7 @@ describe('InSiteMessage', () => {
       expect(subtitleElement?.textContent).not.toContain('\\n')
       expect(screen.getByText('Main content')).toBeInTheDocument()
       expect(closeButton).toBeInTheDocument()
+      expect(outlineButton).toHaveClass('bg-components-button-secondary-bg')
       expect(learnMoreButton).toBeInTheDocument()
     })
 
