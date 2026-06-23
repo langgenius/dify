@@ -7,23 +7,26 @@ def parse_json_markdown(json_string: str):
     # Get json from the backticks/braces
     json_string = json_string.strip()
     starts = ["```json", "```", "``", "`", "{", "["]
-    ends = ["```", "``", "`", "}", "]"]
+    fence_ends = {"```json": "```", "```": "```", "``": "``", "`": "`"}
     end_index = -1
-    start_index = 0
+    start_index = -1
+    end_marker = ""
     parsed: dict = {}
-    for s in starts:
-        start_index = json_string.find(s)
-        if start_index != -1:
-            if json_string[start_index] not in ("{", "["):
-                start_index += len(s)
-            break
-    if start_index != -1:
-        for e in ends:
-            end_index = json_string.rfind(e, start_index)
-            if end_index != -1:
-                if json_string[end_index] in ("}", "]"):
-                    end_index += 1
-                break
+
+    start_matches = [(json_string.find(s), s) for s in starts]
+    start_matches = [(index, marker) for index, marker in start_matches if index != -1]
+    if start_matches:
+        start_index, start_marker = min(start_matches, key=lambda match: match[0])
+        if start_marker in fence_ends:
+            start_index += len(start_marker)
+            end_marker = fence_ends[start_marker]
+        else:
+            end_marker = "}" if start_marker == "{" else "]"
+
+    if start_index != -1 and end_marker:
+        end_index = json_string.rfind(end_marker, start_index)
+        if end_index != -1 and end_marker in ("}", "]"):
+            end_index += len(end_marker)
     if start_index != -1 and end_index != -1 and start_index < end_index:
         extracted_content = json_string[start_index:end_index].strip()
         parsed = json.loads(extracted_content)
