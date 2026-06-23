@@ -1649,6 +1649,74 @@ class TestAgentAppBackingAgent:
         with pytest.raises(roster_service.AgentNotFoundError):
             service.get_agent_app_model(tenant_id="tenant-1", agent_id="agent-x")
 
+    def test_refresh_agent_app_debug_conversation_creates_mapping(self):
+        agent = Agent(
+            id="agent-1",
+            tenant_id="tenant-1",
+            name="Iris",
+            description="",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            app_id="app-1",
+        )
+        session = FakeSession(scalar=[agent, None])
+        service = AgentRosterService(session)
+
+        conversation_id = service.refresh_agent_app_debug_conversation_id(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            account_id="account-1",
+        )
+
+        conversations = [a for a in session.added if isinstance(a, Conversation)]
+        assert len(conversations) == 1
+        assert conversations[0].id == conversation_id
+        assert conversations[0].app_id == "app-1"
+        assert conversations[0].from_source == ConversationFromSource.CONSOLE
+        assert conversations[0].from_account_id == "account-1"
+        mappings = [a for a in session.added if isinstance(a, AgentDebugConversation)]
+        assert len(mappings) == 1
+        assert mappings[0].tenant_id == "tenant-1"
+        assert mappings[0].agent_id == "agent-1"
+        assert mappings[0].app_id == "app-1"
+        assert mappings[0].account_id == "account-1"
+        assert mappings[0].conversation_id == conversation_id
+        assert session.deleted == []
+        assert session.commits == 1
+
+    def test_refresh_agent_app_debug_conversation_replaces_existing_mapping(self):
+        agent = Agent(
+            id="agent-1",
+            tenant_id="tenant-1",
+            name="Iris",
+            description="",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            app_id="app-1",
+        )
+        mapping = SimpleNamespace(app_id="old-app", conversation_id="old-conversation")
+        session = FakeSession(scalar=[agent, mapping])
+        service = AgentRosterService(session)
+
+        conversation_id = service.refresh_agent_app_debug_conversation_id(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            account_id="account-1",
+        )
+
+        assert mapping.app_id == "app-1"
+        assert mapping.conversation_id == conversation_id
+        assert [a for a in session.added if isinstance(a, AgentDebugConversation)] == []
+        conversations = [a for a in session.added if isinstance(a, Conversation)]
+        assert len(conversations) == 1
+        assert conversations[0].id == conversation_id
+        assert session.deleted == []
+        assert session.commits == 1
+
     def test_duplicate_agent_app_copies_app_config_and_active_soul(self, monkeypatch: pytest.MonkeyPatch):
         source_config = SimpleNamespace(
             opening_statement="hello",

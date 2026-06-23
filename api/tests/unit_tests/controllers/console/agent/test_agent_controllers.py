@@ -27,6 +27,7 @@ from controllers.console.agent.roster import (
     AgentAppApi,
     AgentAppCopyApi,
     AgentAppListApi,
+    AgentDebugConversationRefreshApi,
     AgentInviteOptionsApi,
     AgentLogMessagesApi,
     AgentLogsApi,
@@ -158,6 +159,7 @@ def test_agent_v2_console_routes_are_agent_id_first() -> None:
         "/agent/<uuid:agent_id>/api-enable",
         "/agent/<uuid:agent_id>/api-keys",
         "/agent/<uuid:agent_id>/api-keys/<uuid:api_key_id>",
+        "/agent/<uuid:agent_id>/debug-conversation/refresh",
         "/agent/<uuid:agent_id>/chat-messages",
         "/agent/<uuid:agent_id>/chat-messages/<string:task_id>/stop",
         "/agent/<uuid:agent_id>/feedbacks",
@@ -480,6 +482,38 @@ def test_agent_app_copy_uses_agent_id_and_returns_agent_detail(
         "icon_type": "emoji",
         "icon": "sparkles",
         "icon_background": "#fff",
+    }
+
+
+def test_agent_debug_conversation_refresh_uses_current_user(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+) -> None:
+    agent_id = "00000000-0000-0000-0000-000000000001"
+    captured: dict[str, object] = {}
+
+    class FakeRosterService:
+        def refresh_agent_app_debug_conversation_id(self, **kwargs: object) -> str:
+            captured.update(kwargs)
+            return "new-debug-conversation-id"
+
+    monkeypatch.setattr(roster_controller, "_agent_roster_service", lambda: FakeRosterService())
+
+    with app.test_request_context(
+        "/console/api/agent/00000000-0000-0000-0000-000000000001/debug-conversation/refresh",
+        method="POST",
+    ):
+        response = unwrap(AgentDebugConversationRefreshApi.post)(
+            AgentDebugConversationRefreshApi(),
+            "tenant-1",
+            SimpleNamespace(id=account_id),
+            agent_id,
+        )
+
+    assert response == {"debug_conversation_id": "new-debug-conversation-id"}
+    assert captured == {
+        "tenant_id": "tenant-1",
+        "agent_id": agent_id,
+        "account_id": account_id,
     }
 
 

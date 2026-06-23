@@ -228,6 +228,10 @@ class AgentAppDetailWithSite(GenericAppDetailWithSite):
     active_config_is_published: bool = False
 
 
+class AgentDebugConversationRefreshResponse(BaseModel):
+    debug_conversation_id: str
+
+
 class AgentAppPagination(GenericAppPagination):
     data: list[AgentAppPartial] = Field(  # type: ignore[assignment]  # pyrefly: ignore[bad-override-mutable-attribute]
         validation_alias=AliasChoices("items", "data")
@@ -254,6 +258,7 @@ register_response_schema_models(
     AgentAppPublishedReferenceResponse,
     AgentAppDetailWithSite,
     AgentAppPartial,
+    AgentDebugConversationRefreshResponse,
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
     AgentConfigSnapshotRestoreResponse,
@@ -533,6 +538,31 @@ class AgentAppApi(Resource):
         app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         AppService().delete_app(app_model)
         return "", 204
+
+
+@console_ns.route("/agent/<uuid:agent_id>/debug-conversation/refresh")
+class AgentDebugConversationRefreshApi(Resource):
+    @console_ns.response(
+        200,
+        "Agent debug conversation refreshed",
+        console_ns.models[AgentDebugConversationRefreshResponse.__name__],
+    )
+    @console_ns.response(403, "Insufficient permissions")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, current_user: Account, agent_id: UUID):
+        debug_conversation_id = _agent_roster_service().refresh_agent_app_debug_conversation_id(
+            tenant_id=tenant_id,
+            agent_id=str(agent_id),
+            account_id=current_user.id,
+        )
+        return AgentDebugConversationRefreshResponse(debug_conversation_id=debug_conversation_id).model_dump(
+            mode="json"
+        )
 
 
 @console_ns.route("/agent/<uuid:agent_id>/copy")

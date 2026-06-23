@@ -62,6 +62,13 @@ export const zSimpleResultResponse = z.object({
 })
 
 /**
+ * AgentDebugConversationRefreshResponse
+ */
+export const zAgentDebugConversationRefreshResponse = z.object({
+  debug_conversation_id: z.string(),
+})
+
+/**
  * AgentDriveDownloadResponse
  */
 export const zAgentDriveDownloadResponse = z.object({
@@ -2436,6 +2443,16 @@ export const zPostAgentByAgentIdCopyPath = z.object({
  * Agent app copied successfully
  */
 export const zPostAgentByAgentIdCopyResponse = zAgentAppDetailWithSite
+
+export const zPostAgentByAgentIdDebugConversationRefreshPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Agent debug conversation refreshed
+ */
+export const zPostAgentByAgentIdDebugConversationRefreshResponse
+  = zAgentDebugConversationRefreshResponse
 
 export const zGetAgentByAgentIdDriveFilesPath = z.object({
   agent_id: z.uuid(),

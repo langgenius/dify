@@ -602,6 +602,20 @@ Stop a running Agent App chat message generation
 | 400 | Invalid request parameters |  |
 | 403 | Insufficient permissions |  |
 
+### [POST] /agent/{agent_id}/debug-conversation/refresh
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent debug conversation refreshed | **application/json**: [AgentDebugConversationRefreshResponse](#agentdebugconversationrefreshresponse)<br> |
+| 403 | Insufficient permissions |  |
+
 ### [GET] /agent/{agent_id}/drive/files
 List agent drive entries for an Agent App
 
@@ -12561,6 +12575,12 @@ Audit operation recorded for Agent Soul version/revision changes.
 | ---- | ---- | ----------- | -------- |
 | date | string |  | Yes |
 | message_count | integer |  | Yes |
+
+#### AgentDebugConversationRefreshResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| debug_conversation_id | string |  | Yes |
 
 #### AgentDriveDeleteFileByAgentQuery
 
