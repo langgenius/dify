@@ -2,7 +2,7 @@ import type {
   AccessPolicy,
   Subject,
 } from '@dify/contracts/enterprise/types.gen'
-import { AccessMode, SubjectType } from '@dify/contracts/enterprise/types.gen'
+import { AccessMode, AccessSubjectType } from '@dify/contracts/enterprise/types.gen'
 import { describe, expect, it } from 'vitest'
 import { AccessMode as AppAccessMode } from '@/models/access-control'
 import {
@@ -56,7 +56,7 @@ describe('access policy mode mapping', () => {
 describe('access policy subject conversion', () => {
   it('should normalize resolved group and account subjects', () => {
     expect(normalizeResolvedSubject({
-      subjectType: SubjectType.SUBJECT_TYPE_GROUP,
+      subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_GROUP,
       groupData: {
         id: 'group-1',
         name: 'Admins',
@@ -64,53 +64,53 @@ describe('access policy subject conversion', () => {
       },
     })).toEqual({
       id: 'group-1',
-      subjectType: SubjectType.SUBJECT_TYPE_GROUP,
+      subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_GROUP,
       name: 'Admins',
       memberCount: 3,
     })
 
     expect(normalizeResolvedSubject({
-      subjectType: SubjectType.SUBJECT_TYPE_ACCOUNT,
+      subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_ACCOUNT,
       accountData: {
         id: 'account-1',
         email: 'member@example.com',
       },
     })).toEqual({
       id: 'account-1',
-      subjectType: SubjectType.SUBJECT_TYPE_ACCOUNT,
+      subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_ACCOUNT,
       name: 'member@example.com',
     })
   })
 
   it('should ignore unsupported subjects and subjects without ids', () => {
-    expect(normalizeResolvedSubject({ subjectType: SubjectType.SUBJECT_TYPE_GROUP })).toBeUndefined()
-    expect(normalizeResolvedSubject({ subjectType: SubjectType.SUBJECT_TYPE_ACCOUNT })).toBeUndefined()
-    expect(normalizeResolvedSubject({ subjectType: SubjectType.SUBJECT_TYPE_UNSPECIFIED } as Subject)).toBeUndefined()
+    expect(normalizeResolvedSubject({ subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_GROUP })).toBeUndefined()
+    expect(normalizeResolvedSubject({ subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_ACCOUNT })).toBeUndefined()
+    expect(normalizeResolvedSubject({ subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_UNSPECIFIED } as Subject)).toBeUndefined()
   })
 
   it('should preserve labels when reading selected subjects from policy', () => {
     expect(selectedSubjectsFromPolicy(policy({
       subjects: [
-        { subjectId: 'group-1', subjectType: SubjectType.SUBJECT_TYPE_GROUP },
-        { subjectId: 'account-1', subjectType: SubjectType.SUBJECT_TYPE_ACCOUNT },
+        { subjectId: 'group-1', subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_GROUP },
+        { subjectId: 'account-1', subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_ACCOUNT },
       ],
     }), [
       {
         id: 'group-1',
-        subjectType: SubjectType.SUBJECT_TYPE_GROUP,
+        subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_GROUP,
         name: 'Admins',
         memberCount: 3,
       },
     ])).toEqual([
       {
         id: 'group-1',
-        subjectType: SubjectType.SUBJECT_TYPE_GROUP,
+        subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_GROUP,
         name: 'Admins',
         memberCount: 3,
       },
       {
         id: 'account-1',
-        subjectType: SubjectType.SUBJECT_TYPE_ACCOUNT,
+        subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_ACCOUNT,
       },
     ])
 
@@ -121,20 +121,20 @@ describe('access policy subject conversion', () => {
     const subjects = [
       {
         id: 'group-1',
-        subjectType: SubjectType.SUBJECT_TYPE_GROUP,
+        subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_GROUP,
         name: 'Admins',
         memberCount: 3,
       },
       {
         id: 'account-1',
-        subjectType: SubjectType.SUBJECT_TYPE_ACCOUNT,
+        subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_ACCOUNT,
         name: 'Member',
       },
     ]
 
     expect(policySubjects(subjects)).toEqual([
-      { subjectId: 'group-1', subjectType: SubjectType.SUBJECT_TYPE_GROUP },
-      { subjectId: 'account-1', subjectType: SubjectType.SUBJECT_TYPE_ACCOUNT },
+      { subjectId: 'group-1', subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_GROUP },
+      { subjectId: 'account-1', subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_ACCOUNT },
     ])
 
     const selection = accessControlSelectionFromSubjects(subjects)

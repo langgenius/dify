@@ -1,7 +1,5 @@
 'use client'
 
-import type { ListAppInstanceSummariesResponse } from '@dify/contracts/enterprise/types.gen'
-import type { InfiniteData, QueryKey } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { keepPreviousData } from '@tanstack/react-query'
 import { atom } from 'jotai'
@@ -34,21 +32,7 @@ export function DeploymentsListStateBoundary({ children }: {
   return children
 }
 
-function listDeploymentStatusPollingInterval(data?: InfiniteData<ListAppInstanceSummariesResponse>) {
-  const rows = data?.pages?.flatMap(page =>
-    page.appInstanceSummaries.flatMap(summary => summary.environmentDeployments),
-  ) ?? []
-
-  return deploymentStatusPollingInterval(rows)
-}
-
-export const deploymentsListQueryAtom = atomWithInfiniteQuery<
-  ListAppInstanceSummariesResponse,
-  Error,
-  InfiniteData<ListAppInstanceSummariesResponse>,
-  QueryKey,
-  number
->((get) => {
+export const deploymentsListQueryAtom = atomWithInfiniteQuery((get) => {
   const queryKeywords = get(deploymentsListKeywordsAtom).trim()
   const queryEnvironmentId = get(deploymentsListEnvironmentIdAtom) ?? undefined
 
@@ -64,7 +48,13 @@ export const deploymentsListQueryAtom = atomWithInfiniteQuery<
     getNextPageParam: lastPage => getNextPageParamFromPagination(lastPage.pagination),
     initialPageParam: 1,
     placeholderData: keepPreviousData,
-    refetchInterval: query => listDeploymentStatusPollingInterval(query.state.data),
+    refetchInterval: (query) => {
+      const rows = query.state.data?.pages.flatMap(page =>
+        page.appInstanceSummaries.flatMap(summary => summary.environmentDeployments),
+      ) ?? []
+
+      return deploymentStatusPollingInterval(rows)
+    },
   })
 })
 
