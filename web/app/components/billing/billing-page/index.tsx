@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'

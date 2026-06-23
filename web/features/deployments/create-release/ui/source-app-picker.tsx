@@ -15,7 +15,7 @@ import {
 } from '@langgenius/dify-ui/combobox'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { useInfiniteScroll } from '@/features/deployments/shared/hooks/use-infinite-scroll'

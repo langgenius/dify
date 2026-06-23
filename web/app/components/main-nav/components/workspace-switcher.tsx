@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { SearchInput } from '@/app/components/base/search-input'
 import { WorkspaceIcon, WorkspaceMenuItemContent } from './workspace-menu-content'
 

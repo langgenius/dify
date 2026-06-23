@@ -18,7 +18,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useStoreApi } from 'reactflow'
 import { enrichSubmittedHumanInputFormData } from '@/app/components/base/chat/chat/answer/human-input-content/submitted-utils'
 import {

@@ -2,7 +2,7 @@ import type { InvitationResult } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { IS_CE_EDITION } from '@/config'
 import InvitationLink from './invitation-link'
 

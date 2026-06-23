@@ -10,7 +10,7 @@ import type { AgentFileNode, AgentKnowledgeRetrievalItem, AgentSkill, AgentTool 
 import { cn } from '@langgenius/dify-ui/cn'
 import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
 import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'

@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowRightLine } from '@remixicon/react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type Props = Readonly<{
   onStart: () => void

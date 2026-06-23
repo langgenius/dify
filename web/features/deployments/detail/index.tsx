@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { useAtomValue } from 'jotai'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { CreateReleaseControl } from '../create-release'

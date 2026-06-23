@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ClockPlay } from '@/app/components/base/icons/src/vender/line/time'
 import { useIsChatMode } from '../hooks'
 import { useStore } from '../store'

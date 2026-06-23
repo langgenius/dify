@@ -5,7 +5,7 @@ import {
   RiLock2Line,
 } from '@remixicon/react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import Divider from '../../base/divider'
 import MenuItem from './menu-item'

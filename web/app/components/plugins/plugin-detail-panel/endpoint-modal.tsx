@@ -15,7 +15,7 @@ import {
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowRightUpLine, RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { useRenderI18nObject } from '@/hooks/use-i18n'

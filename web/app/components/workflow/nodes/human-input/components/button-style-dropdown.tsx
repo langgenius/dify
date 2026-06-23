@@ -11,7 +11,7 @@ import {
 } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { UserActionButtonType } from '../types'
 
 const i18nPrefix = 'nodes.humanInput'

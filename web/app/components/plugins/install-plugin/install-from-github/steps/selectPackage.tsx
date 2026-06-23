@@ -5,7 +5,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { FieldRoot } from '@langgenius/dify-ui/field'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectLabel, SelectTrigger } from '@langgenius/dify-ui/select'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Badge from '@/app/components/base/badge'
 import { handleUpload } from '../../hooks'
 

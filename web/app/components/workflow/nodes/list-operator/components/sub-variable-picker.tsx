@@ -4,7 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { SUB_VARIABLES } from '../../constants'
 

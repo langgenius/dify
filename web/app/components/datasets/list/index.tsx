@@ -4,7 +4,7 @@ import { useBoolean, useDebounceFn } from 'ahooks'
 
 // Libraries
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useAppContext, useSelector as useAppContextSelector } from '@/context/app-context'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'

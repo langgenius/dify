@@ -15,7 +15,8 @@ import {
   RiRobot2Fill,
 } from '@remixicon/react'
 import { memo, useMemo, useState } from 'react'
-import { Trans, useTranslation } from 'react-i18next'
+import { Trans } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { v4 as uuid4 } from 'uuid'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'

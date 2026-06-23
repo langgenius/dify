@@ -4,7 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import dayjs from 'dayjs'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { WorkflowVersion } from '../../types'
 import ActionMenu from './action-menu'
 

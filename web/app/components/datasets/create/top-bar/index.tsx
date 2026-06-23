@@ -3,7 +3,7 @@ import type { StepperProps } from '../stepper'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowLeftLine } from '@remixicon/react'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Link from '@/next/link'
 import { Stepper } from '../stepper'
 

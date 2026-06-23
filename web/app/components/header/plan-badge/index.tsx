@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import {
   RiGraduationCapFill,
 } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import { SparklesSoft } from '../../base/icons/src/public/common'

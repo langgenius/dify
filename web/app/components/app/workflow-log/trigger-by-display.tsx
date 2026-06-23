@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { TriggerMetadata } from '@/models/log'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import {
   Code,
   KnowledgeRetrieval,

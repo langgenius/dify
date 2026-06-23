@@ -7,7 +7,7 @@ import { RadioControl, RadioRoot } from '@langgenius/dify-ui/radio'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import {
   envVarValuesAtom,

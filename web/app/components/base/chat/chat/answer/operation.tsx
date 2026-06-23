@@ -16,7 +16,7 @@ import {
   useMemo,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import Log from '@/app/components/base/chat/chat/log'

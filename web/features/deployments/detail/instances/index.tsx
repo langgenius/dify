@@ -1,6 +1,6 @@
 'use client'
 import { useAtomValue } from 'jotai'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import {
   DetailTable,

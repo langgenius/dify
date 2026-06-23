@@ -8,7 +8,7 @@ import {
 import {
   useCallback,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { TEST_RUN_MENU_HOTKEY } from './header/shortcuts'
 import {
   useDSL,

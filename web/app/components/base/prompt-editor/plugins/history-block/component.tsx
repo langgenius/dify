@@ -6,7 +6,7 @@ import {
   RiMoreFill,
 } from '@remixicon/react'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { MessageClockCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { UPDATE_HISTORY_EVENT_EMITTER } from '../../constants'

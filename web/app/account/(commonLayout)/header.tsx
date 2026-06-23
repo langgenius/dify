@@ -2,7 +2,7 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'

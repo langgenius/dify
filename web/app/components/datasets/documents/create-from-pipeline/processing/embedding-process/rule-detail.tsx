@@ -1,7 +1,7 @@
 import type { ProcessRuleResponse } from '@/models/datasets'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { indexMethodIcon, retrievalIcon } from '@/app/components/datasets/create/icons'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { FieldInfo } from '@/app/components/datasets/documents/detail/metadata'

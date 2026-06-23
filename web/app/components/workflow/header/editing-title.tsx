@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useStore } from '@/app/components/workflow/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import useTimestamp from '@/hooks/use-timestamp'

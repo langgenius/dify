@@ -21,7 +21,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Loading from '@/app/components/base/loading'
 import { useInfiniteSnippetList } from '@/service/use-snippets'
 import SnippetDetailCard from './snippet-detail-card'

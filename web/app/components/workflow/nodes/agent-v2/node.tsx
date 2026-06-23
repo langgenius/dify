@@ -1,7 +1,7 @@
 import type { NodeProps } from '../../types'
 import type { AgentV2NodeType } from './types'
 import type { AppIconType } from '@/types/app'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import AppIcon from '@/app/components/base/app-icon'
 import { SettingItem } from '../_base/components/setting-item'
 import { useAgentRosterDetail, useWorkflowInlineAgentDetail } from './hooks'

@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from '@langgenius/dify-ui/select'
 import { memo, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ACCESS_RULE_TABLE_GRID, DEFAULT_ACCESS_POLICY_ID } from './constants'
 
 type PolicyOption = {

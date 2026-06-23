@@ -9,7 +9,7 @@ import {
   RiListCheck3,
   RiTextSnippet,
 } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { InputTypeEnum } from './types'
 

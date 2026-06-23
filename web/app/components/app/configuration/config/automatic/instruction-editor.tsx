@@ -5,7 +5,7 @@ import type { Node, NodeOutPutVar, ValueSelector } from '@/app/components/workfl
 import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd } from '@langgenius/dify-ui/kbd'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-editor/plugins/update-block'
 import { Type } from '@/app/components/workflow/nodes/llm/types'

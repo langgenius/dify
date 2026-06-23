@@ -7,7 +7,7 @@ import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/di
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { PermissionType } from '@/app/components/plugins/types'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'

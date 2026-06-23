@@ -5,7 +5,7 @@ import type { I18nKeysByPrefix } from '@/types/i18n'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import dayjs from 'dayjs'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
 type TimePeriodOption = {

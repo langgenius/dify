@@ -4,7 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { cva } from 'class-variance-authority'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { CopyFeedbackNew } from '../copy-feedback'
 
 export const inputVariants = cva(

@@ -11,7 +11,7 @@ import {
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import Card from '@/app/components/plugins/card'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'

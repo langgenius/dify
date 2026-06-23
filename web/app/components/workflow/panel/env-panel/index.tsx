@@ -8,7 +8,7 @@ import {
   useCallback,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'

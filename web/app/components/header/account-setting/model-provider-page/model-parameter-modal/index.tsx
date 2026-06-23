@@ -21,7 +21,7 @@ import {
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
 import { useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import Loading from '@/app/components/base/loading'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE } from '@/config'

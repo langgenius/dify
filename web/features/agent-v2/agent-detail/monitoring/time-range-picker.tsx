@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText,
 import dayjs from 'dayjs'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import { useLocale } from '@/context/i18n'
 import { formatToLocalTime } from '@/utils/format'

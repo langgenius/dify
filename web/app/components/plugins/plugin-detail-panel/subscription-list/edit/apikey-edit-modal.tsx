@@ -7,7 +7,7 @@ import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgeni
 import { toast } from '@langgenius/dify-ui/toast'
 import { isEqual } from 'es-toolkit/predicate'
 import { useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import { BaseForm } from '@/app/components/base/form/components/base'
 import { FormTypeEnum } from '@/app/components/base/form/types'

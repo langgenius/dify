@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { MainNav } from '.'
 import { MAIN_CONTENT_ID, SkipNav } from './skip-nav'
 

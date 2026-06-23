@@ -17,7 +17,7 @@ import {
   ComboboxTrigger,
 } from '@langgenius/dify-ui/combobox'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import AppIcon from '@/app/components/base/app-icon'
 import { AppModeEnum } from '@/types/app'
 

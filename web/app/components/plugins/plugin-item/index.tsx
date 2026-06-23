@@ -13,7 +13,7 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { API_PREFIX } from '@/config'
 import { useAppContext } from '@/context/app-context'

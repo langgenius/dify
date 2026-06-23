@@ -12,7 +12,7 @@ import {
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import { useCallback, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'

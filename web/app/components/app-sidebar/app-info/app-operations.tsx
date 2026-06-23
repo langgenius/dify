@@ -9,7 +9,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { RiMoreLine } from '@remixicon/react'
 import { cloneElement, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 export type Operation = {
   id: string

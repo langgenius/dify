@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import VisualEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor'
 import { MittProvider, VisualEditorContextProvider } from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/context'
 

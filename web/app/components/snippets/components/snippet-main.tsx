@@ -12,7 +12,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useShallow } from 'zustand/react/shallow'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import { useAvailableNodesMetaData } from '@/app/components/workflow-app/hooks'

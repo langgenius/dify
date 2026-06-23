@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type ConfigurationsSectionProps = {
   timeout: number

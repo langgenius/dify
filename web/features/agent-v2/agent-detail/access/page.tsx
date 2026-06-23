@@ -2,7 +2,7 @@
 
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useQuery } from '@tanstack/react-query'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/client'
 import { ServiceApiAccessCard } from './components/service-api-access-card'

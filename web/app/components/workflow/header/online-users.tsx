@@ -10,7 +10,7 @@ import {
 } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useReactFlow } from 'reactflow'
 import { useAppContext } from '@/context/app-context'
 import { getAvatar } from '@/service/common'

@@ -4,7 +4,7 @@ import type { CredentialSlot, Environment } from '@dify/contracts/enterprise/typ
 import type { RuntimeCredentialBindingSelections } from '../../shared/components/runtime-credential-bindings-utils'
 import { DrawerDescription, DrawerTitle } from '@langgenius/dify-ui/drawer'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
 import { DeploymentStateMessage } from '../../shared/components/empty-state'
 import { RuntimeCredentialBindingsPanel } from '../../shared/components/runtime-credential-bindings'

@@ -4,7 +4,7 @@ import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '@/app/com
 import type { SortType } from '@/service/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Chip from '@/app/components/base/chip'
 import Input from '@/app/components/base/input'
 import Sort from '@/app/components/base/sort'

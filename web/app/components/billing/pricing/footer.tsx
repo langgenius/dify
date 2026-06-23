@@ -1,7 +1,7 @@
 import type { Category } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Link from '@/next/link'
 import { CategoryEnum } from './types'
 

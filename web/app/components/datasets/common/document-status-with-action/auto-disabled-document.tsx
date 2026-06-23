@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useAutoDisabledDocuments, useDocumentEnable, useInvalidDisabledDocument } from '@/service/knowledge/use-document'
 import StatusWithAction from './status-with-action'
 

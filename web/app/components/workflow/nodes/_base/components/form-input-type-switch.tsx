@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { VarType } from '@/app/components/workflow/nodes/tool/types'
 

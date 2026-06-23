@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { Memory, Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Infotip } from '@/app/components/base/infotip'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import MemoryConfig from '../../_base/components/memory-config'

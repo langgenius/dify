@@ -12,7 +12,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiArrowDownSLine, RiArrowUpSLine, RiCheckboxCircleFill, RiCheckboxCircleLine, RiCloseLine, RiDeleteBinLine, RiMoreFill } from '@remixicon/react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useReactFlow, useViewport } from 'reactflow'
 import Divider from '@/app/components/base/divider'
 import InlineDeleteConfirm from '@/app/components/base/inline-delete-confirm'

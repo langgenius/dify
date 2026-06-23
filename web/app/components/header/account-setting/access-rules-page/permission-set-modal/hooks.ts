@@ -1,6 +1,6 @@
 import type { AccessPolicyResourceType } from '@/models/access-control'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useAppPermissionCatalog, useDatasetPermissionCatalog } from '@/service/access-control/use-permission-catalog'
 
 export const usePermissionsGroups = (resourceType: AccessPolicyResourceType) => {

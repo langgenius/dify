@@ -6,7 +6,7 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import { RiDeleteBinLine, RiEditFill, RiEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Robot, User } from '@/app/components/base/icons/src/public/avatar'
 
 export enum EditItemType {

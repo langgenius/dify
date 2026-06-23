@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { BlockDefaultValue } from '@/app/components/workflow/block-selector/types'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import NodeSelector from '@/app/components/workflow/block-selector'
 import { TabsEnum } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum } from '@/app/components/workflow/types'

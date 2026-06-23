@@ -10,7 +10,7 @@ import {
   useMemo,
   useRef,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { ToolTypeEnum } from '@/app/components/workflow/block-selector/types'

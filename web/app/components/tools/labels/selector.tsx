@@ -8,7 +8,7 @@ import {
 } from '@langgenius/dify-ui/popover'
 import { useDebounceFn } from 'ahooks'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import Input from '@/app/components/base/input'
 import { useTags } from '@/app/components/plugins/hooks'

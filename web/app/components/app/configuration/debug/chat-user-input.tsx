@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText,
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useContext } from 'use-context-selector'
 import Input from '@/app/components/base/input'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'

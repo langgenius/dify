@@ -5,7 +5,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Economic, HighQuality } from '@/app/components/base/icons/src/vender/knowledge'
 import { IndexingType } from '../../create/step-two'
 import { EffectColor } from '../chunk-structure/types'

@@ -2,7 +2,7 @@
 import type { CrawlResultItem } from '@/models/datasets'
 import { RiCloseLine, RiGlobalLine } from '@remixicon/react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { formatNumberAbbreviated } from '@/utils/format'
 
 type WebsitePreviewProps = {

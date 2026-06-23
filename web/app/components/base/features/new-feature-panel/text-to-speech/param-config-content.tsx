@@ -10,7 +10,7 @@ import {
 } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { produce } from 'immer'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { replace } from 'string-ts'
 import AudioBtn from '@/app/components/base/audio-btn'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'

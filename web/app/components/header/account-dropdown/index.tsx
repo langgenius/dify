@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { resetUser } from '@/app/components/base/amplitude/utils'
 import { useSetEducationExpiredHasNoticed, useSetEducationReverifyHasNoticed, useSetEducationReverifyPrevExpireAt } from '@/app/education-apply/storage'
 import { useAppContext } from '@/context/app-context'

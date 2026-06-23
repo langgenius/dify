@@ -8,7 +8,7 @@ import {
   memo,
   useCallback,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import FileImageRender from '@/app/components/base/file-uploader/file-image-render'
 import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
 import { fileIsUploaded } from '../utils'

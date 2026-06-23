@@ -2,7 +2,7 @@ import type { NodeProps } from 'reactflow'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiHome5Fill } from '@remixicon/react'
 import { memo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { NodeSourceHandle } from '@/app/components/workflow/nodes/_base/components/node-handle'
 
 const LoopStartNode = ({ id, data }: NodeProps) => {

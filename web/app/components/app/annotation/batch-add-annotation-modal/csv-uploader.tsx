@@ -6,7 +6,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
 
 export type Props = Readonly<{

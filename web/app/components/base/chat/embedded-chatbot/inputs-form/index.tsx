@@ -1,7 +1,7 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import InputsFormContent from '@/app/components/base/chat/embedded-chatbot/inputs-form/content'
 import Divider from '@/app/components/base/divider'
 import { AppSourceType } from '@/service/share'

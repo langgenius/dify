@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { RiAlertLine, RiBugLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { IS_DEV } from '@/config'
 
 type ErrorBoundaryState = {

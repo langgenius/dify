@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import ResolutionPicker from '@/app/components/workflow/nodes/llm/components/resolution-picker'
 import { VarType } from '@/app/components/workflow/types'

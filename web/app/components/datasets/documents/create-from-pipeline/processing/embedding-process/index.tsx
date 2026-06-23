@@ -15,7 +15,7 @@ import {
 } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Divider from '@/app/components/base/divider'
 import NotionIcon from '@/app/components/base/notion-icon'
 import PriorityLabel from '@/app/components/billing/priority-label'

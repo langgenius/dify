@@ -13,7 +13,7 @@ import {
   memo,
   useCallback,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Badge from '@/app/components/base/badge'
 import { ConfigurationMethodEnum, ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'

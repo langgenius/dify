@@ -8,7 +8,7 @@ import { FieldControl, FieldDescription, FieldError, FieldLabel, FieldRoot } fro
 import { Form } from '@langgenius/dify-ui/form'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/client'
 

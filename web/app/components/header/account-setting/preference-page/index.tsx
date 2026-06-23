@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText,
 import { toast } from '@langgenius/dify-ui/toast'
 import { useTheme } from 'next-themes'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useAppContext } from '@/context/app-context'
 import { useLocale } from '@/context/i18n'
 import { setLocaleOnClient } from '@/i18n-config'

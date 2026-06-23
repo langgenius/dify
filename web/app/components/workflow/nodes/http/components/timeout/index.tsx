@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { Timeout as TimeoutPayloadType } from '../../types'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Input from '@/app/components/base/input'
 import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
 import { useStore } from '@/app/components/workflow/store'

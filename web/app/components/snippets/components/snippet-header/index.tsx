@@ -7,7 +7,7 @@ import {
   useMemo,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Header from '@/app/components/workflow/header'
 import SaveBeforeLeavingDialog from '../save-before-leaving-dialog'
 import CancelChanges from './cancel-changes'

@@ -8,7 +8,7 @@ import {
 } from '@langgenius/dify-ui/popover'
 import { RiArrowDownSLine, RiWebhookLine } from '@remixicon/react'
 import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { SubscriptionList } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
 import { SubscriptionListMode } from './types'
 import { useSubscriptionList } from './use-subscription-list'

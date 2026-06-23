@@ -12,7 +12,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
 import { useWebAppStore } from '@/context/web-app-context'

@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ViewWorkflowHistory from '@/app/components/workflow/header/view-workflow-history'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import { useWorkflowHistoryStore } from '@/app/components/workflow/workflow-history-store'

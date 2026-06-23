@@ -2,7 +2,7 @@ import type { ChecklistItem } from '../../hooks/use-checklist'
 import type { BlockEnum } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import BlockIcon from '../../block-icon'
 import { ItemIndicator } from './item-indicator'
 

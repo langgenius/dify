@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { SegmentedControl, SegmentedControlDivider, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Infotip } from '@/app/components/base/infotip'
 import { useDocLink } from '@/context/i18n'
 

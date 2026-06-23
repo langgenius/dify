@@ -4,7 +4,7 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import * as React from 'react'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ChunkingMode } from '@/models/datasets'
 import { useDocumentContext } from '../../context'
 

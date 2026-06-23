@@ -18,7 +18,7 @@ import {
 import { useMutation } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { consoleQuery } from '@/service/client'
 
 type TagItemEditorProps = {

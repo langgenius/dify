@@ -5,7 +5,7 @@ import type { FC } from 'react'
 import type { ChartRow } from './app-chart-utils'
 import ReactECharts from 'echarts-for-react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Basic from '@/app/components/app-sidebar/basic'
 import Loading from '@/app/components/base/loading'
 import {

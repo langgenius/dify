@@ -16,7 +16,7 @@ import {
 import { Slider } from '@langgenius/dify-ui/slider'
 import { noop } from 'es-toolkit/function'
 import { memo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Agent } from '@/app/components/base/icons/src/vender/workflow'
 import ListEmpty from '@/app/components/base/list-empty'
 import { FormTypeEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'

@@ -2,7 +2,7 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Loading from '@/app/components/base/loading'
 
 import useDocumentTitle from '@/hooks/use-document-title'

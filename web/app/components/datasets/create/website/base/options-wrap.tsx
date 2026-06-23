@@ -5,7 +5,7 @@ import { RiEqualizer2Line } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 
 const I18N_PREFIX = 'stepOne.website'

@@ -16,7 +16,7 @@ import {
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import AnnotationFull from '@/app/components/billing/annotation-full'
 import { useProviderContext } from '@/context/provider-context'
 import EditItem, { EditItemType } from './edit-item'

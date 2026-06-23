@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type ActionsProps = {
   disableAddBtn: boolean

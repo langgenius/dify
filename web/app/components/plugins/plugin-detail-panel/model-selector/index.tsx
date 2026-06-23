@@ -16,7 +16,7 @@ import {
 } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ModelStatusEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   useModelList,

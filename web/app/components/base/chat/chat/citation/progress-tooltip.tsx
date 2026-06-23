@@ -4,7 +4,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@langgenius/dify-ui/tooltip'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type ProgressTooltipProps = {
   data: number

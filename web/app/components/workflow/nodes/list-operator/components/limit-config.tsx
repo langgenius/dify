@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import InputNumberWithSlider from '../../_base/components/input-number-with-slider'
 

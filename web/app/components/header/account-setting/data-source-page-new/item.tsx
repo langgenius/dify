@@ -8,7 +8,7 @@ import {
   memo,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Operator from './operator'
 
 type ItemProps = {

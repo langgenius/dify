@@ -18,7 +18,7 @@ import {
   RiPauseCircleFill,
 } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'

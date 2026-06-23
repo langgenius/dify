@@ -3,7 +3,7 @@ import {
   RiChatSettingsLine,
 } from '@remixicon/react'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'
 import { Message3Fill } from '@/app/components/base/icons/src/public/other'

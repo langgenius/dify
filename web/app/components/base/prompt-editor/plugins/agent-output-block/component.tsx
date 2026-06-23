@@ -12,7 +12,7 @@ import {
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $getNodeByKey, $getRoot } from 'lexical'
 import { memo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { $createAgentOutputBlockNode, $isAgentOutputBlockNode } from './node'
 import {
   AGENT_OUTPUT_NAME_PATTERN,

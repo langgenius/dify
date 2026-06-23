@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import type { OnSend } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { memo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Divider from '@/app/components/base/divider'
 
 type TryToAskProps = {

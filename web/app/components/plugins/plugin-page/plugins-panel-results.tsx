@@ -11,7 +11,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Loading from '@/app/components/base/loading'
 import { useToolMarketplacePanel } from '@/app/components/integrations/hooks/use-tool-marketplace-panel'
 import IntegrationsToolProviderCard from '@/app/components/integrations/tool-provider-card'

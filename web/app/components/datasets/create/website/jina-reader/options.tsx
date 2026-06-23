@@ -4,7 +4,7 @@ import type { CrawlOptions } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import CheckboxWithLabel from '../base/checkbox-with-label'
 import Field from '../base/field'
 

@@ -1,6 +1,6 @@
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type IndexingTechnique = I18nKeysByPrefix<'dataset', 'indexingTechnique.'>
 type IndexingMethod = I18nKeysByPrefix<'dataset', 'indexingMethod.'>

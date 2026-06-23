@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import GridMask from '@/app/components/base/grid-mask'
 import UpgradeBtn from '../upgrade-btn'
 import s from './style.module.css'

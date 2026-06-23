@@ -15,7 +15,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useModalContext } from '@/context/modal-context'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'

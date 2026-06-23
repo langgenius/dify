@@ -6,7 +6,7 @@
 import type { PluginDetail } from '@/app/components/plugins/types'
 import * as React from 'react'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { transformDataSourceToTool } from '@/app/components/workflow/block-selector/utils'
 import { useDataSourceList } from '@/service/use-pipeline'
 

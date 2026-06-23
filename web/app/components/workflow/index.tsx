@@ -41,7 +41,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ReactFlow, {
   Background,
   ReactFlowProvider,

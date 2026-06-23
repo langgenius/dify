@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import {
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Loading from '@/app/components/base/loading'

@@ -7,7 +7,7 @@ import {
   RiExpandDiagonalLine,
 } from '@remixicon/react'
 import { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { v4 as uuid4 } from 'uuid'
 import Divider from '@/app/components/base/divider'
 import ImageUploaderInChunk from '@/app/components/datasets/common/image-uploader/image-uploader-in-chunk'

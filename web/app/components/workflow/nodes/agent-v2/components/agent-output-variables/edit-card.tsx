@@ -9,7 +9,7 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useId, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { OutputTypeSelect } from './type-select'
 import {
   createOutputFromDraft,

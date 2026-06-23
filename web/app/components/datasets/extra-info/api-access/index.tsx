@@ -3,7 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import * as React from 'react'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ApiAggregate } from '@/app/components/base/icons/src/vender/knowledge'
 import Card from './card'
 

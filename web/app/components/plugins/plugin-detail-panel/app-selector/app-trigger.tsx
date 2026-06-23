@@ -2,7 +2,7 @@
 
 import type { App } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import AppIcon from '@/app/components/base/app-icon'
 
 type AppTriggerProps = {

@@ -1,7 +1,7 @@
 'use client'
 
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-button'
 

@@ -5,7 +5,7 @@ import {
   DropdownMenuLinkItem,
   DropdownMenuSeparator,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ChangeBlockMenuTrigger } from './change-block-menu-trigger'
 import {
   NODE_ACTIONS_MENU_DELETE_ITEM_CLASS_NAME,

@@ -2,7 +2,7 @@ import type { RefObject } from 'react'
 import type { StartNodeType } from './types'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar, ValueSelector, Variable } from '@/app/components/workflow/types'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { InputVarType } from '@/app/components/workflow/types'
 import { useIsChatMode } from '../../hooks'
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { FullScreenLoading } from '@/app/components/full-screen-loading'
 import { isLegacyBase401 } from '@/features/account-profile/client'
 

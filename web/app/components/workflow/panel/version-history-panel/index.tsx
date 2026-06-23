@@ -5,7 +5,7 @@ import { RiArrowDownDoubleLine, RiCloseLine, RiLoader2Line } from '@remixicon/re
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import VersionInfoModal from '@/app/components/app/app-publisher/version-info-modal'
 import Divider from '@/app/components/base/divider'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'

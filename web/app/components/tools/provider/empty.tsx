@@ -2,7 +2,7 @@
 import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowRightLine, RiArrowRightUpLine } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useDocLink } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'

@@ -4,7 +4,7 @@ import type { NodeProps } from 'reactflow'
 import type { QuestionClassifierNodeType } from './types'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import {
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'

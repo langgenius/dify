@@ -1,6 +1,6 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { API_PREFIX } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { useSearchParams } from '@/next/navigation'

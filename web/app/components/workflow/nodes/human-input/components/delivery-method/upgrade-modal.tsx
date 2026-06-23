@@ -1,6 +1,6 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { RiMailSendFill } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
 import { UpgradeModal as BaseUpgradeModal } from '@/app/components/base/upgrade-modal'

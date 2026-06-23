@@ -11,7 +11,7 @@ import {
   NumberFieldUnit,
 } from '@langgenius/dify-ui/number-field'
 import { useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
 import { env } from '@/env'

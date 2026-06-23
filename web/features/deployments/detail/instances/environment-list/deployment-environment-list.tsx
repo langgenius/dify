@@ -1,7 +1,7 @@
 'use client'
 
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise/types.gen'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import {
   DetailTable,
   DetailTableBody,

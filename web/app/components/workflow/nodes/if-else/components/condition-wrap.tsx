@@ -13,7 +13,7 @@ import {
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ReactSortable } from 'react-sortablejs'
 import { VarType } from '../../../types'
 import { SUB_VARIABLES } from '../../constants'

@@ -1,7 +1,7 @@
 'use client'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useAppContext } from '@/context/app-context'
 import { fetchSubscriptionUrls } from '@/service/billing'
 import { BillingPermission, hasPermission } from '@/utils/permission'

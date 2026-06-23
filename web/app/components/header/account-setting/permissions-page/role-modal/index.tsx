@@ -12,7 +12,7 @@ import {
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import PermissionField from './permission-field'
 
 export type RoleModalMode = 'create' | 'view' | 'edit'

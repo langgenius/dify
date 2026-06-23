@@ -6,7 +6,7 @@ import {
   RiCloseLine,
 } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'

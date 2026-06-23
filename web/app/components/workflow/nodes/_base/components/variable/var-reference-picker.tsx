@@ -15,7 +15,7 @@ import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import {
   useNodes,
   useReactFlow,

@@ -7,7 +7,7 @@ import {
 } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type IOperationBtnProps = {
   className?: string

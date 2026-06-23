@@ -2,7 +2,7 @@ import type { PermissionSetFormValues, PermissionSetModalMode } from './permissi
 import type { AccessPolicyWithBindings } from '@/models/access-control'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useLocale } from '@/context/i18n'
 import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import {

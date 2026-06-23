@@ -11,7 +11,7 @@ import {
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import LicenseNav from '@/app/components/header/license-env'

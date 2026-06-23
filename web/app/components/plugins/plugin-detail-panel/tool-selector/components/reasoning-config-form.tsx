@@ -16,7 +16,7 @@ import {
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'

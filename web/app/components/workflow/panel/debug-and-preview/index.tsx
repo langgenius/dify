@@ -12,7 +12,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useNodes } from 'reactflow'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'

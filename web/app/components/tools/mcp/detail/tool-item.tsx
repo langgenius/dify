@@ -3,7 +3,7 @@ import type { Tool } from '@/app/components/tools/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useLocale } from '@/context/i18n'
 import { getLanguage } from '@/i18n-config/language'
 

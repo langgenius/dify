@@ -16,7 +16,7 @@ import {
 } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'

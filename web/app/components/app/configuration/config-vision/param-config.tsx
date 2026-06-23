@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiSettings2Line } from '@remixicon/react'
 import { memo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ParamConfigContent from './param-config-content'
 
 const ParamsConfig: FC = () => {

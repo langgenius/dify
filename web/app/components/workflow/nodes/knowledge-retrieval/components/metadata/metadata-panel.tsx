@@ -1,6 +1,6 @@
 import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { RiCloseLine } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import AddCondition from './add-condition'
 import ConditionList from './condition-list'
 

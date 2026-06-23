@@ -10,7 +10,7 @@ import {
   useEffect,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Link03 } from '@/app/components/base/icons/src/vender/line/general'
 import { ImagePlus } from '@/app/components/base/icons/src/vender/line/images'
 import { TransferMethod } from '@/types/app'

@@ -14,7 +14,7 @@ import {
 } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useContext } from 'use-context-selector'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'

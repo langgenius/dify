@@ -1,7 +1,7 @@
 import type { Node } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useUpdateNodeInternals } from 'reactflow'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import { NodeRunningStatus } from '@/app/components/workflow/types'

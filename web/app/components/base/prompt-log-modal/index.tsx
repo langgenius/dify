@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { useClickAway } from 'ahooks'
 import { useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { CopyFeedbackNew } from '@/app/components/base/copy-feedback'
 import Card from './card'
 

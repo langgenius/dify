@@ -2,7 +2,7 @@
 
 import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 

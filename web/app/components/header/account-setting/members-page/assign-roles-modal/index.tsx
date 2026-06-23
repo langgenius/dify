@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import WorkspaceRoleCheckboxList from '../../workspace-role-checkbox-list'
 
 type AssignRolesModalProps = {

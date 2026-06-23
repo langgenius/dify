@@ -1,7 +1,7 @@
 import type { Banner as BannerType } from '@/models/app'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { Carousel, useCarousel } from '@/app/components/base/carousel'
 import { useSelector } from '@/context/app-context'

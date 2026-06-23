@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useWorkspacePermissionCatalog } from '@/service/access-control/use-permission-catalog'
 
 export const useWorkspacePermissionGroups = () => {

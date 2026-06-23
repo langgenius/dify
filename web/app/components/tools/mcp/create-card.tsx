@@ -2,7 +2,7 @@
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
 import { useDocLink } from '@/context/i18n'
 import { useCreateMCP } from '@/service/use-tools'

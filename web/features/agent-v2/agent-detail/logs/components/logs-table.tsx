@@ -9,7 +9,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import useTimestamp from '@/hooks/use-timestamp'
 import { LogSourceCell } from './source-cell'
 

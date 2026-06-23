@@ -1,7 +1,7 @@
 import type { ModelProvider, PreferredProviderTypeEnum } from '../declarations'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { consoleQuery } from '@/service/client'
 import { ConfigurationMethodEnum } from '../declarations'
 import { useUpdateModelList, useUpdateModelProviders } from '../hooks'

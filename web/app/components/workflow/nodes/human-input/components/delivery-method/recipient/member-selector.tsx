@@ -12,7 +12,7 @@ import {
   RiContactsBookLine,
 } from '@remixicon/react'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import MemberList from './member-list'
 
 const i18nPrefix = 'nodes.humanInput'

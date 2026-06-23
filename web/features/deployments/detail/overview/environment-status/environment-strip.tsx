@@ -4,7 +4,7 @@ import type { EnvironmentDeployment, Release } from '@dify/contracts/enterprise/
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import Link from '@/next/link'
 import { openDeployDrawerAtom } from '../../../deploy-drawer/state'

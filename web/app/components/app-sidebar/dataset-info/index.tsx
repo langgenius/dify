@@ -2,7 +2,7 @@
 import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import { DOC_FORM_TEXT } from '@/models/datasets'

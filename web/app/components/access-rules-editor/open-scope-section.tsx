@@ -2,7 +2,7 @@
 
 import type { ResourceOpenScope } from '@/models/access-control'
 import { memo, useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import OpenScopeConfirmDialog from './open-scope-confirm-dialog'
 import OpenScopeOption from './open-scope-option'
 import TitleInfotip from './title-infotip'

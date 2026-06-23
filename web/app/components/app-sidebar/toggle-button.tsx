@@ -4,7 +4,7 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type ToggleTooltipContentProps = {
   expand: boolean

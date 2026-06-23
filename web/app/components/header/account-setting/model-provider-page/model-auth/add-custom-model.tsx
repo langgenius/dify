@@ -22,7 +22,7 @@ import {
   useCallback,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import ModelIcon from '../model-icon'

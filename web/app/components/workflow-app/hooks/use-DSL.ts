@@ -6,7 +6,7 @@ import {
   useCallback,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   DSL_EXPORT_CHECK,

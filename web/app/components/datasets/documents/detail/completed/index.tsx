@@ -5,7 +5,7 @@ import type { SegmentImportStatus } from '@/types/dataset'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Divider from '@/app/components/base/divider'
 import {
   useChunkListAllKey,

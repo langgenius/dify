@@ -3,7 +3,7 @@ import type { ModelAndParameter } from '../types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { memo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import {
   DERIVED_MODEL_STATUS_BADGE_I18N,
   DERIVED_MODEL_STATUS_TOOLTIP_I18N,

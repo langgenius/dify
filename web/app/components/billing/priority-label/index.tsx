@@ -2,7 +2,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiAedFill } from '@remixicon/react'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useProviderContext } from '@/context/provider-context'
 import {
   DocumentProcessingPriority,

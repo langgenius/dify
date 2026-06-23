@@ -2,7 +2,7 @@
 
 import type { UnsupportedDslNode } from '../domain/error'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 function translatedNodeType(type: string | undefined, t: ReturnType<typeof useTranslation>['t']) {
   if (!type)

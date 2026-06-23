@@ -2,7 +2,7 @@ import type { CredentialSelectorProps } from './credential-selector'
 import { Button } from '@langgenius/dify-ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Divider from '@/app/components/base/divider'
 import CredentialSelector from './credential-selector'
 

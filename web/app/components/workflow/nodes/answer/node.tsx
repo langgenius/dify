@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import type { AnswerNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import InfoPanel from '../_base/components/info-panel'
 import ReadonlyInputWithSelectVar from '../_base/components/readonly-input-with-select-var'
 

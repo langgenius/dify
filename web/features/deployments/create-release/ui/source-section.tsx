@@ -3,7 +3,7 @@
 import type { ReleaseSourceMode } from '../state'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
 import { isDeploymentDslImportEnabled } from '../../shared/domain/feature-flags'
 import {

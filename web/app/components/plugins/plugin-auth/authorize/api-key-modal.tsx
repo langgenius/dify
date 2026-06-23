@@ -13,7 +13,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { FormTypeEnum } from '@/app/components/base/form/types'

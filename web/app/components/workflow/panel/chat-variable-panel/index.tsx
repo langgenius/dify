@@ -8,7 +8,7 @@ import {
   useCallback,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import { BubbleX, LongArrowLeft, LongArrowRight } from '@/app/components/base/icons/src/vender/line/others'

@@ -13,7 +13,7 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Loading from '@/app/components/base/loading'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'

@@ -2,7 +2,7 @@
 
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise/types.gen'
 import { RuntimeInstanceStatus } from '@dify/contracts/enterprise/types.gen'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import {
   isUndeployedDeploymentRow,
 } from '../../../shared/domain/runtime-status'

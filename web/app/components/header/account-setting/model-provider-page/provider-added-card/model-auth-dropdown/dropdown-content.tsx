@@ -10,7 +10,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { memo, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { ConfigurationMethodEnum } from '../../declarations'
 import { useAuth } from '../../model-auth/hooks'

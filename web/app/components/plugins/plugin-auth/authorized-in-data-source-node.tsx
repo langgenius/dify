@@ -5,7 +5,7 @@ import { RiEqualizer2Line } from '@remixicon/react'
 import {
   memo,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type AuthorizedInDataSourceNodeProps = {
   authorizationsNum: number

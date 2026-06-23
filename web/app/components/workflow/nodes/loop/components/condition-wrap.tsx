@@ -10,7 +10,7 @@ import {
 } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { VarType } from '../../../types'
 import { useGetAvailableVars } from '../../variable-assigner/hooks'
 import { SUB_VARIABLES } from './../default'

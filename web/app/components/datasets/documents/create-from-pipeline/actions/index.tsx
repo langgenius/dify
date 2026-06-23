@@ -3,7 +3,7 @@ import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { RiArrowRightLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Link from '@/next/link'
 import { useParams } from '@/next/navigation'
 

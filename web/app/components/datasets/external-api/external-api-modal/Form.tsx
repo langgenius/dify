@@ -3,7 +3,7 @@ import type { CreateExternalAPIReq, FormSchema } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiBookOpenLine } from '@remixicon/react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Input from '@/app/components/base/input'
 import { useDocLink } from '@/context/i18n'
 

@@ -6,7 +6,7 @@ import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgeni
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import copy from 'copy-to-clipboard'
 import { Suspense, use, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import { useThemeContext } from '@/app/components/base/chat/embedded-chatbot/theme/theme-context'
 import { InputVarType } from '@/app/components/workflow/types'

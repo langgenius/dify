@@ -1,7 +1,7 @@
 import type { DataSet } from '@/models/datasets'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useRouter } from '@/next/navigation'
 import { useCheckDatasetUsage, useDeleteDataset } from '@/service/use-dataset-card'
 import { useExportPipelineDSL } from '@/service/use-pipeline'

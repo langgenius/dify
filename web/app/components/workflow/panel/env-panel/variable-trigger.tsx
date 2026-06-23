@@ -4,7 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiAddLine } from '@remixicon/react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import VariableModal from '@/app/components/workflow/panel/env-panel/variable-modal'
 
 type Props = Readonly<{

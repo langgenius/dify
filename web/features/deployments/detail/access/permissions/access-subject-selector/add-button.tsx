@@ -15,7 +15,7 @@ import {
 } from '@langgenius/dify-ui/combobox'
 import { useDebounce } from 'ahooks'
 import { useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Loading from '@/app/components/base/loading'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useSearchAccessSubjects } from '@/service/access-control/use-access-subjects'

@@ -10,7 +10,7 @@ import {
   useCallback,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useStore } from '@/app/components/workflow/store'

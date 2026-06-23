@@ -4,7 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { RiAddLine, RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { v4 as uuid } from 'uuid'
 import ActionButton from '@/app/components/base/action-button'
 

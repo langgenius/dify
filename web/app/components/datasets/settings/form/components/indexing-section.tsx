@@ -2,7 +2,7 @@
 import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { DataSet, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Divider from '@/app/components/base/divider'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'

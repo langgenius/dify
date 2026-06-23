@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { WebhookHeader } from '../types'
 import type { ColumnConfig, GenericTableRow } from './generic-table'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import GenericTable from './generic-table'
 
 type HeaderTableProps = {

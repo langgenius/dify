@@ -5,7 +5,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import {
   useEffect,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrapper'
 import Header from '@/app/components/base/chat/embedded-chatbot/header'
 import Loading from '@/app/components/base/loading'

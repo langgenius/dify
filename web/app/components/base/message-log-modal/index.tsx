@@ -4,7 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useClickAway } from 'ahooks'
 import { useRef } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useStore } from '@/app/components/app/store'
 import Run from '@/app/components/workflow/run'
 

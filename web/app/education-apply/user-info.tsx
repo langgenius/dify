@@ -1,6 +1,6 @@
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Triangle } from '@/app/components/base/icons/src/public/education'
 import { useAppContext } from '@/context/app-context'
 import { useRouter } from '@/next/navigation'

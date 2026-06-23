@@ -4,7 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { Radio } from '@langgenius/dify-ui/radio'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { formatFileSize } from '@/utils/format'
 import FileIcon from './file-icon'
 

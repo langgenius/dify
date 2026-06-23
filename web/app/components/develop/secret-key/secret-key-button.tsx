@@ -1,7 +1,7 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
 
 type ISecretKeyButtonProps = {

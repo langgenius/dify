@@ -7,7 +7,7 @@ import {
 } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import EmailItem from './email-item'
 import MemberList from './member-list'
 

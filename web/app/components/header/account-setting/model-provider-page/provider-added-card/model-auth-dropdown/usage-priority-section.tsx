@@ -1,6 +1,6 @@
 import type { UsagePriority } from '../use-credential-panel-state'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Infotip } from '@/app/components/base/infotip'
 import { PreferredProviderTypeEnum } from '../../declarations'
 

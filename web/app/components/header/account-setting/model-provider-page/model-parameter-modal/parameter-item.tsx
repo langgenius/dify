@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText,
 import { Slider } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import TagInput from '@/app/components/base/tag-input'

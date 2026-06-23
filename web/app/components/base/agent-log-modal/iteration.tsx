@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { AgentIteration } from '@/models/log'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Divider from '@/app/components/base/divider'
 import ToolCall from './tool-call'
 

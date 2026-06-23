@@ -17,7 +17,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import {
   AuthCategory,
 } from '@/app/components/plugins/plugin-auth'

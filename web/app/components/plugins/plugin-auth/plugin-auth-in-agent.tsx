@@ -12,7 +12,7 @@ import {
   useCallback,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Authorize from './authorize'
 import Authorized from './authorized'
 import { usePluginAuth } from './hooks/use-plugin-auth'

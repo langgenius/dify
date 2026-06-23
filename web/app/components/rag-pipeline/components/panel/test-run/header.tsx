@@ -1,7 +1,7 @@
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useWorkflowInteractions } from '@/app/components/workflow/hooks'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 

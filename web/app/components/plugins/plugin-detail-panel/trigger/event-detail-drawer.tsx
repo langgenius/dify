@@ -16,7 +16,7 @@ import {
   RiArrowLeftLine,
   RiCloseLine,
 } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'

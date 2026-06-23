@@ -7,7 +7,7 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 

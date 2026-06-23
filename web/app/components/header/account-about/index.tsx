@@ -5,7 +5,7 @@ import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { RiCloseLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import { IS_CE_EDITION } from '@/config'
 

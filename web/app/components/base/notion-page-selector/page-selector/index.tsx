@@ -1,5 +1,5 @@
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { usePageSelectorModel } from './use-page-selector-model'
 import VirtualPageList from './virtual-page-list'
 

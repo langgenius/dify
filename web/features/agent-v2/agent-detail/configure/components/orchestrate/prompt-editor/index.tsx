@@ -11,7 +11,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useClipboard } from 'foxact/use-clipboard'
 import { useAtom, useAtomValue } from 'jotai'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import BlockIcon from '@/app/components/workflow/block-icon'

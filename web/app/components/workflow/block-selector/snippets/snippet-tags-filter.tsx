@@ -9,7 +9,7 @@ import {
 } from '@langgenius/dify-ui/popover'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { consoleQuery } from '@/service/client'
 
 type SnippetTagsFilterProps = {

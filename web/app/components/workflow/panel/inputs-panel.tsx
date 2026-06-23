@@ -5,7 +5,7 @@ import {
   useCallback,
   useMemo,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useNodes } from 'reactflow'
 import { useCheckInputsForms } from '@/app/components/base/chat/chat/check-input-forms-hooks'
 import {

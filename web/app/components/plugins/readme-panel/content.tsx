@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import type { PluginDetail } from '../types'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Loading from '@/app/components/base/loading'
 import { Markdown } from '@/app/components/base/markdown'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'

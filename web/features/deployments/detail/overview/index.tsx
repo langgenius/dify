@@ -1,7 +1,7 @@
 'use client'
 
 import { useAtomValue } from 'jotai'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Link from '@/next/link'
 import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
 import { DeploymentStateMessage } from '../../shared/components/empty-state'

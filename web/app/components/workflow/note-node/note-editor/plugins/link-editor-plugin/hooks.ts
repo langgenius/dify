@@ -5,7 +5,7 @@ import { mergeRegister } from '@lexical/utils'
 import { escape } from 'es-toolkit/string'
 import { CLICK_COMMAND, COMMAND_PRIORITY_LOW } from 'lexical'
 import { useCallback, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useNoteEditorStore } from '../../store'
 import { urlRegExp } from '../../utils'
 

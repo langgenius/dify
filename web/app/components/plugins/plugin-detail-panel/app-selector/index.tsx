@@ -9,7 +9,7 @@ import {
 } from '@langgenius/dify-ui/popover'
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import AppInputsPanel from '@/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-panel'
 import { AppPicker } from '@/app/components/plugins/plugin-detail-panel/app-selector/app-picker'
 import { AppTrigger } from '@/app/components/plugins/plugin-detail-panel/app-selector/app-trigger'

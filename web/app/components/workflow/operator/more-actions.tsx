@@ -13,7 +13,7 @@ import {
   useCallback,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { getNodesBounds, useReactFlow } from 'reactflow'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import { useStore } from '@/app/components/workflow/store'

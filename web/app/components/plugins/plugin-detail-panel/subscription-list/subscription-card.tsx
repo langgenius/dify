@@ -9,7 +9,7 @@ import {
   RiWebhookLine,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import { DeleteConfirm } from './delete-confirm'
 import { EditModal } from './edit'

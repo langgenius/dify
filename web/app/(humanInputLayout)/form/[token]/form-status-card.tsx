@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import BrandingFooter from './branding-footer'
 
 type FormStatusCardProps = {

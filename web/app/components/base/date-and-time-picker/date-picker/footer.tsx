@@ -4,7 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiTimeLine } from '@remixicon/react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ViewType } from '../types'
 
 const Footer: FC<DatePickerFooterProps> = ({

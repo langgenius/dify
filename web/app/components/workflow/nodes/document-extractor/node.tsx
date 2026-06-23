@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import type { DocExtractorNodeType } from './types'
 import type { Node, NodeProps } from '@/app/components/workflow/types'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useNodes } from 'reactflow'
 import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import {

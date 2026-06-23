@@ -5,7 +5,7 @@ import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useAtom, useAtomValue } from 'jotai'
 import { useEffect, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import {
   createReleaseDescriptionFieldAtom,
   createReleaseHasNameConflictAtom,

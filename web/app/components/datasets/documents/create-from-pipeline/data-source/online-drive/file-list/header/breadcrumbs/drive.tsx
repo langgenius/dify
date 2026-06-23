@@ -1,6 +1,6 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type DriveProps = {
   breadcrumbs: string[]

@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { ChatItem } from '../../types'
 import { memo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { formatNumber } from '@/utils/format'
 
 type MoreProps = {

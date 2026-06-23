@@ -8,7 +8,7 @@ import {
 } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Input from '@/app/components/base/input'
 import { useMembers } from '@/service/use-common'
 

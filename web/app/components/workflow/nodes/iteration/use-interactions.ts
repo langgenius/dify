@@ -5,7 +5,7 @@ import type {
 } from '../../types'
 import { produce } from 'immer'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useNodesMetaData } from '@/app/components/workflow/hooks'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import {

@@ -1,7 +1,7 @@
 'use client'
 import type { WorkflowGeneratorMode } from './types'
 import { memo, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type Props = Readonly<{
   mode: WorkflowGeneratorMode

@@ -15,7 +15,7 @@ import {
 import { RiEqualizer2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ConfigRetrievalContent from '@/app/components/app/configuration/dataset-config/params-config/config-content'
 import { DATASET_DEFAULT } from '@/config'
 import { RETRIEVE_TYPE } from '@/types/app'

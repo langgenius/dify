@@ -3,7 +3,7 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { Input } from '@langgenius/dify-ui/input'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import {
   effectiveMethodAtom,
   instanceDescriptionAtom,

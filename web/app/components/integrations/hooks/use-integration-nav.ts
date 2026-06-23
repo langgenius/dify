@@ -1,7 +1,7 @@
 import type { IntegrationSection } from '@/app/components/integrations/routes'
 import type { IntegrationSidebarNavItemData } from '@/app/components/integrations/sidebar-nav-item'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 
 export type IntegrationHeader = {

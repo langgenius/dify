@@ -7,7 +7,7 @@ import type {
 import type { ComponentPropsWithRef } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { isRuntimeDeploymentInProgress } from '../domain/runtime-status'
 import {
   deploymentStatusDotStatus,

@@ -1,7 +1,7 @@
 import type { CreateSnippetDialogPayload } from '@/app/components/snippets/create-snippet-dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/client'

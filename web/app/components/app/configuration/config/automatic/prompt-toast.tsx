@@ -2,7 +2,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiSparklingFill } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Markdown } from '@/app/components/base/markdown'
 import s from './style.module.css'
 

@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import type { SnippetDetail, SnippetSection } from '@/models/snippet'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
 
 type SnippetLayoutProps = {

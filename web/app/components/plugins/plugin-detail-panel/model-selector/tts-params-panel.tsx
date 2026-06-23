@@ -1,7 +1,7 @@
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { languages } from '@/i18n-config/language'
 
 type Props = Readonly<{

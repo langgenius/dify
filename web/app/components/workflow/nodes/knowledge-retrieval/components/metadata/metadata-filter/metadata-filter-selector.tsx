@@ -10,7 +10,7 @@ import {
   RiArrowDownSLine,
   RiCheckLine,
 } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 
 type MetadataFilterSelectorProps = {

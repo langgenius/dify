@@ -15,7 +15,7 @@ import {
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/client'
 import { AgentMonitoringChart } from './chart'

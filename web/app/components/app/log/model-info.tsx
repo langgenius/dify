@@ -6,7 +6,7 @@ import {
   RiInformation2Line,
 } from '@remixicon/react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
 import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'

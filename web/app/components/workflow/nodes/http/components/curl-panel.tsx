@@ -7,7 +7,7 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useNodesInteractions } from '@/app/components/workflow/hooks'
 import { parseCurl } from './curl-parser'
 

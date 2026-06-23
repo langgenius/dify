@@ -14,7 +14,7 @@ import {
   useEffect,
   useMemo,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import BlockIcon from '../block-icon'
 import { BlockEnum as BlockEnumValues } from '../types'

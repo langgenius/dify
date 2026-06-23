@@ -4,7 +4,7 @@ import {
   RiApps2Line,
 } from '@remixicon/react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useProviderContext } from '@/context/provider-context'
 import UsageInfo from '../usage-info'
 

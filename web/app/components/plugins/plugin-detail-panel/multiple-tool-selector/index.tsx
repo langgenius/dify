@@ -6,7 +6,7 @@ import {
   RiAddLine,
 } from '@remixicon/react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'

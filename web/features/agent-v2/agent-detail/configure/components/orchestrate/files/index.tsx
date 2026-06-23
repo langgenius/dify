@@ -14,7 +14,7 @@ import {
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { consoleQuery } from '@/service/client'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'

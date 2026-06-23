@@ -5,7 +5,7 @@ import { useBoolean } from 'ahooks'
 import { capitalize } from 'es-toolkit/string'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { CollectionType } from '@/app/components/tools/types'
 import {

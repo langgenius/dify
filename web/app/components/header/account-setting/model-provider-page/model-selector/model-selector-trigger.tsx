@@ -1,7 +1,7 @@
 import type { DefaultModel, Model, ModelItem } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useProviderContext } from '@/context/provider-context'
 import { DERIVED_MODEL_STATUS_BADGE_I18N, DERIVED_MODEL_STATUS_TOOLTIP_I18N, deriveModelStatus } from '../derive-model-status'
 import ModelIcon from '../model-icon'

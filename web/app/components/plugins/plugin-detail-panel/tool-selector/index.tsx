@@ -12,7 +12,7 @@ import {
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { CollectionType } from '@/app/components/tools/types'
 import Link from '@/next/link'
 import {

@@ -1,6 +1,6 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import AgentLogNavMore from './agent-log-nav-more'
 
 type AgentLogNavProps = {

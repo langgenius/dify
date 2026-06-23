@@ -4,7 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { RiAddLine, RiDeleteBinLine, RiDraggable } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ReactSortable } from 'react-sortablejs'
 
 export type Options = string[]

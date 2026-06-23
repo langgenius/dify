@@ -8,7 +8,7 @@ import {
   RiArrowRightUpLine,
   RiBugLine,
 } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useDocLink } from '@/context/i18n'
 import { useDebugKey } from '@/service/use-plugins'
 import KeyValueItem from '../base/key-value-item'

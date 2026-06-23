@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import FirstEmptyActionCard from '@/app/components/apps/first-empty-state/action-card'
 
 const EMPTY_PLACEHOLDER_CARD_IDS = Array.from({ length: 16 }, (_, index) => `dataset-placeholder-card-${index}`)

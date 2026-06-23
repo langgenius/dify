@@ -17,7 +17,7 @@ import {
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useContext } from 'use-context-selector'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import OperationBtn from '@/app/components/app/configuration/base/operation-btn'

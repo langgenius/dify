@@ -4,7 +4,7 @@ import { XMarkIcon } from '@heroicons/react/20/solid'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import InputCopy from './input-copy'
 import s from './style.module.css'
 

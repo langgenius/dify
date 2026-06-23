@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ZapFast } from '@/app/components/base/icons/src/vender/solid/general'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 

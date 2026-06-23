@@ -1,6 +1,6 @@
 import type { DataSet } from '@/models/datasets'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import CornerLabel from '@/app/components/base/corner-label'
 
 type CornerLabelsProps = {

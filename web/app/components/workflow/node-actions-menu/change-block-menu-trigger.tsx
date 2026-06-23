@@ -5,7 +5,7 @@ import type {
 } from '@/app/components/workflow/types'
 import { intersection } from 'es-toolkit/array'
 import { useCallback, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import {
   useAvailableBlocks,

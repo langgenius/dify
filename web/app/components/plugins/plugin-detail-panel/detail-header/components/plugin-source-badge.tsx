@@ -2,7 +2,7 @@
 
 import type { FC, ReactNode } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Github } from '@/app/components/base/icons/src/public/common'
 import { BoxSparkleFill } from '@/app/components/base/icons/src/vender/plugin'
 import { PluginSource } from '../../../types'

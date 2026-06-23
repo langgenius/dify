@@ -9,7 +9,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useGetMembersOfRole } from '@/service/access-control/use-workspace-roles'
 
 type CopyMembersConfirmDialogProps = {

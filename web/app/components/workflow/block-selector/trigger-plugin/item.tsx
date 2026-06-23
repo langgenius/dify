@@ -13,7 +13,7 @@ import {
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { CollectionType } from '@/app/components/tools/types'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'

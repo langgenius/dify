@@ -1,7 +1,7 @@
 import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { DatasourceType } from '@/models/pipeline'
 
 type DatasourceUIStateParams = {

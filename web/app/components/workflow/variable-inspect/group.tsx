@@ -10,7 +10,7 @@ import {
   // RiErrorWarningFill,
 } from '@remixicon/react'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 // import { Button } from '@langgenius/dify-ui/button'
 import ActionButton from '@/app/components/base/action-button'
 import BlockIcon from '@/app/components/workflow/block-icon'

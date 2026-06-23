@@ -1,6 +1,6 @@
 'use client'
 
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 
 function ExploreAppCardSkeleton() {

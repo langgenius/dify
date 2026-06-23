@@ -13,7 +13,7 @@ import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useContext } from 'use-context-selector'
 import { ADD_EXTERNAL_DATA_TOOL } from '@/app/components/app/configuration/config-var'
 import {

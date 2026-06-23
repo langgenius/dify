@@ -4,7 +4,7 @@ import type {
 import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
 import { Slider } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Input from '@/app/components/base/input'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import { useRetryConfig } from './hooks'

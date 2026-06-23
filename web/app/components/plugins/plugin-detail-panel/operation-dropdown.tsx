@@ -11,7 +11,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { PluginSource } from '../types'
 

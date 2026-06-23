@@ -7,7 +7,7 @@ import {
   DialogContent,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ReadmePanelContent } from './content'
 
 type ReadmeDialogProps = {

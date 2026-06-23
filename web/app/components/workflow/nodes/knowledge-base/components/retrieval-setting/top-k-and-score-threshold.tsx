@@ -9,7 +9,7 @@ import {
   NumberFieldInput,
 } from '@langgenius/dify-ui/number-field'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Infotip } from '@/app/components/base/infotip'
 import { env } from '@/env'
 

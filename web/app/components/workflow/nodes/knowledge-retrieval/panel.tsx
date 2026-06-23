@@ -6,7 +6,7 @@ import {
   memo,
   useMemo,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Split from '@/app/components/workflow/nodes/_base/components/split'

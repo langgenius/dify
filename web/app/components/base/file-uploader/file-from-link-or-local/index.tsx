@@ -11,7 +11,7 @@ import {
   memo,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { FILE_URL_REGEX } from '../constants'
 import FileInput from '../file-input'
 import { useFile } from '../hooks'

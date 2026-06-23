@@ -2,7 +2,7 @@ import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText,
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { memo, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import Input from '@/app/components/base/input'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'

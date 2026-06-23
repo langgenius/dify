@@ -1,7 +1,7 @@
 import type { FormType } from '../..'
 import { Button } from '@langgenius/dify-ui/button'
 import { useStore } from '@tanstack/react-form'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useFormContext } from '../..'
 
 export type CustomActionsProps = {

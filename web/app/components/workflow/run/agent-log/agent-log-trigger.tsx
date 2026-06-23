@@ -2,7 +2,7 @@ import type {
   AgentLogItemWithChildren,
   NodeTracing,
 } from '@/types/workflow'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type AgentLogTriggerProps = {
   nodeInfo: NodeTracing

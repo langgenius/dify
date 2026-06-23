@@ -9,7 +9,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
 import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'

@@ -9,7 +9,7 @@ import {
 import {
   useCallback,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { TransferMethod } from '@/types/app'
 import FileFromLinkOrLocal from '../file-from-link-or-local'
 import FileInput from '../file-input'

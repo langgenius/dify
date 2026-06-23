@@ -10,7 +10,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'

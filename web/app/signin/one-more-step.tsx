@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText,
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useReducer } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { LICENSE_LINK } from '@/constants/link'
 import { languages } from '@/i18n-config/language'
 import Link from '@/next/link'

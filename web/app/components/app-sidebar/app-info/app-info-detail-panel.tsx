@@ -12,7 +12,7 @@ import {
 } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { AppModeEnum } from '@/types/app'

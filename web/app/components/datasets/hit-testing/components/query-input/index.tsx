@@ -18,7 +18,7 @@ import {
 } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { v4 as uuid4 } from 'uuid'
 import ImageUploaderInRetrievalTesting from '@/app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing'
 import { getIcon } from '@/app/components/datasets/common/retrieval-method-info'

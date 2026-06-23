@@ -3,7 +3,7 @@ import { Kbd } from '@langgenius/dify-ui/kbd'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $insertNodes, FOCUS_COMMAND } from 'lexical'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Badge from '@/app/components/base/badge'
 import { CustomTextNode } from '@/app/components/base/prompt-editor/plugins/custom-text/node'
 

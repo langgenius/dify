@@ -1,6 +1,7 @@
 import type { SelfHostedPlan } from '@/app/components/billing/type'
 import * as React from 'react'
-import { Trans, useTranslation } from 'react-i18next'
+import { Trans } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Item from './item'
 
 type ListProps = {

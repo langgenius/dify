@@ -4,7 +4,7 @@ import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/r
 import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Loading from '@/app/components/base/loading'
 import { IS_CE_EDITION } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'

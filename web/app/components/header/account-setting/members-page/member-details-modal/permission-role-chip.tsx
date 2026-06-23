@@ -7,8 +7,8 @@ import {
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
 import { memo } from 'react'
-import { Trans, useTranslation } from 'react-i18next'
-
+import { Trans } from 'react-i18next'
+import { useTranslation } from '#i18n'
 type PermissionRoleChipProps = {
   roleId: string
   label: string

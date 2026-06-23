@@ -1,5 +1,5 @@
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { AUTO_UPDATE_STRATEGY } from './types'
 
 const i18nPrefix = 'autoUpdate.strategy'

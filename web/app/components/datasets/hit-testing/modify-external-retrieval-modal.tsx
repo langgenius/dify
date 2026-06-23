@@ -3,7 +3,7 @@ import {
   RiCloseLine,
 } from '@remixicon/react'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import RetrievalSettings from '../external-knowledge-base/create/RetrievalSettings'
 

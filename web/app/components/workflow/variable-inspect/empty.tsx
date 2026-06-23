@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { useDocLink } from '@/context/i18n'
 

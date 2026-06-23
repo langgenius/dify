@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Radio } from '@langgenius/dify-ui/radio'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { memo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import NotionIcon from '@/app/components/base/notion-icon'
 
 type NotionPageRowProps = {

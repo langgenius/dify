@@ -11,7 +11,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { consoleQuery } from '@/service/client'
 
 type DeleteAgentDialogProps = {

@@ -15,7 +15,7 @@ import {
   useCallback,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
 import List from '@/app/components/base/chat/chat-with-history/sidebar/list'

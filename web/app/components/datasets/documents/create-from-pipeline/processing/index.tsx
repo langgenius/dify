@@ -2,7 +2,7 @@
 import type { InitialDocumentDetail } from '@/models/pipeline'
 import { RiBookOpenLine } from '@remixicon/react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
 import EmbeddingProcess from './embedding-process'

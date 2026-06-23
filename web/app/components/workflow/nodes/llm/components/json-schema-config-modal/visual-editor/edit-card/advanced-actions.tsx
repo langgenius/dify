@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
 
 const JSON_SCHEMA_CONFIRM_HOTKEY = 'Mod+Enter'

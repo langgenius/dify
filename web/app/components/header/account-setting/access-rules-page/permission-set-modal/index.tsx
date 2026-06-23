@@ -12,7 +12,7 @@ import {
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import PermissionPicker from './permission-picker'
 
 export type PermissionSetModalMode = 'create' | 'edit' | 'view'

@@ -5,7 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 import { checkJsonDepth } from '../../utils'
 import CodeEditor from './code-editor'

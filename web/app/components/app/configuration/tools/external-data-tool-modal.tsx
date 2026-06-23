@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText,
 import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import AppIcon from '@/app/components/base/app-icon'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import FormGeneration from '@/app/components/base/features/new-feature-panel/moderation/form-generation'

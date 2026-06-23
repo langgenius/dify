@@ -19,7 +19,7 @@ import {
 } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'
 import Icon from '@/app/components/plugins/card/base/card-icon'

@@ -22,7 +22,7 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import AppPublisher from '@/app/components/app/app-publisher/features-wrapper'
 import Config from '@/app/components/app/configuration/config'
 import EditHistoryModal from '@/app/components/app/configuration/config-prompt/conversation-history/edit-modal'

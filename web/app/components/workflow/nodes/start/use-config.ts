@@ -4,7 +4,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import {
   useIsChatMode,
   useNodesReadOnly,

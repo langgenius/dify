@@ -6,7 +6,7 @@ import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import UpdateSettingDialog from '@/app/components/header/account-setting/update-setting-dialog'
 import {
   buildIntegrationPath,

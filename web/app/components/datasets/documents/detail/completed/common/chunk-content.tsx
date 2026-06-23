@@ -2,7 +2,7 @@ import type { ComponentProps, FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Markdown } from '@/app/components/base/markdown'
 import { ChunkingMode } from '@/models/datasets'
 

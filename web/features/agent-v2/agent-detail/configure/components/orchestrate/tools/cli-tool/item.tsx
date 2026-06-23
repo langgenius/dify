@@ -1,7 +1,7 @@
 'use client'
 
 import type { AgentCliTool } from '@/features/agent-v2/agent-composer/form-state'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ConfigureSectionConfigurableItem } from '../../common/configurable-item'
 
 function CliIcon() {

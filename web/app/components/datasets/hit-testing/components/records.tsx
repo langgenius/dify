@@ -3,7 +3,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { RiApps2Line, RiArrowDownLine, RiFocus2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import useTimestamp from '@/hooks/use-timestamp'
 import ImageList from '../../common/image-list'
 

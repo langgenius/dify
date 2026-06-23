@@ -40,7 +40,7 @@ import {
   useState,
 } from 'react'
 import ReactDOM from 'react-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 import VarReferenceVars, { VAR_REFERENCE_CHILD_POPUP_CLASS_NAME } from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { useEventEmitterContextContext } from '@/context/event-emitter'

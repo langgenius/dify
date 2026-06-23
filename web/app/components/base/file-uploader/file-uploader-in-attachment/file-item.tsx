@@ -10,7 +10,7 @@ import {
   memo,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import { PreviewMode } from '@/app/components/base/features/types'
 import { ReplayLine } from '@/app/components/base/icons/src/vender/other'

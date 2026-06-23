@@ -1,7 +1,7 @@
 import type { InputForm } from './type'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 

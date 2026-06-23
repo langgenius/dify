@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { getOperationItems, isOperationItem } from '../utils'
 
 type OperationSelectorProps = {

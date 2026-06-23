@@ -10,7 +10,7 @@ import {
 } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Loop } from '@/app/components/base/icons/src/vender/workflow'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'

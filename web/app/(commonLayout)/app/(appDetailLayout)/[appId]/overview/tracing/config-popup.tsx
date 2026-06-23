@@ -8,7 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Divider from '@/app/components/base/divider'
 import ProviderConfigModal from './provider-config-modal'
 import ProviderPanel from './provider-panel'

@@ -3,7 +3,7 @@ import { cva } from 'class-variance-authority'
 import {
   memo,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type Props = Readonly<{
   type?: 'info'

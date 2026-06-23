@@ -2,7 +2,7 @@
 
 import type { FC } from 'react'
 import type { ActionItem } from '../actions/types'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type EmptyStateVariant = 'no-results' | 'error' | 'default' | 'loading'
 

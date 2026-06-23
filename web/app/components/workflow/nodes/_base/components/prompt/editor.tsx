@@ -18,7 +18,7 @@ import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useCallback, useRef } from 'react'
 
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import {
   Copy,

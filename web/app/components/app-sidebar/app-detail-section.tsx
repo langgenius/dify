@@ -17,7 +17,7 @@ import {
 } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Fragment, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useStore } from '@/app/components/app/store'
 import Divider from '@/app/components/base/divider'
 import Annotations from '@/app/components/base/icons/src/vender/Annotations'

@@ -4,7 +4,7 @@ import { DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from
 import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { deploymentErrorMessage } from '../../shared/domain/error'
 import {
   closeCreateReleaseDialogAtom,

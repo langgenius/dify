@@ -11,7 +11,7 @@ import {
   useMemo,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import Input from '@/app/components/base/input'

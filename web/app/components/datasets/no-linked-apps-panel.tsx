@@ -1,6 +1,6 @@
 import { RiApps2AddLine, RiBookOpenLine } from '@remixicon/react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useDocLink } from '@/context/i18n'
 
 const NoLinkedAppsPanel = () => {

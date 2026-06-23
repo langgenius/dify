@@ -1,5 +1,6 @@
 import { memo } from 'react'
-import { Trans, useTranslation } from 'react-i18next'
+import { Trans } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Divider from '@/app/components/base/divider'
 import { useSelector as useAppSelector } from '@/context/app-context'
 

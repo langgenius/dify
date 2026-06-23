@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import useTimestamp from '@/hooks/use-timestamp'
 
 type Props = {

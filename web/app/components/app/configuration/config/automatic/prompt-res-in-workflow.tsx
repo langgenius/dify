@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { BlockEnum } from '@/app/components/workflow/types'

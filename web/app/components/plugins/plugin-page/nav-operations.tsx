@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Fragment, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { MARKETPLACE_URL_PREFIX } from '@/config'
 import { useDocLink } from '@/context/i18n'
 

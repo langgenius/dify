@@ -1,5 +1,5 @@
 'use client'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { CreateAppDialogShell } from '../create-app-dialog-shell'
 import AppList from './app-list'
 

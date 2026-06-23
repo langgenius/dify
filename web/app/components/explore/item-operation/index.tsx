@@ -7,7 +7,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Pin02 } from '../../base/icons/src/vender/line/general'
 import s from './style.module.css'
 

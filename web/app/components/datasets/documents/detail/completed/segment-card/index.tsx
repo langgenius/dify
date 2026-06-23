@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Badge from '@/app/components/base/badge'
 import Divider from '@/app/components/base/divider'
 import ImageList from '@/app/components/datasets/common/image-list'

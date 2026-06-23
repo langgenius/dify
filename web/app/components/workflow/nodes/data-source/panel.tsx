@@ -5,7 +5,7 @@ import {
   memo,
   useMemo,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import TagInput from '@/app/components/base/tag-input'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'

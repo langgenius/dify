@@ -10,7 +10,7 @@ import {
 } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import IconTypeIcon from '@/app/components/app/configuration/config-var/input-type-icon'
 
 type Option = { name: string, value: string, type: string }

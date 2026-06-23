@@ -2,7 +2,7 @@
 
 import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
 import { DataSourceType } from '@/models/datasets'
 import s from '../index.module.css'

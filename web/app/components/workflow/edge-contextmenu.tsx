@@ -2,7 +2,7 @@ import {
   ContextMenuContent,
   ContextMenuItem,
 } from '@langgenius/dify-ui/context-menu'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useEdges } from 'reactflow'
 import { useEdgesInteractions } from './hooks'
 import { ShortcutKbd } from './shortcuts/shortcut-kbd'
