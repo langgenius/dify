@@ -4,14 +4,6 @@ import { render, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { ReleaseHistoryRows } from '../release-history-rows'
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQuery: () => ({ data: undefined }),
-  }
-})
-
 vi.mock('../deploy-release-menu', () => ({
   DeployReleaseMenu: () => <button type="button">Actions</button>,
 }))

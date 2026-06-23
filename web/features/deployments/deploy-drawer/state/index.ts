@@ -38,6 +38,7 @@ export const deployDrawerOpenAtom = atom(false)
 export const deployDrawerAppInstanceIdAtom = atom<string | undefined>(undefined)
 export const deployDrawerEnvironmentIdAtom = atom<string | undefined>(undefined)
 export const deployDrawerReleaseIdAtom = atom<string | undefined>(undefined)
+export const deployFormAppInstanceIdAtom = atom('')
 
 export const openDeployDrawerAtom = atom(null, (_get, set, params: OpenDeployDrawerParams) => {
   set(deployDrawerAppInstanceIdAtom, params.appInstanceId)
@@ -65,6 +66,17 @@ export type DeployReadyFormConfig = {
 }
 
 export const deployReadyFormConfigAtom = atom<DeployReadyFormConfig | undefined>(undefined)
+
+export const releaseDeploymentViewQueryAtom = atomWithQuery((get) => {
+  const appInstanceId = get(deployFormAppInstanceIdAtom)
+
+  return consoleQuery.enterprise.releaseService.computeReleaseDeploymentView.queryOptions({
+    input: {
+      params: { appInstanceId },
+    },
+    enabled: Boolean(appInstanceId),
+  })
+})
 
 const selectedEnvIdAtom = atom<string | undefined>(undefined)
 const selectedReleaseIdAtom = atom<string | undefined>(undefined)
@@ -194,18 +206,16 @@ const releaseDeploymentOptionsQueryAtom = atomWithQuery((get) => {
   const selectedEnvironmentId = get(deploySelectedEnvironmentIdAtom)
   const enabled = Boolean(releaseId && selectedEnvironmentId && hasSelectedEnvironment)
 
-  return {
-    ...consoleQuery.enterprise.releaseService.computeDeploymentOptions.queryOptions({
-      input: {
-        body: {
-          releaseId: releaseId ?? '',
-          environmentId: selectedEnvironmentId ?? '',
-        },
+  return consoleQuery.enterprise.releaseService.computeDeploymentOptions.queryOptions({
+    input: {
+      body: {
+        releaseId: releaseId ?? '',
+        environmentId: selectedEnvironmentId ?? '',
       },
-      enabled,
-    }),
+    },
+    enabled,
     retry: false,
-  }
+  })
 })
 
 export const deployBindingSlotsAtom = atom((get) => {

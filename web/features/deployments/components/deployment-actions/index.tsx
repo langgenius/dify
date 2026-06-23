@@ -9,10 +9,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DeleteDeploymentDialog } from './delete-dialog'
 import { EditDeploymentDialog } from './edit-dialog'
+import {
+  deploymentActionDialogAtom,
+  openDeploymentActionDialogAtom,
+  setDeploymentActionDialogOpenAtom,
+} from './state'
 
 const ACTION_TRIGGER_CLASS_NAME = cn(
   'inline-flex size-8 items-center justify-center rounded-lg bg-components-panel-bg text-text-tertiary shadow-xs outline-hidden',
@@ -38,18 +44,21 @@ export function DeploymentActionsMenu({
   sideOffset,
 }: DeploymentActionsMenuProps) {
   const { t } = useTranslation('deployments')
+  const actionDialog = useAtomValue(deploymentActionDialogAtom)
+  const openDialog = useSetAtom(openDeploymentActionDialogAtom)
+  const setDialogOpen = useSetAtom(setDeploymentActionDialogOpenAtom)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [editOpen, setEditOpen] = useState(false)
-  const [deleteOpen, setDeleteOpen] = useState(false)
+  const editOpen = actionDialog?.appInstanceId === appInstanceId && actionDialog.type === 'edit'
+  const deleteOpen = actionDialog?.appInstanceId === appInstanceId && actionDialog.type === 'delete'
 
   function openEditDialog() {
     setMenuOpen(false)
-    setEditOpen(true)
+    openDialog({ appInstanceId, type: 'edit' })
   }
 
   function openDeleteDialog() {
     setMenuOpen(false)
-    setDeleteOpen(true)
+    openDialog({ appInstanceId, type: 'delete' })
   }
 
   return (
@@ -88,13 +97,13 @@ export function DeploymentActionsMenu({
       <EditDeploymentDialog
         appInstanceId={appInstanceId}
         open={editOpen}
-        onOpenChange={setEditOpen}
+        onOpenChange={open => setDialogOpen({ appInstanceId, type: 'edit', open })}
       />
       <DeleteDeploymentDialog
         appInstanceId={appInstanceId}
         appName={appName}
         open={deleteOpen}
-        onOpenChange={setDeleteOpen}
+        onOpenChange={open => setDialogOpen({ appInstanceId, type: 'delete', open })}
       />
     </div>
   )

@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import { ScopeProvider } from 'jotai-scope'
 import { useQueryState } from 'nuqs'
+import { deploymentActionsLocalAtoms } from '../components/deployment-actions/state'
 import {
   deploymentsListEnvironmentIdAtom,
   deploymentsListKeywordsAtom,
@@ -24,6 +25,7 @@ function DeploymentsListStateBoundary({ children }: {
       atoms={[
         [deploymentsListEnvironmentIdAtom, envFilter],
         [deploymentsListKeywordsAtom, keywords],
+        ...deploymentActionsLocalAtoms,
       ]}
       name="DeploymentsList"
     >

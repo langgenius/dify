@@ -193,22 +193,20 @@ export const isSubmittingDeploymentGuideAtom = atom(get => (
 export const sourceAppsQueryAtom = atomWithInfiniteQuery((get) => {
   const sourceSearchText = get(sourceSearchTextAtom)
 
-  return {
-    ...consoleQuery.apps.list.infiniteOptions({
-      input: pageParam => ({
-        query: {
-          page: Number(pageParam),
-          limit: SOURCE_APPS_PAGE_SIZE,
-          name: sourceSearchText,
-          mode: AppModeEnum.WORKFLOW,
-        },
-      }),
-      getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
-      initialPageParam: 1,
-      placeholderData: keepPreviousData,
+  return consoleQuery.apps.list.infiniteOptions({
+    input: pageParam => ({
+      query: {
+        page: Number(pageParam),
+        limit: SOURCE_APPS_PAGE_SIZE,
+        name: sourceSearchText,
+        mode: AppModeEnum.WORKFLOW,
+      },
     }),
+    getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
+    initialPageParam: 1,
+    placeholderData: keepPreviousData,
     enabled: get(effectiveMethodAtom) === 'bindApp',
-  }
+  })
 })
 
 export const effectiveSelectedAppAtom = atom((get) => {
@@ -233,8 +231,8 @@ function sourceReady(get: Getter) {
     : Boolean(get(effectiveSelectedAppAtom)?.id)
 }
 
-const existingInstanceNamesQueryAtom = atomWithInfiniteQuery(() => ({
-  ...consoleQuery.enterprise.appInstanceService.listAppInstances.infiniteOptions({
+const existingInstanceNamesQueryAtom = atomWithInfiniteQuery(() =>
+  consoleQuery.enterprise.appInstanceService.listAppInstances.infiniteOptions({
     input: pageParam => ({
       query: {
         pageNumber: Number(pageParam),
@@ -243,9 +241,9 @@ const existingInstanceNamesQueryAtom = atomWithInfiniteQuery(() => ({
     }),
     getNextPageParam: lastPage => getNextPageParamFromPagination(lastPage.pagination),
     initialPageParam: 1,
+    placeholderData: keepPreviousData,
   }),
-  placeholderData: keepPreviousData,
-}))
+)
 
 const instanceNameConflictQueryAtom = atomWithQuery((get) => {
   const submittedInstanceName = get(instanceNameAtom).trim()
@@ -291,6 +289,7 @@ const precheckReleaseQueryAtom = atomWithQuery((get) => {
           },
         },
         enabled,
+        retry: false,
       })
     : consoleQuery.enterprise.releaseService.precheckRelease.queryOptions({
         input: {
@@ -299,12 +298,10 @@ const precheckReleaseQueryAtom = atomWithQuery((get) => {
           },
         },
         enabled: enabled && Boolean(effectiveSelectedApp?.id),
+        retry: false,
       })
 
-  return {
-    ...precheckReleaseQueryOptions,
-    retry: false,
-  }
+  return precheckReleaseQueryOptions
 })
 
 function precheckReleaseReady(get: Getter) {
@@ -332,6 +329,7 @@ export const deploymentOptionsQueryAtom = atomWithQuery((get) => {
           },
         },
         enabled,
+        retry: false,
       })
     : consoleQuery.enterprise.releaseService.computeDeploymentOptions.queryOptions({
         input: {
@@ -340,13 +338,10 @@ export const deploymentOptionsQueryAtom = atomWithQuery((get) => {
           },
         },
         enabled: enabled && Boolean(effectiveSelectedApp?.id),
+        retry: false,
       })
 
-  // oRPC encodes input before TanStack can skip work, so keep a valid input shape and gate requests with enabled.
-  return {
-    ...deploymentOptionsQueryOptions,
-    retry: false,
-  }
+  return deploymentOptionsQueryOptions
 })
 
 // Unsupported DSL state

@@ -8,12 +8,14 @@ import type {
 import type { Getter } from 'jotai/vanilla'
 import type { UnsupportedDslNode } from '../../shared/domain/error'
 import type { App } from '@/types/app'
+import { keepPreviousData, queryOptions } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import {
   atomWithForm,
   createFormAtoms,
 } from 'jotai-tanstack-form'
 import {
+  atomWithInfiniteQuery,
   atomWithMutation,
   atomWithQuery,
   queryClientAtom,
@@ -47,6 +49,7 @@ const DEFAULT_CREATE_RELEASE_FORM_VALUES: CreateReleaseFormValues = {
 export const RELEASE_NAME_REQUIRED_ERROR = 'releaseNameRequired'
 
 const DEFAULT_SOURCE_RELEASE_PAGE_SIZE = 1
+const CREATE_RELEASE_SOURCE_APP_PAGE_SIZE = 20
 
 function deploymentReleaseSourceMode(mode: ReleaseSourceMode): ReleaseSourceMode {
   return mode === 'dsl' && !isDeploymentDslImportEnabled
@@ -210,7 +213,7 @@ const createReleaseDslFileContentQueryAtom = atomWithQuery((get) => {
   const file = get(createReleaseDslFileFieldAtom).value
   const fileReadVersion = get(createReleaseDslFileReadVersionAtom)
 
-  return {
+  return queryOptions({
     queryKey: [
       'createReleaseDslFileContent',
       fileReadVersion,
@@ -222,7 +225,7 @@ const createReleaseDslFileContentQueryAtom = atomWithQuery((get) => {
     queryFn: async () => file ? await file.text() : '',
     enabled: Boolean(file),
     retry: false,
-  }
+  })
 })
 
 // Source derived state
@@ -232,6 +235,31 @@ function effectiveCreateReleaseSourceMode(get: Getter) {
 
 export const createReleaseSourceModeAtom = atom((get) => {
   return effectiveCreateReleaseSourceMode(get)
+})
+
+export const createReleaseSourceAppSearchTextAtom = atom('')
+
+export const createReleaseSourceAppsQueryAtom = atomWithInfiniteQuery((get) => {
+  const searchText = get(createReleaseSourceAppSearchTextAtom)
+
+  return consoleQuery.apps.list.infiniteOptions({
+    input: pageParam => ({
+      query: {
+        page: Number(pageParam),
+        limit: CREATE_RELEASE_SOURCE_APP_PAGE_SIZE,
+        name: searchText,
+        mode: AppModeEnum.WORKFLOW,
+      },
+    }),
+    getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
+    initialPageParam: 1,
+    placeholderData: keepPreviousData,
+    enabled: Boolean(
+      get(createReleaseDialogOpenAtom)
+      && effectiveCreateReleaseSourceMode(get) === 'sourceApp'
+      && isDeploymentDslImportEnabled,
+    ),
+  })
 })
 
 export const createReleaseDslContentAtom = atom((get) => {
@@ -329,20 +357,18 @@ const precheckReleaseQueryAtom = atomWithQuery((get) => {
   const sourceAppId = selectedSourceAppId(get)
   const canCheck = canCheckReleaseContent(get)
 
-  return {
-    ...consoleQuery.enterprise.releaseService.precheckRelease.queryOptions({
-      input: {
-        body: {
-          appInstanceId: appInstanceId ?? '',
-          ...(releaseSourceMode === 'dsl'
-            ? { dsl: get(createReleaseEncodedDslContentAtom) }
-            : { sourceAppId: sourceAppId ?? '' }),
-        },
+  return consoleQuery.enterprise.releaseService.precheckRelease.queryOptions({
+    input: {
+      body: {
+        appInstanceId: appInstanceId ?? '',
+        ...(releaseSourceMode === 'dsl'
+          ? { dsl: get(createReleaseEncodedDslContentAtom) }
+          : { sourceAppId: sourceAppId ?? '' }),
       },
-      enabled: canCheck,
-    }),
+    },
+    enabled: canCheck,
     retry: false,
-  }
+  })
 })
 
 export const isCheckingCreateReleaseContentAtom = atom((get) => {
@@ -507,4 +533,5 @@ export const submitCreateReleaseFormAtom = atom(null, (get, set) => {
 export const createReleaseLocalAtoms = [
   createReleaseDialogOpenAtom,
   createReleaseDslFileReadVersionAtom,
+  createReleaseSourceAppSearchTextAtom,
 ] as const

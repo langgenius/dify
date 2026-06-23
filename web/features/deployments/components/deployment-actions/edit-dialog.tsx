@@ -12,11 +12,13 @@ import {
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
+import { editDeploymentInstanceQueryAtom } from './state'
 
 type EditDeploymentFormValues = {
   name: string
@@ -131,12 +133,7 @@ export function EditDeploymentDialog({
 }) {
   const { t } = useTranslation('deployments')
   const updateInstance = useMutation(consoleQuery.enterprise.appInstanceService.updateAppInstance.mutationOptions())
-  const instanceQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstance.queryOptions({
-    input: {
-      params: { appInstanceId },
-    },
-    enabled: open,
-  }))
+  const instanceQuery = useAtomValue(editDeploymentInstanceQueryAtom)
   const app = instanceQuery.data?.appInstance
   const formKey = app ? `${app.id}-${app.displayName}-${app.description}` : 'loading'
 
@@ -165,7 +162,7 @@ export function EditDeploymentDialog({
       {
         onSuccess: () => {
           toast.success(t('settings.updated'))
-          onOpenChange(false)
+          handleOpenChange(false)
         },
         onError: () => {
           toast.error(t('settings.updateFailed'))
