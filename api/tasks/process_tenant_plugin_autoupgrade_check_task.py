@@ -7,13 +7,15 @@ import click
 from celery import shared_task
 
 from core.plugin.entities.marketplace import MarketplacePluginSnapshot
-from core.plugin.entities.plugin import PluginInstallationSource
+from core.plugin.entities.plugin import PluginInstallation, PluginInstallationSource
 from core.plugin.impl.plugin import PluginInstaller
+from core.plugin.plugin_service import PluginService
 from extensions.ext_redis import redis_client
 from models.account import TenantPluginAutoUpgradeStrategy
 
 logger = logging.getLogger(__name__)
 
+PluginCategory = TenantPluginAutoUpgradeStrategy.PluginCategory
 RETRY_TIMES_OF_ONE_PLUGIN_IN_ONE_TENANT = 3
 CACHE_REDIS_KEY_PREFIX = "plugin_autoupgrade_check_task:cached_plugin_snapshot:"
 CACHE_REDIS_TTL = 60 * 60  # 1 hour
@@ -71,6 +73,25 @@ def marketplace_batch_fetch_plugin_manifests(
     return result
 
 
+def _normalize_category(category: PluginCategory | str | None) -> str | None:
+    if category is None:
+        return None
+    if isinstance(category, PluginCategory):
+        return category.value
+    return str(category)
+
+
+def _plugin_matches_category(plugin: PluginInstallation, category: str | None) -> bool:
+    """Return whether an installed plugin should be checked by a category strategy."""
+    if category is None:
+        return True
+
+    declaration = getattr(plugin, "declaration", None)
+    plugin_category = getattr(declaration, "category", None)
+    plugin_category_value = getattr(plugin_category, "value", plugin_category)
+    return plugin_category_value == category
+
+
 @shared_task(queue="plugin")
 def process_tenant_plugin_autoupgrade_check_task(
     tenant_id: str,
@@ -79,13 +100,15 @@ def process_tenant_plugin_autoupgrade_check_task(
     upgrade_mode: TenantPluginAutoUpgradeStrategy.UpgradeMode,
     exclude_plugins: list[str],
     include_plugins: list[str],
+    category: PluginCategory | str | None = None,
 ):
     try:
         manager = PluginInstaller()
+        category_value = _normalize_category(category)
 
         click.echo(
             click.style(
-                f"Checking upgradable plugin for tenant: {tenant_id}",
+                f"Checking upgradable plugin for tenant: {tenant_id}, category: {category_value or 'all'}",
                 fg="green",
             )
         )
@@ -101,7 +124,11 @@ def process_tenant_plugin_autoupgrade_check_task(
             all_plugins = manager.list_plugins(tenant_id)
 
             for plugin in all_plugins:
-                if plugin.source == PluginInstallationSource.Marketplace and plugin.plugin_id in include_plugins:
+                if (
+                    plugin.source == PluginInstallationSource.Marketplace
+                    and plugin.plugin_id in include_plugins
+                    and _plugin_matches_category(plugin, category_value)
+                ):
                     plugin_ids.append(
                         (
                             plugin.plugin_id,
@@ -116,7 +143,9 @@ def process_tenant_plugin_autoupgrade_check_task(
             plugin_ids = [
                 (plugin.plugin_id, plugin.version, plugin.plugin_unique_identifier)
                 for plugin in all_plugins
-                if plugin.source == PluginInstallationSource.Marketplace and plugin.plugin_id not in exclude_plugins
+                if plugin.source == PluginInstallationSource.Marketplace
+                and plugin.plugin_id not in exclude_plugins
+                and _plugin_matches_category(plugin, category_value)
             ]
         elif upgrade_mode == TenantPluginAutoUpgradeStrategy.UpgradeMode.ALL:
             all_plugins = manager.list_plugins(tenant_id)
@@ -124,6 +153,7 @@ def process_tenant_plugin_autoupgrade_check_task(
                 (plugin.plugin_id, plugin.version, plugin.plugin_unique_identifier)
                 for plugin in all_plugins
                 if plugin.source == PluginInstallationSource.Marketplace
+                and _plugin_matches_category(plugin, category_value)
             ]
 
         if not plugin_ids:
@@ -171,14 +201,13 @@ def process_tenant_plugin_autoupgrade_check_task(
                                 fg="green",
                             )
                         )
-                        _ = manager.upgrade_plugin(
+                        # Use the service that downloads and uploads the package to the daemon
+                        # first; calling manager.upgrade_plugin directly skips that step and the
+                        # daemon fails because the package never reaches its local bucket.
+                        _ = PluginService.upgrade_plugin_with_marketplace(
                             tenant_id,
                             original_unique_identifier,
                             new_unique_identifier,
-                            PluginInstallationSource.Marketplace,
-                            {
-                                "plugin_unique_identifier": new_unique_identifier,
-                            },
                         )
                 except Exception as e:
                     click.echo(click.style(f"Error when upgrading plugin: {e}", fg="red"))

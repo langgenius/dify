@@ -31,17 +31,6 @@ vi.mock('../../../website/preview', () => ({
   ),
 }))
 
-vi.mock('@/app/components/billing/plan-upgrade-modal', () => ({
-  default: ({ show, onClose, title }: { show: boolean, onClose: () => void, title: string }) => show
-    ? (
-        <div data-testid="plan-upgrade-modal">
-          <span>{title}</span>
-          <button data-testid="close-modal" onClick={onClose}>close-modal</button>
-        </div>
-      )
-    : null,
-}))
-
 const { default: PreviewPanel } = await import('../preview-panel')
 
 describe('PreviewPanel', () => {
@@ -87,7 +76,7 @@ describe('PreviewPanel', () => {
 
     it('should render plan upgrade modal when isShowPlanUpgradeModal is true', () => {
       render(<PreviewPanel {...defaultProps} isShowPlanUpgradeModal />)
-      expect(screen.getByTestId('plan-upgrade-modal')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
   })
 
@@ -100,7 +89,7 @@ describe('PreviewPanel', () => {
 
     it('should call hidePlanUpgradeModal when modal close clicked', () => {
       render(<PreviewPanel {...defaultProps} isShowPlanUpgradeModal />)
-      fireEvent.click(screen.getByTestId('close-modal'))
+      fireEvent.click(screen.getByRole('button', { name: 'billing.triggerLimitModal.dismiss' }))
       expect(defaultProps.hidePlanUpgradeModal).toHaveBeenCalledOnce()
     })
 

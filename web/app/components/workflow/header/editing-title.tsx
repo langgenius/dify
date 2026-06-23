@@ -11,10 +11,9 @@ const EditingTitle = () => {
   const draftUpdatedAt = useStore(state => state.draftUpdatedAt)
   const publishedAt = useStore(state => state.publishedAt)
   const isSyncingWorkflowDraft = useStore(s => s.isSyncingWorkflowDraft)
-  const maximizeCanvas = useStore(s => s.maximizeCanvas)
 
   return (
-    <div className={`system-xs-regular flex h-[18px] min-w-[300px] items-center whitespace-nowrap text-text-tertiary ${maximizeCanvas ? 'ml-2' : ''}`}>
+    <div className="flex h-[18px] min-w-[300px] items-center system-xs-regular whitespace-nowrap text-text-tertiary">
       {
         !!draftUpdatedAt && (
           <>

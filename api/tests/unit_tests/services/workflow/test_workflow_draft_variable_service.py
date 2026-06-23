@@ -4,10 +4,6 @@ import uuid
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from graphon.enums import BuiltinNodeTypes
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.variables.segments import StringSegment
-from graphon.variables.types import SegmentType
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
@@ -17,6 +13,10 @@ from core.workflow.variable_prefixes import (
     ENVIRONMENT_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
+from graphon.enums import BuiltinNodeTypes
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.variables.segments import StringSegment
+from graphon.variables.types import SegmentType
 from libs.uuid_utils import uuidv7
 from models.account import Account
 from models.enums import DraftVariableType
@@ -31,6 +31,7 @@ from services.workflow_draft_variable_service import (
     DraftVariableSaver,
     VariableResetError,
     WorkflowDraftVariableService,
+    _model_to_insertion_dict,
 )
 
 
@@ -145,8 +146,8 @@ class TestDraftVariableSaver:
             user=mock_user,
         )
         rebuilt_file = File(
-            id="file-1",
-            type=FileType.DOCUMENT,
+            file_id="file-1",
+            file_type=FileType.DOCUMENT,
             transfer_method=FileTransferMethod.LOCAL_FILE,
             reference="upload-1",
             filename="test.txt",
@@ -200,7 +201,7 @@ class TestDraftVariableSaver:
             user=mock_user,
         )
 
-    def test_draft_saver_with_small_variables(self, draft_saver, mock_session):
+    def test_draft_saver_with_small_variables(self, draft_saver: DraftVariableSaver, mock_session):
         with patch(
             "services.workflow_draft_variable_service.DraftVariableSaver._try_offload_large_variable", autospec=True
         ) as _mock_try_offload:
@@ -212,18 +213,21 @@ class TestDraftVariableSaver:
             assert draft_var.file_id is None
             _mock_try_offload.return_value = None
 
-    def test_draft_saver_with_large_variables(self, draft_saver, mock_session):
+    def test_draft_saver_with_large_variables(self, draft_saver: DraftVariableSaver, mock_session):
         with patch(
             "services.workflow_draft_variable_service.DraftVariableSaver._try_offload_large_variable", autospec=True
         ) as _mock_try_offload:
             mock_segment = StringSegment(value="small value")
             mock_draft_var_file = WorkflowDraftVariableFile(
-                id=str(uuidv7()),
+                tenant_id=str(uuidv7()),
+                app_id=str(uuidv7()),
+                user_id=str(uuidv7()),
                 size=1024,
                 length=10,
                 value_type=SegmentType.ARRAY_STRING,
-                upload_file_id=str(uuid.uuid4()),
+                upload_file_id=str(uuidv7()),
             )
+            mock_draft_var_file.id = str(uuidv7())
 
             _mock_try_offload.return_value = mock_segment, mock_draft_var_file
             draft_var = draft_saver._create_draft_variable(name="small_var", value=mock_segment, visible=True)
@@ -340,6 +344,34 @@ class TestWorkflowDraftVariableService:
             rag_pipeline_variables=[],
         )
 
+    def test_list_variables_without_values_excludes_node_ids(self, mock_session):
+        service = WorkflowDraftVariableService(mock_session)
+        variable = WorkflowDraftVariable.new_node_variable(
+            app_id="app-1",
+            node_id="node-1",
+            name="output",
+            value=StringSegment(value="value"),
+            node_execution_id="execution-1",
+        )
+        mock_session.scalar.return_value = 1
+        mock_session.scalars.return_value = [variable]
+
+        result = service.list_variables_without_values(
+            app_id="app-1",
+            page=1,
+            limit=20,
+            user_id="user-1",
+            exclude_node_ids={SYSTEM_VARIABLE_NODE_ID, CONVERSATION_VARIABLE_NODE_ID},
+        )
+
+        assert result.total == 1
+        assert result.variables == [variable]
+
+        stmt = mock_session.scalars.call_args.args[0]
+        compiled = stmt.compile()
+        excluded_node_ids = next(value for value in compiled.params.values() if isinstance(value, (list, tuple)))
+        assert set(excluded_node_ids) == {SYSTEM_VARIABLE_NODE_ID, CONVERSATION_VARIABLE_NODE_ID}
+
     def test_reset_conversation_variable(self, mock_session):
         """Test resetting a conversation variable"""
         service = WorkflowDraftVariableService(mock_session)
@@ -395,7 +427,7 @@ class TestWorkflowDraftVariableService:
         self,
         mock_engine,
         mock_session,
-        monkeypatch,
+        monkeypatch: pytest.MonkeyPatch,
     ):
         """Test resetting a node variable when execution record doesn't exist"""
         mock_repo_session = Mock(spec=Session)
@@ -432,7 +464,7 @@ class TestWorkflowDraftVariableService:
     def test_reset_node_variable_with_valid_execution_record(
         self,
         mock_session,
-        monkeypatch,
+        monkeypatch: pytest.MonkeyPatch,
     ):
         """Test resetting a node variable with valid execution record - should restore from execution"""
         mock_repo_session = Mock(spec=Session)
@@ -612,3 +644,53 @@ class TestWorkflowDraftVariableService:
         assert node_var.visible == True
         assert node_var.editable == True
         assert node_var.node_execution_id == "exec-id"
+
+
+class TestModelToInsertionDict:
+    """Reproduce two production errors in _model_to_insertion_dict / _new()."""
+
+    def test_visible_and_is_default_value_always_present(self):
+        """Problem 1: _new() did not set visible/is_default_value, causing
+        inconsistent dict keys across rows in multi-row INSERT and missing
+        is_default_value in the insertion dict entirely.
+        """
+        conv_var = WorkflowDraftVariable.new_conversation_variable(
+            app_id="app-1",
+            name="counter",
+            value=StringSegment(value="0"),
+        )
+        # _new() should explicitly set these fields so they are not None
+        assert conv_var.visible is not None
+        assert conv_var.is_default_value is not None
+
+        d = _model_to_insertion_dict(conv_var)
+        # visible must appear in every row's dict
+        assert "visible" in d
+        # is_default_value must always be present
+        assert "is_default_value" in d
+
+    def test_description_passthrough(self):
+        """_model_to_insertion_dict passes description as-is;
+        length validation is enforced earlier in build_conversation_variable_from_mapping.
+        """
+        desc = "a" * 200
+        conv_var = WorkflowDraftVariable.new_conversation_variable(
+            app_id="app-1",
+            name="counter",
+            value=StringSegment(value="0"),
+            description=desc,
+        )
+        d = _model_to_insertion_dict(conv_var)
+        assert d["description"] == desc
+
+    def test_is_default_value_omitted_when_none(self):
+        conv_var = WorkflowDraftVariable.new_conversation_variable(
+            app_id="app-1",
+            name="counter",
+            value=StringSegment(value="0"),
+        )
+        conv_var.is_default_value = None
+
+        d = _model_to_insertion_dict(conv_var)
+
+        assert "is_default_value" not in d

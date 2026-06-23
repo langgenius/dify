@@ -2,14 +2,15 @@ import type { FC } from 'react'
 import type { Member } from '@/models/common'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Textarea } from '@langgenius/dify-ui/textarea'
+import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import { isEqual } from 'es-toolkit/predicate'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
-import { useToastContext } from '@/app/components/base/toast/context'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import IndexMethod from '@/app/components/datasets/settings/index-method'
@@ -19,17 +20,16 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import { useAppContext } from '@/context/app-context'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import { useDocLink } from '@/context/i18n'
-import { useModalContext } from '@/context/modal-context'
 import { DatasetPermission } from '@/models/datasets'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useMembers } from '@/service/use-common'
-import { cn } from '@/utils/classnames'
 import { RetrievalChangeTip, RetrievalSection } from './retrieval-section'
 
 type SettingsModalProps = {
   currentDataset: DataSet
+  height?: string
   onCancel: () => void
   onSave: (newDataset: DataSet) => void
 }
@@ -44,6 +44,7 @@ const labelClass = `
 
 const SettingsModal: FC<SettingsModalProps> = ({
   currentDataset,
+  height = 'calc(100vh - 72px)',
   onCancel,
   onSave,
 }) => {
@@ -51,12 +52,10 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const { notify } = useToastContext()
   const ref = useRef(null)
   const isExternal = currentDataset.provider === 'external'
-  const { setShowAccountSettingModal } = useModalContext()
+  const openIntegrationsSetting = useIntegrationsSetting()
   const [loading, setLoading] = useState(false)
-  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
   const [localeCurrentDataset, setLocaleCurrentDataset] = useState({ ...currentDataset })
   const [topK, setTopK] = useState(localeCurrentDataset?.external_retrieval_model.top_k ?? 2)
   const [scoreThreshold, setScoreThreshold] = useState(localeCurrentDataset?.external_retrieval_model.score_threshold ?? 0.5)
@@ -96,7 +95,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
     if (loading)
       return
     if (!localeCurrentDataset.name?.trim()) {
-      notify({ type: 'error', message: t('form.nameError', { ns: 'datasetSettings' }) })
+      toast.error(t('form.nameError', { ns: 'datasetSettings' }))
       return
     }
     if (
@@ -106,7 +105,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
         indexMethod,
       })
     ) {
-      notify({ type: 'error', message: t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }) })
+      toast.error(t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }))
       return
     }
     try {
@@ -146,7 +145,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
         })
       }
       await updateDatasetSetting(requestParams)
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       onSave({
         ...localeCurrentDataset,
         indexing_technique: indexMethod,
@@ -154,7 +153,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
       })
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
     }
     finally {
       setLoading(false)
@@ -187,30 +186,30 @@ const SettingsModal: FC<SettingsModalProps> = ({
 
   return (
     <div
-      className="flex w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
+      className="flex min-h-0 w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
       style={{
-        height: 'calc(100vh - 72px)',
+        height,
       }}
       ref={ref}
     >
-      <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pl-6 pr-5">
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pr-5 pl-6">
         <div className="flex flex-col text-base font-semibold text-text-primary">
           <div className="leading-6">{t('title', { ns: 'datasetSettings' })}</div>
         </div>
         <div className="flex items-center">
           <div
             onClick={onCancel}
-            className="flex h-6 w-6 cursor-pointer items-center justify-center"
+            className="flex size-6 cursor-pointer items-center justify-center"
           >
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
+            <RiCloseLine className="size-4 text-text-tertiary" />
           </div>
         </div>
       </div>
       {/* Body */}
-      <div className="overflow-y-auto border-b border-divider-regular p-6 pb-[68px] pt-5">
+      <div className="overflow-y-auto border-b border-divider-regular p-6 pt-5 pb-[68px]">
         <div className={cn(rowClass, 'items-center')}>
           <div className={labelClass}>
-            <div className="text-text-secondary system-sm-semibold">{t('form.name', { ns: 'datasetSettings' })}</div>
+            <div className="system-sm-semibold text-text-secondary">{t('form.name', { ns: 'datasetSettings' })}</div>
           </div>
           <Input
             value={localeCurrentDataset.name}
@@ -221,12 +220,13 @@ const SettingsModal: FC<SettingsModalProps> = ({
         </div>
         <div className={cn(rowClass)}>
           <div className={labelClass}>
-            <div className="text-text-secondary system-sm-semibold">{t('form.desc', { ns: 'datasetSettings' })}</div>
+            <div className="system-sm-semibold text-text-secondary">{t('form.desc', { ns: 'datasetSettings' })}</div>
           </div>
           <div className="w-full">
             <Textarea
+              aria-label={t('form.desc', { ns: 'datasetSettings' })}
               value={localeCurrentDataset.description || ''}
-              onChange={e => handleValueChange('description', e.target.value)}
+              onValueChange={value => handleValueChange('description', value)}
               className="resize-none"
               placeholder={t('form.descPlaceholder', { ns: 'datasetSettings' }) || ''}
             />
@@ -234,11 +234,11 @@ const SettingsModal: FC<SettingsModalProps> = ({
         </div>
         <div className={rowClass}>
           <div className={labelClass}>
-            <div className="text-text-secondary system-sm-semibold">{t('form.permissions', { ns: 'datasetSettings' })}</div>
+            <div className="system-sm-semibold text-text-secondary">{t('form.permissions', { ns: 'datasetSettings' })}</div>
           </div>
           <div className="w-full">
             <PermissionSelector
-              disabled={!localeCurrentDataset?.embedding_available || isCurrentWorkspaceDatasetOperator}
+              disabled={!localeCurrentDataset?.embedding_available}
               permission={localeCurrentDataset.permission}
               value={selectedMemberIDs}
               onChange={v => handleValueChange('permission', v!)}
@@ -250,7 +250,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
         {!!(currentDataset && currentDataset.indexing_technique) && (
           <div className={cn(rowClass)}>
             <div className={labelClass}>
-              <div className="text-text-secondary system-sm-semibold">{t('form.indexMethod', { ns: 'datasetSettings' })}</div>
+              <div className="system-sm-semibold text-text-secondary">{t('form.indexMethod', { ns: 'datasetSettings' })}</div>
             </div>
             <div className="grow">
               <IndexMethod
@@ -267,7 +267,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
         {indexMethod === IndexingType.QUALIFIED && (
           <div className={cn(rowClass)}>
             <div className={labelClass}>
-              <div className="text-text-secondary system-sm-semibold">{t('form.embeddingModel', { ns: 'datasetSettings' })}</div>
+              <div className="system-sm-semibold text-text-secondary">{t('form.embeddingModel', { ns: 'datasetSettings' })}</div>
             </div>
             <div className="w-full">
               <div className="h-8 w-full rounded-lg bg-components-input-bg-normal opacity-60">
@@ -280,9 +280,15 @@ const SettingsModal: FC<SettingsModalProps> = ({
                   modelList={embeddingModelList}
                 />
               </div>
-              <div className="mt-2 w-full text-xs leading-6 text-text-tertiary">
+              <div className="mt-2 w-full text-xs/6 text-text-tertiary">
                 {t('form.embeddingModelTip', { ns: 'datasetSettings' })}
-                <span className="cursor-pointer text-text-accent" onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}>{t('form.embeddingModelTipLink', { ns: 'datasetSettings' })}</span>
+                <button
+                  type="button"
+                  className="cursor-pointer border-none bg-transparent p-0 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                  onClick={() => openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
+                >
+                  {t('form.embeddingModelTipLink', { ns: 'datasetSettings' })}
+                </button>
               </div>
             </div>
           </div>
@@ -324,7 +330,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
       />
 
       <div
-        className="sticky bottom-0 z-[5] flex w-full justify-end border-t border-divider-regular bg-background-section px-6 py-4"
+        className="sticky bottom-0 z-5 flex w-full justify-end border-t border-divider-regular bg-background-section px-6 py-4"
       >
         <Button
           onClick={onCancel}

@@ -1,22 +1,30 @@
 import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
+import type { WorkflowDraftFeaturesPayload } from '@/service/workflow'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
+import { useNodesReadOnly, useNodesReadOnlyByCanEdit } from '@/app/components/workflow/hooks/use-workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { API_PREFIX } from '@/config'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { postWithKeepalive } from '@/service/fetch'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useWorkflowRefreshDraft } from '.'
 
-export const useNodesSyncDraft = () => {
+const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const featuresStore = useFeaturesStore()
-  const { getNodesReadOnly } = useNodesReadOnly()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
+  const { data: isCollaborationEnabled } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.enable_collaboration_mode,
+  })
 
   const getPostParams = useCallback(() => {
     const {
@@ -24,7 +32,13 @@ export const useNodesSyncDraft = () => {
       edges,
       transform,
     } = store.getState()
-    const nodes = getNodes().filter(node => !node.data?._isTempNode)
+    const allNodes = getNodes()
+    const nodes = allNodes.filter(node => !node.data?._isTempNode && node.data?.type !== BlockEnum.StartPlaceholder)
+    const skippedNodeIds = new Set(
+      allNodes
+        .filter(node => node.data?._isTempNode || node.data?.type === BlockEnum.StartPlaceholder)
+        .map(node => node.id),
+    )
     const [x, y, zoom] = transform
     const {
       appId,
@@ -46,7 +60,7 @@ export const useNodesSyncDraft = () => {
         })
       })
     })
-    const producedEdges = produce(edges.filter(edge => !edge.data?._isTemp), (draft) => {
+    const producedEdges = produce(edges.filter(edge => !edge.data?._isTemp && !skippedNodeIds.has(edge.source) && !skippedNodeIds.has(edge.target)), (draft) => {
       draft.forEach((edge) => {
         Object.keys(edge.data).forEach((key) => {
           if (key.startsWith('_'))
@@ -54,7 +68,16 @@ export const useNodesSyncDraft = () => {
         })
       })
     })
-    const viewport = { x, y, zoom }
+    const featuresPayload: WorkflowDraftFeaturesPayload = {
+      opening_statement: features.opening?.enabled ? (features.opening?.opening_statement || '') : '',
+      suggested_questions: features.opening?.enabled ? (features.opening?.suggested_questions || []) : [],
+      suggested_questions_after_answer: features.suggested,
+      text_to_speech: features.text2speech,
+      speech_to_text: features.speech2text,
+      retriever_resource: features.citation,
+      sensitive_word_avoidance: features.moderation,
+      file_upload: features.file,
+    }
 
     return {
       url: `/apps/${appId}/workflows/draft`,
@@ -62,33 +85,37 @@ export const useNodesSyncDraft = () => {
         graph: {
           nodes: producedNodes,
           edges: producedEdges,
-          viewport,
+          viewport: {
+            x,
+            y,
+            zoom,
+          },
         },
-        features: {
-          opening_statement: features.opening?.enabled ? (features.opening?.opening_statement || '') : '',
-          suggested_questions: features.opening?.enabled ? (features.opening?.suggested_questions || []) : [],
-          suggested_questions_after_answer: features.suggested,
-          text_to_speech: features.text2speech,
-          speech_to_text: features.speech2text,
-          retriever_resource: features.citation,
-          sensitive_word_avoidance: features.moderation,
-          file_upload: features.file,
-        },
+        features: featuresPayload,
         environment_variables: environmentVariables,
         conversation_variables: conversationVariables,
         hash: syncWorkflowDraftHash,
+        ...(isCollaborationEnabled ? { _is_collaborative: true } : {}),
       },
     }
-  }, [store, featuresStore, workflowStore])
+  }, [store, featuresStore, workflowStore, isCollaborationEnabled])
 
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
     if (getNodesReadOnly())
       return
+
+    const isFollower = isCollaborationEnabled
+      && collaborationManager.isConnected()
+      && !collaborationManager.getIsLeader()
+
+    if (isFollower)
+      return
+
     const postParams = getPostParams()
 
     if (postParams)
       postWithKeepalive(`${API_PREFIX}${postParams.url}`, postParams.params)
-  }, [getPostParams, getNodesReadOnly])
+  }, [getPostParams, getNodesReadOnly, isCollaborationEnabled])
 
   const performSync = useCallback(async (
     notRefreshWhenSyncError?: boolean,
@@ -97,7 +124,16 @@ export const useNodesSyncDraft = () => {
     if (getNodesReadOnly())
       return
 
-    // Get base params without hash
+    const isFollower = isCollaborationEnabled
+      && collaborationManager.isConnected()
+      && !collaborationManager.getIsLeader()
+
+    if (isFollower) {
+      collaborationManager.emitSyncRequest()
+      callback?.onSettled?.()
+      return
+    }
+
     const baseParams = getPostParams()
     if (!baseParams)
       return
@@ -108,15 +144,13 @@ export const useNodesSyncDraft = () => {
     } = workflowStore.getState()
 
     try {
-      // IMPORTANT: Get the LATEST hash right before sending the request
-      // This ensures that even if queued, each request uses the most recent hash
       const latestHash = workflowStore.getState().syncWorkflowDraftHash
 
       const postParams = {
         ...baseParams,
         params: {
           ...baseParams.params,
-          hash: latestHash || null, // null for first-time, otherwise use latest hash
+          hash: latestHash || null,
         },
       }
 
@@ -137,7 +171,7 @@ export const useNodesSyncDraft = () => {
     finally {
       callback?.onSettled?.()
     }
-  }, [workflowStore, getPostParams, getNodesReadOnly, handleRefreshWorkflowDraft])
+  }, [workflowStore, getPostParams, getNodesReadOnly, handleRefreshWorkflowDraft, isCollaborationEnabled])
 
   const doSyncWorkflowDraft = useSerialAsyncCallback(performSync, getNodesReadOnly)
 
@@ -145,4 +179,16 @@ export const useNodesSyncDraft = () => {
     doSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
   }
+}
+
+export const useNodesSyncDraftByCanEdit = (canEdit: boolean) => {
+  const { getNodesReadOnly } = useNodesReadOnlyByCanEdit(canEdit)
+
+  return useNodesSyncDraftBase(getNodesReadOnly)
+}
+
+export const useNodesSyncDraft = () => {
+  const { getNodesReadOnly } = useNodesReadOnly()
+
+  return useNodesSyncDraftBase(getNodesReadOnly)
 }

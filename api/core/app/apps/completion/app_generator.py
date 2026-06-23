@@ -3,10 +3,9 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Literal, Union, overload
+from typing import Any, Literal, overload
 
 from flask import Flask, copy_current_request_context, current_app
-from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from pydantic import ValidationError
 from sqlalchemy import select
 
@@ -21,9 +20,11 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, InvokeFrom
+from core.helper.trace_id_helper import extract_trace_session_id_from_args
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from factories import file_factory
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account, App, EndUser, Message
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.message import MessageNotExistsError
@@ -36,7 +37,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
     def generate(
         self,
         app_model: App,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: Literal[True],
@@ -46,7 +47,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
     def generate(
         self,
         app_model: App,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: Literal[False],
@@ -56,20 +57,20 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
     def generate(
         self,
         app_model: App,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = False,
-    ) -> Union[Mapping[str, Any], Generator[str | Mapping[str, Any], None, None]]: ...
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]: ...
 
     def generate(
         self,
         app_model: App,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
-    ) -> Union[Mapping[str, Any], Generator[str | Mapping[str, Any], None, None]]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
         """
         Generate App response.
 
@@ -148,7 +149,9 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
                 user_id=user.id,
                 stream=streaming,
                 invoke_from=invoke_from,
-                extras={},
+                extras={
+                    **extract_trace_session_id_from_args(args),
+                },
                 trace_manager=trace_manager,
             )
 
@@ -244,10 +247,10 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         self,
         app_model: App,
         message_id: str,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         invoke_from: InvokeFrom,
         stream: bool = True,
-    ) -> Union[Mapping, Generator[Mapping | str, None, None]]:
+    ) -> Mapping | Generator[Mapping | str, None, None]:
         """
         Generate App response.
 

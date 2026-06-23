@@ -5,10 +5,10 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Field from './field'
 
-type Props = {
+type Props = Readonly<{
   payload: StructuredOutput
   rootClassName?: string
-}
+}>
 
 const ShowPanel: FC<Props> = ({
   payload,
@@ -28,7 +28,7 @@ const ShowPanel: FC<Props> = ({
         <Field
           key={name}
           name={name}
-          payload={schema.schema.properties![name]}
+          payload={schema.schema.properties![name]!}
           required={!!schema.schema.required?.includes(name)}
           rootClassName={rootClassName}
         />

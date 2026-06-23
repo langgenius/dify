@@ -1,6 +1,6 @@
 {
   "events.actionNum": "包含 {{num}} 个 {{event}}",
-  "events.description": "此触发器插件可以订阅的事件",
+  "events.description": "此集成触发器可以订阅的事件",
   "events.empty": "没有可用事件",
   "events.event": "事件",
   "events.events": "事件",

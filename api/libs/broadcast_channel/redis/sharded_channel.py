@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from typing import Any, override
+
+from extensions.redis_names import serialize_redis_name
 from libs.broadcast_channel.channel import Producer, Subscriber, Subscription
 from redis import Redis, RedisCluster
 
@@ -17,23 +20,34 @@ class ShardedRedisBroadcastChannel:
     def __init__(
         self,
         redis_client: Redis | RedisCluster,
+        *,
+        join_timeout_ms: int = 2000,
     ):
         self._client = redis_client
+        self._join_timeout_ms = max(int(join_timeout_ms or 0), 0)
 
     def topic(self, topic: str) -> ShardedTopic:
-        return ShardedTopic(self._client, topic)
+        return ShardedTopic(self._client, topic, join_timeout_ms=self._join_timeout_ms)
 
 
 class ShardedTopic:
-    def __init__(self, redis_client: Redis | RedisCluster, topic: str):
+    def __init__(
+        self,
+        redis_client: Redis | RedisCluster,
+        topic: str,
+        *,
+        join_timeout_ms: int = 2000,
+    ):
         self._client = redis_client
         self._topic = topic
+        self._redis_topic = serialize_redis_name(topic)
+        self._join_timeout_ms = max(int(join_timeout_ms or 0), 0)
 
     def as_producer(self) -> Producer:
         return self
 
     def publish(self, payload: bytes) -> None:
-        self._client.spublish(self._topic, payload)  # type: ignore[attr-defined,union-attr]
+        self._client.spublish(self._redis_topic, payload)  # type: ignore[attr-defined,union-attr]
 
     def as_subscriber(self) -> Subscriber:
         return self
@@ -42,25 +56,30 @@ class ShardedTopic:
         return _RedisShardedSubscription(
             client=self._client,
             pubsub=self._client.pubsub(),
-            topic=self._topic,
+            topic=self._redis_topic,
+            join_timeout_ms=self._join_timeout_ms,
         )
 
 
 class _RedisShardedSubscription(RedisSubscriptionBase):
     """Redis 7.0+ sharded pub/sub subscription implementation."""
 
+    @override
     def _get_subscription_type(self) -> str:
         return "sharded"
 
+    @override
     def _subscribe(self) -> None:
         assert self._pubsub is not None
         self._pubsub.ssubscribe(self._topic)  # type: ignore[attr-defined]
 
+    @override
     def _unsubscribe(self) -> None:
         assert self._pubsub is not None
         self._pubsub.sunsubscribe(self._topic)  # type: ignore[attr-defined]
 
-    def _get_message(self) -> dict | None:
+    @override
+    def _get_message(self) -> dict[str, Any] | None:
         assert self._pubsub is not None
         # NOTE(QuantumGhost): this is an issue in
         # upstream code. If Sharded PubSub is used with Cluster, the
@@ -69,22 +88,24 @@ class _RedisShardedSubscription(RedisSubscriptionBase):
         #
         # Since we have already filtered at the caller's site, we can safely set
         # `ignore_subscribe_messages=False`.
-        if isinstance(self._client, RedisCluster):
-            # NOTE(QuantumGhost): due to an issue in upstream code, calling `get_sharded_message` without
-            # specifying the `target_node` argument would use busy-looping to wait
-            # for incoming message, consuming excessive CPU quota.
-            #
-            # Here we specify the `target_node` to mitigate this problem.
-            node = self._client.get_node_from_key(self._topic)
-            return self._pubsub.get_sharded_message(  # type: ignore[attr-defined]
-                ignore_subscribe_messages=False,
-                timeout=1,
-                target_node=node,
-            )
-        elif isinstance(self._client, Redis):
-            return self._pubsub.get_sharded_message(ignore_subscribe_messages=False, timeout=1)  # type: ignore[attr-defined]
-        else:
-            raise AssertionError("client should be either Redis or RedisCluster.")
+        match self._client:
+            case RedisCluster():
+                # NOTE(QuantumGhost): due to an issue in upstream code, calling `get_sharded_message` without
+                # specifying the `target_node` argument would use busy-looping to wait
+                # for incoming message, consuming excessive CPU quota.
+                #
+                # Here we specify the `target_node` to mitigate this problem.
+                node = self._client.get_node_from_key(self._topic)
+                return self._pubsub.get_sharded_message(  # type: ignore[attr-defined]
+                    ignore_subscribe_messages=False,
+                    timeout=1,
+                    target_node=node,
+                )
+            case Redis():
+                return self._pubsub.get_sharded_message(ignore_subscribe_messages=False, timeout=1)  # type: ignore[attr-defined]
+            case _:
+                raise AssertionError("client should be either Redis or RedisCluster.")
 
+    @override
     def _get_message_type(self) -> str:
         return "smessage"

@@ -60,8 +60,8 @@ describe('BaseForm', () => {
   it('should render fields with default values from schema', () => {
     render(<BaseForm formSchemas={baseSchemas} />)
 
-    expect(screen.getByDisplayValue('show')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('Initial title')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('show'))!.toBeInTheDocument()
+    expect(screen.getByDisplayValue('Initial title'))!.toBeInTheDocument()
   })
 
   it('should hide conditional fields when show_on conditions are not met', () => {
@@ -72,7 +72,7 @@ describe('BaseForm', () => {
       />,
     )
 
-    expect(screen.getByDisplayValue('hide')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('hide'))!.toBeInTheDocument()
     expect(screen.queryByDisplayValue('Hidden title')).not.toBeInTheDocument()
   })
 
@@ -117,8 +117,8 @@ describe('BaseForm', () => {
       ])
     })
 
-    expect(screen.getByDisplayValue('Changed title')).toBeInTheDocument()
-    expect(screen.getByText('Title is invalid')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Changed title'))!.toBeInTheDocument()
+    expect(screen.getByText('Title is invalid'))!.toBeInTheDocument()
     expect(formRef.current?.getForm()).toBeTruthy()
     expect(formRef.current?.getFormValues({})).toBeTruthy()
   })
@@ -141,7 +141,7 @@ describe('BaseForm', () => {
       ])
     })
 
-    expect(screen.getByText('Title warning')).toBeInTheDocument()
+    expect(screen.getByText('Title warning'))!.toBeInTheDocument()
   })
 
   it('should use formFromProps if provided', () => {
@@ -160,7 +160,7 @@ describe('BaseForm', () => {
       setFieldValue: vi.fn(),
     }
     render(<BaseForm formSchemas={baseSchemas} formFromProps={mockForm as unknown as AnyFormApi} />)
-    expect(screen.getByText('Kind')).toBeInTheDocument()
+    expect(screen.getByText('Kind'))!.toBeInTheDocument()
   })
 
   it('should handle setFields with explicit validateStatus', async () => {
@@ -174,7 +174,7 @@ describe('BaseForm', () => {
         errors: ['Explicit error'],
       }])
     })
-    expect(screen.getByText('Explicit error')).toBeInTheDocument()
+    expect(screen.getByText('Explicit error'))!.toBeInTheDocument()
   })
 
   it('should handle setFields with no value change', async () => {
@@ -187,12 +187,12 @@ describe('BaseForm', () => {
         errors: ['Error only'],
       }])
     })
-    expect(screen.getByText('Error only')).toBeInTheDocument()
+    expect(screen.getByText('Error only'))!.toBeInTheDocument()
   })
 
   it('should use default values from schema when defaultValues prop is missing', () => {
     render(<BaseForm formSchemas={baseSchemas} />)
-    expect(screen.getByDisplayValue('show')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('show'))!.toBeInTheDocument()
   })
 
   it('should handle submit without preventDefaultSubmit', async () => {
@@ -225,23 +225,23 @@ describe('BaseForm', () => {
 
   it('should handle undefined formSchemas', () => {
     const { container } = render(<BaseForm formSchemas={undefined as unknown as FormSchema[]} />)
-    expect(container).toBeEmptyDOMElement()
+    expect(container)!.toBeEmptyDOMElement()
   })
 
   it('should handle empty array formSchemas', () => {
     const { container } = render(<BaseForm formSchemas={[]} />)
-    expect(container).toBeEmptyDOMElement()
+    expect(container)!.toBeEmptyDOMElement()
   })
 
   it('should fallback to schema class names if props are missing', () => {
     const schemaWithClasses: FormSchema[] = [{
-      ...baseSchemas[0],
+      ...baseSchemas[0]!,
       fieldClassName: 'schema-field',
       labelClassName: 'schema-label',
     }]
     render(<BaseForm formSchemas={schemaWithClasses} />)
-    expect(screen.getByText('Kind')).toHaveClass('schema-label')
-    expect(screen.getByText('Kind').parentElement).toHaveClass('schema-field')
+    expect(screen.getByText('Kind'))!.toHaveClass('schema-label')
+    expect(screen.getByText('Kind').parentElement)!.toHaveClass('schema-field')
   })
 
   it('should handle preventDefaultSubmit', async () => {
@@ -292,7 +292,7 @@ describe('BaseForm', () => {
         value: 'new-show',
       }])
     })
-    expect(screen.getByDisplayValue('new-show')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('new-show'))!.toBeInTheDocument()
   })
 
   it('should handle schema without show_on in showOnValues', () => {
@@ -304,7 +304,7 @@ describe('BaseForm', () => {
     }]
     // Simply rendering should trigger showOnValues selector
     render(<BaseForm formSchemas={schemaNoShowOn} />)
-    expect(screen.getByText('Test')).toBeInTheDocument()
+    expect(screen.getByText('Test'))!.toBeInTheDocument()
   })
 
   it('should apply prop-based class names', () => {
@@ -316,6 +316,6 @@ describe('BaseForm', () => {
       />,
     )
     const label = screen.getByText('Kind')
-    expect(label).toHaveClass('custom-label')
+    expect(label)!.toHaveClass('custom-label')
   })
 })

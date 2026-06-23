@@ -33,7 +33,7 @@ class WorkspaceService:
         assert tenant_account_join is not None, "TenantAccountJoin not found"
         tenant_info["role"] = tenant_account_join.role
 
-        feature = FeatureService.get_features(tenant.id)
+        feature = FeatureService.get_features(tenant.id, exclude_vector_space=True)
         can_replace_logo = feature.can_replace_logo
 
         if can_replace_logo and TenantService.has_roles(tenant, [TenantAccountRole.OWNER, TenantAccountRole.ADMIN]):

@@ -1,3 +1,5 @@
+from typing import Any
+
 from core.plugin.entities.endpoint import EndpointEntityWithInstance
 from core.plugin.impl.base import BasePluginClient
 from core.plugin.impl.exc import PluginDaemonInternalServerError
@@ -5,7 +7,12 @@ from core.plugin.impl.exc import PluginDaemonInternalServerError
 
 class PluginEndpointClient(BasePluginClient):
     def create_endpoint(
-        self, tenant_id: str, user_id: str, plugin_unique_identifier: str, name: str, settings: dict
+        self,
+        tenant_id: str,
+        user_id: str,
+        plugin_unique_identifier: str,
+        name: str,
+        settings: dict[str, Any],
     ) -> bool:
         """
         Create an endpoint for the given plugin.
@@ -29,7 +36,10 @@ class PluginEndpointClient(BasePluginClient):
 
     def list_endpoints(self, tenant_id: str, user_id: str, page: int, page_size: int):
         """
-        List all endpoints for the given tenant and user.
+        List all endpoints for the given tenant.
+
+        The daemon list route binds only tenant and pagination fields; user_id is
+        retained in this client signature for consistency with endpoint services.
         """
         return self._request_with_plugin_daemon_response(
             "GET",
@@ -40,7 +50,10 @@ class PluginEndpointClient(BasePluginClient):
 
     def list_endpoints_for_single_plugin(self, tenant_id: str, user_id: str, plugin_id: str, page: int, page_size: int):
         """
-        List all endpoints for the given tenant, user and plugin.
+        List all endpoints for the given tenant and plugin.
+
+        The daemon list route binds tenant, plugin and pagination fields; user_id
+        is retained in this client signature for consistency with endpoint services.
         """
         return self._request_with_plugin_daemon_response(
             "GET",
@@ -49,7 +62,9 @@ class PluginEndpointClient(BasePluginClient):
             params={"plugin_id": plugin_id, "page": page, "page_size": page_size},
         )
 
-    def update_endpoint(self, tenant_id: str, user_id: str, endpoint_id: str, name: str, settings: dict):
+    def update_endpoint(
+        self, tenant_id: str, user_id: str, endpoint_id: str, name: str, settings: dict[str, Any]
+    ) -> bool:
         """
         Update the settings of the given endpoint.
         """

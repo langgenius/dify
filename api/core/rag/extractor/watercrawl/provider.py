@@ -1,8 +1,6 @@
 from collections.abc import Generator
 from datetime import datetime
-from typing import Any
-
-from typing_extensions import TypedDict
+from typing import Any, TypedDict
 
 from core.rag.extractor.watercrawl.client import PageOptions, SpiderOptions, WaterCrawlAPIClient
 
@@ -107,6 +105,8 @@ class WaterCrawlProvider:
 
     def scrape_url(self, url: str) -> WatercrawlDocumentData:
         response = self.client.scrape_url(url=url, sync=True, prefetched=True)
+        if not isinstance(response, dict):
+            raise ValueError("Invalid scrape response. Expected a JSON dictionary.")
         return self._structure_data(response)
 
     def _structure_data(self, result_object: dict[str, Any]) -> WatercrawlDocumentData:
@@ -122,7 +122,7 @@ class WaterCrawlProvider:
         }
 
     def _get_results(
-        self, crawl_request_id: str, query_params: dict | None = None
+        self, crawl_request_id: str, query_params: dict[str, Any] | None = None
     ) -> Generator[WatercrawlDocumentData, None, None]:
         page = 0
         page_size = 100

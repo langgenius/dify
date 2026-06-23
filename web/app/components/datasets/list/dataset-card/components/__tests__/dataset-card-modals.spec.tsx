@@ -19,28 +19,6 @@ vi.mock('../../../../rename-modal', () => ({
   ),
 }))
 
-// Mock Confirm component since it uses createPortal which can cause issues in tests
-vi.mock('@/app/components/base/confirm', () => ({
-  default: ({ isShow, title, content, onConfirm, onCancel }: {
-    isShow: boolean
-    title: string
-    content?: React.ReactNode
-    onConfirm: () => void
-    onCancel: () => void
-  }) => (
-    isShow
-      ? (
-          <div data-testid="confirm-modal">
-            <div data-testid="confirm-title">{title}</div>
-            <div data-testid="confirm-content">{content}</div>
-            <button onClick={onCancel} role="button" aria-label="cancel">Cancel</button>
-            <button onClick={onConfirm} role="button" aria-label="confirm">Confirm</button>
-          </div>
-        )
-      : null
-  ),
-}))
-
 describe('DatasetCardModals', () => {
   const mockDataset: DataSet = {
     id: 'dataset-1',
@@ -93,10 +71,12 @@ describe('DatasetCardModals', () => {
     modalState: {
       showRenameModal: false,
       showConfirmDelete: false,
+      showAccessConfig: false,
       confirmMessage: '',
     },
     onCloseRename: vi.fn(),
     onCloseConfirm: vi.fn(),
+    onCloseAccessConfig: vi.fn(),
     onConfirmDelete: vi.fn(),
     onSuccess: vi.fn(),
   }
@@ -231,6 +211,7 @@ describe('DatasetCardModals', () => {
           modalState={{
             showRenameModal: true,
             showConfirmDelete: true,
+            showAccessConfig: false,
             confirmMessage: 'Delete this dataset?',
           }}
         />,

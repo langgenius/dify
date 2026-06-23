@@ -2,16 +2,16 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 
 from core.prompt.prompt_transform import PromptTransform
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 
 # from core.app.app_config.entities import ModelConfigEntity
 # from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 # from graphon.model_runtime.entities.message_entities import UserPromptMessage
 # from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey, ParameterRule
 # from graphon.model_runtime.entities.provider_entities import ProviderEntity
-# from graphon.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+# from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 # from core.prompt.prompt_transform import PromptTransform
 
 
@@ -209,7 +209,7 @@ class TestPromptTransform:
         assert result == ["only"]
         memory.get_history_prompt_messages.assert_called_with(max_token_limit=10, message_limit=None)
 
-    def test_append_chat_histories_extends_prompt_messages(self, monkeypatch):
+    def test_append_chat_histories_extends_prompt_messages(self, monkeypatch: pytest.MonkeyPatch):
         transform = PromptTransform()
         memory = MagicMock()
         memory_config = SimpleNamespace(window=SimpleNamespace(enabled=False, size=None))

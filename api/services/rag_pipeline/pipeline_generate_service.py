@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any, Union
+from typing import Any
 
 from configs import dify_config
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
@@ -17,7 +17,7 @@ class PipelineGenerateService:
     def generate(
         cls,
         pipeline: Pipeline,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,

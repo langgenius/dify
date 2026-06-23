@@ -8,12 +8,12 @@ scope updates that matter to chat applications.
 """
 
 import logging
-
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.graph_events import GraphEngineEvent, NodeRunVariableUpdatedEvent
+from typing import override
 
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID
+from graphon.graph_engine.layers import GraphEngineLayer
+from graphon.graph_events import GraphEngineEvent, NodeRunVariableUpdatedEvent
 from services.conversation_variable_updater import ConversationVariableUpdater
 
 logger = logging.getLogger(__name__)
@@ -24,9 +24,11 @@ class ConversationVariablePersistenceLayer(GraphEngineLayer):
         super().__init__()
         self._conversation_variable_updater = conversation_variable_updater
 
+    @override
     def on_graph_start(self) -> None:
         pass
 
+    @override
     def on_event(self, event: GraphEngineEvent) -> None:
         if not isinstance(event, NodeRunVariableUpdatedEvent):
             return
@@ -45,5 +47,6 @@ class ConversationVariablePersistenceLayer(GraphEngineLayer):
 
         self._conversation_variable_updater.update(conversation_id=conversation_id, variable=event.variable)
 
+    @override
     def on_graph_end(self, error: Exception | None) -> None:
         pass

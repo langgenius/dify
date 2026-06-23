@@ -6,7 +6,6 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
-from graphon.file import helpers as file_helpers
 from pydantic import BaseModel
 
 from configs import dify_config
@@ -16,6 +15,7 @@ from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.mcp.types import OAuthClientInformation, OAuthClientMetadata, OAuthTokens
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
+from graphon.file import helpers as file_helpers
 
 if TYPE_CHECKING:
     from models.tools import MCPToolProvider
@@ -35,6 +35,13 @@ class MCPSupportGrantType(StrEnum):
     AUTHORIZATION_CODE = "authorization_code"
     CLIENT_CREDENTIALS = "client_credentials"
     REFRESH_TOKEN = "refresh_token"
+
+
+class IdentityMode(StrEnum):
+    """How Dify forwards the end-user's identity to an MCP server."""
+
+    OFF = "off"
+    IDP_TOKEN = "idp_token"
 
 
 class MCPAuthentication(BaseModel):
@@ -76,6 +83,8 @@ class MCPProviderEntity(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    identity_mode: IdentityMode = IdentityMode.OFF
+
     @classmethod
     def from_db_model(cls, db_provider: MCPToolProvider) -> MCPProviderEntity:
         """Create entity from database model with decryption"""
@@ -96,6 +105,7 @@ class MCPProviderEntity(BaseModel):
             icon=db_provider.icon or "",
             created_at=db_provider.created_at,
             updated_at=db_provider.updated_at,
+            identity_mode=IdentityMode(db_provider.identity_mode),
         )
 
     @property
@@ -170,6 +180,7 @@ class MCPProviderEntity(BaseModel):
             "updated_at": int(self.updated_at.timestamp()),
             "label": I18nObject(en_US=self.name, zh_Hans=self.name).to_dict(),
             "description": I18nObject(en_US="", zh_Hans="").to_dict(),
+            "identity_mode": self.identity_mode,
         }
 
         # Add configuration

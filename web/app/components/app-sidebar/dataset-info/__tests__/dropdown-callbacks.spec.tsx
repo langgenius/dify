@@ -1,23 +1,32 @@
 import type { DataSet } from '@/models/datasets'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import {
   ChunkingMode,
   DatasetPermission,
   DataSourceType,
 } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
+import { DatasetACLPermission } from '@/utils/permission'
 import Dropdown from '../dropdown'
 
 let mockDataset: DataSet
-let mockIsDatasetOperator = false
 const mockReplace = vi.fn()
 const mockInvalidDatasetList = vi.fn()
 const mockInvalidDatasetDetail = vi.fn()
 const mockExportPipeline = vi.fn()
 const mockCheckIsUsedInApp = vi.fn()
 const mockDeleteDataset = vi.fn()
+const mockToast = vi.fn()
+let mockIsRbacEnabled = true
+
+const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) => renderWithSystemFeatures(ui, {
+  systemFeatures: {
+    rbac_enabled: mockIsRbacEnabled,
+  },
+})
 
 const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   id: 'dataset-1',
@@ -77,6 +86,11 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   runtime_mode: 'rag_pipeline',
   enable_api: false,
   is_multimodal: false,
+  permission_keys: [
+    DatasetACLPermission.Edit,
+    DatasetACLPermission.Delete,
+    DatasetACLPermission.ImportExportDSL,
+  ],
   ...overrides,
 })
 
@@ -89,8 +103,10 @@ vi.mock('@/context/dataset-detail', () => ({
 }))
 
 vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { isCurrentWorkspaceDatasetOperator: boolean }) => unknown) =>
-    selector({ isCurrentWorkspaceDatasetOperator: mockIsDatasetOperator }),
+  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [],
+  }),
 }))
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
@@ -109,6 +125,12 @@ vi.mock('@/service/use-pipeline', () => ({
 vi.mock('@/service/datasets', () => ({
   checkIsUsedInApp: (...args: unknown[]) => mockCheckIsUsedInApp(...args),
   deleteDataset: (...args: unknown[]) => mockDeleteDataset(...args),
+}))
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    error: (...args: unknown[]) => mockToast(...args),
+  },
 }))
 
 vi.mock('@/app/components/datasets/rename-modal', () => ({
@@ -132,46 +154,11 @@ vi.mock('@/app/components/datasets/rename-modal', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/confirm', () => ({
-  default: ({
-    isShow,
-    onConfirm,
-    onCancel,
-    title,
-    content,
-  }: {
-    isShow: boolean
-    onConfirm: () => void
-    onCancel: () => void
-    title: string
-    content: string
-  }) => {
-    if (!isShow)
-      return null
-    return (
-      <div data-testid="confirm-dialog">
-        <span>{title}</span>
-        <span>{content}</span>
-        <button type="button" onClick={onConfirm}>confirm</button>
-        <button type="button" onClick={onCancel}>cancel</button>
-      </div>
-    )
-  },
-}))
-
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  PortalToFollowElemTrigger: ({ children, onClick }: { children: React.ReactNode, onClick?: () => void }) => (
-    <div data-testid="portal-trigger" onClick={onClick}>{children}</div>
-  ),
-  PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
-
 describe('Dropdown callback coverage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockIsRbacEnabled = true
     mockDataset = createDataset({ pipeline_id: 'pipeline-1', runtime_mode: 'rag_pipeline' })
-    mockIsDatasetOperator = false
     mockExportPipeline.mockResolvedValue({ data: 'pipeline-content' })
     mockCheckIsUsedInApp.mockResolvedValue({ is_using: false })
     mockDeleteDataset.mockResolvedValue({})
@@ -181,7 +168,7 @@ describe('Dropdown callback coverage', () => {
     const user = userEvent.setup()
     render(<Dropdown expand />)
 
-    await user.click(screen.getByTestId('portal-trigger'))
+    await user.click(screen.getByRole('button'))
     await user.click(screen.getByText('common.operation.edit'))
 
     expect(screen.getByTestId('rename-modal')).toBeInTheDocument()
@@ -197,7 +184,7 @@ describe('Dropdown callback coverage', () => {
     const user = userEvent.setup()
     render(<Dropdown expand />)
 
-    await user.click(screen.getByTestId('portal-trigger'))
+    await user.click(screen.getByRole('button'))
     await user.click(screen.getByText('common.operation.edit'))
 
     expect(screen.getByTestId('rename-modal')).toBeInTheDocument()
@@ -212,17 +199,83 @@ describe('Dropdown callback coverage', () => {
     const user = userEvent.setup()
     render(<Dropdown expand />)
 
-    await user.click(screen.getByTestId('portal-trigger'))
+    await user.click(screen.getByRole('button'))
     await user.click(screen.getByText('common.operation.delete'))
 
     await waitFor(() => {
-      expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+      expect(screen.getByText('dataset.deleteDatasetConfirmTitle')).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('cancel'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     await waitFor(() => {
-      expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
+      expect(screen.queryByText('dataset.deleteDatasetConfirmTitle')).not.toBeInTheDocument()
     })
+  })
+
+  it('should show the used-by-app confirmation copy when the dataset is referenced by apps', async () => {
+    const user = userEvent.setup()
+    mockCheckIsUsedInApp.mockResolvedValueOnce({ is_using: true })
+
+    render(<Dropdown expand />)
+
+    await user.click(screen.getByRole('button'))
+    await user.click(screen.getByText('common.operation.delete'))
+
+    await waitFor(() => {
+      expect(screen.getByText('dataset.datasetUsedByApp')).toBeInTheDocument()
+    })
+  })
+
+  it('should surface an export failure toast when pipeline export fails', async () => {
+    const user = userEvent.setup()
+    mockExportPipeline.mockRejectedValueOnce(new Error('export failed'))
+
+    render(<Dropdown expand />)
+
+    await user.click(screen.getByRole('button'))
+    await user.click(screen.getByText('datasetPipeline.operations.exportPipeline'))
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith('app.exportFailed')
+    })
+  })
+
+  it('should not attempt export when the dataset has no pipeline id', async () => {
+    const user = userEvent.setup()
+    mockDataset = createDataset({ pipeline_id: '' })
+
+    render(<Dropdown expand={false} />)
+
+    await user.click(screen.getByRole('button'))
+    await user.click(screen.getByText('datasetPipeline.operations.exportPipeline'))
+
+    expect(mockExportPipeline).not.toHaveBeenCalled()
+  })
+
+  it('should render and open correctly when collapsed', async () => {
+    const user = userEvent.setup()
+    render(<Dropdown expand={false} />)
+
+    await user.click(screen.getByRole('button'))
+
+    expect(screen.getByText('common.operation.edit')).toBeInTheDocument()
+  })
+
+  it('should surface the backend message when checking app usage fails', async () => {
+    const user = userEvent.setup()
+    mockCheckIsUsedInApp.mockRejectedValueOnce({
+      json: vi.fn().mockResolvedValue({ message: 'check failed' }),
+    })
+
+    render(<Dropdown expand />)
+
+    await user.click(screen.getByRole('button'))
+    await user.click(screen.getByText('common.operation.delete'))
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith('check failed')
+    })
+    expect(screen.queryByText('dataset.deleteDatasetConfirmTitle')).not.toBeInTheDocument()
   })
 })

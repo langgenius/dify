@@ -4,10 +4,10 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 from core.entities.knowledge_entities import PreviewDetail
+from core.rag.entities import ParentMode, Rule, Segmentation
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.processor.parent_child_index_processor import ParentChildIndexProcessor
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
-from services.entities.knowledge_entities.knowledge_entities import ParentMode
 
 
 class TestParentChildIndexProcessor:
@@ -258,10 +258,10 @@ class TestParentChildIndexProcessor:
         session.commit.assert_called_once()
 
     def test_clean_deletes_summaries_when_requested(self, processor: ParentChildIndexProcessor, dataset: Mock) -> None:
-        segment_query = Mock()
-        segment_query.filter.return_value.all.return_value = [SimpleNamespace(id="seg-1")]
+        scalars_result = Mock()
+        scalars_result.all.return_value = [SimpleNamespace(id="seg-1")]
         session = Mock()
-        session.query.return_value = segment_query
+        session.scalars.return_value = scalars_result
         session_ctx = MagicMock()
         session_ctx.__enter__.return_value = session
         session_ctx.__exit__.return_value = False
@@ -293,29 +293,14 @@ class TestParentChildIndexProcessor:
 
         mock_summary.assert_called_once_with(dataset, None)
 
-    def test_retrieve_filters_by_score_threshold(self, processor: ParentChildIndexProcessor, dataset: Mock) -> None:
-        ok_result = SimpleNamespace(page_content="keep", metadata={"m": 1}, score=0.8)
-        low_result = SimpleNamespace(page_content="drop", metadata={"m": 2}, score=0.2)
-
-        with patch(
-            "core.rag.index_processor.processor.parent_child_index_processor.RetrievalService.retrieve"
-        ) as mock_retrieve:
-            mock_retrieve.return_value = [ok_result, low_result]
-            reranking_model = {"reranking_provider_name": "", "reranking_model_name": ""}
-            docs = processor.retrieve("semantic_search", "query", dataset, 3, 0.5, reranking_model)
-
-        assert len(docs) == 1
-        assert docs[0].page_content == "keep"
-        assert docs[0].metadata["score"] == 0.8
-
     def test_split_child_nodes_requires_subchunk_segmentation(self, processor: ParentChildIndexProcessor) -> None:
-        rules = SimpleNamespace(subchunk_segmentation=None)
+        rules = Rule(subchunk_segmentation=None)
 
         with pytest.raises(ValueError, match="No subchunk segmentation found"):
             processor._split_child_nodes(Document(page_content="parent", metadata={}), rules, "custom", None)
 
     def test_split_child_nodes_generates_child_documents(self, processor: ParentChildIndexProcessor) -> None:
-        rules = SimpleNamespace(subchunk_segmentation=self._segmentation())
+        rules = Rule(subchunk_segmentation=Segmentation(max_tokens=200, chunk_overlap=10, separator="\n"))
         splitter = Mock()
         splitter.split_documents.return_value = [
             Document(page_content=".child-1", metadata={}),

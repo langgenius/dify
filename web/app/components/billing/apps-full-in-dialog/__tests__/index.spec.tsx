@@ -1,14 +1,23 @@
+import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { Mock } from 'vitest'
 import type { UsagePlanInfo } from '@/app/components/billing/type'
 import type { AppContextValue } from '@/context/app-context'
 import type { ProviderContextState } from '@/context/provider-context'
-import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
+import type { ICurrentWorkspace, LangGeniusVersionResponse } from '@/models/common'
 import { render, screen } from '@testing-library/react'
 import { Plan } from '@/app/components/billing/type'
 import { mailToSupport } from '@/app/components/header/utils/util'
 import { useAppContext } from '@/context/app-context'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import AppsFull from '../index'
+
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: true,
+  }
+})
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
@@ -59,7 +68,7 @@ const buildProviderContext = (overrides: Partial<ProviderContextState> = {}): Pr
 })
 
 const buildAppContext = (overrides: Partial<AppContextValue> = {}): AppContextValue => {
-  const userProfile: UserProfileResponse = {
+  const userProfile: GetAccountProfileResponse = {
     id: 'user-id',
     name: 'Test User',
     email: 'user@example.com',
@@ -100,6 +109,7 @@ const buildAppContext = (overrides: Partial<AppContextValue> = {}): AppContextVa
     langGeniusVersionInfo,
     isLoadingCurrentWorkspace: false,
     isValidatingCurrentWorkspace: false,
+    workspacePermissionKeys: [],
   }
   const useSelector: AppContextValue['useSelector'] = selector => selector({ ...base, useSelector })
   return {
@@ -197,8 +207,8 @@ describe('AppsFull', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should apply distinct progress bar styling at different usage levels', () => {
-      const renderWithUsage = (used: number, total: number) => {
+    it('applies neutral / warning / error tone at distinct usage levels', () => {
+      const findToneClass = (used: number, total: number) => {
         ;(useProviderContext as Mock).mockReturnValue(buildProviderContext({
           plan: {
             ...baseProviderContextValue.plan,
@@ -208,19 +218,18 @@ describe('AppsFull', () => {
             reset: { apiRateLimit: null, triggerEvents: null },
           },
         }))
-        const { unmount } = render(<AppsFull loc="billing_dialog" />)
-        const className = screen.getByTestId('billing-progress-bar').className
+        const { container, unmount } = render(<AppsFull loc="billing_dialog" />)
+        const indicator = container.querySelector(
+          '[class*="bg-components-progress-"]:not([class*="progress-bar-bg"])',
+        )
+        const className = indicator?.className ?? ''
         unmount()
         return className
       }
 
-      const normalClass = renderWithUsage(2, 10)
-      const warningClass = renderWithUsage(6, 10)
-      const errorClass = renderWithUsage(8, 10)
-
-      expect(normalClass).not.toBe(warningClass)
-      expect(warningClass).not.toBe(errorClass)
-      expect(normalClass).not.toBe(errorClass)
+      expect(findToneClass(2, 10)).toContain('bg-components-progress-bar-progress-solid')
+      expect(findToneClass(6, 10)).toContain('bg-components-progress-warning-progress')
+      expect(findToneClass(8, 10)).toContain('bg-components-progress-error-progress')
     })
   })
 })

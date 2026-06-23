@@ -8,7 +8,7 @@ import type {
   HumanInputFormData,
 } from '@/types/workflow'
 
-export type MessageMore = {
+type MessageMore = {
   time: string
   tokens: number
   latency: number | string
@@ -28,8 +28,6 @@ export type SubmitAnnotationFunc = (
   messageId: string,
   content: string,
 ) => Promise<any>
-
-export type DisplayScene = 'web' | 'console'
 
 export type ToolInfoInThought = {
   name: string
@@ -68,18 +66,22 @@ export type CitationItem = {
   word_count: number
 }
 
-export type ExtraContent
-  = {
-    type: 'human_input'
-    submitted: false
-    form_definition: HumanInputFormData
-    workflow_run_id: string
-  }
-  | {
-    type: 'human_input'
-    submitted: true
-    form_submission_data: HumanInputFilledFormData
-  }
+type PendingHumanInputExtraContent = {
+  type: 'human_input'
+  submitted: false
+  form_definition: HumanInputFormData
+  workflow_run_id: string
+}
+
+type SubmittedHumanInputExtraContent = {
+  type: 'human_input'
+  submitted: true
+  form_definition?: HumanInputFormData
+  form_submission_data: HumanInputFilledFormData
+  workflow_run_id?: string
+}
+
+export type ExtraContent = PendingHumanInputExtraContent | SubmittedHumanInputExtraContent
 
 export type IChatItem = {
   id: string
@@ -149,15 +151,6 @@ export type MessageReplace = {
   task_id: string
   answer: string
   conversation_id: string
-}
-
-export type AnnotationReply = {
-  id: string
-  task_id: string
-  answer: string
-  conversation_id: string
-  annotation_id: string
-  annotation_author_name: string
 }
 
 export type InputForm = {

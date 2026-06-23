@@ -1,6 +1,4 @@
-.modal {
-  position: relative;
-}
+@reference "../../../../styles/globals.css";
 
 .modalHeader {
   @apply flex items-center place-content-between h-8;
@@ -17,7 +15,7 @@
   background-size: 16px;
 }
 
-.modal .tip {
+.tip {
   @apply mt-1 mb-8 text-text-tertiary;
   font-weight: 400;
   font-size: 13px;

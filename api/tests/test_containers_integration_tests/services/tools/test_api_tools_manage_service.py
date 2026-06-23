@@ -1,3 +1,5 @@
+import inspect
+import json
 from unittest.mock import patch
 
 import pytest
@@ -6,6 +8,8 @@ from pydantic import TypeAdapter, ValidationError
 from sqlalchemy.orm import Session
 
 from core.tools.entities.tool_entities import ApiProviderSchemaType
+from core.tools.errors import ApiToolProviderNotFoundError
+from core.tools.tool_label_manager import ToolLabelManager
 from models import Account, Tenant
 from models.tools import ApiToolProvider
 from services.tools.api_tools_manage_service import ApiToolManageService
@@ -590,29 +594,203 @@ class TestApiToolManageService:
         with pytest.raises(ValueError, match="you have not added provider"):
             ApiToolManageService.delete_api_tool_provider(account.id, tenant.id, "nonexistent")
 
-    def test_update_api_tool_provider_not_found(
+    def test_update_api_tool_provider_success(
         self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
     ):
-        """Test update raises ValueError when original provider not found."""
         fake = Faker()
+
+        # Firmware fix for cache.delete() in update flow
+        mock_encrypter = mock_external_service_dependencies["encrypter"]
+        from unittest.mock import MagicMock
+
+        mock_cache = MagicMock()
+        mock_cache.delete.return_value = None
+        mock_encrypter.return_value = (mock_encrypter, mock_cache)
+
+        # Get fake account and tenant
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
 
-        with pytest.raises(ValueError, match="does not exists"):
-            ApiToolManageService.update_api_tool_provider(
+        # original provider name
+        original_name = "original-provider"
+
+        # Create original provider
+        _ = ApiToolManageService.create_api_tool_provider(
+            user_id=account.id,
+            tenant_id=tenant.id,
+            provider_name=original_name,
+            icon={"type": "emoji", "value": "🔧"},
+            credentials={"auth_type": "none"},
+            schema_type=ApiProviderSchemaType.OPENAPI,
+            schema=self._create_test_openapi_schema(),
+            privacy_policy="",
+            custom_disclaimer="",
+            labels=["old-label"],
+        )
+
+        # new provide name and new labels for update
+        new_name = "updated-provider"
+        new_labels = ["new-label-1", "new-label-2"]
+
+        # Reset mock history so assertions focus on update path only
+        mock_external_service_dependencies["encrypter"].reset_mock()
+        mock_external_service_dependencies["provider_controller"].from_db.reset_mock()
+        mock_external_service_dependencies["tool_label_manager"].update_tool_labels.reset_mock()
+
+        # Act: Update the provider with new values
+        result = ApiToolManageService.update_api_tool_provider(
+            user_id=account.id,
+            tenant_id=tenant.id,
+            # new provider name     - changed 1
+            provider_name=new_name,
+            original_provider=original_name,
+            # new icon              - changed 2
+            icon={"type": "emoji", "value": "🚀"},
+            credentials={"auth_type": "none"},
+            _schema_type=ApiProviderSchemaType.OPENAPI,
+            schema=self._create_test_openapi_schema(),
+            # new privacy policy    - changed 3
+            privacy_policy="https://new-policy.com",
+            # new custom disclaimer - changed 4
+            custom_disclaimer="New disclaimer",
+            # new labels            - changed 5 (However, we will not verify this, not this layer responsibility.)
+            labels=new_labels,
+        )
+
+        # Assert: Verify the result
+        assert result == {"result": "success"}
+
+        # Get the updated provider from the database
+        updated_provider: ApiToolProvider | None = (
+            db_session_with_containers.query(ApiToolProvider)
+            .filter(ApiToolProvider.tenant_id == tenant.id, ApiToolProvider.name == new_name)
+            .first()
+        )
+
+        # Verify the provider was updated successfully
+        assert updated_provider is not None
+
+        # Manually refresh to keep object detachment
+        db_session_with_containers.refresh(updated_provider)
+        # Verify all the updated fields
+        # - changed 1
+        assert updated_provider.name == new_name
+        # - changed 2
+        icon_data = json.loads(updated_provider.icon)
+        assert icon_data["type"] == "emoji"
+        assert icon_data["value"] == "🚀"
+        # - changed 3
+        assert updated_provider.privacy_policy == "https://new-policy.com"
+        # - changed 4
+        assert updated_provider.custom_disclaimer == "New disclaimer"
+
+        # Verify old provider name no longer exists after rename
+        original_provider: ApiToolProvider | None = (
+            db_session_with_containers.query(ApiToolProvider)
+            .filter(ApiToolProvider.tenant_id == tenant.id, ApiToolProvider.name == original_name)
+            .first()
+        )
+        assert original_provider is None
+
+        # Verify update flow calls critical collaborators
+        mock_external_service_dependencies["provider_controller"].from_db.assert_called_once()
+        mock_external_service_dependencies["encrypter"].assert_called_once()
+        mock_cache.delete.assert_called_once()
+
+        # Deeply verify on session propagation of labels update logics:
+        # Since in refactoring, we pass session down to label manager to keep atomicity.
+        # The assertion here is to verify this.
+        sig = inspect.signature(ToolLabelManager.update_tool_labels)
+        args, kwargs = mock_external_service_dependencies["tool_label_manager"].update_tool_labels.call_args
+        bound_args = sig.bind(*args, **kwargs)
+        passed_session = bound_args.arguments.get("session")
+        # Ensure the type: Session
+        assert isinstance(passed_session, Session), f"Expected Session object, got {type(passed_session)}"
+        assert passed_session is not None, (
+            "Atomicity Failure: Session cannot be passed to Label Manager in update_api_tool_provider"
+        )
+
+    def test_update_api_tool_provider_not_found(
+        self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """
+        Test update raises ValueError when original provider not found.
+
+        This test verifies:
+        - Proper error when trying to update a non-existing original provider
+        - No accidental upsert/new provider creation
+        - No external dependency invocation on early failure path
+        """
+        # Arrange: Create test account and tenant
+        account, tenant = self._create_test_account_and_tenant(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+
+        # Keep an existing provider in DB to ensure unrelated data remains unchanged
+        existing_provider_name = "existing-provider"
+        _ = ApiToolManageService.create_api_tool_provider(
+            user_id=account.id,
+            tenant_id=tenant.id,
+            provider_name=existing_provider_name,
+            icon={"type": "emoji", "value": "🔧"},
+            credentials={"auth_type": "none"},
+            schema_type=ApiProviderSchemaType.OPENAPI,
+            schema=self._create_test_openapi_schema(),
+            privacy_policy="https://existing-policy.com",
+            custom_disclaimer="Existing disclaimer",
+            labels=["existing-label"],
+        )
+
+        # Reset mock history so assertions focus on update failure path only
+        mock_external_service_dependencies["tool_label_manager"].update_tool_labels.reset_mock()
+        mock_external_service_dependencies["encrypter"].reset_mock()
+        mock_external_service_dependencies["provider_controller"].from_db.reset_mock()
+
+        # Act & Assert: Verify update fails with clear error message
+        target_new_name = "new-provider-name"
+        missing_original_name = "missing-original-provider"
+        with pytest.raises(ApiToolProviderNotFoundError) as exc_info:
+            _ = ApiToolManageService.update_api_tool_provider(
                 user_id=account.id,
                 tenant_id=tenant.id,
-                provider_name="new-name",
-                original_provider="nonexistent",
-                icon={},
+                provider_name=target_new_name,
+                original_provider=missing_original_name,
+                icon={"type": "emoji", "value": "🚀"},
                 credentials={"auth_type": "none"},
                 _schema_type=ApiProviderSchemaType.OPENAPI,
                 schema=self._create_test_openapi_schema(),
-                privacy_policy=None,
-                custom_disclaimer="",
-                labels=[],
+                privacy_policy="https://new-policy.com",
+                custom_disclaimer="New disclaimer",
+                labels=["new-label"],
             )
+
+        error = exc_info.value
+        assert error.provider_name == missing_original_name
+        assert error.tenant_id == tenant.id
+        assert error.error_code == "api_tool_provider_not_found"
+
+        # Assert: Existing provider should remain unchanged
+        existing_provider: ApiToolProvider | None = (
+            db_session_with_containers.query(ApiToolProvider)
+            .filter(ApiToolProvider.tenant_id == tenant.id, ApiToolProvider.name == existing_provider_name)
+            .first()
+        )
+        assert existing_provider is not None
+        assert existing_provider.name == existing_provider_name
+
+        # Assert: No new provider should be created
+        unexpected_new_provider: ApiToolProvider | None = (
+            db_session_with_containers.query(ApiToolProvider)
+            .filter(ApiToolProvider.tenant_id == tenant.id, ApiToolProvider.name == target_new_name)
+            .first()
+        )
+        assert unexpected_new_provider is None
+
+        # Assert: Early failure should skip all downstream external interactions
+        mock_external_service_dependencies["tool_label_manager"].update_tool_labels.assert_not_called()
+        mock_external_service_dependencies["encrypter"].assert_not_called()
+        mock_external_service_dependencies["provider_controller"].from_db.assert_not_called()
 
     def test_update_api_tool_provider_missing_auth_type(
         self, flask_req_ctx_with_containers, db_session_with_containers: Session, mock_external_service_dependencies

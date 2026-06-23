@@ -2,10 +2,11 @@
 
 import type { FC } from 'react'
 import type { StepTwoProps } from './types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import Toast from '@/app/components/base/toast'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useLocale } from '@/context/i18n'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -13,10 +14,10 @@ import { LanguagesSupported } from '@/i18n-config/language'
 import { DataSourceProvider } from '@/models/common'
 import { ChunkingMode, ProcessMode } from '@/models/datasets'
 import { useFetchDefaultProcessRule } from '@/service/knowledge/use-create-dataset'
-import { cn } from '@/utils/classnames'
 import { GeneralChunkingOptions, IndexingModeSection, ParentChildOptions, PreviewPanel, StepTwoFooter } from './components'
 import { IndexingType, MAXIMUM_CHUNK_TOKEN_LENGTH, useDocumentCreation, useIndexingConfig, useIndexingEstimate, usePreviewState, useSegmentationState } from './hooks'
 
+// eslint-disable-next-line no-barrel-files/no-barrel-files
 export { IndexingType }
 
 const StepTwo: FC<StepTwoProps> = ({
@@ -33,6 +34,7 @@ const StepTwo: FC<StepTwoProps> = ({
   crawlOptions,
   websiteCrawlProvider = DataSourceProvider.jinaReader,
   websiteCrawlJobId = '',
+  canCreateDocument = true,
   onStepChange,
   updateIndexingTypeCache,
   updateResultCache,
@@ -88,6 +90,7 @@ const StepTwo: FC<StepTwoProps> = ({
     crawlOptions,
     websiteCrawlProvider,
     websiteCrawlJobId,
+    canCreateDocument,
     onStepChange,
     updateIndexingTypeCache,
     updateResultCache,
@@ -139,13 +142,16 @@ const StepTwo: FC<StepTwoProps> = ({
 
   const updatePreview = useCallback(() => {
     if (segmentation.segmentationType === ProcessMode.general && segmentation.maxChunkLength > MAXIMUM_CHUNK_TOKEN_LENGTH) {
-      Toast.notify({ type: 'error', message: t('stepTwo.maxLengthCheck', { ns: 'datasetCreation', limit: MAXIMUM_CHUNK_TOKEN_LENGTH }) })
+      toast.error(t('stepTwo.maxLengthCheck', { ns: 'datasetCreation', limit: MAXIMUM_CHUNK_TOKEN_LENGTH }))
       return
     }
     estimateHook.fetchEstimate()
   }, [segmentation, t, estimateHook])
 
   const handleCreate = useCallback(async () => {
+    if (!canCreateDocument)
+      return
+
     const isValid = creation.validateParams({
       segmentationType: segmentation.segmentationType,
       maxChunkLength: segmentation.maxChunkLength,
@@ -162,7 +168,7 @@ const StepTwo: FC<StepTwoProps> = ({
     if (!params)
       return
     await creation.executeCreation(params, indexing.indexType, indexing.retrievalConfig)
-  }, [creation, segmentation, indexing, currentDocForm, docLanguage])
+  }, [canCreateDocument, creation, segmentation, indexing, currentDocForm, docLanguage])
 
   const handlePickerChange = useCallback((selected: { id: string, name: string }) => {
     estimateHook.reset()
@@ -187,7 +193,7 @@ const StepTwo: FC<StepTwoProps> = ({
       segmentation.applyConfigFromRules(rules, isHierarchical)
       segmentation.setSegmentationType(documentDetail.dataset_process_rule.mode)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react/exhaustive-deps
   }, [])
 
   // Show options conditions
@@ -195,9 +201,9 @@ const StepTwo: FC<StepTwoProps> = ({
   const showParentChildOption = (isInUpload && currentDataset!.doc_form === ChunkingMode.parentChild) || isUploadInEmptyDataset || isInInit
 
   return (
-    <div className="flex h-full w-full">
+    <div className="flex size-full">
       <div className={cn('relative h-full w-1/2 overflow-y-auto py-6', isMobile ? 'px-4' : 'px-12')}>
-        <div className="system-md-semibold mb-1 text-text-secondary">{t('stepTwo.segmentation', { ns: 'datasetCreation' })}</div>
+        <div className="mb-1 system-md-semibold text-text-secondary">{t('stepTwo.segmentation', { ns: 'datasetCreation' })}</div>
         {showGeneralOption && (
           <GeneralChunkingOptions
             segmentIdentifier={segmentation.segmentIdentifier}

@@ -8,6 +8,7 @@ import StepOne from '../index'
 
 // Mock config for website crawl features
 vi.mock('@/config', () => ({
+  IS_CLOUD_EDITION: false,
   ENABLE_WEBSITE_FIRECRAWL: true,
   ENABLE_WEBSITE_JINAREADER: false,
   ENABLE_WEBSITE_WATERCRAWL: false,
@@ -33,6 +34,16 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     plan: mockPlan,
     enableBilling: mockEnableBilling,
+  }),
+}))
+
+vi.mock('@/service/use-billing', () => ({
+  useCurrentPlanVectorSpace: () => ({
+    data: {
+      size: mockPlan.usage.vectorSpace,
+      limit: mockPlan.total.vectorSpace,
+    },
+    isFetching: false,
   }),
 }))
 
@@ -90,18 +101,6 @@ vi.mock('@/app/components/base/notion-page-selector', () => ({
 
 vi.mock('@/app/components/billing/vector-space-full', () => ({
   default: () => <div data-testid="vector-space-full">Vector Space Full</div>,
-}))
-
-vi.mock('@/app/components/billing/plan-upgrade-modal', () => ({
-  default: ({ show, onClose }: { show: boolean, onClose: () => void }) => (
-    show
-      ? (
-          <div data-testid="plan-upgrade-modal">
-            <button data-testid="close-upgrade-modal" onClick={onClose}>Close</button>
-          </div>
-        )
-      : null
-  ),
 }))
 
 vi.mock('../../file-preview', () => ({
@@ -388,7 +387,7 @@ describe('StepOne', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))
 
-      expect(screen.getByTestId('plan-upgrade-modal')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
     it('should show upgrade card when in sandbox plan with files', () => {

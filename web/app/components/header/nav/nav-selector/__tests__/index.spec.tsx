@@ -1,70 +1,19 @@
 import type { INavSelectorProps, NavItem } from '../index'
 import type { AppContextValue } from '@/context/app-context'
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import * as React from 'react'
+import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
-import { useRouter } from '@/next/navigation'
 import { AppModeEnum } from '@/types/app'
-import NavSelector from '../index'
+import { NavSelector } from '../index'
 
-vi.mock('@headlessui/react', () => {
-  type MenuContextValue = { open: boolean, setOpen: (open: boolean) => void }
-  const MenuContext = React.createContext<MenuContextValue | null>(null)
+const mockPush = vi.fn()
 
-  const Menu = ({ children }: { children: React.ReactNode | ((props: { open: boolean }) => React.ReactNode) }) => {
-    const [open, setOpen] = React.useState(false)
-    const value = React.useMemo(() => ({ open, setOpen }), [open])
-    return (
-      <MenuContext.Provider value={value}>
-        {typeof children === 'function' ? children({ open }) : children}
-      </MenuContext.Provider>
-    )
-  }
-
-  const MenuButton = ({ onClick, children, ...props }: { onClick?: () => void, children?: React.ReactNode }) => {
-    const context = React.useContext(MenuContext)
-    const handleClick = () => {
-      context?.setOpen(!context.open)
-      onClick?.()
-    }
-    return (
-      <button type="button" aria-expanded={context?.open ?? false} onClick={handleClick} {...props}>
-        {children}
-      </button>
-    )
-  }
-
-  const MenuItems = ({ as: Component = 'div', role, children, ...props }: { as?: React.ElementType, role?: string, children: React.ReactNode }) => {
-    const context = React.useContext(MenuContext)
-    if (!context?.open)
-      return null
-    return (
-      <Component role={role ?? 'menu'} {...props}>
-        {children}
-      </Component>
-    )
-  }
-
-  const MenuItem = ({ as: Component = 'div', role, children, ...props }: { as?: React.ElementType, role?: string, children: React.ReactNode }) => (
-    <Component role={role ?? 'menuitem'} {...props}>
-      {children}
-    </Component>
-  )
-
-  return {
-    Menu,
-    MenuButton,
-    MenuItems,
-    MenuItem,
-    Transition: ({ show = true, children }: { show?: boolean, children: React.ReactNode }) => (show ? <>{children}</> : null),
-  }
-})
-
-// Mock next/navigation
 vi.mock('@/next/navigation', () => ({
-  useRouter: vi.fn(),
+  useRouter: () => ({
+    push: mockPush,
+  }),
 }))
 
 // Mock app store
@@ -81,7 +30,6 @@ describe('NavSelector Component', () => {
   const mockSetAppDetail = vi.fn()
   const mockOnCreate = vi.fn()
   const mockOnLoadMore = vi.fn()
-  const mockPush = vi.fn()
 
   const navigationItems: NavItem[] = [
     {
@@ -105,7 +53,7 @@ describe('NavSelector Component', () => {
     },
   ]
 
-  const { link: _link, ...curNavWithoutLink } = navigationItems[0]
+  const { link: _link, ...curNavWithoutLink } = navigationItems[0]!
 
   const defaultProps: INavSelectorProps = {
     curNav: curNavWithoutLink,
@@ -122,16 +70,14 @@ describe('NavSelector Component', () => {
     vi.mocked(useAppStore).mockReturnValue(mockSetAppDetail)
     vi.mocked(useAppContext).mockReturnValue({
       isCurrentWorkspaceEditor: true,
+      workspacePermissionKeys: ['app.create_and_management', 'dataset.create_and_management'],
     } as unknown as AppContextValue)
-    vi.mocked(useRouter).mockReturnValue({
-      push: mockPush,
-    } as unknown as ReturnType<typeof useRouter>)
   })
 
   describe('Rendering', () => {
     it('should render current nav name', () => {
       render(<NavSelector {...defaultProps} />)
-      expect(screen.getByText('Item 1')).toBeInTheDocument()
+      expect(screen.getByText('Item 1'))!.toBeInTheDocument()
     })
 
     it('should show loading indicator when isLoadingMore is true', async () => {
@@ -140,7 +86,7 @@ describe('NavSelector Component', () => {
       await act(async () => {
         fireEvent.click(button)
       })
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('status'))!.toBeInTheDocument()
     })
   })
 
@@ -151,10 +97,10 @@ describe('NavSelector Component', () => {
       await act(async () => {
         fireEvent.click(button)
       })
-      expect(screen.getByText('Item 2')).toBeInTheDocument()
+      expect(screen.getByText('Item 2'))!.toBeInTheDocument()
     })
 
-    it('should navigate and call setAppDetail when an item is clicked', async () => {
+    it('should call setAppDetail and navigate when an item is clicked', async () => {
       render(<NavSelector {...defaultProps} />)
       const button = screen.getByRole('button')
       await act(async () => {
@@ -168,7 +114,7 @@ describe('NavSelector Component', () => {
       expect(mockPush).toHaveBeenCalledWith('/item2')
     })
 
-    it('should not navigate if current item is clicked', async () => {
+    it('should render current item without a route link', async () => {
       render(<NavSelector {...defaultProps} />)
       const button = screen.getByRole('button')
       await act(async () => {
@@ -181,7 +127,8 @@ describe('NavSelector Component', () => {
           fireEvent.click(listItem)
         })
       }
-      expect(mockPush).not.toHaveBeenCalled()
+      expect(listItem?.closest('a')).toBeNull()
+      expect(mockSetAppDetail).not.toHaveBeenCalled()
     })
 
     it('should call onCreate when create button is clicked (non-app mode)', async () => {
@@ -198,28 +145,36 @@ describe('NavSelector Component', () => {
     })
 
     it('should show extended create menu in app mode', async () => {
+      const user = userEvent.setup()
       render(<NavSelector {...defaultProps} isApp />)
       const button = screen.getByRole('button')
       await act(async () => {
         fireEvent.click(button)
       })
-      const createBtn = screen.getByText('Create New')
-      await act(async () => {
-        fireEvent.click(createBtn)
-      })
 
+      const openCreateMenu = async () => {
+        if (!screen.queryByRole('menuitem', { name: /Create New/i }))
+          await user.click(screen.getByRole('button', { name: /Item 1/i }))
+        const createBtn = await screen.findByRole('menuitem', { name: /Create New/i })
+        await user.hover(createBtn)
+        return screen.findByText(/app\.newApp\.startFromBlank/i)
+      }
+
+      await openCreateMenu()
       const blank = await screen.findByText(/app\.newApp\.startFromBlank/i)
       await act(async () => {
         fireEvent.click(blank)
       })
       expect(mockOnCreate).toHaveBeenCalledWith('blank')
 
+      await openCreateMenu()
       const template = await screen.findByText(/app\.newApp\.startFromTemplate/i)
       await act(async () => {
         fireEvent.click(template)
       })
       expect(mockOnCreate).toHaveBeenCalledWith('template')
 
+      await openCreateMenu()
       const dsl = await screen.findByText(/app\.importDSL/i)
       await act(async () => {
         fireEvent.click(dsl)
@@ -227,16 +182,59 @@ describe('NavSelector Component', () => {
       expect(mockOnCreate).toHaveBeenCalledWith('dsl')
     })
 
-    it('should not show create button for non-editors', async () => {
+    it('should open extended create menu on hover in app mode', async () => {
+      const user = userEvent.setup()
+      render(<NavSelector {...defaultProps} isApp />)
+      const button = screen.getByRole('button')
+      await act(async () => {
+        fireEvent.click(button)
+      })
+
+      const createBtn = await screen.findByRole('menuitem', { name: /Create New/i })
+      await user.hover(createBtn)
+
+      expect(await screen.findByText(/app\.newApp\.startFromBlank/i))!.toBeInTheDocument()
+    })
+
+    it('should show create button when dataset.create_and_management permission is present', async () => {
       vi.mocked(useAppContext).mockReturnValue({
         isCurrentWorkspaceEditor: false,
+        workspacePermissionKeys: ['dataset.create_and_management'],
       } as unknown as AppContextValue)
       render(<NavSelector {...defaultProps} />)
       const button = screen.getByRole('button')
       await act(async () => {
         fireEvent.click(button)
       })
+      expect(screen.getByText('Create New')).toBeInTheDocument()
+    })
+
+    it('should hide dataset create button without dataset.create_and_management permission', async () => {
+      vi.mocked(useAppContext).mockReturnValue({
+        isCurrentWorkspaceEditor: true,
+        workspacePermissionKeys: ['app.create_and_management'],
+      } as unknown as AppContextValue)
+      render(<NavSelector {...defaultProps} />)
+      const button = screen.getByRole('button')
+      await act(async () => {
+        fireEvent.click(button)
+      })
+
       expect(screen.queryByText('Create New')).not.toBeInTheDocument()
+    })
+
+    it('should hide app create menu without app.create_and_management permission', async () => {
+      vi.mocked(useAppContext).mockReturnValue({
+        isCurrentWorkspaceEditor: true,
+        workspacePermissionKeys: ['dataset.create_and_management'],
+      } as unknown as AppContextValue)
+      render(<NavSelector {...defaultProps} isApp />)
+      const button = screen.getByRole('button')
+      await act(async () => {
+        fireEvent.click(button)
+      })
+
+      expect(screen.queryByRole('menuitem', { name: /Create New/i })).not.toBeInTheDocument()
     })
   })
 

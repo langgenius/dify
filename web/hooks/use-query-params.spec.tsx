@@ -79,7 +79,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get(PRICING_MODAL_QUERY_PARAM)).toBe(PRICING_MODAL_QUERY_VALUE)
     })
 
@@ -94,7 +94,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.options.history).toBe('push')
     })
 
@@ -112,7 +112,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.has(PRICING_MODAL_QUERY_PARAM)).toBe(false)
     })
 
@@ -130,7 +130,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.options.history).toBe('push')
     })
 
@@ -145,7 +145,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.options.history).toBe('replace')
     })
   })
@@ -179,6 +179,21 @@ describe('useQueryParams hooks', () => {
       expect(state.payload).toBe('billing')
     })
 
+    it('should accept integrations tabs with the shared settings action', () => {
+      // Arrange
+      const { result } = renderWithAdapter(
+        () => useAccountSettingModal(),
+        `?action=${ACCOUNT_SETTING_MODAL_ACTION}&tab=mcp`,
+      )
+
+      // Act
+      const [state] = result.current
+
+      // Assert
+      expect(state.isOpen).toBe(true)
+      expect(state.payload).toBe('mcp')
+    })
+
     it('should return closed state when action does not match', () => {
       // Arrange
       const { result } = renderWithAdapter(
@@ -205,9 +220,25 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('action')).toBe(ACCOUNT_SETTING_MODAL_ACTION)
       expect(update.searchParams.get('tab')).toBe('members')
+    })
+
+    it('should set an integrations tab with the shared settings action', async () => {
+      // Arrange
+      const { result, onUrlUpdate } = renderWithAdapter(() => useAccountSettingModal())
+
+      // Act
+      act(() => {
+        result.current[1]({ payload: 'data-source' })
+      })
+
+      // Assert
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
+      expect(update.searchParams.get('action')).toBe(ACCOUNT_SETTING_MODAL_ACTION)
+      expect(update.searchParams.get('tab')).toBe('data-source')
     })
 
     it('should use push history when opening from closed state', async () => {
@@ -221,7 +252,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.options.history).toBe('push')
     })
 
@@ -239,7 +270,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('tab')).toBe('provider')
     })
 
@@ -257,7 +288,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.options.history).toBe('replace')
     })
 
@@ -275,7 +306,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.has('action')).toBe(false)
       expect(update.searchParams.has('tab')).toBe(false)
     })
@@ -294,7 +325,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.options.history).toBe('replace')
     })
   })
@@ -356,7 +387,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('package-ids')).toBe('["org/plugin"]')
     })
 
@@ -372,7 +403,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('bundle-info')).toBe(JSON.stringify(bundleInfo))
     })
 
@@ -391,7 +422,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.has('package-ids')).toBe(false)
       expect(update.searchParams.has('bundle-info')).toBe(false)
     })
@@ -411,7 +442,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
+      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('bundle-info')).toBe(JSON.stringify(bundleInfo))
     })
   })

@@ -9,7 +9,7 @@ import Billing from '@/app/components/billing/billing-page'
 import { defaultPlan, NUM_INFINITE } from '@/app/components/billing/config'
 import HeaderBillingBtn from '@/app/components/billing/header-billing-btn'
 import PlanComp from '@/app/components/billing/plan'
-import PlanUpgradeModal from '@/app/components/billing/plan-upgrade-modal'
+import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import PriorityLabel from '@/app/components/billing/priority-label'
 import TriggerEventsLimitModal from '@/app/components/billing/trigger-events-limit-modal'
 import { Plan } from '@/app/components/billing/type'
@@ -20,6 +20,14 @@ let mockProviderCtx: Record<string, unknown> = {}
 let mockAppCtx: Record<string, unknown> = {}
 const mockSetShowPricingModal = vi.fn()
 const mockSetShowAccountSettingModal = vi.fn()
+
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: true,
+  }
+})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => mockProviderCtx,
@@ -53,6 +61,9 @@ vi.mock('@/service/use-billing', () => ({
     refetch: mockRefetch,
   }),
   useBindPartnerStackInfo: () => ({ mutateAsync: vi.fn() }),
+  useCurrentPlanVectorSpace: () => ({
+    data: undefined,
+  }),
 }))
 
 vi.mock('@/service/use-education', () => ({
@@ -116,6 +127,11 @@ const setupProviderContext = (planOverrides: PlanOverrides = {}, extra: Record<s
 const setupAppContext = (overrides: Record<string, unknown> = {}) => {
   mockAppCtx = {
     isCurrentWorkspaceManager: true,
+    workspacePermissionKeys: [
+      'billing.view',
+      'billing.manage',
+      'billing.subscription.manage',
+    ],
     userProfile: { email: 'test@example.com' },
     langGeniusVersionInfo: { current_version: '1.0.0' },
     ...overrides,
@@ -217,9 +233,12 @@ describe('Billing Page + Plan Integration', () => {
 
   // Verify billing URL button visibility and behavior
   describe('Billing URL button', () => {
-    it('should show billing button when enableBilling and isCurrentWorkspaceManager', () => {
+    it('should show billing button when subscription management permission is granted', () => {
       setupProviderContext({ type: Plan.sandbox })
-      setupAppContext({ isCurrentWorkspaceManager: true })
+      setupAppContext({
+        isCurrentWorkspaceManager: false,
+        workspacePermissionKeys: ['billing.subscription.manage'],
+      })
 
       render(<Billing />)
 
@@ -227,9 +246,12 @@ describe('Billing Page + Plan Integration', () => {
       expect(screen.getByText(/viewBillingAction/i)).toBeInTheDocument()
     })
 
-    it('should hide billing button when user is not workspace manager', () => {
+    it('should hide billing button when subscription management permission is missing', () => {
       setupProviderContext({ type: Plan.sandbox })
-      setupAppContext({ isCurrentWorkspaceManager: false })
+      setupAppContext({
+        isCurrentWorkspaceManager: true,
+        workspacePermissionKeys: ['billing.view', 'billing.manage'],
+      })
 
       render(<Billing />)
 
@@ -238,6 +260,17 @@ describe('Billing Page + Plan Integration', () => {
 
     it('should hide billing button when billing is disabled', () => {
       setupProviderContext({ type: Plan.sandbox }, { enableBilling: false })
+
+      render(<Billing />)
+
+      expect(screen.queryByText(/viewBillingTitle/i)).not.toBeInTheDocument()
+    })
+
+    it('should hide billing button when no billing permissions are granted', () => {
+      setupProviderContext({ type: Plan.sandbox })
+      setupAppContext({
+        workspacePermissionKeys: [],
+      })
 
       render(<Billing />)
 
@@ -490,8 +523,8 @@ describe('Capacity Full Components Integration', () => {
       expect(screen.getByText(/upgradeBtn\.encourageShort/i)).toBeInTheDocument()
       // Should show usage/total fraction "5/5"
       expect(screen.getByText(/5\/5/)).toBeInTheDocument()
-      // Should have a progress bar rendered
-      expect(screen.getByTestId('billing-progress-bar')).toBeInTheDocument()
+      // Should have an accessible meter rendered
+      expect(screen.getByRole('meter', { name: /usagePage\.buildApps/i })).toBeInTheDocument()
     })
 
     it('should display upgrade tip and upgrade button for professional plan', () => {
@@ -531,10 +564,9 @@ describe('Capacity Full Components Integration', () => {
         total: { buildApps: 5 },
       })
 
-      render(<AppsFull loc="test" />)
+      const { container } = render(<AppsFull loc="test" />)
 
-      const progressBar = screen.getByTestId('billing-progress-bar')
-      expect(progressBar).toHaveClass('bg-components-progress-error-progress')
+      expect(container.querySelector('.bg-components-progress-error-progress')).toBeInTheDocument()
     })
   })
 
@@ -819,8 +851,8 @@ describe('Usage Display Edge Cases', () => {
 
       render(<PlanComp loc="test" />)
 
-      // Should have an indeterminate progress bar
-      expect(screen.getByTestId('billing-progress-bar-indeterminate')).toBeInTheDocument()
+      // Below-threshold storage renders the redacted placeholder instead of a Meter
+      expect(document.body.querySelector('[aria-hidden="true"]')).toBeInTheDocument()
     })
 
     it('should show actual usage for pro plan above threshold', () => {
@@ -846,15 +878,10 @@ describe('Usage Display Edge Cases', () => {
         total: { buildApps: 5 },
       })
 
-      render(<PlanComp loc="test" />)
+      const { container } = render(<PlanComp loc="test" />)
 
-      // 20% usage - normal color
-      const progressBars = screen.getAllByTestId('billing-progress-bar')
-      // At least one should have the normal progress color
-      const hasNormalColor = progressBars.some(bar =>
-        bar.classList.contains('bg-components-progress-bar-progress-solid'),
-      )
-      expect(hasNormalColor).toBe(true)
+      // 20% usage — at least one Meter indicator should carry the neutral tone
+      expect(container.querySelector('.bg-components-progress-bar-progress-solid')).toBeInTheDocument()
     })
   })
 

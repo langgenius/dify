@@ -32,7 +32,7 @@ const ThinkBlockDemo = ({
       onFeedback={undefined}
     >
       <div className="flex w-full max-w-xl flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6">
-        <div className="flex items-center justify-between text-xs uppercase tracking-[0.18em] text-text-tertiary">
+        <div className="flex items-center justify-between text-xs tracking-[0.18em] text-text-tertiary uppercase">
           <span>Think block</span>
           <button
             type="button"
@@ -43,7 +43,7 @@ const ThinkBlockDemo = ({
           </button>
         </div>
         <ThinkBlock data-think>
-          <pre className="whitespace-pre-wrap text-sm text-text-secondary">
+          <pre className="text-sm whitespace-pre-wrap text-text-secondary">
             {THOUGHT_TEXT}
           </pre>
         </ThinkBlock>

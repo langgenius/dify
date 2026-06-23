@@ -1,20 +1,10 @@
+import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
+import type { Role } from './access-control'
 import type { I18nText } from '@/i18n-config/language'
 import type { Model } from '@/types/app'
 
 export type CommonResponse = {
   result: 'success' | 'fail'
-}
-
-export type FileDownloadResponse = {
-  id: string
-  name: string
-  size: number
-  extension: string
-  url: string
-  download_url: string
-  mime_type: string
-  created_by: string
-  created_at: number
 }
 
 export type OauthResponse = {
@@ -30,26 +20,10 @@ export type InitValidateStatusResponse = {
   status: 'finished' | 'not_started'
 }
 
-export type UserProfileResponse = {
-  id: string
-  name: string
-  email: string
-  avatar: string
-  avatar_url: string | null
-  is_password_set: boolean
-  interface_language?: string
-  interface_theme?: string
-  timezone?: string
-  last_login_at?: string
-  last_active_at?: string
-  last_login_ip?: string
-  created_at?: string
-}
-
 export type UserProfileOriginResponse = {
-  json: () => Promise<UserProfileResponse>
+  json: () => Promise<GetAccountProfileResponse>
   bodyUsed: boolean
-  headers: any
+  headers: Headers
 }
 
 export type LangGeniusVersionResponse = {
@@ -62,48 +36,34 @@ export type LangGeniusVersionResponse = {
   current_env: string
 }
 
-export type TenantInfoResponse = {
-  name: string
-  created_at: string
-  providers: Array<{
-    provider: string
-    provider_name: string
-    token_is_set: boolean
-    is_valid: boolean
-    token_is_valid: boolean
-  }>
-  in_trail: boolean
-  trial_end_reason: null | 'trial_exceeded' | 'using_custom'
-}
-
-export type Member = Pick<UserProfileResponse, 'id' | 'name' | 'email' | 'last_login_at' | 'last_active_at' | 'created_at' | 'avatar_url'> & {
+export type Member = Pick<GetAccountProfileResponse, 'id' | 'name' | 'email' | 'avatar_url'> & {
   avatar: string
+  last_login_at?: string
+  last_active_at?: string
+  created_at?: string
   status: 'pending' | 'active' | 'banned' | 'closed'
   role: 'owner' | 'admin' | 'editor' | 'normal' | 'dataset_operator'
+  roles: Role[]
 }
 
-export enum ProviderName {
-  OPENAI = 'openai',
-  AZURE_OPENAI = 'azure_openai',
-  ANTHROPIC = 'anthropic',
-  Replicate = 'replicate',
-  HuggingfaceHub = 'huggingface_hub',
-  MiniMax = 'minimax',
-  Spark = 'spark',
-  Tongyi = 'tongyi',
-  ChatGLM = 'chatglm',
-}
+const ProviderName = {
+  OPENAI: 'openai',
+  AZURE_OPENAI: 'azure_openai',
+  ANTHROPIC: 'anthropic',
+  Replicate: 'replicate',
+  HuggingfaceHub: 'huggingface_hub',
+  MiniMax: 'minimax',
+  Spark: 'spark',
+  Tongyi: 'tongyi',
+  ChatGLM: 'chatglm',
+} as const
+type ProviderName = typeof ProviderName[keyof typeof ProviderName]
 export type ProviderAzureToken = {
   openai_api_base?: string
   openai_api_key?: string
 }
 export type ProviderAnthropicToken = {
   anthropic_api_key?: string
-}
-export type ProviderTokenType = {
-  [ProviderName.OPENAI]: string
-  [ProviderName.AZURE_OPENAI]: ProviderAzureToken
-  [ProviderName.ANTHROPIC]: ProviderAnthropicToken
 }
 export type Provider = {
   [Name in ProviderName]: {
@@ -116,12 +76,6 @@ export type Provider = {
     token?: string | ProviderAzureToken | ProviderAnthropicToken
   }
 }[ProviderName]
-
-export type ProviderHosted = Provider & {
-  quota_type: string
-  quota_limit: number
-  quota_used: number
-}
 
 export type AccountIntegrate = {
   provider: 'google' | 'github'
@@ -136,6 +90,7 @@ export type IWorkspace = {
   plan: string
   status: string
   created_at: number
+  last_opened_at?: number | null
   current: boolean
 }
 
@@ -179,8 +134,6 @@ export type DataSourceNotionWorkspace = {
   pages: DataSourceNotionPage[]
 }
 
-export type DataSourceNotionWorkspaceMap = Record<string, DataSourceNotionWorkspace>
-
 export type DataSourceNotion = {
   id: string
   provider: string
@@ -188,37 +141,12 @@ export type DataSourceNotion = {
   source_info: DataSourceNotionWorkspace
 }
 
-export enum DataSourceCategory {
-  website = 'website',
-}
-export enum DataSourceProvider {
-  fireCrawl = 'firecrawl',
-  jinaReader = 'jinareader',
-  waterCrawl = 'watercrawl',
-}
-
-export type FirecrawlConfig = {
-  api_key: string
-  base_url: string
-}
-
-export type WatercrawlConfig = {
-  api_key: string
-  base_url: string
-}
-
-export type DataSourceItem = {
-  id: string
-  category: DataSourceCategory
-  provider: DataSourceProvider
-  disabled: boolean
-  created_at: number
-  updated_at: number
-}
-
-export type DataSources = {
-  sources: DataSourceItem[]
-}
+export const DataSourceProvider = {
+  fireCrawl: 'firecrawl',
+  jinaReader: 'jinareader',
+  waterCrawl: 'watercrawl',
+} as const
+export type DataSourceProvider = typeof DataSourceProvider[keyof typeof DataSourceProvider]
 
 export type PluginProvider = {
   tool_name: string
@@ -246,6 +174,10 @@ export type InvitationResult = {
   email: string
   url: string
 } | {
+  status: 'already_member'
+  email: string
+  message?: string
+} | {
   status: 'failed'
   email: string
   message: string
@@ -253,13 +185,6 @@ export type InvitationResult = {
 
 export type InvitationResponse = CommonResponse & {
   invitation_results: InvitationResult[]
-}
-
-export type ApiBasedExtension = {
-  id?: string
-  name?: string
-  api_endpoint?: string
-  api_key?: string
 }
 
 export type CodeBasedExtensionForm = {
@@ -275,7 +200,7 @@ export type CodeBasedExtensionForm = {
 
 export type CodeBasedExtensionItem = {
   name: string
-  label: any
+  label: I18nText
   form_schema: CodeBasedExtensionForm[]
 }
 export type CodeBasedExtension = {
@@ -292,21 +217,13 @@ export type ExternalDataTool = {
   enabled?: boolean
   config?: {
     api_based_extension_id?: string
-  } & Partial<Record<string, any>>
+  } & Partial<Record<string, string | undefined>>
 }
 
 export type ModerateResponse = {
   flagged: boolean
   text: string
 }
-
-export type ModerationService = (
-  url: string,
-  body: {
-    app_id: string
-    text: string
-  },
-) => Promise<ModerateResponse>
 
 export type StructuredOutputRulesRequestBody = {
   instruction: string

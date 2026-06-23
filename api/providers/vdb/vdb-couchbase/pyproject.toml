@@ -1,0 +1,14 @@
+[project]
+name = "dify-vdb-couchbase"
+version = "0.0.1"
+
+dependencies = [
+    "couchbase~=4.6.0",
+]
+description = "Dify vector store backend (dify-vdb-couchbase)."
+
+[project.entry-points."dify.vector_backends"]
+couchbase = "dify_vdb_couchbase.couchbase_vector:CouchbaseVectorFactory"
+
+[tool.setuptools.packages.find]
+where = ["src"]

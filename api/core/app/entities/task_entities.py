@@ -1,15 +1,16 @@
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
-from graphon.entities import WorkflowStartReason
-from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.nodes.human_input.entities import FormInput, UserAction
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 from core.app.entities.agent_strategy import AgentStrategyInfo
-from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+from core.rag.entities import RetrievalSourceMetadata
+from graphon.entities import WorkflowStartReason
+from graphon.entities.pause_reason import PauseReasonType
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.nodes.human_input.entities import FormInputConfig, UserActionConfig
 
 
 class AnnotationReplyAccount(BaseModel):
@@ -240,7 +241,7 @@ class WorkflowFinishStreamResponse(StreamResponse):
         created_by: Mapping[str, object] = Field(default_factory=dict)
         created_at: int
         finished_at: int | None
-        exceptions_count: int | None = 0
+        exceptions_count: int = 0
         files: Sequence[Mapping[str, Any]] | None = []
 
     event: StreamEvent = StreamEvent.WORKFLOW_FINISHED
@@ -283,16 +284,53 @@ class HumanInputRequiredResponse(StreamResponse):
         node_id: str
         node_title: str
         form_content: str
-        inputs: Sequence[FormInput] = Field(default_factory=list)
-        actions: Sequence[UserAction] = Field(default_factory=list)
+        inputs: Sequence[FormInputConfig] = Field(default_factory=list)
+        actions: Sequence[UserActionConfig] = Field(default_factory=list)
         display_in_ui: bool = False
         form_token: str | None = None
+        approval_channels: list[str] = Field(default_factory=list)
         resolved_default_values: Mapping[str, Any] = Field(default_factory=dict)
         expiration_time: int = Field(..., description="Unix timestamp in seconds")
 
     event: StreamEvent = StreamEvent.HUMAN_INPUT_REQUIRED
     workflow_run_id: str
     data: Data
+
+
+class HumanInputRequiredPauseReasonPayload(BaseModel):
+    """
+    Public pause-reason payload used by blocking responses when only
+    ``human_input_required`` events are available.
+    """
+
+    TYPE: Literal[PauseReasonType.HUMAN_INPUT_REQUIRED] = PauseReasonType.HUMAN_INPUT_REQUIRED
+    form_id: str
+    node_id: str
+    node_title: str
+    form_content: str
+    inputs: Sequence[FormInputConfig] = Field(default_factory=list)
+    actions: Sequence[UserActionConfig] = Field(default_factory=list)
+    display_in_ui: bool = False
+    form_token: str | None = None
+    approval_channels: list[str] = Field(default_factory=list)
+    resolved_default_values: Mapping[str, Any] = Field(default_factory=dict)
+    expiration_time: int
+
+    @classmethod
+    def from_response_data(cls, data: HumanInputRequiredResponse.Data) -> "HumanInputRequiredPauseReasonPayload":
+        return cls(
+            form_id=data.form_id,
+            node_id=data.node_id,
+            node_title=data.node_title,
+            form_content=data.form_content,
+            inputs=data.inputs,
+            actions=data.actions,
+            display_in_ui=data.display_in_ui,
+            form_token=data.form_token,
+            approval_channels=data.approval_channels,
+            resolved_default_values=data.resolved_default_values,
+            expiration_time=data.expiration_time,
+        )
 
 
 class HumanInputFormFilledResponse(StreamResponse):
@@ -306,6 +344,8 @@ class HumanInputFormFilledResponse(StreamResponse):
         rendered_content: str
         action_id: str
         action_text: str
+
+        submitted_data: Mapping[str, Any] | None = None
 
     event: StreamEvent = StreamEvent.HUMAN_INPUT_FORM_FILLED
     workflow_run_id: str
@@ -355,7 +395,7 @@ class NodeStartStreamResponse(StreamResponse):
     workflow_run_id: str
     data: Data
 
-    def to_ignore_detail_dict(self):
+    def to_ignore_detail_dict(self) -> dict[str, JsonValue]:
         return {
             "event": self.event.value,
             "task_id": self.task_id,
@@ -412,7 +452,7 @@ class NodeFinishStreamResponse(StreamResponse):
     workflow_run_id: str
     data: Data
 
-    def to_ignore_detail_dict(self):
+    def to_ignore_detail_dict(self) -> dict[str, JsonValue]:
         return {
             "event": self.event.value,
             "task_id": self.task_id,
@@ -521,7 +561,7 @@ class IterationNodeStartStreamResponse(StreamResponse):
         node_type: str
         title: str
         created_at: int
-        extras: dict = Field(default_factory=dict)
+        extras: dict[str, Any] = Field(default_factory=dict)
         metadata: Mapping = {}
         inputs: Mapping = {}
         inputs_truncated: bool = False
@@ -547,7 +587,7 @@ class IterationNodeNextStreamResponse(StreamResponse):
         title: str
         index: int
         created_at: int
-        extras: dict = Field(default_factory=dict)
+        extras: dict[str, Any] = Field(default_factory=dict)
 
     event: StreamEvent = StreamEvent.ITERATION_NEXT
     workflow_run_id: str
@@ -571,7 +611,7 @@ class IterationNodeCompletedStreamResponse(StreamResponse):
         outputs: Mapping | None = None
         outputs_truncated: bool = False
         created_at: int
-        extras: dict | None = None
+        extras: dict[str, Any] | None = None
         inputs: Mapping | None = None
         inputs_truncated: bool = False
         status: WorkflowNodeExecutionStatus
@@ -602,7 +642,7 @@ class LoopNodeStartStreamResponse(StreamResponse):
         node_type: str
         title: str
         created_at: int
-        extras: dict = Field(default_factory=dict)
+        extras: dict[str, Any] = Field(default_factory=dict)
         metadata: Mapping = {}
         inputs: Mapping = {}
         inputs_truncated: bool = False
@@ -653,7 +693,7 @@ class LoopNodeCompletedStreamResponse(StreamResponse):
         outputs: Mapping | None = None
         outputs_truncated: bool = False
         created_at: int
-        extras: dict | None = None
+        extras: dict[str, Any] | None = None
         inputs: Mapping | None = None
         inputs_truncated: bool = False
         status: WorkflowNodeExecutionStatus
@@ -774,6 +814,34 @@ class ChatbotAppBlockingResponse(AppBlockingResponse):
     data: Data
 
 
+class AdvancedChatPausedBlockingResponse(AppBlockingResponse):
+    """
+    ChatbotAppPausedBlockingResponse entity
+    """
+
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+
+        id: str
+        mode: str
+        conversation_id: str
+        message_id: str
+        workflow_run_id: str
+        answer: str
+        metadata: Mapping[str, object] = Field(default_factory=dict)
+        created_at: int
+        paused_nodes: Sequence[str] = Field(default_factory=list)
+        reasons: Sequence[Mapping[str, Any]] = Field(default_factory=list[Mapping[str, Any]])
+        status: WorkflowExecutionStatus
+        elapsed_time: float
+        total_tokens: int
+        total_steps: int
+
+    data: Data
+
+
 class CompletionAppBlockingResponse(AppBlockingResponse):
     """
     CompletionAppBlockingResponse entity
@@ -814,6 +882,33 @@ class WorkflowAppBlockingResponse(AppBlockingResponse):
         total_steps: int
         created_at: int
         finished_at: int | None
+
+    workflow_run_id: str
+    data: Data
+
+
+class WorkflowAppPausedBlockingResponse(AppBlockingResponse):
+    """
+    WorkflowAppPausedBlockingResponse entity
+    """
+
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+
+        id: str
+        workflow_id: str
+        status: WorkflowExecutionStatus
+        outputs: Mapping[str, Any] | None = None
+        error: str | None = None
+        elapsed_time: float
+        total_tokens: int
+        total_steps: int
+        created_at: int
+        finished_at: int | None
+        paused_nodes: Sequence[str] = Field(default_factory=list)
+        reasons: Sequence[Mapping[str, Any]] = Field(default_factory=list)
 
     workflow_run_id: str
     data: Data

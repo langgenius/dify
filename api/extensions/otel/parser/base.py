@@ -10,17 +10,17 @@ Gate is only active in EE (``ENTERPRISE_ENABLED=True``) when
 import json
 from typing import Any, Protocol
 
-from graphon.enums import BuiltinNodeTypes
-from graphon.file import File
-from graphon.graph_events import GraphNodeEventBase
-from graphon.nodes.base.node import Node
-from graphon.variables import Segment
 from opentelemetry.trace import Span
 from opentelemetry.trace.status import Status, StatusCode
 from pydantic import BaseModel
 
 from configs import dify_config
 from extensions.otel.semconv.gen_ai import ChainAttributes, GenAIAttributes
+from graphon.enums import BuiltinNodeTypes
+from graphon.file import File
+from graphon.graph_events import GraphNodeEventBase
+from graphon.nodes.base.node import Node
+from graphon.variables import Segment
 
 
 def should_include_content() -> bool:
@@ -53,25 +53,27 @@ def safe_json_dumps(obj: Any, ensure_ascii: bool = False) -> str:
 
     def _convert_value(value: Any) -> Any:
         """Recursively convert non-serializable values."""
-        if value is None:
-            return None
-        if isinstance(value, (bool, int, float, str)):
-            return value
-        if isinstance(value, Segment):
-            # Convert Segment to its underlying value
-            return _convert_value(value.value)
-        if isinstance(value, File):
-            # Convert File to dict
-            return value.to_dict()
-        if isinstance(value, BaseModel):
-            # Convert Pydantic model to dict
-            return _convert_value(value.model_dump(mode="json"))
-        if isinstance(value, dict):
-            return {k: _convert_value(v) for k, v in value.items()}
-        if isinstance(value, (list, tuple)):
-            return [_convert_value(item) for item in value]
-        # Fallback to string representation for unknown types
-        return str(value)
+        match value:
+            case None:
+                return None
+            case bool() | int() | float() | str():
+                return value
+            case Segment():
+                # Convert Segment to its underlying value
+                return _convert_value(value.value)
+            case File():
+                # Convert File to dict
+                return value.to_dict()
+            case BaseModel():
+                # Convert Pydantic model to dict
+                return _convert_value(value.model_dump(mode="json"))
+            case dict():
+                return {k: _convert_value(v) for k, v in value.items()}
+            case list() | tuple():
+                return [_convert_value(item) for item in value]
+            case _:
+                # Fallback to string representation for unknown types
+                return str(value)
 
     try:
         converted = _convert_value(obj)
@@ -104,15 +106,15 @@ class DefaultNodeOTelParser:
 
         span.set_attribute(GenAIAttributes.FRAMEWORK, "dify")
 
-        node_type = node.node_type
-        if node_type == BuiltinNodeTypes.LLM:
-            span.set_attribute(GenAIAttributes.SPAN_KIND, "LLM")
-        elif node_type == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
-            span.set_attribute(GenAIAttributes.SPAN_KIND, "RETRIEVER")
-        elif node_type == BuiltinNodeTypes.TOOL:
-            span.set_attribute(GenAIAttributes.SPAN_KIND, "TOOL")
-        else:
-            span.set_attribute(GenAIAttributes.SPAN_KIND, "TASK")
+        match node.node_type:
+            case BuiltinNodeTypes.LLM:
+                span.set_attribute(GenAIAttributes.SPAN_KIND, "LLM")
+            case BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
+                span.set_attribute(GenAIAttributes.SPAN_KIND, "RETRIEVER")
+            case BuiltinNodeTypes.TOOL:
+                span.set_attribute(GenAIAttributes.SPAN_KIND, "TOOL")
+            case _:
+                span.set_attribute(GenAIAttributes.SPAN_KIND, "TASK")
 
         # Extract inputs and outputs from result_event
         if result_event and result_event.node_run_result:

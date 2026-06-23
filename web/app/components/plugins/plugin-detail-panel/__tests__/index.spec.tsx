@@ -119,7 +119,7 @@ vi.mock('../../readme-panel/entrance', () => ({
 }))
 
 // Mock classnames utility
-vi.mock('@/utils/classnames', () => ({
+vi.mock('@langgenius/dify-ui/cn', () => ({
   cn: (...args: (string | undefined | false | null)[]) => args.filter(Boolean).join(' '),
 }))
 
@@ -328,7 +328,16 @@ describe('PluginDetailPanel', () => {
         />,
       )
 
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      const dialog = screen.getByRole('dialog')
+
+      expect(dialog).toBeInTheDocument()
+      expect(dialog).toHaveClass(
+        'data-[swipe-direction=right]:top-2',
+        'data-[swipe-direction=right]:bottom-2',
+        'data-[swipe-direction=right]:h-[calc(100dvh-16px)]',
+        'data-[swipe-direction=right]:w-[400px]',
+        'data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]',
+      )
       expect(screen.getByTestId('detail-header')).toBeInTheDocument()
     })
 

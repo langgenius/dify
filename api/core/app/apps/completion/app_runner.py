@@ -1,8 +1,6 @@
 import logging
 from typing import cast
 
-from graphon.file import File
-from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from sqlalchemy import select
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -12,10 +10,13 @@ from core.app.entities.app_invoke_entities import (
     CompletionAppGenerateEntity,
 )
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
+from core.db.session_factory import create_session
 from core.model_manager import ModelInstance
 from core.moderation.base import ModerationError
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from extensions.ext_database import db
+from graphon.file import File
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from models.model import App, Message
 
 logger = logging.getLogger(__name__)
@@ -39,7 +40,10 @@ class CompletionAppRunner(AppRunner):
         app_config = application_generate_entity.app_config
         app_config = cast(CompletionAppConfig, app_config)
         stmt = select(App).where(App.id == app_config.app_id)
-        app_record = db.session.scalar(stmt)
+        with create_session() as session:
+            app_record = session.scalar(stmt)
+            if app_record:
+                session.expunge(app_record)
         if not app_record:
             raise ValueError("App not found")
 
@@ -174,6 +178,8 @@ class CompletionAppRunner(AppRunner):
             model=application_generate_entity.model_conf.model,
         )
 
+        # Release the Flask scoped session before LLM streaming so a checked-out DB connection
+        # is not held for the lifetime of the provider response.
         db.session.close()
 
         invoke_result = model_instance.invoke_llm(

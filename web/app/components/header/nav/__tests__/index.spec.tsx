@@ -7,72 +7,23 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { use } from 'react'
 import { vi } from 'vitest'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
-import { useRouter, useSelectedLayoutSegment } from '@/next/navigation'
+import { useSelectedLayoutSegment } from '@/next/navigation'
 import { AppModeEnum } from '@/types/app'
 import Nav from '../index'
 
-vi.mock('@headlessui/react', () => {
-  type MenuContextValue = { open: boolean, setOpen: (open: boolean) => void }
-  const MenuContext = React.createContext<MenuContextValue | null>(null)
-
-  const Menu = ({ children }: { children: React.ReactNode | ((props: { open: boolean }) => React.ReactNode) }) => {
-    const [open, setOpen] = React.useState(false)
-    const value = React.useMemo(() => ({ open, setOpen }), [open])
-    return (
-      <MenuContext value={value}>
-        {typeof children === 'function' ? children({ open }) : children}
-      </MenuContext>
-    )
-  }
-
-  const MenuButton = ({ onClick, children, ...props }: { onClick?: () => void, children?: React.ReactNode }) => {
-    const context = use(MenuContext)
-    const handleClick = () => {
-      context?.setOpen(!context.open)
-      onClick?.()
-    }
-    return (
-      <button type="button" aria-expanded={context?.open ?? false} onClick={handleClick} {...props}>
-        {children}
-      </button>
-    )
-  }
-
-  const MenuItems = ({ as: Component = 'div', role, children, ...props }: { as?: React.ElementType, role?: string, children: React.ReactNode }) => {
-    const context = use(MenuContext)
-    if (!context?.open)
-      return null
-    return (
-      <Component role={role ?? 'menu'} {...props}>
-        {children}
-      </Component>
-    )
-  }
-
-  const MenuItem = ({ as: Component = 'div', role, children, ...props }: { as?: React.ElementType, role?: string, children: React.ReactNode }) => (
-    <Component role={role ?? 'menuitem'} {...props}>
-      {children}
-    </Component>
-  )
-
-  return {
-    Menu,
-    MenuButton,
-    MenuItems,
-    MenuItem,
-    Transition: ({ show = true, children }: { show?: boolean, children: React.ReactNode }) => (show ? <>{children}</> : null),
-  }
-})
+const mockPush = vi.fn()
 
 // Mock next/navigation
 vi.mock('@/next/navigation', () => ({
   useSelectedLayoutSegment: vi.fn(),
-  useRouter: vi.fn(),
+  useRouter: () => ({
+    push: mockPush,
+  }),
 }))
 
 // Mock app store
@@ -109,7 +60,6 @@ describe('Nav Component', () => {
   const mockSetAppDetail = vi.fn()
   const mockOnCreate = vi.fn()
   const mockOnLoadMore = vi.fn()
-  const mockPush = vi.fn()
 
   const navigationItems: NavItem[] = [
     {
@@ -152,10 +102,8 @@ describe('Nav Component', () => {
     vi.mocked(useAppStore).mockReturnValue(mockSetAppDetail)
     vi.mocked(useAppContext).mockReturnValue({
       isCurrentWorkspaceEditor: true,
+      workspacePermissionKeys: ['app.create_and_management', 'dataset.create_and_management'],
     } as unknown as AppContextValue)
-    vi.mocked(useRouter).mockReturnValue({
-      push: mockPush,
-    } as unknown as ReturnType<typeof useRouter>)
   })
 
   describe('Rendering', () => {
@@ -174,6 +122,27 @@ describe('Nav Component', () => {
     it('should handle array activeSegment', () => {
       render(<Nav {...defaultProps} activeSegment={['explore', 'apps']} />)
       expect(screen.getByTestId('active-icon')).toBeInTheDocument()
+    })
+
+    it('should render active child link when activeLink matches the current segment', () => {
+      vi.mocked(useSelectedLayoutSegment).mockReturnValue('snippets')
+
+      render(
+        <Nav
+          {...defaultProps}
+          activeSegment={['apps', 'app', 'snippets']}
+          activeLink={{
+            segment: 'snippets',
+            text: 'SNIPPETS',
+            link: '/snippets',
+          }}
+        />,
+      )
+
+      expect(screen.getByText('Nav Text')).toBeInTheDocument()
+      expect(screen.getByText('Nav Text')).toHaveClass('max-[1120px]:hidden')
+      expect(screen.getByRole('link', { name: 'SNIPPETS' })).toHaveAttribute('href', '/snippets')
+      expect(screen.getByRole('link', { name: 'SNIPPETS' })).not.toHaveClass('max-[1120px]:hidden')
     })
 
     it('should not show hover background if not activated', () => {
@@ -198,6 +167,14 @@ describe('Nav Component', () => {
       render(<Nav {...defaultProps} />)
       const link = screen.getByRole('link')
       fireEvent.click(link.firstChild!, { metaKey: true })
+      expect(mockSetAppDetail).not.toHaveBeenCalled()
+    })
+
+    it('should not call setAppDetail from snippets segment', () => {
+      vi.mocked(useSelectedLayoutSegment).mockReturnValue('snippets')
+      render(<Nav {...defaultProps} activeSegment={['apps', 'app', 'snippets']} />)
+      const link = screen.getByRole('link')
+      fireEvent.click(link.firstChild!)
       expect(mockSetAppDetail).not.toHaveBeenCalled()
     })
 
@@ -237,13 +214,15 @@ describe('Nav Component', () => {
       })
     })
 
-    it('should navigate when an item is selected', async () => {
-      render(<Nav {...defaultProps} curNav={curNav} />)
+    it('should clear app detail and navigate when an item is selected', async () => {
+      vi.mocked(useSelectedLayoutSegment).mockReturnValue('snippets')
+      render(<Nav {...defaultProps} activeSegment={['apps', 'app', 'snippets']} curNav={curNav} />)
       const selectorButton = screen.getByRole('button', { name: /Item 1/i })
 
       await act(async () => {
         fireEvent.click(selectorButton)
       })
+      mockSetAppDetail.mockClear()
 
       const item2 = await screen.findByText('Item 2')
       await act(async () => {
@@ -271,7 +250,7 @@ describe('Nav Component', () => {
         })
       }
 
-      expect(mockPush).not.toHaveBeenCalled()
+      expect(mockSetAppDetail).not.toHaveBeenCalled()
     })
 
     it('should call onCreate when create button is clicked', async () => {
@@ -291,44 +270,30 @@ describe('Nav Component', () => {
     })
 
     it('should show sub-menu and call onCreate with types when isApp is true', async () => {
-      render(<Nav {...defaultProps} curNav={curNav} isApp />)
-      const selectorButton = screen.getByRole('button', { name: /Item 1/i })
+      const user = userEvent.setup()
+      const clickCreateBranch = async (optionName: RegExp) => {
+        const { unmount } = render(<Nav {...defaultProps} curNav={curNav} isApp />)
+        await user.click(screen.getByRole('button', { name: /Item 1/i }))
+        const createButton = await screen.findByRole('menuitem', { name: /Create New/i })
+        await user.hover(createButton)
+        fireEvent.click(await screen.findByRole('menuitem', { name: optionName }))
+        unmount()
+      }
 
-      await act(async () => {
-        fireEvent.click(selectorButton)
-      })
+      await clickCreateBranch(/app\.newApp\.startFromBlank/i)
+      await clickCreateBranch(/app\.newApp\.startFromTemplate/i)
+      await clickCreateBranch(/app\.importDSL/i)
 
-      const createButton = await screen.findByText('Create New')
-      await act(async () => {
-        fireEvent.click(createButton)
-      })
-
-      const blankOption = await screen.findByText(
-        /app\.newApp\.startFromBlank/i,
-      )
-      await act(async () => {
-        fireEvent.click(blankOption)
-      })
-      expect(mockOnCreate).toHaveBeenCalledWith('blank')
-
-      const templateOption = await screen.findByText(
-        /app\.newApp\.startFromTemplate/i,
-      )
-      await act(async () => {
-        fireEvent.click(templateOption)
-      })
-      expect(mockOnCreate).toHaveBeenCalledWith('template')
-
-      const dslOption = await screen.findByText(/app\.importDSL/i)
-      await act(async () => {
-        fireEvent.click(dslOption)
-      })
-      expect(mockOnCreate).toHaveBeenCalledWith('dsl')
+      expect(mockOnCreate).toHaveBeenNthCalledWith(1, 'blank')
+      expect(mockOnCreate).toHaveBeenNthCalledWith(2, 'template')
+      expect(mockOnCreate).toHaveBeenNthCalledWith(3, 'dsl')
+      expect(mockOnCreate).toHaveBeenCalledTimes(3)
     })
 
     it('should not show create button if NOT an editor', async () => {
       vi.mocked(useAppContext).mockReturnValue({
         isCurrentWorkspaceEditor: false,
+        workspacePermissionKeys: [],
       } as unknown as AppContextValue)
       render(<Nav {...defaultProps} curNav={curNav} />)
       const selectorButton = screen.getByRole('button', { name: /Item 1/i })

@@ -8,6 +8,7 @@ import type {
   MetadataFilteringModeEnum,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { DataSet } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import { intersectionBy } from 'es-toolkit/compat'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -30,8 +31,7 @@ import {
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum } from '@/types/app'
-import { cn } from '@/utils/classnames'
-import { hasEditPermissionForDataset } from '@/utils/permission'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import FeaturePanel from '../base/feature-panel'
 import OperationBtn from '../base/operation-btn'
 import { useFormattingChangedDispatcher } from '../debug/hooks'
@@ -39,13 +39,14 @@ import CardItem from './card-item'
 import ContextVar from './context-var'
 import ParamsConfig from './params-config'
 
-type Props = {
+type Props = Readonly<{
   readonly?: boolean
   hideMetadataFilter?: boolean
-}
+}>
 const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
   const { t } = useTranslation()
-  const userProfile = useAppContextSelector(s => s.userProfile)
+  const currentUserId = useAppContextSelector(s => s.userProfile?.id)
+  const workspacePermissionKeys = useAppContextSelector(s => s.workspacePermissionKeys)
   const {
     mode,
     dataSets: dataSet,
@@ -155,17 +156,17 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
 
   const formattedDataset = useMemo(() => {
     return dataSet.map((item) => {
-      const datasetConfig = {
-        createdBy: item.created_by,
-        partialMemberList: item.partial_member_list || [],
-        permission: item.permission,
-      }
+      const datasetACLCapabilities = getDatasetACLCapabilities(item.permission_keys, {
+        currentUserId,
+        resourceMaintainer: item.maintainer,
+        workspacePermissionKeys,
+      })
       return {
         ...item,
-        editable: hasEditPermissionForDataset(userProfile?.id || '', datasetConfig),
+        editable: datasetACLCapabilities.canEdit,
       }
     })
-  }, [dataSet, userProfile?.id])
+  }, [currentUserId, dataSet, workspacePermissionKeys])
 
   const metadataList = useMemo(() => {
     return intersectionBy(...formattedDataset.filter((dataset) => {
@@ -249,7 +250,7 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
     setDatasetConfigs(newInputs)
   }, [setDatasetConfigs, datasetConfigsRef])
 
-  const handleMetadataCompletionParamsChange = useCallback((newParams: Record<string, any>) => {
+  const handleMetadataCompletionParamsChange = useCallback((newParams: Record<string, unknown>) => {
     const newInputs = produce(datasetConfigsRef.current!, (draft) => {
       draft.metadata_model_config = {
         ...draft.metadata_model_config!,
@@ -291,7 +292,7 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
           )
         : (
             <div className="mt-1 px-3 pb-3">
-              <div className="pb-1 pt-2 text-xs text-text-tertiary">{t('feature.dataSet.noData', { ns: 'appDebug' })}</div>
+              <div className="pt-2 pb-1 text-xs text-text-tertiary">{t('feature.dataSet.noData', { ns: 'appDebug' })}</div>
             </div>
           )}
 

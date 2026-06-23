@@ -1,6 +1,6 @@
 {
   "events.actionNum": "{{num}} {{event}} शामिल",
-  "events.description": "इवेंट्स जिन्हें यह ट्रिगर प्लगइन सब्सक्राइब कर सकता है",
+  "events.description": "इवेंट्स जिन्हें यह ट्रिगर एकीकरण सब्सक्राइब कर सकता है",
   "events.empty": "कोई घटना उपलब्ध नहीं है",
   "events.event": "घटना",
   "events.events": "कार्यक्रम",

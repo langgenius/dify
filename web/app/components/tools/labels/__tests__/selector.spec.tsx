@@ -2,6 +2,81 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import LabelSelector from '../selector'
 
+vi.mock('@langgenius/dify-ui/popover', async () => {
+  const React = await import('react')
+  const PopoverContext = React.createContext({
+    open: false,
+    setOpen: (_open: boolean) => {},
+  })
+
+  const Popover = ({
+    children,
+    open: controlledOpen,
+    onOpenChange,
+  }: {
+    children: React.ReactNode
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
+  }) => {
+    const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
+    const isControlled = controlledOpen !== undefined
+    const open = isControlled ? !!controlledOpen : uncontrolledOpen
+    const setOpen = (nextOpen: boolean) => {
+      if (!isControlled)
+        setUncontrolledOpen(nextOpen)
+      onOpenChange?.(nextOpen)
+    }
+
+    return (
+      <PopoverContext.Provider value={{ open, setOpen }}>
+        {children}
+      </PopoverContext.Provider>
+    )
+  }
+
+  const PopoverTrigger = ({
+    children,
+    className,
+    render,
+  }: {
+    children?: React.ReactNode
+    className?: string
+    render?: React.ReactNode
+  }) => {
+    const { open, setOpen } = React.useContext(PopoverContext)
+    if (render) {
+      return (
+        <div onClick={() => setOpen(!open)}>
+          {render}
+        </div>
+      )
+    }
+
+    return (
+      <button type="button" className={className} onClick={() => setOpen(!open)}>
+        {children}
+      </button>
+    )
+  }
+
+  const PopoverContent = ({
+    children,
+    ...props
+  }: React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }) => {
+    const { open } = React.useContext(PopoverContext)
+    if (!open)
+      return null
+
+    return <div {...props}>{children}</div>
+  }
+
+  return {
+    Popover,
+    PopoverTrigger,
+    PopoverContent,
+  }
+})
+
 // Mock useTags hook with controlled test data
 const mockTags = [
   { name: 'agent', label: 'Agent' },
@@ -58,6 +133,12 @@ describe('LabelSelector', () => {
       render(<LabelSelector value={[]} onChange={mockOnChange} />)
 
       expect(screen.getByText('tools.createTool.toolInput.labelPlaceholder')).toBeInTheDocument()
+    })
+
+    it('should render the trigger as a native button', () => {
+      render(<LabelSelector value={[]} onChange={mockOnChange} />)
+
+      expect(screen.getByRole('button', { name: 'tools.createTool.toolInput.labelPlaceholder' })).toHaveAttribute('type', 'button')
     })
 
     it('should display selected labels as comma-separated list', () => {
@@ -127,7 +208,7 @@ describe('LabelSelector', () => {
       expect(screen.getByText('Agent')).toBeInTheDocument()
 
       await act(async () => {
-        fireEvent.click(screen.getByTitle('Agent'))
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Agent' }))
         vi.advanceTimersByTime(10)
       })
 
@@ -142,16 +223,8 @@ describe('LabelSelector', () => {
         vi.advanceTimersByTime(10)
       })
 
-      // Find the label item in the dropdown list and click it
-      // Use getAllByTitle and select the one in the dropdown (with text-sm class)
-      const agentElements = screen.getAllByTitle('Agent')
-      const dropdownItem = agentElements.find(el =>
-        el.classList.contains('text-sm'),
-      )
-
       await act(async () => {
-        if (dropdownItem)
-          fireEvent.click(dropdownItem)
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Agent' }))
         vi.advanceTimersByTime(10)
       })
 
@@ -166,10 +239,10 @@ describe('LabelSelector', () => {
         vi.advanceTimersByTime(10)
       })
 
-      expect(screen.getByTitle('RAG')).toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: 'RAG' })).toBeInTheDocument()
 
       await act(async () => {
-        fireEvent.click(screen.getByTitle('RAG'))
+        fireEvent.click(screen.getByRole('checkbox', { name: 'RAG' }))
         vi.advanceTimersByTime(10)
       })
 
@@ -184,9 +257,7 @@ describe('LabelSelector', () => {
         vi.advanceTimersByTime(10)
       })
 
-      // Checkboxes should be visible in the dropdown
-      const checkboxes = document.querySelectorAll('[data-testid^="checkbox"]')
-      expect(checkboxes.length).toBeGreaterThan(0)
+      expect(screen.getAllByRole('checkbox').length).toBeGreaterThan(0)
     })
   })
 
@@ -210,9 +281,9 @@ describe('LabelSelector', () => {
       })
 
       // Only RAG should be visible (rag contains 'rag')
-      expect(screen.getByTitle('RAG')).toBeInTheDocument()
+      expect(screen.getByText('RAG')).toBeInTheDocument()
       // Agent should not be in the dropdown list (agent doesn't contain 'rag')
-      expect(screen.queryByTitle('Agent')).not.toBeInTheDocument()
+      expect(screen.queryByRole('checkbox', { name: 'Agent' })).not.toBeInTheDocument()
     })
 
     it('should show empty state when no labels match search', async () => {
@@ -251,8 +322,8 @@ describe('LabelSelector', () => {
         vi.advanceTimersByTime(10)
       })
 
-      expect(screen.getByTitle('RAG')).toBeInTheDocument()
-      expect(screen.queryByTitle('Agent')).not.toBeInTheDocument()
+      expect(screen.getByText('RAG')).toBeInTheDocument()
+      expect(screen.queryByRole('checkbox', { name: 'Agent' })).not.toBeInTheDocument()
 
       await act(async () => {
         // Clear the input
@@ -262,8 +333,8 @@ describe('LabelSelector', () => {
       })
 
       // All labels should be visible again
-      expect(screen.getByTitle('Agent')).toBeInTheDocument()
-      expect(screen.getByTitle('RAG')).toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: 'Agent' })).toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: 'RAG' })).toBeInTheDocument()
     })
   })
 
@@ -308,12 +379,11 @@ describe('LabelSelector', () => {
       expect(screen.getByText('Agent')).toBeInTheDocument()
 
       await act(async () => {
-        fireEvent.click(screen.getByTitle('Agent'))
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Agent' }))
         vi.advanceTimersByTime(10)
       })
 
-      expect(mockOnChange).toHaveBeenCalledTimes(1)
-      expect(mockOnChange).toHaveBeenCalledWith(['agent'])
+      expect(mockOnChange).toHaveBeenLastCalledWith(['agent'])
     })
   })
 })

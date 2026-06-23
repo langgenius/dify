@@ -1,0 +1,151 @@
+import type { SVGProps } from 'react'
+import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import AppDetailNav from '@/app/components/app-sidebar'
+
+const mockSetDetailSidebarMode = vi.fn()
+
+let mockDetailSidebarMode = 'expand'
+let mockPathname = '/app/app-1/logs'
+let mockSelectedSegment = 'logs'
+let mockIsHovering = true
+let hotkeyHandler: ((event: { preventDefault: () => void }) => void) | null = null
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+  }),
+}))
+
+vi.mock('@/app/components/main-nav/storage', () => ({
+  useDetailSidebarMode: () => [mockDetailSidebarMode, mockSetDetailSidebarMode],
+}))
+
+vi.mock('@/next/navigation', () => ({
+  usePathname: () => mockPathname,
+  useSelectedLayoutSegment: () => mockSelectedSegment,
+}))
+
+vi.mock('@/next/link', () => ({
+  default: ({
+    href,
+    children,
+    className,
+    title,
+  }: {
+    href: string
+    children?: React.ReactNode
+    className?: string
+    title?: string
+  }) => (
+    <a href={href} className={className} title={title}>
+      {children}
+    </a>
+  ),
+}))
+
+vi.mock('ahooks', () => ({
+  useHover: () => mockIsHovering,
+}))
+
+vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
+  return {
+    ...actual,
+    useHotkey: (_hotkey: string, handler: (event: { preventDefault: () => void }) => void) => {
+      hotkeyHandler = handler
+    },
+  }
+})
+
+vi.mock('@/hooks/use-breakpoints', () => ({
+  default: () => 'desktop',
+  MediaType: {
+    mobile: 'mobile',
+    desktop: 'desktop',
+  },
+}))
+
+vi.mock('@/context/event-emitter', () => ({
+  useEventEmitterContextContext: () => ({
+    eventEmitter: {
+      useSubscription: vi.fn(),
+    },
+  }),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useAppContext: () => ({
+    isCurrentWorkspaceEditor: true,
+  }),
+}))
+
+vi.mock('@langgenius/dify-ui/dropdown-menu', () => import('@/__mocks__/base-ui-dropdown-menu'))
+vi.mock('@langgenius/dify-ui/tooltip', () => import('@/__mocks__/base-ui-tooltip'))
+
+vi.mock('@/app/components/app-sidebar/app-info', () => ({
+  default: ({
+    expand,
+    onlyShowDetail,
+    openState,
+  }: {
+    expand: boolean
+    onlyShowDetail?: boolean
+    openState?: boolean
+  }) => (
+    <div
+      data-testid={onlyShowDetail ? 'app-info-detail' : 'app-info'}
+      data-expand={expand}
+      data-open={openState}
+    />
+  ),
+}))
+
+const MockIcon = (props: SVGProps<SVGSVGElement>) => <svg {...props} />
+
+const navigation = [
+  { name: 'Overview', href: '/app/app-1/overview', icon: MockIcon, selectedIcon: MockIcon },
+  { name: 'Logs', href: '/app/app-1/logs', icon: MockIcon, selectedIcon: MockIcon },
+]
+
+describe('App Sidebar Shell Flow', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+    mockDetailSidebarMode = 'expand'
+    mockPathname = '/app/app-1/logs'
+    mockSelectedSegment = 'logs'
+    mockIsHovering = true
+    hotkeyHandler = null
+  })
+
+  it('renders the expanded sidebar, marks the active nav item, and toggles collapse by click and shortcut', () => {
+    render(<AppDetailNav navigation={navigation} />)
+
+    expect(screen.getByTestId('app-info')).toHaveAttribute('data-expand', 'true')
+
+    const logsLink = screen.getByRole('link', { name: /Logs/i })
+    expect(logsLink.className).toContain('bg-components-menu-item-bg-active')
+
+    fireEvent.click(screen.getByRole('button'))
+    expect(mockSetDetailSidebarMode).toHaveBeenCalledWith('collapse')
+
+    const preventDefault = vi.fn()
+    hotkeyHandler?.({ preventDefault })
+
+    expect(preventDefault).toHaveBeenCalled()
+    expect(mockSetDetailSidebarMode).toHaveBeenCalledWith('collapse')
+  })
+
+  it('keeps the normal sidebar on workflow routes', () => {
+    mockPathname = '/app/app-1/workflow'
+    mockSelectedSegment = 'workflow'
+
+    render(<AppDetailNav navigation={navigation} />)
+
+    expect(screen.getByTestId('app-info')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Overview/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Logs/i })).toBeInTheDocument()
+  })
+})

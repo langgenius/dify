@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { expectLoadingButton } from '@/test/button'
 
 // Component Imports (after mocks)
 
@@ -50,15 +51,17 @@ describe('UrlInput', () => {
 
     it('should show loading state on button when running', () => {
       render(<UrlInput isRunning={true} onRun={mockOnRun} />)
-      // Button should show loading text when running
       const button = screen.getByRole('button')
-      expect(button).toHaveTextContent(/loading/i)
+      expectLoadingButton(button)
+      expect(button.querySelector('.animate-spin')).toBeInTheDocument()
     })
 
     it('should not show loading state on button when not running', () => {
       render(<UrlInput isRunning={false} onRun={mockOnRun} />)
       const button = screen.getByRole('button')
-      expect(button).not.toHaveTextContent(/loading/i)
+      expect(button).not.toBeDisabled()
+      expect(button).not.toHaveAttribute('aria-busy')
+      expect(button.querySelector('.animate-spin')).not.toBeInTheDocument()
     })
   })
 

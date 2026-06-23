@@ -3,7 +3,7 @@ import type {
 } from './types'
 import {
   createContext,
-  useContext,
+  use,
   useRef,
 } from 'react'
 import {
@@ -30,10 +30,10 @@ export const createFileStore = (
 }
 
 type FileStore = ReturnType<typeof createFileStore>
-export const FileContext = createContext<FileStore | null>(null)
+const FileContext = createContext<FileStore | null>(null)
 
 export function useFileStoreWithSelector<T>(selector: (state: Shape) => T): T {
-  const store = useContext(FileContext)
+  const store = use(FileContext)
   if (!store)
     throw new Error('Missing FileContext.Provider in the tree')
 
@@ -41,7 +41,7 @@ export function useFileStoreWithSelector<T>(selector: (state: Shape) => T): T {
 }
 
 export const useFileStore = () => {
-  return useContext(FileContext)!
+  return use(FileContext)!
 }
 
 type FileProviderProps = {

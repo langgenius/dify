@@ -138,7 +138,9 @@ class DatasetConfigManager:
             )
 
     @classmethod
-    def validate_and_set_defaults(cls, tenant_id: str, app_mode: AppMode, config: dict) -> tuple[dict, list[str]]:
+    def validate_and_set_defaults(
+        cls, tenant_id: str, app_mode: AppMode, config: dict[str, Any]
+    ) -> tuple[dict[str, Any], list[str]]:
         """
         Validate and set defaults for dataset feature
 
@@ -172,7 +174,7 @@ class DatasetConfigManager:
         return config, ["agent_mode", "dataset_configs", "dataset_query_variable"]
 
     @classmethod
-    def extract_dataset_config_for_legacy_compatibility(cls, tenant_id: str, app_mode: AppMode, config: dict):
+    def extract_dataset_config_for_legacy_compatibility(cls, tenant_id: str, app_mode: AppMode, config: dict[str, Any]):
         """
         Extract dataset config for legacy compatibility
 
@@ -211,6 +213,11 @@ class DatasetConfigManager:
             PlanningStrategy.REACT_ROUTER,
         }:
             for tool in config.get("agent_mode", {}).get("tools", []):
+                if not tool:
+                    # Skip malformed empty tool entries; list(tool.keys())[0]
+                    # would otherwise raise IndexError. The sibling convert()
+                    # already guards this with `if len(tool) == 1`.
+                    continue
                 key = list(tool.keys())[0]
                 if key == "dataset":
                     # old style, use tool name as key

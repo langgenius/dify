@@ -1,13 +1,14 @@
+import type { ReactNode } from 'react'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { PromptVariable } from '@/models/debug'
-import { RiCloseLine, RiInformation2Fill } from '@remixicon/react'
+import { DrawerCloseButton } from '@langgenius/dify-ui/drawer'
 import { useTranslation } from 'react-i18next'
 import AnnotationReply from '@/app/components/base/features/new-feature-panel/annotation-reply'
 
 import Citation from '@/app/components/base/features/new-feature-panel/citation'
 import ConversationOpener from '@/app/components/base/features/new-feature-panel/conversation-opener'
-import DialogWrapper from '@/app/components/base/features/new-feature-panel/dialog-wrapper'
+import { FeaturePanelDrawer } from '@/app/components/base/features/new-feature-panel/feature-panel-drawer'
 import FileUpload from '@/app/components/base/features/new-feature-panel/file-upload'
 import FollowUp from '@/app/components/base/features/new-feature-panel/follow-up'
 import ImageUpload from '@/app/components/base/features/new-feature-panel/image-upload'
@@ -18,7 +19,7 @@ import TextToSpeech from '@/app/components/base/features/new-feature-panel/text-
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
-type Props = {
+type Props = Readonly<{
   show: boolean
   isChatMode: boolean
   disabled: boolean
@@ -26,10 +27,15 @@ type Props = {
   onClose: () => void
   inWorkflow?: boolean
   showFileUpload?: boolean
+  showModeration?: boolean
+  showAnnotationReply?: boolean
   promptVariables?: PromptVariable[]
   workflowVariables?: InputVar[]
   onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
-}
+  title?: ReactNode
+  description?: ReactNode
+  drawerClassName?: string
+}>
 
 const NewFeaturePanel = ({
   show,
@@ -39,44 +45,40 @@ const NewFeaturePanel = ({
   onClose,
   inWorkflow = true,
   showFileUpload = true,
+  showModeration = true,
+  showAnnotationReply = true,
   promptVariables,
   workflowVariables,
   onAutoAddPromptVariable,
+  title,
+  description,
+  drawerClassName,
 }: Props) => {
   const { t } = useTranslation()
   const { data: speech2textDefaultModel } = useDefaultModel(ModelTypeEnum.speech2text)
   const { data: text2speechDefaultModel } = useDefaultModel(ModelTypeEnum.tts)
 
   return (
-    <DialogWrapper
+    <FeaturePanelDrawer
       show={show}
       onClose={onClose}
       inWorkflow={inWorkflow}
+      className={drawerClassName}
     >
       <div className="flex h-full grow flex-col">
         {/* header */}
         <div className="flex shrink-0 justify-between p-4 pb-3">
           <div>
-            <div className="system-xl-semibold text-text-primary">{t('common.features', { ns: 'workflow' })}</div>
-            <div className="body-xs-regular text-text-tertiary">{t('common.featuresDescription', { ns: 'workflow' })}</div>
+            <div className="system-xl-semibold text-text-primary">{title ?? t('common.features', { ns: 'workflow' })}</div>
+            <div className="body-xs-regular text-text-tertiary">{description ?? t('common.featuresDescription', { ns: 'workflow' })}</div>
           </div>
-          <div className="h-8 w-8 cursor-pointer p-2" onClick={onClose}><RiCloseLine className="h-4 w-4 text-text-tertiary" /></div>
+          <DrawerCloseButton
+            aria-label={t('operation.close', { ns: 'common' })}
+            className="size-8 p-2"
+          />
         </div>
         {/* list */}
         <div className="grow basis-0 overflow-y-auto px-4 pb-4">
-          {showFileUpload && (
-            <div className="relative mb-1 rounded-xl border border-components-panel-border p-2 shadow-xs">
-              <div className="absolute left-0 top-0 h-full w-full rounded-xl opacity-40" style={{ background: 'linear-gradient(92deg, rgba(11, 165, 236, 0.25) 18.12%, rgba(255, 255, 255, 0.00) 167.31%)' }}></div>
-              <div className="relative flex h-full w-full items-start">
-                <div className="mr-0.5 shrink-0 p-0.5">
-                  <RiInformation2Fill className="h-5 w-5 text-text-accent" />
-                </div>
-                <div className="system-xs-medium p-1 text-text-primary">
-                  <span>{isChatMode ? t('common.fileUploadTip', { ns: 'workflow' }) : t('common.ImageUploadLegacyTip', { ns: 'workflow' })}</span>
-                </div>
-              </div>
-            </div>
-          )}
           {!isChatMode && !inWorkflow && (
             <MoreLikeThis disabled={disabled} onChange={onChange} />
           )}
@@ -103,13 +105,13 @@ const NewFeaturePanel = ({
           {isChatMode && (
             <Citation disabled={disabled} onChange={onChange} />
           )}
-          {(isChatMode || !inWorkflow) && <Moderation disabled={disabled} onChange={onChange} />}
-          {!inWorkflow && isChatMode && (
+          {showModeration && (isChatMode || !inWorkflow) && <Moderation disabled={disabled} onChange={onChange} />}
+          {showAnnotationReply && !inWorkflow && isChatMode && (
             <AnnotationReply disabled={disabled} onChange={onChange} />
           )}
         </div>
       </div>
-    </DialogWrapper>
+    </FeaturePanelDrawer>
   )
 }
 

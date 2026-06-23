@@ -35,7 +35,7 @@ vi.mock('@/service/base', () => ({
   handleStream: mockHandleStream,
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: mockToastError,
   },
@@ -152,6 +152,10 @@ describe('useWorkflowRun utils', () => {
       ttsIsPublic: true,
     })
     expect(buildTTSConfig({ appId: 'app-1' }, '/explore/installed/app-1')).toEqual({
+      ttsUrl: '/installed-apps/app-1/text-to-audio',
+      ttsIsPublic: false,
+    })
+    expect(buildTTSConfig({ appId: 'app-1' }, '/installed/app-1')).toEqual({
       ttsUrl: '/installed-apps/app-1/text-to-audio',
       ttsIsPublic: false,
     })

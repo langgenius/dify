@@ -3,6 +3,7 @@ import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { IOtherOptions } from '@/service/base'
 import type { HumanInputFormTimeoutData, NodeTracing, WorkflowFinishedResponse } from '@/types/workflow'
 import { produce } from 'immer'
+import { enrichSubmittedHumanInputFormData } from '@/app/components/base/chat/chat/answer/human-input-content/submitted-utils'
 import { getFilesInLogs } from '@/app/components/base/file-uploader/utils'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { sseGet } from '@/service/base'
@@ -118,8 +119,8 @@ const finishWorkflowNode = (current: WorkflowProcess | undefined, data: NodeTrac
     const currentIndex = draft.tracing.findIndex(trace => matchParallelTrace(trace, data))
     if (currentIndex > -1) {
       draft.tracing[currentIndex] = {
-        ...(draft.tracing[currentIndex].extras
-          ? { extras: draft.tracing[currentIndex].extras }
+        ...(draft.tracing[currentIndex]!.extras
+          ? { extras: draft.tracing[currentIndex]!.extras }
           : {}),
         ...data,
         expand: !!data.error,
@@ -195,7 +196,7 @@ const updateHumanInputRequired = (
 
     const currentIndex = draft.tracing.findIndex(item => item.node_id === data.node_id)
     if (currentIndex > -1)
-      draft.tracing[currentIndex].status = NodeRunningStatus.Paused
+      draft.tracing[currentIndex]!.status = NodeRunningStatus.Paused
   })
 }
 
@@ -204,16 +205,20 @@ const updateHumanInputFilled = (
   data: NonNullable<WorkflowProcess['humanInputFilledFormDataList']>[number],
 ) => {
   return updateWorkflowProcess(current, (draft) => {
+    let requiredFormData: NonNullable<WorkflowProcess['humanInputFormDataList']>[number] | undefined
     if (draft.humanInputFormDataList?.length) {
       const currentFormIndex = draft.humanInputFormDataList.findIndex(item => item.node_id === data.node_id)
-      if (currentFormIndex > -1)
+      if (currentFormIndex > -1) {
+        requiredFormData = draft.humanInputFormDataList[currentFormIndex]
         draft.humanInputFormDataList.splice(currentFormIndex, 1)
+      }
     }
 
+    const enrichedData = enrichSubmittedHumanInputFormData(data, requiredFormData)
     if (!draft.humanInputFilledFormDataList)
-      draft.humanInputFilledFormDataList = [data]
+      draft.humanInputFilledFormDataList = [enrichedData]
     else
-      draft.humanInputFilledFormDataList.push(data)
+      draft.humanInputFilledFormDataList.push(enrichedData)
   })
 }
 
@@ -227,7 +232,7 @@ const updateHumanInputTimeout = (
 
     const currentFormIndex = draft.humanInputFormDataList.findIndex(item => item.node_id === data.node_id)
     if (currentFormIndex > -1)
-      draft.humanInputFormDataList[currentFormIndex].expiration_time = data.expiration_time
+      draft.humanInputFormDataList[currentFormIndex]!.expiration_time = data.expiration_time
   })
 }
 
@@ -354,10 +359,10 @@ export const createWorkflowStreamHandlers = ({
       setCompletionRes(serializedOutputs)
       if (data.outputs) {
         const outputKeys = Object.keys(data.outputs)
-        const isStringOutput = outputKeys.length === 1 && typeof data.outputs[outputKeys[0]] === 'string'
+        const isStringOutput = outputKeys.length === 1 && typeof data.outputs[outputKeys[0]!] === 'string'
         if (isStringOutput) {
           setWorkflowProcessData(updateWorkflowProcess(getWorkflowProcessData(), (draft) => {
-            draft.resultText = data.outputs[outputKeys[0]]
+            draft.resultText = data.outputs[outputKeys[0]!]
           }))
         }
       }

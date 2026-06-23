@@ -47,6 +47,7 @@ describe('ExternalKnowledgeAPICard', () => {
 
   const defaultProps = {
     api: mockApi,
+    canManageExternalKnowledgeApi: true,
   }
 
   beforeEach(() => {
@@ -56,17 +57,17 @@ describe('ExternalKnowledgeAPICard', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      expect(screen.getByText('Test External API')).toBeInTheDocument()
+      expect(screen.getByText('Test External API'))!.toBeInTheDocument()
     })
 
     it('should render API name', () => {
       render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      expect(screen.getByText('Test External API')).toBeInTheDocument()
+      expect(screen.getByText('Test External API'))!.toBeInTheDocument()
     })
 
     it('should render API endpoint', () => {
       render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      expect(screen.getByText('https://api.example.com/knowledge')).toBeInTheDocument()
+      expect(screen.getByText('https://api.example.com/knowledge'))!.toBeInTheDocument()
     })
 
     it('should render edit and delete buttons', () => {
@@ -75,10 +76,21 @@ describe('ExternalKnowledgeAPICard', () => {
       expect(buttons.length).toBe(2)
     })
 
+    it('should hide edit and delete buttons when external knowledge API management is unavailable', () => {
+      const { container } = render((
+        <ExternalKnowledgeAPICard
+          {...defaultProps}
+          canManageExternalKnowledgeApi={false}
+        />
+      ))
+
+      expect(container.querySelectorAll('button').length).toBe(0)
+    })
+
     it('should render API connection icon', () => {
       const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
       const icon = container.querySelector('svg')
-      expect(icon).toBeInTheDocument()
+      expect(icon)!.toBeInTheDocument()
     })
   })
 
@@ -103,7 +115,7 @@ describe('ExternalKnowledgeAPICard', () => {
       const buttons = container.querySelectorAll('button')
       const editButton = buttons[0]
 
-      fireEvent.click(editButton)
+      fireEvent.click(editButton!)
 
       await waitFor(() => {
         expect(fetchExternalAPI).toHaveBeenCalledWith({ apiTemplateId: 'api-123' })
@@ -131,7 +143,7 @@ describe('ExternalKnowledgeAPICard', () => {
       const buttons = container.querySelectorAll('button')
       const editButton = buttons[0]
 
-      fireEvent.click(editButton)
+      fireEvent.click(editButton!)
 
       await waitFor(() => {
         expect(consoleSpy).toHaveBeenCalledWith(
@@ -162,14 +174,14 @@ describe('ExternalKnowledgeAPICard', () => {
       const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
       const editButton = container.querySelectorAll('button')[0]
 
-      fireEvent.click(editButton)
+      fireEvent.click(editButton!)
 
       await waitFor(() => {
         expect(mockSetShowExternalKnowledgeAPIModal).toHaveBeenCalled()
       })
 
       // Simulate save callback
-      const modalCall = mockSetShowExternalKnowledgeAPIModal.mock.calls[0][0]
+      const modalCall = mockSetShowExternalKnowledgeAPIModal.mock.calls[0]![0]
       modalCall.onSaveCallback()
 
       expect(mockMutateExternalKnowledgeApis).toHaveBeenCalled()
@@ -194,14 +206,14 @@ describe('ExternalKnowledgeAPICard', () => {
       const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
       const editButton = container.querySelectorAll('button')[0]
 
-      fireEvent.click(editButton)
+      fireEvent.click(editButton!)
 
       await waitFor(() => {
         expect(mockSetShowExternalKnowledgeAPIModal).toHaveBeenCalled()
       })
 
       // Simulate cancel callback
-      const modalCall = mockSetShowExternalKnowledgeAPIModal.mock.calls[0][0]
+      const modalCall = mockSetShowExternalKnowledgeAPIModal.mock.calls[0]![0]
       modalCall.onCancelCallback()
 
       expect(mockMutateExternalKnowledgeApis).toHaveBeenCalled()
@@ -216,7 +228,7 @@ describe('ExternalKnowledgeAPICard', () => {
       const buttons = container.querySelectorAll('button')
       const deleteButton = buttons[1]
 
-      fireEvent.click(deleteButton)
+      fireEvent.click(deleteButton!)
 
       await waitFor(() => {
         expect(checkUsageExternalAPI).toHaveBeenCalledWith({ apiTemplateId: 'api-123' })
@@ -224,7 +236,7 @@ describe('ExternalKnowledgeAPICard', () => {
 
       // Confirm dialog should be shown
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /cancel/i }))!.toBeInTheDocument()
       })
     })
 
@@ -234,10 +246,10 @@ describe('ExternalKnowledgeAPICard', () => {
       const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
       const deleteButton = container.querySelectorAll('button')[1]
 
-      fireEvent.click(deleteButton)
+      fireEvent.click(deleteButton!)
 
       await waitFor(() => {
-        expect(screen.getByText(/3/)).toBeInTheDocument()
+        expect(screen.getByText(/3/))!.toBeInTheDocument()
       })
     })
 
@@ -248,10 +260,10 @@ describe('ExternalKnowledgeAPICard', () => {
       const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
       const deleteButton = container.querySelectorAll('button')[1]
 
-      fireEvent.click(deleteButton)
+      fireEvent.click(deleteButton!)
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /confirm/i })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /confirm/i }))!.toBeInTheDocument()
       })
 
       const confirmButton = screen.getByRole('button', { name: /confirm/i })
@@ -269,10 +281,10 @@ describe('ExternalKnowledgeAPICard', () => {
       const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
       const deleteButton = container.querySelectorAll('button')[1]
 
-      fireEvent.click(deleteButton)
+      fireEvent.click(deleteButton!)
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /cancel/i }))!.toBeInTheDocument()
       })
 
       const cancelButton = screen.getByRole('button', { name: /cancel/i })
@@ -291,10 +303,10 @@ describe('ExternalKnowledgeAPICard', () => {
       const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
       const deleteButton = container.querySelectorAll('button')[1]
 
-      fireEvent.click(deleteButton)
+      fireEvent.click(deleteButton!)
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /confirm/i })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /confirm/i }))!.toBeInTheDocument()
       })
 
       const confirmButton = screen.getByRole('button', { name: /confirm/i })
@@ -317,7 +329,7 @@ describe('ExternalKnowledgeAPICard', () => {
       const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
       const deleteButton = container.querySelectorAll('button')[1]
 
-      fireEvent.click(deleteButton)
+      fireEvent.click(deleteButton!)
 
       await waitFor(() => {
         expect(consoleSpy).toHaveBeenCalledWith(
@@ -336,11 +348,11 @@ describe('ExternalKnowledgeAPICard', () => {
       const deleteButton = container.querySelectorAll('button')[1]
       const cardContainer = container.querySelector('[class*="shadows-shadow"]')
 
-      fireEvent.mouseEnter(deleteButton)
-      expect(cardContainer).toHaveClass('border-state-destructive-border')
-      expect(cardContainer).toHaveClass('bg-state-destructive-hover')
+      fireEvent.mouseEnter(deleteButton!)
+      expect(cardContainer)!.toHaveClass('border-state-destructive-border')
+      expect(cardContainer)!.toHaveClass('bg-state-destructive-hover')
 
-      fireEvent.mouseLeave(deleteButton)
+      fireEvent.mouseLeave(deleteButton!)
       expect(cardContainer).not.toHaveClass('border-state-destructive-border')
     })
   })
@@ -351,8 +363,8 @@ describe('ExternalKnowledgeAPICard', () => {
         ...mockApi,
         settings: { endpoint: '', api_key: 'key' },
       }
-      render(<ExternalKnowledgeAPICard api={apiWithEmptyEndpoint} />)
-      expect(screen.getByText('Test External API')).toBeInTheDocument()
+      render(<ExternalKnowledgeAPICard api={apiWithEmptyEndpoint} canManageExternalKnowledgeApi={true} />)
+      expect(screen.getByText('Test External API'))!.toBeInTheDocument()
     })
 
     it('should handle delete response with unsuccessful result', async () => {
@@ -363,10 +375,10 @@ describe('ExternalKnowledgeAPICard', () => {
       const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
       const deleteButton = container.querySelectorAll('button')[1]
 
-      fireEvent.click(deleteButton)
+      fireEvent.click(deleteButton!)
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /confirm/i })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: /confirm/i }))!.toBeInTheDocument()
       })
 
       const confirmButton = screen.getByRole('button', { name: /confirm/i })

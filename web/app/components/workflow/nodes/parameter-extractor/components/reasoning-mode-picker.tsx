@@ -9,10 +9,10 @@ import { ReasoningModeType } from '../types'
 
 const i18nPrefix = 'nodes.parameterExtractor'
 
-type Props = {
+type Props = Readonly<{
   type: ReasoningModeType
   onChange: (type: ReasoningModeType) => void
-}
+}>
 
 const ReasoningModePicker: FC<Props> = ({
   type,
@@ -33,12 +33,12 @@ const ReasoningModePicker: FC<Props> = ({
     >
       <div className="grid grid-cols-2 gap-x-1">
         <OptionCard
-          title="Function/Tool Calling"
+          title={t(`${i18nPrefix}.reasoningModeFunctionToolCalling`, { ns: 'workflow' })}
           onSelect={handleChange(ReasoningModeType.functionCall)}
           selected={type === ReasoningModeType.functionCall}
         />
         <OptionCard
-          title="Prompt"
+          title={t(`${i18nPrefix}.reasoningModePrompt`, { ns: 'workflow' })}
           selected={type === ReasoningModeType.prompt}
           onSelect={handleChange(ReasoningModeType.prompt)}
         />

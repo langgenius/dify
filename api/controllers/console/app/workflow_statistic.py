@@ -3,17 +3,25 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import sessionmaker
 
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
+    account_initialization_required,
+    rbac_permission_required,
+    setup_required,
+    with_current_user,
+)
 from extensions.ext_database import db
+from fields.base import ResponseModel
 from libs.datetime_utils import parse_time_range
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
+from models.account import Account
 from models.enums import WorkflowRunTriggeredFrom
-from models.model import AppMode
+from models.model import App, AppMode
 from repositories.factory import DifyAPIRepositoryFactory
-
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class WorkflowStatisticQuery(BaseModel):
@@ -28,9 +36,49 @@ class WorkflowStatisticQuery(BaseModel):
         return value
 
 
-console_ns.schema_model(
-    WorkflowStatisticQuery.__name__,
-    WorkflowStatisticQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+class WorkflowDailyRunsStatisticItem(ResponseModel):
+    date: str
+    runs: int
+
+
+class WorkflowDailyRunsStatisticResponse(ResponseModel):
+    data: list[WorkflowDailyRunsStatisticItem]
+
+
+class WorkflowDailyTerminalsStatisticItem(ResponseModel):
+    date: str
+    terminal_count: int
+
+
+class WorkflowDailyTerminalsStatisticResponse(ResponseModel):
+    data: list[WorkflowDailyTerminalsStatisticItem]
+
+
+class WorkflowDailyTokenCostStatisticItem(ResponseModel):
+    date: str
+    token_count: int
+
+
+class WorkflowDailyTokenCostStatisticResponse(ResponseModel):
+    data: list[WorkflowDailyTokenCostStatisticItem]
+
+
+class WorkflowAverageAppInteractionStatisticItem(ResponseModel):
+    date: str
+    interactions: float
+
+
+class WorkflowAverageAppInteractionStatisticResponse(ResponseModel):
+    data: list[WorkflowAverageAppInteractionStatisticItem]
+
+
+register_schema_models(console_ns, WorkflowStatisticQuery)
+register_response_schema_models(
+    console_ns,
+    WorkflowDailyRunsStatisticResponse,
+    WorkflowDailyTerminalsStatisticResponse,
+    WorkflowDailyTokenCostStatisticResponse,
+    WorkflowAverageAppInteractionStatisticResponse,
 )
 
 
@@ -44,16 +92,20 @@ class WorkflowDailyRunsStatistic(Resource):
     @console_ns.doc("get_workflow_daily_runs_statistic")
     @console_ns.doc(description="Get workflow daily runs statistics")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[WorkflowStatisticQuery.__name__])
-    @console_ns.response(200, "Daily runs statistics retrieved successfully")
-    @get_app_model
+    @console_ns.doc(params=query_params_from_model(WorkflowStatisticQuery))
+    @console_ns.response(
+        200,
+        "Daily runs statistics retrieved successfully",
+        console_ns.models[WorkflowDailyRunsStatisticResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model):
-        account, _ = current_account_with_tenant()
-
-        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+    @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @get_app_model
+    def get(self, account: Account, app_model: App):
+        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
 
         assert account.timezone is not None
 
@@ -84,16 +136,20 @@ class WorkflowDailyTerminalsStatistic(Resource):
     @console_ns.doc("get_workflow_daily_terminals_statistic")
     @console_ns.doc(description="Get workflow daily terminals statistics")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[WorkflowStatisticQuery.__name__])
-    @console_ns.response(200, "Daily terminals statistics retrieved successfully")
-    @get_app_model
+    @console_ns.doc(params=query_params_from_model(WorkflowStatisticQuery))
+    @console_ns.response(
+        200,
+        "Daily terminals statistics retrieved successfully",
+        console_ns.models[WorkflowDailyTerminalsStatisticResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model):
-        account, _ = current_account_with_tenant()
-
-        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+    @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @get_app_model
+    def get(self, account: Account, app_model: App):
+        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
 
         assert account.timezone is not None
 
@@ -124,16 +180,20 @@ class WorkflowDailyTokenCostStatistic(Resource):
     @console_ns.doc("get_workflow_daily_token_cost_statistic")
     @console_ns.doc(description="Get workflow daily token cost statistics")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[WorkflowStatisticQuery.__name__])
-    @console_ns.response(200, "Daily token cost statistics retrieved successfully")
-    @get_app_model
+    @console_ns.doc(params=query_params_from_model(WorkflowStatisticQuery))
+    @console_ns.response(
+        200,
+        "Daily token cost statistics retrieved successfully",
+        console_ns.models[WorkflowDailyTokenCostStatisticResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model):
-        account, _ = current_account_with_tenant()
-
-        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+    @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @get_app_model
+    def get(self, account: Account, app_model: App):
+        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
 
         assert account.timezone is not None
 
@@ -164,16 +224,20 @@ class WorkflowAverageAppInteractionStatistic(Resource):
     @console_ns.doc("get_workflow_average_app_interaction_statistic")
     @console_ns.doc(description="Get workflow average app interaction statistics")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[WorkflowStatisticQuery.__name__])
-    @console_ns.response(200, "Average app interaction statistics retrieved successfully")
+    @console_ns.doc(params=query_params_from_model(WorkflowStatisticQuery))
+    @console_ns.response(
+        200,
+        "Average app interaction statistics retrieved successfully",
+        console_ns.models[WorkflowAverageAppInteractionStatisticResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model(mode=[AppMode.WORKFLOW])
-    def get(self, app_model):
-        account, _ = current_account_with_tenant()
-
-        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+    def get(self, account: Account, app_model: App):
+        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
 
         assert account.timezone is not None
 

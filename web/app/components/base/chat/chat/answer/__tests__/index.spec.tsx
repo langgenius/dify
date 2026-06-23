@@ -10,6 +10,13 @@ vi.mock('../context', () => ({
   })),
 }))
 
+vi.mock('@/hooks/use-timestamp', () => ({
+  default: () => ({
+    formatTime: (timestamp: number) => `formatted-${timestamp}`,
+    formatDate: (value: string) => `formatted-${value}`,
+  }),
+}))
+
 describe('Answer Component', () => {
   const defaultProps = {
     item: {

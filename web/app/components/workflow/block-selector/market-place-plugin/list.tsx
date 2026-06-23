@@ -1,13 +1,13 @@
 'use client'
 import type { RefObject } from 'react'
 import type { Plugin, PluginCategoryEnum } from '@/app/components/plugins/types'
-import { RiArrowRightUpLine, RiSearchLine } from '@remixicon/react'
+import { cn } from '@langgenius/dify-ui/cn'
+import { RiArrowRightUpLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useEffect, useImperativeHandle, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import Link from '@/next/link'
-import { cn } from '@/utils/classnames'
-import { getMarketplaceUrl } from '@/utils/var'
 import useStickyScroll, { ScrollPosition } from '../use-sticky-scroll'
 import Item from './item'
 
@@ -39,7 +39,7 @@ const List = ({
   const { t } = useTranslation()
   const noFilter = !searchText && tags.length === 0
   const hasRes = list.length > 0
-  const urlWithSearchText = getMarketplaceUrl('', { q: searchText, tags: tags.join(',') })
+  const urlWithSearchText = getMarketplaceCategoryUrl(category, { q: searchText, tags: tags.join(',') })
   const nextToStickyELemRef = useRef<HTMLDivElement>(null)
 
   const { handleScroll, scrollPosition } = useStickyScroll({
@@ -79,34 +79,36 @@ const List = ({
 
     return (
       <Link
-        className="system-sm-medium sticky bottom-0 z-10 flex h-8 cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg"
-        href={getMarketplaceUrl('', { category })}
+        className="sticky bottom-0 z-10 flex h-8 cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 system-sm-medium text-text-accent-light-mode-only shadow-lg"
+        href={getMarketplaceCategoryUrl(category)}
         target="_blank"
+        rel="noopener noreferrer"
       >
         <span>{t('findMoreInMarketplace', { ns: 'plugin' })}</span>
-        <RiArrowRightUpLine className="ml-0.5 h-3 w-3" />
+        <RiArrowRightUpLine className="ml-0.5 size-3" />
       </Link>
     )
   }
 
-  const maxWidthClassName = toolContentClassName || 'max-w-[100%]'
+  const maxWidthClassName = toolContentClassName || 'max-w-full'
 
   return (
     <>
       {hasRes && (
         <div
-          className={cn('system-sm-medium sticky z-10 flex h-8 cursor-pointer justify-between px-4 py-1 text-text-primary', stickyClassName, !disableMaxWidth && maxWidthClassName)}
+          className={cn('sticky z-10 flex h-8 cursor-pointer justify-between px-4 py-1 system-sm-medium text-text-primary', stickyClassName, !disableMaxWidth && maxWidthClassName)}
           onClick={handleHeadClick}
         >
           <span>{t('fromMarketplace', { ns: 'plugin' })}</span>
           <Link
             href={urlWithSearchText}
             target="_blank"
+            rel="noopener noreferrer"
             className="flex items-center text-text-accent-light-mode-only"
             onClick={e => e.stopPropagation()}
           >
             <span>{t('searchInMarketplace', { ns: 'plugin' })}</span>
-            <RiArrowRightUpLine className="ml-0.5 h-3 w-3" />
+            <RiArrowRightUpLine className="ml-0.5 size-3" />
           </Link>
         </div>
       )}
@@ -118,20 +120,6 @@ const List = ({
             onAction={noop}
           />
         ))}
-        {hasRes && (
-          <div className="mb-3 mt-2 flex items-center justify-center space-x-2">
-            <div className="h-[2px] w-[90px] bg-gradient-to-l from-[rgba(16,24,40,0.08)] to-[rgba(255,255,255,0.01)]"></div>
-            <Link
-              href={urlWithSearchText}
-              target="_blank"
-              className="system-sm-medium flex h-4 shrink-0 items-center text-text-accent-light-mode-only"
-            >
-              <RiSearchLine className="mr-0.5 h-3 w-3" />
-              <span>{t('searchInMarketplace', { ns: 'plugin' })}</span>
-            </Link>
-            <div className="h-[2px] w-[90px] bg-gradient-to-l from-[rgba(255,255,255,0.01)] to-[rgba(16,24,40,0.08)]"></div>
-          </div>
-        )}
       </div>
     </>
   )

@@ -6,6 +6,17 @@ import { checkWatercrawlTaskStatus, createWatercrawlTask } from '@/service/datas
 import { sleep } from '@/utils'
 import WaterCrawl from '../index'
 
+const { mockRouterPush, mockSetShowAccountSettingModal } = vi.hoisted(() => ({
+  mockRouterPush: vi.fn(),
+  mockSetShowAccountSettingModal: vi.fn(),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+  }),
+}))
+
 vi.mock('@/service/datasets', () => ({
   createWatercrawlTask: vi.fn(),
   checkWatercrawlTaskStatus: vi.fn(),
@@ -16,7 +27,6 @@ vi.mock('@/utils', () => ({
 }))
 
 // Mock modal context
-const mockSetShowAccountSettingModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowAccountSettingModal: mockSetShowAccountSettingModal,
@@ -77,7 +87,7 @@ describe('WaterCrawl', () => {
 
       render(<WaterCrawl {...props} />)
 
-      expect(screen.getByText('datasetCreation.stepOne.website.watercrawlTitle')).toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepOne.website.watercrawlTitle'))!.toBeInTheDocument()
     })
 
     it('should render header with configuration button', () => {
@@ -85,7 +95,7 @@ describe('WaterCrawl', () => {
 
       render(<WaterCrawl {...props} />)
 
-      expect(screen.getByText('datasetCreation.stepOne.website.configureWatercrawl')).toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepOne.website.configureWatercrawl'))!.toBeInTheDocument()
     })
 
     it('should render URL input field', () => {
@@ -94,7 +104,8 @@ describe('WaterCrawl', () => {
       render(<WaterCrawl {...props} />)
 
       // Assert - URL input has specific placeholder
-      expect(screen.getByPlaceholderText('https://docs.dify.ai/en/')).toBeInTheDocument()
+      // Assert - URL input has specific placeholder
+      expect(screen.getByPlaceholderText('https://docs.dify.ai/en/'))!.toBeInTheDocument()
     })
 
     it('should render run button', () => {
@@ -102,7 +113,7 @@ describe('WaterCrawl', () => {
 
       render(<WaterCrawl {...props} />)
 
-      expect(screen.getByRole('button', { name: /run/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /run/i }))!.toBeInTheDocument()
     })
 
     it('should render options section', () => {
@@ -110,7 +121,7 @@ describe('WaterCrawl', () => {
 
       render(<WaterCrawl {...props} />)
 
-      expect(screen.getByText('datasetCreation.stepOne.website.options')).toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepOne.website.options'))!.toBeInTheDocument()
     })
 
     it('should render doc link to WaterCrawl', () => {
@@ -119,7 +130,7 @@ describe('WaterCrawl', () => {
       render(<WaterCrawl {...props} />)
 
       const docLink = screen.getByRole('link')
-      expect(docLink).toHaveAttribute('href', 'https://docs.watercrawl.dev/')
+      expect(docLink)!.toHaveAttribute('href', 'https://docs.watercrawl.dev/')
     })
 
     it('should not render crawling or result components initially', () => {
@@ -155,7 +166,8 @@ describe('WaterCrawl', () => {
       }
       else {
         // Options might not be visible, just verify component renders
-        expect(screen.getByText('datasetCreation.stepOne.website.options')).toBeInTheDocument()
+        // Options might not be visible, just verify component renders
+        expect(screen.getByText('datasetCreation.stepOne.website.options'))!.toBeInTheDocument()
       }
     })
 
@@ -195,7 +207,8 @@ describe('WaterCrawl', () => {
       render(<WaterCrawl {...props} />)
 
       // Assert - component renders with empty limit
-      expect(screen.getByPlaceholderText('https://docs.dify.ai/en/')).toBeInTheDocument()
+      // Assert - component renders with empty limit
+      expect(screen.getByPlaceholderText('https://docs.dify.ai/en/'))!.toBeInTheDocument()
     })
   })
 
@@ -218,7 +231,7 @@ describe('WaterCrawl', () => {
 
       // Assert - crawling indicator should appear
       await waitFor(() => {
-        expect(screen.getByText(/totalPageScraped/i)).toBeInTheDocument()
+        expect(screen.getByText(/totalPageScraped/i))!.toBeInTheDocument()
       })
 
       // Cleanup - resolve the promise
@@ -245,7 +258,7 @@ describe('WaterCrawl', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText(/selectAll|resetAll/i)).toBeInTheDocument()
+        expect(screen.getByText(/selectAll|resetAll/i))!.toBeInTheDocument()
       })
     })
 
@@ -307,7 +320,8 @@ describe('WaterCrawl', () => {
       render(<WaterCrawl {...props} />)
 
       // Options should be visible initially
-      expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage')).toBeInTheDocument()
+      // Options should be visible initially
+      expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage'))!.toBeInTheDocument()
 
       const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
       await userEvent.type(input, 'https://example.com')
@@ -353,7 +367,8 @@ describe('WaterCrawl', () => {
       render(<WaterCrawl {...props} />)
 
       // Initially options should be visible
-      expect(screen.getByText('datasetCreation.stepOne.website.options')).toBeInTheDocument()
+      // Initially options should be visible
+      expect(screen.getByText('datasetCreation.stepOne.website.options'))!.toBeInTheDocument()
 
       const input = screen.getByPlaceholderText('https://docs.dify.ai/en/')
       await userEvent.type(input, 'https://example.com')
@@ -361,7 +376,7 @@ describe('WaterCrawl', () => {
 
       // Assert - the crawling indicator should appear
       await waitFor(() => {
-        expect(screen.getByText(/totalPageScraped/i)).toBeInTheDocument()
+        expect(screen.getByText(/totalPageScraped/i))!.toBeInTheDocument()
       })
     })
   })
@@ -376,12 +391,14 @@ describe('WaterCrawl', () => {
       fireEvent.click(configButton)
 
       expect(mockSetShowAccountSettingModal).toHaveBeenCalledTimes(1)
+      expect(mockRouterPush).not.toHaveBeenCalled()
 
       // Rerender and click again
       rerender(<WaterCrawl {...props} />)
       fireEvent.click(configButton)
 
       expect(mockSetShowAccountSettingModal).toHaveBeenCalledTimes(2)
+      expect(mockRouterPush).not.toHaveBeenCalled()
     })
 
     it('should memoize checkValid callback based on crawlOptions', async () => {
@@ -411,7 +428,8 @@ describe('WaterCrawl', () => {
       rerender(<WaterCrawl {...props} />)
 
       // Assert - component should still work correctly
-      expect(screen.getByPlaceholderText('https://docs.dify.ai/en/')).toBeInTheDocument()
+      // Assert - component should still work correctly
+      expect(screen.getByPlaceholderText('https://docs.dify.ai/en/'))!.toBeInTheDocument()
     })
   })
 
@@ -424,9 +442,8 @@ describe('WaterCrawl', () => {
       const configButton = screen.getByText('datasetCreation.stepOne.website.configureWatercrawl')
       await userEvent.click(configButton)
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-        payload: 'data-source',
-      })
+      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'data-source' })
+      expect(mockRouterPush).not.toHaveBeenCalled()
     })
 
     it('should handle URL input and run button click', async () => {
@@ -478,7 +495,7 @@ describe('WaterCrawl', () => {
 
       // Assert - result should be displayed
       await waitFor(() => {
-        expect(screen.getByText('Preview Test')).toBeInTheDocument()
+        expect(screen.getByText('Preview Test'))!.toBeInTheDocument()
       })
 
       const previewButton = screen.getByText('datasetCreation.stepOne.website.preview')
@@ -496,11 +513,9 @@ describe('WaterCrawl', () => {
 
       render(<WaterCrawl {...props} />)
 
-      // Find and click the checkbox by data-testid
-      const checkbox = screen.getByTestId('checkbox-crawl-sub-pages')
+      const checkbox = screen.getByRole('checkbox', { name: /crawlSubPage/ })
       fireEvent.click(checkbox)
 
-      // Assert - onCrawlOptionsChange should be called
       expect(onCrawlOptionsChange).toHaveBeenCalled()
     })
 
@@ -510,18 +525,51 @@ describe('WaterCrawl', () => {
       render(<WaterCrawl {...props} />)
 
       // Options content should be visible initially
-      expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage')).toBeInTheDocument()
+      // Options content should be visible initially
+      expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage'))!.toBeInTheDocument()
 
       const optionsHeader = screen.getByText('datasetCreation.stepOne.website.options')
       await userEvent.click(optionsHeader)
 
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
+      // Assert - options should be hidden
       // Assert - options should be hidden
       expect(screen.queryByText('datasetCreation.stepOne.website.crawlSubPage')).not.toBeInTheDocument()
 
       await userEvent.click(optionsHeader)
 
       // Options should be visible again
-      expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage')).toBeInTheDocument()
+      // Options should be visible again
+      expect(screen.getByText('datasetCreation.stepOne.website.crawlSubPage'))!.toBeInTheDocument()
     })
   })
 
@@ -577,7 +625,7 @@ describe('WaterCrawl', () => {
 
       // Assert - max_depth should be deleted from the request
       await waitFor(() => {
-        const callArgs = mockCreateTask.mock.calls[0][0]
+        const callArgs = mockCreateTask.mock.calls[0]![0]
         expect(callArgs.options).not.toHaveProperty('max_depth')
       })
     })
@@ -632,10 +680,10 @@ describe('WaterCrawl', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle')).toBeInTheDocument()
+        expect(screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'))!.toBeInTheDocument()
       })
 
-      expect(screen.getByText('Crawl failed due to network error')).toBeInTheDocument()
+      expect(screen.getByText('Crawl failed due to network error'))!.toBeInTheDocument()
     })
 
     it('should handle API error during status check', async () => {
@@ -655,7 +703,7 @@ describe('WaterCrawl', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle')).toBeInTheDocument()
+        expect(screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'))!.toBeInTheDocument()
       })
     })
 
@@ -706,7 +754,7 @@ describe('WaterCrawl', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle')).toBeInTheDocument()
+        expect(screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'))!.toBeInTheDocument()
       })
     })
   })
@@ -843,7 +891,7 @@ describe('WaterCrawl', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle')).toBeInTheDocument()
+        expect(screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'))!.toBeInTheDocument()
       })
 
       consoleSpy.mockRestore()
@@ -867,7 +915,7 @@ describe('WaterCrawl', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText('datasetCreation.stepOne.website.unknownError')).toBeInTheDocument()
+        expect(screen.getByText('datasetCreation.stepOne.website.unknownError'))!.toBeInTheDocument()
       })
     })
 
@@ -971,7 +1019,7 @@ describe('WaterCrawl', () => {
 
       // Assert - should show 0/10 in crawling indicator
       await waitFor(() => {
-        expect(screen.getByText(/totalPageScraped.*0\/10/)).toBeInTheDocument()
+        expect(screen.getByText(/totalPageScraped.*0\/10/))!.toBeInTheDocument()
       })
     })
 
@@ -993,7 +1041,7 @@ describe('WaterCrawl', () => {
 
       // Assert - should show 0/0
       await waitFor(() => {
-        expect(screen.getByText(/totalPageScraped.*0\/0/)).toBeInTheDocument()
+        expect(screen.getByText(/totalPageScraped.*0\/0/))!.toBeInTheDocument()
       })
     })
 
@@ -1020,7 +1068,7 @@ describe('WaterCrawl', () => {
 
       // Assert - should complete and show results
       await waitFor(() => {
-        expect(screen.getByText(/scrapTimeInfo/i)).toBeInTheDocument()
+        expect(screen.getByText(/scrapTimeInfo/i))!.toBeInTheDocument()
       })
     })
 
@@ -1042,7 +1090,7 @@ describe('WaterCrawl', () => {
 
       // Assert - should use limit (15) as total
       await waitFor(() => {
-        expect(screen.getByText(/totalPageScraped.*0\/15/)).toBeInTheDocument()
+        expect(screen.getByText(/totalPageScraped.*0\/15/))!.toBeInTheDocument()
       })
     })
 
@@ -1070,7 +1118,7 @@ describe('WaterCrawl', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText(/totalPageScraped/)).toBeInTheDocument()
+        expect(screen.getByText(/totalPageScraped/))!.toBeInTheDocument()
       })
     })
   })
@@ -1335,7 +1383,7 @@ describe('WaterCrawl', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText(/totalPageScraped.*0\/10/)).toBeInTheDocument()
+        expect(screen.getByText(/totalPageScraped.*0\/10/))!.toBeInTheDocument()
       })
     })
 
@@ -1360,7 +1408,7 @@ describe('WaterCrawl', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText(/scrapTimeInfo/i)).toBeInTheDocument()
+        expect(screen.getByText(/scrapTimeInfo/i))!.toBeInTheDocument()
       })
     })
 
@@ -1384,7 +1432,7 @@ describe('WaterCrawl', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText('Result Page')).toBeInTheDocument()
+        expect(screen.getByText('Result Page'))!.toBeInTheDocument()
       })
     })
 
@@ -1403,7 +1451,7 @@ describe('WaterCrawl', () => {
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
       await waitFor(() => {
-        expect(screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle')).toBeInTheDocument()
+        expect(screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'))!.toBeInTheDocument()
       })
     })
 
@@ -1515,8 +1563,8 @@ describe('WaterCrawl', () => {
 
       // Assert - final results should be displayed
       await waitFor(() => {
-        expect(screen.getByText('Page 1')).toBeInTheDocument()
-        expect(screen.getByText('Page 5')).toBeInTheDocument()
+        expect(screen.getByText('Page 1'))!.toBeInTheDocument()
+        expect(screen.getByText('Page 5'))!.toBeInTheDocument()
       })
 
       // Assert - checked results should be updated
@@ -1550,7 +1598,7 @@ describe('WaterCrawl', () => {
 
       // Wait for results
       await waitFor(() => {
-        expect(screen.getByText('Single')).toBeInTheDocument()
+        expect(screen.getByText('Single'))!.toBeInTheDocument()
       })
 
       const selectAllCheckbox = screen.getByText(/selectAll|resetAll/i)
@@ -1596,7 +1644,7 @@ describe('WaterCrawl', () => {
 
       // Step 3: Wait for completion
       await waitFor(() => {
-        expect(screen.getByText('Preview Page')).toBeInTheDocument()
+        expect(screen.getByText('Preview Page'))!.toBeInTheDocument()
       })
 
       // Step 4: Click preview

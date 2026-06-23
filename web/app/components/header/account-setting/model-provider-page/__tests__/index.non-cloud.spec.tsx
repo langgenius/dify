@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import {
   CurrentSystemQuotaTypeEnum,
   CustomConfigurationStatusEnum,
@@ -15,17 +16,13 @@ const mockQuotaConfig = {
   is_valid: true,
 }
 
-vi.mock('@/config', () => ({
-  IS_CLOUD_EDITION: false,
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useSystemFeaturesQuery: () => ({
-    data: {
-      enable_marketplace: false,
-    },
-  }),
-}))
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: false,
+  }
+})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
@@ -62,26 +59,92 @@ vi.mock('../install-from-marketplace', () => ({
   default: () => <div data-testid="install-from-marketplace" />,
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
+  useCanSetPluginSettings: () => ({
+    canSetPermissions: true,
+    canSetPluginPreferences: true,
+  }),
+  usePluginSettingsAccess: () => ({
+    canSetPermissions: true,
+    canSetPluginPreferences: true,
+    canViewInstalledPlugins: true,
+  }),
+  default: () => ({
+    referenceSetting: {
+      permission: {},
+      auto_upgrade: {
+        strategy_setting: 'latest',
+        upgrade_time_of_day: 0,
+        upgrade_mode: 'all',
+        exclude_plugins: [],
+        include_plugins: [],
+      },
+    },
+    setReferenceSettings: vi.fn(),
+  }),
+}))
+
+vi.mock('@/service/use-plugins', () => ({
+  usePluginAutoUpgradeSettings: () => ({
+    data: {
+      category: 'model',
+      auto_upgrade: {
+        strategy_setting: 'latest',
+        upgrade_time_of_day: 0,
+        upgrade_mode: 'all',
+        exclude_plugins: [],
+        include_plugins: [],
+      },
+    },
+    error: undefined,
+    isFetching: false,
+    isLoading: false,
+  }),
+  useMutationPluginAutoUpgradeSettings: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+}))
+
+vi.mock('@/app/components/plugins/reference-setting-modal', () => ({
+  default: () => <div data-testid="reference-setting-modal" />,
+}))
+
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
+  const originalPlugins = actual.consoleQuery.plugins as unknown as Record<string, unknown>
   return {
     ...actual,
-    useQuery: () => ({ data: undefined }),
+    consoleQuery: new Proxy(actual.consoleQuery, {
+      get(target, prop) {
+        if (prop === 'plugins') {
+          return {
+            ...originalPlugins,
+            checkInstalled: {
+              queryOptions: () => ({
+                queryKey: ['plugins', 'checkInstalled'],
+                queryFn: () => new Promise(() => {}),
+              }),
+            },
+            latestVersions: {
+              queryOptions: () => ({
+                queryKey: ['plugins', 'latestVersions'],
+                queryFn: () => new Promise(() => {}),
+              }),
+            },
+          }
+        }
+        return Reflect.get(target, prop)
+      },
+    }),
   }
 })
 
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    plugins: {
-      checkInstalled: { queryOptions: () => ({}) },
-      latestVersions: { queryOptions: () => ({}) },
-    },
-  },
-}))
-
 describe('ModelProviderPage non-cloud branch', () => {
   it('should skip the quota panel when cloud edition is disabled', () => {
-    render(<ModelProviderPage searchText="" />)
+    renderWithSystemFeatures(<ModelProviderPage searchText="" />, {
+      systemFeatures: { enable_marketplace: false },
+    })
 
     expect(screen.getByTestId('system-model-selector')).toBeInTheDocument()
     expect(screen.queryByTestId('quota-panel')).not.toBeInTheDocument()

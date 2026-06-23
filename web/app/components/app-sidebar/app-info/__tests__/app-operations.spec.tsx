@@ -4,8 +4,8 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import AppOperations from '../app-operations'
 
-vi.mock('../../../base/button', () => ({
-  default: ({ children, onClick, className, size, variant, id, tabIndex, ...rest }: {
+vi.mock('@langgenius/dify-ui/button', () => ({
+  Button: ({ children, onClick, className, size, variant, id, tabIndex, ...rest }: {
     'children': React.ReactNode
     'onClick'?: () => void
     'className'?: string
@@ -30,17 +30,67 @@ vi.mock('../../../base/button', () => ({
   ),
 }))
 
-vi.mock('../../../base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => (
-    <div data-testid="portal-elem" data-open={open}>{children}</div>
-  ),
-  PortalToFollowElemTrigger: ({ children, onClick }: { children: React.ReactNode, onClick?: () => void }) => (
-    <div data-testid="portal-trigger" onClick={onClick}>{children}</div>
-  ),
-  PortalToFollowElemContent: ({ children, className }: { children: React.ReactNode, className?: string }) => (
-    <div data-testid="portal-content" className={className}>{children}</div>
-  ),
-}))
+vi.mock('@langgenius/dify-ui/dropdown-menu', () => {
+  const DropdownMenuContext = React.createContext<{ isOpen: boolean, setOpen: (open: boolean) => void } | null>(null)
+
+  const useDropdownMenuContext = () => {
+    const context = React.use(DropdownMenuContext)
+    if (!context)
+      throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
+    return context
+  }
+
+  return {
+    DropdownMenu: ({ children, open, onOpenChange }: { children: React.ReactNode, open: boolean, onOpenChange?: (open: boolean) => void }) => (
+      <DropdownMenuContext value={{ isOpen: open, setOpen: onOpenChange ?? vi.fn() }}>
+        <div data-testid="dropdown-menu" data-open={open}>{children}</div>
+      </DropdownMenuContext>
+    ),
+    DropdownMenuTrigger: ({
+      children,
+      onClick,
+      render,
+    }: {
+      children: React.ReactNode
+      onClick?: React.MouseEventHandler<HTMLElement>
+      render?: React.ReactElement
+    }) => {
+      const { isOpen, setOpen } = useDropdownMenuContext()
+      const handleClick = (e: React.MouseEvent<HTMLElement>) => {
+        onClick?.(e)
+        setOpen(!isOpen)
+      }
+
+      if (render)
+        return React.cloneElement(render, { 'data-testid': 'dropdown-trigger', 'onClick': handleClick } as Record<string, unknown>, children)
+
+      return <button data-testid="dropdown-trigger" onClick={handleClick}>{children}</button>
+    },
+    DropdownMenuContent: ({ children, popupClassName }: { children: React.ReactNode, popupClassName?: string }) => {
+      const { isOpen } = useDropdownMenuContext()
+      if (!isOpen)
+        return null
+
+      return <div data-testid="dropdown-content" className={popupClassName}>{children}</div>
+    },
+    DropdownMenuItem: ({ children, onClick }: { children: React.ReactNode, onClick?: React.MouseEventHandler<HTMLButtonElement> }) => {
+      const { setOpen } = useDropdownMenuContext()
+      return (
+        <button
+          type="button"
+          data-testid="dropdown-item"
+          onClick={(e) => {
+            onClick?.(e)
+            setOpen(false)
+          }}
+        >
+          {children}
+        </button>
+      )
+    },
+    DropdownMenuSeparator: () => <hr data-testid="dropdown-separator" />,
+  }
+})
 
 const createOperation = (id: string, title: string, type?: 'divider'): Operation => ({
   id,
@@ -169,7 +219,7 @@ describe('AppOperations', () => {
 
       render(<AppOperations gap={4} primaryOperations={ops} secondaryOperations={secondary} />)
 
-      const trigger = screen.queryByTestId('portal-trigger')
+      const trigger = screen.queryByTestId('dropdown-trigger')
       if (trigger)
         await user.click(trigger)
 
@@ -178,6 +228,21 @@ describe('AppOperations', () => {
   })
 
   describe('Visible operations click', () => {
+    it('should keep focus ring inside visible operation buttons', () => {
+      const cleanup = setupDomMeasurements(500, 60, [80])
+      const editOp = createOperation('edit', 'Edit')
+
+      render(<AppOperations gap={4} operations={[editOp]} />)
+
+      const visibleButton = screen.getAllByText('Edit')
+        .map(label => label.closest('button'))
+        .find(button => button?.tabIndex !== -1)
+
+      expect(visibleButton).toHaveClass('focus-visible:ring-inset')
+
+      cleanup()
+    })
+
     it('should call onClick when a visible operation is clicked', async () => {
       const cleanup = setupDomMeasurements(500, 60, [80, 80])
       const user = userEvent.setup()

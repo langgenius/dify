@@ -1,7 +1,5 @@
 from collections.abc import Generator
 
-from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-
 from core.app.apps.pipeline.generate_response_converter import WorkflowAppGenerateResponseConverter
 from core.app.entities.task_entities import (
     AppStreamResponse,
@@ -12,6 +10,7 @@ from core.app.entities.task_entities import (
     WorkflowAppBlockingResponse,
     WorkflowAppStreamResponse,
 )
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 
 
 def test_convert_blocking_full_and_simple_response():

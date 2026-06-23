@@ -1,13 +1,17 @@
 import type { RenderOptions } from '@testing-library/react'
 import type { Mock, MockedFunction } from 'vitest'
 import type { ModalContextState } from '@/context/modal-context'
-import { fireEvent, render } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { noop } from 'es-toolkit/function'
 import { defaultPlan } from '@/app/components/billing/config'
-import { useModalContext as actualUseModalContext } from '@/context/modal-context'
+import { useModalContext as actualUseModalContext, useModalContextSelector as actualUseModalContextSelector } from '@/context/modal-context'
 
 import { useProviderContext as actualUseProviderContext } from '@/context/provider-context'
 import APIKeyInfoPanel from './index'
+
+const { mockRouterPush } = vi.hoisted(() => ({
+  mockRouterPush: vi.fn(),
+}))
 
 // Mock the modules before importing the functions
 vi.mock('@/context/provider-context', () => ({
@@ -16,21 +20,31 @@ vi.mock('@/context/provider-context', () => ({
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
+  useModalContextSelector: vi.fn(),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+  }),
 }))
 
 // Type casting for mocks
 const mockUseProviderContext = actualUseProviderContext as MockedFunction<typeof actualUseProviderContext>
 const mockUseModalContext = actualUseModalContext as MockedFunction<typeof actualUseModalContext>
+const mockUseModalContextSelector = actualUseModalContextSelector as MockedFunction<typeof actualUseModalContextSelector>
 
 // Default mock data
 const defaultProviderContext = {
   modelProviders: [],
   refreshModelProviders: noop,
+  isLoadingModelProviders: false,
   textGenerationModelList: [],
   supportRetrievalMethods: [],
   isAPIKeySet: false,
   plan: defaultPlan,
   isFetchedPlan: false,
+  isFetchedPlanInfo: false,
   enableBilling: false,
   onPlanInfoChanged: noop,
   enableReplaceWebAppLogo: false,
@@ -58,7 +72,6 @@ const defaultProviderContext = {
 
 const defaultModalContext: ModalContextState = {
   setShowAccountSettingModal: noop,
-  setShowApiBasedExtensionModal: noop,
   setShowModerationSettingModal: noop,
   setShowExternalDataToolModal: noop,
   setShowPricingModal: noop,
@@ -72,17 +85,19 @@ const defaultModalContext: ModalContextState = {
   setShowTriggerEventsLimitModal: noop,
 }
 
-export type MockOverrides = {
+type MockOverrides = {
   providerContext?: Partial<typeof defaultProviderContext>
   modalContext?: Partial<typeof defaultModalContext>
 }
 
-export type APIKeyInfoPanelRenderOptions = {
+type APIKeyInfoPanelRenderOptions = {
   mockOverrides?: MockOverrides
 } & Omit<RenderOptions, 'wrapper'>
 
+const mainButtonName = /appOverview\.apiKeyInfo\.setAPIBtn/
+
 // Setup function to configure mocks
-export function setupMocks(overrides: MockOverrides = {}) {
+function setupMocks(overrides: MockOverrides = {}) {
   mockUseProviderContext.mockReturnValue({
     ...defaultProviderContext,
     ...overrides.providerContext,
@@ -92,10 +107,17 @@ export function setupMocks(overrides: MockOverrides = {}) {
     ...defaultModalContext,
     ...overrides.modalContext,
   })
+
+  mockUseModalContextSelector.mockImplementation(selector =>
+    selector({
+      ...defaultModalContext,
+      ...overrides.modalContext,
+    }),
+  )
 }
 
 // Custom render function
-export function renderAPIKeyInfoPanel(options: APIKeyInfoPanelRenderOptions = {}) {
+function renderAPIKeyInfoPanel(options: APIKeyInfoPanelRenderOptions = {}) {
   const { mockOverrides, ...renderOptions } = options
 
   setupMocks(mockOverrides)
@@ -137,7 +159,7 @@ export const scenarios = {
 export const assertions = {
   // Should render main button
   shouldRenderMainButton: () => {
-    const button = document.querySelector('button.btn-primary')
+    const button = screen.getByRole('button', { name: mainButtonName })
     expect(button).toBeInTheDocument()
     return button
   },
@@ -174,9 +196,8 @@ export const assertions = {
 export const interactions = {
   // Click the main button
   clickMainButton: () => {
-    const button = document.querySelector('button.btn-primary')
-    if (button)
-      fireEvent.click(button)
+    const button = screen.getByRole('button', { name: mainButtonName })
+    fireEvent.click(button)
     return button
   },
 
@@ -191,6 +212,7 @@ export const interactions = {
 
 // Text content keys for assertions
 export const textKeys = {
+  button: mainButtonName,
   selfHost: {
     titleRow1: /appOverview\.apiKeyInfo\.selfHost\.title\.row1/,
     titleRow2: /appOverview\.apiKeyInfo\.selfHost\.title\.row2/,
@@ -210,4 +232,4 @@ export function clearAllMocks() {
 }
 
 // Export mock functions for external access
-export { defaultModalContext, mockUseModalContext, mockUseProviderContext }
+export { defaultModalContext, mockRouterPush, mockUseModalContext }

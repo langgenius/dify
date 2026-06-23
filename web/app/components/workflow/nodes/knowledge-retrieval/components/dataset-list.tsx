@@ -6,22 +6,31 @@ import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
-import { hasEditPermissionForDataset } from '@/utils/permission'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import Item from './dataset-item'
 
-type Props = {
+type Props = Readonly<{
   list: DataSet[]
   onChange: (list: DataSet[]) => void
   readonly?: boolean
-}
+  settingsDrawerBackdropClassName?: string
+  settingsDrawerBackdropForceRender?: boolean
+  settingsDrawerPopupClassName?: string
+  settingsModalHeight?: string
+}>
 
 const DatasetList: FC<Props> = ({
   list,
   onChange,
   readonly,
+  settingsDrawerBackdropClassName,
+  settingsDrawerBackdropForceRender,
+  settingsDrawerPopupClassName,
+  settingsModalHeight,
 }) => {
   const { t } = useTranslation()
-  const userProfile = useAppContextSelector(s => s.userProfile)
+  const currentUserId = useAppContextSelector(s => s.userProfile?.id)
+  const workspacePermissionKeys = useAppContextSelector(s => s.workspacePermissionKeys)
 
   const handleRemove = useCallback((index: number) => {
     return () => {
@@ -43,17 +52,17 @@ const DatasetList: FC<Props> = ({
 
   const formattedList = useMemo(() => {
     return list.map((item) => {
-      const datasetConfig = {
-        createdBy: item.created_by,
-        partialMemberList: item.partial_member_list || [],
-        permission: item.permission,
-      }
+      const datasetACLCapabilities = getDatasetACLCapabilities(item.permission_keys, {
+        currentUserId,
+        resourceMaintainer: item.maintainer,
+        workspacePermissionKeys,
+      })
       return {
         ...item,
-        editable: hasEditPermissionForDataset(userProfile?.id || '', datasetConfig),
+        editable: datasetACLCapabilities.canEdit,
       }
     })
-  }, [list, userProfile?.id])
+  }, [currentUserId, list, workspacePermissionKeys])
 
   return (
     <div className="space-y-1">
@@ -67,11 +76,15 @@ const DatasetList: FC<Props> = ({
                 onChange={handleChange(index)}
                 readonly={readonly}
                 editable={item.editable}
+                settingsDrawerBackdropClassName={settingsDrawerBackdropClassName}
+                settingsDrawerBackdropForceRender={settingsDrawerBackdropForceRender}
+                settingsDrawerPopupClassName={settingsDrawerPopupClassName}
+                settingsModalHeight={settingsModalHeight}
               />
             )
           })
         : (
-            <div className="cursor-default select-none rounded-lg bg-background-section p-3 text-center text-xs text-text-tertiary">
+            <div className="cursor-default rounded-lg bg-background-section p-3 text-center text-xs text-text-tertiary select-none">
               {t('datasetConfig.knowledgeTip', { ns: 'appDebug' })}
             </div>
           )}

@@ -6,22 +6,14 @@ import re
 from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from json import JSONDecodeError
+from typing import Any, override
 
-from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
-from graphon.model_runtime.entities.provider_entities import (
-    ConfigurateMethod,
-    CredentialFormSchema,
-    FormType,
-    ProviderEntity,
-)
-from graphon.model_runtime.model_providers.__base.ai_model import AIModel
-from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from graphon.model_runtime.runtime import ModelRuntime
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from constants import HIDDEN_VALUE
+from core.entities import PluginCredentialType
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
 from core.entities.provider_entities import (
     CustomConfiguration,
@@ -31,7 +23,17 @@ from core.entities.provider_entities import (
 )
 from core.helper import encrypter
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
-from core.plugin.impl.model_runtime_factory import create_plugin_model_provider_factory
+from core.plugin.impl.model_runtime_factory import create_model_type_instance, create_plugin_model_assembly
+from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
+from graphon.model_runtime.entities.provider_entities import (
+    ConfigurateMethod,
+    CredentialFormSchema,
+    FormType,
+    ProviderEntity,
+)
+from graphon.model_runtime.model_providers.base.ai_model import AIModel
+from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
+from graphon.model_runtime.protocols.runtime import ModelRuntime
 from libs.datetime_utils import naive_utc_now
 from models.engine import db
 from models.enums import CredentialSourceType
@@ -46,7 +48,6 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
-from services.enterprise.plugin_manager_service import PluginCredentialType
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +69,11 @@ class ProviderConfiguration(BaseModel):
     nested schema and model lookups reuse the caller scope that was already
     resolved by the composition layer.
 
+    The ``provider`` field already contains the resolved provider schema that
+    was used to build this configuration. Reuse that schema for nested model
+    lookups instead of refetching the full provider catalog from the runtime on
+    every request-scoped lookup.
+
     TODO: lots of logic in a BaseModel entity should be separated, the exceptions should be classified
     """
 
@@ -82,15 +88,19 @@ class ProviderConfiguration(BaseModel):
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
     _bound_model_runtime: ModelRuntime | None = PrivateAttr(default=None)
+    _cached_provider_schema: ProviderEntity | None = PrivateAttr(default=None)
+    _original_provider_configurate_methods: tuple[ConfigurateMethod, ...] = PrivateAttr(default_factory=tuple)
 
     @model_validator(mode="after")
     def _(self):
+        self._original_provider_configurate_methods = tuple(self.provider.configurate_methods)
+
         if self.provider.provider not in original_provider_configurate_methods:
             original_provider_configurate_methods[self.provider.provider] = []
             for configurate_method in self.provider.configurate_methods:
                 original_provider_configurate_methods[self.provider.provider].append(configurate_method)
 
-        if original_provider_configurate_methods[self.provider.provider] == [ConfigurateMethod.CUSTOMIZABLE_MODEL]:
+        if list(self._original_provider_configurate_methods) == [ConfigurateMethod.CUSTOMIZABLE_MODEL]:
             if (
                 any(
                     len(quota_configuration.restrict_models) > 0
@@ -104,14 +114,44 @@ class ProviderConfiguration(BaseModel):
     def bind_model_runtime(self, model_runtime: ModelRuntime) -> None:
         """Attach the already-composed runtime for request-bound call chains."""
         self._bound_model_runtime = model_runtime
+        self._cached_provider_schema = self.provider
+
+    def _get_original_provider_configurate_methods(self) -> list[ConfigurateMethod]:
+        return list(self._original_provider_configurate_methods)
+
+    def _get_provider_schema(self, *, model_provider_factory: ModelProviderFactory | None = None) -> ProviderEntity:
+        """Resolve the provider schema lazily while preserving bound-runtime reuse."""
+        if self._cached_provider_schema is None:
+            if self.provider.models:
+                self._cached_provider_schema = self.provider
+            else:
+                provider_factory = model_provider_factory or self.get_model_provider_factory()
+                self._cached_provider_schema = provider_factory.get_provider_schema(provider=self.provider.provider)
+
+        return self._cached_provider_schema
+
+    def _get_model_runtime(self) -> ModelRuntime:
+        """Return the runtime aligned with this request-scoped configuration."""
+        if self._bound_model_runtime is not None:
+            return self._bound_model_runtime
+
+        model_assembly = create_plugin_model_assembly(tenant_id=self.tenant_id)
+        return model_assembly.model_runtime
+
+    def _get_runtime_and_provider_factory(self) -> tuple[ModelRuntime, ModelProviderFactory]:
+        """Resolve a provider factory that stays aligned with the runtime used by the caller."""
+        if self._bound_model_runtime is not None:
+            return self._bound_model_runtime, ModelProviderFactory(runtime=self._bound_model_runtime)
+
+        model_assembly = create_plugin_model_assembly(tenant_id=self.tenant_id)
+        return model_assembly.model_runtime, model_assembly.model_provider_factory
 
     def get_model_provider_factory(self) -> ModelProviderFactory:
         """Return a provider factory that preserves any request-bound runtime."""
-        if self._bound_model_runtime is not None:
-            return ModelProviderFactory(model_runtime=self._bound_model_runtime)
-        return create_plugin_model_provider_factory(tenant_id=self.tenant_id)
+        _, model_provider_factory = self._get_runtime_and_provider_factory()
+        return model_provider_factory
 
-    def get_current_credentials(self, model_type: ModelType, model: str) -> dict | None:
+    def get_current_credentials(self, model_type: ModelType, model: str) -> dict[str, Any] | None:
         """
         Get current credentials.
 
@@ -145,7 +185,6 @@ class ProviderConfiguration(BaseModel):
                         and restrict_model.base_model_name
                     ):
                         copy_credentials["base_model_name"] = restrict_model.base_model_name
-
             return copy_credentials
         else:
             credentials = None
@@ -163,9 +202,9 @@ class ProviderConfiguration(BaseModel):
                 current_credential_id = self.custom_configuration.provider.current_credential_id
 
             if current_credential_id:
-                from core.helper.credential_utils import check_credential_policy_compliance
+                from core.helper.credential_utils import runtime_check_credential_policy_compliance
 
-                check_credential_policy_compliance(
+                runtime_check_credential_policy_compliance(
                     credential_id=current_credential_id,
                     provider=self.provider.provider,
                     credential_type=PluginCredentialType.MODEL,
@@ -174,14 +213,13 @@ class ProviderConfiguration(BaseModel):
                 # no current credential id, check all available credentials
                 if self.custom_configuration.provider:
                     for credential_configuration in self.custom_configuration.provider.available_credentials:
-                        from core.helper.credential_utils import check_credential_policy_compliance
+                        from core.helper.credential_utils import runtime_check_credential_policy_compliance
 
-                        check_credential_policy_compliance(
+                        runtime_check_credential_policy_compliance(
                             credential_id=credential_configuration.credential_id,
                             provider=self.provider.provider,
                             credential_type=PluginCredentialType.MODEL,
                         )
-
             return credentials
 
     def get_system_configuration_status(self) -> SystemConfigurationStatus | None:
@@ -233,7 +271,7 @@ class ProviderConfiguration(BaseModel):
 
         return session.execute(stmt).scalar_one_or_none()
 
-    def _get_specific_provider_credential(self, credential_id: str) -> dict | None:
+    def _get_specific_provider_credential(self, credential_id: str) -> dict[str, Any] | None:
         """
         Get a specific provider credential by ID.
         :param credential_id: Credential ID
@@ -297,7 +335,7 @@ class ProviderConfiguration(BaseModel):
             stmt = stmt.where(ProviderCredential.id != exclude_id)
         return session.execute(stmt).scalar_one_or_none() is not None
 
-    def get_provider_credential(self, credential_id: str | None = None) -> dict | None:
+    def get_provider_credential(self, credential_id: str | None = None) -> dict[str, Any] | None:
         """
         Get provider credentials.
 
@@ -317,32 +355,28 @@ class ProviderConfiguration(BaseModel):
             else [],
         )
 
-    def validate_provider_credentials(self, credentials: dict, credential_id: str = "", session: Session | None = None):
+    def validate_provider_credentials(self, credentials: dict[str, Any], credential_id: str = ""):
         """
         Validate custom credentials.
         :param credentials: provider credentials
         :param credential_id: (Optional)If provided, can use existing credential's hidden api key to validate
-        :param session: optional database session
         :return:
         """
+        provider_credential_secret_variables = self.extract_secret_variables(
+            self.provider.provider_credential_schema.credential_form_schemas
+            if self.provider.provider_credential_schema
+            else []
+        )
 
-        def _validate(s: Session):
-            # Get provider credential secret variables
-            provider_credential_secret_variables = self.extract_secret_variables(
-                self.provider.provider_credential_schema.credential_form_schemas
-                if self.provider.provider_credential_schema
-                else []
-            )
-
-            if credential_id:
+        if credential_id:
+            with Session(db.engine) as session:
                 try:
                     stmt = select(ProviderCredential).where(
                         ProviderCredential.tenant_id == self.tenant_id,
                         ProviderCredential.provider_name.in_(self._get_provider_names()),
                         ProviderCredential.id == credential_id,
                     )
-                    credential_record = s.execute(stmt).scalar_one_or_none()
-                    # fix origin data
+                    credential_record = session.execute(stmt).scalar_one_or_none()
                     if credential_record and credential_record.encrypted_config:
                         if not credential_record.encrypted_config.startswith("{"):
                             original_credentials = {"openai_api_key": credential_record.encrypted_config}
@@ -353,31 +387,23 @@ class ProviderConfiguration(BaseModel):
                 except JSONDecodeError:
                     original_credentials = {}
 
-                # encrypt credentials
-                for key, value in credentials.items():
-                    if key in provider_credential_secret_variables:
-                        # if send [__HIDDEN__] in secret input, it will be same as original value
-                        if value == HIDDEN_VALUE and key in original_credentials:
-                            credentials[key] = encrypter.decrypt_token(
-                                tenant_id=self.tenant_id, token=original_credentials[key]
-                            )
-
-            model_provider_factory = self.get_model_provider_factory()
-            validated_credentials = model_provider_factory.provider_credentials_validate(
-                provider=self.provider.provider, credentials=credentials
-            )
-
-            for key, value in validated_credentials.items():
+            for key, value in credentials.items():
                 if key in provider_credential_secret_variables:
-                    validated_credentials[key] = encrypter.encrypt_token(self.tenant_id, value)
+                    if value == HIDDEN_VALUE and key in original_credentials:
+                        credentials[key] = encrypter.decrypt_token(
+                            tenant_id=self.tenant_id, token=original_credentials[key]
+                        )
 
-            return validated_credentials
+        model_provider_factory = self.get_model_provider_factory()
+        validated_credentials = model_provider_factory.provider_credentials_validate(
+            provider=self.provider.provider, credentials=credentials
+        )
 
-        if session:
-            return _validate(session)
-        else:
-            with Session(db.engine) as new_session:
-                return _validate(new_session)
+        for key, value in validated_credentials.items():
+            if key in provider_credential_secret_variables and isinstance(value, str):
+                validated_credentials[key] = encrypter.encrypt_token(self.tenant_id, value)
+
+        return validated_credentials
 
     def _generate_provider_credential_name(self, session) -> str:
         """
@@ -447,21 +473,23 @@ class ProviderConfiguration(BaseModel):
             provider_names.append(model_provider_id.provider_name)
         return provider_names
 
-    def create_provider_credential(self, credentials: dict, credential_name: str | None):
+    def create_provider_credential(self, credentials: dict[str, Any], credential_name: str | None):
         """
         Add custom provider credentials.
         :param credentials: provider credentials
         :param credential_name: credential name
         :return:
         """
-        with Session(db.engine) as session:
+        with Session(db.engine) as pre_session:
             if credential_name:
-                if self._check_provider_credential_name_exists(credential_name=credential_name, session=session):
+                if self._check_provider_credential_name_exists(credential_name=credential_name, session=pre_session):
                     raise ValueError(f"Credential with name '{credential_name}' already exists.")
             else:
-                credential_name = self._generate_provider_credential_name(session)
+                credential_name = self._generate_provider_credential_name(pre_session)
 
-            credentials = self.validate_provider_credentials(credentials=credentials, session=session)
+        credentials = self.validate_provider_credentials(credentials=credentials)
+
+        with Session(db.engine) as session:
             provider_record = self._get_provider_record(session)
             try:
                 new_record = ProviderCredential(
@@ -474,7 +502,6 @@ class ProviderConfiguration(BaseModel):
                 session.flush()
 
                 if not provider_record:
-                    # If provider record does not exist, create it
                     provider_record = Provider(
                         tenant_id=self.tenant_id,
                         provider_name=self.provider.provider,
@@ -515,7 +542,7 @@ class ProviderConfiguration(BaseModel):
 
     def update_provider_credential(
         self,
-        credentials: dict,
+        credentials: dict[str, Any],
         credential_id: str,
         credential_name: str | None,
     ):
@@ -527,15 +554,15 @@ class ProviderConfiguration(BaseModel):
         :param credential_name: credential name
         :return:
         """
-        with Session(db.engine) as session:
+        with Session(db.engine) as pre_session:
             if credential_name and self._check_provider_credential_name_exists(
-                credential_name=credential_name, session=session, exclude_id=credential_id
+                credential_name=credential_name, session=pre_session, exclude_id=credential_id
             ):
                 raise ValueError(f"Credential with name '{credential_name}' already exists.")
 
-            credentials = self.validate_provider_credentials(
-                credentials=credentials, credential_id=credential_id, session=session
-            )
+        credentials = self.validate_provider_credentials(credentials=credentials, credential_id=credential_id)
+
+        with Session(db.engine) as session:
             provider_record = self._get_provider_record(session)
             stmt = select(ProviderCredential).where(
                 ProviderCredential.id == credential_id,
@@ -543,12 +570,10 @@ class ProviderConfiguration(BaseModel):
                 ProviderCredential.provider_name.in_(self._get_provider_names()),
             )
 
-            # Get the credential record to update
             credential_record = session.execute(stmt).scalar_one_or_none()
             if not credential_record:
                 raise ValueError("Credential record not found.")
             try:
-                # Update credential
                 credential_record.encrypted_config = json.dumps(credentials)
                 credential_record.updated_at = naive_utc_now()
                 if credential_name:
@@ -760,7 +785,7 @@ class ProviderConfiguration(BaseModel):
 
     def _get_specific_custom_model_credential(
         self, model_type: ModelType, model: str, credential_id: str
-    ) -> dict | None:
+    ) -> dict[str, Any] | None:
         """
         Get a specific provider credential by ID.
         :param credential_id: Credential ID
@@ -832,7 +857,9 @@ class ProviderConfiguration(BaseModel):
             stmt = stmt.where(ProviderModelCredential.id != exclude_id)
         return session.execute(stmt).scalar_one_or_none() is not None
 
-    def get_custom_model_credential(self, model_type: ModelType, model: str, credential_id: str | None) -> dict | None:
+    def get_custom_model_credential(
+        self, model_type: ModelType, model: str, credential_id: str | None
+    ) -> dict[str, Any] | None:
         """
         Get custom model credentials.
 
@@ -872,9 +899,8 @@ class ProviderConfiguration(BaseModel):
         self,
         model_type: ModelType,
         model: str,
-        credentials: dict,
+        credentials: dict[str, Any],
         credential_id: str = "",
-        session: Session | None = None,
     ):
         """
         Validate custom model credentials.
@@ -885,16 +911,14 @@ class ProviderConfiguration(BaseModel):
         :param credential_id: (Optional)If provided, can use existing credential's hidden api key to validate
         :return:
         """
+        provider_credential_secret_variables = self.extract_secret_variables(
+            self.provider.model_credential_schema.credential_form_schemas
+            if self.provider.model_credential_schema
+            else []
+        )
 
-        def _validate(s: Session):
-            # Get provider credential secret variables
-            provider_credential_secret_variables = self.extract_secret_variables(
-                self.provider.model_credential_schema.credential_form_schemas
-                if self.provider.model_credential_schema
-                else []
-            )
-
-            if credential_id:
+        if credential_id:
+            with Session(db.engine) as session:
                 try:
                     stmt = select(ProviderModelCredential).where(
                         ProviderModelCredential.id == credential_id,
@@ -903,7 +927,7 @@ class ProviderConfiguration(BaseModel):
                         ProviderModelCredential.model_name == model,
                         ProviderModelCredential.model_type == model_type,
                     )
-                    credential_record = s.execute(stmt).scalar_one_or_none()
+                    credential_record = session.execute(stmt).scalar_one_or_none()
                     original_credentials = (
                         json.loads(credential_record.encrypted_config)
                         if credential_record and credential_record.encrypted_config
@@ -912,34 +936,26 @@ class ProviderConfiguration(BaseModel):
                 except JSONDecodeError:
                     original_credentials = {}
 
-                # decrypt credentials
-                for key, value in credentials.items():
-                    if key in provider_credential_secret_variables:
-                        # if send [__HIDDEN__] in secret input, it will be same as original value
-                        if value == HIDDEN_VALUE and key in original_credentials:
-                            credentials[key] = encrypter.decrypt_token(
-                                tenant_id=self.tenant_id, token=original_credentials[key]
-                            )
-
-            model_provider_factory = self.get_model_provider_factory()
-            validated_credentials = model_provider_factory.model_credentials_validate(
-                provider=self.provider.provider, model_type=model_type, model=model, credentials=credentials
-            )
-
-            for key, value in validated_credentials.items():
+            for key, value in credentials.items():
                 if key in provider_credential_secret_variables:
-                    validated_credentials[key] = encrypter.encrypt_token(self.tenant_id, value)
+                    if value == HIDDEN_VALUE and key in original_credentials:
+                        credentials[key] = encrypter.decrypt_token(
+                            tenant_id=self.tenant_id, token=original_credentials[key]
+                        )
 
-            return validated_credentials
+        model_provider_factory = self.get_model_provider_factory()
+        validated_credentials = model_provider_factory.model_credentials_validate(
+            provider=self.provider.provider, model_type=model_type, model=model, credentials=credentials
+        )
 
-        if session:
-            return _validate(session)
-        else:
-            with Session(db.engine) as new_session:
-                return _validate(new_session)
+        for key, value in validated_credentials.items():
+            if key in provider_credential_secret_variables and isinstance(value, str):
+                validated_credentials[key] = encrypter.encrypt_token(self.tenant_id, value)
+
+        return validated_credentials
 
     def create_custom_model_credential(
-        self, model_type: ModelType, model: str, credentials: dict, credential_name: str | None
+        self, model_type: ModelType, model: str, credentials: dict[str, Any], credential_name: str | None
     ) -> None:
         """
         Create a custom model credential.
@@ -949,20 +965,22 @@ class ProviderConfiguration(BaseModel):
         :param credentials: model credentials dict
         :return:
         """
-        with Session(db.engine) as session:
+        with Session(db.engine) as pre_session:
             if credential_name:
                 if self._check_custom_model_credential_name_exists(
-                    model=model, model_type=model_type, credential_name=credential_name, session=session
+                    model=model, model_type=model_type, credential_name=credential_name, session=pre_session
                 ):
                     raise ValueError(f"Model credential with name '{credential_name}' already exists for {model}.")
             else:
                 credential_name = self._generate_custom_model_credential_name(
-                    model=model, model_type=model_type, session=session
+                    model=model, model_type=model_type, session=pre_session
                 )
-            # validate custom model config
-            credentials = self.validate_custom_model_credentials(
-                model_type=model_type, model=model, credentials=credentials, session=session
-            )
+
+        credentials = self.validate_custom_model_credentials(
+            model_type=model_type, model=model, credentials=credentials
+        )
+
+        with Session(db.engine) as session:
             provider_model_record = self._get_custom_model_record(model_type=model_type, model=model, session=session)
 
             try:
@@ -977,7 +995,6 @@ class ProviderConfiguration(BaseModel):
                 session.add(credential)
                 session.flush()
 
-                # save provider model
                 if not provider_model_record:
                     provider_model_record = ProviderModel(
                         tenant_id=self.tenant_id,
@@ -1002,7 +1019,12 @@ class ProviderConfiguration(BaseModel):
                 raise
 
     def update_custom_model_credential(
-        self, model_type: ModelType, model: str, credentials: dict, credential_name: str | None, credential_id: str
+        self,
+        model_type: ModelType,
+        model: str,
+        credentials: dict[str, Any],
+        credential_name: str | None,
+        credential_id: str,
     ) -> None:
         """
         Update a custom model credential.
@@ -1014,23 +1036,24 @@ class ProviderConfiguration(BaseModel):
         :param credential_id: credential id
         :return:
         """
-        with Session(db.engine) as session:
+        with Session(db.engine) as pre_session:
             if credential_name and self._check_custom_model_credential_name_exists(
                 model=model,
                 model_type=model_type,
                 credential_name=credential_name,
-                session=session,
+                session=pre_session,
                 exclude_id=credential_id,
             ):
                 raise ValueError(f"Model credential with name '{credential_name}' already exists for {model}.")
-            # validate custom model config
-            credentials = self.validate_custom_model_credentials(
-                model_type=model_type,
-                model=model,
-                credentials=credentials,
-                credential_id=credential_id,
-                session=session,
-            )
+
+        credentials = self.validate_custom_model_credentials(
+            model_type=model_type,
+            model=model,
+            credentials=credentials,
+            credential_id=credential_id,
+        )
+
+        with Session(db.engine) as session:
             provider_model_record = self._get_custom_model_record(model_type=model_type, model=model, session=session)
 
             stmt = select(ProviderModelCredential).where(
@@ -1045,7 +1068,6 @@ class ProviderConfiguration(BaseModel):
                 raise ValueError("Credential record not found.")
 
             try:
-                # Update credential
                 credential_record.encrypted_config = json.dumps(credentials)
                 credential_record.updated_at = naive_utc_now()
                 if credential_name:
@@ -1407,18 +1429,29 @@ class ProviderConfiguration(BaseModel):
         :param model_type: model type
         :return:
         """
-        model_provider_factory = self.get_model_provider_factory()
+        if self._bound_model_runtime is not None:
+            model_runtime = self._bound_model_runtime
+        else:
+            model_runtime, _ = self._get_runtime_and_provider_factory()
 
-        # Get model instance of LLM
-        return model_provider_factory.get_model_type_instance(provider=self.provider.provider, model_type=model_type)
+        provider_schema = self._cached_provider_schema or self.provider
 
-    def get_model_schema(self, model_type: ModelType, model: str, credentials: dict | None) -> AIModelEntity | None:
-        """
-        Get model schema
-        """
-        model_provider_factory = self.get_model_provider_factory()
-        return model_provider_factory.get_model_schema(
-            provider=self.provider.provider, model_type=model_type, model=model, credentials=credentials
+        return create_model_type_instance(
+            runtime=model_runtime,
+            provider_schema=provider_schema,
+            model_type=model_type,
+        )
+
+    def get_model_schema(
+        self, model_type: ModelType, model: str, credentials: dict[str, Any] | None
+    ) -> AIModelEntity | None:
+        """Get model schema with the request-bound runtime and canonical provider id."""
+        model_runtime = self._get_model_runtime()
+        return model_runtime.get_model_schema(
+            provider=self.provider.provider,
+            model_type=model_type,
+            model=model,
+            credentials=credentials or {},
         )
 
     def switch_preferred_provider_type(self, provider_type: ProviderType, session: Session | None = None):
@@ -1471,7 +1504,7 @@ class ProviderConfiguration(BaseModel):
 
         return secret_input_form_variables
 
-    def obfuscated_credentials(self, credentials: dict, credential_form_schemas: list[CredentialFormSchema]):
+    def obfuscated_credentials(self, credentials: dict[str, Any], credential_form_schemas: list[CredentialFormSchema]):
         """
         Obfuscated credentials.
 
@@ -1518,8 +1551,7 @@ class ProviderConfiguration(BaseModel):
         :param model: model name
         :return:
         """
-        model_provider_factory = self.get_model_provider_factory()
-        provider_schema = model_provider_factory.get_provider_schema(self.provider.provider)
+        provider_schema = self._get_provider_schema()
 
         model_types: list[ModelType] = []
         if model_type:
@@ -1534,7 +1566,10 @@ class ProviderConfiguration(BaseModel):
 
         if self.using_provider_type == ProviderType.SYSTEM:
             provider_models = self._get_system_provider_models(
-                model_types=model_types, provider_schema=provider_schema, model_setting_map=model_setting_map
+                model_types=model_types,
+                provider_schema=provider_schema,
+                model_setting_map=model_setting_map,
+                model=model,
             )
         else:
             provider_models = self._get_custom_provider_models(
@@ -1576,6 +1611,7 @@ class ProviderConfiguration(BaseModel):
         model_types: Sequence[ModelType],
         provider_schema: ProviderEntity,
         model_setting_map: dict[ModelType, dict[str, ModelSettings]],
+        model: str | None = None,
     ) -> list[ModelWithProviderEntity]:
         """
         Get system provider models.
@@ -1589,6 +1625,8 @@ class ProviderConfiguration(BaseModel):
         for model_type in model_types:
             for m in provider_schema.models:
                 if m.model_type != model_type:
+                    continue
+                if model and m.model != model:
                     continue
 
                 status = ModelStatus.ACTIVE
@@ -1611,13 +1649,9 @@ class ProviderConfiguration(BaseModel):
                     )
                 )
 
-        if self.provider.provider not in original_provider_configurate_methods:
-            original_provider_configurate_methods[self.provider.provider] = []
-            for configurate_method in provider_schema.configurate_methods:
-                original_provider_configurate_methods[self.provider.provider].append(configurate_method)
-
+        original_configurate_methods = self._get_original_provider_configurate_methods()
         should_use_custom_model = False
-        if original_provider_configurate_methods[self.provider.provider] == [ConfigurateMethod.CUSTOMIZABLE_MODEL]:
+        if original_configurate_methods == [ConfigurateMethod.CUSTOMIZABLE_MODEL]:
             should_use_custom_model = True
 
         for quota_configuration in self.system_configuration.quota_configurations:
@@ -1629,11 +1663,12 @@ class ProviderConfiguration(BaseModel):
                 break
 
             if should_use_custom_model:
-                if original_provider_configurate_methods[self.provider.provider] == [
-                    ConfigurateMethod.CUSTOMIZABLE_MODEL
-                ]:
+                if original_configurate_methods == [ConfigurateMethod.CUSTOMIZABLE_MODEL]:
                     # only customizable model
                     for restrict_model in restrict_models:
+                        if model and restrict_model.model != model:
+                            continue
+
                         copy_credentials = (
                             self.system_configuration.credentials.copy()
                             if self.system_configuration.credentials
@@ -1683,11 +1718,11 @@ class ProviderConfiguration(BaseModel):
 
             # if llm name not in restricted llm list, remove it
             restrict_model_names = [rm.model for rm in restrict_models]
-            for model in provider_models:
-                if model.model_type == ModelType.LLM and model.model not in restrict_model_names:
-                    model.status = ModelStatus.NO_PERMISSION
+            for provider_model in provider_models:
+                if provider_model.model_type == ModelType.LLM and provider_model.model not in restrict_model_names:
+                    provider_model.status = ModelStatus.NO_PERMISSION
                 elif not quota_configuration.is_valid:
-                    model.status = ModelStatus.QUOTA_EXCEEDED
+                    provider_model.status = ModelStatus.QUOTA_EXCEEDED
 
         return provider_models
 
@@ -1712,12 +1747,21 @@ class ProviderConfiguration(BaseModel):
         if self.custom_configuration.provider:
             credentials = self.custom_configuration.provider.credentials
 
+        requested_predefined_model = False
+        if model:
+            requested_predefined_model = any(
+                predefined_model.model_type in model_types and predefined_model.model == model
+                for predefined_model in provider_schema.models
+            )
+
         for model_type in model_types:
             if model_type not in self.provider.supported_model_types:
                 continue
 
             for m in provider_schema.models:
                 if m.model_type != model_type:
+                    continue
+                if requested_predefined_model and model and m.model != model:
                     continue
 
                 status = ModelStatus.ACTIVE if credentials else ModelStatus.NO_CONFIGURE
@@ -1892,6 +1936,7 @@ class ProviderConfigurations(BaseModel):
             key = str(ModelProviderID(key))
         return key in self.configurations
 
+    @override
     def __iter__(self):
         # Return an iterator of (key, value) tuples to match BaseModel's __iter__
         yield from self.configurations.items()

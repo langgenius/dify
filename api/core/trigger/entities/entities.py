@@ -6,6 +6,7 @@ from typing import Any, Union
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 from core.entities.provider_entities import ProviderConfig
+from core.plugin.entities import OAuthSchema
 from core.plugin.entities.parameters import (
     PluginParameterAutoGenerate,
     PluginParameterOption,
@@ -45,8 +46,8 @@ class EventParameter(BaseModel):
     )
     template: PluginParameterTemplate | None = Field(default=None, description="The template of the parameter")
     scope: str | None = None
-    required: bool | None = False
-    multiple: bool | None = Field(
+    required: bool = False
+    multiple: bool = Field(
         default=False,
         description="Whether the parameter is multiple select, only valid for select or dynamic-select type",
     )
@@ -106,13 +107,6 @@ class EventEntity(BaseModel):
     @classmethod
     def set_parameters(cls, v, validation_info: ValidationInfo) -> list[EventParameter]:
         return v or []
-
-
-class OAuthSchema(BaseModel):
-    client_schema: list[ProviderConfig] = Field(default_factory=list, description="The schema of the OAuth client")
-    credentials_schema: list[ProviderConfig] = Field(
-        default_factory=list, description="The schema of the OAuth credentials"
-    )
 
 
 class SubscriptionConstructor(BaseModel):

@@ -3,16 +3,25 @@ from typing import Any, Literal, cast
 
 from flask import request
 from flask_restx import Resource, fields, marshal, marshal_with
-from graphon.graph_engine.manager import GraphEngineManager
-from graphon.model_runtime.errors.invoke import InvokeError
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
+from controllers.common.fields import (
+    AudioBinaryResponse,
+    AudioTranscriptResponse,
+    GeneratedAppResponse,
+    SimpleResultResponse,
+)
 from controllers.common.fields import Parameters as ParametersResponse
 from controllers.common.fields import Site as SiteResponse
-from controllers.common.schema import get_or_create_model
+from controllers.common.schema import (
+    get_or_create_model,
+    query_params_from_model,
+    register_response_schema_models,
+    register_schema_models,
+)
 from controllers.console import console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
@@ -35,6 +44,7 @@ from controllers.console.explore.error import (
     NotWorkflowAppError,
 )
 from controllers.console.explore.wraps import TrialAppResource, trial_feature_enable
+from controllers.console.wraps import with_current_user
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -55,15 +65,17 @@ from fields.app_fields import (
 )
 from fields.dataset_fields import dataset_fields
 from fields.member_fields import simple_account_fields
+from fields.message_fields import SuggestedQuestionsResponse
 from fields.workflow_fields import (
     conversation_variable_fields,
     pipeline_variable_fields,
     workflow_fields,
     workflow_partial_fields,
 )
+from graphon.graph_engine.manager import GraphEngineManager
+from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
-from libs.login import current_user
 from models import Account
 from models.account import TenantStatus
 from models.model import AppMode, Site
@@ -106,7 +118,7 @@ app_detail_fields_with_site_copy["tags"] = fields.List(fields.Nested(tag_model))
 app_detail_fields_with_site_copy["site"] = fields.Nested(site_model)
 app_detail_with_site_model = get_or_create_model("TrialAppDetailWithSite", app_detail_fields_with_site_copy)
 
-simple_account_model = get_or_create_model("SimpleAccount", simple_account_fields)
+simple_account_model = get_or_create_model("TrialSimpleAccount", simple_account_fields)
 conversation_variable_model = get_or_create_model("TrialConversationVariable", conversation_variable_fields)
 pipeline_variable_model = get_or_create_model("TrialPipelineVariable", pipeline_variable_fields)
 
@@ -119,20 +131,28 @@ workflow_fields_copy["conversation_variables"] = fields.List(fields.Nested(conve
 workflow_fields_copy["rag_pipeline_variables"] = fields.List(fields.Nested(pipeline_variable_model))
 workflow_model = get_or_create_model("TrialWorkflow", workflow_fields_copy)
 
-
-# Pydantic models for request validation
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+dataset_model = get_or_create_model("TrialDataset", dataset_fields)
+dataset_list_model = get_or_create_model(
+    "TrialDatasetList",
+    {
+        "data": fields.List(fields.Nested(dataset_model)),
+        "has_more": fields.Boolean,
+        "limit": fields.Integer,
+        "total": fields.Integer,
+        "page": fields.Integer,
+    },
+)
 
 
 class WorkflowRunRequest(BaseModel):
     inputs: dict
-    files: list | None = None
+    files: list | None = Field(default=None)
 
 
 class ChatRequest(BaseModel):
     inputs: dict
     query: str
-    files: list | None = None
+    files: list | None = Field(default=None)
     conversation_id: str | None = None
     parent_message_id: str | None = None
     retriever_from: str = "explore_app"
@@ -148,29 +168,43 @@ class TextToSpeechRequest(BaseModel):
 class CompletionRequest(BaseModel):
     inputs: dict
     query: str = ""
-    files: list | None = None
+    files: list | None = Field(default=None)
     response_mode: Literal["blocking", "streaming"] | None = None
     retriever_from: str = "explore_app"
 
 
-# Register schemas for Swagger documentation
-console_ns.schema_model(
-    WorkflowRunRequest.__name__, WorkflowRunRequest.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+class TrialDatasetListQuery(BaseModel):
+    page: int = Field(default=1, ge=1, description="Page number")
+    limit: int = Field(default=20, ge=1, description="Number of items per page")
+    ids: list[str] = Field(default_factory=list, description="Dataset IDs")
+
+
+register_schema_models(
+    console_ns,
+    WorkflowRunRequest,
+    ChatRequest,
+    TextToSpeechRequest,
+    CompletionRequest,
+    TrialDatasetListQuery,
 )
-console_ns.schema_model(
-    ChatRequest.__name__, ChatRequest.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-console_ns.schema_model(
-    TextToSpeechRequest.__name__, TextToSpeechRequest.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-console_ns.schema_model(
-    CompletionRequest.__name__, CompletionRequest.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+register_response_schema_models(
+    console_ns,
+    ParametersResponse,
+    AudioBinaryResponse,
+    AudioTranscriptResponse,
+    GeneratedAppResponse,
+    SimpleResultResponse,
+    SiteResponse,
+    SuggestedQuestionsResponse,
 )
 
 
 class TrialAppWorkflowRunApi(TrialAppResource):
+    @trial_feature_enable
     @console_ns.expect(console_ns.models[WorkflowRunRequest.__name__])
-    def post(self, trial_app):
+    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
+    @with_current_user
+    def post(self, current_user: Account, trial_app):
         """
         Run workflow
         """
@@ -183,14 +217,13 @@ class TrialAppWorkflowRunApi(TrialAppResource):
 
         request_data = WorkflowRunRequest.model_validate(console_ns.payload)
         args = request_data.model_dump()
-        assert current_user is not None
         try:
             app_id = app_model.id
             user_id = current_user.id
             response = AppGenerateService.generate(
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
             )
-            RecommendedAppService.add_trial_app_record(app_id, user_id)
+            RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
             return helper.compact_generate_response(response)
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -210,6 +243,8 @@ class TrialAppWorkflowRunApi(TrialAppResource):
 
 
 class TrialAppWorkflowTaskStopApi(TrialAppResource):
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @trial_feature_enable
     def post(self, trial_app, task_id: str):
         """
         Stop workflow task
@@ -220,7 +255,6 @@ class TrialAppWorkflowTaskStopApi(TrialAppResource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
-        assert current_user is not None
 
         # Stop using both mechanisms for backward compatibility
         # Legacy stop flag mechanism (without user check)
@@ -234,8 +268,10 @@ class TrialAppWorkflowTaskStopApi(TrialAppResource):
 
 class TrialChatApi(TrialAppResource):
     @console_ns.expect(console_ns.models[ChatRequest.__name__])
+    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
     @trial_feature_enable
-    def post(self, trial_app):
+    @with_current_user
+    def post(self, current_user: Account, trial_app):
         app_model = trial_app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -253,9 +289,6 @@ class TrialChatApi(TrialAppResource):
         args["auto_generate_name"] = False
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
-
             # Get IDs before they might be detached from session
             app_id = app_model.id
             user_id = current_user.id
@@ -263,7 +296,7 @@ class TrialChatApi(TrialAppResource):
             response = AppGenerateService.generate(
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
             )
-            RecommendedAppService.add_trial_app_record(app_id, user_id)
+            RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -290,8 +323,9 @@ class TrialChatApi(TrialAppResource):
 
 
 class TrialMessageSuggestedQuestionApi(TrialAppResource):
-    @trial_feature_enable
-    def get(self, trial_app, message_id):
+    @console_ns.response(200, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
+    @with_current_user
+    def get(self, current_user: Account, trial_app, message_id):
         app_model = trial_app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -300,8 +334,6 @@ class TrialMessageSuggestedQuestionApi(TrialAppResource):
         message_id = str(message_id)
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
             questions = MessageService.get_suggested_questions_after_answer(
                 app_model=app_model, user=current_user, message_id=message_id, invoke_from=InvokeFrom.EXPLORE
             )
@@ -327,22 +359,21 @@ class TrialMessageSuggestedQuestionApi(TrialAppResource):
 
 
 class TrialChatAudioApi(TrialAppResource):
+    @console_ns.response(200, "Success", console_ns.models[AudioTranscriptResponse.__name__])
     @trial_feature_enable
-    def post(self, trial_app):
+    @with_current_user
+    def post(self, current_user: Account, trial_app):
         app_model = trial_app
 
         file = request.files["file"]
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
-
             # Get IDs before they might be detached from session
             app_id = app_model.id
             user_id = current_user.id
 
             response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=None)
-            RecommendedAppService.add_trial_app_record(app_id, user_id)
+            RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
@@ -372,8 +403,10 @@ class TrialChatAudioApi(TrialAppResource):
 
 class TrialChatTextApi(TrialAppResource):
     @console_ns.expect(console_ns.models[TextToSpeechRequest.__name__])
+    @console_ns.response(200, "Success", console_ns.models[AudioBinaryResponse.__name__])
     @trial_feature_enable
-    def post(self, trial_app):
+    @with_current_user
+    def post(self, current_user: Account, trial_app):
         app_model = trial_app
         try:
             request_data = TextToSpeechRequest.model_validate(console_ns.payload)
@@ -381,15 +414,13 @@ class TrialChatTextApi(TrialAppResource):
             message_id = request_data.message_id
             text = request_data.text
             voice = request_data.voice
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
 
             # Get IDs before they might be detached from session
             app_id = app_model.id
             user_id = current_user.id
 
             response = AudioService.transcript_tts(app_model=app_model, text=text, voice=voice, message_id=message_id)
-            RecommendedAppService.add_trial_app_record(app_id, user_id)
+            RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
@@ -419,8 +450,10 @@ class TrialChatTextApi(TrialAppResource):
 
 class TrialCompletionApi(TrialAppResource):
     @console_ns.expect(console_ns.models[CompletionRequest.__name__])
+    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
     @trial_feature_enable
-    def post(self, trial_app):
+    @with_current_user
+    def post(self, current_user: Account, trial_app):
         app_model = trial_app
         if app_model.mode != "completion":
             raise NotCompletionAppError()
@@ -432,9 +465,6 @@ class TrialCompletionApi(TrialAppResource):
         args["auto_generate_name"] = False
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
-
             # Get IDs before they might be detached from session
             app_id = app_model.id
             user_id = current_user.id
@@ -443,7 +473,7 @@ class TrialCompletionApi(TrialAppResource):
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=streaming
             )
 
-            RecommendedAppService.add_trial_app_record(app_id, user_id)
+            RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -470,7 +500,7 @@ class TrialCompletionApi(TrialAppResource):
 class TrialSitApi(Resource):
     """Resource for trial app sites."""
 
-    @trial_feature_enable
+    @console_ns.response(200, "Success", console_ns.models[SiteResponse.__name__])
     @get_app_model_with_trial(None)
     def get(self, app_model):
         """Retrieve app site info.
@@ -492,7 +522,7 @@ class TrialSitApi(Resource):
 class TrialAppParameterApi(Resource):
     """Resource for app variables."""
 
-    @trial_feature_enable
+    @console_ns.response(200, "Success", console_ns.models[ParametersResponse.__name__])
     @get_app_model_with_trial(None)
     def get(self, app_model):
         """Retrieve app parameters."""
@@ -521,7 +551,7 @@ class TrialAppParameterApi(Resource):
 
 
 class AppApi(Resource):
-    @trial_feature_enable
+    @console_ns.response(200, "Success", app_detail_with_site_model)
     @get_app_model_with_trial(None)
     @marshal_with(app_detail_with_site_model)
     def get(self, app_model):
@@ -534,7 +564,7 @@ class AppApi(Resource):
 
 
 class AppWorkflowApi(Resource):
-    @trial_feature_enable
+    @console_ns.response(200, "Success", workflow_model)
     @get_app_model_with_trial(None)
     @marshal_with(workflow_model)
     def get(self, app_model):
@@ -547,7 +577,8 @@ class AppWorkflowApi(Resource):
 
 
 class DatasetListApi(Resource):
-    @trial_feature_enable
+    @console_ns.doc(params=query_params_from_model(TrialDatasetListQuery))
+    @console_ns.response(200, "Success", dataset_list_model)
     @get_app_model_with_trial(None)
     def get(self, app_model):
         page = request.args.get("page", default=1, type=int)

@@ -12,6 +12,7 @@ import type {
   IOnDataMoreInfo,
   IOtherOptions,
 } from '@/service/base'
+import { toast } from '@langgenius/dify-ui/toast'
 import { uniqBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
 import { produce, setAutoFreeze } from 'immer'
@@ -25,11 +26,12 @@ import {
 import { useTranslation } from 'react-i18next'
 import { v4 as uuidV4 } from 'uuid'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
+import { enrichSubmittedHumanInputFormData } from '@/app/components/base/chat/chat/answer/human-input-content/submitted-utils'
 import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
-import { useToastContext } from '@/app/components/base/toast/context'
+import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
@@ -65,7 +67,6 @@ export const useChat = (
 ) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
-  const { notify } = useToastContext()
   const conversationIdRef = useRef('')
   const hasStopRespondedRef = useRef(false)
   const [isResponding, setIsResponding] = useState(false)
@@ -218,7 +219,7 @@ export const useChat = (
       ttsIsPublic = true
     }
     else if (params.appId) {
-      if (pathname.search('explore/installed') > -1)
+      if (isInstalledAppPath(pathname))
         ttsUrl = `/installed-apps/${params.appId}/text-to-audio`
       else
         ttsUrl = `/apps/${params.appId}/text-to-audio`
@@ -533,22 +534,26 @@ export const useChat = (
           if (responseItem.workflowProcess?.tracing) {
             const currentTracingIndex = responseItem.workflowProcess.tracing.findIndex(item => item.node_id === humanInputRequiredData.node_id)
             if (currentTracingIndex > -1)
-              responseItem.workflowProcess.tracing[currentTracingIndex].status = NodeRunningStatus.Paused
+              responseItem.workflowProcess.tracing[currentTracingIndex]!.status = NodeRunningStatus.Paused
           }
         })
       },
       onHumanInputFormFilled: ({ data: humanInputFilledFormData }) => {
         updateChatTreeNode(messageId, (responseItem) => {
+          let requiredFormData: NonNullable<ChatItem['humanInputFormDataList']>[number] | undefined
           if (responseItem.humanInputFormDataList?.length) {
             const currentFormIndex = responseItem.humanInputFormDataList.findIndex(item => item.node_id === humanInputFilledFormData.node_id)
-            if (currentFormIndex > -1)
+            if (currentFormIndex > -1) {
+              requiredFormData = responseItem.humanInputFormDataList[currentFormIndex]
               responseItem.humanInputFormDataList.splice(currentFormIndex, 1)
+            }
           }
+          const enrichedHumanInputFilledFormData = enrichSubmittedHumanInputFormData(humanInputFilledFormData, requiredFormData)
           if (!responseItem.humanInputFilledFormDataList) {
-            responseItem.humanInputFilledFormDataList = [humanInputFilledFormData]
+            responseItem.humanInputFilledFormDataList = [enrichedHumanInputFilledFormData]
           }
           else {
-            responseItem.humanInputFilledFormDataList.push(humanInputFilledFormData)
+            responseItem.humanInputFilledFormDataList.push(enrichedHumanInputFilledFormData)
           }
         })
       },
@@ -556,7 +561,7 @@ export const useChat = (
         updateChatTreeNode(messageId, (responseItem) => {
           if (responseItem.humanInputFormDataList?.length) {
             const currentFormIndex = responseItem.humanInputFormDataList.findIndex(item => item.node_id === humanInputFormTimeoutData.node_id)
-            responseItem.humanInputFormDataList[currentFormIndex].expiration_time = humanInputFormTimeoutData.expiration_time
+            responseItem.humanInputFormDataList[currentFormIndex]!.expiration_time = humanInputFormTimeoutData.expiration_time
           }
         })
       },
@@ -636,7 +641,7 @@ export const useChat = (
     setSuggestedQuestions([])
 
     if (isRespondingRef.current) {
-      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
+      toast.info(t('errorMessage.waitForResponse', { ns: 'appDebug' }))
       return false
     }
 
@@ -1099,7 +1104,7 @@ export const useChat = (
         }
         const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === humanInputRequiredData.node_id)
         if (currentTracingIndex > -1) {
-          responseItem.workflowProcess!.tracing[currentTracingIndex].status = NodeRunningStatus.Paused
+          responseItem.workflowProcess!.tracing[currentTracingIndex]!.status = NodeRunningStatus.Paused
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,
@@ -1109,15 +1114,20 @@ export const useChat = (
         }
       },
       onHumanInputFormFilled: ({ data: humanInputFilledFormData }) => {
+        let requiredFormData: NonNullable<ChatItem['humanInputFormDataList']>[number] | undefined
         if (responseItem.humanInputFormDataList?.length) {
           const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(item => item.node_id === humanInputFilledFormData.node_id)
-          responseItem.humanInputFormDataList.splice(currentFormIndex, 1)
+          if (currentFormIndex > -1) {
+            requiredFormData = responseItem.humanInputFormDataList[currentFormIndex]
+            responseItem.humanInputFormDataList.splice(currentFormIndex, 1)
+          }
         }
+        const enrichedHumanInputFilledFormData = enrichSubmittedHumanInputFormData(humanInputFilledFormData, requiredFormData)
         if (!responseItem.humanInputFilledFormDataList) {
-          responseItem.humanInputFilledFormDataList = [humanInputFilledFormData]
+          responseItem.humanInputFilledFormDataList = [enrichedHumanInputFilledFormData]
         }
         else {
-          responseItem.humanInputFilledFormDataList.push(humanInputFilledFormData)
+          responseItem.humanInputFilledFormDataList.push(enrichedHumanInputFilledFormData)
         }
         updateCurrentQAOnTree({
           placeholderQuestionId,
@@ -1129,7 +1139,7 @@ export const useChat = (
       onHumanInputFormTimeout: ({ data: humanInputFormTimeoutData }) => {
         if (responseItem.humanInputFormDataList?.length) {
           const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(item => item.node_id === humanInputFormTimeoutData.node_id)
-          responseItem.humanInputFormDataList[currentFormIndex].expiration_time = humanInputFormTimeoutData.expiration_time
+          responseItem.humanInputFormDataList[currentFormIndex]!.expiration_time = humanInputFormTimeoutData.expiration_time
         }
         updateCurrentQAOnTree({
           placeholderQuestionId,
@@ -1175,7 +1185,6 @@ export const useChat = (
     config?.suggested_questions_after_answer,
     updateCurrentQAOnTree,
     updateChatTreeNode,
-    notify,
     handleResponding,
     formatTime,
     createAudioPlayerManager,
@@ -1183,8 +1192,8 @@ export const useChat = (
   ])
 
   const handleAnnotationEdited = useCallback((query: string, answer: string, index: number) => {
-    const targetQuestionId = chatList[index - 1].id
-    const targetAnswerId = chatList[index].id
+    const targetQuestionId = chatList[index - 1]!.id
+    const targetAnswerId = chatList[index]!.id
 
     updateChatTreeNode(targetQuestionId, {
       content: query,
@@ -1192,22 +1201,22 @@ export const useChat = (
     updateChatTreeNode(targetAnswerId, {
       content: answer,
       annotation: {
-        ...chatList[index].annotation,
+        ...chatList[index]!.annotation,
         logAnnotation: undefined,
       } as any,
     })
   }, [chatList, updateChatTreeNode])
 
   const handleAnnotationAdded = useCallback((annotationId: string, authorName: string, query: string, answer: string, index: number) => {
-    const targetQuestionId = chatList[index - 1].id
-    const targetAnswerId = chatList[index].id
+    const targetQuestionId = chatList[index - 1]!.id
+    const targetAnswerId = chatList[index]!.id
 
     updateChatTreeNode(targetQuestionId, {
       content: query,
     })
 
     updateChatTreeNode(targetAnswerId, {
-      content: chatList[index].content,
+      content: chatList[index]!.content,
       annotation: {
         id: annotationId,
         authorName,
@@ -1224,12 +1233,12 @@ export const useChat = (
   }, [chatList, updateChatTreeNode])
 
   const handleAnnotationRemoved = useCallback((index: number) => {
-    const targetAnswerId = chatList[index].id
+    const targetAnswerId = chatList[index]!.id
 
     updateChatTreeNode(targetAnswerId, {
-      content: chatList[index].content,
+      content: chatList[index]!.content,
       annotation: {
-        ...chatList[index].annotation,
+        ...chatList[index]!.annotation,
         id: '',
       } as Annotation,
     })

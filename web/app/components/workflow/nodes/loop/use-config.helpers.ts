@@ -41,7 +41,7 @@ export const addBreakCondition = ({
     id: uuid4(),
     varType: variable.type,
     variable_selector: valueSelector,
-    comparison_operator: getOperators(variable.type, isVarFileAttribute ? { key: valueSelector.slice(-1)[0] } : undefined)[0],
+    comparison_operator: getOperators(variable.type, isVarFileAttribute ? { key: valueSelector.slice(-1)[0]! } : undefined)[0],
     value: variable.type === VarType.boolean ? 'false' : '',
   })
 })
@@ -164,7 +164,7 @@ export const updateLoopVariable = (
   const index = draft.loop_variables?.findIndex(item => item.id === id) ?? -1
   if (index > -1) {
     draft.loop_variables![index] = {
-      ...draft.loop_variables![index],
+      ...draft.loop_variables![index]!,
       ...updateData,
     }
   }

@@ -364,7 +364,7 @@ describe('TopBar', () => {
       const { container } = renderTopBar({ activeIndex: 0 })
 
       // Assert - Check for centered positioning classes
-      const centeredContainer = container.querySelector('.absolute.left-1\\/2.top-1\\/2.-translate-x-1\\/2.-translate-y-1\\/2')
+      const centeredContainer = container.querySelector('.absolute.left-1\\/2.top-1\\/2.-translate-1\\/2')
       expect(centeredContainer).toBeInTheDocument()
     })
 

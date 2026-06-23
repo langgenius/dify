@@ -10,12 +10,14 @@
  *   - Access mode icons
  */
 import type { App } from '@/types/app'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import AppCard from '@/app/components/apps/app-card'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { AppCard } from '@/app/components/apps/app-card'
 import { AccessMode } from '@/models/access-control'
 import { exportAppConfig, updateAppInfo } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
+import { AppACLPermission } from '@/utils/permission'
 
 let mockIsCurrentWorkspaceEditor = true
 let mockSystemFeatures = {
@@ -23,8 +25,25 @@ let mockSystemFeatures = {
   webapp_auth: { enabled: false },
 }
 
+const toastMocks = vi.hoisted(() => ({
+  mockNotify: vi.fn(),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
+}))
 const mockRouterPush = vi.fn()
-const mockNotify = vi.fn()
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    success: (message: string, options?: Record<string, unknown>) => toastMocks.mockNotify({ type: 'success', message, ...options }),
+    error: (message: string, options?: Record<string, unknown>) => toastMocks.mockNotify({ type: 'error', message, ...options }),
+    warning: (message: string, options?: Record<string, unknown>) => toastMocks.mockNotify({ type: 'warning', message, ...options }),
+    info: (message: string, options?: Record<string, unknown>) => toastMocks.mockNotify({ type: 'info', message, ...options }),
+    dismiss: toastMocks.dismiss,
+    update: toastMocks.update,
+    promise: toastMocks.promise,
+  },
+}))
 const mockOnPlanInfoChanged = vi.fn()
 const mockDeleteAppMutation = vi.fn().mockResolvedValue(undefined)
 let mockDeleteMutationPending = false
@@ -35,33 +54,21 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-// Mock headless UI Popover so it renders content without transition
-vi.mock('@headlessui/react', async () => {
-  const actual = await vi.importActual<typeof import('@headlessui/react')>('@headlessui/react')
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...actual,
-    Popover: ({ children, className }: { children: ((bag: { open: boolean }) => React.ReactNode) | React.ReactNode, className?: string }) => (
-      <div className={className} data-testid="popover-wrapper">
-        {typeof children === 'function' ? children({ open: true }) : children}
-      </div>
-    ),
-    PopoverButton: ({ children, className, ref: _ref, ...rest }: Record<string, unknown>) => (
-      <button className={className as string} {...rest}>{children as React.ReactNode}</button>
-    ),
-    PopoverPanel: ({ children, className }: { children: ((bag: { close: () => void }) => React.ReactNode) | React.ReactNode, className?: string }) => (
-      <div className={className}>
-        {typeof children === 'function' ? children({ close: vi.fn() }) : children}
-      </div>
-    ),
-    Transition: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    useQuery: () => ({
+      data: [],
+    }),
   }
 })
 
 vi.mock('@/next/dynamic', () => ({
-  default: (loader: () => Promise<{ default: React.ComponentType }>) => {
+  default: (loader: () => Promise<React.ComponentType | { default: React.ComponentType }>) => {
     let Component: React.ComponentType<Record<string, unknown>> | null = null
     loader().then((mod) => {
-      Component = mod.default as React.ComponentType<Record<string, unknown>>
+      Component = (typeof mod === 'function' ? mod : mod.default) as React.ComponentType<Record<string, unknown>>
     }).catch(() => {})
     const Wrapper = (props: Record<string, unknown>) => {
       if (Component)
@@ -76,43 +83,24 @@ vi.mock('@/next/dynamic', () => ({
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: mockIsCurrentWorkspaceEditor ? ['app.create_and_management'] : [],
   }),
-}))
-
-vi.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: (selector?: (state: Record<string, unknown>) => unknown) => {
-    const state = { systemFeatures: mockSystemFeatures }
-    if (typeof selector === 'function')
-      return selector(state)
-    return mockSystemFeatures
-  },
+  useSelector: <T,>(selector: (state: {
+    isCurrentWorkspaceEditor: boolean
+    userProfile: { id: string }
+    workspacePermissionKeys: string[]
+  }) => T): T => selector({
+    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: mockIsCurrentWorkspaceEditor ? ['app.create_and_management'] : [],
+  }),
 }))
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     onPlanInfoChanged: mockOnPlanInfoChanged,
   }),
-}))
-
-// Mock the ToastContext used via useContext from use-context-selector
-vi.mock('use-context-selector', async () => {
-  const actual = await vi.importActual<typeof import('use-context-selector')>('use-context-selector')
-  return {
-    ...actual,
-    useContext: () => ({ notify: mockNotify }),
-  }
-})
-
-vi.mock('@/app/components/base/tag-management/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => {
-    const state = {
-      tagList: [],
-      showTagManagementModal: false,
-      setTagList: vi.fn(),
-      setShowTagManagementModal: vi.fn(),
-    }
-    return selector(state)
-  },
 }))
 
 vi.mock('@/service/tag', () => ({
@@ -123,6 +111,10 @@ vi.mock('@/service/use-apps', () => ({
   useDeleteAppMutation: () => ({
     mutateAsync: mockDeleteAppMutation,
     isPending: mockDeleteMutationPending,
+  }),
+  useToggleAppStarMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
   }),
 }))
 
@@ -141,7 +133,7 @@ vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: vi.fn().mockResolvedValue({ environment_variables: [] }),
 }))
 
-vi.mock('@/service/access-control', () => ({
+vi.mock('@/service/access-control/use-app-access-control', () => ({
   useGetUserCanAccessApp: () => ({ data: { result: true }, isLoading: false }),
 }))
 
@@ -211,20 +203,6 @@ vi.mock('@/app/components/app/switch-app-modal', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/confirm', () => ({
-  default: ({ isShow, onConfirm, onCancel, title }: Record<string, unknown>) => {
-    if (!isShow)
-      return null
-    return (
-      <div data-testid="confirm-delete-modal">
-        <span>{title as string}</span>
-        <button data-testid="confirm-delete" onClick={onConfirm as () => void}>Delete</button>
-        <button data-testid="cancel-delete" onClick={onCancel as () => void}>Cancel</button>
-      </div>
-    )
-  },
-}))
-
 vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
   default: ({ onConfirm, onClose }: Record<string, unknown>) => (
     <div data-testid="dsl-export-confirm-modal">
@@ -235,7 +213,7 @@ vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
 }))
 
 vi.mock('@/app/components/app/app-access-control', () => ({
-  default: ({ onConfirm, onClose }: Record<string, unknown>) => (
+  AccessControl: ({ onConfirm, onClose }: Record<string, unknown>) => (
     <div data-testid="access-control-modal">
       <button data-testid="confirm-access" onClick={onConfirm as () => void}>Confirm</button>
       <button data-testid="cancel-access" onClick={onClose as () => void}>Cancel</button>
@@ -268,12 +246,27 @@ const createMockApp = (overrides: Partial<App> = {}): App => ({
   tags: overrides.tags ?? [],
   access_mode: overrides.access_mode ?? AccessMode.PUBLIC,
   max_active_requests: overrides.max_active_requests ?? null,
+  created_by: overrides.created_by ?? 'user-1',
+  permission_keys: overrides.permission_keys ?? [
+    AppACLPermission.Edit,
+    AppACLPermission.ImportExportDSL,
+    AppACLPermission.Delete,
+    AppACLPermission.ReleaseAndVersion,
+    AppACLPermission.AccessConfig,
+  ],
 })
 
 const mockOnRefresh = vi.fn()
 
 const renderAppCard = (app?: Partial<App>) => {
-  return render(<AppCard app={createMockApp(app)} onRefresh={mockOnRefresh} />)
+  return renderWithSystemFeatures(
+    <AppCard app={createMockApp(app)} onRefresh={mockOnRefresh} />,
+    { systemFeatures: mockSystemFeatures },
+  )
+}
+
+const openOperationsMenu = () => {
+  fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
 }
 
 describe('App Card Operations Flow', () => {
@@ -308,21 +301,13 @@ describe('App Card Operations Flow', () => {
     it('should navigate to app config page when card is clicked', () => {
       renderAppCard({ id: 'app-123', mode: AppModeEnum.CHAT })
 
-      const card = screen.getByText('Test Chat App').closest('[class*="cursor-pointer"]')
-      if (card)
-        fireEvent.click(card)
-
-      expect(mockRouterPush).toHaveBeenCalledWith('/app/app-123/configuration')
+      expect(screen.getByRole('link', { name: 'Test Chat App' })).toHaveAttribute('href', '/app/app-123/configuration')
     })
 
     it('should navigate to workflow page for workflow apps', () => {
       renderAppCard({ id: 'app-wf', mode: AppModeEnum.WORKFLOW, name: 'WF App' })
 
-      const card = screen.getByText('WF App').closest('[class*="cursor-pointer"]')
-      if (card)
-        fireEvent.click(card)
-
-      expect(mockRouterPush).toHaveBeenCalledWith('/app/app-wf/workflow')
+      expect(screen.getByRole('link', { name: 'WF App' })).toHaveAttribute('href', '/app/app-wf/workflow')
     })
   })
 
@@ -331,30 +316,19 @@ describe('App Card Operations Flow', () => {
     it('should show delete confirmation and call API on confirm', async () => {
       renderAppCard({ id: 'app-to-delete', name: 'Deletable App' })
 
-      // Find and click the more button (popover trigger)
-      const moreIcons = document.querySelectorAll('svg')
-      const moreFill = Array.from(moreIcons).find(svg => svg.closest('[class*="cursor-pointer"]'))
+      openOperationsMenu()
+      fireEvent.click(await screen.findByText('common.operation.delete'))
 
-      if (moreFill) {
-        const btn = moreFill.closest('[class*="cursor-pointer"]')
-        if (btn)
-          fireEvent.click(btn)
+      await waitFor(() => {
+        expect(screen.getByText('app.deleteAppConfirmTitle')).toBeInTheDocument()
+      })
 
-        await waitFor(() => {
-          const deleteBtn = screen.queryByText('common.operation.delete')
-          if (deleteBtn)
-            fireEvent.click(deleteBtn)
-        })
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Deletable App' } })
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
-        const confirmBtn = screen.queryByTestId('confirm-delete')
-        if (confirmBtn) {
-          fireEvent.click(confirmBtn)
-
-          await waitFor(() => {
-            expect(mockDeleteAppMutation).toHaveBeenCalledWith('app-to-delete')
-          })
-        }
-      }
+      await waitFor(() => {
+        expect(mockDeleteAppMutation).toHaveBeenCalledWith('app-to-delete')
+      })
     })
   })
 
@@ -363,34 +337,18 @@ describe('App Card Operations Flow', () => {
     it('should open edit modal and call updateAppInfo on confirm', async () => {
       renderAppCard({ id: 'app-edit', name: 'Editable App' })
 
-      const moreIcons = document.querySelectorAll('svg')
-      const moreFill = Array.from(moreIcons).find(svg => svg.closest('[class*="cursor-pointer"]'))
+      openOperationsMenu()
+      fireEvent.click(await screen.findByText('app.editApp'))
+      fireEvent.click(await screen.findByTestId('confirm-edit'))
 
-      if (moreFill) {
-        const btn = moreFill.closest('[class*="cursor-pointer"]')
-        if (btn)
-          fireEvent.click(btn)
-
-        await waitFor(() => {
-          const editBtn = screen.queryByText('app.editApp')
-          if (editBtn)
-            fireEvent.click(editBtn)
-        })
-
-        const confirmEdit = screen.queryByTestId('confirm-edit')
-        if (confirmEdit) {
-          fireEvent.click(confirmEdit)
-
-          await waitFor(() => {
-            expect(updateAppInfo).toHaveBeenCalledWith(
-              expect.objectContaining({
-                appID: 'app-edit',
-                name: 'Updated App Name',
-              }),
-            )
-          })
-        }
-      }
+      await waitFor(() => {
+        expect(updateAppInfo).toHaveBeenCalledWith(
+          expect.objectContaining({
+            appID: 'app-edit',
+            name: 'Updated App Name',
+          }),
+        )
+      })
     })
   })
 
@@ -399,37 +357,24 @@ describe('App Card Operations Flow', () => {
     it('should call exportAppConfig for completion apps', async () => {
       renderAppCard({ id: 'app-export', mode: AppModeEnum.COMPLETION, name: 'Export App' })
 
-      const moreIcons = document.querySelectorAll('svg')
-      const moreFill = Array.from(moreIcons).find(svg => svg.closest('[class*="cursor-pointer"]'))
+      openOperationsMenu()
+      fireEvent.click(await screen.findByText('app.export'))
 
-      if (moreFill) {
-        const btn = moreFill.closest('[class*="cursor-pointer"]')
-        if (btn)
-          fireEvent.click(btn)
-
-        await waitFor(() => {
-          const exportBtn = screen.queryByText('app.export')
-          if (exportBtn)
-            fireEvent.click(exportBtn)
-        })
-
-        await waitFor(() => {
-          expect(exportAppConfig).toHaveBeenCalledWith(
-            expect.objectContaining({ appID: 'app-export' }),
-          )
-        })
-      }
+      await waitFor(() => {
+        expect(exportAppConfig).toHaveBeenCalledWith(
+          expect.objectContaining({ appID: 'app-export' }),
+        )
+      })
     })
   })
 
   // -- Access mode display --
   describe('Access Mode Display', () => {
-    it('should not render operations menu for non-editor users', () => {
+    it('should not render operations menu when user has no app permissions', () => {
       mockIsCurrentWorkspaceEditor = false
-      renderAppCard({ name: 'Readonly App' })
+      renderAppCard({ name: 'Readonly App', created_by: 'another-user', permission_keys: [] })
 
-      expect(screen.queryByText('app.editApp')).not.toBeInTheDocument()
-      expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.operation.more' })).not.toBeInTheDocument()
     })
   })
 
@@ -438,35 +383,21 @@ describe('App Card Operations Flow', () => {
     it('should show switch option for chat mode apps', async () => {
       renderAppCard({ id: 'app-switch', mode: AppModeEnum.CHAT })
 
-      const moreIcons = document.querySelectorAll('svg')
-      const moreFill = Array.from(moreIcons).find(svg => svg.closest('[class*="cursor-pointer"]'))
+      openOperationsMenu()
 
-      if (moreFill) {
-        const btn = moreFill.closest('[class*="cursor-pointer"]')
-        if (btn)
-          fireEvent.click(btn)
-
-        await waitFor(() => {
-          expect(screen.queryByText('app.switch')).toBeInTheDocument()
-        })
-      }
+      await waitFor(() => {
+        expect(screen.queryByText('app.switch')).toBeInTheDocument()
+      })
     })
 
     it('should not show switch option for workflow apps', async () => {
       renderAppCard({ id: 'app-wf', mode: AppModeEnum.WORKFLOW, name: 'WF App' })
 
-      const moreIcons = document.querySelectorAll('svg')
-      const moreFill = Array.from(moreIcons).find(svg => svg.closest('[class*="cursor-pointer"]'))
+      openOperationsMenu()
 
-      if (moreFill) {
-        const btn = moreFill.closest('[class*="cursor-pointer"]')
-        if (btn)
-          fireEvent.click(btn)
-
-        await waitFor(() => {
-          expect(screen.queryByText('app.switch')).not.toBeInTheDocument()
-        })
-      }
+      await waitFor(() => {
+        expect(screen.queryByText('app.switch')).not.toBeInTheDocument()
+      })
     })
   })
 })

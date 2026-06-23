@@ -1,4 +1,5 @@
 import json
+from typing import override
 
 from flask_restx import fields
 
@@ -7,6 +8,7 @@ from libs.helper import AppIconUrlField, TimestampField
 
 
 class JsonStringField(fields.Raw):
+    @override
     def format(self, value):
         if isinstance(value, str):
             try:
@@ -14,6 +16,24 @@ class JsonStringField(fields.Raw):
             except (json.JSONDecodeError, TypeError):
                 return value
         return value
+
+
+class OpaqueRawField(fields.Raw):
+    @override
+    def schema(self) -> dict[str, object]:
+        return {"type": "object"}
+
+
+class StringListRawField(fields.Raw):
+    @override
+    def schema(self) -> dict[str, object]:
+        return {"type": "array", "items": {"type": "string"}}
+
+
+class ObjectListRawField(fields.Raw):
+    @override
+    def schema(self) -> dict[str, object]:
+        return {"type": "array", "items": {"type": "object"}}
 
 
 app_detail_kernel_fields = {
@@ -34,25 +54,25 @@ related_app_list = {
 
 model_config_fields = {
     "opening_statement": fields.String,
-    "suggested_questions": fields.Raw(attribute="suggested_questions_list"),
-    "suggested_questions_after_answer": fields.Raw(attribute="suggested_questions_after_answer_dict"),
-    "speech_to_text": fields.Raw(attribute="speech_to_text_dict"),
-    "text_to_speech": fields.Raw(attribute="text_to_speech_dict"),
-    "retriever_resource": fields.Raw(attribute="retriever_resource_dict"),
-    "annotation_reply": fields.Raw(attribute="annotation_reply_dict"),
-    "more_like_this": fields.Raw(attribute="more_like_this_dict"),
-    "sensitive_word_avoidance": fields.Raw(attribute="sensitive_word_avoidance_dict"),
-    "external_data_tools": fields.Raw(attribute="external_data_tools_list"),
-    "model": fields.Raw(attribute="model_dict"),
-    "user_input_form": fields.Raw(attribute="user_input_form_list"),
+    "suggested_questions": StringListRawField(attribute="suggested_questions_list"),
+    "suggested_questions_after_answer": OpaqueRawField(attribute="suggested_questions_after_answer_dict"),
+    "speech_to_text": OpaqueRawField(attribute="speech_to_text_dict"),
+    "text_to_speech": OpaqueRawField(attribute="text_to_speech_dict"),
+    "retriever_resource": OpaqueRawField(attribute="retriever_resource_dict"),
+    "annotation_reply": OpaqueRawField(attribute="annotation_reply_dict"),
+    "more_like_this": OpaqueRawField(attribute="more_like_this_dict"),
+    "sensitive_word_avoidance": OpaqueRawField(attribute="sensitive_word_avoidance_dict"),
+    "external_data_tools": ObjectListRawField(attribute="external_data_tools_list"),
+    "model": OpaqueRawField(attribute="model_dict"),
+    "user_input_form": ObjectListRawField(attribute="user_input_form_list"),
     "dataset_query_variable": fields.String,
     "pre_prompt": fields.String,
-    "agent_mode": fields.Raw(attribute="agent_mode_dict"),
+    "agent_mode": OpaqueRawField(attribute="agent_mode_dict"),
     "prompt_type": fields.String,
-    "chat_prompt_config": fields.Raw(attribute="chat_prompt_config_dict"),
-    "completion_prompt_config": fields.Raw(attribute="completion_prompt_config_dict"),
-    "dataset_configs": fields.Raw(attribute="dataset_configs_dict"),
-    "file_upload": fields.Raw(attribute="file_upload_dict"),
+    "chat_prompt_config": OpaqueRawField(attribute="chat_prompt_config_dict"),
+    "completion_prompt_config": OpaqueRawField(attribute="completion_prompt_config_dict"),
+    "dataset_configs": OpaqueRawField(attribute="dataset_configs_dict"),
+    "file_upload": OpaqueRawField(attribute="file_upload_dict"),
     "created_by": fields.String,
     "created_at": TimestampField,
     "updated_by": fields.String,
@@ -72,7 +92,7 @@ app_detail_fields = {
     "enable_api": fields.Boolean,
     "model_config": fields.Nested(model_config_fields, attribute="app_model_config", allow_null=True),
     "workflow": fields.Nested(workflow_partial_fields, allow_null=True),
-    "tracing": fields.Raw,
+    "tracing": OpaqueRawField,
     "use_icon_as_answer_icon": fields.Boolean,
     "created_by": fields.String,
     "created_at": TimestampField,
@@ -80,6 +100,7 @@ app_detail_fields = {
     "updated_at": TimestampField,
     "access_mode": fields.String,
     "tags": fields.List(fields.Nested(tag_fields)),
+    "permission_keys": fields.List(fields.String()),
 }
 
 prompt_config_fields = {
@@ -87,7 +108,7 @@ prompt_config_fields = {
 }
 
 model_config_partial_fields = {
-    "model": fields.Raw(attribute="model_dict"),
+    "model": OpaqueRawField(attribute="model_dict"),
     "pre_prompt": fields.String,
     "created_by": fields.String,
     "created_at": TimestampField,
@@ -98,7 +119,7 @@ model_config_partial_fields = {
 app_partial_fields = {
     "id": fields.String,
     "name": fields.String,
-    "max_active_requests": fields.Raw(),
+    "max_active_requests": OpaqueRawField(),
     "description": fields.String(attribute="desc_or_prompt"),
     "mode": fields.String(attribute="mode_compatible_with_agent"),
     "icon_type": fields.String,
@@ -117,6 +138,7 @@ app_partial_fields = {
     "create_user_name": fields.String,
     "author_name": fields.String,
     "has_draft_trigger": fields.Boolean,
+    "permission_keys": fields.List(fields.String()),
 }
 
 
@@ -197,6 +219,7 @@ app_detail_fields_with_site = {
     "deleted_tools": fields.List(fields.Nested(deleted_tool_fields)),
     "access_mode": fields.String,
     "tags": fields.List(fields.Nested(tag_fields)),
+    "permission_keys": fields.List(fields.String()),
     "site": fields.Nested(site_fields),
 }
 
@@ -220,7 +243,7 @@ app_site_fields = {
     "use_icon_as_answer_icon": fields.Boolean,
 }
 
-leaked_dependency_fields = {"type": fields.String, "value": fields.Raw, "current_identifier": fields.String}
+leaked_dependency_fields = {"type": fields.String, "value": OpaqueRawField, "current_identifier": fields.String}
 
 app_import_fields = {
     "id": fields.String,

@@ -22,6 +22,15 @@ const mockSetShowPricingModal = vi.fn()
 const mockSetShowAccountSettingModal = vi.fn()
 const mockRouterPush = vi.fn()
 const mockMutateAsync = vi.fn()
+const mockSetEducationVerifying = vi.hoisted(() => vi.fn())
+
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: true,
+  }
+})
 
 // ─── Context mocks ───────────────────────────────────────────────────────────
 vi.mock('@/context/provider-context', () => ({
@@ -60,6 +69,9 @@ vi.mock('@/service/use-billing', () => ({
     isFetching: false,
     refetch: vi.fn(),
   }),
+  useCurrentPlanVectorSpace: () => ({
+    data: undefined,
+  }),
 }))
 
 // ─── Navigation mocks ───────────────────────────────────────────────────────
@@ -71,6 +83,10 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => vi.fn(),
+}))
+
+vi.mock('@/app/education-apply/storage', () => ({
+  useSetEducationVerifying: () => mockSetEducationVerifying,
 }))
 
 // ─── External component mocks ───────────────────────────────────────────────
@@ -127,6 +143,11 @@ const setupContexts = (
   }
   mockAppCtx = {
     isCurrentWorkspaceManager: true,
+    workspacePermissionKeys: [
+      'billing.view',
+      'billing.manage',
+      'billing.subscription.manage',
+    ],
     userProfile: { email: 'student@university.edu' },
     langGeniusVersionInfo: { current_version: '1.0.0' },
     ...appOverrides,
@@ -203,7 +224,7 @@ describe('Education Verification Flow', () => {
       })
     })
 
-    it('should remove education verifying flag from localStorage on success', async () => {
+    it('should clear education verifying flag on success', async () => {
       mockMutateAsync.mockResolvedValue({ token: 'token-xyz' })
       setupContexts({}, { enableEducationPlan: true, isEducationAccount: false })
       const user = userEvent.setup()
@@ -213,7 +234,7 @@ describe('Education Verification Flow', () => {
       await user.click(screen.getByText(/toVerified/i))
 
       await waitFor(() => {
-        expect(localStorage.removeItem).toHaveBeenCalledWith('educationVerifying')
+        expect(mockSetEducationVerifying).toHaveBeenCalledWith(null)
       })
     })
   })

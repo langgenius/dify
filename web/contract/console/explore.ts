@@ -1,3 +1,4 @@
+import type { Subject } from '@dify/contracts/enterprise/types.gen'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { AccessMode } from '@/models/access-control'
 import type { Banner } from '@/models/app'
@@ -7,7 +8,7 @@ import type { AppModeEnum } from '@/types/app'
 import { type } from '@orpc/contract'
 import { base } from '../base'
 
-export type ExploreAppsResponse = {
+type ExploreAppsResponse = {
   categories: AppCategory[]
   recommended_apps: App[]
 }
@@ -22,22 +23,36 @@ export type ExploreAppDetailResponse = {
   can_trial?: boolean
 }
 
-export type InstalledAppsResponse = {
+type InstalledAppsResponse = {
   installed_apps: InstalledApp[]
 }
 
-export type InstalledAppMutationResponse = {
+type InstalledAppMutationResponse = {
   result: string
   message: string
 }
 
-export type AppAccessModeResponse = {
+type AppAccessModeResponse = {
   accessMode: AccessMode
+}
+
+type UpdateAppAccessModeBody = {
+  appId: string
+  accessMode: AccessMode
+  subjects?: Pick<Subject, 'subjectId' | 'subjectType'>[]
 }
 
 export const exploreAppsContract = base
   .route({
     path: '/explore/apps',
+    method: 'GET',
+  })
+  .input(type<{ query?: { language?: string } }>())
+  .output(type<ExploreAppsResponse>())
+
+export const learnDifyAppsContract = base
+  .route({
+    path: '/explore/apps/learn-dify',
     method: 'GET',
   })
   .input(type<{ query?: { language?: string } }>())
@@ -87,6 +102,14 @@ export const exploreInstalledAppAccessModeContract = base
   })
   .input(type<{ query: { appId: string } }>())
   .output(type<AppAccessModeResponse>())
+
+export const exploreInstalledAppAccessModeUpdateContract = base
+  .route({
+    path: '/enterprise/webapp/app/access-mode',
+    method: 'POST',
+  })
+  .input(type<{ body: UpdateAppAccessModeBody }>())
+  .output(type<unknown>())
 
 export const exploreInstalledAppParametersContract = base
   .route({

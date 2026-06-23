@@ -3,22 +3,40 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { ConfigurationMethodEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import AddCredentialInLoadBalancing from '../add-credential-in-load-balancing'
 
+const mockWorkspacePermissionKeys = vi.hoisted(() => ({
+  value: ['credential.use', 'credential.create', 'credential.manage'],
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }),
+}))
+
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-auth', () => ({
   Authorized: ({
     renderTrigger,
     authParams,
     items,
     onItemClick,
+    hideAddAction,
+    triggerOnlyOpenModal,
   }: {
     renderTrigger: (open?: boolean) => React.ReactNode
     authParams?: { onUpdate?: (payload?: unknown, formValues?: Record<string, unknown>) => void }
     items: Array<{ credentials: Array<{ credential_id: string, credential_name: string }> }>
     onItemClick?: (credential: { credential_id: string, credential_name: string }) => void
+    hideAddAction?: boolean
+    triggerOnlyOpenModal?: boolean
   }) => (
-    <div>
+    <div
+      data-testid="authorized-mock"
+      data-hide-add-action={String(!!hideAddAction)}
+      data-trigger-only-open-modal={String(!!triggerOnlyOpenModal)}
+    >
       {renderTrigger(false)}
       <button onClick={() => authParams?.onUpdate?.({ provider: 'x' }, { key: 'value' })}>Run update</button>
-      <button onClick={() => onItemClick?.(items[0].credentials[0])}>Select first</button>
+      <button onClick={() => onItemClick?.(items[0]!.credentials[0]!)}>Select first</button>
     </div>
   ),
 }))
@@ -44,6 +62,7 @@ describe('AddCredentialInLoadBalancing', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWorkspacePermissionKeys.value = ['credential.use', 'credential.create', 'credential.manage']
   })
 
   it('should render add credential label', () => {
@@ -57,7 +76,7 @@ describe('AddCredentialInLoadBalancing', () => {
       />,
     )
 
-    expect(screen.getByText(/modelProvider.auth.addCredential/i)).toBeInTheDocument()
+    expect(screen.getByText(/modelProvider.auth.addCredential/i))!.toBeInTheDocument()
   })
 
   it('should forward update payload when update action happens', () => {
@@ -97,6 +116,45 @@ describe('AddCredentialInLoadBalancing', () => {
     expect(onSelectCredential).toHaveBeenCalledWith(modelCredential.available_credentials[0])
   })
 
+  it('should render credential menu for manage-only users with existing credentials', () => {
+    mockWorkspacePermissionKeys.value = ['credential.manage']
+
+    render(
+      <AddCredentialInLoadBalancing
+        provider={provider}
+        model={model}
+        configurationMethod={ConfigurationMethodEnum.customizableModel}
+        modelCredential={modelCredential}
+        onSelectCredential={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText(/modelProvider.auth.addCredential/i))!.toBeInTheDocument()
+    expect(screen.getByTestId('authorized-mock')).toHaveAttribute('data-hide-add-action', 'true')
+    expect(screen.getByTestId('authorized-mock')).toHaveAttribute('data-trigger-only-open-modal', 'false')
+  })
+
+  it('should render nothing for manage-only users without existing credentials', () => {
+    mockWorkspacePermissionKeys.value = ['credential.manage']
+
+    const emptyModelCredential = {
+      ...modelCredential,
+      available_credentials: [],
+    } as ModelCredential
+
+    const { container } = render(
+      <AddCredentialInLoadBalancing
+        provider={provider}
+        model={model}
+        configurationMethod={ConfigurationMethodEnum.customizableModel}
+        modelCredential={emptyModelCredential}
+        onSelectCredential={vi.fn()}
+      />,
+    )
+
+    expect(container).toBeEmptyDOMElement()
+  })
+
   // renderTrigger with open=true: bg-state-base-hover style applied
   it('should apply hover background when trigger is rendered with open=true', async () => {
     vi.doMock('@/app/components/header/account-setting/model-provider-page/model-auth', () => ({
@@ -127,7 +185,7 @@ describe('AddCredentialInLoadBalancing', () => {
       // The trigger div rendered by renderTrigger(true) should have bg-state-base-hover
       // (the static class applied when open=true via cn())
       const triggerDiv = container.querySelector('[data-testid="open-trigger"] > div')
-      expect(triggerDiv).toBeInTheDocument()
+      expect(triggerDiv)!.toBeInTheDocument()
       expect(triggerDiv!.className).toContain('bg-state-base-hover')
     }
     finally {
@@ -148,7 +206,7 @@ describe('AddCredentialInLoadBalancing', () => {
       />,
     )
 
-    expect(screen.getByText(/modelProvider.auth.addCredential/i)).toBeInTheDocument()
+    expect(screen.getByText(/modelProvider.auth.addCredential/i))!.toBeInTheDocument()
   })
 
   it('should handle undefined available_credentials gracefully using nullish coalescing', () => {
@@ -169,7 +227,8 @@ describe('AddCredentialInLoadBalancing', () => {
     )
 
     // Component should render without error - the ?? [] fallback is used
-    expect(screen.getByText(/modelProvider.auth.addCredential/i)).toBeInTheDocument()
+    // Component should render without error - the ?? [] fallback is used
+    expect(screen.getByText(/modelProvider.auth.addCredential/i))!.toBeInTheDocument()
   })
 
   it('should not throw when update action fires without onUpdate prop', () => {

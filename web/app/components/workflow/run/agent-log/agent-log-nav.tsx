@@ -1,17 +1,16 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
-import { RiArrowLeftLine } from '@remixicon/react'
+import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import AgentLogNavMore from './agent-log-nav-more'
 
 type AgentLogNavProps = {
   agentOrToolLogItemStack: AgentLogItemWithChildren[]
   onShowAgentOrToolLog: (detail?: AgentLogItemWithChildren) => void
 }
-const AgentLogNav = ({
+export function AgentLogNav({
   agentOrToolLogItemStack,
   onShowAgentOrToolLog,
-}: AgentLogNavProps) => {
+}: AgentLogNavProps) {
   const { t } = useTranslation()
   const agentOrToolLogItemStackLength = agentOrToolLogItemStack.length
   const first = agentOrToolLogItemStack[0]
@@ -28,10 +27,10 @@ const AgentLogNav = ({
           onShowAgentOrToolLog()
         }}
       >
-        <RiArrowLeftLine className="mr-1 h-3.5 w-3.5" />
+        <span aria-hidden className="mr-1 i-ri-arrow-left-line size-3.5" />
         AGENT
       </Button>
-      <div className="system-xs-regular mx-0.5 shrink-0 text-divider-deep">/</div>
+      <div className="mx-0.5 shrink-0 system-xs-regular text-divider-deep">/</div>
       {
         agentOrToolLogItemStackLength > 1
           ? (
@@ -45,7 +44,7 @@ const AgentLogNav = ({
               </Button>
             )
           : (
-              <div className="system-xs-medium-uppercase flex items-center px-[5px] text-text-tertiary">
+              <div className="flex items-center px-1.25 system-xs-medium-uppercase text-text-tertiary">
                 {t('nodes.agent.strategy.label', { ns: 'workflow' })}
               </div>
             )
@@ -53,7 +52,7 @@ const AgentLogNav = ({
       {
         !!mid.length && (
           <>
-            <div className="system-xs-regular mx-0.5 shrink-0 text-divider-deep">/</div>
+            <div className="mx-0.5 shrink-0 system-xs-regular text-divider-deep">/</div>
             <AgentLogNavMore
               options={mid}
               onShowAgentOrToolLog={onShowAgentOrToolLog}
@@ -64,8 +63,8 @@ const AgentLogNav = ({
       {
         !!end && agentOrToolLogItemStackLength > 1 && (
           <>
-            <div className="system-xs-regular mx-0.5 shrink-0 text-divider-deep">/</div>
-            <div className="system-xs-medium-uppercase flex items-center px-[5px] text-text-tertiary">
+            <div className="mx-0.5 shrink-0 system-xs-regular text-divider-deep">/</div>
+            <div className="flex items-center px-[5px] system-xs-medium-uppercase text-text-tertiary">
               {end.label}
             </div>
           </>
@@ -74,5 +73,3 @@ const AgentLogNav = ({
     </div>
   )
 }
-
-export default AgentLogNav

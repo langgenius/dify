@@ -34,9 +34,10 @@ vi.mock('@/service/knowledge/use-metadata', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/toast', () => ({
-  default: {
-    notify: vi.fn(),
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
   },
 }))
 
@@ -238,7 +239,7 @@ describe('useBatchEditDocumentMetadata', () => {
       // Should only have one item for field '1', marked as multiple
       const fieldItems = result.current.originalList.filter(item => item.id === '1')
       expect(fieldItems.length).toBe(1)
-      expect(fieldItems[0].isMultipleValue).toBe(true)
+      expect(fieldItems[0]!.isMultipleValue).toBe(true)
     })
   })
 
@@ -457,7 +458,7 @@ describe('useBatchEditDocumentMetadata', () => {
 
       // Both documents should have the field after applying to all
       expect(mockMutateAsync).toHaveBeenCalled()
-      const callArgs = mockMutateAsync.mock.calls[0][0]
+      const callArgs = mockMutateAsync.mock.calls[0]![0]
       expect(callArgs.metadata_list.length).toBe(2)
     })
 
@@ -650,7 +651,7 @@ describe('useBatchEditDocumentMetadata', () => {
         await result.current.handleSave(editedList, [], false)
       })
 
-      const callArgs = mockMutateAsync.mock.calls[0][0]
+      const callArgs = mockMutateAsync.mock.calls[0]![0]
       const sentItem = callArgs.metadata_list[0].metadata_list[0]
 
       // Only id, name, type, value should be present
@@ -692,7 +693,7 @@ describe('useBatchEditDocumentMetadata', () => {
         await result.current.handleSave(editedList, [], false)
       })
 
-      const callArgs = mockMutateAsync.mock.calls[0][0]
+      const callArgs = mockMutateAsync.mock.calls[0]![0]
       const sentItem = callArgs.metadata_list[0].metadata_list[0]
 
       // value should be null, not undefined

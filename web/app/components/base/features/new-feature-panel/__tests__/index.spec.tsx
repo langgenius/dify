@@ -57,6 +57,7 @@ const renderPanel = (props: Partial<{
   onClose: () => void
   inWorkflow: boolean
   showFileUpload: boolean
+  showAnnotationReply: boolean
 }> = {}) => {
   return render(
     <FeaturesProvider features={defaultFeatures}>
@@ -68,6 +69,7 @@ const renderPanel = (props: Partial<{
         onClose={props.onClose ?? vi.fn()}
         inWorkflow={props.inWorkflow}
         showFileUpload={props.showFileUpload}
+        showAnnotationReply={props.showAnnotationReply}
       />
     </FeaturesProvider>,
   )
@@ -157,18 +159,6 @@ describe('NewFeaturePanel', () => {
       expect(screen.queryByText(/feature\.fileUpload\.title/)).not.toBeInTheDocument()
       expect(screen.queryByText(/feature\.imageUpload\.title/)).not.toBeInTheDocument()
     })
-
-    it('should show file upload tip in chat mode with showFileUpload', () => {
-      renderPanel({ isChatMode: true, showFileUpload: true })
-
-      expect(screen.getByText(/common\.fileUploadTip/)).toBeInTheDocument()
-    })
-
-    it('should show image upload legacy tip in non-chat mode with showFileUpload', () => {
-      renderPanel({ isChatMode: false, showFileUpload: true })
-
-      expect(screen.getByText(/common\.ImageUploadLegacyTip/)).toBeInTheDocument()
-    })
   })
 
   describe('MoreLikeThis Feature', () => {
@@ -203,13 +193,11 @@ describe('NewFeaturePanel', () => {
 
       expect(screen.queryByText(/feature\.annotation\.title/)).not.toBeInTheDocument()
     })
-  })
 
-  describe('Edge Cases', () => {
-    it('should not show file upload tip when showFileUpload is false', () => {
-      renderPanel({ isChatMode: true, showFileUpload: false })
+    it('should not render AnnotationReply when showAnnotationReply is false', () => {
+      renderPanel({ isChatMode: true, inWorkflow: false, showAnnotationReply: false })
 
-      expect(screen.queryByText(/common\.fileUploadTip/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/feature\.annotation\.title/)).not.toBeInTheDocument()
     })
   })
 })

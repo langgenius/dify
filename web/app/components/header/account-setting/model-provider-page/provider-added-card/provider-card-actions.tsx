@@ -1,29 +1,31 @@
 import type { FC } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import Button from '@/app/components/base/button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/base/ui/tooltip'
 import { HeaderModals } from '@/app/components/plugins/plugin-detail-panel/detail-header/components'
 import { useDetailHeaderState, usePluginOperations } from '@/app/components/plugins/plugin-detail-panel/detail-header/hooks'
 import OperationDropdown from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
+import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginSource } from '@/app/components/plugins/types'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
 import { useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
-import { cn } from '@/utils/classnames'
 import { getMarketplaceUrl } from '@/utils/var'
 
-type Props = {
+type Props = Readonly<{
   detail: PluginDetail
   onUpdate?: () => void
-}
+}>
 
 const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
   const locale = useLocale()
+  const { canManagePlugin, canUpdatePlugin } = usePluginSettingsAccess()
 
   const { source, version, latest_version, latest_unique_identifier, meta } = detail
   const author = detail.declaration?.author ?? ''
@@ -47,6 +49,8 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
     modalStates,
     versionPicker,
     isFromMarketplace,
+    canManagePlugin,
+    canUpdatePlugin,
     onUpdate,
   })
 
@@ -77,7 +81,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
     <>
       {!!version && (
         <PluginVersionPicker
-          disabled={!isFromMarketplace}
+          disabled={!isFromMarketplace || !canUpdatePlugin}
           isShow={versionPicker.isShow}
           onShowChange={versionPicker.setIsShow}
           pluginID={detail.plugin_id}
@@ -88,13 +92,13 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
           trigger={(
             <Badge
               className={cn(
-                isFromMarketplace && 'cursor-pointer hover:bg-state-base-hover',
+                canUpdatePlugin && isFromMarketplace && 'cursor-pointer hover:bg-state-base-hover',
               )}
               uppercase={false}
               text={(
                 <>
                   <span>{version}</span>
-                  {isFromMarketplace && <span className="i-ri-arrow-left-right-line ml-1 h-3 w-3" />}
+                  {canUpdatePlugin && isFromMarketplace && <span className="ml-1 i-ri-arrow-left-right-line size-3" />}
                 </>
               )}
               hasRedCornerMark={hasNewVersion}
@@ -103,7 +107,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
         />
       )}
 
-      {(hasNewVersion || isFromGitHub) && (
+      {canUpdatePlugin && (hasNewVersion || isFromGitHub) && (
         <Tooltip>
           <TooltipTrigger
             delay={300}
@@ -111,7 +115,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
               <Button
                 variant="secondary-accent"
                 size="small"
-                className="!h-5"
+                className="h-5!"
                 onClick={handleTriggerLatestUpdate}
               >
                 {t('detailPanel.operation.update', { ns: 'plugin' })}
@@ -131,6 +135,9 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
         onRemove={modalStates.showDeleteConfirm}
         detailUrl={detailUrl}
         placement="bottom-start"
+        destructiveRemove
+        showCheckVersion={canUpdatePlugin}
+        showRemove={canManagePlugin}
       />
 
       <HeaderModals

@@ -13,12 +13,17 @@ const coercedBoolean = z.string()
   .transform(s => s === 'true' || s === '1')
 const coercedNumber = z.coerce.number().int().positive()
 
-/// keep-sorted
+/// Keep keys sorted except grouped feature-specific blocks.
 const clientSchema = {
   /**
    * Default is not allow to embed into iframe to prevent Clickjacking: https://owasp.org/www-community/attacks/Clickjacking
    */
   NEXT_PUBLIC_ALLOW_EMBED: coercedBoolean.default(false),
+  /**
+   * Allow inline style attributes in Markdown rendering.
+   * Self-hosted opt-in for workflows using styled Jinja2 templates.
+   */
+  NEXT_PUBLIC_ALLOW_INLINE_STYLES: coercedBoolean.default(false),
   /**
    * Allow rendering unsafe URLs which have "data:" scheme.
    */
@@ -58,6 +63,31 @@ const clientSchema = {
    * The deployment edition, SELF_HOSTED
    */
   NEXT_PUBLIC_EDITION: z.enum(['SELF_HOSTED', 'CLOUD']).default('SELF_HOSTED'),
+  NEXT_PUBLIC_ENABLE_AGENT_V2: coercedBoolean.default(false),
+  /**
+   * Enable preview features that are still in development.
+   * Currently gates the `/create` and `/refine` slash commands in the
+   * "Go to Anything" command palette (Cmd/Ctrl+K).
+   */
+  NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: coercedBoolean.default(false),
+
+  /**
+   * Cloud-only system-features defaults.
+   * These values are only used when NEXT_PUBLIC_EDITION=CLOUD (IS_CLOUD_EDITION).
+   */
+  NEXT_PUBLIC_ENABLE_MARKETPLACE: coercedBoolean.default(true),
+  NEXT_PUBLIC_ENABLE_EMAIL_CODE_LOGIN: coercedBoolean.default(true),
+  NEXT_PUBLIC_ENABLE_EMAIL_PASSWORD_LOGIN: coercedBoolean.default(false),
+  NEXT_PUBLIC_ENABLE_SOCIAL_OAUTH_LOGIN: coercedBoolean.default(true),
+  NEXT_PUBLIC_ENABLE_COLLABORATION_MODE: coercedBoolean.default(false),
+  NEXT_PUBLIC_ALLOW_REGISTER: coercedBoolean.default(true),
+  NEXT_PUBLIC_ALLOW_CREATE_WORKSPACE: coercedBoolean.default(true),
+  NEXT_PUBLIC_IS_EMAIL_SETUP: coercedBoolean.default(true),
+  NEXT_PUBLIC_ENABLE_CHANGE_EMAIL: coercedBoolean.default(true),
+  NEXT_PUBLIC_CREATORS_PLATFORM_FEATURES_ENABLED: coercedBoolean.default(true),
+  NEXT_PUBLIC_ENABLE_TRIAL_APP: coercedBoolean.default(true),
+  NEXT_PUBLIC_ENABLE_EXPLORE_BANNER: coercedBoolean.default(true),
+
   /**
    * Enable inline LaTeX rendering with single dollar signs ($...$)
    * Default is false for security reasons to prevent conflicts with regular text
@@ -111,6 +141,7 @@ const clientSchema = {
    */
   NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
   NEXT_PUBLIC_SITE_ABOUT: z.string().optional(),
+  NEXT_PUBLIC_SOCKET_URL: z.string().optional(),
   NEXT_PUBLIC_SUPPORT_EMAIL_ADDRESS: z.email().optional(),
   NEXT_PUBLIC_SUPPORT_MAIL_LOGIN: coercedBoolean.default(false),
   /**
@@ -136,6 +167,8 @@ const clientSchema = {
 
 export const env = createEnv({
   server: {
+    CONSOLE_API_URL: z.string().optional(),
+    SERVER_CONSOLE_API_URL: z.string().optional(),
     /**
      * Maximum length of segmentation tokens for indexing
      */
@@ -153,6 +186,7 @@ export const env = createEnv({
   client: clientSchema,
   experimental__runtimeEnv: {
     NEXT_PUBLIC_ALLOW_EMBED: isServer ? process.env.NEXT_PUBLIC_ALLOW_EMBED : getRuntimeEnvFromBody('allowEmbed'),
+    NEXT_PUBLIC_ALLOW_INLINE_STYLES: isServer ? process.env.NEXT_PUBLIC_ALLOW_INLINE_STYLES : getRuntimeEnvFromBody('allowInlineStyles'),
     NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME: isServer ? process.env.NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME : getRuntimeEnvFromBody('allowUnsafeDataScheme'),
     NEXT_PUBLIC_AMPLITUDE_API_KEY: isServer ? process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY : getRuntimeEnvFromBody('amplitudeApiKey'),
     NEXT_PUBLIC_API_PREFIX: isServer ? process.env.NEXT_PUBLIC_API_PREFIX : getRuntimeEnvFromBody('apiPrefix'),
@@ -163,6 +197,26 @@ export const env = createEnv({
     NEXT_PUBLIC_DEPLOY_ENV: isServer ? process.env.NEXT_PUBLIC_DEPLOY_ENV : getRuntimeEnvFromBody('deployEnv'),
     NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON: isServer ? process.env.NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON : getRuntimeEnvFromBody('disableUploadImageAsIcon'),
     NEXT_PUBLIC_EDITION: isServer ? process.env.NEXT_PUBLIC_EDITION : getRuntimeEnvFromBody('edition'),
+    NEXT_PUBLIC_ENABLE_AGENT_V2: isServer ? process.env.NEXT_PUBLIC_ENABLE_AGENT_V2 : getRuntimeEnvFromBody('enableAgentV2'),
+    NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: isServer ? process.env.NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW : getRuntimeEnvFromBody('enableFeaturePreview'),
+
+    /**
+     * Cloud-only system-features defaults.
+     * These values are only used when NEXT_PUBLIC_EDITION=CLOUD (IS_CLOUD_EDITION).
+     */
+    NEXT_PUBLIC_ENABLE_MARKETPLACE: isServer ? process.env.NEXT_PUBLIC_ENABLE_MARKETPLACE : getRuntimeEnvFromBody('enableMarketplace'),
+    NEXT_PUBLIC_ENABLE_EMAIL_CODE_LOGIN: isServer ? process.env.NEXT_PUBLIC_ENABLE_EMAIL_CODE_LOGIN : getRuntimeEnvFromBody('enableEmailCodeLogin'),
+    NEXT_PUBLIC_ENABLE_EMAIL_PASSWORD_LOGIN: isServer ? process.env.NEXT_PUBLIC_ENABLE_EMAIL_PASSWORD_LOGIN : getRuntimeEnvFromBody('enableEmailPasswordLogin'),
+    NEXT_PUBLIC_ENABLE_SOCIAL_OAUTH_LOGIN: isServer ? process.env.NEXT_PUBLIC_ENABLE_SOCIAL_OAUTH_LOGIN : getRuntimeEnvFromBody('enableSocialOauthLogin'),
+    NEXT_PUBLIC_ENABLE_COLLABORATION_MODE: isServer ? process.env.NEXT_PUBLIC_ENABLE_COLLABORATION_MODE : getRuntimeEnvFromBody('enableCollaborationMode'),
+    NEXT_PUBLIC_ALLOW_REGISTER: isServer ? process.env.NEXT_PUBLIC_ALLOW_REGISTER : getRuntimeEnvFromBody('allowRegister'),
+    NEXT_PUBLIC_ALLOW_CREATE_WORKSPACE: isServer ? process.env.NEXT_PUBLIC_ALLOW_CREATE_WORKSPACE : getRuntimeEnvFromBody('allowCreateWorkspace'),
+    NEXT_PUBLIC_IS_EMAIL_SETUP: isServer ? process.env.NEXT_PUBLIC_IS_EMAIL_SETUP : getRuntimeEnvFromBody('isEmailSetup'),
+    NEXT_PUBLIC_ENABLE_CHANGE_EMAIL: isServer ? process.env.NEXT_PUBLIC_ENABLE_CHANGE_EMAIL : getRuntimeEnvFromBody('enableChangeEmail'),
+    NEXT_PUBLIC_CREATORS_PLATFORM_FEATURES_ENABLED: isServer ? process.env.NEXT_PUBLIC_CREATORS_PLATFORM_FEATURES_ENABLED : getRuntimeEnvFromBody('creatorsPlatformFeaturesEnabled'),
+    NEXT_PUBLIC_ENABLE_TRIAL_APP: isServer ? process.env.NEXT_PUBLIC_ENABLE_TRIAL_APP : getRuntimeEnvFromBody('enableTrialApp'),
+    NEXT_PUBLIC_ENABLE_EXPLORE_BANNER: isServer ? process.env.NEXT_PUBLIC_ENABLE_EXPLORE_BANNER : getRuntimeEnvFromBody('enableExploreBanner'),
+
     NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX: isServer ? process.env.NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX : getRuntimeEnvFromBody('enableSingleDollarLatex'),
     NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL: isServer ? process.env.NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL : getRuntimeEnvFromBody('enableWebsiteFirecrawl'),
     NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER: isServer ? process.env.NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER : getRuntimeEnvFromBody('enableWebsiteJinareader'),
@@ -180,6 +234,7 @@ export const env = createEnv({
     NEXT_PUBLIC_PUBLIC_API_PREFIX: isServer ? process.env.NEXT_PUBLIC_PUBLIC_API_PREFIX : getRuntimeEnvFromBody('publicApiPrefix'),
     NEXT_PUBLIC_SENTRY_DSN: isServer ? process.env.NEXT_PUBLIC_SENTRY_DSN : getRuntimeEnvFromBody('sentryDsn'),
     NEXT_PUBLIC_SITE_ABOUT: isServer ? process.env.NEXT_PUBLIC_SITE_ABOUT : getRuntimeEnvFromBody('siteAbout'),
+    NEXT_PUBLIC_SOCKET_URL: isServer ? process.env.NEXT_PUBLIC_SOCKET_URL : getRuntimeEnvFromBody('socketUrl'),
     NEXT_PUBLIC_SUPPORT_EMAIL_ADDRESS: isServer ? process.env.NEXT_PUBLIC_SUPPORT_EMAIL_ADDRESS : getRuntimeEnvFromBody('supportEmailAddress'),
     NEXT_PUBLIC_SUPPORT_MAIL_LOGIN: isServer ? process.env.NEXT_PUBLIC_SUPPORT_MAIL_LOGIN : getRuntimeEnvFromBody('supportMailLogin'),
     NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS: isServer ? process.env.NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS : getRuntimeEnvFromBody('textGenerationTimeoutMs'),
@@ -198,6 +253,11 @@ export const env = createEnv({
 
 type ClientEnvKey = keyof typeof clientSchema
 type DatasetKey = CamelCase<Replace<ClientEnvKey, typeof CLIENT_ENV_PREFIX>>
+
+function getDatasetAttributeName(envKey: ClientEnvKey) {
+  const datasetName = kebabCase(slice(envKey, length(CLIENT_ENV_PREFIX))).replace(/-(\d)/g, '$1')
+  return concat('data-', datasetName)
+}
 
 /**
  * Browser-only function to get runtime env value from HTML body dataset.
@@ -221,7 +281,7 @@ export function getDatasetMap() {
   return ObjectFromEntries(
     ObjectKeys(clientSchema)
       .map(envKey => [
-        concat('data-', kebabCase(slice(envKey, length(CLIENT_ENV_PREFIX)))),
+        getDatasetAttributeName(envKey),
         env[envKey],
       ]),
   )

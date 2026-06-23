@@ -15,7 +15,10 @@ from flask import Flask
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.account import TenantStatus
 from models.model import App, AppMode, EndUser
-from tests.unit_tests.conftest import setup_mock_tenant_account_query
+from tests.unit_tests.conftest import (
+    setup_mock_dataset_owner_execute_result,
+    setup_mock_tenant_owner_execute_result,
+)
 
 
 @pytest.fixture
@@ -123,9 +126,7 @@ class AuthenticationMocker:
         mock_db.session.get.side_effect = [mock_app, mock_tenant]
 
         if mock_account:
-            mock_ta = Mock()
-            mock_ta.account_id = mock_account.id
-            setup_mock_tenant_account_query(mock_db, mock_tenant, mock_ta)
+            setup_mock_tenant_owner_execute_result(mock_db, mock_tenant, mock_account)
 
     @staticmethod
     def setup_dataset_auth(mock_db, mock_tenant, mock_account):
@@ -133,8 +134,7 @@ class AuthenticationMocker:
         mock_ta = Mock()
         mock_ta.account_id = mock_account.id
 
-        mock_db.session.execute.return_value.one_or_none.return_value = (mock_tenant, mock_ta)
-
+        setup_mock_dataset_owner_execute_result(mock_db, mock_tenant, mock_ta)
         mock_db.session.get.return_value = mock_account
 
 
@@ -204,11 +204,3 @@ def mock_child_chunk():
     child_chunk.tenant_id = str(uuid.uuid4())
     child_chunk.content = "Test child chunk content"
     return child_chunk
-
-
-def _unwrap(method):
-    """Walk ``__wrapped__`` chain to get the original function."""
-    fn = method
-    while hasattr(fn, "__wrapped__"):
-        fn = fn.__wrapped__
-    return fn

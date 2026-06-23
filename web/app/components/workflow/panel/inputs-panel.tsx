@@ -1,4 +1,5 @@
 import type { StartNodeType } from '../nodes/start/types'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   memo,
   useCallback,
@@ -6,7 +7,6 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
-import Button from '@/app/components/base/button'
 import { useCheckInputsForms } from '@/app/components/base/chat/chat/check-input-forms-hooks'
 import {
   getProcessedInputs,
@@ -25,15 +25,16 @@ import {
   WorkflowRunningStatus,
 } from '../types'
 
-type Props = {
+type Props = Readonly<{
   onRun: () => void
-}
+}>
 
 const InputsPanel = ({ onRun }: Props) => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
   const inputs = useStore(s => s.inputs)
   const fileSettings = useHooksStore(s => s.configsMap?.fileSettings)
+  const canRunWorkflow = useHooksStore(s => s.accessControl.canRun)
   const nodes = useNodes<StartNodeType>()
   const files = useStore(s => s.files)
   const workflowRunningData = useStore(s => s.workflowRunningData)
@@ -51,7 +52,7 @@ const InputsPanel = ({ onRun }: Props) => {
         if (variable.default)
           result[variable.variable] = variable.default
         if (inputs[variable.variable] !== undefined)
-          result[variable.variable] = inputs[variable.variable]
+          result[variable.variable] = inputs[variable.variable]!
       })
     }
     return result
@@ -92,20 +93,23 @@ const InputsPanel = ({ onRun }: Props) => {
     }
   }
 
+  const canRun = useMemo(() => {
+    const canUploadReady = !(files?.some(item => (item.transfer_method as any) === TransferMethod.local_file && !item.upload_file_id))
+    return canRunWorkflow && canUploadReady
+  }, [canRunWorkflow, files])
+
   const doRun = useCallback(() => {
+    if (!canRun)
+      return
     if (!checkInputsForm(initialInputs, variables as any))
       return
     onRun()
     handleRun({ inputs: getProcessedInputs(initialInputs, variables as any), files })
-  }, [files, handleRun, initialInputs, onRun, variables, checkInputsForm])
-
-  const canRun = useMemo(() => {
-    return !(files?.some(item => (item.transfer_method as any) === TransferMethod.local_file && !item.upload_file_id))
-  }, [files])
+  }, [canRun, files, handleRun, initialInputs, onRun, variables, checkInputsForm])
 
   return (
     <>
-      <div className="px-4 pb-2 pt-3">
+      <div className="px-4 pt-3 pb-2">
         {
           variables.map((variable, index) => (
             <div
@@ -114,7 +118,7 @@ const InputsPanel = ({ onRun }: Props) => {
             >
               <FormItem
                 autoFocus={index === 0}
-                className="!block"
+                className="block!"
                 payload={variable}
                 value={initialInputs[variable.variable]}
                 onChange={v => handleValueChange(variable.variable, v)}

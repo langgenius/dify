@@ -1,20 +1,20 @@
 'use client'
 import type { FC } from 'react'
 import type { CrawlOptions } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import CheckboxWithLabel from '../base/checkbox-with-label'
 import Field from '../base/field'
 
 const I18N_PREFIX = 'stepOne.website'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   payload: CrawlOptions
   onChange: (payload: CrawlOptions) => void
-}
+}>
 
 const Options: FC<Props> = ({
   className = '',
@@ -35,7 +35,6 @@ const Options: FC<Props> = ({
     <div className={cn(className, 'space-y-2')}>
       <CheckboxWithLabel
         label={t(`${I18N_PREFIX}.crawlSubPage`, { ns: 'datasetCreation' })}
-        testId="crawl-sub-page"
         isChecked={payload.crawl_sub_pages}
         onChange={handleChange('crawl_sub_pages')}
         labelClassName="text-[13px] leading-[16px] font-medium text-text-secondary"
@@ -77,7 +76,6 @@ const Options: FC<Props> = ({
       </div>
       <CheckboxWithLabel
         label={t(`${I18N_PREFIX}.extractOnlyMainContent`, { ns: 'datasetCreation' })}
-        testId="only-main-content"
         isChecked={payload.only_main_content}
         onChange={handleChange('only_main_content')}
         labelClassName="text-[13px] leading-[16px] font-medium text-text-secondary"

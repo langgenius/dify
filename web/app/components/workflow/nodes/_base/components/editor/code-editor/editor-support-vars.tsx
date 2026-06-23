@@ -2,22 +2,22 @@
 import type { FC } from 'react'
 import type { Props as EditorProps } from '.'
 import type { NodeOutPutVar, Variable } from '@/app/components/workflow/types'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
-import { cn } from '@/utils/classnames'
 import Editor from '.'
 
 const TO_WINDOW_OFFSET = 8
 
-type Props = {
+type Props = Readonly<{
   availableVars: NodeOutPutVar[]
   varList: Variable[]
   onAddVar?: (payload: Variable) => void
-} & EditorProps
+}> & EditorProps
 
 const CodeEditor: FC<Props> = ({
   availableVars,
@@ -110,7 +110,7 @@ const CodeEditor: FC<Props> = ({
     }
     const varName = varValue.slice(-1)[0]
     return {
-      name: getUniqVarName(varName),
+      name: getUniqVarName(varName!),
       isExist: false,
     }
   }

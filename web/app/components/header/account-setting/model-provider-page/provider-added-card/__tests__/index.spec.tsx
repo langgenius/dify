@@ -8,6 +8,7 @@ import { ConfigurationMethodEnum } from '../../declarations'
 import ProviderAddedCard from '../index'
 
 let mockIsCurrentWorkspaceManager = true
+let mockWorkspacePermissionKeys: string[] = ['plugin.manage', 'credential.use', 'credential.create', 'credential.manage']
 const mockFetchModelProviderModels = vi.fn()
 const mockQueryOptions = vi.fn(({ input, ...options }: { input: { params: { provider: string } }, enabled?: boolean }) => ({
   queryKey: ['console', 'modelProviders', 'models', input.params.provider],
@@ -28,6 +29,9 @@ vi.mock('@/service/client', () => ({
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager,
+  }),
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -101,6 +105,7 @@ describe('ProviderAddedCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsCurrentWorkspaceManager = true
+    mockWorkspacePermissionKeys = ['plugin.manage', 'credential.use', 'credential.create', 'credential.manage']
   })
 
   it('should render provider added card component', () => {
@@ -113,7 +118,7 @@ describe('ProviderAddedCard', () => {
     mockFetchModelProviderModels.mockResolvedValue({ data: [{ model: 'gpt-4' }] })
     renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
 
-    const showModelsBtn = screen.getByTestId('show-models-button')
+    const showModelsBtn = screen.getByRole('button', { name: /modelProvider\.showModels/i })
     fireEvent.click(showModelsBtn)
 
     await waitFor(() => {
@@ -127,7 +132,7 @@ describe('ProviderAddedCard', () => {
     await waitFor(() => expect(screen.queryByTestId('model-list')).not.toBeInTheDocument())
 
     // Explicitly re-find and click to re-open
-    fireEvent.click(screen.getByTestId('show-models-button'))
+    fireEvent.click(screen.getByRole('button', { name: /modelProvider\.showModels/i }))
     expect(await screen.findByTestId('model-list')).toBeInTheDocument()
     expect(mockFetchModelProviderModels).toHaveBeenCalledTimes(2) // Re-open fetches again with default stale/gc behavior
 
@@ -147,7 +152,7 @@ describe('ProviderAddedCard', () => {
     mockFetchModelProviderModels.mockReturnValue(promise)
 
     renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
-    const showModelsBtn = screen.getByTestId('show-models-button')
+    const showModelsBtn = screen.getByRole('button', { name: /modelProvider\.showModels/i })
 
     // First call sets loading to true
     fireEvent.click(showModelsBtn)
@@ -196,7 +201,7 @@ describe('ProviderAddedCard', () => {
     expect(screen.getByText('common.modelProvider.configureTip')).toBeInTheDocument()
   })
 
-  it('should render custom model actions for workspace managers', () => {
+  it('should render custom model actions when user can manage plugins', () => {
     const customConfigProvider = {
       ...mockProvider,
       configurate_methods: [ConfigurationMethodEnum.customizableModel],
@@ -208,7 +213,21 @@ describe('ProviderAddedCard', () => {
 
     unmount()
     mockIsCurrentWorkspaceManager = false
+    mockWorkspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
     renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
     expect(screen.queryByTestId('manage-custom-model')).not.toBeInTheDocument()
+  })
+
+  it('should render custom model actions when user can manage plugins without credential permissions', () => {
+    const customConfigProvider = {
+      ...mockProvider,
+      configurate_methods: [ConfigurationMethodEnum.customizableModel],
+    } as unknown as ModelProvider
+    mockWorkspacePermissionKeys = ['plugin.manage']
+
+    renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
+
+    expect(screen.getByTestId('manage-custom-model')).toBeInTheDocument()
+    expect(screen.getByTestId('add-custom-model')).toBeInTheDocument()
   })
 })

@@ -1,11 +1,13 @@
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useAppContext } from '@/context/app-context'
 import { useParams } from '@/next/navigation'
-import { useInfiniteAppList } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
+import { AppACLPermission } from '@/utils/permission'
 import AppNav from '../index'
+
+const mockAppListInfiniteOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
 
 vi.mock('@/next/navigation', () => ({
   useParams: vi.fn(),
@@ -17,17 +19,35 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
-}))
-
 vi.mock('@/app/components/app/store', () => ({
   useStore: vi.fn(),
 }))
 
-vi.mock('@/service/use-apps', () => ({
-  useInfiniteAppList: vi.fn(),
+let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
 }))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    apps: {
+      list: {
+        infiniteOptions: (options: unknown) => mockAppListInfiniteOptions(options),
+      },
+    },
+  },
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useInfiniteQuery: vi.fn(),
+  }
+})
 
 vi.mock('@/app/components/app/create-app-dialog', () => ({
   default: ({ show, onClose, onSuccess }: { show: boolean, onClose: () => void, onSuccess: () => void }) =>
@@ -88,12 +108,23 @@ vi.mock('../../nav', () => ({
     onCreate,
     onLoadMore,
     navigationItems,
+    activeSegment,
+    activeLink,
+    text,
   }: {
     onCreate: (state: string) => void
     onLoadMore?: () => void
     navigationItems?: Array<{ id: string, name: string, link: string }>
+    activeSegment?: string | string[]
+    activeLink?: { segment: string, text: string, link: string }
+    text?: string
   }) => (
     <div data-testid="nav">
+      <div data-testid="nav-text">{text}</div>
+      <div data-testid="nav-active-segment">{JSON.stringify(activeSegment)}</div>
+      {activeLink && (
+        <div data-testid="nav-active-link">{`${activeLink.segment}:${activeLink.text}->${activeLink.link}`}</div>
+      )}
       <ul data-testid="nav-items">
         {(navigationItems ?? []).map(item => (
           <li key={item.id}>{`${item.name} -> ${item.link}`}</li>
@@ -124,35 +155,37 @@ const mockAppData = [
     icon: '🤖',
     icon_background: null,
     icon_url: null,
+    permission_keys: [] as string[],
   },
 ]
 
 const mockUseParams = vi.mocked(useParams)
-const mockUseAppContext = vi.mocked(useAppContext)
 const mockUseAppStore = vi.mocked(useAppStore)
-const mockUseInfiniteAppList = vi.mocked(useInfiniteAppList)
+const mockUseInfiniteQuery = vi.mocked(useInfiniteQuery)
 let mockAppDetail: { id: string, name: string } | null = null
+type AppListInfiniteOptions = {
+  input: (pageParam: number) => { query: { page: number, limit: number, name: string } }
+  getNextPageParam: (lastPage: { has_more: boolean, page: number }) => number | undefined
+}
 
 const setupDefaultMocks = (options?: {
   hasNextPage?: boolean
   refetch?: () => void
   fetchNextPage?: () => void
-  isEditor?: boolean
   appData?: typeof mockAppData
 }) => {
   const refetch = options?.refetch ?? vi.fn()
   const fetchNextPage = options?.fetchNextPage ?? vi.fn()
 
   mockUseParams.mockReturnValue({ appId: 'app-1' } as ReturnType<typeof useParams>)
-  mockUseAppContext.mockReturnValue({ isCurrentWorkspaceEditor: options?.isEditor ?? false } as ReturnType<typeof useAppContext>)
   mockUseAppStore.mockImplementation((selector: unknown) => (selector as (state: { appDetail: { id: string, name: string } | null }) => unknown)({ appDetail: mockAppDetail }))
-  mockUseInfiniteAppList.mockReturnValue({
+  mockUseInfiniteQuery.mockReturnValue({
     data: { pages: [{ data: options?.appData ?? mockAppData }] },
     fetchNextPage,
     hasNextPage: options?.hasNextPage ?? false,
     isFetchingNextPage: false,
     refetch,
-  } as ReturnType<typeof useInfiniteAppList>)
+  } as ReturnType<typeof useInfiniteQuery>)
 
   return { refetch, fetchNextPage }
 }
@@ -161,12 +194,47 @@ describe('AppNav', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockAppDetail = null
+    mockWorkspacePermissionKeys = ['app.create_and_management']
     setupDefaultMocks()
   })
 
-  it('should build editor links and update app name when app detail changes', async () => {
+  it('should configure paged app list query options', () => {
+    setupDefaultMocks()
+    render(<AppNav />)
+
+    const options = mockAppListInfiniteOptions.mock.calls.at(-1)?.[0] as AppListInfiniteOptions
+
+    expect(options.input(3)).toEqual({
+      query: {
+        page: 3,
+        limit: 30,
+        name: '',
+      },
+    })
+    expect(options.getNextPageParam({ has_more: true, page: 3 })).toBe(4)
+    expect(options.getNextPageParam({ has_more: false, page: 3 })).toBeUndefined()
+  })
+
+  it('should keep snippets configured as an active studio child link after rerender setup', () => {
+    setupDefaultMocks()
+    render(<AppNav />)
+
+    expect(screen.getByTestId('nav-text')).toHaveTextContent('menus.apps')
+    expect(screen.getByTestId('nav-active-segment')).toHaveTextContent(JSON.stringify(['apps', 'app', 'snippets']))
+    expect(screen.getByTestId('nav-active-link')).toHaveTextContent('snippets:tabs.snippets->/snippets')
+  })
+
+  it('should configure snippets as an active studio child link', () => {
+    setupDefaultMocks()
+    render(<AppNav />)
+
+    expect(screen.getByTestId('nav-text')).toHaveTextContent('menus.apps')
+    expect(screen.getByTestId('nav-active-segment')).toHaveTextContent(JSON.stringify(['apps', 'app', 'snippets']))
+    expect(screen.getByTestId('nav-active-link')).toHaveTextContent('snippets:tabs.snippets->/snippets')
+  })
+
+  it('should build layout links from app ACL and update app name when app detail changes', async () => {
     setupDefaultMocks({
-      isEditor: true,
       appData: [
         {
           id: 'app-1',
@@ -176,6 +244,7 @@ describe('AppNav', () => {
           icon: '🤖',
           icon_background: null,
           icon_url: null,
+          permission_keys: [AppACLPermission.Edit],
         },
         {
           id: 'app-2',
@@ -185,6 +254,7 @@ describe('AppNav', () => {
           icon: '⚙️',
           icon_background: null,
           icon_url: null,
+          permission_keys: [AppACLPermission.TestAndRun],
         },
       ],
     })
@@ -247,6 +317,20 @@ describe('AppNav', () => {
     })
   })
 
+  it('should not open create modals without app.create_and_management permission', async () => {
+    const user = userEvent.setup()
+    mockWorkspacePermissionKeys = []
+    render(<AppNav />)
+
+    await user.click(screen.getByTestId('create-blank'))
+    await user.click(screen.getByTestId('create-template'))
+    await user.click(screen.getByTestId('create-dsl'))
+
+    expect(screen.queryByTestId('create-app-modal')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('create-app-template-dialog')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('create-from-dsl-modal')).not.toBeInTheDocument()
+  })
+
   it('should load more when user clicks load more and more data is available', async () => {
     const user = userEvent.setup()
     const { fetchNextPage } = setupDefaultMocks({ hasNextPage: true })
@@ -265,10 +349,9 @@ describe('AppNav', () => {
     expect(fetchNextPage).not.toHaveBeenCalled()
   })
 
-  // Non-editor link path: isCurrentWorkspaceEditor=false → link ends with /overview
-  it('should build overview links when user is not editor', () => {
+  it('should build overview links when app layout ACL is missing', () => {
     // Arrange
-    setupDefaultMocks({ isEditor: false })
+    setupDefaultMocks()
 
     // Act
     render(<AppNav />)
@@ -282,13 +365,13 @@ describe('AppNav', () => {
     // Arrange
     setupDefaultMocks()
     mockUseParams.mockReturnValue({} as ReturnType<typeof useParams>)
-    mockUseInfiniteAppList.mockReturnValue({
+    mockUseInfiniteQuery.mockReturnValue({
       data: undefined,
       fetchNextPage: vi.fn(),
       hasNextPage: false,
       isFetchingNextPage: false,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof useInfiniteAppList>)
+    } as unknown as ReturnType<typeof useInfiniteQuery>)
 
     // Act
     render(<AppNav />)
@@ -302,7 +385,6 @@ describe('AppNav', () => {
   it('should build workflow link for ADVANCED_CHAT mode when user is editor', () => {
     // Arrange
     setupDefaultMocks({
-      isEditor: true,
       appData: [
         {
           id: 'app-3',
@@ -312,6 +394,7 @@ describe('AppNav', () => {
           icon: '💬',
           icon_background: null,
           icon_url: null,
+          permission_keys: [AppACLPermission.ViewLayout],
         },
       ],
     })
@@ -326,7 +409,20 @@ describe('AppNav', () => {
   // No-match update path: appDetail.id doesn't match any nav item
   it('should not change nav item names when appDetail id does not match any item', async () => {
     // Arrange
-    setupDefaultMocks({ isEditor: true })
+    setupDefaultMocks({
+      appData: [
+        {
+          id: 'app-1',
+          name: 'App 1',
+          mode: AppModeEnum.AGENT_CHAT,
+          icon_type: 'emoji',
+          icon: '🤖',
+          icon_background: null,
+          icon_url: null,
+          permission_keys: [AppACLPermission.Edit],
+        },
+      ],
+    })
     const { rerender } = render(<AppNav />)
 
     // Act - set appDetail to a non-matching id

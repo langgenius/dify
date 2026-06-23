@@ -8,22 +8,20 @@ import ListEmpty from '@/app/components/base/list-empty'
 import { useStore } from '@/app/components/workflow/store'
 import VarReferenceVars from './var-reference-vars'
 
-type Props = {
+type Props = Readonly<{
   vars: NodeOutPutVar[]
   popupFor?: 'assigned' | 'toAssigned'
   onChange: (value: ValueSelector, varDetail: Var) => void
   itemWidth?: number
   isSupportFileVar?: boolean
-  zIndex?: number
   preferSchemaType?: boolean
-}
+}>
 const VarReferencePopup: FC<Props> = ({
   vars,
   popupFor,
   onChange,
   itemWidth,
   isSupportFileVar = true,
-  zIndex,
   preferSchemaType,
 }) => {
   const { t } = useTranslation()
@@ -68,7 +66,6 @@ const VarReferencePopup: FC<Props> = ({
               onChange={onChange}
               itemWidth={itemWidth}
               isSupportFileVar={isSupportFileVar}
-              zIndex={zIndex}
               showManageInputField={showManageRagInputFields}
               onManageInputField={() => setShowInputFieldPanel?.(true)}
               preferSchemaType={preferSchemaType}

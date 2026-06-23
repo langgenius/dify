@@ -1,0 +1,184 @@
+import type { ReactElement } from 'react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
+import { CollectionType } from '@/app/components/tools/types'
+import { useGetLanguage } from '@/context/i18n'
+import useTheme from '@/hooks/use-theme'
+import { Theme } from '@/types/app'
+import AllTools from '../all-tools'
+import { createToolProvider } from './factories'
+
+vi.mock('@/context/i18n', () => ({
+  useGetLanguage: vi.fn(),
+}))
+
+vi.mock('@/hooks/use-theme', () => ({
+  default: vi.fn(),
+}))
+
+vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
+  useMarketplacePlugins: vi.fn(),
+}))
+
+vi.mock('@/app/components/workflow/nodes/_base/components/mcp-tool-availability', () => ({
+  useMCPToolAvailability: () => ({
+    allowed: true,
+  }),
+}))
+
+vi.mock('@/utils/var', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/utils/var')>()),
+  getMarketplaceUrl: (path = '') => `https://marketplace.test${path}`,
+}))
+
+const mockUseMarketplacePlugins = vi.mocked(useMarketplacePlugins)
+const mockUseGetLanguage = vi.mocked(useGetLanguage)
+const mockUseTheme = vi.mocked(useTheme)
+
+const render = (ui: ReactElement, enableMarketplace = false) =>
+  renderWithSystemFeatures(ui, { systemFeatures: { enable_marketplace: enableMarketplace } })
+
+const createMarketplacePluginsMock = () => ({
+  plugins: [],
+  total: 0,
+  resetPlugins: vi.fn(),
+  queryPlugins: vi.fn(),
+  queryPluginsWithDebounced: vi.fn(),
+  cancelQueryPluginsWithDebounced: vi.fn(),
+  isLoading: false,
+  isFetchingNextPage: false,
+  hasNextPage: false,
+  fetchNextPage: vi.fn(),
+  page: 0,
+})
+
+describe('AllTools', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUseGetLanguage.mockReturnValue('en_US')
+    mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
+    mockUseMarketplacePlugins.mockReturnValue(createMarketplacePluginsMock())
+  })
+
+  it('filters tools by the active tab', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <AllTools
+        searchText=""
+        tags={[]}
+        onSelect={vi.fn()}
+        buildInTools={[createToolProvider({
+          id: 'provider-built-in',
+          label: { en_US: 'Built In Provider', zh_Hans: 'Built In Provider' },
+        })]}
+        customTools={[createToolProvider({
+          id: 'provider-custom',
+          type: 'custom',
+          label: { en_US: 'Custom Provider', zh_Hans: 'Custom Provider' },
+        })]}
+        workflowTools={[]}
+        mcpTools={[]}
+      />,
+    )
+
+    expect(screen.getByText('Built In Provider')).toBeInTheDocument()
+    expect(screen.getByText('Custom Provider')).toBeInTheDocument()
+
+    await user.click(screen.getByText('workflow.tabs.customTool'))
+
+    expect(screen.getByText('Custom Provider')).toBeInTheDocument()
+    expect(screen.queryByText('Built In Provider')).not.toBeInTheDocument()
+  })
+
+  it('updates the tools list title by the active tab', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <AllTools
+        searchText=""
+        tags={[]}
+        onSelect={vi.fn()}
+        buildInTools={[createToolProvider({
+          id: 'provider-built-in',
+          label: { en_US: 'Built In Provider', zh_Hans: 'Built In Provider' },
+        })]}
+        customTools={[createToolProvider({
+          id: 'provider-custom',
+          type: CollectionType.custom,
+          label: { en_US: 'Swagger Provider', zh_Hans: 'Swagger Provider' },
+        })]}
+        workflowTools={[createToolProvider({
+          id: 'provider-workflow',
+          type: CollectionType.workflow,
+          label: { en_US: 'Workflow Provider', zh_Hans: 'Workflow Provider' },
+        })]}
+        mcpTools={[createToolProvider({
+          id: 'provider-mcp',
+          type: CollectionType.mcp,
+          label: { en_US: 'MCP Provider', zh_Hans: 'MCP Provider' },
+        })]}
+      />,
+    )
+
+    expect(screen.getByText('tools.allTools')).toBeInTheDocument()
+
+    await user.click(screen.getByText('workflow.tabs.plugin'))
+    expect(screen.getByText('tools.allToolPlugins')).toBeInTheDocument()
+
+    await user.click(screen.getByText('workflow.tabs.customTool'))
+    expect(screen.getByText('tools.allSwaggerAPIAsTool')).toBeInTheDocument()
+
+    await user.click(screen.getByText('workflow.tabs.workflowTool'))
+    expect(screen.getByText('tools.allWorkflowAsTool')).toBeInTheDocument()
+
+    await user.click(screen.getByText('MCP'))
+    expect(screen.getByText('tools.allMCP')).toBeInTheDocument()
+  })
+
+  it('filters the rendered tools by the search text', () => {
+    render(
+      <AllTools
+        searchText="report"
+        tags={[]}
+        onSelect={vi.fn()}
+        buildInTools={[
+          createToolProvider({
+            id: 'provider-report',
+            label: { en_US: 'Report Toolkit', zh_Hans: 'Report Toolkit' },
+          }),
+          createToolProvider({
+            id: 'provider-other',
+            label: { en_US: 'Other Toolkit', zh_Hans: 'Other Toolkit' },
+          }),
+        ]}
+        customTools={[]}
+        workflowTools={[]}
+        mcpTools={[]}
+      />,
+    )
+
+    expect(screen.getByText('Report Toolkit')).toBeInTheDocument()
+    expect(screen.queryByText('Other Toolkit')).not.toBeInTheDocument()
+  })
+
+  it('shows the empty state when no tool matches the current filter', async () => {
+    render(
+      <AllTools
+        searchText="missing"
+        tags={[]}
+        onSelect={vi.fn()}
+        buildInTools={[]}
+        customTools={[]}
+        workflowTools={[]}
+        mcpTools={[]}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('workflow.tabs.noPluginsFound')).toBeInTheDocument()
+    })
+  })
+})

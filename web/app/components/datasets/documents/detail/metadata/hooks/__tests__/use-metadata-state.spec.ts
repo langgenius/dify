@@ -3,13 +3,25 @@ import type { FullDocumentDetail } from '@/models/datasets'
 import { act, renderHook } from '@testing-library/react'
 import * as React from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { ToastContext } from '@/app/components/base/toast/context'
 
 import { useMetadataState } from '../use-metadata-state'
 
-const { mockNotify, mockModifyDocMetadata } = vi.hoisted(() => ({
-  mockNotify: vi.fn(),
-  mockModifyDocMetadata: vi.fn(),
+const { mockNotify, mockModifyDocMetadata, mockToast } = vi.hoisted(() => {
+  const mockNotify = vi.fn()
+  const mockToast = Object.assign(mockNotify, {
+    success: vi.fn((message, options) => mockNotify({ type: 'success', message, ...options })),
+    error: vi.fn((message, options) => mockNotify({ type: 'error', message, ...options })),
+    warning: vi.fn((message, options) => mockNotify({ type: 'warning', message, ...options })),
+    info: vi.fn((message, options) => mockNotify({ type: 'info', message, ...options })),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  })
+  return { mockNotify, mockModifyDocMetadata: vi.fn(), mockToast }
+})
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: mockToast,
 }))
 
 vi.mock('../../../context', () => ({
@@ -32,9 +44,8 @@ vi.mock('@/utils', () => ({
   },
 }))
 
-// Wrapper that provides ToastContext with the mock notify function
 const wrapper = ({ children }: { children: ReactNode }) =>
-  React.createElement(ToastContext.Provider, { value: { notify: mockNotify, close: vi.fn() }, children })
+  React.createElement(React.Fragment, { children })
 
 type DocDetail = Parameters<typeof useMetadataState>[0]['docDetail']
 
@@ -52,7 +63,7 @@ describe('useMetadataState', () => {
     const stableDocDetail = makeDoc()
 
     const { result } = renderHook(() =>
-      useMetadataState({ docDetail: stableDocDetail, onUpdate }), { wrapper })
+      useMetadataState({ docDetail: stableDocDetail, onUpdate, canEdit: true }), { wrapper })
 
     // --- Initialization ---
     expect(result.current.docType).toBe('book')
@@ -139,7 +150,7 @@ describe('useMetadataState', () => {
   // Verify empty doc type starts in editing mode
   it('should initialize in editing mode when no doc type exists', () => {
     const stableDocDetail = makeDoc({ doc_type: '' as FullDocumentDetail['doc_type'], doc_metadata: {} as FullDocumentDetail['doc_metadata'] })
-    const { result } = renderHook(() => useMetadataState({ docDetail: stableDocDetail }), { wrapper })
+    const { result } = renderHook(() => useMetadataState({ docDetail: stableDocDetail, canEdit: true }), { wrapper })
 
     expect(result.current.docType).toBe('')
     expect(result.current.editStatus).toBe(true)
@@ -156,7 +167,7 @@ describe('useMetadataState', () => {
 
   // Verify undefined docDetail handling
   it('should handle undefined docDetail gracefully', () => {
-    const { result } = renderHook(() => useMetadataState({ docDetail: undefined }), { wrapper })
+    const { result } = renderHook(() => useMetadataState({ docDetail: undefined, canEdit: true }), { wrapper })
 
     expect(result.current.docType).toBe('')
     expect(result.current.editStatus).toBe(true)

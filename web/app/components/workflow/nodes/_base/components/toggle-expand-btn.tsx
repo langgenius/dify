@@ -8,10 +8,10 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import ActionButton from '@/app/components/base/action-button'
 
-type Props = {
+type Props = Readonly<{
   isExpand: boolean
   onExpandChange: (isExpand: boolean) => void
-}
+}>
 
 const ExpandBtn: FC<Props> = ({
   isExpand,
@@ -24,7 +24,7 @@ const ExpandBtn: FC<Props> = ({
   const Icon = isExpand ? RiCollapseDiagonalLine : RiExpandDiagonalLine
   return (
     <ActionButton onClick={handleToggle}>
-      <Icon className="h-4 w-4" />
+      <Icon className="size-4" />
     </ActionButton>
   )
 }

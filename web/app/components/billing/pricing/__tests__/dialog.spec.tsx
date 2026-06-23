@@ -16,7 +16,7 @@ type DialogProps = {
 
 let latestOnOpenChange: DialogProps['onOpenChange']
 
-vi.mock('@/app/components/base/ui/dialog', () => ({
+vi.mock('@langgenius/dify-ui/dialog', () => ({
   Dialog: ({ children, onOpenChange }: DialogProps) => {
     latestOnOpenChange = onOpenChange
     return <div data-testid="dialog">{children}</div>
@@ -70,7 +70,10 @@ describe('Pricing dialog lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     latestOnOpenChange = undefined
-    ;(useAppContext as Mock).mockReturnValue({ isCurrentWorkspaceManager: true })
+    ;(useAppContext as Mock).mockReturnValue({
+      isCurrentWorkspaceManager: true,
+      workspacePermissionKeys: ['billing.manage'],
+    })
     ;(useProviderContext as Mock).mockReturnValue({
       plan: {
         type: Plan.sandbox,

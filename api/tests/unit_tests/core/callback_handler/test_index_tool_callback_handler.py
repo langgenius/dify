@@ -1,4 +1,5 @@
 import pytest
+from pytest_mock import MockerFixture
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.index_tool_callback_handler import (
@@ -7,12 +8,12 @@ from core.callback_handler.index_tool_callback_handler import (
 
 
 @pytest.fixture
-def mock_queue_manager(mocker):
+def mock_queue_manager(mocker: MockerFixture):
     return mocker.Mock()
 
 
 @pytest.fixture
-def handler(mock_queue_manager, mocker):
+def handler(mock_queue_manager, mocker: MockerFixture):
     mocker.patch(
         "core.callback_handler.index_tool_callback_handler.db",
     )
@@ -34,7 +35,7 @@ class TestOnQuery:
             (InvokeFrom.WEB_APP, "end_user"),
         ],
     )
-    def test_on_query_success_roles(self, mocker, mock_queue_manager, invoke_from, expected_role):
+    def test_on_query_success_roles(self, mocker: MockerFixture, mock_queue_manager, invoke_from, expected_role):
         # Arrange
         mock_db = mocker.patch("core.callback_handler.index_tool_callback_handler.db")
 
@@ -57,7 +58,7 @@ class TestOnQuery:
         assert dataset_query.created_by_role == expected_role
         mock_db.session.commit.assert_called_once()
 
-    def test_on_query_none_values(self, mocker, mock_queue_manager):
+    def test_on_query_none_values(self, mocker: MockerFixture, mock_queue_manager):
         mock_db = mocker.patch("core.callback_handler.index_tool_callback_handler.db")
 
         handler = DatasetIndexToolCallbackHandler(
@@ -75,7 +76,7 @@ class TestOnQuery:
 
 
 class TestOnToolEnd:
-    def test_on_tool_end_no_metadata(self, handler, mocker):
+    def test_on_tool_end_no_metadata(self, handler: DatasetIndexToolCallbackHandler, mocker: MockerFixture):
         mock_db = mocker.patch("core.callback_handler.index_tool_callback_handler.db")
 
         document = mocker.Mock()
@@ -85,7 +86,9 @@ class TestOnToolEnd:
 
         mock_db.session.commit.assert_not_called()
 
-    def test_on_tool_end_dataset_document_not_found(self, handler, mocker):
+    def test_on_tool_end_dataset_document_not_found(
+        self, handler: DatasetIndexToolCallbackHandler, mocker: MockerFixture
+    ):
         mock_db = mocker.patch("core.callback_handler.index_tool_callback_handler.db")
         mock_db.session.scalar.return_value = None
 
@@ -96,7 +99,9 @@ class TestOnToolEnd:
 
         mock_db.session.scalar.assert_called_once()
 
-    def test_on_tool_end_parent_child_index_with_child(self, handler, mocker):
+    def test_on_tool_end_parent_child_index_with_child(
+        self, handler: DatasetIndexToolCallbackHandler, mocker: MockerFixture
+    ):
         mock_db = mocker.patch("core.callback_handler.index_tool_callback_handler.db")
 
         mock_dataset_doc = mocker.Mock()
@@ -119,7 +124,7 @@ class TestOnToolEnd:
         mock_db.session.execute.assert_called_once()
         mock_db.session.commit.assert_called_once()
 
-    def test_on_tool_end_non_parent_child_index(self, handler, mocker):
+    def test_on_tool_end_non_parent_child_index(self, handler: DatasetIndexToolCallbackHandler, mocker: MockerFixture):
         mock_db = mocker.patch("core.callback_handler.index_tool_callback_handler.db")
 
         mock_dataset_doc = mocker.Mock()
@@ -139,12 +144,12 @@ class TestOnToolEnd:
         mock_db.session.execute.assert_called_once()
         mock_db.session.commit.assert_called_once()
 
-    def test_on_tool_end_empty_documents(self, handler):
+    def test_on_tool_end_empty_documents(self, handler: DatasetIndexToolCallbackHandler):
         handler.on_tool_end([])
 
 
 class TestReturnRetrieverResourceInfo:
-    def test_publish_called(self, handler, mock_queue_manager, mocker):
+    def test_publish_called(self, handler: DatasetIndexToolCallbackHandler, mock_queue_manager, mocker: MockerFixture):
         mock_event = mocker.patch("core.callback_handler.index_tool_callback_handler.QueueRetrieverResourcesEvent")
 
         resources = [mocker.Mock()]

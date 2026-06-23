@@ -1,11 +1,14 @@
 import copy
 import logging
 
+from sqlalchemy import delete, func, select
+
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
-from libs.login import current_account_with_tenant
+from libs.login import resolve_account_fallback
+from models import Account
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding
 from models.enums import DatasetMetadataType
 from services.dataset_service import DocumentService
@@ -19,16 +22,25 @@ logger = logging.getLogger(__name__)
 
 class MetadataService:
     @staticmethod
-    def create_metadata(dataset_id: str, metadata_args: MetadataArgs) -> DatasetMetadata:
+    def create_metadata(
+        dataset_id: str,
+        metadata_args: MetadataArgs,
+        current_user: Account | None = None,  # TODO: the service_api is not migrated yet
+        current_tenant_id: str | None = None,
+    ) -> DatasetMetadata:
         # check if metadata name is too long
         if len(metadata_args.name) > 255:
             raise ValueError("Metadata name cannot exceed 255 characters.")
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, current_tenant_id = resolve_account_fallback(current_user, current_tenant_id)
         # check if metadata name already exists
-        if (
-            db.session.query(DatasetMetadata)
-            .filter_by(tenant_id=current_tenant_id, dataset_id=dataset_id, name=metadata_args.name)
-            .first()
+        if db.session.scalar(
+            select(DatasetMetadata)
+            .where(
+                DatasetMetadata.tenant_id == current_tenant_id,
+                DatasetMetadata.dataset_id == dataset_id,
+                DatasetMetadata.name == metadata_args.name,
+            )
+            .limit(1)
         ):
             raise ValueError("Metadata name already exists.")
         for field in BuiltInField:
@@ -46,18 +58,28 @@ class MetadataService:
         return metadata
 
     @staticmethod
-    def update_metadata_name(dataset_id: str, metadata_id: str, name: str) -> DatasetMetadata:  # type: ignore
+    def update_metadata_name(
+        dataset_id: str,
+        metadata_id: str,
+        name: str,
+        current_user: Account | None = None,
+        current_tenant_id: str | None = None,  # TODO: the service_api is not migrated yet
+    ) -> DatasetMetadata | None:
         # check if metadata name is too long
         if len(name) > 255:
             raise ValueError("Metadata name cannot exceed 255 characters.")
 
         lock_key = f"dataset_metadata_lock_{dataset_id}"
         # check if metadata name already exists
-        current_user, current_tenant_id = current_account_with_tenant()
-        if (
-            db.session.query(DatasetMetadata)
-            .filter_by(tenant_id=current_tenant_id, dataset_id=dataset_id, name=name)
-            .first()
+        current_user, current_tenant_id = resolve_account_fallback(current_user, current_tenant_id)
+        if db.session.scalar(
+            select(DatasetMetadata)
+            .where(
+                DatasetMetadata.tenant_id == current_tenant_id,
+                DatasetMetadata.dataset_id == dataset_id,
+                DatasetMetadata.name == name,
+            )
+            .limit(1)
         ):
             raise ValueError("Metadata name already exists.")
         for field in BuiltInField:
@@ -65,7 +87,11 @@ class MetadataService:
                 raise ValueError("Metadata name already exists in Built-in fields.")
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset_id, None)
-            metadata = db.session.query(DatasetMetadata).filter_by(id=metadata_id).first()
+            metadata = db.session.scalar(
+                select(DatasetMetadata)
+                .where(DatasetMetadata.id == metadata_id, DatasetMetadata.dataset_id == dataset_id)
+                .limit(1)
+            )
             if metadata is None:
                 raise ValueError("Metadata not found.")
             old_name = metadata.name
@@ -74,9 +100,9 @@ class MetadataService:
             metadata.updated_at = naive_utc_now()
 
             # update related documents
-            dataset_metadata_bindings = (
-                db.session.query(DatasetMetadataBinding).filter_by(metadata_id=metadata_id).all()
-            )
+            dataset_metadata_bindings = db.session.scalars(
+                select(DatasetMetadataBinding).where(DatasetMetadataBinding.metadata_id == metadata_id)
+            ).all()
             if dataset_metadata_bindings:
                 document_ids = [binding.document_id for binding in dataset_metadata_bindings]
                 documents = DocumentService.get_document_by_ids(document_ids)
@@ -93,6 +119,7 @@ class MetadataService:
             return metadata
         except Exception:
             logger.exception("Update metadata name failed")
+            return None
         finally:
             redis_client.delete(lock_key)
 
@@ -101,15 +128,19 @@ class MetadataService:
         lock_key = f"dataset_metadata_lock_{dataset_id}"
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset_id, None)
-            metadata = db.session.query(DatasetMetadata).filter_by(id=metadata_id).first()
+            metadata = db.session.scalar(
+                select(DatasetMetadata)
+                .where(DatasetMetadata.id == metadata_id, DatasetMetadata.dataset_id == dataset_id)
+                .limit(1)
+            )
             if metadata is None:
                 raise ValueError("Metadata not found.")
             db.session.delete(metadata)
 
             # deal related documents
-            dataset_metadata_bindings = (
-                db.session.query(DatasetMetadataBinding).filter_by(metadata_id=metadata_id).all()
-            )
+            dataset_metadata_bindings = db.session.scalars(
+                select(DatasetMetadataBinding).where(DatasetMetadataBinding.metadata_id == metadata_id)
+            ).all()
             if dataset_metadata_bindings:
                 document_ids = [binding.document_id for binding in dataset_metadata_bindings]
                 documents = DocumentService.get_document_by_ids(document_ids)
@@ -199,7 +230,15 @@ class MetadataService:
             redis_client.delete(lock_key)
 
     @staticmethod
-    def update_documents_metadata(dataset: Dataset, metadata_args: MetadataOperationData):
+    def update_documents_metadata(
+        dataset: Dataset,
+        metadata_args: MetadataOperationData,
+        current_user: Account | None = None,  # TODO: the service_api is not migrated yet
+        current_tenant_id: str | None = None,
+    ):
+        current_user, current_tenant_id = resolve_account_fallback(
+            current_user, current_tenant_id, fallback_tenant_id=dataset.tenant_id
+        )
         for operation in metadata_args.operation_data:
             lock_key = f"document_metadata_lock_{operation.document_id}"
             try:
@@ -224,16 +263,22 @@ class MetadataService:
 
                 # deal metadata binding (in the same transaction as the doc_metadata update)
                 if not operation.partial_update:
-                    db.session.query(DatasetMetadataBinding).filter_by(document_id=operation.document_id).delete()
+                    db.session.execute(
+                        delete(DatasetMetadataBinding).where(
+                            DatasetMetadataBinding.document_id == operation.document_id
+                        )
+                    )
 
-                current_user, current_tenant_id = current_account_with_tenant()
                 for metadata_value in operation.metadata_list:
                     # check if binding already exists
                     if operation.partial_update:
-                        existing_binding = (
-                            db.session.query(DatasetMetadataBinding)
-                            .filter_by(document_id=operation.document_id, metadata_id=metadata_value.id)
-                            .first()
+                        existing_binding = db.session.scalar(
+                            select(DatasetMetadataBinding)
+                            .where(
+                                DatasetMetadataBinding.document_id == operation.document_id,
+                                DatasetMetadataBinding.metadata_id == metadata_value.id,
+                            )
+                            .limit(1)
                         )
                         if existing_binding:
                             continue
@@ -275,9 +320,13 @@ class MetadataService:
                     "id": item.get("id"),
                     "name": item.get("name"),
                     "type": item.get("type"),
-                    "count": db.session.query(DatasetMetadataBinding)
-                    .filter_by(metadata_id=item.get("id"), dataset_id=dataset.id)
-                    .count(),
+                    "count": db.session.scalar(
+                        select(func.count(DatasetMetadataBinding.id)).where(
+                            DatasetMetadataBinding.metadata_id == item.get("id"),
+                            DatasetMetadataBinding.dataset_id == dataset.id,
+                        )
+                    )
+                    or 0,
                 }
                 for item in dataset.doc_metadata or []
                 if item.get("id") != "built-in"

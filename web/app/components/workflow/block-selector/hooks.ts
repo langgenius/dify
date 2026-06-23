@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import {
   useCallback,
   useEffect,
@@ -5,11 +6,13 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BLOCKS, START_BLOCKS } from './constants'
+import { BLOCKS } from './constants'
 import {
   TabsEnum,
   ToolTypeEnum,
 } from './types'
+
+const startNodesDocsTipLinkKey = 'startNodesDocs' as const
 
 export const useBlocks = () => {
   const { t } = useTranslation()
@@ -22,37 +25,35 @@ export const useBlocks = () => {
   })
 }
 
-export const useStartBlocks = () => {
-  const { t } = useTranslation()
-
-  return START_BLOCKS.map((block) => {
-    return {
-      ...block,
-      title: t(`blocks.${block.type}`, { ns: 'workflow' }),
-    }
-  })
-}
-
 export const useTabs = ({
   noBlocks,
   noSources,
   noTools,
+  noSnippets,
   noStart = true,
   defaultActiveTab,
-  hasUserInputNode = false,
+  hasStartPlaceholderNode = false,
+  disableStartTab = false,
   forceEnableStartTab = false, // When true, Start tab remains enabled even if trigger/user input nodes already exist.
 }: {
   noBlocks?: boolean
   noSources?: boolean
   noTools?: boolean
+  noSnippets?: boolean
   noStart?: boolean
   defaultActiveTab?: TabsEnum
-  hasUserInputNode?: boolean
+  hasStartPlaceholderNode?: boolean
+  disableStartTab?: boolean
   forceEnableStartTab?: boolean
 }) => {
   const { t } = useTranslation()
   const shouldShowStartTab = !noStart
-  const shouldDisableStartTab = !forceEnableStartTab && hasUserInputNode
+  const shouldDisableStartTab = disableStartTab || (!forceEnableStartTab && hasStartPlaceholderNode)
+  const startDisabledTip: ReactNode = disableStartTab
+    ? t('tabs.startNotSupportedTip', { ns: 'workflow' })
+    : hasStartPlaceholderNode
+      ? t('tabs.unconfiguredStartDisabledTip', { ns: 'workflow' })
+      : t('tabs.startDisabledTip', { ns: 'workflow' })
   const tabs = useMemo(() => {
     const tabConfigs = [{
       key: TabsEnum.Blocks,
@@ -71,10 +72,16 @@ export const useTabs = ({
       name: t('tabs.start', { ns: 'workflow' }),
       show: shouldShowStartTab,
       disabled: shouldDisableStartTab,
+      disabledTip: shouldDisableStartTab ? startDisabledTip : undefined,
+      disabledTipLinkKey: shouldDisableStartTab && !disableStartTab && hasStartPlaceholderNode ? startNodesDocsTipLinkKey : undefined,
+    }, {
+      key: TabsEnum.Snippets,
+      name: t('tabs.snippets', { ns: 'workflow' }),
+      show: !noSnippets,
     }]
 
     return tabConfigs.filter(tab => tab.show)
-  }, [t, noBlocks, noSources, noTools, shouldShowStartTab, shouldDisableStartTab])
+  }, [t, noBlocks, noSources, noTools, noSnippets, shouldShowStartTab, shouldDisableStartTab, startDisabledTip, disableStartTab, hasStartPlaceholderNode])
 
   const getValidTabKey = useCallback((targetKey?: TabsEnum) => {
     if (!targetKey)
@@ -100,6 +107,8 @@ export const useTabs = ({
       preferredOrder.push(TabsEnum.Sources)
     if (!noStart)
       preferredOrder.push(TabsEnum.Start)
+    if (!noSnippets)
+      preferredOrder.push(TabsEnum.Snippets)
 
     for (const tabKey of preferredOrder) {
       const validKey = getValidTabKey(tabKey)
@@ -108,19 +117,23 @@ export const useTabs = ({
     }
 
     return fallbackTab
-  }, [defaultActiveTab, noBlocks, noSources, noTools, noStart, tabs, getValidTabKey])
+  }, [defaultActiveTab, noBlocks, noSources, noTools, noSnippets, noStart, tabs, getValidTabKey])
   const [activeTab, setActiveTab] = useState(initialTab)
+  const resetActiveTab = useCallback(() => {
+    setActiveTab(initialTab)
+  }, [initialTab])
 
   useEffect(() => {
     const currentTab = tabs.find(tab => tab.key === activeTab)
     if (!currentTab || currentTab.disabled)
-      setActiveTab(initialTab)
-  }, [tabs, activeTab, initialTab])
+      resetActiveTab()
+  }, [tabs, activeTab, resetActiveTab])
 
   return {
     tabs,
     activeTab,
     setActiveTab,
+    resetActiveTab,
   }
 }
 

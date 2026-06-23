@@ -3,6 +3,10 @@ DOCKER_REGISTRY=langgenius
 WEB_IMAGE=$(DOCKER_REGISTRY)/dify-web
 API_IMAGE=$(DOCKER_REGISTRY)/dify-api
 VERSION=latest
+DOCKER_DIR=docker
+DOCKER_MIDDLEWARE_ENV=$(DOCKER_DIR)/middleware.env
+DOCKER_MIDDLEWARE_ENV_EXAMPLE=$(DOCKER_DIR)/envs/middleware.env.example
+DOCKER_MIDDLEWARE_PROJECT=dify-middlewares-dev
 
 # Default target - show help
 .DEFAULT_GOAL := help
@@ -17,8 +21,13 @@ dev-setup: prepare-docker prepare-web prepare-api
 # Step 1: Prepare Docker middleware
 prepare-docker:
 	@echo "🐳 Setting up Docker middleware..."
-	@cp -n docker/middleware.env.example docker/middleware.env 2>/dev/null || echo "Docker middleware.env already exists"
-	@cd docker && docker compose -f docker-compose.middleware.yaml --env-file middleware.env -p dify-middlewares-dev up -d
+	@if [ ! -f "$(DOCKER_MIDDLEWARE_ENV)" ]; then \
+		cp "$(DOCKER_MIDDLEWARE_ENV_EXAMPLE)" "$(DOCKER_MIDDLEWARE_ENV)"; \
+		echo "Docker middleware.env created"; \
+	else \
+		echo "Docker middleware.env already exists"; \
+	fi
+	@cd $(DOCKER_DIR) && docker compose -f docker-compose.middleware.yaml --env-file middleware.env -p $(DOCKER_MIDDLEWARE_PROJECT) up -d
 	@echo "✅ Docker middleware started"
 
 # Step 2: Prepare web environment
@@ -39,12 +48,18 @@ prepare-api:
 # Clean dev environment
 dev-clean:
 	@echo "⚠️  Stopping Docker containers..."
-	@cd docker && docker compose -f docker-compose.middleware.yaml --env-file middleware.env -p dify-middlewares-dev down
+	@if [ -f "$(DOCKER_MIDDLEWARE_ENV)" ]; then \
+		cd $(DOCKER_DIR) && docker compose -f docker-compose.middleware.yaml --env-file middleware.env -p $(DOCKER_MIDDLEWARE_PROJECT) down; \
+	else \
+		echo "Docker middleware.env does not exist, skipping compose down"; \
+	fi
 	@echo "🗑️  Removing volumes..."
 	@rm -rf docker/volumes/db
+	@rm -rf docker/volumes/mysql
 	@rm -rf docker/volumes/redis
 	@rm -rf docker/volumes/plugin_daemon
 	@rm -rf docker/volumes/weaviate
+	@rm -rf docker/volumes/sandbox/dependencies
 	@rm -rf api/storage
 	@echo "✅ Cleanup complete"
 
@@ -60,24 +75,29 @@ check:
 	@echo "✅ Code check complete"
 
 lint:
-	@echo "🔧 Running ruff format, check with fixes, import linter, and dotenv-linter..."
+	@echo "🔧 Running ruff format, check with fixes, response contract lint, import linter, and dotenv-linter..."
 	@uv run --project api --dev ruff format ./api
 	@uv run --project api --dev ruff check --fix ./api
+	@$(MAKE) api-contract-lint
 	@uv run --directory api --dev lint-imports
 	@uv run --project api --dev dotenv-linter ./api/.env.example ./web/.env.example
 	@echo "✅ Linting complete"
 
+api-contract-lint:
+	@echo "🔎 Linting Flask response contracts..."
+	@uv run --project api --dev python api/dev/lint_response_contracts.py
+	@echo "✅ Response contract lint complete"
+
 type-check:
-	@echo "📝 Running type checks (basedpyright + pyrefly + mypy)..."
-	@./dev/basedpyright-check $(PATH_TO_CHECK)
-	@./dev/pyrefly-check-local
-	@uv --directory api run mypy --exclude-gitignore --exclude 'tests/' --exclude 'migrations/' --check-untyped-defs --disable-error-code=import-untyped .
+	@echo "📝 Running type checks (pyrefly + mypy)..."
+	@./dev/pyrefly-check-local $(PATH_TO_CHECK)
+	@uv --directory api run mypy --exclude-gitignore --exclude '(^|/)conftest\.py$$' --exclude 'tests/' --exclude 'migrations/' --exclude 'dev/generate_swagger_specs.py' --exclude 'dev/generate_fastopenapi_specs.py' --check-untyped-defs --disable-error-code=import-untyped .
 	@echo "✅ Type checks complete"
 
 type-check-core:
-	@echo "📝 Running core type checks (basedpyright + mypy)..."
-	@./dev/basedpyright-check $(PATH_TO_CHECK)
-	@uv --directory api run mypy --exclude-gitignore --exclude 'tests/' --exclude 'migrations/' --check-untyped-defs --disable-error-code=import-untyped .
+	@echo "📝 Running core type checks (pyrefly + mypy)..."
+	@./dev/pyrefly-check-local $(PATH_TO_CHECK)
+	@uv --directory api run mypy --exclude-gitignore --exclude '(^|/)conftest\.py$$' --exclude 'tests/' --exclude 'migrations/' --exclude 'dev/generate_swagger_specs.py' --exclude 'dev/generate_fastopenapi_specs.py' --check-untyped-defs --disable-error-code=import-untyped .
 	@echo "✅ Core type checks complete"
 
 test:
@@ -86,7 +106,46 @@ test:
 		echo "Target: $(TARGET_TESTS)"; \
 		uv run --project api --dev pytest $(TARGET_TESTS); \
 	else \
-		PYTEST_XDIST_ARGS="-n auto" uv run --project api --dev dev/pytest/pytest_unit_tests.sh; \
+		echo "Running backend unit tests"; \
+		uv run --project api --dev pytest -p no:benchmark --timeout "$${PYTEST_TIMEOUT:-20}" -n auto \
+			api/tests/unit_tests \
+			api/providers/vdb/*/tests/unit_tests \
+			api/providers/trace/*/tests/unit_tests \
+			--ignore=api/tests/unit_tests/controllers; \
+		uv run --project api --dev pytest --timeout "$${PYTEST_TIMEOUT:-20}" --cov-append \
+			api/tests/unit_tests/controllers; \
+	fi
+	@echo "✅ Unit tests complete"
+
+test-all:
+	@echo "🧪 Running full backend test suite..."
+	@if [ -n "$(TARGET_TESTS)" ]; then \
+		echo "Target: $(TARGET_TESTS)"; \
+		uv run --project api --dev pytest $(TARGET_TESTS); \
+	else \
+		echo "Running backend unit tests"; \
+		uv run --project api --dev pytest -p no:benchmark --timeout "$${PYTEST_TIMEOUT:-20}" -n auto \
+			api/tests/unit_tests \
+			api/providers/vdb/*/tests/unit_tests \
+			api/providers/trace/*/tests/unit_tests \
+			--ignore=api/tests/unit_tests/controllers; \
+		uv run --project api --dev pytest --timeout "$${PYTEST_TIMEOUT:-20}" --cov-append \
+			api/tests/unit_tests/controllers; \
+		echo "Running backend integration tests"; \
+		uv run --project api --dev pytest -p no:benchmark --start-middleware -n auto \
+			--timeout "$${PYTEST_TIMEOUT:-180}" \
+			--cov-append \
+			api/tests/integration_tests/workflow \
+			api/tests/integration_tests/tools \
+			api/tests/test_containers_integration_tests; \
+		echo "Running VDB smoke tests"; \
+		uv run --project api --dev pytest --start-vdb \
+			--timeout "$${PYTEST_TIMEOUT:-180}" \
+			--cov-append \
+			api/providers/vdb/vdb-chroma/tests/integration_tests \
+			api/providers/vdb/vdb-pgvector/tests/integration_tests \
+			api/providers/vdb/vdb-qdrant/tests/integration_tests \
+			api/providers/vdb/vdb-weaviate/tests/integration_tests; \
 	fi
 	@echo "✅ Tests complete"
 
@@ -98,7 +157,7 @@ build-web:
 
 build-api:
 	@echo "Building API Docker image: $(API_IMAGE):$(VERSION)..."
-	docker build -t $(API_IMAGE):$(VERSION) ./api
+	docker build -t $(API_IMAGE):$(VERSION) -f api/Dockerfile .
 	@echo "API Docker image built successfully: $(API_IMAGE):$(VERSION)"
 
 # Push Docker images
@@ -132,15 +191,17 @@ help:
 	@echo "  make prepare-docker - Set up Docker middleware"
 	@echo "  make prepare-web    - Set up web environment"
 	@echo "  make prepare-api    - Set up API environment"
-	@echo "  make dev-clean      - Stop Docker middleware containers"
+	@echo "  make dev-clean      - Stop Docker middleware containers and remove dev data"
 	@echo ""
 	@echo "Backend Code Quality:"
 	@echo "  make format         - Format code with ruff"
 	@echo "  make check          - Check code with ruff"
 	@echo "  make lint           - Format, fix, and lint code (ruff, imports, dotenv)"
-	@echo "  make type-check     - Run type checks (basedpyright, pyrefly, mypy)"
-	@echo "  make type-check-core - Run core type checks (basedpyright, mypy)"
+	@echo "  make api-contract-lint - Check Flask response docs against returned schemas"
+	@echo "  make type-check     - Run type checks (pyrefly, mypy)"
+	@echo "  make type-check-core - Run core type checks (pyrefly, mypy)"
 	@echo "  make test           - Run backend unit tests (or TARGET_TESTS=./api/tests/<target_tests>)"
+	@echo "  make test-all       - Run full backend tests, including Docker-backed suites"
 	@echo ""
 	@echo "Docker Build Targets:"
 	@echo "  make build-web      - Build web Docker image"
@@ -150,4 +211,4 @@ help:
 	@echo "  make build-push-all - Build and push all Docker images"
 
 # Phony targets
-.PHONY: build-web build-api push-web push-api build-all push-all build-push-all dev-setup prepare-docker prepare-web prepare-api dev-clean help format check lint type-check test
+.PHONY: build-web build-api push-web push-api build-all push-all build-push-all dev-setup prepare-docker prepare-web prepare-api dev-clean help format check lint api-contract-lint type-check test test-all

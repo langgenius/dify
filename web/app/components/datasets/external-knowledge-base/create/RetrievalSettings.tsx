@@ -1,9 +1,9 @@
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
-import { cn } from '@/utils/classnames'
 
 type RetrievalSettingsProps = {
   topK: number
@@ -11,6 +11,7 @@ type RetrievalSettingsProps = {
   scoreThresholdEnabled: boolean
   isInHitTesting?: boolean
   isInRetrievalSetting?: boolean
+  readonly?: boolean
   onChange: (data: { top_k?: number, score_threshold?: number, score_threshold_enabled?: boolean }) => void
 }
 
@@ -21,6 +22,7 @@ const RetrievalSettings: FC<RetrievalSettingsProps> = ({
   onChange,
   isInHitTesting = false,
   isInRetrievalSetting = false,
+  readonly = false,
 }) => {
   const { t } = useTranslation()
 
@@ -50,6 +52,7 @@ const RetrievalSettings: FC<RetrievalSettingsProps> = ({
             value={topK}
             onChange={(_key, v) => onChange({ top_k: v })}
             enable={true}
+            disabled={readonly}
           />
         </div>
         <div className="flex grow flex-col gap-1">
@@ -60,6 +63,7 @@ const RetrievalSettings: FC<RetrievalSettingsProps> = ({
             enable={scoreThresholdEnabled}
             hasSwitch={true}
             onSwitchChange={(_key, v) => handleScoreThresholdChange(v)}
+            disabled={readonly}
           />
         </div>
       </div>

@@ -4,6 +4,7 @@ import type {
   UpdateFromMarketPlacePayload,
   UpdatePluginModalType,
 } from '../../types'
+import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
@@ -47,18 +48,16 @@ vi.mock('@/service/plugins', () => ({
 }))
 
 // Mock use-plugins hooks
-const mockHandleRefetch = vi.fn()
+const mockHandleInstallTaskStart = vi.fn()
 const mockMutateAsync = vi.fn()
-const mockInvalidateReferenceSettings = vi.fn()
 
 vi.mock('@/service/use-plugins', () => ({
   usePluginTaskList: () => ({
-    handleRefetch: mockHandleRefetch,
+    handleInstallTaskStart: mockHandleInstallTaskStart,
   }),
   useRemoveAutoUpgrade: () => ({
     mutateAsync: mockMutateAsync,
   }),
-  useInvalidateReferenceSettings: () => mockInvalidateReferenceSettings,
   useVersionListOfPlugin: () => ({
     data: {
       data: {
@@ -82,12 +81,7 @@ vi.mock('../../install-plugin/base/check-task-status', () => ({
   }),
 }))
 
-// Mock Toast
-vi.mock('../../../base/toast', () => ({
-  default: {
-    notify: vi.fn(),
-  },
-}))
+const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
 
 // Mock InstallFromGitHub component
 vi.mock('../../install-plugin/install-from-github', () => ({
@@ -203,6 +197,7 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
 describe('update-plugin', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    toastErrorSpy.mockClear()
     mockCheck.mockResolvedValue({ status: TaskStatus.success })
   })
 
@@ -634,7 +629,10 @@ describe('update-plugin', () => {
 
         // Assert
         await waitFor(() => {
-          expect(mockHandleRefetch).toHaveBeenCalled()
+          expect(mockHandleInstallTaskStart).toHaveBeenCalledWith({
+            all_installed: false,
+            task_id: 'task-123',
+          })
         })
         await waitFor(() => {
           expect(mockCheck).toHaveBeenCalledWith({
@@ -689,9 +687,6 @@ describe('update-plugin', () => {
 
       it('should reset loading state when task status check fails', async () => {
         // Arrange
-        const mockToastNotify = vi.fn()
-        vi.mocked(await import('../../../base/toast')).default.notify = mockToastNotify
-
         mockUpdateFromMarketPlace.mockResolvedValue({
           all_installed: false,
           task_id: 'task-123',
@@ -718,10 +713,7 @@ describe('update-plugin', () => {
           expect(mockCheck).toHaveBeenCalled()
         })
         await waitFor(() => {
-          expect(mockToastNotify).toHaveBeenCalledWith({
-            type: 'error',
-            message: 'Installation failed due to dependency conflict',
-          })
+          expect(toastErrorSpy).toHaveBeenCalledWith('Installation failed due to dependency conflict')
         })
         // onSave should NOT be called when task fails
         expect(onSave).not.toHaveBeenCalled()
@@ -733,9 +725,6 @@ describe('update-plugin', () => {
 
       it('should stop loading when upgrade API returns failed task directly', async () => {
         // Arrange
-        const mockToastNotify = vi.fn()
-        vi.mocked(await import('../../../base/toast')).default.notify = mockToastNotify
-
         mockUpdateFromMarketPlace.mockResolvedValue({
           task: {
             status: TaskStatus.failed,
@@ -761,10 +750,7 @@ describe('update-plugin', () => {
 
         // Assert
         await waitFor(() => {
-          expect(mockToastNotify).toHaveBeenCalledWith({
-            type: 'error',
-            message: 'failed to init environment',
-          })
+          expect(toastErrorSpy).toHaveBeenCalledWith('failed to init environment')
         })
         expect(mockCheck).not.toHaveBeenCalled()
         expect(onSave).not.toHaveBeenCalled()
@@ -808,10 +794,11 @@ describe('update-plugin', () => {
         await waitFor(() => {
           expect(mockMutateAsync).toHaveBeenCalledWith({
             plugin_id: 'test-plugin-id',
+            category: PluginCategoryEnum.tool,
           })
         })
         await waitFor(() => {
-          expect(mockInvalidateReferenceSettings).toHaveBeenCalled()
+          expect(mockUpdateFromMarketPlace).toHaveBeenCalled()
         })
       })
 
@@ -838,7 +825,7 @@ describe('update-plugin', () => {
 
         // Assert - mutateAsync should NOT be called when pluginId is undefined
         await waitFor(() => {
-          expect(mockInvalidateReferenceSettings).toHaveBeenCalled()
+          expect(mockUpdateFromMarketPlace).toHaveBeenCalled()
         })
         expect(mockMutateAsync).not.toHaveBeenCalled()
       })

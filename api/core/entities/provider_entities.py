@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from enum import StrEnum, auto
-from typing import Union
+from typing import Any, Union
 
-from graphon.model_runtime.entities.model_entities import ModelType
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.entities.parameter_entities import (
@@ -13,6 +12,7 @@ from core.entities.parameter_entities import (
     ToolSelectorScope,
 )
 from core.tools.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import ModelType
 
 
 class ProviderQuotaType(StrEnum):
@@ -88,7 +88,7 @@ class SystemConfiguration(BaseModel):
     enabled: bool
     current_quota_type: ProviderQuotaType | None = None
     quota_configurations: list[QuotaConfiguration] = []
-    credentials: dict | None = None
+    credentials: dict[str, Any] | None = Field(default=None)
 
 
 class CustomProviderConfiguration(BaseModel):
@@ -96,7 +96,7 @@ class CustomProviderConfiguration(BaseModel):
     Model class for provider custom configuration.
     """
 
-    credentials: dict
+    credentials: dict[str, Any]
     current_credential_id: str | None = None
     current_credential_name: str | None = None
     available_credentials: list[CredentialConfiguration] = []
@@ -109,11 +109,11 @@ class CustomModelConfiguration(BaseModel):
 
     model: str
     model_type: ModelType
-    credentials: dict | None
+    credentials: dict[str, Any] | None
     current_credential_id: str | None = None
     current_credential_name: str | None = None
     available_model_credentials: list[CredentialConfiguration] = []
-    unadded_to_model_list: bool | None = False
+    unadded_to_model_list: bool = False
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
@@ -145,7 +145,7 @@ class ModelLoadBalancingConfiguration(BaseModel):
 
     id: str
     name: str
-    credentials: dict
+    credentials: dict[str, Any]
     credential_source_type: str | None = None
     credential_id: str | None = None
 
@@ -209,7 +209,7 @@ class ProviderConfig(BasicProviderConfig):
     required: bool = False
     default: Union[int, str, float, bool] | None = None
     options: list[Option] | None = None
-    multiple: bool | None = False
+    multiple: bool = False
     label: I18nObject | None = None
     help: I18nObject | None = None
     url: str | None = None

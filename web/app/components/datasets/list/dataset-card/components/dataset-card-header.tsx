@@ -1,14 +1,14 @@
 import type { DataSet } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import { DOC_FORM_ICON_WITH_BG, DOC_FORM_TEXT } from '@/models/datasets'
-import { cn } from '@/utils/classnames'
 
 const EXTERNAL_PROVIDER = 'external'
+const docModeInfoClassName = 'flex min-h-3 items-center gap-x-3 system-2xs-medium-uppercase text-text-tertiary'
 
 type DatasetCardHeaderProps = {
   dataset: DataSet
@@ -28,17 +28,18 @@ const DocModeInfo = ({
 }: DocModeInfoProps) => {
   const { t } = useTranslation()
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
+  const isPipeline = dataset.embedding_available && dataset.runtime_mode === 'rag_pipeline'
 
   if (isExternalProvider) {
     return (
-      <div className="system-2xs-medium-uppercase flex items-center gap-x-3 text-text-tertiary">
+      <div className={docModeInfoClassName}>
         <span>{t('externalKnowledgeBase', { ns: 'dataset' })}</span>
       </div>
     )
   }
 
-  if (!isShowDocModeInfo)
-    return null
+  if (!isShowDocModeInfo && !isPipeline)
+    return <div aria-hidden="true" className={docModeInfoClassName} />
 
   const indexingText = dataset.indexing_technique
     ? formatIndexingTechniqueAndMethod(
@@ -48,26 +49,31 @@ const DocModeInfo = ({
     : ''
 
   return (
-    <div className="system-2xs-medium-uppercase flex items-center gap-x-3 text-text-tertiary">
-      {!!dataset.doc_form && (
+    <div className={docModeInfoClassName}>
+      {isPipeline && (
+        <span className="max-w-full min-w-0 truncate">
+          {t('cornerLabel.pipeline', { ns: 'dataset' })}
+        </span>
+      )}
+      {isShowDocModeInfo && !!dataset.doc_form && (
         <span
-          className="min-w-0 max-w-full truncate"
+          className="max-w-full min-w-0 truncate"
           title={t(`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`, { ns: 'dataset' })}
         >
           {t(`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`, { ns: 'dataset' })}
         </span>
       )}
-      {dataset.indexing_technique && indexingText && (
+      {isShowDocModeInfo && dataset.indexing_technique && indexingText && (
         <span
-          className="min-w-0 max-w-full truncate"
+          className="max-w-full min-w-0 truncate"
           title={indexingText}
         >
           {indexingText}
         </span>
       )}
-      {dataset.is_multimodal && (
+      {isShowDocModeInfo && dataset.is_multimodal && (
         <span
-          className="min-w-0 max-w-full truncate"
+          className="max-w-full min-w-0 truncate"
           title={t('multimodal', { ns: 'dataset' })}
         >
           {t('multimodal', { ns: 'dataset' })}
@@ -79,9 +85,6 @@ const DocModeInfo = ({
 
 // Main DatasetCardHeader component
 const DatasetCardHeader = ({ dataset }: DatasetCardHeaderProps) => {
-  const { t } = useTranslation()
-  const { formatTimeFromNow } = useFormatTimeFromNow()
-
   const isExternalProvider = dataset.provider === EXTERNAL_PROVIDER
 
   const isShowChunkingModeIcon = dataset.doc_form && (dataset.runtime_mode !== 'rag_pipeline' || dataset.is_published)
@@ -102,13 +105,8 @@ const DatasetCardHeader = ({ dataset }: DatasetCardHeaderProps) => {
     icon_url: '',
   }, [dataset.icon_info])
 
-  const editTimeText = useMemo(
-    () => `${t('segment.editedAt', { ns: 'datasetDocuments' })} ${formatTimeFromNow(dataset.updated_at * 1000)}`,
-    [t, dataset.updated_at, formatTimeFromNow],
-  )
-
   return (
-    <div className={cn('flex items-center gap-x-3 px-4 pb-2 pt-4', !dataset.embedding_available && 'opacity-30')}>
+    <div className={cn('flex items-center gap-x-3 px-4 pt-4 pb-2', !dataset.embedding_available && 'opacity-30')}>
       <div className="relative shrink-0">
         <AppIcon
           size="large"
@@ -118,22 +116,17 @@ const DatasetCardHeader = ({ dataset }: DatasetCardHeaderProps) => {
           imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
         />
         {(isShowChunkingModeIcon || isExternalProvider) && (
-          <div className="absolute -bottom-1 -right-1 z-[5]">
+          <div className="absolute -right-1 -bottom-1 z-5">
             <Icon className="size-4" />
           </div>
         )}
       </div>
       <div className="flex grow flex-col gap-y-1 overflow-hidden py-px">
         <div
-          className="system-md-semibold truncate text-text-secondary"
+          className="truncate system-md-semibold text-text-secondary"
           title={dataset.name}
         >
           {dataset.name}
-        </div>
-        <div className="flex items-center gap-1 text-[10px] font-medium leading-[18px] text-text-tertiary">
-          <div className="truncate" title={dataset.author_name}>{dataset.author_name}</div>
-          <div>·</div>
-          <div className="truncate" title={editTimeText}>{editTimeText}</div>
         </div>
         <DocModeInfo
           dataset={dataset}

@@ -13,23 +13,40 @@ vi.mock('@/app/components/app/store', () => ({
   }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceEditor: true,
-  }),
-}))
+vi.mock('@langgenius/dify-ui/dropdown-menu', () => {
+  const DropdownMenuContext = React.createContext<{ isOpen: boolean, setOpen: (open: boolean) => void } | null>(null)
 
-vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => (
-    <div data-testid="portal-elem" data-open={open}>{children}</div>
-  ),
-  PortalToFollowElemTrigger: ({ children, onClick }: { children: React.ReactNode, onClick?: () => void }) => (
-    <div data-testid="portal-trigger" onClick={onClick}>{children}</div>
-  ),
-  PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="portal-content">{children}</div>
-  ),
-}))
+  const useDropdownMenuContext = () => {
+    const context = React.use(DropdownMenuContext)
+    if (!context)
+      throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
+    return context
+  }
+
+  return {
+    DropdownMenu: ({ children, open, onOpenChange }: { children: React.ReactNode, open: boolean, onOpenChange?: (open: boolean) => void }) => (
+      <DropdownMenuContext value={{ isOpen: open, setOpen: onOpenChange ?? vi.fn() }}>
+        <div data-testid="dropdown-menu" data-open={open}>{children}</div>
+      </DropdownMenuContext>
+    ),
+    DropdownMenuTrigger: ({ children, onClick }: { children: React.ReactNode, onClick?: React.MouseEventHandler<HTMLButtonElement> }) => {
+      const { isOpen, setOpen } = useDropdownMenuContext()
+      return (
+        <button
+          type="button"
+          data-testid="dropdown-trigger"
+          onClick={(e) => {
+            onClick?.(e)
+            setOpen(!isOpen)
+          }}
+        >
+          {children}
+        </button>
+      )
+    },
+    DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div data-testid="dropdown-content">{children}</div>,
+  }
+})
 
 vi.mock('../../base/app-icon', () => ({
   default: ({ size, icon }: { size: string, icon: string }) => (
@@ -128,11 +145,11 @@ describe('AppSidebarDropdown', () => {
     const user = userEvent.setup()
     render(<AppSidebarDropdown navigation={navigation} />)
 
-    const trigger = screen.getByTestId('portal-trigger')
+    const trigger = screen.getByTestId('dropdown-trigger')
     await user.click(trigger)
 
-    const portal = screen.getByTestId('portal-elem')
-    expect(portal).toHaveAttribute('data-open', 'true')
+    const dropdown = screen.getByTestId('dropdown-menu')
+    expect(dropdown).toHaveAttribute('data-open', 'true')
   })
 
   it('should render divider between app info and navigation', () => {
@@ -152,9 +169,9 @@ describe('AppSidebarDropdown', () => {
     render(<AppSidebarDropdown navigation={navigation} />)
 
     const appName = screen.getByText('Test App')
-    const appInfoArea = appName.closest('[class*="cursor-pointer"]')
-    if (appInfoArea)
-      await user.click(appInfoArea)
+    await user.click(appName)
+
+    expect(screen.getByTestId('app-info')).toHaveAttribute('data-open', 'true')
   })
 
   it('should display workflow mode label', () => {

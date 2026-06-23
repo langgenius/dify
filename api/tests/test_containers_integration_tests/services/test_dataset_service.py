@@ -9,11 +9,11 @@ from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
-from graphon.model_runtime.entities.model_entities import ModelType
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, DatasetPermissionEnum, Document, ExternalKnowledgeBindings, Pipeline
 from models.enums import DatasetRuntimeMode, DataSourceType, DocumentCreatedFrom, IndexingStatus
@@ -441,6 +441,7 @@ class TestDatasetServiceCreateRagPipelineDataset:
         assert created_dataset.name == entity.name
         assert created_dataset.runtime_mode == DatasetRuntimeMode.RAG_PIPELINE
         assert created_dataset.created_by == account.id
+        assert created_dataset.maintainer == account.id
         assert created_dataset.permission == DatasetPermissionEnum.ONLY_ME
         assert created_pipeline is not None
         assert created_pipeline.name == entity.name
@@ -712,7 +713,7 @@ class TestDatasetServiceRetrievalConfiguration:
 class TestDocumentServicePauseRecoverRetry:
     """Tests for pause/recover/retry orchestration using real DB and Redis."""
 
-    def _create_indexing_document(self, db_session_with_containers, indexing_status="indexing"):
+    def _create_indexing_document(self, db_session_with_containers: Session, indexing_status="indexing"):
         factory = DatasetServiceIntegrationDataFactory
         account, tenant = factory.create_account_with_tenant(db_session_with_containers)
         dataset = factory.create_dataset(db_session_with_containers, tenant.id, account.id)
@@ -721,7 +722,7 @@ class TestDocumentServicePauseRecoverRetry:
         db_session_with_containers.commit()
         return doc, account
 
-    def test_pause_document_success(self, db_session_with_containers):
+    def test_pause_document_success(self, db_session_with_containers: Session):
         from extensions.ext_redis import redis_client
         from services.dataset_service import DocumentService
 
@@ -740,7 +741,7 @@ class TestDocumentServicePauseRecoverRetry:
         assert redis_client.get(cache_key) is not None
         redis_client.delete(cache_key)
 
-    def test_pause_document_invalid_status_error(self, db_session_with_containers):
+    def test_pause_document_invalid_status_error(self, db_session_with_containers: Session):
         from services.dataset_service import DocumentService
         from services.errors.document import DocumentIndexingError
 
@@ -751,7 +752,7 @@ class TestDocumentServicePauseRecoverRetry:
             with pytest.raises(DocumentIndexingError):
                 DocumentService.pause_document(doc)
 
-    def test_recover_document_success(self, db_session_with_containers):
+    def test_recover_document_success(self, db_session_with_containers: Session):
         from extensions.ext_redis import redis_client
         from services.dataset_service import DocumentService
 
@@ -775,7 +776,7 @@ class TestDocumentServicePauseRecoverRetry:
         assert redis_client.get(cache_key) is None
         recover_task.delay.assert_called_once_with(doc.dataset_id, doc.id)
 
-    def test_retry_document_indexing_success(self, db_session_with_containers):
+    def test_retry_document_indexing_success(self, db_session_with_containers: Session):
         from extensions.ext_redis import redis_client
         from services.dataset_service import DocumentService
 

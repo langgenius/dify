@@ -7,15 +7,13 @@ import time
 import uuid
 from collections import Counter
 from collections.abc import Sequence
-from typing import Any, Literal, cast
+from typing import Annotated, Any, Literal, TypedDict, cast
 
 import sqlalchemy as sa
-from graphon.file import helpers as file_helpers
-from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
-from graphon.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from redis.exceptions import LockNotOwnedError
-from sqlalchemy import exists, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy import ColumnElement, delete, exists, func, select, update
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
@@ -31,6 +29,9 @@ from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from graphon.file import helpers as file_helpers
+from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
+from graphon.model_runtime.model_providers.base.text_embedding_model import TextEmbeddingModel
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
@@ -66,6 +67,7 @@ from models.source import DataSourceOauthBinding
 from models.workflow import Workflow
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
 from services.document_indexing_proxy.duplicate_document_indexing_task_proxy import DuplicateDocumentIndexingTaskProxy
+from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.knowledge_entities.knowledge_entities import (
     ChildChunkUpdateArgs,
     KnowledgeConfig,
@@ -107,19 +109,172 @@ from tasks.sync_website_document_indexing_task import sync_website_document_inde
 logger = logging.getLogger(__name__)
 
 
+class ProcessRulesDict(TypedDict):
+    mode: ProcessRuleMode
+    rules: dict[str, Any]
+
+
+class AutoDisableLogsDict(TypedDict):
+    document_ids: list[str]
+    count: int
+
+
+class _EstimatePreProcessingRule(BaseModel):
+    id: str = Field(min_length=1)
+    enabled: bool
+
+    @field_validator("id")
+    @classmethod
+    def _validate_id(cls, v: str) -> str:
+        if v not in DatasetProcessRule.PRE_PROCESSING_RULES:
+            raise ValueError("Process rule pre_processing_rules id is invalid")
+        return v
+
+
+class _EstimateSegmentation(BaseModel):
+    separator: str = Field(min_length=1)
+    max_tokens: int = Field(gt=0)
+
+
+class _EstimateRules(BaseModel):
+    pre_processing_rules: list[_EstimatePreProcessingRule]
+    segmentation: _EstimateSegmentation
+
+    @field_validator("pre_processing_rules")
+    @classmethod
+    def _deduplicate(cls, v: list[_EstimatePreProcessingRule]) -> list[_EstimatePreProcessingRule]:
+        seen: dict[str, _EstimatePreProcessingRule] = {}
+        for rule in v:
+            seen[rule.id] = rule
+        return list(seen.values())
+
+
+class _EstimateHierarchicalRules(_EstimateRules):
+    parent_mode: Literal["full-doc", "paragraph"] | None = None
+    subchunk_segmentation: _EstimateSegmentation | None = None
+
+
+class _SummaryIndexSettingDisabled(BaseModel):
+    enable: Literal[False] = False
+
+
+class _SummaryIndexSettingEnabled(BaseModel):
+    enable: Literal[True]
+    model_name: str = Field(min_length=1)
+    model_provider_name: str = Field(min_length=1)
+
+
+_SummaryIndexSetting = Annotated[
+    _SummaryIndexSettingDisabled | _SummaryIndexSettingEnabled,
+    Field(discriminator="enable"),
+]
+
+
+class _AutomaticProcessRule(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    mode: Literal[ProcessRuleMode.AUTOMATIC]
+    summary_index_setting: _SummaryIndexSetting | None = None
+
+    @field_validator("summary_index_setting", mode="before")
+    @classmethod
+    def _normalize_summary_index_setting(cls, v: Any) -> Any:
+        """Treat dicts with enable=None (or missing enable) as None (#36602)."""
+        if v is None:
+            return None
+        if isinstance(v, dict) and v.get("enable") is None:
+            return None
+        return v
+
+
+class _CustomProcessRule(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    mode: Literal[ProcessRuleMode.CUSTOM]
+    rules: _EstimateRules
+    summary_index_setting: _SummaryIndexSetting | None = None
+
+    @field_validator("summary_index_setting", mode="before")
+    @classmethod
+    def _normalize_summary_index_setting(cls, v: Any) -> Any:
+        """Treat dicts with enable=None (or missing enable) as None (#36602)."""
+        if v is None:
+            return None
+        if isinstance(v, dict) and v.get("enable") is None:
+            return None
+        return v
+
+
+class _HierarchicalProcessRule(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    mode: Literal[ProcessRuleMode.HIERARCHICAL]
+    rules: _EstimateHierarchicalRules
+    summary_index_setting: _SummaryIndexSetting | None = None
+
+    @field_validator("summary_index_setting", mode="before")
+    @classmethod
+    def _normalize_summary_index_setting(cls, v: Any) -> Any:
+        """Treat dicts with enable=None (or missing enable) as None (#36602)."""
+        if v is None:
+            return None
+        if isinstance(v, dict) and v.get("enable") is None:
+            return None
+        return v
+
+
+_EstimateProcessRule = Annotated[
+    _AutomaticProcessRule | _CustomProcessRule | _HierarchicalProcessRule,
+    Field(discriminator="mode"),
+]
+
+
+class _EstimateArgs(BaseModel):
+    info_list: dict[str, Any]
+    process_rule: _EstimateProcessRule
+
+
 class DatasetService:
     @staticmethod
-    def get_datasets(page, per_page, tenant_id=None, user=None, search=None, tag_ids=None, include_all=False):
+    def _can_manage_all_datasets(tenant_id: str, account_id: str) -> bool:
+        if not dify_config.RBAC_ENABLED:
+            return False
+
+        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(tenant_id, account_id)
+        workspace_permission_keys = getattr(getattr(permissions, "workspace", None), "permission_keys", []) or []
+        return "dataset.create_and_management" in workspace_permission_keys
+
+    @staticmethod
+    def get_datasets(
+        page,
+        per_page,
+        session: scoped_session | Session | None = None,
+        tenant_id=None,
+        user=None,
+        search=None,
+        tag_ids=None,
+        include_all=False,
+        accessible_dataset_ids: list[str] | None = None,
+        include_own_datasets: bool = False,
+    ):
+        session = session or db.session
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
+
+        if dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
+            accessible_filter: ColumnElement[bool] = Dataset.id.in_(accessible_dataset_ids)
+            if include_own_datasets and user:
+                accessible_filter = sa.or_(Dataset.maintainer == user.id, accessible_filter)
+            query = query.where(accessible_filter)
 
         if user:
             # get permitted dataset ids
-            dataset_permission = (
-                db.session.query(DatasetPermission).filter_by(account_id=user.id, tenant_id=tenant_id).all()
-            )
+            dataset_permission = db.session.scalars(
+                select(DatasetPermission).where(
+                    DatasetPermission.account_id == user.id, DatasetPermission.tenant_id == tenant_id
+                )
+            ).all()
             permitted_dataset_ids = {dp.dataset_id for dp in dataset_permission} if dataset_permission else None
-
-            if user.current_role == TenantAccountRole.DATASET_OPERATOR:
+            if not dify_config.RBAC_ENABLED and user.current_role == TenantAccountRole.DATASET_OPERATOR:
                 # only show datasets that the user has permission to access
                 # Check if permitted_dataset_ids is not empty to avoid WHERE false condition
                 if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
@@ -127,34 +282,50 @@ class DatasetService:
                 else:
                     return [], 0
             else:
-                if user.current_role != TenantAccountRole.OWNER or not include_all:
-                    # show all datasets that the user has permission to access
-                    # Check if permitted_dataset_ids is not empty to avoid WHERE false condition
-                    if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
-                        query = query.where(
-                            sa.or_(
-                                Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
-                                sa.and_(
-                                    Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id
-                                ),
-                                sa.and_(
-                                    Dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM,
-                                    Dataset.id.in_(permitted_dataset_ids),
-                                ),
-                            )
-                        )
+                if dify_config.RBAC_ENABLED:
+                    can_manage_all_datasets = DatasetService._can_manage_all_datasets(str(tenant_id), str(user.id))
+                    should_show_all_datasets = include_all and can_manage_all_datasets
+                else:
+                    should_show_all_datasets = user.current_role == TenantAccountRole.OWNER and include_all
+
+                if not should_show_all_datasets:
+                    if dify_config.RBAC_ENABLED:
+                        # RBAC mode: show all datasets.  Permission control is enforced
+                        # via permission_keys on each item and @rbac_permission_required decorators.
+                        pass
                     else:
-                        query = query.where(
-                            sa.or_(
-                                Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
-                                sa.and_(
-                                    Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id
-                                ),
+                        # Keep legacy visibility rules when RBAC is disabled.
+                        if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
+                            query = query.where(
+                                sa.or_(
+                                    Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
+                                    sa.and_(
+                                        Dataset.permission == DatasetPermissionEnum.ONLY_ME,
+                                        Dataset.maintainer == user.id,
+                                    ),
+                                    sa.and_(
+                                        Dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM,
+                                        Dataset.id.in_(permitted_dataset_ids),
+                                    ),
+                                )
                             )
-                        )
+                        else:
+                            query = query.where(
+                                sa.or_(
+                                    Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
+                                    sa.and_(
+                                        Dataset.permission == DatasetPermissionEnum.ONLY_ME,
+                                        Dataset.maintainer == user.id,
+                                    ),
+                                )
+                            )
         else:
-            # if no user, only show datasets that are shared with all team members
-            query = query.where(Dataset.permission == DatasetPermissionEnum.ALL_TEAM)
+            if dify_config.RBAC_ENABLED:
+                # Without an account we cannot resolve RBAC resource visibility.
+                query = query.where(sa.false())
+            else:
+                # if no user, only show datasets that are shared with all team members
+                query = query.where(Dataset.permission == DatasetPermissionEnum.ALL_TEAM)
 
         if search:
             escaped_search = helper.escape_like_pattern(search)
@@ -167,6 +338,8 @@ class DatasetService:
                     "knowledge",
                     tenant_id,
                     tag_ids,
+                    session,
+                    match_all=True,
                 )
             else:
                 target_ids = []
@@ -180,29 +353,44 @@ class DatasetService:
         return datasets.items, datasets.total
 
     @staticmethod
-    def get_process_rules(dataset_id):
+    def get_process_rules(dataset_id) -> ProcessRulesDict:
         # get the latest process rule
-        dataset_process_rule = (
-            db.session.query(DatasetProcessRule)
+        dataset_process_rule = db.session.execute(
+            select(DatasetProcessRule)
             .where(DatasetProcessRule.dataset_id == dataset_id)
             .order_by(DatasetProcessRule.created_at.desc())
             .limit(1)
-            .one_or_none()
-        )
+        ).scalar_one_or_none()
         if dataset_process_rule:
             mode = dataset_process_rule.mode
-            rules = dataset_process_rule.rules_dict
+            rules = dataset_process_rule.rules_dict or {}
         else:
-            mode = DocumentService.DEFAULT_RULES["mode"]
-            rules = DocumentService.DEFAULT_RULES["rules"]
+            mode = ProcessRuleMode(DocumentService.DEFAULT_RULES["mode"])
+            rules = dict(DocumentService.DEFAULT_RULES.get("rules") or {})
         return {"mode": mode, "rules": rules}
 
     @staticmethod
-    def get_datasets_by_ids(ids, tenant_id):
+    def get_datasets_by_ids(
+        ids,
+        tenant_id,
+        user=None,
+        accessible_dataset_ids: list[str] | None = None,
+        include_own_datasets: bool = False,
+    ):
         # Check if ids is not empty to avoid WHERE false condition
         if not ids or len(ids) == 0:
             return [], 0
         stmt = select(Dataset).where(Dataset.id.in_(ids), Dataset.tenant_id == tenant_id)
+
+        if dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
+            requested_dataset_ids = set(ids)
+            accessible_dataset_ids = [
+                dataset_id for dataset_id in accessible_dataset_ids if dataset_id in requested_dataset_ids
+            ]
+            accessible_filter: ColumnElement[bool] = Dataset.id.in_(accessible_dataset_ids)
+            if include_own_datasets and user:
+                accessible_filter = sa.or_(Dataset.maintainer == user.id, accessible_filter)
+            stmt = stmt.where(accessible_filter)
 
         datasets = db.paginate(select=stmt, page=1, per_page=len(ids), max_per_page=len(ids), error_out=False)
 
@@ -222,10 +410,10 @@ class DatasetService:
         embedding_model_provider: str | None = None,
         embedding_model_name: str | None = None,
         retrieval_model: RetrievalModel | None = None,
-        summary_index_setting: dict | None = None,
+        summary_index_setting: dict[str, Any] | None = None,
     ):
         # check if dataset name already exists
-        if db.session.query(Dataset).filter_by(name=name, tenant_id=tenant_id).first():
+        if db.session.scalar(select(Dataset).where(Dataset.name == name, Dataset.tenant_id == tenant_id).limit(1)):
             raise DatasetNameDuplicateError(f"Dataset with name {name} already exists.")
         embedding_model = None
         if indexing_technique == IndexTechniqueType.HIGH_QUALITY:
@@ -261,6 +449,7 @@ class DatasetService:
         # dataset = Dataset(name=name, provider=provider, config=config)
         dataset.description = description
         dataset.created_by = account.id
+        dataset.maintainer = account.id
         dataset.updated_by = account.id
         dataset.tenant_id = tenant_id
         dataset.embedding_model_provider = embedding_model.provider if embedding_model else None
@@ -274,7 +463,9 @@ class DatasetService:
         db.session.flush()
 
         if provider == "external" and external_knowledge_api_id:
-            external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(external_knowledge_api_id)
+            external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(
+                external_knowledge_api_id, tenant_id
+            )
             if not external_knowledge_api:
                 raise ValueError("External API template not found.")
             if external_knowledge_id is None:
@@ -289,6 +480,12 @@ class DatasetService:
             db.session.add(external_knowledge_binding)
 
         db.session.commit()
+        enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
+            tenant_id,
+            account.id,
+            enterprise_rbac_service.RBACResourceType.DATASET,
+            dataset.id,
+        )
         return dataset
 
     @staticmethod
@@ -298,17 +495,17 @@ class DatasetService:
     ):
         if rag_pipeline_dataset_create_entity.name:
             # check if dataset name already exists
-            if (
-                db.session.query(Dataset)
-                .filter_by(name=rag_pipeline_dataset_create_entity.name, tenant_id=tenant_id)
-                .first()
+            if db.session.scalar(
+                select(Dataset)
+                .where(Dataset.name == rag_pipeline_dataset_create_entity.name, Dataset.tenant_id == tenant_id)
+                .limit(1)
             ):
                 raise DatasetNameDuplicateError(
                     f"Dataset with name {rag_pipeline_dataset_create_entity.name} already exists."
                 )
         else:
             # generate a random name as Untitled 1 2 3 ...
-            datasets = db.session.query(Dataset).filter_by(tenant_id=tenant_id).all()
+            datasets = db.session.scalars(select(Dataset).where(Dataset.tenant_id == tenant_id)).all()
             names = [dataset.name for dataset in datasets]
             rag_pipeline_dataset_create_entity.name = generate_incremental_name(
                 names,
@@ -334,6 +531,7 @@ class DatasetService:
             runtime_mode=DatasetRuntimeMode.RAG_PIPELINE,
             icon_info=rag_pipeline_dataset_create_entity.icon_info.model_dump(),
             created_by=current_user.id,
+            maintainer=current_user.id,
             pipeline_id=pipeline.id,
         )
         db.session.add(dataset)
@@ -342,7 +540,7 @@ class DatasetService:
 
     @staticmethod
     def get_dataset(dataset_id) -> Dataset | None:
-        dataset: Dataset | None = db.session.query(Dataset).filter_by(id=dataset_id).first()
+        dataset: Dataset | None = db.session.get(Dataset, dataset_id)
         return dataset
 
     @staticmethod
@@ -464,14 +662,14 @@ class DatasetService:
 
     @staticmethod
     def _has_dataset_same_name(tenant_id: str, dataset_id: str, name: str):
-        dataset = (
-            db.session.query(Dataset)
+        dataset = db.session.scalar(
+            select(Dataset)
             .where(
                 Dataset.id != dataset_id,
                 Dataset.name == name,
                 Dataset.tenant_id == tenant_id,
             )
-            .first()
+            .limit(1)
         )
         return dataset is not None
 
@@ -515,6 +713,8 @@ class DatasetService:
             raise ValueError("External knowledge id is required.")
         if not external_knowledge_api_id:
             raise ValueError("External knowledge api id is required.")
+        # Ensure the referenced external API template exists and belongs to the dataset tenant.
+        ExternalDatasetService.get_external_knowledge_api(external_knowledge_api_id, dataset.tenant_id)
         # Update metadata fields
         dataset.updated_by = user.id if user else None
         dataset.updated_at = naive_utc_now()
@@ -538,22 +738,22 @@ class DatasetService:
             external_knowledge_id: External knowledge identifier
             external_knowledge_api_id: External knowledge API identifier
         """
-        with Session(db.engine) as session:
-            external_knowledge_binding = (
-                session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id).first()
+        with sessionmaker(db.engine).begin() as session:
+            external_knowledge_binding = session.scalar(
+                select(ExternalKnowledgeBindings).where(ExternalKnowledgeBindings.dataset_id == dataset_id).limit(1)
             )
 
             if not external_knowledge_binding:
                 raise ValueError("External knowledge binding not found.")
 
-        # Update binding if values have changed
-        if (
-            external_knowledge_binding.external_knowledge_id != external_knowledge_id
-            or external_knowledge_binding.external_knowledge_api_id != external_knowledge_api_id
-        ):
-            external_knowledge_binding.external_knowledge_id = external_knowledge_id
-            external_knowledge_binding.external_knowledge_api_id = external_knowledge_api_id
-            db.session.add(external_knowledge_binding)
+            # Update binding if values have changed
+            if (
+                external_knowledge_binding.external_knowledge_id != external_knowledge_id
+                or external_knowledge_binding.external_knowledge_api_id != external_knowledge_api_id
+            ):
+                external_knowledge_binding.external_knowledge_id = external_knowledge_id
+                external_knowledge_binding.external_knowledge_api_id = external_knowledge_api_id
+                session.add(external_knowledge_binding)
 
     @staticmethod
     def _update_internal_dataset(dataset, data, user):
@@ -594,7 +794,7 @@ class DatasetService:
             filtered_data["icon_info"] = data.get("icon_info")
 
         # Update dataset in database
-        db.session.query(Dataset).filter_by(id=dataset.id).update(filtered_data)
+        db.session.execute(update(Dataset).where(Dataset.id == dataset.id).values(**filtered_data))
         db.session.commit()
 
         # Reload dataset to get updated values
@@ -629,7 +829,7 @@ class DatasetService:
         if dataset.runtime_mode != DatasetRuntimeMode.RAG_PIPELINE:
             return
 
-        pipeline = db.session.query(Pipeline).filter_by(id=dataset.pipeline_id).first()
+        pipeline = db.session.get(Pipeline, dataset.pipeline_id)
         if not pipeline:
             return
 
@@ -654,7 +854,7 @@ class DatasetService:
                             knowledge_index_node_data["embedding_model_provider"] = dataset.embedding_model_provider
                             knowledge_index_node_data["retrieval_model"] = dataset.retrieval_model
                             knowledge_index_node_data["chunk_structure"] = dataset.chunk_structure
-                            knowledge_index_node_data["indexing_technique"] = dataset.indexing_technique  # pyright: ignore[reportAttributeAccessIssue]
+                            knowledge_index_node_data["indexing_technique"] = dataset.indexing_technique
                             knowledge_index_node_data["keyword_number"] = dataset.keyword_number
                             knowledge_index_node_data["summary_index_setting"] = dataset.summary_index_setting
                             node["data"] = knowledge_index_node_data
@@ -1130,14 +1330,16 @@ class DatasetService:
             logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
             raise NoPermissionError("You do not have permission to access this dataset.")
         if user.current_role != TenantAccountRole.OWNER:
-            if dataset.permission == DatasetPermissionEnum.ONLY_ME and dataset.created_by != user.id:
+            if dataset.permission == DatasetPermissionEnum.ONLY_ME and dataset.maintainer != user.id:
                 logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
                 raise NoPermissionError("You do not have permission to access this dataset.")
             if dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
-                # For partial team permission, user needs explicit permission or be the creator
-                if dataset.created_by != user.id:
-                    user_permission = (
-                        db.session.query(DatasetPermission).filter_by(dataset_id=dataset.id, account_id=user.id).first()
+                # For partial team permission, user needs explicit permission or be the maintainer.
+                if dataset.maintainer != user.id:
+                    user_permission = db.session.scalar(
+                        select(DatasetPermission)
+                        .where(DatasetPermission.dataset_id == dataset.id, DatasetPermission.account_id == user.id)
+                        .limit(1)
                     )
                     if not user_permission:
                         logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
@@ -1153,13 +1355,15 @@ class DatasetService:
 
         if user.current_role != TenantAccountRole.OWNER:
             if dataset.permission == DatasetPermissionEnum.ONLY_ME:
-                if dataset.created_by != user.id:
+                if dataset.maintainer != user.id:
                     raise NoPermissionError("You do not have permission to access this dataset.")
 
             elif dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
                 if not any(
                     dp.dataset_id == dataset.id
-                    for dp in db.session.query(DatasetPermission).filter_by(account_id=user.id).all()
+                    for dp in db.session.scalars(
+                        select(DatasetPermission).where(DatasetPermission.account_id == user.id)
+                    ).all()
                 ):
                     raise NoPermissionError("You do not have permission to access this dataset.")
 
@@ -1173,12 +1377,11 @@ class DatasetService:
 
     @staticmethod
     def get_related_apps(dataset_id: str):
-        return (
-            db.session.query(AppDatasetJoin)
+        return db.session.scalars(
+            select(AppDatasetJoin)
             .where(AppDatasetJoin.dataset_id == dataset_id)
-            .order_by(db.desc(AppDatasetJoin.created_at))
-            .all()
-        )
+            .order_by(AppDatasetJoin.created_at.desc())
+        ).all()
 
     @staticmethod
     def update_dataset_api_status(dataset_id: str, status: bool):
@@ -1193,10 +1396,10 @@ class DatasetService:
         db.session.commit()
 
     @staticmethod
-    def get_dataset_auto_disable_logs(dataset_id: str):
+    def get_dataset_auto_disable_logs(dataset_id: str) -> AutoDisableLogsDict:
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
-        features = FeatureService.get_features(current_user.current_tenant_id)
+        features = FeatureService.get_features(current_user.current_tenant_id, exclude_vector_space=True)
         if not features.billing.enabled or features.billing.subscription.plan == CloudPlan.SANDBOX:
             return {
                 "document_ids": [],
@@ -1394,8 +1597,8 @@ class DocumentService:
     @staticmethod
     def get_document(dataset_id: str, document_id: str | None = None) -> Document | None:
         if document_id:
-            document = (
-                db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
+            document = db.session.scalar(
+                select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
             )
             return document
         else:
@@ -1438,15 +1641,17 @@ class DocumentService:
         document_id_list: list[str] = [str(document_id) for document_id in document_ids]
 
         with session_factory.create_session() as session:
-            updated_count = (
-                session.query(Document)
-                .filter(
+            result = session.execute(
+                update(Document)
+                .where(
                     Document.id.in_(document_id_list),
                     Document.dataset_id == dataset_id,
                     Document.doc_form != IndexStructureType.QA_INDEX,  # Skip qa_model documents
                 )
-                .update({Document.need_summary: need_summary}, synchronize_session=False)
+                .values(need_summary=need_summary)
+                .execution_options(synchronize_session=False)
             )
+            updated_count = result.rowcount  # type: ignore[union-attr,attr-defined]
             session.commit()
             logger.info(
                 "Updated need_summary to %s for %d documents in dataset %s",
@@ -1573,7 +1778,7 @@ class DocumentService:
             invalid_source_message="Document does not have an uploaded file to download.",
             missing_file_message="Uploaded file not found.",
         )
-        upload_files_by_id = FileService.get_upload_files_by_ids(document.tenant_id, [upload_file_id])
+        upload_files_by_id = FileService.get_upload_files_by_ids(db.session(), document.tenant_id, [upload_file_id])
         upload_file = upload_files_by_id.get(upload_file_id)
         if not upload_file:
             raise NotFound("Uploaded file not found.")
@@ -1612,7 +1817,7 @@ class DocumentService:
             upload_file_ids.append(upload_file_id)
             upload_file_ids_by_document_id[document_id] = upload_file_id
 
-        upload_files_by_id = FileService.get_upload_files_by_ids(tenant_id, upload_file_ids)
+        upload_files_by_id = FileService.get_upload_files_by_ids(db.session(), tenant_id, upload_file_ids)
         missing_upload_file_ids: set[str] = set(upload_file_ids) - set(upload_files_by_id.keys())
         if missing_upload_file_ids:
             raise NotFound("Only uploaded-file documents can be downloaded as ZIP.")
@@ -1624,7 +1829,7 @@ class DocumentService:
 
     @staticmethod
     def get_document_by_id(document_id: str) -> Document | None:
-        document = db.session.query(Document).where(Document.id == document_id).first()
+        document = db.session.get(Document, document_id)
 
         return document
 
@@ -1689,7 +1894,7 @@ class DocumentService:
 
     @staticmethod
     def get_document_file_detail(file_id: str):
-        file_detail = db.session.query(UploadFile).where(UploadFile.id == file_id).one_or_none()
+        file_detail = db.session.get(UploadFile, file_id)
         return file_detail
 
     @staticmethod
@@ -1763,9 +1968,11 @@ class DocumentService:
         document.name = name
         db.session.add(document)
         if document.data_source_info_dict and "upload_file_id" in document.data_source_info_dict:
-            db.session.query(UploadFile).where(
-                UploadFile.id == document.data_source_info_dict["upload_file_id"]
-            ).update({UploadFile.name: name})
+            db.session.execute(
+                update(UploadFile)
+                .where(UploadFile.id == document.data_source_info_dict["upload_file_id"])
+                .values(name=name)
+            )
 
         db.session.commit()
 
@@ -1852,8 +2059,8 @@ class DocumentService:
 
     @staticmethod
     def get_documents_position(dataset_id):
-        document = (
-            db.session.query(Document).filter_by(dataset_id=dataset_id).order_by(Document.position.desc()).first()
+        document = db.session.scalar(
+            select(Document).where(Document.dataset_id == dataset_id).order_by(Document.position.desc()).limit(1)
         )
         if document:
             return document.position + 1
@@ -1874,7 +2081,7 @@ class DocumentService:
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
 
-        features = FeatureService.get_features(current_user.current_tenant_id)
+        features = FeatureService.get_features(current_user.current_tenant_id, exclude_vector_space=True)
 
         if features.billing.enabled:
             if not knowledge_config.original_document_id:
@@ -1893,14 +2100,7 @@ class DocumentService:
                         website_info = knowledge_config.data_source.info_list.website_info_list
                         assert website_info
                         count = len(website_info.urls)
-                    batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
-
-                    if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
-                        raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
-                    if count > batch_upload_limit:
-                        raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
-
-                    DocumentService.check_documents_upload_quota(count, features)
+                    DocumentService.check_document_creation_limits(count, features)
 
         # if dataset is empty, update dataset data_source_type
         if not dataset.data_source_type and knowledge_config.data_source:
@@ -1962,7 +2162,7 @@ class DocumentService:
                         if process_rule.rules:
                             dataset_process_rule = DatasetProcessRule(
                                 dataset_id=dataset.id,
-                                mode=process_rule.mode,
+                                mode=ProcessRuleMode(process_rule.mode),
                                 rules=process_rule.rules.model_dump_json() if process_rule.rules else None,
                                 created_by=account.id,
                             )
@@ -1973,7 +2173,7 @@ class DocumentService:
                     elif process_rule.mode == ProcessRuleMode.AUTOMATIC:
                         dataset_process_rule = DatasetProcessRule(
                             dataset_id=dataset.id,
-                            mode=process_rule.mode,
+                            mode=ProcessRuleMode.AUTOMATIC,
                             rules=json.dumps(DatasetProcessRule.AUTOMATIC_RULES),
                             created_by=account.id,
                         )
@@ -2010,32 +2210,32 @@ class DocumentService:
                         if not knowledge_config.data_source.info_list.file_info_list:
                             raise ValueError("File source info is required")
                         upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
-                        files = (
-                            db.session.query(UploadFile)
-                            .where(
-                                UploadFile.tenant_id == dataset.tenant_id,
-                                UploadFile.id.in_(upload_file_list),
-                            )
-                            .all()
+                        files = list(
+                            db.session.scalars(
+                                select(UploadFile).where(
+                                    UploadFile.tenant_id == dataset.tenant_id,
+                                    UploadFile.id.in_(upload_file_list),
+                                )
+                            ).all()
                         )
                         if len(files) != len(set(upload_file_list)):
                             raise FileNotExistsError("One or more files not found.")
 
                         file_names = [file.name for file in files]
-                        db_documents = (
-                            db.session.query(Document)
-                            .where(
-                                Document.dataset_id == dataset.id,
-                                Document.tenant_id == current_user.current_tenant_id,
-                                Document.data_source_type == DataSourceType.UPLOAD_FILE,
-                                Document.enabled == True,
-                                Document.name.in_(file_names),
-                            )
-                            .all()
+                        db_documents = list(
+                            db.session.scalars(
+                                select(Document).where(
+                                    Document.dataset_id == dataset.id,
+                                    Document.tenant_id == current_user.current_tenant_id,
+                                    Document.data_source_type == DataSourceType.UPLOAD_FILE,
+                                    Document.enabled == True,
+                                    Document.name.in_(file_names),
+                                )
+                            ).all()
                         )
                         documents_map = {document.name: document for document in db_documents}
                         for file in files:
-                            data_source_info: dict[str, str | bool] = {
+                            data_source_info: dict[str, object] = {
                                 "upload_file_id": file.id,
                             }
                             document = documents_map.get(file.name)
@@ -2077,15 +2277,15 @@ class DocumentService:
                             raise ValueError("No notion info list found.")
                         exist_page_ids = []
                         exist_document = {}
-                        documents = (
-                            db.session.query(Document)
-                            .filter_by(
-                                dataset_id=dataset.id,
-                                tenant_id=current_user.current_tenant_id,
-                                data_source_type=DataSourceType.NOTION_IMPORT,
-                                enabled=True,
-                            )
-                            .all()
+                        documents = list(
+                            db.session.scalars(
+                                select(Document).where(
+                                    Document.dataset_id == dataset.id,
+                                    Document.tenant_id == current_user.current_tenant_id,
+                                    Document.data_source_type == DataSourceType.NOTION_IMPORT,
+                                    Document.enabled == True,
+                                )
+                            ).all()
                         )
                         if documents:
                             for document in documents:
@@ -2196,15 +2396,15 @@ class DocumentService:
     #             if knowledge_config.data_source:
     #                 if knowledge_config.data_source.info_list.data_source_type == "upload_file":
     #                     upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
-    # # type: ignore
+    #
     #                     count = len(upload_file_list)
     #                 elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
     #                     notion_info_list = knowledge_config.data_source.info_list.notion_info_list
-    #                     for notion_info in notion_info_list:  # type: ignore
+    #                     for notion_info in notion_info_list:
     #                         count = count + len(notion_info.pages)
     #                 elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
     #                     website_info = knowledge_config.data_source.info_list.website_info_list
-    #                     count = len(website_info.urls)  # type: ignore
+    #                     count = len(website_info.urls)
     #                 batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
 
     #                 if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
@@ -2216,7 +2416,7 @@ class DocumentService:
 
     #     # if dataset is empty, update dataset data_source_type
     #     if not dataset.data_source_type:
-    #         dataset.data_source_type = knowledge_config.data_source.info_list.data_source_type  # type: ignore
+    #         dataset.data_source_type = knowledge_config.data_source.info_list.data_source_type
 
     #     if not dataset.indexing_technique:
     #         if knowledge_config.indexing_technique not in Dataset.INDEXING_TECHNIQUE_LIST:
@@ -2253,7 +2453,7 @@ class DocumentService:
     #                     knowledge_config.retrieval_model.model_dump()
     #                     if knowledge_config.retrieval_model
     #                     else default_retrieval_model
-    #                 )  # type: ignore
+    #                 )
 
     #     documents = []
     #     if knowledge_config.original_document_id:
@@ -2292,8 +2492,8 @@ class DocumentService:
     #             position = DocumentService.get_documents_position(dataset.id)
     #             document_ids = []
     #             duplicate_document_ids = []
-    #             if knowledge_config.data_source.info_list.data_source_type == "upload_file":  # type: ignore
-    #                 upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids  # type: ignore
+    #             if knowledge_config.data_source.info_list.data_source_type == "upload_file":
+    #                 upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
     #                 for file_id in upload_file_list:
     #                     file = (
     #                         db.session.query(UploadFile)
@@ -2319,7 +2519,7 @@ class DocumentService:
     #                             name=file_name,
     #                         ).first()
     #                         if document:
-    #                             document.dataset_process_rule_id = dataset_process_rule.id  # type: ignore
+    #                             document.dataset_process_rule_id = dataset_process_rule.id
     #                             document.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
     #                             document.created_from = created_from
     #                             document.doc_form = knowledge_config.doc_form
@@ -2333,8 +2533,8 @@ class DocumentService:
     #                             continue
     #                     document = DocumentService.build_document(
     #                         dataset,
-    #                         dataset_process_rule.id,  # type: ignore
-    #                         knowledge_config.data_source.info_list.data_source_type,  # type: ignore
+    #                         dataset_process_rule.id,
+    #                         knowledge_config.data_source.info_list.data_source_type,
     #                         knowledge_config.doc_form,
     #                         knowledge_config.doc_language,
     #                         data_source_info,
@@ -2349,8 +2549,8 @@ class DocumentService:
     #                     document_ids.append(document.id)
     #                     documents.append(document)
     #                     position += 1
-    #             elif knowledge_config.data_source.info_list.data_source_type == "notion_import":  # type: ignore
-    #                 notion_info_list = knowledge_config.data_source.info_list.notion_info_list  # type: ignore
+    #             elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
+    #                 notion_info_list = knowledge_config.data_source.info_list.notion_info_list
     #                 if not notion_info_list:
     #                     raise ValueError("No notion info list found.")
     #                 exist_page_ids = []
@@ -2390,8 +2590,8 @@ class DocumentService:
     #                             truncated_page_name = page.page_name[:255] if page.page_name else "nopagename"
     #                             document = DocumentService.build_document(
     #                                 dataset,
-    #                                 dataset_process_rule.id,  # type: ignore
-    #                                 knowledge_config.data_source.info_list.data_source_type,  # type: ignore
+    #                                 dataset_process_rule.id,
+    #                                 knowledge_config.data_source.info_list.data_source_type,
     #                                 knowledge_config.doc_form,
     #                                 knowledge_config.doc_language,
     #                                 data_source_info,
@@ -2411,8 +2611,8 @@ class DocumentService:
     #                 # delete not selected documents
     #                 if len(exist_document) > 0:
     #                     clean_notion_document_task.delay(list(exist_document.values()), dataset.id)
-    #             elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":  # type: ignore
-    #                 website_info = knowledge_config.data_source.info_list.website_info_list  # type: ignore
+    #             elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
+    #                 website_info = knowledge_config.data_source.info_list.website_info_list
     #                 if not website_info:
     #                     raise ValueError("No website info list found.")
     #                 urls = website_info.urls
@@ -2430,8 +2630,8 @@ class DocumentService:
     #                         document_name = url
     #                     document = DocumentService.build_document(
     #                         dataset,
-    #                         dataset_process_rule.id,  # type: ignore
-    #                         knowledge_config.data_source.info_list.data_source_type,  # type: ignore
+    #                         dataset_process_rule.id,
+    #                         knowledge_config.data_source.info_list.data_source_type,
     #                         knowledge_config.doc_form,
     #                         knowledge_config.doc_language,
     #                         data_source_info,
@@ -2465,13 +2665,28 @@ class DocumentService:
             )
 
     @staticmethod
+    def check_document_creation_limits(count: int, features: FeatureModel):
+        """Validate billing-backed document creation limits before document rows are created."""
+        if not features.billing.enabled:
+            return
+
+        if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
+            raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
+
+        batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
+        if count > batch_upload_limit:
+            raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
+
+        DocumentService.check_documents_upload_quota(count, features)
+
+    @staticmethod
     def build_document(
         dataset: Dataset,
         process_rule_id: str | None,
         data_source_type: str,
         document_form: str,
         document_language: str,
-        data_source_info: dict,
+        data_source_info: dict[str, Any],
         created_from: str,
         position: int,
         account: Account,
@@ -2516,14 +2731,15 @@ class DocumentService:
         assert isinstance(current_user, Account)
 
         documents_count = (
-            db.session.query(Document)
-            .where(
-                Document.completed_at.isnot(None),
-                Document.enabled == True,
-                Document.archived == False,
-                Document.tenant_id == current_user.current_tenant_id,
+            db.session.scalar(
+                select(func.count(Document.id)).where(
+                    Document.completed_at.isnot(None),
+                    Document.enabled == True,
+                    Document.archived == False,
+                    Document.tenant_id == current_user.current_tenant_id,
+                )
             )
-            .count()
+            or 0
         )
         return documents_count
 
@@ -2549,14 +2765,14 @@ class DocumentService:
             if process_rule.mode in {ProcessRuleMode.CUSTOM, ProcessRuleMode.HIERARCHICAL}:
                 dataset_process_rule = DatasetProcessRule(
                     dataset_id=dataset.id,
-                    mode=process_rule.mode,
+                    mode=ProcessRuleMode(process_rule.mode),
                     rules=process_rule.rules.model_dump_json() if process_rule.rules else None,
                     created_by=account.id,
                 )
             elif process_rule.mode == ProcessRuleMode.AUTOMATIC:
                 dataset_process_rule = DatasetProcessRule(
                     dataset_id=dataset.id,
-                    mode=process_rule.mode,
+                    mode=ProcessRuleMode.AUTOMATIC,
                     rules=json.dumps(DatasetProcessRule.AUTOMATIC_RULES),
                     created_by=account.id,
                 )
@@ -2567,16 +2783,16 @@ class DocumentService:
         # update document data source
         if document_data.data_source:
             file_name = ""
-            data_source_info: dict[str, str | bool] = {}
+            data_source_info: dict[str, object] = {}
             if document_data.data_source.info_list.data_source_type == "upload_file":
                 if not document_data.data_source.info_list.file_info_list:
                     raise ValueError("No file info list found.")
                 upload_file_list = document_data.data_source.info_list.file_info_list.file_ids
                 for file_id in upload_file_list:
-                    file = (
-                        db.session.query(UploadFile)
+                    file = db.session.scalar(
+                        select(UploadFile)
                         .where(UploadFile.tenant_id == dataset.tenant_id, UploadFile.id == file_id)
-                        .first()
+                        .limit(1)
                     )
 
                     # raise error if file not found
@@ -2593,8 +2809,8 @@ class DocumentService:
                 notion_info_list = document_data.data_source.info_list.notion_info_list
                 for notion_info in notion_info_list:
                     workspace_id = notion_info.workspace_id
-                    data_source_binding = (
-                        db.session.query(DataSourceOauthBinding)
+                    data_source_binding = db.session.scalar(
+                        select(DataSourceOauthBinding)
                         .where(
                             sa.and_(
                                 DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
@@ -2603,7 +2819,7 @@ class DocumentService:
                                 DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
                             )
                         )
-                        .first()
+                        .limit(1)
                     )
                     if not data_source_binding:
                         raise ValueError("Data source binding not found.")
@@ -2648,8 +2864,10 @@ class DocumentService:
         db.session.commit()
         # update document segment
 
-        db.session.query(DocumentSegment).filter_by(document_id=document.id).update(
-            {DocumentSegment.status: SegmentStatus.RE_SEGMENT}
+        db.session.execute(
+            update(DocumentSegment)
+            .where(DocumentSegment.document_id == document.id)
+            .values(status=SegmentStatus.RE_SEGMENT)
         )
         db.session.commit()
         # trigger async task
@@ -2662,7 +2880,7 @@ class DocumentService:
         assert current_user.current_tenant_id is not None
         assert knowledge_config.data_source
 
-        features = FeatureService.get_features(current_user.current_tenant_id)
+        features = FeatureService.get_features(current_user.current_tenant_id, exclude_vector_space=True)
 
         if features.billing.enabled:
             count = 0
@@ -2682,13 +2900,7 @@ class DocumentService:
                 website_info = knowledge_config.data_source.info_list.website_info_list
                 if website_info:
                     count = len(website_info.urls)
-            if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
-                raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
-            batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
-            if count > batch_upload_limit:
-                raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
-
-            DocumentService.check_documents_upload_quota(count, features)
+            DocumentService.check_document_creation_limits(count, features)
 
         dataset_collection_binding_id = None
         retrieval_model = None
@@ -2717,6 +2929,7 @@ class DocumentService:
             data_source_type=knowledge_config.data_source.info_list.data_source_type,
             indexing_technique=IndexTechniqueType(knowledge_config.indexing_technique),
             created_by=account.id,
+            maintainer=account.id,
             embedding_model=knowledge_config.embedding_model,
             embedding_model_provider=knowledge_config.embedding_model_provider,
             collection_binding_id=dataset_collection_binding_id,
@@ -2801,6 +3014,10 @@ class DocumentService:
 
             knowledge_config.process_rule.rules.pre_processing_rules = list(unique_pre_processing_rule_dicts.values())
 
+            if knowledge_config.process_rule.mode == ProcessRuleMode.HIERARCHICAL:
+                if not knowledge_config.process_rule.rules.parent_mode:
+                    knowledge_config.process_rule.rules.parent_mode = "paragraph"
+
             if not knowledge_config.process_rule.rules.segmentation:
                 raise ValueError("Process rule segmentation is required")
 
@@ -2821,95 +3038,21 @@ class DocumentService:
                     raise ValueError("Process rule segmentation max_tokens is invalid")
 
     @classmethod
-    def estimate_args_validate(cls, args: dict):
-        if "info_list" not in args or not args["info_list"]:
-            raise ValueError("Data source info is required")
-
-        if not isinstance(args["info_list"], dict):
-            raise ValueError("Data info is invalid")
-
-        if "process_rule" not in args or not args["process_rule"]:
-            raise ValueError("Process rule is required")
-
-        if not isinstance(args["process_rule"], dict):
-            raise ValueError("Process rule is invalid")
-
-        if "mode" not in args["process_rule"] or not args["process_rule"]["mode"]:
-            raise ValueError("Process rule mode is required")
-
-        if args["process_rule"]["mode"] not in DatasetProcessRule.MODES:
-            raise ValueError("Process rule mode is invalid")
-
-        if args["process_rule"]["mode"] == ProcessRuleMode.AUTOMATIC:
-            args["process_rule"]["rules"] = {}
-        else:
-            if "rules" not in args["process_rule"] or not args["process_rule"]["rules"]:
-                raise ValueError("Process rule rules is required")
-
-            if not isinstance(args["process_rule"]["rules"], dict):
-                raise ValueError("Process rule rules is invalid")
-
-            if (
-                "pre_processing_rules" not in args["process_rule"]["rules"]
-                or args["process_rule"]["rules"]["pre_processing_rules"] is None
-            ):
-                raise ValueError("Process rule pre_processing_rules is required")
-
-            if not isinstance(args["process_rule"]["rules"]["pre_processing_rules"], list):
-                raise ValueError("Process rule pre_processing_rules is invalid")
-
-            unique_pre_processing_rule_dicts = {}
-            for pre_processing_rule in args["process_rule"]["rules"]["pre_processing_rules"]:
-                if "id" not in pre_processing_rule or not pre_processing_rule["id"]:
-                    raise ValueError("Process rule pre_processing_rules id is required")
-
-                if pre_processing_rule["id"] not in DatasetProcessRule.PRE_PROCESSING_RULES:
-                    raise ValueError("Process rule pre_processing_rules id is invalid")
-
-                if "enabled" not in pre_processing_rule or pre_processing_rule["enabled"] is None:
-                    raise ValueError("Process rule pre_processing_rules enabled is required")
-
-                if not isinstance(pre_processing_rule["enabled"], bool):
-                    raise ValueError("Process rule pre_processing_rules enabled is invalid")
-
-                unique_pre_processing_rule_dicts[pre_processing_rule["id"]] = pre_processing_rule
-
-            args["process_rule"]["rules"]["pre_processing_rules"] = list(unique_pre_processing_rule_dicts.values())
-
-            if (
-                "segmentation" not in args["process_rule"]["rules"]
-                or args["process_rule"]["rules"]["segmentation"] is None
-            ):
-                raise ValueError("Process rule segmentation is required")
-
-            if not isinstance(args["process_rule"]["rules"]["segmentation"], dict):
-                raise ValueError("Process rule segmentation is invalid")
-
-            if (
-                "separator" not in args["process_rule"]["rules"]["segmentation"]
-                or not args["process_rule"]["rules"]["segmentation"]["separator"]
-            ):
-                raise ValueError("Process rule segmentation separator is required")
-
-            if not isinstance(args["process_rule"]["rules"]["segmentation"]["separator"], str):
-                raise ValueError("Process rule segmentation separator is invalid")
-
-            if (
-                "max_tokens" not in args["process_rule"]["rules"]["segmentation"]
-                or not args["process_rule"]["rules"]["segmentation"]["max_tokens"]
-            ):
-                raise ValueError("Process rule segmentation max_tokens is required")
-
-            if not isinstance(args["process_rule"]["rules"]["segmentation"]["max_tokens"], int):
-                raise ValueError("Process rule segmentation max_tokens is invalid")
-
-        # valid summary index setting
-        summary_index_setting = args["process_rule"].get("summary_index_setting")
-        if summary_index_setting and summary_index_setting.get("enable"):
-            if "model_name" not in summary_index_setting or not summary_index_setting["model_name"]:
-                raise ValueError("Summary index model name is required")
-            if "model_provider_name" not in summary_index_setting or not summary_index_setting["model_provider_name"]:
-                raise ValueError("Summary index model provider name is required")
+    def estimate_args_validate(cls, args: dict[str, Any]):
+        try:
+            validated = _EstimateArgs.model_validate(args)
+        except ValidationError as e:
+            first = e.errors()[0]
+            original = first.get("ctx", {}).get("error")
+            raise ValueError(str(original) if isinstance(original, ValueError) else first["msg"]) from e
+        process_rule_dict = validated.process_rule.model_dump(exclude_none=True)
+        if validated.process_rule.mode == ProcessRuleMode.AUTOMATIC:
+            process_rule_dict["rules"] = {}
+        elif validated.process_rule.mode == ProcessRuleMode.HIERARCHICAL:
+            rules = process_rule_dict.get("rules")
+            if isinstance(rules, dict) and not rules.get("parent_mode"):
+                rules["parent_mode"] = "paragraph"
+        args["process_rule"] = process_rule_dict
 
     @staticmethod
     def batch_update_document_status(
@@ -3103,7 +3246,7 @@ class DocumentService:
 
 class SegmentService:
     @classmethod
-    def segment_create_args_validate(cls, args: dict, document: Document):
+    def segment_create_args_validate(cls, args: dict[str, Any], document: Document):
         if document.doc_form == IndexStructureType.QA_INDEX:
             if "answer" not in args or not args["answer"]:
                 raise ValueError("Answer is required")
@@ -3120,7 +3263,7 @@ class SegmentService:
                 raise ValueError(f"Exceeded maximum attachment limit of {single_chunk_attachment_limit}")
 
     @classmethod
-    def create_segment(cls, args: dict, document: Document, dataset: Dataset):
+    def create_segment(cls, args: dict[str, Any], document: Document, dataset: Dataset):
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
 
@@ -3141,10 +3284,8 @@ class SegmentService:
         lock_name = f"add_segment_lock_document_id_{document.id}"
         try:
             with redis_client.lock(lock_name, timeout=600):
-                max_position = (
-                    db.session.query(func.max(DocumentSegment.position))
-                    .where(DocumentSegment.document_id == document.id)
-                    .scalar()
+                max_position = db.session.scalar(
+                    select(func.max(DocumentSegment.position)).where(DocumentSegment.document_id == document.id)
                 )
                 segment_document = DocumentSegment(
                     tenant_id=current_user.current_tenant_id,
@@ -3196,7 +3337,7 @@ class SegmentService:
                 segment_document.status = SegmentStatus.ERROR
                 segment_document.error = str(e)
                 db.session.commit()
-            segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment_document.id).first()
+            segment = db.session.get(DocumentSegment, segment_document.id)
             return segment
         except LockNotOwnedError:
             pass
@@ -3219,10 +3360,8 @@ class SegmentService:
                         model_type=ModelType.TEXT_EMBEDDING,
                         model=dataset.embedding_model,
                     )
-                max_position = (
-                    db.session.query(func.max(DocumentSegment.position))
-                    .where(DocumentSegment.document_id == document.id)
-                    .scalar()
+                max_position = db.session.scalar(
+                    select(func.max(DocumentSegment.position)).where(DocumentSegment.document_id == document.id)
                 )
                 pre_segment_data_list = []
                 segment_data_list = []
@@ -3367,11 +3506,7 @@ class SegmentService:
                     else:
                         raise ValueError("The knowledge base index technique is not high quality!")
                     # get the process rule
-                    processing_rule = (
-                        db.session.query(DatasetProcessRule)
-                        .where(DatasetProcessRule.id == document.dataset_process_rule_id)
-                        .first()
-                    )
+                    processing_rule = db.session.get(DatasetProcessRule, document.dataset_process_rule_id)
                     if processing_rule:
                         VectorService.generate_child_chunks(
                             segment, document, dataset, embedding_model_instance, processing_rule, True
@@ -3389,13 +3524,13 @@ class SegmentService:
                         # Query existing summary from database
                         from models.dataset import DocumentSegmentSummary
 
-                        existing_summary = (
-                            db.session.query(DocumentSegmentSummary)
+                        existing_summary = db.session.scalar(
+                            select(DocumentSegmentSummary)
                             .where(
                                 DocumentSegmentSummary.chunk_id == segment.id,
                                 DocumentSegmentSummary.dataset_id == dataset.id,
                             )
-                            .first()
+                            .limit(1)
                         )
 
                         # Check if summary has changed
@@ -3471,11 +3606,7 @@ class SegmentService:
                     else:
                         raise ValueError("The knowledge base index technique is not high quality!")
                     # get the process rule
-                    processing_rule = (
-                        db.session.query(DatasetProcessRule)
-                        .where(DatasetProcessRule.id == document.dataset_process_rule_id)
-                        .first()
-                    )
+                    processing_rule = db.session.get(DatasetProcessRule, document.dataset_process_rule_id)
                     if processing_rule:
                         VectorService.generate_child_chunks(
                             segment, document, dataset, embedding_model_instance, processing_rule, True
@@ -3487,13 +3618,13 @@ class SegmentService:
                 if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                     from models.dataset import DocumentSegmentSummary
 
-                    existing_summary = (
-                        db.session.query(DocumentSegmentSummary)
+                    existing_summary = db.session.scalar(
+                        select(DocumentSegmentSummary)
                         .where(
                             DocumentSegmentSummary.chunk_id == segment.id,
                             DocumentSegmentSummary.dataset_id == dataset.id,
                         )
-                        .first()
+                        .limit(1)
                     )
 
                     if args.summary is None:
@@ -3559,7 +3690,7 @@ class SegmentService:
             segment.status = SegmentStatus.ERROR
             segment.error = str(e)
             db.session.commit()
-        new_segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment.id).first()
+        new_segment = db.session.get(DocumentSegment, segment.id)
         if not new_segment:
             raise ValueError("new_segment is not found")
         return new_segment
@@ -3579,15 +3710,14 @@ class SegmentService:
             # Get child chunk IDs before parent segment is deleted
             child_node_ids = []
             if segment.index_node_id:
-                child_chunks = (
-                    db.session.query(ChildChunk.index_node_id)
-                    .where(
-                        ChildChunk.segment_id == segment.id,
-                        ChildChunk.dataset_id == dataset.id,
-                    )
-                    .all()
+                child_node_ids = list(
+                    db.session.scalars(
+                        select(ChildChunk.index_node_id).where(
+                            ChildChunk.segment_id == segment.id,
+                            ChildChunk.dataset_id == dataset.id,
+                        )
+                    ).all()
                 )
-                child_node_ids = [chunk[0] for chunk in child_chunks if chunk[0]]
 
             delete_segment_from_index_task.delay(
                 [segment.index_node_id], dataset.id, document.id, [segment.id], child_node_ids
@@ -3606,17 +3736,14 @@ class SegmentService:
         # Check if segment_ids is not empty to avoid WHERE false condition
         if not segment_ids or len(segment_ids) == 0:
             return
-        segments_info = (
-            db.session.query(DocumentSegment)
-            .with_entities(DocumentSegment.index_node_id, DocumentSegment.id, DocumentSegment.word_count)
-            .where(
+        segments_info = db.session.execute(
+            select(DocumentSegment.index_node_id, DocumentSegment.id, DocumentSegment.word_count).where(
                 DocumentSegment.id.in_(segment_ids),
                 DocumentSegment.dataset_id == dataset.id,
                 DocumentSegment.document_id == document.id,
                 DocumentSegment.tenant_id == current_user.current_tenant_id,
             )
-            .all()
-        )
+        ).all()
 
         if not segments_info:
             return
@@ -3628,15 +3755,16 @@ class SegmentService:
         # Get child chunk IDs before parent segments are deleted
         child_node_ids = []
         if index_node_ids:
-            child_chunks = (
-                db.session.query(ChildChunk.index_node_id)
-                .where(
-                    ChildChunk.segment_id.in_(segment_db_ids),
-                    ChildChunk.dataset_id == dataset.id,
-                )
-                .all()
-            )
-            child_node_ids = [chunk[0] for chunk in child_chunks if chunk[0]]
+            child_node_ids = [
+                nid
+                for nid in db.session.scalars(
+                    select(ChildChunk.index_node_id).where(
+                        ChildChunk.segment_id.in_(segment_db_ids),
+                        ChildChunk.dataset_id == dataset.id,
+                    )
+                ).all()
+                if nid
+            ]
 
         # Start async cleanup with both parent and child node IDs
         if index_node_ids or child_node_ids:
@@ -3652,7 +3780,7 @@ class SegmentService:
         db.session.add(document)
 
         # Delete database records
-        db.session.query(DocumentSegment).where(DocumentSegment.id.in_(segment_ids)).delete()
+        db.session.execute(delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids)))
         db.session.commit()
 
     @classmethod
@@ -3726,16 +3854,15 @@ class SegmentService:
         with redis_client.lock(lock_name, timeout=20):
             index_node_id = str(uuid.uuid4())
             index_node_hash = helper.generate_text_hash(content)
-            max_position = (
-                db.session.query(func.max(ChildChunk.position))
-                .where(
+            max_position = db.session.scalar(
+                select(func.max(ChildChunk.position)).where(
                     ChildChunk.tenant_id == current_user.current_tenant_id,
                     ChildChunk.dataset_id == dataset.id,
                     ChildChunk.document_id == document.id,
                     ChildChunk.segment_id == segment.id,
                 )
-                .scalar()
             )
+            assert current_user.current_tenant_id
             child_chunk = ChildChunk(
                 tenant_id=current_user.current_tenant_id,
                 dataset_id=dataset.id,
@@ -3746,7 +3873,7 @@ class SegmentService:
                 index_node_hash=index_node_hash,
                 content=content,
                 word_count=len(content),
-                type="customized",
+                type=SegmentType.CUSTOMIZED,
                 created_by=current_user.id,
             )
             db.session.add(child_chunk)
@@ -3806,6 +3933,7 @@ class SegmentService:
             if new_child_chunks_args:
                 child_chunk_count = len(child_chunks)
                 for position, args in enumerate(new_child_chunks_args, start=child_chunk_count + 1):
+                    assert current_user.current_tenant_id
                     index_node_id = str(uuid.uuid4())
                     index_node_hash = helper.generate_text_hash(args.content)
                     child_chunk = ChildChunk(
@@ -3818,7 +3946,7 @@ class SegmentService:
                         index_node_hash=index_node_hash,
                         content=args.content,
                         word_count=len(args.content),
-                        type="customized",
+                        type=SegmentType.CUSTOMIZED,
                         created_by=current_user.id,
                     )
 
@@ -3894,10 +4022,8 @@ class SegmentService:
     @classmethod
     def get_child_chunk_by_id(cls, child_chunk_id: str, tenant_id: str) -> ChildChunk | None:
         """Get a child chunk by its ID."""
-        result = (
-            db.session.query(ChildChunk)
-            .where(ChildChunk.id == child_chunk_id, ChildChunk.tenant_id == tenant_id)
-            .first()
+        result = db.session.scalar(
+            select(ChildChunk).where(ChildChunk.id == child_chunk_id, ChildChunk.tenant_id == tenant_id).limit(1)
         )
         return result if isinstance(result, ChildChunk) else None
 
@@ -3932,10 +4058,10 @@ class SegmentService:
     @classmethod
     def get_segment_by_id(cls, segment_id: str, tenant_id: str) -> DocumentSegment | None:
         """Get a segment by its ID."""
-        result = (
-            db.session.query(DocumentSegment)
+        result = db.session.scalar(
+            select(DocumentSegment)
             .where(DocumentSegment.id == segment_id, DocumentSegment.tenant_id == tenant_id)
-            .first()
+            .limit(1)
         )
         return result if isinstance(result, DocumentSegment) else None
 
@@ -3978,15 +4104,15 @@ class DatasetCollectionBindingService:
     def get_dataset_collection_binding(
         cls, provider_name: str, model_name: str, collection_type: str = "dataset"
     ) -> DatasetCollectionBinding:
-        dataset_collection_binding = (
-            db.session.query(DatasetCollectionBinding)
+        dataset_collection_binding = db.session.scalar(
+            select(DatasetCollectionBinding)
             .where(
                 DatasetCollectionBinding.provider_name == provider_name,
                 DatasetCollectionBinding.model_name == model_name,
                 DatasetCollectionBinding.type == collection_type,
             )
             .order_by(DatasetCollectionBinding.created_at)
-            .first()
+            .limit(1)
         )
 
         if not dataset_collection_binding:
@@ -4004,13 +4130,13 @@ class DatasetCollectionBindingService:
     def get_dataset_collection_binding_by_id_and_type(
         cls, collection_binding_id: str, collection_type: str = "dataset"
     ) -> DatasetCollectionBinding:
-        dataset_collection_binding = (
-            db.session.query(DatasetCollectionBinding)
+        dataset_collection_binding = db.session.scalar(
+            select(DatasetCollectionBinding)
             .where(
                 DatasetCollectionBinding.id == collection_binding_id, DatasetCollectionBinding.type == collection_type
             )
             .order_by(DatasetCollectionBinding.created_at)
-            .first()
+            .limit(1)
         )
         if not dataset_collection_binding:
             raise ValueError("Dataset collection binding not found")
@@ -4032,7 +4158,7 @@ class DatasetPermissionService:
     @classmethod
     def update_partial_member_list(cls, tenant_id, dataset_id, user_list):
         try:
-            db.session.query(DatasetPermission).where(DatasetPermission.dataset_id == dataset_id).delete()
+            db.session.execute(delete(DatasetPermission).where(DatasetPermission.dataset_id == dataset_id))
             permissions = []
             for user in user_list:
                 permission = DatasetPermission(
@@ -4068,7 +4194,7 @@ class DatasetPermissionService:
     @classmethod
     def clear_partial_member_list(cls, dataset_id):
         try:
-            db.session.query(DatasetPermission).where(DatasetPermission.dataset_id == dataset_id).delete()
+            db.session.execute(delete(DatasetPermission).where(DatasetPermission.dataset_id == dataset_id))
             db.session.commit()
         except Exception as e:
             db.session.rollback()

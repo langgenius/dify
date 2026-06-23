@@ -11,9 +11,10 @@ from unittest.mock import MagicMock
 import pytest
 from flask import Flask
 from flask.views import MethodView
+from werkzeug.exceptions import Forbidden
+
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
-from werkzeug.exceptions import Forbidden
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -62,7 +63,9 @@ def _mock_user(role: TenantAccountRole) -> SimpleNamespace:
 
 def _prepare_context(module, monkeypatch: pytest.MonkeyPatch, role=TenantAccountRole.OWNER):
     user = _mock_user(role)
-    monkeypatch.setattr(module, "current_account_with_tenant", lambda: (user, "tenant-123"))
+    from controllers.console import wraps
+
+    monkeypatch.setattr(wraps, "current_account_with_tenant", lambda: (user, "tenant-123"))
     mock_service = MagicMock()
     monkeypatch.setattr(module, "ModelLoadBalancingService", lambda: mock_service)
     return mock_service

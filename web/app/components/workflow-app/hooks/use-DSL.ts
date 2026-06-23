@@ -1,10 +1,10 @@
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   useCallback,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useToastContext } from '@/app/components/base/toast/context'
 import {
   DSL_EXPORT_CHECK,
 } from '@/app/components/workflow/constants'
@@ -12,14 +12,17 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { exportAppConfig } from '@/service/apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { downloadBlob } from '@/utils/download'
-import { useNodesSyncDraft } from './use-nodes-sync-draft'
+import {
+  useNodesSyncDraft,
+  useNodesSyncDraftByCanEdit,
+} from './use-nodes-sync-draft'
 
-export const useDSL = () => {
+type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
+
+const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const { eventEmitter } = useEventEmitterContextContext()
   const [exporting, setExporting] = useState(false)
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
 
   const appDetail = useAppStore(s => s.appDetail)
 
@@ -42,12 +45,12 @@ export const useDSL = () => {
       downloadBlob({ data: file, fileName: `${appDetail.name}.yml` })
     }
     catch {
-      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+      toast.error(t('exportFailed', { ns: 'app' }))
     }
     finally {
       setExporting(false)
     }
-  }, [appDetail, notify, t, doSyncWorkflowDraft, exporting])
+  }, [appDetail, t, doSyncWorkflowDraft, exporting])
 
   const exportCheck = useCallback(async () => {
     if (!appDetail)
@@ -67,12 +70,24 @@ export const useDSL = () => {
       } as any)
     }
     catch {
-      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+      toast.error(t('exportFailed', { ns: 'app' }))
     }
-  }, [appDetail, eventEmitter, handleExportDSL, notify, t])
+  }, [appDetail, eventEmitter, handleExportDSL, t])
 
   return {
     exportCheck,
     handleExportDSL,
   }
+}
+
+export const useDSLByCanEdit = (canEdit: boolean) => {
+  const { doSyncWorkflowDraft } = useNodesSyncDraftByCanEdit(canEdit)
+
+  return useDSLBase(doSyncWorkflowDraft)
+}
+
+export const useDSL = () => {
+  const { doSyncWorkflowDraft } = useNodesSyncDraft()
+
+  return useDSLBase(doSyncWorkflowDraft)
 }

@@ -7,10 +7,10 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import Chat from './chat'
 import TextGeneration from './text-generation'
 
-type Props = {
+type Props = Readonly<{
   appId: string
   appDetail: TryAppInfo
-}
+}>
 
 const TryApp: FC<Props> = ({
   appId,
@@ -22,7 +22,7 @@ const TryApp: FC<Props> = ({
 
   useDocumentTitle(appDetail?.site?.title || '')
   return (
-    <div className="flex h-full w-full">
+    <div className="flex size-full">
       {isChat && (
         <Chat appId={appId} appDetail={appDetail} className="h-full grow" />
       )}

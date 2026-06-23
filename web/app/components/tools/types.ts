@@ -6,11 +6,6 @@ type LocalizedText<T = string> = {
   [key: string]: T
 }
 
-export enum LOC {
-  tools = 'tools',
-  app = 'app',
-}
-
 export enum AuthType {
   none = 'none',
   apiKey = 'api_key', // backward compatibility
@@ -61,6 +56,7 @@ export type Collection = {
   is_team_authorization: boolean
   allow_delete: boolean
   labels: string[]
+  tools?: Tool[]
   plugin_id?: string
   letter?: string
   // MCP Server
@@ -83,6 +79,11 @@ export type Collection = {
     timeout?: number
     sse_read_timeout?: number
   }
+  // M3 — user-identity forwarding (MCP). Single selector now drives both
+  // "is forwarding on?" and "which mechanism to use?". Pre-collapse builds
+  // also sent a redundant `forward_user_identity` boolean; the api dropped
+  // it, so the field is gone here too.
+  identity_mode?: 'off' | 'idp_token'
   // Workflow
   workflow_app_id?: string
 }
@@ -105,7 +106,7 @@ export type ToolParameter = {
   max?: number
 }
 
-export type TriggerParameter = {
+type TriggerParameter = {
   name: string
   label: LocalizedText
   human_description: LocalizedText
@@ -170,7 +171,7 @@ export type CustomCollectionBackend = {
   labels: string[]
 }
 
-export type ParamItem = {
+type ParamItem = {
   name: string
   label: LocalizedText
   human_description: LocalizedText

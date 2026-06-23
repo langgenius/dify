@@ -1,8 +1,8 @@
 import type { Category } from './types'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
-import { cn } from '@/utils/classnames'
 import { CategoryEnum } from './types'
 
 type FooterProps = {
@@ -28,7 +28,7 @@ const Footer = ({
         <span className="flex h-fit items-center gap-x-1 text-saas-dify-blue-accessible">
           <Link
             href={pricingPageURL}
-            className="system-md-regular hover:underline focus-visible:underline focus-visible:outline-none"
+            className="system-md-regular hover:underline focus-visible:underline focus-visible:outline-hidden"
             target="_blank"
             rel="noopener noreferrer"
           >

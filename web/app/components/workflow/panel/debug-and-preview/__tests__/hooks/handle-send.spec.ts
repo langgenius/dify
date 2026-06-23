@@ -11,6 +11,9 @@ const mockSetLoopTimes = vi.fn()
 const mockSubmitHumanInputForm = vi.fn()
 const mockSseGet = vi.fn()
 const mockGetNodes = vi.fn((): any[] => [])
+const mockHooksStoreState = vi.hoisted(() => ({
+  canRun: true,
+}))
 
 let mockWorkflowRunningData: any = null
 
@@ -26,7 +29,7 @@ vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: (...args: any[]) => mockSubmitHumanInputForm(...args),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -49,7 +52,12 @@ vi.mock('../../../../hooks', () => ({
 }))
 
 vi.mock('../../../../hooks-store', () => ({
-  useHooksStore: () => null,
+  useHooksStore: (selector: (state: { configsMap: null, accessControl: { canRun: boolean } }) => unknown) => selector({
+    configsMap: null,
+    accessControl: {
+      canRun: mockHooksStoreState.canRun,
+    },
+  }),
 }))
 
 vi.mock('../../../../store', () => ({
@@ -67,6 +75,7 @@ vi.mock('../../../../store', () => ({
 const resetMocksAndWorkflowState = () => {
   vi.clearAllMocks()
   mockWorkflowRunningData = null
+  mockHooksStoreState.canRun = true
 }
 
 describe('useChat – handleSend', () => {
@@ -83,8 +92,22 @@ describe('useChat – handleSend', () => {
     })
 
     expect(mockHandleRun).toHaveBeenCalledTimes(1)
-    const [bodyParams] = mockHandleRun.mock.calls[0]
+    const [bodyParams] = (mockHandleRun.mock.calls[0] ?? []) as [any]
     expect(bodyParams.query).toBe('hello')
+  })
+
+  it('should return false and skip handleRun when test/run permission is missing', () => {
+    mockHooksStoreState.canRun = false
+    const { result } = renderHook(() => useChat({}))
+
+    let returned: unknown
+    act(() => {
+      returned = result.current.handleSend({ query: 'hello', inputs: {} }, {})
+    })
+
+    expect(returned).toBe(false)
+    expect(mockHandleRun).not.toHaveBeenCalled()
+    expect(result.current.chatList).toHaveLength(0)
   })
 
   it('should show notification and return false when already responding', () => {
@@ -166,7 +189,7 @@ describe('useChat – handleSend', () => {
     })
 
     expect(mockHandleRun).toHaveBeenCalledTimes(1)
-    const [bodyParams] = mockHandleRun.mock.calls[0]
+    const [bodyParams] = (mockHandleRun.mock.calls[0] ?? []) as [any]
     const localFile = bodyParams.files.find((f: any) => f.transfer_method === 'local_file')
     const remoteFile = bodyParams.files.find((f: any) => f.transfer_method === 'remote_url')
     expect(localFile.url).toBe('')

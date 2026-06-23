@@ -3,14 +3,15 @@
 import type { FC, PropsWithChildren } from 'react'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { AppData, AppMeta } from '@/models/share'
+import { useQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { create } from 'zustand'
 import { getProcessedSystemVariablesFromUrlParams } from '@/app/components/base/chat/utils'
 import Loading from '@/app/components/base/loading'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useSearchParams } from '@/next/navigation'
 import { useGetWebAppAccessModeByCode } from '@/service/use-share'
-import { useIsSystemFeaturesPending } from './global-public-context'
 
 type WebAppStore = {
   shareCode: string | null
@@ -54,8 +55,13 @@ export const useWebAppStore = create<WebAppStore>(set => ({
 const getShareCodeFromRedirectUrl = (redirectUrl: string | null): string | null => {
   if (!redirectUrl || redirectUrl.length === 0)
     return null
-  const url = new URL(`${window.location.origin}${decodeURIComponent(redirectUrl)}`)
-  return url.pathname.split('/').pop() || null
+  try {
+    const url = new URL(decodeURIComponent(redirectUrl), 'https://dify.local')
+    return url.pathname.split('/').pop() || null
+  }
+  catch {
+    return null
+  }
 }
 const getShareCodeFromPathname = (pathname: string): string | null => {
   const code = pathname.split('/').pop() || null
@@ -65,7 +71,7 @@ const getShareCodeFromPathname = (pathname: string): string | null => {
 }
 
 const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
-  const isGlobalPending = useIsSystemFeaturesPending()
+  const { isPending: isGlobalPending } = useQuery(systemFeaturesQueryOptions())
   const updateWebAppAccessMode = useWebAppStore(state => state.updateWebAppAccessMode)
   const updateShareCode = useWebAppStore(state => state.updateShareCode)
   const updateEmbeddedUserId = useWebAppStore(state => state.updateEmbeddedUserId)
@@ -113,7 +119,7 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
 
   if (isGlobalPending || isLoading) {
     return (
-      <div className="flex h-full w-full items-center justify-center">
+      <div className="flex size-full items-center justify-center">
         <Loading />
       </div>
     )

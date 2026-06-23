@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import VarHighlight from '@/app/components/app/configuration/base/var-highlight'
-import { cn } from '@/utils/classnames'
 
-type Props = {
+type Props = Readonly<{
   isFocus?: boolean
   onFocus?: () => void
   value: string
@@ -12,7 +12,7 @@ type Props = {
   wrapClassName?: string
   textClassName?: string
   readonly?: boolean
-}
+}>
 
 const SupportVarInput: FC<Props> = ({
   isFocus,
@@ -32,7 +32,7 @@ const SupportVarInput: FC<Props> = ({
         return (
           <VarHighlight
             key={`var-${index}`}
-            name={variableMatch[1]}
+            name={variableMatch[1]!}
           />
         )
       }
@@ -46,7 +46,7 @@ const SupportVarInput: FC<Props> = ({
   return (
     <div
       className={
-        cn(wrapClassName, 'flex h-full w-full')
+        cn(wrapClassName, 'flex size-full')
       }
       onClick={onFocus}
     >

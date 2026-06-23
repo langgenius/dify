@@ -1,5 +1,6 @@
 import threading
 from collections.abc import Sequence
+from typing import TypedDict
 
 from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
@@ -19,16 +20,25 @@ from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
 
 
+class WorkflowRunListArgs(TypedDict, total=False):
+    """Expected shape of the args dict passed to workflow run pagination methods."""
+
+    limit: int
+    last_id: str
+    status: str
+
+
 class WorkflowRunService:
     _session_factory: sessionmaker
     _workflow_run_repo: APIWorkflowRunRepository
 
     def __init__(self, session_factory: Engine | sessionmaker | None = None):
         """Initialize WorkflowRunService with repository dependencies."""
-        if session_factory is None:
-            session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
-        elif isinstance(session_factory, Engine):
-            session_factory = sessionmaker(bind=session_factory, expire_on_commit=False)
+        match session_factory:
+            case None:
+                session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
+            case Engine():
+                session_factory = sessionmaker(bind=session_factory, expire_on_commit=False)
 
         self._session_factory = session_factory
         self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
@@ -37,7 +47,10 @@ class WorkflowRunService:
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._session_factory)
 
     def get_paginate_advanced_chat_workflow_runs(
-        self, app_model: App, args: dict, triggered_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.DEBUGGING
+        self,
+        app_model: App,
+        args: WorkflowRunListArgs,
+        triggered_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.DEBUGGING,
     ) -> InfiniteScrollPagination:
         """
         Get advanced chat app workflow run list
@@ -73,7 +86,10 @@ class WorkflowRunService:
         return pagination
 
     def get_paginate_workflow_runs(
-        self, app_model: App, args: dict, triggered_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.DEBUGGING
+        self,
+        app_model: App,
+        args: WorkflowRunListArgs,
+        triggered_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.DEBUGGING,
     ) -> InfiniteScrollPagination:
         """
         Get workflow run list

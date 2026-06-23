@@ -1,12 +1,13 @@
 import type { ReactElement } from 'react'
 import type { AppPublisherProps } from '@/app/components/app/app-publisher'
 import type { App } from '@/types/app'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { ToastContext } from '@/app/components/base/toast/context'
 import { Plan } from '@/app/components/billing/type'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/client'
 import FeaturesTrigger from '../features-trigger'
 
 const mockUseIsChatMode = vi.fn()
@@ -20,7 +21,24 @@ const mockUseProviderContext = vi.fn()
 const mockUseNodes = vi.fn()
 const mockUseEdges = vi.fn()
 
-const mockNotify = vi.fn()
+const toastMocks = vi.hoisted(() => ({
+  call: vi.fn(),
+  dismiss: vi.fn(),
+  update: vi.fn(),
+  promise: vi.fn(),
+}))
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: Object.assign(toastMocks.call, {
+    success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
+    error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
+    warning: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'warning', message, ...options })),
+    info: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'info', message, ...options })),
+    dismiss: toastMocks.dismiss,
+    update: toastMocks.update,
+    promise: toastMocks.promise,
+  }),
+}))
 const mockHandleCheckBeforePublish = vi.fn()
 const mockHandleSyncWorkflowDraft = vi.fn()
 const mockPublishWorkflow = vi.fn()
@@ -28,6 +46,7 @@ const mockUpdatePublishedWorkflow = vi.fn()
 const mockResetWorkflowVersionHistory = vi.fn()
 const mockInvalidateAppTriggers = vi.fn()
 const mockFetchAppDetail = vi.fn()
+const mockInvalidateQueries = vi.fn()
 const mockSetPublishedAt = vi.fn()
 const mockSetLastPublishedHasUserInput = vi.fn()
 
@@ -68,6 +87,25 @@ vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => mockWorkflowStore,
 }))
 
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: <T,>(selector: (state: { accessControl: { canReleaseAndVersion: boolean } }) => T): T =>
+    selector({
+      accessControl: {
+        canReleaseAndVersion: true,
+      },
+    }),
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQueryClient: () => ({
+      invalidateQueries: mockInvalidateQueries,
+    }),
+  }
+})
+
 vi.mock('@/app/components/base/features/hooks', () => ({
   useFeatures: (selector: (state: Record<string, unknown>) => unknown) => mockUseFeatures(selector),
 }))
@@ -85,7 +123,7 @@ vi.mock('reactflow', () => ({
 }))
 
 vi.mock('@/app/components/app/app-publisher', () => ({
-  default: (props: AppPublisherProps) => {
+  AppPublisher: (props: AppPublisherProps) => {
     const inputs = props.inputs ?? []
     return (
       <div
@@ -108,8 +146,11 @@ vi.mock('@/app/components/app/app-publisher', () => ({
         <button type="button" onClick={() => { Promise.resolve(props.onPublish?.()).catch(() => undefined) }}>
           publisher-publish
         </button>
-        <button type="button" onClick={() => { Promise.resolve(props.onPublish?.({ title: 'Test title', releaseNotes: 'Test notes' })).catch(() => undefined) }}>
+        <button type="button" onClick={() => { Promise.resolve(props.onPublish?.({ url: '/apps/app-1/workflows/publish', title: 'Test title', releaseNotes: 'Test notes' })).catch(() => undefined) }}>
           publisher-publish-with-params
+        </button>
+        <button type="button" onClick={() => { Promise.resolve(props.onPublish?.({ url: '/apps/app-id/workflows/publish/custom', title: 'Custom title', releaseNotes: 'Custom notes' })).catch(() => undefined) }}>
+          publisher-publish-custom
         </button>
       </div>
     )
@@ -148,12 +189,15 @@ const createProviderContext = ({
 })
 
 const renderWithToast = (ui: ReactElement) => {
-  return render(
-    // eslint-disable-next-line react/no-context-provider
-    <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
-      {ui}
-    </ToastContext.Provider>,
-  )
+  const queryClient = new QueryClient()
+  return {
+    queryClient,
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        {ui}
+      </QueryClientProvider>,
+    ),
+  }
 }
 
 describe('FeaturesTrigger', () => {
@@ -180,6 +224,7 @@ describe('FeaturesTrigger', () => {
     // Set up app store state
     useAppStore.setState({ appDetail: { id: 'app-id' } as unknown as App })
     mockFetchAppDetail.mockResolvedValue({ id: 'app-id' })
+    mockInvalidateQueries.mockResolvedValue(undefined)
     mockPublishWorkflow.mockResolvedValue({ created_at: '2024-01-01T00:00:00Z' })
   })
 
@@ -376,7 +421,7 @@ describe('FeaturesTrigger', () => {
 
       // Assert
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'workflow.panel.checklistTip' })
+        expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'workflow.panel.checklistTip' })
       })
       expect(mockPublishWorkflow).not.toHaveBeenCalled()
     })
@@ -422,9 +467,73 @@ describe('FeaturesTrigger', () => {
         expect(mockSetPublishedAt).toHaveBeenCalledWith('2024-01-01T00:00:00Z')
         expect(mockSetLastPublishedHasUserInput).toHaveBeenCalledWith(true)
         expect(mockResetWorkflowVersionHistory).toHaveBeenCalled()
-        expect(mockNotify).toHaveBeenCalledWith({ type: 'success', message: 'common.api.actionSuccess' })
-        expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-id' })
+        expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'common.api.actionSuccess' })
+        expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['apps', 'detail', 'app-id'] })
         expect(useAppStore.getState().appDetail).toBeDefined()
+      })
+    })
+
+    it('should invalidate roster list after publishing a workflow with a roster Agent v2 node', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      mockUseNodes.mockReturnValue([
+        { id: 'start', data: { type: BlockEnum.Start } },
+        {
+          id: 'agent-v2',
+          data: {
+            type: BlockEnum.AgentV2,
+            version: '2',
+            agent_node_kind: 'dify_agent',
+            agent_binding: {
+              binding_type: 'roster_agent',
+              agent_id: 'agent-1',
+            },
+          },
+        },
+      ])
+      renderWithToast(<FeaturesTrigger />)
+
+      // Act
+      await user.click(screen.getByRole('button', { name: 'publisher-publish' }))
+
+      // Assert
+      await waitFor(() => {
+        expect(mockInvalidateQueries).toHaveBeenCalledWith({
+          queryKey: consoleQuery.agent.get.key(),
+        })
+      })
+    })
+
+    it('should keep roster list cache stable after publishing a workflow without roster Agent v2 nodes', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      mockUseNodes.mockReturnValue([
+        { id: 'start', data: { type: BlockEnum.Start } },
+        {
+          id: 'inline-agent-v2',
+          data: {
+            type: BlockEnum.AgentV2,
+            version: '2',
+            agent_node_kind: 'dify_agent',
+            agent_binding: {
+              binding_type: 'inline_agent',
+              agent_id: 'agent-1',
+              current_snapshot_id: 'snapshot-1',
+            },
+          },
+        },
+      ])
+      renderWithToast(<FeaturesTrigger />)
+
+      // Act
+      await user.click(screen.getByRole('button', { name: 'publisher-publish' }))
+
+      // Assert
+      await waitFor(() => {
+        expect(mockPublishWorkflow).toHaveBeenCalled()
+      })
+      expect(mockInvalidateQueries).not.toHaveBeenCalledWith({
+        queryKey: consoleQuery.agent.get.key(),
       })
     })
 
@@ -439,9 +548,27 @@ describe('FeaturesTrigger', () => {
       // Assert
       await waitFor(() => {
         expect(mockPublishWorkflow).toHaveBeenCalledWith({
-          url: '/apps/app-id/workflows/publish',
+          url: '/apps/app-1/workflows/publish',
           title: 'Test title',
           releaseNotes: 'Test notes',
+        })
+      })
+    })
+
+    it('should respect the publish url passed by the publisher', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      renderWithToast(<FeaturesTrigger />)
+
+      // Act
+      await user.click(screen.getByRole('button', { name: 'publisher-publish-custom' }))
+
+      // Assert
+      await waitFor(() => {
+        expect(mockPublishWorkflow).toHaveBeenCalledWith({
+          url: '/apps/app-id/workflows/publish/custom',
+          title: 'Custom title',
+          releaseNotes: 'Custom notes',
         })
       })
     })
@@ -459,7 +586,7 @@ describe('FeaturesTrigger', () => {
       await waitFor(() => {
         expect(mockPublishWorkflow).toHaveBeenCalled()
       })
-      expect(mockNotify).not.toHaveBeenCalledWith({ type: 'success', message: 'common.api.actionSuccess' })
+      expect(toastMocks.call).not.toHaveBeenCalledWith({ type: 'success', message: 'common.api.actionSuccess' })
       expect(mockUpdatePublishedWorkflow).not.toHaveBeenCalled()
       expect(mockInvalidateAppTriggers).not.toHaveBeenCalled()
       expect(mockSetPublishedAt).not.toHaveBeenCalled()
@@ -471,7 +598,7 @@ describe('FeaturesTrigger', () => {
       // Arrange
       const user = userEvent.setup()
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-      mockFetchAppDetail.mockRejectedValue(new Error('fetch failed'))
+      mockInvalidateQueries.mockRejectedValue(new Error('fetch failed'))
 
       renderWithToast(<FeaturesTrigger />)
 

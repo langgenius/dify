@@ -6,7 +6,7 @@ import EndpointModal from '../endpoint-modal'
 
 const mockToastNotify = vi.fn()
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(
     (message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }),
     {
@@ -101,7 +101,16 @@ describe('EndpointModal', () => {
         />,
       )
 
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      const dialog = screen.getByRole('dialog')
+
+      expect(dialog)!.toBeInTheDocument()
+      expect(dialog).toHaveClass(
+        'data-[swipe-direction=right]:top-2',
+        'data-[swipe-direction=right]:bottom-2',
+        'data-[swipe-direction=right]:h-[calc(100dvh-16px)]',
+        'data-[swipe-direction=right]:w-[400px]',
+        'data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]',
+      )
     })
 
     it('should render title and description', () => {
@@ -114,8 +123,8 @@ describe('EndpointModal', () => {
         />,
       )
 
-      expect(screen.getByText('plugin.detailPanel.endpointModalTitle')).toBeInTheDocument()
-      expect(screen.getByText('plugin.detailPanel.endpointModalDesc')).toBeInTheDocument()
+      expect(screen.getByText('plugin.detailPanel.endpointModalTitle'))!.toBeInTheDocument()
+      expect(screen.getByText('plugin.detailPanel.endpointModalDesc'))!.toBeInTheDocument()
     })
 
     it('should render form with fieldMoreInfo url link', () => {
@@ -128,8 +137,8 @@ describe('EndpointModal', () => {
         />,
       )
 
-      expect(screen.getByTestId('field-more-info')).toBeInTheDocument()
-      expect(screen.getByText('tools.howToGet')).toBeInTheDocument()
+      expect(screen.getByTestId('field-more-info'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.howToGet'))!.toBeInTheDocument()
     })
 
     it('should render readme entrance', () => {
@@ -142,7 +151,7 @@ describe('EndpointModal', () => {
         />,
       )
 
-      expect(screen.getByTestId('readme-entrance')).toBeInTheDocument()
+      expect(screen.getByTestId('readme-entrance'))!.toBeInTheDocument()
     })
   })
 
@@ -173,7 +182,7 @@ describe('EndpointModal', () => {
       )
 
       const allButtons = screen.getAllByRole('button')
-      fireEvent.click(allButtons[0])
+      fireEvent.click(allButtons[0]!)
 
       expect(mockOnCancel).toHaveBeenCalledTimes(1)
     })
@@ -191,7 +200,7 @@ describe('EndpointModal', () => {
       const input = screen.getByTestId('form-input')
       fireEvent.change(input, { target: { value: 'Test Name' } })
 
-      expect(input).toHaveValue('Test Name')
+      expect(input)!.toHaveValue('Test Name')
     })
   })
 
@@ -207,7 +216,7 @@ describe('EndpointModal', () => {
         />,
       )
 
-      expect(screen.getByTestId('form-input')).toHaveValue('Default Name')
+      expect(screen.getByTestId('form-input'))!.toHaveValue('Default Name')
     })
 
     it('should extract default values from schemas when no defaultValues', () => {
@@ -224,7 +233,7 @@ describe('EndpointModal', () => {
         />,
       )
 
-      expect(screen.getByTestId('form-input')).toHaveValue('Schema Default')
+      expect(screen.getByTestId('form-input'))!.toHaveValue('Schema Default')
     })
 
     it('should handle schemas without default values', () => {
@@ -241,7 +250,7 @@ describe('EndpointModal', () => {
         />,
       )
 
-      expect(screen.getByTestId('form')).toBeInTheDocument()
+      expect(screen.getByTestId('form'))!.toBeInTheDocument()
     })
   })
 

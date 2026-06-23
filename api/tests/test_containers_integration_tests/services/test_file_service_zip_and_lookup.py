@@ -15,6 +15,7 @@ from uuid import uuid4
 from zipfile import ZipFile
 
 import pytest
+from sqlalchemy.orm import Session
 
 import services.file_service as file_service_module
 from extensions.storage.storage_type import StorageType
@@ -23,7 +24,7 @@ from models.model import UploadFile
 from services.file_service import FileService
 
 
-def _create_upload_file(db_session, *, tenant_id: str, key: str, name: str) -> UploadFile:
+def _create_upload_file(db_session: Session, *, tenant_id: str, key: str, name: str) -> UploadFile:
     upload_file = UploadFile(
         tenant_id=tenant_id,
         storage_type=StorageType.OPENDAL,
@@ -66,31 +67,31 @@ def test_build_upload_files_zip_tempfile_sanitizes_and_dedupes_names(monkeypatch
             assert zf.read("b (2).txt") == b"three"
 
 
-def test_get_upload_files_by_ids_returns_empty_when_no_ids(db_session_with_containers) -> None:
+def test_get_upload_files_by_ids_returns_empty_when_no_ids(db_session_with_containers: Session) -> None:
     """Ensure empty input returns an empty mapping without hitting the database."""
-    assert FileService.get_upload_files_by_ids(str(uuid4()), []) == {}
+    assert FileService.get_upload_files_by_ids(db_session_with_containers, str(uuid4()), []) == {}
 
 
-def test_get_upload_files_by_ids_returns_id_keyed_mapping(db_session_with_containers) -> None:
+def test_get_upload_files_by_ids_returns_id_keyed_mapping(db_session_with_containers: Session) -> None:
     """Ensure batch lookup returns a dict keyed by stringified UploadFile ids."""
     tenant_id = str(uuid4())
     file1 = _create_upload_file(db_session_with_containers, tenant_id=tenant_id, key="k1", name="file1.txt")
     file2 = _create_upload_file(db_session_with_containers, tenant_id=tenant_id, key="k2", name="file2.txt")
 
-    result = FileService.get_upload_files_by_ids(tenant_id, [file1.id, file1.id, file2.id])
+    result = FileService.get_upload_files_by_ids(db_session_with_containers, tenant_id, [file1.id, file1.id, file2.id])
 
     assert set(result.keys()) == {file1.id, file2.id}
     assert result[file1.id].id == file1.id
     assert result[file2.id].id == file2.id
 
 
-def test_get_upload_files_by_ids_filters_by_tenant(db_session_with_containers) -> None:
+def test_get_upload_files_by_ids_filters_by_tenant(db_session_with_containers: Session) -> None:
     """Ensure files from other tenants are not returned."""
     tenant_a = str(uuid4())
     tenant_b = str(uuid4())
     file_a = _create_upload_file(db_session_with_containers, tenant_id=tenant_a, key="ka", name="a.txt")
     _create_upload_file(db_session_with_containers, tenant_id=tenant_b, key="kb", name="b.txt")
 
-    result = FileService.get_upload_files_by_ids(tenant_a, [file_a.id])
+    result = FileService.get_upload_files_by_ids(db_session_with_containers, tenant_a, [file_a.id])
 
     assert set(result.keys()) == {file_a.id}

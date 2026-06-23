@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import Panel from '../index'
 
@@ -232,17 +232,55 @@ describe('Panel', () => {
     expect(mockPanelStoreState.setPreviewPanelWidth).not.toHaveBeenCalled()
   })
 
-  it('should derive observer widths from border-box, content-rect, and fallback values and disconnect on unmount', () => {
-    mockResizeModes = ['borderBox', 'contentRect', 'fallback']
-
+  it('should derive observer widths from border-box, content-rect, and fallback values and disconnect on unmount', async () => {
     const { unmount } = render(<Panel />)
 
-    expect(mockPanelStoreState.setRightPanelWidth).toHaveBeenCalledWith(720)
-    expect(mockPanelStoreState.setRightPanelWidth).toHaveBeenCalledWith(530)
-    expect(mockPanelStoreState.setRightPanelWidth).toHaveBeenCalledWith(640)
-    expect(mockPanelStoreState.setOtherPanelWidth).toHaveBeenCalledWith(720)
-    expect(mockPanelStoreState.setOtherPanelWidth).toHaveBeenCalledWith(530)
-    expect(mockPanelStoreState.setOtherPanelWidth).toHaveBeenCalledWith(640)
+    await waitFor(() => {
+      expect(mockPanelStoreState.setRightPanelWidth).toHaveBeenCalledWith(640)
+      expect(mockPanelStoreState.setOtherPanelWidth).toHaveBeenCalledWith(640)
+    })
+
+    vi.mocked(mockPanelStoreState.setRightPanelWidth).mockClear()
+    vi.mocked(mockPanelStoreState.setOtherPanelWidth).mockClear()
+
+    act(() => {
+      mockResizeObservers.forEach((observer) => {
+        observer.callback([createResizeEntry('borderBox')], observer as unknown as ResizeObserver)
+      })
+    })
+
+    await waitFor(() => {
+      expect(mockPanelStoreState.setRightPanelWidth).toHaveBeenCalledWith(720)
+      expect(mockPanelStoreState.setOtherPanelWidth).toHaveBeenCalledWith(720)
+    })
+
+    vi.mocked(mockPanelStoreState.setRightPanelWidth).mockClear()
+    vi.mocked(mockPanelStoreState.setOtherPanelWidth).mockClear()
+
+    act(() => {
+      mockResizeObservers.forEach((observer) => {
+        observer.callback([createResizeEntry('contentRect')], observer as unknown as ResizeObserver)
+      })
+    })
+
+    await waitFor(() => {
+      expect(mockPanelStoreState.setRightPanelWidth).toHaveBeenCalledWith(530)
+      expect(mockPanelStoreState.setOtherPanelWidth).toHaveBeenCalledWith(530)
+    })
+
+    vi.mocked(mockPanelStoreState.setRightPanelWidth).mockClear()
+    vi.mocked(mockPanelStoreState.setOtherPanelWidth).mockClear()
+
+    act(() => {
+      mockResizeObservers.forEach((observer) => {
+        observer.callback([createResizeEntry('fallback')], observer as unknown as ResizeObserver)
+      })
+    })
+
+    await waitFor(() => {
+      expect(mockPanelStoreState.setRightPanelWidth).toHaveBeenCalledWith(640)
+      expect(mockPanelStoreState.setOtherPanelWidth).toHaveBeenCalledWith(640)
+    })
 
     unmount()
 

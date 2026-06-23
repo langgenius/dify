@@ -1,14 +1,16 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, RefObject } from 'react'
 import type { BlockEnum, ToolWithProvider } from '../../../types'
 import type { ToolDefaultValue, ToolValue } from '../../types'
+import type { ToolActionPreviewCardHandle } from '../action-item'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { ViewType } from '../../view-type-select'
 import Tool from '../tool'
 
-type Props = {
+type Props = Readonly<{
   payload: ToolWithProvider[]
+  previewCardHandle: ToolActionPreviewCardHandle
   isShowLetterIndex: boolean
   indexBar: React.ReactNode
   hasSearchText: boolean
@@ -16,13 +18,14 @@ type Props = {
   canNotSelectMultiple?: boolean
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   letters: string[]
-  toolRefs: any
+  toolRefs: RefObject<Record<string, HTMLDivElement | null>>
   selectedTools?: ToolValue[]
-}
+}>
 
 const ToolViewFlatView: FC<Props> = ({
   letters,
   payload,
+  previewCardHandle,
   isShowLetterIndex,
   indexBar,
   hasSearchText,
@@ -55,6 +58,7 @@ const ToolViewFlatView: FC<Props> = ({
           >
             <Tool
               payload={tool}
+              previewCardHandle={previewCardHandle}
               viewType={ViewType.flat}
               hasSearchText={hasSearchText}
               onSelect={onSelect}

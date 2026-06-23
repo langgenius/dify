@@ -32,7 +32,7 @@ describe('PromptMenuItem', () => {
       const { container } = render(<PromptMenuItem {...defaultProps} isSelected={true} />)
       const menuDiv = container.firstChild as HTMLElement
 
-      expect(menuDiv.className).toContain('!bg-state-base-hover')
+      expect(menuDiv.className).toContain('bg-state-base-hover!')
       expect(menuDiv.className).toContain('cursor-pointer')
       expect(menuDiv.className).not.toContain('cursor-not-allowed')
     })
@@ -45,7 +45,7 @@ describe('PromptMenuItem', () => {
 
       expect(menuDiv.className).toContain('cursor-not-allowed')
       expect(menuDiv.className).toContain('opacity-30')
-      expect(menuDiv.className).not.toContain('!bg-state-base-hover')
+      expect(menuDiv.className).not.toContain('bg-state-base-hover!')
     })
 
     it('should render with default styles when not selected and not disabled', () => {
@@ -53,7 +53,7 @@ describe('PromptMenuItem', () => {
       const menuDiv = container.firstChild as HTMLElement
 
       expect(menuDiv.className).toContain('cursor-pointer')
-      expect(menuDiv.className).not.toContain('!bg-state-base-hover')
+      expect(menuDiv.className).not.toContain('bg-state-base-hover!')
       expect(menuDiv.className).not.toContain('cursor-not-allowed')
     })
   })

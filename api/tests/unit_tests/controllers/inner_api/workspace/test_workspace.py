@@ -20,6 +20,7 @@ from controllers.inner_api.workspace.workspace import (
     WorkspaceCreatePayload,
     WorkspaceOwnerlessPayload,
 )
+from models.account import TenantStatus
 
 
 class TestWorkspaceCreatePayload:
@@ -98,7 +99,7 @@ class TestEnterpriseWorkspace:
         mock_tenant.id = "tenant-id"
         mock_tenant.name = "My Workspace"
         mock_tenant.plan = "sandbox"
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
         mock_tenant.created_at = now
         mock_tenant.updated_at = now
         mock_tenant_svc.create_tenant.return_value = mock_tenant
@@ -115,7 +116,9 @@ class TestEnterpriseWorkspace:
         assert result["tenant"]["id"] == "tenant-id"
         assert result["tenant"]["name"] == "My Workspace"
         mock_tenant_svc.create_tenant.assert_called_once_with("My Workspace", is_from_dashboard=True)
-        mock_tenant_svc.create_tenant_member.assert_called_once_with(mock_tenant, mock_account, role="owner")
+        mock_tenant_svc.create_tenant_member.assert_called_once_with(
+            mock_tenant, mock_account, mock_db.session, role="owner"
+        )
         mock_event.send.assert_called_once_with(mock_tenant)
 
     @patch("controllers.inner_api.workspace.workspace.db")
@@ -162,7 +165,7 @@ class TestEnterpriseWorkspaceNoOwnerEmail:
         mock_tenant.name = "My Workspace"
         mock_tenant.encrypt_public_key = "pub-key"
         mock_tenant.plan = "sandbox"
-        mock_tenant.status = "normal"
+        mock_tenant.status = TenantStatus.NORMAL
         mock_tenant.custom_config = None
         mock_tenant.created_at = now
         mock_tenant.updated_at = now

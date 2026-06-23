@@ -60,8 +60,8 @@ export const Gallery: Story = {
       <div className="grid grid-cols-5 gap-4 rounded-lg border border-divider-subtle bg-components-panel-bg p-4">
         {examples.map(type => (
           <div key={type} className="flex flex-col items-center gap-1">
-            <FileIcon type={type} className="h-9 w-9" />
-            <span className="text-xs uppercase text-text-tertiary">{type}</span>
+            <FileIcon type={type} className="size-9" />
+            <span className="text-xs text-text-tertiary uppercase">{type}</span>
           </div>
         ))}
       </div>

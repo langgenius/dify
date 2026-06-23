@@ -31,7 +31,7 @@ vi.mock('../../model-auth', () => ({
   CredentialSelector: ({ credentials }: { credentials: Credential[] }) => <div>{`credentials:${credentials.length}`}</div>,
 }))
 
-vi.mock('@/app/components/base/ui/dialog', () => ({
+vi.mock('@langgenius/dify-ui/dialog', () => ({
   Dialog: ({ children, onOpenChange }: DialogProps) => {
     latestDialogOnOpenChange = onOpenChange
     return <div>{children}</div>
@@ -40,7 +40,7 @@ vi.mock('@/app/components/base/ui/dialog', () => ({
   DialogCloseButton: () => <button type="button">close</button>,
 }))
 
-vi.mock('@/app/components/base/ui/alert-dialog', () => ({
+vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
   AlertDialog: ({ children, onOpenChange }: AlertDialogProps) => {
     latestAlertDialogOnOpenChange = onOpenChange
     return <div>{children}</div>
@@ -78,9 +78,8 @@ vi.mock('../../model-auth/hooks', () => ({
 }))
 
 vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: true,
-  }),
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) =>
+    selector({ workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'] }),
 }))
 
 vi.mock('@/hooks/use-i18n', () => ({

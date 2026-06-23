@@ -1,9 +1,10 @@
+from inspect import unwrap
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Response
-from graphon.variables.types import SegmentType
+from flask import Flask, Response
 
+from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist
 from controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable import (
@@ -14,15 +15,9 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable impor
     RagPipelineVariableCollectionApi,
     RagPipelineVariableResetApi,
 )
-from controllers.web.error import InvalidArgumentError, NotFoundError
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
-from models.account import Account
-
-
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
+from graphon.variables.types import SegmentType
+from models.account import Account, TenantAccountRole
 
 
 @pytest.fixture
@@ -34,9 +29,10 @@ def fake_db():
 
 
 @pytest.fixture
-def editor_user():
-    user = MagicMock(spec=Account)
-    user.has_edit_permission = True
+def editor_user() -> Account:
+    user = Account(name="Test User", email="user@example.com")
+    user.id = "account-1"
+    user.role = TenantAccountRole.EDITOR
     return user
 
 
@@ -46,7 +42,7 @@ def restx_config(app):
 
 
 class TestRagPipelineVariableCollectionApi:
-    def test_get_variables_success(self, app, fake_db, editor_user, restx_config):
+    def test_get_variables_success(self, app: Flask, fake_db, editor_user, restx_config):
         api = RagPipelineVariableCollectionApi()
         method = unwrap(api.get)
 
@@ -65,7 +61,6 @@ class TestRagPipelineVariableCollectionApi:
         with (
             app.test_request_context("/?page=1&limit=10"),
             restx_config,
-            patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.current_user", editor_user),
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.db", fake_db),
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.RagPipelineService",
@@ -76,11 +71,17 @@ class TestRagPipelineVariableCollectionApi:
                 return_value=draft_srv,
             ),
         ):
-            result = method(api, pipeline)
+            result = method(api, editor_user, pipeline)
 
-        assert result["items"] == []
+        assert result is var_list
+        draft_srv.list_variables_without_values.assert_called_once_with(
+            app_id="p1",
+            page=1,
+            limit=10,
+            user_id="account-1",
+        )
 
-    def test_get_variables_workflow_not_exist(self, app, fake_db, editor_user):
+    def test_get_variables_workflow_not_exist(self, app: Flask, fake_db, editor_user):
         api = RagPipelineVariableCollectionApi()
         method = unwrap(api.get)
 
@@ -91,7 +92,6 @@ class TestRagPipelineVariableCollectionApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.current_user", editor_user),
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.db", fake_db),
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.RagPipelineService",
@@ -99,9 +99,9 @@ class TestRagPipelineVariableCollectionApi:
             ),
         ):
             with pytest.raises(DraftWorkflowNotExist):
-                method(api, pipeline)
+                method(api, editor_user, pipeline)
 
-    def test_delete_variables_success(self, app, fake_db, editor_user):
+    def test_delete_variables_success(self, app: Flask, fake_db, editor_user):
         api = RagPipelineVariableCollectionApi()
         method = unwrap(api.delete)
 
@@ -109,18 +109,17 @@ class TestRagPipelineVariableCollectionApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.current_user", editor_user),
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.db", fake_db),
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.WorkflowDraftVariableService"),
         ):
-            result = method(api, pipeline)
+            result = method(api, editor_user, pipeline)
 
         assert isinstance(result, Response)
         assert result.status_code == 204
 
 
 class TestRagPipelineNodeVariableCollectionApi:
-    def test_get_node_variables_success(self, app, fake_db, editor_user, restx_config):
+    def test_get_node_variables_success(self, app: Flask, fake_db, editor_user, restx_config):
         api = RagPipelineNodeVariableCollectionApi()
         method = unwrap(api.get)
 
@@ -135,31 +134,30 @@ class TestRagPipelineNodeVariableCollectionApi:
         with (
             app.test_request_context("/"),
             restx_config,
-            patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.current_user", editor_user),
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.db", fake_db),
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.WorkflowDraftVariableService",
                 return_value=srv,
             ),
         ):
-            result = method(api, pipeline, "node1")
+            result = method(api, editor_user, pipeline, "node1")
 
-        assert result["items"] == []
+        assert result is var_list
+        srv.list_node_variables.assert_called_once_with("p1", "node1", user_id="account-1")
 
-    def test_get_node_variables_invalid_node(self, app, editor_user):
+    def test_get_node_variables_invalid_node(self, app: Flask, editor_user):
         api = RagPipelineNodeVariableCollectionApi()
         method = unwrap(api.get)
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.current_user", editor_user),
         ):
             with pytest.raises(InvalidArgumentError):
-                method(api, MagicMock(), SYSTEM_VARIABLE_NODE_ID)
+                method(api, editor_user, MagicMock(), SYSTEM_VARIABLE_NODE_ID)
 
 
 class TestRagPipelineVariableApi:
-    def test_get_variable_not_found(self, app, fake_db, editor_user):
+    def test_get_variable_not_found(self, app: Flask, fake_db, editor_user):
         api = RagPipelineVariableApi()
         method = unwrap(api.get)
 
@@ -168,7 +166,6 @@ class TestRagPipelineVariableApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.current_user", editor_user),
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.db", fake_db),
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.WorkflowDraftVariableService",
@@ -176,9 +173,9 @@ class TestRagPipelineVariableApi:
             ),
         ):
             with pytest.raises(NotFoundError):
-                method(api, MagicMock(), "v1")
+                method(api, editor_user, MagicMock(), "v1")
 
-    def test_patch_variable_invalid_file_payload(self, app, fake_db, editor_user):
+    def test_patch_variable_invalid_file_payload(self, app: Flask, fake_db, editor_user):
         api = RagPipelineVariableApi()
         method = unwrap(api.patch)
 
@@ -193,7 +190,6 @@ class TestRagPipelineVariableApi:
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.current_user", editor_user),
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.db", fake_db),
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.WorkflowDraftVariableService",
@@ -201,9 +197,9 @@ class TestRagPipelineVariableApi:
             ),
         ):
             with pytest.raises(InvalidArgumentError):
-                method(api, pipeline, "v1")
+                method(api, editor_user, pipeline, "v1")
 
-    def test_delete_variable_success(self, app, fake_db, editor_user):
+    def test_delete_variable_success(self, app: Flask, fake_db, editor_user):
         api = RagPipelineVariableApi()
         method = unwrap(api.delete)
 
@@ -215,20 +211,19 @@ class TestRagPipelineVariableApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.current_user", editor_user),
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.db", fake_db),
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.WorkflowDraftVariableService",
                 return_value=srv,
             ),
         ):
-            result = method(api, pipeline, "v1")
+            result = method(api, editor_user, pipeline, "v1")
 
         assert result.status_code == 204
 
 
 class TestRagPipelineVariableResetApi:
-    def test_reset_variable_success(self, app, fake_db, editor_user):
+    def test_reset_variable_success(self, app: Flask, fake_db, editor_user):
         api = RagPipelineVariableResetApi()
         method = unwrap(api.put)
 
@@ -245,7 +240,6 @@ class TestRagPipelineVariableResetApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.current_user", editor_user),
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.db", fake_db),
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.RagPipelineService",
@@ -260,13 +254,13 @@ class TestRagPipelineVariableResetApi:
                 return_value={"id": "v1"},
             ),
         ):
-            result = method(api, pipeline, "v1")
+            result = method(api, editor_user, pipeline, "v1")
 
         assert result == {"id": "v1"}
 
 
 class TestSystemAndEnvironmentVariablesApi:
-    def test_system_variables_success(self, app, fake_db, editor_user, restx_config):
+    def test_system_variables_success(self, app: Flask, fake_db, editor_user, restx_config):
         api = RagPipelineSystemVariableCollectionApi()
         method = unwrap(api.get)
 
@@ -281,18 +275,18 @@ class TestSystemAndEnvironmentVariablesApi:
         with (
             app.test_request_context("/"),
             restx_config,
-            patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.current_user", editor_user),
             patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.db", fake_db),
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.WorkflowDraftVariableService",
                 return_value=srv,
             ),
         ):
-            result = method(api, pipeline)
+            result = method(api, editor_user, pipeline)
 
-        assert result["items"] == []
+        assert result is var_list
+        srv.list_system_variables.assert_called_once_with("p1", user_id="account-1")
 
-    def test_environment_variables_success(self, app, editor_user):
+    def test_environment_variables_success(self, app: Flask, editor_user):
         api = RagPipelineEnvironmentVariableCollectionApi()
         method = unwrap(api.get)
 
@@ -313,12 +307,11 @@ class TestSystemAndEnvironmentVariablesApi:
 
         with (
             app.test_request_context("/"),
-            patch("controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.current_user", editor_user),
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_draft_variable.RagPipelineService",
                 return_value=rag_srv,
             ),
         ):
-            result = method(api, pipeline)
+            result = method(api, editor_user, pipeline)
 
         assert len(result["items"]) == 1

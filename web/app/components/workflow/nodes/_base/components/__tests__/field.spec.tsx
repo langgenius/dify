@@ -1,10 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import Field from '../field'
 
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ popupContent }: { popupContent: React.ReactNode }) => <div>{popupContent}</div>,
-}))
-
 describe('Field', () => {
   it('should render subtitle styling, tooltip, operations, warning dot and required marker', () => {
     const { container } = render(
@@ -19,7 +15,7 @@ describe('Field', () => {
     )
 
     expect(screen.getByText('Knowledge')).toBeInTheDocument()
-    expect(screen.getByText('tooltip text')).toBeInTheDocument()
+    expect(screen.getByLabelText('tooltip text')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'operation' })).toBeInTheDocument()
     expect(screen.getByText('*')).toBeInTheDocument()
     expect(container.querySelector('.system-xs-medium-uppercase')).not.toBeNull()

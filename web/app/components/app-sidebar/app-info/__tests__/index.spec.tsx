@@ -5,12 +5,19 @@ import * as React from 'react'
 import { AppModeEnum } from '@/types/app'
 import AppInfo from '..'
 
-let mockIsCurrentWorkspaceEditor = true
+const mockDetailPanel = vi.hoisted(() => vi.fn())
+const mockModals = vi.hoisted(() => vi.fn())
+
+let mockAppPermissionKeys = ['app.acl.view_layout']
 const mockSetPanelOpen = vi.fn()
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
+    workspacePermissionKeys: ['app.create_and_management'],
+  }),
+  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: ['app.create_and_management'],
   }),
 }))
 
@@ -27,15 +34,17 @@ vi.mock('../app-info-trigger', () => ({
 }))
 
 vi.mock('../app-info-detail-panel', () => ({
-  default: React.memo(({ show, onClose }: { show: boolean, onClose: () => void }) => (
-    show ? <div data-testid="detail-panel"><button type="button" onClick={onClose}>Close Panel</button></div> : null
-  )),
+  default: React.memo((props: { show: boolean, onClose: () => void }) => {
+    mockDetailPanel(props)
+    return props.show ? <div data-testid="detail-panel"><button type="button" onClick={props.onClose}>Close Panel</button></div> : null
+  }),
 }))
 
 vi.mock('../app-info-modals', () => ({
-  default: React.memo(({ activeModal }: { activeModal: string | null }) => (
-    activeModal ? <div data-testid="modals" data-modal={activeModal} /> : null
-  )),
+  default: React.memo((props: { activeModal: string | null }) => {
+    mockModals(props)
+    return props.activeModal ? <div data-testid="modals" data-modal={props.activeModal} /> : null
+  }),
 }))
 
 const mockAppDetail: App & Partial<AppSSO> = {
@@ -48,6 +57,7 @@ const mockAppDetail: App & Partial<AppSSO> = {
   icon_url: '',
   description: '',
   use_icon_as_answer_icon: false,
+  permission_keys: mockAppPermissionKeys,
 } as App & Partial<AppSSO>
 
 const mockUseAppInfoActions = {
@@ -75,8 +85,9 @@ vi.mock('../use-app-info-actions', () => ({
 describe('AppInfo', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCurrentWorkspaceEditor = true
+    mockAppPermissionKeys = ['app.acl.view_layout']
     mockUseAppInfoActions.appDetail = mockAppDetail
+    mockUseAppInfoActions.appDetail.permission_keys = mockAppPermissionKeys
     mockUseAppInfoActions.panelOpen = false
     mockUseAppInfoActions.activeModal = null
   })
@@ -89,7 +100,13 @@ describe('AppInfo', () => {
 
   it('should render trigger when not onlyShowDetail', () => {
     render(<AppInfo expand />)
-    expect(screen.getByTestId('trigger')).toBeInTheDocument()
+    expect(screen.getByTestId('trigger'))!.toBeInTheDocument()
+  })
+
+  it('should not mount detail layer while the app info panel is closed', () => {
+    render(<AppInfo expand />)
+    expect(mockDetailPanel).not.toHaveBeenCalled()
+    expect(mockModals).not.toHaveBeenCalled()
   })
 
   it('should not render trigger when onlyShowDetail is true', () => {
@@ -99,11 +116,11 @@ describe('AppInfo', () => {
 
   it('should pass expand prop to trigger', () => {
     render(<AppInfo expand />)
-    expect(screen.getByTestId('trigger')).toHaveAttribute('data-expand', 'true')
+    expect(screen.getByTestId('trigger'))!.toHaveAttribute('data-expand', 'true')
 
     const { unmount } = render(<AppInfo expand={false} />)
     const triggers = screen.getAllByTestId('trigger')
-    expect(triggers[triggers.length - 1]).toHaveAttribute('data-expand', 'false')
+    expect(triggers[triggers.length - 1])!.toHaveAttribute('data-expand', 'false')
     unmount()
   })
 
@@ -114,14 +131,15 @@ describe('AppInfo', () => {
     await user.click(screen.getByTestId('trigger'))
 
     expect(mockSetPanelOpen).toHaveBeenCalled()
-    const updater = mockSetPanelOpen.mock.calls[0][0] as (v: boolean) => boolean
+    const updater = mockSetPanelOpen.mock.calls[0]![0] as (v: boolean) => boolean
     expect(updater(false)).toBe(true)
     expect(updater(true)).toBe(false)
   })
 
-  it('should not toggle panel when trigger is clicked and user is not editor', async () => {
+  it('should not toggle panel when app ACL does not allow layout access', async () => {
     const user = userEvent.setup()
-    mockIsCurrentWorkspaceEditor = false
+    mockAppPermissionKeys = []
+    mockUseAppInfoActions.appDetail.permission_keys = mockAppPermissionKeys
     render(<AppInfo expand />)
 
     await user.click(screen.getByTestId('trigger'))
@@ -132,16 +150,19 @@ describe('AppInfo', () => {
   it('should show detail panel based on panelOpen when not onlyShowDetail', () => {
     mockUseAppInfoActions.panelOpen = true
     render(<AppInfo expand />)
-    expect(screen.getByTestId('detail-panel')).toBeInTheDocument()
+    expect(screen.getByTestId('detail-panel'))!.toBeInTheDocument()
+    expect(mockDetailPanel).toHaveBeenCalled()
   })
 
   it('should show detail panel based on openState when onlyShowDetail', () => {
     render(<AppInfo expand onlyShowDetail openState />)
-    expect(screen.getByTestId('detail-panel')).toBeInTheDocument()
+    expect(screen.getByTestId('detail-panel'))!.toBeInTheDocument()
   })
 
   it('should hide detail panel when openState is false and onlyShowDetail', () => {
     render(<AppInfo expand onlyShowDetail openState={false} />)
     expect(screen.queryByTestId('detail-panel')).not.toBeInTheDocument()
+    expect(mockDetailPanel).not.toHaveBeenCalled()
+    expect(mockModals).not.toHaveBeenCalled()
   })
 })

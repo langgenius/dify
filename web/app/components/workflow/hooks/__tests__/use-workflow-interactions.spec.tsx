@@ -6,7 +6,6 @@ import {
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { ControlMode } from '../../types'
 import {
-  useWorkflowCanvasMaximize,
   useWorkflowInteractions,
   useWorkflowMoveMode,
   useWorkflowOrganize,
@@ -111,10 +110,14 @@ vi.mock('../use-workflow-history', () => ({
 
 vi.mock('../../utils', async importOriginal => ({
   ...(await importOriginal<typeof import('../../utils')>()),
-  getLayoutForChildNodes: (...args: unknown[]) => mockGetLayoutForChildNodes(...args),
-  getLayoutByELK: (...args: unknown[]) => mockGetLayoutByELK(...args),
   initialNodes: (nodes: unknown[], edges: unknown[]) => mockInitialNodes(nodes, edges),
   initialEdges: (edges: unknown[], nodes: unknown[]) => mockInitialEdges(edges, nodes),
+}))
+
+vi.mock('../../utils/elk-layout', async importOriginal => ({
+  ...(await importOriginal<typeof import('../../utils/elk-layout')>()),
+  getLayoutForChildNodes: (...args: unknown[]) => mockGetLayoutForChildNodes(...args),
+  getLayoutByELK: (...args: unknown[]) => mockGetLayoutByELK(...args),
 }))
 
 describe('use-workflow-interactions exports', () => {
@@ -124,7 +127,6 @@ describe('use-workflow-interactions exports', () => {
     expect(workflowInteractionExports.useWorkflowOrganize).toBeTypeOf('function')
     expect(workflowInteractionExports.useWorkflowZoom).toBeTypeOf('function')
     expect(workflowInteractionExports.useWorkflowUpdate).toBeTypeOf('function')
-    expect(workflowInteractionExports.useWorkflowCanvasMaximize).toBeTypeOf('function')
   })
 
   beforeEach(() => {
@@ -220,7 +222,7 @@ describe('use-workflow-interactions exports', () => {
     })
 
     expect(mockSetNodes).toHaveBeenCalledTimes(1)
-    const nextNodes = mockSetNodes.mock.calls[0][0]
+    const nextNodes = mockSetNodes.mock.calls[0]![0]
     expect(nextNodes.find((node: { id: string }) => node.id === 'loop-node')).toEqual(expect.objectContaining({
       width: expect.any(Number),
       height: expect.any(Number),
@@ -253,7 +255,7 @@ describe('use-workflow-interactions exports', () => {
     expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledTimes(5)
   })
 
-  it('should skip move, zoom, organize and maximize actions when read-only', async () => {
+  it('should skip move, zoom and organize actions when read-only', async () => {
     runtimeState.nodesReadOnly = true
     runtimeState.workflowReadOnly = true
     runtimeState.nodes = [createNode({ id: 'n1' })]
@@ -263,13 +265,11 @@ describe('use-workflow-interactions exports', () => {
     })
     const zoom = renderWorkflowHook(() => useWorkflowZoom())
     const organize = renderWorkflowHook(() => useWorkflowOrganize())
-    const maximize = renderWorkflowHook(() => useWorkflowCanvasMaximize())
 
     act(() => {
       moveMode.result.current.handleModeHand()
       moveMode.result.current.handleModePointer()
       zoom.result.current.handleFitView()
-      maximize.result.current.handleToggleMaximizeCanvas()
     })
     await act(async () => {
       await organize.result.current.handleLayout()
@@ -279,7 +279,6 @@ describe('use-workflow-interactions exports', () => {
     expect(mockHandleSelectionCancel).not.toHaveBeenCalled()
     expect(mockFitView).not.toHaveBeenCalled()
     expect(mockSetViewport).not.toHaveBeenCalled()
-    expect(localStorage.getItem('workflow-canvas-maximize')).toBeNull()
   })
 
   it('useWorkflowUpdate should emit initialized data and only set valid viewport', () => {
@@ -305,25 +304,5 @@ describe('use-workflow-interactions exports', () => {
     }))
     expect(mockSetViewport).toHaveBeenCalledTimes(1)
     expect(mockSetViewport).toHaveBeenCalledWith({ x: 10, y: 20, zoom: 0.5 })
-  })
-
-  it('useWorkflowCanvasMaximize should toggle store and emit event', () => {
-    localStorage.removeItem('workflow-canvas-maximize')
-    const { result, store } = renderWorkflowHook(() => useWorkflowCanvasMaximize(), {
-      initialStoreState: {
-        maximizeCanvas: false,
-      },
-    })
-
-    act(() => {
-      result.current.handleToggleMaximizeCanvas()
-    })
-
-    expect(store.getState().maximizeCanvas).toBe(true)
-    expect(localStorage.getItem('workflow-canvas-maximize')).toBe('true')
-    expect(mockEventEmit).toHaveBeenCalledWith({
-      type: 'workflow-canvas-maximize',
-      payload: true,
-    })
   })
 })

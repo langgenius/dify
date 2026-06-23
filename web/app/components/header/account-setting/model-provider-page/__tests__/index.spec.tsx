@@ -1,5 +1,7 @@
-import { act, render, screen } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import {
   CurrentSystemQuotaTypeEnum,
   CustomConfigurationStatusEnum,
@@ -7,7 +9,43 @@ import {
 } from '../declarations'
 import ModelProviderPage from '../index'
 
-let mockEnableMarketplace = true
+type MockReferenceSetting = {
+  permission: Record<string, never>
+  auto_upgrade?: {
+    strategy_setting: string
+    upgrade_time_of_day: number
+    upgrade_mode: string
+    exclude_plugins: string[]
+    include_plugins: string[]
+  }
+}
+
+const { mockSetAccountSettingModal, mockSaveAutoUpgrade } = vi.hoisted(() => ({
+  mockSetAccountSettingModal: vi.fn(),
+  mockSaveAutoUpgrade: vi.fn(),
+}))
+
+const { mockReferenceSetting, mockAutoUpgradeError } = vi.hoisted(() => ({
+  mockReferenceSetting: {
+    permission: {},
+    auto_upgrade: {
+      strategy_setting: 'latest',
+      upgrade_time_of_day: 0,
+      upgrade_mode: 'all',
+      exclude_plugins: [],
+      include_plugins: [],
+    },
+  } as MockReferenceSetting,
+  mockAutoUpgradeError: {
+    value: undefined as Error | undefined,
+  },
+}))
+
+const { mockProviderContextState } = vi.hoisted(() => ({
+  mockProviderContextState: {
+    isLoadingModelProviders: false,
+  },
+}))
 
 const mockQuotaConfig = {
   quota_type: CurrentSystemQuotaTypeEnum.free,
@@ -18,13 +56,28 @@ const mockQuotaConfig = {
   is_valid: true,
 }
 
-vi.mock('@/context/global-public-context', () => ({
-  useSystemFeaturesQuery: () => ({
-    data: {
-      enable_marketplace: mockEnableMarketplace,
-    },
-  }),
-}))
+const renderModelProviderPage = (
+  props: {
+    enableMarketplace?: boolean
+    searchText?: string
+    stickyToolbar?: boolean
+  } = {},
+) => {
+  const { searchText = '', enableMarketplace = true, stickyToolbar = true } = props
+  return renderWithSystemFeatures((
+    <ModelProviderPage
+      searchText={searchText}
+      stickyToolbar={stickyToolbar}
+    />
+  ), {
+    systemFeatures: { enable_marketplace: enableMarketplace },
+  },
+  )
+}
+
+const saveUpdateSettings = () => {
+  fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+}
 
 const mockProviders = [
   {
@@ -52,6 +105,7 @@ const mockProviders = [
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     modelProviders: mockProviders,
+    isLoadingModelProviders: mockProviderContextState.isLoadingModelProviders,
   }),
 }))
 
@@ -80,31 +134,144 @@ vi.mock('../provider-added-card/quota-panel', () => ({
 }))
 
 vi.mock('../system-model-selector', () => ({
-  default: () => <div data-testid="system-model-selector" />,
+  default: ({ className, notConfigured }: { className?: string, notConfigured?: boolean }) => (
+    <div
+      data-testid="system-model-selector"
+      data-not-configured={String(notConfigured)}
+      className={className}
+    />
+  ),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQuery: () => ({ data: undefined }),
-  }
-})
+vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
+  useCanSetPluginSettings: () => ({
+    canSetPermissions: true,
+    canSetPluginPreferences: true,
+  }),
+  usePluginSettingsAccess: () => ({
+    canSetPermissions: true,
+    canSetPluginPreferences: true,
+    canViewInstalledPlugins: true,
+  }),
+  default: () => ({
+    referenceSetting: mockReferenceSetting,
+    canSetPermissions: true,
+    canSetPluginPreferences: true,
+  }),
+}))
 
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    plugins: {
-      checkInstalled: { queryOptions: () => ({}) },
-      latestVersions: { queryOptions: () => ({}) },
-    },
+vi.mock('@/service/use-plugins', () => ({
+  useInstalledPluginList: () => ({
+    data: { plugins: [] },
+  }),
+  usePluginAutoUpgradeSettings: () => ({
+    data: mockReferenceSetting.auto_upgrade
+      ? {
+          category: 'model',
+          auto_upgrade: mockReferenceSetting.auto_upgrade,
+        }
+      : undefined,
+    error: mockAutoUpgradeError.value,
+    isFetching: false,
+    isLoading: !mockReferenceSetting.auto_upgrade && !mockAutoUpgradeError.value,
+  }),
+  useMutationPluginAutoUpgradeSettings: () => ({
+    mutate: mockSaveAutoUpgrade,
+    isPending: false,
+  }),
+}))
+
+vi.mock('@langgenius/dify-ui/dialog', () => ({
+  Dialog: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogTrigger: ({ render }: { render: ReactNode }) => render,
+  DialogContent: ({ children }: { children: ReactNode }) => (
+    <div data-testid="update-setting-dialog">{children}</div>
+  ),
+  DialogTitle: () => null,
+  DialogCloseButton: () => <button type="button" aria-label="close" />,
+}))
+
+vi.mock('@/context/modal-context', () => ({
+  useModalContextSelector: (selector: (state: { setShowAccountSettingModal: typeof mockSetAccountSettingModal }) => unknown) =>
+    selector({ setShowAccountSettingModal: mockSetAccountSettingModal }),
+}))
+
+vi.mock('@/app/components/base/date-and-time-picker/time-picker', () => ({
+  default: ({
+    value,
+    onChange,
+    renderTrigger,
+  }: {
+    value?: string | { format: (format: string) => string }
+    onChange: (value: { hour: () => number, minute: () => number }) => void
+    renderTrigger: (params: { inputElem: ReactNode, onClick: () => void, isOpen: boolean }) => ReactNode
+  }) => {
+    const displayValue = typeof value === 'string' ? value : value?.format('HH:mm')
+
+    return (
+      <div data-testid="update-time-picker">
+        {renderTrigger({
+          inputElem: <span data-testid="update-time-value">{displayValue}</span>,
+          onClick: vi.fn(),
+          isOpen: false,
+        })}
+        <button
+          type="button"
+          onClick={() => onChange({
+            hour: () => 1,
+            minute: () => 15,
+          })}
+        >
+          set update time
+        </button>
+      </div>
+    )
   },
 }))
+
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
+  const originalPlugins = actual.consoleQuery.plugins as unknown as Record<string, unknown>
+  return {
+    ...actual,
+    consoleQuery: new Proxy(actual.consoleQuery, {
+      get(target, prop) {
+        if (prop === 'plugins') {
+          return {
+            ...originalPlugins,
+            checkInstalled: {
+              queryOptions: () => ({
+                queryKey: ['plugins', 'checkInstalled'],
+                queryFn: () => new Promise(() => {}),
+              }),
+            },
+            latestVersions: {
+              queryOptions: () => ({
+                queryKey: ['plugins', 'latestVersions'],
+                queryFn: () => new Promise(() => {}),
+              }),
+            },
+          }
+        }
+        return Reflect.get(target, prop)
+      },
+    }),
+  }
+})
 
 describe('ModelProviderPage', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
-    mockEnableMarketplace = true
+    mockProviderContextState.isLoadingModelProviders = false
+    mockAutoUpgradeError.value = undefined
+    mockReferenceSetting.auto_upgrade = {
+      strategy_setting: 'latest',
+      upgrade_time_of_day: 0,
+      upgrade_mode: 'all',
+      exclude_plugins: [],
+      include_plugins: [],
+    }
     Object.keys(mockDefaultModels).forEach((key) => {
       mockDefaultModels[key] = { data: null, isLoading: false }
     })
@@ -134,21 +301,120 @@ describe('ModelProviderPage', () => {
   })
 
   it('should render main elements', () => {
-    render(<ModelProviderPage searchText="" />)
-    expect(screen.getByText('common.modelProvider.models')).toBeInTheDocument()
-    expect(screen.getByTestId('system-model-selector')).toBeInTheDocument()
+    renderModelProviderPage()
+    expect(screen.getByPlaceholderText('common.modelProvider.searchModels')).toBeInTheDocument()
+    const autoUpdateButton = screen.getByRole('button', { name: /plugin\.autoUpdate\.autoUpdate/ })
+    const systemModelSelector = screen.getByTestId('system-model-selector')
+    expect(autoUpdateButton).toBeInTheDocument()
+    expect(systemModelSelector).toBeInTheDocument()
+    expect(systemModelSelector.compareDocumentPosition(autoUpdateButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.getByTestId('install-from-marketplace')).toBeInTheDocument()
   })
 
+  it('should align the toolbar without extra internal top offset', () => {
+    const { container } = renderModelProviderPage()
+
+    expect(container.firstElementChild).toHaveClass('relative')
+    expect(container.firstElementChild).not.toHaveClass('-mt-2', 'pt-1')
+    expect(container.firstElementChild?.firstElementChild).toHaveClass('sticky', 'top-0', 'z-10', '-mx-6', 'mb-2', 'flex', 'bg-components-panel-bg', 'px-6', 'pb-2')
+    expect(container.firstElementChild?.firstElementChild).not.toHaveClass('mb-4')
+  })
+
+  it('should show the current auto-update strategy on the update setting button', () => {
+    renderModelProviderPage()
+
+    expect(screen.getAllByText('plugin.autoUpdate.strategy.latest.name')[0]).toBeInTheDocument()
+    expect(screen.getAllByTestId('update-setting-dialog')[0]).toBeInTheDocument()
+    expect(screen.getByRole('radiogroup', { name: 'plugin.autoUpdate.autoUpdate' })).toBeInTheDocument()
+    expect(screen.getByText('plugin.autoUpdate.scope')).toBeInTheDocument()
+    expect(screen.getByText('plugin.autoUpdate.updateTime')).toBeInTheDocument()
+    expect(screen.getByTestId('update-time-picker')).toBeInTheDocument()
+    expect(screen.getByText('autoUpdate.changeTimezone')).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'plugin.autoUpdate.strategy.fixOnly.name' })).toBeInTheDocument()
+  })
+
+  it('should not expose editable update settings while backend auto-upgrade data is loading', () => {
+    mockReferenceSetting.auto_upgrade = undefined
+
+    renderModelProviderPage()
+
+    const updateSettingButton = screen.getByText('plugin.autoUpdate.autoUpdate').closest('button')
+    expect(updateSettingButton).not.toBeDisabled()
+    expect(screen.queryByText('plugin.autoUpdate.strategy.latest.name')).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('common.loading')
+    expect(screen.queryByRole('button', { name: 'common.operation.save' })).not.toBeInTheDocument()
+    expect(mockSaveAutoUpgrade).not.toHaveBeenCalled()
+    expect(screen.getByTestId('update-setting-dialog')).toBeInTheDocument()
+  })
+
+  it('should render a failure state when backend auto-upgrade data fails', () => {
+    mockReferenceSetting.auto_upgrade = undefined
+    mockAutoUpgradeError.value = new Error('auto-upgrade failed')
+
+    renderModelProviderPage()
+
+    expect(screen.getByText('common.api.actionFailed')).toBeInTheDocument()
+    expect(screen.queryByRole('radiogroup', { name: 'plugin.autoUpdate.autoUpdate' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.operation.save' })).not.toBeInTheDocument()
+    expect(mockSaveAutoUpgrade).not.toHaveBeenCalled()
+  })
+
+  it('should update scope from the dialog while keeping the backend returned strategy', () => {
+    renderModelProviderPage()
+
+    fireEvent.click(screen.getByRole('radio', { name: 'plugin.autoUpdate.upgradeMode.partial' }))
+    saveUpdateSettings()
+
+    expect(mockSaveAutoUpgrade).toHaveBeenCalledWith({
+      strategy_setting: 'latest',
+      upgrade_time_of_day: 0,
+      upgrade_mode: 'partial',
+      exclude_plugins: [],
+      include_plugins: [],
+    })
+  })
+
+  it('should update time from the popover while keeping the model provider default strategy as latest', () => {
+    renderModelProviderPage()
+
+    expect(screen.getByTestId('update-time-value')).toHaveTextContent('00:00')
+
+    fireEvent.click(screen.getByRole('button', { name: 'set update time' }))
+
+    expect(screen.getByTestId('update-time-value')).toHaveTextContent('01:15')
+
+    saveUpdateSettings()
+
+    expect(mockSaveAutoUpgrade).toHaveBeenCalledWith({
+      strategy_setting: 'latest',
+      upgrade_time_of_day: 4500,
+      upgrade_mode: 'all',
+      exclude_plugins: [],
+      include_plugins: [],
+    })
+  })
+
   it('should render configured and not configured providers sections', () => {
-    render(<ModelProviderPage searchText="" />)
+    renderModelProviderPage()
     expect(screen.getByText('openai')).toBeInTheDocument()
     expect(screen.getByText('common.modelProvider.toBeConfigured')).toBeInTheDocument()
     expect(screen.getByText('anthropic')).toBeInTheDocument()
   })
 
+  it('should show provider placeholders while model providers are loading', () => {
+    mockProviderContextState.isLoadingModelProviders = true
+
+    renderModelProviderPage()
+
+    expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
+    expect(screen.queryByTestId('provider-card')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('install-from-marketplace')).not.toBeInTheDocument()
+    expect(screen.queryByText('common.modelProvider.emptyProviderTitle')).not.toBeInTheDocument()
+    expect(screen.queryByText('common.modelProvider.noneConfigured')).not.toBeInTheDocument()
+  })
+
   it('should filter providers based on search text', () => {
-    render(<ModelProviderPage searchText="open" />)
+    renderModelProviderPage({ searchText: 'open' })
     act(() => {
       vi.advanceTimersByTime(600)
     })
@@ -156,24 +422,23 @@ describe('ModelProviderPage', () => {
     expect(screen.queryByText('anthropic')).not.toBeInTheDocument()
   })
 
-  it('should show empty state if no configured providers match', () => {
-    render(<ModelProviderPage searchText="non-existent" />)
+  it('should not show not-set-up empty state when search has no matches', () => {
+    renderModelProviderPage({ searchText: 'non-existent' })
     act(() => {
       vi.advanceTimersByTime(600)
     })
-    expect(screen.getByText('common.modelProvider.emptyProviderTitle')).toBeInTheDocument()
+    expect(screen.queryByText('common.modelProvider.emptyProviderTitle')).not.toBeInTheDocument()
+    expect(screen.queryByText('common.modelProvider.toBeConfigured')).not.toBeInTheDocument()
   })
 
   it('should hide marketplace section when marketplace feature is disabled', () => {
-    mockEnableMarketplace = false
-
-    render(<ModelProviderPage searchText="" />)
+    renderModelProviderPage({ enableMarketplace: false })
 
     expect(screen.queryByTestId('install-from-marketplace')).not.toBeInTheDocument()
   })
 
   describe('system model config status', () => {
-    it('should not show top warning when no configured providers exist (empty state card handles it)', () => {
+    it('should show none-configured warning when no configured providers exist', () => {
       mockProviders.splice(0, mockProviders.length, {
         provider: 'anthropic',
         label: { en_US: 'Anthropic' },
@@ -185,25 +450,40 @@ describe('ModelProviderPage', () => {
         },
       })
 
-      render(<ModelProviderPage searchText="" />)
-      expect(screen.queryByText('common.modelProvider.noneConfigured')).not.toBeInTheDocument()
+      renderModelProviderPage()
+      expect(screen.getByText('common.modelProvider.noneConfigured')).toBeInTheDocument()
       expect(screen.queryByText('common.modelProvider.notConfigured')).not.toBeInTheDocument()
       expect(screen.getByText('common.modelProvider.emptyProviderTitle')).toBeInTheDocument()
     })
 
     it('should show none-configured warning when providers exist but no default models set', () => {
-      render(<ModelProviderPage searchText="" />)
+      renderModelProviderPage()
       expect(screen.getByText('common.modelProvider.noneConfigured')).toBeInTheDocument()
     })
 
-    it('should show partially-configured warning when some default models are set', () => {
+    it('should render the none-configured warning inline with the system model selector', () => {
+      const { container } = renderModelProviderPage()
+      const warning = screen.getByText('common.modelProvider.noneConfigured')
+      const warningContainer = warning.closest('.rounded-lg')
+      const systemModelSelector = screen.getByTestId('system-model-selector')
+
+      expect(warning.closest('.fixed')).toBeNull()
+      expect(warningContainer).toHaveClass('inline-flex', 'bg-components-panel-bg-blur')
+      expect(warningContainer).toContainElement(systemModelSelector)
+      expect(systemModelSelector).toHaveAttribute('data-not-configured', 'true')
+      expect(systemModelSelector).toHaveClass('h-6')
+      expect(container.firstElementChild).toHaveClass('relative')
+    })
+
+    it('should not show warning when some default models are set', () => {
       mockDefaultModels.llm = {
         data: { model: 'gpt-4', model_type: 'llm', provider: { provider: 'openai', icon_small: { en_US: '' } } },
         isLoading: false,
       }
 
-      render(<ModelProviderPage searchText="" />)
-      expect(screen.getByText('common.modelProvider.notConfigured')).toBeInTheDocument()
+      renderModelProviderPage()
+      expect(screen.queryByText('common.modelProvider.noneConfigured')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.modelProvider.notConfigured')).not.toBeInTheDocument()
     })
 
     it('should not show warning when all default models are configured', () => {
@@ -217,7 +497,7 @@ describe('ModelProviderPage', () => {
       mockDefaultModels.speech2text = makeModel('whisper-1', 'speech2text')
       mockDefaultModels.tts = makeModel('tts-1', 'tts')
 
-      render(<ModelProviderPage searchText="" />)
+      renderModelProviderPage()
       expect(screen.queryByText('common.modelProvider.noProviderInstalled')).not.toBeInTheDocument()
       expect(screen.queryByText('common.modelProvider.noneConfigured')).not.toBeInTheDocument()
       expect(screen.queryByText('common.modelProvider.notConfigured')).not.toBeInTheDocument()
@@ -228,7 +508,7 @@ describe('ModelProviderPage', () => {
         mockDefaultModels[key] = { data: null, isLoading: true }
       })
 
-      render(<ModelProviderPage searchText="" />)
+      renderModelProviderPage()
       expect(screen.queryByText('common.modelProvider.noProviderInstalled')).not.toBeInTheDocument()
       expect(screen.queryByText('common.modelProvider.noneConfigured')).not.toBeInTheDocument()
       expect(screen.queryByText('common.modelProvider.notConfigured')).not.toBeInTheDocument()
@@ -265,7 +545,7 @@ describe('ModelProviderPage', () => {
       },
     })
 
-    render(<ModelProviderPage searchText="" />)
+    renderModelProviderPage()
 
     const renderedProviders = screen.getAllByTestId('provider-card').map(item => item.textContent)
     expect(renderedProviders).toEqual([

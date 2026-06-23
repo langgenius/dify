@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import Input from '@/app/components/base/input'
-import { cn } from '@/utils/classnames'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   label: string
   labelClassName?: string
@@ -12,7 +12,7 @@ type Props = {
   onChange: (value: string) => void
   isRequired?: boolean
   placeholder?: string
-}
+}>
 
 const Field: FC<Props> = ({
   className,
