@@ -46,6 +46,13 @@ from services.entities.agent_entities import (
 # WorkflowAgentNodeBinding.workflow_version tag for the draft workflow row.
 # Mirrors Workflow.version when it is "draft" (see models/workflow.py).
 _DRAFT_WORKFLOW_VERSION = "draft"
+_PUBLISH_SAVE_STRATEGIES = frozenset(
+    {
+        ComposerSaveStrategy.SAVE_AS_NEW_VERSION,
+        ComposerSaveStrategy.SAVE_AS_NEW_AGENT,
+        ComposerSaveStrategy.SAVE_TO_ROSTER,
+    }
+)
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +76,13 @@ def _backfill_cli_tool_ids(agent_soul: AgentSoulConfig | None) -> None:
             minted = uuid.uuid4().hex[:12]
         cli_tool.id = minted
         seen_ids.add(minted)
+
+
+def _validate_composer_payload_for_strategy(payload: ComposerSavePayload) -> None:
+    if payload.save_strategy in _PUBLISH_SAVE_STRATEGIES:
+        ComposerConfigValidator.validate_publish_payload(payload)
+        return
+    ComposerConfigValidator.validate_draft_save_payload(payload)
 
 
 class AgentComposerService:
@@ -100,7 +114,7 @@ class AgentComposerService:
             raise ValueError("Workflow composer endpoint only accepts workflow variant")
 
         _backfill_cli_tool_ids(payload.agent_soul)
-        ComposerConfigValidator.validate_save_payload(payload)
+        _validate_composer_payload_for_strategy(payload)
         workflow = cls._get_draft_workflow(tenant_id=tenant_id, app_id=app_id)
         binding = cls._get_workflow_binding(tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id)
 
@@ -194,7 +208,7 @@ class AgentComposerService:
         if payload.variant != ComposerVariant.AGENT_APP:
             raise ValueError("Agent App composer endpoint only accepts agent_app variant")
         _backfill_cli_tool_ids(payload.agent_soul)
-        ComposerConfigValidator.validate_save_payload(payload)
+        _validate_composer_payload_for_strategy(payload)
         if payload.agent_soul is None:
             raise ValueError("agent_soul is required")
 
