@@ -1,0 +1,281 @@
+import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
+import type React from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { ServiceApiAccessCard } from '../service-api-access-card'
+import { WebAppAccessCard } from '../web-app-access-card'
+
+const mocks = vi.hoisted(() => ({
+  apiAccessQueryFn: vi.fn(),
+  apiKeysQueryFn: vi.fn(),
+  siteEnableMutation: vi.fn(),
+  siteAccessTokenResetMutation: vi.fn(),
+  apiEnableMutation: vi.fn(),
+  createApiKeyMutation: vi.fn(),
+  deleteApiKeyMutation: vi.fn(),
+}))
+
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.example.test${path}`,
+}))
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    error: vi.fn(),
+    success: vi.fn(),
+  },
+}))
+
+vi.mock('@/hooks/use-timestamp', () => ({
+  default: () => ({
+    formatTime: (value: number) => `formatted-${value}`,
+  }),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    apps: {
+      byAppId: {
+        siteEnable: {
+          post: {
+            mutationOptions: (options = {}) => ({
+              mutationFn: mocks.siteEnableMutation,
+              ...options,
+            }),
+          },
+        },
+        site: {
+          accessTokenReset: {
+            post: {
+              mutationOptions: (options = {}) => ({
+                mutationFn: mocks.siteAccessTokenResetMutation,
+                ...options,
+              }),
+            },
+          },
+        },
+      },
+    },
+    agent: {
+      byAgentId: {
+        get: {
+          queryKey: ({ input }: { input: { params: { agent_id: string } } }) => ['agent-detail', input.params.agent_id],
+        },
+        apiAccess: {
+          get: {
+            queryKey: ({ input }: { input: { params: { agent_id: string } } }) => ['agent-api-access', input.params.agent_id],
+            queryOptions: ({ input }: { input: { params: { agent_id: string } } }) => ({
+              queryKey: ['agent-api-access', input.params.agent_id],
+              queryFn: () => mocks.apiAccessQueryFn(input),
+            }),
+          },
+        },
+        apiEnable: {
+          post: {
+            mutationOptions: (options = {}) => ({
+              mutationFn: mocks.apiEnableMutation,
+              ...options,
+            }),
+          },
+        },
+        apiKeys: {
+          get: {
+            queryOptions: ({ input }: { input: { params: { agent_id: string } } }) => ({
+              queryKey: ['agent-api-keys', input.params.agent_id],
+              queryFn: () => mocks.apiKeysQueryFn(input),
+            }),
+          },
+          post: {
+            mutationOptions: (options = {}) => ({
+              mutationFn: mocks.createApiKeyMutation,
+              ...options,
+            }),
+          },
+          byApiKeyId: {
+            delete: {
+              mutationOptions: (options = {}) => ({
+                mutationFn: mocks.deleteApiKeyMutation,
+                ...options,
+              }),
+            },
+          },
+        },
+      },
+    },
+  },
+}))
+
+function createAgent(overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppDetailWithSite {
+  return {
+    enable_api: true,
+    enable_site: true,
+    icon_url: null,
+    id: 'agent-1',
+    mode: 'agent',
+    name: 'Support Agent',
+    app_id: 'app-1',
+    access_mode: 'sso_verified',
+    site: {
+      access_token: 'site-token',
+      app_base_url: 'https://chat.example.test',
+      chat_color_theme_inverted: false,
+      default_language: 'en-US',
+      icon_url: null,
+      show_workflow_steps: false,
+      title: 'Support Agent',
+      use_icon_as_answer_icon: false,
+    } as NonNullable<AgentAppDetailWithSite['site']> & {
+      access_token: string
+      app_base_url: string
+    },
+    ...overrides,
+  }
+}
+
+function renderWithQueryClient(ui: React.ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+      mutations: {
+        retry: false,
+      },
+    },
+  })
+
+  render(
+    <QueryClientProvider client={queryClient}>
+      {ui}
+    </QueryClientProvider>,
+  )
+
+  return queryClient
+}
+
+describe('Agent access surface cards', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  describe('Web app access', () => {
+    it('should render the backend web app URL and toggle site status through the backing app id', async () => {
+      const user = userEvent.setup()
+      mocks.siteEnableMutation.mockResolvedValueOnce({ enable_site: false })
+
+      renderWithQueryClient(
+        <WebAppAccessCard agent={createAgent()} agentId="agent-1" isLoading={false} />,
+      )
+
+      expect(screen.getByText('https://chat.example.test/agent/site-token')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'agentV2.agentDetail.access.webApp.actions.launch' })).toHaveAttribute('href', 'https://chat.example.test/agent/site-token')
+      expect(screen.getByText('agentV2.agentDetail.access.webApp.ssoEnabled')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('switch', { name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.webApp.title"}' }))
+
+      await waitFor(() => {
+        expect(mocks.siteEnableMutation.mock.calls[0]?.[0]).toEqual({
+          params: {
+            app_id: 'app-1',
+          },
+          body: {
+            enable_site: false,
+          },
+        })
+      })
+    })
+  })
+
+  describe('Service API access', () => {
+    it('should render service API data and toggle Agent API status through the generated Agent endpoint', async () => {
+      const user = userEvent.setup()
+      mocks.apiAccessQueryFn.mockResolvedValueOnce({
+        api_key_count: 2,
+        enabled: true,
+        service_api_base_url: 'https://api.example.test/v1',
+      })
+      mocks.apiEnableMutation.mockResolvedValueOnce({
+        api_key_count: 2,
+        enabled: false,
+        service_api_base_url: 'https://api.example.test/v1',
+      })
+
+      renderWithQueryClient(<ServiceApiAccessCard agentId="agent-1" />)
+
+      expect(await screen.findByText('https://api.example.test/v1')).toBeInTheDocument()
+      expect(screen.getByText('2')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('switch', { name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.serviceApi.title"}' }))
+
+      await waitFor(() => {
+        expect(mocks.apiEnableMutation.mock.calls[0]?.[0]).toEqual({
+          params: {
+            agent_id: 'agent-1',
+          },
+          body: {
+            enable_api: false,
+          },
+        })
+      })
+    })
+
+    it('should manage API keys with the Agent API key endpoints', async () => {
+      const user = userEvent.setup()
+      mocks.apiAccessQueryFn.mockResolvedValue({
+        api_key_count: 1,
+        enabled: true,
+        service_api_base_url: 'https://api.example.test/v1',
+      })
+      mocks.apiKeysQueryFn.mockResolvedValue({
+        data: [
+          {
+            created_at: 1781660000,
+            id: 'key-1',
+            last_used_at: null,
+            token: 'app-existing-secret-key-token',
+            type: 'app',
+          },
+        ],
+      })
+      mocks.createApiKeyMutation.mockResolvedValueOnce({
+        created_at: 1781660100,
+        id: 'key-2',
+        last_used_at: null,
+        token: 'app-new-secret-key-token',
+        type: 'app',
+      })
+      mocks.deleteApiKeyMutation.mockResolvedValueOnce(undefined)
+
+      renderWithQueryClient(<ServiceApiAccessCard agentId="agent-1" />)
+
+      await user.click(await screen.findByRole('button', { name: /agentV2\.agentDetail\.access\.serviceApi\.actions\.apiKey/ }))
+
+      const dialog = await screen.findByRole('dialog', { name: 'appApi.apiKeyModal.apiSecretKey' })
+      expect(await within(dialog).findByText('app...ing-secret-key-token')).toBeInTheDocument()
+
+      await user.click(within(dialog).getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' }))
+
+      await waitFor(() => {
+        expect(mocks.createApiKeyMutation.mock.calls[0]?.[0]).toEqual({
+          params: {
+            agent_id: 'agent-1',
+          },
+        })
+      })
+      expect(await within(dialog).findByText('app-new-secret-key-token')).toBeInTheDocument()
+
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
+      await user.click(await screen.findByRole('button', { name: 'common.operation.confirm' }))
+
+      await waitFor(() => {
+        expect(mocks.deleteApiKeyMutation.mock.calls[0]?.[0]).toEqual({
+          params: {
+            agent_id: 'agent-1',
+            api_key_id: 'key-1',
+          },
+        })
+      })
+    })
+  })
+})
