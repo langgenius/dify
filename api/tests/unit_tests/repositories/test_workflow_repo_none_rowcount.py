@@ -16,14 +16,38 @@ sibling methods in the same files (e.g. ``delete_by_runs`` and
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy.orm import Session, sessionmaker
 
+from core.repositories.factory import OrderConfig
+from graphon.entities import WorkflowExecution, WorkflowNodeExecution
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
+
+
+class _TestWorkflowNodeExecutionRepository(DifyAPISQLAlchemyWorkflowNodeExecutionRepository):
+    def save(self, execution: WorkflowNodeExecution):
+        raise NotImplementedError
+
+    def save_execution_data(self, execution: WorkflowNodeExecution):
+        raise NotImplementedError
+
+    def get_by_workflow_execution(
+        self,
+        workflow_execution_id: str,
+        order_config: OrderConfig | None = None,
+    ):
+        raise NotImplementedError
+
+
+class _TestWorkflowRunRepository(DifyAPISQLAlchemyWorkflowRunRepository):
+    def save(self, execution: WorkflowExecution):
+        raise NotImplementedError
 
 
 def _make_session_with_rowcount(rowcount_value: int | None, execution_id_batches: list[list[str]]):
@@ -68,7 +92,7 @@ def _make_session_with_rowcount(rowcount_value: int | None, execution_id_batches
     return session, delete_result
 
 
-def _make_session_maker(session: MagicMock):
+def _make_session_maker(session: MagicMock) -> sessionmaker[Session]:
     """Return a sessionmaker stand-in whose context manager yields session."""
 
     def _maker():
@@ -77,7 +101,7 @@ def _make_session_maker(session: MagicMock):
         cm.__exit__.return_value = False
         return cm
 
-    return _maker
+    return cast(sessionmaker[Session], _maker)
 
 
 # ----------------------------------------------------------------------------
@@ -93,7 +117,7 @@ def test_delete_executions_by_ids_handles_none_rowcount() -> None:
     session.execute.return_value = delete_result
     session.commit.return_value = None
 
-    repo = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(
+    repo = _TestWorkflowNodeExecutionRepository(
         _make_session_maker(session),
     )
 
@@ -111,7 +135,7 @@ def test_delete_executions_by_ids_returns_rowcount_when_present() -> None:
     session.execute.return_value = delete_result
     session.commit.return_value = None
 
-    repo = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(
+    repo = _TestWorkflowNodeExecutionRepository(
         _make_session_maker(session),
     )
 
@@ -128,7 +152,7 @@ def test_delete_expired_executions_accumulates_none_rowcount_as_zero() -> None:
         execution_id_batches=[["exec-1", "exec-2"], []],
     )
 
-    repo = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(
+    repo = _TestWorkflowNodeExecutionRepository(
         _make_session_maker(session),
     )
 
@@ -148,7 +172,7 @@ def test_delete_executions_by_app_accumulates_none_rowcount_as_zero() -> None:
         execution_id_batches=[["exec-1", "exec-2", "exec-3"], []],
     )
 
-    repo = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(
+    repo = _TestWorkflowNodeExecutionRepository(
         _make_session_maker(session),
     )
 
@@ -173,7 +197,7 @@ def test_delete_runs_by_ids_handles_none_rowcount() -> None:
     session.execute.return_value = delete_result
     session.commit.return_value = None
 
-    repo = DifyAPISQLAlchemyWorkflowRunRepository(
+    repo = _TestWorkflowRunRepository(
         _make_session_maker(session),
     )
 
@@ -202,7 +226,7 @@ def test_delete_runs_by_app_accumulates_none_rowcount_as_zero() -> None:
     session.execute.return_value = delete_result
     session.commit.return_value = None
 
-    repo = DifyAPISQLAlchemyWorkflowRunRepository(
+    repo = _TestWorkflowRunRepository(
         _make_session_maker(session),
     )
 
