@@ -124,7 +124,6 @@ class DatasetsHitTestingBase:
                 external_retrieval_model=cast(dict[str, Any], args.get("external_retrieval_model")),
                 attachment_ids=args.get("attachment_ids"),
                 limit=10,
-                session=db.session,
             )
             query = response.get("query")
             if not isinstance(query, dict) or not isinstance(query.get("content"), str):
