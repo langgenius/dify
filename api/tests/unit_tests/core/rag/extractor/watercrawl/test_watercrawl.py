@@ -73,6 +73,18 @@ class TestBaseAPIClient:
         assert client.session == "session"
         assert captured["headers"]["X-API-Key"] == "k"
         assert captured["headers"]["User-Agent"] == "WaterCrawl-Plugin"
+        assert captured["timeout"] is not None
+        assert captured["timeout"].connect is not None
+        assert captured["timeout"].read is not None
+
+    def test_init_session_uses_bounded_default_timeout(self):
+        # Regression: the session was built with timeout=None, which disables
+        # httpx's timeouts entirely, so a stalled WaterCrawl endpoint would hang
+        # the calling worker forever. Regular requests must keep a bounded timeout.
+        session = BaseAPIClient(api_key="k", base_url="https://watercrawl.dev").session
+
+        assert session._timeout.connect is not None
+        assert session._timeout.read is not None
 
     def test_request_stream_and_non_stream_paths(self, monkeypatch: pytest.MonkeyPatch):
         class FakeSession:
@@ -85,8 +97,8 @@ class TestBaseAPIClient:
                 self.request_calls.append((method, url, params, json, kwargs))
                 return "non-stream-response"
 
-            def build_request(self, method, url, params=None, json=None):
-                req = (method, url, params, json)
+            def build_request(self, method, url, params=None, json=None, timeout=None):
+                req = (method, url, params, json, timeout)
                 self.build_calls.append(req)
                 return req
 
@@ -105,6 +117,11 @@ class TestBaseAPIClient:
         assert client._request("GET", "/v1/items", stream=True) == "stream-response"
         assert fake_session.build_calls
         assert fake_session.send_calls[0][1] is True
+        # the streaming request keeps an unbounded read (the SSE status stream can
+        # stay open for the whole crawl) while still capping the connection
+        stream_timeout = fake_session.build_calls[0][4]
+        assert stream_timeout.read is None
+        assert stream_timeout.connect is not None
 
     def test_http_method_helpers_delegate_to_request(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(BaseAPIClient, "init_session", lambda self: MagicMock())

@@ -226,6 +226,7 @@
   "newAppFromTemplate.sidebar.Workflow": "Potek dela",
   "newAppFromTemplate.sidebar.Writing": "Pisanje",
   "noAccessPermission": "Brez dovoljenja za dostop do spletne aplikacije",
+  "noAccessResourcePermission": "Ni dovoljenja za dostop do tega vira",
   "noUserInputNode": "Manjka vozel uporabniškega vnosa",
   "notPublishedYet": "Aplikacija še ni objavljena",
   "openInExplore": "Odpri v razišči",

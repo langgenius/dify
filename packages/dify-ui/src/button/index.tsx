@@ -131,7 +131,7 @@ export function Button({
       {children}
       {loading && (
         <i
-          className="ml-1 i-ri-loader-2-line size-3 animate-spin motion-reduce:animate-none"
+          className="ms-1 i-ri-loader-2-line size-3 animate-spin motion-reduce:animate-none"
           aria-hidden="true"
         />
       )}

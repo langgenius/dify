@@ -213,6 +213,11 @@ class DatasetConfigManager:
             PlanningStrategy.REACT_ROUTER,
         }:
             for tool in config.get("agent_mode", {}).get("tools", []):
+                if not tool:
+                    # Skip malformed empty tool entries; list(tool.keys())[0]
+                    # would otherwise raise IndexError. The sibling convert()
+                    # already guards this with `if len(tool) == 1`.
+                    continue
                 key = list(tool.keys())[0]
                 if key == "dataset":
                     # old style, use tool name as key

@@ -33,6 +33,18 @@ function normalize(raw: string, opts: Pick<PromptTextOptions<unknown>, 'default'
   return trimmed
 }
 
+export async function promptConfirm(io: IOStreams, message: string): Promise<boolean> {
+  io.err.write(message)
+  const rl = readline.createInterface({ input: io.in, output: io.err, terminal: false })
+  try {
+    const line = await new Promise<string>(resolve => rl.once('line', resolve))
+    return line.trim().toLowerCase() === 'y'
+  }
+  finally {
+    rl.close()
+  }
+}
+
 export async function promptText<T>(opts: PromptTextOptions<T>): Promise<T> {
   const prompt = buildPromptLine(opts)
   const cs = colorScheme(colorEnabled(opts.io.isErrTTY))

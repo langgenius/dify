@@ -516,6 +516,7 @@
   "modelProvider.ttsModel.key": "Modelo de Texto para Fala",
   "modelProvider.ttsModel.tip": "Defina o modelo padrão para entrada de texto para fala na conversa.",
   "modelProvider.upgradeForLoadBalancing": "Atualize seu plano para habilitar o balanceamento de carga.",
+  "navigation.skipToMain": "Pular para o conteúdo principal",
   "noData": "Sem dados",
   "operation.add": "Adicionar",
   "operation.added": "Adicionado",

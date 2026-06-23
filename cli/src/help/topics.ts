@@ -22,6 +22,9 @@ const ACCOUNT_HELP_TEXT = `difyctl: account-bearer onboarding
        difyctl run app <id> "hello" -o json
 
 Tips:
+  * Two app nouns: 'studio-app' is what you build and edit in Studio on the
+    web console inside a workspace (its source definition — export or move it);
+    'app' is a published app you run and inspect.
   * 'difyctl auth list' shows your authenticated contexts; 'difyctl use host'
     and 'difyctl use account' switch between them.
   * Pass --workspace <id> to target a non-default workspace.
@@ -37,8 +40,8 @@ const EXTERNAL_HELP_TEXT = `difyctl: external-SSO bearer onboarding
   smaller dataset:
 
   1. Acquire a token through your SSO provider (out of band).
-  2. Hand it to the CLI:
-       difyctl auth login --external --token "$DIFY_TOKEN"
+  2. Hand it to the CLI via the DIFY_TOKEN environment variable:
+       export DIFY_TOKEN="<your-token>"
 
   3. List apps your subject is permitted to invoke:
        difyctl get app
@@ -73,6 +76,16 @@ function renderAgent(): string {
 OUTPUT
   Pass -o json (or -o yaml) on every command — the JSON shape is stable and
   documented. Without it you get human tables meant for a terminal.
+
+APP vs STUDIO-APP
+  Two nouns, two faces of the same app:
+    studio-app   what you build and edit in Studio on the web console,
+                 inside a workspace — the app's source definition.
+    app          a published app, live and runnable.
+  Use 'studio-app' to work with the definition you manage on the website
+  (export it, move it between workspaces or instances); use 'app' to run
+  and inspect a published one. The COMMANDS list shows the verbs each
+  noun supports.
 
 DISCOVERY
   difyctl help -o json        full command tree + this contract, machine-readable

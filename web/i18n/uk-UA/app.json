@@ -226,6 +226,7 @@
   "newAppFromTemplate.sidebar.Workflow": "Робочий процес",
   "newAppFromTemplate.sidebar.Writing": "Написання",
   "noAccessPermission": "Немає дозволу на доступ до веб-додатку",
+  "noAccessResourcePermission": "Немає дозволу на доступ до цього ресурсу",
   "noUserInputNode": "Відсутній вузол введення користувача",
   "notPublishedYet": "Додаток ще не опублікований",
   "openInExplore": "Відкрити в Огляді",
