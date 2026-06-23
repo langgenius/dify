@@ -194,6 +194,8 @@ vi.mock('@/config', async (importOriginal) => {
   return {
     ...actual,
     IS_CLOUD_EDITION: true,
+    SUPPORT_EMAIL_ADDRESS: '',
+    ZENDESK_WIDGET_KEY: '',
   }
 })
 
@@ -284,10 +286,15 @@ const appContextValue: AppContextValue = {
   workspacePermissionKeys: ownerWorkspacePermissionKeys,
 }
 
-type MainNavSystemFeatures = NonNullable<Parameters<typeof renderWithSystemFeatures>[1]>['systemFeatures']
+type MainNavSystemFeatures = Exclude<NonNullable<Parameters<typeof renderWithSystemFeatures>[1]>['systemFeatures'], null | undefined>
+
+const defaultMainNavSystemFeatures: MainNavSystemFeatures = {
+  branding: { enabled: false },
+  enable_marketplace: true,
+}
 
 const renderMainNav = (
-  systemFeatures: MainNavSystemFeatures = { branding: { enabled: false } },
+  systemFeatures: MainNavSystemFeatures = defaultMainNavSystemFeatures,
   options: { store?: ReturnType<typeof createStore>, extra?: ReactNode } = {},
 ) => {
   const queryClient = createTestQueryClient()
@@ -295,12 +302,20 @@ const renderMainNav = (
   const currentAppContext = getMockAppContext() as AppContextValue
   queryClient.setQueryData(consoleQuery.workspaces.current.post.queryKey(), currentAppContext.currentWorkspace)
   queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
+  const resolvedSystemFeatures = {
+    ...defaultMainNavSystemFeatures,
+    ...systemFeatures,
+    branding: {
+      ...defaultMainNavSystemFeatures.branding,
+      ...systemFeatures.branding,
+    },
+  }
   return renderWithSystemFeatures(
     <JotaiProvider store={options.store}>
       <MainNav />
       {options.extra}
     </JotaiProvider>,
-    { systemFeatures, queryClient },
+    { systemFeatures: resolvedSystemFeatures, queryClient },
   )
 }
 
@@ -379,6 +394,12 @@ describe('MainNav', () => {
     renderMainNav()
 
     expect(screen.queryByRole('link', { name: /common.menus.roster/ })).not.toBeInTheDocument()
+  })
+
+  it('hides the marketplace entry when marketplace is disabled', () => {
+    renderMainNav({ enable_marketplace: false })
+
+    expect(screen.queryByRole('link', { name: /common.mainNav.marketplace/ })).not.toBeInTheDocument()
   })
 
   it('renders deployments in primary navigation when app deploy is enabled', () => {
@@ -923,6 +944,20 @@ describe('MainNav', () => {
     nodes.slice(1).forEach((node, index) => {
       expect(nodes[index]!.compareDocumentPosition(node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     })
+  })
+
+  it('closes the help menu from the support upgrade action', async () => {
+    renderMainNav()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    expect(await screen.findByText('common.userProfile.contactUs')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'billing.upgradeBtn.encourageShort' }))
+
+    await waitFor(() => {
+      expect(screen.queryByText('common.userProfile.forum')).not.toBeInTheDocument()
+    })
+    expect(mockSetShowPricingModal).toHaveBeenCalled()
   })
 
   it('hides the help menu when branding is enabled', () => {

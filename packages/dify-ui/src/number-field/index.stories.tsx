@@ -207,11 +207,6 @@ export const States: Story = {
       </FieldRoot>
     </div>
   ),
-  parameters: {
-    a11y: {
-      test: 'todo',
-    },
-  },
 }
 
 function ControlledDemo() {

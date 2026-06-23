@@ -1,16 +1,17 @@
 import { DifyCommand } from '@/commands/_shared/dify-command'
 import { httpRetryFlag } from '@/commands/_shared/global-flags'
 import { Flags } from '@/framework/flags'
+import { agentGuide } from './guide'
 import { pluginDependencyLabel, runImportApp } from './run'
 
-export default class ImportApp extends DifyCommand {
-  static override description = 'Import an app from a DSL YAML file or URL'
+export default class ImportStudioApp extends DifyCommand {
+  static override description = 'Import a studio app from a DSL YAML file or URL'
 
   static override examples = [
-    '<%= config.bin %> import app --from-file ./app.yaml',
-    '<%= config.bin %> import app --from-file /path/to/app.yaml --name "My App"',
-    '<%= config.bin %> import app --from-url https://example.com/my-app.yaml',
-    '<%= config.bin %> import app --from-file ./app.yaml --app-id <existing-app-id>',
+    '<%= config.bin %> import studio-app --from-file ./app.yaml',
+    '<%= config.bin %> import studio-app --from-file /path/to/app.yaml --name "My App"',
+    '<%= config.bin %> import studio-app --from-url https://example.com/my-app.yaml',
+    '<%= config.bin %> import studio-app --from-file ./app.yaml --app-id <existing-app-id>',
   ]
 
   static override flags = {
@@ -27,7 +28,7 @@ export default class ImportApp extends DifyCommand {
   }
 
   async run(argv: string[]) {
-    const { flags } = this.parse(ImportApp, argv)
+    const { flags } = this.parse(ImportStudioApp, argv)
     if (flags['from-file'] === undefined && flags['from-url'] === undefined)
       this.error('one of --from-file or --from-url is required', { exit: 1 })
     if (flags['from-file'] !== undefined && flags['from-url'] !== undefined)
@@ -56,5 +57,9 @@ export default class ImportApp extends DifyCommand {
       for (const dep of leakedDependencies)
         ctx.io.err.write(`  - ${pluginDependencyLabel(dep)}\n`)
     }
+  }
+
+  override agentGuide(): string {
+    return agentGuide
   }
 }

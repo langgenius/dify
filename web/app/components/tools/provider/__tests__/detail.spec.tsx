@@ -14,7 +14,7 @@ vi.mock('@/i18n-config/language', () => ({
 
 const mockIsCurrentWorkspaceManager = vi.fn(() => true)
 const mockAppContextState = vi.hoisted(() => ({
-  workspacePermissionKeys: ['tool.manage', 'credential.manage', 'credential.use'] as string[],
+  workspacePermissionKeys: ['tool.manage', 'credential.use', 'credential.create', 'credential.manage'] as string[],
 }))
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
@@ -173,7 +173,7 @@ describe('ProviderDetail', () => {
     ])
     mockFetchCustomToolList.mockResolvedValue([])
     mockFetchModelToolList.mockResolvedValue([])
-    mockAppContextState.workspacePermissionKeys = ['tool.manage', 'credential.manage', 'credential.use']
+    mockAppContextState.workspacePermissionKeys = ['tool.manage', 'credential.use', 'credential.create', 'credential.manage']
   })
 
   afterEach(() => {
@@ -535,8 +535,8 @@ describe('ProviderDetail', () => {
       expect(screen.getByTestId('config-credential'))!.toBeInTheDocument()
     })
 
-    it('does not open setup credential drawer without credential.manage', async () => {
-      mockAppContextState.workspacePermissionKeys = ['tool.manage', 'credential.use']
+    it('does not open setup credential drawer without credential.create', async () => {
+      mockAppContextState.workspacePermissionKeys = ['tool.manage', 'credential.use', 'credential.manage']
 
       render(
         <ProviderDetail

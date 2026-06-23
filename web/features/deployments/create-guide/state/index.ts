@@ -27,6 +27,7 @@ import {
   isWorkflowDsl,
 } from '@/features/deployments/shared/domain/dsl'
 import { unsupportedDslNodeError } from '@/features/deployments/shared/domain/error'
+import { isDeploymentDslImportEnabled } from '@/features/deployments/shared/domain/feature-flags'
 import { createDeploymentIdempotencyKey } from '@/features/deployments/shared/domain/idempotency'
 import {
   DEPLOYMENT_PAGE_SIZE,
@@ -40,6 +41,12 @@ import { environmentMatchesIdentifier } from './environment'
 export type GuideMethod = 'bindApp' | 'importDsl'
 export type GuideStep = 'source' | 'release' | 'target'
 export type WorkflowSourceApp = App & { mode: Extract<AppModeEnum, 'workflow'> }
+
+function deploymentGuideMethod(method: GuideMethod): GuideMethod {
+  return method === 'importDsl' && !isDeploymentDslImportEnabled
+    ? 'bindApp'
+    : method
+}
 
 const RANDOM_SUFFIX_ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
 const RANDOM_SUFFIX_LENGTH = 4
@@ -124,6 +131,7 @@ function envVarInput(slot: EnvVarBindingSlot, selection: EnvVarValueSelection | 
 // Workflow primitives
 export const stepAtom = atom<GuideStep>('source')
 export const methodAtom = atom<GuideMethod>('bindApp')
+export const effectiveMethodAtom = atom(get => deploymentGuideMethod(get(methodAtom)))
 
 // Source primitives
 export const sourceSearchTextAtom = atom('')
@@ -145,7 +153,7 @@ export const dslDefaultAppNameAtom = atom((get) => {
 export const dslUnsupportedModeAtom = atom((get) => {
   const dslContent = get(dslContentAtom)
 
-  return get(methodAtom) === 'importDsl'
+  return get(effectiveMethodAtom) === 'importDsl'
     && Boolean(dslContent.trim())
     && !get(isReadingDslAtom)
     && !get(dslReadErrorAtom)
@@ -199,7 +207,7 @@ export const sourceAppsQueryAtom = atomWithInfiniteQuery((get) => {
       initialPageParam: 1,
       placeholderData: keepPreviousData,
     }),
-    enabled: get(methodAtom) === 'bindApp',
+    enabled: get(effectiveMethodAtom) === 'bindApp',
   }
 })
 
@@ -218,7 +226,7 @@ export const effectiveSelectedAppAtom = atom((get) => {
 })
 
 function sourceReady(get: Getter) {
-  const method = get(methodAtom)
+  const method = get(effectiveMethodAtom)
 
   return method === 'importDsl'
     ? get(importDslReadyAtom)
@@ -269,7 +277,7 @@ export const deployableEnvironmentsQueryAtom = atomWithQuery((get) => {
 })
 
 const precheckReleaseQueryAtom = atomWithQuery((get) => {
-  const method = get(methodAtom)
+  const method = get(effectiveMethodAtom)
   const effectiveSelectedApp = get(effectiveSelectedAppAtom)
   const dslContent = get(dslContentAtom)
   const enabled = sourceReady(get)
@@ -310,7 +318,7 @@ function precheckReleaseReady(get: Getter) {
 }
 
 export const deploymentOptionsQueryAtom = atomWithQuery((get) => {
-  const method = get(methodAtom)
+  const method = get(effectiveMethodAtom)
   const effectiveSelectedApp = get(effectiveSelectedAppAtom)
   const dslContent = get(dslContentAtom)
   const enabled = precheckReleaseReady(get)
@@ -378,7 +386,7 @@ const deploymentOptionsContentCheckedAtom = atom((get) => {
 })
 
 export const sourceCanGoNextAtom = atom((get) => {
-  const method = get(methodAtom)
+  const method = get(effectiveMethodAtom)
   const effectiveSelectedApp = get(effectiveSelectedAppAtom)
   const importDslReady = method === 'importDsl' && get(importDslReadyAtom)
   const bindAppReady = method === 'bindApp' && Boolean(effectiveSelectedApp?.id)
@@ -416,7 +424,7 @@ export const continueFromSourceAtom = atom(null, (get, set, {
   if (!get(sourceCanGoNextAtom))
     return
 
-  const method = get(methodAtom)
+  const method = get(effectiveMethodAtom)
   const effectiveSelectedApp = get(effectiveSelectedAppAtom)
   if (method === 'bindApp' && effectiveSelectedApp)
     set(selectSourceAppAtom, effectiveSelectedApp)
@@ -606,7 +614,7 @@ const requiredBindingsReadyAtom = atom((get) => {
 })
 
 export const deploymentTargetEnvVarSlotsAtom = atom((get) => {
-  const method = get(methodAtom)
+  const method = get(effectiveMethodAtom)
   const deploymentOptionsQuery = get(deploymentOptionsQueryAtom)
   const slots = sourceReady(get) ? deploymentOptionsQuery.data?.options?.envVarSlots : undefined
   const dslContent = get(dslContentAtom)
@@ -702,7 +710,7 @@ export const setEnvVarAtom = atom(null, (get, set, key: string, value: EnvVarVal
 
 // Workflow actions
 export const selectMethodAtom = atom(null, (_get, set, method: GuideMethod) => {
-  set(methodAtom, method)
+  set(methodAtom, deploymentGuideMethod(method))
   set(selectedEnvironmentIdAtom, '')
   set(manualBindingSelectionsAtom, {})
   set(envVarValuesAtom, {})
@@ -738,7 +746,7 @@ export const createDeploymentGuideSubmissionAtom = atom(null, async (get, set, {
 }: {
   deployToEnvironment: boolean
 }) => {
-  const method = get(methodAtom)
+  const method = get(effectiveMethodAtom)
   const dslContent = get(dslContentAtom)
   const submittedInstanceName = get(instanceNameAtom).trim()
   const submittedReleaseName = get(releaseNameAtom).trim()

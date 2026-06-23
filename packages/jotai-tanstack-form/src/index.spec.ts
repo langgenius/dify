@@ -1,0 +1,124 @@
+import { createStore } from 'jotai'
+import { describe, expect, it, vi } from 'vitest'
+import {
+  atomWithForm,
+  createFormAtoms,
+} from './index'
+
+type TestFormValues = {
+  name: string
+  count: number
+}
+
+function createTestFormAtom(onSubmit = vi.fn()) {
+  const defaultValues: TestFormValues = {
+    name: '',
+    count: 0,
+  }
+
+  return atomWithForm({
+    defaultValues,
+    onSubmit: ({ value }) => {
+      onSubmit(value)
+    },
+  })
+}
+
+describe('jotai-tanstack-form', () => {
+  it('syncs a TanStack form store into Jotai atoms', () => {
+    const formAtom = createTestFormAtom()
+    const formAtoms = createFormAtoms(formAtom)
+    const store = createStore()
+    const unsubscribe = store.sub(formAtoms.stateAtom, () => undefined)
+
+    store.get(formAtom).api.setFieldValue('name', 'Ada')
+
+    expect(store.get(formAtoms.stateAtom).values.name).toBe('Ada')
+
+    unsubscribe()
+  })
+
+  it('creates scoped atoms for values, field updates, and submit', async () => {
+    const onSubmit = vi.fn()
+    const formAtoms = createFormAtoms(createTestFormAtom(onSubmit))
+    const countFieldAtom = formAtoms.fieldAtom('count')
+    const store = createStore()
+
+    const unsubscribe = store.sub(formAtoms.valuesAtom, () => undefined)
+
+    store.set(countFieldAtom, 3)
+    await store.set(formAtoms.validateAtom, 'change')
+    await store.set(formAtoms.submitAtom)
+
+    expect(store.get(countFieldAtom)).toMatchObject({
+      value: 3,
+    })
+    expect(store.get(formAtoms.valuesAtom)).toEqual({
+      name: '',
+      count: 3,
+    })
+    expect(onSubmit).toHaveBeenCalledWith({
+      name: '',
+      count: 3,
+    })
+
+    unsubscribe()
+  })
+
+  it('accepts FormApi options directly', async () => {
+    const onSubmit = vi.fn()
+    const formAtom = createTestFormAtom(onSubmit)
+    const formAtoms = createFormAtoms(formAtom)
+    const countFieldAtom = formAtoms.fieldAtom('count')
+    const store = createStore()
+    const unsubscribe = store.sub(formAtoms.valuesAtom, () => undefined)
+
+    store.set(countFieldAtom, 5)
+    await store.set(formAtoms.submitAtom)
+
+    expect(store.get(formAtoms.valuesAtom)).toEqual({
+      name: '',
+      count: 5,
+    })
+    expect(onSubmit).toHaveBeenCalledWith({
+      name: '',
+      count: 5,
+    })
+
+    unsubscribe()
+  })
+
+  it('creates and mounts form instances from atom lifecycle', () => {
+    const cleanup = vi.fn()
+    const formAtom = createTestFormAtom()
+    const formAtoms = createFormAtoms(formAtom)
+    const firstStore = createStore()
+    const secondStore = createStore()
+    const firstApi = firstStore.get(formAtom).api
+    const secondApi = secondStore.get(formAtom).api
+    const mount = vi.spyOn(firstApi, 'mount').mockReturnValue(cleanup)
+
+    expect(firstStore.get(formAtoms.valuesAtom)).toEqual({
+      name: '',
+      count: 0,
+    })
+    expect(firstStore.get(formAtoms.valuesAtom)).toEqual({
+      name: '',
+      count: 0,
+    })
+    expect(secondStore.get(formAtoms.valuesAtom)).toEqual({
+      name: '',
+      count: 0,
+    })
+    expect(firstApi).not.toBe(secondApi)
+
+    const unsubscribe = firstStore.sub(formAtoms.valuesAtom, () => undefined)
+
+    expect(mount).toHaveBeenCalledTimes(1)
+
+    unsubscribe()
+
+    expect(cleanup).toHaveBeenCalledTimes(1)
+    mount.mockRestore()
+  })
+})

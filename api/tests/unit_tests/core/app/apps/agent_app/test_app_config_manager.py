@@ -19,6 +19,10 @@ def _soul() -> AgentSoulConfig:
                 "model_settings": {"temperature": 0.2},
             },
             "prompt": {"system_prompt": "You are Iris."},
+            "app_variables": [
+                {"name": "topic", "type": "string", "required": True},
+                {"name": "count", "type": "number", "default": 3},
+            ],
         }
     )
 
@@ -32,7 +36,10 @@ def test_model_and_prompt_come_from_soul():
         "completion_params": {"temperature": 0.2},
     }
     assert d["pre_prompt"] == "You are Iris."
-    assert d["user_input_form"] == []
+    assert d["user_input_form"] == [
+        {"text-input": {"label": "topic", "variable": "topic", "required": True}},
+        {"number": {"label": "count", "variable": "count", "required": False, "default": 3}},
+    ]
 
 
 def test_feature_flags_come_from_app_model_config_when_present():

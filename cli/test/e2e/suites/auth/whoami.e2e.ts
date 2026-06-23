@@ -57,6 +57,8 @@ describe('E2E / difyctl auth whoami + SSO session', () => {
     })
   }
 
+  const itWithSso = optionalIt(Boolean(E.ssoToken))
+
   // ── auth whoami — internal user ──────────────────────────────────────────────
 
   it('[P0] internal user auth whoami outputs email', async () => {
@@ -123,12 +125,12 @@ describe('E2E / difyctl auth whoami + SSO session', () => {
     expect(result.exitCode).not.toBe(0)
   })
 
-  it('[P0] external user get app returns insufficient_scope error', async () => {
-    // Spec: external user get app returns insufficient_scope
+  itWithSso('[P0] external user can list permitted apps via SSO token', async () => {
+    // External users read apps via the permitted-external surface (no workspace scope).
     await withSSOAuth()
     const result = await r(['get', 'app'])
-    expect(result.exitCode).not.toBe(0)
-    expect(result.stderr).toMatch(/insufficient|scope|workspace|SSO/i)
+    assertExitCode(result, 0)
+    expect(result.stdout).toMatch(/NAME\s+ID\s+MODE/i)
   })
 
   it('[P0] external user whoami outputs SSO email', async () => {
@@ -137,8 +139,6 @@ describe('E2E / difyctl auth whoami + SSO session', () => {
     assertExitCode(result, 0)
     expect(result.stdout).toContain('sso-user@example.com')
   })
-
-  const itWithSso = optionalIt(Boolean(E.ssoToken))
 
   itWithSso('[P0] external user can execute run app using SSO token', async () => {
     await injectSsoAuth(configDir, {

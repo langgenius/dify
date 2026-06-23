@@ -2,10 +2,10 @@
 import {
   act,
   fireEvent,
-  render,
   screen,
   waitFor,
 } from '@testing-library/react'
+import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { AppModeEnum } from '@/types/app'
@@ -247,6 +247,7 @@ describe('CreateFromDSLModal', () => {
     expect(mockGetRedirection).toHaveBeenCalledWith(
       { id: 'app-1', mode: 'chat', permission_keys: ['app.acl.view_layout'] },
       mockPush,
+      { isRbacEnabled: false },
     )
   })
 
