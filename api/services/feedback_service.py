@@ -5,7 +5,7 @@ from datetime import datetime
 
 from flask import Response
 from sqlalchemy import or_, select
-from sqlalchemy.orm import scoped_session
+from sqlalchemy.orm import Session
 
 from models.enums import FeedbackRating
 from models.model import Account, App, Conversation, Message, MessageFeedback
@@ -16,7 +16,7 @@ class FeedbackService:
     def export_feedbacks(
         app_id: str,
         *,
-        session: scoped_session,
+        session: Session,
         from_source: str | None = None,
         rating: str | None = None,
         has_comment: bool | None = None,
@@ -84,7 +84,6 @@ class FeedbackService:
         stmt = stmt.order_by(MessageFeedback.created_at.desc())
 
         # Execute query
-        results = session.execute(stmt).all()
         results = session.execute(stmt).all()
 
         # Prepare data for export
