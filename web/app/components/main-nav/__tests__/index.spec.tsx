@@ -194,6 +194,8 @@ vi.mock('@/config', async (importOriginal) => {
   return {
     ...actual,
     IS_CLOUD_EDITION: true,
+    SUPPORT_EMAIL_ADDRESS: '',
+    ZENDESK_WIDGET_KEY: '',
   }
 })
 
@@ -942,6 +944,20 @@ describe('MainNav', () => {
     nodes.slice(1).forEach((node, index) => {
       expect(nodes[index]!.compareDocumentPosition(node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     })
+  })
+
+  it('closes the help menu from the support upgrade action', async () => {
+    renderMainNav()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    expect(await screen.findByText('common.userProfile.contactUs')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'billing.upgradeBtn.encourageShort' }))
+
+    await waitFor(() => {
+      expect(screen.queryByText('common.userProfile.forum')).not.toBeInTheDocument()
+    })
+    expect(mockSetShowPricingModal).toHaveBeenCalled()
   })
 
   it('hides the help menu when branding is enabled', () => {

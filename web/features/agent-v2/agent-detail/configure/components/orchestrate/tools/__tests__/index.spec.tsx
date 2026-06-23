@@ -339,6 +339,32 @@ describe('AgentTools', () => {
         name: 'agentV2.agentDetail.configure.tools.removeAction:{"name":"Lark CLI"}',
       })).not.toBeInTheDocument()
     })
+
+    it('should keep CLI tool row actions out of layout until hover or focus', () => {
+      renderAgentTools()
+
+      const editButton = screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.tools.editAction:{"name":"Lark CLI"}',
+      })
+      const removeButton = screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.tools.removeAction:{"name":"Lark CLI"}',
+      })
+      const actionGroup = editButton.parentElement
+
+      expect(actionGroup).toHaveClass('hidden')
+      expect(actionGroup).toHaveClass(
+        'group-focus-within:flex',
+        'group-hover:flex',
+      )
+      expect(removeButton).toHaveClass(
+        'hover:bg-state-destructive-hover',
+        'hover:text-text-destructive',
+      )
+      expect(screen.getByText('agentV2.agentDetail.configure.tools.cliTool')).toHaveClass(
+        'group-focus-within:hidden',
+        'group-hover:hidden',
+      )
+    })
   })
 
   describe('Display Metadata', () => {

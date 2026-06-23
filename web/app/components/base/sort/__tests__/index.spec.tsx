@@ -43,7 +43,7 @@ describe('Sort component — real portal integration', () => {
 
     const sortButton = getSortButton()
     expect(sortButton).toBeInstanceOf(HTMLElement)
-    expect(sortButton.querySelector('svg')).toBeInTheDocument()
+    expect(sortButton.querySelector('.i-ri-sort-asc')).toBeInTheDocument()
   })
 
   it('opens and closes the menu', async () => {
@@ -98,8 +98,8 @@ describe('Sort component — real portal integration', () => {
     if (!nameRow)
       throw new Error('Name option row not found in menu')
 
-    expect(statusRow.querySelector('svg')).toBeInTheDocument()
-    expect(nameRow.querySelector('svg')).not.toBeInTheDocument()
+    expect(statusRow.querySelector('.i-ri-check-line')).toBeInTheDocument()
+    expect(nameRow.querySelector('.i-ri-check-line')).not.toBeInTheDocument()
   })
 
   it('shows empty selection label when value is unknown', () => {

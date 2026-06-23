@@ -1,31 +1,28 @@
 'use client'
 
 import { Pagination } from '@langgenius/dify-ui/pagination'
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
 import { DeploymentEmptyState, DeploymentStateMessage } from '../../components/empty-state'
 import { RELEASE_HISTORY_PAGE_SIZE } from '../../shared/domain/pagination'
 import { ReleaseHistoryRows } from './release-history-rows'
 import { ReleaseHistoryTableSkeleton } from './release-history-table-skeleton'
 import { releaseRowFromSummary } from './release-history-types'
+import {
+  adjustReleaseHistoryPageAfterDeleteAtom,
+  releaseHistoryCurrentPageAtom,
+  releaseHistoryQueryAtom,
+  setReleaseHistoryCurrentPageAtom,
+} from './state'
 
 export function ReleaseHistoryTable({ appInstanceId }: {
   appInstanceId: string
 }) {
   const { t } = useTranslation('deployments')
-  const [currentPage, setCurrentPage] = useState(0)
-  const releaseHistoryQuery = useQuery(consoleQuery.enterprise.releaseService.listReleaseSummaries.queryOptions({
-    input: {
-      params: { appInstanceId },
-      query: {
-        pageNumber: currentPage + 1,
-        resultsPerPage: RELEASE_HISTORY_PAGE_SIZE,
-      },
-    },
-    placeholderData: keepPreviousData,
-  }))
+  const currentPage = useAtomValue(releaseHistoryCurrentPageAtom)
+  const setCurrentPage = useSetAtom(setReleaseHistoryCurrentPageAtom)
+  const adjustPageAfterDelete = useSetAtom(adjustReleaseHistoryPageAfterDeleteAtom)
+  const releaseHistoryQuery = useAtomValue(releaseHistoryQueryAtom)
   const isLoading = releaseHistoryQuery.isLoading
   const hasError = releaseHistoryQuery.isError
 
@@ -54,8 +51,7 @@ export function ReleaseHistoryTable({ appInstanceId }: {
   const totalReleasePages = Math.ceil(totalReleases / RELEASE_HISTORY_PAGE_SIZE)
 
   function handleReleaseDeleted() {
-    if (releaseRows.length === 1 && currentPage > 0)
-      setCurrentPage(page => Math.max(page - 1, 0))
+    adjustPageAfterDelete(releaseRows.length)
   }
 
   if (releaseRows.length === 0) {

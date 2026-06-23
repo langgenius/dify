@@ -79,6 +79,7 @@ function AgentOrchestrateDrawerPanelContent({
     <AgentOrchestratePanel
       agentId={agentId}
       appId={isInline ? appId : undefined}
+      nodeId={isInline ? nodeId : undefined}
       activeConfigSnapshot={activeConfigSnapshot}
       agentSoulConfig={agentSoulConfig as AgentSoulConfig}
       agentName={composerState?.agent?.name}

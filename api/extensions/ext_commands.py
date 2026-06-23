@@ -5,6 +5,7 @@ def init_app(app: DifyApp):
     from commands import (
         add_qdrant_index,
         archive_workflow_runs,
+        archive_workflow_runs_plan,
         backfill_plugin_auto_upgrade,
         clean_expired_messages,
         clean_workflow_runs,
@@ -72,6 +73,7 @@ def init_app(app: DifyApp):
         setup_datasource_oauth_client,
         transform_datasource_credentials,
         install_rag_pipeline_plugins,
+        archive_workflow_runs_plan,
         archive_workflow_runs,
         delete_archived_workflow_runs,
         restore_workflow_runs,

@@ -1,5 +1,6 @@
+from contextlib import contextmanager
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
 
@@ -27,6 +28,19 @@ class DummyQueueManager:
 
     def publish(self, event, pub_from):
         self.published.append((event, pub_from))
+
+
+@contextmanager
+def patched_create_session(*, return_value=None, side_effect=None):
+    session = MagicMock()
+    if side_effect is not None:
+        session.scalar.side_effect = side_effect
+    else:
+        session.scalar.return_value = return_value
+    session_context = MagicMock()
+    session_context.__enter__.return_value = session
+    with patch("core.app.apps.chat.app_runner.create_session", return_value=session_context):
+        yield session
 
 
 class TestChatAppGenerator:
@@ -167,7 +181,7 @@ class TestChatAppRunner:
             invoke_from=InvokeFrom.SERVICE_API,
         )
 
-        with patch("core.app.apps.chat.app_runner.db.session.scalar", return_value=None):
+        with patched_create_session(return_value=None):
             with pytest.raises(ValueError):
                 runner.run(app_generate_entity, DummyQueueManager(), SimpleNamespace(), SimpleNamespace(id="m1"))
 
@@ -195,10 +209,7 @@ class TestChatAppRunner:
         )
 
         with (
-            patch(
-                "core.app.apps.chat.app_runner.db.session.scalar",
-                return_value=SimpleNamespace(id="app-1", tenant_id="tenant-1"),
-            ),
+            patched_create_session(return_value=SimpleNamespace(id="app-1", tenant_id="tenant-1")),
             patch.object(ChatAppRunner, "organize_prompt_messages", return_value=([], [])),
             patch.object(ChatAppRunner, "moderation_for_inputs", side_effect=ModerationError("blocked")),
             patch.object(ChatAppRunner, "direct_output") as mock_direct,
@@ -233,10 +244,7 @@ class TestChatAppRunner:
         annotation = SimpleNamespace(id="ann-1", content="answer")
 
         with (
-            patch(
-                "core.app.apps.chat.app_runner.db.session.scalar",
-                return_value=SimpleNamespace(id="app-1", tenant_id="tenant-1"),
-            ),
+            patched_create_session(return_value=SimpleNamespace(id="app-1", tenant_id="tenant-1")),
             patch.object(ChatAppRunner, "organize_prompt_messages", return_value=([], [])),
             patch.object(ChatAppRunner, "moderation_for_inputs", return_value=(None, {}, "hi")),
             patch.object(ChatAppRunner, "query_app_annotations_to_reply", return_value=annotation),
@@ -272,13 +280,73 @@ class TestChatAppRunner:
         )
 
         with (
-            patch(
-                "core.app.apps.chat.app_runner.db.session.scalar",
-                return_value=SimpleNamespace(id="app-1", tenant_id="tenant-1"),
-            ),
+            patched_create_session(return_value=SimpleNamespace(id="app-1", tenant_id="tenant-1")),
             patch.object(ChatAppRunner, "organize_prompt_messages", return_value=([], [])),
             patch.object(ChatAppRunner, "moderation_for_inputs", return_value=(None, {}, "hi")),
             patch.object(ChatAppRunner, "query_app_annotations_to_reply", return_value=None),
             patch.object(ChatAppRunner, "check_hosting_moderation", return_value=True),
         ):
             runner.run(app_generate_entity, DummyQueueManager(), SimpleNamespace(), SimpleNamespace(id="m1"))
+
+    def test_run_closes_scoped_session_before_stream_consumption(self):
+        runner = ChatAppRunner()
+        app_config = SimpleNamespace(
+            app_id="app-1",
+            tenant_id="tenant-1",
+            prompt_template=None,
+            external_data_variables=[],
+            dataset=None,
+            additional_features=None,
+        )
+        app_generate_entity = DummyGenerateEntity(
+            app_config=app_config,
+            model_conf=SimpleNamespace(provider_model_bundle=None, model="model-1", parameters={}),
+            inputs={},
+            query="hi",
+            files=[],
+            file_upload_config=None,
+            conversation_id=None,
+            stream=True,
+            user_id="user-1",
+            invoke_from=InvokeFrom.SERVICE_API,
+        )
+
+        events = []
+        queue_manager = DummyQueueManager()
+        model_instance = MagicMock()
+
+        def invoke_stream():
+            events.append("first-chunk")
+            yield "chunk"
+
+        def invoke_llm(**kwargs):
+            events.append("invoke")
+            return invoke_stream()
+
+        with (
+            patched_create_session(return_value=SimpleNamespace(id="app-1", tenant_id="tenant-1")),
+            patch.object(ChatAppRunner, "organize_prompt_messages", return_value=([], [])),
+            patch.object(ChatAppRunner, "moderation_for_inputs", return_value=(None, {}, "hi")),
+            patch.object(ChatAppRunner, "query_app_annotations_to_reply", return_value=None),
+            patch.object(ChatAppRunner, "check_hosting_moderation", return_value=False),
+            patch.object(ChatAppRunner, "recalc_llm_max_tokens"),
+            patch.object(
+                ChatAppRunner,
+                "_handle_invoke_result",
+                side_effect=lambda invoke_result, **kwargs: list(invoke_result),
+            ) as mock_handle,
+            patch("core.app.apps.chat.app_runner.ModelInstance", return_value=model_instance),
+            patch("core.app.apps.chat.app_runner.db.session.close", side_effect=lambda: events.append("close")),
+        ):
+            model_instance.invoke_llm.side_effect = invoke_llm
+            runner.run(app_generate_entity, queue_manager, SimpleNamespace(), SimpleNamespace(id="m1"))
+
+        assert events == ["close", "invoke", "first-chunk"]
+        mock_handle.assert_called_once_with(
+            invoke_result=ANY,
+            queue_manager=queue_manager,
+            stream=True,
+            message_id="m1",
+            user_id="user-1",
+            tenant_id="tenant-1",
+        )

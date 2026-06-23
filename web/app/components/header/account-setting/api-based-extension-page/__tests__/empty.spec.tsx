@@ -11,8 +11,8 @@ describe('Empty State', () => {
       expect(screen.getByText('common.apiBasedExtension.title')).toBeInTheDocument()
       const link = screen.getByText('common.apiBasedExtension.link')
       expect(link).toBeInTheDocument()
-      // The real useDocLink includes the language prefix (defaulting to /en in tests)
-      expect(link.closest('a')).toHaveAttribute('href', 'https://docs.dify.ai/en/use-dify/workspace/api-extension/api-extension')
+      // The real useDocLink includes language and product prefixes in tests.
+      expect(link.closest('a')).toHaveAttribute('href', 'https://docs.dify.ai/en/self-host/use-dify/workspace/api-extension/api-extension')
     })
   })
 })

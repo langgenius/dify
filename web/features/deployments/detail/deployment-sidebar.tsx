@@ -7,7 +7,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
-import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import NavLink from '@/app/components/app-sidebar/nav-link'
 import ToggleButton from '@/app/components/app-sidebar/toggle-button'
@@ -17,9 +17,10 @@ import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skel
 import { useSetGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import Link from '@/next/link'
 import { usePathname, useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
 import { DeploymentActionsMenu } from '../components/deployment-actions'
 import { TitleTooltip } from '../components/title-tooltip'
+import { deploymentRouteAppInstanceIdAtom } from '../route-state'
+import { deploymentDetailAppInstanceQueryAtom } from './state'
 
 type TabDef = {
   key: InstanceDetailTabKey
@@ -73,11 +74,6 @@ const DEPLOYMENT_TABS: TabDef[] = [
 
 const SEARCH_SHORTCUT = ['Mod', 'K']
 
-const getDeploymentIdFromPathname = (pathname: string) => {
-  const [section, appInstanceId] = pathname.split('/').filter(Boolean)
-  return section === 'deployments' ? appInstanceId : undefined
-}
-
 function DeploymentIcon({ expand }: {
   expand: boolean
 }) {
@@ -98,11 +94,7 @@ function DeploymentDetailInstanceInfo({ appInstanceId, expand }: {
   expand: boolean
 }) {
   const { t } = useTranslation('deployments')
-  const overviewQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstance.queryOptions({
-    input: {
-      params: { appInstanceId },
-    },
-  }))
+  const overviewQuery = useAtomValue(deploymentDetailAppInstanceQueryAtom)
   const app = overviewQuery.data?.appInstance
   const isLoading = !app && overviewQuery.isLoading
   const isUnavailable = !app || overviewQuery.isError
@@ -173,7 +165,6 @@ function DeploymentDetailInstanceInfo({ appInstanceId, expand }: {
                     </div>
                     <DeploymentActionsMenu
                       appInstanceId={appInstanceId}
-                      appName={instanceName}
                       placement="bottom-end"
                       sideOffset={4}
                       className="shrink-0"
@@ -284,7 +275,7 @@ export function DeploymentDetailSection({
 }) {
   const { t } = useTranslation('deployments')
   const pathname = usePathname()
-  const appInstanceId = getDeploymentIdFromPathname(pathname)
+  const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
 
   if (!appInstanceId)
     return null

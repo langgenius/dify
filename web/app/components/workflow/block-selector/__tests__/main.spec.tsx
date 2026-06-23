@@ -318,7 +318,7 @@ describe('NodeSelector', () => {
     expect(await screen.findByText('workflow.tabs.unconfiguredStartDisabledTip')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'workflow.tabs.startDisabledTipLearnMore' })).toHaveAttribute(
       'href',
-      'https://docs.dify.ai/en/use-dify/nodes/trigger/overview',
+      'https://docs.dify.ai/en/self-host/use-dify/nodes/trigger/overview',
     )
     expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toBeInTheDocument()
   })

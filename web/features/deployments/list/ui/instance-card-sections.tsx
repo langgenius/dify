@@ -50,7 +50,7 @@ export function ReleaseMetaTooltip({ release, deployed, children }: {
     <PreviewCard>
       <PreviewCardTrigger render={children} />
       <PreviewCardContent popupClassName="px-3 py-2">
-        <div className="flex min-w-48 flex-col gap-1">
+        <div className="flex min-w-48 flex-col gap-1 system-xs-regular">
           {rows.map(row => (
             <div key={row.label} className="flex justify-between gap-4">
               <span className="shrink-0 text-text-tertiary">{row.label}</span>

@@ -2,6 +2,7 @@ import type { InferContractRouterInputs } from '@orpc/contract'
 import { contract as communityContract } from '@dify/contracts/api/console/orpc.gen'
 import { contract as enterpriseContract } from '@dify/contracts/enterprise/orpc.gen'
 import { rbacAccessConfigContract } from './console/access-control'
+import { agentDriveContracts } from './console/agent-drive'
 import {
   appDeleteContract,
   appListContract,
@@ -114,9 +115,26 @@ export const consoleRouterContract = {
     workflowOnlineUsers: workflowOnlineUsersContract,
     byAppId: {
       ...communityContract.apps.byAppId,
+      agent: {
+        ...communityContract.apps.byAppId.agent,
+        ...agentDriveContracts.byAppId.agent,
+        drive: {
+          ...communityContract.apps.byAppId.agent.drive,
+          ...agentDriveContracts.byAppId.agent.drive,
+        },
+      },
     },
   },
-  agent: communityContract.agent,
+  agent: {
+    ...communityContract.agent,
+    byAgentId: {
+      ...communityContract.agent.byAgentId,
+      drive: {
+        ...communityContract.agent.byAgentId.drive,
+        ...agentDriveContracts.byAgentId.drive,
+      },
+    },
+  },
   explore: {
     ...communityContract.explore,
     apps: exploreAppsContract,

@@ -8,8 +8,8 @@ import type {
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Switch, SwitchSkeleton } from '@langgenius/dify-ui/switch'
-import { useMutation, useQuery } from '@tanstack/react-query'
-import { atom, useAtom } from 'jotai'
+import { useMutation } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
@@ -20,20 +20,15 @@ import { ApiKeyList } from './api-key-list'
 import { CopyPill } from './common'
 import { CreatedApiTokenDialog } from './developer-api-created-token-dialog'
 import { DeveloperApiSkeleton } from './developer-api-skeleton'
+import { developerApiSettingsQueryAtom } from './state'
 
 type CreatedApiToken = {
   appInstanceId: string
   token: string
 }
 
-const createdApiTokenAtom = atom<CreatedApiToken | undefined>(undefined)
-
-function useDeveloperApiSettings(appInstanceId: string) {
-  const developerApiSettingsQuery = useQuery(consoleQuery.enterprise.accessService.getDeveloperApiSettings.queryOptions({
-    input: {
-      params: { appInstanceId },
-    },
-  }))
+function useDeveloperApiSettings() {
+  const developerApiSettingsQuery = useAtomValue(developerApiSettingsQueryAtom)
   const accessChannels = developerApiSettingsQuery.data?.accessChannels
   const apiEnabled = accessChannels?.developerApiEnabled ?? false
   const environments = developerApiSettingsQuery.data?.environments ?? []
@@ -89,7 +84,7 @@ export function DeveloperApiHeaderSwitch({ appInstanceId }: {
     accessChannels,
     isLoading,
     isError,
-  } = useDeveloperApiSettings(appInstanceId)
+  } = useDeveloperApiSettings()
 
   if (isLoading)
     return <SwitchSkeleton />
@@ -175,7 +170,7 @@ export function DeveloperApiSection({
   appInstanceId: string
 }) {
   const { t } = useTranslation('deployments')
-  const [createdApiToken, setCreatedApiToken] = useAtom(createdApiTokenAtom)
+  const [createdApiToken, setCreatedApiToken] = useState<CreatedApiToken>()
   const {
     apiEnabled,
     apiUrl,
@@ -183,7 +178,7 @@ export function DeveloperApiSection({
     environments,
     isLoading,
     isError,
-  } = useDeveloperApiSettings(appInstanceId)
+  } = useDeveloperApiSettings()
   const visibleCreatedApiToken = createdApiToken?.appInstanceId === appInstanceId
     ? createdApiToken.token
     : undefined

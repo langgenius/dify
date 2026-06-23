@@ -168,6 +168,9 @@ catalogs:
     '@tanstack/eslint-plugin-query':
       specifier: 5.101.0
       version: 5.101.0
+    '@tanstack/form-core':
+      specifier: 1.33.0
+      version: 1.33.0
     '@tanstack/query-core':
       specifier: 5.101.0
       version: 5.101.0
@@ -971,6 +974,33 @@ importers:
         specifier: 'catalog:'
         version: 4.22.4
 
+  packages/jotai-tanstack-form:
+    devDependencies:
+      '@dify/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@tanstack/form-core':
+        specifier: 'catalog:'
+        version: 1.33.0
+      '@typescript/native-preview':
+        specifier: 'catalog:'
+        version: 7.0.0-dev.20260620.1
+      jotai:
+        specifier: 'catalog:'
+        version: 2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.17)(react@19.2.7)
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vite:
+        specifier: npm:@voidzero-dev/vite-plus-core@0.2.1
+        version: '@voidzero-dev/vite-plus-core@0.2.1(@types/node@25.9.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)'
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.2.1(@types/node@25.9.4)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@25.9.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(esbuild@0.28.1)(happy-dom@20.10.6)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)
+      vitest:
+        specifier: 4.1.9
+        version: 4.1.9(@types/node@25.9.4)(@vitest/browser-playwright@4.1.9)(@vitest/browser-preview@4.1.9)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@25.9.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(happy-dom@20.10.6)
+
   packages/migrate-no-unchecked-indexed-access:
     dependencies:
       '@typescript/native-preview':
@@ -1111,6 +1141,9 @@ importers:
       '@tailwindcss/typography':
         specifier: 'catalog:'
         version: 0.5.20(tailwindcss@4.3.1)
+      '@tanstack/form-core':
+        specifier: 'catalog:'
+        version: 1.33.0
       '@tanstack/query-core':
         specifier: 'catalog:'
         version: 5.101.0
@@ -1210,6 +1243,9 @@ importers:
       jotai-scope:
         specifier: 'catalog:'
         version: 0.11.0(jotai@2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)
+      jotai-tanstack-form:
+        specifier: workspace:*
+        version: link:../packages/jotai-tanstack-form
       jotai-tanstack-query:
         specifier: 'catalog:'
         version: 0.11.0(@tanstack/query-core@5.101.0)(@tanstack/react-query@5.101.0(react@19.2.7))(jotai@2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)
@@ -19423,6 +19459,7 @@ time:
   '@tailwindcss/typography@0.5.20': '2026-06-08T10:34:41.124Z'
   '@tailwindcss/vite@4.3.1': '2026-06-12T17:59:45.667Z'
   '@tanstack/eslint-plugin-query@5.101.0': '2026-06-02T19:24:31.866Z'
+  '@tanstack/form-core@1.33.0': '2026-05-28T17:05:43.320Z'
   '@tanstack/query-core@5.101.0': '2026-06-02T19:24:32.202Z'
   '@tanstack/react-form@1.33.0': '2026-05-28T17:05:42.660Z'
   '@tanstack/react-hotkeys@0.10.0': '2026-04-25T12:28:06.989Z'
