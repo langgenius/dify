@@ -4,11 +4,12 @@ A Skill is a ``.zip`` / ``.skill`` archive that must contain a ``SKILL.md`` entr
 file (Anthropic Skills convention: YAML frontmatter with ``name`` + ``description``,
 followed by markdown instructions). This service validates the archive (extension,
 size, zip integrity, zip-slip safety, SKILL.md presence/encoding/fields) and
-extracts a manifest the API can bind to an Agent config version's skill list.
+extracts a manifest consumed by drive standardization.
 
 It does NOT execute or load the skill — the agent backend owns execution. It also
-does not (here) standardize the package into the agent drive; that is ENG-594 (S6),
-which consumes the manifest produced here.
+does not persist anything into Agent Soul or bind anything to config versions;
+``SkillStandardizeService`` consumes the manifest and commits the canonical drive
+rows instead.
 """
 
 from __future__ import annotations
@@ -21,8 +22,6 @@ import zipfile
 
 import yaml
 from pydantic import BaseModel
-
-from models.agent_config_entities import AgentSkillRefConfig
 
 # Bounds — generous but finite so a hostile upload can't exhaust memory/disk.
 _MAX_ARCHIVE_BYTES = 50 * 1024 * 1024
@@ -57,22 +56,6 @@ class SkillManifest(BaseModel):
     files: list[str]  # all (safe) file paths inside the archive
     size: int  # total uncompressed bytes
     hash: str  # sha256 of the archive bytes
-
-    def to_skill_ref(self, *, file_id: str, path: str | None = None) -> AgentSkillRefConfig:
-        """Build a config skill ref. ``path`` is the stable drive path (set by S6)."""
-        return AgentSkillRefConfig.model_validate(
-            {
-                "id": self.hash,
-                "name": self.name,
-                "description": self.description,
-                "file_id": file_id,
-                "path": path,
-                "size": self.size,
-                "hash": self.hash,
-                "entry_path": self.entry_path,
-                "manifest_files": self.files,
-            }
-        )
 
 
 class SkillPackageService:

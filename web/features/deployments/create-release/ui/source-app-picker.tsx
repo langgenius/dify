@@ -14,16 +14,17 @@ import {
   ComboboxList,
   ComboboxTrigger,
 } from '@langgenius/dify-ui/combobox'
-import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
-import { consoleQuery } from '@/service/client'
-import { AppModeEnum } from '@/types/app'
 import { TitleTooltip } from '../../components/title-tooltip'
+import {
+  createReleaseSourceAppSearchTextAtom,
+  createReleaseSourceAppsQueryAtom,
+} from '../state'
 
-const SOURCE_APP_PAGE_SIZE = 20
 const SOURCE_APP_PICKER_SKELETON_KEYS = ['first-source-app', 'second-source-app', 'third-source-app']
 
 function sourceAppSearchText(app: App) {
@@ -131,30 +132,15 @@ export function SourceAppPicker({ value, onChange, disabled = false }: {
 }) {
   const { t } = useTranslation('deployments')
   const [isShow, setIsShow] = useState(false)
-  const [searchText, setSearchText] = useState('')
-
+  const searchText = useAtomValue(createReleaseSourceAppSearchTextAtom)
+  const setSearchText = useSetAtom(createReleaseSourceAppSearchTextAtom)
   const {
     data,
     isLoading,
     isFetchingNextPage,
     fetchNextPage,
     hasNextPage,
-  } = useInfiniteQuery({
-    ...consoleQuery.apps.list.infiniteOptions({
-      input: pageParam => ({
-        query: {
-          page: Number(pageParam),
-          limit: SOURCE_APP_PAGE_SIZE,
-          name: searchText,
-          mode: AppModeEnum.WORKFLOW,
-        },
-      }),
-      getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
-      initialPageParam: 1,
-      placeholderData: keepPreviousData,
-    }),
-    enabled: !disabled,
-  })
+  } = useAtomValue(createReleaseSourceAppsQueryAtom)
 
   const apps = data?.pages.flatMap(page => page.data) ?? []
 

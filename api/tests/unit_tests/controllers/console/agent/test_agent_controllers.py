@@ -464,6 +464,7 @@ def test_agent_app_copy_uses_agent_id_and_returns_agent_detail(
         json={
             "name": "Iris copy",
             "description": "Copied",
+            "role": "Copied role",
             "icon_type": "emoji",
             "icon": "sparkles",
             "icon_background": "#fff",
@@ -479,6 +480,7 @@ def test_agent_app_copy_uses_agent_id_and_returns_agent_detail(
         "account": current_user,
         "name": "Iris copy",
         "description": "Copied",
+        "role": "Copied role",
         "icon_type": "emoji",
         "icon": "sparkles",
         "icon_background": "#fff",
@@ -970,7 +972,7 @@ def test_workflow_composer_get_put_validate_candidates_impact_and_save(
         "save_workflow_composer",
         lambda **kwargs: _workflow_composer_response(save_options=[kwargs["payload"].save_strategy.value]),
     )
-    monkeypatch.setattr(composer_controller.ComposerConfigValidator, "validate_save_payload", lambda payload: None)
+    monkeypatch.setattr(composer_controller.ComposerConfigValidator, "validate_publish_payload", lambda payload: None)
     monkeypatch.setattr(
         composer_controller.AgentComposerService, "resolve_workflow_node_agent_id", lambda **kwargs: None
     )
@@ -1065,7 +1067,7 @@ def test_agent_composer_routes_resolve_app_from_agent_id(
         "save_agent_app_composer",
         save_agent_app_composer,
     )
-    monkeypatch.setattr(composer_controller.ComposerConfigValidator, "validate_save_payload", lambda payload: None)
+    monkeypatch.setattr(composer_controller.ComposerConfigValidator, "validate_publish_payload", lambda payload: None)
     monkeypatch.setattr(
         composer_controller.AgentComposerService,
         "collect_validation_findings",

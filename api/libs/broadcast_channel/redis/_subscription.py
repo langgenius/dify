@@ -165,14 +165,20 @@ class RedisSubscriptionBase(Subscription):
             except queue.Empty:
                 continue
 
+            if self._closed.is_set():
+                return
+
             yield item
 
     @override
     def __iter__(self) -> Iterator[bytes]:
         """Return an iterator over messages from the subscription."""
         if self._closed.is_set():
-            raise SubscriptionClosedError(f"The Redis {self._get_subscription_type()} subscription is closed")
-        self._start_if_needed()
+            return iter(())
+        try:
+            self._start_if_needed()
+        except SubscriptionClosedError:
+            return iter(())
         return iter(self._message_iterator())
 
     @override
@@ -209,10 +215,18 @@ class RedisSubscriptionBase(Subscription):
     @override
     def close(self) -> None:
         """Close the subscription and clean up resources."""
-        if self._closed.is_set():
-            return
+        with self._start_lock:
+            if self._closed.is_set():
+                return
 
-        self._closed.set()
+            self._closed.set()
+            listener = self._listener_thread
+            self._listener_thread = None
+            started = self._started
+
+        if started:
+            self._unblock_message_iterator()
+
         # Send a control event on the same Redis channel to unblock the
         self._publish_close_event()
 
@@ -220,10 +234,21 @@ class RedisSubscriptionBase(Subscription):
         # message retrieval method should NOT be called concurrently.
         #
         # Due to the restriction above, the PubSub cleanup logic happens inside the consumer thread.
-        listener = self._listener_thread
-        if listener is not None:
+        if listener is not None and listener.is_alive():
             listener.join(timeout=2)
-            self._listener_thread = None
+
+    def _unblock_message_iterator(self) -> None:
+        try:
+            self._queue.put_nowait(SIG_CLOSE)
+        except queue.Full:
+            try:
+                self._queue.get_nowait()
+            except queue.Empty:
+                pass
+            try:
+                self._queue.put_nowait(SIG_CLOSE)
+            except queue.Full:
+                pass
 
     # Abstract methods to be implemented by subclasses
     def _get_subscription_type(self) -> str:

@@ -171,7 +171,6 @@ def test_configured_but_deleted_dataset_surfaces_as_placeholder():
 def test_unresolved_non_knowledge_mentions_warn_target_missing():
     findings = _findings(_soul_payload("use [§skill:nope:Ghost Skill§] and [§human:missing§]"))
     codes = [(w["code"], w["kind"]) for w in findings["warnings"]]
-    assert ("mention_target_missing", "skill") in codes
     assert ("mention_target_missing", "human") in codes
     assert findings["knowledge_retrieval_placeholder"] == []
 

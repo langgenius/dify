@@ -9,8 +9,8 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQuery } from '@tanstack/react-query'
-import { useSetAtom } from 'jotai'
+import { useMutation } from '@tanstack/react-query'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
@@ -25,6 +25,12 @@ import {
 } from './deploy-release-menu-utils'
 import { EditReleaseDialog } from './edit-release-dialog'
 import { exportReleaseDsl } from './release-dsl-export'
+import {
+  deployReleaseMenuAppInstanceQueryAtom,
+  deployReleaseMenuEnvironmentDeploymentsQueryAtom,
+  deployReleaseMenuOpenReleaseIdAtom,
+  setDeployReleaseMenuOpenAtom,
+} from './state'
 
 export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDeleted }: {
   appInstanceId: string
@@ -34,29 +40,21 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
 }) {
   const { t } = useTranslation('deployments')
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
-  const [open, setOpen] = useState(false)
+  const openReleaseMenuId = useAtomValue(deployReleaseMenuOpenReleaseIdAtom)
+  const setDeployReleaseMenuOpen = useSetAtom(setDeployReleaseMenuOpenAtom)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isExportingDsl, setIsExportingDsl] = useState(false)
-  const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({
-    input: {
-      params: { appInstanceId },
-    },
-    enabled: open,
-  }))
-  const { data: appInstanceData } = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstance.queryOptions({
-    input: {
-      params: { appInstanceId },
-    },
-    enabled: open,
-  }))
+  const open = openReleaseMenuId === releaseId
+  const environmentDeploymentsQuery = useAtomValue(deployReleaseMenuEnvironmentDeploymentsQueryAtom)
+  const appInstanceQuery = useAtomValue(deployReleaseMenuAppInstanceQueryAtom)
   const deleteRelease = useMutation(consoleQuery.enterprise.releaseService.deleteRelease.mutationOptions())
 
   const environments = (environmentDeploymentsQuery.data?.environmentDeployments ?? [])
     .map(row => row.environment)
   const deploymentRows = environmentDeploymentsQuery.data?.environmentDeployments.filter(row => !isUndeployedDeploymentRow(row)) ?? []
   const targetRelease = releaseRows.find(release => release.id === releaseId)
-  const appInstanceName = appInstanceData?.appInstance.displayName
+  const appInstanceName = appInstanceQuery.data?.appInstance.displayName
 
   if (!targetRelease)
     return null
@@ -76,6 +74,10 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
         : undefined
   const deleteActionDisabled = isDeletingRelease || isCheckingDeleteUsage || hasDeleteUsageCheckFailed || isReleaseInUse
 
+  function handleOpenChange(nextOpen: boolean) {
+    setDeployReleaseMenuOpen({ releaseId, open: nextOpen })
+  }
+
   const handleExportDsl = async () => {
     if (isExportingDsl)
       return
@@ -83,7 +85,7 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
     setIsExportingDsl(true)
     try {
       await exportReleaseDsl({ release: targetRelease, releaseId, appInstanceName })
-      setOpen(false)
+      handleOpenChange(false)
     }
     catch {
       toast.error(t('versions.exportDslFailed'))
@@ -127,7 +129,7 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
 
   return (
     <>
-      <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
+      <DropdownMenu modal={false} open={open} onOpenChange={handleOpenChange}>
         <DropdownMenuTrigger
           aria-label={t('versions.moreActions')}
           className={DETAIL_TABLE_ACTION_TRIGGER_CLASS_NAME}
@@ -139,7 +141,7 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
             <DropdownMenuItem
               className="gap-2 px-3"
               onClick={() => {
-                setOpen(false)
+                handleOpenChange(false)
                 setShowEditDialog(true)
               }}
             >
@@ -183,7 +185,7 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
                         onClick={() => {
                           if (isDisabled)
                             return
-                          setOpen(false)
+                          handleOpenChange(false)
                           openDeployDrawer({ appInstanceId, environmentId: row.environmentId, releaseId })
                         }}
                       >
@@ -209,7 +211,7 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
                 onClick={() => {
                   if (deleteActionDisabled)
                     return
-                  setOpen(false)
+                  handleOpenChange(false)
                   setShowDeleteConfirm(true)
                 }}
               >
