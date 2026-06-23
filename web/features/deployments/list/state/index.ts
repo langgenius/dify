@@ -17,8 +17,8 @@ export const keywordsQueryState = parseAsString.withDefault('').withOptions({ hi
 
 // Mirrors nuqs URL state. DeploymentsListStateBoundary force-hydrates these
 // atoms on render so query atoms can read URL filters through Jotai.
-export const deploymentsListKeywordsAtom = atom('')
-export const deploymentsListEnvironmentIdAtom = atom<string | null>(null)
+const deploymentsListKeywordsAtom = atom('')
+const deploymentsListEnvironmentIdAtom = atom<string | null>(null)
 
 export function DeploymentsListStateBoundary({ children }: {
   children: ReactNode
