@@ -1,8 +1,9 @@
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import ANY, Mock
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import NotFound
 
 from controllers.console.workspace import snippets as snippets_module
@@ -69,7 +70,7 @@ def test_normalize_snippet_list_query_args_sorts_indexed_values():
     }
 
 
-def test_list_snippets_returns_pagination(app, monkeypatch):
+def test_list_snippets_returns_pagination(app: Flask, monkeypatch: pytest.MonkeyPatch):
     snippets = [_snippet()]
     tag_id = "11111111-1111-1111-1111-111111111111"
     get_snippets = Mock(return_value=(snippets, 1, False))
@@ -94,6 +95,7 @@ def test_list_snippets_returns_pagination(app, monkeypatch):
     }
     get_snippets.assert_called_once_with(
         tenant_id="tenant-1",
+        session=ANY,
         page=2,
         limit=10,
         keyword=None,
@@ -103,7 +105,7 @@ def test_list_snippets_returns_pagination(app, monkeypatch):
     )
 
 
-def test_create_snippet_defaults_unknown_type_and_returns_created(app, monkeypatch):
+def test_create_snippet_defaults_unknown_type_and_returns_created(app: Flask, monkeypatch: pytest.MonkeyPatch):
     user = _account("account-1")
     snippet = _snippet()
     create_snippet = Mock(return_value=snippet)
@@ -139,7 +141,7 @@ def test_create_snippet_defaults_unknown_type_and_returns_created(app, monkeypat
     assert create_snippet.call_args.kwargs["snippet_type"] == snippets_module.SnippetType.NODE
 
 
-def test_create_snippet_rejects_forbidden_nodes(app, monkeypatch):
+def test_create_snippet_rejects_forbidden_nodes(app: Flask, monkeypatch: pytest.MonkeyPatch):
     user = _account("account-1")
     create_snippet = Mock()
     monkeypatch.setattr(snippets_module.SnippetService, "create_snippet", create_snippet)
@@ -168,7 +170,7 @@ def test_create_snippet_rejects_forbidden_nodes(app, monkeypatch):
     create_snippet.assert_not_called()
 
 
-def test_get_snippet_detail_raises_when_missing(app, monkeypatch):
+def test_get_snippet_detail_raises_when_missing(app: Flask, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=None))
 
     api = snippets_module.CustomizedSnippetDetailApi()
@@ -179,7 +181,7 @@ def test_get_snippet_detail_raises_when_missing(app, monkeypatch):
             handler(api, "tenant-1", snippet_id="snippet-1")
 
 
-def test_get_snippet_detail_returns_snippet(app, monkeypatch):
+def test_get_snippet_detail_returns_snippet(app: Flask, monkeypatch: pytest.MonkeyPatch):
     snippet = _snippet()
     monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=snippet))
     monkeypatch.setattr(snippets_module, "marshal", Mock(return_value={"id": "snippet-1"}))
@@ -194,7 +196,7 @@ def test_get_snippet_detail_returns_snippet(app, monkeypatch):
     assert response == {"id": "snippet-1"}
 
 
-def test_patch_snippet_returns_400_for_empty_payload(app, monkeypatch):
+def test_patch_snippet_returns_400_for_empty_payload(app: Flask, monkeypatch: pytest.MonkeyPatch):
     snippet = _snippet()
     user = _account("user-1")
     monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=snippet))
@@ -213,7 +215,7 @@ def test_patch_snippet_returns_400_for_empty_payload(app, monkeypatch):
     assert response == {"message": "No valid fields to update"}
 
 
-def test_patch_snippet_updates_and_commits(app, monkeypatch):
+def test_patch_snippet_updates_and_commits(app: Flask, monkeypatch: pytest.MonkeyPatch):
     user = _account("account-1")
     snippet = _snippet()
     updated_snippet = _snippet(name="New")
@@ -250,7 +252,7 @@ def test_patch_snippet_updates_and_commits(app, monkeypatch):
     session.commit.assert_called_once()
 
 
-def test_delete_snippet_deletes_and_commits(app, monkeypatch):
+def test_delete_snippet_deletes_and_commits(app: Flask, monkeypatch: pytest.MonkeyPatch):
     snippet = _snippet()
     session = SimpleNamespace(merge=Mock(return_value=snippet), commit=Mock())
     delete_snippet = Mock()
@@ -276,7 +278,7 @@ def test_delete_snippet_deletes_and_commits(app, monkeypatch):
     session.commit.assert_called_once()
 
 
-def test_export_snippet_returns_yaml_attachment(app, monkeypatch):
+def test_export_snippet_returns_yaml_attachment(app: Flask, monkeypatch: pytest.MonkeyPatch):
     snippet = _snippet(name="Snippet One")
     export_snippet_dsl = Mock(return_value="version: 0.1.0\nkind: snippet\n")
     session = SimpleNamespace()
@@ -307,7 +309,7 @@ def test_export_snippet_returns_yaml_attachment(app, monkeypatch):
     export_snippet_dsl.assert_called_once_with(snippet=snippet, include_secret=True)
 
 
-def test_import_snippet_returns_202_for_pending_confirmation(app, monkeypatch):
+def test_import_snippet_returns_202_for_pending_confirmation(app: Flask, monkeypatch: pytest.MonkeyPatch):
     user = _account("account-1")
     result = SnippetImportInfo(id="import-1", status=ImportStatus.PENDING, imported_dsl_version="999.0.0")
     import_snippet = Mock(return_value=result)
@@ -347,7 +349,7 @@ def test_import_snippet_returns_202_for_pending_confirmation(app, monkeypatch):
     session.commit.assert_called_once()
 
 
-def test_import_snippet_returns_400_for_failed_import(app, monkeypatch):
+def test_import_snippet_returns_400_for_failed_import(app: Flask, monkeypatch: pytest.MonkeyPatch):
     user = _account("account-1")
     result = SnippetImportInfo(id="import-1", status=ImportStatus.FAILED, error="Invalid DSL")
     import_snippet = Mock(return_value=result)
@@ -380,7 +382,7 @@ def test_import_snippet_returns_400_for_failed_import(app, monkeypatch):
     session.commit.assert_called_once()
 
 
-def test_import_confirm_returns_200_for_completed_import(app, monkeypatch):
+def test_import_confirm_returns_200_for_completed_import(app: Flask, monkeypatch: pytest.MonkeyPatch):
     user = _account("account-1")
     result = SnippetImportInfo(id="import-1", status=ImportStatus.COMPLETED, snippet_id="snippet-1")
     confirm_import = Mock(return_value=result)
@@ -413,7 +415,7 @@ def test_import_confirm_returns_200_for_completed_import(app, monkeypatch):
     session.commit.assert_called_once()
 
 
-def test_check_dependencies_raises_when_snippet_missing(app, monkeypatch):
+def test_check_dependencies_raises_when_snippet_missing(app: Flask, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=None))
 
     api = snippets_module.CustomizedSnippetCheckDependenciesApi()
@@ -424,7 +426,7 @@ def test_check_dependencies_raises_when_snippet_missing(app, monkeypatch):
             handler(api, "tenant-1", snippet_id="snippet-1")
 
 
-def test_check_dependencies_returns_dependency_result(app, monkeypatch):
+def test_check_dependencies_returns_dependency_result(app: Flask, monkeypatch: pytest.MonkeyPatch):
     snippet = _snippet()
     check_dependencies = Mock(
         return_value=SimpleNamespace(model_dump=Mock(return_value={"dependencies": [], "missing_dependencies": []}))
@@ -455,7 +457,7 @@ def test_check_dependencies_returns_dependency_result(app, monkeypatch):
     check_dependencies.assert_called_once_with(snippet=snippet)
 
 
-def test_increment_use_count_raises_when_snippet_missing(app, monkeypatch):
+def test_increment_use_count_raises_when_snippet_missing(app: Flask, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=None))
 
     api = snippets_module.CustomizedSnippetUseCountIncrementApi()
@@ -469,7 +471,7 @@ def test_increment_use_count_raises_when_snippet_missing(app, monkeypatch):
             handler(api, "tenant-1", snippet_id="snippet-1")
 
 
-def test_increment_use_count_returns_refreshed_count(app, monkeypatch):
+def test_increment_use_count_returns_refreshed_count(app: Flask, monkeypatch: pytest.MonkeyPatch):
     snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1", use_count=2)
     merged_snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1", use_count=3)
     session = SimpleNamespace(merge=Mock(return_value=merged_snippet), commit=Mock(), refresh=Mock())

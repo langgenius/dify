@@ -141,9 +141,7 @@ type StoreInstances = {
 
 function createStoresFromOptions(options: WorkflowProviderOptions): StoreInstances {
   const store = createTestWorkflowStore(options.initialStoreState)
-  const hooksStore = options.hooksStoreProps !== undefined
-    ? createTestHooksStore(options.hooksStoreProps)
-    : undefined
+  const hooksStore = createTestHooksStore(options.hooksStoreProps)
   return { store, hooksStore }
 }
 

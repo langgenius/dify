@@ -14,6 +14,7 @@ const CreateAppTemplateDialog = dynamic(() => import('@/app/components/app/creat
 })
 
 export function AppListCreationModals({
+  canCreateApp,
   category,
   droppedDSLFile,
   showCreateFromDSLModal,
@@ -26,6 +27,7 @@ export function AppListCreationModals({
   onSetShowNewAppModal,
   onSetShowNewAppTemplateDialog,
 }: {
+  canCreateApp: boolean
   category: AppListCategory
   droppedDSLFile?: File
   showCreateFromDSLModal: boolean
@@ -38,6 +40,9 @@ export function AppListCreationModals({
   onSetShowNewAppModal: (show: boolean) => void
   onSetShowNewAppTemplateDialog: (show: boolean) => void
 }) {
+  if (!canCreateApp)
+    return null
+
   return (
     <>
       {showCreateFromDSLModal && (

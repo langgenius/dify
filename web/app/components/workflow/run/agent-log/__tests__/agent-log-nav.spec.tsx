@@ -1,7 +1,7 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import AgentLogNav from '../agent-log-nav'
+import { AgentLogNav } from '../agent-log-nav'
 
 const createLogItem = (overrides: Partial<AgentLogItemWithChildren> = {}): AgentLogItemWithChildren => ({
   message_id: 'message-1',

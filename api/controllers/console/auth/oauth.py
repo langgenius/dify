@@ -246,7 +246,7 @@ def _generate_account(
                 raise WorkSpaceNotAllowedCreateError()
             else:
                 new_tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-                TenantService.create_tenant_member(new_tenant, account, role="owner")
+                TenantService.create_tenant_member(new_tenant, account, db.session, role="owner")
                 account.current_tenant = new_tenant
                 tenant_was_created.send(new_tenant)
 

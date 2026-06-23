@@ -153,6 +153,7 @@ class ApiBaseUrlResponse(ResponseModel):
 
 class NewAppResponse(ResponseModel):
     new_app_id: str
+    permission_keys: list[str] = Field(default_factory=list)
 
 
 class Parameters(BaseModel):

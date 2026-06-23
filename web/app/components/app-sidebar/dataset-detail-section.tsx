@@ -9,7 +9,10 @@ import {
   RiFileTextLine,
   RiFocus2Fill,
   RiFocus2Line,
+  RiLock2Fill,
+  RiLock2Line,
 } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
@@ -17,8 +20,10 @@ import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/vend
 import ExtraInfo from '@/app/components/datasets/extra-info'
 import { useAppContext } from '@/context/app-context'
 import DatasetDetailContext from '@/context/dataset-detail'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname } from '@/next/navigation'
 import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import DatasetInfo from './dataset-info'
 import NavLink from './nav-link'
 
@@ -37,9 +42,17 @@ const DatasetDetailSection = ({
   const { t } = useTranslation()
   const pathname = usePathname()
   const datasetId = getDatasetIdFromPathname(pathname)
-  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { userProfile, workspacePermissionKeys } = useAppContext()
+  const isRbacEnabled = systemFeatures.rbac_enabled
   const { data: datasetRes, refetch: mutateDatasetRes } = useDatasetDetail(datasetId ?? '')
   const { data: relatedApps } = useDatasetRelatedApps(datasetId ?? '', { enabled: !!datasetId && !!datasetRes })
+  const datasetACLCapabilities = useMemo(() => getDatasetACLCapabilities(datasetRes?.permission_keys, {
+    currentUserId: userProfile?.id,
+    resourceMaintainer: datasetRes?.maintainer,
+    workspacePermissionKeys,
+    isRbacEnabled,
+  }), [datasetRes?.maintainer, datasetRes?.permission_keys, isRbacEnabled, userProfile?.id, workspacePermissionKeys])
 
   const isButtonDisabledWithPipeline = useMemo(() => {
     if (!datasetRes)
@@ -61,7 +74,7 @@ const DatasetDetailSection = ({
         href: `/datasets/${datasetId}/hitTesting`,
         icon: RiFocus2Line,
         selectedIcon: RiFocus2Fill,
-        disabled: isButtonDisabledWithPipeline,
+        disabled: isButtonDisabledWithPipeline || !datasetACLCapabilities.canRetrievalRecall,
       },
       {
         name: t('datasetMenus.settings', { ns: 'common' }),
@@ -70,6 +83,16 @@ const DatasetDetailSection = ({
         selectedIcon: RiEqualizer2Fill,
         disabled: false,
       },
+      ...(datasetACLCapabilities.canAccessConfig
+        ? [{
+            name: t('settings.resourceAccess', { ns: 'common' }),
+            href: `/datasets/${datasetId}/access-config`,
+            icon: RiLock2Line,
+            selectedIcon: RiLock2Fill,
+            disabled: false,
+          }]
+        : []
+      ),
     ]
 
     if (datasetRes?.provider !== 'external') {
@@ -90,7 +113,7 @@ const DatasetDetailSection = ({
     }
 
     return baseNavigation
-  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider])
+  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider, datasetACLCapabilities])
 
   if (!datasetRes)
     return null
@@ -128,7 +151,7 @@ const DatasetDetailSection = ({
             />
           ))}
         </nav>
-        {!isCurrentWorkspaceDatasetOperator && (
+        {datasetACLCapabilities.canEdit && (
           <div className="mt-auto shrink-0">
             <ExtraInfo
               relatedApps={relatedApps}

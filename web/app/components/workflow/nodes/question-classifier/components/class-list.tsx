@@ -5,7 +5,6 @@ import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiDraggable } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
-import { useLocalStorage } from 'foxact/use-local-storage'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -14,12 +13,11 @@ import { ReactSortable } from 'react-sortablejs'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 import { useEdgesInteractions } from '../../../hooks'
 import AddButton from '../../_base/components/add-button'
+import { useInlineLabelHintDismissed } from '../storage'
 import Item from './class-item'
 import { getDefaultClassLabel, isDefaultClassLabel } from './class-label-utils'
 
 const i18nPrefix = 'nodes.questionClassifiers'
-const INLINE_LABEL_HINT_STORAGE_KEY = 'question-classifier-inline-label-hint-dismissed'
-
 type Props = Readonly<{
   nodeId: string
   list: Topic[]
@@ -43,7 +41,7 @@ const ClassList: FC<Props> = ({
   const [shouldScrollToEnd, setShouldScrollToEnd] = useState(false)
   const prevListLength = useRef(list.length)
   const [collapsed, setCollapsed] = useState(false)
-  const [storedRenameHintDismissed, setIsRenameHintDismissed] = useLocalStorage<boolean>(INLINE_LABEL_HINT_STORAGE_KEY)
+  const [storedRenameHintDismissed, setIsRenameHintDismissed] = useInlineLabelHintDismissed()
   const isRenameHintDismissed = storedRenameHintDismissed ?? false
 
   const handleClassChange = useCallback((index: number) => {

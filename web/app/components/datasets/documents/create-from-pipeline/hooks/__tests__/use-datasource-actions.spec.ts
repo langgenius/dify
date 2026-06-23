@@ -201,4 +201,35 @@ describe('useDatasourceActions', () => {
       expect.anything(),
     )
   })
+
+  it('should not submit process form when processing is not allowed', () => {
+    const params = {
+      ...defaultParams(),
+      canProcess: false,
+    }
+    const submit = vi.fn()
+    const { result } = renderHook(() => useDatasourceActions(params))
+    result.current.formRef.current = { submit }
+
+    act(() => {
+      result.current.onClickProcess()
+    })
+
+    expect(submit).not.toHaveBeenCalled()
+  })
+
+  it('should not run published pipeline when processing is not allowed', () => {
+    const params = {
+      ...defaultParams(),
+      canProcess: false,
+    }
+    const { result } = renderHook(() => useDatasourceActions(params))
+
+    act(() => {
+      result.current.handleSubmit({ query: 'test' })
+    })
+
+    expect(mockRunPublishedPipeline).not.toHaveBeenCalled()
+    expect(params.handleNextStep).not.toHaveBeenCalled()
+  })
 })

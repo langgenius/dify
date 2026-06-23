@@ -7,6 +7,10 @@ const { mockRouterPush, mockWindowOpen } = vi.hoisted(() => ({
   mockWindowOpen: vi.fn(),
 }))
 
+const mockAppContextState = vi.hoisted(() => ({
+  workspacePermissionKeys: ['tool.manage', 'mcp.manage'] as string[],
+}))
+
 const {
   mockCanManagement,
   mockCanDebugger,
@@ -39,19 +43,35 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
+vi.mock('@/context/app-context', () => ({
+  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+    workspacePermissionKeys: mockAppContextState.workspacePermissionKeys,
+  }),
+}))
+
 vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   usePluginSettingsAccess: () => ({
     permission: mockReferenceSetting().permission,
+    canInstallPlugin: mockCanManagement(),
+    canManagePlugin: true,
     canManagement: mockCanManagement(),
     canDebugger: mockCanDebugger(),
     canSetPermissions: mockCanSetPermissions(),
+    canSetPluginPreferences: mockCanSetPermissions(),
+    canUpdatePlugin: true,
+    canViewInstalledPlugins: true,
     setPluginPermissionSettings: mockSetReferenceSettings,
   }),
   default: () => ({
     referenceSetting: mockReferenceSetting(),
+    canInstallPlugin: mockCanManagement(),
+    canManagePlugin: true,
     canManagement: mockCanManagement(),
     canDebugger: mockCanDebugger(),
     canSetPermissions: mockCanSetPermissions(),
+    canSetPluginPreferences: mockCanSetPermissions(),
+    canUpdatePlugin: true,
+    canViewInstalledPlugins: true,
     setReferenceSettings: mockSetReferenceSettings,
   }),
 }))
@@ -245,6 +265,7 @@ describe('IntegrationsPage', () => {
     mockCanManagement.mockReturnValue(true)
     mockCanDebugger.mockReturnValue(true)
     mockCanSetPermissions.mockReturnValue(true)
+    mockAppContextState.workspacePermissionKeys = ['tool.manage', 'mcp.manage']
     mockReferenceSetting.mockReturnValue({
       permission: {
         install_permission: 'everyone',
@@ -396,6 +417,24 @@ describe('IntegrationsPage', () => {
     expect(screen.getByTestId('data-source-page')).toBeInTheDocument()
   })
 
+  it('does not render the MCP management route without mcp.manage', () => {
+    mockAppContextState.workspacePermissionKeys = ['tool.manage']
+
+    const { container } = renderIntegrationsPage(undefined, 'mcp')
+
+    expect(screen.queryByTestId('tool-provider-list')).not.toBeInTheDocument()
+    expect(container.firstElementChild).toBeNull()
+  })
+
+  it.each(['custom-tool', 'workflow-tool'] as const)('does not render the %s management route without tool.manage', (section) => {
+    mockAppContextState.workspacePermissionKeys = ['mcp.manage']
+
+    const { container } = renderIntegrationsPage(undefined, section)
+
+    expect(screen.queryByTestId('tool-provider-list')).not.toBeInTheDocument()
+    expect(container.firstElementChild).toBeNull()
+  })
+
   it('remounts the tools section content when the route section changes', () => {
     const view = renderIntegrationsPage(undefined, 'builtin')
 
@@ -488,6 +527,18 @@ describe('IntegrationsPage', () => {
     expect(toolsButton).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByRole('button', { name: 'MCP' })).not.toBeInTheDocument()
     expect(onSectionChange).toHaveBeenCalledTimes(2)
+  })
+
+  it('hides custom and workflow tool entries without tool.manage while keeping MCP with mcp.manage', () => {
+    mockAppContextState.workspacePermissionKeys = ['mcp.manage']
+    renderIntegrationsPage(undefined, { section: 'provider', onSectionChange: vi.fn() })
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.menus.tools' }))
+
+    expect(screen.getByRole('button', { name: 'common.toolsPage.toolPlugin' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'MCP' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'workflow.common.workflowAsTool' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.settings.swaggerAPIAsTool' })).not.toBeInTheDocument()
   })
 
   it('opens tools to the tools plugin page when the parent tools nav is clicked', () => {

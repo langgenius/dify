@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { usePathname, useSelectedLayoutSegment } from '@/next/navigation'
-import ExploreNav from '../index'
+import { ExploreNav } from '../index'
 
 vi.mock('@/next/navigation', () => ({
   usePathname: vi.fn(),

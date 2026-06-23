@@ -7,7 +7,7 @@ import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
 import { useWebAppStore } from '@/context/web-app-context'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
-import { useGetUserCanAccessApp } from '@/service/access-control'
+import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
 import { useGetWebAppInfo, useGetWebAppMeta, useGetWebAppParams } from '@/service/use-share'
 import { webAppLogout } from '@/service/webapp-auth'
 

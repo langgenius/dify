@@ -63,6 +63,8 @@ class OpenApiErrorCode(StrEnum):
     FILE_EXTENSION_BLOCKED = "file_extension_blocked"
     MEMBER_LIMIT_EXCEEDED = "member_limit_exceeded"
     MEMBER_LICENSE_EXCEEDED = "member_license_exceeded"
+    HUMAN_INPUT_FORM_NOT_FOUND = "form_not_found"
+    RECIPIENT_SURFACE_MISMATCH = "recipient_surface_mismatch"
 
 
 class ErrorDetail(BaseModel):
@@ -239,3 +241,16 @@ class MemberLicenseExceeded(OpenApiError):  # noqa: N818
     error_code = OpenApiErrorCode.MEMBER_LICENSE_EXCEEDED
     description = "Workspace member license capacity reached."
     hint = "Contact your workspace administrator to expand the license seat count."
+
+
+class HumanInputFormNotFound(OpenApiError):  # noqa: N818
+    code = 404
+    error_code = OpenApiErrorCode.HUMAN_INPUT_FORM_NOT_FOUND
+    description = "No human-input form matches this token. It may be wrong, expired, or already submitted."
+
+
+class RecipientSurfaceMismatch(OpenApiError):  # noqa: N818
+    code = 403
+    error_code = OpenApiErrorCode.RECIPIENT_SURFACE_MISMATCH
+    description = "This form's recipient can't be submitted via the OpenAPI surface."
+    hint = "Action it through its channel (web app or console)."

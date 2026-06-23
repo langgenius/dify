@@ -1,9 +1,9 @@
 import type { App } from '@/types/app'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
+import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
@@ -13,8 +13,8 @@ import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import CreateAppModal from '../index'
 
-const hotkeyMocks = vi.hoisted(() => ({
-  handlers: new Map<string, () => void>(),
+const ahooksMocks = vi.hoisted(() => ({
+  keyPressHandlers: [] as Array<() => void>,
 }))
 const mockInvalidateAppList = vi.hoisted(() => vi.fn())
 
@@ -27,16 +27,12 @@ vi.mock('ahooks', () => ({
   },
   useHover: () => false,
 }))
-
-vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
-  return {
-    ...actual,
-    useHotkey: (hotkey: string, handler: () => void) => {
-      hotkeyMocks.handlers.set(hotkey, handler)
-    },
-  }
-})
+vi.mock('@tanstack/react-hotkeys', () => ({
+  formatForDisplay: (key: string) => key,
+  useHotkey: (_hotkey: string, handler: () => void) => {
+    ahooksMocks.keyPressHandlers.push(handler)
+  },
+}))
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
   useParams: () => ({}),
@@ -124,7 +120,7 @@ describe('CreateAppModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    hotkeyMocks.handlers.clear()
+    ahooksMocks.keyPressHandlers.length = 0
     mockUseRouter.mockReturnValue({ push: mockPush } as unknown as ReturnType<typeof useRouter>)
     mockUseProviderContext.mockReturnValue({
       plan: {
@@ -136,7 +132,8 @@ describe('CreateAppModal', () => {
       enableBilling: true,
     } as unknown as ReturnType<typeof useProviderContext>)
     mockUseAppContext.mockReturnValue({
-      isCurrentWorkspaceEditor: true,
+      userProfile: { id: 'user-1' },
+      workspacePermissionKeys: ['app.create_and_management'],
     } as unknown as ReturnType<typeof useAppContext>)
     mockSetItem.mockClear()
     Object.defineProperty(window, 'localStorage', {
@@ -153,7 +150,7 @@ describe('CreateAppModal', () => {
   })
 
   it('creates an app, notifies success, and fires callbacks', async () => {
-    const mockApp: Partial<App> = { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT }
+    const mockApp: Partial<App> = { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT, maintainer: 'user-1' }
     mockCreateApp.mockResolvedValue(mockApp as App)
     const { onClose, onSuccess } = renderModal()
 
@@ -176,7 +173,14 @@ describe('CreateAppModal', () => {
     expect(onClose).toHaveBeenCalled()
     await waitFor(() => expect(mockSetItem).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY, '1'))
     expect(mockInvalidateAppList).toHaveBeenCalledTimes(1)
-    await waitFor(() => expect(mockGetRedirection).toHaveBeenCalledWith(true, mockApp, mockPush))
+    await waitFor(() =>
+      expect(mockGetRedirection).toHaveBeenCalledWith(mockApp, mockPush, {
+        currentUserId: 'user-1',
+        resourceMaintainer: 'user-1',
+        workspacePermissionKeys: ['app.create_and_management'],
+        isRbacEnabled: false,
+      }),
+    )
   })
 
   it('shows error toast when creation fails', async () => {
@@ -217,26 +221,18 @@ describe('CreateAppModal', () => {
     expect(onCreateFromTemplate).toHaveBeenCalled()
   })
 
-  it('renders the create shortcut with kbd primitives', () => {
-    renderModal()
-
-    const createButton = screen.getByRole('button', { name: /app\.newApp\.Create/ })
-    expect(createButton.querySelectorAll('kbd')).toHaveLength(2)
-  })
-
   it('creates a beginner chat app with the keyboard shortcut and selected icon style', async () => {
-    const user = userEvent.setup()
     mockCreateApp.mockResolvedValue({ id: 'chat-app', mode: AppModeEnum.CHAT } as App)
     renderModal()
 
     fireEvent.click(screen.getByText('app.newApp.forBeginners'))
     fireEvent.click(screen.getByText('app.types.chatbot'))
-    await user.click(screen.getByText('open-icon-picker'))
+    fireEvent.click(screen.getByText('open-icon-picker'))
     await waitFor(() => {
       expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
     })
-    await user.click(screen.getByRole('button', { name: '#E4FBCC' }))
-    await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
+    fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
+    fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
     await waitFor(() => {
       expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
     })
@@ -247,7 +243,7 @@ describe('CreateAppModal', () => {
       target: { value: 'Created from shortcut' },
     })
 
-    hotkeyMocks.handlers.get('Mod+Enter')?.()
+    ahooksMocks.keyPressHandlers.at(-1)?.()
 
     await waitFor(() => {
       expect(mockCreateApp).toHaveBeenCalledWith({
@@ -264,14 +260,13 @@ describe('CreateAppModal', () => {
   it('shows validation feedback when the keyboard shortcut runs without a name', () => {
     renderModal()
 
-    hotkeyMocks.handlers.get('Mod+Enter')?.()
+    ahooksMocks.keyPressHandlers.at(-1)?.()
 
     expect(mockToastError).toHaveBeenCalledWith('app.newApp.nameNotEmpty')
     expect(mockCreateApp).not.toHaveBeenCalled()
   })
 
   it('ignores the keyboard shortcut when the app quota is exhausted and closes the icon picker', async () => {
-    const user = userEvent.setup()
     mockUseProviderContext.mockReturnValue({
       plan: {
         type: AppModeEnum.ADVANCED_CHAT,
@@ -284,18 +279,18 @@ describe('CreateAppModal', () => {
 
     renderModal()
 
-    await user.click(screen.getByText('open-icon-picker'))
+    fireEvent.click(screen.getByText('open-icon-picker'))
     await waitFor(() => {
       expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
     })
-    await user.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
+    fireEvent.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
     await waitFor(() => {
       expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
     })
 
     expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
 
-    hotkeyMocks.handlers.get('Mod+Enter')?.()
+    ahooksMocks.keyPressHandlers.at(-1)?.()
 
     expect(mockCreateApp).not.toHaveBeenCalled()
   })

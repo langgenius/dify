@@ -68,7 +68,16 @@ export type ConversationInfiniteScrollPagination = {
   limit: number
 }
 
-export type ConversationRenamePayload = {
+export type ConversationRenamePayload = (
+  | {
+    auto_generate: true
+    name?: string | null
+  }
+  | {
+    auto_generate?: false
+    name: string
+  }
+) & {
   auto_generate?: boolean
   name?: string | null
 }
@@ -147,7 +156,10 @@ export type AudioBinaryResponse = Blob | File
 
 export type WorkflowRunPayload = {
   files?: Array<{
-    [key: string]: unknown
+    transfer_method: 'local_file' | 'remote_url'
+    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+    upload_file_id?: string
+    url?: string
   }> | null
   inputs: {
     [key: string]: unknown

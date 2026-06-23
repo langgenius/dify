@@ -108,7 +108,11 @@ describe('ModelSelector', () => {
     fireEvent.click(screen.getByRole('combobox'))
     fireEvent.click(screen.getByText('select'))
 
-    expect(onSelect).toHaveBeenCalledWith({ provider: 'openai', model: 'gpt-4' })
+    expect(onSelect).toHaveBeenCalledWith({
+      provider: 'openai',
+      model: 'gpt-4',
+      plugin_id: 'langgenius/openai',
+    })
   })
 
   it('should close popup when popup requests hide', () => {

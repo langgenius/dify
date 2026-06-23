@@ -645,7 +645,7 @@ class TestTextSplitterBasePaths:
         with pytest.raises(NotImplementedError):
             asyncio.run(splitter.atransform_documents([Document(page_content="x", metadata={})]))
 
-    def test_merge_splits_logs_warning_for_oversized_total(self, caplog):
+    def test_merge_splits_logs_warning_for_oversized_total(self, caplog: pytest.LogCaptureFixture):
         """Cover logger.warning path in _merge_splits."""
         splitter = RecursiveCharacterTextSplitter(chunk_size=5, chunk_overlap=1)
         with caplog.at_level(logging.WARNING, logger="core.rag.splitter.text_splitter"):

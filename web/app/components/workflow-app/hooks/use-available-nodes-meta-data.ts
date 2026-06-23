@@ -1,5 +1,6 @@
 import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-store/store'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
+import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
@@ -12,6 +13,7 @@ import TriggerScheduleDefault from '@/app/components/workflow/nodes/trigger-sche
 import TriggerWebhookDefault from '@/app/components/workflow/nodes/trigger-webhook/default'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
+import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { docPathProductAvailability } from '@/types/doc-paths'
 import { useIsChatMode } from './use-is-chat-mode'
 
@@ -30,6 +32,7 @@ export const useAvailableNodesMetaData = () => {
   const { t } = useTranslation()
   const isChatMode = useIsChatMode()
   const docLink = useDocLink()
+  const agentV2Enabled = isAgentV2Enabled()
 
   const startNodeMetaData = useMemo(() => ({
     ...StartDefault,
@@ -40,8 +43,13 @@ export const useAvailableNodesMetaData = () => {
   }), [isChatMode])
 
   const mergedNodesMetaData = useMemo(() => {
+    const commonNodes = WORKFLOW_COMMON_NODES.filter(node =>
+      agentV2Enabled
+        ? node.metaData.type !== BlockEnum.Agent
+        : node.metaData.type !== BlockEnum.AgentV2)
+
     return [
-      ...WORKFLOW_COMMON_NODES,
+      ...commonNodes,
       startNodeMetaData,
       ...(
         isChatMode
@@ -55,12 +63,12 @@ export const useAvailableNodesMetaData = () => {
             ]
       ),
     ]
-  }, [isChatMode, startNodeMetaData])
+  }, [agentV2Enabled, isChatMode, startNodeMetaData])
 
   const availableNodesMetaData = useMemo(() => mergedNodesMetaData.map((node) => {
     const { metaData } = node
     const title = t(`blocks.${metaData.type}`, { ns: 'workflow' })
-    const description = t(`blocksAbout.${metaData.type}`, { ns: 'workflow' })
+    const description = t(`blocksAbout.${metaData.type}` as I18nKeysWithPrefix<'workflow', 'blocksAbout.'>, { ns: 'workflow' })
     const helpLinkPath = getNodeHelpLinkPath(metaData.helpLinkUri)
     return {
       ...node,
@@ -72,7 +80,7 @@ export const useAvailableNodesMetaData = () => {
       },
       defaultValue: {
         ...node.defaultValue,
-        type: metaData.type,
+        type: metaData.type === BlockEnum.AgentV2 ? BlockEnum.Agent : metaData.type,
         title,
       },
     }

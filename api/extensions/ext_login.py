@@ -14,6 +14,7 @@ from extensions.ext_database import db
 from libs.passport import PassportService
 from libs.token import extract_access_token, extract_console_cookie_token, extract_webapp_passport
 from models import Account, Tenant, TenantAccountJoin
+from models.enums import EndUserType
 from models.model import AppMCPServer, EndUser
 from services.account_service import AccountService
 
@@ -136,7 +137,7 @@ def load_user_from_request(request_from_flask_login: Request) -> LoginUser | Non
         if not app_mcp_server:
             raise NotFound("App MCP server not found.")
         end_user = db.session.scalar(
-            select(EndUser).where(EndUser.session_id == app_mcp_server.id, EndUser.type == "mcp").limit(1)
+            select(EndUser).where(EndUser.session_id == app_mcp_server.id, EndUser.type == EndUserType.MCP).limit(1)
         )
         if not end_user:
             raise NotFound("End user not found.")

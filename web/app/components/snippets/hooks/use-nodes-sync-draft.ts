@@ -4,7 +4,7 @@ import type { SnippetDraftSyncPayload, SnippetDraftSyncResponse, SnippetWorkflow
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
+import { useNodesReadOnlyByCanEdit } from '@/app/components/workflow/hooks/use-workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { API_PREFIX } from '@/config'
 import { consoleClient } from '@/service/client'
@@ -46,7 +46,7 @@ const enqueueSnippetDraftSync = <Result>(
 export const useNodesSyncDraft = (snippetId: string) => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
-  const { getNodesReadOnly } = useNodesReadOnly()
+  const { getNodesReadOnly } = useNodesReadOnlyByCanEdit(true)
   const { handleRefreshWorkflowDraft } = useSnippetRefreshDraft(snippetId)
 
   const getInputFieldsSyncPayload = useCallback((inputFields?: SnippetInputField[]) => {

@@ -7,11 +7,21 @@ const {
   mockCreateApiBasedExtension,
   mockUpdateApiBasedExtension,
   mockDeleteApiBasedExtension,
+  mockWorkspacePermissionKeys,
 } = vi.hoisted(() => ({
   mockApiBasedExtensionsQuery: vi.fn(),
   mockCreateApiBasedExtension: vi.fn(),
   mockUpdateApiBasedExtension: vi.fn(),
   mockDeleteApiBasedExtension: vi.fn(),
+  mockWorkspacePermissionKeys: {
+    current: ['api_extension.manage'] as string[],
+  },
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: vi.fn((selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.current,
+  })),
 }))
 
 vi.mock('@/service/client', () => ({
@@ -48,6 +58,7 @@ vi.mock('@tanstack/react-query', () => ({
 describe('ApiBasedExtensionPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWorkspacePermissionKeys.current = ['api_extension.manage']
     mockApiBasedExtensionsQuery.mockReturnValue({
       data: [],
       isPending: false,
@@ -174,6 +185,24 @@ describe('ApiBasedExtensionPage', () => {
       expect(screen.getByRole('status', { name: 'common.loading' }))!.toBeInTheDocument()
       expect(screen.queryByText('common.apiBasedExtension.title')).not.toBeInTheDocument()
       expect(screen.getByText('common.apiBasedExtension.add'))!.toBeInTheDocument()
+    })
+
+    it('should disable management actions when api extension permission is missing', () => {
+      // Arrange
+      mockWorkspacePermissionKeys.current = []
+      const extension: ApiBasedExtensionResponse = { id: '1', name: 'Extension 1', api_endpoint: 'url1', api_key: 'key1' }
+      mockApiBasedExtensionsQuery.mockReturnValue({
+        data: [extension],
+        isPending: false,
+      })
+
+      // Act
+      render(<ApiBasedExtensionPage />)
+
+      // Assert
+      expect(screen.getByRole('button', { name: 'common.apiBasedExtension.add' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'common.operation.delete' })).toBeDisabled()
     })
   })
 

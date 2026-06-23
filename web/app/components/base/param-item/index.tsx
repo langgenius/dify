@@ -25,11 +25,12 @@ type Props = Readonly<{
   min?: number
   max: number
   onChange: (key: string, value: number) => void
+  disabled?: boolean
   hasSwitch?: boolean
   onSwitchChange?: (key: string, enable: boolean) => void
 }>
 
-const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1, min = 0, max, value, enable, onChange, hasSwitch, onSwitchChange }) => {
+const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1, min = 0, max, value, enable, onChange, disabled = false, hasSwitch, onSwitchChange }) => {
   return (
     <FieldsetRoot className={className}>
       <FieldsetLegend className="sr-only">{name}</FieldsetLegend>
@@ -40,6 +41,7 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
               size="md"
               className="mr-2"
               checked={enable}
+              disabled={disabled}
               onCheckedChange={async (val) => {
                 onSwitchChange?.(id, val)
               }}
@@ -56,7 +58,7 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
       <div className="mt-1 flex items-center">
         <div className="mr-3 flex shrink-0 items-center">
           <NumberField
-            disabled={!enable}
+            disabled={disabled || !enable}
             min={min}
             max={max}
             step={step}
@@ -75,7 +77,7 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
         <div className="flex grow items-center">
           <Slider
             className="w-full"
-            disabled={!enable}
+            disabled={disabled || !enable}
             value={max < 5 ? value * 100 : value}
             min={min < 1 ? min * 100 : min}
             max={max < 5 ? max * 100 : max}
