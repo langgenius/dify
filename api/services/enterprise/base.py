@@ -183,7 +183,11 @@ class EnterpriseRequest(BaseRequest):
         if account_id:
             inner_headers[INNER_ACCOUNT_ID_HEADER] = account_id
 
-        if not cls.base_url.startswith("http") or not cls.base_url.startswith("https") or not cls.base_url:
+        if (
+            not cls.rbac_base_url.startswith("http")
+            and not cls.rbac_base_url.startswith("https")
+            and not cls.rbac_base_url
+        ):
             raise ValueError("ENTERPRISE_RBAC_API_URL is required when RBAC_ENABLED=true")
 
         url = f"{cls.rbac_base_url}{endpoint}"

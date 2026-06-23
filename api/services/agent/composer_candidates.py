@@ -208,6 +208,7 @@ def _ref_entry(
         "inferred": inferred,
     }
 
+
 def _capped(values: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], bool]:
     if len(values) > MAX_CANDIDATES_PER_LIST:
         return values[:MAX_CANDIDATES_PER_LIST], True

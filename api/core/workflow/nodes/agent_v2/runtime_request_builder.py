@@ -75,7 +75,7 @@ from services.agent_drive_service import AgentDriveService, decode_drive_mention
 
 from .output_failure_orchestrator import retry_idempotency_key
 from .plugin_tools_builder import WorkflowAgentPluginToolsBuilder, WorkflowAgentPluginToolsBuildError
-from .runtime_feature_manifest import build_runtime_feature_manifest, list_configured_knowledge_dataset_ids
+from .runtime_feature_manifest import build_runtime_feature_manifest
 
 _DENIED_PERMISSION_STATUSES = frozenset({"unauthorized", "denied", "forbidden", "invalid", "unavailable"})
 _DANGEROUS_FLAG_KEYS = ("dangerous", "dangerous_command", "requires_confirmation")

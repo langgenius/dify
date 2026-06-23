@@ -643,6 +643,15 @@ export const zHumanInputDeliveryTestPayload = z.object({
 export const zEmptyObjectResponse = z.record(z.string(), z.unknown())
 
 /**
+ * WorkflowComposerCopyFromRosterPayload
+ */
+export const zWorkflowComposerCopyFromRosterPayload = z.object({
+  idempotency_key: z.string().max(255).nullish(),
+  source_agent_id: z.string().min(1).max(255),
+  source_snapshot_id: z.string().max(255).nullish(),
+})
+
+/**
  * DraftWorkflowNodeRunPayload
  */
 export const zDraftWorkflowNodeRunPayload = z.object({
@@ -1834,6 +1843,13 @@ export const zComposerBindingPayload = z.object({
   binding_type: z.enum(['inline_agent', 'roster_agent']),
   current_snapshot_id: z.string().nullish(),
 })
+
+/**
+ * AgentIconType
+ *
+ * Supported icon storage formats for Agent roster entries.
+ */
+export const zAgentIconType = z.enum(['emoji', 'image', 'link'])
 
 /**
  * ComposerSoulLockPayload
@@ -3305,6 +3321,13 @@ export const zAgentKnowledgeQueryMode = z.enum(['generated_query', 'user_query']
 
 /**
  * AgentKnowledgeQueryConfig
+ *
+ * Per-set query policy for Agent v2 knowledge retrieval.
+ *
+ * Agent v2 stores knowledge as explicit ``knowledge.sets`` rather than the
+ * legacy flat ``datasets`` / ``query_mode`` / ``query_config`` shape. Each
+ * set owns its own query policy, so ``user_query`` must carry an explicit
+ * ``value`` while ``generated_query`` leaves that value empty.
  */
 export const zAgentKnowledgeQueryConfig = z.object({
   mode: zAgentKnowledgeQueryMode,
@@ -3330,6 +3353,12 @@ export const zAgentKnowledgeWeightedScoreConfig = z.object({
 
 /**
  * AgentKnowledgeRetrievalConfig
+ *
+ * Per-set retrieval policy for Agent v2 knowledge retrieval.
+ *
+ * Retrieval settings now live on each knowledge set instead of one shared
+ * flat config. A set may use either ``multiple`` retrieval with ``top_k`` or
+ * ``single`` retrieval with a required model config.
  */
 export const zAgentKnowledgeRetrievalConfig = z.object({
   mode: z.enum(['multiple', 'single']),
@@ -3501,6 +3530,12 @@ export const zAgentKnowledgeMetadataConditions = z.object({
 
 /**
  * AgentKnowledgeMetadataFilteringConfig
+ *
+ * Per-set metadata filtering policy.
+ *
+ * The Python attribute uses ``metadata_model_config`` for clarity because the
+ * model belongs to metadata filtering specifically, while the external API and
+ * generated schema keep the historical ``model_config`` field name via alias.
  */
 export const zAgentKnowledgeMetadataFilteringConfig = z.object({
   conditions: zAgentKnowledgeMetadataConditions.nullish(),
@@ -3510,6 +3545,13 @@ export const zAgentKnowledgeMetadataFilteringConfig = z.object({
 
 /**
  * AgentKnowledgeSetConfig
+ *
+ * One explicit knowledge set in Agent v2.
+ *
+ * ``knowledge.sets`` replaces the old flat knowledge config. Each set owns
+ * its datasets plus query, retrieval, and metadata policies. An individual
+ * set must contain at least one dataset id even though the overall knowledge
+ * section may be empty, which is how callers express "no knowledge layer".
  */
 export const zAgentKnowledgeSetConfig = z.object({
   datasets: z.array(zAgentKnowledgeDatasetConfig),
@@ -3523,6 +3565,14 @@ export const zAgentKnowledgeSetConfig = z.object({
 
 /**
  * AgentSoulKnowledgeConfig
+ *
+ * Top-level Agent v2 knowledge config.
+ *
+ * Agent v2 models knowledge as explicit sets instead of one flat
+ * ``datasets`` / ``query_mode`` / ``query_config`` block. An empty ``sets``
+ * list means no knowledge layer should be emitted at runtime, while set-name
+ * uniqueness stays case-insensitive because runtime selection addresses sets
+ * by name.
  */
 export const zAgentSoulKnowledgeConfig = z.object({
   sets: z.array(zAgentKnowledgeSetConfig).optional(),
@@ -3573,9 +3623,14 @@ export const zComposerSavePayload = z.object({
   agent_soul: zAgentSoulConfig.nullish(),
   binding: zComposerBindingPayload.nullish(),
   client_revision_id: z.string().nullish(),
+  description: z.string().nullish(),
+  icon: z.string().max(255).nullish(),
+  icon_background: z.string().max(255).nullish(),
+  icon_type: zAgentIconType.nullish(),
   idempotency_key: z.string().nullish(),
   new_agent_name: z.string().min(1).max(255).nullish(),
   node_job: zWorkflowNodeJobConfig.nullish(),
+  role: z.string().max(255).nullish(),
   save_strategy: zComposerSaveStrategy,
   soul_lock: zComposerSoulLockPayload.optional(),
   variant: zComposerVariant,
@@ -5457,6 +5512,20 @@ export const zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesPa
  */
 export const zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponse
   = zAgentComposerCandidatesResponse
+
+export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterBody
+  = zWorkflowComposerCopyFromRosterPayload
+
+export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterPath = z.object({
+  app_id: z.uuid(),
+  node_id: z.string(),
+})
+
+/**
+ * Workflow roster agent copied to inline agent
+ */
+export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponse
+  = zWorkflowAgentComposerResponse
 
 export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactBody
   = zComposerSavePayload

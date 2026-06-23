@@ -3,6 +3,7 @@ from collections.abc import Callable, Mapping
 import secrets
 import time
 from dataclasses import dataclass
+from typing import cast
 
 import pytest
 
@@ -454,7 +455,6 @@ def test_shell_layer_create_bootstraps_agent_soul_shell_config(monkeypatch: pyte
         assert 'export GITHUB_TOKEN="${GITHUB_TOKEN:-}"' in script
         assert "export DIFY_SANDBOX_PROVIDER='independent'" in script
         assert "export DIFY_SANDBOX_CONFIG_JSON='{\"cpu\": 2}'" in script
-        assert '. ".dify/env.sh"' in script
         assert "apt-get install -y ripgrep" in script
         return _job_result("bootstrap-job", status=JobStatusName.EXITED, done=True, exit_code=0)
 
@@ -489,10 +489,60 @@ def test_shell_layer_create_bootstraps_agent_soul_shell_config(monkeypatch: pyte
     assert layer.runtime_state.job_ids == ["mkdir-job", "bootstrap-job"]
 
 
+def test_shell_layer_injects_agent_soul_env_without_workspace_env_file(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(time, "time", lambda: 0xABC12)
+
+    def token_hex(_nbytes: int) -> str:
+        return "ff"
+
+    monkeypatch.setattr(secrets, "token_hex", token_hex)
+
+    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
+        del timeout
+        assert env is None
+        if cwd is None:
+            return _job_result("mkdir-job", status=JobStatusName.EXITED, done=True, exit_code=0)
+
+        assert cwd == "~/workspace/abc12ff"
+        assert "export PROJECT_NAME='demo project'" in script
+        assert 'export OPENAI_API_KEY="${OPENAI_API_KEY:-}"' in script
+        assert "export DIFY_SANDBOX_PROVIDER='independent'" in script
+        assert "export DIFY_SANDBOX_CONFIG_JSON='{\"cpu\": 2}'" in script
+        assert script.endswith("\npwd")
+        return _job_result("user-job", status=JobStatusName.EXITED, done=True, exit_code=0)
+
+    client = FakeShellctlClient(run_handler=run_handler)
+    layer = _shell_layer(
+        client_factory=lambda _entrypoint: client,
+        config=DifyShellLayerConfig(
+            env=[DifyShellEnvVarConfig(name="PROJECT_NAME", value="demo project")],
+            secret_refs=[DifyShellSecretRefConfig(name="OPENAI_API_KEY", ref="secret-1")],
+            sandbox=DifyShellSandboxConfig(provider="independent", config={"cpu": 2}),
+        ),
+    )
+    tools = {tool.name: tool for tool in layer.tools}
+
+    async def scenario() -> None:
+        async with layer.resource_context():
+            await layer.on_context_create()
+            run_result = cast(
+                Mapping[str, object],
+                await tools["shell_run"].function_schema.call(
+                    {"script": "pwd"},
+                    None,  # pyright: ignore[reportArgumentType]
+                ),
+            )
+            assert run_result["job_id"] == "user-job"
+
+    asyncio.run(scenario())
+
+    assert [call.cwd for call in client.run_calls] == [None, "~/workspace/abc12ff"]
+    assert layer.runtime_state.job_ids == ["mkdir-job", "user-job"]
+
+
 def test_shell_layer_tools_map_inputs_to_shellctl_calls_and_maintain_offsets() -> None:
     def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
-        assert script.endswith("\npwd")
-        assert '. ".dify/env.sh"' in script
+        assert script == "pwd"
         assert cwd == "~/workspace/abc12ff"
         assert env is None
         assert timeout == 2.5
@@ -608,8 +658,7 @@ def test_shell_layer_tools_map_inputs_to_shellctl_calls_and_maintain_offsets() -
 def test_shell_layer_injects_agent_stub_env_only_for_user_visible_shell_run() -> None:
     def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
         del cwd, timeout
-        if script.endswith("\npwd"):
-            assert '. ".dify/env.sh"' in script
+        if script == "pwd":
             assert env is not None
             return _job_result("user-job", status=JobStatusName.EXITED, done=True, exit_code=0)
         assert env is None
@@ -639,8 +688,8 @@ def test_shell_layer_injects_agent_stub_env_only_for_user_visible_shell_run() ->
 
     asyncio.run(scenario())
 
-    user_run_call = next(call for call in client.run_calls if call.script.endswith("\npwd"))
-    internal_run_calls = [call for call in client.run_calls if not call.script.endswith("\npwd")]
+    user_run_call = next(call for call in client.run_calls if call.script == "pwd")
+    internal_run_calls = [call for call in client.run_calls if call.script != "pwd"]
 
     assert user_run_call.env == {
         AGENT_STUB_API_BASE_URL_ENV_VAR: "https://agent.example.com/agent-stub",

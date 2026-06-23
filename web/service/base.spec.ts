@@ -217,6 +217,57 @@ describe('handleStream', () => {
       expect(onCompleted).toHaveBeenCalled()
     })
 
+    it('should dispatch reasoning_chunk events to onReasoning', async () => {
+      // Arrange
+      const onData = vi.fn()
+      const onCompleted = vi.fn()
+      const onReasoning = vi.fn()
+
+      const reasoningEvent = {
+        event: 'reasoning_chunk',
+        task_id: 'task-1',
+        data: { message_id: 'm-1', reasoning: 'let me think', node_id: 'llm', is_final: false },
+      }
+
+      const mockReader = {
+        read: vi.fn()
+          .mockResolvedValueOnce({
+            done: false,
+            value: new TextEncoder().encode(`data: ${JSON.stringify(reasoningEvent)}\n`),
+          })
+          .mockResolvedValueOnce({
+            done: true,
+            value: undefined,
+          }),
+      }
+
+      const mockResponse = {
+        ok: true,
+        body: {
+          getReader: () => mockReader,
+        },
+      } as unknown as Response
+
+      // onReasoning is the last positional handler; fill the unused intervening slots.
+      const interveningNoops = Array.from({ length: 29 }, () => undefined)
+
+      // Act
+      ;(handleStream as (...args: unknown[]) => void)(
+        mockResponse,
+        onData,
+        onCompleted,
+        ...interveningNoops,
+        onReasoning,
+      )
+
+      // Wait for the stream to be processed
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      // Assert - the full event object is forwarded to onReasoning, answer stays untouched
+      expect(onReasoning).toHaveBeenCalledWith(reasoningEvent)
+      expect(onData).not.toHaveBeenCalled()
+    })
+
     it('should throw error when response is not ok', () => {
       // Arrange
       const onData = vi.fn()
