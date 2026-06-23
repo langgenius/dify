@@ -145,6 +145,30 @@ describe('useAgentConfigureSync', () => {
     expect(result.current.draftSavedAt).toBe(1710000105000)
   })
 
+  it('should skip autosave when knowledge retrieval validation fails', async () => {
+    const { result, store } = renderUseAgentConfigureSync()
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        knowledgeRetrievals: [
+          {
+            id: 'retrieval-1',
+            name: 'Docs Search',
+            datasetRefs: [],
+          },
+        ],
+      })
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+
+    expect(composerPutMutationFn).not.toHaveBeenCalled()
+    expect(result.current.draftSavedAt).toBeUndefined()
+  })
+
   it('should save the latest draft immediately when requested', async () => {
     vi.setSystemTime(1710000200000)
     const { result, store } = renderUseAgentConfigureSync()
@@ -178,22 +202,41 @@ describe('useAgentConfigureSync', () => {
     expect(result.current.draftSavedAt).toBe(1710000200000)
   })
 
+  it('should reject manual save when knowledge retrieval validation fails', async () => {
+    const { result, store } = renderUseAgentConfigureSync()
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        knowledgeRetrievals: [
+          {
+            id: 'retrieval-1',
+            name: 'Docs Search',
+            datasetRefs: [],
+          },
+        ],
+      })
+    })
+
+    await expect(result.current.saveDraft()).rejects.toThrow('Agent knowledge retrieval configuration is invalid.')
+    expect(composerPutMutationFn).not.toHaveBeenCalled()
+  })
+
   it('should publish only when publishDraft is called explicitly', async () => {
-    const { queryClient, result } = renderUseAgentConfigureSync()
+    const { queryClient, result, store } = renderUseAgentConfigureSync()
     queryClient.setQueryData(['agent-detail', 'agent-1'], {
       active_config_is_published: false,
       name: 'Agent',
     })
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Published prompt',
+      })
+    })
 
     await act(async () => {
-      await result.current.publishDraft({
-        agent_id: 'agent-1',
-        config_snapshot: {
-          prompt: {
-            system_prompt: 'Published prompt',
-          },
-        },
-      })
+      await result.current.publishDraft()
     })
 
     expect(composerPutMutationFn).toHaveBeenCalledWith(expect.objectContaining({
@@ -203,14 +246,14 @@ describe('useAgentConfigureSync', () => {
       body: expect.objectContaining({
         variant: 'agent_app',
         save_strategy: 'save_as_new_version',
-        agent_soul: {
-          prompt: {
+        agent_soul: expect.objectContaining({
+          prompt: expect.objectContaining({
             system_prompt: 'Published prompt',
-          },
-        },
+          }),
+        }),
       }),
     }))
-    expect(queryClient.getQueryData(['agent-composer', 'agent-1'])).toEqual({
+    expect(queryClient.getQueryData(['agent-composer', 'agent-1'])).toMatchObject({
       agent_soul: {
         prompt: {
           system_prompt: 'Published prompt',
@@ -223,22 +266,58 @@ describe('useAgentConfigureSync', () => {
     })
   })
 
+  it('should publish the current draft snapshot instead of a stale caller payload', async () => {
+    const { result, store } = renderUseAgentConfigureSync()
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Current draft prompt',
+      })
+    })
+
+    await act(async () => {
+      await result.current.publishDraft()
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledWith(expect.objectContaining({
+      body: expect.objectContaining({
+        agent_soul: expect.objectContaining({
+          prompt: expect.objectContaining({
+            system_prompt: 'Current draft prompt',
+          }),
+        }),
+      }),
+    }))
+  })
+
+  it('should reject publish when knowledge retrieval validation fails', async () => {
+    const { result, store } = renderUseAgentConfigureSync()
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        knowledgeRetrievals: [
+          {
+            id: 'retrieval-1',
+            name: 'Docs Search',
+            datasetRefs: [],
+          },
+        ],
+      })
+    })
+
+    await expect(result.current.publishDraft()).rejects.toThrow('Agent knowledge retrieval configuration is invalid.')
+    expect(composerPutMutationFn).not.toHaveBeenCalled()
+  })
+
   it('should expose publishing status from the publish mutation while publish is pending', async () => {
     const publishDeferred = createDeferredPromise<{ agent_soul: Record<string, unknown> }>()
     composerPutMutationFn.mockReturnValueOnce(publishDeferred.promise)
     const { result } = renderUseAgentConfigureSync()
-    const publishPayload = {
-      agent_id: 'agent-1',
-      config_snapshot: {
-        prompt: {
-          system_prompt: 'Published prompt',
-        },
-      },
-    }
-
     let publishPromise!: Promise<void>
     act(() => {
-      publishPromise = result.current.publishDraft(publishPayload)
+      publishPromise = result.current.publishDraft()
     })
 
     await act(async () => {
@@ -250,7 +329,11 @@ describe('useAgentConfigureSync', () => {
 
     await act(async () => {
       publishDeferred.resolve({
-        agent_soul: publishPayload.config_snapshot,
+        agent_soul: {
+          prompt: {
+            system_prompt: '',
+          },
+        },
       })
       await publishPromise
       await vi.advanceTimersByTimeAsync(0)

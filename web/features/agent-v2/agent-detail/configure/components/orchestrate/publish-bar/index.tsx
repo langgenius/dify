@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse, AgentReferencingWorkflowResponse, AgentReferencingWorkflowsResponse, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentConfigSnapshotSummaryResponse, AgentReferencingWorkflowResponse, AgentReferencingWorkflowsResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
@@ -10,20 +10,18 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useConfigPublishPayload, useHasAgentComposerUnpublishedChanges } from '@/features/agent-v2/agent-composer/store'
+import { useKnowledgeValidationMessage, validateKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/knowledge-validation'
+import { useHasAgentComposerUnpublishedChanges } from '@/features/agent-v2/agent-composer/store'
+import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/client'
 import { AgentPublishImpactDetails } from './publish-impact-details'
 
 const PUBLISH_AGENT_HOTKEY = 'Mod+Shift+P' satisfies RegisterableHotkey
-
-export type AgentConfigurePublishPayload = {
-  agent_id: string
-  config_snapshot: AgentSoulConfig
-}
 
 type AgentConfigurePublishState = 'draft' | 'publishing' | 'published' | 'unpublished'
 
@@ -34,16 +32,11 @@ type AgentConfigurePublishBarProps = {
   agentId: string
   activeConfigIsPublished?: boolean
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
-  agentSoulConfig?: AgentConfigSnapshotDetailResponse['config_snapshot']
   agentName?: string | null
-  currentModel?: {
-    provider: string
-    model: string
-  }
   draftSavedAt?: number
   isPublishing?: boolean
   selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
-  onPublish?: (payload: AgentConfigurePublishPayload) => void | Promise<void>
+  onPublish?: () => void | Promise<void>
   onExitVersions?: () => void
   onOpenVersions: () => void
 }
@@ -85,9 +78,7 @@ export function AgentConfigurePublishBar({
   agentId,
   activeConfigIsPublished,
   activeConfigSnapshot,
-  agentSoulConfig,
   agentName,
-  currentModel,
   draftSavedAt,
   isPublishing = false,
   selectedVersionSnapshot,
@@ -101,11 +92,9 @@ export function AgentConfigurePublishBar({
   const queryClient = useQueryClient()
   const [publishBarMode, setPublishBarMode] = useState<PublishBarMode>({ status: 'compact' })
   const hasUnpublishedChanges = useHasAgentComposerUnpublishedChanges()
-  const publishPayload = useConfigPublishPayload({
-    agentId,
-    baseConfig: agentSoulConfig,
-    currentModel,
-  })
+  const knowledgeRetrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
+  const knowledgeValidation = validateKnowledgeRetrievals(knowledgeRetrievals)
+  const getValidationMessage = useKnowledgeValidationMessage()
   const publishableState = getPublishState({
     activeConfigIsPublished,
     activeConfigSnapshot,
@@ -119,6 +108,7 @@ export function AgentConfigurePublishBar({
     isPublishing,
   })
   const publishIsAvailable = !isPublishing && (publishableState === 'draft' || publishableState === 'unpublished')
+  const publishValidationMessage = getValidationMessage(knowledgeValidation.firstIssue?.code)
   const workflowReferencesQueryOptions = consoleQuery.agent.byAgentId.referencingWorkflows.get.queryOptions({
     input: {
       params: {
@@ -131,7 +121,7 @@ export function AgentConfigurePublishBar({
     enabled: publishIsAvailable && !selectedVersionSnapshot,
   })
   const restoreVersionMutation = useMutation(consoleQuery.agent.byAgentId.versions.byVersionId.restore.post.mutationOptions())
-  const canPublish = publishIsAvailable
+  const canPublish = publishIsAvailable && knowledgeValidation.isValid
 
   const handleRestoreVersion = (versionId: string) => {
     if (restoreVersionMutation.isPending)
@@ -178,7 +168,7 @@ export function AgentConfigurePublishBar({
     if (!canPublish)
       return
 
-    await onPublish?.(publishPayload)
+    await onPublish?.()
     setPublishBarMode({ status: 'compact' })
   }
 
@@ -275,6 +265,9 @@ export function AgentConfigurePublishBar({
   const currentStateMeta = stateMeta[publishState]
   const isConfirmingImpact = publishBarMode.status === 'confirmingImpact' && (canPublish || isPublishing)
   const impactReferences = publishBarMode.status === 'confirmingImpact' ? publishBarMode.references : []
+  const effectiveMetaLabel = publishValidationMessage && publishIsAvailable
+    ? publishValidationMessage
+    : currentStateMeta.metaLabel
 
   return (
     <PublishBarBottomActions>
@@ -294,7 +287,7 @@ export function AgentConfigurePublishBar({
           actionLabel={currentStateMeta.actionLabel}
           dotStatus={currentStateMeta.dotStatus}
           isPublishing={isPublishing}
-          metaLabel={currentStateMeta.metaLabel}
+          metaLabel={effectiveMetaLabel}
           showShortcut={currentStateMeta.showShortcut}
           statusLabel={currentStateMeta.statusLabel}
           canPublish={canPublish}

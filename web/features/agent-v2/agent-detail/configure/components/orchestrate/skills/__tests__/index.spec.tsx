@@ -1,11 +1,13 @@
 import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { useAtomValue } from 'jotai'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
-import { useAgentComposerConfigSnapshot } from '@/features/agent-v2/agent-composer/store'
+import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { AgentDriveApiContextProvider } from '../../drive-context'
 import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
 import { AgentSkills } from '../index'
@@ -191,7 +193,8 @@ function renderReadonlyAgentSkills() {
 }
 
 function ConfigSnapshotProbe() {
-  const configSnapshot = useAgentComposerConfigSnapshot({})
+  const draft = useAtomValue(agentComposerDraftAtom)
+  const configSnapshot = formStateToAgentSoulConfig({ formState: draft })
 
   return (
     <pre data-testid="config-snapshot-probe">

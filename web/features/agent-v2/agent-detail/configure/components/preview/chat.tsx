@@ -140,6 +140,34 @@ const toCliTool = (tool: AgentCliToolConfig) => ({
   enabled: tool.enabled ?? true,
 })
 
+const toLegacyPreviewDatasetConfigs = (
+  knowledge?: AgentSoulConfig['knowledge'],
+): NonNullable<ChatConfig['dataset_configs']> => {
+  // Temporary preview adapter: composer state is knowledge.sets, but this
+  // legacy chat preview contract still accepts one flat dataset_configs block.
+  // Preview currently flattens the first configured set only.
+  const previewKnowledgeSet = knowledge?.sets?.[0]
+  const datasets = previewKnowledgeSet?.datasets ?? []
+  const retrieval = previewKnowledgeSet?.retrieval
+
+  return {
+    retrieval_model: retrieval?.mode === 'single' ? RETRIEVE_TYPE.oneWay : RETRIEVE_TYPE.multiWay,
+    reranking_model: {
+      reranking_provider_name: retrieval?.reranking_model?.provider ?? '',
+      reranking_model_name: retrieval?.reranking_model?.model ?? '',
+    },
+    top_k: retrieval?.top_k ?? 4,
+    score_threshold_enabled: retrieval?.score_threshold !== undefined && retrieval?.score_threshold !== null,
+    score_threshold: retrieval?.score_threshold ?? 0.8,
+    datasets: {
+      datasets: datasets.map(dataset => ({
+        enabled: true,
+        id: dataset.id ?? '',
+      })).filter(dataset => dataset.id),
+    },
+  }
+}
+
 const stopAgentChatMessageResponding = (agentId: string, taskId: string) => {
   return consoleClient.agent.byAgentId.chatMessages.byTaskId.stop.post({
     params: {
@@ -295,7 +323,6 @@ const buildChatConfig = ({
 }): AgentPreviewChatConfig => {
   const modelSettings = getModelSettings(agentSoulConfig)
   const appFeatures = agentSoulConfig?.app_features ?? {}
-  const datasets = agentSoulConfig?.knowledge?.datasets ?? []
   const difyTools = agentSoulConfig?.tools?.dify_tools ?? []
   const cliTools = agentSoulConfig?.tools?.cli_tools ?? []
 
@@ -354,22 +381,7 @@ const buildChatConfig = ({
         echo: false,
       },
     },
-    dataset_configs: {
-      retrieval_model: RETRIEVE_TYPE.multiWay,
-      reranking_model: {
-        reranking_provider_name: '',
-        reranking_model_name: '',
-      },
-      top_k: agentSoulConfig?.knowledge?.query_config?.top_k ?? 4,
-      score_threshold_enabled: agentSoulConfig?.knowledge?.query_config?.score_threshold_enabled ?? false,
-      score_threshold: agentSoulConfig?.knowledge?.query_config?.score_threshold ?? 0.8,
-      datasets: {
-        datasets: datasets.map(dataset => ({
-          enabled: true,
-          id: dataset.id ?? '',
-        })).filter(dataset => dataset.id),
-      },
-    },
+    dataset_configs: toLegacyPreviewDatasetConfigs(agentSoulConfig?.knowledge),
     file_upload: disabledFileUploadConfig,
     system_parameters: defaultSystemParameters,
     supportCitationHitInfo: true,

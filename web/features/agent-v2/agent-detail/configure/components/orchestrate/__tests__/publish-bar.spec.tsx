@@ -248,6 +248,33 @@ describe('AgentConfigurePublishBar', () => {
     )
   })
 
+  it('should block publish when knowledge retrieval validation fails', () => {
+    const { onPublish } = renderPublishBar({
+      setupStore: (store) => {
+        store.set(agentComposerDraftAtom, {
+          ...defaultAgentSoulConfigFormState,
+          knowledgeRetrievals: [
+            {
+              id: 'retrieval-1',
+              name: 'Docs Search',
+              datasetRefs: [],
+            },
+          ],
+        })
+      },
+    })
+
+    expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ })).toBeDisabled()
+    expect(screen.getByText('common.errorMsg.fieldRequired:{"field":"agentV2.agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label"}')).toBeInTheDocument()
+    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
+      expect.objectContaining({ enabled: false, ignoreInputs: false }),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }))
+
+    expect(onPublish).not.toHaveBeenCalled()
+  })
+
   it('should restore the selected version from view-only mode', async () => {
     const selectedVersionSnapshot = {
       ...activeConfigSnapshot,
@@ -335,9 +362,7 @@ describe('AgentConfigurePublishBar', () => {
     fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
 
     await waitFor(() => {
-      expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
-        agent_id: 'agent-1',
-      }))
+      expect(onPublish).toHaveBeenCalledTimes(1)
     })
     expect(screen.queryByRole('region', {
       name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
@@ -355,14 +380,7 @@ describe('AgentConfigurePublishBar', () => {
     fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
 
     await waitFor(() => {
-      expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
-        agent_id: 'agent-1',
-        config_snapshot: expect.objectContaining({
-          prompt: expect.objectContaining({
-            system_prompt: 'Updated system prompt',
-          }),
-        }),
-      }))
+      expect(onPublish).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -473,9 +491,7 @@ describe('AgentConfigurePublishBar', () => {
     })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
 
-    expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
-      agent_id: 'agent-1',
-    }))
+    expect(onPublish).toHaveBeenCalledTimes(1)
     expect(screen.getByRole('region', {
       name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
     })).toBeInTheDocument()
@@ -539,9 +555,7 @@ describe('AgentConfigurePublishBar', () => {
       await hotkeyRegistrations.get('Mod+Shift+P')?.callback({ preventDefault: vi.fn() })
     })
 
-    expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
-      agent_id: 'agent-1',
-    }))
+    expect(onPublish).toHaveBeenCalledTimes(1)
   })
 
   it('should publish directly from the publish shortcut when no workflows reference the agent', async () => {
@@ -558,8 +572,6 @@ describe('AgentConfigurePublishBar', () => {
     expect(screen.queryByRole('region', {
       name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
     })).not.toBeInTheDocument()
-    expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
-      agent_id: 'agent-1',
-    }))
+    expect(onPublish).toHaveBeenCalledTimes(1)
   })
 })

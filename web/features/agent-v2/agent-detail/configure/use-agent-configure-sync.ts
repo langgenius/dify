@@ -8,6 +8,7 @@ import { useSetAtom, useStore } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import { agentSoulConfigToFormState, formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
+import { validateKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/knowledge-validation'
 import {
   agentComposerDraftAtom,
   agentComposerOriginalConfigAtom,
@@ -19,9 +20,10 @@ import { consoleQuery } from '@/service/client'
 
 const DRAFT_AUTOSAVE_WAIT = 5000
 
-type AgentConfigurePublishPayload = {
-  agent_id: string
-  config_snapshot: AgentSoulConfig
+class InvalidKnowledgeConfigurationError extends Error {
+  constructor() {
+    super('Agent knowledge retrieval configuration is invalid.')
+  }
 }
 
 export function useAgentConfigureSync({
@@ -117,6 +119,10 @@ export function useAgentConfigureSync({
 
   const latestDraftSaveRef = useRef<() => void>(() => undefined)
   latestDraftSaveRef.current = () => {
+    const draft = store.get(agentComposerDraftAtom)
+    if (!validateKnowledgeRetrievals(draft.knowledgeRetrievals).isValid)
+      return
+
     void saveComposer('save_to_current_version', getAgentSoulDraft())
   }
 
@@ -128,9 +134,13 @@ export function useAgentConfigureSync({
     if (!enabledRef.current)
       return
 
+    const draft = store.get(agentComposerDraftAtom)
+    if (!validateKnowledgeRetrievals(draft.knowledgeRetrievals).isValid)
+      throw new InvalidKnowledgeConfigurationError()
+
     debouncedSaveDraft.cancel?.()
     await saveComposer('save_to_current_version', getAgentSoulDraft())
-  }, [debouncedSaveDraft, getAgentSoulDraft, saveComposer])
+  }, [debouncedSaveDraft, getAgentSoulDraft, saveComposer, store])
 
   useEffect(() => {
     return store.sub(agentComposerDraftAtom, () => {
@@ -140,6 +150,7 @@ export function useAgentConfigureSync({
       if (
         !enabledRef.current
         || !store.get(isAgentComposerDirtyAtom)
+        || !validateKnowledgeRetrievals(store.get(agentComposerDraftAtom).knowledgeRetrievals).isValid
         || lastAutosavedDraftKeyRef.current === agentSoulDraftKey
       ) {
         return
@@ -155,15 +166,18 @@ export function useAgentConfigureSync({
     }
   }, [debouncedSaveDraft])
 
-  const publishDraft = useCallback(async (payload: AgentConfigurePublishPayload) => {
+  const publishDraft = useCallback(async () => {
+    const draft = store.get(agentComposerDraftAtom)
+    if (!validateKnowledgeRetrievals(draft.knowledgeRetrievals).isValid)
+      throw new InvalidKnowledgeConfigurationError()
+
     debouncedSaveDraft.cancel?.()
-    try {
-      await saveComposer('save_as_new_version', payload.config_snapshot)
-    }
-    catch {
-      // Draft sync follows workflow autosave behavior: save failures are silent and keep the local draft intact.
-    }
-  }, [debouncedSaveDraft, saveComposer])
+    await saveComposer('save_as_new_version', formStateToAgentSoulConfig({
+      baseConfig: baseConfigRef.current,
+      formState: draft,
+      currentModel: currentModelRef.current,
+    }))
+  }, [debouncedSaveDraft, saveComposer, store])
 
   return {
     draftSavedAt,

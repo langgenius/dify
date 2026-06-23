@@ -1,4 +1,10 @@
-import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type {
+  AgentKnowledgeMetadataConditions,
+  AgentKnowledgeModelConfig,
+  AgentKnowledgeRetrievalConfig,
+  AgentKnowledgeSetConfig,
+  AgentSoulConfig,
+} from '@dify/contracts/api/console/agent/types.gen'
 import type {
   AgentCliTool,
   AgentKnowledgeRetrievalItem,
@@ -8,80 +14,132 @@ import type {
   EnvVariable,
 } from './form-state'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  MetadataFilteringConditions,
+  MultipleRetrievalConfig,
+  SingleRetrievalConfig,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { ModelConfig } from '@/app/components/workflow/types'
+import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import { DATASET_DEFAULT } from '@/config'
+import { RETRIEVE_TYPE } from '@/types/app'
 import { checkKey } from '@/utils/var'
 import { defaultAgentSoulConfigFormState } from './form-state'
+import { getKnowledgeRetrievalSetName } from './knowledge-validation'
 
 type AgentSoulDifyToolConfig = NonNullable<NonNullable<AgentSoulConfig['tools']>['dify_tools']>[number]
 type AgentSoulCliToolConfig = NonNullable<NonNullable<AgentSoulConfig['tools']>['cli_tools']>[number]
 type AgentSoulToolRuntimeParameterValue = NonNullable<AgentSoulDifyToolConfig['runtime_parameters']>[string]
 type AgentSoulEnvVariableConfig = NonNullable<NonNullable<AgentSoulConfig['env']>['variables']>[number]
 
-const getKnowledgeRetrievalName = (item: AgentKnowledgeRetrievalItem) => item.name ?? item.nameKey ?? item.id
-
-const toKnowledgeDatasets = (knowledgeRetrievals: AgentKnowledgeRetrievalItem[]) => knowledgeRetrievals.flatMap((item) => {
-  if (item.selectedDatasets?.length) {
+const toKnowledgeDatasetRefs = (item: AgentKnowledgeRetrievalItem) => {
+  if (item.selectedDatasets !== undefined) {
     return item.selectedDatasets.map(dataset => ({
       description: dataset.description,
       id: dataset.id,
       name: dataset.name,
     }))
   }
-  if (item.datasetRefs?.length)
-    return item.datasetRefs
 
-  return [{
-    id: item.id,
-    name: getKnowledgeRetrievalName(item),
-  }]
+  return item.datasetRefs ?? []
+}
+
+const toRetrievalConfig = (item: AgentKnowledgeRetrievalItem): AgentKnowledgeRetrievalConfig => {
+  if (item.retrievalMode === RETRIEVE_TYPE.oneWay) {
+    return {
+      mode: 'single',
+      model: item.singleRetrievalConfig?.model,
+    }
+  }
+
+  const config = item.multipleRetrievalConfig
+  return {
+    mode: 'multiple',
+    top_k: config?.top_k ?? DATASET_DEFAULT.top_k,
+    score_threshold: config?.score_threshold ?? undefined,
+    reranking_mode: config?.reranking_mode,
+    reranking_enable: config?.reranking_enable ?? false,
+    reranking_model: config?.reranking_model,
+    weights: config?.weights,
+  }
+}
+
+const toModelFormState = (model?: AgentKnowledgeModelConfig | null): ModelConfig | undefined => {
+  if (!model)
+    return undefined
+
+  return {
+    provider: model.provider,
+    name: model.name,
+    mode: model.mode,
+    completion_params: model.completion_params ?? {},
+  }
+}
+
+const toMultipleRetrievalFormState = (config?: AgentKnowledgeRetrievalConfig): MultipleRetrievalConfig => ({
+  top_k: config?.top_k ?? DATASET_DEFAULT.top_k,
+  score_threshold: config?.score_threshold ?? null,
+  reranking_model: config?.reranking_model ?? undefined,
+  reranking_mode: config?.reranking_mode as MultipleRetrievalConfig['reranking_mode'],
+  weights: config?.weights as MultipleRetrievalConfig['weights'],
+  reranking_enable: config?.reranking_enable ?? false,
 })
 
+const toSingleRetrievalFormState = (config?: AgentKnowledgeRetrievalConfig): SingleRetrievalConfig | undefined => (
+  config?.model
+    ? {
+        model: toModelFormState(config.model)!,
+      }
+    : undefined
+)
+
+const toMetadataFilteringConfig = (item: AgentKnowledgeRetrievalItem): AgentKnowledgeSetConfig['metadata_filtering'] => {
+  const mode = item.metadataFilterMode ?? MetadataFilteringModeEnum.disabled
+
+  return {
+    mode,
+    model_config: mode === MetadataFilteringModeEnum.automatic ? item.metadataModelConfig : undefined,
+    conditions: mode === MetadataFilteringModeEnum.manual
+      ? item.metadataFilteringConditions as AgentKnowledgeMetadataConditions | undefined
+      : undefined,
+  }
+}
+
+const toKnowledgeSets = (knowledgeRetrievals: AgentKnowledgeRetrievalItem[]): AgentKnowledgeSetConfig[] => knowledgeRetrievals.map(item => ({
+  id: item.id,
+  name: getKnowledgeRetrievalSetName(item),
+  description: item.description,
+  datasets: toKnowledgeDatasetRefs(item),
+  query: {
+    mode: item.queryMode === 'custom' ? ('user_query' as const) : ('generated_query' as const),
+    value: item.queryMode === 'custom' ? (item.customQuery?.trim() || undefined) : undefined,
+  },
+  retrieval: toRetrievalConfig(item),
+  metadata_filtering: toMetadataFilteringConfig(item),
+}))
+
 const toKnowledgeRetrievalFormState = (config?: AgentSoulConfig): AgentKnowledgeRetrievalItem[] => {
-  const knowledge = config?.knowledge
-  const datasets = knowledge?.datasets ?? []
-
-  if (datasets.length === 0)
-    return []
-
-  return [{
-    id: datasets[0]?.id ?? 'knowledge-retrieval',
-    name: datasets[0]?.name ?? 'Knowledge Retrieval',
-    queryMode: knowledge?.query_mode === 'user_query' ? 'custom' : 'agent',
-    customQuery: knowledge?.query_config?.query ?? undefined,
-    datasetRefs: datasets,
-    multipleRetrievalConfig: {
-      top_k: knowledge?.query_config?.top_k ?? 4,
-      score_threshold: knowledge?.query_config?.score_threshold ?? null,
-      reranking_enable: false,
-    },
-  }]
+  return (config?.knowledge?.sets ?? []).map(knowledgeSet => ({
+    id: knowledgeSet.id,
+    name: knowledgeSet.name,
+    description: knowledgeSet.description ?? undefined,
+    queryMode: knowledgeSet.query.mode === 'user_query' ? 'custom' : 'agent',
+    customQuery: knowledgeSet.query.value ?? undefined,
+    datasetRefs: knowledgeSet.datasets,
+    retrievalMode: knowledgeSet.retrieval.mode === 'single' ? RETRIEVE_TYPE.oneWay : RETRIEVE_TYPE.multiWay,
+    multipleRetrievalConfig: toMultipleRetrievalFormState(knowledgeSet.retrieval),
+    singleRetrievalConfig: toSingleRetrievalFormState(knowledgeSet.retrieval),
+    metadataFilterMode: (knowledgeSet.metadata_filtering?.mode ?? MetadataFilteringModeEnum.disabled) as MetadataFilteringModeEnum,
+    metadataFilteringConditions: knowledgeSet.metadata_filtering?.conditions as MetadataFilteringConditions | undefined,
+    metadataModelConfig: toModelFormState(knowledgeSet.metadata_filtering?.model_config),
+  }))
 }
 
 const toKnowledgeConfig = (
-  baseKnowledge: AgentSoulConfig['knowledge'],
   knowledgeRetrievals: AgentKnowledgeRetrievalItem[],
-): AgentSoulConfig['knowledge'] => {
-  const primaryRetrieval = knowledgeRetrievals.find(retrieval =>
-    retrieval.queryMode === 'custom'
-    || retrieval.customQuery
-    || retrieval.multipleRetrievalConfig
-    || retrieval.selectedDatasets?.length,
-  ) ?? knowledgeRetrievals[0]
-  const multipleRetrievalConfig = primaryRetrieval?.multipleRetrievalConfig
-  const scoreThreshold = multipleRetrievalConfig?.score_threshold
-
-  return {
-    ...baseKnowledge,
-    datasets: toKnowledgeDatasets(knowledgeRetrievals),
-    query_mode: primaryRetrieval?.queryMode === 'custom' ? 'user_query' : 'generated_query',
-    query_config: {
-      ...baseKnowledge?.query_config,
-      query: primaryRetrieval?.queryMode === 'custom' ? primaryRetrieval.customQuery : null,
-      score_threshold: scoreThreshold,
-      score_threshold_enabled: scoreThreshold !== undefined && scoreThreshold !== null,
-      top_k: multipleRetrievalConfig?.top_k ?? baseKnowledge?.query_config?.top_k,
-    },
-  }
-}
+): AgentSoulConfig['knowledge'] => ({
+  sets: toKnowledgeSets(knowledgeRetrievals),
+})
 
 const isToolRuntimeParameterValue = (value: unknown): value is AgentSoulToolRuntimeParameterValue => {
   if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
@@ -396,7 +454,7 @@ export const formStateToAgentSoulConfig = ({
       cli_tools: toCliToolConfigs(formState.tools),
     },
     app_features: formState.appFeatures ?? baseConfig?.app_features,
-    knowledge: toKnowledgeConfig(baseConfig?.knowledge, formState.knowledgeRetrievals),
+    knowledge: toKnowledgeConfig(formState.knowledgeRetrievals),
     env: toEnvConfig(formState.envVariables),
   }
 }

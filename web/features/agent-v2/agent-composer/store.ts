@@ -1,10 +1,9 @@
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentSoulConfigFormState } from './form-state'
-import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import isEqual from 'fast-deep-equal'
 import { atom, useAtomValue, useSetAtom } from 'jotai'
-import { useEffect, useMemo, useRef } from 'react'
-import { agentSoulConfigToFormState, formStateToAgentSoulConfig } from './conversions'
+import { useEffect, useRef } from 'react'
+import { agentSoulConfigToFormState } from './conversions'
 import { defaultAgentSoulConfigFormState } from './form-state'
 
 export const agentComposerOriginalConfigAtom = atom<AgentSoulConfig | undefined>(undefined)
@@ -93,40 +92,4 @@ export function useHydrateAgentSoulConfigDraft({
 
 export function useHasAgentComposerUnpublishedChanges() {
   return useAtomValue(hasAgentComposerUnpublishedChangesAtom)
-}
-
-export function useAgentComposerConfigSnapshot({
-  baseConfig,
-  currentModel,
-}: {
-  baseConfig?: AgentSoulConfig
-  currentModel?: DefaultModel
-}) {
-  const draft = useAtomValue(agentComposerDraftAtom)
-
-  return useMemo(() => formStateToAgentSoulConfig({
-    baseConfig,
-    formState: draft,
-    currentModel,
-  }), [baseConfig, currentModel, draft])
-}
-
-export function useConfigPublishPayload({
-  agentId,
-  baseConfig,
-  currentModel,
-}: {
-  agentId: string
-  baseConfig?: AgentSoulConfig
-  currentModel?: DefaultModel
-}) {
-  const configSnapshot = useAgentComposerConfigSnapshot({
-    baseConfig,
-    currentModel,
-  })
-
-  return useMemo(() => ({
-    agent_id: agentId,
-    config_snapshot: configSnapshot,
-  }), [agentId, configSnapshot])
 }
