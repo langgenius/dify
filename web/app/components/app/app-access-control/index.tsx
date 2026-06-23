@@ -1,7 +1,7 @@
 'use client'
 import type { Subject as EnterpriseSubject } from '@dify/contracts/enterprise/types.gen'
 import type { App } from '@/types/app'
-import { SubjectType as EnterpriseSubjectType } from '@dify/contracts/enterprise/types.gen'
+import { AccessSubjectType as EnterpriseSubjectType } from '@dify/contracts/enterprise/types.gen'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -94,12 +94,12 @@ function AccessControlForm({
     if (currentMenu === AccessMode.SPECIFIC_GROUPS_MEMBERS) {
       const subjects: Pick<EnterpriseSubject, 'subjectId' | 'subjectType'>[] = []
       specificGroups.forEach((group) => {
-        subjects.push({ subjectId: group.id, subjectType: EnterpriseSubjectType.SUBJECT_TYPE_GROUP })
+        subjects.push({ subjectId: group.id, subjectType: EnterpriseSubjectType.ACCESS_SUBJECT_TYPE_GROUP })
       })
       specificMembers.forEach((member) => {
         subjects.push({
           subjectId: member.id,
-          subjectType: EnterpriseSubjectType.SUBJECT_TYPE_ACCOUNT,
+          subjectType: EnterpriseSubjectType.ACCESS_SUBJECT_TYPE_ACCOUNT,
         })
       })
       submitData.subjects = subjects
