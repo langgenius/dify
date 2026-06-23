@@ -43,7 +43,11 @@ vi.mock('jotai-tanstack-query', async (importOriginal) => {
     atomWithQuery: (createOptions: (get: Getter) => QueryOptions) => atom((get) => {
       const options = createOptions(get)
       const queryKey = Array.isArray(options.queryKey) ? options.queryKey[0] : undefined
-      const queryName = typeof queryKey === 'string' ? queryKey : 'unknown'
+      const input = options.input as { query?: { displayName?: unknown } } | undefined
+      const hasReleaseNameFilter = Boolean(input?.query?.displayName)
+      const queryName = hasReleaseNameFilter
+        ? 'releaseNameConflict'
+        : typeof queryKey === 'string' ? queryKey : 'unknown'
       const queryResult = options.enabled === false
         ? undefined
         : mockQueryResults.current.get(queryName)
@@ -171,6 +175,19 @@ function setPrecheckReleaseResult(overrides: {
       canCreate: true,
       unsupportedNodes: [],
       ...overrides,
+    },
+    isSuccess: true,
+  })
+}
+
+function setReleaseNameConflictResult(displayName: string) {
+  mockQueryResults.current.set('releaseNameConflict', {
+    data: {
+      releases: [
+        {
+          displayName,
+        },
+      ],
     },
     isSuccess: true,
   })
@@ -349,6 +366,18 @@ describe('create release state', () => {
     unsubscribe()
   })
 
+  it('should detect existing release name conflicts', async () => {
+    const { state, store, unsubscribe } = await mountedStore()
+    store.set(state.createReleaseAppInstanceIdAtom, 'app-instance-1')
+    store.set(state.openCreateReleaseDialogAtom)
+    store.set(state.createReleaseNameFieldAtom, ' Release 1 ')
+    setReleaseNameConflictResult('Release 1')
+
+    expect(store.get(state.createReleaseHasNameConflictAtom)).toBe(true)
+
+    unsubscribe()
+  })
+
   it('should close the dialog through the close request action', async () => {
     const { state, store, unsubscribe } = await mountedStore()
 
@@ -402,6 +431,23 @@ describe('create release state', () => {
         createAppInstance: false,
       },
     })
+
+    unsubscribe()
+  })
+
+  it('should block release submission when release name already exists', async () => {
+    const { state, store, unsubscribe } = await mountedStore()
+    store.set(state.createReleaseAppInstanceIdAtom, 'app-instance-1')
+    store.set(state.openCreateReleaseDialogAtom)
+    setDefaultSourceApp()
+    setPrecheckReleaseResult()
+    setReleaseNameConflictResult('Release 1')
+    store.set(state.createReleaseNameFieldAtom, 'Release 1')
+
+    const result = await store.set(state.submitCreateReleaseFormAtom)
+
+    expect(result).toBeUndefined()
+    expect(mockCreateReleaseMutation.current.mutateAsync).not.toHaveBeenCalled()
 
     unsubscribe()
   })

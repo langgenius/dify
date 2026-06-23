@@ -6,7 +6,9 @@ import { useTranslation } from 'react-i18next'
 import {
   createReleaseContentReadyAtom,
   createReleaseFormIsSubmittingAtom,
+  createReleaseHasNameConflictAtom,
   isCheckingCreateReleaseContentAtom,
+  isCheckingCreateReleaseNameConflictAtom,
   requestCloseCreateReleaseDialogAtom,
 } from '../state'
 
@@ -16,6 +18,8 @@ export function CreateReleaseActions() {
   const isSubmitting = useAtomValue(createReleaseFormIsSubmittingAtom)
   const releaseContentReady = useAtomValue(createReleaseContentReadyAtom)
   const isCheckingReleaseContent = useAtomValue(isCheckingCreateReleaseContentAtom)
+  const isCheckingReleaseNameConflict = useAtomValue(isCheckingCreateReleaseNameConflictAtom)
+  const hasReleaseNameConflict = useAtomValue(createReleaseHasNameConflictAtom)
 
   return (
     <div className="flex items-center justify-end gap-4 border-t border-divider-subtle bg-background-default-subtle px-6 py-4">
@@ -41,7 +45,7 @@ export function CreateReleaseActions() {
           type="submit"
           variant="primary"
           className="min-w-22"
-          disabled={!releaseContentReady}
+          disabled={!releaseContentReady || isCheckingReleaseNameConflict || hasReleaseNameConflict}
           loading={isSubmitting}
         >
           {isSubmitting ? t('versions.creating') : isCheckingReleaseContent ? t('versions.checkingReleaseContent') : t('versions.create')}

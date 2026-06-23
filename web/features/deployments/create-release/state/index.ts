@@ -39,6 +39,7 @@ const DEFAULT_CREATE_RELEASE_FORM_VALUES: CreateReleaseFormValues = {
 export const RELEASE_NAME_REQUIRED_ERROR = 'releaseNameRequired'
 
 const DEFAULT_SOURCE_RELEASE_PAGE_SIZE = 1
+const RELEASE_NAME_CONFLICT_PAGE_SIZE = 10
 
 function deploymentReleaseSourceMode(mode: ReleaseSourceMode): ReleaseSourceMode {
   return mode === 'dsl' && !isDeploymentDslImportEnabled
@@ -156,6 +157,44 @@ function defaultSourceApp(get: Getter) {
 
   return workflowSourceAppPickerValue(get(defaultSourceAppQueryAtom).data, latestSourceAppId)
 }
+
+function submittedReleaseName(get: Getter) {
+  return get(createReleaseNameFieldAtom).value.trim()
+}
+
+const releaseNameConflictQueryAtom = atomWithQuery((get) => {
+  const appInstanceId = get(createReleaseAppInstanceIdAtom)
+  const releaseName = submittedReleaseName(get)
+
+  return consoleQuery.enterprise.releaseService.listReleases.queryOptions({
+    input: {
+      params: { appInstanceId: appInstanceId ?? '' },
+      query: {
+        displayName: releaseName,
+        pageNumber: 1,
+        resultsPerPage: RELEASE_NAME_CONFLICT_PAGE_SIZE,
+      },
+    },
+    enabled: Boolean(appInstanceId && get(createReleaseDialogOpenAtom) && releaseName),
+  })
+})
+
+export const isCheckingCreateReleaseNameConflictAtom = atom((get) => {
+  const releaseName = submittedReleaseName(get)
+  const releaseNameConflictQuery = get(releaseNameConflictQueryAtom)
+
+  return Boolean(releaseName && (releaseNameConflictQuery.isLoading || releaseNameConflictQuery.isFetching))
+})
+
+export const createReleaseHasNameConflictAtom = atom((get) => {
+  const releaseName = submittedReleaseName(get)
+  if (!releaseName)
+    return false
+
+  return get(releaseNameConflictQueryAtom).data?.releases.some((release) => {
+    return release.displayName.trim() === releaseName
+  }) ?? false
+})
 
 const createReleaseDslFileContentQueryAtom = atomWithQuery((get) => {
   const file = get(createReleaseDslFileFieldAtom).value
@@ -400,6 +439,9 @@ const createReleaseSubmissionAtom = atom(null, async (get, set, value: CreateRel
   const submittedReleaseName = value.releaseName.trim()
 
   if (get(isCheckingCreateReleaseContentAtom) || !submittedReleaseName)
+    return undefined
+
+  if (get(isCheckingCreateReleaseNameConflictAtom) || get(createReleaseHasNameConflictAtom))
     return undefined
 
   if (!canCheckReleaseSourceContent(get) || !get(createReleaseContentReadyAtom))
