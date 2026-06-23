@@ -4,7 +4,14 @@ import contextlib
 import logging
 from typing import override
 
-from core.logging.context import get_identity_context, get_request_id, get_trace_id
+from core.logging.context import (
+    get_app_id,
+    get_identity_context,
+    get_node_id,
+    get_request_id,
+    get_trace_id,
+    get_workflow_id,
+)
 
 
 class TraceContextFilter(logging.Filter):
@@ -60,4 +67,20 @@ class IdentityContextFilter(logging.Filter):
         record.tenant_id = identity.tenant_id
         record.user_id = identity.user_id
         record.user_type = identity.user_type
+        return True
+
+
+class WorkflowLogContextFilter(logging.Filter):
+    """Inject workflow log context (app_id, workflow_id, node_id) into log records.
+
+    Values are read from ContextVars that are managed by ``WorkflowEntry.run``
+    (app_id / workflow_id / error_source) and ``WorkflowLogContextLayer``
+    (node_id).
+    """
+
+    @override
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.app_id = get_app_id()
+        record.workflow_id = get_workflow_id()
+        record.node_id = get_node_id()
         return True

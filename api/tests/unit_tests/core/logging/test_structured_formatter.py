@@ -5,6 +5,9 @@ import sys
 
 import orjson
 
+from core.logging.context import ErrorSource, clear_error_source, set_error_source
+from core.logging.structured_formatter import StructuredJSONFormatter
+
 
 class TestStructuredJSONFormatter:
     def test_basic_log_format(self):
@@ -265,3 +268,169 @@ class TestStructuredJSONFormatter:
         log_dict = json.loads(output)
         assert log_dict["message"] == "Test with non-serializable"
         assert "attributes" in log_dict
+
+
+# ---------------------------------------------------------------------------
+# Workflow log context (app_id / workflow_id / node_id)
+# ---------------------------------------------------------------------------
+
+
+class TestLogContextExtraction:
+    """Tests for workflow log context extraction in the formatter."""
+
+    def test_context_included_when_set(self):
+        from core.logging.structured_formatter import StructuredJSONFormatter
+
+        formatter = StructuredJSONFormatter()
+        record = logging.LogRecord(
+            name="test",
+            level=logging.INFO,
+            pathname="test.py",
+            lineno=1,
+            msg="Test",
+            args=(),
+            exc_info=None,
+        )
+        record.app_id = "app-123"
+        record.workflow_id = "wf-456"
+        record.node_id = "node-789"
+
+        output = formatter.format(record)
+        log_dict = orjson.loads(output)
+
+        assert "context" in log_dict
+        assert log_dict["context"]["app_id"] == "app-123"
+        assert log_dict["context"]["workflow_id"] == "wf-456"
+        assert log_dict["context"]["node_id"] == "node-789"
+
+    def test_context_partial_fields(self):
+        from core.logging.structured_formatter import StructuredJSONFormatter
+
+        formatter = StructuredJSONFormatter()
+        record = logging.LogRecord(
+            name="test",
+            level=logging.INFO,
+            pathname="test.py",
+            lineno=1,
+            msg="Test",
+            args=(),
+            exc_info=None,
+        )
+        record.app_id = "app-123"
+        # workflow_id and node_id not set
+
+        output = formatter.format(record)
+        log_dict = orjson.loads(output)
+
+        assert "context" in log_dict
+        assert log_dict["context"]["app_id"] == "app-123"
+        assert "workflow_id" not in log_dict["context"]
+        assert "node_id" not in log_dict["context"]
+
+    def test_no_context_when_all_empty(self):
+        from core.logging.structured_formatter import StructuredJSONFormatter
+
+        formatter = StructuredJSONFormatter()
+        record = logging.LogRecord(
+            name="test",
+            level=logging.INFO,
+            pathname="test.py",
+            lineno=1,
+            msg="Test",
+            args=(),
+            exc_info=None,
+        )
+        record.app_id = ""
+        record.workflow_id = ""
+        record.node_id = ""
+
+        output = formatter.format(record)
+        log_dict = orjson.loads(output)
+
+        assert "context" not in log_dict
+
+
+# ---------------------------------------------------------------------------
+# error_source inference
+# ---------------------------------------------------------------------------
+
+
+class TestInferErrorSource:
+    """Tests for _infer_error_source with ContextVar-based source."""
+
+    def _make_record(self, level: int = logging.ERROR) -> logging.LogRecord:
+        return logging.LogRecord(
+            name="test",
+            level=level,
+            pathname="test.py",
+            lineno=1,
+            msg="Test",
+            args=(),
+            exc_info=None,
+        )
+
+    def test_default_is_system(self):
+        """Without any context, default to 'system'."""
+        clear_error_source()
+        formatter = StructuredJSONFormatter()
+        record = self._make_record()
+
+        assert formatter._infer_error_source(record) == "system"
+
+    def test_contextvar_workflow(self):
+        """When ContextVar is set to WORKFLOW, error_source should be 'workflow'."""
+        clear_error_source()
+        set_error_source(ErrorSource.WORKFLOW)
+        formatter = StructuredJSONFormatter()
+        record = self._make_record()
+
+        assert formatter._infer_error_source(record) == "workflow"
+
+        clear_error_source()
+
+    def test_error_source_only_for_error_and_above(self):
+        """error_source field should NOT appear for INFO/DEBUG logs."""
+        clear_error_source()
+        formatter = StructuredJSONFormatter()
+        record = self._make_record(level=logging.INFO)
+
+        output = formatter.format(record)
+        log_dict = orjson.loads(output)
+
+        assert "error_source" not in log_dict
+
+    def test_error_source_present_for_error(self):
+        """error_source field should appear for ERROR logs."""
+        clear_error_source()
+        set_error_source(ErrorSource.WORKFLOW)
+        formatter = StructuredJSONFormatter()
+        record = self._make_record(level=logging.ERROR)
+
+        output = formatter.format(record)
+        log_dict = orjson.loads(output)
+
+        assert log_dict["error_source"] == "workflow"
+
+        clear_error_source()
+
+    def test_error_source_present_for_critical(self):
+        """error_source field should appear for CRITICAL logs."""
+        clear_error_source()
+        formatter = StructuredJSONFormatter()
+        record = self._make_record(level=logging.CRITICAL)
+
+        output = formatter.format(record)
+        log_dict = orjson.loads(output)
+
+        assert log_dict["error_source"] == "system"
+
+    def test_error_source_default_system_in_output(self):
+        """Without context, ERROR log should have error_source='system'."""
+        clear_error_source()
+        formatter = StructuredJSONFormatter()
+        record = self._make_record(level=logging.ERROR)
+
+        output = formatter.format(record)
+        log_dict = orjson.loads(output)
+
+        assert log_dict["error_source"] == "system"
