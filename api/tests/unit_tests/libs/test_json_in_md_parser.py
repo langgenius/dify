@@ -35,6 +35,20 @@ def test_parse_json_markdown_braces_only():
     assert parse_json_markdown(src) == {"ok": "yes"}
 
 
+def test_parse_json_markdown_array_root():
+    src = '[{"a": 1}, {"b": 2}]'
+    assert parse_json_markdown(src) == [{"a": 1}, {"b": 2}]
+
+
+def test_parse_json_markdown_fenced_array_root():
+    src = """
+    ```json
+    [{"a": 1}, {"b": 2}]
+    ```
+    """
+    assert parse_json_markdown(src) == [{"a": 1}, {"b": 2}]
+
+
 def test_parse_json_markdown_not_found():
     with pytest.raises(ValueError):
         parse_json_markdown("no json here")
