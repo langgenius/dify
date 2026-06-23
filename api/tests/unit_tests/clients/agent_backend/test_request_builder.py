@@ -162,8 +162,15 @@ def test_request_builder_adds_knowledge_layer_when_configured():
     run_input = _run_input()
     run_input.knowledge = DifyKnowledgeBaseLayerConfig.model_validate(
         {
-            "dataset_ids": ["dataset-1"],
-            "retrieval": {"mode": "multiple", "top_k": 4},
+            "sets": [
+                {
+                    "id": "support",
+                    "name": "Support KB",
+                    "datasets": [{"id": "dataset-1"}],
+                    "query": {"mode": "generated_query"},
+                    "retrieval": {"mode": "multiple", "top_k": 4},
+                }
+            ],
         }
     )
 
@@ -174,7 +181,7 @@ def test_request_builder_adds_knowledge_layer_when_configured():
     assert layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].type == DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID
     assert layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
     knowledge_config = cast(DifyKnowledgeBaseLayerConfig, layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].config)
-    assert knowledge_config.dataset_ids == ["dataset-1"]
+    assert knowledge_config.sets[0].dataset_ids == ["dataset-1"]
 
 
 def test_request_builder_can_delete_on_exit_for_cleanup_paths():
@@ -386,8 +393,15 @@ def test_agent_app_request_builder_adds_knowledge_layer_when_configured():
     run_input = _agent_app_input()
     run_input.knowledge = DifyKnowledgeBaseLayerConfig.model_validate(
         {
-            "dataset_ids": ["dataset-1", "dataset-2"],
-            "retrieval": {"mode": "multiple", "top_k": 2},
+            "sets": [
+                {
+                    "id": "support",
+                    "name": "Support KB",
+                    "datasets": [{"id": "dataset-1"}, {"id": "dataset-2"}],
+                    "query": {"mode": "generated_query"},
+                    "retrieval": {"mode": "multiple", "top_k": 2},
+                }
+            ],
         }
     )
 
@@ -398,7 +412,7 @@ def test_agent_app_request_builder_adds_knowledge_layer_when_configured():
     assert layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].type == DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID
     assert layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
     knowledge_config = cast(DifyKnowledgeBaseLayerConfig, layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].config)
-    assert knowledge_config.dataset_ids == ["dataset-1", "dataset-2"]
+    assert knowledge_config.sets[0].dataset_ids == ["dataset-1", "dataset-2"]
 
 
 # ── ENG-635 / ENG-638: ask_human layer injection + deferred_tool_results ─────

@@ -33,6 +33,11 @@ from services.agent.errors import (
     AgentNameConflictError,
     AgentNotFoundError,
     AgentVersionNotFoundError,
+    InvalidComposerConfigError,
+)
+from services.agent.knowledge_datasets import (
+    get_tenant_knowledge_dataset_rows,
+    list_missing_tenant_knowledge_dataset_ids,
 )
 from services.entities.agent_entities import (
     AgentSoulConfig,
@@ -101,6 +106,7 @@ class AgentComposerService:
 
         _backfill_cli_tool_ids(payload.agent_soul)
         ComposerConfigValidator.validate_save_payload(payload)
+        cls.validate_knowledge_datasets(tenant_id=tenant_id, agent_soul=payload.agent_soul)
         workflow = cls._get_draft_workflow(tenant_id=tenant_id, app_id=app_id)
         binding = cls._get_workflow_binding(tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id)
 
@@ -195,6 +201,7 @@ class AgentComposerService:
             raise ValueError("Agent App composer endpoint only accepts agent_app variant")
         _backfill_cli_tool_ids(payload.agent_soul)
         ComposerConfigValidator.validate_save_payload(payload)
+        cls.validate_knowledge_datasets(tenant_id=tenant_id, agent_soul=payload.agent_soul)
         if payload.agent_soul is None:
             raise ValueError("agent_soul is required")
 
@@ -273,19 +280,15 @@ class AgentComposerService:
         agent_id: str | None = None,
     ) -> dict[str, Any]:
         """ENG-617 soft findings, with DB-backed dataset and drive mention checks."""
-        from services.agent.prompt_mentions import MentionKind, parse_prompt_mentions
-
-        mentioned_ids: set[str] = set()
-        if payload.agent_soul is not None:
-            mentioned_ids |= {
-                mention.ref_id
-                for mention in parse_prompt_mentions(payload.agent_soul.prompt.system_prompt)
-                if mention.kind == MentionKind.KNOWLEDGE
-            }
-        existing_dataset_ids: set[str] | None = None
-        if mentioned_ids:
-            existing_dataset_ids = set(cls._dataset_rows(tenant_id=tenant_id, dataset_ids=sorted(mentioned_ids)))
-        findings = ComposerConfigValidator.collect_soft_findings(payload, existing_dataset_ids=existing_dataset_ids)
+        existing_knowledge_set_ids = (
+            {knowledge_set.id for knowledge_set in payload.agent_soul.knowledge.sets}
+            if payload.agent_soul is not None
+            else None
+        )
+        findings = ComposerConfigValidator.collect_soft_findings(
+            payload,
+            existing_knowledge_set_ids=existing_knowledge_set_ids,
+        )
         if agent_id and payload.agent_soul is not None:
             findings["warnings"].extend(
                 cls._drive_mention_findings(
@@ -295,6 +298,24 @@ class AgentComposerService:
                 )
             )
         return findings
+
+    @classmethod
+    def validate_knowledge_datasets(cls, *, tenant_id: str, agent_soul: AgentSoulConfig | None) -> None:
+        """Hard-validate tenant-scoped knowledge set datasets before saving.
+
+        DTO validators own set shape, duplicate set ids/names, and duplicate
+        dataset ids within one set. This service-level check owns database
+        existence and tenant ownership so invalid or cross-tenant datasets fail
+        before Agent Soul snapshots are persisted.
+        """
+        if agent_soul is None:
+            return
+        missing_ids = list_missing_tenant_knowledge_dataset_ids(tenant_id=tenant_id, agent_soul=agent_soul)
+        if missing_ids:
+            raise InvalidComposerConfigError(
+                "knowledge_dataset_not_found: knowledge sets reference missing or out-of-scope datasets: "
+                + ", ".join(missing_ids)
+            )
 
     @classmethod
     def resolve_bound_agent_id(cls, *, tenant_id: str, app_id: str) -> str | None:
@@ -410,7 +431,7 @@ class AgentComposerService:
 
         soul_lists, soul_truncated = soul_candidates(
             agent_soul=agent_soul,
-            dataset_lookup=lambda ids: cls._dataset_rows(tenant_id=tenant_id, dataset_ids=ids),
+            dataset_lookup=lambda ids: get_tenant_knowledge_dataset_rows(tenant_id=tenant_id, dataset_ids=ids),
             workspace_tools_loader=lambda: cls._workspace_dify_tools(tenant_id=tenant_id, user_id=user_id),
         )
         truncated = truncated or soul_truncated
@@ -437,7 +458,7 @@ class AgentComposerService:
         agent_soul = cls._load_agent_app_soul(tenant_id=tenant_id, app_id=app_id)
         soul_lists, truncated = soul_candidates(
             agent_soul=agent_soul,
-            dataset_lookup=lambda ids: cls._dataset_rows(tenant_id=tenant_id, dataset_ids=ids),
+            dataset_lookup=lambda ids: get_tenant_knowledge_dataset_rows(tenant_id=tenant_id, dataset_ids=ids),
             workspace_tools_loader=lambda: cls._workspace_dify_tools(tenant_id=tenant_id, user_id=user_id),
         )
         response = ComposerCandidatesResponse(
@@ -529,30 +550,6 @@ class AgentComposerService:
 
         variables = WorkflowDraftVariableService(session=session).list_system_variables(app_id, user_id)
         return [(variable.name, variable.value_type.value) for variable in variables.variables]
-
-    @staticmethod
-    def _dataset_rows(*, tenant_id: str, dataset_ids: list[str]) -> dict[str, Any]:
-        """Tenant-scoped dataset lookup tolerating malformed ids.
-
-        Mention ids come from user-editable prompt text; a non-UUID id can never
-        match a dataset row, so it is simply absent from the result (-> missing/
-        placeholder semantics) instead of breaking the UUID-typed query.
-        """
-        from uuid import UUID
-
-        from services.dataset_service import DatasetService
-
-        valid_ids: list[str] = []
-        for dataset_id in dataset_ids:
-            try:
-                UUID(dataset_id)
-            except (ValueError, TypeError):
-                continue
-            valid_ids.append(dataset_id)
-        if not valid_ids:
-            return {}
-        rows, _ = DatasetService.get_datasets_by_ids(valid_ids, tenant_id)
-        return {str(row.id): row for row in rows}
 
     @staticmethod
     def _workspace_dify_tools(*, tenant_id: str, user_id: str) -> list[dict[str, Any]]:

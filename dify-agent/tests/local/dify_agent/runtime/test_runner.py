@@ -995,7 +995,7 @@ def test_runner_passes_dynamic_dify_knowledge_tools_to_agent(monkeypatch: pytest
         return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
 
     async def fake_get_tools(self: DifyKnowledgeBaseLayer, *, http_client: httpx.AsyncClient) -> list[Tool[object]]:
-        assert self.config.dataset_ids == ["dataset-1"]
+        assert self.config.sets[0].dataset_ids == ["dataset-1"]
         assert http_client.headers.get("X-Test-Client") == "dify-api"
         return [Tool(knowledge_tool, name="knowledge_base_search")]
 
@@ -1055,8 +1055,15 @@ def test_runner_passes_dynamic_dify_knowledge_tools_to_agent(monkeypatch: pytest
                     deps={"execution_context": "execution_context"},
                     config=DifyKnowledgeBaseLayerConfig.model_validate(
                         {
-                            "dataset_ids": ["dataset-1"],
-                            "retrieval": {"mode": "multiple", "top_k": 4},
+                            "sets": [
+                                {
+                                    "id": "support",
+                                    "name": "Support KB",
+                                    "datasets": [{"id": "dataset-1"}],
+                                    "query": {"mode": "generated_query"},
+                                    "retrieval": {"mode": "multiple", "top_k": 4},
+                                }
+                            ],
                         }
                     ),
                 ),

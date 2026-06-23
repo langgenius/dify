@@ -105,6 +105,7 @@ class WorkflowAgentComposerValidateApi(Resource):
     def post(self, tenant_id: str, app_model: App, node_id: str):
         payload = ComposerSavePayload.model_validate(console_ns.payload or {})
         ComposerConfigValidator.validate_save_payload(payload)
+        AgentComposerService.validate_knowledge_datasets(tenant_id=tenant_id, agent_soul=payload.agent_soul)
         findings = AgentComposerService.collect_validation_findings(
             tenant_id=tenant_id,
             payload=payload,
@@ -239,6 +240,7 @@ class AgentComposerValidateApi(Resource):
         _resolve_agent_app_id(tenant_id=tenant_id, agent_id=agent_id)
         payload = ComposerSavePayload.model_validate(console_ns.payload or {})
         ComposerConfigValidator.validate_save_payload(payload)
+        AgentComposerService.validate_knowledge_datasets(tenant_id=tenant_id, agent_soul=payload.agent_soul)
         findings = AgentComposerService.collect_validation_findings(
             tenant_id=tenant_id,
             payload=payload,

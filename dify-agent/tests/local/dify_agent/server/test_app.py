@@ -231,8 +231,15 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         knowledge_layer = knowledge_provider.create_layer(
             DifyKnowledgeBaseLayerConfig.model_validate(
                 {
-                    "dataset_ids": ["dataset-1"],
-                    "retrieval": {"mode": "multiple", "top_k": 2},
+                    "sets": [
+                        {
+                            "id": "support",
+                            "name": "Support KB",
+                            "datasets": [{"id": "dataset-1"}],
+                            "query": {"mode": "generated_query"},
+                            "retrieval": {"mode": "multiple", "top_k": 2},
+                        }
+                    ],
                 }
             )
         )

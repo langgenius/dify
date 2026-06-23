@@ -6,7 +6,7 @@ Slash-menu insertions are stored inline in the plain-string prompt as tokens:
 
 ``kind`` is a fixed lowercase word; ``id`` points at an item in the Agent
 runtime context. For prompt-owned entities that means Agent Soul lists such as
-``tools`` / ``knowledge.datasets`` / ``human.contacts`` and workflow job lists
+``tools`` / ``knowledge.sets`` / ``human.contacts`` and workflow job lists
 such as ``previous_node_output_refs`` / ``declared_outputs``. For drive-backed
 ``skill`` / ``file`` mentions the field stores a URL-encoded drive key and is
 resolved against ``agent_drive_files`` at runtime. ``label`` is an optional
@@ -211,9 +211,9 @@ def build_soul_mention_resolver(agent_soul: AgentSoulConfig) -> MentionResolver:
                     if mention.ref_id in (cli_tool.id, cli_tool.name):
                         return cli_tool.name or cli_tool.id
             case MentionKind.KNOWLEDGE:
-                for dataset in agent_soul.knowledge.datasets:
-                    if mention.ref_id == dataset.id:
-                        return dataset.name or dataset.id
+                for knowledge_set in agent_soul.knowledge.sets:
+                    if mention.ref_id == knowledge_set.id:
+                        return knowledge_set.name or knowledge_set.id
             case MentionKind.HUMAN:
                 return _resolve_human_contact(agent_soul.human.contacts, mention.ref_id)
             case _:

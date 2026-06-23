@@ -1890,7 +1890,7 @@ export type AgentComposerSoulCandidatesResponse = {
   cli_tools?: Array<AgentCliToolConfig>
   dify_tools?: Array<AgentComposerDifyToolCandidateResponse>
   human_contacts?: Array<AgentHumanContactConfig>
-  knowledge_datasets?: Array<AgentKnowledgeDatasetConfig>
+  knowledge_sets?: Array<AgentComposerKnowledgeSetCandidateResponse>
 }
 
 export type ComposerCandidateCapabilities = {
@@ -2124,9 +2124,7 @@ export type AgentSoulHumanConfig = {
 }
 
 export type AgentSoulKnowledgeConfig = {
-  datasets?: Array<AgentKnowledgeDatasetConfig>
-  query_config?: AgentKnowledgeQueryConfig
-  query_mode?: AgentKnowledgeQueryMode | null
+  sets?: Array<AgentKnowledgeSetConfig>
 }
 
 export type AgentSoulMemoryConfig = {
@@ -2278,11 +2276,12 @@ export type AgentComposerDifyToolCandidateResponse = {
   tools_count?: number | null
 }
 
-export type AgentKnowledgeDatasetConfig = {
+export type AgentComposerKnowledgeSetCandidateResponse = {
+  datasets?: Array<AgentComposerKnowledgeDatasetCandidateResponse>
   description?: string | null
-  id?: string | null
-  name?: string | null
-  [key: string]: unknown
+  id: string
+  missing_dataset_ids?: Array<string>
+  name: string
 }
 
 export type CheckResultView = {
@@ -2393,15 +2392,15 @@ export type AgentHumanToolConfig = {
   [key: string]: unknown
 }
 
-export type AgentKnowledgeQueryConfig = {
-  query?: string | null
-  score_threshold?: number | null
-  score_threshold_enabled?: boolean | null
-  top_k?: number | null
-  [key: string]: unknown
+export type AgentKnowledgeSetConfig = {
+  datasets: Array<AgentKnowledgeDatasetConfig>
+  description?: string | null
+  id: string
+  metadata_filtering?: AgentKnowledgeMetadataFilteringConfig
+  name: string
+  query: AgentKnowledgeQueryConfig
+  retrieval: AgentKnowledgeRetrievalConfig
 }
-
-export type AgentKnowledgeQueryMode = 'generated_query' | 'user_query'
 
 export type AgentMemoryArtifactConfig = {
   id?: string | null
@@ -2506,6 +2505,13 @@ export type AgentPermissionConfig = {
 
 export type AgentCliToolRiskLevel = 'dangerous' | 'safe' | 'unknown'
 
+export type AgentComposerKnowledgeDatasetCandidateResponse = {
+  description?: string | null
+  id?: string | null
+  missing?: boolean
+  name?: string | null
+}
+
 export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
 export type ParagraphInputConfig = {
@@ -2545,6 +2551,34 @@ export type AgentModerationProviderConfig = {
   [key: string]: unknown
 }
 
+export type AgentKnowledgeDatasetConfig = {
+  description?: string | null
+  id?: string | null
+  name?: string | null
+}
+
+export type AgentKnowledgeMetadataFilteringConfig = {
+  conditions?: AgentKnowledgeMetadataConditions | null
+  mode?: 'automatic' | 'disabled' | 'manual'
+  model_config?: AgentKnowledgeModelConfig | null
+}
+
+export type AgentKnowledgeQueryConfig = {
+  mode: AgentKnowledgeQueryMode
+  value?: string | null
+}
+
+export type AgentKnowledgeRetrievalConfig = {
+  mode: 'multiple' | 'single'
+  model?: AgentKnowledgeModelConfig | null
+  reranking_enable?: boolean
+  reranking_mode?: string
+  reranking_model?: AgentKnowledgeRerankingModelConfig | null
+  score_threshold?: number | null
+  top_k?: number | null
+  weights?: AgentKnowledgeWeightedScoreConfig | null
+}
+
 export type AgentModelResponseFormatConfig = {
   type?: string | null
   [key: string]: unknown
@@ -2578,7 +2612,63 @@ export type AgentModerationIoConfig = {
   [key: string]: unknown
 }
 
+export type AgentKnowledgeMetadataConditions = {
+  conditions?: Array<AgentKnowledgeMetadataCondition>
+  logical_operator?: 'and' | 'or'
+}
+
+export type AgentKnowledgeModelConfig = {
+  completion_params?: {
+    [key: string]: unknown
+  }
+  mode: string
+  name: string
+  provider: string
+}
+
+export type AgentKnowledgeQueryMode = 'generated_query' | 'user_query'
+
+export type AgentKnowledgeRerankingModelConfig = {
+  model: string
+  provider: string
+}
+
+export type AgentKnowledgeWeightedScoreConfig = {
+  keyword_setting?: {
+    [key: string]: unknown
+  } | null
+  vector_setting?: {
+    [key: string]: unknown
+  } | null
+  weight_type?: string | null
+  [key: string]: unknown
+}
+
 export type ValueSourceType = 'constant' | 'variable'
+
+export type AgentKnowledgeMetadataCondition = {
+  comparison_operator:
+    | '<'
+    | '='
+    | '>'
+    | 'after'
+    | 'before'
+    | 'contains'
+    | 'empty'
+    | 'end with'
+    | 'in'
+    | 'is'
+    | 'is not'
+    | 'not contains'
+    | 'not empty'
+    | 'not in'
+    | 'start with'
+    | '≠'
+    | '≤'
+    | '≥'
+  name: string
+  value?: string | Array<string> | number | null
+}
 
 export type AppPaginationWritable = {
   data: Array<AppPartialWritable>

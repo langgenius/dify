@@ -512,12 +512,55 @@ def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():
                     "model": "gpt-test",
                 },
                 "knowledge": {
-                    "datasets": [{"id": "dataset-1"}, {"id": "  "}, {"id": "dataset-2"}],
-                    "query_config": {
-                        "top_k": 6,
-                        "score_threshold": 0.4,
-                        "score_threshold_enabled": True,
-                    },
+                    "sets": [
+                        {
+                            "id": "support",
+                            "name": "Support KB",
+                            "description": "Support content",
+                            "datasets": [{"id": "dataset-1"}, {"id": "dataset-2"}],
+                            "query": {"mode": "generated_query"},
+                            "retrieval": {
+                                "mode": "multiple",
+                                "top_k": 6,
+                                "score_threshold": 0.4,
+                                "reranking_model": {"provider": "cohere", "model": "rerank-v3"},
+                                "weights": {"weight_type": "weighted_score", "vector_setting": {"vector_weight": 0.7}},
+                            },
+                            "metadata_filtering": {
+                                "mode": "manual",
+                                "conditions": {
+                                    "logical_operator": "and",
+                                    "conditions": [
+                                        {"name": "category", "comparison_operator": "contains", "value": "auth"}
+                                    ],
+                                },
+                            },
+                        },
+                        {
+                            "id": "release",
+                            "name": "Release Notes",
+                            "datasets": [{"id": "dataset-3"}],
+                            "query": {"mode": "user_query", "value": "release notes"},
+                            "retrieval": {
+                                "mode": "single",
+                                "model": {
+                                    "provider": "openai",
+                                    "name": "gpt-4o-mini",
+                                    "mode": "chat",
+                                    "completion_params": {"temperature": 0.2},
+                                },
+                            },
+                            "metadata_filtering": {
+                                "mode": "automatic",
+                                "model_config": {
+                                    "provider": "openai",
+                                    "name": "gpt-4o-mini",
+                                    "mode": "chat",
+                                    "completion_params": {},
+                                },
+                            },
+                        },
+                    ],
                 },
             }
         ),
@@ -531,25 +574,75 @@ def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():
     knowledge_layer = layers["knowledge"]
     assert knowledge_layer["type"] == "dify.knowledge_base"
     assert knowledge_layer["deps"] == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
-    assert knowledge_layer["config"] == {
-        "dataset_ids": ["dataset-1", "dataset-2"],
-        "retrieval": {
-            "mode": "multiple",
-            "top_k": 6,
-            "score_threshold": 0.4,
-            "reranking_mode": "reranking_model",
-            "reranking_enable": True,
-            "reranking_model": None,
-            "weights": None,
-            "model": None,
+    assert knowledge_layer["config"]["sets"] == [
+        {
+            "id": "support",
+            "name": "Support KB",
+            "description": "Support content",
+            "datasets": [
+                {"id": "dataset-1", "name": None, "description": None},
+                {"id": "dataset-2", "name": None, "description": None},
+            ],
+            "query": {"mode": "generated_query", "value": None},
+            "retrieval": {
+                "mode": "multiple",
+                "top_k": 6,
+                "score_threshold": 0.4,
+                "reranking_mode": "reranking_model",
+                "reranking_enable": True,
+                "reranking_model": {"provider": "cohere", "model": "rerank-v3"},
+                "weights": {"weight_type": "weighted_score", "vector_setting": {"vector_weight": 0.7}},
+                "model": None,
+            },
+            "metadata_filtering": {
+                "mode": "manual",
+                "metadata_model_config": None,
+                "conditions": {
+                    "logical_operator": "and",
+                    "conditions": [
+                        {"name": "category", "comparison_operator": "contains", "value": "auth"}
+                    ],
+                },
+            },
         },
-        "metadata_filtering": {"mode": "disabled", "metadata_model_config": None, "conditions": None},
-        "max_result_content_chars": 2000,
-        "max_observation_chars": 12000,
-    }
+        {
+            "id": "release",
+            "name": "Release Notes",
+            "description": None,
+            "datasets": [{"id": "dataset-3", "name": None, "description": None}],
+            "query": {"mode": "user_query", "value": "release notes"},
+            "retrieval": {
+                "mode": "single",
+                "top_k": None,
+                "score_threshold": 0.0,
+                "reranking_mode": "reranking_model",
+                "reranking_enable": True,
+                "reranking_model": None,
+                "weights": None,
+                "model": {
+                    "provider": "openai",
+                    "name": "gpt-4o-mini",
+                    "mode": "chat",
+                    "completion_params": {"temperature": 0.2},
+                },
+            },
+            "metadata_filtering": {
+                "mode": "automatic",
+                "metadata_model_config": {
+                    "provider": "openai",
+                    "name": "gpt-4o-mini",
+                    "mode": "chat",
+                    "completion_params": {},
+                },
+                "conditions": None,
+            },
+        },
+    ]
+    assert knowledge_layer["config"]["max_result_content_chars"] == 2000
+    assert knowledge_layer["config"]["max_observation_chars"] == 12000
 
 
-def test_build_knowledge_layer_uses_stable_default_top_k_when_query_config_omits_it():
+def test_build_knowledge_layer_maps_disabled_score_threshold_to_zero():
     context = _context()
     snapshot = AgentConfigSnapshot(
         id="snapshot-1",
@@ -565,8 +658,19 @@ def test_build_knowledge_layer_uses_stable_default_top_k_when_query_config_omits
                     "model": "gpt-test",
                 },
                 "knowledge": {
-                    "datasets": [{"id": "dataset-1"}],
-                    "query_config": {},
+                    "sets": [
+                        {
+                            "id": "support",
+                            "name": "Support KB",
+                            "datasets": [{"id": "dataset-1"}],
+                            "query": {"mode": "generated_query"},
+                            "retrieval": {
+                                "mode": "multiple",
+                                "top_k": 4,
+                                "score_threshold": None,
+                            },
+                        }
+                    ],
                 },
             }
         ),
@@ -577,10 +681,10 @@ def test_build_knowledge_layer_uses_stable_default_top_k_when_query_config_omits
 
     dumped = result.request.model_dump(mode="json")
     knowledge_layer = next(layer for layer in dumped["composition"]["layers"] if layer["name"] == "knowledge")
-    assert knowledge_layer["config"]["retrieval"]["top_k"] == 4
+    assert knowledge_layer["config"]["sets"][0]["retrieval"]["score_threshold"] == 0.0
 
 
-def test_build_skips_knowledge_layer_when_agent_soul_has_no_valid_dataset_ids():
+def test_build_skips_knowledge_layer_when_agent_soul_has_no_sets():
     context = _context()
     snapshot = AgentConfigSnapshot(
         id="snapshot-1",
@@ -595,9 +699,7 @@ def test_build_skips_knowledge_layer_when_agent_soul_has_no_valid_dataset_ids():
                     "model_provider": "openai",
                     "model": "gpt-test",
                 },
-                "knowledge": {
-                    "datasets": [{"id": "  "}, {}],
-                },
+                "knowledge": {"sets": []},
             }
         ),
     )
@@ -1094,7 +1196,15 @@ def test_feature_manifest_marks_knowledge_supported_without_warning_when_configu
     soul = AgentSoulConfig.model_validate(
         {
             "knowledge": {
-                "datasets": [{"id": "dataset-1", "name": "Product Docs"}],
+                "sets": [
+                    {
+                        "id": "product",
+                        "name": "Product Docs",
+                        "datasets": [{"id": "dataset-1", "name": "Product Docs"}],
+                        "query": {"mode": "generated_query"},
+                        "retrieval": {"mode": "multiple", "top_k": 4},
+                    }
+                ],
             }
         }
     )
@@ -1106,13 +1216,13 @@ def test_feature_manifest_marks_knowledge_supported_without_warning_when_configu
     assert all("knowledge" not in w["section"] for w in manifest["unsupported_runtime_warnings"])
 
 
-def test_feature_manifest_treats_blank_knowledge_dataset_ids_as_not_configured():
+def test_feature_manifest_treats_empty_knowledge_sets_as_not_configured():
     from core.workflow.nodes.agent_v2.runtime_feature_manifest import build_runtime_feature_manifest
 
     soul = AgentSoulConfig.model_validate(
         {
             "knowledge": {
-                "datasets": [{"id": "  "}, {}],
+                "sets": [],
             }
         }
     )

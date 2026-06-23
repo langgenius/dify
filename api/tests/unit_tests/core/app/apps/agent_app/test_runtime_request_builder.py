@@ -153,12 +153,19 @@ class TestAgentAppRuntimeRequestBuilder:
                     "model": "gpt-4o-mini",
                 },
                 "knowledge": {
-                    "datasets": [{"id": "dataset-1"}, {"id": "dataset-2"}],
-                    "query_config": {
-                        "top_k": 3,
-                        "score_threshold": 0.5,
-                        "score_threshold_enabled": False,
-                    },
+                    "sets": [
+                        {
+                            "id": "support",
+                            "name": "Support KB",
+                            "datasets": [{"id": "dataset-1"}, {"id": "dataset-2"}],
+                            "query": {"mode": "generated_query"},
+                            "retrieval": {
+                                "mode": "multiple",
+                                "top_k": 3,
+                                "score_threshold": None,
+                            },
+                        }
+                    ],
                 },
             }
         )
@@ -173,10 +180,12 @@ class TestAgentAppRuntimeRequestBuilder:
         assert knowledge.type == "dify.knowledge_base"
         assert knowledge.deps == {"execution_context": "execution_context"}
         dumped_config = knowledge.config.model_dump(mode="json", by_alias=True)
-        assert dumped_config["dataset_ids"] == ["dataset-1", "dataset-2"]
-        assert dumped_config["retrieval"]["mode"] == "multiple"
-        assert dumped_config["retrieval"]["top_k"] == 3
-        assert dumped_config["retrieval"]["score_threshold"] == 0.0
+        knowledge_set = dumped_config["sets"][0]
+        assert [dataset["id"] for dataset in knowledge_set["datasets"]] == ["dataset-1", "dataset-2"]
+        assert knowledge_set["query"] == {"mode": "generated_query", "value": None}
+        assert knowledge_set["retrieval"]["mode"] == "multiple"
+        assert knowledge_set["retrieval"]["top_k"] == 3
+        assert knowledge_set["retrieval"]["score_threshold"] == 0.0
 
     def test_build_raises_when_model_missing(self):
         builder = AgentAppRuntimeRequestBuilder(

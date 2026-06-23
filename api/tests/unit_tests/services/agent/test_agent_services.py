@@ -2594,18 +2594,149 @@ def test_dataset_rows_filters_malformed_ids(monkeypatch: pytest.MonkeyPatch):
         return [], 0
 
     import services.dataset_service as dataset_service_module
+    from services.agent.knowledge_datasets import get_tenant_knowledge_dataset_rows
 
     monkeypatch.setattr(dataset_service_module.DatasetService, "get_datasets_by_ids", fake_get_datasets_by_ids)
 
     valid = "550e8400-e29b-41d4-a716-446655440000"
-    rows = AgentComposerService._dataset_rows(tenant_id="tenant-1", dataset_ids=["9999dead-beef", valid])
+    rows = get_tenant_knowledge_dataset_rows(tenant_id="tenant-1", dataset_ids=["9999dead-beef", valid])
     assert rows == {}
     assert captured["ids"] == [valid]
 
     # all-malformed input never touches the DB
     captured.clear()
-    assert AgentComposerService._dataset_rows(tenant_id="tenant-1", dataset_ids=["nope"]) == {}
+    assert get_tenant_knowledge_dataset_rows(tenant_id="tenant-1", dataset_ids=["nope"]) == {}
     assert captured == {}
+
+
+@pytest.mark.parametrize(
+    ("variant", "save_call"),
+    [
+        (
+            ComposerVariant.AGENT_APP,
+            lambda payload: AgentComposerService.save_agent_app_composer(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                account_id="account-1",
+                payload=payload,
+            ),
+        ),
+        (
+            ComposerVariant.WORKFLOW,
+            lambda payload: AgentComposerService.save_workflow_composer(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                node_id="node-1",
+                account_id="account-1",
+                payload=payload,
+            ),
+        ),
+    ],
+)
+def test_composer_save_rejects_malformed_knowledge_dataset_ids(monkeypatch: pytest.MonkeyPatch, variant, save_call):
+    captured = {"calls": 0}
+
+    def fake_get_datasets_by_ids(ids, tenant_id):
+        captured["calls"] += 1
+        captured["ids"] = ids
+        captured["tenant_id"] = tenant_id
+        return [], 0
+
+    import services.dataset_service as dataset_service_module
+
+    monkeypatch.setattr(dataset_service_module.DatasetService, "get_datasets_by_ids", fake_get_datasets_by_ids)
+
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": variant.value,
+            "save_strategy": ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION.value,
+            "soul_lock": {"locked": False},
+            "agent_soul": {
+                "knowledge": {
+                    "sets": [
+                        {
+                            "id": "support",
+                            "name": "Support KB",
+                            "datasets": [{"id": "not-a-uuid"}],
+                            "query": {"mode": "generated_query"},
+                            "retrieval": {"mode": "multiple", "top_k": 4},
+                        }
+                    ]
+                }
+            },
+        }
+    )
+
+    with pytest.raises(InvalidComposerConfigError, match="not-a-uuid"):
+        save_call(payload)
+
+    assert captured == {"calls": 0}
+
+
+@pytest.mark.parametrize(
+    ("variant", "save_call"),
+    [
+        (
+            ComposerVariant.AGENT_APP,
+            lambda payload: AgentComposerService.save_agent_app_composer(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                account_id="account-1",
+                payload=payload,
+            ),
+        ),
+        (
+            ComposerVariant.WORKFLOW,
+            lambda payload: AgentComposerService.save_workflow_composer(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                node_id="node-1",
+                account_id="account-1",
+                payload=payload,
+            ),
+        ),
+    ],
+)
+def test_composer_save_rejects_missing_or_out_of_scope_knowledge_datasets(
+    monkeypatch: pytest.MonkeyPatch, variant, save_call
+):
+    captured = {}
+    missing_dataset_id = "550e8400-e29b-41d4-a716-446655440000"
+
+    def fake_get_datasets_by_ids(ids, tenant_id):
+        captured["ids"] = ids
+        captured["tenant_id"] = tenant_id
+        return [], 0
+
+    import services.dataset_service as dataset_service_module
+
+    monkeypatch.setattr(dataset_service_module.DatasetService, "get_datasets_by_ids", fake_get_datasets_by_ids)
+
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": variant.value,
+            "save_strategy": ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION.value,
+            "soul_lock": {"locked": False},
+            "agent_soul": {
+                "knowledge": {
+                    "sets": [
+                        {
+                            "id": "support",
+                            "name": "Support KB",
+                            "datasets": [{"id": missing_dataset_id}],
+                            "query": {"mode": "generated_query"},
+                            "retrieval": {"mode": "multiple", "top_k": 4},
+                        }
+                    ]
+                }
+            },
+        }
+    )
+
+    with pytest.raises(InvalidComposerConfigError, match=missing_dataset_id):
+        save_call(payload)
+
+    assert captured == {"ids": [missing_dataset_id], "tenant_id": "tenant-1"}
 
 
 def test_workspace_dify_tools_returns_provider_and_tool_granularities(monkeypatch: pytest.MonkeyPatch):

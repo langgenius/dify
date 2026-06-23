@@ -12433,6 +12433,25 @@ Risk marker for CLI tool bootstrap commands.
 | current_snapshot_id | string |  | No |
 | workflow_node_count | integer |  | Yes |
 
+#### AgentComposerKnowledgeDatasetCandidateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| id | string |  | No |
+| missing | boolean |  | No |
+| name | string |  | No |
+
+#### AgentComposerKnowledgeSetCandidateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| datasets | [ [AgentComposerKnowledgeDatasetCandidateResponse](#agentcomposerknowledgedatasetcandidateresponse) ] |  | No |
+| description | string |  | No |
+| id | string |  | Yes |
+| missing_dataset_ids | [ string ] |  | No |
+| name | string |  | Yes |
+
 #### AgentComposerNodeJobCandidatesResponse
 
 | Name | Type | Description | Required |
@@ -12448,7 +12467,7 @@ Risk marker for CLI tool bootstrap commands.
 | cli_tools | [ [AgentCliToolConfig](#agentclitoolconfig) ] |  | No |
 | dify_tools | [ [AgentComposerDifyToolCandidateResponse](#agentcomposerdifytoolcandidateresponse) ] |  | No |
 | human_contacts | [ [AgentHumanContactConfig](#agenthumancontactconfig) ] |  | No |
-| knowledge_datasets | [ [AgentKnowledgeDatasetConfig](#agentknowledgedatasetconfig) ] |  | No |
+| knowledge_sets | [ [AgentComposerKnowledgeSetCandidateResponse](#agentcomposerknowledgesetcandidateresponse) ] |  | No |
 
 #### AgentComposerSoulLockResponse
 
@@ -12842,20 +12861,90 @@ the current roster/workflow APIs scoped to Dify Agent.
 | id | string |  | No |
 | name | string |  | No |
 
+#### AgentKnowledgeMetadataCondition
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| comparison_operator | string, <br>**Available values:** "<", "=", ">", "after", "before", "contains", "empty", "end with", "in", "is", "is not", "not contains", "not empty", "not in", "start with", "≠", "≤", "≥" | *Enum:* `"<"`, `"="`, `">"`, `"after"`, `"before"`, `"contains"`, `"empty"`, `"end with"`, `"in"`, `"is"`, `"is not"`, `"not contains"`, `"not empty"`, `"not in"`, `"start with"`, `"≠"`, `"≤"`, `"≥"` | Yes |
+| name | string |  | Yes |
+| value | string<br>[ string ]<br>number |  | No |
+
+#### AgentKnowledgeMetadataConditions
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conditions | [ [AgentKnowledgeMetadataCondition](#agentknowledgemetadatacondition) ] |  | No |
+| logical_operator | string, <br>**Available values:** "and", "or", <br>**Default:** and | *Enum:* `"and"`, `"or"` | No |
+
+#### AgentKnowledgeMetadataFilteringConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conditions | [AgentKnowledgeMetadataConditions](#agentknowledgemetadataconditions) |  | No |
+| mode | string, <br>**Available values:** "automatic", "disabled", "manual", <br>**Default:** disabled | *Enum:* `"automatic"`, `"disabled"`, `"manual"` | No |
+| model_config | [AgentKnowledgeModelConfig](#agentknowledgemodelconfig) |  | No |
+
+#### AgentKnowledgeModelConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completion_params | object |  | No |
+| mode | string |  | Yes |
+| name | string |  | Yes |
+| provider | string |  | Yes |
+
 #### AgentKnowledgeQueryConfig
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| query | string |  | No |
-| score_threshold | number |  | No |
-| score_threshold_enabled | boolean |  | No |
-| top_k | integer |  | No |
+| mode | [AgentKnowledgeQueryMode](#agentknowledgequerymode) |  | Yes |
+| value | string |  | No |
 
 #### AgentKnowledgeQueryMode
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AgentKnowledgeQueryMode | string |  |  |
+
+#### AgentKnowledgeRerankingModelConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model | string |  | Yes |
+| provider | string |  | Yes |
+
+#### AgentKnowledgeRetrievalConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| mode | string, <br>**Available values:** "multiple", "single" | *Enum:* `"multiple"`, `"single"` | Yes |
+| model | [AgentKnowledgeModelConfig](#agentknowledgemodelconfig) |  | No |
+| reranking_enable | boolean, <br>**Default:** true |  | No |
+| reranking_mode | string, <br>**Default:** reranking_model |  | No |
+| reranking_model | [AgentKnowledgeRerankingModelConfig](#agentknowledgererankingmodelconfig) |  | No |
+| score_threshold | number |  | No |
+| top_k | integer |  | No |
+| weights | [AgentKnowledgeWeightedScoreConfig](#agentknowledgeweightedscoreconfig) |  | No |
+
+#### AgentKnowledgeSetConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| datasets | [ [AgentKnowledgeDatasetConfig](#agentknowledgedatasetconfig) ] |  | Yes |
+| description | string |  | No |
+| id | string |  | Yes |
+| metadata_filtering | [AgentKnowledgeMetadataFilteringConfig](#agentknowledgemetadatafilteringconfig) |  | No |
+| name | string |  | Yes |
+| query | [AgentKnowledgeQueryConfig](#agentknowledgequeryconfig) |  | Yes |
+| retrieval | [AgentKnowledgeRetrievalConfig](#agentknowledgeretrievalconfig) |  | Yes |
+
+#### AgentKnowledgeWeightedScoreConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword_setting | object |  | No |
+| vector_setting | object |  | No |
+| weight_type | string |  | No |
 
 #### AgentLogConversationItemResponse
 
@@ -13258,9 +13347,7 @@ old Agent tool payloads can be read while new payloads stay explicit.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| datasets | [ [AgentKnowledgeDatasetConfig](#agentknowledgedatasetconfig) ] |  | No |
-| query_config | [AgentKnowledgeQueryConfig](#agentknowledgequeryconfig) |  | No |
-| query_mode | [AgentKnowledgeQueryMode](#agentknowledgequerymode) |  | No |
+| sets | [ [AgentKnowledgeSetConfig](#agentknowledgesetconfig) ] |  | No |
 
 #### AgentSoulMemoryConfig
 

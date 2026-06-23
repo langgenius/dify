@@ -55,6 +55,33 @@ def _snapshot() -> AgentConfigSnapshot:
     )
 
 
+def _snapshot_with_knowledge_dataset(dataset_id: str) -> AgentConfigSnapshot:
+    return AgentConfigSnapshot(
+        id="snapshot-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version=1,
+        config_snapshot=AgentSoulConfig(
+            model=AgentSoulModelConfig(
+                plugin_id="langgenius/openai",
+                model_provider="openai",
+                model="gpt-test",
+            ),
+            knowledge={
+                "sets": [
+                    {
+                        "id": "support",
+                        "name": "Support KB",
+                        "datasets": [{"id": dataset_id}],
+                        "query": {"mode": "generated_query"},
+                        "retrieval": {"mode": "multiple", "top_k": 4},
+                    }
+                ]
+            },
+        ),
+    )
+
+
 def _graph(edges: list[dict]) -> dict:
     return {
         "nodes": [
@@ -513,6 +540,35 @@ def test_publish_validation_rejects_missing_file_ref():
             session=session,
             workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
         )
+
+
+def test_publish_validation_rejects_missing_or_out_of_scope_knowledge_datasets(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    dataset_id = "550e8400-e29b-41d4-a716-446655440000"
+    node_job = WorkflowNodeJobConfig.model_validate({})
+    snapshot = _snapshot_with_knowledge_dataset(dataset_id)
+    session = Mock()
+    session.scalar.side_effect = [_binding(node_job), _agent(), snapshot]
+
+    captured = {}
+
+    def fake_get_datasets_by_ids(ids, tenant_id):
+        captured["ids"] = ids
+        captured["tenant_id"] = tenant_id
+        return [], 0
+
+    import services.dataset_service as dataset_service_module
+
+    monkeypatch.setattr(dataset_service_module.DatasetService, "get_datasets_by_ids", fake_get_datasets_by_ids)
+
+    with pytest.raises(WorkflowAgentNodeValidationError, match=dataset_id):
+        WorkflowAgentNodeValidator.validate_published_workflow(
+            session=session,
+            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        )
+
+    assert captured == {"ids": [dataset_id], "tenant_id": "tenant-1"}
 
 
 def test_publish_validation_accepts_tool_node_agentic_manual_mode():

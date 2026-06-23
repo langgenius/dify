@@ -400,10 +400,22 @@ class AgentComposerNodeJobCandidatesResponse(ResponseModel):
     human_contacts: list[AgentHumanContactConfig] = Field(default_factory=list)
 
 
+class AgentComposerKnowledgeDatasetCandidateResponse(AgentKnowledgeDatasetConfig):
+    missing: bool = False
+
+
+class AgentComposerKnowledgeSetCandidateResponse(ResponseModel):
+    id: str
+    name: str
+    description: str | None = None
+    datasets: list[AgentComposerKnowledgeDatasetCandidateResponse] = Field(default_factory=list)
+    missing_dataset_ids: list[str] = Field(default_factory=list)
+
+
 class AgentComposerSoulCandidatesResponse(ResponseModel):
     dify_tools: list[AgentComposerDifyToolCandidateResponse] = Field(default_factory=list)
     cli_tools: list[AgentCliToolConfig] = Field(default_factory=list)
-    knowledge_datasets: list[AgentKnowledgeDatasetConfig] = Field(default_factory=list)
+    knowledge_sets: list[AgentComposerKnowledgeSetCandidateResponse] = Field(default_factory=list)
     human_contacts: list[AgentHumanContactConfig] = Field(default_factory=list)
 
 

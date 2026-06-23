@@ -15,7 +15,16 @@ from dify_agent.layers.execution_context import (
     DifyExecutionContextLayerConfig,
     DifyExecutionContextUserFrom,
 )
-from dify_agent.layers.knowledge import DifyKnowledgeBaseLayerConfig, DifyKnowledgeRetrievalConfig
+from dify_agent.layers.knowledge import (
+    DifyKnowledgeBaseLayerConfig,
+    DifyKnowledgeDatasetConfig,
+    DifyKnowledgeMetadataFilteringConfig,
+    DifyKnowledgeModelConfig,
+    DifyKnowledgeQueryConfig,
+    DifyKnowledgeRerankingModelConfig,
+    DifyKnowledgeRetrievalConfig,
+    DifyKnowledgeSetConfig,
+)
 from dify_agent.layers.shell import (
     DifyShellCliToolConfig,
     DifyShellEnvVarConfig,
@@ -40,7 +49,9 @@ from graphon.file import FileTransferMethod
 from graphon.variables.segments import Segment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
-    AgentKnowledgeQueryConfig,
+    AgentKnowledgeMetadataFilteringConfig,
+    AgentKnowledgeModelConfig,
+    AgentKnowledgeRetrievalConfig,
     AgentSoulConfig,
     DeclaredArrayItem,
     DeclaredOutputChildConfig,
@@ -547,42 +558,84 @@ def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfi
 
 
 def build_knowledge_layer_config(agent_soul: AgentSoulConfig) -> DifyKnowledgeBaseLayerConfig | None:
-    """Map Agent Soul knowledge config into the fixed Dify knowledge-base layer.
+    """Map Agent Soul knowledge sets into one Dify knowledge-base layer.
 
-    Normalization intentionally matches the current dify-agent runtime contract:
-
-    - blank or missing dataset ids are ignored;
-    - if no valid dataset ids remain, no knowledge layer is injected;
-    - retrieval mode is always forced to ``multiple`` in this first wiring pass;
-    - ``top_k`` falls back to a stable runtime default when the soul omits it;
-    - ``score_threshold`` is only forwarded when the product config explicitly
-      enables it, otherwise the layer keeps the disabled/default ``0.0`` value;
-    - metadata filtering stays at the layer DTO default (disabled).
+    Agent Soul DTO validation owns malformed set rejection. Runtime mapping is
+    intentionally lossless: every configured set is forwarded with its query
+    policy, dataset refs, retrieval controls, and metadata-filtering controls.
+    ``score_threshold=None`` means disabled threshold filtering and maps to the
+    inner retrieval request's ``0.0`` default through the Agent backend DTO.
     """
-    dataset_ids = list_configured_knowledge_dataset_ids(agent_soul)
-    if not dataset_ids:
+    if not agent_soul.knowledge.sets:
         return None
 
-    query_config = agent_soul.knowledge.query_config
     return DifyKnowledgeBaseLayerConfig(
-        dataset_ids=dataset_ids,
-        retrieval=DifyKnowledgeRetrievalConfig(
-            mode="multiple",
-            top_k=_knowledge_top_k(query_config),
-            score_threshold=_knowledge_score_threshold(query_config),
-        ),
+        sets=[
+            DifyKnowledgeSetConfig(
+                id=knowledge_set.id,
+                name=knowledge_set.name,
+                description=knowledge_set.description,
+                datasets=[
+                    DifyKnowledgeDatasetConfig(
+                        id=dataset.id or "",
+                        name=dataset.name,
+                        description=dataset.description,
+                    )
+                    for dataset in knowledge_set.datasets
+                ],
+                query=DifyKnowledgeQueryConfig(
+                    mode=cast(Literal["user_query", "generated_query"], knowledge_set.query.mode.value),
+                    value=knowledge_set.query.value,
+                ),
+                retrieval=_knowledge_retrieval_config(knowledge_set.retrieval),
+                metadata_filtering=_knowledge_metadata_filtering_config(knowledge_set.metadata_filtering),
+            )
+            for knowledge_set in agent_soul.knowledge.sets
+        ],
     )
 
 
-def _knowledge_top_k(query_config: AgentKnowledgeQueryConfig) -> int:
-    top_k = query_config.top_k
-    return top_k if isinstance(top_k, int) and top_k >= 1 else 4
+def _knowledge_retrieval_config(retrieval: AgentKnowledgeRetrievalConfig) -> DifyKnowledgeRetrievalConfig:
+    return DifyKnowledgeRetrievalConfig(
+        mode=retrieval.mode,
+        top_k=retrieval.top_k,
+        score_threshold=retrieval.score_threshold or 0.0,
+        reranking_mode=retrieval.reranking_mode,
+        reranking_enable=retrieval.reranking_enable,
+        reranking_model=DifyKnowledgeRerankingModelConfig(
+            provider=retrieval.reranking_model.provider,
+            model=retrieval.reranking_model.model,
+        )
+        if retrieval.reranking_model is not None
+        else None,
+        weights=cast(dict[str, Any], retrieval.weights.model_dump(mode="json", exclude_none=True))
+        if retrieval.weights is not None
+        else None,
+        model=_knowledge_model_config(retrieval.model),
+    )
 
 
-def _knowledge_score_threshold(query_config: AgentKnowledgeQueryConfig) -> float:
-    if query_config.score_threshold_enabled and query_config.score_threshold is not None:
-        return query_config.score_threshold
-    return 0.0
+def _knowledge_metadata_filtering_config(
+    metadata_filtering: AgentKnowledgeMetadataFilteringConfig,
+) -> DifyKnowledgeMetadataFilteringConfig:
+    return DifyKnowledgeMetadataFilteringConfig(
+        mode=metadata_filtering.mode,
+        model_config=_knowledge_model_config(metadata_filtering.metadata_model_config),
+        conditions=cast(Any, metadata_filtering.conditions.model_dump(mode="json"))
+        if metadata_filtering.conditions is not None
+        else None,
+    )
+
+
+def _knowledge_model_config(model: AgentKnowledgeModelConfig | None) -> DifyKnowledgeModelConfig | None:
+    if model is None:
+        return None
+    return DifyKnowledgeModelConfig(
+        provider=model.provider,
+        name=model.name,
+        mode=model.mode,
+        completion_params=model.completion_params,
+    )
 
 
 def build_ask_human_layer_config(agent_soul: AgentSoulConfig) -> DifyAskHumanLayerConfig | None:

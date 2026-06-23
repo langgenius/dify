@@ -107,7 +107,17 @@ def soul() -> AgentSoulConfig:
                 ],
                 "cli_tools": [{"id": "ct-1", "name": "ffmpeg"}],
             },
-            "knowledge": {"datasets": [{"id": "ds-1", "name": "产品手册"}]},
+            "knowledge": {
+                "sets": [
+                    {
+                        "id": "kb-1",
+                        "name": "产品手册",
+                        "datasets": [{"id": "ds-1", "name": "产品手册"}],
+                        "query": {"mode": "generated_query"},
+                        "retrieval": {"mode": "multiple", "top_k": 4},
+                    }
+                ]
+            },
             "human": {"contacts": [{"id": "c-1", "name": "David Hayes", "channel": "email"}]},
         }
     )
@@ -117,7 +127,7 @@ def test_soul_resolver_resolves_each_kind(soul: AgentSoulConfig):
     resolver = build_soul_mention_resolver(soul)
     prompt = (
         "Use [§tool:tavily/tavily_search:tavily§], run [§cli_tool:ct-1:ffmpeg§], "
-        "ground in [§knowledge:ds-1§], ask [§human:c-1§]."
+        "ground in [§knowledge:kb-1§], ask [§human:c-1§]."
     )
 
     expanded = expand_prompt_mentions(prompt, resolver)

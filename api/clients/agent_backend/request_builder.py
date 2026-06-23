@@ -312,7 +312,7 @@ class AgentBackendRunRequestBuilder:
                 )
             )
 
-        if run_input.knowledge is not None and run_input.knowledge.dataset_ids:
+        if run_input.knowledge is not None and run_input.knowledge.sets:
             layers.append(
                 RunLayerSpec(
                     name=DIFY_KNOWLEDGE_BASE_LAYER_ID,
@@ -513,7 +513,7 @@ class AgentBackendRunRequestBuilder:
                 )
             )
 
-        if run_input.knowledge is not None and run_input.knowledge.dataset_ids:
+        if run_input.knowledge is not None and run_input.knowledge.sets:
             layers.append(
                 RunLayerSpec(
                     name=DIFY_KNOWLEDGE_BASE_LAYER_ID,

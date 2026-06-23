@@ -18,6 +18,7 @@ from models.agent_config_entities import (
 )
 from models.model import UploadFile
 from models.workflow import Workflow
+from services.agent.knowledge_datasets import list_missing_tenant_knowledge_dataset_ids
 
 from .entities import DifyAgentNodeData
 
@@ -146,6 +147,7 @@ class WorkflowAgentNodeValidator:
             )
         cls._validate_agent_soul_env(binding=binding, agent_soul=agent_soul)
         cls._validate_agent_soul_tools(binding=binding, agent_soul=agent_soul)
+        cls._validate_agent_soul_knowledge(binding=binding, agent_soul=agent_soul)
         node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
         cls.validate_node_job(session=session, binding=binding, node_job=node_job, topology=topology)
 
@@ -363,6 +365,24 @@ class WorkflowAgentNodeValidator:
                     f"Workflow Agent node {binding.node_id} has duplicate CLI Tool name {normalized_name}."
                 )
             cli_tool_names.add(normalized_name)
+
+    @classmethod
+    def _validate_agent_soul_knowledge(
+        cls,
+        *,
+        binding: WorkflowAgentNodeBinding,
+        agent_soul: AgentSoulConfig,
+    ) -> None:
+        """Validate knowledge set dataset rows against the publishing tenant."""
+        missing_ids = list_missing_tenant_knowledge_dataset_ids(
+            tenant_id=binding.tenant_id,
+            agent_soul=agent_soul,
+        )
+        if missing_ids:
+            raise WorkflowAgentNodeValidationError(
+                f"Workflow Agent node {binding.node_id} references missing or out-of-scope knowledge datasets: "
+                f"{', '.join(missing_ids)}."
+            )
 
     @classmethod
     def _validate_agent_soul_env(
