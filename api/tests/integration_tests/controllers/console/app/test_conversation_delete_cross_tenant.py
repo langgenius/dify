@@ -16,8 +16,8 @@ import pytest
 from flask.testing import FlaskClient
 
 from constants import HEADER_NAME_CSRF_TOKEN
-from controllers.console.app import wraps
 from controllers.console import wraps as console_wraps
+from controllers.console.app import wraps
 from libs.datetime_utils import naive_utc_now
 from libs.token import _real_cookie_name, generate_csrf_token
 from models import App, Tenant
