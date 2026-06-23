@@ -88,6 +88,34 @@ class TestFileService:
         with pytest.raises(ValueError, match="Filename contains invalid characters"):
             file_service.upload_file(filename="invalid/file.txt", content=b"", mimetype="text/plain", user=MagicMock())
 
+    @pytest.mark.parametrize(
+        "filename",
+        [
+            "../secret.txt",
+            "..\\secret.txt",
+            ".",
+            "..",
+            "line\rbreak.txt",
+            "line\nbreak.txt",
+            "nul\x00byte.txt",
+            "delete\x7f.txt",
+        ],
+    )
+    def test_validate_upload_filename_rejects_unsafe_names(self, filename):
+        with pytest.raises(ValueError, match="Filename contains invalid characters"):
+            FileService._validate_upload_filename(filename)
+
+    @pytest.mark.parametrize(
+        "filename",
+        [
+            "report 2026.txt",
+            "archive:final?.zip",
+            "résumé.pdf",
+        ],
+    )
+    def test_validate_upload_filename_allows_display_safe_names(self, filename):
+        FileService._validate_upload_filename(filename)
+
     def test_upload_file_long_filename(self, file_service: FileService, mock_db_session):
         # Setup
         long_name = "a" * 210 + ".txt"

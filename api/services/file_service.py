@@ -32,6 +32,7 @@ from models.model import EndUser, UploadFile
 from .errors.file import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
 
 PREVIEW_WORDS_LIMIT = 3000
+INVALID_FILENAME_MESSAGE = "Filename contains invalid characters"
 
 
 class FileService:
@@ -59,10 +60,7 @@ class FileService:
         # get file extension
         extension = os.path.splitext(filename)[1].lstrip(".").lower()
 
-        # Only reject path separators here. The original filename is stored as metadata,
-        # while the storage key is UUID-based.
-        if any(c in filename for c in ["/", "\\"]):
-            raise ValueError("Filename contains invalid characters")
+        self._validate_upload_filename(filename)
 
         if len(filename) > 200:
             filename = filename.split(".")[0][:200] + "." + extension
@@ -116,6 +114,17 @@ class FileService:
             upload_file.source_url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id)
 
         return upload_file
+
+    @staticmethod
+    def _validate_upload_filename(filename: str) -> None:
+        # The storage key is UUID-based, but the original name is still reused in
+        # logs, headers, and ZIP entries.
+        if filename in {".", ".."}:
+            raise ValueError(INVALID_FILENAME_MESSAGE)
+        if any(c in filename for c in ["/", "\\"]):
+            raise ValueError(INVALID_FILENAME_MESSAGE)
+        if any(ord(c) < 32 or ord(c) == 127 for c in filename):
+            raise ValueError(INVALID_FILENAME_MESSAGE)
 
     @staticmethod
     def is_file_size_within_limit(*, extension: str, file_size: int) -> bool:
