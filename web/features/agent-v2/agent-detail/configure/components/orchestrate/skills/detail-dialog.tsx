@@ -200,7 +200,7 @@ function AgentFilePreviewContent({
   }
 
   return (
-    <pre className="m-0 font-mono text-xs leading-5 break-words whitespace-pre-wrap text-text-secondary">
+    <pre className="m-0 pb-4 font-mono text-xs leading-5 break-words whitespace-pre-wrap text-text-secondary">
       {content}
     </pre>
   )
