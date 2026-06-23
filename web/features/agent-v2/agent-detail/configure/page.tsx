@@ -139,6 +139,7 @@ function AgentConfigurePageLoadedContent({
       <div className="flex min-w-105 flex-1 gap-1 overflow-hidden">
         <div className="flex min-w-105 flex-1 flex-col overflow-hidden rounded-lg bg-background-gradient-bg-fill-chat-bg-2 shadow-xl shadow-shadow-shadow-5">
           <AgentPreviewHeader
+            agentId={agentId}
             isChatFeaturesOpen={showChatFeatures}
             onToggleChatFeatures={() => setShowChatFeatures(open => !open)}
             onRestart={() => setClearPreviewChat(true)}

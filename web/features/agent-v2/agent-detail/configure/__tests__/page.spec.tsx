@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   queryState: {
     agent: {
       data: {
+        debug_conversation_id: 'debug-conversation-old',
         icon: 'agent',
         icon_background: '#E0F2FE',
         icon_type: 'emoji',
@@ -107,7 +108,13 @@ vi.mock('../components/preview/chat-features-panel', () => ({
 }))
 
 vi.mock('../components/preview/header', () => ({
-  AgentPreviewHeader: () => <div role="banner" />,
+  AgentPreviewHeader: (props: {
+    onRestart: () => void
+  }) => (
+    <button type="button" onClick={props.onRestart}>
+      restart preview
+    </button>
+  ),
 }))
 
 vi.mock('../components/preview/versions-panel', () => ({
@@ -125,6 +132,7 @@ describe('AgentConfigurePage', () => {
         icon_background: '#E0F2FE',
         icon_type: 'emoji',
         name: 'Research Agent',
+        debug_conversation_id: 'debug-conversation-old',
       },
       isFetching: false,
       isPending: false,
