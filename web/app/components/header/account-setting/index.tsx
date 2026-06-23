@@ -58,10 +58,10 @@ export default function AccountSetting({
   const isRbacEnabled = systemFeatures.rbac_enabled
   const canManageWorkspaceRoles = isRbacEnabled && hasPermission(workspacePermissionKeys, 'workspace.role.manage')
   const canViewBilling = enableBilling && hasPermission(workspacePermissionKeys, BillingPermission.View)
-  const normalizedActiveTab = activeTab === ACCOUNT_SETTING_TAB.LANGUAGE ? ACCOUNT_SETTING_TAB.PREFERENCE : activeTab
+  const normalizedActiveTab = activeTab === ACCOUNT_SETTING_TAB.LANGUAGE ? ACCOUNT_SETTING_TAB.PREFERENCES : activeTab
   const activeMenu = (() => {
     if (normalizedActiveTab === ACCOUNT_SETTING_TAB.BILLING && !canViewBilling)
-      return ACCOUNT_SETTING_TAB.PREFERENCE
+      return ACCOUNT_SETTING_TAB.PREFERENCES
     if ((normalizedActiveTab === ACCOUNT_SETTING_TAB.PERMISSIONS || normalizedActiveTab === ACCOUNT_SETTING_TAB.ACCESS_RULES) && !canManageWorkspaceRoles)
       return ACCOUNT_SETTING_TAB.MEMBERS
     return normalizedActiveTab
@@ -120,7 +120,7 @@ export default function AccountSetting({
       activeIcon: <span className={cn('i-ri-color-filter-fill', iconClassName)} />,
     },
     {
-      key: ACCOUNT_SETTING_TAB.PREFERENCE,
+      key: ACCOUNT_SETTING_TAB.PREFERENCES,
       name: t('settings.preferences', { ns: 'common' }),
       title: t('account.general', { ns: 'common' }),
       icon: <span className={cn('i-ri-equalizer-2-line', iconClassName)} />,
@@ -152,7 +152,7 @@ export default function AccountSetting({
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-  const preferenceItem = settingItems.find(item => item.key === ACCOUNT_SETTING_TAB.PREFERENCE)
+  const preferenceItem = settingItems.find(item => item.key === ACCOUNT_SETTING_TAB.PREFERENCES)
 
   const menuItems = [
     {
@@ -267,7 +267,7 @@ export default function AccountSetting({
               {activeMenu === ACCOUNT_SETTING_TAB.DATA_SOURCE && <DataSourcePage />}
               {activeMenu === ACCOUNT_SETTING_TAB.API_BASED_EXTENSION && <ApiBasedExtensionPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}
-              {activeMenu === ACCOUNT_SETTING_TAB.PREFERENCE && <LanguagePage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.PREFERENCES && <LanguagePage />}
             </div>
           </ScrollArea>
         </div>

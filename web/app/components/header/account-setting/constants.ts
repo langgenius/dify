@@ -12,7 +12,7 @@ export const ACCOUNT_SETTING_TAB = {
   DATA_SOURCE: 'data-source',
   API_BASED_EXTENSION: 'custom-endpoint',
   CUSTOM: 'custom',
-  PREFERENCE: 'preference',
+  PREFERENCES: 'preferences',
   LANGUAGE: 'language',
 } as const
 
@@ -31,7 +31,7 @@ const WORKSPACE_SETTING_TAB_VALUES = [
 export type WorkspaceSettingTab = typeof WORKSPACE_SETTING_TAB_VALUES[number]
 
 const USER_SETTING_TAB_VALUES = [
-  ACCOUNT_SETTING_TAB.PREFERENCE,
+  ACCOUNT_SETTING_TAB.PREFERENCES,
   ACCOUNT_SETTING_TAB.LANGUAGE,
 ] as const
 
