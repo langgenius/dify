@@ -15,6 +15,7 @@ type ConfigureSectionBaseProps = {
   children: ReactNode
   actions?: ReactNode
   description?: ReactNode
+  defaultOpen?: boolean
   headingLevel?: 'h3' | 'h4'
   panelId?: string
   rootClassName?: string
@@ -40,6 +41,7 @@ export function ConfigureSection({
   children,
   actions,
   description,
+  defaultOpen = true,
   headingLevel = 'h3',
   panelId,
   tip,
@@ -56,7 +58,7 @@ export function ConfigureSection({
   return (
     <CollapsibleRoot
       render={<section />}
-      defaultOpen
+      defaultOpen={defaultOpen}
       className={rootClassName}
       aria-labelledby={labelId}
     >

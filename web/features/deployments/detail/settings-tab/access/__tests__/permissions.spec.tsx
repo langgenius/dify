@@ -1,6 +1,8 @@
 import type { AccessPolicy, Environment, EnvironmentAccessPolicy } from '@dify/contracts/enterprise/types.gen'
+import type { ReactNode } from 'react'
 import { AccessMode, SubjectType } from '@dify/contracts/enterprise/types.gen'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { createStore, Provider as JotaiProvider } from 'jotai'
 import { describe, expect, it, vi } from 'vitest'
 import { EnvironmentPermissionRow } from '../permissions'
 import { AccessPermissionsSection } from '../permissions-section'
@@ -15,6 +17,14 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     useMutation: (...args: unknown[]) => mockUseMutation(...args),
   }
 })
+
+function renderWithAtomStore(children: ReactNode) {
+  return render(
+    <JotaiProvider store={createStore()}>
+      {children}
+    </JotaiProvider>,
+  )
+}
 
 function createEnvironment(overrides: Partial<Environment> = {}): Environment {
   return {
@@ -74,7 +84,7 @@ describe('EnvironmentPermissionRow', () => {
   })
 
   it('should keep the previous permission visible when updating the policy fails', () => {
-    render(
+    renderWithAtomStore(
       <EnvironmentPermissionRow
         appInstanceId="app-instance-1"
         environment={createEnvironment()}
@@ -91,7 +101,7 @@ describe('EnvironmentPermissionRow', () => {
   })
 
   it('should show specific subject counts in the access summary', () => {
-    render(
+    renderWithAtomStore(
       <EnvironmentPermissionRow
         appInstanceId="app-instance-1"
         environment={createEnvironment()}
@@ -118,7 +128,7 @@ describe('AccessPermissionsSection', () => {
   })
 
   it('should render permission rows without column headers', () => {
-    render(
+    renderWithAtomStore(
       <AccessPermissionsSection
         appInstanceId="app-instance-1"
         environmentPolicies={[createEnvironmentAccessPolicy()]}

@@ -80,8 +80,11 @@ class SnippetDraftConfigResponse(BaseModel):
     parallel_depth_limit: int
 
 
-class SnippetWorkflowPaginationResponse(WorkflowPaginationResponse):
+class SnippetWorkflowPaginationResponse(BaseModel):
     items: list[SnippetWorkflowResponse]
+    page: int
+    limit: int
+    has_more: bool
 
 
 register_schema_models(

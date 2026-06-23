@@ -22,12 +22,12 @@ export function DeploymentRowActions({ appInstanceId, envId, row }: {
   const { t } = useTranslation('deployments')
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
   const undeployDeployment = useMutation(consoleQuery.enterprise.deploymentService.undeploy.mutationOptions())
-  const isUndeployed = isUndeployedDeploymentRow(row)
-  const status = row.status
   const [showUndeployConfirm, setShowUndeployConfirm] = useState(false)
   const [showErrorDetail, setShowErrorDetail] = useState(false)
   const [isUndeploying, setIsUndeploying] = useState(false)
   const undeployInFlightRef = useRef(false)
+  const isUndeployed = isUndeployedDeploymentRow(row)
+  const status = row.status
   const isUndeployRequesting = undeployDeployment.isPending || isUndeploying
   const undeployActionDisabled = isUndeployRequesting
   const isDeploymentInProgress = isRuntimeDeploymentInProgress(status)
@@ -45,6 +45,7 @@ export function DeploymentRowActions({ appInstanceId, envId, row }: {
   function handleUndeploy() {
     if (undeployInFlightRef.current)
       return
+
     undeployInFlightRef.current = true
     setIsUndeploying(true)
     undeployDeployment.mutate(

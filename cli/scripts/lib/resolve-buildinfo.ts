@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-export const BUILD_CHANNELS = ['dev', 'rc', 'stable'] as const
+export const BUILD_CHANNELS = ['dev', 'alpha', 'rc', 'edge', 'stable'] as const
 export type BuildChannel = (typeof BUILD_CHANNELS)[number]
 
 export type BuildInfo = {

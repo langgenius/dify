@@ -10,7 +10,11 @@ import pytest
 from agenton.compositor import CompositorSessionSnapshot, LayerProvider
 from agenton.compositor.schemas import LayerSessionSnapshot
 from agenton.layers.base import LifecycleState
-from dify_agent.agent_stub.server.shell_agent_stub_env import AGENT_STUB_AUTH_JWE_ENV_VAR, AGENT_STUB_URL_ENV_VAR
+from dify_agent.agent_stub.server.shell_agent_stub_env import (
+    AGENT_STUB_AUTH_JWE_ENV_VAR,
+    AGENT_STUB_DRIVE_BASE_ENV_VAR,
+    AGENT_STUB_API_BASE_URL_ENV_VAR,
+)
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.shell import DifyShellLayerConfig
@@ -189,7 +193,7 @@ def _service(
             DifyShellLayerConfig.model_validate(config),
             shellctl_entrypoint="http://shellctl",
             shellctl_client_factory=lambda _entrypoint: client,
-            agent_stub_url="https://agent.example.com/agent-stub",
+            agent_stub_api_base_url="https://agent.example.com/agent-stub",
             agent_stub_token_factory=lambda execution_context, *, session_id: (
                 f"token-for:{execution_context.tenant_id}:{session_id}"
             ),
@@ -335,8 +339,9 @@ def test_upload_file_injects_agent_stub_env_and_returns_mapping() -> None:
         assert cwd == "~/workspace/abc12ff"
         assert timeout == 30.0
         assert env == {
-            AGENT_STUB_URL_ENV_VAR: "https://agent.example.com/agent-stub",
+            AGENT_STUB_API_BASE_URL_ENV_VAR: "https://agent.example.com/agent-stub",
             AGENT_STUB_AUTH_JWE_ENV_VAR: "token-for:tenant-1:abc12ff",
+            AGENT_STUB_DRIVE_BASE_ENV_VAR: "/mnt/drive",
         }
         assert 'dify-agent", "file", "upload"' in script
         return _job_result(

@@ -114,6 +114,25 @@ describe('CliToolDialog', () => {
   })
 
   describe('Actions', () => {
+    it('should keep the form open when the backdrop is clicked', async () => {
+      const user = userEvent.setup()
+      const { onOpenChange } = renderCliToolDialog()
+
+      const dialog = screen.getByRole('dialog', {
+        name: 'agentV2.agentDetail.configure.tools.cliDialog.title',
+      })
+      const backdrop = document.body.querySelector('.bg-background-overlay') as HTMLElement
+      await user.click(backdrop)
+
+      expect(onOpenChange).not.toHaveBeenCalledWith(false)
+      expect(dialog).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', {
+        name: 'common.operation.cancel',
+      }))
+      expect(onOpenChange).toHaveBeenCalledWith(false)
+    })
+
     it('should show save action when editing a CLI tool', () => {
       renderCliToolDialog({
         mode: 'edit',

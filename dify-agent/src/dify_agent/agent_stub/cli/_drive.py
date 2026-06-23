@@ -11,6 +11,7 @@ ToolFile ids back into the drive.
 from __future__ import annotations
 
 import stat
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from tempfile import TemporaryDirectory
@@ -32,6 +33,7 @@ from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubDriveFileRef,
     AgentStubDriveItem,
     AgentStubDriveManifestResponse,
+    DEFAULT_AGENT_STUB_DRIVE_BASE,
 )
 
 _SKILL_MD_FILENAME = "SKILL.md"
@@ -81,11 +83,15 @@ def list_drive_from_environment(prefix: str, json_output: bool) -> str | AgentSt
     return _format_manifest(response)
 
 
-def pull_drive_from_environment(prefix: str, drive_base: str = "/mnt/drive") -> list[Path]:
+def pull_drive_from_environment(
+    targets: list[str] | None = None,
+    drive_base: str = DEFAULT_AGENT_STUB_DRIVE_BASE,
+) -> list[Path]:
     """Pull drive files into one local drive base via signed download URLs.
 
     Args:
-        prefix: Optional drive-key prefix forwarded to the manifest request.
+        targets: Optional drive-key targets or prefixes. An empty list preserves
+            the historical whole-drive pull by using ``[""]``.
         drive_base: Local base directory that receives downloaded drive files.
 
     Returns:
@@ -117,16 +123,24 @@ def pull_drive_from_environment(prefix: str, drive_base: str = "/mnt/drive") -> 
     """
 
     environment = read_agent_stub_environment()
-    response = request_agent_stub_drive_manifest_sync(
-        url=environment.url,
-        auth_jwe=environment.auth_jwe,
-        prefix=prefix,
-        include_download_url=True,
-    )
+    manifest_targets = targets or [""]
+    with ThreadPoolExecutor(max_workers=min(len(manifest_targets), 4)) as executor:
+        responses = list(
+            executor.map(
+                lambda target: request_agent_stub_drive_manifest_sync(
+                    url=environment.url,
+                    auth_jwe=environment.auth_jwe,
+                    prefix=target,
+                    include_download_url=True,
+                ),
+                manifest_targets,
+            )
+        )
     base_path = Path(drive_base).expanduser().resolve()
     base_path.mkdir(parents=True, exist_ok=True)
     written_paths: list[Path] = []
-    for item in response.items:
+    deduplicated_items = {item.key: item for response in responses for item in response.items}
+    for item in [deduplicated_items[key] for key in sorted(deduplicated_items)]:
         download_url = item.download_url
         if not isinstance(download_url, str) or not download_url:
             raise AgentStubValidationError(f"drive manifest item is missing download_url: {item.key}")

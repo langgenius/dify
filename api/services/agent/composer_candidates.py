@@ -137,9 +137,6 @@ def soul_candidates(
     soul = agent_soul or AgentSoulConfig()
     truncated = False
 
-    skills_files = [{"kind": "skill", **skill.model_dump(exclude_none=True)} for skill in soul.skills_files.skills]
-    skills_files += [{"kind": "file", **file.model_dump(exclude_none=True)} for file in soul.skills_files.files]
-
     cli_tools = [tool.model_dump(exclude_none=True) for tool in soul.tools.cli_tools if tool.enabled]
 
     dataset_ids = [dataset.id for dataset in soul.knowledge.datasets if dataset.id]
@@ -162,7 +159,6 @@ def soul_candidates(
     dify_tools = workspace_tools_loader()
 
     lists = {
-        "skills_files": skills_files,
         "dify_tools": dify_tools,
         "cli_tools": cli_tools,
         "knowledge_datasets": knowledge_datasets,

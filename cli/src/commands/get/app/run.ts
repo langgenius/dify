@@ -1,4 +1,4 @@
-import type { AppDescribeResponse, AppListResponse, AppMode } from '@dify/contracts/api/openapi/types.gen'
+import type { AppDescribeResponse, AppListResponse, AppMode, SupportedAppType } from '@dify/contracts/api/openapi/types.gen'
 import type { AppReader } from '@/api/app-reader'
 import type { ActiveContext } from '@/auth/hosts'
 import type { HttpClient } from '@/http/types'
@@ -20,7 +20,7 @@ export type GetAppOptions = {
   readonly allWorkspaces?: boolean
   readonly page?: number
   readonly limitRaw?: string
-  readonly mode?: AppMode
+  readonly mode?: SupportedAppType
   readonly name?: string
   readonly format?: string
 }

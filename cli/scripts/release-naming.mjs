@@ -26,6 +26,7 @@ const SEMVER_CORE_LEN = 3
 // Add channels here: { name, prerelease, versionForm }.
 const CHANNELS = [
   { name: 'stable', prerelease: false, versionForm: /^\d+\.\d+\.\d+(\+[0-9A-Z.-]+)?$/i },
+  { name: 'alpha', prerelease: true, versionForm: /^\d+\.\d+\.\d+-alpha(\.\d+)?$/ },
   { name: 'rc', prerelease: true, versionForm: /^\d+\.\d+\.\d+-rc\.\d+$/ },
   { name: 'edge', prerelease: true, versionForm: /^\d+\.\d+\.\d+-edge\.[0-9a-f]{7,40}$/ },
 ]

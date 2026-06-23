@@ -492,6 +492,52 @@ class AgentRosterService:
             self._session.commit()
         return conversation_id
 
+    def refresh_agent_app_debug_conversation_id(
+        self, *, tenant_id: str, agent_id: str, account_id: str, commit: bool = True
+    ) -> str:
+        """Start a new console debug conversation for the current Agent App editor."""
+
+        agent = self._session.scalar(
+            select(Agent).where(
+                Agent.tenant_id == tenant_id,
+                Agent.id == agent_id,
+                Agent.scope == AgentScope.ROSTER,
+                Agent.source == AgentSource.AGENT_APP,
+                Agent.status == AgentStatus.ACTIVE,
+            )
+        )
+        if agent is None or not agent.app_id:
+            raise AgentNotFoundError()
+
+        conversation_id = self._create_agent_app_debug_conversation(
+            app_id=agent.app_id,
+            account_id=account_id,
+        )
+        mapping = self._session.scalar(
+            select(AgentDebugConversation).where(
+                AgentDebugConversation.tenant_id == tenant_id,
+                AgentDebugConversation.agent_id == agent_id,
+                AgentDebugConversation.account_id == account_id,
+            )
+        )
+        if mapping is None:
+            self._session.add(
+                AgentDebugConversation(
+                    tenant_id=tenant_id,
+                    agent_id=agent_id,
+                    app_id=agent.app_id,
+                    account_id=account_id,
+                    conversation_id=conversation_id,
+                )
+            )
+        else:
+            mapping.app_id = agent.app_id
+            mapping.conversation_id = conversation_id
+        self._session.flush()
+        if commit:
+            self._session.commit()
+        return conversation_id
+
     def load_or_create_agent_app_debug_conversation_ids_by_agent_id(
         self, *, tenant_id: str, agents: list[Agent], account_id: str
     ) -> dict[str, str]:
@@ -587,6 +633,7 @@ class AgentRosterService:
         account: Any,
         name: str | None = None,
         description: str | None = None,
+        role: str | None = None,
         icon_type: Any = None,
         icon: str | None = None,
         icon_background: str | None = None,
@@ -598,6 +645,7 @@ class AgentRosterService:
 
         copied_name = name or self._next_duplicate_agent_name(tenant_id=tenant_id, base_name=source_app.name)
         copied_description = description if description is not None else source_app.description
+        copied_role = role if role is not None else source_agent.role or ""
         copied_icon_type = icon_type if icon_type is not None else source_app.icon_type
         copied_icon = icon if icon is not None else source_app.icon
         copied_icon_background = icon_background if icon_background is not None else source_app.icon_background
@@ -608,7 +656,7 @@ class AgentRosterService:
                 name=copied_name,
                 description=copied_description,
                 mode="agent",
-                agent_role=source_agent.role or "",
+                agent_role=copied_role,
                 icon_type=self._normalize_app_icon_type(copied_icon_type),
                 icon=copied_icon,
                 icon_background=copied_icon_background,
