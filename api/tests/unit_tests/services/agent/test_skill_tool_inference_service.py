@@ -43,7 +43,7 @@ def test_infer_returns_suggestions_with_inferred_from(monkeypatch: pytest.Monkey
         ' "env_suggestions": [{"key": "OPENAI_API_KEY", "reason": "whisper call", "secret_likely": true}]}]}'
     )
     with patch.object(SkillToolInferenceService, "_invoke", staticmethod(lambda **kwargs: raw)):
-        result = service.infer(tenant_id="t-1", agent_id="a-1", slug="audio-transcribe")
+        result = service.infer(tenant_id="t-1", agent_id="a-1", slug="audio-transcribe", session=MagicMock())
 
     assert result["inferable"] is True
     tool = result["cli_tools"][0]
@@ -63,7 +63,7 @@ def test_infer_threads_manifest_files_into_the_prompt(monkeypatch: pytest.Monkey
         return '{"inferable": false, "cli_tools": [], "reason": "none"}'
 
     with patch.object(SkillToolInferenceService, "_invoke", staticmethod(fake_invoke)):
-        service.infer(tenant_id="t-1", agent_id="a-1", slug="audio-transcribe")
+        service.infer(tenant_id="t-1", agent_id="a-1", slug="audio-transcribe", session=MagicMock())
 
     assert "scripts/run.sh" in captured["prompt"]
     assert "ffmpeg" in captured["prompt"]  # SKILL.md body present
@@ -74,7 +74,7 @@ def test_infer_not_inferable_passes_reason_through(monkeypatch: pytest.MonkeyPat
     _patch_soul_files(monkeypatch, [])
     raw = '{"inferable": false, "cli_tools": [], "reason": "SKILL.md 未描述任何外部命令依赖"}'
     with patch.object(SkillToolInferenceService, "_invoke", staticmethod(lambda **kwargs: raw)):
-        result = service.infer(tenant_id="t-1", agent_id="a-1", slug="audio-transcribe")
+        result = service.infer(tenant_id="t-1", agent_id="a-1", slug="audio-transcribe", session=MagicMock())
     assert result == {"inferable": False, "cli_tools": [], "reason": "SKILL.md 未描述任何外部命令依赖"}
 
 
@@ -89,7 +89,7 @@ def test_infer_retries_once_then_422(monkeypatch: pytest.MonkeyPatch):
 
     with patch.object(SkillToolInferenceService, "_invoke", staticmethod(bad_invoke)):
         with pytest.raises(SkillToolInferenceError) as exc_info:
-            service.infer(tenant_id="t-1", agent_id="a-1", slug="audio-transcribe")
+            service.infer(tenant_id="t-1", agent_id="a-1", slug="audio-transcribe", session=MagicMock())
 
     assert len(calls) == 2  # one retry
     assert exc_info.value.code == "inference_failed"
@@ -101,7 +101,7 @@ def test_infer_repairs_slightly_malformed_json(monkeypatch: pytest.MonkeyPatch):
     _patch_soul_files(monkeypatch, [])
     raw = 'Here you go: {"inferable": true, "cli_tools": [], "reason": null,}'
     with patch.object(SkillToolInferenceService, "_invoke", staticmethod(lambda **kwargs: raw)):
-        result = service.infer(tenant_id="t-1", agent_id="a-1", slug="audio-transcribe")
+        result = service.infer(tenant_id="t-1", agent_id="a-1", slug="audio-transcribe", session=MagicMock())
     assert result["inferable"] is True
 
 
@@ -111,7 +111,7 @@ def test_missing_skill_maps_to_404():
     service = SkillToolInferenceService(drive_service=drive)
 
     with pytest.raises(SkillToolInferenceError) as exc_info:
-        service.infer(tenant_id="t-1", agent_id="a-1", slug="ghost")
+        service.infer(tenant_id="t-1", agent_id="a-1", slug="ghost", session=MagicMock())
     assert exc_info.value.code == "skill_not_found"
     assert exc_info.value.status_code == 404
 
@@ -119,7 +119,7 @@ def test_missing_skill_maps_to_404():
 def test_binary_skill_md_maps_to_404():
     service, _ = _service(preview={"key": "x/SKILL.md", "size": 1, "truncated": False, "binary": True, "text": None})
     with pytest.raises(SkillToolInferenceError) as exc_info:
-        service.infer(tenant_id="t-1", agent_id="a-1", slug="x")
+        service.infer(tenant_id="t-1", agent_id="a-1", slug="x", session=MagicMock())
     assert exc_info.value.code == "skill_not_found"
 
 
@@ -169,7 +169,7 @@ def test_load_skill_md_passes_through_non_missing_drive_errors():
     service = SkillToolInferenceService(drive_service=drive)
 
     with pytest.raises(SkillToolInferenceError) as exc_info:
-        service.infer(tenant_id="t-1", agent_id="a-1", slug="x")
+        service.infer(tenant_id="t-1", agent_id="a-1", slug="x", session=MagicMock())
     assert exc_info.value.code == "agent_not_found"
 
 

@@ -26,6 +26,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.dataset_fields import (
     dataset_detail_fields,
@@ -395,6 +396,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
                 account=current_user,
                 external_retrieval_model=payload.external_retrieval_model,
                 metadata_filtering_conditions=payload.metadata_filtering_conditions,
+                session=db.session,
             )
 
             return response

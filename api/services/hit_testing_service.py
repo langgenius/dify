@@ -4,6 +4,7 @@ import time
 from typing import Any, TypedDict, cast
 
 from sqlalchemy import select
+from sqlalchemy.orm import scoped_session
 
 from core.app.app_config.entities import ModelConfig
 from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
@@ -12,7 +13,6 @@ from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from extensions.ext_database import db
 from graphon.model_runtime.entities import LLMMode
 from models import Account
 from models.dataset import Dataset, DatasetQuery
@@ -56,7 +56,9 @@ class HitTestingService:
         }
 
     @classmethod
-    def _dump_retrieval_records(cls, records: list[RetrievalSegments]) -> list[dict[str, Any]]:
+    def _dump_retrieval_records(
+        cls, records: list[RetrievalSegments], *, session: scoped_session
+    ) -> list[dict[str, Any]]:
         document_ids = {
             document_id
             for record in records
@@ -69,7 +71,7 @@ class HitTestingService:
 
         documents = {
             document.id: cls._dump_dataset_document(document)
-            for document in db.session.scalars(
+            for document in session.scalars(
                 select(DatasetDocument).where(DatasetDocument.id.in_(document_ids))
             ).all()
         }
@@ -112,6 +114,8 @@ class HitTestingService:
         external_retrieval_model: dict[str, Any],
         attachment_ids: list | None = None,
         limit: int = 10,
+        *,
+        session: scoped_session,
     ):
         start = time.perf_counter()
 
@@ -181,10 +185,10 @@ class HitTestingService:
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
             )
-            db.session.add(dataset_query)
-        db.session.commit()
+            session.add(dataset_query)
+        session.commit()
 
-        return cls.compact_retrieve_response(query, all_documents)
+        return cls.compact_retrieve_response(query, all_documents, session=session)
 
     @classmethod
     def external_retrieve(
@@ -194,6 +198,8 @@ class HitTestingService:
         account: Account,
         external_retrieval_model: dict[str, Any] | None = None,
         metadata_filtering_conditions: dict[str, Any] | None = None,
+        *,
+        session: scoped_session,
     ):
         if dataset.provider != "external":
             return {
@@ -222,20 +228,22 @@ class HitTestingService:
             created_by=account.id,
         )
 
-        db.session.add(dataset_query)
-        db.session.commit()
+        session.add(dataset_query)
+        session.commit()
 
         return dict(cls.compact_external_retrieve_response(dataset, query, all_documents))
 
     @classmethod
-    def compact_retrieve_response(cls, query: str, documents: list[Document]) -> RetrieveResponseDict:
+    def compact_retrieve_response(
+        cls, query: str, documents: list[Document], *, session: scoped_session
+    ) -> RetrieveResponseDict:
         records = RetrievalService.format_retrieval_documents(documents)
 
         return {
             "query": {
                 "content": query,
             },
-            "records": cls._dump_retrieval_records(records),
+            "records": cls._dump_retrieval_records(records, session=session),
         }
 
     @classmethod

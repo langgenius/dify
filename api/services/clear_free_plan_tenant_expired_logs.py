@@ -125,9 +125,9 @@ class ClearFreePlanTenantExpiredLogs:
             )
 
     @classmethod
-    def process_tenant(cls, flask_app: Flask, tenant_id: str, days: int, batch: int):
+    def process_tenant(cls, flask_app: Flask, tenant_id: str, days: int, batch: int, *, session: Session):
         with flask_app.app_context():
-            apps = db.session.scalars(select(App).where(App.tenant_id == tenant_id)).all()
+            apps = session.scalars(select(App).where(App.tenant_id == tenant_id)).all()
             app_ids = [app.id for app in apps]
             while True:
                 with sessionmaker(bind=db.engine, autoflush=False).begin() as session:
@@ -375,7 +375,8 @@ class ClearFreePlanTenantExpiredLogs:
                     or BillingService.get_info(tenant_id)["subscription"]["plan"] == CloudPlan.SANDBOX
                 ):
                     # only process sandbox tenant
-                    cls.process_tenant(flask_app, tenant_id, days, batch)
+                    session = sessionmaker(db.engine)()
+                    cls.process_tenant(flask_app, tenant_id, days, batch, session=session)
             except Exception:
                 logger.exception("Failed to process tenant %s", tenant_id)
             finally:

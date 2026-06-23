@@ -20,10 +20,10 @@ from typing import Any
 import json_repair
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select
+from sqlalchemy.orm import scoped_session
 
 from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelManager
-from extensions.ext_database import db
 from graphon.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.agent import Agent
@@ -95,9 +95,11 @@ class SkillToolInferenceService:
     def __init__(self, *, drive_service: AgentDriveService | None = None) -> None:
         self._drive = drive_service or AgentDriveService()
 
-    def infer(self, *, tenant_id: str, agent_id: str, slug: str) -> dict[str, Any]:
+    def infer(self, *, tenant_id: str, agent_id: str, slug: str, session: scoped_session) -> dict[str, Any]:
         skill_md = self._load_skill_md(tenant_id=tenant_id, agent_id=agent_id, slug=slug)
-        manifest_files = self._manifest_files_from_soul(tenant_id=tenant_id, agent_id=agent_id, slug=slug)
+        manifest_files = self._manifest_files_from_soul(
+            tenant_id=tenant_id, agent_id=agent_id, slug=slug, session=session
+        )
 
         user_prompt = f"SKILL.md of skill '{slug}':\n\n{skill_md}"
         if manifest_files:
@@ -139,18 +141,18 @@ class SkillToolInferenceService:
         return str(preview["text"])
 
     @staticmethod
-    def _manifest_files_from_soul(*, tenant_id: str, agent_id: str, slug: str) -> list[str]:
+    def _manifest_files_from_soul(*, tenant_id: str, agent_id: str, slug: str, session: scoped_session) -> list[str]:
         """The zip path listing standardize persisted onto the ref, if present.
 
         Degrades to an empty list (SKILL.md-only inference) for refs that
         predate ``manifest_files``.
         """
-        agent = db.session.scalar(select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id).limit(1))
+        agent = session.scalar(select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id).limit(1))
         if agent is None or not agent.active_config_snapshot_id:
             return []
         from models.agent import AgentConfigSnapshot
 
-        snapshot = db.session.scalar(
+        snapshot = session.scalar(
             select(AgentConfigSnapshot).where(
                 AgentConfigSnapshot.tenant_id == tenant_id,
                 AgentConfigSnapshot.agent_id == agent_id,

@@ -1,9 +1,9 @@
 from flask_login import current_user
 from sqlalchemy import select
+from sqlalchemy.orm import scoped_session
 
 from configs import dify_config
 from enums.cloud_plan import CloudPlan
-from extensions.ext_database import db
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from services.account_service import TenantService
 from services.feature_service import FeatureService
@@ -11,7 +11,7 @@ from services.feature_service import FeatureService
 
 class WorkspaceService:
     @classmethod
-    def get_tenant_info(cls, tenant: Tenant):
+    def get_tenant_info(cls, tenant: Tenant, *, session: scoped_session):
         if not tenant:
             return None
         tenant_info: dict[str, object] = {
@@ -25,7 +25,7 @@ class WorkspaceService:
         }
 
         # Get role of user
-        tenant_account_join = db.session.scalar(
+        tenant_account_join = session.scalar(
             select(TenantAccountJoin)
             .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == current_user.id)
             .limit(1)
