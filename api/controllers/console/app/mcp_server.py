@@ -22,7 +22,7 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from libs.helper import to_timestamp
+from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
 from models.enums import AppMCPServerStatus
 from models.model import App, AppMCPServer
@@ -92,7 +92,7 @@ class AppMCPServerController(Resource):
         server = db.session.scalar(select(AppMCPServer).where(AppMCPServer.app_id == app_model.id).limit(1))
         if server is None:
             return {}
-        return AppMCPServerResponse.model_validate(server, from_attributes=True).model_dump(mode="json")
+        return dump_response(AppMCPServerResponse, server)
 
     @console_ns.doc("create_app_mcp_server")
     @console_ns.doc(description="Create MCP server configuration for an application")
@@ -127,7 +127,7 @@ class AppMCPServerController(Resource):
         )
         db.session.add(server)
         db.session.commit()
-        return AppMCPServerResponse.model_validate(server, from_attributes=True).model_dump(mode="json"), 201
+        return dump_response(AppMCPServerResponse, server), 201
 
     @console_ns.doc("update_app_mcp_server")
     @console_ns.doc(description="Update MCP server configuration for an application")
@@ -165,7 +165,7 @@ class AppMCPServerController(Resource):
             except ValueError:
                 raise ValueError("Invalid status")
         db.session.commit()
-        return AppMCPServerResponse.model_validate(server, from_attributes=True).model_dump(mode="json")
+        return dump_response(AppMCPServerResponse, server)
 
 
 @console_ns.route("/apps/<uuid:server_id>/server/refresh")
@@ -192,4 +192,4 @@ class AppMCPServerRefreshController(Resource):
             raise NotFound()
         server.server_code = AppMCPServer.generate_server_code(16)
         db.session.commit()
-        return AppMCPServerResponse.model_validate(server, from_attributes=True).model_dump(mode="json")
+        return dump_response(AppMCPServerResponse, server)

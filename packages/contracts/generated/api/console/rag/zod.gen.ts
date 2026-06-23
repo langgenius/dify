@@ -40,11 +40,6 @@ export const zPipelineTemplateDetailResponse = z.object({
 })
 
 /**
- * RagPipelineOpaqueResponse
- */
-export const zRagPipelineOpaqueResponse = z.unknown()
-
-/**
  * RagPipelineImportPayload
  */
 export const zRagPipelineImportPayload = z.object({
@@ -60,21 +55,28 @@ export const zRagPipelineImportPayload = z.object({
 })
 
 /**
+ * RagPipelineRecommendedPluginResponse
+ */
+export const zRagPipelineRecommendedPluginResponse = z.object({
+  installed_recommended_plugins: z.array(z.record(z.string(), z.unknown())),
+  uninstalled_recommended_plugins: z.array(z.record(z.string(), z.unknown())),
+})
+
+/**
+ * RagPipelineTransformResponse
+ */
+export const zRagPipelineTransformResponse = z.object({
+  dataset_id: z.string(),
+  pipeline_id: z.string(),
+  status: z.string(),
+})
+
+/**
  * SimpleResultResponse
  */
 export const zSimpleResultResponse = z.object({
   result: z.string(),
 })
-
-/**
- * DefaultBlockConfigsResponse
- */
-export const zDefaultBlockConfigsResponse = z.array(z.record(z.string(), z.unknown()))
-
-/**
- * DefaultBlockConfigResponse
- */
-export const zDefaultBlockConfigResponse = z.record(z.string(), z.unknown())
 
 /**
  * DraftWorkflowSyncPayload
@@ -98,15 +100,6 @@ export const zRagPipelineWorkflowSyncResponse = z.object({
 })
 
 /**
- * DatasourceNodeRunPayload
- */
-export const zDatasourceNodeRunPayload = z.object({
-  credential_id: z.string().nullish(),
-  datasource_type: z.string(),
-  inputs: z.record(z.string(), z.unknown()),
-})
-
-/**
  * DatasourceVariablesPayload
  */
 export const zDatasourceVariablesPayload = z.object({
@@ -117,13 +110,6 @@ export const zDatasourceVariablesPayload = z.object({
 })
 
 /**
- * NodeRunPayload
- */
-export const zNodeRunPayload = z.object({
-  inputs: z.record(z.string(), z.unknown()).nullish(),
-})
-
-/**
  * NodeRunRequiredPayload
  */
 export const zNodeRunRequiredPayload = z.object({
@@ -131,47 +117,10 @@ export const zNodeRunRequiredPayload = z.object({
 })
 
 /**
- * RagPipelineStepParametersResponse
+ * RagPipelineVariablesResponse
  */
-export const zRagPipelineStepParametersResponse = z.object({
+export const zRagPipelineVariablesResponse = z.object({
   variables: z.unknown(),
-})
-
-/**
- * DraftWorkflowRunPayload
- */
-export const zDraftWorkflowRunPayload = z.object({
-  datasource_info_list: z.array(z.record(z.string(), z.unknown())),
-  datasource_type: z.string(),
-  inputs: z.record(z.string(), z.unknown()),
-  start_node_id: z.string(),
-})
-
-export const zWorkflowDraftVariable = z.object({
-  description: z.string().optional(),
-  edited: z.boolean().optional(),
-  full_content: z.record(z.string(), z.unknown()).optional(),
-  id: z.string().optional(),
-  is_truncated: z.boolean().optional(),
-  name: z.string().optional(),
-  selector: z.array(z.string()).optional(),
-  type: z.string().optional(),
-  value: z
-    .union([
-      z.string(),
-      z.int(),
-      z.number(),
-      z.boolean(),
-      z.record(z.string(), z.unknown()),
-      z.array(z.unknown()),
-    ])
-    .nullish(),
-  value_type: z.string().optional(),
-  visible: z.boolean().optional(),
-})
-
-export const zWorkflowDraftVariableList = z.object({
-  items: z.array(zWorkflowDraftVariable).optional(),
 })
 
 /**
@@ -179,7 +128,7 @@ export const zWorkflowDraftVariableList = z.object({
  */
 export const zWorkflowDraftVariablePatchPayload = z.object({
   name: z.string().nullish(),
-  value: z.unknown().nullish(),
+  value: z.unknown().optional(),
 })
 
 /**
@@ -188,33 +137,6 @@ export const zWorkflowDraftVariablePatchPayload = z.object({
 export const zRagPipelineWorkflowPublishResponse = z.object({
   created_at: z.int(),
   result: z.string(),
-})
-
-/**
- * Parser
- */
-export const zParser = z.object({
-  credential_id: z.string().nullish(),
-  datasource_type: z.string(),
-  inputs: z.record(z.string(), z.unknown()),
-})
-
-/**
- * DataSourceContentPreviewResponse
- */
-export const zDataSourceContentPreviewResponse = z.unknown()
-
-/**
- * PublishedWorkflowRunPayload
- */
-export const zPublishedWorkflowRunPayload = z.object({
-  datasource_info_list: z.array(z.record(z.string(), z.unknown())),
-  datasource_type: z.string(),
-  inputs: z.record(z.string(), z.unknown()),
-  is_preview: z.boolean().optional().default(false),
-  original_document_id: z.string().nullish(),
-  response_mode: z.enum(['blocking', 'streaming']).optional().default('streaming'),
-  start_node_id: z.string(),
 })
 
 /**
@@ -322,9 +244,9 @@ export const zPipelineTemplateListResponse = z.object({
 })
 
 /**
- * SimpleAccount
+ * SimpleAccountResponse
  */
-export const zSimpleAccount = z.object({
+export const zSimpleAccountResponse = z.object({
   email: z.string(),
   id: z.string(),
   name: z.string(),
@@ -335,7 +257,7 @@ export const zSimpleAccount = z.object({
  */
 export const zWorkflowRunForListResponse = z.object({
   created_at: z.int().nullish(),
-  created_by_account: zSimpleAccount.nullish(),
+  created_by_account: zSimpleAccountResponse.nullish(),
   elapsed_time: z.number().nullish(),
   exceptions_count: z.int().nullish(),
   finished_at: z.int().nullish(),
@@ -371,7 +293,7 @@ export const zSimpleEndUser = z.object({
  */
 export const zWorkflowRunDetailResponse = z.object({
   created_at: z.int().nullish(),
-  created_by_account: zSimpleAccount.nullish(),
+  created_by_account: zSimpleAccountResponse.nullish(),
   created_by_end_user: zSimpleEndUser.nullish(),
   created_by_role: z.string().nullish(),
   elapsed_time: z.number().nullish(),
@@ -393,7 +315,7 @@ export const zWorkflowRunDetailResponse = z.object({
  */
 export const zWorkflowRunNodeExecutionResponse = z.object({
   created_at: z.int().nullish(),
-  created_by_account: zSimpleAccount.nullish(),
+  created_by_account: zSimpleAccountResponse.nullish(),
   created_by_end_user: zSimpleEndUser.nullish(),
   created_by_role: z.string().nullish(),
   elapsed_time: z.number().nullish(),
@@ -471,7 +393,7 @@ export const zPipelineVariableResponse = z.object({
 export const zWorkflowResponse = z.object({
   conversation_variables: z.array(zWorkflowConversationVariableResponse),
   created_at: z.int(),
-  created_by: zSimpleAccount.nullish(),
+  created_by: zSimpleAccountResponse.nullish(),
   environment_variables: z.array(zWorkflowEnvironmentVariableResponse),
   features: z.record(z.string(), z.unknown()),
   graph: z.record(z.string(), z.unknown()),
@@ -482,7 +404,7 @@ export const zWorkflowResponse = z.object({
   rag_pipeline_variables: z.array(zPipelineVariableResponse),
   tool_published: z.boolean(),
   updated_at: z.int(),
-  updated_by: zSimpleAccount.nullish(),
+  updated_by: zSimpleAccountResponse.nullish(),
   version: z.string(),
 })
 
@@ -497,10 +419,10 @@ export const zWorkflowPaginationResponse = z.object({
 })
 
 /**
- * EnvironmentVariableItemResponse
+ * RagPipelineEnvironmentVariableResponse
  */
-export const zEnvironmentVariableItemResponse = z.object({
-  description: z.string().nullish(),
+export const zRagPipelineEnvironmentVariableResponse = z.object({
+  description: z.string(),
   editable: z.boolean(),
   edited: z.boolean(),
   id: z.string(),
@@ -513,27 +435,67 @@ export const zEnvironmentVariableItemResponse = z.object({
 })
 
 /**
- * EnvironmentVariableListResponse
+ * RagPipelineEnvironmentVariableListResponse
  */
-export const zEnvironmentVariableListResponse = z.object({
-  items: z.array(zEnvironmentVariableItemResponse),
+export const zRagPipelineEnvironmentVariableListResponse = z.object({
+  items: z.array(zRagPipelineEnvironmentVariableResponse),
 })
 
-export const zWorkflowDraftVariableWithoutValue = z.object({
-  description: z.string().optional(),
-  edited: z.boolean().optional(),
-  id: z.string().optional(),
-  is_truncated: z.boolean().optional(),
-  name: z.string().optional(),
-  selector: z.array(z.string()).optional(),
-  type: z.string().optional(),
-  value_type: z.string().optional(),
-  visible: z.boolean().optional(),
+/**
+ * WorkflowDraftVariableWithoutValueResponse
+ */
+export const zWorkflowDraftVariableWithoutValueResponse = z.object({
+  description: z.string(),
+  edited: z.boolean(),
+  id: z.string(),
+  is_truncated: z.boolean(),
+  name: z.string(),
+  selector: z.array(z.string()),
+  type: z.string(),
+  value_type: z.string(),
+  visible: z.boolean(),
 })
 
-export const zWorkflowDraftVariableListWithoutValue = z.object({
-  items: z.array(zWorkflowDraftVariableWithoutValue).optional(),
-  total: z.int().optional(),
+/**
+ * WorkflowDraftVariableListWithoutValueResponse
+ */
+export const zWorkflowDraftVariableListWithoutValueResponse = z.object({
+  items: z.array(zWorkflowDraftVariableWithoutValueResponse),
+  total: z.int().nullable(),
+})
+
+/**
+ * WorkflowDraftVariableFullContentResponse
+ */
+export const zWorkflowDraftVariableFullContentResponse = z.object({
+  download_url: z.string(),
+  length: z.int().nullable(),
+  size_bytes: z.int().nullable(),
+  value_type: z.string(),
+})
+
+/**
+ * WorkflowDraftVariableResponse
+ */
+export const zWorkflowDraftVariableResponse = z.object({
+  description: z.string(),
+  edited: z.boolean(),
+  full_content: zWorkflowDraftVariableFullContentResponse.nullable(),
+  id: z.string(),
+  is_truncated: z.boolean(),
+  name: z.string(),
+  selector: z.array(z.string()),
+  type: z.string(),
+  value: z.unknown(),
+  value_type: z.string(),
+  visible: z.boolean(),
+})
+
+/**
+ * WorkflowDraftVariableListResponse
+ */
+export const zWorkflowDraftVariableListResponse = z.object({
+  items: z.array(zWorkflowDraftVariableResponse),
 })
 
 /**
@@ -547,48 +509,33 @@ export const zDatasetRerankingModelResponse = z.object({
 /**
  * Type
  */
-export const zType = z.enum(['github', 'marketplace', 'package'])
+export const zType = z.enum([
+  'app-selector',
+  'array[tools]',
+  'boolean',
+  'model-selector',
+  'secret-input',
+  'select',
+  'text-input',
+])
 
 /**
  * Github
  */
 export const zGithub = z.object({
-  github_plugin_unique_identifier: z.string(),
-  package: z.string(),
+  packages: z.string(),
+  release: z.string(),
   repo: z.string(),
-  version: z.string(),
+  repo_address: z.string(),
 })
 
 /**
  * Marketplace
  */
 export const zMarketplace = z.object({
-  marketplace_plugin_unique_identifier: z.string(),
-  version: z.string().nullish(),
-})
-
-/**
- * Package
- */
-export const zPackage = z.object({
-  plugin_unique_identifier: z.string(),
-  version: z.string().nullish(),
-})
-
-/**
- * PluginDependency
- */
-export const zPluginDependency = z.object({
-  current_identifier: z.string().nullish(),
-  type: zType,
-  value: z.union([zGithub, zMarketplace, zPackage]),
-})
-
-/**
- * RagPipelineImportCheckDependenciesResponse
- */
-export const zRagPipelineImportCheckDependenciesResponse = z.object({
-  leaked_dependencies: z.array(zPluginDependency).optional(),
+  organization: z.string(),
+  plugin: z.string(),
+  version: z.string(),
 })
 
 /**
@@ -673,6 +620,845 @@ export const zDatasetDetailResponse = z.object({
   word_count: z.int(),
 })
 
+/**
+ * DatasourceProviderType
+ *
+ * Enum class for datasource provider
+ */
+export const zDatasourceProviderType = z.enum([
+  'local_file',
+  'online_document',
+  'online_drive',
+  'website_crawl',
+])
+
+/**
+ * I18nObject
+ *
+ * Model class for i18n object.
+ */
+export const zI18nObject = z.object({
+  en_US: z.string(),
+  ja_JP: z.string().nullish(),
+  pt_BR: z.string().nullish(),
+  zh_Hans: z.string().nullish(),
+})
+
+/**
+ * Option
+ */
+export const zOption = z.object({
+  label: zI18nObject,
+  value: z.string(),
+})
+
+/**
+ * AppSelectorScope
+ */
+export const zAppSelectorScope = z.enum(['all', 'chat', 'completion', 'workflow'])
+
+/**
+ * ModelSelectorScope
+ */
+export const zModelSelectorScope = z.enum([
+  'llm',
+  'moderation',
+  'rerank',
+  'speech2text',
+  'text-embedding',
+  'tts',
+  'vision',
+])
+
+/**
+ * ToolSelectorScope
+ */
+export const zToolSelectorScope = z.enum(['all', 'builtin', 'custom', 'workflow'])
+
+/**
+ * Type
+ */
+export const zCoreEntitiesProviderEntitiesBasicProviderConfigType = z.enum([
+  'app-selector',
+  'array[tools]',
+  'boolean',
+  'model-selector',
+  'secret-input',
+  'select',
+  'text-input',
+])
+
+/**
+ * ProviderConfig
+ *
+ * Model class for common provider settings like credentials
+ */
+export const zProviderConfig = z.object({
+  default: z.union([z.int(), z.string(), z.number(), z.boolean()]).nullish(),
+  help: zI18nObject.nullish(),
+  label: zI18nObject.nullish(),
+  multiple: z.boolean().optional().default(false),
+  name: z.string(),
+  options: z.array(zOption).nullish(),
+  placeholder: zI18nObject.nullish(),
+  required: z.boolean().optional().default(false),
+  scope: z.union([zAppSelectorScope, zModelSelectorScope, zToolSelectorScope]).nullish(),
+  type: zCoreEntitiesProviderEntitiesBasicProviderConfigType,
+  url: z.string().nullish(),
+})
+
+/**
+ * OAuthSchema
+ *
+ * OAuth schema
+ */
+export const zOAuthSchema = z.object({
+  client_schema: z.array(zProviderConfig).optional(),
+  credentials_schema: z.array(zProviderConfig).optional(),
+})
+
+/**
+ * DatasourceIdentity
+ */
+export const zDatasourceIdentity = z.object({
+  author: z.string(),
+  icon: z.string().nullish(),
+  label: zI18nObject,
+  name: z.string(),
+  provider: z.string(),
+})
+
+/**
+ * I18nObject
+ *
+ * Model class for i18n object.
+ */
+export const zCoreToolsEntitiesCommonEntitiesI18nObject = z.object({
+  en_US: z.string(),
+  ja_JP: z.string().nullish(),
+  pt_BR: z.string().nullish(),
+  zh_Hans: z.string().nullish(),
+})
+
+/**
+ * ToolLabelEnum
+ */
+export const zToolLabelEnum = z.enum([
+  'business',
+  'design',
+  'education',
+  'entertainment',
+  'finance',
+  'image',
+  'medical',
+  'news',
+  'other',
+  'productivity',
+  'rag',
+  'search',
+  'social',
+  'travel',
+  'utilities',
+  'videos',
+  'weather',
+])
+
+/**
+ * DatasourceProviderIdentity
+ */
+export const zDatasourceProviderIdentity = z.object({
+  author: z.string(),
+  description: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  icon: z.string(),
+  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  name: z.string(),
+  tags: z.array(zToolLabelEnum).nullish().default([]),
+})
+
+/**
+ * PluginCategory
+ */
+export const zPluginCategory = z.enum([
+  'agent-strategy',
+  'datasource',
+  'extension',
+  'model',
+  'tool',
+  'trigger',
+])
+
+/**
+ * DatasourceProviderEntity
+ *
+ * Datasource provider entity
+ */
+export const zDatasourceProviderEntity = z.object({
+  credentials_schema: z.array(zProviderConfig).optional(),
+  identity: zDatasourceProviderIdentity,
+  oauth_schema: zOAuthSchema.nullish(),
+  provider_type: zDatasourceProviderType,
+})
+
+/**
+ * Meta
+ */
+export const zMeta = z.object({
+  minimum_dify_version: z.string().nullish(),
+  version: z.string().nullish(),
+})
+
+/**
+ * Plugins
+ */
+export const zPlugins = z.object({
+  datasources: z.array(z.string()).nullish(),
+  endpoints: z.array(z.string()).nullish(),
+  models: z.array(z.string()).nullish(),
+  tools: z.array(z.string()).nullish(),
+  triggers: z.array(z.string()).nullish(),
+})
+
+/**
+ * PluginParameterOption
+ */
+export const zPluginParameterOption = z.object({
+  icon: z.string().nullish(),
+  label: zI18nObject,
+  value: z.string(),
+})
+
+/**
+ * PluginParameterTemplate
+ */
+export const zPluginParameterTemplate = z.object({
+  enabled: z.boolean().optional().default(false),
+})
+
+/**
+ * DatasourceParameterType
+ *
+ * removes TOOLS_SELECTOR from PluginParameterType
+ */
+export const zDatasourceParameterType = z.enum([
+  'boolean',
+  'file',
+  'files',
+  'number',
+  'secret-input',
+  'select',
+  'string',
+  'system-files',
+])
+
+/**
+ * AgentStrategyProviderIdentity
+ *
+ * Inherits from ToolProviderIdentity, without any additional fields.
+ */
+export const zAgentStrategyProviderIdentity = z.object({
+  author: z.string(),
+  description: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  icon: z.string(),
+  icon_dark: z.string().nullish(),
+  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  name: z.string(),
+  tags: z.array(zToolLabelEnum).nullish().default([]),
+})
+
+/**
+ * AgentStrategyProviderEntity
+ */
+export const zAgentStrategyProviderEntity = z.object({
+  identity: zAgentStrategyProviderIdentity,
+  plugin_id: z.string().nullish(),
+})
+
+/**
+ * EndpointDeclaration
+ *
+ * declaration of an endpoint
+ */
+export const zEndpointDeclaration = z.object({
+  hidden: z.boolean().optional().default(false),
+  method: z.string(),
+  path: z.string(),
+})
+
+/**
+ * EndpointProviderDeclaration
+ *
+ * declaration of an endpoint group
+ */
+export const zEndpointProviderDeclaration = z.object({
+  endpoints: z.array(zEndpointDeclaration).nullish(),
+  settings: z.array(zProviderConfig).optional(),
+})
+
+/**
+ * ConfigurateMethod
+ *
+ * Enum class for configurate method of provider model.
+ */
+export const zConfigurateMethod = z.enum(['customizable-model', 'predefined-model'])
+
+/**
+ * I18nObject
+ *
+ * Model class for i18n object.
+ */
+export const zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject = z.object({
+  en_US: z.string(),
+  zh_Hans: z.string().nullish(),
+})
+
+/**
+ * ProviderHelpEntity
+ *
+ * Model class for provider help.
+ */
+export const zProviderHelpEntity = z.object({
+  title: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject,
+  url: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject,
+})
+
+/**
+ * ModelType
+ *
+ * Enum class for model type.
+ */
+export const zModelType = z.enum([
+  'llm',
+  'moderation',
+  'rerank',
+  'speech2text',
+  'text-embedding',
+  'tts',
+])
+
+/**
+ * ToolProviderIdentity
+ */
+export const zToolProviderIdentity = z.object({
+  author: z.string(),
+  description: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  icon: z.string(),
+  icon_dark: z.string().nullish(),
+  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  name: z.string(),
+  tags: z.array(zToolLabelEnum).nullish().default([]),
+})
+
+/**
+ * ToolProviderEntity
+ */
+export const zToolProviderEntity = z.object({
+  credentials_schema: z.array(zProviderConfig).optional(),
+  identity: zToolProviderIdentity,
+  oauth_schema: zOAuthSchema.nullish(),
+  plugin_id: z.string().nullish(),
+})
+
+/**
+ * TriggerProviderIdentity
+ *
+ * The identity of the trigger provider
+ */
+export const zTriggerProviderIdentity = z.object({
+  author: z.string(),
+  description: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  icon: z.string().nullish(),
+  icon_dark: z.string().nullish(),
+  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  name: z.string(),
+  tags: z.array(z.string()).optional(),
+})
+
+/**
+ * Type
+ */
+export const zCorePluginEntitiesParametersPluginParameterAutoGenerateType = z.enum([
+  'prompt_instruction',
+])
+
+/**
+ * PluginParameterAutoGenerate
+ */
+export const zPluginParameterAutoGenerate = z.object({
+  type: zCorePluginEntitiesParametersPluginParameterAutoGenerateType,
+})
+
+/**
+ * DatasourceParameter
+ *
+ * Overrides type
+ */
+export const zDatasourceParameter = z.object({
+  auto_generate: zPluginParameterAutoGenerate.nullish(),
+  default: z
+    .union([
+      z.number(),
+      z.int(),
+      z.string(),
+      z.boolean(),
+      z.array(z.unknown()),
+      z.record(z.string(), z.unknown()),
+    ])
+    .nullish(),
+  description: zI18nObject,
+  label: zI18nObject,
+  max: z.union([z.number(), z.int()]).nullish(),
+  min: z.union([z.number(), z.int()]).nullish(),
+  name: z.string(),
+  options: z.array(zPluginParameterOption).optional(),
+  placeholder: zI18nObject.nullish(),
+  precision: z.int().nullish(),
+  required: z.boolean().optional().default(false),
+  scope: z.string().nullish(),
+  template: zPluginParameterTemplate.nullish(),
+  type: zDatasourceParameterType,
+})
+
+/**
+ * DatasourceEntity
+ */
+export const zDatasourceEntity = z.object({
+  description: zI18nObject,
+  identity: zDatasourceIdentity,
+  output_schema: z.record(z.string(), z.unknown()).nullish(),
+  parameters: z.array(zDatasourceParameter).optional(),
+})
+
+/**
+ * DatasourceProviderEntityWithPlugin
+ */
+export const zDatasourceProviderEntityWithPlugin = z.object({
+  credentials_schema: z.array(zProviderConfig).optional(),
+  datasources: z.array(zDatasourceEntity).optional(),
+  identity: zDatasourceProviderIdentity,
+  oauth_schema: zOAuthSchema.nullish(),
+  provider_type: zDatasourceProviderType,
+})
+
+/**
+ * PluginDatasourceProviderEntity
+ */
+export const zPluginDatasourceProviderEntity = z.object({
+  declaration: zDatasourceProviderEntityWithPlugin,
+  is_authorized: z.boolean().optional().default(false),
+  plugin_id: z.string(),
+  plugin_unique_identifier: z.string(),
+  provider: z.string(),
+})
+
+/**
+ * DatasourcePluginListResponse
+ */
+export const zDatasourcePluginListResponse = z.array(zPluginDatasourceProviderEntity)
+
+/**
+ * FieldModelSchema
+ */
+export const zFieldModelSchema = z.object({
+  label: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject,
+  placeholder: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish(),
+})
+
+/**
+ * ModelFeature
+ *
+ * Enum class for llm feature.
+ */
+export const zModelFeature = z.enum([
+  'agent-thought',
+  'audio',
+  'document',
+  'multi-tool-call',
+  'polling',
+  'stream-tool-call',
+  'structured-output',
+  'tool-call',
+  'video',
+  'vision',
+])
+
+/**
+ * FetchFrom
+ *
+ * Enum class for fetch from.
+ */
+export const zFetchFrom = z.enum(['customizable-model', 'predefined-model'])
+
+/**
+ * ModelPropertyKey
+ *
+ * Enum class for model property key.
+ */
+export const zModelPropertyKey = z.enum([
+  'audio_type',
+  'context_size',
+  'default_voice',
+  'file_upload_limit',
+  'max_characters_per_chunk',
+  'max_chunks',
+  'max_workers',
+  'mode',
+  'supported_file_extensions',
+  'voices',
+  'word_limit',
+])
+
+/**
+ * PriceConfig
+ *
+ * Model class for pricing info.
+ */
+export const zPriceConfig = z.object({
+  currency: z.string(),
+  input: z.string().regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/),
+  output: z
+    .string()
+    .regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/)
+    .nullish(),
+  unit: z.string().regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/),
+})
+
+/**
+ * Endpoint
+ */
+export const zEndpoint = z.object({
+  enabled: z.boolean().nullish().default(false),
+})
+
+/**
+ * Model
+ */
+export const zModel = z.object({
+  enabled: z.boolean().nullish().default(false),
+  llm: z.boolean().nullish().default(false),
+  moderation: z.boolean().nullish().default(false),
+  rerank: z.boolean().nullish().default(false),
+  speech2text: z.boolean().nullish().default(false),
+  text_embedding: z.boolean().nullish().default(false),
+  tts: z.boolean().nullish().default(false),
+})
+
+/**
+ * Node
+ */
+export const zNode = z.object({
+  enabled: z.boolean().nullish().default(false),
+})
+
+/**
+ * Storage
+ */
+export const zStorage = z.object({
+  enabled: z.boolean().nullish().default(false),
+  size: z.int().gte(1024).lte(1073741824).optional().default(1048576),
+})
+
+/**
+ * Tool
+ */
+export const zTool = z.object({
+  enabled: z.boolean().nullish().default(false),
+})
+
+/**
+ * Permission
+ */
+export const zPermission = z.object({
+  endpoint: zEndpoint.nullish(),
+  model: zModel.nullish(),
+  node: zNode.nullish(),
+  storage: zStorage.nullish(),
+  tool: zTool.nullish(),
+})
+
+/**
+ * PluginResourceRequirements
+ */
+export const zPluginResourceRequirements = z.object({
+  memory: z.int(),
+  permission: zPermission.nullish(),
+})
+
+/**
+ * EventIdentity
+ *
+ * The identity of the event
+ */
+export const zEventIdentity = z.object({
+  author: z.string(),
+  label: zI18nObject,
+  name: z.string(),
+  provider: z.string().nullish(),
+})
+
+/**
+ * FormShowOnObject
+ *
+ * Model class for form show on.
+ */
+export const zFormShowOnObject = z.object({
+  value: z.string(),
+  variable: z.string(),
+})
+
+/**
+ * FormOption
+ *
+ * Model class for form option.
+ */
+export const zFormOption = z.object({
+  label: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject,
+  show_on: z.array(zFormShowOnObject).optional().default([]),
+  value: z.string(),
+})
+
+/**
+ * FormType
+ *
+ * Enum class for form type.
+ */
+export const zFormType = z.enum(['radio', 'secret-input', 'select', 'switch', 'text-input'])
+
+/**
+ * CredentialFormSchema
+ *
+ * Model class for credential form schema.
+ */
+export const zCredentialFormSchema = z.object({
+  default: z.string().nullish(),
+  label: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject,
+  max_length: z.int().optional().default(0),
+  options: z.array(zFormOption).nullish(),
+  placeholder: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish(),
+  required: z.boolean().optional().default(true),
+  show_on: z.array(zFormShowOnObject).optional().default([]),
+  type: zFormType,
+  variable: z.string(),
+})
+
+/**
+ * ModelCredentialSchema
+ *
+ * Model class for model credential schema.
+ */
+export const zModelCredentialSchema = z.object({
+  credential_form_schemas: z.array(zCredentialFormSchema),
+  model: zFieldModelSchema,
+})
+
+/**
+ * ProviderCredentialSchema
+ *
+ * Model class for provider credential schema.
+ */
+export const zProviderCredentialSchema = z.object({
+  credential_form_schemas: z.array(zCredentialFormSchema),
+})
+
+/**
+ * ParameterType
+ *
+ * Enum class for parameter type.
+ */
+export const zParameterType = z.enum(['boolean', 'float', 'int', 'string', 'text'])
+
+/**
+ * ParameterRule
+ *
+ * Model class for parameter rule.
+ */
+export const zParameterRule = z.object({
+  default: z.unknown().nullish(),
+  help: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish(),
+  label: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject,
+  max: z.number().nullish(),
+  min: z.number().nullish(),
+  name: z.string(),
+  options: z.array(z.string()).optional().default([]),
+  precision: z.int().nullish(),
+  required: z.boolean().optional().default(false),
+  type: zParameterType,
+  use_template: z.string().nullish(),
+})
+
+/**
+ * AIModelEntity
+ *
+ * Model class for AI model.
+ */
+export const zAiModelEntity = z.object({
+  deprecated: z.boolean().optional().default(false),
+  features: z.array(zModelFeature).nullish(),
+  fetch_from: zFetchFrom,
+  label: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject,
+  model: z.string(),
+  model_properties: z.record(z.string(), z.unknown()),
+  model_type: zModelType,
+  parameter_rules: z.array(zParameterRule).optional().default([]),
+  pricing: zPriceConfig.nullish(),
+})
+
+/**
+ * ProviderEntity
+ *
+ * Runtime-native provider schema.
+ *
+ * `provider` is the canonical runtime identifier. `provider_name` is a
+ * compatibility alias for callers that still resolve providers by short name and
+ * is empty when no alias exists.
+ */
+export const zProviderEntity = z.object({
+  background: z.string().nullish(),
+  configurate_methods: z.array(zConfigurateMethod),
+  description: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish(),
+  help: zProviderHelpEntity.nullish(),
+  icon_small: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish(),
+  icon_small_dark: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish(),
+  label: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject,
+  model_credential_schema: zModelCredentialSchema.nullish(),
+  models: z.array(zAiModelEntity).optional(),
+  position: z.record(z.string(), z.array(z.string())).nullish().default({}),
+  provider: z.string(),
+  provider_credential_schema: zProviderCredentialSchema.nullish(),
+  provider_name: z.string().optional().default(''),
+  supported_model_types: z.array(zModelType),
+})
+
+/**
+ * EventParameterType
+ *
+ * The type of the parameter
+ */
+export const zEventParameterType = z.enum([
+  'app-selector',
+  'array',
+  'boolean',
+  'checkbox',
+  'dynamic-select',
+  'file',
+  'files',
+  'model-selector',
+  'number',
+  'object',
+  'select',
+  'string',
+])
+
+/**
+ * EventParameter
+ *
+ * The parameter of the event
+ */
+export const zEventParameter = z.object({
+  auto_generate: zPluginParameterAutoGenerate.nullish(),
+  default: z.union([z.int(), z.number(), z.string(), z.array(z.unknown())]).nullish(),
+  description: zI18nObject.nullish(),
+  label: zI18nObject,
+  max: z.union([z.number(), z.int()]).nullish(),
+  min: z.union([z.number(), z.int()]).nullish(),
+  multiple: z.boolean().optional().default(false),
+  name: z.string(),
+  options: z.array(zPluginParameterOption).nullish(),
+  precision: z.int().nullish(),
+  required: z.boolean().optional().default(false),
+  scope: z.string().nullish(),
+  template: zPluginParameterTemplate.nullish(),
+  type: zEventParameterType,
+})
+
+/**
+ * EventEntity
+ *
+ * The configuration of an event
+ */
+export const zEventEntity = z.object({
+  description: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  identity: zEventIdentity,
+  output_schema: z.record(z.string(), z.unknown()).nullish(),
+  parameters: z.array(zEventParameter).optional(),
+})
+
+/**
+ * SubscriptionConstructor
+ *
+ * The subscription constructor of the trigger provider
+ */
+export const zSubscriptionConstructor = z.object({
+  credentials_schema: z.array(zProviderConfig).optional(),
+  oauth_schema: zOAuthSchema.nullish(),
+  parameters: z.array(zEventParameter).optional(),
+})
+
+/**
+ * TriggerProviderEntity
+ *
+ * The configuration of a trigger provider
+ */
+export const zTriggerProviderEntity = z.object({
+  events: z.array(zEventEntity).optional(),
+  identity: zTriggerProviderIdentity,
+  subscription_constructor: zSubscriptionConstructor.nullish(),
+  subscription_schema: z.array(zProviderConfig).optional(),
+})
+
+/**
+ * PluginDeclaration
+ */
+export const zPluginDeclaration = z.object({
+  agent_strategy: zAgentStrategyProviderEntity.nullish(),
+  author: z
+    .string()
+    .regex(/^[\w-]{1,64}$/)
+    .nullable(),
+  category: zPluginCategory,
+  created_at: z.iso.datetime(),
+  datasource: zDatasourceProviderEntity.nullish(),
+  description: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  endpoint: zEndpointProviderDeclaration.nullish(),
+  icon: z.string(),
+  icon_dark: z.string().nullish(),
+  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  meta: zMeta,
+  model: zProviderEntity.nullish(),
+  name: z.string().regex(/^[a-z0-9_-]{1,128}$/),
+  plugins: zPlugins,
+  repo: z.string().nullish(),
+  resource: zPluginResourceRequirements,
+  tags: z.array(z.string()).optional(),
+  tool: zToolProviderEntity.nullish(),
+  trigger: zTriggerProviderEntity.nullish(),
+  verified: z.boolean().optional().default(false),
+  version: z.string(),
+})
+
+/**
+ * Package
+ */
+export const zPackage = z.object({
+  manifest: zPluginDeclaration,
+  unique_identifier: z.string(),
+})
+
+/**
+ * PluginDependency
+ */
+export const zPluginDependency = z.object({
+  current_identifier: z.string().nullish(),
+  type: zType,
+  value: z.union([zGithub, zMarketplace, zPackage]),
+})
+
+/**
+ * RagPipelineImportCheckDependenciesResponse
+ */
+export const zRagPipelineImportCheckDependenciesResponse = z.object({
+  leaked_dependencies: z.array(zPluginDependency).optional(),
+})
+
 export const zDeleteRagPipelineCustomizedTemplatesByTemplateIdPath = z.object({
   template_id: z.string(),
 })
@@ -739,9 +1525,9 @@ export const zGetRagPipelineTemplatesByTemplateIdQuery = z.object({
 export const zGetRagPipelineTemplatesByTemplateIdResponse = zPipelineTemplateDetailResponse
 
 /**
- * Success
+ * Datasource plugins retrieved successfully
  */
-export const zGetRagPipelinesDatasourcePluginsResponse = zRagPipelineOpaqueResponse
+export const zGetRagPipelinesDatasourcePluginsResponse = zDatasourcePluginListResponse
 
 export const zPostRagPipelinesImportsBody = zRagPipelineImportPayload
 
@@ -774,18 +1560,18 @@ export const zGetRagPipelinesRecommendedPluginsQuery = z.object({
 })
 
 /**
- * Success
+ * Recommended plugins retrieved successfully
  */
-export const zGetRagPipelinesRecommendedPluginsResponse = zRagPipelineOpaqueResponse
+export const zGetRagPipelinesRecommendedPluginsResponse = zRagPipelineRecommendedPluginResponse
 
 export const zPostRagPipelinesTransformDatasetsByDatasetIdPath = z.object({
   dataset_id: z.uuid(),
 })
 
 /**
- * Success
+ * Dataset transformed successfully
  */
-export const zPostRagPipelinesTransformDatasetsByDatasetIdResponse = zRagPipelineOpaqueResponse
+export const zPostRagPipelinesTransformDatasetsByDatasetIdResponse = zRagPipelineTransformResponse
 
 export const zPostRagPipelinesByPipelineIdCustomizedPublishBody = zCustomizedPipelineTemplatePayload
 
@@ -873,33 +1659,6 @@ export const zGetRagPipelinesByPipelineIdWorkflowsQuery = z.object({
  */
 export const zGetRagPipelinesByPipelineIdWorkflowsResponse = zWorkflowPaginationResponse
 
-export const zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsPath = z.object({
-  pipeline_id: z.uuid(),
-})
-
-/**
- * Default block configs retrieved successfully
- */
-export const zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsResponse
-  = zDefaultBlockConfigsResponse
-
-export const zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypePath
-  = z.object({
-    block_type: z.string(),
-    pipeline_id: z.uuid(),
-  })
-
-export const zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeQuery
-  = z.object({
-    q: z.string().optional(),
-  })
-
-/**
- * Default block config retrieved successfully
- */
-export const zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponse
-  = zDefaultBlockConfigResponse
-
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftPath = z.object({
   pipeline_id: z.uuid(),
 })
@@ -919,20 +1678,6 @@ export const zPostRagPipelinesByPipelineIdWorkflowsDraftPath = z.object({
  * Success
  */
 export const zPostRagPipelinesByPipelineIdWorkflowsDraftResponse = zRagPipelineWorkflowSyncResponse
-
-export const zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunBody
-  = zDatasourceNodeRunPayload
-
-export const zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunPath = z.object({
-  node_id: z.string(),
-  pipeline_id: z.uuid(),
-})
-
-/**
- * Success
- */
-export const zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunResponse
-  = zRagPipelineOpaqueResponse
 
 export const zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectBody
   = zDatasourceVariablesPayload
@@ -955,34 +1700,7 @@ export const zGetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesPath 
  * Environment variables retrieved successfully
  */
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesResponse
-  = zEnvironmentVariableListResponse
-
-export const zPostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunBody
-  = zNodeRunPayload
-
-export const zPostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunPath = z.object({
-  node_id: z.string(),
-  pipeline_id: z.uuid(),
-})
-
-/**
- * Success
- */
-export const zPostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunResponse
-  = zRagPipelineOpaqueResponse
-
-export const zPostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunBody = zNodeRunPayload
-
-export const zPostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunPath = z.object({
-  node_id: z.string(),
-  pipeline_id: z.uuid(),
-})
-
-/**
- * Success
- */
-export const zPostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunResponse
-  = zRagPipelineOpaqueResponse
+  = zRagPipelineEnvironmentVariableListResponse
 
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunPath = z.object({
   node_id: z.string(),
@@ -1028,7 +1746,7 @@ export const zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesPat
  * Node variables retrieved successfully
  */
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse
-  = zWorkflowDraftVariableList
+  = zWorkflowDraftVariableListResponse
 
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersPath = z.object({
   pipeline_id: z.uuid(),
@@ -1039,10 +1757,10 @@ export const zGetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersQu
 })
 
 /**
- * Success
+ * First step parameters retrieved successfully
  */
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersResponse
-  = zRagPipelineStepParametersResponse
+  = zRagPipelineVariablesResponse
 
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersPath = z.object({
   pipeline_id: z.uuid(),
@@ -1053,21 +1771,10 @@ export const zGetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersQuery
 })
 
 /**
- * Success
+ * Second step parameters retrieved successfully
  */
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponse
-  = zRagPipelineStepParametersResponse
-
-export const zPostRagPipelinesByPipelineIdWorkflowsDraftRunBody = zDraftWorkflowRunPayload
-
-export const zPostRagPipelinesByPipelineIdWorkflowsDraftRunPath = z.object({
-  pipeline_id: z.uuid(),
-})
-
-/**
- * Success
- */
-export const zPostRagPipelinesByPipelineIdWorkflowsDraftRunResponse = zRagPipelineOpaqueResponse
+  = zRagPipelineVariablesResponse
 
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesPath = z.object({
   pipeline_id: z.uuid(),
@@ -1077,14 +1784,14 @@ export const zGetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesPath = z.o
  * System variables retrieved successfully
  */
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponse
-  = zWorkflowDraftVariableList
+  = zWorkflowDraftVariableListResponse
 
 export const zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesPath = z.object({
   pipeline_id: z.uuid(),
 })
 
 /**
- * Workflow variables deleted successfully
+ * Variables deleted successfully
  */
 export const zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse = z.void()
 
@@ -1092,16 +1799,11 @@ export const zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesPath = z.object(
   pipeline_id: z.uuid(),
 })
 
-export const zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesQuery = z.object({
-  limit: z.int().gte(1).lte(100).optional().default(20),
-  page: z.int().gte(1).lte(100000).optional().default(1),
-})
-
 /**
- * Workflow variables retrieved successfully
+ * Variables retrieved successfully
  */
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse
-  = zWorkflowDraftVariableListWithoutValue
+  = zWorkflowDraftVariableListWithoutValueResponse
 
 export const zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath = z.object({
   pipeline_id: z.uuid(),
@@ -1122,7 +1824,7 @@ export const zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath
  * Variable retrieved successfully
  */
 export const zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse
-  = zWorkflowDraftVariable
+  = zWorkflowDraftVariableResponse
 
 export const zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdBody
   = zWorkflowDraftVariablePatchPayload
@@ -1136,7 +1838,7 @@ export const zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPa
  * Variable updated successfully
  */
 export const zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse
-  = zWorkflowDraftVariable
+  = zWorkflowDraftVariableResponse
 
 export const zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetPath = z.object({
   pipeline_id: z.uuid(),
@@ -1144,7 +1846,7 @@ export const zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdRese
 })
 
 export const zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetResponse = z.union(
-  [zWorkflowDraftVariable, z.void()],
+  [zWorkflowDraftVariableResponse, z.void()],
 )
 
 export const zGetRagPipelinesByPipelineIdWorkflowsPublishPath = z.object({
@@ -1166,36 +1868,6 @@ export const zPostRagPipelinesByPipelineIdWorkflowsPublishPath = z.object({
 export const zPostRagPipelinesByPipelineIdWorkflowsPublishResponse
   = zRagPipelineWorkflowPublishResponse
 
-export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewBody
-  = zParser
-
-export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewPath
-  = z.object({
-    node_id: z.string(),
-    pipeline_id: z.uuid(),
-  })
-
-/**
- * Success
- */
-export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse
-  = zDataSourceContentPreviewResponse
-
-export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunBody
-  = zDatasourceNodeRunPayload
-
-export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunPath
-  = z.object({
-    node_id: z.string(),
-    pipeline_id: z.uuid(),
-  })
-
-/**
- * Success
- */
-export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunResponse
-  = zRagPipelineOpaqueResponse
-
 export const zGetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersPath = z.object({
   pipeline_id: z.uuid(),
 })
@@ -1205,10 +1877,10 @@ export const zGetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParamete
 })
 
 /**
- * Success
+ * First step parameters retrieved successfully
  */
 export const zGetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersResponse
-  = zRagPipelineStepParametersResponse
+  = zRagPipelineVariablesResponse
 
 export const zGetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersPath = z.object({
   pipeline_id: z.uuid(),
@@ -1219,21 +1891,10 @@ export const zGetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersQ
 })
 
 /**
- * Success
+ * Second step parameters retrieved successfully
  */
 export const zGetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersResponse
-  = zRagPipelineStepParametersResponse
-
-export const zPostRagPipelinesByPipelineIdWorkflowsPublishedRunBody = zPublishedWorkflowRunPayload
-
-export const zPostRagPipelinesByPipelineIdWorkflowsPublishedRunPath = z.object({
-  pipeline_id: z.uuid(),
-})
-
-/**
- * Success
- */
-export const zPostRagPipelinesByPipelineIdWorkflowsPublishedRunResponse = zRagPipelineOpaqueResponse
+  = zRagPipelineVariablesResponse
 
 export const zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath = z.object({
   pipeline_id: z.uuid(),

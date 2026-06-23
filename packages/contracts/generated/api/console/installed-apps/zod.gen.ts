@@ -39,35 +39,10 @@ export const zAudioTranscriptResponse = z.object({
 })
 
 /**
- * ChatMessagePayload
- */
-export const zChatMessagePayload = z.object({
-  conversation_id: z.string().nullish(),
-  files: z.array(z.unknown()).nullish(),
-  inputs: z.record(z.string(), z.unknown()),
-  model_config: z.record(z.string(), z.unknown()).optional(),
-  parent_message_id: z.string().nullish(),
-  query: z.string(),
-  response_mode: z.enum(['blocking', 'streaming']).optional().default('blocking'),
-  retriever_from: z.string().optional().default('dev'),
-})
-
-/**
  * SimpleResultResponse
  */
 export const zSimpleResultResponse = z.object({
   result: z.string(),
-})
-
-/**
- * CompletionMessageExplorePayload
- */
-export const zCompletionMessageExplorePayload = z.object({
-  files: z.array(z.record(z.string(), z.unknown())).nullish(),
-  inputs: z.record(z.string(), z.unknown()),
-  query: z.string().optional().default(''),
-  response_mode: z.enum(['blocking', 'streaming']).nullish(),
-  retriever_from: z.string().optional().default('explore_app'),
 })
 
 export const zConversationRenamePayload = z.intersection(
@@ -139,38 +114,7 @@ export const zTextToAudioPayload = z.object({
  */
 export const zAudioBinaryResponse = z.custom<Blob | File>()
 
-/**
- * WorkflowRunPayload
- */
-export const zWorkflowRunPayload = z.object({
-  files: z
-    .array(
-      z.object({
-        transfer_method: z.enum(['local_file', 'remote_url']),
-        type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
-        upload_file_id: z.string().optional(),
-        url: z.string().optional(),
-      }),
-    )
-    .nullish(),
-  inputs: z.record(z.string(), z.unknown()),
-})
-
-export const zJsonValue = z
-  .union([
-    z.string(),
-    z.int(),
-    z.number(),
-    z.boolean(),
-    z.record(z.string(), z.unknown()),
-    z.array(z.unknown()),
-  ])
-  .nullable()
-
-/**
- * GeneratedAppResponse
- */
-export const zGeneratedAppResponse = zJsonValue
+export const zJsonValue = z.unknown()
 
 /**
  * SimpleConversation
@@ -266,7 +210,6 @@ export const zAgentThought = z.object({
   created_at: z.int().nullish(),
   files: z.array(z.string()),
   id: z.string(),
-  message_chain_id: z.string().nullish(),
   message_id: z.string(),
   observation: z.string().nullish(),
   position: z.int(),
@@ -577,17 +520,6 @@ export const zPostInstalledAppsByInstalledAppIdAudioToTextPath = z.object({
  */
 export const zPostInstalledAppsByInstalledAppIdAudioToTextResponse = zAudioTranscriptResponse
 
-export const zPostInstalledAppsByInstalledAppIdChatMessagesBody = zChatMessagePayload
-
-export const zPostInstalledAppsByInstalledAppIdChatMessagesPath = z.object({
-  installed_app_id: z.uuid(),
-})
-
-/**
- * Success
- */
-export const zPostInstalledAppsByInstalledAppIdChatMessagesResponse = zGeneratedAppResponse
-
 export const zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopPath = z.object({
   installed_app_id: z.uuid(),
   task_id: z.string(),
@@ -598,18 +530,6 @@ export const zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopPath = z.
  */
 export const zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponse
   = zSimpleResultResponse
-
-export const zPostInstalledAppsByInstalledAppIdCompletionMessagesBody
-  = zCompletionMessageExplorePayload
-
-export const zPostInstalledAppsByInstalledAppIdCompletionMessagesPath = z.object({
-  installed_app_id: z.uuid(),
-})
-
-/**
- * Success
- */
-export const zPostInstalledAppsByInstalledAppIdCompletionMessagesResponse = zGeneratedAppResponse
 
 export const zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopPath = z.object({
   installed_app_id: z.uuid(),
@@ -711,21 +631,6 @@ export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksPath 
 export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponse
   = zResultResponse
 
-export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisPath = z.object({
-  installed_app_id: z.uuid(),
-  message_id: z.uuid(),
-})
-
-export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisQuery = z.object({
-  response_mode: z.enum(['blocking', 'streaming']),
-})
-
-/**
- * Success
- */
-export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponse
-  = zGeneratedAppResponse
-
 export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsPath = z.object({
   installed_app_id: z.uuid(),
   message_id: z.uuid(),
@@ -801,17 +706,6 @@ export const zPostInstalledAppsByInstalledAppIdTextToAudioPath = z.object({
  * Success
  */
 export const zPostInstalledAppsByInstalledAppIdTextToAudioResponse = zAudioBinaryResponse
-
-export const zPostInstalledAppsByInstalledAppIdWorkflowsRunBody = zWorkflowRunPayload
-
-export const zPostInstalledAppsByInstalledAppIdWorkflowsRunPath = z.object({
-  installed_app_id: z.uuid(),
-})
-
-/**
- * Success
- */
-export const zPostInstalledAppsByInstalledAppIdWorkflowsRunResponse = zGeneratedAppResponse
 
 export const zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopPath = z.object({
   installed_app_id: z.uuid(),

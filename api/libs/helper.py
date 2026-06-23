@@ -10,12 +10,11 @@ import uuid
 from collections.abc import Callable, Generator, Mapping
 from datetime import datetime
 from hashlib import sha256
-from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast, overload, override
+from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast, overload
 from uuid import UUID
 from zoneinfo import available_timezones
 
 from flask import Request, Response, stream_with_context
-from flask_restx import fields
 from pydantic import BaseModel, ConfigDict, TypeAdapter, with_config
 from pydantic.functional_validators import AfterValidator
 from typing_extensions import TypedDict
@@ -127,26 +126,6 @@ def run(script):
     return subprocess.getstatusoutput("source /root/.bashrc && " + script)
 
 
-class AppIconUrlField(fields.Raw):
-    @override
-    def schema(self) -> dict[str, object]:
-        return {"type": "string", "nullable": True}
-
-    @override
-    def output(self, key, obj, **kwargs):
-        if obj is None:
-            return None
-
-        from models.model import App, IconType, Site
-
-        if isinstance(obj, dict) and "app" in obj:
-            obj = obj["app"]
-
-        if isinstance(obj, App | Site) and obj.icon_type == IconType.IMAGE:
-            return build_icon_url(obj.icon_type, obj.icon)
-        return None
-
-
 def build_icon_url(icon_type: Any, icon: str | None) -> str | None:
     if icon is None or icon_type is None:
         return None
@@ -165,28 +144,6 @@ def build_avatar_url(avatar: str | None) -> str | None:
     if avatar.startswith(("http://", "https://")):
         return avatar
     return file_helpers.get_signed_file_url(avatar)
-
-
-class TimestampField(fields.Raw):
-    @override
-    def schema(self) -> dict[str, object]:
-        return {"type": "integer", "format": "int64"}
-
-    @override
-    def format(self, value) -> int:
-        return int(value.timestamp())
-
-
-class OptionalTimestampField(fields.Raw):
-    @override
-    def schema(self) -> dict[str, object]:
-        return {"type": "integer", "format": "int64", "nullable": True}
-
-    @override
-    def format(self, value) -> int | None:
-        if value is None:
-            return None
-        return int(value.timestamp())
 
 
 @overload

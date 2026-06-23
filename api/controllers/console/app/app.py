@@ -230,11 +230,8 @@ class AppTracePayload(BaseModel):
 
 
 class AppTraceResponse(ResponseModel):
-    enabled: bool
+    enabled: bool = False
     tracing_provider: str | None = None
-
-
-type JSONValue = Any
 
 
 class Tag(ResponseModel):
@@ -257,7 +254,7 @@ class WorkflowPartial(ResponseModel):
 
 
 class ModelConfigPartial(ResponseModel):
-    model: JSONValue | None = Field(default=None, validation_alias=AliasChoices("model_dict", "model"))
+    model: Any | None = Field(default=None, validation_alias=AliasChoices("model_dict", "model"))
     pre_prompt: str | None = None
     created_by: str | None = None
     created_at: int | None = None
@@ -272,54 +269,52 @@ class ModelConfigPartial(ResponseModel):
 
 class ModelConfig(ResponseModel):
     opening_statement: str | None = None
-    suggested_questions: JSONValue | None = Field(
+    suggested_questions: Any | None = Field(
         default=None, validation_alias=AliasChoices("suggested_questions_list", "suggested_questions")
     )
-    suggested_questions_after_answer: JSONValue | None = Field(
+    suggested_questions_after_answer: Any | None = Field(
         default=None,
         validation_alias=AliasChoices("suggested_questions_after_answer_dict", "suggested_questions_after_answer"),
     )
-    speech_to_text: JSONValue | None = Field(
+    speech_to_text: Any | None = Field(
         default=None, validation_alias=AliasChoices("speech_to_text_dict", "speech_to_text")
     )
-    text_to_speech: JSONValue | None = Field(
+    text_to_speech: Any | None = Field(
         default=None, validation_alias=AliasChoices("text_to_speech_dict", "text_to_speech")
     )
-    retriever_resource: JSONValue | None = Field(
+    retriever_resource: Any | None = Field(
         default=None, validation_alias=AliasChoices("retriever_resource_dict", "retriever_resource")
     )
-    annotation_reply: JSONValue | None = Field(
+    annotation_reply: Any | None = Field(
         default=None, validation_alias=AliasChoices("annotation_reply_dict", "annotation_reply")
     )
-    more_like_this: JSONValue | None = Field(
+    more_like_this: Any | None = Field(
         default=None, validation_alias=AliasChoices("more_like_this_dict", "more_like_this")
     )
-    sensitive_word_avoidance: JSONValue | None = Field(
+    sensitive_word_avoidance: Any | None = Field(
         default=None, validation_alias=AliasChoices("sensitive_word_avoidance_dict", "sensitive_word_avoidance")
     )
-    external_data_tools: JSONValue | None = Field(
+    external_data_tools: Any | None = Field(
         default=None, validation_alias=AliasChoices("external_data_tools_list", "external_data_tools")
     )
-    model: JSONValue | None = Field(default=None, validation_alias=AliasChoices("model_dict", "model"))
-    user_input_form: JSONValue | None = Field(
+    model: Any | None = Field(default=None, validation_alias=AliasChoices("model_dict", "model"))
+    user_input_form: Any | None = Field(
         default=None, validation_alias=AliasChoices("user_input_form_list", "user_input_form")
     )
     dataset_query_variable: str | None = None
     pre_prompt: str | None = None
-    agent_mode: JSONValue | None = Field(default=None, validation_alias=AliasChoices("agent_mode_dict", "agent_mode"))
+    agent_mode: Any | None = Field(default=None, validation_alias=AliasChoices("agent_mode_dict", "agent_mode"))
     prompt_type: str | None = None
-    chat_prompt_config: JSONValue | None = Field(
+    chat_prompt_config: Any | None = Field(
         default=None, validation_alias=AliasChoices("chat_prompt_config_dict", "chat_prompt_config")
     )
-    completion_prompt_config: JSONValue | None = Field(
+    completion_prompt_config: Any | None = Field(
         default=None, validation_alias=AliasChoices("completion_prompt_config_dict", "completion_prompt_config")
     )
-    dataset_configs: JSONValue | None = Field(
+    dataset_configs: Any | None = Field(
         default=None, validation_alias=AliasChoices("dataset_configs_dict", "dataset_configs")
     )
-    file_upload: JSONValue | None = Field(
-        default=None, validation_alias=AliasChoices("file_upload_dict", "file_upload")
-    )
+    file_upload: Any | None = Field(default=None, validation_alias=AliasChoices("file_upload_dict", "file_upload"))
     created_by: str | None = None
     created_at: int | None = None
     updated_by: str | None = None
@@ -439,7 +434,7 @@ class AppDetail(ResponseModel):
         alias="model_config",
     )
     workflow: WorkflowPartial | None = None
-    tracing: JSONValue | None = None
+    tracing: Any | None = None
     use_icon_as_answer_icon: bool | None = None
     created_by: str | None = None
     created_at: int | None = None
@@ -485,6 +480,16 @@ class AppExportResponse(ResponseModel):
     data: str
 
 
+class AppImportResponse(ResponseModel):
+    id: str
+    status: ImportStatus
+    app_id: str | None = None
+    app_mode: str | None = None
+    current_dsl_version: str
+    imported_dsl_version: str = ""
+    error: str = ""
+
+
 def _enrich_app_list_items(session: Session, *, apps: Sequence[App], tenant_id: str) -> None:
     if FeatureService.get_system_features().webapp_auth.enabled:
         app_ids = [str(app.id) for app in apps]
@@ -527,7 +532,9 @@ def _enrich_app_list_items(session: Session, *, apps: Sequence[App], tenant_id: 
 
 
 register_enum_models(console_ns, RetrievalMethod, WorkflowExecutionStatus, DatasetPermissionEnum)
-register_response_schema_models(console_ns, AppTraceResponse, RedirectUrlResponse, SimpleResultResponse)
+register_response_schema_models(
+    console_ns, RedirectUrlResponse, SimpleResultResponse, AppImportResponse, AppTraceResponse
+)
 
 register_schema_models(
     console_ns,
@@ -619,8 +626,8 @@ class AppListApi(Resource):
         app_service = AppService()
         app_pagination = app_service.get_paginate_apps(current_user_id, current_tenant_id, params, db.session)
         if not app_pagination:
-            empty = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
-            return empty.model_dump(mode="json"), 200
+            response = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
+            return response.model_dump(mode="json"), 200
 
         app_ids = [str(app.id) for app in app_pagination.items]
         permission_keys_map = permissions.app.permission_keys_by_resource_ids(app_ids)
@@ -709,9 +716,7 @@ class StarredAppListApi(Resource):
             return empty.model_dump(mode="json"), 200
 
         _enrich_app_list_items(session, apps=app_pagination.items, tenant_id=current_tenant_id)
-
-        pagination_model = AppPagination.model_validate(app_pagination, from_attributes=True)
-        return pagination_model.model_dump(mode="json"), 200
+        return AppPagination.model_validate(app_pagination, from_attributes=True).model_dump(mode="json"), 200
 
 
 @console_ns.route("/apps/<uuid:app_id>/star")
@@ -730,7 +735,7 @@ class AppStarApi(Resource):
     @get_app_model(mode=None)
     def post(self, session: Session, current_user_id: str, app_model: App):
         AppService.star_app(session, app=app_model, account_id=current_user_id)
-        return dump_response(SimpleResultResponse, {"result": "success"})
+        return SimpleResultResponse(result="success").model_dump(mode="json")
 
     @console_ns.doc("unstar_app")
     @console_ns.doc(description="Remove the current account's star from an application")
@@ -746,7 +751,7 @@ class AppStarApi(Resource):
     @get_app_model(mode=None)
     def delete(self, session: Session, current_user_id: str, app_model: App):
         AppService.unstar_app(session, app=app_model, account_id=current_user_id)
-        return dump_response(SimpleResultResponse, {"result": "success"})
+        return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>")
@@ -814,8 +819,7 @@ class AppApi(Resource):
             "max_active_requests": args.max_active_requests or 0,
         }
         app_model = app_service.update_app(app_model, args_dict)
-        response_model = AppDetailWithSite.model_validate(app_model, from_attributes=True)
-        return response_model.model_dump(mode="json")
+        return dump_response(AppDetailWithSite, app_model)
 
     @console_ns.doc("delete_app")
     @console_ns.doc(description="Delete application")
@@ -843,6 +847,7 @@ class AppCopyApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID to copy"})
     @console_ns.expect(console_ns.models[CopyAppPayload.__name__])
     @console_ns.response(201, "App copied successfully", console_ns.models[AppDetailWithSite.__name__])
+    @console_ns.response(202, "App copy requires confirmation", console_ns.models[AppImportResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
@@ -872,10 +877,10 @@ class AppCopyApi(Resource):
             )
             if result.status == ImportStatus.FAILED:
                 session.rollback()
-                return result.model_dump(mode="json"), 400
+                return dump_response(AppImportResponse, result), 400
             if result.status == ImportStatus.PENDING:
                 session.rollback()
-                return result.model_dump(mode="json"), 202
+                return dump_response(AppImportResponse, result), 202
             session.commit()
 
             # Inherit web app permission from original app
@@ -926,14 +931,14 @@ class AppExportApi(Resource):
         """Export app"""
         args = AppExportQuery.model_validate(request.args.to_dict(flat=True))
 
-        payload = AppExportResponse(
+        response = AppExportResponse(
             data=AppDslService.export_dsl(
                 app_model=app_model,
                 include_secret=args.include_secret,
                 workflow_id=args.workflow_id,
             )
         )
-        return payload.model_dump(mode="json")
+        return response.model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/publish-to-creators-platform")
@@ -959,7 +964,7 @@ class AppPublishToCreatorsPlatformApi(Resource):
         claim_code = upload_dsl(dsl_bytes)
         redirect_url = get_redirect_url(current_user_id, claim_code)
 
-        return {"redirect_url": redirect_url}
+        return RedirectUrlResponse(redirect_url=redirect_url).model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/name")
@@ -980,8 +985,7 @@ class AppNameApi(Resource):
 
         app_service = AppService()
         app_model = app_service.update_app_name(app_model, args.name)
-        response_model = AppDetail.model_validate(app_model, from_attributes=True)
-        return response_model.model_dump(mode="json")
+        return dump_response(AppDetail, app_model)
 
 
 @console_ns.route("/apps/<uuid:app_id>/icon")
@@ -1008,8 +1012,7 @@ class AppIconApi(Resource):
             args.icon_background or "",
             args.icon_type,
         )
-        response_model = AppDetail.model_validate(app_model, from_attributes=True)
-        return response_model.model_dump(mode="json")
+        return dump_response(AppDetail, app_model)
 
 
 @console_ns.route("/apps/<uuid:app_id>/site-enable")
@@ -1031,8 +1034,7 @@ class AppSiteStatus(Resource):
 
         app_service = AppService()
         app_model = app_service.update_app_site_status(app_model, args.enable_site)
-        response_model = AppDetail.model_validate(app_model, from_attributes=True)
-        return response_model.model_dump(mode="json")
+        return dump_response(AppDetail, app_model)
 
 
 @console_ns.route("/apps/<uuid:app_id>/api-enable")
@@ -1054,8 +1056,7 @@ class AppApiStatus(Resource):
 
         app_service = AppService()
         app_model = app_service.update_app_api_status(app_model, args.enable_api)
-        response_model = AppDetail.model_validate(app_model, from_attributes=True)
-        return response_model.model_dump(mode="json")
+        return dump_response(AppDetail, app_model)
 
 
 @console_ns.route("/apps/<uuid:app_id>/trace")
@@ -1078,7 +1079,7 @@ class AppTraceApi(Resource):
         """Get app trace"""
         app_trace_config = OpsTraceManager.get_app_tracing_config(app_model.id, session)
 
-        return app_trace_config
+        return dump_response(AppTraceResponse, app_trace_config)
 
     @console_ns.doc("update_app_trace")
     @console_ns.doc(description="Update app tracing configuration")
@@ -1106,4 +1107,4 @@ class AppTraceApi(Resource):
             tracing_provider=args.tracing_provider,
         )
 
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")

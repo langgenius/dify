@@ -3,13 +3,6 @@
 import * as z from 'zod'
 
 /**
- * DatasourceCredentialsResponse
- */
-export const zDatasourceCredentialsResponse = z.object({
-  result: z.unknown(),
-})
-
-/**
  * DatasourceCredentialPayload
  */
 export const zDatasourceCredentialPayload = z.object({
@@ -64,23 +57,153 @@ export const zDatasourceUpdateNamePayload = z.object({
 })
 
 /**
- * Success
+ * DatasourceCredentialResponse
  */
-export const zGetAuthPluginDatasourceDefaultListResponse = zDatasourceCredentialsResponse
+export const zDatasourceCredentialResponse = z.object({
+  avatar_url: z.string().nullable(),
+  credential: z.record(z.string(), z.unknown()),
+  id: z.string(),
+  is_default: z.boolean(),
+  name: z.string(),
+  type: z.string(),
+})
 
 /**
- * Success
+ * DatasourceCredentialListResponse
  */
-export const zGetAuthPluginDatasourceListResponse = zDatasourceCredentialsResponse
+export const zDatasourceCredentialListResponse = z.object({
+  result: z.array(zDatasourceCredentialResponse),
+})
+
+/**
+ * I18nObject
+ *
+ * Model class for i18n object.
+ */
+export const zI18nObject = z.object({
+  en_US: z.string(),
+  ja_JP: z.string().nullish(),
+  pt_BR: z.string().nullish(),
+  zh_Hans: z.string().nullish(),
+})
+
+/**
+ * Option
+ */
+export const zOption = z.object({
+  label: zI18nObject,
+  value: z.string(),
+})
+
+/**
+ * AppSelectorScope
+ */
+export const zAppSelectorScope = z.enum(['all', 'chat', 'completion', 'workflow'])
+
+/**
+ * ModelSelectorScope
+ */
+export const zModelSelectorScope = z.enum([
+  'llm',
+  'moderation',
+  'rerank',
+  'speech2text',
+  'text-embedding',
+  'tts',
+  'vision',
+])
+
+/**
+ * ToolSelectorScope
+ */
+export const zToolSelectorScope = z.enum(['all', 'builtin', 'custom', 'workflow'])
+
+/**
+ * Type
+ */
+export const zCoreEntitiesProviderEntitiesBasicProviderConfigType = z.enum([
+  'app-selector',
+  'array[tools]',
+  'boolean',
+  'model-selector',
+  'secret-input',
+  'select',
+  'text-input',
+])
+
+/**
+ * ProviderConfig
+ *
+ * Model class for common provider settings like credentials
+ */
+export const zProviderConfig = z.object({
+  default: z.union([z.int(), z.string(), z.number(), z.boolean()]).nullish(),
+  help: zI18nObject.nullish(),
+  label: zI18nObject.nullish(),
+  multiple: z.boolean().optional().default(false),
+  name: z.string(),
+  options: z.array(zOption).nullish(),
+  placeholder: zI18nObject.nullish(),
+  required: z.boolean().optional().default(false),
+  scope: z.union([zAppSelectorScope, zModelSelectorScope, zToolSelectorScope]).nullish(),
+  type: zCoreEntitiesProviderEntitiesBasicProviderConfigType,
+  url: z.string().nullish(),
+})
+
+/**
+ * DatasourceOAuthSchemaResponse
+ */
+export const zDatasourceOAuthSchemaResponse = z.object({
+  client_schema: z.array(zProviderConfig),
+  credentials_schema: z.array(zProviderConfig),
+  is_oauth_custom_client_enabled: z.boolean(),
+  is_system_oauth_params_exists: z.boolean(),
+  oauth_custom_client_params: z.record(z.string(), z.unknown()).nullable(),
+  redirect_uri: z.string(),
+})
+
+/**
+ * DatasourceProviderAuthResponse
+ */
+export const zDatasourceProviderAuthResponse = z.object({
+  author: z.string(),
+  credential_schema: z.array(zProviderConfig),
+  credentials_list: z.array(zDatasourceCredentialResponse),
+  description: zI18nObject,
+  icon: z.string(),
+  label: zI18nObject,
+  name: z.string(),
+  oauth_schema: zDatasourceOAuthSchemaResponse.nullable(),
+  plugin_id: z.string(),
+  plugin_unique_identifier: z.string(),
+  provider: z.string(),
+})
+
+/**
+ * DatasourceProviderAuthListResponse
+ */
+export const zDatasourceProviderAuthListResponse = z.object({
+  result: z.array(zDatasourceProviderAuthResponse),
+})
+
+/**
+ * Default datasource credentials retrieved successfully
+ */
+export const zGetAuthPluginDatasourceDefaultListResponse = zDatasourceProviderAuthListResponse
+
+/**
+ * Datasource credentials retrieved successfully
+ */
+export const zGetAuthPluginDatasourceListResponse = zDatasourceProviderAuthListResponse
 
 export const zGetAuthPluginDatasourceByProviderIdPath = z.object({
   provider_id: z.string(),
 })
 
 /**
- * Success
+ * Datasource credentials retrieved successfully
  */
-export const zGetAuthPluginDatasourceByProviderIdResponse = zDatasourceCredentialsResponse
+export const zGetAuthPluginDatasourceByProviderIdResponse = zDatasourceCredentialListResponse
 
 export const zPostAuthPluginDatasourceByProviderIdBody = zDatasourceCredentialPayload
 
@@ -89,7 +212,7 @@ export const zPostAuthPluginDatasourceByProviderIdPath = z.object({
 })
 
 /**
- * Success
+ * Datasource credential created successfully
  */
 export const zPostAuthPluginDatasourceByProviderIdResponse = zSimpleResultResponse
 
@@ -109,7 +232,7 @@ export const zPostAuthPluginDatasourceByProviderIdCustomClientPath = z.object({
 })
 
 /**
- * Success
+ * Datasource OAuth custom client saved successfully
  */
 export const zPostAuthPluginDatasourceByProviderIdCustomClientResponse = zSimpleResultResponse
 
@@ -142,7 +265,7 @@ export const zPostAuthPluginDatasourceByProviderIdUpdatePath = z.object({
 })
 
 /**
- * Success
+ * Datasource credential updated successfully
  */
 export const zPostAuthPluginDatasourceByProviderIdUpdateResponse = zSimpleResultResponse
 

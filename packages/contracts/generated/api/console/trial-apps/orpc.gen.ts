@@ -19,18 +19,9 @@ import {
   zGetTrialAppsByAppIdWorkflowsResponse,
   zPostTrialAppsByAppIdAudioToTextPath,
   zPostTrialAppsByAppIdAudioToTextResponse,
-  zPostTrialAppsByAppIdChatMessagesBody,
-  zPostTrialAppsByAppIdChatMessagesPath,
-  zPostTrialAppsByAppIdChatMessagesResponse,
-  zPostTrialAppsByAppIdCompletionMessagesBody,
-  zPostTrialAppsByAppIdCompletionMessagesPath,
-  zPostTrialAppsByAppIdCompletionMessagesResponse,
   zPostTrialAppsByAppIdTextToAudioBody,
   zPostTrialAppsByAppIdTextToAudioPath,
   zPostTrialAppsByAppIdTextToAudioResponse,
-  zPostTrialAppsByAppIdWorkflowsRunBody,
-  zPostTrialAppsByAppIdWorkflowsRunPath,
-  zPostTrialAppsByAppIdWorkflowsRunResponse,
   zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopPath,
   zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse,
 } from './zod.gen'
@@ -48,46 +39,6 @@ export const post = oc
 
 export const audioToText = {
   post,
-}
-
-export const post2 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postTrialAppsByAppIdChatMessages',
-    path: '/trial-apps/{app_id}/chat-messages',
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      body: zPostTrialAppsByAppIdChatMessagesBody,
-      params: zPostTrialAppsByAppIdChatMessagesPath,
-    }),
-  )
-  .output(zPostTrialAppsByAppIdChatMessagesResponse)
-
-export const chatMessages = {
-  post: post2,
-}
-
-export const post3 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postTrialAppsByAppIdCompletionMessages',
-    path: '/trial-apps/{app_id}/completion-messages',
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      body: zPostTrialAppsByAppIdCompletionMessagesBody,
-      params: zPostTrialAppsByAppIdCompletionMessagesPath,
-    }),
-  )
-  .output(zPostTrialAppsByAppIdCompletionMessagesResponse)
-
-export const completionMessages = {
-  post: post3,
 }
 
 export const get = oc
@@ -175,7 +126,7 @@ export const site = {
   get: get4,
 }
 
-export const post4 = oc
+export const post2 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -192,37 +143,13 @@ export const post4 = oc
   .output(zPostTrialAppsByAppIdTextToAudioResponse)
 
 export const textToAudio = {
-  post: post4,
-}
-
-/**
- * Run workflow
- */
-export const post5 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postTrialAppsByAppIdWorkflowsRun',
-    path: '/trial-apps/{app_id}/workflows/run',
-    summary: 'Run workflow',
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      body: zPostTrialAppsByAppIdWorkflowsRunBody,
-      params: zPostTrialAppsByAppIdWorkflowsRunPath,
-    }),
-  )
-  .output(zPostTrialAppsByAppIdWorkflowsRunResponse)
-
-export const run = {
-  post: post5,
+  post: post2,
 }
 
 /**
  * Stop workflow task
  */
-export const post6 = oc
+export const post3 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -235,7 +162,7 @@ export const post6 = oc
   .output(zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse)
 
 export const stop = {
-  post: post6,
+  post: post3,
 }
 
 export const byTaskId = {
@@ -263,7 +190,6 @@ export const get5 = oc
 
 export const workflows = {
   get: get5,
-  run,
   tasks,
 }
 
@@ -285,8 +211,6 @@ export const get6 = oc
 export const byAppId = {
   get: get6,
   audioToText,
-  chatMessages,
-  completionMessages,
   datasets,
   messages,
   parameters,

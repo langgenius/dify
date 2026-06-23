@@ -27,8 +27,6 @@ import {
   zPostAccountDeleteFeedbackBody,
   zPostAccountDeleteFeedbackResponse,
   zPostAccountDeleteResponse,
-  zPostAccountEducationBody,
-  zPostAccountEducationResponse,
   zPostAccountInitBody,
   zPostAccountInitResponse,
   zPostAccountInterfaceLanguageBody,
@@ -222,25 +220,13 @@ export const get5 = oc
   })
   .output(zGetAccountEducationResponse)
 
-export const post8 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postAccountEducation',
-    path: '/account/education',
-    tags: ['console'],
-  })
-  .input(z.object({ body: zPostAccountEducationBody }))
-  .output(zPostAccountEducationResponse)
-
 export const education = {
   get: get5,
-  post: post8,
   autocomplete,
   verify: verify2,
 }
 
-export const post9 = oc
+export const post8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -252,7 +238,7 @@ export const post9 = oc
   .output(zPostAccountInitResponse)
 
 export const init = {
-  post: post9,
+  post: post8,
 }
 
 export const get6 = oc
@@ -269,7 +255,7 @@ export const integrates = {
   get: get6,
 }
 
-export const post10 = oc
+export const post9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -281,10 +267,10 @@ export const post10 = oc
   .output(zPostAccountInterfaceLanguageResponse)
 
 export const interfaceLanguage = {
-  post: post10,
+  post: post9,
 }
 
-export const post11 = oc
+export const post10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -296,10 +282,10 @@ export const post11 = oc
   .output(zPostAccountInterfaceThemeResponse)
 
 export const interfaceTheme = {
-  post: post11,
+  post: post10,
 }
 
-export const post12 = oc
+export const post11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -311,10 +297,10 @@ export const post12 = oc
   .output(zPostAccountNameResponse)
 
 export const name = {
-  post: post12,
+  post: post11,
 }
 
-export const post13 = oc
+export const post12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -326,7 +312,7 @@ export const post13 = oc
   .output(zPostAccountPasswordResponse)
 
 export const password = {
-  post: post13,
+  post: post12,
 }
 
 export const get7 = oc
@@ -343,7 +329,7 @@ export const profile = {
   get: get7,
 }
 
-export const post14 = oc
+export const post13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -355,7 +341,7 @@ export const post14 = oc
   .output(zPostAccountTimezoneResponse)
 
 export const timezone = {
-  post: post14,
+  post: post13,
 }
 
 export const account = {

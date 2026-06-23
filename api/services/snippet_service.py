@@ -1,6 +1,6 @@
 import json
 import logging
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from typing import Any
@@ -70,7 +70,7 @@ class SnippetService:
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
     @contextmanager
-    def _session_scope(self) -> Iterator[Session]:
+    def _session_scope(self) -> Generator[Session]:
         current_session = getattr(self, "_session", None)
         if current_session is not None:
             yield current_session
@@ -627,8 +627,6 @@ class SnippetService:
             conversation_variables=[],
             rag_pipeline_variables=draft_workflow.rag_pipeline_variables,
             kind=WorkflowKind.SNIPPET.value,
-            marked_name="",
-            marked_comment="",
         )
         session.add(workflow)
 

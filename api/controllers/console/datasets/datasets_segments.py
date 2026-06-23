@@ -374,7 +374,7 @@ class DatasetDocumentSegmentApi(Resource):
             SegmentService.update_segments_status(segment_ids, action, dataset, document)
         except Exception as e:
             raise InvalidActionError(str(e))
-        return dump_response(SimpleResultResponse, {"result": "success"}), 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment")

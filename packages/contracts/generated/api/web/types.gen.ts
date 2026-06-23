@@ -46,50 +46,7 @@ export type AppPermissionQuery = {
   appId: string
 }
 
-export type AppSiteInfoResponse = {
-  app_id: string
-  can_replace_logo: boolean
-  custom_config?: {
-    [key: string]: unknown
-  } | null
-  enable_site: boolean
-  end_user_id?: string | null
-  model_config?: AppSiteModelConfigResponse | null
-  plan?: string | null
-  site: AppSiteResponse
-}
-
-export type AppSiteModelConfigResponse = {
-  model: unknown
-  more_like_this: unknown
-  opening_statement?: string | null
-  pre_prompt?: string | null
-  suggested_questions: unknown
-  suggested_questions_after_answer: unknown
-  user_input_form: unknown
-}
-
-export type AppSiteResponse = {
-  chat_color_theme?: string | null
-  chat_color_theme_inverted?: boolean | null
-  copyright?: string | null
-  custom_disclaimer?: string | null
-  default_language?: string | null
-  description?: string | null
-  icon?: string | null
-  icon_background?: string | null
-  icon_type?: string | null
-  icon_url?: string | null
-  privacy_policy?: string | null
-  prompt_public?: boolean | null
-  show_workflow_steps?: boolean | null
-  title?: string | null
-  use_icon_as_answer_icon?: boolean | null
-}
-
-export type AudioBinaryResponse = Blob | File
-
-export type AudioTranscriptResponse = {
+export type AudioToTextResponse = {
   text: string
 }
 
@@ -256,8 +213,6 @@ export type FormInputConfig
     type: 'file-list'
   } & FileListInputConfig)
 
-export type GeneratedAppResponse = JsonValue
-
 export type HumanInputContent = {
   form_definition?: HumanInputFormDefinition | null
   form_submission_data?: HumanInputFormSubmissionData | null
@@ -287,15 +242,13 @@ export type HumanInputFormDefinition = {
 
 export type HumanInputFormDefinitionResponse = {
   expiration_time: number
-  form_content: unknown
-  inputs: unknown
+  form_content: string
+  inputs: Array<FormInputConfig>
   resolved_default_values: {
     [key: string]: string
   }
-  site?: {
-    [key: string]: unknown
-  } | null
-  user_actions: unknown
+  site?: WebAppSiteResponse | null
+  user_actions: Array<UserActionConfig>
 }
 
 export type HumanInputFormSubmissionData = {
@@ -317,7 +270,7 @@ export type HumanInputFormSubmitPayload = {
 }
 
 export type HumanInputFormSubmitResponse = {
-  [key: string]: never
+  [key: string]: unknown
 }
 
 export type HumanInputUploadTokenResponse = {
@@ -329,16 +282,7 @@ export type JsonObject = {
   [key: string]: unknown
 }
 
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
-      [key: string]: unknown
-    }
-    | Array<unknown>
-    | null
+export type JsonValue = unknown
 
 export type JsonValueType = unknown
 
@@ -419,6 +363,10 @@ export type Parameters = {
   system_parameters: SystemParameters
   text_to_speech: JsonObject
   user_input_form: Array<JsonObject>
+}
+
+export type PassportAccessTokenResponse = {
+  access_token: string
 }
 
 export type PassportQuery = {
@@ -614,6 +562,22 @@ export type WebAppAuthSsoModel = {
   protocol: string
 }
 
+export type WebAppCustomConfigResponse = {
+  remove_webapp_brand: boolean
+  replace_webapp_logo?: string | null
+}
+
+export type WebAppSiteResponse = {
+  app_id: string
+  can_replace_logo: boolean
+  custom_config?: WebAppCustomConfigResponse | null
+  enable_site: boolean
+  end_user_id?: string | null
+  model_config?: WebModelConfigResponse | null
+  plan: string
+  site: WebSiteResponse
+}
+
 export type WebMessageInfiniteScrollPagination = {
   data: Array<WebMessageListItem>
   has_more: boolean
@@ -640,6 +604,34 @@ export type WebMessageListItem = {
   status: string
 }
 
+export type WebModelConfigResponse = {
+  model?: unknown
+  more_like_this?: unknown
+  opening_statement?: string | null
+  pre_prompt?: string | null
+  suggested_questions?: unknown
+  suggested_questions_after_answer?: unknown
+  user_input_form?: unknown
+}
+
+export type WebSiteResponse = {
+  chat_color_theme?: string | null
+  chat_color_theme_inverted: boolean
+  copyright?: string | null
+  custom_disclaimer?: string | null
+  default_language?: string | null
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  readonly icon_url: string | null
+  privacy_policy?: string | null
+  prompt_public?: boolean | null
+  show_workflow_steps?: boolean | null
+  title: string
+  use_icon_as_answer_icon?: boolean | null
+}
+
 export type WorkflowRunPayload = {
   files?: Array<{
     transfer_method: 'local_file' | 'remote_url'
@@ -650,6 +642,49 @@ export type WorkflowRunPayload = {
   inputs: {
     [key: string]: unknown
   }
+}
+
+export type HumanInputFormDefinitionResponseWritable = {
+  expiration_time: number
+  form_content: string
+  inputs: Array<FormInputConfig>
+  resolved_default_values: {
+    [key: string]: string
+  }
+  site?: WebAppSiteResponseWritable | null
+  user_actions: Array<UserActionConfig>
+}
+
+export type HumanInputFormSubmitResponseWritable = {
+  [key: string]: unknown
+}
+
+export type WebAppSiteResponseWritable = {
+  app_id: string
+  can_replace_logo: boolean
+  custom_config?: WebAppCustomConfigResponse | null
+  enable_site: boolean
+  end_user_id?: string | null
+  model_config?: WebModelConfigResponse | null
+  plan: string
+  site: WebSiteResponseWritable
+}
+
+export type WebSiteResponseWritable = {
+  chat_color_theme?: string | null
+  chat_color_theme_inverted: boolean
+  copyright?: string | null
+  custom_disclaimer?: string | null
+  default_language?: string | null
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  privacy_policy?: string | null
+  prompt_public?: boolean | null
+  show_workflow_steps?: boolean | null
+  title: string
+  use_icon_as_answer_icon?: boolean | null
 }
 
 export type PostAudioToTextData = {
@@ -669,31 +704,10 @@ export type PostAudioToTextErrors = {
 }
 
 export type PostAudioToTextResponses = {
-  200: AudioTranscriptResponse
+  200: AudioToTextResponse
 }
 
 export type PostAudioToTextResponse = PostAudioToTextResponses[keyof PostAudioToTextResponses]
-
-export type PostChatMessagesData = {
-  body: ChatMessagePayload
-  path?: never
-  query?: never
-  url: '/chat-messages'
-}
-
-export type PostChatMessagesErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  500: unknown
-}
-
-export type PostChatMessagesResponses = {
-  200: GeneratedAppResponse
-}
-
-export type PostChatMessagesResponse = PostChatMessagesResponses[keyof PostChatMessagesResponses]
 
 export type PostChatMessagesByTaskIdStopData = {
   body?: never
@@ -718,28 +732,6 @@ export type PostChatMessagesByTaskIdStopResponses = {
 
 export type PostChatMessagesByTaskIdStopResponse
   = PostChatMessagesByTaskIdStopResponses[keyof PostChatMessagesByTaskIdStopResponses]
-
-export type PostCompletionMessagesData = {
-  body: CompletionMessagePayload
-  path?: never
-  query?: never
-  url: '/completion-messages'
-}
-
-export type PostCompletionMessagesErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  500: unknown
-}
-
-export type PostCompletionMessagesResponses = {
-  200: GeneratedAppResponse
-}
-
-export type PostCompletionMessagesResponse
-  = PostCompletionMessagesResponses[keyof PostCompletionMessagesResponses]
 
 export type PostCompletionMessagesByTaskIdStopData = {
   body?: never
@@ -1016,6 +1008,13 @@ export type GetFormHumanInputByFormTokenData = {
   url: '/form/human_input/{form_token}'
 }
 
+export type GetFormHumanInputByFormTokenErrors = {
+  403: unknown
+  404: unknown
+  412: unknown
+  429: unknown
+}
+
 export type GetFormHumanInputByFormTokenResponses = {
   200: HumanInputFormDefinitionResponse
 }
@@ -1032,6 +1031,13 @@ export type PostFormHumanInputByFormTokenData = {
   url: '/form/human_input/{form_token}'
 }
 
+export type PostFormHumanInputByFormTokenErrors = {
+  400: unknown
+  404: unknown
+  412: unknown
+  429: unknown
+}
+
 export type PostFormHumanInputByFormTokenResponses = {
   200: HumanInputFormSubmitResponse
 }
@@ -1046,6 +1052,12 @@ export type PostFormHumanInputByFormTokenUploadTokenData = {
   }
   query?: never
   url: '/form/human_input/{form_token}/upload-token'
+}
+
+export type PostFormHumanInputByFormTokenUploadTokenErrors = {
+  404: unknown
+  412: unknown
+  429: unknown
 }
 
 export type PostFormHumanInputByFormTokenUploadTokenResponses = {
@@ -1174,32 +1186,6 @@ export type PostMessagesByMessageIdFeedbacksResponses = {
 export type PostMessagesByMessageIdFeedbacksResponse
   = PostMessagesByMessageIdFeedbacksResponses[keyof PostMessagesByMessageIdFeedbacksResponses]
 
-export type GetMessagesByMessageIdMoreLikeThisData = {
-  body?: never
-  path: {
-    message_id: string
-  }
-  query: {
-    response_mode: 'blocking' | 'streaming'
-  }
-  url: '/messages/{message_id}/more-like-this'
-}
-
-export type GetMessagesByMessageIdMoreLikeThisErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  500: unknown
-}
-
-export type GetMessagesByMessageIdMoreLikeThisResponses = {
-  200: GeneratedAppResponse
-}
-
-export type GetMessagesByMessageIdMoreLikeThisResponse
-  = GetMessagesByMessageIdMoreLikeThisResponses[keyof GetMessagesByMessageIdMoreLikeThisResponses]
-
 export type GetMessagesByMessageIdSuggestedQuestionsData = {
   body?: never
   path: {
@@ -1281,7 +1267,7 @@ export type GetPassportErrors = {
 }
 
 export type GetPassportResponses = {
-  200: AccessTokenData
+  200: PassportAccessTokenResponse
 }
 
 export type GetPassportResponse = GetPassportResponses[keyof GetPassportResponses]
@@ -1416,7 +1402,7 @@ export type GetSiteErrors = {
 }
 
 export type GetSiteResponses = {
-  200: AppSiteInfoResponse
+  200: WebAppSiteResponse
 }
 
 export type GetSiteResponse = GetSiteResponses[keyof GetSiteResponses]
@@ -1437,26 +1423,6 @@ export type GetSystemFeaturesResponses = {
 }
 
 export type GetSystemFeaturesResponse = GetSystemFeaturesResponses[keyof GetSystemFeaturesResponses]
-
-export type PostTextToAudioData = {
-  body: TextToAudioPayload
-  path?: never
-  query?: never
-  url: '/text-to-audio'
-}
-
-export type PostTextToAudioErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  500: unknown
-}
-
-export type PostTextToAudioResponses = {
-  200: AudioBinaryResponse
-}
-
-export type PostTextToAudioResponse = PostTextToAudioResponses[keyof PostTextToAudioResponses]
 
 export type GetWebappAccessModeData = {
   body?: never
@@ -1517,27 +1483,6 @@ export type GetWorkflowByTaskIdEventsResponses = {
 
 export type GetWorkflowByTaskIdEventsResponse
   = GetWorkflowByTaskIdEventsResponses[keyof GetWorkflowByTaskIdEventsResponses]
-
-export type PostWorkflowsRunData = {
-  body: WorkflowRunPayload
-  path?: never
-  query?: never
-  url: '/workflows/run'
-}
-
-export type PostWorkflowsRunErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  500: unknown
-}
-
-export type PostWorkflowsRunResponses = {
-  200: GeneratedAppResponse
-}
-
-export type PostWorkflowsRunResponse = PostWorkflowsRunResponses[keyof PostWorkflowsRunResponses]
 
 export type PostWorkflowsTasksByTaskIdStopData = {
   body?: never
