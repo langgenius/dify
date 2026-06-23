@@ -121,6 +121,7 @@ class CompletionStreamPrinter implements StreamPrinter {
 
 class WorkflowStreamPrinter implements StreamPrinter {
   private final: Record<string, unknown> | undefined
+  private readonly reasoning = new ReasoningChunkRenderer()
   private readonly think: boolean
   constructor(think: boolean) {
     this.think = think
@@ -139,6 +140,16 @@ class WorkflowStreamPrinter implements StreamPrinter {
           errOut.write(`→ ${title}\n`)
         return
       }
+      // Separated-mode reasoning per LLM node: stream to stderr under --think.
+      // The preceding `→ <title>` line attributes which node it belongs to.
+      case 'reasoning_chunk': {
+        if (!this.think)
+          return
+        const chunk = parseReasoningChunk(c)
+        if (chunk !== undefined)
+          this.reasoning.push(chunk, errOut)
+        return
+      }
       case 'node_finished': {
         const status = typeof c.status === 'string' ? c.status : ''
         if (status !== '' && status !== 'succeeded') {
@@ -153,6 +164,7 @@ class WorkflowStreamPrinter implements StreamPrinter {
   }
 
   onEnd(out: NodeJS.WritableStream, errOut: NodeJS.WritableStream): void {
+    this.reasoning.flush(errOut)
     if (this.final === undefined)
       return
     const data = this.final.data

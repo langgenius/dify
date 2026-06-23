@@ -16,6 +16,7 @@ export type Scenario
     | 'run-422-stale'
     | 'workflow-think'
     | 'chat-reasoning'
+    | 'workflow-reasoning'
     | 'import-pending'
     | 'import-failed'
 

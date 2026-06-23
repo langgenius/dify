@@ -141,6 +141,48 @@ describe('streamPrinterFor — workflow think filtering', () => {
   })
 })
 
+// Workflow reasoning_chunk events carry no message_id (workflow runs have no message).
+function wfReasoning(reasoning: string, nodeId: string, isFinal: boolean) {
+  return ev('reasoning_chunk', { data: { reasoning, node_id: nodeId, is_final: isFinal } })
+}
+
+describe('streamPrinterFor — workflow separated reasoning', () => {
+  it('think: true frames reasoning_chunk to stderr, outputs stay clean on stdout', () => {
+    const sp = streamPrinterFor('workflow', true)
+    const cap = captures()
+    sp.onEvent(cap.out, cap.err, ev('node_started', { id: 'llm-1', title: 'LLM' }))
+    sp.onEvent(cap.out, cap.err, wfReasoning('pon', 'llm-1', false))
+    sp.onEvent(cap.out, cap.err, wfReasoning('dering', 'llm-1', false))
+    sp.onEvent(cap.out, cap.err, wfReasoning('', 'llm-1', true))
+    sp.onEvent(cap.out, cap.err, ev('workflow_finished', { data: { outputs: { result: 'clean answer' } } }))
+    sp.onEnd(cap.out, cap.err)
+    // node title precedes the reasoning block for attribution
+    expect(cap.errBuf()).toContain('→ LLM')
+    expect(cap.errBuf()).toContain('<think>\npondering</think>')
+    const parsed = JSON.parse(cap.outBuf().trim()) as { result: string }
+    expect(parsed.result).toBe('clean answer')
+  })
+
+  it('think: false drops reasoning_chunk entirely', () => {
+    const sp = streamPrinterFor('workflow', false)
+    const cap = captures()
+    sp.onEvent(cap.out, cap.err, wfReasoning('secret', 'llm-1', true))
+    sp.onEvent(cap.out, cap.err, ev('workflow_finished', { data: { outputs: { result: 'ok' } } }))
+    sp.onEnd(cap.out, cap.err)
+    expect(cap.errBuf()).not.toContain('secret')
+    const parsed = JSON.parse(cap.outBuf().trim()) as { result: string }
+    expect(parsed.result).toBe('ok')
+  })
+
+  it('closes an unterminated reasoning block on stream end', () => {
+    const sp = streamPrinterFor('workflow', true)
+    const cap = captures()
+    sp.onEvent(cap.out, cap.err, wfReasoning('thinking', 'llm-1', false))
+    sp.onEnd(cap.out, cap.err)
+    expect(cap.errBuf()).toContain('<think>\nthinking</think>')
+  })
+})
+
 describe('streamPrinterFor — unknown mode', () => {
   it('throws', () => {
     expect(() => streamPrinterFor('whatever')).toThrow()

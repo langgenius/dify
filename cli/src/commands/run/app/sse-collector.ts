@@ -156,14 +156,32 @@ class CompletionCollector implements Collector {
 
 class WorkflowCollector implements Collector {
   private final: Record<string, unknown> | undefined
+  private readonly reasoning: Record<string, string> = {}
   consume(ev: SseEvent): void {
+    if (ev.name === 'reasoning_chunk') {
+      const chunk = parseReasoningChunk(parseJson(ev.data))
+      if (chunk !== undefined && chunk.reasoning !== '') {
+        const key = chunk.nodeId !== '' ? chunk.nodeId : '_'
+        this.reasoning[key] = (this.reasoning[key] ?? '') + chunk.reasoning
+      }
+      return
+    }
     if (ev.name !== 'workflow_finished')
       return
     this.final = parseJson(ev.data)
   }
 
   finalize(): Record<string, unknown> {
-    return { mode: RUN_MODES.Workflow, ...(this.final ?? {}) }
+    const out: Record<string, unknown> = { mode: RUN_MODES.Workflow, ...(this.final ?? {}) }
+    // Workflow runs carry no persisted reasoning metadata — the live deltas are
+    // the only source — so surface them under metadata.reasoning like chat does.
+    if (Object.keys(this.reasoning).length > 0) {
+      const existing = (out.metadata !== null && typeof out.metadata === 'object' && !Array.isArray(out.metadata))
+        ? out.metadata as Record<string, unknown>
+        : undefined
+      out.metadata = { ...(existing ?? {}), reasoning: this.reasoning }
+    }
+    return out
   }
 }
 

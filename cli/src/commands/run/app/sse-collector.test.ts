@@ -132,6 +132,30 @@ describe('collect — workflow', () => {
   })
 })
 
+describe('collect — workflow separated reasoning', () => {
+  function wfReasoning(reasoning: string, nodeId: string, isFinal: boolean) {
+    return ev('reasoning_chunk', { data: { reasoning, node_id: nodeId, is_final: isFinal } })
+  }
+
+  it('accumulates reasoning_chunk per node into metadata.reasoning', async () => {
+    const got = await collect(iterOf(
+      ev('node_started', { id: 'llm-1' }),
+      wfReasoning('pon', 'llm-1', false),
+      wfReasoning('dering', 'llm-1', true),
+      ev('workflow_finished', { data: { status: 'succeeded', outputs: { result: 'clean' } } }),
+    ), 'workflow')
+    expect((got.data as { outputs: { result: string } }).outputs.result).toBe('clean')
+    expect((got.metadata as { reasoning?: unknown }).reasoning).toEqual({ 'llm-1': 'pondering' })
+  })
+
+  it('keys reasoning by node, leaves metadata absent when there is none', async () => {
+    const got = await collect(iterOf(
+      ev('workflow_finished', { data: { status: 'succeeded', outputs: { result: 'clean' } } }),
+    ), 'workflow')
+    expect((got.metadata as { reasoning?: unknown } | undefined)?.reasoning).toBeUndefined()
+  })
+})
+
 describe('collect — error event', () => {
   it('throws BaseError when error event arrives', async () => {
     await expect(collect(iterOf(
