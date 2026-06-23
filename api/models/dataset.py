@@ -9,7 +9,7 @@ import re
 import time
 from datetime import datetime
 from json import JSONDecodeError
-from typing import Any, ClassVar, TypedDict, cast
+from typing import Any, ClassVar, TypedDict, cast, override
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -167,6 +167,7 @@ class Dataset(Base):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="dataset_pkey"),
         sa.Index("dataset_tenant_idx", "tenant_id"),
+        sa.Index("dataset_tenant_maintainer_idx", "tenant_id", "maintainer"),
         adjusted_json_index("retrieval_model_idx", "retrieval_model"),
     )
 
@@ -188,6 +189,7 @@ class Dataset(Base):
     indexing_technique: Mapped[IndexTechniqueType | None] = mapped_column(EnumText(IndexTechniqueType, length=255))
     index_struct = mapped_column(LongText, nullable=True)
     created_by = mapped_column(StringUUID, nullable=False)
+    maintainer: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
     updated_at = mapped_column(
@@ -1226,7 +1228,7 @@ class DatasetKeywordTable(TypeBase):
                         items = cast(dict[str, Any], dct).items()
                         for keyword, node_idxs in items:
                             if isinstance(node_idxs, list):
-                                result[keyword] = set(cast(list[Any], node_idxs))
+                                result[keyword] = set(node_idxs)
                             else:
                                 result[keyword] = node_idxs
                         return result
@@ -1790,5 +1792,6 @@ class DocumentSegmentSummary(TypeBase):
         init=False,
     )
 
+    @override
     def __repr__(self):
         return f"<DocumentSegmentSummary id={self.id} chunk_id={self.chunk_id} status={self.status}>"

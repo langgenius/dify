@@ -12,6 +12,14 @@ from core.rag.extractor.watercrawl.exceptions import (
     WaterCrawlPermissionError,
 )
 
+WATERCRAWL_REQUEST_TIMEOUT: httpx.Timeout = httpx.Timeout(30.0, connect=5.0)
+
+# The crawl-status stream is a long-lived SSE connection that can stay open for
+# the whole duration of a crawl, so it keeps an unbounded read while still
+# capping the initial connection. Regular requests use WATERCRAWL_REQUEST_TIMEOUT
+# so a stalled endpoint can't hang a worker forever.
+_STREAM_TIMEOUT = httpx.Timeout(None, connect=10.0)
+
 
 class SpiderOptions(TypedDict):
     max_depth: int
@@ -48,7 +56,9 @@ class BaseAPIClient:
             "User-Agent": "WaterCrawl-Plugin",
             "Accept-Language": "en-US",
         }
-        return httpx.Client(headers=headers, timeout=None)
+        # Regular requests use WATERCRAWL_REQUEST_TIMEOUT; the long-lived
+        # crawl-status stream overrides it with _STREAM_TIMEOUT in _request.
+        return httpx.Client(headers=headers, timeout=WATERCRAWL_REQUEST_TIMEOUT)
 
     def _request(
         self,
@@ -61,7 +71,7 @@ class BaseAPIClient:
         stream = kwargs.pop("stream", False)
         url = urljoin(self.base_url, endpoint)
         if stream:
-            request = self.session.build_request(method, url, params=query_params, json=data)
+            request = self.session.build_request(method, url, params=query_params, json=data, timeout=_STREAM_TIMEOUT)
             return self.session.send(request, stream=True, **kwargs)
 
         return self.session.request(method, url, params=query_params, json=data, **kwargs)
@@ -118,16 +128,18 @@ class WaterCrawlAPIClient(BaseAPIClient):
         response.raise_for_status()
         if response.status_code == 204:
             return None
-        if response.headers.get("Content-Type") == "application/json":
+        content_type = response.headers.get("Content-Type", "")
+        media_type = content_type.split(";", 1)[0].strip().lower()
+        if media_type == "application/json":
             return response.json() or {}
 
-        if response.headers.get("Content-Type") == "application/octet-stream":
+        if media_type == "application/octet-stream":
             return response.content
 
-        if response.headers.get("Content-Type") == "text/event-stream":
+        if media_type == "text/event-stream":
             return self.process_eventstream(response)
 
-        raise Exception(f"Unknown response type: {response.headers.get('Content-Type')}")
+        raise Exception(f"Unknown response type: {content_type}")
 
     def get_crawl_requests_list(self, page: int | None = None, page_size: int | None = None):
         query_params = {"page": page or 1, "page_size": page_size or 10}
@@ -217,7 +229,7 @@ class WaterCrawlAPIClient(BaseAPIClient):
                 return event_data["data"]
 
     def download_result(self, result_object: dict[str, Any]):
-        response = httpx.get(result_object["result"], timeout=None)
+        response = httpx.get(result_object["result"], timeout=30)
         try:
             response.raise_for_status()
             result_object["result"] = response.json()

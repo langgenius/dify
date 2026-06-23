@@ -7,16 +7,16 @@ import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { toast } from '@langgenius/dify-ui/toast'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import Input from '@/app/components/base/input'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
-import { useSetLocalStorage } from '@/hooks/use-local-storage'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import {
   DSLImportMode,
   DSLImportStatus,
@@ -26,6 +26,7 @@ import {
   importDSL,
   importDSLConfirm,
 } from '@/service/apps'
+import { useInvalidateAppList } from '@/service/use-apps'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import Uploader from './uploader'
@@ -55,7 +56,9 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   const [versions, setVersions] = useState<{ importedVersion: string, systemVersion: string }>()
   const [importId, setImportId] = useState<string>()
   const { handleCheckPluginDependencies } = usePluginDependencies()
-  const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
+  const setNeedRefresh = useSetNeedRefreshAppList()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isRbacEnabled = systemFeatures.rbac_enabled
 
   const readFile = useCallback((file: File) => {
     const reader = new FileReader()
@@ -74,9 +77,9 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
       setFileContent('')
   }, [readFile])
 
-  const { isCurrentWorkspaceEditor } = useAppContext()
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
+  const invalidateAppList = useInvalidateAppList()
 
   const isCreatingRef = useRef(false)
 
@@ -111,7 +114,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
 
       if (!response)
         return
-      const { id, status, app_id, app_mode, imported_dsl_version, current_dsl_version } = response
+      const { id, status, app_id, app_mode, imported_dsl_version, current_dsl_version, permission_keys } = response
       if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
         trackCreateApp({ source: 'studio_upload', appMode: app_mode })
 
@@ -127,9 +130,11 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
             : undefined,
         })
         setNeedRefresh('1')
-        if (app_id)
+        invalidateAppList()
+        if (app_id) {
           await handleCheckPluginDependencies(app_id)
-        getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
+          getRedirection({ id: app_id, mode: app_mode, permission_keys }, push, { isRbacEnabled })
+        }
       }
       else if (status === DSLImportStatus.PENDING) {
         setVersions({
@@ -168,7 +173,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         import_id: importId,
       })
 
-      const { status, app_id, app_mode } = response
+      const { status, app_id, app_mode, permission_keys } = response
 
       if (status === DSLImportStatus.COMPLETED) {
         trackCreateApp({ source: 'studio_upload', appMode: app_mode })
@@ -181,7 +186,9 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         if (app_id)
           await handleCheckPluginDependencies(app_id)
         setNeedRefresh('1')
-        getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
+        invalidateAppList()
+        if (app_id)
+          getRedirection({ id: app_id, mode: app_mode, permission_keys }, push, { isRbacEnabled })
       }
       else if (status === DSLImportStatus.FAILED) {
         toast.error(response.error || t('newApp.appCreateFailed', { ns: 'app' }))

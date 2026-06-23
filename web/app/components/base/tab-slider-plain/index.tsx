@@ -8,13 +8,13 @@ type Option = {
   text: string | React.JSX.Element
 }
 
-type ItemProps = {
+type ItemProps = Readonly<{
   className?: string
   isActive: boolean
   onClick: (v: string) => void
   option: Option
   smallItem?: boolean
-}
+}>
 const Item: FC<ItemProps> = ({
   className,
   isActive,
@@ -51,7 +51,7 @@ const Item: FC<ItemProps> = ({
   )
 }
 
-type Props = {
+type Props = Readonly<{
   className?: string
   value: string
   onChange: (v: string) => void
@@ -59,7 +59,7 @@ type Props = {
   noBorderBottom?: boolean
   smallItem?: boolean
   itemClassName?: string
-}
+}>
 
 const TabSlider: FC<Props> = ({
   className,

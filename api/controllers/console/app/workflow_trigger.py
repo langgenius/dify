@@ -9,17 +9,25 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from libs.login import current_user, login_required
+from libs.login import login_required
 from models.enums import AppTriggerStatus
-from models.model import Account, App, AppMode
+from models.model import App, AppMode
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 
 from .. import console_ns
 from ..app.wraps import get_app_model
-from ..wraps import account_initialization_required, edit_permission_required, setup_required
+from ..wraps import (
+    RBACPermission,
+    RBACResourceScope,
+    account_initialization_required,
+    edit_permission_required,
+    rbac_permission_required,
+    setup_required,
+    with_current_tenant_id,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -86,12 +94,13 @@ register_schema_models(
 class WebhookTriggerApi(Resource):
     """Webhook Trigger API"""
 
-    @console_ns.expect(console_ns.models[Parser.__name__])
+    @console_ns.doc(params=query_params_from_model(Parser))
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.WORKFLOW)
     @console_ns.response(200, "Success", console_ns.models[WebhookTriggerResponse.__name__])
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model(mode=AppMode.WORKFLOW)
     def get(self, app_model: App):
         """Get webhook trigger for a node"""
         args = Parser.model_validate(request.args.to_dict(flat=True))
@@ -122,20 +131,19 @@ class AppTriggersApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.WORKFLOW)
     @console_ns.response(200, "Success", console_ns.models[WorkflowTriggerListResponse.__name__])
-    def get(self, app_model: App):
+    @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model(mode=AppMode.WORKFLOW)
+    def get(self, current_tenant_id: str, app_model: App):
         """Get app triggers list"""
-        assert isinstance(current_user, Account)
-        assert current_user.current_tenant_id is not None
-
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             # Get all triggers for this app using select API
             triggers = (
                 session.execute(
                     select(AppTrigger)
                     .where(
-                        AppTrigger.tenant_id == current_user.current_tenant_id,
+                        AppTrigger.tenant_id == current_tenant_id,
                         AppTrigger.app_id == app_model.id,
                     )
                     .order_by(AppTrigger.created_at.desc(), AppTrigger.id.desc())
@@ -164,13 +172,13 @@ class AppTriggerEnableApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @get_app_model(mode=AppMode.WORKFLOW)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @console_ns.response(200, "Success", console_ns.models[WorkflowTriggerResponse.__name__])
-    def post(self, app_model: App):
+    @with_current_tenant_id
+    @get_app_model(mode=AppMode.WORKFLOW)
+    def post(self, current_tenant_id: str, app_model: App):
         """Update app trigger (enable/disable)"""
         args = ParserEnable.model_validate(console_ns.payload)
-
-        assert current_user.current_tenant_id is not None
 
         trigger_id = args.trigger_id
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
@@ -178,7 +186,7 @@ class AppTriggerEnableApi(Resource):
             trigger = session.execute(
                 select(AppTrigger).where(
                     AppTrigger.id == trigger_id,
-                    AppTrigger.tenant_id == current_user.current_tenant_id,
+                    AppTrigger.tenant_id == current_tenant_id,
                     AppTrigger.app_id == app_model.id,
                 )
             ).scalar_one_or_none()

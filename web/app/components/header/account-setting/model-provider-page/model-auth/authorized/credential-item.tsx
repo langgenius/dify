@@ -45,21 +45,22 @@ const CredentialItem = ({
   const disableDeleteWhenSelected = useMemo(() => {
     return disableDeleteButShowAction && selectedCredentialId === credential.credential_id
   }, [disableDeleteButShowAction, selectedCredentialId, credential.credential_id])
+  const isUnavailable = !!credential.not_allowed_to_use
 
   const Item = (
     <div
       key={credential.credential_id}
       className={cn(
         'group flex h-8 items-center rounded-lg p-1 hover:bg-state-base-hover',
-        (disabled || credential.not_allowed_to_use) ? 'cursor-not-allowed opacity-50' : onItemClick && 'cursor-pointer',
+        disabled ? 'cursor-not-allowed opacity-50' : isUnavailable ? 'cursor-not-allowed' : onItemClick && 'cursor-pointer',
       )}
       onClick={() => {
-        if (disabled || credential.not_allowed_to_use)
+        if (disabled || isUnavailable)
           return
         onItemClick?.(credential)
       }}
     >
-      <div className="flex w-0 grow items-center space-x-1.5">
+      <div className="flex w-0 grow items-center gap-1.5">
         {
           showSelectedIcon && (
             <div className="size-4">
@@ -71,7 +72,7 @@ const CredentialItem = ({
             </div>
           )
         }
-        <StatusDot className="mr-1.5 ml-2 shrink-0" />
+        <StatusDot className="shrink-0" size="small" status={isUnavailable ? 'error' : 'success'} />
         <div
           className="truncate system-md-regular text-text-secondary"
           title={credential.credential_name}
@@ -87,10 +88,17 @@ const CredentialItem = ({
         )
       }
       {
-        showAction && !credential.from_enterprise && (
+        isUnavailable && (
+          <div className="ml-2 shrink-0 pr-1 system-xs-medium text-text-destructive">
+            {t('modelProvider.card.unavailable', { ns: 'common' })}
+          </div>
+        )
+      }
+      {
+        showAction && !credential.from_enterprise && !isUnavailable && (
           <div className="ml-2 hidden shrink-0 items-center group-hover:flex">
             {
-              !disableEdit && !credential.not_allowed_to_use && (
+              !disableEdit && (
                 <Tooltip>
                   <TooltipTrigger
                     render={(
@@ -144,7 +152,7 @@ const CredentialItem = ({
     </div>
   )
 
-  if (credential.not_allowed_to_use) {
+  if (isUnavailable) {
     return (
       <Tooltip>
         <TooltipTrigger render={Item} />

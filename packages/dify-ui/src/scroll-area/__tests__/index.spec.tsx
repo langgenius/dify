@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { render } from 'vitest-browser-react'
 import {
   ScrollArea,
@@ -84,7 +85,7 @@ describe('scroll-area wrapper', () => {
 
     it('should render the convenience wrapper and apply slot props', async () => {
       const screen = await render(
-        <>
+        <React.Fragment>
           <p id="installed-apps-label">Installed apps</p>
           <ScrollArea
             className="h-40 w-40"
@@ -98,7 +99,7 @@ describe('scroll-area wrapper', () => {
           >
             <div className="h-48 w-20">Scrollable content</div>
           </ScrollArea>
-        </>,
+        </React.Fragment>,
       )
 
       const viewport = screen.getByRole('region', { name: 'Installed apps' })
@@ -119,6 +120,7 @@ describe('scroll-area wrapper', () => {
       await expect.element(screen.getByTestId('scroll-area-vertical-scrollbar')).toHaveAttribute('data-orientation', 'vertical')
       await expect.element(screen.getByTestId('scroll-area-vertical-scrollbar')).toHaveAttribute('data-dify-scrollbar')
       await expect.element(screen.getByTestId('scroll-area-vertical-scrollbar')).toHaveClass(
+        'group/scrollbar',
         'flex',
         'overflow-clip',
         'p-1',
@@ -143,6 +145,9 @@ describe('scroll-area wrapper', () => {
         'transition-[background-color]',
         'motion-reduce:transition-none',
         'data-[orientation=vertical]:w-1',
+        'group-data-hovering/scrollbar:bg-state-base-handle-hover',
+        'data-scrolling:bg-state-base-handle-hover',
+        'active:bg-state-base-handle-hover',
       )
     })
 
@@ -152,6 +157,7 @@ describe('scroll-area wrapper', () => {
       await expect.element(screen.getByTestId('scroll-area-horizontal-scrollbar')).toHaveAttribute('data-orientation', 'horizontal')
       await expect.element(screen.getByTestId('scroll-area-horizontal-scrollbar')).toHaveAttribute('data-dify-scrollbar')
       await expect.element(screen.getByTestId('scroll-area-horizontal-scrollbar')).toHaveClass(
+        'group/scrollbar',
         'flex',
         'overflow-clip',
         'p-1',
@@ -176,6 +182,9 @@ describe('scroll-area wrapper', () => {
         'transition-[background-color]',
         'motion-reduce:transition-none',
         'data-[orientation=horizontal]:h-1',
+        'group-data-hovering/scrollbar:bg-state-base-handle-hover',
+        'data-scrolling:bg-state-base-handle-hover',
+        'active:bg-state-base-handle-hover',
       )
     })
   })
@@ -190,10 +199,10 @@ describe('scroll-area wrapper', () => {
         'size-full',
         'min-h-0',
         'min-w-0',
-        'outline-hidden',
-        'focus-visible:ring-1',
-        'focus-visible:ring-inset',
-        'focus-visible:ring-components-input-border-hover',
+        'focus-visible:outline-2',
+        'focus-visible:-outline-offset-1',
+        'focus-visible:outline-solid',
+        'focus-visible:outline-state-accent-solid',
         'custom-viewport-class',
       )
     })

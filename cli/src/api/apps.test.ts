@@ -36,7 +36,6 @@ describe('AppsClient.list', () => {
     // Optional filters are omitted entirely when not supplied.
     expect(q.has('mode')).toBe(false)
     expect(q.has('name')).toBe(false)
-    expect(q.has('tag')).toBe(false)
   })
 
   it('forwards explicit pagination and filters', async () => {
@@ -48,7 +47,6 @@ describe('AppsClient.list', () => {
       limit: 50,
       mode: 'chat',
       name: 'support bot',
-      tag: 'prod',
     })
 
     const q = queryOf(stub.captured.url)
@@ -56,18 +54,16 @@ describe('AppsClient.list', () => {
     expect(q.get('limit')).toBe('50')
     expect(q.get('mode')).toBe('chat')
     expect(q.get('name')).toBe('support bot')
-    expect(q.get('tag')).toBe('prod')
   })
 
   it('treats empty-string filters as absent (not blank query params)', async () => {
     stub = await startStubServer(cap => jsonResponder(200, LIST_BODY, cap))
 
-    await makeClient(stub.url).list({ workspaceId: 'ws-1', mode: '', name: '', tag: '' })
+    await makeClient(stub.url).list({ workspaceId: 'ws-1', mode: '', name: '' })
 
     const q = queryOf(stub.captured.url)
     expect(q.has('mode')).toBe(false)
     expect(q.has('name')).toBe(false)
-    expect(q.has('tag')).toBe(false)
   })
 
   it('propagates server 403 as a classified BaseError', async () => {
@@ -86,14 +82,14 @@ describe('AppsClient.describe', () => {
     await stub?.stop()
   })
 
-  it('hits /apps/<id>/describe, sends workspace_id, omits fields when none given', async () => {
+  it('hits /apps/<id>/describe, omits workspace_id and fields when not given', async () => {
     stub = await startStubServer(cap => jsonResponder(200, DESCRIBE_BODY, cap))
 
-    const res = await makeClient(stub.url).describe('app-1', 'ws-1')
+    const res = await makeClient(stub.url).describe('app-1')
 
     expect(stub.captured.url?.split('?')[0]).toBe('/openapi/v1/apps/app-1/describe')
     const q = queryOf(stub.captured.url)
-    expect(q.get('workspace_id')).toBe('ws-1')
+    expect(q.has('workspace_id')).toBe(false)
     expect(q.has('fields')).toBe(false)
     expect(res.info?.id).toBe('app-1')
   })
@@ -101,7 +97,7 @@ describe('AppsClient.describe', () => {
   it('joins fields with commas', async () => {
     stub = await startStubServer(cap => jsonResponder(200, DESCRIBE_BODY, cap))
 
-    await makeClient(stub.url).describe('app-1', 'ws-1', ['parameters', 'input_schema'])
+    await makeClient(stub.url).describe('app-1', ['parameters', 'input_schema'])
 
     expect(queryOf(stub.captured.url).get('fields')).toBe('parameters,input_schema')
   })
@@ -109,7 +105,7 @@ describe('AppsClient.describe', () => {
   it('URL-encodes the app id', async () => {
     stub = await startStubServer(cap => jsonResponder(200, DESCRIBE_BODY, cap))
 
-    await makeClient(stub.url).describe('app/with space', 'ws-1')
+    await makeClient(stub.url).describe('app/with space')
 
     expect(stub.captured.url?.split('?')[0]).toBe('/openapi/v1/apps/app%2Fwith%20space/describe')
   })

@@ -40,6 +40,13 @@ class HumanInputForm(DefaultFieldsMixin, Base):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    # ENG-635: a RUNTIME form is tagged with its owning workflow run and/or its
+    # conversation. Workflow / Human-Input / agent-node forms always set
+    # workflow_run_id, and ALSO set conversation_id when the run has a conversation
+    # (chatflow / advanced-chat). Agent v2 chat ask_human forms set only
+    # conversation_id (the new Agent App has no workflow_run_id). At least one is set;
+    # resume routing prefers workflow_run_id when both are present.
+    conversation_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     form_kind: Mapped[HumanInputFormKind] = mapped_column(
         EnumText(HumanInputFormKind),
         nullable=False,
@@ -127,20 +134,40 @@ class HumanInputDelivery(DefaultFieldsMixin, Base):
     )
 
 
+class ApprovalChannel(StrEnum):
+    """Where a paused human input form can be approved, surfaced to API callers."""
+
+    EMAIL = "email"
+    WEB_APP = "web_app"
+    CONSOLE = "console"
+
+
 class RecipientType(StrEnum):
-    # EMAIL_MEMBER member means that the
-    EMAIL_MEMBER = "email_member"
-    EMAIL_EXTERNAL = "email_external"
+    # Second value = the approval channel this recipient maps to (surfaced in `approval_channels`).
+    EMAIL_MEMBER = "email_member", ApprovalChannel.EMAIL
+    EMAIL_EXTERNAL = "email_external", ApprovalChannel.EMAIL
     # STANDALONE_WEB_APP is used by the standalone web app.
     #
     # It's not used while running workflows / chatflows containing HumanInput
     # node inside console.
-    STANDALONE_WEB_APP = "standalone_web_app"
+    STANDALONE_WEB_APP = "standalone_web_app", ApprovalChannel.WEB_APP
     # CONSOLE is used while running workflows / chatflows containing HumanInput
     # node inside console. (E.G. running installed apps or debugging workflows / chatflows)
-    CONSOLE = "console"
+    CONSOLE = "console", ApprovalChannel.CONSOLE
     # BACKSTAGE is used for backstage input inside console.
-    BACKSTAGE = "backstage"
+    BACKSTAGE = "backstage", ApprovalChannel.CONSOLE
+
+    _approval_channel: ApprovalChannel
+
+    def __new__(cls, value: str, approval_channel: ApprovalChannel) -> "RecipientType":
+        member = str.__new__(cls, value)
+        member._value_ = value
+        member._approval_channel = approval_channel
+        return member
+
+    @property
+    def approval_channel(self) -> ApprovalChannel:
+        return self._approval_channel
 
 
 @final

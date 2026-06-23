@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 from flask import Flask, Response
 
+from controllers.common.errors import NotFoundError
 from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.console.human_input_form import (
     ConsoleHumanInputFormApi,
@@ -16,17 +18,10 @@ from controllers.console.human_input_form import (
     WorkflowResponseConverter,
     _jsonify_form_definition,
 )
-from controllers.web.error import NotFoundError
 from models.account import AccountStatus
 from models.enums import CreatorUserRole
 from models.human_input import RecipientType
 from models.model import AppMode
-
-
-def _unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 def test_jsonify_form_definition() -> None:
@@ -64,7 +59,7 @@ def test_get_form_definition_success(app: Flask, monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
     api = ConsoleHumanInputFormApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/console/api/form/human_input/token", method="GET"):
         response = handler(api, "tenant-1", form_token="token")
@@ -85,7 +80,7 @@ def test_get_form_definition_not_found(app: Flask, monkeypatch: pytest.MonkeyPat
     monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
     api = ConsoleHumanInputFormApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/console/api/form/human_input/token", method="GET"):
         with pytest.raises(NotFoundError):
@@ -106,7 +101,7 @@ def test_post_form_invalid_recipient_type(app: Flask, monkeypatch: pytest.Monkey
     monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
     api = ConsoleHumanInputFormApi()
-    handler = _unwrap(api.post)
+    handler = unwrap(api.post)
 
     with app.test_request_context(
         "/console/api/form/human_input/token",
@@ -137,7 +132,7 @@ def test_post_form_rejects_webapp_recipient_type(app: Flask, monkeypatch: pytest
     monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
     api = ConsoleHumanInputFormApi()
-    handler = _unwrap(api.post)
+    handler = unwrap(api.post)
 
     with app.test_request_context(
         "/console/api/form/human_input/token",
@@ -172,7 +167,7 @@ def test_post_form_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
     api = ConsoleHumanInputFormApi()
-    handler = _unwrap(api.post)
+    handler = unwrap(api.post)
 
     with app.test_request_context(
         "/console/api/form/human_input/token",
@@ -244,7 +239,7 @@ def test_workflow_events_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
     api = ConsoleWorkflowEventsApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/console/api/workflow/run/events", method="GET"):
         with pytest.raises(NotFoundError):
@@ -271,7 +266,7 @@ def test_workflow_events_requires_account(app: Flask, monkeypatch: pytest.Monkey
     monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
     api = ConsoleWorkflowEventsApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/console/api/workflow/run/events", method="GET"):
         with pytest.raises(NotFoundError):
@@ -298,7 +293,7 @@ def test_workflow_events_requires_creator(app: Flask, monkeypatch: pytest.Monkey
     monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
     api = ConsoleWorkflowEventsApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/console/api/workflow/run/events", method="GET"):
         with pytest.raises(NotFoundError):
@@ -342,7 +337,7 @@ def test_workflow_events_finished(app: Flask, monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
     api = ConsoleWorkflowEventsApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/console/api/workflow/run/events", method="GET"):
         response = handler(api, "t1", SimpleNamespace(id="user-1"), workflow_run_id="run-1")

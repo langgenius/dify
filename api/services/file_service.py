@@ -20,7 +20,6 @@ from constants import (
     VIDEO_EXTENSIONS,
 )
 from core.rag.extractor.extract_processor import ExtractProcessor
-from extensions.ext_database import db
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from graphon.file import helpers as file_helpers
@@ -39,12 +38,13 @@ class FileService:
     _session_maker: sessionmaker[Session]
 
     def __init__(self, session_factory: sessionmaker | Engine | None = None):
-        if isinstance(session_factory, Engine):
-            self._session_maker = sessionmaker(bind=session_factory)
-        elif isinstance(session_factory, sessionmaker):
-            self._session_maker = session_factory
-        else:
-            raise AssertionError("must be a sessionmaker or an Engine.")
+        match session_factory:
+            case Engine():
+                self._session_maker = sessionmaker(bind=session_factory)
+            case sessionmaker():
+                self._session_maker = session_factory
+            case _:
+                raise AssertionError("must be a sessionmaker or an Engine.")
 
     def upload_file(
         self,
@@ -267,7 +267,9 @@ class FileService:
             session.delete(upload_file)
 
     @staticmethod
-    def get_upload_files_by_ids(tenant_id: str, upload_file_ids: Sequence[str]) -> dict[str, UploadFile]:
+    def get_upload_files_by_ids(
+        session: Session, tenant_id: str, upload_file_ids: Sequence[str]
+    ) -> dict[str, UploadFile]:
         """
         Fetch `UploadFile` rows for a tenant in a single batch query.
 
@@ -281,7 +283,7 @@ class FileService:
         unique_upload_file_ids: list[str] = list(set(upload_file_id_list))
 
         # Fetch upload files in one query for efficient batch access.
-        upload_files: Sequence[UploadFile] = db.session.scalars(
+        upload_files: Sequence[UploadFile] = session.scalars(
             select(UploadFile).where(
                 UploadFile.tenant_id == tenant_id,
                 UploadFile.id.in_(unique_upload_file_ids),

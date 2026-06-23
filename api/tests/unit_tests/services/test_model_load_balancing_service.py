@@ -113,6 +113,29 @@ def test_enable_disable_model_load_balancing_should_call_provider_configuration_
 
 
 @pytest.mark.parametrize(
+    ("method_name", "expected_provider_method"),
+    [
+        ("enable_model_load_balancing", "enable_model_load_balancing"),
+        ("disable_model_load_balancing", "disable_model_load_balancing"),
+    ],
+)
+def test_enable_disable_model_load_balancing_uses_model_type_constructor_directly(
+    method_name: str,
+    expected_provider_method: str,
+    service: ModelLoadBalancingService,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
+    service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
+
+    getattr(service, method_name)("tenant-1", "openai", "gpt-4o-mini", "text-generation")
+
+    getattr(provider_configuration, expected_provider_method).assert_called_once_with(
+        model="gpt-4o-mini", model_type=ModelType.LLM
+    )
+
+
+@pytest.mark.parametrize(
     "method_name",
     ["enable_model_load_balancing", "disable_model_load_balancing"],
 )

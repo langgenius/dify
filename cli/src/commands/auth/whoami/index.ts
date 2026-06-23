@@ -18,7 +18,7 @@ export default class Whoami extends DifyCommand {
 
   async run(argv: string[]): Promise<void> {
     const { flags } = this.parse(Whoami, argv)
-    const reg = Registry.load()
+    const reg = await Registry.load()
     await runWhoami({ io: realStreams(), reg, json: flags.json })
   }
 }

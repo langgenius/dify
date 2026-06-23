@@ -3,10 +3,24 @@
 import * as z from 'zod'
 
 /**
+ * InstalledAppCreatePayload
+ */
+export const zInstalledAppCreatePayload = z.object({
+  app_id: z.string(),
+})
+
+/**
  * SimpleMessageResponse
  */
 export const zSimpleMessageResponse = z.object({
   message: z.string(),
+})
+
+/**
+ * InstalledAppUpdatePayload
+ */
+export const zInstalledAppUpdatePayload = z.object({
+  is_pinned: z.boolean().nullish(),
 })
 
 /**
@@ -15,6 +29,13 @@ export const zSimpleMessageResponse = z.object({
 export const zSimpleResultMessageResponse = z.object({
   message: z.string(),
   result: z.string(),
+})
+
+/**
+ * AudioTranscriptResponse
+ */
+export const zAudioTranscriptResponse = z.object({
+  text: z.string(),
 })
 
 /**
@@ -49,13 +70,22 @@ export const zCompletionMessageExplorePayload = z.object({
   retriever_from: z.string().optional().default('explore_app'),
 })
 
-/**
- * ConversationRenamePayload
- */
-export const zConversationRenamePayload = z.object({
-  auto_generate: z.boolean().optional().default(false),
-  name: z.string().nullish(),
-})
+export const zConversationRenamePayload = z.intersection(
+  z.union([
+    z.object({
+      auto_generate: z.literal(true),
+      name: z.string().nullish(),
+    }),
+    z.object({
+      auto_generate: z.literal(false).optional().default(false),
+      name: z.string().regex(/.*\S.*/),
+    }),
+  ]),
+  z.object({
+    auto_generate: z.boolean().optional().default(false),
+    name: z.string().nullish(),
+  }),
+)
 
 /**
  * ResultResponse
@@ -81,6 +111,13 @@ export const zSuggestedQuestionsResponse = z.object({
 })
 
 /**
+ * ExploreAppMetaResponse
+ */
+export const zExploreAppMetaResponse = z.object({
+  tool_icons: z.record(z.string(), z.unknown()).optional(),
+})
+
+/**
  * SavedMessageCreatePayload
  */
 export const zSavedMessageCreatePayload = z.object({
@@ -91,18 +128,101 @@ export const zSavedMessageCreatePayload = z.object({
  * TextToAudioPayload
  */
 export const zTextToAudioPayload = z.object({
-  message_id: z.string().nullish(),
+  message_id: z.uuid().nullish(),
   streaming: z.boolean().nullish(),
   text: z.string().nullish(),
   voice: z.string().nullish(),
 })
 
 /**
+ * AudioBinaryResponse
+ */
+export const zAudioBinaryResponse = z.custom<Blob | File>()
+
+/**
  * WorkflowRunPayload
  */
 export const zWorkflowRunPayload = z.object({
-  files: z.array(z.record(z.string(), z.unknown())).nullish(),
+  files: z
+    .array(
+      z.object({
+        transfer_method: z.enum(['local_file', 'remote_url']),
+        type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+        upload_file_id: z.string().optional(),
+        url: z.string().optional(),
+      }),
+    )
+    .nullish(),
   inputs: z.record(z.string(), z.unknown()),
+})
+
+export const zJsonValue = z
+  .union([
+    z.string(),
+    z.int(),
+    z.number(),
+    z.boolean(),
+    z.record(z.string(), z.unknown()),
+    z.array(z.unknown()),
+  ])
+  .nullable()
+
+/**
+ * GeneratedAppResponse
+ */
+export const zGeneratedAppResponse = zJsonValue
+
+/**
+ * SimpleConversation
+ */
+export const zSimpleConversation = z.object({
+  created_at: z.int().nullish(),
+  id: z.string(),
+  inputs: z.record(z.string(), zJsonValue),
+  introduction: z.string().nullish(),
+  name: z.string(),
+  status: z.string(),
+  updated_at: z.int().nullish(),
+})
+
+/**
+ * ConversationInfiniteScrollPagination
+ */
+export const zConversationInfiniteScrollPagination = z.object({
+  data: z.array(zSimpleConversation),
+  has_more: z.boolean(),
+  limit: z.int(),
+})
+
+export const zJsonObject = z.record(z.string(), z.unknown())
+
+/**
+ * SystemParameters
+ */
+export const zSystemParameters = z.object({
+  audio_file_size_limit: z.int(),
+  file_size_limit: z.int(),
+  image_file_size_limit: z.int(),
+  video_file_size_limit: z.int(),
+  workflow_file_upload_limit: z.int(),
+})
+
+/**
+ * Parameters
+ */
+export const zParameters = z.object({
+  annotation_reply: zJsonObject,
+  file_upload: zJsonObject,
+  more_like_this: zJsonObject,
+  opening_statement: z.string().nullish(),
+  retriever_resource: zJsonObject,
+  sensitive_word_avoidance: zJsonObject,
+  speech_to_text: zJsonObject,
+  suggested_questions: z.array(z.string()),
+  suggested_questions_after_answer: zJsonObject,
+  system_parameters: zSystemParameters,
+  text_to_speech: zJsonObject,
+  user_input_form: z.array(zJsonObject),
 })
 
 /**
@@ -139,9 +259,288 @@ export const zInstalledAppListResponse = z.object({
 })
 
 /**
+ * AgentThought
+ */
+export const zAgentThought = z.object({
+  chain_id: z.string().nullish(),
+  created_at: z.int().nullish(),
+  files: z.array(z.string()),
+  id: z.string(),
+  message_chain_id: z.string().nullish(),
+  message_id: z.string(),
+  observation: z.string().nullish(),
+  position: z.int(),
+  thought: z.string().nullish(),
+  tool: z.string().nullish(),
+  tool_input: z.string().nullish(),
+  tool_labels: zJsonValue,
+})
+
+/**
+ * SimpleFeedback
+ */
+export const zSimpleFeedback = z.object({
+  rating: z.string().nullish(),
+})
+
+export const zJsonValueType = z.unknown()
+
+/**
+ * MessageFile
+ */
+export const zMessageFile = z.object({
+  belongs_to: z.string().nullish(),
+  filename: z.string(),
+  id: z.string(),
+  mime_type: z.string().nullish(),
+  size: z.int().nullish(),
+  transfer_method: z.string(),
+  type: z.string(),
+  upload_file_id: z.string().nullish(),
+  url: z.string().nullish(),
+})
+
+/**
+ * SavedMessageItem
+ */
+export const zSavedMessageItem = z.object({
+  answer: z.string(),
+  created_at: z.int().nullish(),
+  feedback: zSimpleFeedback.nullish(),
+  id: z.string(),
+  inputs: z.record(z.string(), zJsonValueType),
+  message_files: z.array(zMessageFile),
+  query: z.string(),
+})
+
+/**
+ * SavedMessageInfiniteScrollPagination
+ */
+export const zSavedMessageInfiniteScrollPagination = z.object({
+  data: z.array(zSavedMessageItem),
+  has_more: z.boolean(),
+  limit: z.int(),
+})
+
+/**
+ * RetrieverResource
+ */
+export const zRetrieverResource = z.object({
+  content: z.string().nullish(),
+  created_at: z.int().nullish(),
+  data_source_type: z.string().nullish(),
+  dataset_id: z.string().nullish(),
+  dataset_name: z.string().nullish(),
+  document_id: z.string().nullish(),
+  document_name: z.string().nullish(),
+  hit_count: z.int().nullish(),
+  id: z.string().optional(),
+  index_node_hash: z.string().nullish(),
+  message_id: z.string().optional(),
+  position: z.int(),
+  score: z.number().nullish(),
+  segment_id: z.string().nullish(),
+  segment_position: z.int().nullish(),
+  summary: z.string().nullish(),
+  word_count: z.int().nullish(),
+})
+
+/**
+ * ExecutionContentType
+ */
+export const zExecutionContentType = z.enum(['human_input'])
+
+export const zJsonValue2 = z.unknown()
+
+/**
+ * HumanInputFormSubmissionData
+ */
+export const zHumanInputFormSubmissionData = z.object({
+  action_id: z.string(),
+  action_text: z.string(),
+  node_id: z.string(),
+  node_title: z.string(),
+  rendered_content: z.string(),
+  submitted_data: z.record(z.string(), zJsonValue2).nullish(),
+})
+
+/**
+ * ButtonStyle
+ *
+ * Button styles for user actions.
+ */
+export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
+
+/**
+ * UserActionConfig
+ *
+ * User action configuration.
+ */
+export const zUserActionConfig = z.object({
+  button_style: zButtonStyle.optional().default('default'),
+  id: z.string().max(20),
+  title: z.string().max(100),
+})
+
+/**
+ * FileType
+ */
+export const zFileType = z.enum(['audio', 'custom', 'document', 'image', 'video'])
+
+/**
+ * FileTransferMethod
+ */
+export const zFileTransferMethod = z.enum([
+  'datasource_file',
+  'local_file',
+  'remote_url',
+  'tool_file',
+])
+
+/**
+ * FileInputConfig
+ */
+export const zFileInputConfig = z.object({
+  allowed_file_extensions: z.array(z.string()).optional(),
+  allowed_file_types: z.array(zFileType).optional(),
+  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
+  output_variable_name: z.string(),
+  type: z.literal('file').optional().default('file'),
+})
+
+/**
+ * FileListInputConfig
+ */
+export const zFileListInputConfig = z.object({
+  allowed_file_extensions: z.array(z.string()).optional(),
+  allowed_file_types: z.array(zFileType).optional(),
+  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
+  number_limits: z.int().gte(0).optional().default(0),
+  output_variable_name: z.string(),
+  type: z.literal('file-list').optional().default('file-list'),
+})
+
+/**
+ * ValueSourceType
+ *
+ * ValueSourceType records whether the value comes from a static setting
+ * in form definiton, or a variable while the workflow is running.
+ */
+export const zValueSourceType = z.enum(['constant', 'variable'])
+
+/**
+ * StringSource
+ *
+ * Default configuration for form inputs.
+ */
+export const zStringSource = z.object({
+  selector: z.array(z.string()).optional(),
+  type: zValueSourceType,
+  value: z.string().optional().default(''),
+})
+
+/**
+ * ParagraphInputConfig
+ *
+ * Form input definition.
+ */
+export const zParagraphInputConfig = z.object({
+  default: zStringSource.nullish(),
+  output_variable_name: z.string(),
+  type: z.literal('paragraph').optional().default('paragraph'),
+})
+
+/**
+ * StringListSource
+ */
+export const zStringListSource = z.object({
+  selector: z.array(z.string()).optional(),
+  type: zValueSourceType,
+  value: z.array(z.string()).optional(),
+})
+
+/**
+ * SelectInputConfig
+ */
+export const zSelectInputConfig = z.object({
+  option_source: zStringListSource,
+  output_variable_name: z.string(),
+  type: z.literal('select').optional().default('select'),
+})
+
+export const zFormInputConfig = z.discriminatedUnion('type', [
+  zParagraphInputConfig.extend({ type: z.literal('paragraph') }),
+  zSelectInputConfig.extend({ type: z.literal('select') }),
+  zFileInputConfig.extend({ type: z.literal('file') }),
+  zFileListInputConfig.extend({ type: z.literal('file-list') }),
+])
+
+/**
+ * HumanInputFormDefinition
+ */
+export const zHumanInputFormDefinition = z.object({
+  actions: z.array(zUserActionConfig).optional(),
+  display_in_ui: z.boolean().optional().default(false),
+  expiration_time: z.int(),
+  form_content: z.string(),
+  form_id: z.string(),
+  form_token: z.string().nullish(),
+  inputs: z.array(zFormInputConfig).optional(),
+  node_id: z.string(),
+  node_title: z.string(),
+  resolved_default_values: z.record(z.string(), z.unknown()).optional(),
+})
+
+/**
+ * HumanInputContent
+ */
+export const zHumanInputContent = z.object({
+  form_definition: zHumanInputFormDefinition.nullish(),
+  form_submission_data: zHumanInputFormSubmissionData.nullish(),
+  submitted: z.boolean(),
+  type: zExecutionContentType.optional().default('human_input'),
+  workflow_run_id: z.string(),
+})
+
+/**
+ * MessageListItem
+ */
+export const zMessageListItem = z.object({
+  agent_thoughts: z.array(zAgentThought),
+  answer: z.string(),
+  conversation_id: z.string(),
+  created_at: z.int().nullish(),
+  error: z.string().nullish(),
+  extra_contents: z.array(zHumanInputContent),
+  feedback: zSimpleFeedback.nullish(),
+  id: z.string(),
+  inputs: z.record(z.string(), zJsonValueType),
+  message_files: z.array(zMessageFile),
+  parent_message_id: z.string().nullish(),
+  query: z.string(),
+  retriever_resources: z.array(zRetrieverResource),
+  status: z.string(),
+})
+
+/**
+ * MessageInfiniteScrollPagination
+ */
+export const zMessageInfiniteScrollPagination = z.object({
+  data: z.array(zMessageListItem),
+  has_more: z.boolean(),
+  limit: z.int(),
+})
+
+export const zGetInstalledAppsQuery = z.object({
+  app_id: z.string().optional(),
+})
+
+/**
  * Success
  */
 export const zGetInstalledAppsResponse = zInstalledAppListResponse
+
+export const zPostInstalledAppsBody = zInstalledAppCreatePayload
 
 /**
  * Success
@@ -149,16 +548,18 @@ export const zGetInstalledAppsResponse = zInstalledAppListResponse
 export const zPostInstalledAppsResponse = zSimpleMessageResponse
 
 export const zDeleteInstalledAppsByInstalledAppIdPath = z.object({
-  installed_app_id: z.string(),
+  installed_app_id: z.uuid(),
 })
 
 /**
  * App uninstalled successfully
  */
-export const zDeleteInstalledAppsByInstalledAppIdResponse = z.record(z.string(), z.never())
+export const zDeleteInstalledAppsByInstalledAppIdResponse = z.void()
+
+export const zPatchInstalledAppsByInstalledAppIdBody = zInstalledAppUpdatePayload
 
 export const zPatchInstalledAppsByInstalledAppIdPath = z.object({
-  installed_app_id: z.string(),
+  installed_app_id: z.uuid(),
 })
 
 /**
@@ -167,33 +568,27 @@ export const zPatchInstalledAppsByInstalledAppIdPath = z.object({
 export const zPatchInstalledAppsByInstalledAppIdResponse = zSimpleResultMessageResponse
 
 export const zPostInstalledAppsByInstalledAppIdAudioToTextPath = z.object({
-  installed_app_id: z.string(),
+  installed_app_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdAudioToTextResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostInstalledAppsByInstalledAppIdAudioToTextResponse = zAudioTranscriptResponse
 
 export const zPostInstalledAppsByInstalledAppIdChatMessagesBody = zChatMessagePayload
 
 export const zPostInstalledAppsByInstalledAppIdChatMessagesPath = z.object({
-  installed_app_id: z.string(),
+  installed_app_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdChatMessagesResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostInstalledAppsByInstalledAppIdChatMessagesResponse = zGeneratedAppResponse
 
 export const zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopPath = z.object({
-  installed_app_id: z.string(),
+  installed_app_id: z.uuid(),
   task_id: z.string(),
 })
 
@@ -207,19 +602,16 @@ export const zPostInstalledAppsByInstalledAppIdCompletionMessagesBody
   = zCompletionMessageExplorePayload
 
 export const zPostInstalledAppsByInstalledAppIdCompletionMessagesPath = z.object({
-  installed_app_id: z.string(),
+  installed_app_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdCompletionMessagesResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostInstalledAppsByInstalledAppIdCompletionMessagesResponse = zGeneratedAppResponse
 
 export const zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopPath = z.object({
-  installed_app_id: z.string(),
+  installed_app_id: z.uuid(),
   task_id: z.string(),
 })
 
@@ -230,55 +622,47 @@ export const zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopRes
   = zSimpleResultResponse
 
 export const zGetInstalledAppsByInstalledAppIdConversationsPath = z.object({
-  installed_app_id: z.string(),
+  installed_app_id: z.uuid(),
 })
 
 export const zGetInstalledAppsByInstalledAppIdConversationsQuery = z.object({
-  last_id: z.string().nullish(),
+  last_id: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
-  pinned: z.boolean().nullish(),
+  pinned: z.boolean().optional(),
 })
 
 /**
  * Success
  */
-export const zGetInstalledAppsByInstalledAppIdConversationsResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetInstalledAppsByInstalledAppIdConversationsResponse
+  = zConversationInfiniteScrollPagination
 
 export const zDeleteInstalledAppsByInstalledAppIdConversationsByCIdPath = z.object({
-  c_id: z.string(),
-  installed_app_id: z.string(),
+  c_id: z.uuid(),
+  installed_app_id: z.uuid(),
 })
 
 /**
  * Conversation deleted successfully
  */
-export const zDeleteInstalledAppsByInstalledAppIdConversationsByCIdResponse = z.record(
-  z.string(),
-  z.never(),
-)
+export const zDeleteInstalledAppsByInstalledAppIdConversationsByCIdResponse = z.void()
 
 export const zPostInstalledAppsByInstalledAppIdConversationsByCIdNameBody
   = zConversationRenamePayload
 
 export const zPostInstalledAppsByInstalledAppIdConversationsByCIdNamePath = z.object({
-  c_id: z.string(),
-  installed_app_id: z.string(),
+  c_id: z.uuid(),
+  installed_app_id: z.uuid(),
 })
 
 /**
- * Success
+ * Conversation renamed successfully
  */
-export const zPostInstalledAppsByInstalledAppIdConversationsByCIdNameResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostInstalledAppsByInstalledAppIdConversationsByCIdNameResponse = zSimpleConversation
 
 export const zPatchInstalledAppsByInstalledAppIdConversationsByCIdPinPath = z.object({
-  c_id: z.string(),
-  installed_app_id: z.string(),
+  c_id: z.uuid(),
+  installed_app_id: z.uuid(),
 })
 
 /**
@@ -287,8 +671,8 @@ export const zPatchInstalledAppsByInstalledAppIdConversationsByCIdPinPath = z.ob
 export const zPatchInstalledAppsByInstalledAppIdConversationsByCIdPinResponse = zResultResponse
 
 export const zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinPath = z.object({
-  c_id: z.string(),
-  installed_app_id: z.string(),
+  c_id: z.uuid(),
+  installed_app_id: z.uuid(),
 })
 
 /**
@@ -297,26 +681,26 @@ export const zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinPath = z.
 export const zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinResponse = zResultResponse
 
 export const zGetInstalledAppsByInstalledAppIdMessagesPath = z.object({
-  installed_app_id: z.string(),
+  installed_app_id: z.uuid(),
 })
 
 export const zGetInstalledAppsByInstalledAppIdMessagesQuery = z.object({
   conversation_id: z.string(),
-  first_id: z.string().nullish(),
+  first_id: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
 })
 
 /**
  * Success
  */
-export const zGetInstalledAppsByInstalledAppIdMessagesResponse = z.record(z.string(), z.unknown())
+export const zGetInstalledAppsByInstalledAppIdMessagesResponse = zMessageInfiniteScrollPagination
 
 export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksBody
   = zMessageFeedbackPayload
 
 export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksPath = z.object({
-  installed_app_id: z.string(),
-  message_id: z.string(),
+  installed_app_id: z.uuid(),
+  message_id: z.uuid(),
 })
 
 /**
@@ -326,8 +710,8 @@ export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksRespo
   = zResultResponse
 
 export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisPath = z.object({
-  installed_app_id: z.string(),
-  message_id: z.string(),
+  installed_app_id: z.uuid(),
+  message_id: z.uuid(),
 })
 
 export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisQuery = z.object({
@@ -337,14 +721,12 @@ export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisQue
 /**
  * Success
  */
-export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponse
+  = zGeneratedAppResponse
 
 export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsPath = z.object({
-  installed_app_id: z.string(),
-  message_id: z.string(),
+  installed_app_id: z.uuid(),
+  message_id: z.uuid(),
 })
 
 /**
@@ -354,44 +736,42 @@ export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuesti
   = zSuggestedQuestionsResponse
 
 export const zGetInstalledAppsByInstalledAppIdMetaPath = z.object({
-  installed_app_id: z.string(),
+  installed_app_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zGetInstalledAppsByInstalledAppIdMetaResponse = z.record(z.string(), z.unknown())
+export const zGetInstalledAppsByInstalledAppIdMetaResponse = zExploreAppMetaResponse
 
 export const zGetInstalledAppsByInstalledAppIdParametersPath = z.object({
-  installed_app_id: z.string(),
+  installed_app_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zGetInstalledAppsByInstalledAppIdParametersResponse = z.record(z.string(), z.unknown())
+export const zGetInstalledAppsByInstalledAppIdParametersResponse = zParameters
 
 export const zGetInstalledAppsByInstalledAppIdSavedMessagesPath = z.object({
-  installed_app_id: z.string(),
+  installed_app_id: z.uuid(),
 })
 
 export const zGetInstalledAppsByInstalledAppIdSavedMessagesQuery = z.object({
-  last_id: z.string().nullish(),
+  last_id: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
 })
 
 /**
  * Success
  */
-export const zGetInstalledAppsByInstalledAppIdSavedMessagesResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetInstalledAppsByInstalledAppIdSavedMessagesResponse
+  = zSavedMessageInfiniteScrollPagination
 
 export const zPostInstalledAppsByInstalledAppIdSavedMessagesBody = zSavedMessageCreatePayload
 
 export const zPostInstalledAppsByInstalledAppIdSavedMessagesPath = z.object({
-  installed_app_id: z.string(),
+  installed_app_id: z.uuid(),
 })
 
 /**
@@ -400,48 +780,39 @@ export const zPostInstalledAppsByInstalledAppIdSavedMessagesPath = z.object({
 export const zPostInstalledAppsByInstalledAppIdSavedMessagesResponse = zResultResponse
 
 export const zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdPath = z.object({
-  installed_app_id: z.string(),
-  message_id: z.string(),
+  installed_app_id: z.uuid(),
+  message_id: z.uuid(),
 })
 
 /**
  * Saved message deleted successfully
  */
-export const zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponse = z.record(
-  z.string(),
-  z.never(),
-)
+export const zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponse = z.void()
 
 export const zPostInstalledAppsByInstalledAppIdTextToAudioBody = zTextToAudioPayload
 
 export const zPostInstalledAppsByInstalledAppIdTextToAudioPath = z.object({
-  installed_app_id: z.string(),
+  installed_app_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdTextToAudioResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostInstalledAppsByInstalledAppIdTextToAudioResponse = zAudioBinaryResponse
 
 export const zPostInstalledAppsByInstalledAppIdWorkflowsRunBody = zWorkflowRunPayload
 
 export const zPostInstalledAppsByInstalledAppIdWorkflowsRunPath = z.object({
-  installed_app_id: z.string(),
+  installed_app_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdWorkflowsRunResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostInstalledAppsByInstalledAppIdWorkflowsRunResponse = zGeneratedAppResponse
 
 export const zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopPath = z.object({
-  installed_app_id: z.string(),
+  installed_app_id: z.uuid(),
   task_id: z.string(),
 })
 

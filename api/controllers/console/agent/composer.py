@@ -1,11 +1,17 @@
+from uuid import UUID
+
 from flask_restx import Resource
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
+from controllers.console.agent.app_helpers import resolve_agent_app_model
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user_id,
@@ -33,6 +39,10 @@ register_response_schema_models(
     AgentComposerValidateResponse,
     WorkflowAgentComposerResponse,
 )
+
+
+def _resolve_agent_app_id(*, tenant_id: str, agent_id: UUID) -> str:
+    return resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id).id
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer")
@@ -63,6 +73,7 @@ class WorkflowAgentComposerApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
     @with_current_user_id
     @with_current_tenant_id
@@ -90,10 +101,18 @@ class WorkflowAgentComposerValidateApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
-    def post(self, app_model: App, node_id: str):
+    @with_current_tenant_id
+    def post(self, tenant_id: str, app_model: App, node_id: str):
         payload = ComposerSavePayload.model_validate(console_ns.payload or {})
         ComposerConfigValidator.validate_save_payload(payload)
-        return dump_response(AgentComposerValidateResponse, {"result": "success", "errors": []})
+        findings = AgentComposerService.collect_validation_findings(
+            tenant_id=tenant_id,
+            payload=payload,
+            agent_id=AgentComposerService.resolve_workflow_node_agent_id(
+                tenant_id=tenant_id, app_id=app_model.id, node_id=node_id
+            ),
+        )
+        return dump_response(AgentComposerValidateResponse, {"result": "success", "errors": [], **findings})
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer/candidates")
@@ -105,10 +124,17 @@ class WorkflowAgentComposerCandidatesApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
-    def get(self, app_model: App, node_id: str):
+    @with_current_user_id
+    @with_current_tenant_id
+    def get(self, tenant_id: str, current_user_id: str, app_model: App, node_id: str):
         return dump_response(
             AgentComposerCandidatesResponse,
-            AgentComposerService.get_workflow_candidates(app_id=app_model.id),
+            AgentComposerService.get_workflow_candidates(
+                tenant_id=tenant_id,
+                app_id=app_model.id,
+                node_id=node_id,
+                user_id=current_user_id,
+            ),
         )
 
 
@@ -144,6 +170,7 @@ class WorkflowAgentComposerSaveToRosterApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
     @with_current_user_id
     @with_current_tenant_id
@@ -161,18 +188,18 @@ class WorkflowAgentComposerSaveToRosterApi(Resource):
         )
 
 
-@console_ns.route("/apps/<uuid:app_id>/agent-composer")
-class AgentAppComposerApi(Resource):
+@console_ns.route("/agent/<uuid:agent_id>/composer")
+class AgentComposerApi(Resource):
     @console_ns.response(200, "Agent app composer state", console_ns.models[AgentAppComposerResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model()
     @with_current_tenant_id
-    def get(self, tenant_id: str, app_model: App):
+    def get(self, tenant_id: str, agent_id: UUID):
+        app_id = _resolve_agent_app_id(tenant_id=tenant_id, agent_id=agent_id)
         return dump_response(
             AgentAppComposerResponse,
-            AgentComposerService.load_agent_app_composer(tenant_id=tenant_id, app_id=app_model.id),
+            AgentComposerService.load_agent_app_composer(tenant_id=tenant_id, app_id=app_id),
         )
 
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
@@ -181,24 +208,25 @@ class AgentAppComposerApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @get_app_model()
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user_id
     @with_current_tenant_id
-    def put(self, tenant_id: str, account_id: str, app_model: App):
+    def put(self, tenant_id: str, account_id: str, agent_id: UUID):
+        app_id = _resolve_agent_app_id(tenant_id=tenant_id, agent_id=agent_id)
         payload = ComposerSavePayload.model_validate(console_ns.payload or {})
         return dump_response(
             AgentAppComposerResponse,
             AgentComposerService.save_agent_app_composer(
                 tenant_id=tenant_id,
-                app_id=app_model.id,
+                app_id=app_id,
                 account_id=account_id,
                 payload=payload,
             ),
         )
 
 
-@console_ns.route("/apps/<uuid:app_id>/agent-composer/validate")
-class AgentAppComposerValidateApi(Resource):
+@console_ns.route("/agent/<uuid:agent_id>/composer/validate")
+class AgentComposerValidateApi(Resource):
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(
         200, "Agent app composer validation result", console_ns.models[AgentComposerValidateResponse.__name__]
@@ -206,24 +234,36 @@ class AgentAppComposerValidateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model()
-    def post(self, app_model: App):
+    @with_current_tenant_id
+    def post(self, tenant_id: str, agent_id: UUID):
+        _resolve_agent_app_id(tenant_id=tenant_id, agent_id=agent_id)
         payload = ComposerSavePayload.model_validate(console_ns.payload or {})
         ComposerConfigValidator.validate_save_payload(payload)
-        return dump_response(AgentComposerValidateResponse, {"result": "success", "errors": []})
+        findings = AgentComposerService.collect_validation_findings(
+            tenant_id=tenant_id,
+            payload=payload,
+            agent_id=str(agent_id),
+        )
+        return dump_response(AgentComposerValidateResponse, {"result": "success", "errors": [], **findings})
 
 
-@console_ns.route("/apps/<uuid:app_id>/agent-composer/candidates")
-class AgentAppComposerCandidatesApi(Resource):
+@console_ns.route("/agent/<uuid:agent_id>/composer/candidates")
+class AgentComposerCandidatesApi(Resource):
     @console_ns.response(
         200, "Agent app composer candidates", console_ns.models[AgentComposerCandidatesResponse.__name__]
     )
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model()
-    def get(self, app_model: App):
+    @with_current_user_id
+    @with_current_tenant_id
+    def get(self, tenant_id: str, current_user_id: str, agent_id: UUID):
+        app_id = _resolve_agent_app_id(tenant_id=tenant_id, agent_id=agent_id)
         return dump_response(
             AgentComposerCandidatesResponse,
-            AgentComposerService.get_agent_app_candidates(app_id=app_model.id),
+            AgentComposerService.get_agent_app_candidates(
+                tenant_id=tenant_id,
+                app_id=app_id,
+                user_id=current_user_id,
+            ),
         )

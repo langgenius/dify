@@ -7,15 +7,16 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from repositories.api_workflow_run_repository import WorkflowRunCleanupRef
 from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
 
 
-def make_run(tenant_id: str = "t1", run_id: str = "r1", created_at: datetime.datetime | None = None):
-    run = MagicMock()
-    run.tenant_id = tenant_id
-    run.id = run_id
-    run.created_at = created_at or datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC)
-    return run
+def make_ref(tenant_id: str = "t1", run_id: str = "r1", created_at: datetime.datetime | None = None):
+    return WorkflowRunCleanupRef(
+        id=run_id,
+        tenant_id=tenant_id,
+        created_at=created_at or datetime.datetime(2024, 1, 1, tzinfo=datetime.UTC),
+    )
 
 
 @pytest.fixture
@@ -341,28 +342,28 @@ class TestRunDeleteMode:
             return WorkflowRunCleanup(days=30, batch_size=10, workflow_run_repo=mock_repo)
 
     def test_no_rows_stops_immediately(self, mock_repo):
-        mock_repo.get_runs_batch_by_time_range.return_value = []
+        mock_repo.get_cleanup_refs_batch_by_time_range.return_value = []
         c = self._make_cleanup(mock_repo)
         with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
             cfg.BILLING_ENABLED = False
             c.run()
-        mock_repo.delete_runs_with_related.assert_not_called()
+        mock_repo.delete_runs_with_related_by_ids.assert_not_called()
 
     def test_all_paid_skips_delete(self, mock_repo):
-        run = make_run("t1")
-        mock_repo.get_runs_batch_by_time_range.side_effect = [[run], []]
+        ref = make_ref("t1")
+        mock_repo.get_cleanup_refs_batch_by_time_range.side_effect = [[ref], []]
         c = self._make_cleanup(mock_repo)
         # billing disabled -> all free; but let's override _filter_free_tenants to return empty
         c._filter_free_tenants = MagicMock(return_value=set())
         with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
             cfg.BILLING_ENABLED = False
             c.run()
-        mock_repo.delete_runs_with_related.assert_not_called()
+        mock_repo.delete_runs_with_related_by_ids.assert_not_called()
 
     def test_runs_deleted_successfully(self, mock_repo):
-        run = make_run("t1")
-        mock_repo.get_runs_batch_by_time_range.side_effect = [[run], []]
-        mock_repo.delete_runs_with_related.return_value = {
+        ref = make_ref("t1")
+        mock_repo.get_cleanup_refs_batch_by_time_range.side_effect = [[ref], [ref], []]
+        mock_repo.delete_runs_with_related_by_ids.return_value = {
             "runs": 1,
             "node_executions": 0,
             "offloads": 0,
@@ -376,12 +377,12 @@ class TestRunDeleteMode:
             cfg.BILLING_ENABLED = False
             with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.time.sleep"):
                 c.run()
-        mock_repo.delete_runs_with_related.assert_called_once()
+        mock_repo.delete_runs_with_related_by_ids.assert_called_once()
 
     def test_delete_exception_reraises(self, mock_repo):
-        run = make_run("t1")
-        mock_repo.get_runs_batch_by_time_range.side_effect = [[run], []]
-        mock_repo.delete_runs_with_related.side_effect = RuntimeError("db error")
+        ref = make_ref("t1")
+        mock_repo.get_cleanup_refs_batch_by_time_range.side_effect = [[ref], [ref]]
+        mock_repo.delete_runs_with_related_by_ids.side_effect = RuntimeError("db error")
         c = self._make_cleanup(mock_repo)
         with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
             cfg.BILLING_ENABLED = False
@@ -389,7 +390,7 @@ class TestRunDeleteMode:
                 c.run()
 
     def test_summary_with_window_start(self, mock_repo):
-        mock_repo.get_runs_batch_by_time_range.return_value = []
+        mock_repo.get_cleanup_refs_batch_by_time_range.return_value = []
         with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
             cfg.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD = 0
             cfg.BILLING_ENABLED = False
@@ -421,9 +422,10 @@ class TestRunDryRunMode:
             )
 
     def test_dry_run_no_delete_called(self, mock_repo):
-        run = make_run("t1")
-        mock_repo.get_runs_batch_by_time_range.side_effect = [[run], []]
-        mock_repo.count_runs_with_related.return_value = {
+        ref = make_ref("t1")
+        mock_repo.get_cleanup_refs_batch_by_time_range.side_effect = [[ref], [ref], []]
+        mock_repo.count_runs_with_related_by_ids.return_value = {
+            "runs": 1,
             "node_executions": 2,
             "offloads": 0,
             "app_logs": 0,
@@ -435,11 +437,11 @@ class TestRunDryRunMode:
         with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
             cfg.BILLING_ENABLED = False
             c.run()
-        mock_repo.delete_runs_with_related.assert_not_called()
-        mock_repo.count_runs_with_related.assert_called_once()
+        mock_repo.delete_runs_with_related_by_ids.assert_not_called()
+        mock_repo.count_runs_with_related_by_ids.assert_called_once()
 
     def test_dry_run_summary_with_window_start(self, mock_repo):
-        mock_repo.get_runs_batch_by_time_range.return_value = []
+        mock_repo.get_cleanup_refs_batch_by_time_range.return_value = []
         with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
             cfg.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD = 0
             cfg.BILLING_ENABLED = False
@@ -454,14 +456,14 @@ class TestRunDryRunMode:
             c.run()
 
     def test_dry_run_all_paid_skips_count(self, mock_repo):
-        run = make_run("t1")
-        mock_repo.get_runs_batch_by_time_range.side_effect = [[run], []]
+        ref = make_ref("t1")
+        mock_repo.get_cleanup_refs_batch_by_time_range.side_effect = [[ref], []]
         c = self._make_dry_cleanup(mock_repo)
         c._filter_free_tenants = MagicMock(return_value=set())
         with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.dify_config") as cfg:
             cfg.BILLING_ENABLED = False
             c.run()
-        mock_repo.count_runs_with_related.assert_not_called()
+        mock_repo.count_runs_with_related_by_ids.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -492,7 +494,7 @@ class TestTriggerLogMethods:
 
 
 # ---------------------------------------------------------------------------
-# _count_node_executions / _delete_node_executions
+# _count_node_executions_by_run_ids / _delete_node_executions_by_run_ids
 # ---------------------------------------------------------------------------
 
 
@@ -500,25 +502,23 @@ class TestNodeExecutionMethods:
     def test_count_node_executions(self, cleanup):
         session = MagicMock()
         session.get_bind.return_value = MagicMock()
-        runs = [make_run("t1", "r1")]
         with patch(
             "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.DifyAPIRepositoryFactory"
         ) as factory:
             repo = factory.create_api_workflow_node_execution_repository.return_value
             repo.count_by_runs.return_value = (10, 2)
             with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.sessionmaker"):
-                result = cleanup._count_node_executions(session, runs)
+                result = cleanup._count_node_executions_by_run_ids(session, ["r1"])
         assert result == (10, 2)
 
     def test_delete_node_executions(self, cleanup):
         session = MagicMock()
         session.get_bind.return_value = MagicMock()
-        runs = [make_run("t1", "r1")]
         with patch(
             "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.DifyAPIRepositoryFactory"
         ) as factory:
             repo = factory.create_api_workflow_node_execution_repository.return_value
             repo.delete_by_runs.return_value = (5, 1)
             with patch("services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.sessionmaker"):
-                result = cleanup._delete_node_executions(session, runs)
+                result = cleanup._delete_node_executions_by_run_ids(session, ["r1"])
         assert result == (5, 1)

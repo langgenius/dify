@@ -9,10 +9,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
 
-export type Props = {
+export type Props = Readonly<{
   file: File | undefined
   updateFile: (file?: File) => void
-}
+}>
 
 const CSVUploader: FC<Props> = ({
   file,

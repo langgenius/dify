@@ -106,6 +106,7 @@ class DatasetRetrievalTestDataFactory:
             data_source_type=DataSourceType.UPLOAD_FILE,
             indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=created_by,
+            maintainer=created_by,
             permission=permission,
             provider="vendor",
             retrieval_model={"top_k": 2},
@@ -227,7 +228,7 @@ class TestDatasetServiceGetDatasets:
             )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page, per_page, tenant_id=tenant.id)
+        datasets, total = DatasetService.get_datasets(page, per_page, db_session_with_containers, tenant_id=tenant.id)
 
         # Assert
         assert len(datasets) == 5
@@ -257,7 +258,9 @@ class TestDatasetServiceGetDatasets:
         )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page, per_page, tenant_id=tenant.id, search=search)
+        datasets, total = DatasetService.get_datasets(
+            page, per_page, db_session_with_containers, tenant_id=tenant.id, search=search
+        )
 
         # Assert
         assert len(datasets) == 1
@@ -289,14 +292,26 @@ class TestDatasetServiceGetDatasets:
         tag_2 = DatasetRetrievalTestDataFactory.create_tag_binding(
             db_session_with_containers, tenant.id, account.id, dataset_2.id
         )
+        db_session_with_containers.add(
+            TagBinding(
+                tenant_id=tenant.id,
+                tag_id=tag_2.id,
+                target_id=dataset_1.id,
+                created_by=account.id,
+            )
+        )
+        db_session_with_containers.commit()
         tag_ids = [tag_1.id, tag_2.id]
 
         # Act
-        datasets, total = DatasetService.get_datasets(page, per_page, tenant_id=tenant.id, tag_ids=tag_ids)
+        datasets, total = DatasetService.get_datasets(
+            page, per_page, db_session_with_containers, tenant_id=tenant.id, tag_ids=tag_ids
+        )
 
         # Assert
-        assert len(datasets) == 2
-        assert total == 2
+        assert len(datasets) == 1
+        assert total == 1
+        assert datasets[0].id == dataset_1.id
 
     def test_get_datasets_with_empty_tag_ids(self, db_session_with_containers: Session):
         """Test get_datasets with empty tag_ids skips tag filtering and returns all matching datasets."""
@@ -316,7 +331,9 @@ class TestDatasetServiceGetDatasets:
             )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page, per_page, tenant_id=tenant.id, tag_ids=tag_ids)
+        datasets, total = DatasetService.get_datasets(
+            page, per_page, db_session_with_containers, tenant_id=tenant.id, tag_ids=tag_ids
+        )
 
         # Assert
         # When tag_ids is empty, tag filtering is skipped, so normal query results are returned
@@ -346,7 +363,9 @@ class TestDatasetServiceGetDatasets:
         )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page, per_page, tenant_id=tenant.id, user=None)
+        datasets, total = DatasetService.get_datasets(
+            page, per_page, db_session_with_containers, tenant_id=tenant.id, user=None
+        )
 
         # Assert
         assert len(datasets) == 1
@@ -374,6 +393,7 @@ class TestDatasetServiceGetDatasets:
         datasets, total = DatasetService.get_datasets(
             page=1,
             per_page=20,
+            session=db_session_with_containers,
             tenant_id=tenant.id,
             user=owner,
             include_all=True,
@@ -398,7 +418,9 @@ class TestDatasetServiceGetDatasets:
         )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page=1, per_page=20, tenant_id=tenant.id, user=user)
+        datasets, total = DatasetService.get_datasets(
+            page=1, per_page=20, session=db_session_with_containers, tenant_id=tenant.id, user=user
+        )
 
         # Assert
         assert len(datasets) == 1
@@ -422,7 +444,9 @@ class TestDatasetServiceGetDatasets:
         )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page=1, per_page=20, tenant_id=tenant.id, user=user)
+        datasets, total = DatasetService.get_datasets(
+            page=1, per_page=20, session=db_session_with_containers, tenant_id=tenant.id, user=user
+        )
 
         # Assert
         assert len(datasets) == 1
@@ -449,7 +473,9 @@ class TestDatasetServiceGetDatasets:
         )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page=1, per_page=20, tenant_id=tenant.id, user=user)
+        datasets, total = DatasetService.get_datasets(
+            page=1, per_page=20, session=db_session_with_containers, tenant_id=tenant.id, user=user
+        )
 
         # Assert
         assert len(datasets) == 1
@@ -476,7 +502,9 @@ class TestDatasetServiceGetDatasets:
         )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page=1, per_page=20, tenant_id=tenant.id, user=operator)
+        datasets, total = DatasetService.get_datasets(
+            page=1, per_page=20, session=db_session_with_containers, tenant_id=tenant.id, user=operator
+        )
 
         # Assert
         assert len(datasets) == 1
@@ -499,7 +527,9 @@ class TestDatasetServiceGetDatasets:
         )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page=1, per_page=20, tenant_id=tenant.id, user=operator)
+        datasets, total = DatasetService.get_datasets(
+            page=1, per_page=20, session=db_session_with_containers, tenant_id=tenant.id, user=operator
+        )
 
         # Assert
         assert datasets == []

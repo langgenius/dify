@@ -1,7 +1,7 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type { ReactNode } from 'react'
+import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Select as BaseSelect } from '@base-ui/react/select'
 import { cva } from 'class-variance-authority'
@@ -22,7 +22,7 @@ export const SelectGroup = BaseSelect.Group
 
 const selectTriggerVariants = cva(
   [
-    'group flex w-full items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled outline-hidden',
+    'group flex w-full items-center border-0 bg-components-input-bg-normal text-start text-components-input-text-filled outline-hidden',
     'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
     'focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
     'data-placeholder:text-components-input-text-placeholder',
@@ -107,7 +107,7 @@ export function SelectSeparator({
 }
 
 type SelectContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -195,7 +195,7 @@ export function SelectItemText({
 }: BaseSelect.ItemText.Props) {
   return (
     <BaseSelect.ItemText
-      className={cn('mr-1 min-w-0 grow truncate px-1', className)}
+      className={cn('me-1 min-w-0 grow truncate px-1', className)}
       {...props}
     />
   )
@@ -207,7 +207,7 @@ export function SelectItemIndicator({
 }: Omit<BaseSelect.ItemIndicator.Props, 'children'>) {
   return (
     <BaseSelect.ItemIndicator
-      className={cn('ml-auto flex shrink-0 items-center text-text-accent', className)}
+      className={cn('ms-auto flex shrink-0 items-center text-text-accent', className)}
       {...props}
     >
       <span className="i-ri-check-line h-4 w-4" aria-hidden />

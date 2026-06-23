@@ -11,6 +11,14 @@ import { useAppContext } from '@/context/app-context'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import AppsFull from '../index'
 
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: true,
+  }
+})
+
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
 }))
@@ -101,6 +109,7 @@ const buildAppContext = (overrides: Partial<AppContextValue> = {}): AppContextVa
     langGeniusVersionInfo,
     isLoadingCurrentWorkspace: false,
     isValidatingCurrentWorkspace: false,
+    workspacePermissionKeys: [],
   }
   const useSelector: AppContextValue['useSelector'] = selector => selector({ ...base, useSelector })
   return {

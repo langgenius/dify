@@ -1,13 +1,14 @@
 import type { SessionRow } from '@dify/contracts/api/openapi/types.gen'
 import type { ActiveContext, Registry } from '@/auth/hosts'
 import type { HttpClient } from '@/http/types'
-import type { Store } from '@/store/store'
+import type { TokenStore } from '@/store/token-store'
 import type { IOStreams } from '@/sys/io/streams'
 import { AccountSessionsClient } from '@/api/account-sessions'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { LIMIT_DEFAULT, LIMIT_MAX, parseLimit } from '@/limit/limit'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
+import { promptConfirm } from '@/sys/io/prompt'
 import { runWithSpinner } from '@/sys/io/spinner'
 
 export type DevicesListOptions = {
@@ -71,7 +72,7 @@ export type DevicesRevokeOptions = {
   readonly io: IOStreams
   readonly reg: Registry
   readonly active: ActiveContext
-  readonly store: Store
+  readonly store: TokenStore
   readonly http: HttpClient
   readonly target?: string
   readonly all: boolean
@@ -96,11 +97,22 @@ export async function runDevicesRevoke(opts: DevicesRevokeOptions): Promise<void
     return
   }
 
+  if (opts.yes !== true && opts.io.isErrTTY) {
+    const confirmed = await promptConfirm(opts.io, `Revoke ${ids.length} session(s)? [y/N] `)
+    if (!confirmed) {
+      throw new BaseError({
+        code: ErrorCode.UsageMissingArg,
+        message: 'aborted by user',
+        hint: 'pass --yes to skip confirmation',
+      })
+    }
+  }
+
   for (const id of ids)
     await sessions.revoke(id)
 
   if (selfHit)
-    opts.reg.forget(opts.active, opts.store)
+    await opts.reg.forget(opts.active, opts.store)
 
   opts.io.out.write(`${cs.successIcon()} Revoked ${ids.length} session(s)\n`)
 }

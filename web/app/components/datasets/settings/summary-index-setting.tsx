@@ -75,6 +75,7 @@ const SummaryIndexSetting = ({
             checked={summaryIndexSetting?.enable ?? false}
             onCheckedChange={handleSummaryIndexEnableChange}
             size="md"
+            disabled={readonly}
           />
         </div>
         {
@@ -123,6 +124,7 @@ const SummaryIndexSetting = ({
                 checked={summaryIndexSetting?.enable ?? false}
                 onCheckedChange={handleSummaryIndexEnableChange}
                 size="md"
+                disabled={readonly}
               />
               {
                 summaryIndexSetting?.enable ? t('list.status.enabled', { ns: 'datasetDocuments' }) : t('list.status.disabled', { ns: 'datasetDocuments' })
@@ -189,6 +191,7 @@ const SummaryIndexSetting = ({
           checked={summaryIndexSetting?.enable ?? false}
           onCheckedChange={handleSummaryIndexEnableChange}
           size="md"
+          disabled={readonly}
         />
         <div className="system-sm-semibold text-text-secondary">
           {t('form.summaryAutoGen', { ns: 'datasetSettings' })}

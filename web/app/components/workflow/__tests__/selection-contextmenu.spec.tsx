@@ -156,6 +156,24 @@ describe('SelectionContextmenu', () => {
     expect(store.getState().contextMenuTarget).toBeUndefined()
   })
 
+  it('should hide create snippet action for selected nodes', async () => {
+    const nodes = [
+      createNode({ id: 'n1', selected: true, width: 80, height: 40 }),
+      createNode({ id: 'n2', selected: true, position: { x: 140, y: 0 }, width: 80, height: 40 }),
+    ]
+    const { store } = renderSelectionMenu({ nodes })
+
+    act(() => {
+      store.setState({ contextMenuTarget: { type: 'selection' } })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole('menuitem', { name: /common.copy/ })).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('menuitem', { name: /Create Snippet|snippet\.createDialogTitle/ })).not.toBeInTheDocument()
+    expect(screen.queryByTestId('create-snippet-dialog')).not.toBeInTheDocument()
+  })
+
   it('should stay hidden when only one node is selected', async () => {
     const nodes = [
       createNode({ id: 'n1', selected: true, width: 80, height: 40 }),

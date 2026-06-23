@@ -28,7 +28,7 @@ export class StreamingTextStrategy implements RunStrategy {
     handle('SIGINT', cleanup)
 
     try {
-      const events = await ctx.runClient.runStream(opts.appId, body, { signal: ctrl.signal })
+      const events = await ctx.runClient.runStream(opts.appId, body, { signal: ctrl.signal, retryOnRateLimit: opts.retryOnRateLimit })
       const sp = streamPrinterFor(mode, ctx.think, deps.io.isErrTTY)
       const dec = new TextDecoder()
       for await (const ev of events) {

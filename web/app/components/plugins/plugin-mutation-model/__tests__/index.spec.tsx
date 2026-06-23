@@ -2,6 +2,7 @@ import type { Plugin } from '../../types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { expectLoadingButton } from '@/test/button'
 import { PluginCategoryEnum } from '../../types'
 import PluginMutationModal from '../index'
 
@@ -433,13 +434,11 @@ describe('PluginMutationModal', () => {
       render(<PluginMutationModal {...props} />)
 
       const confirmButton = screen.getByRole('button', { name: /Confirm/i })
-      expect(confirmButton).toBeDisabled()
+      expectLoadingButton(confirmButton)
 
       fireEvent.click(confirmButton)
 
-      // Button is disabled, so mutate might still be called depending on implementation
-      // The important thing is the button has disabled attribute
-      expect(confirmButton).toHaveAttribute('disabled')
+      expect(mutate).not.toHaveBeenCalled()
     })
   })
 
@@ -468,18 +467,7 @@ describe('PluginMutationModal', () => {
         render(<PluginMutationModal {...props} />)
 
         const confirmButton = screen.getByRole('button', { name: /Confirm/i })
-        expect(confirmButton).toBeDisabled()
-      })
-
-      it('should disable confirm button', () => {
-        const props = createDefaultProps({
-          mutation: createMockMutation({ isPending: true }),
-        })
-
-        render(<PluginMutationModal {...props} />)
-
-        const confirmButton = screen.getByRole('button', { name: /Confirm/i })
-        expect(confirmButton).toBeDisabled()
+        expectLoadingButton(confirmButton)
       })
     })
 

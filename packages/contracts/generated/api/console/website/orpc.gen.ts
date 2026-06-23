@@ -13,16 +13,10 @@ import {
 
 /**
  * Get website crawl status
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get = oc
   .route({
-    deprecated: true,
-    description:
-      'Get website crawl status\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get website crawl status',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWebsiteCrawlStatusByJobId',
@@ -47,16 +41,10 @@ export const status = {
 
 /**
  * Crawl website content
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post = oc
   .route({
-    deprecated: true,
-    description:
-      'Crawl website content\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Crawl website content',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWebsiteCrawl',

@@ -9,7 +9,7 @@ from core.repositories.human_input_repository import (
     HumanInputFormEntity,
     HumanInputFormRepository,
 )
-from core.workflow.node_runtime import DifyFileReferenceFactory, DifyHumanInputNodeRuntime
+from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
 from graphon.file import File, FileTransferMethod, FileType
@@ -186,25 +186,29 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
     )
 
     human_a_config = {"id": "human_a", "data": human_data.model_dump()}
+    human_a_runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
+    human_a_runtime._file_reference_factory = _TestFileReferenceFactory()  # type: ignore[attr-defined]
     human_a = HumanInputNode(
         node_id=human_a_config["id"],
         data=human_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
         form_repository=repo,
-        file_reference_factory=DifyFileReferenceFactory(graph_init_params.run_context),
-        runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
+        file_reference_factory=_TestFileReferenceFactory(),
+        runtime=human_a_runtime,
     )
 
     human_b_config = {"id": "human_b", "data": human_data.model_dump()}
+    human_b_runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
+    human_b_runtime._file_reference_factory = _TestFileReferenceFactory()  # type: ignore[attr-defined]
     human_b = HumanInputNode(
         node_id=human_b_config["id"],
         data=human_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
         form_repository=repo,
-        file_reference_factory=DifyFileReferenceFactory(graph_init_params.run_context),
-        runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
+        file_reference_factory=_TestFileReferenceFactory(),
+        runtime=human_b_runtime,
     )
 
     end_data = EndNodeData(

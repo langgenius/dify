@@ -17,7 +17,7 @@ export const get = oc
     path: '/code-based-extension',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetCodeBasedExtensionQuery.optional() }))
+  .input(z.object({ query: zGetCodeBasedExtensionQuery }))
   .output(zGetCodeBasedExtensionResponse)
 
 export const codeBasedExtension = {

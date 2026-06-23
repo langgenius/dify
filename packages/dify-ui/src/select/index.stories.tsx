@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { useState } from 'react'
+import * as React from 'react'
+import { expect, waitFor, within } from 'storybook/test'
 import {
   Select,
   SelectContent,
@@ -13,12 +14,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '.'
+import { Button } from '../button'
+import { FieldDescription, FieldRoot } from '../field'
+import { Form } from '../form'
 
 const triggerWidth = 'w-64'
 
 const cityItems = [
   { label: 'Seattle', value: 'seattle' },
   { label: 'New York', value: 'new-york' },
+  { label: 'Tokyo', value: 'tokyo' },
+  { label: 'Paris', value: 'paris' },
 ]
 
 const meta = {
@@ -41,11 +47,11 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {
   render: () => (
     <div className={triggerWidth}>
-      <Select defaultValue="seattle">
+      <Select items={cityItems} defaultValue="seattle">
         <SelectTrigger aria-label="City">
           <SelectValue placeholder="Select a city" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent listProps={{ 'aria-label': 'City options' }}>
           <SelectItem value="seattle">
             <SelectItemText>Seattle</SelectItemText>
             <SelectItemIndicator />
@@ -66,6 +72,27 @@ export const Default: Story = {
       </Select>
     </div>
   ),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const trigger = canvas.getByRole('combobox', { name: 'City' })
+    const body = within(canvasElement.ownerDocument.body)
+
+    await expect(trigger).toHaveTextContent('Seattle')
+
+    trigger.focus()
+    await userEvent.keyboard('{ArrowDown}')
+
+    await waitFor(async () => {
+      await expect(body.getByRole('option', { name: 'Tokyo' })).toBeVisible()
+    })
+
+    await userEvent.keyboard('{ArrowDown}{ArrowDown}{Enter}')
+    await expect(trigger).toHaveTextContent('Tokyo')
+
+    await userEvent.keyboard('{Escape}')
+    await waitFor(async () => {
+      await expect(body.queryByRole('listbox', { name: 'City options' })).not.toBeInTheDocument()
+    })
+  },
 }
 
 export const WithVisibleLabel: Story = {
@@ -263,7 +290,7 @@ export const ReadOnly: Story = {
 }
 
 const ControlledDemo = () => {
-  const [value, setValue] = useState<string | null>('balanced')
+  const [value, setValue] = React.useState<string | null>('balanced')
 
   return (
     <div className="flex flex-col items-start gap-3">
@@ -302,40 +329,33 @@ export const Controlled: Story = {
 
 export const InForm: Story = {
   render: () => (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault()
-      }}
-      className="flex w-72 flex-col gap-3"
-    >
-      <label className="text-xs font-medium text-text-tertiary" htmlFor="timezone">
-        Timezone
-      </label>
-      <Select name="timezone" defaultValue="utc">
-        <SelectTrigger id="timezone" aria-label="Timezone">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="utc">
-            <SelectItemText>UTC</SelectItemText>
-            <SelectItemIndicator />
-          </SelectItem>
-          <SelectItem value="pst">
-            <SelectItemText>Pacific (PST)</SelectItemText>
-            <SelectItemIndicator />
-          </SelectItem>
-          <SelectItem value="jst">
-            <SelectItemText>Japan (JST)</SelectItemText>
-            <SelectItemIndicator />
-          </SelectItem>
-        </SelectContent>
-      </Select>
-      <button
-        type="submit"
-        className="h-8 rounded-lg bg-components-button-primary-bg px-3 text-sm text-components-button-primary-text"
-      >
-        Submit
-      </button>
-    </form>
+    <Form aria-label="Timezone form" className="grid w-72 gap-3" onFormSubmit={() => undefined}>
+      <FieldRoot name="timezone">
+        <Select name="timezone" defaultValue="utc">
+          <SelectLabel>Timezone</SelectLabel>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="utc">
+              <SelectItemText>UTC</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+            <SelectItem value="pst">
+              <SelectItemText>Pacific (PST)</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+            <SelectItem value="jst">
+              <SelectItemText>Japan (JST)</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+          </SelectContent>
+        </Select>
+        <FieldDescription>Used to schedule workflow runs.</FieldDescription>
+      </FieldRoot>
+      <div className="flex justify-end">
+        <Button type="submit" variant="primary">Save</Button>
+      </div>
+    </Form>
   ),
 }

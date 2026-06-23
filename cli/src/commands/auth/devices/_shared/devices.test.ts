@@ -2,43 +2,20 @@ import type { SessionListResponse, SessionRow } from '@dify/contracts/api/openap
 import type { DifyMock } from '@test/fixtures/dify-mock/server'
 import type { AccountSessionsClient } from '@/api/account-sessions'
 import type { ActiveContext } from '@/auth/hosts'
-import type { Key, Store } from '@/store/store'
-import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { useTempConfigDir } from '@test/fixtures/config-dir'
 import { startMock } from '@test/fixtures/dify-mock/server'
 import { testHttpClient } from '@test/fixtures/http-client'
+import { MemStore } from '@test/fixtures/mem-store'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Registry } from '@/auth/hosts'
-import { ENV_CONFIG_DIR } from '@/store/dir'
-import { tokenKey } from '@/store/manager'
 import { bufferStreams } from '@/sys/io/streams'
 import { listAllSessions, runDevicesList, runDevicesRevoke } from './devices.js'
-
-class MemStore implements Store {
-  readonly entries = new Map<string, unknown>()
-  get<T>(key: Key<T>): T {
-    return (this.entries.get(key.key) as T | undefined) ?? key.default
-  }
-
-  set<T>(key: Key<T>, value: T): void {
-    this.entries.set(key.key, value)
-  }
-
-  unset<T>(key: Key<T>): void {
-    this.entries.delete(key.key)
-  }
-}
 
 function buildRegistry(host: string, email: string, tokenId: string): { reg: Registry, active: ActiveContext } {
   const reg = Registry.empty('file')
   reg.upsert(host, email, {
     account: { id: 'acct-1', email, name: 'Test Tester' },
     workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
-    available_workspaces: [
-      { id: 'ws-1', name: 'Default', role: 'owner' },
-      { id: 'ws-2', name: 'Other', role: 'normal' },
-    ],
     token_id: tokenId,
   })
   reg.setHost(host)
@@ -82,29 +59,20 @@ describe('runDevicesList', () => {
 
 describe('runDevicesRevoke', () => {
   let mock: DifyMock
-  let configDir: string
-  let prevConfigDir: string | undefined
+  useTempConfigDir('difyctl-devrevoke-')
   beforeEach(async () => {
     mock = await startMock({ scenario: 'happy' })
-    configDir = await mkdtemp(join(tmpdir(), 'difyctl-devrevoke-'))
-    prevConfigDir = process.env[ENV_CONFIG_DIR]
-    process.env[ENV_CONFIG_DIR] = configDir
   })
   afterEach(async () => {
-    if (prevConfigDir === undefined)
-      delete process.env[ENV_CONFIG_DIR]
-    else
-      process.env[ENV_CONFIG_DIR] = prevConfigDir
     await mock.stop()
-    await rm(configDir, { recursive: true, force: true })
   })
 
   it('exact device_label: revokes one + leaves local creds', async () => {
     const io = bufferStreams()
     const store = new MemStore()
     const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
-    store.set(tokenKey(mock.url, 'tester@dify.ai'), 'dfoa_test')
-    reg.save()
+    await store.write(mock.url, 'tester@dify.ai', 'dfoa_test')
+    await reg.save()
     const http = testHttpClient(mock.url, 'dfoa_test')
 
     await runDevicesRevoke({ io, reg, active, store, http, target: 'difyctl on desktop', all: false })
@@ -168,14 +136,51 @@ describe('runDevicesRevoke', () => {
     const io = bufferStreams()
     const store = new MemStore()
     const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
-    store.set(tokenKey(mock.url, 'tester@dify.ai'), 'dfoa_test')
-    reg.save()
+    await store.write(mock.url, 'tester@dify.ai', 'dfoa_test')
+    await reg.save()
     const http = testHttpClient(mock.url, 'dfoa_test')
 
     await runDevicesRevoke({ io, reg, active, store, http, target: 'tok-1', all: false })
     expect(store.entries.size).toBe(0)
-    const saved = Registry.load()
+    const saved = await Registry.load()
     expect(saved?.hosts[mock.url]).toBeUndefined()
+  })
+
+  it('TTY without --yes: prompts and aborts on decline (no revoke)', async () => {
+    const base = bufferStreams('n\n')
+    const io = { ...base, isErrTTY: true }
+    const store = new MemStore()
+    const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
+    const http = testHttpClient(mock.url, 'dfoa_test')
+
+    await expect(runDevicesRevoke({ io, reg, active, store, http, all: true }))
+      .rejects
+      .toThrow(/aborted by user/)
+    expect(base.errBuf()).toContain('Revoke 2 session(s)? [y/N]')
+    expect(base.outBuf()).not.toContain('Revoked')
+  })
+
+  it('TTY without --yes: proceeds on accept', async () => {
+    const base = bufferStreams('y\n')
+    const io = { ...base, isErrTTY: true }
+    const store = new MemStore()
+    const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
+    const http = testHttpClient(mock.url, 'dfoa_test')
+
+    await runDevicesRevoke({ io, reg, active, store, http, target: 'tok-2', all: false })
+    expect(base.outBuf()).toContain('Revoked 1 session(s)')
+  })
+
+  it('TTY with --yes: skips prompt entirely', async () => {
+    const base = bufferStreams()
+    const io = { ...base, isErrTTY: true }
+    const store = new MemStore()
+    const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
+    const http = testHttpClient(mock.url, 'dfoa_test')
+
+    await runDevicesRevoke({ io, reg, active, store, http, target: 'tok-2', all: false, yes: true })
+    expect(base.errBuf()).not.toContain('[y/N]')
+    expect(base.outBuf()).toContain('Revoked 1 session(s)')
   })
 
   it('no target + no --all: throws UsageMissingArg', async () => {

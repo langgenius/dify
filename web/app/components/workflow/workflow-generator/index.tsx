@@ -1,7 +1,7 @@
 'use client'
 import type { GeneratedGraph } from './types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { CompletionParams, Model, ModelModeType } from '@/types/app'
+import type { CompletionParams, ModelModeType } from '@/types/app'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -15,6 +15,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -25,8 +26,7 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
-import { useAppContext } from '@/context/app-context'
-import { useLocalStorage } from '@/hooks/use-local-storage'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { generateWorkflow } from '@/service/debug'
 import { fetchWorkflowDraft } from '@/service/workflow'
@@ -34,22 +34,19 @@ import { getRedirectionPath } from '@/utils/app-redirection'
 import { applyToCurrentApp, applyToNewApp, WorkflowApplyHashCollisionError, WorkflowApplyOrphanError } from './apply'
 import ExamplePrompts from './example-prompts'
 import GenerationPhases from './generation-phases'
+import { EMPTY_WORKFLOW_GENERATOR_MODEL, useWorkflowGeneratorModel } from './storage'
 import { useWorkflowGeneratorStore } from './store'
 import useGenGraph from './use-gen-graph'
 
-const STORAGE_MODEL_KEY = 'workflow-gen-model'
-const FE_TIMEOUT_MS = 60_000
-
-// Stable default used both as the SSR/empty-storage seed for the persisted
-// model and as the merge base when patching a partial update. Module-level so
-// the reference stays identical across renders (useLocalStorage uses it as the
-// server value, which must not change identity each render).
-const EMPTY_MODEL: Model = {
-  name: '',
-  provider: '',
-  mode: 'chat' as unknown as ModelModeType.chat,
-  completion_params: {} as CompletionParams,
-}
+// Hard ceiling before we abort a hung request. Generous on purpose: the
+// backend runs two sequential LLM calls and may retry a transient provider
+// error (bounded backoff) or an unparseable response (one extra call), so a
+// slow-but-succeeding generation can legitimately pass the one-minute mark.
+// Aborting work that would have landed is the worse failure mode.
+const FE_TIMEOUT_MS = 90_000
+// Mirrors the backend's instruction/ideal-output cap on /workflow-generate —
+// keeping the limit client-side turns an opaque 400 into a visible input stop.
+const MAX_INSTRUCTION_LENGTH = 10_000
 
 const renderPlaceholder = (label: string) => (
   <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3 px-8">
@@ -102,7 +99,8 @@ const RecoveryDialog = ({ open, onOpenChange, title, description, cancelLabel, c
 const WorkflowGeneratorModal: React.FC = () => {
   const { t } = useTranslation('workflow')
   const router = useRouter()
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isRbacEnabled = systemFeatures.rbac_enabled
 
   const isOpen = useWorkflowGeneratorStore(s => s.isOpen)
   const mode = useWorkflowGeneratorStore(s => s.mode)
@@ -113,10 +111,7 @@ const WorkflowGeneratorModal: React.FC = () => {
 
   const isRefine = intent === 'refine' && !!currentAppId
 
-  // Persisted model selection. ``useLocalStorage`` is the storage boundary
-  // mandated for client-only preferences — the empty model is the SSR/seed
-  // value so ``model`` is always a concrete ``Model`` (never null) here.
-  const [model, setModel] = useLocalStorage<Model>(STORAGE_MODEL_KEY, EMPTY_MODEL)
+  const [model, setModel] = useWorkflowGeneratorModel()
 
   const { defaultModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
 
@@ -126,7 +121,7 @@ const WorkflowGeneratorModal: React.FC = () => {
   useEffect(() => {
     if (defaultModel && !model.name) {
       setModel(prev => ({
-        ...(prev ?? EMPTY_MODEL),
+        ...(prev ?? EMPTY_WORKFLOW_GENERATOR_MODEL),
         name: defaultModel.model,
         provider: defaultModel.provider.provider,
       }))
@@ -135,7 +130,7 @@ const WorkflowGeneratorModal: React.FC = () => {
 
   const handleModelChange = useCallback((newValue: { modelId: string, provider: string, mode?: string, features?: string[] }) => {
     setModel(prev => ({
-      ...(prev ?? EMPTY_MODEL),
+      ...(prev ?? EMPTY_WORKFLOW_GENERATOR_MODEL),
       provider: newValue.provider,
       name: newValue.modelId,
       mode: newValue.mode as ModelModeType,
@@ -144,7 +139,7 @@ const WorkflowGeneratorModal: React.FC = () => {
 
   const handleCompletionParamsChange = useCallback((newParams: FormValue) => {
     setModel(prev => ({
-      ...(prev ?? EMPTY_MODEL),
+      ...(prev ?? EMPTY_WORKFLOW_GENERATOR_MODEL),
       completion_params: newParams as CompletionParams,
     }))
   }, [setModel])
@@ -263,7 +258,9 @@ const WorkflowGeneratorModal: React.FC = () => {
       // instead of starting from scratch. The modal mounts outside the Studio's
       // ReactFlow provider, so we read the persisted draft rather than the live
       // canvas. A fetch failure (no draft saved yet) degrades gracefully to a
-      // from-scratch generation — better than blocking the user entirely.
+      // from-scratch generation — better than blocking the user entirely — but
+      // the user asked to REFINE, so tell them their draft isn't being used
+      // instead of silently generating something unrelated.
       let currentGraph: Awaited<ReturnType<typeof fetchWorkflowDraft>>['graph'] | undefined
       if (isRefine && currentAppId) {
         try {
@@ -274,6 +271,8 @@ const WorkflowGeneratorModal: React.FC = () => {
         catch {
           currentGraph = undefined
         }
+        if (!currentGraph)
+          toast.warning(t('workflowGenerator.refineDraftUnavailable'))
       }
 
       const res = await generateWorkflow({
@@ -297,6 +296,13 @@ const WorkflowGeneratorModal: React.FC = () => {
       }
       if (res.error) {
         toast.error(res.error)
+        return
+      }
+      if (!res.graph?.nodes?.length) {
+        // Defensive: a success envelope with an empty graph should never
+        // leave the backend, but if it does, an empty "version" would just
+        // pollute the selector with a blank preview.
+        toast.error(t('workflowGenerator.generateFailed'))
         return
       }
       addVersion(res)
@@ -336,7 +342,7 @@ const WorkflowGeneratorModal: React.FC = () => {
       return
     setApplyingTrue()
     try {
-      const { appId, appMode } = await applyToNewApp({
+      const { appId, appMode, permissionKeys } = await applyToNewApp({
         mode,
         graph: current.graph as GeneratedGraph,
         instruction,
@@ -345,7 +351,7 @@ const WorkflowGeneratorModal: React.FC = () => {
       })
       toast.success(t('workflowGenerator.applied'))
       closeGenerator()
-      router.push(getRedirectionPath(isCurrentWorkspaceEditor, { id: appId, mode: appMode }))
+      router.push(getRedirectionPath({ id: appId, mode: appMode, permission_keys: permissionKeys }, { isRbacEnabled }))
     }
     catch (e: unknown) {
       if (e instanceof WorkflowApplyOrphanError) {
@@ -362,7 +368,7 @@ const WorkflowGeneratorModal: React.FC = () => {
     finally {
       setApplyingFalse()
     }
-  }, [current, instruction, mode, router, isCurrentWorkspaceEditor, closeGenerator, t, isApplying, setApplyingTrue, setApplyingFalse])
+  }, [current, instruction, mode, router, closeGenerator, t, isApplying, isRbacEnabled, setApplyingTrue, setApplyingFalse])
 
   const handleApplyToCurrentConfirmed = useCallback(async () => {
     if (!current?.graph || !currentAppId || isApplying)
@@ -451,6 +457,7 @@ const WorkflowGeneratorModal: React.FC = () => {
                   : t('workflowGenerator.instructionPlaceholder')}
                 value={instruction}
                 onValueChange={setInstruction}
+                maxLength={MAX_INSTRUCTION_LENGTH}
               />
 
               {/* Example prompts are create-from-scratch starters ("Summarize a

@@ -20,24 +20,54 @@ type BlockSelectorMockProps = {
   popupClassName: string
   availableBlocksTypes: BlockEnum[]
   showStartTab: boolean
+  defaultActiveTab?: unknown
 }
 
 const {
   mockHandlePaneContextmenuCancel,
   mockWorkflowStoreSetState,
+  mockSetOpenInlineAgentPanelNodeId,
   mockGenerateNewNode,
   mockGetNodeCustomTypeByNodeDataType,
+  mockGetNodesWithSameDefaultDataType,
+  mockCreateInlineAgentBinding,
+  mockHandleSyncWorkflowDraft,
+  mockSaveStateToHistory,
 } = vi.hoisted(() => ({
   mockHandlePaneContextmenuCancel: vi.fn(),
   mockWorkflowStoreSetState: vi.fn(),
+  mockSetOpenInlineAgentPanelNodeId: vi.fn(),
   mockGenerateNewNode: vi.fn(({ type, data }: { type: string, data: Record<string, unknown> }) => ({
     newNode: {
       id: 'generated-node',
       type,
       data,
+      position: {
+        x: 0,
+        y: 0,
+      },
     },
   })),
   mockGetNodeCustomTypeByNodeDataType: vi.fn((type: string) => `${type}-custom`),
+  mockGetNodesWithSameDefaultDataType: vi.fn((
+    nodes: Array<{ data: { agent_node_kind?: string, type?: BlockEnum, version?: string } }>,
+    type: BlockEnum,
+    defaultValue: { agent_node_kind?: string, type?: BlockEnum, version?: string },
+  ) => {
+    const dataType = defaultValue.type ?? type
+    if (dataType !== type && defaultValue.version) {
+      return nodes.filter(node =>
+        node.data.type === dataType
+        && node.data.version === defaultValue.version
+        && node.data.agent_node_kind === defaultValue.agent_node_kind,
+      )
+    }
+
+    return nodes.filter(node => node.data.type === dataType)
+  }),
+  mockCreateInlineAgentBinding: vi.fn(),
+  mockHandleSyncWorkflowDraft: vi.fn(),
+  mockSaveStateToHistory: vi.fn(),
 }))
 
 let latestBlockSelectorProps: BlockSelectorMockProps | null = null
@@ -46,7 +76,7 @@ let mockIsChatMode = false
 let mockFlowType: FlowType = FlowType.appFlow
 
 const mockAvailableNextBlocks = [BlockEnum.Answer, BlockEnum.Code]
-const mockNodesMetaDataMap = {
+const mockNodesMetaDataMap: Partial<Record<BlockEnum, { defaultValue: Record<string, unknown> }>> = {
   [BlockEnum.Answer]: {
     defaultValue: {
       title: 'Answer',
@@ -89,14 +119,48 @@ vi.mock('../../hooks-store', () => ({
 }))
 
 vi.mock('../../store', () => ({
+  useStore: (selector: (state: { mousePosition: { pageX: number, pageY: number, elementX: number, elementY: number } }) => unknown) =>
+    selector({
+      mousePosition: {
+        pageX: 120,
+        pageY: 240,
+        elementX: 12,
+        elementY: 24,
+      },
+    }),
   useWorkflowStore: () => ({
+    getState: () => ({
+      setOpenInlineAgentPanelNodeId: mockSetOpenInlineAgentPanelNodeId,
+    }),
     setState: mockWorkflowStoreSetState,
+  }),
+}))
+
+vi.mock('../../hooks/use-nodes-sync-draft', () => ({
+  useNodesSyncDraft: () => ({
+    handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
+  }),
+}))
+
+vi.mock('../../hooks/use-workflow-history', () => ({
+  WorkflowHistoryEvent: {
+    NodeAdd: 'NodeAdd',
+  },
+  useWorkflowHistory: () => ({
+    saveStateToHistory: mockSaveStateToHistory,
+  }),
+}))
+
+vi.mock('../../nodes/agent-v2/hooks', () => ({
+  useCreateInlineAgentBinding: () => ({
+    createInlineAgentBinding: mockCreateInlineAgentBinding,
   }),
 }))
 
 vi.mock('../../utils', () => ({
   generateNewNode: mockGenerateNewNode,
   getNodeCustomTypeByNodeDataType: mockGetNodeCustomTypeByNodeDataType,
+  getNodesWithSameDefaultDataType: mockGetNodesWithSameDefaultDataType,
 }))
 
 vi.mock('../tip-popup', () => ({
@@ -113,6 +177,17 @@ describe('AddBlock', () => {
     mockNodesReadOnly = false
     mockIsChatMode = false
     mockFlowType = FlowType.appFlow
+    mockCreateInlineAgentBinding.mockImplementation((_nodeId: string, options?: { onSuccess?: (binding: {
+      binding_type: 'inline_agent'
+      agent_id: string
+      current_snapshot_id: string
+    }) => void }) => {
+      options?.onSuccess?.({
+        binding_type: 'inline_agent',
+        agent_id: 'inline-agent-1',
+        current_snapshot_id: 'snapshot-1',
+      })
+    })
   })
 
   // Rendering and selector configuration.
@@ -130,6 +205,7 @@ describe('AddBlock', () => {
         placement: 'right-start',
         popupClassName: 'min-w-[256px]!',
       })
+      expect(latestBlockSelectorProps?.defaultActiveTab).toBeUndefined()
       expect(latestBlockSelectorProps?.offset).toEqual({
         mainAxis: 4,
         crossAxis: -8,
@@ -150,6 +226,20 @@ describe('AddBlock', () => {
       renderWithReactFlow([])
 
       expect(latestBlockSelectorProps?.showStartTab).toBe(false)
+    })
+
+    it.each([
+      BlockEnum.Start,
+      BlockEnum.TriggerWebhook,
+    ])('should keep the normal default tab when a %s node already exists', async (type) => {
+      renderWithReactFlow([
+        createNode({ id: 'entry-node', position: { x: 0, y: 0 }, data: { type } }),
+      ])
+
+      await waitFor(() => expect(latestBlockSelectorProps).not.toBeNull())
+
+      expect(latestBlockSelectorProps?.showStartTab).toBe(true)
+      expect(latestBlockSelectorProps?.defaultActiveTab).toBeUndefined()
     })
   })
 
@@ -195,7 +285,7 @@ describe('AddBlock', () => {
         },
       })
       expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({
-        candidateNode: {
+        candidateNode: expect.objectContaining({
           id: 'generated-node',
           type: 'answer-custom',
           data: {
@@ -205,8 +295,92 @@ describe('AddBlock', () => {
             pluginId: 'plugin-1',
             _isCandidate: true,
           },
+        }),
+      })
+    })
+
+    it('should count Agent v2 nodes by the final default data type without counting legacy Agent nodes', async () => {
+      mockNodesMetaDataMap[BlockEnum.AgentV2] = {
+        defaultValue: {
+          title: 'Agent',
+          desc: '',
+          agent_node_kind: 'dify_agent',
+          type: BlockEnum.Agent,
+          version: '2',
+        },
+      }
+      renderWithReactFlow([
+        createNode({ id: 'old-agent', position: { x: 0, y: 0 }, data: { type: BlockEnum.Agent, version: '2' } }),
+        createNode({ id: 'agent-v2', position: { x: 80, y: 0 }, data: { agent_node_kind: 'dify_agent', type: BlockEnum.Agent, version: '2' } }),
+      ])
+
+      await waitFor(() => expect(latestBlockSelectorProps).not.toBeNull())
+
+      act(() => {
+        latestBlockSelectorProps?.onSelect(BlockEnum.AgentV2)
+      })
+
+      expect(mockGetNodesWithSameDefaultDataType).toHaveBeenCalledWith(
+        expect.any(Array),
+        BlockEnum.AgentV2,
+        {
+          title: 'Agent',
+          desc: '',
+          agent_node_kind: 'dify_agent',
+          type: BlockEnum.Agent,
+          version: '2',
+        },
+      )
+      expect(mockGenerateNewNode).toHaveBeenCalledWith({
+        type: 'agent-v2-custom',
+        data: {
+          title: 'Agent 2',
+          desc: '',
+          agent_node_kind: 'dify_agent',
+          type: BlockEnum.Agent,
+          version: '2',
+          _isCandidate: true,
+        },
+        position: {
+          x: 0,
+          y: 0,
         },
       })
+    })
+
+    it('should commit start-from-scratch Agent v2 immediately and create the inline binding', async () => {
+      mockNodesMetaDataMap[BlockEnum.AgentV2] = {
+        defaultValue: {
+          title: 'Agent',
+          desc: '',
+          agent_node_kind: 'dify_agent',
+          type: BlockEnum.Agent,
+          version: '2',
+        },
+      }
+      renderWithReactFlow([])
+
+      await waitFor(() => expect(latestBlockSelectorProps).not.toBeNull())
+
+      act(() => {
+        latestBlockSelectorProps?.onSelect(BlockEnum.AgentV2, {
+          agent_binding: {
+            binding_type: 'inline_agent',
+          },
+          agent_node_kind: 'dify_agent',
+          version: '2',
+        })
+      })
+
+      expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({
+        candidateNode: undefined,
+      })
+      expect(mockCreateInlineAgentBinding).toHaveBeenCalledWith('generated-node', expect.objectContaining({
+        onSuccess: expect.any(Function),
+      }))
+      expect(mockSetOpenInlineAgentPanelNodeId).toHaveBeenCalledWith('generated-node')
+      expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true, true)
+      expect(mockSaveStateToHistory).toHaveBeenCalledWith('NodeAdd', { nodeId: 'generated-node' })
     })
   })
 })

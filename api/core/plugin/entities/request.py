@@ -4,10 +4,11 @@ from collections.abc import Mapping
 from typing import Any, Literal
 
 from flask import Response
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from core.entities.provider_entities import BasicProviderConfig
 from core.plugin.utils.http_parser import deserialize_response
+from core.workflow.file_reference import is_canonical_file_reference
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
@@ -72,7 +73,7 @@ class RequestInvokeLLM(BaseRequestInvokeModel):
     prompt_messages: list[PromptMessage] = Field(default_factory=list)
     tools: list[PromptMessageTool] | None = Field(default_factory=list[PromptMessageTool])
     stop: list[str] | None = Field(default_factory=list[str])
-    stream: bool | None = False
+    stream: bool = False
 
     model_config = ConfigDict(protected_namespaces=())
 
@@ -229,6 +230,53 @@ class RequestRequestUploadFile(BaseModel):
 
     filename: str
     mimetype: str
+
+
+class RequestDownloadFileMapping(BaseModel):
+    """File mapping accepted by trusted download-request control-plane APIs."""
+
+    transfer_method: Literal["local_file", "tool_file", "datasource_file", "remote_url"]
+    reference: str | None = None
+    url: str | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def validate_locator(self) -> "RequestDownloadFileMapping":
+        if self.transfer_method == "remote_url":
+            if not self.url:
+                raise ValueError("url is required when transfer_method is remote_url")
+            if self.reference is not None:
+                raise ValueError("reference is not allowed when transfer_method is remote_url")
+            return self
+        if not self.reference:
+            raise ValueError("reference is required for non-remote file mappings")
+        if not is_canonical_file_reference(self.reference):
+            raise ValueError("reference must be a canonical Dify file reference")
+        if self.url is not None:
+            raise ValueError("url is not allowed for non-remote file mappings")
+        return self
+
+
+class RequestRequestDownloadFile(BaseModel):
+    """Request to resolve a signed download URL for one runtime file mapping."""
+
+    tenant_id: str
+    user_id: str
+    user_from: Literal["account", "end-user"]
+    invoke_from: Literal[
+        "service-api",
+        "openapi",
+        "web-app",
+        "trigger",
+        "explore",
+        "debugger",
+        "published",
+        "validation",
+    ]
+    file: RequestDownloadFileMapping
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class RequestFetchAppInfo(BaseModel):

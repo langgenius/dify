@@ -26,6 +26,7 @@ from core.workflow.node_runtime import (
     DifyFileReferenceFactory,
     DifyHumanInputNodeRuntime,
     DifyPreparedLLM,
+    DifyPreparedPollingLLM,
     DifyPromptMessageSerializer,
     DifyRetrieverAttachmentLoader,
     DifyToolFileManager,
@@ -195,13 +196,16 @@ class _LazyNodeTypeClassesMapping(MutableMapping[NodeType, Mapping[str, type[Nod
         snapshot.update(self._overrides)
         return snapshot
 
+    @override
     def __getitem__(self, key: NodeType) -> Mapping[str, type[Node]]:
         return self._snapshot()[key]
 
+    @override
     def __setitem__(self, key: NodeType, value: Mapping[str, type[Node]]) -> None:
         self._deleted.discard(key)
         self._overrides[key] = value
 
+    @override
     def __delitem__(self, key: NodeType) -> None:
         if key in self._overrides:
             del self._overrides[key]
@@ -211,9 +215,11 @@ class _LazyNodeTypeClassesMapping(MutableMapping[NodeType, Mapping[str, type[Nod
             return
         raise KeyError(key)
 
+    @override
     def __iter__(self) -> Iterator[NodeType]:
         return iter(self._snapshot())
 
+    @override
     def __len__(self) -> int:
         return len(self._snapshot())
 
@@ -329,6 +335,7 @@ class DifyNodeFactory(NodeFactory):
                 self.graph_runtime_state.variable_pool,
                 SystemVariableKey.WORKFLOW_EXECUTION_ID,
             ),
+            conversation_id_getter=self._conversation_id,
         )
         self._tool_runtime = DifyToolNodeRuntime(self._dify_context)
         self._http_request_file_manager = file_manager
@@ -474,8 +481,9 @@ class DifyNodeFactory(NodeFactory):
         if issubclass(node_class, DifyAgentNode):
             from clients.agent_backend import AgentBackendRunEventAdapter, AgentBackendRunRequestBuilder
             from clients.agent_backend.factory import create_agent_backend_run_client
-            from core.workflow.nodes.agent_v2.file_tenant_validator import UploadFileTenantValidator
+            from core.workflow.nodes.agent_v2.file_tenant_validator import AgentOutputFileTenantValidator
             from core.workflow.nodes.agent_v2.output_failure_orchestrator import OutputFailureOrchestrator
+            from core.workflow.nodes.agent_v2.output_file_rebacker import reback_tool_file_output
             from core.workflow.nodes.agent_v2.output_type_checker import PerOutputTypeChecker
             from core.workflow.nodes.agent_v2.session_store import WorkflowAgentRuntimeSessionStore
 
@@ -491,11 +499,12 @@ class DifyNodeFactory(NodeFactory):
                     fake_scenario=dify_config.AGENT_BACKEND_FAKE_SCENARIO,
                 ),
                 "event_adapter": AgentBackendRunEventAdapter(),
-                "output_adapter": WorkflowAgentOutputAdapter(),
+                # Agent Files §4.6: reback file outputs from the ToolFile row so
+                # downstream metadata is authoritative, not sandbox-provided.
+                "output_adapter": WorkflowAgentOutputAdapter(tool_file_rebacker=reback_tool_file_output),
                 # Stage 4 §5/§7: per-output validation + failure orchestration. The
-                # tenant validator queries upload_files so it stays cheap when
-                # outputs contain no file refs.
-                "type_checker": PerOutputTypeChecker(file_validator=UploadFileTenantValidator()),
+                # tenant validator resolves ToolFile (canonical) + UploadFile refs.
+                "type_checker": PerOutputTypeChecker(file_validator=AgentOutputFileTenantValidator()),
                 "failure_orchestrator": OutputFailureOrchestrator(),
                 "session_store": WorkflowAgentRuntimeSessionStore(),
             }
@@ -523,7 +532,11 @@ class DifyNodeFactory(NodeFactory):
         node_init_kwargs: dict[str, object] = {
             "credentials_provider": self._llm_credentials_provider,
             "model_factory": self._llm_model_factory,
-            "model_instance": DifyPreparedLLM(model_instance) if wrap_model_instance else model_instance,
+            "model_instance": (
+                self._wrap_model_instance_for_node(node_data=validated_node_data, model_instance=model_instance)
+                if wrap_model_instance
+                else model_instance
+            ),
             "memory": self._build_memory_for_llm_node(
                 node_data=validated_node_data,
                 model_instance=model_instance,
@@ -546,6 +559,23 @@ class DifyNodeFactory(NodeFactory):
         if validated_node_data.type == BuiltinNodeTypes.LLM:
             node_init_kwargs["default_query_selector"] = system_variable_selector(SystemVariableKey.QUERY)
         return node_init_kwargs
+
+    @staticmethod
+    def _wrap_model_instance_for_node(
+        *,
+        node_data: LLMCompatibleNodeData,
+        model_instance: ModelInstance,
+    ) -> DifyPreparedLLM:
+        # Only graphon's LLM node consumes the polling protocol. Keep classifier
+        # and extractor nodes on the existing wrapper even if the same model
+        # advertises polling support.
+        if node_data.type == BuiltinNodeTypes.LLM and DifyNodeFactory._supports_plugin_llm_polling(model_instance):
+            return DifyPreparedPollingLLM(model_instance)
+        return DifyPreparedLLM(model_instance)
+
+    @staticmethod
+    def _supports_plugin_llm_polling(model_instance: ModelInstance) -> bool:
+        return model_instance.get_model_schema().support_polling
 
     def _build_retriever_attachment_loader(self, node_data: LLMNodeData) -> DifyRetrieverAttachmentLoader:
         return DifyRetrieverAttachmentLoader(

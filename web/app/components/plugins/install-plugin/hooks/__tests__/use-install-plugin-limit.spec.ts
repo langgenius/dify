@@ -135,4 +135,17 @@ describe('usePluginInstallLimit', () => {
 
     expect(result.current.canInstall).toBe(true)
   })
+
+  it('should return a loading install limit state while system features are pending', async () => {
+    const { default: usePluginInstallLimit } = await import('../use-install-plugin-limit')
+    const plugin = { from: 'marketplace' as const, verification: { authorized_category: 'langgenius' } }
+
+    const { result } = renderHook(
+      () => usePluginInstallLimit(plugin as never),
+      { systemFeatures: null },
+    )
+
+    expect(result.current.canInstall).toBe(false)
+    expect(result.current.isLoading).toBe(true)
+  })
 })

@@ -17,6 +17,15 @@ type MarketplaceFetchOptions = {
   signal?: AbortSignal
 }
 
+export function buildCarouselPages<T>(items: T[], itemsPerPage: number): T[][] {
+  const pages: T[][] = []
+
+  for (let i = 0; i < items.length; i += itemsPerPage)
+    pages.push(items.slice(i, i + itemsPerPage))
+
+  return pages
+}
+
 export const getPluginIconInMarketplace = (plugin: Plugin) => {
   if (plugin.type === 'bundle')
     return `${MARKETPLACE_API_PREFIX}/bundles/${plugin.org}/${plugin.name}/icon`
@@ -43,6 +52,10 @@ export const getPluginLinkInMarketplace = (plugin: Plugin, params?: Record<strin
   if (plugin.type === 'bundle')
     return getMarketplaceUrl(`/bundles/${plugin.org}/${plugin.name}`, params)
   return getMarketplaceUrl(`/plugins/${plugin.org}/${plugin.name}`, params)
+}
+
+export const getMarketplaceCategoryUrl = (category?: string, params?: Record<string, string | undefined>) => {
+  return getMarketplaceUrl(category ? `/plugins/${category}` : '/plugins', params)
 }
 
 export const getPluginDetailLinkInMarketplace = (plugin: Plugin) => {

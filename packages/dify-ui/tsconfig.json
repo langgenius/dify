@@ -1,7 +1,7 @@
 {
   "extends": "@dify/tsconfig/react.json",
   "compilerOptions": {
-    "types": ["vite-plus/test/globals"]
+    "types": ["vite-plus/test/globals", "vite-plus/test/matchers"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts"],
   "exclude": ["node_modules", "dist", "storybook-static", "coverage"]

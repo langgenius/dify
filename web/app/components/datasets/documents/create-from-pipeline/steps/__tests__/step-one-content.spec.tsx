@@ -6,6 +6,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DatasourceType } from '@/models/pipeline'
 import StepOneContent from '../step-one-content'
 
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: true,
+  }
+})
+
 // Mock context providers and hooks (底层依赖)
 vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(() => ({

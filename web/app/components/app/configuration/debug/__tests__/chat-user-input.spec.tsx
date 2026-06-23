@@ -138,10 +138,12 @@ const createContextValue = (overrides: Partial<{
   modelConfig: ModelConfig
   setInputs: (inputs: Inputs) => void
   readonly: boolean
+  canTestAndRun: boolean
 }> = {}) => ({
   modelConfig: createModelConfig(),
   setInputs: mockSetInputs,
   readonly: false,
+  canTestAndRun: true,
   ...overrides,
 })
 
@@ -485,49 +487,79 @@ describe('ChatUserInput', () => {
     })
   })
 
-  describe('Readonly Mode', () => {
-    it('should set string input as readonly when readonly is true', () => {
+  describe('Debug Permission', () => {
+    it('should keep string input editable when configuration is readonly but test/run is allowed', () => {
       mockUseContext.mockReturnValue(createContextValue({
         modelConfig: createModelConfig([
           createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
         ]),
         readonly: true,
+        canTestAndRun: true,
+      }))
+
+      render(<ChatUserInput inputs={{}} />)
+      expect(screen.getByTestId('input-Name')).not.toHaveAttribute('readonly')
+    })
+
+    it('should set string input as readonly when test/run is denied even if configuration is editable', () => {
+      mockUseContext.mockReturnValue(createContextValue({
+        modelConfig: createModelConfig([
+          createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
+        ]),
+        readonly: false,
+        canTestAndRun: false,
       }))
 
       render(<ChatUserInput inputs={{}} />)
       expect(screen.getByTestId('input-Name')).toHaveAttribute('readonly')
     })
 
-    it('should set paragraph input as readonly when readonly is true', () => {
+    it('should set string input as readonly when configuration is readonly and test/run is denied', () => {
+      mockUseContext.mockReturnValue(createContextValue({
+        modelConfig: createModelConfig([
+          createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
+        ]),
+        readonly: true,
+        canTestAndRun: false,
+      }))
+
+      render(<ChatUserInput inputs={{}} />)
+      expect(screen.getByTestId('input-Name')).toHaveAttribute('readonly')
+    })
+
+    it('should set paragraph input as readonly when configuration is readonly and test/run is denied', () => {
       mockUseContext.mockReturnValue(createContextValue({
         modelConfig: createModelConfig([
           createPromptVariable({ key: 'desc', name: 'Description', type: 'paragraph' }),
         ]),
         readonly: true,
+        canTestAndRun: false,
       }))
 
       render(<ChatUserInput inputs={{}} />)
       expect(screen.getByRole('textbox', { name: 'Description' })).toHaveAttribute('readonly')
     })
 
-    it('should disable select when readonly is true', () => {
+    it('should disable select when configuration is readonly and test/run is denied', () => {
       mockUseContext.mockReturnValue(createContextValue({
         modelConfig: createModelConfig([
           createPromptVariable({ key: 'choice', name: 'Choice', type: 'select', options: ['A', 'B'] }),
         ]),
         readonly: true,
+        canTestAndRun: false,
       }))
 
       render(<ChatUserInput inputs={{}} />)
       expect(screen.getByTestId('select-input')).toBeDisabled()
     })
 
-    it('should disable checkbox when readonly is true', () => {
+    it('should disable checkbox when configuration is readonly and test/run is denied', () => {
       mockUseContext.mockReturnValue(createContextValue({
         modelConfig: createModelConfig([
           createPromptVariable({ key: 'enabled', name: 'Enabled', type: 'checkbox' }),
         ]),
         readonly: true,
+        canTestAndRun: false,
       }))
 
       render(<ChatUserInput inputs={{}} />)

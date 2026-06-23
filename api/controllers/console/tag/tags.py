@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.fields import SimpleResultResponse
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
@@ -16,6 +16,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.login import login_required
 from models import Account
@@ -51,7 +52,7 @@ class TagBindingRemovePayload(BaseModel):
 
 
 class TagListQueryParam(BaseModel):
-    type: Literal["knowledge", "app", ""] = Field("", description="Tag type filter")
+    type: Literal["knowledge", "app", "snippet", ""] = Field("", description="Tag type filter")
     keyword: str | None = Field(None, description="Search keyword")
 
 
@@ -95,15 +96,13 @@ class TagListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.doc(
-        params={"type": 'Tag type filter. Can be "knowledge" or "app".', "keyword": "Search keyword for tag name."}
-    )
+    @console_ns.doc(params=query_params_from_model(TagListQueryParam))
     @console_ns.doc(responses={200: ("Success", [console_ns.models[TagResponse.__name__]])})
     @with_current_tenant_id
     def get(self, current_tenant_id: str):
         raw_args = request.args.to_dict()
         param = TagListQueryParam.model_validate(raw_args)
-        tags = TagService.get_tags(param.type, current_tenant_id, param.keyword)
+        tags = TagService.get_tags(db.session(), param.type, current_tenant_id, param.keyword)
 
         serialized_tags = [
             TagResponse.model_validate(tag, from_attributes=True).model_dump(mode="json") for tag in tags
@@ -123,7 +122,7 @@ class TagListApi(Resource):
             raise Forbidden()
 
         payload = TagBasePayload.model_validate(console_ns.payload or {})
-        tag = TagService.save_tags(SaveTagPayload(name=payload.name, type=payload.type))
+        tag = TagService.save_tags(SaveTagPayload(name=payload.name, type=payload.type), db.session)
 
         response = TagResponse.model_validate(
             {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": 0}
@@ -147,9 +146,9 @@ class TagUpdateDeleteApi(Resource):
             raise Forbidden()
 
         payload = TagUpdateRequestPayload.model_validate(console_ns.payload or {})
-        tag = TagService.update_tags(UpdateTagPayload(name=payload.name), tag_id_str)
+        tag = TagService.update_tags(UpdateTagPayload(name=payload.name), tag_id_str, db.session)
 
-        binding_count = TagService.get_tag_binding_count(tag_id_str)
+        binding_count = TagService.get_tag_binding_count(tag_id_str, db.session)
 
         response = TagResponse.model_validate(
             {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": binding_count}
@@ -165,7 +164,7 @@ class TagUpdateDeleteApi(Resource):
     def delete(self, tag_id: UUID):
         tag_id_str = str(tag_id)
 
-        TagService.delete_tag(tag_id_str)
+        TagService.delete_tag(tag_id_str, db.session)
 
         return "", 204
 
@@ -190,7 +189,8 @@ def _create_tag_bindings(current_user: Account) -> tuple[dict[str, str], int]:
             tag_ids=payload.tag_ids,
             target_id=payload.target_id,
             type=payload.type,
-        )
+        ),
+        db.session,
     )
     return {"result": "success"}, 200
 
@@ -204,7 +204,8 @@ def _remove_tag_bindings(current_user: Account) -> tuple[dict[str, str], int]:
             tag_ids=payload.tag_ids,
             target_id=payload.target_id,
             type=payload.type,
-        )
+        ),
+        db.session,
     )
     return {"result": "success"}, 200
 

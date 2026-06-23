@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next'
 import PluginInfo from '@/app/components/plugins/plugin-page/plugin-info'
 import UpdateFromMarketplace from '@/app/components/plugins/update-plugin/from-market-place'
 import { useGetLanguage } from '@/context/i18n'
-import { PluginSource } from '../../../types'
+import { PluginCategoryEnum, PluginSource } from '../../../types'
 
 const i18nPrefix = 'action'
 
@@ -100,7 +100,7 @@ const HeaderModals: FC<HeaderModalsProps> = ({
         <UpdateFromMarketplace
           pluginId={detail.plugin_id}
           payload={{
-            category: detail.declaration?.category ?? '',
+            category: detail.declaration?.category ?? PluginCategoryEnum.tool,
             originalPackageInfo: {
               id: detail.plugin_unique_identifier,
               payload: detail.declaration ?? undefined,

@@ -2,6 +2,7 @@ import collections
 import logging
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import MagicMock
 
 import pytest
@@ -614,7 +615,9 @@ def test_get_project_url_error(trace_instance):
         trace_instance.get_project_url()
 
 
-def test_workflow_trace_usage_extraction_error_fixed(trace_instance, monkeypatch: pytest.MonkeyPatch, caplog):
+def test_workflow_trace_usage_extraction_error_fixed(
+    trace_instance, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+):
     trace_info = WorkflowTraceInfo(
         workflow_id="86a52565-4a6b-4a1b-9bfd-98e4595e70de",
         tenant_id="66e8e918-472e-4b69-8051-12502c34fc07",
@@ -643,6 +646,7 @@ def test_workflow_trace_usage_extraction_error_fixed(trace_instance, monkeypatch
     node.status = "succeeded"
 
     class BadDict(collections.UserDict):
+        @override
         def get(self, key, default=None):
             if key == "usage":
                 raise Exception("Usage extraction failed")

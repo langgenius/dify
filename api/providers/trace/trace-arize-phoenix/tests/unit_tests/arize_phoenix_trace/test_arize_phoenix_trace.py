@@ -2,7 +2,7 @@ import json
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any, cast, override
 from unittest.mock import MagicMock, patch
 
 import dify_trace_arize_phoenix.arize_phoenix_trace as arize_phoenix_trace_module
@@ -133,10 +133,12 @@ class _CollectingSpanExporter(SpanExporter):
     def __init__(self):
         self.spans: list[ReadableSpan] = []
 
+    @override
     def export(self, spans: Sequence[ReadableSpan]) -> SpanExportResult:
         self.spans.extend(spans)
         return SpanExportResult.SUCCESS
 
+    @override
     def shutdown(self) -> None:
         return None
 
@@ -258,9 +260,11 @@ def test_set_span_status():
 
     # repr branch
     class SilentError:
+        @override
         def __str__(self):
             return ""
 
+        @override
         def __repr__(self):
             return "SilentErrorRepr"
 
@@ -452,7 +456,7 @@ class TestPhoenixParentSpanBridgeHelpers:
         assert error.parent_node_execution_id == "outer-node-execution-1"
         assert "outer-node-execution-1" in str(error)
 
-    def test_resolve_parent_span_context_rejects_payload_without_traceparent(self, monkeypatch):
+    def test_resolve_parent_span_context_rejects_payload_without_traceparent(self, monkeypatch: pytest.MonkeyPatch):
         mock_redis = MagicMock()
         mock_redis.get.return_value = '{"tracestate": "vendor=value"}'
         monkeypatch.setattr(arize_phoenix_trace_module, "redis_client", mock_redis)

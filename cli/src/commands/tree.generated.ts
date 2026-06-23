@@ -17,9 +17,11 @@ import CreateMember from '@/commands/create/member/index'
 import DeleteMember from '@/commands/delete/member/index'
 import DescribeApp from '@/commands/describe/app/index'
 import EnvList from '@/commands/env/list/index'
+import ExportStudioApp from '@/commands/export/studio-app/index'
 import GetApp from '@/commands/get/app/index'
 import GetMember from '@/commands/get/member/index'
 import GetWorkspace from '@/commands/get/workspace/index'
+import ImportStudioApp from '@/commands/import/studio-app/index'
 import ResumeApp from '@/commands/resume/app/index'
 import RunApp from '@/commands/run/app/index'
 import SetMember from '@/commands/set/member/index'
@@ -73,11 +75,21 @@ export const commandTree: CommandTree = {
       list: { command: EnvList, subcommands: {} },
     },
   },
+  export: {
+    subcommands: {
+      'studio-app': { command: ExportStudioApp, subcommands: {} },
+    },
+  },
   get: {
     subcommands: {
       app: { command: GetApp, subcommands: {} },
       member: { command: GetMember, subcommands: {} },
       workspace: { command: GetWorkspace, subcommands: {} },
+    },
+  },
+  import: {
+    subcommands: {
+      'studio-app': { command: ImportStudioApp, subcommands: {} },
     },
   },
   resume: {

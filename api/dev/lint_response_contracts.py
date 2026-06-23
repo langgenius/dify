@@ -7,9 +7,9 @@ or ``Model.model_validate(...).model_dump()`` return.
 
 Raw dictionaries, raw lists, ``None`` responses, streaming helpers, missing
 response schemas, and returns with non-literal status codes are classified as
-unknown so reviewers can triage them without blocking unrelated work. The one
-intentional non-schema mismatch is a known body/schema on a no-body status such
-as 204, 205, or 304.
+unknown. Unknown details are hidden by default to keep routine output focused;
+pass ``--include-unknown`` when triaging them. The one intentional non-schema
+mismatch is a known body/schema on a no-body status such as 204, 205, or 304.
 """
 
 from __future__ import annotations
@@ -354,11 +354,12 @@ def iter_method_nodes(method: MethodNode) -> Iterable[ast.AST]:
 
 
 def target_names(target: ast.AST) -> Iterable[str]:
-    if isinstance(target, ast.Name):
-        yield target.id
-    elif isinstance(target, ast.Tuple | ast.List):
-        for item in target.elts:
-            yield from target_names(item)
+    match target:
+        case ast.Name():
+            yield target.id
+        case ast.Tuple() | ast.List():
+            for item in target.elts:
+                yield from target_names(item)
 
 
 def record_assignment(
@@ -589,7 +590,7 @@ def as_jsonable(check: ContractCheck) -> dict[str, Any]:
     return data
 
 
-def print_text_report(checks: Sequence[ContractCheck], *, include_valid: bool) -> None:
+def print_text_report(checks: Sequence[ContractCheck], *, include_unknown: bool, include_valid: bool) -> None:
     counts = Counter(check.classification for check in checks)
     sys.stdout.write(
         "Response contract lint: "
@@ -601,6 +602,8 @@ def print_text_report(checks: Sequence[ContractCheck], *, include_valid: bool) -
 
     for classification in ("mismatch", "refactorable", "unknown", "valid"):
         filtered = [check for check in checks if check.classification == classification]
+        if classification == "unknown" and not include_unknown:
+            continue
         if classification == "valid" and not include_valid:
             continue
         if not filtered:
@@ -619,6 +622,7 @@ def parse_args() -> argparse.Namespace:
         nargs="*",
         help="Files or directories to lint. Defaults to Flask controller directories.",
     )
+    parser.add_argument("--include-unknown", action="store_true", help="Print unknown route methods in output.")
     parser.add_argument("--include-valid", action="store_true", help="Print valid route methods in text output.")
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
     parser.add_argument(
@@ -650,10 +654,16 @@ def main() -> int:
     if args.json:
         grouped = defaultdict(list)
         for check in checks:
+            if check.classification == "unknown" and not args.include_unknown:
+                continue
             grouped[check.classification].append(as_jsonable(check))
         sys.stdout.write(f"{json.dumps(grouped, indent=2, sort_keys=True)}\n")
     else:
-        print_text_report(checks, include_valid=bool(args.include_valid))
+        print_text_report(
+            checks,
+            include_unknown=bool(args.include_unknown),
+            include_valid=bool(args.include_valid),
+        )
 
     has_mismatch = any(check.classification == "mismatch" for check in checks)
     has_unknown = any(check.classification == "unknown" for check in checks)

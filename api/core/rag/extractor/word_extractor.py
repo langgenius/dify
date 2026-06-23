@@ -15,6 +15,8 @@ from urllib.parse import urlparse
 
 from docx import Document as DocxDocument
 from docx.oxml.ns import qn
+from docx.table import Table
+from docx.text.paragraph import Paragraph
 from docx.text.run import Run
 
 from configs import dify_config
@@ -286,10 +288,10 @@ class WordExtractor(BaseExtractor):
 
         return "".join(paragraph_content).strip()
 
-    def parse_docx(self, docx_path):
+    def parse_docx(self, docx_path: str) -> str:
         doc = DocxDocument(docx_path)
 
-        content = []
+        content: list[str] = []
 
         image_map = self._extract_images_from_docx(doc)
 
@@ -445,18 +447,11 @@ class WordExtractor(BaseExtractor):
                     process_hyperlink(child, paragraph_content)
             return "".join(paragraph_content) if paragraph_content else ""
 
-        paragraphs = doc.paragraphs.copy()
-        tables = doc.tables.copy()
-        for element in doc.element.body:
-            if hasattr(element, "tag"):
-                if isinstance(element.tag, str) and element.tag.endswith("p"):  # paragraph
-                    para = paragraphs.pop(0)
-                    parsed_paragraph = parse_paragraph(para)
-                    if parsed_paragraph.strip():
-                        content.append(parsed_paragraph)
-                    else:
-                        content.append("\n")
-                elif isinstance(element.tag, str) and element.tag.endswith("tbl"):  # table
-                    table = tables.pop(0)
-                    content.append(self._table_to_markdown(table, image_map))
+        for block in doc.iter_inner_content():
+            match block:
+                case Paragraph():
+                    parsed_paragraph = parse_paragraph(block)
+                    content.append(parsed_paragraph if parsed_paragraph.strip() else "\n")
+                case Table():
+                    content.append(self._table_to_markdown(block, image_map))
         return "\n".join(content)

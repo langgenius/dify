@@ -21,7 +21,7 @@ import { useGetAvailableVars } from '../../variable-assigner/hooks'
 import ConditionAdd from './condition-add'
 import ConditionList from './condition-list'
 
-type Props = {
+type Props = Readonly<{
   isSubVariable?: boolean
   caseId?: string
   conditionId?: string
@@ -42,7 +42,7 @@ type Props = {
   availableNodes: Node[]
   varsIsVarFileAttribute?: Record<string, boolean>
   filterVar: (varPayload: Var) => boolean
-}
+}>
 
 const ConditionWrap: FC<Props> = ({
   isSubVariable,

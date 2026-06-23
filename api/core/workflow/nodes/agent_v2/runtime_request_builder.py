@@ -5,7 +5,18 @@ from dataclasses import dataclass
 from typing import Any, Literal, Protocol, assert_never, cast
 
 from agenton.compositor import CompositorSessionSnapshot
-from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.layers.ask_human import DifyAskHumanLayerConfig
+from dify_agent.layers.drive import (
+    DifyDriveFileConfig,
+    DifyDriveLayerConfig,
+    DifyDriveSkillConfig,
+)
+from dify_agent.layers.execution_context import (
+    DifyExecutionContextInvokeFrom,
+    DifyExecutionContextLayerConfig,
+    DifyExecutionContextUserFrom,
+)
+from dify_agent.layers.knowledge import DifyKnowledgeBaseLayerConfig, DifyKnowledgeRetrievalConfig
 from dify_agent.layers.shell import (
     DifyShellCliToolConfig,
     DifyShellEnvVarConfig,
@@ -13,7 +24,7 @@ from dify_agent.layers.shell import (
     DifyShellSandboxConfig,
     DifyShellSecretRefConfig,
 )
-from dify_agent.protocol import CreateRunRequest
+from dify_agent.protocol import CreateRunRequest, DeferredToolResultsPayload
 from pydantic import BaseModel
 
 from clients.agent_backend import (
@@ -26,11 +37,14 @@ from clients.agent_backend import (
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.workflow.system_variables import SystemVariableKey, get_system_text
+from graphon.file import FileTransferMethod
 from graphon.variables.segments import Segment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
+    AgentKnowledgeQueryConfig,
     AgentSoulConfig,
     DeclaredArrayItem,
+    DeclaredOutputChildConfig,
     DeclaredOutputConfig,
     DeclaredOutputType,
     WorkflowNodeJobConfig,
@@ -40,9 +54,15 @@ from models.agent_config_entities import (
     effective_declared_outputs as _effective_declared_outputs,
 )
 from models.provider_ids import ModelProviderID
+from services.agent.prompt_mentions import (
+    build_node_job_mention_resolver,
+    build_soul_mention_resolver,
+    expand_prompt_mentions,
+)
 
 from .output_failure_orchestrator import retry_idempotency_key
 from .plugin_tools_builder import WorkflowAgentPluginToolsBuilder, WorkflowAgentPluginToolsBuildError
+from .runtime_feature_manifest import build_runtime_feature_manifest, list_configured_knowledge_dataset_ids
 
 _DENIED_PERMISSION_STATUSES = frozenset({"unauthorized", "denied", "forbidden", "invalid", "unavailable"})
 _DANGEROUS_FLAG_KEYS = ("dangerous", "dangerous_command", "requires_confirmation")
@@ -52,7 +72,6 @@ _DANGEROUS_ACK_KEYS = (
     "risk_accepted",
     "approved",
 )
-from .runtime_feature_manifest import build_runtime_feature_manifest
 
 
 class WorkflowAgentRuntimeRequestBuildError(ValueError):
@@ -88,6 +107,9 @@ class WorkflowAgentRuntimeBuildContext:
     # idempotency key so the backend treats each retry as a fresh request.
     attempt: int = 0
     session_snapshot: CompositorSessionSnapshot | None = None
+    # ENG-638: set when resuming after a submitted ask_human HITL form; threads
+    # the human's answer back into the second Agent run keyed by tool_call_id.
+    deferred_tool_results: DeferredToolResultsPayload | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,7 +146,16 @@ class WorkflowAgentRuntimeRequestBuilder:
 
         metadata = self._build_metadata(context, agent_soul, node_job)
         workflow_context_prompt = self._build_workflow_context_prompt(context, node_job)
-        workflow_job_prompt = node_job.workflow_prompt.strip() or "Run this workflow Agent Node for the current run."
+        # ENG-616: expand slash-menu mention tokens into model-readable names.
+        # node_output mentions expand to their reference name only — the value
+        # stays in the Workflow context block (user_prompt) below.
+        workflow_job_prompt = (
+            expand_prompt_mentions(node_job.workflow_prompt, build_node_job_mention_resolver(node_job)).strip()
+            or "Run this workflow Agent Node for the current run."
+        )
+        soul_prompt = expand_prompt_mentions(
+            agent_soul.prompt.system_prompt, build_soul_mention_resolver(agent_soul)
+        ).strip()
         user_prompt = workflow_context_prompt.strip() or "Use the current workflow context."
         credentials = self._credentials_provider.fetch(agent_soul.model.model_provider, agent_soul.model.model)
         try:
@@ -150,6 +181,12 @@ class WorkflowAgentRuntimeRequestBuilder:
                 "cli_tool_count": len(agent_soul.tools.cli_tools),
             }
 
+        drive_config: DifyDriveLayerConfig | None = None
+        if dify_config.AGENT_DRIVE_MANIFEST_ENABLED:
+            drive_config, drive_warnings = build_drive_layer_config(agent_soul, agent_id=context.agent.id)
+            append_runtime_warnings(metadata, drive_warnings)
+        knowledge_config = build_knowledge_layer_config(agent_soul)
+
         request = self._request_builder.build_for_workflow_node(
             AgentBackendWorkflowNodeRunInput(
                 model=AgentBackendModelConfig(
@@ -163,13 +200,15 @@ class WorkflowAgentRuntimeRequestBuilder:
                     model_settings=agent_soul.model.model_settings.model_dump(mode="json", exclude_none=True),
                 ),
                 # The execution-context layer is now the only public protocol
-                # carrier for Dify tenant/user/run identifiers. ``user_id`` must
-                # be forwarded here because downstream plugin-daemon provider and
-                # tool clients read it from this layer rather than from any
-                # parallel top-level request field.
+                # carrier for Dify tenant/user/run identifiers. ``user_id`` and
+                # ``user_from`` must be forwarded here because downstream plugin-
+                # daemon provider/tool clients and knowledge-base layers read
+                # caller identity from this layer rather than from any parallel
+                # top-level request field.
                 execution_context=DifyExecutionContextLayerConfig(
                     tenant_id=context.dify_context.tenant_id,
                     user_id=context.dify_context.user_id,
+                    user_from=cast(DifyExecutionContextUserFrom, context.dify_context.user_from.value),
                     app_id=context.dify_context.app_id,
                     workflow_id=context.workflow_id,
                     workflow_run_id=context.workflow_run_id,
@@ -178,16 +217,21 @@ class WorkflowAgentRuntimeRequestBuilder:
                     conversation_id=get_system_text(context.variable_pool, SystemVariableKey.CONVERSATION_ID),
                     agent_id=context.agent.id,
                     agent_config_version_id=context.snapshot.id,
-                    invoke_from=self._agent_backend_invoke_from(context.dify_context.invoke_from),
+                    agent_mode=self._agent_backend_agent_mode(context.dify_context.invoke_from),
+                    invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
                 ),
-                agent_soul_prompt=agent_soul.prompt.system_prompt or None,
+                agent_soul_prompt=soul_prompt or None,
                 workflow_node_job_prompt=workflow_job_prompt,
                 user_prompt=user_prompt,
                 output=self._build_output_config(node_job.declared_outputs),
                 tools=tools_layer,
+                knowledge=knowledge_config,
+                drive_config=drive_config,
+                ask_human_config=build_ask_human_layer_config(agent_soul),
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
                 shell_config=build_shell_layer_config(agent_soul),
                 session_snapshot=context.session_snapshot,
+                deferred_tool_results=context.deferred_tool_results,
                 idempotency_key=self._idempotency_key(context),
                 metadata=metadata,
             )
@@ -202,7 +246,7 @@ class WorkflowAgentRuntimeRequestBuilder:
         )
 
     @staticmethod
-    def _agent_backend_invoke_from(invoke_from: InvokeFrom) -> Literal["workflow_run", "single_step"]:
+    def _agent_backend_agent_mode(invoke_from: InvokeFrom) -> Literal["workflow_run", "single_step"]:
         if invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.VALIDATION}:
             return "single_step"
         return "workflow_run"
@@ -248,7 +292,10 @@ class WorkflowAgentRuntimeRequestBuilder:
             "agent_config_snapshot_id": context.snapshot.id,
             "binding_id": context.binding.id,
             "workflow_node_job_mode": node_job.mode.value,
-            "runtime_support": build_runtime_feature_manifest(agent_soul),
+            "runtime_support": build_runtime_feature_manifest(
+                agent_soul,
+                drive_manifest_enabled=dify_config.AGENT_DRIVE_MANIFEST_ENABLED,
+            ),
         }
 
     def _build_workflow_context_prompt(
@@ -354,7 +401,11 @@ class WorkflowAgentRuntimeRequestBuilder:
 
     @staticmethod
     def _schema_for_declared_output(output: DeclaredOutputConfig) -> dict[str, Any]:
-        schema = WorkflowAgentRuntimeRequestBuilder._schema_for_type(output.type, array_item=output.array_item)
+        schema = WorkflowAgentRuntimeRequestBuilder._schema_for_type(
+            output.type,
+            array_item=output.array_item,
+            children=output.children,
+        )
         if output.description:
             schema["description"] = output.description
         return schema
@@ -364,6 +415,7 @@ class WorkflowAgentRuntimeRequestBuilder:
         output_type: DeclaredOutputType,
         *,
         array_item: DeclaredArrayItem | None = None,
+        children: Sequence[DeclaredOutputChildConfig] | None = None,
     ) -> dict[str, Any]:
         match output_type:
             case DeclaredOutputType.STRING:
@@ -373,30 +425,86 @@ class WorkflowAgentRuntimeRequestBuilder:
             case DeclaredOutputType.BOOLEAN:
                 return {"type": "boolean"}
             case DeclaredOutputType.OBJECT:
-                return {"type": "object"}
+                object_schema: dict[str, Any] = {"type": "object"}
+                WorkflowAgentRuntimeRequestBuilder._apply_child_properties(object_schema, children or [])
+                return object_schema
             case DeclaredOutputType.ARRAY:
                 # Stage 4 §4.2: items shape mirrors the declared array_item.
                 # Validator guarantees array_item is set when type is array.
                 item_type = array_item.type if array_item else DeclaredOutputType.OBJECT
-                schema: dict[str, Any] = {
+                array_schema: dict[str, Any] = {
                     "type": "array",
-                    "items": WorkflowAgentRuntimeRequestBuilder._schema_for_type(item_type),
+                    "items": WorkflowAgentRuntimeRequestBuilder._schema_for_type(
+                        item_type,
+                        children=array_item.children if array_item else None,
+                    ),
                 }
                 if array_item is not None and array_item.description:
-                    schema["items"]["description"] = array_item.description
-                return schema
+                    array_schema["items"]["description"] = array_item.description
+                return array_schema
             case DeclaredOutputType.FILE:
                 return {
-                    "type": "object",
-                    "properties": {
-                        "file_id": {"type": "string"},
-                        "filename": {"type": "string"},
-                        "mime_type": {"type": "string"},
-                        "url": {"type": "string"},
-                    },
-                    "required": ["file_id"],
+                    "oneOf": [
+                        {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "transfer_method": {"const": FileTransferMethod.LOCAL_FILE.value},
+                                "reference": {"type": "string"},
+                            },
+                            "required": ["transfer_method", "reference"],
+                        },
+                        {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "transfer_method": {"const": FileTransferMethod.TOOL_FILE.value},
+                                "reference": {"type": "string"},
+                            },
+                            "required": ["transfer_method", "reference"],
+                        },
+                        {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "transfer_method": {"const": FileTransferMethod.DATASOURCE_FILE.value},
+                                "reference": {"type": "string"},
+                            },
+                            "required": ["transfer_method", "reference"],
+                        },
+                        {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "transfer_method": {"const": FileTransferMethod.REMOTE_URL.value},
+                                "url": {"type": "string"},
+                            },
+                            "required": ["transfer_method", "url"],
+                        },
+                    ],
                 }
         assert_never(output_type)
+
+    @staticmethod
+    def _apply_child_properties(schema: dict[str, Any], children: Sequence[DeclaredOutputChildConfig]) -> None:
+        if not children:
+            return
+        properties: dict[str, Any] = {}
+        required: list[str] = []
+        for child in children:
+            child_schema = WorkflowAgentRuntimeRequestBuilder._schema_for_type(
+                child.type,
+                array_item=child.array_item,
+                children=child.children,
+            )
+            if child.description:
+                child_schema["description"] = child.description
+            properties[child.name] = child_schema
+            if child.required:
+                required.append(child.name)
+        schema["properties"] = properties
+        if required:
+            schema["required"] = required
 
     @staticmethod
     def _normalize_credentials(credentials: Mapping[str, Any]) -> dict[str, str | int | float | bool | None]:
@@ -431,6 +539,142 @@ def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfi
     )
 
 
+def build_knowledge_layer_config(agent_soul: AgentSoulConfig) -> DifyKnowledgeBaseLayerConfig | None:
+    """Map Agent Soul knowledge config into the fixed Dify knowledge-base layer.
+
+    Normalization intentionally matches the current dify-agent runtime contract:
+
+    - blank or missing dataset ids are ignored;
+    - if no valid dataset ids remain, no knowledge layer is injected;
+    - retrieval mode is always forced to ``multiple`` in this first wiring pass;
+    - ``top_k`` falls back to a stable runtime default when the soul omits it;
+    - ``score_threshold`` is only forwarded when the product config explicitly
+      enables it, otherwise the layer keeps the disabled/default ``0.0`` value;
+    - metadata filtering stays at the layer DTO default (disabled).
+    """
+    dataset_ids = list_configured_knowledge_dataset_ids(agent_soul)
+    if not dataset_ids:
+        return None
+
+    query_config = agent_soul.knowledge.query_config
+    return DifyKnowledgeBaseLayerConfig(
+        dataset_ids=dataset_ids,
+        retrieval=DifyKnowledgeRetrievalConfig(
+            mode="multiple",
+            top_k=_knowledge_top_k(query_config),
+            score_threshold=_knowledge_score_threshold(query_config),
+        ),
+    )
+
+
+def _knowledge_top_k(query_config: AgentKnowledgeQueryConfig) -> int:
+    top_k = query_config.top_k
+    return top_k if isinstance(top_k, int) and top_k >= 1 else 4
+
+
+def _knowledge_score_threshold(query_config: AgentKnowledgeQueryConfig) -> float:
+    if query_config.score_threshold_enabled and query_config.score_threshold is not None:
+        return query_config.score_threshold
+    return 0.0
+
+
+def build_ask_human_layer_config(agent_soul: AgentSoulConfig) -> DifyAskHumanLayerConfig | None:
+    """Enable the dify.ask_human deferred tool when the soul configures human involvement.
+
+    HITL is opt-in: only when at least one human contact is configured does the
+    model get the ``ask_human`` tool (recipients for the resulting form come from
+    those contacts, ENG-635). Returns ``None`` to leave the tool off entirely.
+    The tool/field guardrails use the layer defaults; ``human.tools`` semantics are
+    out of scope this round.
+    """
+    if not agent_soul.human.contacts:
+        return None
+    return DifyAskHumanLayerConfig()
+
+
+def append_runtime_warnings(metadata: dict[str, Any], warnings: list[dict[str, str]]) -> None:
+    """Merge build-time warnings into the metadata runtime-support manifest."""
+    if not warnings:
+        return
+    manifest = metadata.setdefault("runtime_support", {})
+    if isinstance(manifest, dict):
+        existing = manifest.setdefault("unsupported_runtime_warnings", [])
+        if isinstance(existing, list):
+            existing.extend(warnings)
+
+
+def build_drive_layer_config(
+    agent_soul: AgentSoulConfig,
+    *,
+    agent_id: str | None,
+) -> tuple[DifyDriveLayerConfig | None, list[dict[str, str]]]:
+    """Catalog the soul's drive-backed Skills & Files into the dify.drive declaration.
+
+    Returns ``(config, warnings)`` — ``config is None`` means nothing to inject
+    (no skills/files configured, or no agent identity to address the drive by).
+    Refs that predate standardization (no drive key) are skipped with a warning
+    instead of failing the run, so historic souls keep running.
+    """
+    skill_refs = agent_soul.skills_files.skills
+    file_refs = agent_soul.skills_files.files
+    if not skill_refs and not file_refs:
+        return None, []
+
+    warnings: list[dict[str, str]] = []
+    if not agent_id:
+        warnings.append(
+            {
+                "section": "agent_soul.skills_files",
+                "code": "skill_ref_dangling",
+                "message": "skills_files is configured but the run has no bound agent to address a drive by.",
+            }
+        )
+        return None, warnings
+
+    skills: list[DifyDriveSkillConfig] = []
+    for skill in skill_refs:
+        if not skill.skill_md_key:
+            warnings.append(
+                {
+                    "section": "agent_soul.skills_files",
+                    "code": "skill_ref_dangling",
+                    "message": (
+                        f"skill_ref_dangling: skill '{skill.name or skill.id or 'unknown'}' has no drive key; "
+                        "re-standardize it to expose it at runtime."
+                    ),
+                }
+            )
+            continue
+        skills.append(
+            DifyDriveSkillConfig(
+                name=skill.name or skill.skill_md_key.split("/", 1)[0],
+                description=skill.description or "",
+                skill_md_key=skill.skill_md_key,
+                archive_key=skill.full_archive_key,
+            )
+        )
+
+    files: list[DifyDriveFileConfig] = []
+    for file in file_refs:
+        if not file.drive_key:
+            # Plain upload references (pre-ENG-625) are not drive-backed; they are
+            # simply invisible to the manifest rather than a defect worth warning on.
+            continue
+        size = file.get("size")
+        files.append(
+            DifyDriveFileConfig(
+                name=file.name or file.drive_key.rsplit("/", 1)[-1],
+                key=file.drive_key,
+                size=size if isinstance(size, int) else None,
+                mime_type=file.type,
+            )
+        )
+
+    if not skills and not files:
+        return None, warnings
+    return DifyDriveLayerConfig(drive_ref=f"agent-{agent_id}", skills=skills, files=files), warnings
+
+
 def _cli_tool_enabled(item: object) -> bool:
     """A CLI tool is bootstrapped unless explicitly disabled (default is enabled)."""
     data = _plain_mapping(item)
@@ -457,7 +701,32 @@ def _shell_cli_tool(item: object) -> DifyShellCliToolConfig | None:
     name = data.get("name") or data.get("tool_name") or data.get("label")
     if not commands and not isinstance(name, str):
         return None
-    return DifyShellCliToolConfig(name=name if isinstance(name, str) else None, install_commands=commands)
+    tool_env = data.get("env") if isinstance(data.get("env"), Mapping) else {}
+    env = [
+        env_var
+        for env_var in (_shell_env_var(item) for item in _env_entries(tool_env, "variables"))
+        if env_var is not None
+    ]
+    secret_refs = [
+        secret_ref
+        for secret_ref in (_shell_secret_ref(item) for item in _env_entries(tool_env, "secret_refs"))
+        if secret_ref is not None
+    ]
+    return DifyShellCliToolConfig(
+        name=name if isinstance(name, str) else None,
+        install_commands=commands,
+        env=env,
+        secret_refs=secret_refs,
+    )
+
+
+def _env_entries(env: object, key: str) -> list[object]:
+    if not isinstance(env, Mapping):
+        return []
+    entries = env.get(key)
+    if not isinstance(entries, list):
+        return []
+    return entries
 
 
 def _shell_env_var(item: object) -> DifyShellEnvVarConfig | None:
@@ -476,7 +745,13 @@ def _shell_secret_ref(item: object) -> DifyShellSecretRefConfig | None:
     name = _name_from_mapping(data)
     if name is None:
         return None
-    ref = data.get("ref") or data.get("id") or data.get("credential_id") or data.get("provider_credential_id")
+    ref = (
+        data.get("ref")
+        or data.get("value")
+        or data.get("id")
+        or data.get("credential_id")
+        or data.get("provider_credential_id")
+    )
     return DifyShellSecretRefConfig(name=name, ref=str(ref) if ref is not None else None)
 
 
