@@ -125,7 +125,7 @@ class TestActivateCheckApi:
 
         # Assert
         assert response["is_valid"] is True
-        mock_get_invitation.assert_called_once_with(None, "invitee@example.com", "valid_token", ANY)
+        mock_get_invitation.assert_called_once_with(None, "invitee@example.com", "valid_token", session=ANY)
 
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     def test_check_token_without_email(self, mock_get_invitation: MagicMock, app: Flask, mock_invitation):
@@ -146,7 +146,7 @@ class TestActivateCheckApi:
 
         # Assert
         assert response["is_valid"] is True
-        mock_get_invitation.assert_called_once_with("workspace-123", None, "valid_token", ANY)
+        mock_get_invitation.assert_called_once_with("workspace-123", None, "valid_token", session=ANY)
 
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     def test_check_token_normalizes_email_to_lowercase(
@@ -162,7 +162,7 @@ class TestActivateCheckApi:
             response = api.get()
 
         assert response["is_valid"] is True
-        mock_get_invitation.assert_called_once_with("workspace-123", "Invitee@Example.com", "valid_token", ANY)
+        mock_get_invitation.assert_called_once_with("workspace-123", "Invitee@Example.com", "valid_token", session=ANY)
 
 
 class TestActivateApi:
@@ -560,7 +560,9 @@ class TestActivateApi:
             response = api.post()
 
         assert response["result"] == "success"
-        mock_get_invitation.assert_called_once_with("workspace-123", "Invitee@Example.com", "valid_token", ANY)
+        mock_get_invitation.assert_called_once_with(
+            "workspace-123", "Invitee@Example.com", "valid_token", session=ANY
+        )
         mock_revoke_token.assert_called_once_with("workspace-123", "invitee@example.com", "valid_token")
 
     @patch("controllers.console.auth.activate.TenantService.create_tenant_member")
@@ -599,7 +601,7 @@ class TestActivateApi:
         mock_create_tenant_member.assert_called_once_with(
             mock_invitation["tenant"], mock_account, mock_db.session, role=TenantAccountRole.ADMIN
         )
-        mock_switch_tenant.assert_called_once_with(mock_account, mock_invitation["tenant"].id, ANY)
+        mock_switch_tenant.assert_called_once_with(mock_account, mock_invitation["tenant"].id, session=ANY)
         mock_revoke_token.assert_called_once_with("workspace-123", "invitee@example.com", "valid_token")
 
     @patch("controllers.console.auth.activate.TenantService.create_tenant_member")
@@ -634,5 +636,5 @@ class TestActivateApi:
 
         assert response["result"] == "success"
         mock_create_tenant_member.assert_not_called()
-        mock_switch_tenant.assert_called_once_with(mock_account, mock_invitation["tenant"].id, ANY)
+        mock_switch_tenant.assert_called_once_with(mock_account, mock_invitation["tenant"].id, session=ANY)
         mock_revoke_token.assert_called_once_with("workspace-123", "invitee@example.com", "valid_token")

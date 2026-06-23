@@ -115,11 +115,11 @@ class TestEnterpriseWorkspace:
         assert result["message"] == "enterprise workspace created."
         assert result["tenant"]["id"] == "tenant-id"
         assert result["tenant"]["name"] == "My Workspace"
-        mock_tenant_svc.create_tenant.assert_called_once_with("My Workspace", is_from_dashboard=True)
+        mock_tenant_svc.create_tenant.assert_called_once_with("My Workspace", is_from_dashboard=True, session=ANY)
         mock_tenant_svc.create_tenant_member.assert_called_once_with(
             mock_tenant, mock_account, mock_db.session, role="owner"
         )
-        mock_event.send.assert_called_once_with(mock_tenant, ANY)
+        mock_event.send.assert_called_once_with(mock_tenant)
 
     @patch("controllers.inner_api.workspace.workspace.db")
     def test_post_returns_404_when_owner_not_found(self, mock_db, api_instance, app: Flask):
@@ -183,5 +183,5 @@ class TestEnterpriseWorkspaceNoOwnerEmail:
         assert result["tenant"]["id"] == "tenant-id"
         assert result["tenant"]["encrypt_public_key"] == "pub-key"
         assert result["tenant"]["custom_config"] == {}
-        mock_tenant_svc.create_tenant.assert_called_once_with("My Workspace", is_from_dashboard=True)
-        mock_event.send.assert_called_once_with(mock_tenant, ANY)
+        mock_tenant_svc.create_tenant.assert_called_once_with("My Workspace", is_from_dashboard=True, session=ANY)
+        mock_event.send.assert_called_once_with(mock_tenant)

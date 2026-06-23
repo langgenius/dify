@@ -635,6 +635,7 @@ class TestWorkflowRunService:
             name="Test User",
             password="password123",
             interface_language="en-US",
+            session=db_session_with_containers,
         )
         TenantService.create_owner_tenant_if_not_exist(account, name="test_tenant", session=db_session_with_containers)
         tenant = account.current_tenant

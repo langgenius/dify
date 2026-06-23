@@ -424,9 +424,9 @@ class TestChangeEmailReset:
             method(api, current_user)
 
             mock_is_freeze.assert_called_once_with("new@example.com")
-            mock_check_unique.assert_called_once_with("new@example.com", ANY)
+            mock_check_unique.assert_called_once_with("new@example.com", session=ANY)
             mock_revoke_token.assert_called_once_with("token-123")
-            mock_update_account.assert_called_once_with(current_user, email="new@example.com")
+            mock_update_account.assert_called_once_with(current_user, email="new@example.com", session=ANY)
             mock_send_notify.assert_called_once_with(email="new@example.com")
 
     @patch("controllers.console.workspace.account.AccountService.send_change_email_completed_notify_email")
@@ -680,7 +680,7 @@ class TestCheckEmailUnique:
 
         assert response == {"result": "success"}
         mock_is_freeze.assert_called_once_with("case@test.com")
-        mock_check_unique.assert_called_once_with("case@test.com", ANY)
+        mock_check_unique.assert_called_once_with("case@test.com", session=ANY)
 
 
 def test_get_account_by_email_with_case_fallback_uses_lowercase_lookup():

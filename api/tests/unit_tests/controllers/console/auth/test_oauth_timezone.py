@@ -66,8 +66,9 @@ def test_generate_account_registers_with_browser_timezone(
         provider="github",
         language="zh-Hans",
         timezone="Asia/Shanghai",
+        session=ANY,
     )
-    mock_link_account.assert_called_once_with("github", "github-123", account)
+    mock_link_account.assert_called_once_with("github", "github-123", account, session=ANY)
 
 
 @patch("controllers.console.auth.oauth.AccountService.link_account_integrate")
@@ -99,7 +100,7 @@ def test_generate_account_prefers_state_language_over_accept_language(
         timezone=None,
         session=ANY,
     )
-    mock_link_account.assert_called_once_with("github", "github-123", account)
+    mock_link_account.assert_called_once_with("github", "github-123", account, session=ANY)
 
 
 @patch("controllers.console.auth.oauth.dify_config")
