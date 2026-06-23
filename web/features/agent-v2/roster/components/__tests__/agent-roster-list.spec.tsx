@@ -220,7 +220,8 @@ describe('AgentRosterList', () => {
     await user.click(screen.getByRole('menuitem', { name: /common\.operation\.duplicate/ }))
 
     const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.duplicateDialog.title' })
-    expect(within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.nameLabel/ })).toHaveValue('Research Agent copy')
+    expect(within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.nameLabel/ })).toHaveValue('')
+    expect(within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.nameLabel/ })).toHaveAttribute('placeholder', 'Research Agent copy')
     expect(within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.roleLabel/ })).toHaveValue('Research Assistant')
     expect(within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.descriptionLabel/ })).toHaveValue('Find and summarize market materials.')
     expect(duplicateAgentMutationFn).not.toHaveBeenCalled()
@@ -242,12 +243,13 @@ describe('AgentRosterList', () => {
     await user.click(screen.getByRole('menuitem', { name: /common\.operation\.duplicate/ }))
 
     const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.duplicateDialog.title' })
-    expect(within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.nameLabel/ })).toHaveValue('Research Agent copy')
+    expect(within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.nameLabel/ })).toHaveValue('')
+    expect(within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.nameLabel/ })).toHaveAttribute('placeholder', 'Research Agent copy')
     expect(within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.descriptionLabel/ })).toHaveValue('Summarize new market updates.')
     expect(within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.roleLabel/ })).toHaveValue('Market Researcher')
   })
 
-  it('duplicates an agent with the prefilled copy name', async () => {
+  it('duplicates an agent with backend-generated naming when the dialog name is empty', async () => {
     const user = userEvent.setup()
     renderList([createAgent()])
 
@@ -263,7 +265,6 @@ describe('AgentRosterList', () => {
           agent_id: 'agent-1',
         },
         body: {
-          name: 'Research Agent copy',
           description: 'Find and summarize market materials.',
           role: 'Research Assistant',
           icon: '🧸',
@@ -275,6 +276,7 @@ describe('AgentRosterList', () => {
         client: expect.any(QueryClient),
       }),
     )
+    expect(duplicateAgentMutationFn.mock.calls[0]?.[0].body).not.toHaveProperty('name')
     await waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith('agentV2.roster.duplicateSuccess')
     })

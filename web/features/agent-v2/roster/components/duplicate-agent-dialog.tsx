@@ -4,15 +4,17 @@ import type { AgentAppCopyPayload, AgentAppPartial } from '@dify/contracts/api/c
 import type { AgentFormValues, AgentIconSelection } from './agent-form'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { FieldControl, FieldError, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import { consoleQuery } from '@/service/client'
 import { createAgentIconSelection } from './agent-form'
-import { AgentFormFields } from './agent-form-fields'
 
 type DuplicateAgentDialogProps = {
   agent: AgentAppPartial
@@ -43,16 +45,17 @@ export function DuplicateAgentDialog({
     },
   })) ?? agent
   const [renderedFormKey, setRenderedFormKey] = useState(formKey)
-  const [name, setName] = useState(() => getDefaultCopyName(latestAgent.name))
+  const [name, setName] = useState('')
   const [description, setDescription] = useState(latestAgent.description ?? '')
   const [role, setRole] = useState(latestAgent.role ?? '')
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
   const [agentIcon, setAgentIcon] = useState<AgentIconSelection>(() => createAgentIconSelection(latestAgent))
   const duplicateAgentMutation = useMutation(consoleQuery.agent.byAgentId.copy.post.mutationOptions())
+  const defaultCopyName = getDefaultCopyName(latestAgent.name)
 
   if (formKey !== renderedFormKey) {
     setRenderedFormKey(formKey)
-    setName(getDefaultCopyName(latestAgent.name))
+    setName('')
     setDescription(latestAgent.description ?? '')
     setRole(latestAgent.role ?? '')
     setIconPickerOpen(false)
@@ -68,7 +71,7 @@ export function DuplicateAgentDialog({
           },
         },
       })) ?? agent
-      setName(getDefaultCopyName(currentAgent.name))
+      setName('')
       setDescription(currentAgent.description ?? '')
       setRole(currentAgent.role ?? '')
       setAgentIcon(createAgentIconSelection(currentAgent))
@@ -86,12 +89,12 @@ export function DuplicateAgentDialog({
     const trimmedName = formValues.name?.trim() ?? ''
     const trimmedRole = formValues.role?.trim() ?? ''
     const body: AgentAppCopyPayload = {
-      name: trimmedName,
       description: formValues.description?.trim() ?? '',
       role: trimmedRole,
       icon_type: agentIcon.type,
       icon: agentIcon.type === 'image' ? agentIcon.fileId : agentIcon.icon,
       icon_background: agentIcon.type === 'emoji' ? agentIcon.background : undefined,
+      ...(trimmedName ? { name: trimmedName } : {}),
     }
 
     duplicateAgentMutation.mutate({
@@ -125,17 +128,83 @@ export function DuplicateAgentDialog({
             className="min-h-0 flex-1"
             onFormSubmit={handleSubmit}
           >
-            <AgentFormFields
-              description={description}
-              icon={agentIcon}
-              iconAriaLabel={t('roster.duplicateForm.changeIcon', { name: latestAgent.name })}
-              name={name}
-              role={role}
-              onDescriptionChange={setDescription}
-              onIconClick={() => setIconPickerOpen(true)}
-              onNameChange={setName}
-              onRoleChange={setRole}
-            />
+            <div className="space-y-5 px-6 py-3">
+              <div className="flex items-end gap-4 pb-2">
+                <button
+                  type="button"
+                  aria-label={t('roster.duplicateForm.changeIcon', { name: latestAgent.name })}
+                  className="shrink-0 rounded-full outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                  onClick={() => setIconPickerOpen(true)}
+                >
+                  <AppIcon
+                    size="xxl"
+                    rounded
+                    className="size-16 cursor-pointer"
+                    iconType={agentIcon.type === 'link' ? 'image' : agentIcon.type}
+                    icon={agentIcon.type === 'emoji' ? agentIcon.icon : undefined}
+                    background={agentIcon.type === 'emoji' ? agentIcon.background : undefined}
+                    imageUrl={agentIcon.type === 'emoji' ? undefined : agentIcon.url}
+                  />
+                </button>
+                <div className="flex min-w-0 flex-1 gap-3 pb-1">
+                  <FieldRoot name="name" className="relative min-w-0 flex-1">
+                    <FieldLabel>
+                      {t('roster.createForm.nameLabel')}
+                      <span className="ml-1 system-xs-regular text-text-tertiary">
+                        {tCommon('label.optional')}
+                      </span>
+                    </FieldLabel>
+                    <FieldControl
+                      autoComplete="off"
+                      // eslint-disable-next-line jsx-a11y/no-autofocus -- The duplicate dialog opens from an explicit command, and naming the copy is the primary editable action.
+                      autoFocus
+                      maxLength={255}
+                      onValueChange={setName}
+                      placeholder={defaultCopyName}
+                      value={name}
+                    />
+                  </FieldRoot>
+                  <FieldRoot
+                    name="role"
+                    className="relative min-w-0 flex-1"
+                    validate={(value) => {
+                      if (typeof value === 'string' && value.length > 0 && !value.trim())
+                        return t('roster.createForm.roleRequired')
+
+                      return null
+                    }}
+                  >
+                    <FieldLabel>
+                      {t('roster.createForm.roleLabel')}
+                    </FieldLabel>
+                    <FieldControl
+                      autoComplete="off"
+                      maxLength={255}
+                      onValueChange={setRole}
+                      placeholder={t('roster.createForm.rolePlaceholder')}
+                      required
+                      value={role}
+                    />
+                    <div className="absolute top-full left-0 mt-1">
+                      <FieldError match="valueMissing">{t('roster.createForm.roleRequired')}</FieldError>
+                      <FieldError match="customError" />
+                    </div>
+                  </FieldRoot>
+                </div>
+              </div>
+              <FieldRoot name="description">
+                <FieldLabel>
+                  {t('roster.createForm.descriptionLabel')}
+                </FieldLabel>
+                <Textarea
+                  autoComplete="off"
+                  className="h-20 resize-none"
+                  onValueChange={setDescription}
+                  placeholder={t('roster.createForm.descriptionPlaceholder')}
+                  value={description}
+                />
+              </FieldRoot>
+            </div>
             <div className="flex shrink-0 justify-end gap-2 px-6 pt-5 pb-6">
               <Button type="button" className="min-w-18" onClick={() => handleOpenChange(false)} disabled={duplicateAgentMutation.isPending}>
                 {tCommon('operation.cancel')}
