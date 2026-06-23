@@ -1,4 +1,4 @@
-from core.app.entities.queue_entities import QueueStopEvent
+from core.app.entities.queue_entities import QueueEvent, QueueReasoningChunkEvent, QueueStopEvent
 
 
 class TestQueueEntities:
@@ -10,3 +10,17 @@ class TestQueueEntities:
         event = QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL)
         event.stopped_by = "unknown"
         assert event.get_stop_reason() == "Stopped by unknown reason."
+
+    def test_reasoning_chunk_event_defaults(self):
+        event = QueueReasoningChunkEvent(reasoning="thinking", from_node_id="llm")
+        assert event.event == QueueEvent.REASONING_CHUNK
+        assert event.reasoning == "thinking"
+        assert event.from_node_id == "llm"
+        assert event.is_final is False
+        assert event.in_iteration_id is None
+        assert event.in_loop_id is None
+
+    def test_reasoning_chunk_event_terminal_marker_allows_empty_reasoning(self):
+        event = QueueReasoningChunkEvent(reasoning="", from_node_id="llm", is_final=True)
+        assert event.reasoning == ""
+        assert event.is_final is True

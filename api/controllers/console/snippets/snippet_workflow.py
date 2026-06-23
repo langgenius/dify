@@ -165,7 +165,6 @@ class SnippetDraftWorkflowApi(Resource):
     @account_initialization_required
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False)
     def get(self, snippet: CustomizedSnippet):
         """Get draft workflow for snippet."""
         snippet_service = _snippet_service()
@@ -234,7 +233,6 @@ class SnippetDraftConfigApi(Resource):
     @account_initialization_required
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False)
     def get(self, snippet: CustomizedSnippet):
         """Get snippet draft workflow configuration limits."""
         return {
@@ -256,7 +254,6 @@ class SnippetPublishedWorkflowApi(Resource):
     @account_initialization_required
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False)
     def get(self, snippet: CustomizedSnippet):
         """Get published workflow for snippet."""
         if not snippet.is_published:
@@ -321,7 +318,6 @@ class SnippetDefaultBlockConfigsApi(Resource):
     @account_initialization_required
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False)
     def get(self, snippet: CustomizedSnippet):
         """Get default block configurations for snippet workflow."""
         snippet_service = _snippet_service()
@@ -344,7 +340,9 @@ class SnippetPublishedAllWorkflowApi(Resource):
     @account_initialization_required
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False)
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
+    )
     def get(self, snippet: CustomizedSnippet):
         """Get all published workflow versions for snippet."""
         args = SnippetWorkflowListQuery.model_validate(request.args.to_dict(flat=True))
@@ -514,9 +512,6 @@ class SnippetDraftNodeRunApi(Resource):
     @with_current_user
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
     def post(self, current_user: Account, snippet: CustomizedSnippet, node_id: str):
         """
         Run a single node in snippet draft workflow.
@@ -605,9 +600,6 @@ class SnippetDraftRunIterationNodeApi(Resource):
     @with_current_user
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
     def post(self, current_user: Account, snippet: CustomizedSnippet, node_id: str):
         """
         Run a draft workflow iteration node for snippet.
@@ -653,9 +645,6 @@ class SnippetDraftRunLoopNodeApi(Resource):
     @with_current_user
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
     def post(self, current_user: Account, snippet: CustomizedSnippet, node_id: str):
         """
         Run a draft workflow loop node for snippet.
@@ -699,9 +688,6 @@ class SnippetDraftWorkflowRunApi(Resource):
     @with_current_user
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
     def post(self, current_user: Account, snippet: CustomizedSnippet):
         """
         Run draft workflow for snippet.
@@ -740,9 +726,6 @@ class SnippetWorkflowTaskStopApi(Resource):
     @account_initialization_required
     @get_snippet
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
     def post(self, snippet: CustomizedSnippet, task_id: str):
         """
         Stop a running snippet workflow task.

@@ -113,6 +113,9 @@ export type IChatItem = {
   suggestedQuestions?: string[]
   log?: { role: string, text: string, files?: FileEntity[] }[]
   agent_thoughts?: ThoughtItem[]
+  // for LLM reasoning (chain-of-thought) in "separated" mode, keyed by LLM node id
+  reasoningContent?: Record<string, string>
+  reasoningFinished?: boolean
   message_files?: FileEntity[]
   workflow_run_id?: string
   // for agent log
