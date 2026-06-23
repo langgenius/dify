@@ -43,7 +43,7 @@ def test_stub_server_cli_passes_explicit_uvicorn_settings(monkeypatch) -> None:
     }
 
 
-def test_stub_server_cli_switches_to_grpc_when_agent_stub_url_uses_grpc(monkeypatch) -> None:
+def test_stub_server_cli_switches_to_grpc_when_agent_stub_api_base_url_uses_grpc(monkeypatch) -> None:
     captured: dict[str, object] = {}
 
     async def fake_serve_grpc(*, settings, host, port) -> None:
@@ -51,7 +51,7 @@ def test_stub_server_cli_switches_to_grpc_when_agent_stub_url_uses_grpc(monkeypa
 
     monkeypatch.setattr(cli_module, "_serve_grpc", fake_serve_grpc)
     monkeypatch.setattr(
-        cli_module, "ServerSettings", lambda: type("Settings", (), {"agent_stub_url": "grpc://agent:9091"})()
+        cli_module, "ServerSettings", lambda: type("Settings", (), {"agent_stub_api_base_url": "grpc://agent:9091"})()
     )
 
     cli_module.main(["--host", "0.0.0.0", "--port", "9092"])
@@ -84,7 +84,7 @@ def test_serve_grpc_derives_default_bind_target_and_closes_server(monkeypatch) -
         "Settings",
         (),
         {
-            "agent_stub_url": "grpc://agent.example.com:9091",
+            "agent_stub_api_base_url": "grpc://agent.example.com:9091",
             "agent_stub_grpc_bind_address": None,
             "create_agent_stub_token_codec": lambda self: "token-codec",
             "create_agent_stub_file_request_handler": lambda self: "file-handler",
@@ -124,7 +124,7 @@ def test_serve_grpc_applies_cli_host_port_overrides(monkeypatch) -> None:
         "Settings",
         (),
         {
-            "agent_stub_url": "grpc://agent.example.com:9091",
+            "agent_stub_api_base_url": "grpc://agent.example.com:9091",
             "agent_stub_grpc_bind_address": "127.0.0.1:9191",
             "create_agent_stub_token_codec": lambda self: None,
             "create_agent_stub_file_request_handler": lambda self: None,

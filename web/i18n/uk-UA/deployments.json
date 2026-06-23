@@ -613,6 +613,7 @@
   "versions.releaseDescriptionLabel": "Опис",
   "versions.releaseDescriptionPlaceholder": "Опишіть цей реліз",
   "versions.releaseHistory": "Історія релізів",
+  "versions.releaseNameConflict": "Реліз із такою назвою вже існує. Виберіть іншу назву.",
   "versions.releaseNameLabel": "Назва Релізу",
   "versions.releaseNamePlaceholder": "Назва Релізу",
   "versions.releaseNameRequired": "Введіть назву релізу.",

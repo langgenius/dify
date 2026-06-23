@@ -49,12 +49,21 @@ def test_server_settings_defaults_shellctl_auth_token_to_none(
 
 
 def test_server_settings_reads_agent_stub_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub/")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub/")
     monkeypatch.setenv("DIFY_AGENT_SERVER_SECRET_KEY", _base64url_secret(secrets.token_bytes(32)))
 
     settings = ServerSettings()
 
-    assert settings.agent_stub_url == "https://agent.example.com/agent-stub"
+    assert settings.agent_stub_api_base_url == "https://agent.example.com/agent-stub"
+
+
+def test_server_settings_normalizes_agent_stub_service_root_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com")
+    monkeypatch.setenv("DIFY_AGENT_SERVER_SECRET_KEY", _base64url_secret(secrets.token_bytes(32)))
+
+    settings = ServerSettings()
+
+    assert settings.agent_stub_api_base_url == "https://agent.example.com/agent-stub"
 
 
 def test_server_settings_ignores_obsolete_legacy_settings_namespace(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -63,45 +72,53 @@ def test_server_settings_ignores_obsolete_legacy_settings_namespace(monkeypatch:
 
     settings = ServerSettings()
 
-    assert settings.agent_stub_url is None
+    assert settings.agent_stub_api_base_url is None
 
 
-def test_server_settings_rejects_agent_stub_url_with_query_or_fragment() -> None:
+def test_server_settings_rejects_agent_stub_api_base_url_with_query_or_fragment() -> None:
     secret = _base64url_secret(secrets.token_bytes(32))
 
     with pytest.raises(ValidationError, match="query string or fragment"):
         _ = ServerSettings(
-            agent_stub_url="https://agent.example.com/agent-stub?x=1",
+            agent_stub_api_base_url="https://agent.example.com/agent-stub?x=1",
             server_secret_key=secret,
         )
 
     with pytest.raises(ValidationError, match="query string or fragment"):
         _ = ServerSettings(
-            agent_stub_url="https://agent.example.com/agent-stub#fragment",
+            agent_stub_api_base_url="https://agent.example.com/agent-stub#fragment",
             server_secret_key=secret,
         )
 
 
-def test_server_settings_rejects_public_agent_stub_url_without_secret_key() -> None:
+def test_server_settings_rejects_agent_stub_api_base_url_with_unexpected_path() -> None:
+    with pytest.raises(ValidationError, match="empty or /agent-stub"):
+        _ = ServerSettings(
+            agent_stub_api_base_url="https://agent.example.com/foo",
+            server_secret_key=_base64url_secret(secrets.token_bytes(32)),
+        )
+
+
+def test_server_settings_rejects_public_agent_stub_api_base_url_without_secret_key() -> None:
     with pytest.raises(ValidationError, match="DIFY_AGENT_SERVER_SECRET_KEY"):
-        _ = ServerSettings(agent_stub_url="https://agent.example.com/agent-stub")
+        _ = ServerSettings(agent_stub_api_base_url="https://agent.example.com/agent-stub")
 
 
-def test_server_settings_accepts_grpc_agent_stub_url_and_bind_override() -> None:
+def test_server_settings_accepts_grpc_agent_stub_api_base_url_and_bind_override() -> None:
     settings = ServerSettings(
-        agent_stub_url="grpc://agent.example.com:9091",
+        agent_stub_api_base_url="grpc://agent.example.com:9091",
         agent_stub_grpc_bind_address="0.0.0.0:9191",
         server_secret_key=_base64url_secret(secrets.token_bytes(32)),
     )
 
-    assert settings.agent_stub_url == "grpc://agent.example.com:9091"
+    assert settings.agent_stub_api_base_url == "grpc://agent.example.com:9091"
     assert settings.agent_stub_grpc_bind_address == "0.0.0.0:9191"
 
 
 def test_server_settings_rejects_grpc_bind_override_without_grpc_url() -> None:
     with pytest.raises(ValidationError, match="grpc://"):
         _ = ServerSettings(
-            agent_stub_url="https://agent.example.com/agent-stub",
+            agent_stub_api_base_url="https://agent.example.com/agent-stub",
             agent_stub_grpc_bind_address="0.0.0.0:9191",
             server_secret_key=_base64url_secret(secrets.token_bytes(32)),
         )
@@ -122,36 +139,33 @@ def test_server_settings_rejects_padded_or_quoted_server_secret_key() -> None:
         _ = ServerSettings(server_secret_key=f'"{secret}"')
 
 
-def test_server_settings_normalizes_dify_api_base_url_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("DIFY_AGENT_DIFY_API_BASE_URL", "https://api.example.com/")
-    monkeypatch.setenv("DIFY_AGENT_DIFY_API_INNER_API_KEY", "inner-secret")
+def test_server_settings_normalizes_inner_api_url_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DIFY_AGENT_INNER_API_URL", "https://api.example.com/")
+    monkeypatch.setenv("DIFY_AGENT_INNER_API_KEY", "inner-secret")
 
     settings = ServerSettings()
 
-    assert settings.dify_api_base_url == "https://api.example.com"
-    assert settings.dify_api_inner_api_key == "inner-secret"
+    assert settings.inner_api_url == "https://api.example.com"
+    assert settings.inner_api_key == "inner-secret"
 
 
-def test_server_settings_requires_inner_api_key_when_dify_api_base_url_is_set() -> None:
-    with pytest.raises(ValidationError, match="DIFY_AGENT_DIFY_API_INNER_API_KEY"):
-        _ = ServerSettings(dify_api_base_url="https://api.example.com")
-
-    settings = ServerSettings(dify_api_inner_api_key="inner-secret")
-    assert settings.dify_api_inner_api_key == "inner-secret"
-    assert settings.dify_api_base_url is None
+def test_server_settings_allows_inner_api_url_without_key_until_a_bridge_is_used() -> None:
+    settings = ServerSettings(inner_api_key="inner-secret")
+    assert settings.inner_api_key == "inner-secret"
+    assert settings.inner_api_url == "http://localhost:5001"
 
 
-def test_server_settings_rejects_dify_api_base_url_with_query_or_fragment() -> None:
+def test_server_settings_rejects_inner_api_url_with_query_or_fragment() -> None:
     with pytest.raises(ValidationError, match="query string or fragment"):
         _ = ServerSettings(
-            dify_api_base_url="https://api.example.com?x=1",
-            dify_api_inner_api_key="inner-secret",
+            inner_api_url="https://api.example.com?x=1",
+            inner_api_key="inner-secret",
         )
 
     with pytest.raises(ValidationError, match="query string or fragment"):
         _ = ServerSettings(
-            dify_api_base_url="https://api.example.com#frag",
-            dify_api_inner_api_key="inner-secret",
+            inner_api_url="https://api.example.com#frag",
+            inner_api_key="inner-secret",
         )
 
 
@@ -173,15 +187,15 @@ def test_server_settings_create_agent_stub_file_request_handler_returns_none_wit
 
 def test_server_settings_create_agent_stub_file_request_handler_returns_handler_when_configured() -> None:
     settings = ServerSettings(
-        dify_api_base_url="https://api.example.com",
-        dify_api_inner_api_key="inner-secret",
+        inner_api_url="https://api.example.com",
+        inner_api_key="inner-secret",
     )
 
     handler = settings.create_agent_stub_file_request_handler()
 
     assert isinstance(handler, DifyApiAgentStubFileRequestHandler)
-    assert handler.dify_api_base_url == "https://api.example.com"
-    assert handler.dify_api_inner_api_key == "inner-secret"
+    assert handler.inner_api_url == "https://api.example.com"
+    assert handler.inner_api_key == "inner-secret"
 
 
 def test_server_settings_create_agent_stub_drive_request_handler_returns_none_without_full_settings() -> None:
@@ -190,8 +204,8 @@ def test_server_settings_create_agent_stub_drive_request_handler_returns_none_wi
 
 def test_server_settings_create_agent_stub_drive_request_handler_returns_handler_when_configured() -> None:
     settings = ServerSettings(
-        dify_api_base_url="https://api.example.com",
-        dify_api_inner_api_key="inner-secret",
+        inner_api_url="https://api.example.com",
+        inner_api_key="inner-secret",
         outbound_http_connect_timeout=11,
         outbound_http_read_timeout=22,
         outbound_http_write_timeout=33,
@@ -201,8 +215,8 @@ def test_server_settings_create_agent_stub_drive_request_handler_returns_handler
     handler = settings.create_agent_stub_drive_request_handler()
 
     assert isinstance(handler, DifyApiAgentStubDriveRequestHandler)
-    assert handler.dify_api_base_url == "https://api.example.com"
-    assert handler.dify_api_inner_api_key == "inner-secret"
+    assert handler.inner_api_url == "https://api.example.com"
+    assert handler.inner_api_key == "inner-secret"
     timeout = cast(httpx.Timeout, handler.timeout)
     assert timeout.connect == 11
     assert timeout.read == 22

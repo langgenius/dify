@@ -26,7 +26,7 @@ def test_cli_connect_reports_missing_environment_variables(capsys: pytest.Captur
 
     captured = capsys.readouterr()
     assert exc_info.value.code == 2
-    assert "DIFY_AGENT_STUB_URL" in captured.err
+    assert "DIFY_AGENT_STUB_API_BASE_URL" in captured.err
     assert "DIFY_AGENT_STUB_AUTH_JWE" in captured.err
 
 
@@ -34,7 +34,7 @@ def test_cli_connect_supports_json_output(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
 
     def fake_connect_from_environment(*, argv: list[str]) -> AgentStubConnectResponse:
@@ -53,7 +53,7 @@ def test_cli_unknown_command_auto_forwards_when_agent_stub_env_is_present(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
 
     def fake_connect_from_environment(*, argv: list[str]) -> AgentStubConnectResponse:
@@ -78,7 +78,7 @@ def test_cli_unknown_command_reports_missing_environment_variables(
     assert exc_info.value.code == 2
     assert "Usage: dify-agent" in captured.out
     assert "connect" in captured.out
-    assert "DIFY_AGENT_STUB_URL" in captured.err
+    assert "DIFY_AGENT_STUB_API_BASE_URL" in captured.err
     assert "DIFY_AGENT_STUB_AUTH_JWE" in captured.err
 
 
@@ -92,11 +92,11 @@ def test_cli_connect_help_routes_to_typer_help(capsys: pytest.CaptureFixture[str
     assert "--json" in captured.out
 
 
-def test_cli_reports_invalid_agent_stub_url_environment_value(
+def test_cli_reports_invalid_agent_stub_api_base_url_environment_value(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub?x=1")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub?x=1")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
 
     with pytest.raises(SystemExit) as exc_info:
@@ -104,7 +104,7 @@ def test_cli_reports_invalid_agent_stub_url_environment_value(
 
     captured = capsys.readouterr()
     assert exc_info.value.code == 2
-    assert "invalid DIFY_AGENT_STUB_URL" in captured.err
+    assert "invalid DIFY_AGENT_STUB_API_BASE_URL" in captured.err
     assert "query string or fragment" in captured.err
 
 
@@ -117,13 +117,13 @@ def test_cli_reports_invalid_agent_stub_url_environment_value(
         ("grpc://agent.example.com", "explicit port"),
     ],
 )
-def test_cli_reports_structurally_invalid_agent_stub_url_environment_value(
+def test_cli_reports_structurally_invalid_agent_stub_api_base_url_environment_value(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
     invalid_url: str,
     expected_message: str,
 ) -> None:
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", invalid_url)
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", invalid_url)
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
 
     with pytest.raises(SystemExit) as exc_info:
@@ -131,14 +131,14 @@ def test_cli_reports_structurally_invalid_agent_stub_url_environment_value(
 
     captured = capsys.readouterr()
     assert exc_info.value.code == 2
-    assert "invalid DIFY_AGENT_STUB_URL" in captured.err
+    assert "invalid DIFY_AGENT_STUB_API_BASE_URL" in captured.err
     assert expected_message in captured.err
 
 
-def test_cli_connect_accepts_grpc_agent_stub_url(
+def test_cli_connect_accepts_grpc_agent_stub_api_base_url(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "grpc://agent.example.com:9091")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "grpc://agent.example.com:9091")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
 
     def fake_connect_from_environment(*, argv: list[str]) -> AgentStubConnectResponse:
@@ -252,7 +252,10 @@ def test_cli_drive_pull_prints_downloaded_paths(
 ) -> None:
     monkeypatch.setattr(
         "dify_agent.agent_stub.cli.main.pull_drive_from_environment",
-        lambda *, prefix, drive_base: [Path(drive_base) / prefix / "SKILL.md", Path(drive_base) / prefix / "helper.py"],
+        lambda *, targets, drive_base: [
+            Path(drive_base) / targets[0] / "SKILL.md",
+            Path(drive_base) / targets[0] / "helper.py",
+        ],
     )
 
     with pytest.raises(SystemExit) as exc_info:
@@ -264,6 +267,83 @@ def test_cli_drive_pull_prints_downloaded_paths(
         "/tmp/drive/skills/example/SKILL.md",
         "/tmp/drive/skills/example/helper.py",
     ]
+
+
+def test_cli_drive_pull_forwards_multiple_targets(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    captured_kwargs: dict[str, object] = {}
+
+    def fake_pull_drive_from_environment(*, targets, drive_base):
+        captured_kwargs["targets"] = targets
+        captured_kwargs["drive_base"] = drive_base
+        return [Path(drive_base) / "skills" / "foo" / "SKILL.md"]
+
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli.main.pull_drive_from_environment",
+        fake_pull_drive_from_environment,
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["drive", "pull", "skills/foo", "files/a.txt", "--drive-base", "/tmp/drive"])
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert captured_kwargs == {"targets": ["skills/foo", "files/a.txt"], "drive_base": "/tmp/drive"}
+    assert captured.out.strip() == "/tmp/drive/skills/foo/SKILL.md"
+
+
+def test_cli_drive_pull_uses_environment_drive_base_default(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setenv("DIFY_AGENT_STUB_DRIVE_BASE", "/env/drive")
+    captured_kwargs: dict[str, object] = {}
+
+    def fake_pull_drive_from_environment(*, targets, drive_base):
+        captured_kwargs["targets"] = targets
+        captured_kwargs["drive_base"] = drive_base
+        return [Path(drive_base) / "skills" / "foo" / "SKILL.md"]
+
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli.main.pull_drive_from_environment",
+        fake_pull_drive_from_environment,
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["drive", "pull", "skills/foo"])
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert captured_kwargs == {"targets": ["skills/foo"], "drive_base": "/env/drive"}
+    assert captured.out.strip() == "/env/drive/skills/foo/SKILL.md"
+
+
+def test_cli_drive_pull_keeps_historical_drive_base_when_env_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.delenv("DIFY_AGENT_STUB_DRIVE_BASE", raising=False)
+    captured_kwargs: dict[str, object] = {}
+
+    def fake_pull_drive_from_environment(*, targets, drive_base):
+        captured_kwargs["targets"] = targets
+        captured_kwargs["drive_base"] = drive_base
+        return [Path(drive_base) / "skills" / "foo" / "SKILL.md"]
+
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli.main.pull_drive_from_environment",
+        fake_pull_drive_from_environment,
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["drive", "pull", "skills/foo"])
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert captured_kwargs == {"targets": ["skills/foo"], "drive_base": "/mnt/drive"}
+    assert captured.out.strip() == "/mnt/drive/skills/foo/SKILL.md"
 
 
 def test_cli_drive_push_prints_commit_json(

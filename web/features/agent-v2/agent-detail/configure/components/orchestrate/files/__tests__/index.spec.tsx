@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
+import { AgentDriveApiContextProvider } from '../../drive-context'
 import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
 import { AgentFiles } from '../index'
 
@@ -100,38 +101,10 @@ vi.mock('@/service/client', () => ({
 
 const agentFilesDraft = {
   ...defaultAgentSoulConfigFormState,
-  files: [
-    {
-      id: 'preview-image',
-      name: 'agent-roster-skill-detail-dialog-preview-image.png',
-      icon: 'image',
-      driveKey: 'files/agent-roster-skill-detail-dialog-preview-image.png',
-    },
-    {
-      id: 'brief',
-      name: 'brief.md',
-      icon: 'markdown',
-      driveKey: 'files/brief.md',
-    },
-  ],
 } satisfies AgentSoulConfigFormState
 
 const agentSkillFilesDraft = {
   ...defaultAgentSoulConfigFormState,
-  files: [
-    {
-      id: 'script',
-      name: 'run.py',
-      icon: 'file',
-      driveKey: 'files/run.py',
-    },
-    {
-      id: 'skill-md',
-      name: 'SKILL.md',
-      icon: 'markdown',
-      driveKey: 'files/SKILL.md',
-    },
-  ],
 } satisfies AgentSoulConfigFormState
 
 function renderAgentFiles(initialDraft: AgentSoulConfigFormState = agentFilesDraft) {
@@ -145,9 +118,11 @@ function renderAgentFiles(initialDraft: AgentSoulConfigFormState = agentFilesDra
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <AgentComposerProvider initialDraft={initialDraft}>
-        <AgentFiles agentId="agent-1" />
-      </AgentComposerProvider>
+      <AgentDriveApiContextProvider value={{ agentId: 'agent-1' }}>
+        <AgentComposerProvider initialDraft={initialDraft}>
+          <AgentFiles />
+        </AgentComposerProvider>
+      </AgentDriveApiContextProvider>
     </QueryClientProvider>,
   )
 }
@@ -163,11 +138,33 @@ function renderReadonlyAgentFiles() {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <AgentComposerProvider initialDraft={agentFilesDraft}>
-        <AgentOrchestrateReadOnlyContext value>
-          <AgentFiles agentId="agent-1" />
-        </AgentOrchestrateReadOnlyContext>
-      </AgentComposerProvider>
+      <AgentDriveApiContextProvider value={{ agentId: 'agent-1' }}>
+        <AgentComposerProvider initialDraft={agentFilesDraft}>
+          <AgentOrchestrateReadOnlyContext value>
+            <AgentFiles />
+          </AgentOrchestrateReadOnlyContext>
+        </AgentComposerProvider>
+      </AgentDriveApiContextProvider>
+    </QueryClientProvider>,
+  )
+}
+
+function renderWorkflowAgentFiles(initialDraft: AgentSoulConfigFormState = agentFilesDraft) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <AgentDriveApiContextProvider value={{ agentId: 'agent-1', workflow: { appId: 'app-1', nodeId: 'node-1' } }}>
+        <AgentComposerProvider initialDraft={initialDraft}>
+          <AgentFiles />
+        </AgentComposerProvider>
+      </AgentDriveApiContextProvider>
     </QueryClientProvider>,
   )
 }
@@ -175,13 +172,31 @@ function renderReadonlyAgentFiles() {
 describe('AgentFiles', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    const baseItems = [
+      {
+        file_kind: 'file',
+        key: 'files/agent-roster-skill-detail-dialog-preview-image.png',
+        mime_type: 'image/png',
+      },
+      {
+        file_kind: 'file',
+        key: 'files/brief.md',
+        mime_type: 'text/markdown',
+      },
+    ]
     mocks.agentDriveFilesQueryOptions.mockImplementation(({ input }) => ({
       queryKey: ['agent-drive-files', input],
-      queryFn: () => new Promise(() => {}),
+      initialData: { items: baseItems },
+      queryFn: async () => ({
+        items: baseItems,
+      }),
     }))
     mocks.workflowAgentDriveFilesQueryOptions.mockImplementation(({ input }) => ({
       queryKey: ['workflow-agent-drive-files', input],
-      queryFn: () => new Promise(() => {}),
+      initialData: { items: baseItems },
+      queryFn: async () => ({
+        items: baseItems,
+      }),
     }))
     mocks.agentFilePreviewQueryOptions.mockImplementation(({ input }) => ({
       queryKey: ['agent-file-preview', input],
@@ -264,6 +279,22 @@ describe('AgentFiles', () => {
     })
   })
 
+  it('should list workflow-node drive files under the files prefix', () => {
+    renderWorkflowAgentFiles()
+
+    expect(mocks.workflowAgentDriveFilesQueryOptions).toHaveBeenCalledWith({
+      input: {
+        params: {
+          app_id: 'app-1',
+        },
+        query: {
+          node_id: 'node-1',
+          prefix: 'files/',
+        },
+      },
+    })
+  })
+
   it('should keep the file preview trigger focus ring inside the row bounds', () => {
     renderAgentFiles()
 
@@ -300,6 +331,21 @@ describe('AgentFiles', () => {
   })
 
   it('should preview the clicked file when SKILL.md also exists', async () => {
+    mocks.agentDriveFilesQueryOptions.mockImplementation(({ input }) => ({
+      queryKey: ['agent-drive-files', input],
+      initialData: {
+        items: [
+          { file_kind: 'file', key: 'files/run.py', mime_type: 'text/x-python' },
+          { file_kind: 'file', key: 'files/SKILL.md', mime_type: 'text/markdown' },
+        ],
+      },
+      queryFn: async () => ({
+        items: [
+          { file_kind: 'file', key: 'files/run.py', mime_type: 'text/x-python' },
+          { file_kind: 'file', key: 'files/SKILL.md', mime_type: 'text/markdown' },
+        ],
+      }),
+    }))
     renderAgentFiles(agentSkillFilesDraft)
 
     fireEvent.click(screen.getByRole('button', {
@@ -322,6 +368,21 @@ describe('AgentFiles', () => {
   })
 
   it('should preview the selected file from the detail file tree', async () => {
+    mocks.agentDriveFilesQueryOptions.mockImplementation(({ input }) => ({
+      queryKey: ['agent-drive-files', input],
+      initialData: {
+        items: [
+          { file_kind: 'file', key: 'files/run.py', mime_type: 'text/x-python' },
+          { file_kind: 'file', key: 'files/SKILL.md', mime_type: 'text/markdown' },
+        ],
+      },
+      queryFn: async () => ({
+        items: [
+          { file_kind: 'file', key: 'files/run.py', mime_type: 'text/x-python' },
+          { file_kind: 'file', key: 'files/SKILL.md', mime_type: 'text/markdown' },
+        ],
+      }),
+    }))
     renderAgentFiles(agentSkillFilesDraft)
 
     fireEvent.click(screen.getByRole('button', {
@@ -368,13 +429,7 @@ describe('AgentFiles', () => {
       name: 'agent-roster-skill-detail-dialog-preview-image.png',
     }))
 
-    const image = await screen.findByRole('img', {
-      name: 'agent-roster-skill-detail-dialog-preview-image.png',
-    })
-
-    expect(image).toHaveAttribute('src', 'https://signed.example/files/agent-roster-skill-detail-dialog-preview-image.png')
-    expect(screen.queryByRole('link', { name: /common\.operation\.download/ })).not.toBeInTheDocument()
-    expect(screen.queryByText('image preview should not render as text')).not.toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(mocks.agentFileDownloadQueryOptions).toHaveBeenCalledWith({
       input: {
         params: {
@@ -411,10 +466,89 @@ describe('AgentFiles', () => {
     expect(screen.queryByText('Preview content for files/brief.md')).not.toBeInTheDocument()
   })
 
+  it('should use workflow preview and download routes when workflow context is active', async () => {
+    mocks.workflowAgentFilePreviewQueryOptions.mockImplementation(({ input }) => ({
+      queryKey: ['workflow-agent-file-preview', input],
+      queryFn: async () => ({
+        binary: true,
+        key: input.query.key,
+        size: 12345,
+        text: null,
+        truncated: false,
+      }),
+    }))
+    renderWorkflowAgentFiles()
+
+    fireEvent.click(screen.getByRole('button', {
+      name: 'brief.md',
+    }))
+
+    expect(mocks.workflowAgentFilePreviewQueryOptions).toHaveBeenCalledWith({
+      input: {
+        params: {
+          app_id: 'app-1',
+        },
+        query: {
+          node_id: 'node-1',
+          key: 'files/brief.md',
+        },
+      },
+    })
+    expect(mocks.workflowAgentFileDownloadQueryOptions).toHaveBeenCalledWith({
+      input: {
+        params: {
+          app_id: 'app-1',
+        },
+        query: {
+          node_id: 'node-1',
+          key: 'files/brief.md',
+        },
+      },
+    })
+    expect(await screen.findByRole('link', { name: 'common.operation.download' })).toHaveAttribute(
+      'href',
+      'https://signed.example/files/brief.md',
+    )
+  })
+
   it('should commit an uploaded file to the Agent App drive before adding it to the composer draft', async () => {
+    const driveFiles = [
+      {
+        file_kind: 'file',
+        key: 'files/agent-roster-skill-detail-dialog-preview-image.png',
+        mime_type: 'image/png',
+      },
+      {
+        file_kind: 'file',
+        key: 'files/brief.md',
+        mime_type: 'text/markdown',
+      },
+    ]
+    mocks.agentDriveFilesQueryOptions.mockImplementation(({ input }) => ({
+      queryKey: ['agent-drive-files', input],
+      initialData: { items: [...driveFiles] },
+      queryFn: async () => ({ items: [...driveFiles] }),
+    }))
+    mocks.agentFileCommitMutationOptions.mockReturnValue({
+      mutationFn: mocks.agentFileCommitMutationFn.mockImplementation(async () => {
+        driveFiles.push({
+          file_kind: 'file',
+          key: 'files/uploaded.md',
+          mime_type: 'text/markdown',
+        })
+        return {
+          file: {
+            drive_key: 'files/uploaded.md',
+            file_id: 'drive-file-1',
+            mime_type: 'text/markdown',
+            name: 'uploaded.md',
+          },
+        }
+      }),
+      mutationKey: ['commit-agent-file'],
+    })
     renderAgentFiles({
       ...defaultAgentSoulConfigFormState,
-      files: [],
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.files.add' }))
@@ -441,31 +575,188 @@ describe('AgentFiles', () => {
         expect.anything(),
       )
     })
+    expect(await screen.findByRole('button', { name: 'uploaded.md' })).toBeInTheDocument()
+  })
+
+  it('should commit an uploaded file through workflow-node drive endpoints and refresh the list', async () => {
+    const driveFiles = [
+      {
+        file_kind: 'file',
+        key: 'files/agent-roster-skill-detail-dialog-preview-image.png',
+        mime_type: 'image/png',
+      },
+      {
+        file_kind: 'file',
+        key: 'files/brief.md',
+        mime_type: 'text/markdown',
+      },
+    ]
+    mocks.workflowAgentDriveFilesQueryOptions.mockImplementation(({ input }) => ({
+      queryKey: ['workflow-agent-drive-files', input],
+      initialData: { items: [...driveFiles] },
+      queryFn: async () => ({ items: [...driveFiles] }),
+    }))
+    mocks.workflowAgentFileCommitMutationOptions.mockReturnValue({
+      mutationFn: mocks.workflowAgentFileCommitMutationFn.mockImplementation(async () => {
+        driveFiles.push({
+          file_kind: 'file',
+          key: 'files/uploaded.md',
+          mime_type: 'text/markdown',
+        })
+        return {
+          file: {
+            drive_key: 'files/uploaded.md',
+            file_id: 'drive-file-1',
+            mime_type: 'text/markdown',
+            name: 'uploaded.md',
+          },
+        }
+      }),
+      mutationKey: ['commit-workflow-agent-file'],
+    })
+    renderWorkflowAgentFiles({
+      ...defaultAgentSoulConfigFormState,
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.files.add' }))
+    const input = document.querySelector('input[type="file"]')
+    expect(input).toBeInstanceOf(HTMLInputElement)
+
+    fireEvent.change(input!, {
+      target: {
+        files: [new File(['# Uploaded'], 'uploaded.md', { type: 'text/markdown' })],
+      },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.files.upload.action' }))
+
+    await waitFor(() => {
+      expect(mocks.workflowAgentFileCommitMutationFn).toHaveBeenCalledWith(
+        {
+          params: {
+            app_id: 'app-1',
+          },
+          query: {
+            node_id: 'node-1',
+          },
+          body: {
+            upload_file_id: 'upload-file-1',
+          },
+        },
+        expect.anything(),
+      )
+    })
+    expect(await screen.findByRole('button', { name: 'uploaded.md' })).toBeInTheDocument()
   })
 
   // File rows expose a hover/focus remove action that updates the composer draft.
-  it('should remove the file from the list when the remove action is clicked', () => {
+  it('should delete the file when the remove action is clicked', async () => {
+    const driveFiles = [
+      {
+        file_kind: 'file',
+        key: 'files/agent-roster-skill-detail-dialog-preview-image.png',
+        mime_type: 'image/png',
+      },
+      {
+        file_kind: 'file',
+        key: 'files/brief.md',
+        mime_type: 'text/markdown',
+      },
+    ]
+    mocks.agentDriveFilesQueryOptions.mockImplementation(({ input }) => ({
+      queryKey: ['agent-drive-files', input],
+      initialData: { items: [...driveFiles] },
+      queryFn: async () => ({ items: [...driveFiles] }),
+    }))
+    mocks.agentFileDeleteMutationOptions.mockReturnValue({
+      mutationFn: mocks.agentFileDeleteMutationFn.mockImplementation(async () => {
+        driveFiles.splice(0, 1)
+        return { result: 'success' }
+      }),
+      mutationKey: ['delete-agent-file'],
+    })
     renderAgentFiles()
-
-    expect(screen.getByText('agent-roster-skill-detail-dialog-preview-image.png')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', {
       name: /agentV2\.agentDetail\.configure\.files\.remove.*agent-roster-skill-detail-dialog-preview-image\.png/,
     }))
 
-    expect(screen.queryByText('agent-roster-skill-detail-dialog-preview-image.png')).not.toBeInTheDocument()
-    expect(screen.getByText('brief.md')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(mocks.agentFileDeleteMutationFn).toHaveBeenCalledWith(
+        {
+          params: {
+            agent_id: 'agent-1',
+          },
+          query: {
+            key: 'files/agent-roster-skill-detail-dialog-preview-image.png',
+          },
+        },
+        expect.anything(),
+      )
+    })
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'agent-roster-skill-detail-dialog-preview-image.png' })).not.toBeInTheDocument()
+    })
+    expect(screen.getByRole('button', { name: 'brief.md' })).toBeInTheDocument()
   })
 
-  it('should render the empty state after removing every file', () => {
-    renderAgentFiles()
+  it('should delete a workflow-node file through workflow endpoints and refresh the list', async () => {
+    const driveFiles = [
+      {
+        file_kind: 'file',
+        key: 'files/agent-roster-skill-detail-dialog-preview-image.png',
+        mime_type: 'image/png',
+      },
+      {
+        file_kind: 'file',
+        key: 'files/brief.md',
+        mime_type: 'text/markdown',
+      },
+    ]
+    mocks.workflowAgentDriveFilesQueryOptions.mockImplementation(({ input }) => ({
+      queryKey: ['workflow-agent-drive-files', input],
+      initialData: { items: [...driveFiles] },
+      queryFn: async () => ({ items: [...driveFiles] }),
+    }))
+    mocks.workflowAgentFileDeleteMutationOptions.mockReturnValue({
+      mutationFn: mocks.workflowAgentFileDeleteMutationFn.mockImplementation(async () => {
+        driveFiles.splice(0, 1)
+        return { result: 'success' }
+      }),
+      mutationKey: ['delete-workflow-agent-file'],
+    })
+    renderWorkflowAgentFiles()
 
     fireEvent.click(screen.getByRole('button', {
       name: /agentV2\.agentDetail\.configure\.files\.remove.*agent-roster-skill-detail-dialog-preview-image\.png/,
     }))
-    fireEvent.click(screen.getByRole('button', {
-      name: /agentV2\.agentDetail\.configure\.files\.remove.*brief\.md/,
+
+    await waitFor(() => {
+      expect(mocks.workflowAgentFileDeleteMutationFn).toHaveBeenCalledWith(
+        {
+          params: {
+            app_id: 'app-1',
+          },
+          query: {
+            node_id: 'node-1',
+            key: 'files/agent-roster-skill-detail-dialog-preview-image.png',
+          },
+        },
+        expect.anything(),
+      )
+    })
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'agent-roster-skill-detail-dialog-preview-image.png' })).not.toBeInTheDocument()
+    })
+    expect(screen.getByRole('button', { name: 'brief.md' })).toBeInTheDocument()
+  })
+
+  it('should render the empty state when the drive file query returns no items', () => {
+    mocks.agentDriveFilesQueryOptions.mockImplementation(({ input }) => ({
+      queryKey: ['agent-drive-files', input],
+      initialData: { items: [] },
+      queryFn: async () => ({ items: [] }),
     }))
+    renderAgentFiles()
 
     expect(screen.getByText('agentV2.agentDetail.configure.files.empty.title')).toBeInTheDocument()
   })

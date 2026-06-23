@@ -27,10 +27,10 @@ export function AgentDetailLayout({
   useDocumentTitle(agentQuery.data?.name ?? t('agentDetail.documentTitle'))
 
   return (
-    <main className="relative flex h-full min-w-0 flex-col overflow-hidden">
+    <div className="relative flex h-full min-w-0 flex-col overflow-hidden">
       <div className="min-h-0 min-w-0 flex-1 overflow-auto">
         {children}
       </div>
-    </main>
+    </div>
   )
 }

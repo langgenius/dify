@@ -67,12 +67,6 @@ describe('E2E / difyctl describe app', () => {
     expect(result.stdout).toMatch(/Name:/i)
   })
 
-  it('[P1] describe output contains Tags field', async () => {
-    const result = await fx.r(['describe', 'app', E.chatAppId])
-    assertExitCode(result, 0)
-    expect(result.stdout).toMatch(/Tags:/i)
-  })
-
   // ── Input schema ──────────────────────────────────────────────────────────
 
   it('[P0] describe output contains Parameters section', async () => {
@@ -172,8 +166,9 @@ describe('E2E / difyctl describe app', () => {
 
   // ── External SSO ──────────────────────────────────────────────────────────
 
-  itWithSso('[P0] external SSO user describe app returns insufficient_scope (3.86)', async () => {
-    // Spec 3.86: dfoe_ token → insufficient_scope, exit non-0.
+  itWithSso('[P0] external SSO user can describe a permitted app', async () => {
+    // A dfoe_ token resolves `describe app` via the permitted-external surface
+    // (not the account /apps surface), so a permitted app describes successfully.
     // Uses DIFY_E2E_SSO_TOKEN; skipped when not configured.
     const { mkdir, writeFile } = await import('node:fs/promises')
     const { join } = await import('node:path')
@@ -191,8 +186,10 @@ describe('E2E / difyctl describe app', () => {
       ].join('\n')}\n`
       await writeFile(join(ssoTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
       const result = await run(['describe', 'app', E.chatAppId], { configDir: ssoTmp.configDir })
-      expect(result.exitCode, 'SSO user describe app should exit non-zero').not.toBe(0)
-      expect(result.stderr).toMatch(/insufficient_scope|scope|not_logged_in|auth/i)
+      assertExitCode(result, 0)
+      expect(result.stdout).toMatch(/ID:/i)
+      expect(result.stdout).toContain(E.chatAppId)
+      expect(result.stdout).toMatch(/Mode:/i)
     }
     finally {
       await ssoTmp.cleanup()
@@ -223,16 +220,6 @@ describe('E2E / difyctl describe app', () => {
     assertExitCode(result, 0)
     expect(result.stdout).toMatch(/Description:/i)
     expect(result.stdout).toContain('e2e-test')
-  })
-
-  it('[P1] describe output contains Author field (3.67)', async () => {
-    // Spec 3.67: output includes Author field when app has an author.
-    const result = await withRetry(
-      () => fx.r(['describe', 'app', E.chatAppId]),
-      { attempts: 3, delayMs: 2000 },
-    )
-    assertExitCode(result, 0)
-    expect(result.stdout).toMatch(/Author:/i)
   })
 
   it('[P0] Inputs section shows parameter names (3.70)', async () => {

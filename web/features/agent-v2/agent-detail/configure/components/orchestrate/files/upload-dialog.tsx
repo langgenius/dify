@@ -1,7 +1,7 @@
 'use client'
 
 import type { FileResponse } from '@dify/contracts/api/console/files/types.gen'
-import type { AgentFileApiContext } from './api-context'
+import type { AgentDriveApiContext } from '../drive-context'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -137,7 +137,7 @@ export function AgentFileUploadDialog({
   onOpenChange,
   onUploaded,
 }: {
-  apiContext: AgentFileApiContext
+  apiContext: AgentDriveApiContext
   open: boolean
   onOpenChange: (open: boolean) => void
   onUploaded: (file: AgentFileNode) => void
@@ -220,8 +220,8 @@ export function AgentFileUploadDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+    <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
+      <DialogContent backdropProps={{ forceRender: true }} backdropClassName="fixed">
         <DialogCloseButton />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t('agentDetail.configure.files.upload.title')}

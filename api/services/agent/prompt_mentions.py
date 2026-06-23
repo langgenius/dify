@@ -4,13 +4,14 @@ Slash-menu insertions are stored inline in the plain-string prompt as tokens:
 
     [§<kind>:<id>[:<label>]§]
 
-``kind`` is a fixed lowercase word; ``id`` points at an item in the Agent config
-lists (mentions are pointers — the entity itself lives in ``skills_files`` /
-``tools`` / ``knowledge.datasets`` / ``human.contacts`` /
-``previous_node_output_refs`` / ``declared_outputs``); ``label`` is an optional
-plain-text fallback only (the backend always re-resolves by id, so renames never
-break references). A single ``:`` separates all three fields; ``label`` is the
-trailing remainder and may itself contain ``:``.
+``kind`` is a fixed lowercase word; ``id`` points at an item in the Agent
+runtime context. For prompt-owned entities that means Agent Soul lists such as
+``tools`` / ``knowledge.datasets`` / ``human.contacts`` and workflow job lists
+such as ``previous_node_output_refs`` / ``declared_outputs``. For drive-backed
+``skill`` / ``file`` mentions the field stores a URL-encoded drive key and is
+resolved against ``agent_drive_files`` at runtime. ``label`` is an optional
+plain-text fallback only. A single ``:`` separates all three fields; ``label``
+is the trailing remainder and may itself contain ``:``.
 
 The ``[§…§]`` wrapper uses the section sign ``§`` (U+00A7), which never appears
 in Dify template syntax (``{{var}}`` / ``{{#a.b#}}``) nor in normal prompt text,
@@ -55,7 +56,11 @@ MENTION_PATTERN = re.compile(
 _RESIDUAL_MENTION_PATTERN = re.compile(r"\[§([A-Za-z_][A-Za-z0-9_]*:[^§]*?)§\]")
 
 MAX_MENTIONS_PER_PROMPT = 200
-MAX_MENTION_FIELD_LENGTH = 255
+# Drive keys are validated up to 512 Unicode code points before URL encoding.
+# Worst case, one code point becomes 4 UTF-8 bytes and each byte becomes a
+# 3-character ``%XX`` escape, so a valid encoded drive key can reach 6144 chars.
+MAX_MENTION_REF_ID_LENGTH = 6144
+MAX_MENTION_LABEL_LENGTH = 255
 
 # Reserved ``tool`` mention id suffix: ``<provider>/*`` means "every tool of this
 # provider" (a provider hosts many tools, like an MCP server). Single tools use
@@ -102,7 +107,7 @@ def parse_prompt_mentions(prompt: str) -> list[PromptMention]:
     for match in MENTION_PATTERN.finditer(prompt or ""):
         ref_id = match.group(2)
         label = match.group(3)
-        if len(ref_id) > MAX_MENTION_FIELD_LENGTH or (label is not None and len(label) > MAX_MENTION_FIELD_LENGTH):
+        if len(ref_id) > MAX_MENTION_REF_ID_LENGTH or (label is not None and len(label) > MAX_MENTION_LABEL_LENGTH):
             continue
         mentions.append(
             PromptMention(
@@ -127,8 +132,8 @@ def expand_prompt_mentions(prompt: str, resolver: MentionResolver) -> str:
     def _replace(match: re.Match[str]) -> str:
         ref_id = match.group(2)
         label = match.group(3) or None
-        fallback = (label or ref_id)[:MAX_MENTION_FIELD_LENGTH]
-        if len(ref_id) > MAX_MENTION_FIELD_LENGTH or (label is not None and len(label) > MAX_MENTION_FIELD_LENGTH):
+        fallback = (label or ref_id)[:MAX_MENTION_LABEL_LENGTH]
+        if len(ref_id) > MAX_MENTION_REF_ID_LENGTH or (label is not None and len(label) > MAX_MENTION_LABEL_LENGTH):
             return fallback
         mention = PromptMention(
             kind=MentionKind(match.group(1)),
@@ -141,7 +146,7 @@ def expand_prompt_mentions(prompt: str, resolver: MentionResolver) -> str:
         resolved = resolver(mention)
         if resolved is None or not resolved.strip():
             return fallback
-        return resolved[:MAX_MENTION_FIELD_LENGTH]
+        return resolved[:MAX_MENTION_LABEL_LENGTH]
 
     return scrub_mention_markers(MENTION_PATTERN.sub(_replace, prompt))
 
@@ -163,27 +168,19 @@ def scrub_mention_markers(text: str) -> str:
         # inner is ``kind:id[:label]``; prefer the label, else the id.
         parts = match.group(1).split(":", 2)
         if len(parts) >= 3 and parts[2].strip():
-            return parts[2].strip()[:MAX_MENTION_FIELD_LENGTH]
+            return parts[2].strip()[:MAX_MENTION_LABEL_LENGTH]
         if len(parts) >= 2 and parts[1].strip():
-            return parts[1].strip()[:MAX_MENTION_FIELD_LENGTH]
-        return match.group(1)[:MAX_MENTION_FIELD_LENGTH]
+            return parts[1].strip()[:MAX_MENTION_LABEL_LENGTH]
+        return match.group(1)[:MAX_MENTION_LABEL_LENGTH]
 
     return _RESIDUAL_MENTION_PATTERN.sub(_degrade, text)
 
 
 def build_soul_mention_resolver(agent_soul: AgentSoulConfig) -> MentionResolver:
-    """Resolve soul-surface mentions to canonical display names from the soul config."""
+    """Resolve non-drive soul-surface mentions to canonical display names."""
 
     def _resolve(mention: PromptMention) -> str | None:
         match mention.kind:
-            case MentionKind.SKILL:
-                for skill in agent_soul.skills_files.skills:
-                    if mention.ref_id in (skill.id, skill.name):
-                        return skill.name or skill.id
-            case MentionKind.FILE:
-                for file in agent_soul.skills_files.files:
-                    if mention.ref_id in (file.id, file.name):
-                        return file.name or file.id
             case MentionKind.TOOL:
                 for tool in agent_soul.tools.dify_tools:
                     prefixes = {prefix for prefix in (tool.provider, tool.provider_id, tool.plugin_id) if prefix}
@@ -273,7 +270,8 @@ def _selector_from_ref(ref: WorkflowPreviousNodeOutputRef) -> tuple[str, str] | 
 __all__ = [
     "ALL_PROVIDER_TOOLS_SUFFIX",
     "MAX_MENTIONS_PER_PROMPT",
-    "MAX_MENTION_FIELD_LENGTH",
+    "MAX_MENTION_LABEL_LENGTH",
+    "MAX_MENTION_REF_ID_LENGTH",
     "MENTION_PATTERN",
     "NODE_JOB_PROMPT_ALLOWED_KINDS",
     "SOUL_PROMPT_ALLOWED_KINDS",

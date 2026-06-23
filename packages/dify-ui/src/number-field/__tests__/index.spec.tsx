@@ -133,8 +133,8 @@ describe('NumberField wrapper', () => {
 
   describe('Unit and controls', () => {
     it.each([
-      ['medium', 'pr-2'],
-      ['large', 'pr-2.5'],
+      ['medium', 'pe-2'],
+      ['large', 'pe-2.5'],
     ] as const)('should apply the %s unit spacing variant', async (size, spacingClass) => {
       const screen = await renderNumberField({
         unitProps: {

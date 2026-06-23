@@ -18,6 +18,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.login import resolve_account_fallback
 from models.account import Account
@@ -115,6 +116,7 @@ class DatasetsHitTestingBase:
         try:
             current_user, _ = resolve_account_fallback(current_user, current_tenant_id)
             response = HitTestingService.retrieve(
+                session=db.session,
                 dataset=dataset,
                 query=cast(str, args.get("query")),
                 account=current_user,

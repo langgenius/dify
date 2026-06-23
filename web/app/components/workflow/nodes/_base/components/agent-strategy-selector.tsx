@@ -236,7 +236,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
             <SearchInput placeholder={t('nodes.agent.strategy.searchPlaceholder', { ns: 'workflow' })} value={query} onValueChange={setQuery} className="w-full" />
             <ViewTypeSelect viewType={viewType} onChange={setViewType} />
           </header>
-          <main className="relative flex w-full flex-col overflow-hidden md:max-h-75 xl:max-h-100 2xl:max-h-141" ref={wrapElemRef}>
+          <div className="relative flex w-full flex-col overflow-hidden md:max-h-75 xl:max-h-100 2xl:max-h-141" ref={wrapElemRef}>
             <Tools
               tools={filteredTools}
               viewType={viewType}
@@ -268,7 +268,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
                 disableMaxWidth
               />
             )}
-          </main>
+          </div>
         </div>
       </PopoverContent>
     </Popover>

@@ -30,6 +30,12 @@ import {
   PermissionSummaryButton,
 } from './permission-row-components'
 
+type AccessPermissionDraft = {
+  fingerprint: string
+  kind: AccessPermissionKind
+  subjects: SelectableAccessSubject[]
+}
+
 type EnvironmentPermissionRowProps = {
   appInstanceId: string
   disabled?: boolean
@@ -53,23 +59,19 @@ export function EnvironmentPermissionRow({
   const policyFingerprint = policy
     ? `${policy.mode}:${policy.subjects.map(subject => `${subject.subjectType}:${subject.subjectId}`).join(',')}`
     : 'no-policy'
-  const [draft, setDraft] = useState<{
-    fingerprint?: string
-    kind?: AccessPermissionKind
-    subjects?: SelectableAccessSubject[]
-  }>({})
+  const [draft, setDraft] = useState<AccessPermissionDraft>()
   const subjectLabelCandidates = [
-    ...(draft.subjects ?? []),
+    ...(draft?.subjects ?? []),
     ...resolvedSubjects
       .flatMap((subject) => {
         const normalizedSubject = normalizeResolvedSubject(subject)
         return normalizedSubject ? [normalizedSubject] : []
       }),
   ]
-  const hasDraft = draft.fingerprint === policyFingerprint
-  const permissionKind = hasDraft && draft.kind ? draft.kind : policyKind
+  const hasDraft = draft?.fingerprint === policyFingerprint
+  const permissionKind = hasDraft && draft ? draft.kind : policyKind
   const policySelectedSubjects = policyKind === 'specific' ? selectedSubjectsFromPolicy(policy, subjectLabelCandidates) : []
-  const subjects = hasDraft && draft.subjects ? draft.subjects : policySelectedSubjects
+  const subjects = hasDraft && draft ? draft.subjects : policySelectedSubjects
   const subjectSelection = accessControlSelectionFromSubjects(subjects)
   const isSaving = setEnvironmentAccessPolicy.isPending
   const controlsDisabled = disabled || isSaving

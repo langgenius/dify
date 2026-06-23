@@ -1,4 +1,4 @@
-"""Agent 网盘 (agent drive) service — list/manifest + commit with lifecycle (ENG-591).
+"""Agent 网盘 (agent drive) service — manifest/catalog + commit lifecycle.
 
 The agent drive is a per-agent path-like KV index over existing UploadFile /
 ToolFile records (see ``AgentDriveFile``). This service is the control plane:
@@ -8,27 +8,30 @@ ToolFile records (see ``AgentDriveFile``). This service is the control plane:
   ``FileAccessScope`` (Agent Files §3.1.2). We reuse the standard
   ``file_factory.build_from_mapping`` + ``resolve_file_url`` rebuild, which always
   filters by ``tenant_id`` in the builders, so omitting the scope is safe.
-* ``commit`` binds a batch of existing file refs to keys. Source ToolFiles must
+* ``commit`` is the single mutation entry point for writes and removals.
+  ``file_ref=None`` removes an exact key idempotently; otherwise the service
+  binds the referenced UploadFile/ToolFile to the key. Source ToolFiles must
   belong to the current run user. Overwriting a key whose previous value is
   ``value_owned_by_drive`` physically cleans the old value (storage + record),
   unless another drive entry still references it. Re-committing the same
-  ``key -> file_ref`` is idempotent.
+  ``key -> file_ref`` is idempotent and still refreshes skill metadata.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 import urllib.parse
-from typing import Any, Literal
+from typing import Any, Literal, TypedDict
+from urllib.parse import unquote
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.exc import DataError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from core.app.file_access.controller import DatabaseFileAccessController
-from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
 from core.db.session_factory import session_factory
 from extensions.ext_storage import storage
 from factories import file_factory
@@ -41,6 +44,8 @@ logger = logging.getLogger(__name__)
 
 _MAX_KEY_LENGTH = 512
 _DRIVE_REF_PREFIX = "agent-"
+_SKILL_MD_SUFFIX = "/SKILL.md"
+_SKILL_ARCHIVE_NAME = ".DIFY-SKILL-FULL.zip"
 
 
 class AgentDriveError(Exception):
@@ -58,16 +63,86 @@ class AgentDriveError(Exception):
 
 
 class DriveFileRef(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     kind: Literal["upload_file", "tool_file"]
     id: str
 
 
+class DriveSkillMetadata(BaseModel):
+    """Validated skill catalog metadata stored as a JSON string on the drive row."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    description: str = ""
+    # Safe archive member paths captured during skill standardization. The drive
+    # stores only canonical SKILL.md + full archive, so the UI uses this manifest
+    # to show the original uploaded package contents.
+    manifest_files: list[str] | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _validate_name(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("skill metadata name must not be blank")
+        return normalized
+
+
 class DriveCommitItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     key: str
-    file_ref: DriveFileRef
+    file_ref: DriveFileRef | None = None
     # Drive-owned values may be physically cleaned on overwrite/removal; refs to
     # files shared with other business records should set this False.
     value_owned_by_drive: bool = True
+    is_skill: bool = False
+    skill_metadata: DriveSkillMetadata | None = None
+
+
+class AgentDriveSkillInfo(TypedDict):
+    path: str
+    skill_md_key: str
+    archive_key: str | None
+    name: str
+    description: str
+    size: int | None
+    mime_type: str | None
+    hash: str | None
+    created_at: int | None
+
+
+class AgentDriveSkillFileInfo(TypedDict):
+    path: str
+    name: str
+    type: str
+    drive_key: str | None
+    available_in_drive: bool
+
+
+class AgentDriveSkillInspectInfo(TypedDict):
+    path: str
+    skill_md_key: str
+    archive_key: str | None
+    name: str
+    description: str
+    size: int | None
+    mime_type: str | None
+    hash: str | None
+    created_at: int | None
+    source: str
+    files: list[AgentDriveSkillFileInfo]
+    file_tree: list[dict[str, Any]]
+    skill_md: dict[str, Any]
+    warnings: list[str]
+
+
+def decode_drive_mention_ref(ref_id: str) -> str:
+    """Decode the prompt token's URL-encoded drive-key field."""
+
+    return unquote(ref_id or "")
 
 
 def parse_agent_drive_ref(drive_ref: str) -> str:
@@ -132,6 +207,8 @@ class AgentDriveService:
                     "mime_type": row.mime_type,
                     "file_kind": row.file_kind.value,
                     "file_id": row.file_id,
+                    "is_skill": row.is_skill,
+                    "skill_metadata": row.skill_metadata,
                     "created_at": int(row.created_at.timestamp()) if row.created_at else None,
                 }
                 if include_download_url:
@@ -217,6 +294,87 @@ class AgentDriveService:
             self._delete_storage(storage_key)
         return removed_keys
 
+    def list_skills(self, *, tenant_id: str, agent_id: str) -> list[AgentDriveSkillInfo]:
+        """Return the drive-backed skill catalog derived from canonical ``SKILL.md`` rows."""
+
+        with session_factory.create_session() as session:
+            self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
+            skill_rows = list(
+                session.scalars(
+                    select(AgentDriveFile)
+                    .where(
+                        AgentDriveFile.tenant_id == tenant_id,
+                        AgentDriveFile.agent_id == agent_id,
+                        AgentDriveFile.is_skill.is_(True),
+                    )
+                    .order_by(AgentDriveFile.key)
+                )
+            )
+            archive_keys = set(
+                session.scalars(
+                    select(AgentDriveFile.key).where(
+                        AgentDriveFile.tenant_id == tenant_id,
+                        AgentDriveFile.agent_id == agent_id,
+                        AgentDriveFile.key.in_([self._skill_archive_key(row.key) for row in skill_rows]),
+                    )
+                )
+            )
+
+        skills: list[AgentDriveSkillInfo] = []
+        for row in skill_rows:
+            metadata = self._parse_skill_metadata(row.key, row.skill_metadata)
+            archive_key = self._skill_archive_key(row.key)
+            skills.append(
+                {
+                    "path": self._skill_path_from_key(row.key),
+                    "skill_md_key": row.key,
+                    "archive_key": archive_key if archive_key in archive_keys else None,
+                    "name": metadata.name,
+                    "description": metadata.description,
+                    "size": row.size,
+                    "mime_type": row.mime_type,
+                    "hash": row.hash,
+                    "created_at": int(row.created_at.timestamp()) if row.created_at else None,
+                }
+            )
+        return skills
+
+    def inspect_skill(self, *, tenant_id: str, agent_id: str, skill_path: str) -> AgentDriveSkillInspectInfo:
+        """Return the UI-facing skill inspect view for slash-menu hover/detail."""
+
+        skill_path = normalize_drive_key(skill_path)
+        skill_md_key = skill_path if skill_path.endswith(_SKILL_MD_SUFFIX) else f"{skill_path}{_SKILL_MD_SUFFIX}"
+        skill_path = self._skill_path_from_key(skill_md_key)
+        catalog = next(
+            (item for item in self.list_skills(tenant_id=tenant_id, agent_id=agent_id) if item["path"] == skill_path),
+            None,
+        )
+        if catalog is None:
+            raise AgentDriveError("skill_not_found", "no drive-backed skill for this path", status_code=404)
+
+        manifest_files = self._manifest_files_from_skill_metadata(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            skill_md_key=skill_md_key,
+        )
+        drive_items = self.manifest(tenant_id=tenant_id, agent_id=agent_id, prefix=f"{skill_path}/")
+        drive_keys = {item["key"] for item in drive_items}
+        preview = self.preview(tenant_id=tenant_id, agent_id=agent_id, key=skill_md_key)
+        files, warnings = self._skill_file_entries(
+            skill_path=skill_path,
+            skill_md_key=skill_md_key,
+            manifest_files=manifest_files,
+            drive_keys=drive_keys,
+        )
+        return {
+            **catalog,
+            "source": "skill_md",
+            "files": files,
+            "file_tree": self._build_file_tree(files),
+            "skill_md": preview,
+            "warnings": warnings,
+        }
+
     def _commit_one(
         self,
         session: Session,
@@ -228,9 +386,19 @@ class AgentDriveService:
         pending_storage_deletes: list[str],
     ) -> dict[str, Any]:
         key = normalize_drive_key(item.key)
+        if item.file_ref is None:
+            return self._remove_one(
+                session,
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                key=key,
+                pending_storage_deletes=pending_storage_deletes,
+            )
+
+        skill_metadata = self._validate_skill_commit_fields(key=key, item=item)
         file_kind = AgentDriveFileKind(item.file_ref.kind)
         file_id = item.file_ref.id
-        size, mime_type = self._validate_source(
+        size, mime_type, file_hash = self._validate_source(
             session, tenant_id=tenant_id, user_id=user_id, file_kind=file_kind, file_id=file_id
         )
 
@@ -245,6 +413,11 @@ class AgentDriveService:
             # Idempotent re-commit of the same value: leave it (do not clean).
             if existing.file_kind == file_kind and existing.file_id == file_id:
                 existing.value_owned_by_drive = item.value_owned_by_drive
+                existing.is_skill = item.is_skill
+                existing.skill_metadata = skill_metadata
+                existing.size = size
+                existing.mime_type = mime_type
+                existing.hash = file_hash
                 return self._row_dict(existing)
             # Overwrite: clean the previous drive-owned value if no longer referenced.
             if existing.value_owned_by_drive:
@@ -259,7 +432,10 @@ class AgentDriveService:
             existing.file_kind = file_kind
             existing.file_id = file_id
             existing.value_owned_by_drive = item.value_owned_by_drive
+            existing.is_skill = item.is_skill
+            existing.skill_metadata = skill_metadata
             existing.size = size
+            existing.hash = file_hash
             existing.mime_type = mime_type
             return self._row_dict(existing)
 
@@ -271,12 +447,54 @@ class AgentDriveService:
             file_kind=file_kind,
             file_id=file_id,
             value_owned_by_drive=item.value_owned_by_drive,
+            is_skill=item.is_skill,
+            skill_metadata=skill_metadata,
             size=size,
+            hash=file_hash,
             mime_type=mime_type,
             created_by=user_id,
         )
         session.add(row)
         return self._row_dict(row)
+
+    def _remove_one(
+        self,
+        session: Session,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        key: str,
+        pending_storage_deletes: list[str],
+    ) -> dict[str, Any]:
+        existing = session.scalar(
+            select(AgentDriveFile).where(
+                AgentDriveFile.tenant_id == tenant_id,
+                AgentDriveFile.agent_id == agent_id,
+                AgentDriveFile.key == key,
+            )
+        )
+        if existing is None:
+            return {"key": key, "removed": True, "noop": True}
+        result = {
+            "key": key,
+            "removed": True,
+            "file_kind": existing.file_kind.value,
+            "file_id": existing.file_id,
+            "value_owned_by_drive": existing.value_owned_by_drive,
+            "is_skill": existing.is_skill,
+            "skill_metadata": existing.skill_metadata,
+        }
+        if existing.value_owned_by_drive:
+            self._cleanup_value(
+                session,
+                tenant_id=tenant_id,
+                file_kind=existing.file_kind,
+                file_id=existing.file_id,
+                exclude_row_id=existing.id,
+                pending_storage_deletes=pending_storage_deletes,
+            )
+        session.delete(existing)
+        return result
 
     @staticmethod
     def _row_dict(row: AgentDriveFile) -> dict[str, Any]:
@@ -287,7 +505,186 @@ class AgentDriveService:
             "size": row.size,
             "mime_type": row.mime_type,
             "value_owned_by_drive": row.value_owned_by_drive,
+            "is_skill": row.is_skill,
+            "skill_metadata": row.skill_metadata,
         }
+
+    @staticmethod
+    def _skill_path_from_key(key: str) -> str:
+        if not key.endswith(_SKILL_MD_SUFFIX):
+            raise AgentDriveError(
+                "invalid_skill_key",
+                "skill rows must use the canonical '<path>/SKILL.md' key",
+                status_code=500,
+            )
+        path = key[: -len(_SKILL_MD_SUFFIX)]
+        if not path:
+            raise AgentDriveError(
+                "invalid_skill_key",
+                "skill rows must use the canonical '<path>/SKILL.md' key",
+                status_code=500,
+            )
+        return path
+
+    @classmethod
+    def _skill_archive_key(cls, key: str) -> str:
+        return f"{cls._skill_path_from_key(key)}/{_SKILL_ARCHIVE_NAME}"
+
+    @classmethod
+    def _validate_skill_commit_fields(cls, *, key: str, item: DriveCommitItem) -> str | None:
+        if not item.is_skill:
+            if item.skill_metadata is not None:
+                raise AgentDriveError(
+                    "invalid_skill_metadata",
+                    "skill metadata is only allowed for canonical skill rows",
+                    status_code=400,
+                )
+            return None
+        cls._skill_path_from_key(key)
+        if item.skill_metadata is None:
+            raise AgentDriveError(
+                "invalid_skill_metadata",
+                "skill metadata is required for canonical skill rows",
+                status_code=400,
+            )
+        return json.dumps(
+            item.skill_metadata.model_dump(mode="json", exclude_none=True),
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+
+    @staticmethod
+    def _parse_skill_metadata(key: str, raw_metadata: str | None) -> DriveSkillMetadata:
+        if raw_metadata is None:
+            raise AgentDriveError(
+                "invalid_skill_metadata",
+                f"skill row '{key}' is missing required metadata",
+                status_code=500,
+            )
+        try:
+            return DriveSkillMetadata.model_validate(json.loads(raw_metadata))
+        except (ValueError, TypeError) as exc:
+            raise AgentDriveError(
+                "invalid_skill_metadata",
+                f"skill row '{key}' has invalid stored metadata",
+                status_code=500,
+            ) from exc
+
+    @staticmethod
+    def _manifest_files_from_skill_metadata(*, tenant_id: str, agent_id: str, skill_md_key: str) -> list[str] | None:
+        with session_factory.create_session() as session:
+            row = session.scalar(
+                select(AgentDriveFile).where(
+                    AgentDriveFile.tenant_id == tenant_id,
+                    AgentDriveFile.agent_id == agent_id,
+                    AgentDriveFile.key == skill_md_key,
+                    AgentDriveFile.is_skill.is_(True),
+                )
+            )
+            if row is None:
+                return None
+            try:
+                metadata = AgentDriveService._parse_skill_metadata(row.key, row.skill_metadata)
+            except Exception:
+                logger.warning("drive skill inspect: malformed skill metadata for %s", skill_md_key, exc_info=True)
+                return None
+        return [str(item) for item in (metadata.manifest_files or []) if str(item).strip()] or None
+
+    @classmethod
+    def _skill_file_entries(
+        cls,
+        *,
+        skill_path: str,
+        skill_md_key: str,
+        manifest_files: list[str] | None,
+        drive_keys: set[str],
+    ) -> tuple[list[AgentDriveSkillFileInfo], list[str]]:
+        warnings: list[str] = []
+        if manifest_files:
+            paths = sorted({normalize_drive_key(path) for path in manifest_files})
+        else:
+            paths = sorted(
+                {
+                    key.removeprefix(f"{skill_path}/")
+                    for key in drive_keys
+                    if not key.endswith(f"/{_SKILL_ARCHIVE_NAME}")
+                }
+            )
+            warnings.append("manifest_files_unavailable")
+
+        files: list[AgentDriveSkillFileInfo] = []
+        for path in paths:
+            if path == _SKILL_ARCHIVE_NAME:
+                continue
+            drive_key = f"{skill_path}/{path}"
+            files.append(
+                {
+                    "path": path,
+                    "name": path.rsplit("/", 1)[-1],
+                    "type": "file",
+                    "drive_key": drive_key if drive_key in drive_keys else None,
+                    "available_in_drive": drive_key in drive_keys,
+                }
+            )
+        if "SKILL.md" not in {file["path"] for file in files}:
+            files.insert(
+                0,
+                {
+                    "path": "SKILL.md",
+                    "name": "SKILL.md",
+                    "type": "file",
+                    "drive_key": skill_md_key,
+                    "available_in_drive": skill_md_key in drive_keys,
+                },
+            )
+        return files, warnings
+
+    @staticmethod
+    def _build_file_tree(files: list[AgentDriveSkillFileInfo]) -> list[dict[str, Any]]:
+        root: dict[str, Any] = {}
+        for file in files:
+            cursor = root
+            parts = [part for part in file["path"].split("/") if part]
+            path_parts: list[str] = []
+            for part in parts[:-1]:
+                path_parts.append(part)
+                directory = cursor.setdefault(
+                    part,
+                    {
+                        "name": part,
+                        "path": "/".join(path_parts),
+                        "type": "directory",
+                        "children": {},
+                    },
+                )
+                cursor = directory["children"]
+            leaf_name = parts[-1] if parts else file["name"]
+            cursor[leaf_name] = {
+                "name": leaf_name,
+                "path": file["path"],
+                "type": file["type"],
+                "drive_key": file["drive_key"],
+                "available_in_drive": file["available_in_drive"],
+            }
+
+        def serialize(node: dict[str, Any]) -> list[dict[str, Any]]:
+            result: list[dict[str, Any]] = []
+            for item in sorted(node.values(), key=lambda value: (value["type"] != "directory", value["name"])):
+                if item["type"] == "directory":
+                    children = serialize(item["children"])
+                    result.append(
+                        {
+                            "name": item["name"],
+                            "path": item["path"],
+                            "type": "directory",
+                            "children": children,
+                        }
+                    )
+                else:
+                    result.append(item)
+            return result
+
+        return serialize(root)
 
     @staticmethod
     def _assert_agent_belongs_to_tenant(session: Session, *, tenant_id: str, agent_id: str) -> None:
@@ -309,7 +706,7 @@ class AgentDriveService:
         user_id: str,
         file_kind: AgentDriveFileKind,
         file_id: str,
-    ) -> tuple[int | None, str | None]:
+    ) -> tuple[int | None, str | None, str | None]:
         """Verify the source file exists for the tenant (and user, for ToolFile).
 
         Malformed ids (e.g. a non-UUID hitting a UUID column) are treated as a
@@ -328,7 +725,7 @@ class AgentDriveService:
                     raise AgentDriveError(
                         "source_not_found", "source ToolFile not found for this tenant/user", status_code=404
                     )
-                return tool_file.size, tool_file.mimetype
+                return tool_file.size, tool_file.mimetype, None
             upload_file = session.scalar(
                 select(UploadFile).where(UploadFile.id == file_id, UploadFile.tenant_id == tenant_id)
             )
@@ -337,7 +734,7 @@ class AgentDriveService:
             raise AgentDriveError("source_not_found", "source file ref is invalid", status_code=404) from exc
         if upload_file is None:
             raise AgentDriveError("source_not_found", "source UploadFile not found for this tenant", status_code=404)
-        return upload_file.size, upload_file.mime_type
+        return upload_file.size, upload_file.mime_type, upload_file.hash
 
     def _cleanup_value(
         self,
@@ -402,6 +799,11 @@ class AgentDriveService:
         else:
             mapping = {"transfer_method": "local_file", "upload_file_id": file_id}
         controller = DatabaseFileAccessController()
+        # Keep workflow runtime wiring lazy: importing this service is part of
+        # Agent v2 node bootstrap, while ``core.app.workflow`` re-exports the
+        # node factory. A module-level import here would close that cycle.
+        from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
+
         runtime = DifyWorkflowFileRuntime(file_access_controller=controller)
         try:
             if file_kind == AgentDriveFileKind.UPLOAD_FILE:
@@ -509,6 +911,8 @@ __all__ = [
     "AgentDriveService",
     "DriveCommitItem",
     "DriveFileRef",
+    "DriveSkillMetadata",
+    "decode_drive_mention_ref",
     "normalize_drive_key",
     "parse_agent_drive_ref",
 ]

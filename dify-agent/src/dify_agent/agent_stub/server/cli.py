@@ -28,7 +28,7 @@ def main(argv: list[str] | None = None) -> None:
     Side effects:
         Starts either ``dify_agent.agent_stub.server.app:app`` via
         ``uvicorn.run`` or the grpclib Agent Stub server depending on the
-        configured ``DIFY_AGENT_STUB_URL`` scheme.
+        configured ``DIFY_AGENT_STUB_API_BASE_URL`` scheme.
     """
     parser = argparse.ArgumentParser(prog="dify-agent-stub-server")
     parser.add_argument("--host", default=None)
@@ -36,7 +36,10 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--reload", action="store_true")
     args = parser.parse_args(argv)
     settings = ServerSettings()
-    if settings.agent_stub_url is not None and parse_agent_stub_endpoint(settings.agent_stub_url).is_grpc:
+    if (
+        settings.agent_stub_api_base_url is not None
+        and parse_agent_stub_endpoint(settings.agent_stub_api_base_url).is_grpc
+    ):
         asyncio.run(_serve_grpc(settings=settings, host=args.host, port=args.port))
         return
     uvicorn.run(
@@ -49,14 +52,14 @@ def main(argv: list[str] | None = None) -> None:
 
 async def _serve_grpc(*, settings: ServerSettings, host: str | None, port: int | None) -> None:
     bind_target = derive_agent_stub_grpc_bind_target(
-        public_url=settings.agent_stub_url or "",
+        public_url=settings.agent_stub_api_base_url or "",
         bind_address=settings.agent_stub_grpc_bind_address,
     )
     if host is not None or port is not None:
         bind_target = AgentStubGRPCBindTarget(host=host or bind_target.host, port=port or bind_target.port)
 
     server = await start_agent_stub_grpc_server(
-        public_url=settings.agent_stub_url or "",
+        public_url=settings.agent_stub_api_base_url or "",
         bind_address=bind_target.address,
         token_codec=settings.create_agent_stub_token_codec(),
         file_request_handler=settings.create_agent_stub_file_request_handler(),

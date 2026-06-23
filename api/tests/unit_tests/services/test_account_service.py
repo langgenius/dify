@@ -794,7 +794,9 @@ class TestTenantService:
         mock_db_dependencies["db"].session.add = MagicMock()
 
         # Execute test
-        result = TenantService.create_tenant_member(mock_tenant, mock_account, "normal")
+        result = TenantService.create_tenant_member(
+            mock_tenant, mock_account, mock_db_dependencies["db"].session, "normal"
+        )
 
         # Verify member was created with correct parameters
         assert result is not None
@@ -1483,7 +1485,9 @@ class TestRegisterService:
                     timezone=None,
                 )
                 mock_create_tenant.assert_called_once_with("Test User's Workspace")
-                mock_create_member.assert_called_once_with(mock_tenant, mock_account, role="owner")
+                mock_create_member.assert_called_once_with(
+                    mock_tenant, mock_account, mock_db_dependencies["db"].session, role="owner"
+                )
                 mock_event.send.assert_called_once_with(mock_tenant)
                 self._assert_database_operations_called(mock_db_dependencies["db"])
 
@@ -1863,7 +1867,9 @@ class TestRegisterService:
                     )
                     mock_lookup.assert_called_once_with(mixed_email)
                     mock_check_permission.assert_called_once_with(mock_tenant, mock_inviter, None, "add")
-                    mock_create_member.assert_called_once_with(mock_tenant, mock_new_account, "normal")
+                    mock_create_member.assert_called_once_with(
+                        mock_tenant, mock_new_account, mock_db_dependencies["db"].session, "normal"
+                    )
                     mock_switch_tenant.assert_called_once_with(mock_new_account, mock_tenant.id)
                     mock_generate_token.assert_called_once_with(
                         mock_tenant, mock_new_account, "normal", requires_setup=True
@@ -1910,7 +1916,9 @@ class TestRegisterService:
 
                 # Verify results
                 assert result == "invite-token-123"
-                mock_create_member.assert_called_once_with(mock_tenant, mock_existing_account, "normal")
+                mock_create_member.assert_called_once_with(
+                    mock_tenant, mock_existing_account, mock_db_dependencies["db"].session, "normal"
+                )
                 mock_generate_token.assert_called_once_with(
                     mock_tenant, mock_existing_account, "normal", requires_setup=True
                 )
@@ -2044,7 +2052,7 @@ class TestRegisterService:
 
                 assert result == "rbac-token"
                 mock_create_member.assert_called_once_with(
-                    mock_tenant, mock_new_account, TenantAccountRole.NORMAL.value
+                    mock_tenant, mock_new_account, mock_db_dependencies["db"].session, TenantAccountRole.NORMAL.value
                 )
                 mock_rbac_service.MemberRoles.replace.assert_called_once_with(
                     tenant_id=str(mock_tenant.id),
@@ -2089,7 +2097,10 @@ class TestRegisterService:
 
                 assert result == "rbac-token"
                 mock_create_member.assert_called_once_with(
-                    mock_tenant, mock_existing_account, TenantAccountRole.NORMAL.value
+                    mock_tenant,
+                    mock_existing_account,
+                    mock_db_dependencies["db"].session,
+                    TenantAccountRole.NORMAL.value,
                 )
                 mock_rbac_service.MemberRoles.replace.assert_called_once_with(
                     tenant_id=str(mock_tenant.id),
@@ -2133,7 +2144,10 @@ class TestRegisterService:
                     )
 
                 mock_create_member.assert_called_once_with(
-                    mock_tenant, mock_existing_account, TenantAccountRole.NORMAL.value
+                    mock_tenant,
+                    mock_existing_account,
+                    mock_db_dependencies["db"].session,
+                    TenantAccountRole.NORMAL.value,
                 )
                 mock_rbac_service.MemberRoles.replace.assert_called_once_with(
                     tenant_id=str(mock_tenant.id),
@@ -2180,7 +2194,9 @@ class TestRegisterService:
                 )
 
                 assert result == "legacy-token"
-                mock_create_member.assert_called_once_with(mock_tenant, mock_new_account, "editor")
+                mock_create_member.assert_called_once_with(
+                    mock_tenant, mock_new_account, mock_db_dependencies["db"].session, "editor"
+                )
                 mock_rbac_service.MemberRoles.replace.assert_not_called()
 
     # ==================== Token Management Tests ====================

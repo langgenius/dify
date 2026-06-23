@@ -501,6 +501,15 @@ describe('FeaturesTrigger', () => {
         expect(mockInvalidateQueries).toHaveBeenCalledWith({
           queryKey: consoleQuery.agent.get.key(),
         })
+        expect(mockInvalidateQueries).toHaveBeenCalledWith({
+          queryKey: consoleQuery.agent.byAgentId.referencingWorkflows.get.queryOptions({
+            input: {
+              params: {
+                agent_id: 'agent-1',
+              },
+            },
+          }).queryKey,
+        })
       })
     })
 
@@ -534,6 +543,15 @@ describe('FeaturesTrigger', () => {
       })
       expect(mockInvalidateQueries).not.toHaveBeenCalledWith({
         queryKey: consoleQuery.agent.get.key(),
+      })
+      expect(mockInvalidateQueries).not.toHaveBeenCalledWith({
+        queryKey: consoleQuery.agent.byAgentId.referencingWorkflows.get.queryOptions({
+          input: {
+            params: {
+              agent_id: 'agent-1',
+            },
+          },
+        }).queryKey,
       })
     })
 

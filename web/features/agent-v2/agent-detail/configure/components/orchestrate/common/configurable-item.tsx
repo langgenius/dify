@@ -32,7 +32,7 @@ export function ConfigureSectionConfigurableItem({
         </span>
       </div>
       {!readOnly && (
-        <div className="pointer-events-none flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
+        <div className="hidden shrink-0 items-center gap-1 group-focus-within:flex group-hover:flex">
           <button
             type="button"
             aria-label={editAriaLabel}
@@ -52,7 +52,7 @@ export function ConfigureSectionConfigurableItem({
         </div>
       )}
       {hasBadge && (
-        <span className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary transition-opacity group-focus-within:opacity-0 group-hover:opacity-0">
+        <span className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary group-focus-within:hidden group-hover:hidden">
           {badge}
         </span>
       )}

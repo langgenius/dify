@@ -9,17 +9,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
 import { AgentWorkflowReferencesDropdown } from './agent-workflow-references-dropdown'
 import { DeleteAgentDialog } from './delete-agent-dialog'
+import { DuplicateAgentDialog } from './duplicate-agent-dialog'
 import { EditAgentDialog } from './edit-agent-dialog'
 
 type AgentRosterListProps = {
@@ -104,8 +102,10 @@ function AgentRosterItem({
   const nameId = useId()
   const descriptionId = useId()
   const [isEditOpen, setIsEditOpen] = useState(false)
+  const [editSessionKey, setEditSessionKey] = useState(0)
+  const [isDuplicateOpen, setIsDuplicateOpen] = useState(false)
+  const [duplicateSessionKey, setDuplicateSessionKey] = useState(0)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
-  const duplicateAgentMutation = useMutation(consoleQuery.agent.byAgentId.copy.post.mutationOptions())
   const updatedAt = agent.updated_at != null
     ? formatTime(agent.updated_at, t('roster.dateTimeFormat'))
     : null
@@ -115,23 +115,15 @@ function AgentRosterItem({
   const isDraft = agent.active_config_is_published !== true
   const imageUrl = (agent.icon_type === 'image' || agent.icon_type === 'link') ? agent.icon : undefined
   const iconType = (imageUrl ? 'image' : agent.icon_type) as AgentIconType | null | undefined
-  const handleDuplicate = () => {
-    if (duplicateAgentMutation.isPending)
-      return
 
-    duplicateAgentMutation.mutate({
-      params: {
-        agent_id: agent.id,
-      },
-      body: {},
-    }, {
-      onSuccess: () => {
-        toast.success(t('roster.duplicateSuccess'))
-      },
-      onError: () => {
-        toast.error(t('roster.duplicateFailed'))
-      },
-    })
+  const handleEditOpen = () => {
+    setEditSessionKey(key => key + 1)
+    setIsEditOpen(true)
+  }
+
+  const handleDuplicateOpen = () => {
+    setDuplicateSessionKey(key => key + 1)
+    setIsDuplicateOpen(true)
   }
 
   return (
@@ -214,14 +206,13 @@ function AgentRosterItem({
             <span aria-hidden className="i-ri-more-fill size-4.5 text-text-tertiary" />
           </DropdownMenuTrigger>
           <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-40">
-            <DropdownMenuItem className="gap-2" onClick={() => setIsEditOpen(true)}>
+            <DropdownMenuItem className="gap-2" onClick={handleEditOpen}>
               <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
               <span>{t('roster.editInfo')}</span>
             </DropdownMenuItem>
             <DropdownMenuItem
-              disabled={duplicateAgentMutation.isPending}
               className="gap-2"
-              onClick={handleDuplicate}
+              onClick={handleDuplicateOpen}
             >
               <span aria-hidden className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary" />
               <span>{tCommon('operation.duplicate')}</span>
@@ -238,7 +229,18 @@ function AgentRosterItem({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <EditAgentDialog agent={agent} open={isEditOpen} onOpenChange={setIsEditOpen} />
+      <EditAgentDialog
+        agent={agent}
+        formKey={editSessionKey}
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+      />
+      <DuplicateAgentDialog
+        agent={agent}
+        formKey={duplicateSessionKey}
+        open={isDuplicateOpen}
+        onOpenChange={setIsDuplicateOpen}
+      />
       <DeleteAgentDialog agentId={agent.id} agentName={agent.name} open={isDeleteOpen} onOpenChange={setIsDeleteOpen} />
     </article>
   )

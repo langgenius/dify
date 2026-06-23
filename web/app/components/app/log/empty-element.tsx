@@ -1,9 +1,11 @@
 'use client'
 import type { FC, SVGProps } from 'react'
 import type { App } from '@/types/app'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { AppModeEnum } from '@/types/app'
 import { getRedirectionPath } from '@/utils/app-redirection'
@@ -21,6 +23,8 @@ const EmptyElement: FC<{ appDetail: App }> = ({ appDetail }) => {
   const { t } = useTranslation()
   const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isRbacEnabled = systemFeatures.rbac_enabled
 
   const getWebAppType = (appType: AppModeEnum) => {
     if (appType !== AppModeEnum.COMPLETION && appType !== AppModeEnum.WORKFLOW)
@@ -54,6 +58,7 @@ const EmptyElement: FC<{ appDetail: App }> = ({ appDetail }) => {
                     currentUserId,
                     resourceMaintainer: appDetail.maintainer,
                     workspacePermissionKeys,
+                    isRbacEnabled,
                   })}
                   className="text-util-colors-blue-blue-600"
                 />

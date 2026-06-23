@@ -15,7 +15,7 @@ from flask import Flask
 
 from controllers.console.auth.activate import ActivateApi, ActivateCheckApi
 from controllers.console.error import AccountInFreezeError, AlreadyActivateError
-from models.account import AccountStatus
+from models.account import AccountStatus, TenantAccountRole
 
 
 class TestActivateCheckApi:
@@ -201,11 +201,11 @@ class TestActivateApi:
     @patch("controllers.console.auth.activate.db")
     def test_successful_account_activation(
         self,
-        mock_db,
-        mock_revoke_token,
-        mock_get_invitation,
+        mock_db: MagicMock,
+        mock_revoke_token: MagicMock,
+        mock_get_invitation: MagicMock,
         app: Flask,
-        mock_invitation,
+        mock_invitation: MagicMock,
         mock_account,
     ):
         """
@@ -448,11 +448,11 @@ class TestActivateApi:
     @patch("controllers.console.auth.activate.db")
     def test_activation_returns_success_response(
         self,
-        mock_db,
-        mock_revoke_token,
-        mock_get_invitation,
+        mock_db: MagicMock,
+        mock_revoke_token: MagicMock,
+        mock_get_invitation: MagicMock,
         app: Flask,
-        mock_invitation,
+        mock_invitation: MagicMock,
     ):
         """
         Test that activation returns a success response without authentication tokens.
@@ -488,11 +488,11 @@ class TestActivateApi:
     @patch("controllers.console.auth.activate.db")
     def test_activation_without_workspace_id(
         self,
-        mock_db,
-        mock_revoke_token,
-        mock_get_invitation,
+        mock_db: MagicMock,
+        mock_revoke_token: MagicMock,
+        mock_get_invitation: MagicMock,
         app: Flask,
-        mock_invitation,
+        mock_invitation: MagicMock,
     ):
         """
         Test account activation without workspace_id.
@@ -528,12 +528,12 @@ class TestActivateApi:
     @patch("controllers.console.auth.activate.db")
     def test_activation_normalizes_email_before_lookup(
         self,
-        mock_db,
-        mock_revoke_token,
-        mock_get_invitation,
+        mock_db: MagicMock,
+        mock_revoke_token: MagicMock,
+        mock_get_invitation: MagicMock,
         app: Flask,
-        mock_invitation,
-        mock_account,
+        mock_invitation: MagicMock,
+        mock_account: MagicMock,
     ):
         """Ensure uppercase emails are normalized before lookup and revocation."""
         mock_get_invitation.return_value = mock_invitation
@@ -563,14 +563,14 @@ class TestActivateApi:
     @patch("controllers.console.auth.activate.db")
     def test_activation_for_existing_active_account_creates_membership_on_acceptance(
         self,
-        mock_db,
-        mock_revoke_token,
-        mock_get_invitation,
-        mock_create_tenant_member,
+        mock_db: MagicMock,
+        mock_revoke_token: MagicMock,
+        mock_get_invitation: MagicMock,
+        mock_create_tenant_member: MagicMock,
         app: Flask,
-        mock_invitation,
-        mock_account,
-        mock_switch_tenant,
+        mock_invitation: MagicMock,
+        mock_account: MagicMock,
+        mock_switch_tenant: MagicMock,
     ):
         mock_account.status = AccountStatus.ACTIVE
         mock_invitation["data"]["role"] = "admin"
@@ -590,7 +590,9 @@ class TestActivateApi:
             response = ActivateApi().post()
 
         assert response["result"] == "success"
-        mock_create_tenant_member.assert_called_once_with(mock_invitation["tenant"], mock_account, "admin")
+        mock_create_tenant_member.assert_called_once_with(
+            mock_invitation["tenant"], mock_account, mock_db.session, role=TenantAccountRole.ADMIN
+        )
         mock_switch_tenant.assert_called_once_with(mock_account, mock_invitation["tenant"].id)
         mock_revoke_token.assert_called_once_with("workspace-123", "invitee@example.com", "valid_token")
 
@@ -600,14 +602,14 @@ class TestActivateApi:
     @patch("controllers.console.auth.activate.db")
     def test_activation_legacy_active_member_invitation_does_not_require_setup(
         self,
-        mock_db,
-        mock_revoke_token,
-        mock_get_invitation,
-        mock_create_tenant_member,
+        mock_db: MagicMock,
+        mock_revoke_token: MagicMock,
+        mock_get_invitation: MagicMock,
+        mock_create_tenant_member: MagicMock,
         app: Flask,
-        mock_invitation,
-        mock_account,
-        mock_switch_tenant,
+        mock_invitation: MagicMock,
+        mock_account: MagicMock,
+        mock_switch_tenant: MagicMock,
     ):
         mock_account.status = AccountStatus.ACTIVE
         mock_get_invitation.return_value = mock_invitation

@@ -312,15 +312,26 @@ _LEGACY_WORKSPACE_OWNER_KEYS: list[str] = [
     "plugin.manage",
     "plugin.debug",
     "credential.use",
+    "credential.create",
     "credential.manage",
+    "billing.view",
+    "billing.subscription.manage",
+    "billing.manage",
+    "app.acl.preview",
     "app_library.access",
     "app.create_and_management",
     "app.tag.manage",
+    "dataset.acl.preview",
     "dataset.create_and_management",
     "dataset.tag.manage",
     "dataset.external.connect",
+    "dataset.api_key.manage",
+    "snippets.create_and_modify",
+    "snippets.management",
     "tool.manage",
     "mcp.manage",
+    "snippets.create_and_modify",
+    "snippets.management",
 ]
 
 _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
@@ -334,15 +345,24 @@ _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
     "plugin.manage",
     "plugin.debug",
     "credential.use",
+    "credential.create",
     "credential.manage",
+    "billing.view",
+    "billing.subscription.manage",
+    "billing.manage",
     "app_library.access",
     "app.create_and_management",
     "app.tag.manage",
     "dataset.create_and_management",
     "dataset.tag.manage",
     "dataset.external.connect",
+    "dataset.api_key.manage",
+    "snippets.create_and_modify",
+    "snippets.management",
     "tool.manage",
     "mcp.manage",
+    "snippets.create_and_modify",
+    "snippets.management",
 ]
 
 _LEGACY_WORKSPACE_EDITOR_KEYS: list[str] = [
@@ -356,7 +376,9 @@ _LEGACY_WORKSPACE_EDITOR_KEYS: list[str] = [
     "dataset.create_and_management",
     "dataset.tag.manage",
     "dataset.external.connect",
+    "snippets.create_and_modify",
     "tool.manage",
+    "snippets.create_and_modify",
 ]
 
 _LEGACY_WORKSPACE_NORMAL_KEYS: list[str] = [
@@ -373,6 +395,7 @@ _LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS: list[str] = [
 ]
 
 _LEGACY_APP_OWNER_KEYS: list[str] = [
+    "app.acl.preview",
     "app.acl.view_layout",
     "app.acl.test_and_run",
     "app.acl.edit",
@@ -384,6 +407,7 @@ _LEGACY_APP_OWNER_KEYS: list[str] = [
 ]
 
 _LEGACY_APP_ADMIN_KEYS: list[str] = [
+    "app.acl.preview",
     "app.acl.view_layout",
     "app.acl.test_and_run",
     "app.acl.edit",
@@ -395,6 +419,7 @@ _LEGACY_APP_ADMIN_KEYS: list[str] = [
 ]
 
 _LEGACY_APP_EDITOR_KEYS: list[str] = [
+    "app.acl.preview",
     "app.acl.view_layout",
     "app.acl.test_and_run",
     "app.acl.edit",
@@ -406,12 +431,14 @@ _LEGACY_APP_EDITOR_KEYS: list[str] = [
 ]
 
 _LEGACY_APP_NORMAL_KEYS: list[str] = [
+    "app.acl.preview",
     "app.acl.view_layout",
     "app.acl.test_and_run",
     "app.acl.monitor",
 ]
 
 _LEGACY_DATASET_OWNER_KEYS: list[str] = [
+    "dataset.acl.preview",
     "dataset.acl.readonly",
     "dataset.acl.edit",
     "dataset.acl.import_export_dsl",
@@ -427,6 +454,7 @@ _LEGACY_DATASET_OWNER_KEYS: list[str] = [
 ]
 
 _LEGACY_DATASET_ADMIN_KEYS: list[str] = [
+    "dataset.acl.preview",
     "dataset.acl.readonly",
     "dataset.acl.edit",
     "dataset.acl.import_export_dsl",
@@ -442,6 +470,7 @@ _LEGACY_DATASET_ADMIN_KEYS: list[str] = [
 ]
 
 _LEGACY_DATASET_EDITOR_KEYS: list[str] = [
+    "dataset.acl.preview",
     "dataset.acl.readonly",
     "dataset.acl.edit",
     "dataset.acl.import_export_dsl",
@@ -490,6 +519,19 @@ _LEGACY_MY_PERMISSIONS: dict[TenantAccountRole, dict[str, list[str]]] = {
         "dataset": _LEGACY_DATASET_DATASET_OPERATOR_KEYS,
     },
 }
+
+
+def _legacy_role_permission_keys(role: TenantAccountRole) -> list[str]:
+    permissions = _LEGACY_MY_PERMISSIONS.get(role, {})
+    return list(
+        dict.fromkeys(
+            [
+                *permissions.get("workspace", []),
+                *permissions.get("app", []),
+                *permissions.get("dataset", []),
+            ]
+        )
+    )
 
 
 def _legacy_my_permissions(tenant_id: str, account_id: str | None) -> MyPermissionsResponse:
@@ -728,6 +770,7 @@ class RBACService:
             data = _inner_call(
                 "GET",
                 f"{_INNER_PREFIX}/role-permissions/catalog",
+                params={"billing_enabled": dify_config.BILLING_ENABLED},
                 tenant_id=tenant_id,
                 account_id=account_id,
             )
@@ -1518,21 +1561,44 @@ class RBACService:
             )
             return AccessMatrixItem.model_validate(data or {})
 
-    # ------------------------------------------------------------------
-    # Member ↔ role bindings (screenshot 3: Settings > Members > Assign roles).
-    # ------------------------------------------------------------------
     class MemberRoles:
         @staticmethod
         def get(tenant_id: str, account_id: str | None, member_account_id: str) -> MemberRolesResponse:
-            data = _inner_call(
-                "GET",
-                f"{_INNER_PREFIX}/members/rbac-roles",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"account_id": member_account_id},
-            )
-            rst = MemberRolesResponse.model_validate(data or {})
-            return rst
+            if dify_config.RBAC_ENABLED:
+                data = _inner_call(
+                    "GET",
+                    f"{_INNER_PREFIX}/members/rbac-roles",
+                    tenant_id=tenant_id,
+                    account_id=account_id,
+                    params={"account_id": member_account_id},
+                )
+                rst = MemberRolesResponse.model_validate(data or {})
+                return rst
+            else:
+                with session_factory.create_session() as session:
+                    role = session.scalar(
+                        select(TenantAccountJoin.role).where(
+                            TenantAccountJoin.tenant_id == tenant_id,
+                            TenantAccountJoin.account_id == member_account_id,
+                        )
+                    )
+                    return MemberRolesResponse(
+                        account_id=member_account_id,
+                        roles=[
+                            RBACRole(
+                                id=role,
+                                name=role,
+                                description="",
+                                is_builtin=True,
+                                type="",
+                                permission_keys=_legacy_role_permission_keys(role),
+                                role_tag="owner" if role == "owner" else role,
+                                tenant_id=tenant_id,
+                            )
+                        ]
+                        if role
+                        else [],
+                    )
 
         @staticmethod
         def batch_get(
