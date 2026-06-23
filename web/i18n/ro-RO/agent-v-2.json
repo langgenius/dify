@@ -321,7 +321,7 @@
   "agentDetail.publish": "Publică",
   "agentDetail.publishSoon": "În curând",
   "agentDetail.sections.access": "Punct de acces",
-  "agentDetail.sections.configure": "Orchestrare",
+  "agentDetail.sections.configure": "Configurează",
   "agentDetail.sections.logs": "Jurnale",
   "agentDetail.sections.monitoring": "Monitorizare",
   "agentDetail.subtitle": "ID agent: {{agentId}}",

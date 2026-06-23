@@ -321,7 +321,7 @@
   "agentDetail.publish": "Publiceren",
   "agentDetail.publishSoon": "Binnenkort",
   "agentDetail.sections.access": "Toegangspunt",
-  "agentDetail.sections.configure": "Orkestreren",
+  "agentDetail.sections.configure": "Configure",
   "agentDetail.sections.logs": "Logs",
   "agentDetail.sections.monitoring": "Monitoring",
   "agentDetail.subtitle": "Agent-ID: {{agentId}}",

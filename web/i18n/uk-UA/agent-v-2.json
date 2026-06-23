@@ -321,7 +321,7 @@
   "agentDetail.publish": "Опублікувати",
   "agentDetail.publishSoon": "Скоро",
   "agentDetail.sections.access": "Точка доступу",
-  "agentDetail.sections.configure": "Оркестрація",
+  "agentDetail.sections.configure": "Налаштувати",
   "agentDetail.sections.logs": "Журнали",
   "agentDetail.sections.monitoring": "Моніторинг",
   "agentDetail.subtitle": "ID агента: {{agentId}}",

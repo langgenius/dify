@@ -321,7 +321,7 @@
   "agentDetail.publish": "เผยแพร่",
   "agentDetail.publishSoon": "เร็ว ๆ นี้",
   "agentDetail.sections.access": "จุดเข้าถึง",
-  "agentDetail.sections.configure": "การจัดการ",
+  "agentDetail.sections.configure": "กําหนดค่า",
   "agentDetail.sections.logs": "บันทึก",
   "agentDetail.sections.monitoring": "การมอนิเตอร์",
   "agentDetail.subtitle": "ID ตัวแทน: {{agentId}}",

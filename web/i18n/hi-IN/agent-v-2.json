@@ -321,7 +321,7 @@
   "agentDetail.publish": "प्रकाशित करें",
   "agentDetail.publishSoon": "जल्द ही",
   "agentDetail.sections.access": "एक्सेस पॉइंट",
-  "agentDetail.sections.configure": "व्यवस्थित करें",
+  "agentDetail.sections.configure": "कॉन्फ़िगर करें",
   "agentDetail.sections.logs": "लॉग",
   "agentDetail.sections.monitoring": "निगरानी",
   "agentDetail.subtitle": "एजेंट ID: {{agentId}}",

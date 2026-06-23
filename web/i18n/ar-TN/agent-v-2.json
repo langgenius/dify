@@ -321,7 +321,7 @@
   "agentDetail.publish": "نشر",
   "agentDetail.publishSoon": "قريباً",
   "agentDetail.sections.access": "نقطة الوصول",
-  "agentDetail.sections.configure": "تنسيق",
+  "agentDetail.sections.configure": "تكوين",
   "agentDetail.sections.logs": "السجلات",
   "agentDetail.sections.monitoring": "المراقبة",
   "agentDetail.subtitle": "معرّف الوكيل: {{agentId}}",

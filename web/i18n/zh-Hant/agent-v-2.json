@@ -321,7 +321,7 @@
   "agentDetail.publish": "發佈",
   "agentDetail.publishSoon": "即將推出",
   "agentDetail.sections.access": "存取點",
-  "agentDetail.sections.configure": "編排",
+  "agentDetail.sections.configure": "配置",
   "agentDetail.sections.logs": "日誌",
   "agentDetail.sections.monitoring": "監控",
   "agentDetail.subtitle": "智能體 ID：{{agentId}}",

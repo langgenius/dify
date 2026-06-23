@@ -321,7 +321,7 @@
   "agentDetail.publish": "Terbitkan",
   "agentDetail.publishSoon": "Segera",
   "agentDetail.sections.access": "Titik Akses",
-  "agentDetail.sections.configure": "Orkestrasi",
+  "agentDetail.sections.configure": "Konfigurasikan",
   "agentDetail.sections.logs": "Log",
   "agentDetail.sections.monitoring": "Pemantauan",
   "agentDetail.subtitle": "ID Agen: {{agentId}}",

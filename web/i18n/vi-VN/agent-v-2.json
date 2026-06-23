@@ -321,7 +321,7 @@
   "agentDetail.publish": "Xuất bản",
   "agentDetail.publishSoon": "Sắp ra mắt",
   "agentDetail.sections.access": "Điểm truy cập",
-  "agentDetail.sections.configure": "Điều phối",
+  "agentDetail.sections.configure": "Cấu hình",
   "agentDetail.sections.logs": "Nhật ký",
   "agentDetail.sections.monitoring": "Giám sát",
   "agentDetail.subtitle": "ID tác nhân: {{agentId}}",

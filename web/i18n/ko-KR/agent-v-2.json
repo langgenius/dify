@@ -321,7 +321,7 @@
   "agentDetail.publish": "게시",
   "agentDetail.publishSoon": "곧 제공",
   "agentDetail.sections.access": "액세스 지점",
-  "agentDetail.sections.configure": "오케스트레이션",
+  "agentDetail.sections.configure": "구성",
   "agentDetail.sections.logs": "로그",
   "agentDetail.sections.monitoring": "모니터링",
   "agentDetail.subtitle": "에이전트 ID: {{agentId}}",

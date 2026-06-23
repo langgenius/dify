@@ -321,7 +321,7 @@
   "agentDetail.publish": "Yayınla",
   "agentDetail.publishSoon": "Yakında",
   "agentDetail.sections.access": "Erişim Noktası",
-  "agentDetail.sections.configure": "Koordine Et",
+  "agentDetail.sections.configure": "Yapılandır",
   "agentDetail.sections.logs": "Günlükler",
   "agentDetail.sections.monitoring": "İzleme",
   "agentDetail.subtitle": "Ajan ID: {{agentId}}",

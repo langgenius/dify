@@ -321,7 +321,7 @@
   "agentDetail.publish": "公開",
   "agentDetail.publishSoon": "近日公開",
   "agentDetail.sections.access": "アクセスポイント",
-  "agentDetail.sections.configure": "オーケストレーション",
+  "agentDetail.sections.configure": "設定",
   "agentDetail.sections.logs": "ログ",
   "agentDetail.sections.monitoring": "モニタリング",
   "agentDetail.subtitle": "エージェント ID：{{agentId}}",

@@ -321,7 +321,7 @@
   "agentDetail.publish": "Objavi",
   "agentDetail.publishSoon": "Kmalu",
   "agentDetail.sections.access": "Dostopna točka",
-  "agentDetail.sections.configure": "Orkestracija",
+  "agentDetail.sections.configure": "Konfiguriraj",
   "agentDetail.sections.logs": "Dnevniki",
   "agentDetail.sections.monitoring": "Spremljanje",
   "agentDetail.subtitle": "ID agenta: {{agentId}}",

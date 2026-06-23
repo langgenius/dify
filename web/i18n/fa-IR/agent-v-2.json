@@ -321,7 +321,7 @@
   "agentDetail.publish": "انتشار",
   "agentDetail.publishSoon": "به‌زودی",
   "agentDetail.sections.access": "نقطه دسترسی",
-  "agentDetail.sections.configure": "هماهنگ‌سازی",
+  "agentDetail.sections.configure": "پیکربندی",
   "agentDetail.sections.logs": "گزارش‌ها",
   "agentDetail.sections.monitoring": "نظارت",
   "agentDetail.subtitle": "شناسه عامل: {{agentId}}",

@@ -321,7 +321,7 @@
   "agentDetail.publish": "Publish",
   "agentDetail.publishSoon": "Soon",
   "agentDetail.sections.access": "Access Point",
-  "agentDetail.sections.configure": "Orchestrate",
+  "agentDetail.sections.configure": "Configure",
   "agentDetail.sections.logs": "Logs",
   "agentDetail.sections.monitoring": "Monitoring",
   "agentDetail.subtitle": "Agent ID: {{agentId}}",
