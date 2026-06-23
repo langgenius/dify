@@ -267,36 +267,45 @@ class TestRecommendedAppServiceGetDetail:
 
 
 class TestRecommendedAppServiceGetLearnDifyApps:
-    def test_returns_database_learn_dify_apps_without_remote_factory(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    @patch("services.recommended_app_service.FeatureService", autospec=True)
+    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
+    @patch("services.recommended_app_service.dify_config")
+    def test_uses_configured_retrieval_source(
+        self, mock_config: MagicMock, mock_factory_class: MagicMock, mock_feature_service: MagicMock
+    ) -> None:
+        mock_config.HOSTED_FETCH_APP_TEMPLATES_MODE = "remote"
+        mock_feature_service.get_system_features.return_value = SimpleNamespace(enable_trial_app=False)
         expected_app = RecommendedAppPayload(app_id="app-1", category="Workflow")
-        mock_database_retrieval = MagicMock()
-        mock_database_retrieval.fetch_learn_dify_apps_from_db.return_value = {
+        mock_instance = MagicMock()
+        mock_instance.get_learn_dify_apps.return_value = {
             "recommended_apps": [expected_app],
             "categories": ["Workflow"],
         }
-        monkeypatch.setattr(service_module, "DatabaseRecommendAppRetrieval", mock_database_retrieval)
-        monkeypatch.setattr(
-            service_module.FeatureService,
-            "get_system_features",
-            MagicMock(return_value=SimpleNamespace(enable_trial_app=False)),
-        )
-        factory_mock = MagicMock()
-        monkeypatch.setattr(service_module.RecommendAppRetrievalFactory, "get_recommend_app_factory", factory_mock)
+        mock_factory_class.get_recommend_app_factory.return_value = MagicMock(return_value=mock_instance)
 
         result = RecommendedAppService.get_learn_dify_apps(db.session, "en-US")
 
         assert result == {"recommended_apps": [expected_app]}
-        mock_database_retrieval.fetch_learn_dify_apps_from_db.assert_called_once_with("en-US")
-        factory_mock.assert_not_called()
+        mock_factory_class.get_recommend_app_factory.assert_called_once_with("remote")
+        mock_instance.get_learn_dify_apps.assert_called_once_with("en-US")
 
-    def test_sets_can_trial_when_trial_feature_enabled(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    @patch("services.recommended_app_service.dify_config")
+    def test_sets_can_trial_when_trial_feature_enabled(
+        self, mock_config: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        mock_config.HOSTED_FETCH_APP_TEMPLATES_MODE = "db"
         app = RecommendedAppPayload(app_id="app-1", category="Workflow")
-        mock_database_retrieval = MagicMock()
-        mock_database_retrieval.fetch_learn_dify_apps_from_db.return_value = {
+        mock_retrieval_instance = MagicMock()
+        mock_retrieval_instance.get_learn_dify_apps.return_value = {
             "recommended_apps": [app],
             "categories": ["Workflow"],
         }
-        monkeypatch.setattr(service_module, "DatabaseRecommendAppRetrieval", mock_database_retrieval)
+        mock_retrieval_factory = MagicMock(return_value=mock_retrieval_instance)
+        monkeypatch.setattr(
+            service_module.RecommendAppRetrievalFactory,
+            "get_recommend_app_factory",
+            MagicMock(return_value=mock_retrieval_factory),
+        )
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_system_features",

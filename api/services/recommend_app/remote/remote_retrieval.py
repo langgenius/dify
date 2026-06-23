@@ -5,6 +5,7 @@ import httpx
 
 from configs import dify_config
 from services.recommend_app.buildin.buildin_retrieval import BuildInRecommendAppRetrieval
+from services.recommend_app.database.database_retrieval import DatabaseRecommendAppRetrieval
 from services.recommend_app.recommend_app_base import RecommendAppRetrievalBase
 from services.recommend_app.recommend_app_type import RecommendAppType
 
@@ -38,6 +39,15 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
         return result
 
     @override
+    def get_learn_dify_apps(self, language: str):
+        try:
+            result = self.fetch_learn_dify_apps_from_dify_official(language)
+        except Exception as e:
+            logger.warning("fetch learn dify apps from dify official failed: %s, switch to database.", e)
+            result = DatabaseRecommendAppRetrieval.fetch_learn_dify_apps_from_db(language)
+        return result
+
+    @override
     def get_type(self) -> str:
         return RecommendAppType.REMOTE
 
@@ -68,6 +78,22 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
         response = httpx.get(url, timeout=httpx.Timeout(10.0, connect=3.0))
         if response.status_code != 200:
             raise ValueError(f"fetch recommended apps failed, status code: {response.status_code}")
+
+        result: dict[str, Any] = response.json()
+        return result
+
+    @classmethod
+    def fetch_learn_dify_apps_from_dify_official(cls, language: str):
+        """
+        Fetch Learn Dify apps from dify official.
+        :param language: language
+        :return:
+        """
+        domain = dify_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN
+        url = f"{domain}/apps/learn-dify?language={language}"
+        response = httpx.get(url, timeout=httpx.Timeout(10.0, connect=3.0))
+        if response.status_code != 200:
+            raise ValueError(f"fetch learn dify apps failed, status code: {response.status_code}")
 
         result: dict[str, Any] = response.json()
         return result
