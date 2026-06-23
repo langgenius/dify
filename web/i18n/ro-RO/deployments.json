@@ -613,6 +613,7 @@
   "versions.releaseDescriptionLabel": "Descriere",
   "versions.releaseDescriptionPlaceholder": "Descrie această versiune",
   "versions.releaseHistory": "Istoric versiuni",
+  "versions.releaseNameConflict": "Există deja o versiune cu acest nume. Alege alt nume.",
   "versions.releaseNameLabel": "Nume versiune",
   "versions.releaseNamePlaceholder": "Nume versiune",
   "versions.releaseNameRequired": "Introdu un nume pentru versiune.",
