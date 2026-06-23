@@ -9,6 +9,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -135,12 +136,16 @@ const SnippetMain = ({
   const effectiveDraftNodes = localDraftState?.nodes ?? draftNodes
   const effectiveDraftEdges = localDraftState?.edges ?? draftEdges
   const effectiveDraftViewport = localDraftState?.viewport ?? draftViewport
+  const currentInputFieldsRef = useRef<SnippetInputField[]>(effectiveDraftPayload.inputFields)
   const { graph, snippet } = effectiveDraftPayload
   const canSave = currentCanvasNodeCount > 0
+  const getCurrentInputFields = useCallback(() => currentInputFieldsRef.current, [])
   const {
     doSyncWorkflowDraft: syncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
-  } = useNodesSyncDraft(snippetId)
+  } = useNodesSyncDraft(snippetId, {
+    getInputFields: getCurrentInputFields,
+  })
   const workflowStore = useWorkflowStore()
   const { handleRefreshWorkflowDraft } = useSnippetRefreshDraft(snippetId)
   const {
@@ -220,6 +225,7 @@ const SnippetMain = ({
   }, [reset, snippetId])
 
   useEffect(() => {
+    currentInputFieldsRef.current = effectiveDraftPayload.inputFields
     setFields(effectiveDraftPayload.inputFields)
   }, [effectiveDraftPayload.inputFields, setFields, snippetId])
 
@@ -248,6 +254,7 @@ const SnippetMain = ({
   ) => syncWorkflowDraft(...args), [syncWorkflowDraft])
 
   const handleFieldsChange = useCallback((nextFields: SnippetInputField[]) => {
+    currentInputFieldsRef.current = nextFields
     handleSnippetFieldsChange(nextFields)
   }, [handleSnippetFieldsChange])
 
@@ -279,6 +286,7 @@ const SnippetMain = ({
       ? syncedDraftPayload.input_fields as SnippetInputField[]
       : fields
 
+    currentInputFieldsRef.current = inputFields
     setLocalDraftState({
       payload: {
         ...draftPayload,

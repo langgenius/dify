@@ -8,6 +8,7 @@ import { useNodesReadOnlyByCanEdit } from '@/app/components/workflow/hooks/use-w
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { API_PREFIX } from '@/config'
 import { consoleClient } from '@/service/client'
+// eslint-disable-next-line no-restricted-imports
 import { postWithKeepalive } from '@/service/fetch'
 import { useSnippetDetailStore } from '../store'
 import { useSnippetRefreshDraft } from './use-snippet-refresh-draft'
@@ -22,6 +23,10 @@ const isSyncConflictError = (error: unknown): error is { bodyUsed: boolean, json
 
 type SyncInputFieldsDraftCallback = SyncDraftCallback & {
   onRefresh?: (inputFields: SnippetInputField[]) => void
+}
+
+type UseNodesSyncDraftOptions = {
+  getInputFields?: () => SnippetInputField[]
 }
 
 const snippetDraftSyncQueues = new Map<string, Promise<unknown>>()
@@ -43,17 +48,18 @@ const enqueueSnippetDraftSync = <Result>(
   return nextTask
 }
 
-export const useNodesSyncDraft = (snippetId: string) => {
+export const useNodesSyncDraft = (snippetId: string, options: UseNodesSyncDraftOptions = {}) => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const { getNodesReadOnly } = useNodesReadOnlyByCanEdit(true)
   const { handleRefreshWorkflowDraft } = useSnippetRefreshDraft(snippetId)
+  const { getInputFields } = options
 
   const getInputFieldsSyncPayload = useCallback((inputFields?: SnippetInputField[]) => {
     return {
-      input_fields: inputFields ?? useSnippetDetailStore.getState().fields,
+      input_fields: inputFields ?? getInputFields?.() ?? useSnippetDetailStore.getState().fields,
     }
-  }, [])
+  }, [getInputFields])
 
   const getDraftSyncPayload = useCallback((inputFields?: SnippetInputField[]) => {
     const {

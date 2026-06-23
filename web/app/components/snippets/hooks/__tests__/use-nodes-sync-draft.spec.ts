@@ -139,6 +139,27 @@ describe('snippet/use-nodes-sync-draft', () => {
     expect(mockUseNodesReadOnlyByCanEdit).toHaveBeenCalledWith(true)
   })
 
+  it('should use provided input_fields when the snippet store is not initialized yet', async () => {
+    useSnippetDetailStore.setState({
+      fields: [],
+    })
+    const inputFields = [createInputField('topic')]
+    const { result } = renderHook(() => useNodesSyncDraft('snippet-1', {
+      getInputFields: () => inputFields,
+    }))
+
+    await act(async () => {
+      await result.current.doSyncWorkflowDraft()
+    })
+
+    expect(mockSyncDraftWorkflow).toHaveBeenCalledWith({
+      params: { snippetId: 'snippet-1' },
+      body: expect.objectContaining({
+        input_fields: inputFields,
+      }),
+    })
+  })
+
   it('should snapshot graph before queued draft sync executes', async () => {
     deferSerialCallbacks = true
     const { result } = renderHook(() => useNodesSyncDraft('snippet-1'))
@@ -245,5 +266,23 @@ describe('snippet/use-nodes-sync-draft', () => {
       input_fields: [createInputField('topic')],
       hash: 'draft-hash',
     })
+  })
+
+  it('should use provided input_fields when syncing on page close before the snippet store initializes', () => {
+    useSnippetDetailStore.setState({
+      fields: [],
+    })
+    const inputFields = [createInputField('topic')]
+    const { result } = renderHook(() => useNodesSyncDraft('snippet-1', {
+      getInputFields: () => inputFields,
+    }))
+
+    act(() => {
+      result.current.syncWorkflowDraftWhenPageClose()
+    })
+
+    expect(mockPostWithKeepalive).toHaveBeenCalledWith('/api/snippets/snippet-1/workflows/draft', expect.objectContaining({
+      input_fields: inputFields,
+    }))
   })
 })
