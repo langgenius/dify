@@ -80,6 +80,10 @@ class SnippetDraftConfigResponse(BaseModel):
     parallel_depth_limit: int
 
 
+class SnippetWorkflowPaginationResponse(WorkflowPaginationResponse):
+    items: list[SnippetWorkflowResponse]
+
+
 register_schema_models(
     console_ns,
     SnippetDraftSyncPayload,
@@ -98,6 +102,7 @@ register_response_schema_models(
     SimpleResultResponse,
     SnippetDraftConfigResponse,
     SnippetWorkflowResponse,
+    SnippetWorkflowPaginationResponse,
     WorkflowPublishResponse,
     WorkflowPaginationResponse,
     WorkflowRestoreResponse,
@@ -329,7 +334,7 @@ class SnippetPublishedAllWorkflowApi(Resource):
     @console_ns.response(
         200,
         "Published workflows retrieved successfully",
-        console_ns.models[WorkflowPaginationResponse.__name__],
+        console_ns.models[SnippetWorkflowPaginationResponse.__name__],
     )
     @setup_required
     @login_required
@@ -350,7 +355,7 @@ class SnippetPublishedAllWorkflowApi(Resource):
                 limit=args.limit,
             )
 
-        return WorkflowPaginationResponse.model_validate(
+        response = SnippetWorkflowPaginationResponse.model_validate(
             {
                 "items": workflows,
                 "page": args.page,
@@ -359,6 +364,9 @@ class SnippetPublishedAllWorkflowApi(Resource):
             },
             from_attributes=True,
         ).model_dump(mode="json")
+        for item in response["items"]:
+            item["input_fields"] = snippet.input_fields_list
+        return response
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/<string:workflow_id>/restore")
