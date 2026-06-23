@@ -185,8 +185,8 @@ class EnterpriseRequest(BaseRequest):
 
         if (
             not cls.rbac_base_url.startswith("http")
-            or not cls.rbac_base_url.startswith("https")
-            or not cls.rbac_base_url
+            and not cls.rbac_base_url.startswith("https")
+            and not cls.rbac_base_url
         ):
             raise ValueError("ENTERPRISE_RBAC_API_URL is required when RBAC_ENABLED=true")
 

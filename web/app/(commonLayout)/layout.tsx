@@ -7,6 +7,7 @@ import Zendesk from '@/app/components/base/zendesk'
 import { EducationVerifyActionRecorder } from '@/app/components/education-verify-action-recorder'
 import { GotoAnything } from '@/app/components/goto-anything'
 import MainNavLayout from '@/app/components/main-nav/layout'
+import { NextRouteStateBridge } from '@/app/components/next-route-state'
 import { OAuthRegistrationAnalytics } from '@/app/components/oauth-registration-analytics'
 import ReadmePanel from '@/app/components/plugins/readme-panel'
 import WorkflowGeneratorMount from '@/app/components/workflow/workflow-generator/mount'
@@ -30,6 +31,7 @@ export default async function Layout({ children }: { children: ReactNode }) {
           <EventEmitterContextProvider>
             <ProviderContextProvider>
               <ModalContextProvider>
+                <NextRouteStateBridge />
                 <MainNavLayout>
                   <RoleRouteGuard>
                     {children}
