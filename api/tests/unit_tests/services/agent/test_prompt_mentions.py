@@ -7,11 +7,13 @@ guarantees no mention-shaped marker survives to the model.
 
 from __future__ import annotations
 
+from urllib.parse import quote
+
 import pytest
 
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from services.agent.prompt_mentions import (
-    MAX_MENTION_FIELD_LENGTH,
+    MAX_MENTION_REF_ID_LENGTH,
     NODE_JOB_PROMPT_ALLOWED_KINDS,
     SOUL_PROMPT_ALLOWED_KINDS,
     MentionKind,
@@ -26,11 +28,11 @@ from services.agent.prompt_mentions import (
 
 
 def test_parse_extracts_kind_id_and_optional_label():
-    prompt = "Use [§skill:abc-1:tender-analyzer§] then ask [§human:c-1§]."
+    prompt = "Use [§skill:tender-analyzer%2FSKILL.md:tender-analyzer§] then ask [§human:c-1§]."
     mentions = parse_prompt_mentions(prompt)
 
     assert [(m.kind, m.ref_id, m.label) for m in mentions] == [
-        (MentionKind.SKILL, "abc-1", "tender-analyzer"),
+        (MentionKind.SKILL, "tender-analyzer%2FSKILL.md", "tender-analyzer"),
         (MentionKind.HUMAN, "c-1", None),
     ]
     assert prompt[mentions[0].start : mentions[0].end] == mentions[0].raw
@@ -48,8 +50,14 @@ def test_parse_ignores_legacy_template_forms_and_unknown_kinds():
 
 
 def test_parse_skips_oversized_id_or_label():
-    long_id = "x" * (MAX_MENTION_FIELD_LENGTH + 1)
+    long_id = "x" * (MAX_MENTION_REF_ID_LENGTH + 1)
     assert parse_prompt_mentions(f"[§skill:{long_id}§]") == []
+
+
+def test_parse_accepts_long_unicode_encoded_drive_key_within_drive_limit():
+    encoded_drive_key = quote("你" * 512)
+    mentions = parse_prompt_mentions(f"[§skill:{encoded_drive_key}:Long Skill§]")
+    assert [(mention.kind, mention.ref_id) for mention in mentions] == [(MentionKind.SKILL, encoded_drive_key)]
 
 
 # ── expand + scrub ────────────────────────────────────────────────────────────
@@ -88,10 +96,6 @@ def test_expand_empty_prompt_is_noop():
 def soul() -> AgentSoulConfig:
     return AgentSoulConfig.model_validate(
         {
-            "skills_files": {
-                "skills": [{"id": "sk-1", "name": "tender-analyzer"}],
-                "files": [{"id": "f-1", "name": "qna_report.pdf"}],
-            },
             "tools": {
                 "dify_tools": [
                     {
@@ -112,17 +116,13 @@ def soul() -> AgentSoulConfig:
 def test_soul_resolver_resolves_each_kind(soul: AgentSoulConfig):
     resolver = build_soul_mention_resolver(soul)
     prompt = (
-        "Use [§skill:sk-1§] with [§file:f-1§], search via "
-        "[§tool:tavily/tavily_search:tavily§], run [§cli_tool:ct-1:ffmpeg§], "
+        "Use [§tool:tavily/tavily_search:tavily§], run [§cli_tool:ct-1:ffmpeg§], "
         "ground in [§knowledge:ds-1§], ask [§human:c-1§]."
     )
 
     expanded = expand_prompt_mentions(prompt, resolver)
 
-    assert expanded == (
-        "Use tender-analyzer with qna_report.pdf, search via tavily_search, "
-        "run ffmpeg, ground in 产品手册, ask EMAIL · David Hayes."
-    )
+    assert expanded == ("Use tavily_search, run ffmpeg, ground in 产品手册, ask EMAIL · David Hayes.")
 
 
 def test_soul_resolver_unknown_ids_degrade(soul: AgentSoulConfig):

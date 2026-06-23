@@ -14,7 +14,6 @@ from controllers.console.app.app import (
 )
 from controllers.console.app.app import (
     AppListQuery,
-    CopyAppPayload,
     _normalize_app_list_query_args,
 )
 from controllers.console.app.app import (
@@ -107,6 +106,25 @@ class AgentAppUpdatePayload(GenericUpdateAppPayload):
         role = value.strip()
         if not role:
             raise ValueError("Agent role is required.")
+        return role
+
+
+class AgentAppCopyPayload(BaseModel):
+    name: str | None = Field(default=None, description="Name for the copied agent")
+    description: str | None = Field(default=None, description="Description for the copied agent", max_length=400)
+    role: str | None = Field(default=None, description="Role for the copied agent", max_length=255)
+    icon_type: IconType | None = Field(default=None, description="Icon type")
+    icon: str | None = Field(default=None, description="Icon")
+    icon_background: str | None = Field(default=None, description="Icon background color")
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        role = value.strip()
+        if not role:
+            raise ValueError("Agent role is required when provided.")
         return role
 
 
@@ -228,6 +246,10 @@ class AgentAppDetailWithSite(GenericAppDetailWithSite):
     active_config_is_published: bool = False
 
 
+class AgentDebugConversationRefreshResponse(BaseModel):
+    debug_conversation_id: str
+
+
 class AgentAppPagination(GenericAppPagination):
     data: list[AgentAppPartial] = Field(  # type: ignore[assignment]  # pyrefly: ignore[bad-override-mutable-attribute]
         validation_alias=AliasChoices("items", "data")
@@ -238,8 +260,8 @@ register_schema_models(
     console_ns,
     AgentAppCreatePayload,
     AgentAppUpdatePayload,
+    AgentAppCopyPayload,
     AgentApiStatusPayload,
-    CopyAppPayload,
     AgentInviteOptionsQuery,
     AgentLogsQuery,
     AgentStatisticsQuery,
@@ -254,6 +276,7 @@ register_response_schema_models(
     AgentAppPublishedReferenceResponse,
     AgentAppDetailWithSite,
     AgentAppPartial,
+    AgentDebugConversationRefreshResponse,
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
     AgentConfigSnapshotRestoreResponse,
@@ -535,9 +558,34 @@ class AgentAppApi(Resource):
         return "", 204
 
 
+@console_ns.route("/agent/<uuid:agent_id>/debug-conversation/refresh")
+class AgentDebugConversationRefreshApi(Resource):
+    @console_ns.response(
+        200,
+        "Agent debug conversation refreshed",
+        console_ns.models[AgentDebugConversationRefreshResponse.__name__],
+    )
+    @console_ns.response(403, "Insufficient permissions")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, current_user: Account, agent_id: UUID):
+        debug_conversation_id = _agent_roster_service().refresh_agent_app_debug_conversation_id(
+            tenant_id=tenant_id,
+            agent_id=str(agent_id),
+            account_id=current_user.id,
+        )
+        return AgentDebugConversationRefreshResponse(debug_conversation_id=debug_conversation_id).model_dump(
+            mode="json"
+        )
+
+
 @console_ns.route("/agent/<uuid:agent_id>/copy")
 class AgentAppCopyApi(Resource):
-    @console_ns.expect(console_ns.models[CopyAppPayload.__name__])
+    @console_ns.expect(console_ns.models[AgentAppCopyPayload.__name__])
     @console_ns.response(201, "Agent app copied successfully", console_ns.models[AgentAppDetailWithSite.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(400, "Invalid request parameters")
@@ -548,13 +596,14 @@ class AgentAppCopyApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def post(self, tenant_id: str, current_user: Account, agent_id: UUID):
-        args = CopyAppPayload.model_validate(console_ns.payload or {})
+        args = AgentAppCopyPayload.model_validate(console_ns.payload or {})
         copied_app = _agent_roster_service().duplicate_agent_app(
             tenant_id=tenant_id,
             agent_id=str(agent_id),
             account=current_user,
             name=args.name,
             description=args.description,
+            role=args.role,
             icon_type=args.icon_type,
             icon=args.icon,
             icon_background=args.icon_background,

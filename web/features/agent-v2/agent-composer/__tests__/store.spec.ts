@@ -50,27 +50,6 @@ describe('agent composer store conversions', () => {
       prompt: {
         system_prompt: 'Be precise.',
       },
-      skills_files: {
-        files: [
-          {
-            id: 'file-1',
-            name: 'guide.md',
-            type: 'markdown',
-          },
-        ],
-        skills: [
-          {
-            id: 'skill-1',
-            file_id: 'archive-file-1',
-            full_archive_file_id: 'archive-file-1',
-            full_archive_key: 'research-skill/.DIFY-SKILL-FULL.zip',
-            name: 'Research Skill',
-            path: 'research-skill',
-            skill_md_file_id: 'skill-md-file-1',
-            skill_md_key: 'research-skill/SKILL.md',
-          },
-        ],
-      },
       tools: {
         cli_tools: [
           {
@@ -119,25 +98,6 @@ describe('agent composer store conversions', () => {
         provider: 'openai',
         plugin_id: 'openai',
       },
-      skills: [
-        {
-          fileId: 'archive-file-1',
-          fullArchiveFileId: 'archive-file-1',
-          fullArchiveKey: 'research-skill/.DIFY-SKILL-FULL.zip',
-          id: 'skill-1',
-          name: 'Research Skill',
-          path: 'research-skill',
-          skillMdFileId: 'skill-md-file-1',
-          skillMdKey: 'research-skill/SKILL.md',
-        },
-      ],
-      files: [
-        {
-          id: 'file-1',
-          name: 'guide.md',
-          icon: 'markdown',
-        },
-      ],
       knowledgeRetrievals: [
         expect.objectContaining({
           id: 'dataset-1',
@@ -181,7 +141,7 @@ describe('agent composer store conversions', () => {
       used_in_agent_nodes: true,
     })
 
-    expect(publishConfig.skills_files).toMatchObject(baseConfig.skills_files!)
+    expect(publishConfig).not.toHaveProperty('skills_files')
     expect(publishConfig.tools?.dify_tools).toEqual([
       expect.objectContaining({
         provider: 'DuckDuckGo',

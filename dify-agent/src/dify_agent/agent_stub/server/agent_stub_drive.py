@@ -70,8 +70,8 @@ class DifyApiAgentStubDriveRequestHandler:
     so this module validates the raw success payload directly.
     """
 
-    dify_api_base_url: str
-    dify_api_inner_api_key: str
+    inner_api_url: str
+    inner_api_key: str
     timeout: httpx.Timeout | float = 30.0
 
     async def get_manifest(
@@ -139,13 +139,13 @@ class DifyApiAgentStubDriveRequestHandler:
         return f"agent-{agent_id}"
 
     async def _get_inner_api(self, path: str, params: Mapping[str, str]) -> object:
-        url = f"{self.dify_api_base_url.rstrip('/')}{path}"
+        url = f"{self.inner_api_url.rstrip('/')}{path}"
         async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True, trust_env=False) as client:
             try:
                 response = await client.get(
                     url,
                     params=dict(params),
-                    headers={"X-Inner-Api-Key": self.dify_api_inner_api_key},
+                    headers={"X-Inner-Api-Key": self.inner_api_key},
                 )
             except httpx.TimeoutException as exc:
                 raise AgentStubDriveRequestError(504, "Dify API drive request timed out") from exc
@@ -154,13 +154,13 @@ class DifyApiAgentStubDriveRequestHandler:
         return self._normalize_payload(response)
 
     async def _post_inner_api(self, path: str, payload: Mapping[str, Any]) -> object:
-        url = f"{self.dify_api_base_url.rstrip('/')}{path}"
+        url = f"{self.inner_api_url.rstrip('/')}{path}"
         async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True, trust_env=False) as client:
             try:
                 response = await client.post(
                     url,
                     json=dict(payload),
-                    headers={"X-Inner-Api-Key": self.dify_api_inner_api_key},
+                    headers={"X-Inner-Api-Key": self.inner_api_key},
                 )
             except httpx.TimeoutException as exc:
                 raise AgentStubDriveRequestError(504, "Dify API drive request timed out") from exc

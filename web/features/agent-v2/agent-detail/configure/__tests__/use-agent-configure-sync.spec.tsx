@@ -34,6 +34,15 @@ const composerPutMutationOptions = vi.hoisted(() => vi.fn((options?: {
   },
 })))
 
+function createDeferredPromise<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((promiseResolve) => {
+    resolve = promiseResolve
+  })
+
+  return { promise, resolve }
+}
+
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     agent: {
@@ -212,5 +221,41 @@ describe('useAgentConfigureSync', () => {
       active_config_is_published: true,
       name: 'Agent',
     })
+  })
+
+  it('should expose publishing status from the publish mutation while publish is pending', async () => {
+    const publishDeferred = createDeferredPromise<{ agent_soul: Record<string, unknown> }>()
+    composerPutMutationFn.mockReturnValueOnce(publishDeferred.promise)
+    const { result } = renderUseAgentConfigureSync()
+    const publishPayload = {
+      agent_id: 'agent-1',
+      config_snapshot: {
+        prompt: {
+          system_prompt: 'Published prompt',
+        },
+      },
+    }
+
+    let publishPromise!: Promise<void>
+    act(() => {
+      publishPromise = result.current.publishDraft(publishPayload)
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    expect(result.current.isPublishing).toBe(true)
+
+    await act(async () => {
+      publishDeferred.resolve({
+        agent_soul: publishPayload.config_snapshot,
+      })
+      await publishPromise
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    expect(result.current.isPublishing).toBe(false)
   })
 })

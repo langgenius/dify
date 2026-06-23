@@ -16,6 +16,7 @@ from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
 from controllers.openapi._input_schema import EMPTY_INPUT_SCHEMA, build_input_schema, resolve_app_config
 from controllers.openapi._models import (
+    SUPPORTED_APP_TYPES,
     AppDescribeInfo,
     AppDescribeQuery,
     AppDescribeResponse,
@@ -35,6 +36,11 @@ from services.account_service import TenantService
 from services.app_service import AppListParams, AppService
 
 _ALLOWED_DESCRIBE_FIELDS: frozenset[str] = frozenset({"info", "parameters", "input_schema"})
+
+
+def _is_listable(app: App) -> bool:
+    """Whether the openapi app face exposes this app (curated, listable types only)."""
+    return app.mode in SUPPORTED_APP_TYPES
 
 
 _EMPTY_PARAMETERS: dict[str, Any] = {
@@ -171,6 +177,8 @@ class AppListApi(Resource):
             app: App | None = AppService.get_visible_app_by_id(db.session, str(parsed_uuid))
             if app is None or str(app.tenant_id) != workspace_id:
                 return empty
+            if not _is_listable(app):
+                return empty
             # Apply RBAC visibility to the UUID fast-path the same way the service
             # layer does for paginated queries (id in accessible set OR own app).
             if apply_rbac_filter and not access_filter.is_app_accessible(
@@ -223,6 +231,7 @@ class AppListApi(Resource):
                 workspace_name=tenant_name,
             )
             for r in pagination.items
+            if _is_listable(r)
         ]
 
         env = AppListResponse(
