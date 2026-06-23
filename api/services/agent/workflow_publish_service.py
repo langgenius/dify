@@ -165,13 +165,18 @@ class WorkflowAgentPublishService:
         binding: WorkflowAgentNodeBinding,
         agent_soul: AgentSoulConfig,
     ) -> None:
+        from services.agent.prompt_mentions import MentionKind, parse_prompt_mentions
+        from services.agent_drive_service import decode_drive_mention_ref
+
         wanted_keys: dict[str, tuple[str, str]] = {}
-        for skill in agent_soul.skills_files.skills:
-            if skill.skill_md_key:
-                wanted_keys[skill.skill_md_key] = ("skill_ref_dangling", skill.name or skill.id or "unknown")
-        for file in agent_soul.skills_files.files:
-            if file.drive_key:
-                wanted_keys[file.drive_key] = ("file_ref_dangling", file.name or file.id or "unknown")
+        for mention in parse_prompt_mentions(agent_soul.prompt.system_prompt):
+            if mention.kind not in {MentionKind.SKILL, MentionKind.FILE}:
+                continue
+            drive_key = decode_drive_mention_ref(mention.ref_id)
+            if not drive_key:
+                continue
+            code = "skill_ref_dangling" if mention.kind == MentionKind.SKILL else "file_ref_dangling"
+            wanted_keys[drive_key] = (code, mention.label or drive_key)
         if not wanted_keys or not binding.agent_id:
             return
 

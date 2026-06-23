@@ -2179,7 +2179,7 @@ class TestWorkflowAgentDraftBindingSync:
                     "model_provider": "openai",
                     "model": "gpt-4o",
                 },
-                "skills_files": {"skills": [{"name": "Research", "skill_md_key": "research/SKILL.md"}]},
+                "prompt": {"system_prompt": "Use [§skill:research%2FSKILL.md:Research§]."},
             }
         )
         agent = self._publish_agent()
