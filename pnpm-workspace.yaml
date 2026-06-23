@@ -106,6 +106,7 @@ catalog:
   '@tailwindcss/typography': 0.5.20
   '@tailwindcss/vite': 4.3.1
   '@tanstack/eslint-plugin-query': 5.101.0
+  '@tanstack/form-core': 1.33.0
   '@tanstack/query-core': 5.101.0
   '@tanstack/react-form': 1.33.0
   '@tanstack/react-hotkeys': 0.10.0

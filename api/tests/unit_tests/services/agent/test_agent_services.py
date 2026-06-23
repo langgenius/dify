@@ -8,6 +8,7 @@ from models.agent import (
     Agent,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
+    AgentDebugConversation,
     AgentKind,
     AgentScope,
     AgentSource,
@@ -1093,6 +1094,11 @@ def test_roster_create_detail_and_lookup_helpers(monkeypatch: pytest.MonkeyPatch
         scalars=[[AgentConfigSnapshot(id="version-1", agent_id="agent-1", version=1)]],
     )
     service = AgentRosterService(fake_session)
+    monkeypatch.setattr(
+        AgentRosterService,
+        "_get_or_create_agent_app_debug_conversation",
+        lambda self, *, agent, account_id: "debug-conversation-1",
+    )
     payload = roster_service.RosterAgentCreatePayload(
         name="Analyst",
         description="desc",
@@ -1132,6 +1138,135 @@ def test_roster_create_detail_and_lookup_helpers(monkeypatch: pytest.MonkeyPatch
     assert found_agent.id == "agent-1"
     assert found_version.id == "version-1"
     assert loaded_versions["version-1"].agent_id == "agent-1"
+
+
+def test_agent_app_debug_conversation_create_reuse_and_recreate():
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        name="Analyst",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+    )
+
+    create_session = FakeSession(scalar=[agent, None])
+    created_id = AgentRosterService(create_session).get_or_create_agent_app_debug_conversation_id(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        account_id="account-1",
+    )
+    created_conversation = next(value for value in create_session.added if isinstance(value, Conversation))
+    created_mapping = next(value for value in create_session.added if isinstance(value, AgentDebugConversation))
+    assert created_id == created_mapping.conversation_id
+    assert created_conversation.app_id == "app-1"
+    assert created_conversation.from_account_id == "account-1"
+    assert created_mapping.tenant_id == "tenant-1"
+    assert created_mapping.agent_id == "agent-1"
+    assert created_mapping.account_id == "account-1"
+    assert create_session.commits == 1
+
+    existing_mapping = AgentDebugConversation(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        app_id="app-1",
+        account_id="account-1",
+        conversation_id="existing-conversation",
+    )
+    reuse_session = FakeSession(scalar=[agent, existing_mapping, "existing-conversation"])
+    reused_id = AgentRosterService(reuse_session).get_or_create_agent_app_debug_conversation_id(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        account_id="account-1",
+    )
+    assert reused_id == "existing-conversation"
+    assert reuse_session.added == []
+    assert reuse_session.commits == 1
+
+    stale_mapping = AgentDebugConversation(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        app_id="app-1",
+        account_id="account-1",
+        conversation_id="deleted-conversation",
+    )
+    recreate_session = FakeSession(scalar=[agent, stale_mapping, None])
+    recreated_id = AgentRosterService(recreate_session).get_or_create_agent_app_debug_conversation_id(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        account_id="account-1",
+    )
+    assert recreated_id == stale_mapping.conversation_id
+    assert recreated_id != "deleted-conversation"
+    assert any(isinstance(value, Conversation) for value in recreate_session.added)
+    assert recreate_session.commits == 1
+
+
+def test_agent_app_debug_conversation_requires_app_binding():
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        app_id=None,
+        name="Analyst",
+        description="",
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+    )
+
+    with pytest.raises(roster_service.AgentNotFoundError):
+        AgentRosterService(FakeSession())._get_or_create_agent_app_debug_conversation(
+            agent=agent,
+            account_id="account-1",
+        )
+
+
+def test_load_or_create_agent_app_debug_conversations_filters_agent_apps():
+    valid_agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        name="Analyst",
+        description="",
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+    )
+    wrong_tenant_agent = Agent(
+        id="agent-2",
+        tenant_id="tenant-2",
+        app_id="app-2",
+        name="Other tenant",
+        description="",
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+    )
+    workflow_agent = Agent(
+        id="agent-3",
+        tenant_id="tenant-1",
+        app_id=None,
+        name="Workflow only",
+        description="",
+        scope=AgentScope.WORKFLOW_ONLY,
+        source=AgentSource.WORKFLOW,
+        status=AgentStatus.ACTIVE,
+    )
+
+    fake_session = FakeSession(scalar=[None])
+    result = AgentRosterService(fake_session).load_or_create_agent_app_debug_conversation_ids_by_agent_id(
+        tenant_id="tenant-1",
+        agents=[valid_agent, wrong_tenant_agent, workflow_agent],
+        account_id="account-1",
+    )
+
+    assert list(result) == ["agent-1"]
+    assert result["agent-1"]
+    assert fake_session.commits == 1
+    assert len([value for value in fake_session.added if isinstance(value, AgentDebugConversation)]) == 1
 
 
 def test_agent_app_visible_versions_exclude_draft_saves():
@@ -1448,7 +1583,6 @@ class TestAgentAppBackingAgent:
         assert agent.agent_kind == AgentKind.DIFY_AGENT
         assert agent.name == "Iris"
         assert agent.role == "research assistant"
-        assert agent.debug_conversation_id is not None
         # A v1 snapshot + revision are seeded and wired as the active version.
         snapshots = [a for a in session.added if isinstance(a, AgentConfigSnapshot)]
         assert len(snapshots) == 1
@@ -1460,12 +1594,18 @@ class TestAgentAppBackingAgent:
         assert len(revisions) == 1
         conversations = [a for a in session.added if isinstance(a, Conversation)]
         assert len(conversations) == 1
-        assert agent.debug_conversation_id == conversations[0].id
         assert conversations[0].app_id == "app-1"
         assert conversations[0].mode == "agent"
         assert conversations[0].status == ConversationStatus.NORMAL
         assert conversations[0].from_source == ConversationFromSource.CONSOLE
         assert conversations[0].from_account_id == "account-1"
+        debug_mappings = [a for a in session.added if isinstance(a, AgentDebugConversation)]
+        assert len(debug_mappings) == 1
+        assert debug_mappings[0].tenant_id == "tenant-1"
+        assert debug_mappings[0].agent_id == agent.id
+        assert debug_mappings[0].app_id == "app-1"
+        assert debug_mappings[0].account_id == "account-1"
+        assert debug_mappings[0].conversation_id == conversations[0].id
         # Caller (AppService.create_app) owns the commit — helper must not commit.
         assert session.commits == 0
 

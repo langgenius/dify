@@ -17,7 +17,6 @@ function renderSourceAppPicker(disabled: boolean) {
       <SourceAppPicker
         value={{ id: 'app-1', name: 'Workflow 1' }}
         onChange={() => undefined}
-        ariaLabel="Source app"
         disabled={disabled}
       />
     </QueryClientProvider>,
@@ -29,6 +28,6 @@ describe('SourceAppPicker', () => {
     renderSourceAppPicker(true)
 
     expect(screen.getByText('Workflow 1')).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'Source app' })).toBeDisabled()
+    expect(screen.getByRole('combobox', { name: 'deployments.versions.sourceAppOption' })).toBeDisabled()
   })
 })
