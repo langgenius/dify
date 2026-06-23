@@ -10,7 +10,7 @@ import type { RuntimeCredentialBindingSelections } from '@/features/deployments/
 import type { UnsupportedDslNode } from '@/features/deployments/shared/domain/error'
 import type { App } from '@/types/app'
 import { EnvVarValueSource as ApiEnvVarValueSource } from '@dify/contracts/enterprise/types.gen'
-import { keepPreviousData } from '@tanstack/react-query'
+import { keepPreviousData, skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithMutation, atomWithQuery } from 'jotai-tanstack-query'
 import { envVarBindingSlotFromContract, envVarBindingValueType } from '@/features/deployments/components/env-var-bindings-utils'
@@ -193,22 +193,20 @@ export const isSubmittingDeploymentGuideAtom = atom(get => (
 export const sourceAppsQueryAtom = atomWithInfiniteQuery((get) => {
   const sourceSearchText = get(sourceSearchTextAtom)
 
-  return {
-    ...consoleQuery.apps.list.infiniteOptions({
-      input: pageParam => ({
-        query: {
-          page: Number(pageParam),
-          limit: SOURCE_APPS_PAGE_SIZE,
-          name: sourceSearchText,
-          mode: AppModeEnum.WORKFLOW,
-        },
-      }),
-      getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
-      initialPageParam: 1,
-      placeholderData: keepPreviousData,
+  return consoleQuery.apps.list.infiniteOptions({
+    input: pageParam => ({
+      query: {
+        page: Number(pageParam),
+        limit: SOURCE_APPS_PAGE_SIZE,
+        name: sourceSearchText,
+        mode: AppModeEnum.WORKFLOW,
+      },
     }),
+    getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
+    initialPageParam: 1,
+    placeholderData: keepPreviousData,
     enabled: get(effectiveMethodAtom) === 'bindApp',
-  }
+  })
 })
 
 export const effectiveSelectedAppAtom = atom((get) => {
@@ -233,8 +231,8 @@ function sourceReady(get: Getter) {
     : Boolean(get(effectiveSelectedAppAtom)?.id)
 }
 
-const existingInstanceNamesQueryAtom = atomWithInfiniteQuery(() => ({
-  ...consoleQuery.enterprise.appInstanceService.listAppInstances.infiniteOptions({
+const existingInstanceNamesQueryAtom = atomWithInfiniteQuery(() =>
+  consoleQuery.enterprise.appInstanceService.listAppInstances.infiniteOptions({
     input: pageParam => ({
       query: {
         pageNumber: Number(pageParam),
@@ -243,9 +241,9 @@ const existingInstanceNamesQueryAtom = atomWithInfiniteQuery(() => ({
     }),
     getNextPageParam: lastPage => getNextPageParamFromPagination(lastPage.pagination),
     initialPageParam: 1,
+    placeholderData: keepPreviousData,
   }),
-  placeholderData: keepPreviousData,
-}))
+)
 
 const instanceNameConflictQueryAtom = atomWithQuery((get) => {
   const submittedInstanceName = get(instanceNameAtom).trim()
@@ -280,31 +278,35 @@ const precheckReleaseQueryAtom = atomWithQuery((get) => {
   const method = get(effectiveMethodAtom)
   const effectiveSelectedApp = get(effectiveSelectedAppAtom)
   const dslContent = get(dslContentAtom)
+  const encodedDslContent = dslContent.trim() ? encodeDslContent(dslContent) : undefined
   const enabled = sourceReady(get)
 
   // PrecheckRelease takes exactly one source arm (dsl | sourceAppId).
   const precheckReleaseQueryOptions = method === 'importDsl'
     ? consoleQuery.enterprise.releaseService.precheckRelease.queryOptions({
-        input: {
-          body: {
-            dsl: dslContent.trim() ? encodeDslContent(dslContent) : '',
-          },
-        },
+        input: encodedDslContent
+          ? {
+              body: {
+                dsl: encodedDslContent,
+              },
+            }
+          : skipToken,
         enabled,
+        retry: false,
       })
     : consoleQuery.enterprise.releaseService.precheckRelease.queryOptions({
-        input: {
-          body: {
-            sourceAppId: effectiveSelectedApp?.id ?? '',
-          },
-        },
+        input: effectiveSelectedApp?.id
+          ? {
+              body: {
+                sourceAppId: effectiveSelectedApp.id,
+              },
+            }
+          : skipToken,
         enabled: enabled && Boolean(effectiveSelectedApp?.id),
+        retry: false,
       })
 
-  return {
-    ...precheckReleaseQueryOptions,
-    retry: false,
-  }
+  return precheckReleaseQueryOptions
 })
 
 function precheckReleaseReady(get: Getter) {
@@ -321,32 +323,35 @@ export const deploymentOptionsQueryAtom = atomWithQuery((get) => {
   const method = get(effectiveMethodAtom)
   const effectiveSelectedApp = get(effectiveSelectedAppAtom)
   const dslContent = get(dslContentAtom)
+  const encodedDslContent = dslContent.trim() ? encodeDslContent(dslContent) : undefined
   const enabled = precheckReleaseReady(get)
 
   // ComputeDeploymentOptions takes exactly one source arm (dsl | sourceAppId | releaseId).
   const deploymentOptionsQueryOptions = method === 'importDsl'
     ? consoleQuery.enterprise.releaseService.computeDeploymentOptions.queryOptions({
-        input: {
-          body: {
-            dsl: dslContent.trim() ? encodeDslContent(dslContent) : '',
-          },
-        },
+        input: encodedDslContent
+          ? {
+              body: {
+                dsl: encodedDslContent,
+              },
+            }
+          : skipToken,
         enabled,
+        retry: false,
       })
     : consoleQuery.enterprise.releaseService.computeDeploymentOptions.queryOptions({
-        input: {
-          body: {
-            sourceAppId: effectiveSelectedApp?.id ?? '',
-          },
-        },
+        input: effectiveSelectedApp?.id
+          ? {
+              body: {
+                sourceAppId: effectiveSelectedApp.id,
+              },
+            }
+          : skipToken,
         enabled: enabled && Boolean(effectiveSelectedApp?.id),
+        retry: false,
       })
 
-  // oRPC encodes input before TanStack can skip work, so keep a valid input shape and gate requests with enabled.
-  return {
-    ...deploymentOptionsQueryOptions,
-    retry: false,
-  }
+  return deploymentOptionsQueryOptions
 })
 
 // Unsupported DSL state
