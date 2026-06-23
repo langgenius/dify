@@ -1,7 +1,10 @@
 import type { Getter } from 'jotai'
 import type { CreateReleaseFormValues } from '../index'
+import { QueryClient } from '@tanstack/react-query'
 import { atom, createStore } from 'jotai'
+import { queryClientAtom } from 'jotai-tanstack-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { consoleQuery } from '@/service/client'
 
 type QueryResult = {
   data?: unknown
@@ -43,11 +46,7 @@ vi.mock('jotai-tanstack-query', async (importOriginal) => {
     atomWithQuery: (createOptions: (get: Getter) => QueryOptions) => atom((get) => {
       const options = createOptions(get)
       const queryKey = Array.isArray(options.queryKey) ? options.queryKey[0] : undefined
-      const input = options.input as { query?: { displayName?: unknown } } | undefined
-      const hasReleaseNameFilter = Boolean(input?.query?.displayName)
-      const queryName = hasReleaseNameFilter
-        ? 'releaseNameConflict'
-        : typeof queryKey === 'string' ? queryKey : 'unknown'
+      const queryName = typeof queryKey === 'string' ? queryKey : 'unknown'
       const queryResult = options.enabled === false
         ? undefined
         : mockQueryResults.current.get(queryName)
@@ -81,7 +80,16 @@ vi.mock('@/service/client', () => ({
     },
     enterprise: {
       releaseService: {
+        listReleaseSummaries: {
+          key: ({ input }: { input?: unknown } = {}) => input === undefined ? ['listReleaseSummaries'] : ['listReleaseSummaries', input],
+          queryOptions: ({ enabled, input }: QueryOptions) => ({
+            enabled,
+            input,
+            queryKey: ['listReleaseSummaries', input],
+          }),
+        },
         listReleases: {
+          key: ({ input }: { input?: unknown } = {}) => input === undefined ? ['listReleases'] : ['listReleases', input],
           queryOptions: ({ enabled, input }: QueryOptions) => ({
             enabled,
             input,
@@ -110,9 +118,18 @@ async function loadState() {
 async function mountedStore() {
   const state = await loadState()
   const store = createStore()
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
+  store.set(queryClientAtom, queryClient)
   const unsubscribe = store.sub(state.createReleaseFormValuesAtom, () => undefined)
 
   return {
+    queryClient,
     state,
     store,
     unsubscribe,
@@ -180,17 +197,21 @@ function setPrecheckReleaseResult(overrides: {
   })
 }
 
-function setReleaseNameConflictResult(displayName: string) {
-  mockQueryResults.current.set('releaseNameConflict', {
-    data: {
-      releases: [
-        {
+function setCachedReleaseSummaries(queryClient: QueryClient, appInstanceId: string, displayNames: string[]) {
+  queryClient.setQueryData(
+    consoleQuery.enterprise.releaseService.listReleaseSummaries.key({
+      type: 'query',
+      input: { params: { appInstanceId } },
+    }),
+    {
+      releaseSummaries: displayNames.map(displayName => ({
+        release: {
           displayName,
         },
-      ],
+      })),
+      pagination: {},
     },
-    isSuccess: true,
-  })
+  )
 }
 
 function setDslFileContentResult(overrides: QueryResult = {}) {
@@ -366,12 +387,12 @@ describe('create release state', () => {
     unsubscribe()
   })
 
-  it('should detect existing release name conflicts', async () => {
-    const { state, store, unsubscribe } = await mountedStore()
+  it('should detect existing release name conflicts from cached release summaries', async () => {
+    const { queryClient, state, store, unsubscribe } = await mountedStore()
     store.set(state.createReleaseAppInstanceIdAtom, 'app-instance-1')
     store.set(state.openCreateReleaseDialogAtom)
     store.set(state.createReleaseNameFieldAtom, ' Release 1 ')
-    setReleaseNameConflictResult('Release 1')
+    setCachedReleaseSummaries(queryClient, 'app-instance-1', ['Release 1'])
 
     expect(store.get(state.createReleaseHasNameConflictAtom)).toBe(true)
 
@@ -436,12 +457,12 @@ describe('create release state', () => {
   })
 
   it('should block release submission when release name already exists', async () => {
-    const { state, store, unsubscribe } = await mountedStore()
+    const { queryClient, state, store, unsubscribe } = await mountedStore()
     store.set(state.createReleaseAppInstanceIdAtom, 'app-instance-1')
     store.set(state.openCreateReleaseDialogAtom)
     setDefaultSourceApp()
     setPrecheckReleaseResult()
-    setReleaseNameConflictResult('Release 1')
+    setCachedReleaseSummaries(queryClient, 'app-instance-1', ['Release 1'])
     store.set(state.createReleaseNameFieldAtom, 'Release 1')
 
     const result = await store.set(state.submitCreateReleaseFormAtom)

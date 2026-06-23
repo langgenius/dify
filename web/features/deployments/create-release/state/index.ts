@@ -1,6 +1,10 @@
 'use client'
 
-import type { CreateReleaseResponse } from '@dify/contracts/enterprise/types.gen'
+import type {
+  CreateReleaseResponse,
+  ListReleasesResponse,
+  ListReleaseSummariesResponse,
+} from '@dify/contracts/enterprise/types.gen'
 import type { Getter } from 'jotai/vanilla'
 import type { UnsupportedDslNode } from '../../shared/domain/error'
 import type { App } from '@/types/app'
@@ -9,7 +13,11 @@ import {
   atomWithForm,
   createFormAtoms,
 } from 'jotai-tanstack-form'
-import { atomWithMutation, atomWithQuery } from 'jotai-tanstack-query'
+import {
+  atomWithMutation,
+  atomWithQuery,
+  queryClientAtom,
+} from 'jotai-tanstack-query'
 import * as z from 'zod'
 import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
@@ -39,7 +47,6 @@ const DEFAULT_CREATE_RELEASE_FORM_VALUES: CreateReleaseFormValues = {
 export const RELEASE_NAME_REQUIRED_ERROR = 'releaseNameRequired'
 
 const DEFAULT_SOURCE_RELEASE_PAGE_SIZE = 1
-const RELEASE_NAME_CONFLICT_PAGE_SIZE = 10
 
 function deploymentReleaseSourceMode(mode: ReleaseSourceMode): ReleaseSourceMode {
   return mode === 'dsl' && !isDeploymentDslImportEnabled
@@ -162,38 +169,41 @@ function submittedReleaseName(get: Getter) {
   return get(createReleaseNameFieldAtom).value.trim()
 }
 
-const releaseNameConflictQueryAtom = atomWithQuery((get) => {
+function cachedReleaseDisplayNames(get: Getter) {
   const appInstanceId = get(createReleaseAppInstanceIdAtom)
-  const releaseName = submittedReleaseName(get)
+  if (!appInstanceId)
+    return []
 
-  return consoleQuery.enterprise.releaseService.listReleases.queryOptions({
-    input: {
-      params: { appInstanceId: appInstanceId ?? '' },
-      query: {
-        displayName: releaseName,
-        pageNumber: 1,
-        resultsPerPage: RELEASE_NAME_CONFLICT_PAGE_SIZE,
-      },
-    },
-    enabled: Boolean(appInstanceId && get(createReleaseDialogOpenAtom) && releaseName),
+  const queryClient = get(queryClientAtom)
+  const releaseSummaryQueries = queryClient.getQueriesData<ListReleaseSummariesResponse>({
+    queryKey: consoleQuery.enterprise.releaseService.listReleaseSummaries.key({
+      type: 'query',
+      input: { params: { appInstanceId } },
+    }),
   })
-})
+  const releaseQueries = queryClient.getQueriesData<ListReleasesResponse>({
+    queryKey: consoleQuery.enterprise.releaseService.listReleases.key({
+      type: 'query',
+      input: { params: { appInstanceId } },
+    }),
+  })
 
-export const isCheckingCreateReleaseNameConflictAtom = atom((get) => {
-  const releaseName = submittedReleaseName(get)
-  const releaseNameConflictQuery = get(releaseNameConflictQueryAtom)
-
-  return Boolean(releaseName && (releaseNameConflictQuery.isLoading || releaseNameConflictQuery.isFetching))
-})
+  return [
+    ...releaseSummaryQueries.flatMap(([, data]) => {
+      return data?.releaseSummaries.map(summary => summary.release.displayName) ?? []
+    }),
+    ...releaseQueries.flatMap(([, data]) => {
+      return data?.releases.map(release => release.displayName) ?? []
+    }),
+  ]
+}
 
 export const createReleaseHasNameConflictAtom = atom((get) => {
   const releaseName = submittedReleaseName(get)
   if (!releaseName)
     return false
 
-  return get(releaseNameConflictQueryAtom).data?.releases.some((release) => {
-    return release.displayName.trim() === releaseName
-  }) ?? false
+  return cachedReleaseDisplayNames(get).some(displayName => displayName.trim() === releaseName)
 })
 
 const createReleaseDslFileContentQueryAtom = atomWithQuery((get) => {
@@ -441,7 +451,7 @@ const createReleaseSubmissionAtom = atom(null, async (get, set, value: CreateRel
   if (get(isCheckingCreateReleaseContentAtom) || !submittedReleaseName)
     return undefined
 
-  if (get(isCheckingCreateReleaseNameConflictAtom) || get(createReleaseHasNameConflictAtom))
+  if (get(createReleaseHasNameConflictAtom))
     return undefined
 
   if (!canCheckReleaseSourceContent(get) || !get(createReleaseContentReadyAtom))

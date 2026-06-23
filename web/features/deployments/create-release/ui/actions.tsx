@@ -9,7 +9,6 @@ import {
   createReleaseHasNameConflictAtom,
   createReleaseNameFieldAtom,
   isCheckingCreateReleaseContentAtom,
-  isCheckingCreateReleaseNameConflictAtom,
   requestCloseCreateReleaseDialogAtom,
 } from '../state'
 
@@ -19,7 +18,6 @@ export function CreateReleaseActions() {
   const isSubmitting = useAtomValue(createReleaseFormIsSubmittingAtom)
   const releaseContentReady = useAtomValue(createReleaseContentReadyAtom)
   const isCheckingReleaseContent = useAtomValue(isCheckingCreateReleaseContentAtom)
-  const isCheckingReleaseNameConflict = useAtomValue(isCheckingCreateReleaseNameConflictAtom)
   const hasReleaseNameConflict = useAtomValue(createReleaseHasNameConflictAtom)
   const releaseNameField = useAtomValue(createReleaseNameFieldAtom)
   const hasReleaseName = Boolean(releaseNameField.value.trim())
@@ -48,7 +46,7 @@ export function CreateReleaseActions() {
           type="submit"
           variant="primary"
           className="min-w-22"
-          disabled={!hasReleaseName || !releaseContentReady || isCheckingReleaseNameConflict || hasReleaseNameConflict}
+          disabled={!hasReleaseName || !releaseContentReady || hasReleaseNameConflict}
           loading={isSubmitting}
         >
           {isSubmitting ? t('versions.creating') : isCheckingReleaseContent ? t('versions.checkingReleaseContent') : t('versions.create')}
