@@ -1,0 +1,219 @@
+services:
+  # Dify API Service
+  - type: web
+    name: dify-api
+    runtime: image
+    image:
+      url: docker.io/langgenius/dify-api:1.14.2
+    plan: standard
+    envVars:
+      - key: MODE
+        value: api
+      - key: MIGRATION_ENABLED
+        value: "true"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CONSOLE_WEB_URL
+        fromService:
+          name: dify-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: SERVICE_API_URL
+        fromService:
+          name: dify-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: APP_WEB_URL
+        fromService:
+          name: dify-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: DATABASE_URL
+        fromDatabase:
+          name: dify-db
+          property: connectionString
+      - key: DB_USERNAME
+        fromDatabase:
+          name: dify-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: dify-db
+          property: password
+      - key: DB_HOST
+        fromDatabase:
+          name: dify-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: dify-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: dify-db
+          property: database
+      - key: REDIS_HOST
+        fromService:
+          name: dify-redis
+          type: keyvalue
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          name: dify-redis
+          type: keyvalue
+          property: port
+      - key: CELERY_BROKER_URL
+        fromService:
+          name: dify-redis
+          type: keyvalue
+          property: connectionString
+      - key: VECTOR_STORE
+        value: pgvector
+      - key: PGVECTOR_HOST
+        fromDatabase:
+          name: dify-db
+          property: host
+      - key: PGVECTOR_PORT
+        fromDatabase:
+          name: dify-db
+          property: port
+      - key: PGVECTOR_USER
+        fromDatabase:
+          name: dify-db
+          property: user
+      - key: PGVECTOR_PASSWORD
+        fromDatabase:
+          name: dify-db
+          property: password
+      - key: PGVECTOR_DATABASE
+        fromDatabase:
+          name: dify-db
+          property: database
+      - key: STORAGE_TYPE
+        value: opendal
+      - key: OPENDAL_SCHEME
+        value: fs
+      - key: OPENDAL_FS_ROOT
+        value: /app/api/storage
+    healthCheckPath: /health
+    initialDeployHook: psql $DATABASE_URL -c 'CREATE EXTENSION IF NOT EXISTS vector;'
+    disk:
+      name: dify-storage
+      mountPath: /app/api/storage
+      sizeGB: 10
+
+  # Dify Worker Service (Celery)
+  - type: worker
+    name: dify-worker
+    runtime: image
+    image:
+      url: docker.io/langgenius/dify-api:1.14.2
+    plan: standard
+    envVars:
+      - key: MODE
+        value: worker
+      - key: SECRET_KEY
+        fromService:
+          name: dify-api
+          type: web
+          envVarKey: SECRET_KEY
+      - key: DB_USERNAME
+        fromDatabase:
+          name: dify-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: dify-db
+          property: password
+      - key: DB_HOST
+        fromDatabase:
+          name: dify-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: dify-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: dify-db
+          property: database
+      - key: REDIS_HOST
+        fromService:
+          name: dify-redis
+          type: keyvalue
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          name: dify-redis
+          type: keyvalue
+          property: port
+      - key: CELERY_BROKER_URL
+        fromService:
+          name: dify-redis
+          type: keyvalue
+          property: connectionString
+      - key: VECTOR_STORE
+        value: pgvector
+      - key: PGVECTOR_HOST
+        fromDatabase:
+          name: dify-db
+          property: host
+      - key: PGVECTOR_PORT
+        fromDatabase:
+          name: dify-db
+          property: port
+      - key: PGVECTOR_USER
+        fromDatabase:
+          name: dify-db
+          property: user
+      - key: PGVECTOR_PASSWORD
+        fromDatabase:
+          name: dify-db
+          property: password
+      - key: PGVECTOR_DATABASE
+        fromDatabase:
+          name: dify-db
+          property: database
+      - key: STORAGE_TYPE
+        value: opendal
+      - key: OPENDAL_SCHEME
+        value: fs
+      - key: OPENDAL_FS_ROOT
+        value: /app/api/storage
+    disk:
+      name: dify-storage
+      mountPath: /app/api/storage
+      sizeGB: 10
+
+  # Dify Web Frontend (Next.js)
+  - type: web
+    name: dify-web
+    runtime: image
+    image:
+      url: docker.io/langgenius/dify-web:1.14.2
+    plan: starter
+    envVars:
+      - key: CONSOLE_API_URL
+        fromService:
+          name: dify-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: APP_API_URL
+        fromService:
+          name: dify-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+
+  # Key Value (Celery broker + cache; internal network auth not required by default)
+  - type: keyvalue
+    name: dify-redis
+    plan: starter
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
+
+databases:
+  # Pin PG 16: Dify migration 1c9ba48be8e4 conflicts with PostgreSQL 18 built-in uuidv7().
+  - name: dify-db
+    plan: basic-256mb
+    postgresMajorVersion: "16"
+    ipAllowList: []
