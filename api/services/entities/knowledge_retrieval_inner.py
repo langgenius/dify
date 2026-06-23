@@ -173,14 +173,6 @@ class InnerKnowledgeRetrieveRequest(BaseModel):
 class InnerKnowledgeRetrieveUsage(ResponseModel):
     """Serialized LLM usage payload returned by dataset retrieval."""
 
-    model_config = ConfigDict(
-        from_attributes=True,
-        extra="forbid",
-        populate_by_name=True,
-        serialize_by_alias=True,
-        protected_namespaces=(),
-    )
-
     prompt_tokens: int
     completion_tokens: int
     total_tokens: int
