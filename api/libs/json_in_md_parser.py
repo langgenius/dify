@@ -6,24 +6,33 @@ from core.llm_generator.output_parser.errors import OutputParserError
 def parse_json_markdown(json_string: str):
     # Get json from the backticks/braces
     json_string = json_string.strip()
-    starts = ["```json", "```", "``", "`", "{", "["]
-    ends = ["```", "``", "`", "}", "]"]
+    end_by_start = {
+        "```json": "```",
+        "```": "```",
+        "``": "``",
+        "`": "`",
+        "{": "}",
+        "[": "]",
+    }
     end_index = -1
     start_index = 0
     parsed: dict = {}
-    for s in starts:
+    start_token = ""
+    for s in ["```json", "```", "``", "`"]:
         start_index = json_string.find(s)
         if start_index != -1:
-            if json_string[start_index] not in ("{", "["):
-                start_index += len(s)
+            start_token = s
+            start_index += len(s)
             break
+    if start_index == -1:
+        raw_starts = [(index, token) for token in ("{", "[") if (index := json_string.find(token)) != -1]
+        if raw_starts:
+            start_index, start_token = min(raw_starts)
     if start_index != -1:
-        for e in ends:
-            end_index = json_string.rfind(e, start_index)
-            if end_index != -1:
-                if json_string[end_index] in ("}", "]"):
-                    end_index += 1
-                break
+        end = end_by_start[start_token]
+        end_index = json_string.rfind(end, start_index)
+        if end_index != -1 and end in ("}", "]"):
+            end_index += 1
     if start_index != -1 and end_index != -1 and start_index < end_index:
         extracted_content = json_string[start_index:end_index].strip()
         parsed = json.loads(extracted_content)
