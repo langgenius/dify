@@ -37,9 +37,9 @@ export type WorkflowRunNodeExecutionListResponse = {
   data: Array<WorkflowRunNodeExecutionResponse>
 }
 
-export type WorkflowPaginationResponse = {
+export type SnippetWorkflowPaginationResponse = {
   has_more: boolean
-  items: Array<WorkflowResponse>
+  items: Array<SnippetWorkflowResponse>
   limit: number
   page: number
 }
@@ -235,28 +235,6 @@ export type SimpleEndUser = {
   type: string
 }
 
-export type WorkflowResponse = {
-  conversation_variables: Array<WorkflowConversationVariableResponse>
-  created_at: number
-  created_by?: SimpleAccount | null
-  environment_variables: Array<WorkflowEnvironmentVariableResponse>
-  features: {
-    [key: string]: unknown
-  }
-  graph: {
-    [key: string]: unknown
-  }
-  hash: string
-  id: string
-  marked_comment: string
-  marked_name: string
-  rag_pipeline_variables: Array<PipelineVariableResponse>
-  tool_published: boolean
-  updated_at: number
-  updated_by?: SimpleAccount | null
-  version: string
-}
-
 export type WorkflowConversationVariableResponse = {
   description: string
   id: string
@@ -417,7 +395,7 @@ export type GetSnippetsBySnippetIdWorkflowsData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsResponses = {
-  200: WorkflowPaginationResponse
+  200: SnippetWorkflowPaginationResponse
 }
 
 export type GetSnippetsBySnippetIdWorkflowsResponse
