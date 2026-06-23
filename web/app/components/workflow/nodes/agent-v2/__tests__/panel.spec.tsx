@@ -27,7 +27,7 @@ const {
   mockHandleNodeDataUpdateWithSyncDraft: vi.fn((_payload, options) => options?.callback?.onSuccess?.()),
   mockInsertNodes: vi.fn(),
   mockOrchestrateDrawerPanelProps: [] as Array<{
-    agentId: string
+    agentId?: string
     inlineComposerState?: unknown
     isInline: boolean
     nodeId: string
@@ -150,7 +150,7 @@ vi.mock('../hooks', () => ({
 
 vi.mock('../components/agent-orchestrate-drawer-panel', () => ({
   AgentOrchestrateDrawerPanel: (props: {
-    agentId: string
+    agentId?: string
     appId?: string
     inlineComposerState?: unknown
     isInline: boolean
@@ -321,6 +321,7 @@ describe('agent/panel', () => {
   })
 
   it('renders a pending inline agent state while the binding is being created', () => {
+    mockStoreState.openInlineAgentPanelNodeId = 'agent-node'
     const { container } = render(
       <AgentV2Panel
         id="agent-node"
@@ -337,6 +338,16 @@ describe('agent/panel', () => {
     expect(screen.queryByText(/^workflow\.errorMsg\.fieldRequired/)).not.toBeInTheDocument()
     expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'workflow.nodes.agent.roster.change' })).toBeDisabled()
+    expect(screen.getByRole('dialog', { name: 'workflow.nodes.agent.roster.inlineSetup.name' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'inline-orchestrate-panel' })).toBeInTheDocument()
+    expect(screen.queryByText('workflow.nodes.agent.roster.editInConsole')).not.toBeInTheDocument()
+    expect(screen.queryByText('workflow.nodes.agent.roster.makeCopy')).not.toBeInTheDocument()
+    expect(mockOrchestrateDrawerPanelProps.at(-1)).toMatchObject({
+      agentId: undefined,
+      isInline: true,
+      nodeId: 'agent-node',
+      open: true,
+    })
     expect(screen.getByText('workflow.nodes.agent.task.label')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
     expect(container.querySelector('[inert]')).toBeInTheDocument()
@@ -570,10 +581,30 @@ describe('agent/panel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.roster.change' }))
     fireEvent.click(screen.getByRole('button', { name: 'Start from Scratch' }))
 
+    expect(mockStoreState.setOpenInlineAgentPanelNodeId).toHaveBeenCalledWith('agent-node')
     expect(mockCreateInlineAgentBinding).toHaveBeenCalledWith('agent-node', expect.objectContaining({
       onSuccess: expect.any(Function),
     }))
-    expect(mockStoreState.setOpenInlineAgentPanelNodeId).toHaveBeenCalledWith('agent-node')
+    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
+      {
+        id: 'agent-node',
+        data: expect.objectContaining({
+          agent_binding: {
+            binding_type: 'inline_agent',
+          },
+          agent_task: 'Keep this task',
+          agent_declared_outputs: [{
+            name: 'summary',
+            type: 'string',
+          }],
+          _openInlineAgentPanel: true,
+        }),
+      },
+      expect.objectContaining({
+        sync: true,
+        notRefreshWhenSyncError: true,
+      }),
+    )
     expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
       {
         id: 'agent-node',

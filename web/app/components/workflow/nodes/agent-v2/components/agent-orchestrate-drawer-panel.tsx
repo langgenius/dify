@@ -15,7 +15,7 @@ import { consoleQuery } from '@/service/client'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
 
 type AgentOrchestrateDrawerPanelProps = {
-  agentId: string
+  agentId?: string
   appId?: string
   inlineComposerState?: WorkflowAgentComposerResponse
   isInline: boolean
@@ -40,7 +40,7 @@ function AgentOrchestrateDrawerPanelContent({
   open,
 }: AgentOrchestrateDrawerPanelProps) {
   const rosterComposerQuery = useQuery(consoleQuery.agent.byAgentId.composer.get.queryOptions({
-    input: open && !isInline
+    input: open && !isInline && agentId
       ? {
           params: {
             agent_id: agentId,
@@ -62,12 +62,12 @@ function AgentOrchestrateDrawerPanelContent({
   })
 
   useHydrateAgentSoulConfigDraft({
-    agentId: isInline ? `${nodeId}:${agentId}` : agentId,
+    agentId: isInline ? `${nodeId}:${agentId ?? 'pending'}` : agentId ?? nodeId,
     activeVersionId: activeConfigSnapshot?.id,
     config: agentSoulConfig as AgentSoulConfig | undefined,
   })
 
-  if (!agentSoulConfig) {
+  if (!agentId || !agentSoulConfig) {
     return (
       <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
         <Loading type="app" />

@@ -193,6 +193,7 @@ export const useNodesInteractions = () => {
   const createInlineAgentBindingForNode = useCallback((nodeId: string, options?: {
     onError?: () => void
   }) => {
+    workflowStore.getState().setOpenInlineAgentPanelNodeId(nodeId)
     createInlineAgentBinding(nodeId, {
       onError: () => {
         options?.onError?.()
@@ -208,7 +209,6 @@ export const useNodesInteractions = () => {
             delete node.data._isTempNode
           }
         }))
-        workflowStore.getState().setOpenInlineAgentPanelNodeId(nodeId)
         handleSyncWorkflowDraft(true, true)
       },
     })

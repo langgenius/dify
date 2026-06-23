@@ -89,6 +89,7 @@ const CandidateNodeMain: FC<Props> = ({
     }
 
     if (shouldCreateInlineAgentBinding) {
+      workflowStore.getState().setOpenInlineAgentPanelNodeId(candidateNode.id)
       createInlineAgentBinding(candidateNode.id, {
         onError: () => {
           const { nodes, setNodes } = collaborativeWorkflow.getState()
@@ -105,7 +106,6 @@ const CandidateNodeMain: FC<Props> = ({
               delete node.data._isTempNode
             }
           }))
-          workflowStore.getState().setOpenInlineAgentPanelNodeId(candidateNode.id)
           handleSyncWorkflowDraft(true, true)
         },
       })

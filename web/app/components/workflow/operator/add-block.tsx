@@ -125,6 +125,7 @@ const AddBlock = ({
       workflowStore.setState({
         candidateNode: undefined,
       })
+      workflowStore.getState().setOpenInlineAgentPanelNodeId(newNode.id)
       saveStateToHistory(WorkflowHistoryEvent.NodeAdd, { nodeId: newNode.id })
       createInlineAgentBinding(newNode.id, {
         onSuccess: (binding) => {
@@ -138,7 +139,6 @@ const AddBlock = ({
               delete node.data._isTempNode
             }
           }))
-          workflowStore.getState().setOpenInlineAgentPanelNodeId(newNode.id)
           handleSyncWorkflowDraft(true, true)
         },
       })
