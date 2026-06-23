@@ -391,6 +391,80 @@ Check if activation token is valid
 | 400 | Invalid request parameters |  |
 | 403 | Insufficient permissions |  |
 
+### [GET] /agent/{agent_id}/api-access
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent service API access | **application/json**: [AgentApiAccessResponse](#agentapiaccessresponse)<br> |
+
+### [POST] /agent/{agent_id}/api-enable
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentApiStatusPayload](#agentapistatuspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent service API status updated | **application/json**: [AgentApiAccessResponse](#agentapiaccessresponse)<br> |
+| 403 | Insufficient permissions |  |
+
+### [GET] /agent/{agent_id}/api-keys
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent service API keys | **application/json**: [ApiKeyList](#apikeylist)<br> |
+
+### [POST] /agent/{agent_id}/api-keys
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Agent service API key created | **application/json**: [ApiKeyItem](#apikeyitem)<br> |
+| 400 | Maximum keys exceeded |  |
+
+### [DELETE] /agent/{agent_id}/api-keys/{api_key_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+| api_key_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 204 | Agent service API key deleted |
+
 ### [GET] /agent/{agent_id}/chat-messages
 Get Agent App chat messages for a conversation with pagination
 
@@ -526,6 +600,20 @@ Stop a running Agent App chat message generation
 | ---- | ----------- | ------ |
 | 201 | Agent app copied successfully | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
 | 400 | Invalid request parameters |  |
+| 403 | Insufficient permissions |  |
+
+### [POST] /agent/{agent_id}/debug-conversation/refresh
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent debug conversation refreshed | **application/json**: [AgentDebugConversationRefreshResponse](#agentdebugconversationrefreshresponse)<br> |
 | 403 | Insufficient permissions |  |
 
 ### [GET] /agent/{agent_id}/drive/files
@@ -12033,6 +12121,31 @@ Default namespace
 | chat_prompt_config | object |  | No |
 | completion_prompt_config | object |  | No |
 
+#### AgentApiAccessResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| api_key_count | integer |  | Yes |
+| api_rph | integer |  | Yes |
+| api_rpm | integer |  | Yes |
+| chat_endpoint | string |  | Yes |
+| conversations_endpoint | string |  | Yes |
+| enabled | boolean |  | Yes |
+| files_upload_endpoint | string |  | Yes |
+| info_endpoint | string |  | Yes |
+| messages_endpoint | string |  | Yes |
+| meta_endpoint | string |  | Yes |
+| parameters_endpoint | string |  | Yes |
+| service_api_base_url | string |  | Yes |
+| stop_endpoint | string |  | Yes |
+| streaming_only | boolean, <br>**Default:** true |  | No |
+
+#### AgentApiStatusPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enable_api | boolean | Enable or disable Agent service API | Yes |
+
 #### AgentAppComposerResponse
 
 | Name | Type | Description | Required |
@@ -12428,6 +12541,12 @@ Audit operation recorded for Agent Soul version/revision changes.
 | ---- | ---- | ----------- | -------- |
 | date | string |  | Yes |
 | message_count | integer |  | Yes |
+
+#### AgentDebugConversationRefreshResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| debug_conversation_id | string |  | Yes |
 
 #### AgentDriveDeleteFileByAgentQuery
 

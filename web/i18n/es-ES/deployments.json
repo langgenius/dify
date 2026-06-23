@@ -613,6 +613,7 @@
   "versions.releaseDescriptionLabel": "Descripción",
   "versions.releaseDescriptionPlaceholder": "Describe esta versión",
   "versions.releaseHistory": "Historial de versiones",
+  "versions.releaseNameConflict": "Ya existe una versión con este nombre. Elige otro nombre.",
   "versions.releaseNameLabel": "Nombre de la versión",
   "versions.releaseNamePlaceholder": "Nombre de la versión",
   "versions.releaseNameRequired": "Introduce un nombre de versión.",

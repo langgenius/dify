@@ -613,6 +613,7 @@
   "versions.releaseDescriptionLabel": "توضیحات",
   "versions.releaseDescriptionPlaceholder": "این نسخه را توصیف کنید",
   "versions.releaseHistory": "تاریخچه نسخه",
+  "versions.releaseNameConflict": "نسخه‌ای با این نام از قبل وجود دارد. نام دیگری انتخاب کنید.",
   "versions.releaseNameLabel": "نام نسخه",
   "versions.releaseNamePlaceholder": "نام نسخه",
   "versions.releaseNameRequired": "یک نام نسخه وارد کنید.",

@@ -222,7 +222,7 @@ class DatasourceAuth(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.CREDENTIAL_CREATE, resource_required=False)
     @with_current_tenant_id
     def post(self, current_tenant_id: str, provider_id: str):
         payload = DatasourceCredentialPayload.model_validate(console_ns.payload or {})

@@ -124,7 +124,7 @@ const HelpMenu = ({
             </DropdownMenuGroup>
             <DropdownMenuSeparator className="my-0!" />
             <DropdownMenuGroup className="p-1">
-              <SupportMenu />
+              <SupportMenu onContactUsClick={() => setOpen(false)} />
             </DropdownMenuGroup>
             <DropdownMenuSeparator className="my-0!" />
             <DropdownMenuGroup className="p-1">
