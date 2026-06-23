@@ -120,31 +120,17 @@ export function AgentApiKeyModal({
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="flex w-full max-w-[800px]! flex-col overflow-hidden">
+        <DialogContent className="flex w-full max-w-[800px]! flex-col overflow-hidden px-8">
           <DialogCloseButton />
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
             {t('apiKeyModal.apiSecretKey')}
           </DialogTitle>
-          <DialogDescription className="mt-2 system-sm-regular text-text-tertiary">
+          <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
             {t('apiKeyModal.apiSecretKeyTips')}
           </DialogDescription>
 
-          {newKey && (
-            <div className="mt-4 rounded-lg border border-components-panel-border bg-background-section-burn p-3">
-              <div className="system-xs-medium text-text-tertiary">
-                {t('apiKeyModal.generateTips')}
-              </div>
-              <div className="mt-2 flex h-8 min-w-0 items-center rounded-lg bg-components-input-bg-normal px-2">
-                <span className="min-w-0 flex-1 truncate font-mono system-sm-medium text-text-secondary" translate="no">
-                  {newKey.token}
-                </span>
-                <CopyFeedback content={newKey.token} />
-              </div>
-            </div>
-          )}
-
-          <div className="mt-4 min-h-40 overflow-hidden rounded-lg border border-divider-subtle">
-            <div className="flex h-9 shrink-0 items-center border-b border-divider-subtle bg-background-section-burn system-xs-semibold-uppercase text-text-tertiary">
+          <div className="mt-4 min-h-20 overflow-hidden">
+            <div className="flex h-9 shrink-0 items-center border-b border-divider-regular text-xs font-semibold text-text-tertiary">
               <div className="w-64 shrink-0 px-3">{t('apiKeyModal.secretKey')}</div>
               <div className="w-[200px] shrink-0 px-3">{t('apiKeyModal.created')}</div>
               <div className="w-[200px] shrink-0 px-3">{t('apiKeyModal.lastUsed')}</div>
@@ -176,7 +162,7 @@ export function AgentApiKeyModal({
                 </div>
               )}
               {apiKeysQuery.isSuccess && apiKeys.map(apiKey => (
-                <div className="flex h-9 items-center border-b border-divider-subtle system-sm-regular text-text-secondary last:border-b-0" key={apiKey.id}>
+                <div className="flex h-9 items-center border-b border-divider-regular text-sm font-normal text-text-secondary last:border-b-0" key={apiKey.id}>
                   <div className="w-64 shrink-0 truncate px-3 font-mono" translate="no">
                     {maskApiKey(apiKey.token)}
                   </div>
@@ -186,7 +172,7 @@ export function AgentApiKeyModal({
                   <div className="w-[200px] shrink-0 truncate px-3">
                     {apiKey.last_used_at ? formatTime(apiKey.last_used_at, t('dateTimeFormat', { ns: 'appLog' })) : t('never')}
                   </div>
-                  <div className="flex grow justify-end gap-1 px-3">
+                  <div className="flex grow gap-2 px-3">
                     <CopyFeedback content={apiKey.token} />
                     <Button
                       variant="ghost"
@@ -212,6 +198,11 @@ export function AgentApiKeyModal({
           </div>
         </DialogContent>
       </Dialog>
+
+      <AgentApiKeyGenerateModal
+        apiKey={newKey}
+        onClose={() => setNewKey(null)}
+      />
 
       <AlertDialog
         open={Boolean(apiKeyToDelete)}
@@ -240,6 +231,47 @@ export function AgentApiKeyModal({
         </AlertDialogContent>
       </AlertDialog>
     </>
+  )
+}
+
+function AgentApiKeyGenerateModal({
+  apiKey,
+  onClose,
+}: {
+  apiKey: ApiKeyItem | null
+  onClose: () => void
+}) {
+  const { t } = useTranslation('appApi')
+
+  return (
+    <Dialog
+      open={Boolean(apiKey)}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen)
+          onClose()
+      }}
+    >
+      <DialogContent className="w-full max-w-[480px]! overflow-hidden px-8">
+        <DialogCloseButton />
+        <DialogTitle className="title-2xl-semi-bold text-text-primary">
+          {t('apiKeyModal.apiSecretKey')}
+        </DialogTitle>
+        <DialogDescription className="mt-1 text-[13px] leading-5 font-normal text-text-tertiary">
+          {t('apiKeyModal.generateTips')}
+        </DialogDescription>
+        <div className="my-4 flex h-9 min-w-0 items-center rounded-lg bg-components-input-bg-normal px-2">
+          <span className="min-w-0 flex-1 truncate font-mono system-sm-medium text-text-secondary" translate="no">
+            {apiKey?.token}
+          </span>
+          {apiKey && <CopyFeedback content={apiKey.token} />}
+        </div>
+        <div className="my-4 flex justify-end">
+          <Button className="w-16 shrink-0" onClick={onClose}>
+            {t('actionMsg.ok')}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

@@ -263,7 +263,9 @@ describe('Agent access surface cards', () => {
           },
         })
       })
-      expect(await within(dialog).findByText('app-new-secret-key-token')).toBeInTheDocument()
+      expect(await screen.findByText('appApi.apiKeyModal.generateTips')).toBeInTheDocument()
+      expect(screen.getByText('app-new-secret-key-token')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'appApi.actionMsg.ok' }))
 
       await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
       await user.click(await screen.findByRole('button', { name: 'common.operation.confirm' }))
