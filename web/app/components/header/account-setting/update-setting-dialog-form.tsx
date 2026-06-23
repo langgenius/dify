@@ -53,7 +53,7 @@ function SettingTimeZone({
       className="cursor-pointer border-none bg-transparent p-0 text-left body-xs-regular text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
       onClick={() => {
         onRequestClose()
-        setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.LANGUAGE })
+        setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PREFERENCE })
       }}
     >
       {children}

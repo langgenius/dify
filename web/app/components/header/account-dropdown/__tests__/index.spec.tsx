@@ -248,7 +248,7 @@ describe('AccountDropdown', () => {
       fireEvent.click(screen.getByText('common.settings.preferences'))
 
       // Assert
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.LANGUAGE })
+      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.PREFERENCE })
     })
 
     it('should show Appearance after Preferences in the main nav account dropdown', () => {

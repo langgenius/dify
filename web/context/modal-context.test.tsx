@@ -106,7 +106,7 @@ const PreferencesOpener = () => {
   return (
     <button
       type="button"
-      onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.LANGUAGE })}
+      onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PREFERENCE })}
     >
       open preferences
     </button>
@@ -191,7 +191,7 @@ describe('ModalContextProvider trigger events limit modal', () => {
 
     await user.click(screen.getByRole('button', { name: 'open preferences' }))
 
-    expect(await screen.findByTestId('account-setting-active-tab')).toHaveTextContent(ACCOUNT_SETTING_TAB.LANGUAGE)
+    expect(await screen.findByTestId('account-setting-active-tab')).toHaveTextContent(ACCOUNT_SETTING_TAB.PREFERENCE)
   })
 
   it('relies on the in-memory guard when localStorage reads throw', async () => {

@@ -26,6 +26,7 @@ describe('AccountSetting Constants', () => {
     expect(ACCOUNT_SETTING_TAB.DATA_SOURCE).toBe('data-source')
     expect(ACCOUNT_SETTING_TAB.API_BASED_EXTENSION).toBe('custom-endpoint')
     expect(ACCOUNT_SETTING_TAB.CUSTOM).toBe('custom')
+    expect(ACCOUNT_SETTING_TAB.PREFERENCE).toBe('preference')
     expect(ACCOUNT_SETTING_TAB.LANGUAGE).toBe('language')
   })
 
@@ -42,6 +43,7 @@ describe('AccountSetting Constants', () => {
     expect(isValidAccountSettingTab('data-source')).toBe(true)
     expect(isValidAccountSettingTab('custom-endpoint')).toBe(true)
     expect(isValidAccountSettingTab('custom')).toBe(true)
+    expect(isValidAccountSettingTab('preference')).toBe(true)
     expect(isValidAccountSettingTab('language')).toBe(true)
   })
 
@@ -55,6 +57,7 @@ describe('AccountSetting Constants', () => {
     expect(isValidSettingsTab('permissions')).toBe(true)
     expect(isValidSettingsTab('access-rules')).toBe(true)
     expect(isValidSettingsTab('billing')).toBe(true)
+    expect(isValidSettingsTab('preference')).toBe(true)
     expect(isValidSettingsTab('language')).toBe(true)
     expect(isValidSettingsTab('provider')).toBe(true)
     expect(isValidSettingsTab('mcp')).toBe(true)

@@ -58,12 +58,13 @@ export default function AccountSetting({
   const isRbacEnabled = systemFeatures.rbac_enabled
   const canManageWorkspaceRoles = isRbacEnabled && hasPermission(workspacePermissionKeys, 'workspace.role.manage')
   const canViewBilling = enableBilling && hasPermission(workspacePermissionKeys, BillingPermission.View)
+  const normalizedActiveTab = activeTab === ACCOUNT_SETTING_TAB.LANGUAGE ? ACCOUNT_SETTING_TAB.PREFERENCE : activeTab
   const activeMenu = (() => {
-    if (activeTab === ACCOUNT_SETTING_TAB.BILLING && !canViewBilling)
-      return ACCOUNT_SETTING_TAB.LANGUAGE
-    if ((activeTab === ACCOUNT_SETTING_TAB.PERMISSIONS || activeTab === ACCOUNT_SETTING_TAB.ACCESS_RULES) && !canManageWorkspaceRoles)
+    if (normalizedActiveTab === ACCOUNT_SETTING_TAB.BILLING && !canViewBilling)
+      return ACCOUNT_SETTING_TAB.PREFERENCE
+    if ((normalizedActiveTab === ACCOUNT_SETTING_TAB.PERMISSIONS || normalizedActiveTab === ACCOUNT_SETTING_TAB.ACCESS_RULES) && !canManageWorkspaceRoles)
       return ACCOUNT_SETTING_TAB.MEMBERS
-    return activeTab
+    return normalizedActiveTab
   })()
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
@@ -119,7 +120,7 @@ export default function AccountSetting({
       activeIcon: <span className={cn('i-ri-color-filter-fill', iconClassName)} />,
     },
     {
-      key: ACCOUNT_SETTING_TAB.LANGUAGE,
+      key: ACCOUNT_SETTING_TAB.PREFERENCE,
       name: t('settings.preferences', { ns: 'common' }),
       title: t('account.general', { ns: 'common' }),
       icon: <span className={cn('i-ri-equalizer-2-line', iconClassName)} />,
@@ -151,7 +152,7 @@ export default function AccountSetting({
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-  const languageItem = settingItems.find(item => item.key === ACCOUNT_SETTING_TAB.LANGUAGE)
+  const preferenceItem = settingItems.find(item => item.key === ACCOUNT_SETTING_TAB.PREFERENCE)
 
   const menuItems = [
     {
@@ -161,7 +162,7 @@ export default function AccountSetting({
     },
     {
       key: 'user-group',
-      items: languageItem ? [languageItem] : [],
+      items: preferenceItem ? [preferenceItem] : [],
     },
   ]
 
@@ -266,7 +267,7 @@ export default function AccountSetting({
               {activeMenu === ACCOUNT_SETTING_TAB.DATA_SOURCE && <DataSourcePage />}
               {activeMenu === ACCOUNT_SETTING_TAB.API_BASED_EXTENSION && <ApiBasedExtensionPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}
-              {activeMenu === ACCOUNT_SETTING_TAB.LANGUAGE && <LanguagePage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.PREFERENCE && <LanguagePage />}
             </div>
           </ScrollArea>
         </div>
