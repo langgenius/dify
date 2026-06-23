@@ -3807,6 +3807,26 @@ Submit human input form preview for workflow
 | ---- | ----------- | ------ |
 | 200 | Workflow agent composer candidates | **application/json**: [AgentComposerCandidatesResponse](#agentcomposercandidatesresponse)<br> |
 
+### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+| node_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowComposerCopyFromRosterPayload](#workflowcomposercopyfromrosterpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow roster agent copied to inline agent | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
+
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/impact
 #### Parameters
 
@@ -20558,6 +20578,14 @@ How a workflow node is bound to an Agent.
 | mentioned_user_ids | [ string ] | Mentioned user IDs. Omit to keep existing mentions. | No |
 | position_x | number | Comment X position | No |
 | position_y | number | Comment Y position | No |
+
+#### WorkflowComposerCopyFromRosterPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| idempotency_key | string |  | No |
+| source_agent_id | string |  | Yes |
+| source_snapshot_id | string |  | No |
 
 #### WorkflowConversationVariableResponse
 
