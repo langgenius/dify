@@ -152,6 +152,9 @@ class WorkflowAgentPublishService:
             node_job=node_job,
         )
         ComposerConfigValidator.validate_publish_payload(payload)
+        # ENG-623 §4.4: drive-backed refs must point at real drive rows before
+        # publishing. This stays out of composer save so autosave/save-draft can
+        # persist incomplete refs and surface them as non-blocking findings.
         cls._require_drive_refs_resolved_for_publish(session=session, binding=binding, agent_soul=agent_soul)
 
     @classmethod
