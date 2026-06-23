@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import type { MainNavItem } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import Link from '@/next/link'
@@ -32,11 +33,13 @@ const NavIcon = ({
 type MainNavLinkProps = {
   item: MainNavItem
   pathname: string
+  children?: ReactNode
 }
 
 const MainNavLink = ({
   item,
   pathname,
+  children,
 }: MainNavLinkProps) => {
   const activated = item.active(pathname)
 
@@ -51,7 +54,8 @@ const MainNavLink = ({
       )}
     >
       <NavIcon icon={activated ? item.activeIcon : item.icon} />
-      <span className={cn('truncate', activated && 'text-shadow-[0px_0px_8px_var(--color-components-main-nav-glass-text-glow)]')}>{item.label}</span>
+      <span className={cn('min-w-0 truncate', activated && 'text-shadow-[0px_0px_8px_var(--color-components-main-nav-glass-text-glow)]')}>{item.label}</span>
+      {children}
     </Link>
   )
 }
