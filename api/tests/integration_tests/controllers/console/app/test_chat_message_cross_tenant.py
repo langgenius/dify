@@ -19,14 +19,14 @@ from flask.testing import FlaskClient
 from sqlalchemy import select
 
 from constants import HEADER_NAME_CSRF_TOKEN
+from controllers.console import wraps as console_wraps
 from controllers.console.app import message as message_api
 from controllers.console.app import wraps
-from controllers.console import wraps as console_wraps
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.token import _real_cookie_name, generate_csrf_token
 from models import App, Tenant
-from models.account import Account, TenantAccountJoin, TenantAccountRole
+from models.account import Account, AccountStatus, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.enums import AppStatus
 from models.model import AppMode
 from services.account_service import AccountService
@@ -235,13 +235,13 @@ class TestChatMessageCrossTenantRealDB:
             owner_b = Account(
                 name="Cross-Tenant Owner",
                 email=f"cross-tenant-{uuid.uuid4()}@example.com",
-                status="active",
+                status=AccountStatus.ACTIVE,
                 interface_language="en-US",
             )
             db.session.add(owner_b)
             db.session.flush()
 
-            tenant_b = Tenant(name="Test Tenant B (cross-tenant)", status="normal")
+            tenant_b = Tenant(name="Test Tenant B (cross-tenant)", status=TenantStatus.NORMAL)
             db.session.add(tenant_b)
             db.session.flush()
 
@@ -279,16 +279,12 @@ class TestChatMessageCrossTenantRealDB:
 
         with flask_app.test_request_context():
             db.session.execute(sql_delete(App).where(App.id == cross_app_id))
-            db.session.execute(
-                sql_delete(TenantAccountJoin).where(TenantAccountJoin.account_id == owner_b_id)
-            )
+            db.session.execute(sql_delete(TenantAccountJoin).where(TenantAccountJoin.account_id == owner_b_id))
             db.session.execute(sql_delete(Account).where(Account.id == owner_b_id))
             db.session.execute(sql_delete(Tenant).where(Tenant.id == tenant_b_id))
             db.session.commit()
 
-    def test_real_load_filters_cross_tenant_app(
-        self, flask_app, cross_tenant_app, setup_account, monkeypatch
-    ):
+    def test_real_load_filters_cross_tenant_app(self, flask_app, cross_tenant_app, setup_account, monkeypatch):
         """The real ``_load_app_model_from_scoped_session`` must return ``None``
         for an app whose tenant does not match the current user's tenant.
 
@@ -311,16 +307,11 @@ class TestChatMessageCrossTenantRealDB:
             from models.account import TenantAccountJoin
 
             current_tenant_id = db.session.scalar(
-                select(TenantAccountJoin.tenant_id)
-                .where(TenantAccountJoin.account_id == setup_account.id)
-                .limit(1)
+                select(TenantAccountJoin.tenant_id).where(TenantAccountJoin.account_id == setup_account.id).limit(1)
             )
-            assert current_tenant_id is not None, (
-                "Test setup error: setup_account has no tenant join"
-            )
+            assert current_tenant_id is not None, "Test setup error: setup_account has no tenant join"
             assert cross_tenant_app.tenant_id != current_tenant_id, (
-                "Test fixture error: cross-tenant app must be in a different tenant "
-                "from setup_account"
+                "Test fixture error: cross-tenant app must be in a different tenant from setup_account"
             )
 
             # Sanity check: the row is actually visible via the same session the
@@ -329,9 +320,12 @@ class TestChatMessageCrossTenantRealDB:
             unfiltered = db.session.scalar(
                 select(App).where(App.id == cross_app_id, App.status == AppStatus.NORMAL).limit(1)
             )
-            assert unfiltered is not None and unfiltered.id == cross_app_id, (
+            assert unfiltered is not None, (
                 "Test fixture error: cross-tenant App row is not visible via db.session. "
                 "Check that the fixture committed the row."
+            )
+            assert unfiltered.id == cross_app_id, (
+                "Test fixture error: cross-tenant App row id mismatch — fixture wrote a different row."
             )
 
             # Provide the current user's tenant id. This is the only thing
@@ -352,9 +346,7 @@ class TestChatMessageCrossTenantRealDB:
                 "cross-tenant app — the tenant filter in the WHERE clause is missing"
             )
 
-    def test_real_load_returns_same_tenant_app(
-        self, flask_app, setup_account, monkeypatch
-    ):
+    def test_real_load_returns_same_tenant_app(self, flask_app, setup_account, monkeypatch):
         """Positive case: a real App in the current user's tenant is returned.
 
         Guards against the WHERE clause being too restrictive (e.g. always
@@ -367,13 +359,9 @@ class TestChatMessageCrossTenantRealDB:
             from models.account import TenantAccountJoin
 
             current_tenant_id = db.session.scalar(
-                select(TenantAccountJoin.tenant_id)
-                .where(TenantAccountJoin.account_id == setup_account.id)
-                .limit(1)
+                select(TenantAccountJoin.tenant_id).where(TenantAccountJoin.account_id == setup_account.id).limit(1)
             )
-            assert current_tenant_id is not None, (
-                "Test setup error: setup_account has no tenant join"
-            )
+            assert current_tenant_id is not None, "Test setup error: setup_account has no tenant join"
 
             same_tenant_app = App(
                 tenant_id=current_tenant_id,
