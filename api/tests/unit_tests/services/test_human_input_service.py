@@ -673,7 +673,7 @@ def test_enqueue_resume_workflow_not_found(mocker: MockerFixture, mock_session_f
     assert "WorkflowRun not found" in str(excinfo.value)
 
 
-def test_enqueue_resume_app_not_found(mocker, mock_session_factory, caplog):
+def test_enqueue_resume_app_not_found(mocker, mock_session_factory, caplog: pytest.LogCaptureFixture):
     session_factory, session = mock_session_factory
     service = HumanInputService(session_factory)
 

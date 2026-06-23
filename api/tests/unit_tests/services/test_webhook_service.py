@@ -1,3 +1,4 @@
+import logging
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 
@@ -159,7 +160,9 @@ class TestWebhookServiceUnit:
 
         assert result == "application/octet-stream"
 
-    def test_detect_binary_mimetype_handles_magic_exception(self, monkeypatch: pytest.MonkeyPatch):
+    def test_detect_binary_mimetype_handles_magic_exception(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ):
         """Fallback MIME type should be used when python-magic raises an exception."""
         try:
             import magic as real_magic
@@ -169,12 +172,12 @@ class TestWebhookServiceUnit:
         fake_magic = MagicMock()
         fake_magic.from_buffer.side_effect = real_magic.MagicException("magic error")
         monkeypatch.setattr("services.trigger.webhook_service.magic", fake_magic)
+        caplog.set_level(logging.DEBUG, logger="services.trigger.webhook_service")
 
-        with patch("services.trigger.webhook_service.logger", autospec=True) as mock_logger:
-            result = WebhookService._detect_binary_mimetype(b"binary data")
+        result = WebhookService._detect_binary_mimetype(b"binary data")
 
-            assert result == "application/octet-stream"
-            mock_logger.debug.assert_called_once()
+        assert result == "application/octet-stream"
+        assert "python-magic detection failed for octet-stream payload" in caplog.messages
 
     def test_extract_webhook_data_invalid_json(self):
         """Test webhook data extraction with invalid JSON."""

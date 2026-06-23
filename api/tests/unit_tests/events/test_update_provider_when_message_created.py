@@ -1,3 +1,4 @@
+import pytest
 from collections.abc import Generator
 from contextlib import contextmanager
 from types import SimpleNamespace
@@ -122,7 +123,7 @@ def test_message_created_paid_credit_accounting_uses_paid_pool() -> None:
     )
 
 
-def test_capped_credit_pool_accounting_skips_exhaustion_warning_when_full_amount_is_deducted(caplog) -> None:
+def test_capped_credit_pool_accounting_skips_exhaustion_warning_when_full_amount_is_deducted(caplog: pytest.LogCaptureFixture) -> None:
     with patch(
         "services.credit_pool_service.CreditPoolService.deduct_credits_capped",
         return_value=3,

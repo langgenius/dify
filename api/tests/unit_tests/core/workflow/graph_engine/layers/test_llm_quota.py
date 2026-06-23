@@ -1,3 +1,4 @@
+import pytest
 import logging
 import threading
 from datetime import datetime
@@ -122,7 +123,7 @@ def test_precheck_ignores_non_quota_node() -> None:
     mock_check.assert_not_called()
 
 
-def test_quota_error_is_handled_in_layer(caplog) -> None:
+def test_quota_error_is_handled_in_layer(caplog: pytest.LogCaptureFixture) -> None:
     layer = LLMQuotaLayer(tenant_id="tenant-id")
     stop_event = threading.Event()
     layer.command_channel = MagicMock()

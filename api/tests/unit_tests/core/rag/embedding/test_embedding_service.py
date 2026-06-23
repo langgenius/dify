@@ -407,7 +407,7 @@ class TestCacheEmbeddingDocuments:
             assert len(calls[1].kwargs["texts"]) == 10
             assert len(calls[2].kwargs["texts"]) == 5
 
-    def test_embed_documents_nan_handling(self, mock_model_instance, caplog):
+    def test_embed_documents_nan_handling(self, mock_model_instance, caplog: pytest.LogCaptureFixture):
         """Test handling of NaN values in embeddings.
 
         Verifies:
