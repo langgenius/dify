@@ -4694,9 +4694,9 @@ Get compliance document download link
 ### [PATCH] /data-source/integrates
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [GET] /data-source/integrates/{binding_id}/{action}
 #### Parameters
@@ -4722,9 +4722,9 @@ Get compliance document download link
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [GET] /datasets
 Get list of datasets

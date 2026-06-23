@@ -7,9 +7,6 @@ import {
   zGetDataSourceIntegratesByBindingIdByActionPath,
   zGetDataSourceIntegratesByBindingIdByActionResponse,
   zGetDataSourceIntegratesResponse,
-  zPatchDataSourceIntegratesByBindingIdByActionPath,
-  zPatchDataSourceIntegratesByBindingIdByActionResponse,
-  zPatchDataSourceIntegratesResponse,
 } from './zod.gen'
 
 export const get = oc
@@ -23,20 +20,8 @@ export const get = oc
   .input(z.object({ params: zGetDataSourceIntegratesByBindingIdByActionPath }))
   .output(zGetDataSourceIntegratesByBindingIdByActionResponse)
 
-export const patch = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'PATCH',
-    operationId: 'patchDataSourceIntegratesByBindingIdByAction',
-    path: '/data-source/integrates/{binding_id}/{action}',
-    tags: ['console'],
-  })
-  .input(z.object({ params: zPatchDataSourceIntegratesByBindingIdByActionPath }))
-  .output(zPatchDataSourceIntegratesByBindingIdByActionResponse)
-
 export const byAction = {
   get,
-  patch,
 }
 
 export const byBindingId = {
@@ -53,19 +38,8 @@ export const get2 = oc
   })
   .output(zGetDataSourceIntegratesResponse)
 
-export const patch2 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'PATCH',
-    operationId: 'patchDataSourceIntegrates',
-    path: '/data-source/integrates',
-    tags: ['console'],
-  })
-  .output(zPatchDataSourceIntegratesResponse)
-
 export const integrates = {
   get: get2,
-  patch: patch2,
   byBindingId,
 }
 

@@ -8,10 +8,6 @@ export type DataSourceIntegrateListResponse = {
   data: Array<DataSourceIntegrateResponse>
 }
 
-export type SimpleResultResponse = {
-  result: string
-}
-
 export type DataSourceIntegrateResponse = {
   created_at: number | null
   disabled: boolean | null
@@ -58,20 +54,6 @@ export type GetDataSourceIntegratesResponses = {
 export type GetDataSourceIntegratesResponse
   = GetDataSourceIntegratesResponses[keyof GetDataSourceIntegratesResponses]
 
-export type PatchDataSourceIntegratesData = {
-  body?: never
-  path?: never
-  query?: never
-  url: '/data-source/integrates'
-}
-
-export type PatchDataSourceIntegratesResponses = {
-  200: SimpleResultResponse
-}
-
-export type PatchDataSourceIntegratesResponse
-  = PatchDataSourceIntegratesResponses[keyof PatchDataSourceIntegratesResponses]
-
 export type GetDataSourceIntegratesByBindingIdByActionData = {
   body?: never
   path: {
@@ -88,20 +70,3 @@ export type GetDataSourceIntegratesByBindingIdByActionResponses = {
 
 export type GetDataSourceIntegratesByBindingIdByActionResponse
   = GetDataSourceIntegratesByBindingIdByActionResponses[keyof GetDataSourceIntegratesByBindingIdByActionResponses]
-
-export type PatchDataSourceIntegratesByBindingIdByActionData = {
-  body?: never
-  path: {
-    action: string
-    binding_id: string
-  }
-  query?: never
-  url: '/data-source/integrates/{binding_id}/{action}'
-}
-
-export type PatchDataSourceIntegratesByBindingIdByActionResponses = {
-  200: SimpleResultResponse
-}
-
-export type PatchDataSourceIntegratesByBindingIdByActionResponse
-  = PatchDataSourceIntegratesByBindingIdByActionResponses[keyof PatchDataSourceIntegratesByBindingIdByActionResponses]
