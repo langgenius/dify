@@ -768,7 +768,7 @@ class WorkflowRunBundleArchiveMaintenance:
     ) -> list[dict[str, Any]]:
         if not values:
             return []
-        rows = []
+        rows: list[Any] = []
         for chunk in self._chunks(values, _CHUNK_SIZE):
             rows.extend(session.scalars(select(model).where(column.in_(chunk))))
         return [self._row_to_dict(row) for row in rows]

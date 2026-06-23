@@ -759,8 +759,8 @@ def restore_workflow_runs(
         )
     assert start_from is not None
     assert end_before is not None
-    restorer = WorkflowRunBundleArchiveMaintenance(dry_run=dry_run, strict_content_validation=True)
-    summary = restorer.restore_batch(
+    bundle_restorer = WorkflowRunBundleArchiveMaintenance(dry_run=dry_run, strict_content_validation=True)
+    summary = bundle_restorer.restore_batch(
         tenant_ids=parsed_tenant_ids,
         start_date=start_from,
         end_date=end_before,
@@ -914,12 +914,12 @@ def delete_archived_workflow_runs(
         click.echo(click.style("--restore-sample-interval is ignored for V2 bundle delete.", fg="yellow"))
     assert start_from is not None
     assert end_before is not None
-    deleter = WorkflowRunBundleArchiveMaintenance(
+    bundle_deleter = WorkflowRunBundleArchiveMaintenance(
         dry_run=dry_run,
         strict_content_validation=True,
         stop_on_error=not skip_bad_archives,
     )
-    summary = deleter.delete_batch(
+    summary = bundle_deleter.delete_batch(
         tenant_ids=parsed_tenant_ids,
         start_date=start_from,
         end_date=end_before,

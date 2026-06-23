@@ -44,6 +44,7 @@ from libs.archive_storage import (
     ArchiveStorageNotConfiguredError,
     get_archive_storage,
 )
+from models.trigger import WorkflowTriggerLog
 from models.workflow import (
     WorkflowAppLog,
     WorkflowNodeExecutionModel,
@@ -632,7 +633,7 @@ class WorkflowRunArchiver:
         table_data["workflow_pause_reasons"] = [self._row_to_dict(row) for row in pause_reason_records]
 
         trigger_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
-        trigger_records = []
+        trigger_records: list[WorkflowTriggerLog] = []
         for run_id in run_ids:
             trigger_records.extend(trigger_repo.list_by_run_id(run_id))
         table_data["workflow_trigger_logs"] = [self._row_to_dict(row) for row in trigger_records]
