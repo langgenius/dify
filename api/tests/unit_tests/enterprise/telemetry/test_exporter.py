@@ -1,12 +1,13 @@
 """Unit tests for EnterpriseExporter and _ExporterFactory."""
 
 from __future__ import annotations
-import pytest
 
 import logging
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from configs.enterprise import EnterpriseTelemetryConfig
 from enterprise.telemetry.entities import EnterpriseTelemetryCounter, EnterpriseTelemetryHistogram
