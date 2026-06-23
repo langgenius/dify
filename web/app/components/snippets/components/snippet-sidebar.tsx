@@ -12,6 +12,7 @@ import ConfigVarModal from '@/app/components/app/configuration/config-var/config
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import VarList from '@/app/components/workflow/nodes/start/components/var-list'
 import { hasDuplicateStr } from '@/utils/var'
+import { SnippetPlaceholderIcon } from './snippet-placeholder-icon'
 
 type SnippetSidebarProps = {
   snippet: SnippetDetail
@@ -95,16 +96,20 @@ export const SnippetSidebarContent = ({
     <div className={cn('flex h-full min-h-0 flex-col overflow-hidden bg-background-default', className)}>
       <div className="shrink-0 px-3 py-2">
         <div className="flex items-start gap-3">
+          <SnippetPlaceholderIcon
+            className="size-12 shrink-0 rounded-[16px]"
+            graphicClassName="size-9"
+          />
           <div className="min-w-0 grow">
             <div className="truncate system-xl-semibold text-text-primary" title={snippet.name}>{snippet.name}</div>
-            {!!snippet.description && (
-              <div className="mt-3 truncate system-sm-regular text-text-tertiary" title={snippet.description}>
-                {snippet.description}
-              </div>
-            )}
           </div>
           <SnippetInfoDropdown snippet={snippet} />
         </div>
+        {!!snippet.description && (
+          <div className="mt-2 truncate system-sm-regular text-text-tertiary" title={snippet.description}>
+            {snippet.description}
+          </div>
+        )}
       </div>
 
       <div className="flex min-h-0 grow flex-col px-3 pt-6">
