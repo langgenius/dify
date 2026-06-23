@@ -416,9 +416,28 @@ def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.Monk
     fake_session = FakeSession()
     monkeypatch.setattr(composer_service.db, "session", fake_session)
     workflow_agent = SimpleNamespace(id="inline-agent-1", active_config_snapshot_id="inline-version-1")
-    roster_agent = SimpleNamespace(id="roster-agent-1", active_config_snapshot_id="roster-version-1", name="Roster")
+    roster_agent = SimpleNamespace(
+        id="roster-agent-1",
+        active_config_snapshot_id="roster-version-1",
+        name="Roster",
+        description="Source description",
+        role="Source role",
+        icon_type="emoji",
+        icon="source",
+        icon_background="#FFFFFF",
+    )
+    create_roster_calls = []
     monkeypatch.setattr(AgentComposerService, "_create_workflow_only_agent", lambda **kwargs: workflow_agent)
-    monkeypatch.setattr(AgentComposerService, "_create_roster_agent_for_composer", lambda **kwargs: roster_agent)
+
+    def fake_create_roster_agent_for_composer(**kwargs):
+        create_roster_calls.append(kwargs)
+        return roster_agent
+
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_create_roster_agent_for_composer",
+        fake_create_roster_agent_for_composer,
+    )
     monkeypatch.setattr(AgentComposerService, "_require_agent", lambda **kwargs: roster_agent)
     monkeypatch.setattr(
         AgentComposerService,
@@ -444,6 +463,11 @@ def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.Monk
             "agent_soul": {"prompt": {"system_prompt": "new"}},
             "node_job": {"workflow_prompt": "use prior output"},
             "new_agent_name": "Copied Agent",
+            "description": "Copied description",
+            "role": "Copied role",
+            "icon_type": "emoji",
+            "icon": "copied",
+            "icon_background": "#E0F2FE",
         }
     )
     existing_binding = WorkflowAgentNodeBinding(agent_id="inline-agent-1", current_snapshot_id="inline-version-1")
@@ -501,6 +525,14 @@ def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.Monk
     assert new_agent_binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
     assert save_to_roster_binding.agent_id == "roster-agent-1"
     assert new_version_binding.current_snapshot_id == "new-version-1"
+    assert create_roster_calls[0]["description"] == "Copied description"
+    assert create_roster_calls[0]["role"] == "Copied role"
+    assert create_roster_calls[0]["icon"] == "copied"
+    assert create_roster_calls[0]["icon_background"] == "#E0F2FE"
+    assert create_roster_calls[1]["description"] == "Copied description"
+    assert create_roster_calls[1]["role"] == "Copied role"
+    assert create_roster_calls[1]["icon"] == "copied"
+    assert create_roster_calls[1]["icon_background"] == "#E0F2FE"
 
 
 def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch):

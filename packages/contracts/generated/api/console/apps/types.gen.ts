@@ -986,9 +986,14 @@ export type ComposerSavePayload = {
   agent_soul?: AgentSoulConfig | null
   binding?: ComposerBindingPayload | null
   client_revision_id?: string | null
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: AgentIconType | null
   idempotency_key?: string | null
   new_agent_name?: string | null
   node_job?: WorkflowNodeJobConfig | null
+  role?: string | null
   save_strategy: ComposerSaveStrategy
   soul_lock?: ComposerSoulLockPayload
   variant: ComposerVariant
@@ -1878,6 +1883,8 @@ export type ComposerBindingPayload = {
   binding_type: 'inline_agent' | 'roster_agent'
   current_snapshot_id?: string | null
 }
+
+export type AgentIconType = 'emoji' | 'image' | 'link'
 
 export type ComposerSoulLockPayload = {
   locked?: boolean
