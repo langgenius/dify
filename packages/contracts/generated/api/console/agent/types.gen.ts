@@ -158,12 +158,13 @@ export type AgentComposerValidateResponse = {
   warnings?: Array<ComposerValidationWarningResponse>
 }
 
-export type CopyAppPayload = {
+export type AgentAppCopyPayload = {
   description?: string | null
   icon?: string | null
   icon_background?: string | null
   icon_type?: IconType | null
   name?: string | null
+  role?: string | null
 }
 
 export type AgentDebugConversationRefreshResponse = {
@@ -1952,7 +1953,7 @@ export type PostAgentByAgentIdComposerValidateResponse
   = PostAgentByAgentIdComposerValidateResponses[keyof PostAgentByAgentIdComposerValidateResponses]
 
 export type PostAgentByAgentIdCopyData = {
-  body: CopyAppPayload
+  body: AgentAppCopyPayload
   path: {
     agent_id: string
   }
