@@ -560,9 +560,9 @@ class AgentDebugConversationRefreshApi(Resource):
             agent_id=str(agent_id),
             account_id=current_user.id,
         )
-        return AgentDebugConversationRefreshResponse(
-            debug_conversation_id=debug_conversation_id
-        ).model_dump(mode="json")
+        return AgentDebugConversationRefreshResponse(debug_conversation_id=debug_conversation_id).model_dump(
+            mode="json"
+        )
 
 
 @console_ns.route("/agent/<uuid:agent_id>/copy")
