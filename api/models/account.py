@@ -11,6 +11,8 @@ from sqlalchemy import DateTime, String, func, select
 from sqlalchemy.orm import Mapped, Session, mapped_column
 from typing_extensions import deprecated
 
+from configs import dify_config
+
 from .base import TypeBase
 from .engine import db
 from .types import EnumText, LongText, StringUUID
@@ -187,10 +189,14 @@ class Account(UserMixin, TypeBase):
     # check current_user.current_tenant.current_role in ['admin', 'owner']
     @property
     def is_admin_or_owner(self):
+        if dify_config.RBAC_ENABLED:
+            return True
         return TenantAccountRole.is_privileged_role(self.role)
 
     @property
     def is_admin(self):
+        if dify_config.RBAC_ENABLED:
+            return True
         return TenantAccountRole.is_admin_role(self.role)
 
     @property
@@ -216,14 +222,20 @@ class Account(UserMixin, TypeBase):
         - `ADMIN`
         - `EDITOR`
         """
+        if dify_config.RBAC_ENABLED:
+            return True
         return TenantAccountRole.is_editing_role(self.role)
 
     @property
     def is_dataset_editor(self):
+        if dify_config.RBAC_ENABLED:
+            return True
         return TenantAccountRole.is_dataset_edit_role(self.role)
 
     @property
     def is_dataset_operator(self):
+        if dify_config.RBAC_ENABLED:
+            return True
         return self.role == TenantAccountRole.DATASET_OPERATOR
 
 

@@ -44,10 +44,10 @@ describe('createOpenApiClient error mapping', () => {
   }
 
   it('recovers Dify message from a canonical ErrorBody 4xx response', async () => {
-    const caught = await classifiedError(403, { code: 'access_denied', message: 'no access', status: 403 })
+    const caught = await classifiedError(422, { code: 'invalid_param', message: 'no access', status: 422 })
 
     expect(caught.code).toBe(ErrorCode.Server4xxOther)
-    expect(caught.httpStatus).toBe(403)
+    expect(caught.httpStatus).toBe(422)
     expect(caught.message).toBe('no access')
     // Parity with the transport path: the migrated endpoint's error keeps the request
     // method/url and the raw body, so formatted errors still print the `request:` line

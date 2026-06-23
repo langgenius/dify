@@ -9,8 +9,11 @@ import Item from '../item'
 // borrowed-row heuristic; provide a minimal mock so the selector resolves.
 const mockUserProfile = { id: 'test-user', name: 'Test User', email: 'test@example.com', avatar_url: '' }
 vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { userProfile: typeof mockUserProfile }) => unknown) =>
-    selector({ userProfile: mockUserProfile }),
+  useSelector: (selector: (state: { userProfile: typeof mockUserProfile, workspacePermissionKeys: string[] }) => unknown) =>
+    selector({
+      userProfile: mockUserProfile,
+      workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
+    }),
 }))
 
 // ==================== Test Utilities ====================
@@ -86,8 +89,7 @@ describe('Item Component', () => {
         />,
       )
 
-      const svgs = container.querySelectorAll('svg')
-      expect(svgs.length).toBeGreaterThan(0)
+      expect(container.querySelector('.i-ri-check-line')).toBeInTheDocument()
     })
 
     it('should not render selected icon when credential is not selected', () => {
@@ -100,7 +102,8 @@ describe('Item Component', () => {
           selectedCredentialId="sel-id"
         />,
       )
-      const selectedSvgCount = selectedContainer.querySelectorAll('svg').length
+      const selectedIcon = selectedContainer.querySelector('.i-ri-check-line')
+      expect(selectedIcon).not.toBeNull()
 
       cleanup()
 
@@ -111,9 +114,9 @@ describe('Item Component', () => {
           selectedCredentialId="other-id"
         />,
       )
-      const unselectedSvgCount = unselectedContainer.querySelectorAll('svg').length
+      const unselectedIcon = unselectedContainer.querySelector('.i-ri-check-line')
 
-      expect(unselectedSvgCount).toBeLessThan(selectedSvgCount)
+      expect(unselectedIcon).not.toBeInTheDocument()
     })
 
     it('should render with disabled appearance when not_allowed_to_use is true', () => {
@@ -351,7 +354,7 @@ describe('Item Component', () => {
         />,
       )
 
-      const editButton = container.querySelector('svg')?.closest('button') as HTMLElement
+      const editButton = container.querySelector('.i-ri-equalizer-2-line')?.closest('button') as HTMLElement
       fireEvent.click(editButton)
       expect(onEdit).toHaveBeenCalledWith('edit-test-id', {
         api_key: 'secret',
@@ -415,7 +418,7 @@ describe('Item Component', () => {
         />,
       )
 
-      const deleteButton = container.querySelector('svg')?.closest('button') as HTMLElement
+      const deleteButton = container.querySelector('.i-ri-delete-bin-line')?.closest('button') as HTMLElement
       fireEvent.click(deleteButton)
       expect(onDelete).toHaveBeenCalledWith('delete-test-id')
     })
@@ -532,7 +535,7 @@ describe('Item Component', () => {
         />,
       )
 
-      const deleteButton = container.querySelector('svg')?.closest('button') as HTMLElement
+      const deleteButton = container.querySelector('.i-ri-delete-bin-line')?.closest('button') as HTMLElement
       fireEvent.click(deleteButton)
       expect(onDelete).toHaveBeenCalled()
     })

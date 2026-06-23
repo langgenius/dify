@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer'
 import { PassThrough } from 'node:stream'
 import { describe, expect, it } from 'vitest'
-import { extractThinkBlocks, stripThinkBlocks, ThinkChunkFilter } from './think-filter'
+import { extractThinkBlocks, filterThinkInOutputs, stripThinkBlocks, ThinkChunkFilter } from './think-filter'
 
 function captures() {
   const out = new PassThrough()
@@ -60,6 +60,50 @@ describe('extractThinkBlocks', () => {
     const r = extractThinkBlocks('<think>a</think>\nfoo<think>b</think>\nbar')
     expect(r.clean).toBe('foobar')
     expect(r.thinking).toBe('<think>\na\n</think>\n---\n<think>\nb\n</think>')
+  })
+})
+
+// --- workflow outputs helper ---
+
+describe('filterThinkInOutputs', () => {
+  it('no think block — outputs unchanged, thinking empty', () => {
+    const r = filterThinkInOutputs({ text: 'hello' }, true)
+    expect(r.outputs).toEqual({ text: 'hello' })
+    expect(r.thinking).toBe('')
+  })
+
+  it('showThink: false — strips from string field, thinking empty', () => {
+    const r = filterThinkInOutputs({ text: '<think>reasoning</think>\nanswer' }, false)
+    expect(r.outputs).toEqual({ text: 'answer' })
+    expect(r.thinking).toBe('')
+  })
+
+  it('showThink: true — strips from string field, captures thinking', () => {
+    const r = filterThinkInOutputs({ text: '<think>step 1</think>\nfinal' }, true)
+    expect(r.outputs).toEqual({ text: 'final' })
+    expect(r.thinking).toBe('<think>\nstep 1\n</think>')
+  })
+
+  it('multiple string fields — thinking joined with separator', () => {
+    const r = filterThinkInOutputs(
+      { a: '<think>x</think>\nfoo', b: '<think>y</think>\nbar' },
+      true,
+    )
+    expect(r.outputs).toEqual({ a: 'foo', b: 'bar' })
+    expect(r.thinking).toBe('<think>\nx\n</think>\n---\n<think>\ny\n</think>')
+  })
+
+  it('non-string values pass through untouched', () => {
+    const outputs = { n: 42, flag: true, nested: { k: '<think>v</think>\nx' }, arr: ['a'], nil: null }
+    const r = filterThinkInOutputs(outputs, true)
+    expect(r.outputs).toEqual(outputs)
+    expect(r.thinking).toBe('')
+  })
+
+  it('empty outputs — empty result', () => {
+    const r = filterThinkInOutputs({}, true)
+    expect(r.outputs).toEqual({})
+    expect(r.thinking).toBe('')
   })
 })
 

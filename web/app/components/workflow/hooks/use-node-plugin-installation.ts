@@ -3,6 +3,7 @@ import type { ToolNodeType } from '../nodes/tool/types'
 import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
 import type { CommonNodeType } from '../types'
 import { useCallback, useMemo } from 'react'
+import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { CollectionType } from '@/app/components/tools/types'
 import { useInvalidDataSourceList } from '@/service/use-pipeline'
 import {
@@ -42,7 +43,7 @@ const NOOP_INSTALLATION: InstallationState = {
   shouldDim: false,
 }
 
-const useToolInstallation = (data: ToolNodeType, enabled: boolean): InstallationState => {
+const useToolInstallation = (data: ToolNodeType, enabled: boolean, canInstallPlugin: boolean): InstallationState => {
   const isBuiltIn = enabled && data.provider_type === CollectionType.builtIn
   const isCustom = enabled && data.provider_type === CollectionType.custom
   const isWorkflow = enabled && data.provider_type === CollectionType.workflow
@@ -108,7 +109,7 @@ const useToolInstallation = (data: ToolNodeType, enabled: boolean): Installation
   }, [collection, plugin_id, provider_id, provider_name])
 
   const uniqueIdentifier = data.plugin_unique_identifier || data.plugin_id || data.provider_id
-  const canInstall = Boolean(data.plugin_unique_identifier)
+  const canInstall = Boolean(data.plugin_unique_identifier) && canInstallPlugin
 
   const onInstallSuccess = useCallback(() => {
     if (invalidateTools)
@@ -127,7 +128,7 @@ const useToolInstallation = (data: ToolNodeType, enabled: boolean): Installation
   }
 }
 
-const useTriggerInstallation = (data: PluginTriggerNodeType, enabled: boolean): InstallationState => {
+const useTriggerInstallation = (data: PluginTriggerNodeType, enabled: boolean, canInstallPlugin: boolean): InstallationState => {
   const triggerPluginsQuery = useAllTriggerPlugins(enabled)
   const invalidateTriggers = useInvalidateAllTriggerPlugins()
 
@@ -143,7 +144,7 @@ const useTriggerInstallation = (data: PluginTriggerNodeType, enabled: boolean): 
   }, [plugin_id, provider_id, provider_name, triggerProviders])
 
   const uniqueIdentifier = data.plugin_unique_identifier || data.plugin_id || data.provider_id
-  const canInstall = Boolean(data.plugin_unique_identifier)
+  const canInstall = Boolean(data.plugin_unique_identifier) && canInstallPlugin
 
   const onInstallSuccess = useCallback(() => {
     invalidateTriggers()
@@ -161,7 +162,7 @@ const useTriggerInstallation = (data: PluginTriggerNodeType, enabled: boolean): 
   }
 }
 
-const useDataSourceInstallation = (data: DataSourceNodeType, _enabled: boolean): InstallationState => {
+const useDataSourceInstallation = (data: DataSourceNodeType, _enabled: boolean, canInstallPlugin: boolean): InstallationState => {
   const dataSourceList = useStore(s => s.dataSourceList)
   const invalidateDataSourceList = useInvalidDataSourceList()
 
@@ -174,7 +175,7 @@ const useDataSourceInstallation = (data: DataSourceNodeType, _enabled: boolean):
   }, [dataSourceList, plugin_id, plugin_unique_identifier, provider_name])
 
   const uniqueIdentifier = data.plugin_unique_identifier || data.plugin_id
-  const canInstall = Boolean(data.plugin_unique_identifier)
+  const canInstall = Boolean(data.plugin_unique_identifier) && canInstallPlugin
 
   const onInstallSuccess = useCallback(() => {
     invalidateDataSourceList()
@@ -198,10 +199,11 @@ export const useNodePluginInstallation = (data: CommonNodeType): InstallationSta
   const isTool = data.type === BlockEnum.Tool
   const isTrigger = data.type === BlockEnum.TriggerPlugin
   const isDataSource = data.type === BlockEnum.DataSource
+  const { canInstallPlugin } = useWorkspacePluginInstallPermission()
 
-  const toolInstallation = useToolInstallation(data as ToolNodeType, isTool)
-  const triggerInstallation = useTriggerInstallation(data as PluginTriggerNodeType, isTrigger)
-  const dataSourceInstallation = useDataSourceInstallation(data as DataSourceNodeType, isDataSource)
+  const toolInstallation = useToolInstallation(data as ToolNodeType, isTool, canInstallPlugin)
+  const triggerInstallation = useTriggerInstallation(data as PluginTriggerNodeType, isTrigger, canInstallPlugin)
+  const dataSourceInstallation = useDataSourceInstallation(data as DataSourceNodeType, isDataSource, canInstallPlugin)
 
   if (isTool)
     return toolInstallation

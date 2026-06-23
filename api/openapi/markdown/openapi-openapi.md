@@ -4,10 +4,9 @@ User-scoped programmatic API (bearer auth)
 ## Version: 1.0
 
 ### Available authorizations
-#### Bearer (API Key Authentication)
-Type: Bearer {your-api-key}  
-**Name:** Authorization  
-**In:** header  
+#### Bearer (HTTP, bearer)
+Use the Service API key as a Bearer token in the Authorization header.
+Bearer format: API_KEY
 
 ---
 ## openapi
@@ -84,7 +83,6 @@ User-scoped operations
 | mode | query |  | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "channel", "chat", "completion", "rag-pipeline", "workflow" |
 | name | query |  | No | string |
 | page | query |  | No | integer, <br>**Default:** 1 |
-| tag | query |  | No | string |
 | workspace_id | query |  | Yes | string |
 
 #### Responses
@@ -332,6 +330,22 @@ Upload a file to use as an input variable when running the app
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /permitted-external-apps/{app_id}/describe
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| fields | query |  | No | string |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Permitted external app description | **application/json**: [AppDescribeResponse](#appdescriberesponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [GET] /workspaces
 #### Responses
 
@@ -508,14 +522,12 @@ Upload a file to use as an input variable when running the app
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| author | string |  | No |
 | description | string |  | No |
 | id | string |  | Yes |
 | is_agent | boolean |  | No |
 | mode | string |  | Yes |
 | name | string |  | Yes |
 | service_api_enabled | boolean |  | Yes |
-| tags | [ [TagItem](#tagitem) ], <br>**Default:**  |  | No |
 | updated_at | string |  | No |
 
 #### AppDescribeQuery
@@ -569,16 +581,14 @@ Request body for POST /workspaces/<workspace_id>/apps/imports.
 | yaml_content | string | Inline YAML DSL string (required when mode is yaml-content) | No |
 | yaml_url | string | Remote URL to fetch YAML from (required when mode is yaml-url) | No |
 
-#### AppInfoResponse
+#### AppInfo
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| author | string |  | No |
 | description | string |  | No |
 | id | string |  | Yes |
 | mode | string |  | Yes |
 | name | string |  | Yes |
-| tags | [ [TagItem](#tagitem) ], <br>**Default:**  |  | No |
 
 #### AppListQuery
 
@@ -590,7 +600,6 @@ mode is a closed enum.
 | mode | [AppMode](#appmode) |  | No |
 | name | string |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
-| tag | string |  | No |
 | workspace_id | string |  | Yes |
 
 #### AppListResponse
@@ -607,12 +616,10 @@ mode is a closed enum.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_by_name | string |  | No |
 | description | string |  | No |
 | id | string |  | Yes |
 | mode | [AppMode](#appmode) |  | Yes |
 | name | string |  | Yes |
-| tags | [ [TagItem](#tagitem) ], <br>**Default:**  |  | No |
 | updated_at | string |  | No |
 | workspace_id | string |  | No |
 | workspace_name | string |  | No |
@@ -793,7 +800,7 @@ Liveness payload for `GET /openapi/v1/_health` — no auth required.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| action | string |  | Yes |
+| action | string | ID of the action button the recipient selected. Must match one of the `id` values from the form's `user_actions` list. | Yes |
 | inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
 
 #### Import
@@ -806,6 +813,7 @@ Liveness payload for `GET /openapi/v1/_health` — no auth required.
 | error | string |  | No |
 | id | string |  | Yes |
 | imported_dsl_version | string |  | No |
+| permission_keys | [ string ] |  | No |
 | status | [ImportStatus](#importstatus) |  | Yes |
 
 #### ImportStatus
@@ -981,12 +989,6 @@ Pagination for GET /account/sessions. Strict (extra='forbid').
 | id | string |  | Yes |
 | last_used_at | string |  | No |
 | prefix | string |  | Yes |
-
-#### TagItem
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| name | string |  | Yes |
 
 #### TaskStopResponse
 

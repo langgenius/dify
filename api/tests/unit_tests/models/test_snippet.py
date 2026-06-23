@@ -2,6 +2,8 @@ import json
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+import pytest
+
 from models.snippet import CustomizedSnippet
 
 
@@ -11,7 +13,7 @@ def test_graph_dict_returns_empty_without_workflow_id() -> None:
     assert snippet.graph_dict == {}
 
 
-def test_graph_dict_loads_published_workflow_graph(monkeypatch) -> None:
+def test_graph_dict_loads_published_workflow_graph(monkeypatch: pytest.MonkeyPatch) -> None:
     workflow = SimpleNamespace(graph=json.dumps({"nodes": [{"id": "llm-1"}], "edges": []}))
     session = SimpleNamespace(get=Mock(return_value=workflow))
     monkeypatch.setattr("models.snippet.db.session", session)
@@ -21,7 +23,7 @@ def test_graph_dict_loads_published_workflow_graph(monkeypatch) -> None:
     session.get.assert_called_once()
 
 
-def test_graph_dict_returns_empty_when_workflow_missing(monkeypatch) -> None:
+def test_graph_dict_returns_empty_when_workflow_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     session = SimpleNamespace(get=Mock(return_value=None))
     monkeypatch.setattr("models.snippet.db.session", session)
     snippet = CustomizedSnippet(workflow_id="missing-workflow")
@@ -36,7 +38,7 @@ def test_input_fields_list_parses_json_or_returns_empty() -> None:
     ]
 
 
-def test_tags_returns_query_results_or_empty(monkeypatch) -> None:
+def test_tags_returns_query_results_or_empty(monkeypatch: pytest.MonkeyPatch) -> None:
     tags = [SimpleNamespace(id="tag-1")]
     session = SimpleNamespace(scalars=Mock(return_value=SimpleNamespace(all=Mock(return_value=tags))))
     monkeypatch.setattr("models.snippet.db.session", session)
@@ -48,7 +50,7 @@ def test_tags_returns_query_results_or_empty(monkeypatch) -> None:
     assert snippet.tags == []
 
 
-def test_account_properties_and_author_name(monkeypatch) -> None:
+def test_account_properties_and_author_name(monkeypatch: pytest.MonkeyPatch) -> None:
     account = SimpleNamespace(id="account-1", name="Ada")
     updated_account = SimpleNamespace(id="account-2", name="Grace")
     session = SimpleNamespace(

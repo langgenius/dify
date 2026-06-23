@@ -19,13 +19,17 @@ from controllers.common.schema import register_response_schema_models, register_
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_app_model
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
 )
 from events.app_event import app_model_config_was_updated
+from extensions.ext_database import db
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
@@ -78,6 +82,7 @@ class AgentAppFeatureConfigResource(Resource):
     @setup_required
     @login_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -86,9 +91,7 @@ class AgentAppFeatureConfigResource(Resource):
         args = AgentAppFeaturesPayload.model_validate(console_ns.payload or {})
 
         new_app_model_config = AgentAppFeatureConfigService.update_features(
-            app_model=app_model,
-            account=current_user,
-            config=args.model_dump(exclude_none=True),
+            app_model=app_model, account=current_user, config=args.model_dump(exclude_none=True), session=db.session
         )
 
         app_model_config_was_updated.send(app_model, app_model_config=new_app_model_config)

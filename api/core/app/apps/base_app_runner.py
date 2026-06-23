@@ -231,22 +231,23 @@ class AppRunner:
         :param tenant_id: tenant id for multimodal output
         :return:
         """
-        if not stream and isinstance(invoke_result, LLMResult):
-            self._handle_invoke_result_direct(
-                invoke_result=invoke_result,
-                queue_manager=queue_manager,
-            )
-        elif stream and isinstance(invoke_result, Generator):
-            self._handle_invoke_result_stream(
-                invoke_result=invoke_result,
-                queue_manager=queue_manager,
-                agent=agent,
-                message_id=message_id,
-                user_id=user_id,
-                tenant_id=tenant_id,
-            )
-        else:
-            raise NotImplementedError(f"unsupported invoke result type: {type(invoke_result)}")
+        match invoke_result:
+            case LLMResult() if not stream:
+                self._handle_invoke_result_direct(
+                    invoke_result=invoke_result,
+                    queue_manager=queue_manager,
+                )
+            case _ if stream and isinstance(invoke_result, Generator):
+                self._handle_invoke_result_stream(
+                    invoke_result=invoke_result,
+                    queue_manager=queue_manager,
+                    agent=agent,
+                    message_id=message_id,
+                    user_id=user_id,
+                    tenant_id=tenant_id,
+                )
+            case _:
+                raise NotImplementedError(f"unsupported invoke result type: {type(invoke_result)}")
 
     def _handle_invoke_result_direct(
         self,

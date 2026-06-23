@@ -13,12 +13,15 @@ import Badge from '@/app/components/base/badge'
 import Loading from '@/app/components/base/loading'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import FeatureIcon from '@/app/components/header/account-setting/model-provider-page/model-selector/feature-icon'
+import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import Link from '@/next/link'
 import { useInfiniteDatasets } from '@/service/knowledge/use-dataset'
+import { hasPermission } from '@/utils/permission'
 
 type ISelectDataSetProps = {
   isShow: boolean
+  modal?: boolean
   onClose: () => void
   selectedIds: string[]
   onSelect: (dataSet: DataSet[]) => void
@@ -26,6 +29,7 @@ type ISelectDataSetProps = {
 
 const SelectDataSet: FC<ISelectDataSetProps> = ({
   isShow,
+  modal,
   onClose,
   selectedIds,
   onSelect,
@@ -34,6 +38,8 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   const [selectedIdsInModal, setSelectedIdsInModal] = useState(() => selectedIds)
   const canSelectMulti = true
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
+  const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
+  const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
   const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useInfiniteDatasets(
     { page: 1 },
     { enabled: isShow, staleTime: 0, refetchOnMount: 'always' },
@@ -90,8 +96,8 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   }, [handleClose])
 
   return (
-    <Dialog open={isShow} onOpenChange={handleOpenChange}>
-      <DialogContent className="w-100 overflow-hidden">
+    <Dialog modal={modal} open={isShow} onOpenChange={handleOpenChange}>
+      <DialogContent backdropProps={{ forceRender: true }} className="w-100 overflow-hidden">
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t('feature.dataSet.selectTitle', { ns: 'appDebug' })}
         </DialogTitle>
@@ -105,7 +111,9 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
         {hasNoData && (
           <div className="mt-6 flex h-32 items-center justify-center space-x-1 rounded-lg border border-divider-subtle bg-components-panel-on-panel-item-bg text-[13px]">
             <span className="text-text-tertiary">{t('feature.dataSet.noDataSet', { ns: 'appDebug' })}</span>
-            <Link href="/datasets/create" className="font-normal text-text-accent">{t('feature.dataSet.toCreate', { ns: 'appDebug' })}</Link>
+            {canCreateDataset && (
+              <Link href="/datasets/create" className="font-normal text-text-accent">{t('feature.dataSet.toCreate', { ns: 'appDebug' })}</Link>
+            )}
           </div>
         )}
 

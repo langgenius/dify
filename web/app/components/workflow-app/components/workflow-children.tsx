@@ -1,5 +1,5 @@
 import type {
-  PluginDefaultValue,
+  BlockDefaultValue,
   TriggerDefaultValue,
 } from '@/app/components/workflow/block-selector/types'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
@@ -15,6 +15,7 @@ import {
   useDSL,
   usePanelInteractions,
 } from '@/app/components/workflow/hooks'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -72,6 +73,8 @@ const WorkflowChildren = () => {
   const showImportDSLModal = useStore(s => s.showImportDSLModal)
   const setShowImportDSLModal = useStore(s => s.setShowImportDSLModal)
   const showOnboarding = useStore(s => s.showOnboarding)
+  const canImportExportDSL = useHooksStore(s => s.accessControl.canImportExportDSL)
+  const canEdit = useHooksStore(s => s.accessControl.canEdit)
   const setShowOnboarding = useStore(s => s.setShowOnboarding)
   const setHasSelectedStartNode = useStore(s => s.setHasSelectedStartNode)
   const setShouldAutoOpenStartNodeSelector = useStore(s => s.setShouldAutoOpenStartNodeSelector)
@@ -98,7 +101,10 @@ const WorkflowChildren = () => {
     handleOnboardingClose()
   }, [handleOnboardingClose])
 
-  const handleSelectStartNode = useCallback((nodeType: BlockEnum, toolConfig?: PluginDefaultValue) => {
+  const handleSelectStartNode = useCallback((nodeType: BlockEnum, toolConfig?: BlockDefaultValue) => {
+    if (!canEdit)
+      return
+
     const nodeDefault = availableNodesMetaData.nodesMap?.[nodeType]
     if (!nodeDefault?.defaultValue)
       return
@@ -152,7 +158,7 @@ const WorkflowChildren = () => {
         console.error('Failed to save node to draft')
       },
     })
-  }, [availableNodesMetaData, setShowOnboarding, setHasSelectedStartNode, reactFlowStore, handleSyncWorkflowDraft])
+  }, [availableNodesMetaData, autoGenerateWebhookUrl, canEdit, handleSyncWorkflowDraft, reactFlowStore, setHasSelectedStartNode, setShouldAutoOpenStartNodeSelector, setShowOnboarding])
 
   return (
     <>
@@ -161,7 +167,7 @@ const WorkflowChildren = () => {
         showFeaturesPanel && <Features />
       }
       {
-        showOnboarding && (
+        canEdit && showOnboarding && (
           <WorkflowOnboardingModal
             isShow={showOnboarding}
             onClose={handleCloseOnboarding}
@@ -170,7 +176,7 @@ const WorkflowChildren = () => {
         )
       }
       {
-        showImportDSLModal && (
+        canImportExportDSL && showImportDSLModal && (
           <UpdateDSLModal
             onCancel={() => setShowImportDSLModal(false)}
             onBackup={exportCheck!}
@@ -179,7 +185,7 @@ const WorkflowChildren = () => {
         )
       }
       {
-        secretEnvList.length > 0 && (
+        canImportExportDSL && secretEnvList.length > 0 && (
           <DSLExportConfirmModal
             envList={secretEnvList}
             onConfirm={handleExportDSL!}

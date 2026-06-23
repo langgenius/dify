@@ -146,6 +146,43 @@ describe('runDevicesRevoke', () => {
     expect(saved?.hosts[mock.url]).toBeUndefined()
   })
 
+  it('TTY without --yes: prompts and aborts on decline (no revoke)', async () => {
+    const base = bufferStreams('n\n')
+    const io = { ...base, isErrTTY: true }
+    const store = new MemStore()
+    const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
+    const http = testHttpClient(mock.url, 'dfoa_test')
+
+    await expect(runDevicesRevoke({ io, reg, active, store, http, all: true }))
+      .rejects
+      .toThrow(/aborted by user/)
+    expect(base.errBuf()).toContain('Revoke 2 session(s)? [y/N]')
+    expect(base.outBuf()).not.toContain('Revoked')
+  })
+
+  it('TTY without --yes: proceeds on accept', async () => {
+    const base = bufferStreams('y\n')
+    const io = { ...base, isErrTTY: true }
+    const store = new MemStore()
+    const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
+    const http = testHttpClient(mock.url, 'dfoa_test')
+
+    await runDevicesRevoke({ io, reg, active, store, http, target: 'tok-2', all: false })
+    expect(base.outBuf()).toContain('Revoked 1 session(s)')
+  })
+
+  it('TTY with --yes: skips prompt entirely', async () => {
+    const base = bufferStreams()
+    const io = { ...base, isErrTTY: true }
+    const store = new MemStore()
+    const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
+    const http = testHttpClient(mock.url, 'dfoa_test')
+
+    await runDevicesRevoke({ io, reg, active, store, http, target: 'tok-2', all: false, yes: true })
+    expect(base.errBuf()).not.toContain('[y/N]')
+    expect(base.outBuf()).toContain('Revoked 1 session(s)')
+  })
+
   it('no target + no --all: throws UsageMissingArg', async () => {
     const io = bufferStreams()
     const store = new MemStore()

@@ -9,18 +9,19 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowRightLine, RiArrowRightSLine, RiExchange2Fill } from '@remixicon/react'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
-import { useSetLocalStorage } from 'foxact/use-local-storage'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import AppIcon from '@/app/components/base/app-icon'
 import Divider from '@/app/components/base/divider'
 import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/base/icons/src/vender/solid/communication'
 import Input from '@/app/components/base/input'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTheme from '@/hooks/use-theme'
 import { useRouter } from '@/next/navigation'
 import { createApp } from '@/service/apps'
@@ -28,6 +29,7 @@ import { useInvalidateAppList } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
+import { hasPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
 import AppIconPicker from '../../base/app-icon-picker'
 import { CreateAppDialogShell } from '../create-app-dialog-shell'
@@ -56,14 +58,20 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
 
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { userProfile, workspacePermissionKeys } = useAppContext()
+  const isRbacEnabled = systemFeatures.rbac_enabled
+  const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const invalidateAppList = useInvalidateAppList()
 
   const isCreatingRef = useRef(false)
 
-  const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
+  const setNeedRefresh = useSetNeedRefreshAppList()
 
   const onCreate = useCallback(async () => {
+    if (!canCreateApp)
+      return
+
     if (!appMode) {
       toast.error(t('newApp.appTypeRequired', { ns: 'app' }))
       return
@@ -92,17 +100,22 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
       onClose()
       setNeedRefresh('1')
       invalidateAppList()
-      getRedirection(isCurrentWorkspaceEditor, app, push)
+      getRedirection(app, push, {
+        currentUserId: userProfile?.id,
+        resourceMaintainer: app.maintainer,
+        workspacePermissionKeys,
+        isRbacEnabled,
+      })
     }
     catch (error) {
       toast.error(error instanceof Error ? error.message : t('newApp.appCreateFailed', { ns: 'app' }))
     }
     isCreatingRef.current = false
-  }, [name, t, appMode, appIcon, description, onSuccess, onClose, push, isCurrentWorkspaceEditor, setNeedRefresh, invalidateAppList])
+  }, [canCreateApp, name, t, appMode, appIcon, description, onSuccess, onClose, push, userProfile?.id, workspacePermissionKeys, isRbacEnabled, setNeedRefresh, invalidateAppList])
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
   useHotkey('Mod+Enter', () => {
-    if (isAppsFull)
+    if (isAppsFull || !canCreateApp)
       return
     handleCreateApp()
   }, {
@@ -272,7 +285,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
               </button>
               <div className="flex gap-2">
                 <Button onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-                <Button disabled={isAppsFull || !name} className="gap-1" variant="primary" onClick={handleCreateApp}>
+                <Button disabled={!canCreateApp || isAppsFull || !name} className="gap-1" variant="primary" onClick={handleCreateApp}>
                   <span>{t('newApp.Create', { ns: 'app' })}</span>
                   <KbdGroup>
                     {['Mod', 'Enter'].map(key => (

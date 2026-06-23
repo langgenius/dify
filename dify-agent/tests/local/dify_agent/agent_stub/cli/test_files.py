@@ -6,7 +6,11 @@ from pathlib import Path
 
 import pytest
 
-from dify_agent.agent_stub.cli._files import download_file_from_environment, upload_file_from_environment
+from dify_agent.agent_stub.cli._files import (
+    download_file_from_environment,
+    upload_file_from_environment,
+    upload_tool_file_resource_from_environment,
+)
 from dify_agent.agent_stub.client._errors import AgentStubTransferError
 
 
@@ -36,6 +40,7 @@ def test_upload_file_from_environment_requests_signed_url_and_normalizes_output(
         captured["file_bytes"] = kwargs["file_obj"].read()
         kwargs["file_obj"].seek(0)
         return {
+            "id": "tool-file-1",
             "reference": _reference("tool-file-1"),
         }
 
@@ -55,6 +60,33 @@ def test_upload_file_from_environment_requests_signed_url_and_normalizes_output(
         "mimetype": "application/pdf",
         "file_bytes": b"report-bytes",
     }
+
+
+def test_upload_tool_file_resource_from_environment_preserves_tool_file_id(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "report.pdf"
+    source.write_bytes(b"report-bytes")
+    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
+
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli._files.request_agent_stub_file_upload_sync",
+        lambda **_kwargs: type("Response", (), {"upload_url": "https://files.example.com/upload"})(),
+    )
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli._files.upload_file_to_signed_url_sync",
+        lambda **_kwargs: {"id": "tool-file-1", "reference": _reference("tool-file-1")},
+    )
+
+    result = upload_tool_file_resource_from_environment(path=str(source))
+
+    assert result.mapping.model_dump() == {
+        "transfer_method": "tool_file",
+        "reference": _reference("tool-file-1"),
+    }
+    assert result.tool_file_id == "tool-file-1"
 
 
 def test_download_file_from_environment_saves_bytes_and_renames_on_collision(
@@ -148,8 +180,30 @@ def test_upload_file_from_environment_rejects_non_canonical_reference(
     )
     monkeypatch.setattr(
         "dify_agent.agent_stub.cli._files.upload_file_to_signed_url_sync",
-        lambda **_kwargs: {"reference": "raw-tool-file-uuid"},
+        lambda **_kwargs: {"id": "tool-file-1", "reference": "raw-tool-file-uuid"},
     )
 
     with pytest.raises(AgentStubTransferError, match="invalid canonical reference"):
         _ = upload_file_from_environment(path=str(source))
+
+
+def test_upload_tool_file_resource_from_environment_rejects_missing_id(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "report.pdf"
+    source.write_bytes(b"report-bytes")
+    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
+
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli._files.request_agent_stub_file_upload_sync",
+        lambda **_kwargs: type("Response", (), {"upload_url": "https://files.example.com/upload"})(),
+    )
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli._files.upload_file_to_signed_url_sync",
+        lambda **_kwargs: {"reference": _reference("tool-file-1")},
+    )
+
+    with pytest.raises(AgentStubTransferError, match="missing id"):
+        _ = upload_tool_file_resource_from_environment(path=str(source))

@@ -25,6 +25,7 @@ const mockFetchWorkflowDraft = vi.fn()
 const mockDownloadBlob = vi.fn()
 const mockGetSocket = vi.fn()
 const mockOnAppMetaUpdate = vi.fn()
+const mockSetQueryData = vi.fn()
 
 let mockAppDetail: Record<string, unknown> | undefined = {
   id: 'app-1',
@@ -63,7 +64,18 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 vi.mock('@/service/use-apps', () => ({
+  appDetailQueryKeyPrefix: ['apps', 'detail'],
   useInvalidateAppList: () => mockInvalidateAppList,
+}))
+
+vi.mock('@tanstack/react-query', () => ({
+  queryOptions: <TOptions>(options: TOptions) => options,
+  useSuspenseQuery: () => ({
+    data: { rbac_enabled: true },
+  }),
+  useQueryClient: () => ({
+    setQueryData: mockSetQueryData,
+  }),
 }))
 
 vi.mock('@/service/apps', () => ({
@@ -98,15 +110,12 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
   },
 }))
 
-vi.mock('@/config', () => ({
-  NEED_REFRESH_APP_LIST_KEY: 'test-refresh-key',
-}))
-
 describe('useAppInfoActions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockOnAppMetaUpdate.mockReturnValue(() => {})
     mockGetSocket.mockReturnValue(null)
+    mockSetQueryData.mockReset()
     mockAppDetail = {
       id: 'app-1',
       name: 'Test App',

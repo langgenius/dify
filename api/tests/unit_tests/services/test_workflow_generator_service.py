@@ -30,10 +30,10 @@ class TestWorkflowGeneratorService:
     @patch("services.workflow_generator_service.format_tool_catalogue")
     def test_forwards_model_instance_and_catalogue_text_to_generator(
         self,
-        mock_format_catalogue,
-        mock_build_catalogue,
-        mock_model_manager,
-        mock_workflow_generator,
+        mock_format_catalogue: MagicMock,
+        mock_build_catalogue: MagicMock,
+        mock_model_manager: MagicMock,
+        mock_workflow_generator: MagicMock,
     ):
         """Happy path: model_instance + catalogue text + payload flow through."""
         # Arrange
@@ -110,10 +110,10 @@ class TestWorkflowGeneratorService:
     @patch("services.workflow_generator_service.format_tool_catalogue")
     def test_defaults_ideal_output_to_empty_string(
         self,
-        mock_format_catalogue,
-        mock_build_catalogue,
-        mock_model_manager,
-        mock_workflow_generator,
+        mock_format_catalogue: MagicMock,
+        mock_build_catalogue: MagicMock,
+        mock_model_manager: MagicMock,
+        mock_workflow_generator: MagicMock,
     ):
         """Callers can omit ideal_output; the runner should still receive ""."""
         mock_model_manager.for_tenant.return_value.get_model_instance.return_value = MagicMock()
@@ -142,10 +142,10 @@ class TestWorkflowGeneratorService:
     @patch("services.workflow_generator_service.format_tool_catalogue")
     def test_forwards_current_graph_for_refine(
         self,
-        mock_format_catalogue,
-        mock_build_catalogue,
-        mock_model_manager,
-        mock_workflow_generator,
+        mock_format_catalogue: MagicMock,
+        mock_build_catalogue: MagicMock,
+        mock_model_manager: MagicMock,
+        mock_workflow_generator: MagicMock,
     ):
         """The cmd+k `/refine` path passes the existing draft graph through to the runner."""
         mock_model_manager.for_tenant.return_value.get_model_instance.return_value = MagicMock()
@@ -175,10 +175,10 @@ class TestWorkflowGeneratorService:
     @patch("services.workflow_generator_service.format_tool_catalogue")
     def test_defaults_current_graph_to_none_for_create(
         self,
-        mock_format_catalogue,
-        mock_build_catalogue,
-        mock_model_manager,
-        mock_workflow_generator,
+        mock_format_catalogue: MagicMock,
+        mock_build_catalogue: MagicMock,
+        mock_model_manager: MagicMock,
+        mock_workflow_generator: MagicMock,
     ):
         """Omitting current_graph (the `/create` path) forwards None to the runner."""
         mock_model_manager.for_tenant.return_value.get_model_instance.return_value = MagicMock()

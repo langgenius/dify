@@ -15,6 +15,7 @@ import { useState } from 'react'
 import { useAppContext } from '@/context/app-context'
 import { useGetPricingPageLanguage } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
+import { BillingPermission, hasPermission } from '@/utils/permission'
 import { NoiseBottom, NoiseTop } from './assets'
 import Footer from './footer'
 import Header from './header'
@@ -40,12 +41,13 @@ const Pricing: FC<PricingProps> = ({
   onCancel,
 }) => {
   const { plan, enableEducationPlan, isEducationAccount } = useProviderContext()
-  const { isCurrentWorkspaceManager } = useAppContext()
-  const shouldDefaultToYearly = isCurrentWorkspaceManager && enableEducationPlan && isEducationAccount
+  const { workspacePermissionKeys } = useAppContext()
+  const canManageBilling = hasPermission(workspacePermissionKeys, BillingPermission.Manage)
+  const shouldDefaultToYearly = canManageBilling && enableEducationPlan && isEducationAccount
   const [selectedPlanRange, setSelectedPlanRange] = React.useState<PlanRange>()
   const planRange = selectedPlanRange ?? (shouldDefaultToYearly ? PlanRange.yearly : PlanRange.monthly)
   const [currentCategory, setCurrentCategory] = useState<Category>(CategoryEnum.CLOUD)
-  const canPay = isCurrentWorkspaceManager
+  const canPay = canManageBilling
 
   const pricingPageLanguage = useGetPricingPageLanguage()
   const pricingPageURL = pricingPageLanguage

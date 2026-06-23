@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
-import AppPublisher from '@/app/components/app/app-publisher'
+import { AppPublisher } from '@/app/components/app/app-publisher'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
 
@@ -56,7 +56,7 @@ vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => vi.fn(),
 }))
 
-vi.mock('@/service/access-control', () => ({
+vi.mock('@/service/access-control/use-app-access-control', () => ({
   useGetUserCanAccessApp: () => ({
     data: { result: true },
     isLoading: false,
@@ -89,7 +89,7 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
 }))
 
 vi.mock('@/app/components/app/app-access-control', () => ({
-  default: ({
+  AccessControl: ({
     onConfirm,
     onClose,
   }: {
@@ -127,7 +127,8 @@ describe('App Access Control Flow', () => {
   })
 
   it('refreshes app detail after confirming access control updates', async () => {
-    renderWithQueryClient(<AppPublisher publishedAt={1700000000} />)
+    const { queryClient } = renderWithQueryClient(<AppPublisher publishedAt={1700000000} />)
+    const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.publish' }))
     fireEvent.click(screen.getByText('app.accessControlDialog.accessItems.specific'))
@@ -137,11 +138,7 @@ describe('App Access Control Flow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'confirm-access-control' }))
 
     await waitFor(() => {
-      expect(mockFetchAppDetailDirect).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
-      expect(mockSetAppDetail).toHaveBeenCalledWith(expect.objectContaining({
-        id: 'app-1',
-        access_mode: AccessMode.PUBLIC,
-      }))
+      expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['apps', 'detail', 'app-1'] })
     })
 
     await waitFor(() => {

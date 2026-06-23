@@ -83,6 +83,8 @@ class AgentConfigRevisionOperation(StrEnum):
     SAVE_NEW_AGENT = "save_new_agent"
     # Promotes a workflow-only Agent into the reusable Agent Roster.
     SAVE_TO_ROSTER = "save_to_roster"
+    # Switches the Agent's current published config back to an existing version.
+    RESTORE_VERSION = "restore_version"
 
 
 class WorkflowAgentBindingType(StrEnum):
@@ -133,6 +135,7 @@ class Agent(DefaultFieldsMixin, Base):
         Index("agent_tenant_workflow_id_idx", "tenant_id", "workflow_id"),
         Index("agent_tenant_app_id_idx", "tenant_id", "app_id"),
         Index("agent_active_config_snapshot_id_idx", "active_config_snapshot_id"),
+        Index("agent_debug_conversation_id_idx", "debug_conversation_id"),
         Index(
             "agent_tenant_invitable_idx",
             "tenant_id",
@@ -160,6 +163,7 @@ class Agent(DefaultFieldsMixin, Base):
     scope: Mapped[AgentScope] = mapped_column(EnumText(AgentScope, length=32), nullable=False)
     source: Mapped[AgentSource] = mapped_column(EnumText(AgentSource, length=32), nullable=False)
     app_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    debug_conversation_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     workflow_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     active_config_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
@@ -324,8 +328,10 @@ class AgentRuntimeSession(DefaultFieldsMixin, Base):
       ``workflow_id / workflow_run_id / node_id / binding_id /
       agent_config_snapshot_id / composition_layer_specs`` columns are set.
     - Agent App conversations: ``owner_type = conversation``; the
-      ``conversation_id`` and ``agent_config_snapshot_id`` columns are set and
-      the workflow columns stay NULL.
+      ``conversation_id`` column is set and the workflow columns stay NULL.
+      Published/web/API runs scope runtime state by ``agent_config_snapshot_id``;
+      console debugger runs may keep it NULL so prompt-only draft saves can reuse
+      the same preview conversation state while executing the latest Agent Soul.
 
     The snapshot is runtime state returned by Agent backend, kept separate from
     Agent Soul snapshots and workflow node-job config.
@@ -428,14 +434,17 @@ class AgentDriveFile(DefaultFieldsMixin, Base):
     synced. ``value_owned_by_drive`` gates physical cleanup: only drive-owned values
     (created by the agent runtime or Skill standardization, not shared with other
     business records) have their storage object + record deleted when the KV entry is
-    overwritten or removed; otherwise only the KV row is dropped. Lifecycle never relies
-    on ``UploadFile.used/used_by`` (not a reliable refcount).
+    overwritten or removed; otherwise only the KV row is dropped. Skills are represented
+    by the canonical ``<path>/SKILL.md`` row with ``is_skill=True`` and a serialized
+    ``skill_metadata`` string. Lifecycle never relies on ``UploadFile.used/used_by``
+    (not a reliable refcount).
     """
 
     __tablename__ = "agent_drive_files"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="agent_drive_file_pkey"),
         UniqueConstraint("tenant_id", "agent_id", "key", name="agent_drive_file_scope_key_unique"),
+        Index("agent_drive_files_tenant_agent_is_skill_key_idx", "tenant_id", "agent_id", "is_skill", "key"),
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -451,6 +460,8 @@ class AgentDriveFile(DefaultFieldsMixin, Base):
     value_owned_by_drive: Mapped[bool] = mapped_column(
         sa.Boolean, nullable=False, default=False, server_default=sa.text("false")
     )
+    is_skill: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False, server_default=sa.text("false"))
+    skill_metadata: Mapped[str | None] = mapped_column(LongText, nullable=True)
     size: Mapped[int | None] = mapped_column(sa.BigInteger, nullable=True)
     hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     mime_type: Mapped[str | None] = mapped_column(String(255), nullable=True)

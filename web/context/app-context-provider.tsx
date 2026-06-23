@@ -21,6 +21,7 @@ import {
 import { env } from '@/env'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useWorkspacePermissionKeys } from '@/service/access-control/use-permission-keys'
 import { consoleQuery } from '@/service/client'
 import {
   useLangGeniusVersion,
@@ -31,6 +32,7 @@ type AppContextProviderProps = {
 }
 
 const workspaceRoles = new Set<ICurrentWorkspace['role']>(['owner', 'admin', 'editor', 'dataset_operator', 'normal'])
+const emptyWorkspacePermissionKeys: string[] = []
 
 const resolveWorkspaceRole = (role: PostWorkspacesCurrentResponse['role']): ICurrentWorkspace['role'] => {
   if (role && workspaceRoles.has(role as ICurrentWorkspace['role']))
@@ -71,6 +73,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   const currentWorkspaceQuery = useQuery(consoleQuery.workspaces.current.post.queryOptions({
     select: normalizeCurrentWorkspace,
   }))
+  const workspacePermissionKeysQuery = useWorkspacePermissionKeys()
   const langGeniusVersionQuery = useLangGeniusVersion(
     userProfileResp?.meta.currentVersion,
     !systemFeatures.branding.enabled,
@@ -184,7 +187,9 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       isCurrentWorkspaceDatasetOperator,
       mutateCurrentWorkspace,
       isLoadingCurrentWorkspace: currentWorkspaceQuery.isPending,
+      isLoadingWorkspacePermissionKeys: workspacePermissionKeysQuery.isPending,
       isValidatingCurrentWorkspace: currentWorkspaceQuery.isFetching,
+      workspacePermissionKeys: workspacePermissionKeysQuery.data?.workspace.permission_keys ?? emptyWorkspacePermissionKeys,
     }}
     >
       <div className="flex h-full flex-col overflow-hidden">

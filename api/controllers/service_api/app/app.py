@@ -2,6 +2,7 @@ from typing import Any, cast
 
 from flask_restx import Resource
 from pydantic import Field
+from sqlalchemy import select
 
 from controllers.common.fields import Parameters
 from controllers.common.schema import register_response_schema_models
@@ -9,7 +10,11 @@ from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import AppUnavailableError
 from controllers.service_api.wraps import validate_app_token
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
+from core.app.apps.agent_app.app_variable_projection import agent_app_variables_to_user_input_form
+from extensions.ext_database import db
 from fields.base import ResponseModel
+from models.agent import Agent, AgentConfigSnapshot, AgentScope, AgentSource, AgentStatus
+from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode
 from services.app_service import AppService
 
@@ -29,10 +34,56 @@ class AppMetaResponse(ResponseModel):
 register_response_schema_models(service_api_ns, Parameters, AppMetaResponse, AppInfoResponse)
 
 
+def _get_agent_app_feature_dict_and_user_input_form(app_model: App) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    app_model_config = app_model.app_model_config
+    features_dict = cast(dict[str, Any], app_model_config.to_dict()) if app_model_config is not None else {}
+
+    agent = db.session.scalar(
+        select(Agent)
+        .where(
+            Agent.tenant_id == app_model.tenant_id,
+            Agent.app_id == app_model.id,
+            Agent.scope == AgentScope.ROSTER,
+            Agent.source == AgentSource.AGENT_APP,
+            Agent.status == AgentStatus.ACTIVE,
+        )
+        .limit(1)
+    )
+    if agent is None or not agent.active_config_snapshot_id:
+        raise AppUnavailableError()
+
+    snapshot = db.session.scalar(
+        select(AgentConfigSnapshot)
+        .where(
+            AgentConfigSnapshot.tenant_id == app_model.tenant_id,
+            AgentConfigSnapshot.agent_id == agent.id,
+            AgentConfigSnapshot.id == agent.active_config_snapshot_id,
+        )
+        .limit(1)
+    )
+    if snapshot is None:
+        raise AppUnavailableError()
+
+    agent_soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
+    return features_dict, agent_app_variables_to_user_input_form(agent_soul.app_variables)
+
+
 @service_api_ns.route("/parameters")
 class AppParameterApi(Resource):
     """Resource for app variables."""
 
+    @service_api_ns.doc(
+        summary="Get App Parameters",
+        description=(
+            "Retrieve the application's input form configuration, including feature switches, input "
+            "parameter names, types, and default values."
+        ),
+        tags=["Applications"],
+        responses={
+            200: "Application parameters information.",
+            400: "`app_unavailable` : App unavailable or misconfigured.",
+        },
+    )
     @service_api_ns.doc("get_app_parameters")
     @service_api_ns.doc(description="Retrieve application input parameters and configuration")
     @service_api_ns.doc(
@@ -49,12 +100,16 @@ class AppParameterApi(Resource):
 
         Returns the input form parameters and configuration for the application.
         """
-        if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
+        features_dict: dict[str, Any]
+        user_input_form: list[dict[str, Any]]
+        if app_model.mode == AppMode.AGENT:
+            features_dict, user_input_form = _get_agent_app_feature_dict_and_user_input_form(app_model)
+        elif app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app_model.workflow
             if workflow is None:
                 raise AppUnavailableError()
 
-            features_dict: dict[str, Any] = workflow.features_dict
+            features_dict = workflow.features_dict
             user_input_form = workflow.user_input_form(to_old_structure=True)
         else:
             app_model_config = app_model.app_model_config
@@ -71,6 +126,14 @@ class AppParameterApi(Resource):
 
 @service_api_ns.route("/meta")
 class AppMetaApi(Resource):
+    @service_api_ns.doc(
+        summary="Get App Meta",
+        description="Retrieve metadata about this application, including tool icons and other configuration details.",
+        tags=["Applications"],
+        responses={
+            200: "Successfully retrieved application meta information.",
+        },
+    )
     @service_api_ns.doc("get_app_meta")
     @service_api_ns.doc(description="Get application metadata")
     @service_api_ns.doc(
@@ -92,6 +155,14 @@ class AppMetaApi(Resource):
 
 @service_api_ns.route("/info")
 class AppInfoApi(Resource):
+    @service_api_ns.doc(
+        summary="Get App Info",
+        description="Retrieve basic information about this application, including name, description, tags, and mode.",
+        tags=["Applications"],
+        responses={
+            200: "Basic information of the application.",
+        },
+    )
     @service_api_ns.doc("get_app_info")
     @service_api_ns.doc(description="Get basic application information")
     @service_api_ns.doc(

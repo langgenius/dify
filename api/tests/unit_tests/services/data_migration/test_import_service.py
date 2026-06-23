@@ -385,7 +385,7 @@ def test_workflow_tool_import_publishes_referenced_app_before_create(monkeypatch
         (IdStrategy.GENERATE_NEW_ID, ""),
     ],
 )
-def test_workflow_tool_import_id_follows_id_strategy(monkeypatch, id_strategy, expected_import_id):
+def test_workflow_tool_import_id_follows_id_strategy(monkeypatch: pytest.MonkeyPatch, id_strategy, expected_import_id):
     created_kwargs = []
     target_provider = type("WorkflowToolProvider", (), {"id": "target-workflow-tool-id"})()
     account = type("Account", (), {"id": "account-1"})()

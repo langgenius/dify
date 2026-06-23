@@ -115,7 +115,15 @@ class AgentComposerService:
             and binding is not None
             and binding.agent_id
             and payload.save_strategy
-            in (ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION, ComposerSaveStrategy.SAVE_AS_NEW_VERSION)
+            in (
+                ComposerSaveStrategy.NODE_JOB_ONLY,
+                ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION,
+                ComposerSaveStrategy.SAVE_AS_NEW_VERSION,
+            )
+            and (
+                payload.save_strategy != ComposerSaveStrategy.NODE_JOB_ONLY
+                or binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT
+            )
         ):
             cls._require_drive_refs_resolved(
                 tenant_id=tenant_id, agent_id=binding.agent_id, agent_soul=payload.agent_soul
@@ -822,7 +830,37 @@ class AgentComposerService:
     ) -> WorkflowAgentNodeBinding:
         node_job = payload.node_job or WorkflowNodeJobConfig()
         if binding:
+            if cls._is_start_from_scratch_request(binding=binding, payload=payload):
+                return cls._switch_roster_binding_to_inline_agent(
+                    tenant_id=tenant_id,
+                    app_id=app_id,
+                    workflow_id=workflow_id,
+                    node_id=node_id,
+                    account_id=account_id,
+                    binding=binding,
+                    payload=payload,
+                )
             binding.node_job_config = node_job
+            if payload.agent_soul is not None and binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT:
+                current_snapshot = cls._require_version(
+                    tenant_id=tenant_id,
+                    agent_id=binding.agent_id,
+                    version_id=binding.current_snapshot_id,
+                )
+                version = cls._update_current_version(
+                    current_snapshot=current_snapshot,
+                    account_id=account_id,
+                    agent_soul=payload.agent_soul,
+                    operation=AgentConfigRevisionOperation.SAVE_CURRENT_VERSION,
+                    version_note=payload.version_note,
+                )
+                agent = cls._require_agent(tenant_id=tenant_id, agent_id=binding.agent_id)
+                if agent.scope != AgentScope.WORKFLOW_ONLY:
+                    raise ValueError("Inline workflow agent binding must point to a workflow-only agent")
+                agent.active_config_snapshot_id = version.id
+                agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
+                agent.updated_by = account_id
+                binding.current_snapshot_id = version.id
             binding.updated_by = account_id
             return binding
 
@@ -849,6 +887,46 @@ class AgentComposerService:
             updated_by=account_id,
         )
         db.session.add(binding)
+        db.session.flush()
+        return binding
+
+    @classmethod
+    def _is_start_from_scratch_request(cls, *, binding: WorkflowAgentNodeBinding, payload: ComposerSavePayload) -> bool:
+        return (
+            binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+            and payload.binding is not None
+            and payload.binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT.value
+        )
+
+    @classmethod
+    def _switch_roster_binding_to_inline_agent(
+        cls,
+        *,
+        tenant_id: str,
+        app_id: str,
+        workflow_id: str,
+        node_id: str,
+        account_id: str,
+        binding: WorkflowAgentNodeBinding,
+        payload: ComposerSavePayload,
+    ) -> WorkflowAgentNodeBinding:
+        if payload.binding and (payload.binding.agent_id or payload.binding.current_snapshot_id):
+            raise ValueError("Start from Scratch must not provide an existing inline agent binding.")
+
+        agent_soul = payload.agent_soul or AgentSoulConfig()
+        agent = cls._create_workflow_only_agent(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            workflow_id=workflow_id,
+            node_id=node_id,
+            account_id=account_id,
+            agent_soul=agent_soul,
+        )
+        binding.binding_type = WorkflowAgentBindingType.INLINE_AGENT
+        binding.agent_id = agent.id
+        binding.current_snapshot_id = agent.active_config_snapshot_id
+        binding.node_job_config = payload.node_job or binding.node_job_config
+        binding.updated_by = account_id
         db.session.flush()
         return binding
 
