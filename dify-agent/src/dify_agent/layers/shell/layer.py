@@ -18,9 +18,11 @@ side-effecting ``on_context_resume`` attempt fails after issuing shellctl jobs,
 Agenton still exits ``resource_context()`` but never transitions the layer to
 ``ACTIVE``. In that failed-enter path, normal suspend/delete hooks do not run,
 so the enter hook itself must perform best-effort business compensation before
-re-raising the failure. Agent Stub env injection uses shellctl's native per-run
-``env`` argument for user-visible ``shell.run`` and for trusted server-owned
-fixed scripts executed through ``run_remote_script()``.
+re-raising the failure. Agent Soul shell env is injected into user-visible
+commands and CLI bootstrap commands without persisting a workspace env file.
+Agent Stub env injection uses shellctl's native per-run ``env`` argument for
+user-visible ``shell.run`` and for trusted server-owned fixed scripts executed
+through ``run_remote_script()``.
 """
 
 from __future__ import annotations
@@ -475,7 +477,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         try:
             client = self._require_client()
             result = await client.run(
-                _wrap_user_script(script),
+                _wrap_user_script(script, self.config),
                 cwd=self._require_workspace_cwd(),
                 env=self._build_user_shell_run_env(),
                 timeout=timeout,
@@ -536,9 +538,9 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         and optional Agent Stub env injection.
 
         Unlike model-visible ``shell.run``, this server-owned boundary does not
-        source ``.dify/env.sh``. That file is user-controlled shell config, so
-        sourcing it here would let sandbox code clobber trusted Agent Stub env
-        values before ``dify-agent file upload`` executes.
+        inject Agent Soul shell env. Keeping the user-controlled shell env out
+        of this path prevents sandbox code from clobbering trusted Agent Stub
+        env values before ``dify-agent file upload`` executes.
         """
         env = None
         if inject_agent_stub_env:
@@ -833,16 +835,18 @@ def _workspace_cwd(session_id: str) -> str:
 
 
 def _workspace_bootstrap_script(config: DifyShellLayerConfig) -> str:
-    """Return the workspace bootstrap script for env + CLI tool declarations."""
-    has_bootstrap = bool(config.env or config.secret_refs or config.cli_tools or config.sandbox is not None)
-    if not has_bootstrap:
+    """Return the workspace bootstrap script for CLI tool declarations."""
+    install_commands = [command for tool in config.cli_tools for command in tool.install_commands]
+    if not install_commands:
         return ""
 
-    lines: list[str] = [
-        "set -eu",
-        'mkdir -p ".dify"',
-        "cat > \".dify/env.sh\" <<'DIFY_ENV_EOF'",
-    ]
+    lines: list[str] = ["set -eu", *_shell_config_export_lines(config), *install_commands]
+    return "\n".join(lines)
+
+
+def _shell_config_export_lines(config: DifyShellLayerConfig) -> list[str]:
+    """Return ephemeral Agent Soul shell exports for one shellctl command."""
+    lines: list[str] = []
     for env_var in config.env:
         lines.append(f"export {env_var.name}={_shquote(env_var.value)}")
     for secret_ref in config.secret_refs:
@@ -860,32 +864,15 @@ def _workspace_bootstrap_script(config: DifyShellLayerConfig) -> str:
         if config.sandbox.config:
             sandbox_config = json.dumps(config.sandbox.config, ensure_ascii=True, sort_keys=True)
             lines.append(f"export DIFY_SANDBOX_CONFIG_JSON={_shquote(sandbox_config)}")
-    lines.extend(
-        [
-            "DIFY_ENV_EOF",
-            'chmod 600 ".dify/env.sh"',
-            '. ".dify/env.sh"',
-        ]
-    )
-    for tool in config.cli_tools:
-        for command in tool.install_commands:
-            lines.append(command)
-    return "\n".join(lines)
+    return lines
 
 
-def _wrap_user_script(script: str) -> str:
-    """Source Agent Soul env before executing a model-requested shell command."""
-    # TODO: refactor
-    return "\n".join(
-        [
-            'if [ -f ".dify/env.sh" ]; then',
-            "  set -a",
-            '  . ".dify/env.sh"',
-            "  set +a",
-            "fi",
-            script,
-        ]
-    )
+def _wrap_user_script(script: str, config: DifyShellLayerConfig) -> str:
+    """Inject Agent Soul env before executing a model-requested shell command."""
+    lines = _shell_config_export_lines(config)
+    if not lines:
+        return script
+    return "\n".join([*lines, script])
 
 
 def _workspace_mkdir_script(*, session_id: str) -> str:
