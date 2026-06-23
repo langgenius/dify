@@ -1,7 +1,7 @@
 'use client'
 
 import { skipToken } from '@tanstack/react-query'
-import { atomWithMutation, atomWithQuery } from 'jotai-tanstack-query'
+import { atomWithQuery } from 'jotai-tanstack-query'
 import { consoleQuery } from '@/service/client'
 import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
 
@@ -30,23 +30,3 @@ export const developerApiSettingsQueryAtom = atomWithQuery((get) => {
     enabled: Boolean(appInstanceId),
   })
 })
-
-export const updateAccessChannelsMutationAtom = atomWithMutation(() =>
-  consoleQuery.enterprise.accessService.updateAccessChannels.mutationOptions(),
-)
-
-export const createApiKeyMutationAtom = atomWithMutation(() =>
-  consoleQuery.enterprise.accessService.createApiKey.mutationOptions(),
-)
-
-export function createDeleteApiKeyMutationAtom() {
-  return atomWithMutation(() =>
-    consoleQuery.enterprise.accessService.deleteApiKey.mutationOptions(),
-  )
-}
-
-export function createUpdateAccessPolicyMutationAtom() {
-  return atomWithMutation(() =>
-    consoleQuery.enterprise.accessService.updateAccessPolicy.mutationOptions(),
-  )
-}

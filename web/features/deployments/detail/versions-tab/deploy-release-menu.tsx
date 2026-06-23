@@ -9,9 +9,11 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
+import { mutationOptions, useMutation } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { consoleQuery } from '@/service/client'
 import { TitleTooltip } from '../../components/title-tooltip'
 import { openDeployDrawerAtom } from '../../deploy-drawer/state'
 import { isUndeployedDeploymentRow } from '../../shared/domain/runtime-status'
@@ -22,14 +24,19 @@ import {
   releaseUsageCount,
 } from './deploy-release-menu-utils'
 import { EditReleaseDialog } from './edit-release-dialog'
+import { exportReleaseDsl } from './release-dsl-export'
 import {
-  deleteReleaseMutationAtom,
   deployReleaseMenuAppInstanceQueryAtom,
   deployReleaseMenuEnvironmentDeploymentsQueryAtom,
   deployReleaseMenuOpenReleaseIdAtom,
-  exportReleaseDslMutationAtom,
   setDeployReleaseMenuOpenAtom,
 } from './state'
+
+type ExportReleaseDslInput = {
+  release: Release
+  releaseId: string
+  appInstanceName?: string
+}
 
 export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDeleted }: {
   appInstanceId: string
@@ -46,8 +53,11 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
   const open = openReleaseMenuId === releaseId
   const environmentDeploymentsQuery = useAtomValue(deployReleaseMenuEnvironmentDeploymentsQueryAtom)
   const appInstanceQuery = useAtomValue(deployReleaseMenuAppInstanceQueryAtom)
-  const deleteRelease = useAtomValue(deleteReleaseMutationAtom)
-  const exportReleaseDslMutation = useAtomValue(exportReleaseDslMutationAtom)
+  const deleteRelease = useMutation(consoleQuery.enterprise.releaseService.deleteRelease.mutationOptions())
+  const exportReleaseDslMutation = useMutation(mutationOptions({
+    mutationKey: ['deployments', 'release-dsl-export'],
+    mutationFn: (input: ExportReleaseDslInput) => exportReleaseDsl(input),
+  }))
 
   const environments = (environmentDeploymentsQuery.data?.environmentDeployments ?? [])
     .map(row => row.environment)

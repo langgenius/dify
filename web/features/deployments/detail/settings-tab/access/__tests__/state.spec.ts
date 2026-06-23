@@ -10,10 +10,6 @@ type QueryOptions = {
   queryKey?: readonly unknown[]
 }
 
-type MutationOptions = {
-  mutationKey?: readonly unknown[]
-}
-
 vi.mock('jotai-tanstack-query', () => ({
   atomWithQuery: (createOptions: (get: Getter) => QueryOptions) => atom(get => ({
     ...createOptions(get),
@@ -23,19 +19,12 @@ vi.mock('jotai-tanstack-query', () => ({
     isLoading: false,
     isSuccess: false,
   })),
-  atomWithMutation: (createOptions: () => MutationOptions) => atom(() => createOptions()),
 }))
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     enterprise: {
       accessService: {
-        createApiKey: {
-          mutationOptions: () => ({ mutationKey: ['createApiKey'] }),
-        },
-        deleteApiKey: {
-          mutationOptions: () => ({ mutationKey: ['deleteApiKey'] }),
-        },
         getAccessSettings: {
           queryOptions: (options: QueryOptions) => ({
             ...options,
@@ -47,12 +36,6 @@ vi.mock('@/service/client', () => ({
             ...options,
             queryKey: ['getDeveloperApiSettings', options.input],
           }),
-        },
-        updateAccessChannels: {
-          mutationOptions: () => ({ mutationKey: ['updateAccessChannels'] }),
-        },
-        updateAccessPolicy: {
-          mutationOptions: () => ({ mutationKey: ['updateAccessPolicy'] }),
         },
       },
     },
@@ -93,26 +76,6 @@ describe('deployment access state', () => {
     expect(store.get(state.developerApiSettingsQueryAtom)).toMatchObject({
       enabled: true,
       input: { params: { appInstanceId: 'app-instance-1' } },
-    })
-  })
-
-  it('should expose access mutation atoms from state', async () => {
-    const state = await loadState()
-    const store = createStore()
-    const deleteApiKeyMutationAtom = state.createDeleteApiKeyMutationAtom()
-    const updateAccessPolicyMutationAtom = state.createUpdateAccessPolicyMutationAtom()
-
-    expect(store.get(state.updateAccessChannelsMutationAtom)).toMatchObject({
-      mutationKey: ['updateAccessChannels'],
-    })
-    expect(store.get(state.createApiKeyMutationAtom)).toMatchObject({
-      mutationKey: ['createApiKey'],
-    })
-    expect(store.get(deleteApiKeyMutationAtom)).toMatchObject({
-      mutationKey: ['deleteApiKey'],
-    })
-    expect(store.get(updateAccessPolicyMutationAtom)).toMatchObject({
-      mutationKey: ['updateAccessPolicy'],
     })
   })
 })

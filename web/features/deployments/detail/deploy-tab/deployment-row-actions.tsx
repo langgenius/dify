@@ -2,13 +2,14 @@
 
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise/types.gen'
 import { RuntimeInstanceStatus } from '@dify/contracts/enterprise/types.gen'
-import { useAtomValue, useSetAtom } from 'jotai'
-import { useMemo, useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import { useSetAtom } from 'jotai'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { consoleQuery } from '@/service/client'
 import { openDeployDrawerAtom } from '../../deploy-drawer/state'
 import { createDeploymentIdempotencyKey } from '../../shared/domain/idempotency'
 import { isRuntimeDeploymentInProgress, isUndeployedDeploymentRow } from '../../shared/domain/runtime-status'
-import { createUndeployDeploymentMutationAtom } from '../state'
 import { DeploymentErrorDialog } from './deployment-error-dialog'
 import { DeploymentActionsDropdown } from './deployment-row-actions-menu'
 import { UndeployDeploymentDialog } from './undeploy-deployment-dialog'
@@ -20,8 +21,7 @@ export function DeploymentRowActions({ appInstanceId, envId, row }: {
 }) {
   const { t } = useTranslation('deployments')
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
-  const undeployDeploymentMutationAtom = useMemo(() => createUndeployDeploymentMutationAtom(), [])
-  const undeployDeployment = useAtomValue(undeployDeploymentMutationAtom)
+  const undeployDeployment = useMutation(consoleQuery.enterprise.deploymentService.undeploy.mutationOptions())
   const [showUndeployConfirm, setShowUndeployConfirm] = useState(false)
   const [showErrorDetail, setShowErrorDetail] = useState(false)
   const isUndeployed = isUndeployedDeploymentRow(row)

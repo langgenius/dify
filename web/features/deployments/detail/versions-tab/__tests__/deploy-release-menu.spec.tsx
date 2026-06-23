@@ -9,6 +9,32 @@ const mockExportReleaseDsl = vi.hoisted(() => vi.fn())
 
 vi.mock('@langgenius/dify-ui/dropdown-menu', () => import('@/__mocks__/base-ui-dropdown-menu'))
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+
+  return {
+    ...actual,
+    useMutation: (options: { mutationKey?: readonly unknown[] }) => {
+      if (options.mutationKey?.[0] === 'deployments')
+        return { isPending: false, mutate: mockExportReleaseDsl }
+
+      return { isPending: false, mutate: mockDeleteRelease }
+    },
+  }
+})
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    enterprise: {
+      releaseService: {
+        deleteRelease: {
+          mutationOptions: () => ({ mutationKey: ['deleteRelease'] }),
+        },
+      },
+    },
+  },
+}))
+
 vi.mock('../state', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../state')>()
   const { atom } = await import('jotai')
@@ -17,14 +43,6 @@ vi.mock('../state', async (importOriginal) => {
     ...actual,
     deployReleaseMenuEnvironmentDeploymentsQueryAtom: atom(environmentDeploymentsErrorResult()),
     deployReleaseMenuAppInstanceQueryAtom: atom(appInstanceResult()),
-    deleteReleaseMutationAtom: atom({
-      isPending: false,
-      mutate: mockDeleteRelease,
-    }),
-    exportReleaseDslMutationAtom: atom({
-      isPending: false,
-      mutate: mockExportReleaseDsl,
-    }),
   }
 })
 
