@@ -222,6 +222,30 @@ describe('create release state', () => {
     unsubscribe()
   })
 
+  it('should submit after fixing release name following a submit validation error', async () => {
+    const { state, store, unsubscribe } = await mountedStore()
+    const response = {
+      release: {
+        displayName: 'Release 1',
+      },
+    }
+    mockCreateReleaseMutation.current.mutateAsync.mockResolvedValue(response)
+    store.set(state.createReleaseAppInstanceIdAtom, 'app-instance-1')
+    store.set(state.openCreateReleaseDialogAtom)
+    setDefaultSourceApp()
+    setPrecheckReleaseResult()
+
+    await store.set(state.submitCreateReleaseFormAtom)
+    store.set(state.createReleaseNameFieldAtom, 'Release 1')
+
+    const result = await store.set(state.submitCreateReleaseFormAtom)
+
+    expect(result).toBe(response)
+    expect(mockCreateReleaseMutation.current.mutateAsync).toHaveBeenCalledTimes(1)
+
+    unsubscribe()
+  })
+
   it('should coerce DSL source mode to source app mode when DSL import is disabled', async () => {
     const { state, store, unsubscribe } = await mountedStore()
 

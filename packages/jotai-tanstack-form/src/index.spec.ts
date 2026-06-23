@@ -24,6 +24,32 @@ function createTestFormAtom(onSubmit = vi.fn()) {
   })
 }
 
+function createSubmitValidatedFormAtom(onSubmit = vi.fn()) {
+  const defaultValues: TestFormValues = {
+    name: '',
+    count: 0,
+  }
+
+  return atomWithForm({
+    defaultValues,
+    validators: {
+      onSubmit: ({ value }) => {
+        if (value.name.trim())
+          return undefined
+
+        return {
+          fields: {
+            name: 'required',
+          },
+        }
+      },
+    },
+    onSubmit: ({ value }) => {
+      onSubmit(value)
+    },
+  })
+}
+
 describe('jotai-tanstack-form', () => {
   it('syncs a TanStack form store into Jotai atoms', () => {
     const formAtom = createTestFormAtom()
@@ -83,6 +109,29 @@ describe('jotai-tanstack-form', () => {
     expect(onSubmit).toHaveBeenCalledWith({
       name: '',
       count: 5,
+    })
+
+    unsubscribe()
+  })
+
+  it('clears stale submit errors when a field atom updates the field value', async () => {
+    const onSubmit = vi.fn()
+    const formAtoms = createFormAtoms(createSubmitValidatedFormAtom(onSubmit))
+    const nameFieldAtom = formAtoms.fieldAtom('name')
+    const store = createStore()
+    const unsubscribe = store.sub(formAtoms.stateAtom, () => undefined)
+
+    await store.set(formAtoms.submitAtom)
+
+    expect(store.get(nameFieldAtom).meta?.errors).toEqual(['required'])
+    expect(onSubmit).not.toHaveBeenCalled()
+
+    store.set(nameFieldAtom, 'Ada')
+    await store.set(formAtoms.submitAtom)
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      name: 'Ada',
+      count: 0,
     })
 
     unsubscribe()
