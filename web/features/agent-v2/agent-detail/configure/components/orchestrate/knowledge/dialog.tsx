@@ -311,7 +311,7 @@ export function AgentKnowledgeRetrievalDialog({
             isEditingName: false,
           })
     }
-  }, [hydrationKey])
+  }, [fallbackName, hydratedKey, hydrationKey, initialName, item])
 
   useEffect(() => {
     if (!isEditingName)
