@@ -10,7 +10,7 @@ import type { RuntimeCredentialBindingSelections } from '@/features/deployments/
 import type { UnsupportedDslNode } from '@/features/deployments/shared/domain/error'
 import type { App } from '@/types/app'
 import { EnvVarValueSource as ApiEnvVarValueSource } from '@dify/contracts/enterprise/types.gen'
-import { keepPreviousData } from '@tanstack/react-query'
+import { keepPreviousData, skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithMutation, atomWithQuery } from 'jotai-tanstack-query'
 import { envVarBindingSlotFromContract, envVarBindingValueType } from '@/features/deployments/components/env-var-bindings-utils'
@@ -278,25 +278,30 @@ const precheckReleaseQueryAtom = atomWithQuery((get) => {
   const method = get(effectiveMethodAtom)
   const effectiveSelectedApp = get(effectiveSelectedAppAtom)
   const dslContent = get(dslContentAtom)
+  const encodedDslContent = dslContent.trim() ? encodeDslContent(dslContent) : undefined
   const enabled = sourceReady(get)
 
   // PrecheckRelease takes exactly one source arm (dsl | sourceAppId).
   const precheckReleaseQueryOptions = method === 'importDsl'
     ? consoleQuery.enterprise.releaseService.precheckRelease.queryOptions({
-        input: {
-          body: {
-            dsl: dslContent.trim() ? encodeDslContent(dslContent) : '',
-          },
-        },
+        input: encodedDslContent
+          ? {
+              body: {
+                dsl: encodedDslContent,
+              },
+            }
+          : skipToken,
         enabled,
         retry: false,
       })
     : consoleQuery.enterprise.releaseService.precheckRelease.queryOptions({
-        input: {
-          body: {
-            sourceAppId: effectiveSelectedApp?.id ?? '',
-          },
-        },
+        input: effectiveSelectedApp?.id
+          ? {
+              body: {
+                sourceAppId: effectiveSelectedApp.id,
+              },
+            }
+          : skipToken,
         enabled: enabled && Boolean(effectiveSelectedApp?.id),
         retry: false,
       })
@@ -318,25 +323,30 @@ export const deploymentOptionsQueryAtom = atomWithQuery((get) => {
   const method = get(effectiveMethodAtom)
   const effectiveSelectedApp = get(effectiveSelectedAppAtom)
   const dslContent = get(dslContentAtom)
+  const encodedDslContent = dslContent.trim() ? encodeDslContent(dslContent) : undefined
   const enabled = precheckReleaseReady(get)
 
   // ComputeDeploymentOptions takes exactly one source arm (dsl | sourceAppId | releaseId).
   const deploymentOptionsQueryOptions = method === 'importDsl'
     ? consoleQuery.enterprise.releaseService.computeDeploymentOptions.queryOptions({
-        input: {
-          body: {
-            dsl: dslContent.trim() ? encodeDslContent(dslContent) : '',
-          },
-        },
+        input: encodedDslContent
+          ? {
+              body: {
+                dsl: encodedDslContent,
+              },
+            }
+          : skipToken,
         enabled,
         retry: false,
       })
     : consoleQuery.enterprise.releaseService.computeDeploymentOptions.queryOptions({
-        input: {
-          body: {
-            sourceAppId: effectiveSelectedApp?.id ?? '',
-          },
-        },
+        input: effectiveSelectedApp?.id
+          ? {
+              body: {
+                sourceAppId: effectiveSelectedApp.id,
+              },
+            }
+          : skipToken,
         enabled: enabled && Boolean(effectiveSelectedApp?.id),
         retry: false,
       })

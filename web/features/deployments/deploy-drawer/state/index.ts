@@ -15,6 +15,7 @@ import type {
 import type { RuntimeCredentialBindingSelections } from '../../components/runtime-credential-bindings-utils'
 import { EnvVarValueSource as ApiEnvVarValueSource } from '@dify/contracts/enterprise/types.gen'
 import { toast } from '@langgenius/dify-ui/toast'
+import { skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithMutation, atomWithQuery } from 'jotai-tanstack-query'
 import { consoleQuery } from '@/service/client'
@@ -204,16 +205,18 @@ const releaseDeploymentOptionsQueryAtom = atomWithQuery((get) => {
   const hasSelectedEnvironment = get(deployHasSelectedEnvironmentAtom)
   const releaseId = get(deployTargetReleaseIdAtom)
   const selectedEnvironmentId = get(deploySelectedEnvironmentIdAtom)
-  const enabled = Boolean(releaseId && selectedEnvironmentId && hasSelectedEnvironment)
+  const hasRequiredInput = Boolean(releaseId && selectedEnvironmentId)
 
   return consoleQuery.enterprise.releaseService.computeDeploymentOptions.queryOptions({
-    input: {
-      body: {
-        releaseId: releaseId ?? '',
-        environmentId: selectedEnvironmentId ?? '',
-      },
-    },
-    enabled,
+    input: releaseId && selectedEnvironmentId
+      ? {
+          body: {
+            releaseId,
+            environmentId: selectedEnvironmentId,
+          },
+        }
+      : skipToken,
+    enabled: hasRequiredInput && hasSelectedEnvironment,
     retry: false,
   })
 })

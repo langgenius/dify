@@ -1,5 +1,6 @@
 'use client'
 
+import { skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithQuery } from 'jotai-tanstack-query'
 import { consoleQuery } from '@/service/client'
@@ -13,12 +14,14 @@ export const deploymentActionDialogAtom = atom<{
 
 export const editDeploymentInstanceQueryAtom = atomWithQuery((get) => {
   const actionDialog = get(deploymentActionDialogAtom)
-  const appInstanceId = actionDialog?.type === 'edit' ? actionDialog.appInstanceId : ''
+  const appInstanceId = actionDialog?.type === 'edit' ? actionDialog.appInstanceId : undefined
 
   return consoleQuery.enterprise.appInstanceService.getAppInstance.queryOptions({
-    input: {
-      params: { appInstanceId },
-    },
+    input: appInstanceId
+      ? {
+          params: { appInstanceId },
+        }
+      : skipToken,
     enabled: Boolean(appInstanceId),
   })
 })
