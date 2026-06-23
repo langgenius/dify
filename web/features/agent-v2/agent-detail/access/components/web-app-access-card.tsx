@@ -4,7 +4,9 @@ import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/t
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import CustomizeModal from '@/app/components/app/overview/customize'
 import ShareQRCode from '@/app/components/base/qrcode'
 import { AccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/client'
@@ -29,10 +31,18 @@ export function WebAppAccessCard({
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
   const appId = agent?.app_id
+  const apiBaseUrl = agent?.api_base_url
   const webAppUrl = getAgentWebAppUrl(agent)
   const isEnabled = Boolean(agent?.enable_site)
   const canManageWebApp = Boolean(appId)
+  const customizeConfig = appId && apiBaseUrl
+    ? {
+        apiBaseUrl,
+        appId,
+      }
+    : null
   const showSsoBadge = agent?.access_mode === AccessMode.EXTERNAL_MEMBERS
+  const [showCustomizeModal, setShowCustomizeModal] = useState(false)
   const toggleSiteMutation = useMutation(consoleQuery.apps.byAppId.siteEnable.post.mutationOptions({
     onSuccess: (_updatedApp, variables) => {
       queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
@@ -156,7 +166,13 @@ export function WebAppAccessCard({
         <span aria-hidden className="i-ri-window-line size-4" />
         {t('agentDetail.access.webApp.actions.embedded')}
       </Button>
-      <Button variant="secondary" size="medium" className="gap-1.5 px-3" disabled>
+      <Button
+        variant="secondary"
+        size="medium"
+        className="gap-1.5 px-3"
+        disabled={!customizeConfig}
+        onClick={() => setShowCustomizeModal(true)}
+      >
         <span aria-hidden className="i-ri-paint-brush-line size-4" />
         {t('agentDetail.access.webApp.actions.customize')}
       </Button>
@@ -164,6 +180,15 @@ export function WebAppAccessCard({
         <span aria-hidden className="i-ri-equalizer-2-line size-4" />
         {t('agentDetail.access.webApp.actions.settings')}
       </Button>
+      {customizeConfig && (
+        <CustomizeModal
+          isShow={showCustomizeModal}
+          onClose={() => setShowCustomizeModal(false)}
+          appId={customizeConfig.appId}
+          api_base_url={customizeConfig.apiBaseUrl}
+          sourceCodeRepository="webapp-conversation"
+        />
+      )}
     </AccessSurfaceCard>
   )
 }

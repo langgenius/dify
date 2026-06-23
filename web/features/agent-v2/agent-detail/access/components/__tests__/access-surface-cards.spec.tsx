@@ -115,6 +115,7 @@ function createAgent(overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppD
     mode: 'agent',
     name: 'Support Agent',
     app_id: 'app-1',
+    api_base_url: 'https://api.example.test/v1',
     access_mode: 'sso_verified',
     site: {
       access_token: 'site-token',
@@ -184,6 +185,29 @@ describe('Agent access surface cards', () => {
           },
         })
       })
+    })
+
+    it('should open the customize dialog with the backing app id and API base URL', async () => {
+      const user = userEvent.setup()
+
+      renderWithQueryClient(
+        <WebAppAccessCard agent={createAgent()} agentId="agent-1" isLoading={false} />,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.customize' }))
+
+      const dialog = await screen.findByRole('dialog', { name: 'appOverview.overview.appInfo.customize.title' })
+      expect(dialog).toHaveTextContent(/NEXT_PUBLIC_APP_ID=\s*'app-1'/)
+      expect(dialog).toHaveTextContent(/NEXT_PUBLIC_API_URL=\s*'https:\/\/api\.example\.test\/v1'/)
+      expect(within(dialog).getByRole('button', { name: /appOverview\.overview\.appInfo\.customize\.way1\.step1Operation/ })).toHaveAttribute('href', 'https://github.com/langgenius/webapp-conversation')
+    })
+
+    it('should keep customize disabled until the generated contract provides the required fields', () => {
+      renderWithQueryClient(
+        <WebAppAccessCard agent={createAgent({ api_base_url: null })} agentId="agent-1" isLoading={false} />,
+      )
+
+      expect(screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.customize' })).toBeDisabled()
     })
   })
 
