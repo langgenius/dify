@@ -1,7 +1,7 @@
 """add dataset_id to api_tokens
 
 Revision ID: e4f8a2c61d35
-Revises: 4f7b2c8d9a10
+Revises: c8f4a6b2d3e1
 Create Date: 2026-06-17 09:00:00.000000
 
 Reintroduces the nullable `dataset_id` column on `api_tokens` (it was dropped in
@@ -23,7 +23,7 @@ import models as models
 
 # revision identifiers, used by Alembic.
 revision = "e4f8a2c61d35"
-down_revision = "4f7b2c8d9a10"
+down_revision = "c8f4a6b2d3e1"
 branch_labels = None
 depends_on = None
 
