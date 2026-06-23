@@ -118,7 +118,17 @@ function setFormFieldValue<
 ) {
   form.api.setFieldValue(name, value, options)
 
-  if (options?.dontUpdateMeta)
+  if (options?.dontUpdateMeta || options?.dontValidate)
+    return
+
+  const fieldMeta = form.api.getFieldMeta(name)
+  if (!fieldMeta?.errorMap.onSubmit)
+    return
+
+  const hasFieldError = Object.entries(fieldMeta.errorMap).some(([key, error]) => {
+    return key !== 'onSubmit' && error !== undefined
+  })
+  if (hasFieldError)
     return
 
   form.api.setFieldMeta(name, prev => ({

@@ -50,6 +50,42 @@ function createSubmitValidatedFormAtom(onSubmit = vi.fn()) {
   })
 }
 
+function createChangeAndSubmitValidatedFormAtom(onSubmit = vi.fn()) {
+  const defaultValues: TestFormValues = {
+    name: '',
+    count: 0,
+  }
+
+  return atomWithForm({
+    defaultValues,
+    validators: {
+      onChange: ({ value }) => {
+        if (value.name !== 'blocked')
+          return undefined
+
+        return {
+          fields: {
+            name: 'blocked',
+          },
+        }
+      },
+      onSubmit: ({ value }) => {
+        if (value.name.trim())
+          return undefined
+
+        return {
+          fields: {
+            name: 'required',
+          },
+        }
+      },
+    },
+    onSubmit: ({ value }) => {
+      onSubmit(value)
+    },
+  })
+}
+
 describe('jotai-tanstack-form', () => {
   it('syncs a TanStack form store into Jotai atoms', () => {
     const formAtom = createTestFormAtom()
@@ -133,6 +169,25 @@ describe('jotai-tanstack-form', () => {
       name: 'Ada',
       count: 0,
     })
+
+    unsubscribe()
+  })
+
+  it('keeps stale submit errors when a field atom update has change errors', async () => {
+    const onSubmit = vi.fn()
+    const formAtoms = createFormAtoms(createChangeAndSubmitValidatedFormAtom(onSubmit))
+    const nameFieldAtom = formAtoms.fieldAtom('name')
+    const store = createStore()
+    const unsubscribe = store.sub(formAtoms.stateAtom, () => undefined)
+
+    await store.set(formAtoms.submitAtom)
+    store.set(nameFieldAtom, 'blocked')
+
+    expect(store.get(nameFieldAtom).meta?.errorMap).toMatchObject({
+      onChange: 'blocked',
+      onSubmit: 'required',
+    })
+    expect(onSubmit).not.toHaveBeenCalled()
 
     unsubscribe()
   })
