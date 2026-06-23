@@ -161,7 +161,6 @@ class TestFeedbackService:
 
         # Test with filters
         result = FeedbackService.export_feedbacks(
-            mock_db_session,
             app_id=sample_data["app"].id,
             session=mock_db_session,
             from_source=FeedbackFromSource.ADMIN,
@@ -214,7 +213,6 @@ class TestFeedbackService:
 
         with pytest.raises(ValueError, match="Unsupported format"):
             FeedbackService.export_feedbacks(
-                mock_db_session,
                 app_id=sample_data["app"].id,
                 session=mock_db_session,
                 format_type="xml",  # Unsupported format
