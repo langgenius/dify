@@ -633,6 +633,7 @@ class AgentRosterService:
         account: Any,
         name: str | None = None,
         description: str | None = None,
+        role: str | None = None,
         icon_type: Any = None,
         icon: str | None = None,
         icon_background: str | None = None,
@@ -644,6 +645,7 @@ class AgentRosterService:
 
         copied_name = name or self._next_duplicate_agent_name(tenant_id=tenant_id, base_name=source_app.name)
         copied_description = description if description is not None else source_app.description
+        copied_role = role if role is not None else source_agent.role or ""
         copied_icon_type = icon_type if icon_type is not None else source_app.icon_type
         copied_icon = icon if icon is not None else source_app.icon
         copied_icon_background = icon_background if icon_background is not None else source_app.icon_background
@@ -654,7 +656,7 @@ class AgentRosterService:
                 name=copied_name,
                 description=copied_description,
                 mode="agent",
-                agent_role=source_agent.role or "",
+                agent_role=copied_role,
                 icon_type=self._normalize_app_icon_type(copied_icon_type),
                 icon=copied_icon,
                 icon_background=copied_icon_background,
