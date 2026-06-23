@@ -1,24 +1,25 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import type { NextRouteParams } from './atoms'
-import { useIsomorphicLayoutEffect } from 'foxact/use-isomorphic-layout-effect'
-import { useSetAtom } from 'jotai'
+import { useHydrateAtoms } from 'jotai/utils'
 import { useParams, usePathname } from '@/next/navigation'
 import {
   setNextRouteStateAtom,
 } from './atoms'
 
-export function NextRouteStateBridge() {
+export function NextRouteStateBridge({ children }: {
+  children: ReactNode
+}) {
   const pathname = usePathname()
   const params = useParams<NextRouteParams>()
-  const setNextRouteState = useSetAtom(setNextRouteStateAtom)
 
-  useIsomorphicLayoutEffect(() => {
-    setNextRouteState({
+  useHydrateAtoms([
+    [setNextRouteStateAtom, {
       pathname,
       params,
-    })
-  }, [params, pathname, setNextRouteState])
+    }],
+  ] as const, { dangerouslyForceHydrate: true })
 
-  return null
+  return children
 }
