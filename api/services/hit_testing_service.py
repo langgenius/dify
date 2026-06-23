@@ -58,8 +58,9 @@ class HitTestingService:
     @staticmethod
     def _dump_retrieval_record(record: RetrievalSegments) -> dict[str, Any]:
         dumped_record = record.model_dump()
-        if record.segment and isinstance(dumped_record.get("segment"), dict):
-            dumped_record["segment"]["sign_content"] = record.segment.sign_content
+        dumped_segment = dumped_record.get("segment")
+        if record.segment and isinstance(dumped_segment, dict):
+            dumped_segment["sign_content"] = record.segment.sign_content
         return dumped_record
 
     @classmethod
