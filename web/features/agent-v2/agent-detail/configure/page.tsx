@@ -153,6 +153,7 @@ function AgentConfigurePageLoadedContent({
               agentName={agentQuery.data?.name}
               agentSoulConfig={agentSoulConfig}
               clearChatList={clearPreviewChat}
+              debugConversationId={agentQuery.data?.debug_conversation_id}
               onClearChatListChange={setClearPreviewChat}
               onSaveDraftBeforeRun={saveDraft}
             />
