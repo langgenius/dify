@@ -43,6 +43,19 @@ def test_standardize_creates_drive_owned_toolfiles_and_commits_archive_members()
     ]
     drive = MagicMock()
     drive.commit.return_value = []
+    drive.list_skills.return_value = [
+        {
+            "path": "pdf-toolkit",
+            "skill_md_key": "pdf-toolkit/SKILL.md",
+            "archive_key": "pdf-toolkit/.DIFY-SKILL-FULL.zip",
+            "name": "PDF Toolkit",
+            "description": "Work with PDFs.",
+            "size": len(_SKILL_MD),
+            "mime_type": "text/markdown",
+            "hash": None,
+            "created_at": None,
+        },
+    ]
 
     service = SkillStandardizeService(tool_file_manager=tool_files, drive_service=drive)
     result = service.standardize(
@@ -76,18 +89,16 @@ def test_standardize_creates_drive_owned_toolfiles_and_commits_archive_members()
     assert all(item.value_owned_by_drive for item in items)
     assert [item.file_ref.id for item in items] == ["md-tool-file", "zip-tool-file", "script-tool-file"]
     assert items[0].is_skill is True
+    assert items[0].skill_metadata is not None
     assert items[0].skill_metadata.name == "PDF Toolkit"
     assert items[0].skill_metadata.manifest_files == ["SKILL.md", "scripts/run.py"]
     assert items[1].is_skill is False
     assert items[2].is_skill is False
 
-    # The returned skill ref carries stable drive paths + file ids.
+    # The returned upload response carries only the drive-derived fields the UI needs.
     skill = result["skill"]
     assert skill["path"] == "pdf-toolkit"
     assert skill["name"] == "PDF Toolkit"
-    assert skill["full_archive_file_id"] == "zip-tool-file"
-    assert skill["skill_md_file_id"] == "md-tool-file"
+    assert skill["archive_key"] == "pdf-toolkit/.DIFY-SKILL-FULL.zip"
     assert skill["skill_md_key"] == "pdf-toolkit/SKILL.md"
-    # ENG-371: zip member listing persisted for infer-tools signals
-    assert "SKILL.md" in skill["manifest_files"]
-    assert "scripts/run.py" in skill["manifest_files"]
+    assert result["manifest"]["files"] == ["SKILL.md", "scripts/run.py"]
