@@ -1,6 +1,6 @@
+import type { Channel } from './info'
 import type { VersionReport } from './probe'
 import { colorScheme } from '@/sys/io/color'
-import type { Channel } from './info'
 
 const PRERELEASE_CHANNELS = new Set<Channel>(['alpha', 'rc', 'edge'])
 
