@@ -170,14 +170,15 @@ export const zAgentAppUpdatePayload = z.object({
 })
 
 /**
- * CopyAppPayload
+ * AgentAppCopyPayload
  */
-export const zCopyAppPayload = z.object({
+export const zAgentAppCopyPayload = z.object({
   description: z.string().max(400).nullish(),
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
   icon_type: zIconType.nullish(),
   name: z.string().nullish(),
+  role: z.string().max(255).nullish(),
 })
 
 /**
@@ -2433,7 +2434,7 @@ export const zPostAgentByAgentIdComposerValidatePath = z.object({
  */
 export const zPostAgentByAgentIdComposerValidateResponse = zAgentComposerValidateResponse
 
-export const zPostAgentByAgentIdCopyBody = zCopyAppPayload
+export const zPostAgentByAgentIdCopyBody = zAgentAppCopyPayload
 
 export const zPostAgentByAgentIdCopyPath = z.object({
   agent_id: z.uuid(),
