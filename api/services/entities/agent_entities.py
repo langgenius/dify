@@ -58,6 +58,12 @@ class ComposerSavePayload(BaseModel):
         return self
 
 
+class WorkflowComposerCopyFromRosterPayload(BaseModel):
+    source_agent_id: str = Field(min_length=1, max_length=255)
+    source_snapshot_id: str | None = Field(default=None, max_length=255)
+    idempotency_key: str | None = Field(default=None, max_length=255)
+
+
 class RosterAgentCreatePayload(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     mode: Literal["agent"] = "agent"

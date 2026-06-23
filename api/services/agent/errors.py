@@ -17,6 +17,10 @@ class AgentArchivedError(Conflict):
     description = "Archived agent cannot be modified."
 
 
+class AgentVersionConflictError(Conflict):
+    description = "Agent config version changed. Please reload and try again."
+
+
 class AgentSoulLockedError(BadRequest):
     description = "Agent Soul is locked for this workflow node."
 
