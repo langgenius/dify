@@ -497,7 +497,9 @@ class TestHitTestingService:
             "doc_metadata": {"source": "manual"},
         }
 
-    def test_dump_retrieval_records_returns_dumped_records_without_document_ids(self) -> None:
+    def test_dump_retrieval_records_returns_dumped_records_without_document_ids(
+        self, db_session_with_containers: Session
+    ) -> None:
         segment = _build_segment(document_id="")
         record = RetrievalSegments.model_validate({"segment": segment, "score": 0.95})
 
