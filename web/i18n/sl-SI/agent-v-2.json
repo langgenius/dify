@@ -201,7 +201,7 @@
   "agentDetail.configure.tools.cliDialog.env.optional": "(neobvezno)",
   "agentDetail.configure.tools.cliDialog.installCommand.description": "V sandboxu · zažene se enkrat ob prvi uporabi",
   "agentDetail.configure.tools.cliDialog.installCommand.label": "Namestitveni ukaz",
-  "agentDetail.configure.tools.cliDialog.installCommand.placeholder": "Sem prilepite namestitveni ukaz, npr. npm install -g @lark/cli  ·  brew install jq",
+  "agentDetail.configure.tools.cliDialog.installCommand.placeholder": "Sem prilepite namestitveni ukaz, npr. npx -y @playwright/mcp@latest  ·  uv tool install httpie",
   "agentDetail.configure.tools.cliDialog.installCommand.required": "Namestitveni ukaz je obvezen.",
   "agentDetail.configure.tools.cliDialog.learnMore": "Več o orodju CLI",
   "agentDetail.configure.tools.cliDialog.name.label": "Ime orodja CLI",

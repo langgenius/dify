@@ -201,7 +201,7 @@
   "agentDetail.configure.tools.cliDialog.env.optional": "(optional)",
   "agentDetail.configure.tools.cliDialog.installCommand.description": "In der Sandbox · läuft einmal beim ersten Aufruf",
   "agentDetail.configure.tools.cliDialog.installCommand.label": "Installationsbefehl",
-  "agentDetail.configure.tools.cliDialog.installCommand.placeholder": "Fügen Sie hier Ihren Installationsbefehl ein, z. B. npm install -g @lark/cli  ·  brew install jq",
+  "agentDetail.configure.tools.cliDialog.installCommand.placeholder": "Fügen Sie hier Ihren Installationsbefehl ein, z. B. npx -y @playwright/mcp@latest  ·  uv tool install httpie",
   "agentDetail.configure.tools.cliDialog.installCommand.required": "Installationsbefehl ist erforderlich.",
   "agentDetail.configure.tools.cliDialog.learnMore": "Mehr über CLI-Tool erfahren",
   "agentDetail.configure.tools.cliDialog.name.label": "Name des CLI-Tools",
