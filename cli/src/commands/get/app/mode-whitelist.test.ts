@@ -10,10 +10,4 @@ describe('get app --mode whitelist', () => {
       ['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow'],
     )
   })
-
-  it('does not advertise non-listable modes', () => {
-    for (const mode of ['rag-pipeline', 'channel', 'agent', 'all']) {
-      expect(zSupportedAppType.options).not.toContain(mode)
-    }
-  })
 })

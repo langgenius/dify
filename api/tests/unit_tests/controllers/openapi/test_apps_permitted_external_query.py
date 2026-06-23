@@ -13,6 +13,8 @@ from pydantic import ValidationError
 
 from controllers.openapi.apps_permitted_external import PermittedExternalAppsListQuery
 
+from ._mode_constants import NON_LISTABLE_MODES
+
 
 def test_query_defaults_match_apps_list():
     q = PermittedExternalAppsListQuery.model_validate({})
@@ -41,7 +43,7 @@ def test_query_validates_mode_against_supported_app_type():
         PermittedExternalAppsListQuery.model_validate({"mode": "not-a-mode"})
 
 
-@pytest.mark.parametrize("mode", ["rag-pipeline", "channel", "agent"])
+@pytest.mark.parametrize("mode", NON_LISTABLE_MODES)
 def test_query_rejects_non_listable_app_modes(mode: str):
     """Non-app runtime modes and roster-owned agent are not listable here."""
     with pytest.raises(ValidationError):

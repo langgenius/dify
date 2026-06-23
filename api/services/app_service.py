@@ -26,7 +26,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models import Account, AppStar
 from models.agent import Agent, AgentIconType, AgentScope, AgentSource, AgentStatus
-from models.model import SUPPORTED_APP_TYPES, App, AppMode, AppModelConfig, IconType, Site
+from models.model import App, AppMode, AppModelConfig, IconType, Site
 from models.tools import ApiToolProvider
 from services.agent.errors import AgentNameConflictError
 from services.billing_service import BillingService
@@ -45,9 +45,6 @@ AppListSortBy = Literal["last_modified", "recently_created", "earliest_created"]
 class AppListBaseParams(BaseModel):
     page: int = Field(default=1, ge=1)
     limit: int = Field(default=20, ge=1, le=100)
-    # Internal service param: accept any real AppMode plus the "all" sentinel.
-    # Each caller-facing surface (openapi AppListQuery, console AppListMode) enforces
-    # its own narrower accepted set; this layer just filters.
     mode: AppMode | Literal["all"] = "all"
     sort_by: AppListSortBy = "last_modified"
     name: str | None = None
@@ -88,9 +85,7 @@ class AppService:
         filters = [App.tenant_id == tenant_id, App.is_universal == False]
 
         if params.mode == "all":
-            # "all" means all listable app types — positive membership, so
-            # roster-owned agent apps and non-app runtime modes never leak in.
-            filters.append(App.mode.in_(SUPPORTED_APP_TYPES))
+            filters.append(App.mode != AppMode.AGENT)
         else:
             filters.append(App.mode == params.mode)
 

@@ -16,10 +16,14 @@ from pydantic import ValidationError
 from controllers.openapi._models import MAX_PAGE_LIMIT
 from controllers.openapi.apps import AppListQuery
 
+from ._mode_constants import LISTABLE_MODES, NON_LISTABLE_MODES
+
+WS_ID = "00000000-0000-0000-0000-000000000001"
+
 
 def test_defaults():
-    q = AppListQuery.model_validate({"workspace_id": "00000000-0000-0000-0000-000000000001"})
-    assert q.workspace_id == "00000000-0000-0000-0000-000000000001"
+    q = AppListQuery.model_validate({"workspace_id": WS_ID})
+    assert q.workspace_id == WS_ID
     assert q.page == 1
     assert q.limit == 20
     assert q.mode is None
@@ -33,73 +37,71 @@ def test_workspace_id_required():
 
 def test_page_must_be_positive():
     with pytest.raises(ValidationError):
-        AppListQuery.model_validate({"workspace_id": "00000000-0000-0000-0000-000000000001", "page": 0})
+        AppListQuery.model_validate({"workspace_id": WS_ID, "page": 0})
     with pytest.raises(ValidationError):
-        AppListQuery.model_validate({"workspace_id": "00000000-0000-0000-0000-000000000001", "page": -1})
+        AppListQuery.model_validate({"workspace_id": WS_ID, "page": -1})
 
 
 def test_page_rejects_non_integer_string():
     with pytest.raises(ValidationError):
-        AppListQuery.model_validate({"workspace_id": "00000000-0000-0000-0000-000000000001", "page": "abc"})
+        AppListQuery.model_validate({"workspace_id": WS_ID, "page": "abc"})
 
 
 def test_limit_must_be_positive():
     with pytest.raises(ValidationError):
-        AppListQuery.model_validate({"workspace_id": "00000000-0000-0000-0000-000000000001", "limit": 0})
+        AppListQuery.model_validate({"workspace_id": WS_ID, "limit": 0})
     with pytest.raises(ValidationError):
-        AppListQuery.model_validate({"workspace_id": "00000000-0000-0000-0000-000000000001", "limit": -1})
+        AppListQuery.model_validate({"workspace_id": WS_ID, "limit": -1})
 
 
 def test_limit_caps_at_max_page_limit():
     # Boundary accepts.
-    q = AppListQuery.model_validate({"workspace_id": "00000000-0000-0000-0000-000000000001", "limit": MAX_PAGE_LIMIT})
+    q = AppListQuery.model_validate({"workspace_id": WS_ID, "limit": MAX_PAGE_LIMIT})
     assert q.limit == MAX_PAGE_LIMIT
 
     # Just over rejects.
     with pytest.raises(ValidationError):
-        AppListQuery.model_validate(
-            {"workspace_id": "00000000-0000-0000-0000-000000000001", "limit": MAX_PAGE_LIMIT + 1}
-        )
+        AppListQuery.model_validate({"workspace_id": WS_ID, "limit": MAX_PAGE_LIMIT + 1})
 
 
-def test_mode_whitelisted_against_supported_app_type():
-    # Every listable app type passes.
-    for mode in ("completion", "chat", "advanced-chat", "workflow", "agent-chat"):
-        q = AppListQuery.model_validate({"workspace_id": "00000000-0000-0000-0000-000000000001", "mode": mode})
-        assert q.mode is not None
-        assert q.mode.value == mode
+@pytest.mark.parametrize("mode", LISTABLE_MODES)
+def test_mode_accepts_listable_app_types(mode: str):
+    q = AppListQuery.model_validate({"workspace_id": WS_ID, "mode": mode})
+    assert q.mode is not None
+    assert q.mode.value == mode
 
-    # Unknown value rejects.
+
+def test_mode_rejects_unknown_value():
     with pytest.raises(ValidationError):
-        AppListQuery.model_validate({"workspace_id": "00000000-0000-0000-0000-000000000001", "mode": "not-a-mode"})
+        AppListQuery.model_validate({"workspace_id": WS_ID, "mode": "not-a-mode"})
 
 
-@pytest.mark.parametrize("mode", ["rag-pipeline", "channel", "agent"])
+@pytest.mark.parametrize("mode", NON_LISTABLE_MODES)
 def test_mode_rejects_non_listable_app_modes(mode: str):
     """rag-pipeline (a knowledge Pipeline), channel (unused) and agent (roster-owned)
     are AppMode members but not standalone listable apps — the `app` face rejects them."""
     with pytest.raises(ValidationError):
-        AppListQuery.model_validate({"workspace_id": "00000000-0000-0000-0000-000000000001", "mode": mode})
+        AppListQuery.model_validate({"workspace_id": WS_ID, "mode": mode})
 
 
 def test_name_length_capped():
-    AppListQuery.model_validate({"workspace_id": "00000000-0000-0000-0000-000000000001", "name": "x" * 200})
+    AppListQuery.model_validate({"workspace_id": WS_ID, "name": "x" * 200})
     with pytest.raises(ValidationError):
-        AppListQuery.model_validate({"workspace_id": "00000000-0000-0000-0000-000000000001", "name": "x" * 201})
+        AppListQuery.model_validate({"workspace_id": WS_ID, "name": "x" * 201})
 
 
 def test_all_fields_accept_valid_values():
     """Pin the happy-path acceptance for every field in one place."""
     q = AppListQuery.model_validate(
         {
-            "workspace_id": "00000000-0000-0000-0000-000000000001",
+            "workspace_id": WS_ID,
             "page": 5,
             "limit": 50,
             "mode": "workflow",
             "name": "search",
         }
     )
-    assert q.workspace_id == "00000000-0000-0000-0000-000000000001"
+    assert q.workspace_id == WS_ID
     assert q.page == 5
     assert q.limit == 50
     assert q.mode is not None
