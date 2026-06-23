@@ -346,6 +346,20 @@ describe('AgentConfigurePublishBar', () => {
     )
   })
 
+  it('should show unpublished state for local edits when the active snapshot is not loaded', () => {
+    renderPublishBar({
+      activeConfigIsPublished: true,
+      activeConfigSnapshot: null,
+      prompt: 'Updated system prompt',
+    })
+
+    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.unpublishedChanges')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ })).toBeInTheDocument()
+    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
+      expect.objectContaining({ enabled: true, ignoreInputs: false }),
+    )
+  })
+
   it('should initialize unpublished state when active config is not published', async () => {
     const { onPublish } = renderPublishBar({
       activeConfigIsPublished: false,

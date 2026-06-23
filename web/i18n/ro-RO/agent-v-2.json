@@ -201,7 +201,7 @@
   "agentDetail.configure.tools.cliDialog.env.optional": "(opțional)",
   "agentDetail.configure.tools.cliDialog.installCommand.description": "În sandbox · rulat o singură dată la prima invocare",
   "agentDetail.configure.tools.cliDialog.installCommand.label": "Comandă de instalare",
-  "agentDetail.configure.tools.cliDialog.installCommand.placeholder": "Lipiți comanda de instalare aici, de ex. npm install -g @lark/cli  ·  brew install jq",
+  "agentDetail.configure.tools.cliDialog.installCommand.placeholder": "Lipiți comanda de instalare aici, de ex. npx -y @playwright/mcp@latest  ·  uv tool install httpie",
   "agentDetail.configure.tools.cliDialog.installCommand.required": "Comanda de instalare este obligatorie.",
   "agentDetail.configure.tools.cliDialog.learnMore": "Aflați mai multe despre instrumentul CLI",
   "agentDetail.configure.tools.cliDialog.name.label": "Numele instrumentului CLI",
