@@ -77,7 +77,7 @@ describe('FileTree', () => {
     const screen = await render(<TestFileTree />)
 
     await expect.element(screen.getByLabelText('Project files')).toHaveClass('gap-px', 'p-1')
-    await expect.element(screen.getByRole('button', { name: 'button.tsx' })).toHaveClass('h-6', 'rounded-md', 'pl-2', 'pr-1.5', 'data-[selected]:bg-state-base-active')
+    await expect.element(screen.getByRole('button', { name: 'button.tsx' })).toHaveClass('h-6', 'rounded-md', 'ps-2', 'pe-1.5', 'data-[selected]:bg-state-base-active')
     await expect.element(screen.getByText('button.tsx')).toHaveClass('group-data-[selected]/file-tree-row:system-sm-medium', 'group-data-[selected]/file-tree-row:text-text-primary')
     await expect.element(screen.getByText('README.md')).toHaveAttribute('data-label', 'README.md')
     await expect.element(screen.getByText('README.md')).toHaveClass('after:content-[attr(data-label)]')

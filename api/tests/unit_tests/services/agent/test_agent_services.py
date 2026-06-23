@@ -8,6 +8,7 @@ from models.agent import (
     Agent,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
+    AgentDebugConversation,
     AgentKind,
     AgentScope,
     AgentSource,
@@ -23,7 +24,8 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
-from models.model import IconType
+from models.enums import ConversationFromSource, ConversationStatus
+from models.model import Conversation, IconType
 from models.workflow import Workflow
 from services.agent import composer_service, roster_service
 from services.agent.agent_soul_state import agent_soul_has_model
@@ -532,6 +534,100 @@ def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch
     assert inline_agent.updated_by == "account-1"
 
 
+def test_node_job_only_switches_roster_binding_to_inline_agent(monkeypatch: pytest.MonkeyPatch):
+    fake_session = FakeSession()
+    monkeypatch.setattr(composer_service.db, "session", fake_session)
+    created_agent = SimpleNamespace(id="inline-agent-1", active_config_snapshot_id="inline-version-1")
+    captured: dict[str, object] = {}
+
+    def fake_create_workflow_only_agent(**kwargs):
+        captured.update(kwargs)
+        return created_agent
+
+    monkeypatch.setattr(AgentComposerService, "_create_workflow_only_agent", fake_create_workflow_only_agent)
+    existing_node_job = WorkflowNodeJobConfig(workflow_prompt="keep the existing task")
+    binding = WorkflowAgentNodeBinding(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        workflow_version="draft",
+        node_id="node-1",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+        agent_id="roster-agent-1",
+        current_snapshot_id="roster-version-1",
+        node_job_config=existing_node_job,
+        created_by="account-1",
+        updated_by="account-1",
+    )
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": ComposerVariant.WORKFLOW.value,
+            "save_strategy": ComposerSaveStrategy.NODE_JOB_ONLY.value,
+            "binding": {"binding_type": WorkflowAgentBindingType.INLINE_AGENT.value},
+            "agent_soul": {"prompt": {"system_prompt": "start from scratch"}},
+        }
+    )
+
+    updated_binding = AgentComposerService._save_node_job_only(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        node_id="node-1",
+        account_id="account-1",
+        binding=binding,
+        payload=payload,
+    )
+
+    assert updated_binding is binding
+    assert binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT
+    assert binding.agent_id == "inline-agent-1"
+    assert binding.current_snapshot_id == "inline-version-1"
+    assert binding.node_job_config is existing_node_job
+    assert binding.updated_by == "account-1"
+    assert captured["tenant_id"] == "tenant-1"
+    assert captured["app_id"] == "app-1"
+    assert captured["workflow_id"] == "workflow-1"
+    assert captured["node_id"] == "node-1"
+    assert captured["account_id"] == "account-1"
+    assert captured["agent_soul"].prompt.system_prompt == "start from scratch"
+    assert fake_session.flushes == 1
+
+
+def test_node_job_only_rejects_start_from_scratch_with_existing_inline_binding_id():
+    binding = WorkflowAgentNodeBinding(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        workflow_version="draft",
+        node_id="node-1",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+        agent_id="roster-agent-1",
+        current_snapshot_id="roster-version-1",
+        node_job_config=WorkflowNodeJobConfig(),
+    )
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": ComposerVariant.WORKFLOW.value,
+            "save_strategy": ComposerSaveStrategy.NODE_JOB_ONLY.value,
+            "binding": {
+                "binding_type": WorkflowAgentBindingType.INLINE_AGENT.value,
+                "agent_id": "existing-inline-agent",
+            },
+        }
+    )
+
+    with pytest.raises(ValueError, match="Start from Scratch"):
+        AgentComposerService._save_node_job_only(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_id="workflow-1",
+            node_id="node-1",
+            account_id="account-1",
+            binding=binding,
+            payload=payload,
+        )
+
+
 def test_node_job_only_rejects_inline_binding_pointing_to_roster_agent(monkeypatch: pytest.MonkeyPatch):
     fake_session = FakeSession()
     monkeypatch.setattr(composer_service.db, "session", fake_session)
@@ -998,6 +1094,11 @@ def test_roster_create_detail_and_lookup_helpers(monkeypatch: pytest.MonkeyPatch
         scalars=[[AgentConfigSnapshot(id="version-1", agent_id="agent-1", version=1)]],
     )
     service = AgentRosterService(fake_session)
+    monkeypatch.setattr(
+        AgentRosterService,
+        "_get_or_create_agent_app_debug_conversation",
+        lambda self, *, agent, account_id: "debug-conversation-1",
+    )
     payload = roster_service.RosterAgentCreatePayload(
         name="Analyst",
         description="desc",
@@ -1039,6 +1140,135 @@ def test_roster_create_detail_and_lookup_helpers(monkeypatch: pytest.MonkeyPatch
     assert loaded_versions["version-1"].agent_id == "agent-1"
 
 
+def test_agent_app_debug_conversation_create_reuse_and_recreate():
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        name="Analyst",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+    )
+
+    create_session = FakeSession(scalar=[agent, None])
+    created_id = AgentRosterService(create_session).get_or_create_agent_app_debug_conversation_id(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        account_id="account-1",
+    )
+    created_conversation = next(value for value in create_session.added if isinstance(value, Conversation))
+    created_mapping = next(value for value in create_session.added if isinstance(value, AgentDebugConversation))
+    assert created_id == created_mapping.conversation_id
+    assert created_conversation.app_id == "app-1"
+    assert created_conversation.from_account_id == "account-1"
+    assert created_mapping.tenant_id == "tenant-1"
+    assert created_mapping.agent_id == "agent-1"
+    assert created_mapping.account_id == "account-1"
+    assert create_session.commits == 1
+
+    existing_mapping = AgentDebugConversation(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        app_id="app-1",
+        account_id="account-1",
+        conversation_id="existing-conversation",
+    )
+    reuse_session = FakeSession(scalar=[agent, existing_mapping, "existing-conversation"])
+    reused_id = AgentRosterService(reuse_session).get_or_create_agent_app_debug_conversation_id(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        account_id="account-1",
+    )
+    assert reused_id == "existing-conversation"
+    assert reuse_session.added == []
+    assert reuse_session.commits == 1
+
+    stale_mapping = AgentDebugConversation(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        app_id="app-1",
+        account_id="account-1",
+        conversation_id="deleted-conversation",
+    )
+    recreate_session = FakeSession(scalar=[agent, stale_mapping, None])
+    recreated_id = AgentRosterService(recreate_session).get_or_create_agent_app_debug_conversation_id(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        account_id="account-1",
+    )
+    assert recreated_id == stale_mapping.conversation_id
+    assert recreated_id != "deleted-conversation"
+    assert any(isinstance(value, Conversation) for value in recreate_session.added)
+    assert recreate_session.commits == 1
+
+
+def test_agent_app_debug_conversation_requires_app_binding():
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        app_id=None,
+        name="Analyst",
+        description="",
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+    )
+
+    with pytest.raises(roster_service.AgentNotFoundError):
+        AgentRosterService(FakeSession())._get_or_create_agent_app_debug_conversation(
+            agent=agent,
+            account_id="account-1",
+        )
+
+
+def test_load_or_create_agent_app_debug_conversations_filters_agent_apps():
+    valid_agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        name="Analyst",
+        description="",
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+    )
+    wrong_tenant_agent = Agent(
+        id="agent-2",
+        tenant_id="tenant-2",
+        app_id="app-2",
+        name="Other tenant",
+        description="",
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+    )
+    workflow_agent = Agent(
+        id="agent-3",
+        tenant_id="tenant-1",
+        app_id=None,
+        name="Workflow only",
+        description="",
+        scope=AgentScope.WORKFLOW_ONLY,
+        source=AgentSource.WORKFLOW,
+        status=AgentStatus.ACTIVE,
+    )
+
+    fake_session = FakeSession(scalar=[None])
+    result = AgentRosterService(fake_session).load_or_create_agent_app_debug_conversation_ids_by_agent_id(
+        tenant_id="tenant-1",
+        agents=[valid_agent, wrong_tenant_agent, workflow_agent],
+        account_id="account-1",
+    )
+
+    assert list(result) == ["agent-1"]
+    assert result["agent-1"]
+    assert fake_session.commits == 1
+    assert len([value for value in fake_session.added if isinstance(value, AgentDebugConversation)]) == 1
+
+
 def test_agent_app_visible_versions_exclude_draft_saves():
     agent_app = Agent(source=AgentSource.AGENT_APP)
     roster_agent = Agent(source=AgentSource.ROSTER)
@@ -1046,10 +1276,91 @@ def test_agent_app_visible_versions_exclude_draft_saves():
     agent_app_operations = AgentRosterService._visible_version_operations(agent_app)
     roster_operations = AgentRosterService._visible_version_operations(roster_agent)
 
-    assert agent_app_operations == {AgentConfigRevisionOperation.SAVE_NEW_VERSION}
+    assert agent_app_operations == {
+        AgentConfigRevisionOperation.SAVE_NEW_VERSION,
+        AgentConfigRevisionOperation.RESTORE_VERSION,
+    }
     assert AgentConfigRevisionOperation.SAVE_CURRENT_VERSION not in agent_app_operations
     assert AgentConfigRevisionOperation.CREATE_VERSION in roster_operations
+    assert AgentConfigRevisionOperation.RESTORE_VERSION in roster_operations
     assert AgentConfigRevisionOperation.SAVE_CURRENT_VERSION not in roster_operations
+
+
+def test_restore_roster_agent_version_switches_active_snapshot(monkeypatch: pytest.MonkeyPatch):
+    fake_session = FakeSession(scalar=["version-2", 6])
+    service = AgentRosterService(fake_session)
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Analyst",
+        description="old",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="version-4",
+    )
+    version = AgentConfigSnapshot(
+        id="version-2",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version=2,
+        config_snapshot=_agent_soul_with_model(),
+    )
+
+    monkeypatch.setattr(service, "_get_agent", lambda **kwargs: agent)
+    monkeypatch.setattr(service, "_get_version", lambda **kwargs: version)
+
+    restored = service.restore_agent_version(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version_id="version-2",
+        account_id="account-1",
+    )
+
+    assert restored == {"result": "success", "active_config_snapshot_id": "version-2"}
+    assert agent.active_config_snapshot_id == "version-2"
+    assert agent.active_config_has_model is True
+    assert agent.updated_by == "account-1"
+    assert fake_session.commits == 1
+    revision = fake_session.added[0]
+    assert revision.tenant_id == "tenant-1"
+    assert revision.agent_id == "agent-1"
+    assert revision.previous_snapshot_id == "version-4"
+    assert revision.current_snapshot_id == "version-2"
+    assert revision.revision == 7
+    assert revision.operation == AgentConfigRevisionOperation.RESTORE_VERSION
+    assert revision.created_by == "account-1"
+
+
+def test_restore_roster_agent_version_rejects_invisible_versions(monkeypatch: pytest.MonkeyPatch):
+    fake_session = FakeSession(scalar=[None])
+    service = AgentRosterService(fake_session)
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Analyst",
+        description="old",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="version-4",
+    )
+
+    monkeypatch.setattr(service, "_get_agent", lambda **kwargs: agent)
+
+    with pytest.raises(roster_service.AgentVersionNotFoundError):
+        service.restore_agent_version(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            version_id="version-2",
+            account_id="account-1",
+        )
+
+    assert agent.active_config_snapshot_id == "version-4"
+    assert fake_session.added == []
+    assert fake_session.commits == 0
 
 
 def test_app_list_all_excludes_agent_apps_by_default():
@@ -1281,6 +1592,20 @@ class TestAgentAppBackingAgent:
             a for a in session.added if getattr(a, "operation", None) == AgentConfigRevisionOperation.CREATE_VERSION
         ]
         assert len(revisions) == 1
+        conversations = [a for a in session.added if isinstance(a, Conversation)]
+        assert len(conversations) == 1
+        assert conversations[0].app_id == "app-1"
+        assert conversations[0].mode == "agent"
+        assert conversations[0].status == ConversationStatus.NORMAL
+        assert conversations[0].from_source == ConversationFromSource.CONSOLE
+        assert conversations[0].from_account_id == "account-1"
+        debug_mappings = [a for a in session.added if isinstance(a, AgentDebugConversation)]
+        assert len(debug_mappings) == 1
+        assert debug_mappings[0].tenant_id == "tenant-1"
+        assert debug_mappings[0].agent_id == agent.id
+        assert debug_mappings[0].app_id == "app-1"
+        assert debug_mappings[0].account_id == "account-1"
+        assert debug_mappings[0].conversation_id == conversations[0].id
         # Caller (AppService.create_app) owns the commit — helper must not commit.
         assert session.commits == 0
 
@@ -1323,6 +1648,74 @@ class TestAgentAppBackingAgent:
 
         with pytest.raises(roster_service.AgentNotFoundError):
             service.get_agent_app_model(tenant_id="tenant-1", agent_id="agent-x")
+
+    def test_refresh_agent_app_debug_conversation_creates_mapping(self):
+        agent = Agent(
+            id="agent-1",
+            tenant_id="tenant-1",
+            name="Iris",
+            description="",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            app_id="app-1",
+        )
+        session = FakeSession(scalar=[agent, None])
+        service = AgentRosterService(session)
+
+        conversation_id = service.refresh_agent_app_debug_conversation_id(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            account_id="account-1",
+        )
+
+        conversations = [a for a in session.added if isinstance(a, Conversation)]
+        assert len(conversations) == 1
+        assert conversations[0].id == conversation_id
+        assert conversations[0].app_id == "app-1"
+        assert conversations[0].from_source == ConversationFromSource.CONSOLE
+        assert conversations[0].from_account_id == "account-1"
+        mappings = [a for a in session.added if isinstance(a, AgentDebugConversation)]
+        assert len(mappings) == 1
+        assert mappings[0].tenant_id == "tenant-1"
+        assert mappings[0].agent_id == "agent-1"
+        assert mappings[0].app_id == "app-1"
+        assert mappings[0].account_id == "account-1"
+        assert mappings[0].conversation_id == conversation_id
+        assert session.deleted == []
+        assert session.commits == 1
+
+    def test_refresh_agent_app_debug_conversation_replaces_existing_mapping(self):
+        agent = Agent(
+            id="agent-1",
+            tenant_id="tenant-1",
+            name="Iris",
+            description="",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            app_id="app-1",
+        )
+        mapping = SimpleNamespace(app_id="old-app", conversation_id="old-conversation")
+        session = FakeSession(scalar=[agent, mapping])
+        service = AgentRosterService(session)
+
+        conversation_id = service.refresh_agent_app_debug_conversation_id(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            account_id="account-1",
+        )
+
+        assert mapping.app_id == "app-1"
+        assert mapping.conversation_id == conversation_id
+        assert [a for a in session.added if isinstance(a, AgentDebugConversation)] == []
+        conversations = [a for a in session.added if isinstance(a, Conversation)]
+        assert len(conversations) == 1
+        assert conversations[0].id == conversation_id
+        assert session.deleted == []
+        assert session.commits == 1
 
     def test_duplicate_agent_app_copies_app_config_and_active_soul(self, monkeypatch: pytest.MonkeyPatch):
         source_config = SimpleNamespace(
@@ -1490,8 +1883,11 @@ class TestAgentAppBackingAgent:
         monkeypatch.setattr(service, "_copy_agent_active_snapshot", lambda **_: None)
         monkeypatch.setattr(service, "_next_duplicate_agent_name", lambda **_: "Iris copy")
 
+        captured: dict[str, object] = {}
+
         class FakeAppService:
             def create_app(self, tenant_id: str, params, account: object) -> object:
+                captured["params"] = params
                 return target_app
 
         access_mode_updates = []
@@ -1517,9 +1913,11 @@ class TestAgentAppBackingAgent:
             tenant_id="tenant-1",
             agent_id="source-agent",
             account=SimpleNamespace(id="account-1"),
+            role="Custom Analyst",
         )
 
         assert duplicated is target_app
+        assert captured["params"].agent_role == "Custom Analyst"
         assert access_mode_updates == [("target-app", "private")]
 
     def test_duplicate_agent_app_falls_back_to_public_access_mode(self, monkeypatch: pytest.MonkeyPatch):

@@ -544,6 +544,7 @@
   "modelProvider.ttsModel.key": "テキスト-to-音声モデル",
   "modelProvider.ttsModel.tip": "会話でのテキスト-to-音声入力に使用するデフォルトモデルを設定します。",
   "modelProvider.upgradeForLoadBalancing": "負荷分散を利用するには、プランのアップグレードが必要です。",
+  "navigation.skipToMain": "メインコンテンツへスキップ",
   "noData": "データなし",
   "operation.add": "追加",
   "operation.added": "追加済み",

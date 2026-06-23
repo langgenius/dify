@@ -5,7 +5,8 @@ export const useCredentialPermissions = () => {
   const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
 
   return {
-    canUseCredential: hasPermission(workspacePermissionKeys, ['credential.use', 'credential.manage']),
+    canUseCredential: hasPermission(workspacePermissionKeys, 'credential.use'),
+    canCreateCredential: hasPermission(workspacePermissionKeys, 'credential.create'),
     canManageCredential: hasPermission(workspacePermissionKeys, 'credential.manage'),
   }
 }

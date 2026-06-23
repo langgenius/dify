@@ -3,6 +3,51 @@
 import * as z from 'zod'
 
 /**
+ * AgentApiAccessResponse
+ */
+export const zAgentApiAccessResponse = z.object({
+  api_key_count: z.int(),
+  api_rph: z.int(),
+  api_rpm: z.int(),
+  chat_endpoint: z.string(),
+  conversations_endpoint: z.string(),
+  enabled: z.boolean(),
+  files_upload_endpoint: z.string(),
+  info_endpoint: z.string(),
+  messages_endpoint: z.string(),
+  meta_endpoint: z.string(),
+  parameters_endpoint: z.string(),
+  service_api_base_url: z.string(),
+  stop_endpoint: z.string(),
+  streaming_only: z.boolean().optional().default(true),
+})
+
+/**
+ * AgentApiStatusPayload
+ */
+export const zAgentApiStatusPayload = z.object({
+  enable_api: z.boolean(),
+})
+
+/**
+ * ApiKeyItem
+ */
+export const zApiKeyItem = z.object({
+  created_at: z.int().nullish(),
+  id: z.string(),
+  last_used_at: z.int().nullish(),
+  token: z.string(),
+  type: z.string(),
+})
+
+/**
+ * ApiKeyList
+ */
+export const zApiKeyList = z.object({
+  data: z.array(zApiKeyItem),
+})
+
+/**
  * SuggestedQuestionsResponse
  */
 export const zSuggestedQuestionsResponse = z.object({
@@ -14,6 +59,13 @@ export const zSuggestedQuestionsResponse = z.object({
  */
 export const zSimpleResultResponse = z.object({
   result: z.string(),
+})
+
+/**
+ * AgentDebugConversationRefreshResponse
+ */
+export const zAgentDebugConversationRefreshResponse = z.object({
+  debug_conversation_id: z.string(),
 })
 
 /**
@@ -79,6 +131,14 @@ export const zAgentSandboxUploadPayload = z.object({
 })
 
 /**
+ * AgentConfigSnapshotRestoreResponse
+ */
+export const zAgentConfigSnapshotRestoreResponse = z.object({
+  active_config_snapshot_id: z.string(),
+  result: z.literal('success'),
+})
+
+/**
  * IconType
  */
 export const zIconType = z.enum(['emoji', 'image', 'link'])
@@ -110,14 +170,15 @@ export const zAgentAppUpdatePayload = z.object({
 })
 
 /**
- * CopyAppPayload
+ * AgentAppCopyPayload
  */
-export const zCopyAppPayload = z.object({
+export const zAgentAppCopyPayload = z.object({
   description: z.string().max(400).nullish(),
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
   icon_type: zIconType.nullish(),
   name: z.string().nullish(),
+  role: z.string().max(255).nullish(),
 })
 
 /**
@@ -286,9 +347,11 @@ export const zAgentDriveItemResponse = z.object({
   created_at: z.int().nullish(),
   file_kind: z.string(),
   hash: z.string().nullish(),
+  is_skill: z.boolean().nullish(),
   key: z.string(),
   mime_type: z.string().nullish(),
   size: z.int().nullish(),
+  skill_metadata: z.string().nullish(),
 })
 
 /**
@@ -296,6 +359,70 @@ export const zAgentDriveItemResponse = z.object({
  */
 export const zAgentDriveListResponse = z.object({
   items: z.array(zAgentDriveItemResponse).optional(),
+})
+
+/**
+ * AgentDriveSkillItemResponse
+ */
+export const zAgentDriveSkillItemResponse = z.object({
+  archive_key: z.string().nullish(),
+  created_at: z.int().nullish(),
+  description: z.string(),
+  hash: z.string().nullish(),
+  mime_type: z.string().nullish(),
+  name: z.string(),
+  path: z.string(),
+  size: z.int().nullish(),
+  skill_md_key: z.string(),
+})
+
+/**
+ * AgentDriveSkillListResponse
+ */
+export const zAgentDriveSkillListResponse = z.object({
+  items: z.array(zAgentDriveSkillItemResponse).optional(),
+})
+
+/**
+ * AgentDriveSkillFileResponse
+ */
+export const zAgentDriveSkillFileResponse = z.object({
+  available_in_drive: z.boolean(),
+  drive_key: z.string().nullish(),
+  name: z.string(),
+  path: z.string(),
+  type: z.string(),
+})
+
+/**
+ * AgentDriveSkillMarkdownResponse
+ */
+export const zAgentDriveSkillMarkdownResponse = z.object({
+  binary: z.boolean(),
+  key: z.string(),
+  size: z.int().nullish(),
+  text: z.string().nullish(),
+  truncated: z.boolean(),
+})
+
+/**
+ * AgentDriveSkillInspectResponse
+ */
+export const zAgentDriveSkillInspectResponse = z.object({
+  archive_key: z.string().nullish(),
+  created_at: z.int().nullish(),
+  description: z.string(),
+  file_tree: z.array(z.record(z.string(), z.unknown())).optional(),
+  files: z.array(zAgentDriveSkillFileResponse).optional(),
+  hash: z.string().nullish(),
+  mime_type: z.string().nullish(),
+  name: z.string(),
+  path: z.string(),
+  size: z.int().nullish(),
+  skill_md: zAgentDriveSkillMarkdownResponse,
+  skill_md_key: z.string(),
+  source: z.string(),
+  warnings: z.array(z.string()).optional(),
 })
 
 /**
@@ -610,6 +737,7 @@ export const zAgentAppPartial = z.object({
   create_user_name: z.string().nullish(),
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
+  debug_conversation_id: z.string().nullish(),
   description: z.string().nullish(),
   has_draft_trigger: z.boolean().nullish(),
   icon: z.string().nullish(),
@@ -673,6 +801,7 @@ export const zAgentAppDetailWithSite = z.object({
   bound_agent_id: z.string().nullish(),
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
+  debug_conversation_id: z.string().nullish(),
   deleted_tools: z.array(zDeletedTool).optional(),
   description: z.string().nullish(),
   enable_api: z.boolean(),
@@ -1117,6 +1246,7 @@ export const zAgentStatisticSummaryEnvelopeResponse = z.object({
  */
 export const zAgentConfigRevisionOperation = z.enum([
   'create_version',
+  'restore_version',
   'save_current_version',
   'save_new_agent',
   'save_new_version',
@@ -2011,6 +2141,7 @@ export const zAgentAppPartialWritable = z.object({
   create_user_name: z.string().nullish(),
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
+  debug_conversation_id: z.string().nullish(),
   description: z.string().nullish(),
   has_draft_trigger: z.boolean().nullish(),
   icon: z.string().nullish(),
@@ -2075,6 +2206,7 @@ export const zAgentAppDetailWithSiteWritable = z.object({
   bound_agent_id: z.string().nullish(),
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
+  debug_conversation_id: z.string().nullish(),
   deleted_tools: z.array(zDeletedTool).optional(),
   description: z.string().nullish(),
   enable_api: z.boolean(),
@@ -2178,6 +2310,54 @@ export const zPutAgentByAgentIdPath = z.object({
  */
 export const zPutAgentByAgentIdResponse = zAgentAppDetailWithSite
 
+export const zGetAgentByAgentIdApiAccessPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Agent service API access
+ */
+export const zGetAgentByAgentIdApiAccessResponse = zAgentApiAccessResponse
+
+export const zPostAgentByAgentIdApiEnableBody = zAgentApiStatusPayload
+
+export const zPostAgentByAgentIdApiEnablePath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Agent service API status updated
+ */
+export const zPostAgentByAgentIdApiEnableResponse = zAgentApiAccessResponse
+
+export const zGetAgentByAgentIdApiKeysPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Agent service API keys
+ */
+export const zGetAgentByAgentIdApiKeysResponse = zApiKeyList
+
+export const zPostAgentByAgentIdApiKeysPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Agent service API key created
+ */
+export const zPostAgentByAgentIdApiKeysResponse = zApiKeyItem
+
+export const zDeleteAgentByAgentIdApiKeysByApiKeyIdPath = z.object({
+  agent_id: z.uuid(),
+  api_key_id: z.uuid(),
+})
+
+/**
+ * Agent service API key deleted
+ */
+export const zDeleteAgentByAgentIdApiKeysByApiKeyIdResponse = z.void()
+
 export const zGetAgentByAgentIdChatMessagesPath = z.object({
   agent_id: z.uuid(),
 })
@@ -2254,7 +2434,7 @@ export const zPostAgentByAgentIdComposerValidatePath = z.object({
  */
 export const zPostAgentByAgentIdComposerValidateResponse = zAgentComposerValidateResponse
 
-export const zPostAgentByAgentIdCopyBody = zCopyAppPayload
+export const zPostAgentByAgentIdCopyBody = zAgentAppCopyPayload
 
 export const zPostAgentByAgentIdCopyPath = z.object({
   agent_id: z.uuid(),
@@ -2264,6 +2444,16 @@ export const zPostAgentByAgentIdCopyPath = z.object({
  * Agent app copied successfully
  */
 export const zPostAgentByAgentIdCopyResponse = zAgentAppDetailWithSite
+
+export const zPostAgentByAgentIdDebugConversationRefreshPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Agent debug conversation refreshed
+ */
+export const zPostAgentByAgentIdDebugConversationRefreshResponse
+  = zAgentDebugConversationRefreshResponse
 
 export const zGetAgentByAgentIdDriveFilesPath = z.object({
   agent_id: z.uuid(),
@@ -2303,6 +2493,26 @@ export const zGetAgentByAgentIdDriveFilesPreviewQuery = z.object({
  * Preview
  */
 export const zGetAgentByAgentIdDriveFilesPreviewResponse = zAgentDrivePreviewResponse
+
+export const zGetAgentByAgentIdDriveSkillsPath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Drive skills
+ */
+export const zGetAgentByAgentIdDriveSkillsResponse = zAgentDriveSkillListResponse
+
+export const zGetAgentByAgentIdDriveSkillsBySkillPathInspectPath = z.object({
+  agent_id: z.uuid(),
+  skill_path: z.string(),
+})
+
+/**
+ * Drive skill inspect view
+ */
+export const zGetAgentByAgentIdDriveSkillsBySkillPathInspectResponse
+  = zAgentDriveSkillInspectResponse
 
 export const zPostAgentByAgentIdFeaturesBody = zAgentAppFeaturesPayload
 
@@ -2530,3 +2740,14 @@ export const zGetAgentByAgentIdVersionsByVersionIdPath = z.object({
  * Agent version detail
  */
 export const zGetAgentByAgentIdVersionsByVersionIdResponse = zAgentConfigSnapshotDetailResponse
+
+export const zPostAgentByAgentIdVersionsByVersionIdRestorePath = z.object({
+  agent_id: z.uuid(),
+  version_id: z.uuid(),
+})
+
+/**
+ * Agent version restored
+ */
+export const zPostAgentByAgentIdVersionsByVersionIdRestoreResponse
+  = zAgentConfigSnapshotRestoreResponse
