@@ -28,6 +28,13 @@ import TypeSwitch from './type-switch'
 
 const i18nPrefix = 'nodes.humanInput.insertInputField'
 
+const normalizeParagraphPayload = (payload: ParagraphFormInput): ParagraphFormInput => {
+  return {
+    ...payload,
+    default: payload.default || createDefaultParagraphFormInput().default,
+  }
+}
+
 type InputFieldProps = {
   nodeId: string
   isEdit: boolean
@@ -67,12 +74,8 @@ const InputField: React.FC<InputFieldProps> = ({
     ]
   }, [t])
   const paragraphPayload = useMemo<ParagraphFormInput>(() => {
-    if (isParagraphFormInput(tempPayload)) {
-      return {
-        ...tempPayload,
-        default: tempPayload.default || createDefaultParagraphFormInput().default,
-      }
-    }
+    if (isParagraphFormInput(tempPayload))
+      return normalizeParagraphPayload(tempPayload)
 
     return createDefaultParagraphFormInput(tempPayload.output_variable_name)
   }, [tempPayload])
@@ -114,22 +117,26 @@ const InputField: React.FC<InputFieldProps> = ({
   }, [])
   const handleDefaultValueChange = useCallback((key: keyof FormInputItemDefault) => {
     return (value: ValueSelector | string) => {
-      const nextValue = produce(paragraphPayload, (draft) => {
-        if (key === 'selector') {
-          draft.default.type = 'variable'
-          draft.default.selector = value as ValueSelector
-        }
-        else if (key === 'value') {
-          draft.default.type = 'constant'
-          draft.default.value = value as string
-        }
-        else if (key === 'type') {
-          draft.default.type = value as 'constant' | 'variable'
-        }
+      setTempPayload((prev) => {
+        if (!isParagraphFormInput(prev))
+          return prev
+
+        return produce(normalizeParagraphPayload(prev), (draft) => {
+          if (key === 'selector') {
+            draft.default.type = 'variable'
+            draft.default.selector = value as ValueSelector
+          }
+          else if (key === 'value') {
+            draft.default.type = 'constant'
+            draft.default.value = value as string
+          }
+          else if (key === 'type') {
+            draft.default.type = value as 'constant' | 'variable'
+          }
+        })
       })
-      setTempPayload(nextValue)
     }
-  }, [paragraphPayload])
+  }, [])
   const handleSelectOptionsChange = useCallback((options: string[]) => {
     setTempPayload((prev) => {
       if (!isSelectFormInput(prev))
