@@ -22,6 +22,7 @@ export type SiteInfo = {
   copyright?: string
   privacy_policy?: string
   custom_disclaimer?: string
+  input_placeholder?: string
   show_workflow_steps?: boolean
   use_icon_as_answer_icon?: boolean
 }

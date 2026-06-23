@@ -46,6 +46,7 @@ export type ConfigParams = {
   copyright: string
   privacy_policy: string
   custom_disclaimer: string
+  input_placeholder: string
   icon_type: AppIconType
   icon: string
   icon_background?: string
@@ -53,6 +54,13 @@ export type ConfigParams = {
   use_icon_as_answer_icon: boolean
   enable_sso?: boolean
 }
+
+const INPUT_PLACEHOLDER_MAX_LENGTH = 64
+const INPUT_PLACEHOLDER_SUPPORTED_MODES: ReadonlyArray<AppModeEnum> = [
+  AppModeEnum.CHAT,
+  AppModeEnum.AGENT_CHAT,
+  AppModeEnum.ADVANCED_CHAT,
+]
 
 const prefixSettings = 'overview.appInfo.settings'
 type SelectOption = {
@@ -71,6 +79,7 @@ const createInputInfo = (appInfo: ISettingsModalProps['appInfo']) => {
     copyright,
     privacy_policy,
     custom_disclaimer,
+    input_placeholder,
     show_workflow_steps,
     use_icon_as_answer_icon,
   } = appInfo.site
@@ -84,6 +93,7 @@ const createInputInfo = (appInfo: ISettingsModalProps['appInfo']) => {
     copyrightSwitchValue: !!copyright,
     privacyPolicy: privacy_policy,
     customDisclaimer: custom_disclaimer,
+    inputPlaceholder: input_placeholder ?? '',
     show_workflow_steps,
     use_icon_as_answer_icon,
     enable_sso: appInfo.enable_sso,
@@ -125,6 +135,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   onSave,
 }) => {
   const [isShowMore, setIsShowMore] = useState(false)
+  const [inputPlaceholderFocused, setInputPlaceholderFocused] = useState(false)
   const { default_language } = appInfo.site
   const nextInputInfo = createInputInfo(appInfo)
   const nextAppIcon = createAppIcon(appInfo)
@@ -144,6 +155,41 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const isFreePlan = plan.type === 'sandbox'
   const showUpgradeAction = IS_CLOUD_EDITION && enableBilling && isFreePlan
   const selectedLanguage = LANGUAGE_OPTIONS.find(item => item.value === language)
+
+  const inputPlaceholderValue = inputInfo.inputPlaceholder ?? ''
+  // Paid + has value + blurred → preview as gray placeholder text (matches how it'll render in chat).
+  const showInputPlaceholderPreview = webappCopyrightEnabled && inputPlaceholderValue.trim().length > 0 && !inputPlaceholderFocused
+  const inputPlaceholderField = (
+    <div
+      className={cn(
+        'mt-2 flex h-10 items-center gap-2 rounded-lg border border-components-input-border-hover bg-components-input-bg-normal pr-1 pl-3 transition-colors',
+        webappCopyrightEnabled && inputPlaceholderFocused && 'border-components-input-border-active bg-components-input-bg-active',
+        !webappCopyrightEnabled && 'cursor-not-allowed opacity-60',
+      )}
+    >
+      <input
+        type="text"
+        value={inputPlaceholderValue}
+        onChange={e => setInputInfo(item => ({ ...item, inputPlaceholder: e.target.value }))}
+        onFocus={() => setInputPlaceholderFocused(true)}
+        onBlur={() => setInputPlaceholderFocused(false)}
+        disabled={!webappCopyrightEnabled}
+        maxLength={INPUT_PLACEHOLDER_MAX_LENGTH}
+        placeholder={t(`${prefixSettings}.more.inputPlaceholderPlaceholder`, { ns: 'appOverview' }) as string}
+        className={cn(
+          'flex-1 bg-transparent body-md-regular outline-hidden',
+          showInputPlaceholderPreview ? 'text-text-placeholder' : 'text-text-primary',
+          !webappCopyrightEnabled && 'cursor-not-allowed',
+        )}
+      />
+      <span
+        aria-hidden="true"
+        className="grid h-7 w-7 shrink-0 cursor-not-allowed place-items-center rounded-md bg-components-button-primary-bg opacity-50"
+      >
+        <span className="i-custom-vender-solid-communication-send-03 h-4 w-4 text-components-button-primary-text" />
+      </span>
+    </div>
+  )
 
   const handleLanguageChange = (nextValue: string | null) => {
     const nextLanguage = LANGUAGE_OPTIONS.find(item => item.value === nextValue)
@@ -222,6 +268,9 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           : '',
       privacy_policy: inputInfo.privacyPolicy,
       custom_disclaimer: inputInfo.customDisclaimer,
+      input_placeholder: (!webappCopyrightEnabled || !INPUT_PLACEHOLDER_SUPPORTED_MODES.includes(appInfo.mode))
+        ? ''
+        : (inputInfo.inputPlaceholder ?? '').slice(0, INPUT_PLACEHOLDER_MAX_LENGTH),
       icon_type: appIcon.type,
       icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
       icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
@@ -390,6 +439,44 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             {/* more settings */}
             {isShowMore && (
               <>
+                {/* input placeholder — Chatbot / Agent / Chatflow only */}
+                {INPUT_PLACEHOLDER_SUPPORTED_MODES.includes(appInfo.mode) && (
+                  <div className="w-full">
+                    <div className="flex items-center">
+                      <div className="flex grow items-center">
+                        <div className={cn('mr-1 py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.inputPlaceholder`, { ns: 'appOverview' })}</div>
+                        {showUpgradeAction && (
+                          <div className="h-[18px] select-none">
+                            <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
+                              <span aria-hidden="true" className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
+                              <div className="system-xs-medium">
+                                <span className="p-1">
+                                  {t('upgradeBtn.encourageShort', { ns: 'billing' })}
+                                </span>
+                              </div>
+                            </PremiumBadgeButton>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <p className="pb-0.5 body-xs-regular text-text-tertiary">{t(`${prefixSettings}.more.inputPlaceholderTip`, { ns: 'appOverview' })}</p>
+                    {webappCopyrightEnabled
+                      ? inputPlaceholderField
+                      : (
+                          <Tooltip>
+                            <TooltipTrigger render={inputPlaceholderField} />
+                            <TooltipContent className="w-[180px]">
+                              {t(`${prefixSettings}.more.inputPlaceholderTooltip`, { ns: 'appOverview' })}
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                    {webappCopyrightEnabled && (
+                      <div className="mt-1 text-right body-xs-regular text-text-tertiary">
+                        {`${inputInfo.inputPlaceholder?.length ?? 0} / ${INPUT_PLACEHOLDER_MAX_LENGTH}`}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {/* copyright */}
                 <div className="w-full">
                   <div className="flex items-center">
