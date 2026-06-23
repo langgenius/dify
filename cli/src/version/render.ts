@@ -2,12 +2,10 @@ import type { Channel } from './info'
 import type { VersionReport } from './probe'
 import { colorScheme } from '@/sys/io/color'
 
-const PRERELEASE_CHANNELS = new Set<Channel>(['alpha', 'rc', 'edge'])
-
 function prereleaseWarning(channel: Channel): readonly string[] {
   return [
     `WARNING: This build is a ${channel} release. It is not stable`,
-    '         and may have bugs. For production use, install the stable channel.',
+    '         and may have bugs. For production use, install or wait for the stable channel.',
   ]
 }
 
@@ -54,7 +52,7 @@ export function renderVersionText(report: VersionReport, opts: RenderOptions = {
   const verdictText = `Compatibility: ${COMPAT_LABEL[compat.status]} — ${compat.detail}`
   lines.push(compat.status === 'unsupported' ? c.yellow(verdictText) : verdictText)
 
-  if (PRERELEASE_CHANNELS.has(client.channel)) {
+  if (client.channel !== 'stable') {
     lines.push('')
     for (const line of prereleaseWarning(client.channel))
       lines.push(c.yellow(line))

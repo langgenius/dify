@@ -61,7 +61,7 @@ describe('renderVersionText', () => {
     const text = renderVersionText(report)
 
     expect(text).toContain('WARNING: This build is a rc release')
-    expect(text).toContain('install the stable channel')
+    expect(text).toContain('install or wait for the stable channel')
   })
 
   it('appends warning when channel is alpha', () => {
@@ -73,7 +73,7 @@ describe('renderVersionText', () => {
     const text = renderVersionText(report)
 
     expect(text).toContain('WARNING: This build is a alpha release')
-    expect(text).toContain('install the stable channel')
+    expect(text).toContain('install or wait for the stable channel')
   })
 
   it('appends warning when channel is edge', () => {
@@ -85,7 +85,7 @@ describe('renderVersionText', () => {
     const text = renderVersionText(report)
 
     expect(text).toContain('WARNING: This build is a edge release')
-    expect(text).toContain('install the stable channel')
+    expect(text).toContain('install or wait for the stable channel')
   })
 
   it('does not append warning when channel is stable', () => {
