@@ -5,16 +5,24 @@ import { AccessChannelsSection } from '../channels-section'
 
 const mockToggleAccessChannel = vi.hoisted(() => vi.fn())
 
-vi.mock('../state', async () => {
-  const { atom } = await import('jotai')
+vi.mock('@tanstack/react-query', () => ({
+  useMutation: () => ({
+    isPending: false,
+    mutate: mockToggleAccessChannel,
+  }),
+}))
 
-  return {
-    updateAccessChannelsMutationAtom: atom({
-      isPending: false,
-      mutate: mockToggleAccessChannel,
-    }),
-  }
-})
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    enterprise: {
+      accessService: {
+        updateAccessChannels: {
+          mutationOptions: () => ({ mutationKey: ['updateAccessChannels'] }),
+        },
+      },
+    },
+  },
+}))
 
 function createAccessChannels(): AccessChannels {
   return {

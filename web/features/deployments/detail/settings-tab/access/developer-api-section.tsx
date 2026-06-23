@@ -8,9 +8,11 @@ import type {
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Switch, SwitchSkeleton } from '@langgenius/dify-ui/switch'
+import { useMutation } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { consoleQuery } from '@/service/client'
 import { DeploymentEmptyState, DeploymentStateMessage } from '../../../components/empty-state'
 import { DeveloperApiDocsDrawer } from './api-docs-drawer'
 import { ApiKeyGenerateMenu } from './api-key-generate-menu'
@@ -18,7 +20,7 @@ import { ApiKeyList } from './api-key-list'
 import { CopyPill } from './common'
 import { CreatedApiTokenDialog } from './developer-api-created-token-dialog'
 import { DeveloperApiSkeleton } from './developer-api-skeleton'
-import { developerApiSettingsQueryAtom, updateAccessChannelsMutationAtom } from './state'
+import { developerApiSettingsQueryAtom } from './state'
 
 type CreatedApiToken = {
   appInstanceId: string
@@ -51,7 +53,7 @@ function DeveloperApiSwitch({ appInstanceId, checked, accessChannels, disabled }
   disabled?: boolean
 }) {
   const { t } = useTranslation('deployments')
-  const toggleDeveloperAPI = useAtomValue(updateAccessChannelsMutationAtom)
+  const toggleDeveloperAPI = useMutation(consoleQuery.enterprise.accessService.updateAccessChannels.mutationOptions())
 
   return (
     <Switch

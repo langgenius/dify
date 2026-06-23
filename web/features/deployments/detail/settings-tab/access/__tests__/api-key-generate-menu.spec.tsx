@@ -5,16 +5,24 @@ import { ApiKeyGenerateMenu } from '../api-key-generate-menu'
 
 const mockMutate = vi.hoisted(() => vi.fn())
 
-vi.mock('../state', async () => {
-  const { atom } = await import('jotai')
+vi.mock('@tanstack/react-query', () => ({
+  useMutation: () => ({
+    isPending: false,
+    mutate: mockMutate,
+  }),
+}))
 
-  return {
-    createApiKeyMutationAtom: atom({
-      isPending: false,
-      mutate: mockMutate,
-    }),
-  }
-})
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    enterprise: {
+      accessService: {
+        createApiKey: {
+          mutationOptions: () => ({ mutationKey: ['createApiKey'] }),
+        },
+      },
+    },
+  },
+}))
 
 function createEnvironment(): Environment {
   return {

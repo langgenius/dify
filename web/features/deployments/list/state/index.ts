@@ -5,7 +5,7 @@ import type { InfiniteData, QueryKey } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { keepPreviousData } from '@tanstack/react-query'
 import { atom } from 'jotai'
-import { atomWithInfiniteQuery, atomWithQuery } from 'jotai-tanstack-query'
+import { atomWithInfiniteQuery } from 'jotai-tanstack-query'
 import { useHydrateAtoms } from 'jotai/utils'
 import { parseAsString, useQueryState } from 'nuqs'
 import { consoleQuery } from '@/service/client'
@@ -88,16 +88,3 @@ export const deploymentsListShowEmptyStateAtom = atom((get) => {
 export const deploymentsListHasFilterAtom = atom((get) => {
   return Boolean(get(deploymentsListKeywordsAtom).trim() || get(deploymentsListEnvironmentIdAtom))
 })
-
-export const environmentsFilterQueryAtom = atomWithQuery(() =>
-  consoleQuery.enterprise.environmentService.listEnvironments.queryOptions({
-    input: {
-      query: {
-        // The filter lists every deployable environment; environment count is
-        // capped well below the 100-per-page maximum.
-        pageNumber: 1,
-        resultsPerPage: 100,
-      },
-    },
-  }),
-)

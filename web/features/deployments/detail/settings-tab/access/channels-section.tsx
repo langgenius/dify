@@ -3,13 +3,13 @@
 import type { AccessChannels, AccessEndpoint } from '@dify/contracts/enterprise/types.gen'
 import type { ReactNode } from 'react'
 import { Switch, SwitchSkeleton } from '@langgenius/dify-ui/switch'
-import { useAtomValue } from 'jotai'
+import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
+import { consoleQuery } from '@/service/client'
 import { DeploymentEmptyState, DeploymentNoticeState, DeploymentStateMessage } from '../../../components/empty-state'
 import { Section } from '../../common'
 import { CopyPill, EndpointRow } from './common'
-import { updateAccessChannelsMutationAtom } from './state'
 import { getUrlOrigin } from './url'
 
 const ACCESS_CHANNEL_SKELETON_SECTIONS = [
@@ -24,7 +24,7 @@ function AccessChannelsSwitch({ appInstanceId, checked, accessChannels, disabled
   disabled?: boolean
 }) {
   const { t } = useTranslation('deployments')
-  const toggleAccessChannel = useAtomValue(updateAccessChannelsMutationAtom)
+  const toggleAccessChannel = useMutation(consoleQuery.enterprise.accessService.updateAccessChannels.mutationOptions())
 
   return (
     <Switch

@@ -11,10 +11,6 @@ type QueryOptions = {
   refetchInterval?: (query: { state: { data?: unknown } }) => number | false
 }
 
-type MutationOptions = {
-  mutationKey?: readonly unknown[]
-}
-
 vi.mock('jotai-tanstack-query', () => ({
   atomWithQuery: (createOptions: (get: Getter) => QueryOptions) => atom(get => ({
     ...createOptions(get),
@@ -24,7 +20,6 @@ vi.mock('jotai-tanstack-query', () => ({
     isLoading: false,
     isSuccess: false,
   })),
-  atomWithMutation: (createOptions: () => MutationOptions) => atom(() => createOptions()),
 }))
 
 vi.mock('@/service/client', () => ({
@@ -60,9 +55,6 @@ vi.mock('@/service/client', () => ({
             ...options,
             queryKey: ['listEnvironmentDeployments', options.input],
           }),
-        },
-        undeploy: {
-          mutationOptions: () => ({ mutationKey: ['undeploy'] }),
         },
       },
     },
@@ -129,16 +121,6 @@ describe('deployment detail state', () => {
     expect(store.get(state.deploymentSourceAppQueryAtom)).toMatchObject({
       enabled: true,
       input: { params: { app_id: 'source-app-1' } },
-    })
-  })
-
-  it('should expose deployment row mutations from state', async () => {
-    const state = await loadState()
-    const store = createStore()
-    const undeployDeploymentMutationAtom = state.createUndeployDeploymentMutationAtom()
-
-    expect(store.get(undeployDeploymentMutationAtom)).toMatchObject({
-      mutationKey: ['undeploy'],
     })
   })
 })

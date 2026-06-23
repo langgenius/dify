@@ -13,10 +13,10 @@ import {
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useAtomValue } from 'jotai'
+import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { updateReleaseMutationAtom } from './state'
+import { consoleQuery } from '@/service/client'
 
 type EditReleaseFormValues = {
   name: string
@@ -127,7 +127,7 @@ export function EditReleaseDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const { t } = useTranslation('deployments')
-  const updateRelease = useAtomValue(updateReleaseMutationAtom)
+  const updateRelease = useMutation(consoleQuery.enterprise.releaseService.updateRelease.mutationOptions())
   const formKey = `${release.id}-${release.displayName}-${release.description}`
 
   function handleOpenChange(nextOpen: boolean) {

@@ -9,16 +9,24 @@ import { AccessPermissionsSection } from '../permissions-section'
 
 const mockMutate = vi.hoisted(() => vi.fn())
 
-vi.mock('../state', async () => {
-  const { atom } = await import('jotai')
+vi.mock('@tanstack/react-query', () => ({
+  useMutation: () => ({
+    isPending: false,
+    mutate: mockMutate,
+  }),
+}))
 
-  return {
-    createUpdateAccessPolicyMutationAtom: () => atom({
-      isPending: false,
-      mutate: mockMutate,
-    }),
-  }
-})
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    enterprise: {
+      accessService: {
+        updateAccessPolicy: {
+          mutationOptions: () => ({ mutationKey: ['updateAccessPolicy'] }),
+        },
+      },
+    },
+  },
+}))
 
 function renderWithAtomStore(children: ReactNode) {
   return render(
