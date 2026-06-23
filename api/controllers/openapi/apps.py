@@ -16,6 +16,7 @@ from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
 from controllers.openapi._input_schema import EMPTY_INPUT_SCHEMA, build_input_schema, resolve_app_config
 from controllers.openapi._models import (
+    SUPPORTED_APP_TYPES,
     AppDescribeInfo,
     AppDescribeQuery,
     AppDescribeResponse,
@@ -30,7 +31,7 @@ from core.app.app_config.common.parameters_mapping import get_parameters_from_fe
 from extensions.ext_database import db
 from libs.oauth_bearer import Scope, TokenType
 from models import App
-from models.model import SUPPORTED_APP_TYPES, AppMode
+from models.model import AppMode
 from services.account_service import TenantService
 from services.app_service import AppListParams, AppService
 
@@ -200,7 +201,7 @@ class AppListApi(Resource):
         params = AppListParams(
             page=query.page,
             limit=query.limit,
-            mode=AppMode(query.mode.value) if query.mode else "all",
+            mode=query.mode.value if query.mode else "all",  # type:ignore
             name=query.name,
             status="normal",
             # Visibility gate pushed into the query — pagination.total stays

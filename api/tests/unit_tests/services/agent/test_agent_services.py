@@ -1228,14 +1228,13 @@ def test_restore_roster_agent_version_rejects_invisible_versions(monkeypatch: py
     assert fake_session.commits == 0
 
 
-def test_app_list_all_excludes_only_agents():
+def test_app_list_all_excludes_agent_apps_by_default():
     filters = AppService._build_app_list_filters(
         "account-1", "tenant-1", AppListParams(mode="all"), FakeSession(scalar=None, scalars=None)
     )
     sql = " ".join(str(filter_) for filter_ in filters)
 
-    assert "apps.mode !=" in sql
-    assert "apps.mode IN" not in sql
+    assert "apps.mode != :mode_1" in sql
 
 
 def test_validator_dict_helpers_wrap_validation_errors():

@@ -56,7 +56,7 @@ from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
 from models.enums import ApiTokenType
-from models.model import ApiToken, App, AppMode, IconType
+from models.model import ApiToken, App, IconType
 from services.agent.errors import AgentNotFoundError
 from services.agent.observability_service import (
     AgentLogQueryParams,
@@ -429,7 +429,7 @@ class AgentAppListApi(Resource):
         params = AppListParams(
             page=args.page,
             limit=args.limit,
-            mode=AppMode.AGENT,
+            mode="agent",
             name=args.name,
             tag_ids=args.tag_ids,
             creator_ids=args.creator_ids,
