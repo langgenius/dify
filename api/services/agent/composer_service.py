@@ -4,6 +4,7 @@ from typing import Any
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.sql.elements import ColumnElement
 
 from extensions.ext_database import db
 from libs.helper import to_timestamp
@@ -32,6 +33,7 @@ from services.agent.errors import (
     AgentNotFoundError,
     AgentVersionConflictError,
     AgentVersionNotFoundError,
+    InvalidComposerConfigError,
 )
 from services.entities.agent_entities import (
     AgentSoulConfig,
@@ -1046,7 +1048,7 @@ class AgentComposerService:
         node_job: WorkflowNodeJobConfig | None = None,
     ) -> None:
         exact_keys, prefixes = cls._drive_copy_scopes_from_agent_configs(agent_soul=agent_soul, node_job=node_job)
-        predicates = []
+        predicates: list[ColumnElement[bool]] = []
         if exact_keys:
             predicates.append(AgentDriveFile.key.in_(sorted(exact_keys)))
         predicates.extend(AgentDriveFile.key.startswith(prefix) for prefix in sorted(prefixes))
@@ -1120,9 +1122,9 @@ class AgentComposerService:
                 if file_ref.drive_key:
                     exact_keys.add(file_ref.drive_key)
             for output in node_job.declared_outputs:
-                file_ref = output.check.benchmark_file_ref if output.check and output.check.enabled else None
-                if file_ref and file_ref.drive_key:
-                    exact_keys.add(file_ref.drive_key)
+                benchmark_ref = output.check.benchmark_file_ref if output.check and output.check.enabled else None
+                if benchmark_ref and benchmark_ref.drive_key:
+                    exact_keys.add(benchmark_ref.drive_key)
 
         return exact_keys, prefixes
 
