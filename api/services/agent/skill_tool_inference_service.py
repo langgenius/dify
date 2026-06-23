@@ -26,8 +26,6 @@ from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from graphon.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
-from models.agent import Agent
-from models.agent_config_entities import AgentSoulConfig
 from services.agent_drive_service import AgentDriveError, AgentDriveService
 
 logger = logging.getLogger(__name__)
@@ -97,14 +95,8 @@ class SkillToolInferenceService:
 
     def infer(self, *, tenant_id: str, agent_id: str, slug: str, session: scoped_session) -> dict[str, Any]:
         skill_md = self._load_skill_md(tenant_id=tenant_id, agent_id=agent_id, slug=slug)
-        manifest_files = self._manifest_files_from_soul(
-            tenant_id=tenant_id, agent_id=agent_id, slug=slug, session=session
-        )
 
         user_prompt = f"SKILL.md of skill '{slug}':\n\n{skill_md}"
-        if manifest_files:
-            listing = "\n".join(manifest_files[:200])
-            user_prompt += f"\n\nFiles inside the skill package:\n{listing}"
 
         raw = self._invoke(tenant_id=tenant_id, user_prompt=user_prompt)
         try:
@@ -139,37 +131,6 @@ class SkillToolInferenceService:
                 "skill_not_found", f"skill_not_found: SKILL.md of '{slug}' is not readable text.", status_code=404
             )
         return str(preview["text"])
-
-    @staticmethod
-    def _manifest_files_from_soul(*, tenant_id: str, agent_id: str, slug: str, session: scoped_session) -> list[str]:
-        """The zip path listing standardize persisted onto the ref, if present.
-
-        Degrades to an empty list (SKILL.md-only inference) for refs that
-        predate ``manifest_files``.
-        """
-        agent = session.scalar(select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id).limit(1))
-        if agent is None or not agent.active_config_snapshot_id:
-            return []
-        from models.agent import AgentConfigSnapshot
-
-        snapshot = session.scalar(
-            select(AgentConfigSnapshot).where(
-                AgentConfigSnapshot.tenant_id == tenant_id,
-                AgentConfigSnapshot.agent_id == agent_id,
-                AgentConfigSnapshot.id == agent.active_config_snapshot_id,
-            )
-        )
-        if snapshot is None:
-            return []
-        soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
-        for skill in soul.skills_files.skills:
-            ref_slug = (skill.skill_md_key or "").split("/", 1)[0] or (skill.path or "").strip("/")
-            if ref_slug != slug:
-                continue
-            files = skill.get("manifest_files")
-            if isinstance(files, list):
-                return [str(item) for item in files]
-        return []
 
     @staticmethod
     def _invoke(*, tenant_id: str, user_prompt: str) -> str:

@@ -613,6 +613,7 @@
   "versions.releaseDescriptionLabel": "説明",
   "versions.releaseDescriptionPlaceholder": "このリリースを説明してください",
   "versions.releaseHistory": "リリース履歴",
+  "versions.releaseNameConflict": "このリリース名は既に存在します。別の名前を選択してください。",
   "versions.releaseNameLabel": "リリース名",
   "versions.releaseNamePlaceholder": "リリース名",
   "versions.releaseNameRequired": "リリース名を入力してください。",

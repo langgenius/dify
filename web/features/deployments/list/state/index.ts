@@ -34,22 +34,20 @@ export const deploymentsListQueryAtom = atomWithInfiniteQuery<
   const queryKeywords = get(deploymentsListKeywordsAtom).trim()
   const queryEnvironmentId = get(deploymentsListEnvironmentIdAtom) ?? undefined
 
-  return {
-    ...consoleQuery.enterprise.appInstanceService.listAppInstanceSummaries.infiniteOptions({
-      input: pageParam => ({
-        query: {
-          pageNumber: Number(pageParam),
-          resultsPerPage: SOURCE_APPS_PAGE_SIZE,
-          ...(queryEnvironmentId ? { environmentId: queryEnvironmentId } : {}),
-          ...(queryKeywords ? { displayName: queryKeywords } : {}),
-        },
-      }),
-      getNextPageParam: lastPage => getNextPageParamFromPagination(lastPage.pagination),
-      initialPageParam: 1,
-      placeholderData: keepPreviousData,
+  return consoleQuery.enterprise.appInstanceService.listAppInstanceSummaries.infiniteOptions({
+    input: pageParam => ({
+      query: {
+        pageNumber: Number(pageParam),
+        resultsPerPage: SOURCE_APPS_PAGE_SIZE,
+        ...(queryEnvironmentId ? { environmentId: queryEnvironmentId } : {}),
+        ...(queryKeywords ? { displayName: queryKeywords } : {}),
+      },
     }),
+    getNextPageParam: lastPage => getNextPageParamFromPagination(lastPage.pagination),
+    initialPageParam: 1,
+    placeholderData: keepPreviousData,
     refetchInterval: query => listDeploymentStatusPollingInterval(query.state.data),
-  }
+  })
 })
 
 export const deploymentsListRowsAtom = atom((get) => {

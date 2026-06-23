@@ -971,7 +971,7 @@ class ToolBuiltinProviderSetDefaultApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_USE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def post(self, current_tenant_id: str, provider: str):
@@ -1070,6 +1070,7 @@ class ToolProviderMCPApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.MCP_MANAGE, resource_required=False)
     @with_current_user
     @with_current_tenant_id
     def post(self, tenant_id: str, user: Account):
@@ -1125,6 +1126,7 @@ class ToolProviderMCPApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.MCP_MANAGE, resource_required=False)
     @with_current_tenant_id
     def put(self, current_tenant_id: str):
         payload = MCPProviderUpdatePayload.model_validate(console_ns.payload or {})
@@ -1178,6 +1180,7 @@ class ToolProviderMCPApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.MCP_MANAGE, resource_required=False)
     @with_current_tenant_id
     def delete(self, current_tenant_id: str):
         payload = MCPProviderDeletePayload.model_validate(console_ns.payload or {})
@@ -1196,6 +1199,7 @@ class ToolMCPAuthApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.MCP_MANAGE, resource_required=False)
     @with_current_tenant_id
     def post(self, tenant_id: str):
         payload = MCPAuthPayload.model_validate(console_ns.payload or {})
@@ -1300,6 +1304,7 @@ class ToolMCPUpdateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.MCP_MANAGE, resource_required=False)
     @with_current_tenant_id
     def get(self, tenant_id: str, provider_id: str):
         with sessionmaker(db.engine).begin() as session:

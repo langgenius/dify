@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Literal
 
 from pydantic import Field, field_validator
 
@@ -16,10 +16,8 @@ from models.agent import (
 )
 from models.agent_config_entities import (
     AgentCliToolConfig,
-    AgentFileRefConfig,
     AgentHumanContactConfig,
     AgentKnowledgeDatasetConfig,
-    AgentSkillRefConfig,
     AgentSoulConfig,
     DeclaredOutputConfig,
     DeclaredOutputType,
@@ -396,20 +394,6 @@ class AgentComposerDifyToolCandidateResponse(ResponseModel):
     tools_count: int | None = None
 
 
-class AgentComposerSkillCandidateResponse(AgentSkillRefConfig):
-    kind: Literal["skill"] = "skill"
-
-
-class AgentComposerFileCandidateResponse(AgentFileRefConfig):
-    kind: Literal["file"] = "file"
-
-
-AgentComposerSkillFileCandidateResponse = Annotated[
-    AgentComposerSkillCandidateResponse | AgentComposerFileCandidateResponse,
-    Field(discriminator="kind"),
-]
-
-
 class AgentComposerNodeJobCandidatesResponse(ResponseModel):
     previous_node_outputs: list[WorkflowPreviousNodeOutputRef] = Field(default_factory=list)
     declare_output_types: list[DeclaredOutputType] = Field(default_factory=list)
@@ -417,7 +401,6 @@ class AgentComposerNodeJobCandidatesResponse(ResponseModel):
 
 
 class AgentComposerSoulCandidatesResponse(ResponseModel):
-    skills_files: list[AgentComposerSkillFileCandidateResponse] = Field(default_factory=list)
     dify_tools: list[AgentComposerDifyToolCandidateResponse] = Field(default_factory=list)
     cli_tools: list[AgentCliToolConfig] = Field(default_factory=list)
     knowledge_datasets: list[AgentKnowledgeDatasetConfig] = Field(default_factory=list)

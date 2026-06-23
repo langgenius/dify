@@ -391,6 +391,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
 
         try:
             response = HitTestingService.external_retrieve(
+                session=db.session,
                 dataset=dataset,
                 query=payload.query,
                 account=current_user,

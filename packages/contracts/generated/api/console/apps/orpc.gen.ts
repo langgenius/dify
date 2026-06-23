@@ -926,11 +926,11 @@ export const drive = {
 }
 
 /**
- * Delete one drive file by key; soul ref first, then the KV row (ENG-625 D5)
+ * Delete one drive file by key via drive commit-null semantics
  */
 export const delete_ = oc
   .route({
-    description: 'Delete one drive file by key; soul ref first, then the KV row (ENG-625 D5)',
+    description: 'Delete one drive file by key via drive commit-null semantics',
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteAppsByAppIdAgentFiles',
@@ -1056,12 +1056,11 @@ export const inferTools = {
 }
 
 /**
- * Delete a standardized skill: soul ref first, then the <slug>/ drive prefix (ENG-625 D5)
+ * Delete a standardized skill by removing its known drive keys via commit-null
  */
 export const delete2 = oc
   .route({
-    description:
-      'Delete a standardized skill: soul ref first, then the <slug>/ drive prefix (ENG-625 D5)',
+    description: 'Delete a standardized skill by removing its known drive keys via commit-null',
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteAppsByAppIdAgentSkillsBySlug',

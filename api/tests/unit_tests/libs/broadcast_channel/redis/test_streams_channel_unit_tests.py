@@ -77,11 +77,28 @@ class FailExpireRedis(FakeStreamsRedis):
 
 
 class BlockingRedis:
+    """A Redis mock whose xread blocks until a control event is xadd-ed."""
+
     def __init__(self) -> None:
         self._release = threading.Event()
+        self._store: dict[str, list[tuple[str, dict]]] = {}
+        self._next_id: dict[str, int] = {}
+
+    def xadd(self, key: str, fields: dict[str, Any], *, maxlen: int | None = None) -> str:
+        n = self._next_id.get(key, 0) + 1
+        self._next_id[key] = n
+        entry_id = f"{n}-0"
+        self._store.setdefault(key, []).append((entry_id, fields))
+        self._release.set()  # Wake up any blocked xread
+        return entry_id
 
     def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
         self._release.wait(timeout=block / 1000.0 if block else None)
+        key = next(iter(streams))
+        entries = self._store.get(key, [])
+        if entries:
+            self._store[key] = []  # Consume entries
+            return [(key, entries)]
         return []
 
     def release(self) -> None:
@@ -175,48 +192,6 @@ class TestStreamsBroadcastChannel:
 
         assert topic.as_producer() is topic
         assert topic.as_subscriber() is topic
-
-    def test_join_timeout_ms_propagates_from_channel_to_subscription(self, fake_redis: FakeStreamsRedis):
-        channel = StreamsBroadcastChannel(fake_redis, retention_seconds=60, join_timeout_ms=150)
-        topic = channel.topic("join-timeout-prop")
-
-        assert topic._join_timeout_ms == 150
-
-        sub = topic.subscribe()
-        try:
-            assert sub._join_timeout_ms == 150
-        finally:
-            sub.close()
-
-    def test_join_timeout_ms_defaults_to_2000(self, fake_redis: FakeStreamsRedis):
-        channel = StreamsBroadcastChannel(fake_redis, retention_seconds=60)
-        topic = channel.topic("join-timeout-default")
-
-        assert topic._join_timeout_ms == 2000
-
-    def test_small_join_timeout_makes_close_return_promptly(self, fake_redis: FakeStreamsRedis):
-        """close() should respect the configured join timeout.
-
-        Regression test for SSE close tail latency: when an idle listener is
-        blocked on its poll cycle, close() with a small join_timeout_ms must
-        not wait for the full poll window. The orphaned daemon listener
-        cleans itself up later.
-        """
-        channel = StreamsBroadcastChannel(fake_redis, retention_seconds=60, join_timeout_ms=50)
-        topic = channel.topic("join-timeout-prompt-close")
-        sub = topic.subscribe()
-
-        # Drive listener startup so the thread is actually blocked in xread.
-        assert sub.receive(timeout=0.05) is None
-        time.sleep(0.05)
-
-        started = time.monotonic()
-        sub.close()
-        elapsed = time.monotonic() - started
-
-        # 50ms timeout + scheduling slack; pick a ceiling well under the
-        # default poll window (1000ms) to make the regression meaningful.
-        assert elapsed < 0.5, f"close() took {elapsed:.3f}s; expected prompt return"
 
     def test_publish_logs_warning_when_expire_fails(self, caplog: pytest.LogCaptureFixture):
         channel = StreamsBroadcastChannel(FailExpireRedis(), retention_seconds=60)
@@ -384,40 +359,32 @@ class TestStreamsSubscription:
 
         assert next(iter(subscription)) == b"event"
 
-    def test_close_logs_debug_when_listener_does_not_stop_in_time(
-        self,
-        caplog: pytest.LogCaptureFixture,
-    ):
-        """When a low join_timeout elapses with the listener still alive,
-        close() should log at DEBUG (not WARNING) - with a deliberately small
-        timeout this is expected, not anomalous; the orphaned daemon thread
-        cleans itself up on the next poll boundary.
+    def test_control_event_unblocks_listener_for_prompt_close(self):
+        """close() returns promptly because the control event (xadd) unblocks
+        the listener from its blocking xread call.
         """
-        import logging
-
         blocking_redis = BlockingRedis()
-        subscription = _StreamsSubscription(blocking_redis, "stream:slow-close")
+        subscription = _StreamsSubscription(blocking_redis, "stream:prompt-close")
 
+        # Drive listener startup so the thread is blocked in xread.
         subscription._start_if_needed()
         listener = subscription._listener
         assert listener is not None
+        assert listener.is_alive()
 
-        original_join = listener.join
-        original_is_alive = listener.is_alive
+        started = time.monotonic()
+        subscription.close()
+        elapsed = time.monotonic() - started
 
-        def delayed_join(timeout: float | None = None) -> None:
-            original_join(0.01)
+        # The control event (xadd) wakes up xread immediately, so close()
+        # should return well under 1s (the xread BLOCK timeout).
+        assert elapsed < 0.5, f"close() took {elapsed:.3f}s; expected prompt return via control event"
 
-        listener.join = delayed_join  # type: ignore[method-assign]
-        listener.is_alive = lambda: True  # type: ignore[method-assign]
+    def test_control_event_not_sent_when_listener_not_started(self):
+        """close() should not fail when the listener was never started."""
+        subscription = _StreamsSubscription(FakeStreamsRedis(), "stream:no-listener")
+        subscription.close()
 
-        try:
-            with caplog.at_level(logging.DEBUG, logger="libs.broadcast_channel.redis.streams_channel"):
-                subscription.close()
-            assert "did not stop within" in caplog.text
-            assert "daemon thread will exit on its own" in caplog.text
-        finally:
-            listener.join = original_join  # type: ignore[method-assign]
-            listener.is_alive = original_is_alive  # type: ignore[method-assign]
-            blocking_redis.release()
-            original_join(timeout=1)
+        assert subscription._listener is None
+        with pytest.raises(SubscriptionClosedError):
+            subscription.receive(timeout=0.01)

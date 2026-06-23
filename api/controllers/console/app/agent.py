@@ -1,4 +1,3 @@
-import logging
 from typing import Any
 from uuid import UUID
 
@@ -30,7 +29,6 @@ from fields.base import ResponseModel
 from libs.helper import uuid_value
 from libs.login import login_required
 from models import Account
-from models.agent_config_entities import AgentFileRefConfig, AgentSkillRefConfig
 from models.model import App, AppMode, UploadFile
 from services.agent.composer_service import AgentComposerService
 from services.agent.skill_package_service import SkillManifest, SkillPackageError
@@ -48,8 +46,6 @@ from services.agent_drive_service import (
     normalize_drive_key,
 )
 from services.agent_service import AgentService
-
-logger = logging.getLogger(__name__)
 
 _WORKFLOW_AGENT_DRIVE_APP_MODES = [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT]
 _AGENT_SKILL_UPLOAD_PARAMS = {
@@ -130,8 +126,16 @@ class AgentLogResponse(ResponseModel):
     files: list[Any] = Field(default_factory=list)
 
 
+class AgentUploadedSkillResponse(ResponseModel):
+    name: str
+    description: str
+    path: str
+    skill_md_key: str
+    archive_key: str | None = None
+
+
 class AgentSkillUploadResponse(ResponseModel):
-    skill: AgentSkillRefConfig
+    skill: AgentUploadedSkillResponse
     manifest: SkillManifest
 
 
@@ -145,13 +149,11 @@ class AgentDriveFileResponse(ResponseModel):
 
 class AgentDriveFileCommitResponse(ResponseModel):
     file: AgentDriveFileResponse
-    config_version_id: str | None = None
 
 
 class AgentDriveDeleteResponse(ResponseModel):
     result: str
     removed_keys: list[str] = Field(default_factory=list)
-    config_version_id: str | None = None
 
 
 register_schema_models(console_ns, AgentLogQuery, AgentDriveFilePayload, AgentDriveDeleteFileByAgentQuery)
@@ -161,6 +163,7 @@ register_response_schema_models(
     AgentDriveFileCommitResponse,
     AgentDriveFileResponse,
     AgentLogResponse,
+    AgentUploadedSkillResponse,
     AgentSkillUploadResponse,
     SkillToolInferenceResult,
 )
@@ -242,24 +245,6 @@ def _commit_drive_file_for_app(*, current_user: Account, app_model: App, allow_n
         return {"code": exc.code, "message": exc.message}, exc.status_code
 
     row = committed[0]
-    file_ref = AgentFileRefConfig.model_validate(
-        {
-            "id": row["key"],
-            "name": upload_file.name,
-            "file_id": upload_file.id,
-            "drive_key": row["key"],
-            "type": row.get("mime_type"),
-            "size": row.get("size"),
-        }
-    )
-    config_version_id = AgentComposerService.add_drive_file_ref(
-        tenant_id=app_model.tenant_id,
-        agent_id=agent_id,
-        account_id=current_user.id,
-        file_ref=file_ref,
-        app_id=app_model.id,
-        node_id=node_id,
-    )
     return {
         "file": {
             "name": upload_file.name,
@@ -268,7 +253,6 @@ def _commit_drive_file_for_app(*, current_user: Account, app_model: App, allow_n
             "size": row.get("size"),
             "mime_type": row.get("mime_type"),
         },
-        "config_version_id": config_version_id,
     }, 201
 
 
@@ -283,24 +267,17 @@ def _delete_drive_file_for_app(*, current_user: Account, app_model: App, allow_n
     except AgentDriveError as exc:
         return {"code": exc.code, "message": exc.message}, exc.status_code
 
-    config_version_id = AgentComposerService.remove_drive_refs(
-        tenant_id=app_model.tenant_id,
-        agent_id=agent_id,
-        account_id=current_user.id,
-        file_key=key,
-        app_id=app_model.id,
-        node_id=node_id,
-    )
-    removed_keys: list[str] = []
     try:
-        removed_keys = AgentDriveService().delete(tenant_id=app_model.tenant_id, agent_id=agent_id, key=key)
+        result = AgentDriveService().commit(
+            tenant_id=app_model.tenant_id,
+            user_id=current_user.id,
+            agent_id=agent_id,
+            items=[DriveCommitItem(key=key, file_ref=None)],
+        )
     except AgentDriveError as exc:
         return {"code": exc.code, "message": exc.message}, exc.status_code
-    except Exception:
-        # Soul-first ordering: the ref is already gone; orphan KV rows are
-        # harmless and an idempotent DELETE retry cleans them.
-        logger.exception("agent drive delete failed for key %s (soul already updated)", key)
-    return {"result": "success", "removed_keys": removed_keys, "config_version_id": config_version_id}
+    removed_keys = [item["key"] for item in result if item.get("removed")]
+    return {"result": "success", "removed_keys": removed_keys}
 
 
 def _delete_skill_for_app(*, current_user: Account, app_model: App, slug: str, allow_node_id: bool = True):
@@ -312,22 +289,20 @@ def _delete_skill_for_app(*, current_user: Account, app_model: App, slug: str, a
     if "/" in slug or not slug.strip():
         return {"code": "drive_key_invalid", "message": "skill slug must be a single path segment"}, 400
 
-    config_version_id = AgentComposerService.remove_drive_refs(
-        tenant_id=app_model.tenant_id,
-        agent_id=agent_id,
-        account_id=current_user.id,
-        skill_slug=slug,
-        app_id=app_model.id,
-        node_id=node_id,
-    )
-    removed_keys: list[str] = []
     try:
-        removed_keys = AgentDriveService().delete(tenant_id=app_model.tenant_id, agent_id=agent_id, prefix=f"{slug}/")
+        result = AgentDriveService().commit(
+            tenant_id=app_model.tenant_id,
+            user_id=current_user.id,
+            agent_id=agent_id,
+            items=[
+                DriveCommitItem(key=f"{slug}/SKILL.md", file_ref=None),
+                DriveCommitItem(key=f"{slug}/.DIFY-SKILL-FULL.zip", file_ref=None),
+            ],
+        )
     except AgentDriveError as exc:
         return {"code": exc.code, "message": exc.message}, exc.status_code
-    except Exception:
-        logger.exception("agent drive delete failed for skill %s (soul already updated)", slug)
-    return {"result": "success", "removed_keys": removed_keys, "config_version_id": config_version_id}
+    removed_keys = [item["key"] for item in result if item.get("removed")]
+    return {"result": "success", "removed_keys": removed_keys}
 
 
 def _infer_skill_tools_for_app(*, app_model: App, slug: str):
@@ -460,7 +435,7 @@ class AgentDriveFilesApi(Resource):
         return _commit_drive_file_for_app(current_user=current_user, app_model=app_model)
 
     @console_ns.doc("delete_agent_drive_file")
-    @console_ns.doc(description="Delete one drive file by key; soul ref first, then the KV row (ENG-625 D5)")
+    @console_ns.doc(description="Delete one drive file by key via drive commit-null semantics")
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentDriveDeleteFileQuery)})
     @console_ns.response(200, "File removed", console_ns.models[AgentDriveDeleteResponse.__name__])
     @setup_required
@@ -491,9 +466,7 @@ class AgentSkillByAgentApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/agent/skills/<string:slug>")
 class AgentSkillApi(Resource):
     @console_ns.doc("delete_agent_skill")
-    @console_ns.doc(
-        description="Delete a standardized skill: soul ref first, then the <slug>/ drive prefix (ENG-625 D5)"
-    )
+    @console_ns.doc(description="Delete a standardized skill by removing its known drive keys via commit-null")
     @console_ns.doc(
         params={
             "app_id": "Application ID",

@@ -116,6 +116,7 @@ class DatasetsHitTestingBase:
         try:
             current_user, _ = resolve_account_fallback(current_user, current_tenant_id)
             response = HitTestingService.retrieve(
+                session=db.session,
                 dataset=dataset,
                 query=cast(str, args.get("query")),
                 account=current_user,

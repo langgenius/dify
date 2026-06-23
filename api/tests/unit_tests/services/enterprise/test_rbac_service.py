@@ -46,7 +46,7 @@ class TestCatalog:
         assert call.tenant_id == "tenant-1"
         assert call.account_id == "acct-1"
         assert call.json is None
-        assert call.params is None
+        assert call.params == {"billing_enabled": svc.dify_config.BILLING_ENABLED}
         assert len(out.groups) == 1
         assert out.groups[0].group_key == "workspace"
 

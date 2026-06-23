@@ -592,7 +592,7 @@ Stop a running Agent App chat message generation
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [CopyAppPayload](#copyapppayload)<br> |
+|  Yes | **application/json**: [AgentAppCopyPayload](#agentappcopypayload)<br> |
 
 #### Responses
 
@@ -600,6 +600,20 @@ Stop a running Agent App chat message generation
 | ---- | ----------- | ------ |
 | 201 | Agent app copied successfully | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
 | 400 | Invalid request parameters |  |
+| 403 | Insufficient permissions |  |
+
+### [POST] /agent/{agent_id}/debug-conversation/refresh
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent debug conversation refreshed | **application/json**: [AgentDebugConversationRefreshResponse](#agentdebugconversationrefreshresponse)<br> |
 | 403 | Insufficient permissions |  |
 
 ### [GET] /agent/{agent_id}/drive/files
@@ -1608,7 +1622,7 @@ Inspect one drive-backed skill for slash-menu hover/detail UI
 | 200 | Drive skill inspect view | **application/json**: [AgentDriveSkillInspectResponse](#agentdriveskillinspectresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/agent/files
-Delete one drive file by key; soul ref first, then the KV row (ENG-625 D5)
+Delete one drive file by key via drive commit-null semantics
 
 #### Parameters
 
@@ -1694,7 +1708,7 @@ Upload + standardize a Skill into the agent drive
 | 400 | Invalid skill package or no bound agent |  |
 
 ### [DELETE] /apps/{app_id}/agent/skills/{slug}
-Delete a standardized skill: soul ref first, then the <slug>/ drive prefix (ENG-625 D5)
+Delete a standardized skill by removing its known drive keys via commit-null
 
 #### Parameters
 
@@ -8145,7 +8159,7 @@ Get all published workflows for a snippet
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Published workflows retrieved successfully | **application/json**: [WorkflowPaginationResponse](#workflowpaginationresponse)<br> |
+| 200 | Published workflows retrieved successfully | **application/json**: [SnippetWorkflowPaginationResponse](#snippetworkflowpaginationresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/default-workflow-block-configs
 **Get default block configurations for snippet workflow**
@@ -12143,6 +12157,17 @@ Default namespace
 | validation | [ComposerValidationFindingsResponse](#composervalidationfindingsresponse) |  | No |
 | variant | string |  | Yes |
 
+#### AgentAppCopyPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string | Description for the copied agent | No |
+| icon | string | Icon | No |
+| icon_background | string | Icon background color | No |
+| icon_type | [IconType](#icontype) | Icon type | No |
+| name | string | Name for the copied agent | No |
+| role | string | Role for the copied agent | No |
+
 #### AgentAppCreatePayload
 
 | Name | Type | Description | Required |
@@ -12392,23 +12417,6 @@ Risk marker for CLI tool bootstrap commands.
 | provider_id | string |  | No |
 | tools_count | integer |  | No |
 
-#### AgentComposerFileCandidateResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| drive_key | string |  | No |
-| file_id | string |  | No |
-| id | string |  | No |
-| kind | string, <br>**Default:** file |  | No |
-| name | string |  | No |
-| reference | string |  | No |
-| remote_url | string |  | No |
-| tenant_id | string |  | No |
-| transfer_method | string |  | No |
-| type | string |  | No |
-| upload_file_id | string |  | No |
-| url | string |  | No |
-
 #### AgentComposerImpactBindingResponse
 
 | Name | Type | Description | Required |
@@ -12433,22 +12441,6 @@ Risk marker for CLI tool bootstrap commands.
 | human_contacts | [ [AgentHumanContactConfig](#agenthumancontactconfig) ] |  | No |
 | previous_node_outputs | [ [WorkflowPreviousNodeOutputRef](#workflowpreviousnodeoutputref) ] |  | No |
 
-#### AgentComposerSkillCandidateResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| file_id | string |  | No |
-| full_archive_file_id | string |  | No |
-| full_archive_key | string |  | No |
-| id | string |  | No |
-| kind | string, <br>**Default:** skill |  | No |
-| manifest_files | [ string ] |  | No |
-| name | string |  | No |
-| path | string |  | No |
-| skill_md_file_id | string |  | No |
-| skill_md_key | string |  | No |
-
 #### AgentComposerSoulCandidatesResponse
 
 | Name | Type | Description | Required |
@@ -12457,7 +12449,6 @@ Risk marker for CLI tool bootstrap commands.
 | dify_tools | [ [AgentComposerDifyToolCandidateResponse](#agentcomposerdifytoolcandidateresponse) ] |  | No |
 | human_contacts | [ [AgentHumanContactConfig](#agenthumancontactconfig) ] |  | No |
 | knowledge_datasets | [ [AgentKnowledgeDatasetConfig](#agentknowledgedatasetconfig) ] |  | No |
-| skills_files | [  ] |  | No |
 
 #### AgentComposerSoulLockResponse
 
@@ -12562,6 +12553,12 @@ Audit operation recorded for Agent Soul version/revision changes.
 | date | string |  | Yes |
 | message_count | integer |  | Yes |
 
+#### AgentDebugConversationRefreshResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| debug_conversation_id | string |  | Yes |
+
 #### AgentDriveDeleteFileByAgentQuery
 
 | Name | Type | Description | Required |
@@ -12572,7 +12569,6 @@ Audit operation recorded for Agent Soul version/revision changes.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| config_version_id | string |  | No |
 | removed_keys | [ string ] |  | No |
 | result | string |  | Yes |
 
@@ -12586,7 +12582,6 @@ Audit operation recorded for Agent Soul version/revision changes.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| config_version_id | string |  | No |
 | file | [AgentDriveFileResponse](#agentdrivefileresponse) |  | Yes |
 
 #### AgentDriveFilePayload
@@ -13172,27 +13167,12 @@ Visibility and lifecycle scope of an Agent record.
 | enabled | boolean |  | No |
 | type | string |  | No |
 
-#### AgentSkillRefConfig
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| file_id | string |  | No |
-| full_archive_file_id | string |  | No |
-| full_archive_key | string |  | No |
-| id | string |  | No |
-| manifest_files | [ string ] |  | No |
-| name | string |  | No |
-| path | string |  | No |
-| skill_md_file_id | string |  | No |
-| skill_md_key | string |  | No |
-
 #### AgentSkillUploadResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | manifest | [SkillManifest](#skillmanifest) |  | Yes |
-| skill | [AgentSkillRefConfig](#agentskillrefconfig) |  | Yes |
+| skill | [AgentUploadedSkillResponse](#agentuploadedskillresponse) |  | Yes |
 
 #### AgentSoulAppFeaturesConfig
 
@@ -13221,7 +13201,6 @@ Visibility and lifecycle scope of an Agent record.
 | prompt | [AgentSoulPromptConfig](#agentsoulpromptconfig) |  | No |
 | sandbox | [AgentSoulSandboxConfig](#agentsoulsandboxconfig) |  | No |
 | schema_version | integer, <br>**Default:** 1 |  | No |
-| skills_files | [AgentSoulSkillsFilesConfig](#agentsoulskillsfilesconfig) |  | No |
 | tools | [AgentSoulToolsConfig](#agentsoultoolsconfig) |  | No |
 
 #### AgentSoulDifyToolConfig
@@ -13337,13 +13316,6 @@ Reference to model credentials resolved only at runtime.
 | ---- | ---- | ----------- | -------- |
 | config | [AgentSandboxProviderConfig](#agentsandboxproviderconfig) |  | No |
 | provider | string |  | No |
-
-#### AgentSoulSkillsFilesConfig
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| files | [ [AgentFileRefConfig](#agentfilerefconfig) ] |  | No |
-| skills | [ [AgentSkillRefConfig](#agentskillrefconfig) ] |  | No |
 
 #### AgentSoulToolsConfig
 
@@ -13475,6 +13447,16 @@ Soft lifecycle state for Agent records.
 | tool_name | string |  | Yes |
 | tool_output | object |  | Yes |
 | tool_parameters | object |  | Yes |
+
+#### AgentUploadedSkillResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| archive_key | string |  | No |
+| description | string |  | Yes |
+| name | string |  | Yes |
+| path | string |  | Yes |
+| skill_md_key | string |  | Yes |
 
 #### AgentUserSatisfactionRateStatisticResponse
 
@@ -19434,6 +19416,15 @@ Query parameters for listing snippet published workflows.
 | ---- | ---- | ----------- | -------- |
 | limit | integer, <br>**Default:** 10 |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
+
+#### SnippetWorkflowPaginationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| has_more | boolean |  | Yes |
+| items | [ [SnippetWorkflowResponse](#snippetworkflowresponse) ] |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
 
 #### SnippetWorkflowResponse
 

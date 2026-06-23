@@ -312,6 +312,7 @@ _LEGACY_WORKSPACE_OWNER_KEYS: list[str] = [
     "plugin.manage",
     "plugin.debug",
     "credential.use",
+    "credential.create",
     "credential.manage",
     "billing.view",
     "billing.subscription.manage",
@@ -344,6 +345,7 @@ _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
     "plugin.manage",
     "plugin.debug",
     "credential.use",
+    "credential.create",
     "credential.manage",
     "billing.view",
     "billing.subscription.manage",
@@ -768,6 +770,7 @@ class RBACService:
             data = _inner_call(
                 "GET",
                 f"{_INNER_PREFIX}/role-permissions/catalog",
+                params={"billing_enabled": dify_config.BILLING_ENABLED},
                 tenant_id=tenant_id,
                 account_id=account_id,
             )
@@ -1583,7 +1586,7 @@ class RBACService:
                         account_id=member_account_id,
                         roles=[
                             RBACRole(
-                                id="",
+                                id=role,
                                 name=role,
                                 description="",
                                 is_builtin=True,

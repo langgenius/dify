@@ -1,12 +1,11 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { useQuery } from '@tanstack/react-query'
-import { useSetAtom } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
 import { openDeployDrawerAtom } from '../../deploy-drawer/state'
-import { deploymentStatusPollingInterval, hasRuntimeInstanceDeployment } from '../../shared/domain/runtime-status'
+import { hasRuntimeInstanceDeployment } from '../../shared/domain/runtime-status'
+import { deploymentEnvironmentDeploymentsQueryAtom } from '../state'
 
 export function NewDeploymentButton({ appInstanceId }: {
   appInstanceId: string
@@ -30,12 +29,7 @@ export function NewDeploymentButton({ appInstanceId }: {
 export function NewDeploymentHeaderAction({ appInstanceId }: {
   appInstanceId: string
 }) {
-  const environmentDeploymentsQuery = useQuery(consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({
-    input: {
-      params: { appInstanceId },
-    },
-    refetchInterval: query => deploymentStatusPollingInterval(query.state.data?.environmentDeployments),
-  }))
+  const environmentDeploymentsQuery = useAtomValue(deploymentEnvironmentDeploymentsQueryAtom)
   const rows = environmentDeploymentsQuery.data?.environmentDeployments.filter(hasRuntimeInstanceDeployment) ?? []
 
   if (environmentDeploymentsQuery.isLoading || environmentDeploymentsQuery.isError || rows.length === 0)

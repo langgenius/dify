@@ -84,7 +84,7 @@ def test_default_layer_providers_build_agent_stub_token_factory_from_agent_stub_
 
     providers = create_default_layer_providers(
         shellctl_entrypoint="http://shellctl.example",
-        agent_stub_url="https://agent.example.com/agent-stub",
+        agent_stub_api_base_url="https://agent.example.com/agent-stub",
         agent_stub_token_codec=codec,
     )
     shell_provider = next(provider for provider in providers if provider.type_id == DIFY_SHELL_LAYER_TYPE_ID)
