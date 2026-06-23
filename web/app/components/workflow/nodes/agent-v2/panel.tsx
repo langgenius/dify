@@ -1,6 +1,8 @@
+import type { AgentComposerBindingResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { AgentRosterNodeData } from '../../block-selector/types'
 import type { NodePanelProps } from '../../types'
 import type { AgentV2NodeType } from './types'
+import { useMutation } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,12 +12,14 @@ import {
 } from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
 import { useStore } from '@/app/components/workflow/store'
+import { consoleQuery } from '@/service/client'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import { AgentAdvancedSettings } from './components/agent-advanced-settings'
 import { AgentOrchestrateDrawerPanel } from './components/agent-orchestrate-drawer-panel'
 import { AgentOutputVariables } from './components/agent-output-variables'
 import { AgentRosterField } from './components/agent-roster-field'
 import { AgentTaskField } from './components/agent-task-field'
+import { SaveInlineAgentToRosterDialog } from './components/save-inline-agent-to-roster-dialog'
 import { useAgentRosterDetail, useCreateInlineAgentBinding, useWorkflowInlineAgentDetail } from './hooks'
 import { getAgentV2DeclaredOutputs } from './output-variables'
 import { hasValidInlineAgentBinding } from './types'
@@ -30,6 +34,8 @@ export function AgentV2Panel({
   const promptOutputNamesRef = useRef(extractAgentOutputNames(inputs.agent_task || ''))
   const [isRosterAgentPanelOpen, setIsRosterAgentPanelOpen] = useState(false)
   const [isInlineAgentPanelOpenedFromTrigger, setIsInlineAgentPanelOpenedFromTrigger] = useState(false)
+  const [isSaveToRosterDialogOpen, setIsSaveToRosterDialogOpen] = useState(false)
+  const [saveToRosterSessionKey, setSaveToRosterSessionKey] = useState(0)
   const { handleNodeDataUpdate, handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
   const openInlineAgentPanelNodeId = useStore(state => state.openInlineAgentPanelNodeId)
   const setOpenInlineAgentPanelNodeId = useStore(state => state.setOpenInlineAgentPanelNodeId)
@@ -45,10 +51,17 @@ export function AgentV2Panel({
   const inlineAgentQuery = useWorkflowInlineAgentDetail(id, inlineAgentId)
   const { createInlineAgentBinding, isCreatingInlineAgent } = useCreateInlineAgentBinding()
   const inlineAgent = inlineAgentQuery.data?.agent
+  const {
+    isPending: isCopyingFromRoster,
+    mutate: copyFromRoster,
+  } = useMutation(
+    consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.copyFromRoster.post.mutationOptions(),
+  )
   const isAgentPanelOpen = isInlineAgentReady || isInlineAgentPending ? isInlineAgentPanelOpen : isRosterAgentPanelOpen
   const isInlineAgentLoading = isInlineAgentPending || (isInlineAgentReady && !inlineAgent)
   const isAgentBindingPending = isInlineAgentPending || isCreatingInlineAgent
   const canStartFromScratch = inputs.agent_binding?.binding_type !== 'inline_agent'
+  const canSaveInlineToRoster = isInlineAgentReady && !!inlineAgent
   const displayedAgent = rosterAgentQuery.data ?? (isInlineAgentPending || isInlineAgentReady
     ? {
         id: inlineAgentId ?? id,
@@ -112,6 +125,91 @@ export function AgentV2Panel({
       },
     )
   }, [handleNodeDataUpdateWithSyncDraft, id, inputs, setOpenInlineAgentPanelNodeId])
+
+  const handleMakeRosterCopy = useCallback(() => {
+    if (!appId || !rosterAgentId || isCopyingFromRoster)
+      return
+
+    copyFromRoster({
+      params: {
+        app_id: appId,
+        node_id: id,
+      },
+      body: {
+        source_agent_id: rosterAgentId,
+      },
+    }, {
+      onSuccess: (composerState) => {
+        const binding = composerState.binding
+        if (
+          binding?.binding_type !== 'inline_agent'
+          || !binding.agent_id
+          || !binding.current_snapshot_id
+        ) {
+          return
+        }
+
+        setIsRosterAgentPanelOpen(false)
+        setIsInlineAgentPanelOpenedFromTrigger(true)
+        setOpenInlineAgentPanelNodeId(id)
+
+        const newInputs = produce(inputsRef.current, (draft) => {
+          delete (draft as AgentV2NodeType & { agent_roster?: unknown }).agent_roster
+          draft.agent_binding = {
+            binding_type: 'inline_agent',
+            agent_id: binding.agent_id,
+            current_snapshot_id: binding.current_snapshot_id,
+          }
+          draft._openInlineAgentPanel = true
+        })
+        inputsRef.current = newInputs
+        handleNodeDataUpdateWithSyncDraft(
+          {
+            id,
+            data: newInputs,
+          },
+          {
+            sync: true,
+            notRefreshWhenSyncError: true,
+          },
+        )
+      },
+    })
+  }, [appId, copyFromRoster, handleNodeDataUpdateWithSyncDraft, id, isCopyingFromRoster, rosterAgentId, setOpenInlineAgentPanelNodeId])
+
+  const handleSaveInlineToRosterOpen = useCallback(() => {
+    setSaveToRosterSessionKey(key => key + 1)
+    setIsSaveToRosterDialogOpen(true)
+  }, [])
+
+  const handleInlineSavedToRoster = useCallback((binding: AgentComposerBindingResponse) => {
+    if (binding.binding_type !== 'roster_agent' || !binding.agent_id)
+      return
+
+    setOpenInlineAgentPanelNodeId(undefined)
+    setIsInlineAgentPanelOpenedFromTrigger(false)
+    setIsRosterAgentPanelOpen(true)
+
+    const newInputs = produce(inputsRef.current, (draft) => {
+      delete (draft as AgentV2NodeType & { agent_roster?: unknown }).agent_roster
+      delete draft._openInlineAgentPanel
+      draft.agent_binding = {
+        binding_type: 'roster_agent',
+        agent_id: binding.agent_id!,
+      }
+    })
+    inputsRef.current = newInputs
+    handleNodeDataUpdateWithSyncDraft(
+      {
+        id,
+        data: newInputs,
+      },
+      {
+        sync: true,
+        notRefreshWhenSyncError: true,
+      },
+    )
+  }, [handleNodeDataUpdateWithSyncDraft, id, setOpenInlineAgentPanelNodeId])
 
   const handleStartFromScratch = useCallback(() => {
     setIsRosterAgentPanelOpen(false)
@@ -219,6 +317,7 @@ export function AgentV2Panel({
           canOpenPanel
           isInlineSetup={isInlineAgentReady || isInlineAgentPending}
           isLoading={isInlineAgentLoading}
+          isPanelCopyPending={isCopyingFromRoster}
           isPanelOpen={isAgentPanelOpen}
           isPending={isAgentBindingPending}
           panelBody={isAgentPanelOpen && displayedAgent
@@ -237,8 +336,20 @@ export function AgentV2Panel({
           portalContainerRef={drawerPortalContainerRef}
           showPanelDetailActions={!isInlineAgentReady && !isInlineAgentPending}
           onChange={handleRosterChange}
+          onMakeCopy={rosterAgentId ? handleMakeRosterCopy : undefined}
           onPanelOpenChange={handleAgentPanelOpenChange}
+          onSaveInlineToRoster={canSaveInlineToRoster ? handleSaveInlineToRosterOpen : undefined}
           onStartFromScratch={canStartFromScratch ? handleStartFromScratch : undefined}
+        />
+        <SaveInlineAgentToRosterDialog
+          key={saveToRosterSessionKey}
+          appId={appId}
+          formKey={saveToRosterSessionKey}
+          initialAgent={inlineAgent}
+          nodeId={id}
+          open={isSaveToRosterDialogOpen}
+          onOpenChange={setIsSaveToRosterDialogOpen}
+          onSaved={handleInlineSavedToRoster}
         />
       </div>
       <div

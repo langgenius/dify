@@ -347,6 +347,73 @@ export const consoleClient: JsonifiedClient<ContractRouterClient<typeof consoleR
 export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQueryUtils(consoleClient, {
   path: ['console'],
   experimental_defaults: {
+    apps: {
+      byAppId: {
+        workflows: {
+          draft: {
+            nodes: {
+              byNodeId: {
+                agentComposer: {
+                  copyFromRoster: {
+                    post: {
+                      mutationOptions: {
+                        onSuccess: (composerState, variables, _onMutateResult, context) => {
+                          context.client.setQueryData(
+                            consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+                              input: {
+                                params: variables.params,
+                              },
+                            }),
+                            composerState,
+                          )
+                        },
+                      },
+                    },
+                  },
+                  saveToRoster: {
+                    post: {
+                      mutationOptions: {
+                        onSuccess: (composerState, variables, _onMutateResult, context) => {
+                          context.client.setQueryData(
+                            consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+                              input: {
+                                params: variables.params,
+                              },
+                            }),
+                            composerState,
+                          )
+                          context.client.invalidateQueries({
+                            queryKey: consoleQuery.agent.get.key(),
+                          })
+                          context.client.invalidateQueries({
+                            queryKey: consoleQuery.agent.inviteOptions.get.key(),
+                          })
+
+                          const agentId = composerState.binding?.binding_type === 'roster_agent'
+                            ? composerState.binding.agent_id
+                            : undefined
+                          if (agentId) {
+                            context.client.invalidateQueries({
+                              queryKey: consoleQuery.agent.byAgentId.get.queryKey({
+                                input: {
+                                  params: {
+                                    agent_id: agentId,
+                                  },
+                                },
+                              }),
+                            })
+                          }
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
     agent: {
       post: {
         mutationOptions: {

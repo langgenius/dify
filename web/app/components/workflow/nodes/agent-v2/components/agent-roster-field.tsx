@@ -12,6 +12,12 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import {
   Popover,
@@ -91,23 +97,30 @@ function AgentRosterDrawer({
   showAccessIcon = true,
   showConsoleLink = true,
   showDetailActions = true,
+  isCopyPending = false,
+  onMakeCopy,
+  onSaveInlineToRoster,
   onClose,
 }: {
   agent: AgentRosterDisplayData
   children?: ReactNode
   isInlineSetup?: boolean
+  isCopyPending?: boolean
   mode?: AgentRosterDrawerMode
   open: boolean
   portalContainerRef: RefObject<HTMLDivElement | null>
   showAccessIcon?: boolean
   showConsoleLink?: boolean
   showDetailActions?: boolean
+  onMakeCopy?: () => void
+  onSaveInlineToRoster?: () => void
   onClose: () => void
 }) {
   const { t } = useTranslation()
   const isSetup = mode === 'setup'
   const title = isInlineSetup ? t(`${i18nPrefix}.roster.inlineSetup.name`, { ns: 'workflow' }) : agent.name
   const description = isSetup ? t(`${i18nPrefix}.roster.inlineSetup.description`, { ns: 'workflow' }) : agent.role
+  const showInlineActions = isInlineSetup && !!onSaveInlineToRoster
 
   return (
     <Drawer
@@ -160,16 +173,27 @@ function AgentRosterDrawer({
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-1 py-1">
-                    <button
-                      type="button"
-                      aria-label={t(`${i18nPrefix}.roster.more`, { ns: 'workflow' })}
-                      className="flex size-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                    >
-                      <span aria-hidden className="i-ri-more-fill size-4" />
-                    </button>
-                    <div className="flex h-3.5 items-start px-1">
-                      <div className="h-full w-px bg-divider-regular" />
-                    </div>
+                    {showInlineActions && (
+                      <>
+                        <DropdownMenu modal={false}>
+                          <DropdownMenuTrigger
+                            aria-label={t(`${i18nPrefix}.roster.more`, { ns: 'workflow' })}
+                            className="flex size-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
+                          >
+                            <span aria-hidden className="i-ri-more-fill size-4" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-44 w-max">
+                            <DropdownMenuItem className="gap-2 whitespace-nowrap" onClick={onSaveInlineToRoster}>
+                              <span aria-hidden className="i-ri-inbox-archive-line size-4 shrink-0 text-text-tertiary" />
+                              <span>{t('roster.saveToRoster', { ns: 'agentV2' })}</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <div className="flex h-3.5 items-start px-1">
+                          <div className="h-full w-px bg-divider-regular" />
+                        </div>
+                      </>
+                    )}
                     <DrawerCloseButton
                       aria-label={t('operation.close', { ns: 'common' })}
                       className="size-6 rounded-md"
@@ -193,6 +217,8 @@ function AgentRosterDrawer({
                       variant="secondary"
                       size="medium"
                       className="min-w-0 flex-1 gap-1.5 px-3"
+                      loading={isCopyPending}
+                      onClick={onMakeCopy}
                     >
                       <span aria-hidden className="i-ri-file-copy-2-line size-4 shrink-0" />
                       <span className="truncate">
@@ -222,6 +248,7 @@ export function AgentRosterField({
   agentId,
   canOpenPanel = true,
   isPanelOpen,
+  isPanelCopyPending = false,
   isPending = false,
   isLoading = false,
   isInlineSetup = false,
@@ -230,13 +257,16 @@ export function AgentRosterField({
   showPanelDetailActions = true,
   portalContainerRef,
   onChange,
+  onMakeCopy,
   onPanelOpenChange,
+  onSaveInlineToRoster,
   onStartFromScratch,
 }: {
   agent?: AgentRosterDisplayData
   agentId?: string
   canOpenPanel?: boolean
   isPanelOpen?: boolean
+  isPanelCopyPending?: boolean
   isLoading?: boolean
   isInlineSetup?: boolean
   isPending?: boolean
@@ -245,7 +275,9 @@ export function AgentRosterField({
   showPanelDetailActions?: boolean
   portalContainerRef: RefObject<HTMLDivElement | null>
   onChange: (agent: AgentRosterNodeData) => void
+  onMakeCopy?: () => void
   onPanelOpenChange?: (open: boolean) => void
+  onSaveInlineToRoster?: () => void
   onStartFromScratch?: () => void
 }) {
   const { t } = useTranslation()
@@ -358,6 +390,9 @@ export function AgentRosterField({
                       portalContainerRef={portalContainerRef}
                       showAccessIcon={!isInlineSetup}
                       showDetailActions={showPanelDetailActions}
+                      isCopyPending={isPanelCopyPending}
+                      onMakeCopy={onMakeCopy}
+                      onSaveInlineToRoster={onSaveInlineToRoster}
                       onClose={() => setPanelOpen(false)}
                     >
                       {panelBody}

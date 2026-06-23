@@ -2499,8 +2499,12 @@ export const zAgentStatus = z.enum(['active', 'archived'])
 export const zAgentComposerAgentResponse = z.object({
   active_config_snapshot_id: z.string().nullish(),
   description: z.string(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
   id: z.string(),
   name: z.string(),
+  role: z.string().nullish(),
   scope: zAgentScope,
   status: zAgentStatus,
 })

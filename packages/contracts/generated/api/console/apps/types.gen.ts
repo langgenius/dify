@@ -1788,8 +1788,12 @@ export type AgentConfigSnapshotSummaryResponse = {
 export type AgentComposerAgentResponse = {
   active_config_snapshot_id?: string | null
   description: string
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
   id: string
   name: string
+  role?: string | null
   scope: AgentScope
   status: AgentStatus
 }

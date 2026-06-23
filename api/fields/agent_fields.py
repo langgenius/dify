@@ -298,6 +298,10 @@ class AgentComposerAgentResponse(ResponseModel):
     id: str
     name: str
     description: str
+    role: str | None = None
+    icon_type: str | None = None
+    icon: str | None = None
+    icon_background: str | None = None
     scope: AgentScope
     status: AgentStatus
     active_config_snapshot_id: str | None = None

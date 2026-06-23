@@ -370,13 +370,27 @@ def test_serialize_workflow_state_changes_lock_and_save_options(monkeypatch: pyt
         node_id="node-1",
         node_job_config='{"workflow_prompt":"do work"}',
     )
-    agent = Agent(id="agent-1", name="Analyst", description="", scope=AgentScope.ROSTER, status=AgentStatus.ACTIVE)
+    agent = Agent(
+        id="agent-1",
+        name="Analyst",
+        description="Clarifies tenders",
+        role="Tender Analyst",
+        icon_type="emoji",
+        icon="robot",
+        icon_background="#F5F3FF",
+        scope=AgentScope.ROSTER,
+        status=AgentStatus.ACTIVE,
+    )
     version = AgentConfigSnapshot(id="version-1", version=1, config_snapshot='{"prompt":{"system_prompt":"x"}}')
     monkeypatch.setattr(AgentComposerService, "calculate_impact", lambda **kwargs: {"workflow_node_count": 1})
 
     state = AgentComposerService._serialize_workflow_state(binding=binding, agent=agent, version=version)
 
     assert state["soul_lock"]["locked"] is True
+    assert state["agent"]["role"] == "Tender Analyst"
+    assert state["agent"]["icon_type"] == "emoji"
+    assert state["agent"]["icon"] == "robot"
+    assert state["agent"]["icon_background"] == "#F5F3FF"
     assert "save_as_new_version" in state["save_options"]
     assert state["agent_soul"]["app_features"] == {}
     # Stage 4 §10.1 (D-3): binding with no declared_outputs → response surfaces
