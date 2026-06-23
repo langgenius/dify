@@ -73,7 +73,7 @@ export type AppInfo = {
 
 export type AppListQuery = {
   limit?: number
-  mode?: AppMode | null
+  mode?: SupportedAppType | null
   name?: string | null
   page?: number
   workspace_id: string
@@ -354,7 +354,7 @@ export type Package = {
 
 export type PermittedExternalAppsListQuery = {
   limit?: number
-  mode?: AppMode | null
+  mode?: SupportedAppType | null
   name?: string | null
   page?: number
 }
@@ -404,6 +404,8 @@ export type SessionRow = {
   last_used_at?: string | null
   prefix: string
 }
+
+export type SupportedAppType = 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
 
 export type TaskStopResponse = {
   result: 'success'
@@ -589,15 +591,7 @@ export type GetAppsData = {
   path?: never
   query: {
     limit?: number
-    mode?:
-      | 'advanced-chat'
-      | 'agent'
-      | 'agent-chat'
-      | 'channel'
-      | 'chat'
-      | 'completion'
-      | 'rag-pipeline'
-      | 'workflow'
+    mode?: 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
     name?: string
     page?: number
     workspace_id: string
@@ -905,15 +899,7 @@ export type GetPermittedExternalAppsData = {
   path?: never
   query?: {
     limit?: number
-    mode?:
-      | 'advanced-chat'
-      | 'agent'
-      | 'agent-chat'
-      | 'channel'
-      | 'chat'
-      | 'completion'
-      | 'rag-pipeline'
-      | 'workflow'
+    mode?: 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
     name?: string
     page?: number
   }
