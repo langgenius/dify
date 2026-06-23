@@ -1,12 +1,12 @@
 {
   "name": "@langgenius/difyctl",
   "type": "module",
-  "version": "0.1.0-rc.1",
+  "version": "0.1.0-alpha",
   "description": "Dify command-line interface",
   "difyctl": {
-    "channel": "rc",
+    "channel": "alpha",
     "compat": {
-      "minDify": "1.14.0",
+      "minDify": "1.15.0",
       "maxDify": "1.15.0"
     },
     "release": {
