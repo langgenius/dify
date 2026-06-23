@@ -183,7 +183,9 @@ class TestMetadataService:
         metadata_args = MetadataArgs(type="string", name="test_metadata")
 
         # Act: Execute the method under test
-        result = MetadataService.create_metadata(db_session_with_containers, dataset.id, metadata_args, account, tenant.id)
+        result = MetadataService.create_metadata(
+            db_session_with_containers, dataset.id, metadata_args, account, tenant.id
+        )
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -243,7 +245,9 @@ class TestMetadataService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(ValueError, match="Metadata name already exists."):
-            MetadataService.create_metadata(db_session_with_containers, dataset.id, second_metadata_args, account, tenant.id)
+            MetadataService.create_metadata(
+                db_session_with_containers, dataset.id, second_metadata_args, account, tenant.id
+            )
 
     def test_create_metadata_name_conflicts_with_built_in_field(
         self, db_session_with_containers: Session, mock_external_service_dependencies: MetadataServiceDeps
@@ -283,7 +287,9 @@ class TestMetadataService:
 
         # Create metadata first
         metadata_args = MetadataArgs(type="string", name="old_name")
-        metadata = MetadataService.create_metadata(db_session_with_containers, dataset.id, metadata_args, account, tenant.id)
+        metadata = MetadataService.create_metadata(
+            db_session_with_containers, dataset.id, metadata_args, account, tenant.id
+        )
 
         # Act: Execute the method under test
         new_name = "new_name"
@@ -318,7 +324,9 @@ class TestMetadataService:
 
         # Create metadata first
         metadata_args = MetadataArgs(type="string", name="old_name")
-        metadata = MetadataService.create_metadata(db_session_with_containers, dataset.id, metadata_args, account, tenant.id)
+        metadata = MetadataService.create_metadata(
+            db_session_with_containers, dataset.id, metadata_args, account, tenant.id
+        )
 
         # Try to update with too long name
         long_name = "a" * 256  # 256 characters, exceeding 255 limit
@@ -345,10 +353,14 @@ class TestMetadataService:
 
         # Create two metadata entries
         first_metadata_args = MetadataArgs(type="string", name="first_metadata")
-        first_metadata = MetadataService.create_metadata(db_session_with_containers, dataset.id, first_metadata_args, account, tenant.id)
+        first_metadata = MetadataService.create_metadata(
+            db_session_with_containers, dataset.id, first_metadata_args, account, tenant.id
+        )
 
         second_metadata_args = MetadataArgs(type="number", name="second_metadata")
-        second_metadata = MetadataService.create_metadata(db_session_with_containers, dataset.id, second_metadata_args, account, tenant.id)
+        second_metadata = MetadataService.create_metadata(
+            db_session_with_containers, dataset.id, second_metadata_args, account, tenant.id
+        )
 
         # Try to update first metadata with second metadata's name
         with pytest.raises(ValueError, match="Metadata name already exists."):
@@ -372,7 +384,9 @@ class TestMetadataService:
 
         # Create metadata first
         metadata_args = MetadataArgs(type="string", name="old_name")
-        metadata = MetadataService.create_metadata(db_session_with_containers, dataset.id, metadata_args, account, tenant.id)
+        metadata = MetadataService.create_metadata(
+            db_session_with_containers, dataset.id, metadata_args, account, tenant.id
+        )
 
         # Try to update with built-in field name
         built_in_field_name = BuiltInField.document_name
@@ -426,7 +440,9 @@ class TestMetadataService:
 
         # Create metadata first
         metadata_args = MetadataArgs(type="string", name="to_be_deleted")
-        metadata = MetadataService.create_metadata(db_session_with_containers, dataset.id, metadata_args, account, tenant.id)
+        metadata = MetadataService.create_metadata(
+            db_session_with_containers, dataset.id, metadata_args, account, tenant.id
+        )
 
         # Act: Execute the method under test
         result = MetadataService.delete_metadata(db_session_with_containers, dataset.id, metadata.id)
@@ -484,7 +500,9 @@ class TestMetadataService:
 
         # Create metadata
         metadata_args = MetadataArgs(type="string", name="test_metadata")
-        metadata = MetadataService.create_metadata(db_session_with_containers, dataset.id, metadata_args, account, tenant.id)
+        metadata = MetadataService.create_metadata(
+            db_session_with_containers, dataset.id, metadata_args, account, tenant.id
+        )
 
         # Create metadata binding
         binding = DatasetMetadataBinding(
@@ -768,7 +786,9 @@ class TestMetadataService:
 
         # Create metadata
         metadata_args = MetadataArgs(type="string", name="test_metadata")
-        metadata = MetadataService.create_metadata(db_session_with_containers, dataset.id, metadata_args, account, tenant.id)
+        metadata = MetadataService.create_metadata(
+            db_session_with_containers, dataset.id, metadata_args, account, tenant.id
+        )
 
         # Mock DocumentService.get_document
         mock_external_service_dependencies["document_service"].get_document.return_value = document
@@ -832,7 +852,9 @@ class TestMetadataService:
 
         # Create metadata
         metadata_args = MetadataArgs(type="string", name="test_metadata")
-        metadata = MetadataService.create_metadata(db_session_with_containers, dataset.id, metadata_args, account, tenant.id)
+        metadata = MetadataService.create_metadata(
+            db_session_with_containers, dataset.id, metadata_args, account, tenant.id
+        )
 
         # Mock DocumentService.get_document
         mock_external_service_dependencies["document_service"].get_document.return_value = document
@@ -879,7 +901,9 @@ class TestMetadataService:
 
         # Create metadata
         metadata_args = MetadataArgs(type="string", name="test_metadata")
-        metadata = MetadataService.create_metadata(db_session_with_containers, dataset.id, metadata_args, account, tenant.id)
+        metadata = MetadataService.create_metadata(
+            db_session_with_containers, dataset.id, metadata_args, account, tenant.id
+        )
 
         # Create metadata operation data
         from services.entities.knowledge_entities.knowledge_entities import (
@@ -996,7 +1020,9 @@ class TestMetadataService:
 
         # Create metadata
         metadata_args = MetadataArgs(type="string", name="test_metadata")
-        metadata = MetadataService.create_metadata(db_session_with_containers, dataset.id, metadata_args, account, tenant.id)
+        metadata = MetadataService.create_metadata(
+            db_session_with_containers, dataset.id, metadata_args, account, tenant.id
+        )
 
         # Create document and metadata binding
         document = self._create_test_document(
@@ -1055,7 +1081,9 @@ class TestMetadataService:
 
         # Create metadata
         metadata_args = MetadataArgs(type="string", name="test_metadata")
-        metadata = MetadataService.create_metadata(db_session_with_containers, dataset.id, metadata_args, account, tenant.id)
+        metadata = MetadataService.create_metadata(
+            db_session_with_containers, dataset.id, metadata_args, account, tenant.id
+        )
 
         # Act: Execute the method under test
         result = MetadataService.get_dataset_metadatas(db_session_with_containers, dataset)
