@@ -171,6 +171,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                     else UUID_NIL
                 ),
                 user_id=user.id,
+                user_session_id=user.session_id if isinstance(user, EndUser) else user.id,
                 invoke_from=invoke_from,
                 extras=extras,
                 trace_manager=trace_manager,
