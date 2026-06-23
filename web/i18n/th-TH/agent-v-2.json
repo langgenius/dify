@@ -340,7 +340,6 @@
   "roster.createDialog.title": "สร้างตัวแทน",
   "roster.createForm.changeIcon": "เปลี่ยนไอคอนตัวแทน",
   "roster.createForm.descriptionLabel": "คำอธิบาย",
-  "roster.createForm.descriptionOptional": "(ตัวเลือก)",
   "roster.createForm.descriptionPlaceholder": "เช่น รวบรวมแหล่งข้อมูลในหัวข้อหนึ่งและสรุปผลสำคัญ",
   "roster.createForm.nameLabel": "ชื่อ",
   "roster.createForm.namePlaceholder": "เช่น Max",

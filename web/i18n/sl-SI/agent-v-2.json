@@ -340,7 +340,6 @@
   "roster.createDialog.title": "Ustvari agenta",
   "roster.createForm.changeIcon": "Spremeni ikono agenta",
   "roster.createForm.descriptionLabel": "Opis",
-  "roster.createForm.descriptionOptional": "(neobvezno)",
   "roster.createForm.descriptionPlaceholder": "npr. Zbira vire o določeni temi in povzame ključne ugotovitve",
   "roster.createForm.nameLabel": "Ime",
   "roster.createForm.namePlaceholder": "npr. Max",

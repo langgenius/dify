@@ -340,7 +340,6 @@
   "roster.createDialog.title": "Создать агента",
   "roster.createForm.changeIcon": "Сменить иконку агента",
   "roster.createForm.descriptionLabel": "Описание",
-  "roster.createForm.descriptionOptional": "(необязательно)",
   "roster.createForm.descriptionPlaceholder": "напр. Собирает источники по теме и резюмирует ключевые выводы",
   "roster.createForm.nameLabel": "Имя",
   "roster.createForm.namePlaceholder": "напр. Max",

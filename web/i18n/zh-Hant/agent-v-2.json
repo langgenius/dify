@@ -340,7 +340,6 @@
   "roster.createDialog.title": "建立智能體",
   "roster.createForm.changeIcon": "更換智能體圖示",
   "roster.createForm.descriptionLabel": "描述",
-  "roster.createForm.descriptionOptional": "（選用）",
   "roster.createForm.descriptionPlaceholder": "例如：收集某個主題的來源資料並總結關鍵發現",
   "roster.createForm.nameLabel": "名稱",
   "roster.createForm.namePlaceholder": "例如：Max",

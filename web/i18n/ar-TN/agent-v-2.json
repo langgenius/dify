@@ -340,7 +340,6 @@
   "roster.createDialog.title": "إنشاء وكيل",
   "roster.createForm.changeIcon": "تغيير أيقونة الوكيل",
   "roster.createForm.descriptionLabel": "الوصف",
-  "roster.createForm.descriptionOptional": "(اختياري)",
   "roster.createForm.descriptionPlaceholder": "مثلاً يجمع المصادر حول موضوع ويلخص النتائج الرئيسية",
   "roster.createForm.nameLabel": "الاسم",
   "roster.createForm.namePlaceholder": "مثلاً Max",

@@ -340,7 +340,6 @@
   "roster.createDialog.title": "에이전트 만들기",
   "roster.createForm.changeIcon": "에이전트 아이콘 변경",
   "roster.createForm.descriptionLabel": "설명",
-  "roster.createForm.descriptionOptional": "(선택 사항)",
   "roster.createForm.descriptionPlaceholder": "예: 주제에 대한 소스를 수집하고 핵심 결과를 요약",
   "roster.createForm.nameLabel": "이름",
   "roster.createForm.namePlaceholder": "예: Max",

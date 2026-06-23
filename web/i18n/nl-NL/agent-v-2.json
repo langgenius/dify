@@ -340,7 +340,6 @@
   "roster.createDialog.title": "Agent aanmaken",
   "roster.createForm.changeIcon": "Agentpictogram wijzigen",
   "roster.createForm.descriptionLabel": "Beschrijving",
-  "roster.createForm.descriptionOptional": "(optioneel)",
   "roster.createForm.descriptionPlaceholder": "bv. Verzamelt bronnen over een onderwerp en vat de belangrijkste bevindingen samen",
   "roster.createForm.nameLabel": "Naam",
   "roster.createForm.namePlaceholder": "bv. Max",

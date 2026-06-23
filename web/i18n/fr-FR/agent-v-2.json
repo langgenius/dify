@@ -340,7 +340,6 @@
   "roster.createDialog.title": "Créer un agent",
   "roster.createForm.changeIcon": "Changer l’icône de l’agent",
   "roster.createForm.descriptionLabel": "Description",
-  "roster.createForm.descriptionOptional": "(facultatif)",
   "roster.createForm.descriptionPlaceholder": "p. ex. Rassemble des sources sur un sujet et résume les principales conclusions",
   "roster.createForm.nameLabel": "Nom",
   "roster.createForm.namePlaceholder": "p. ex. Max",

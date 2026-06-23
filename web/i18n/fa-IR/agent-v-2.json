@@ -340,7 +340,6 @@
   "roster.createDialog.title": "ایجاد عامل",
   "roster.createForm.changeIcon": "تغییر آیکون عامل",
   "roster.createForm.descriptionLabel": "توضیحات",
-  "roster.createForm.descriptionOptional": "(اختیاری)",
   "roster.createForm.descriptionPlaceholder": "مثلاً منابعی درباره یک موضوع جمع‌آوری می‌کند و یافته‌های کلیدی را خلاصه می‌کند",
   "roster.createForm.nameLabel": "نام",
   "roster.createForm.namePlaceholder": "مثلاً Max",

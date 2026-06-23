@@ -340,7 +340,6 @@
   "roster.createDialog.title": "エージェントを作成",
   "roster.createForm.changeIcon": "エージェントアイコンを変更",
   "roster.createForm.descriptionLabel": "説明",
-  "roster.createForm.descriptionOptional": "（任意）",
   "roster.createForm.descriptionPlaceholder": "例: トピックのソースを収集し、主要な発見を要約する",
   "roster.createForm.nameLabel": "名前",
   "roster.createForm.namePlaceholder": "例: Max",

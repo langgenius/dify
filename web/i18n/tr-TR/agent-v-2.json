@@ -340,7 +340,6 @@
   "roster.createDialog.title": "Ajan oluştur",
   "roster.createForm.changeIcon": "Ajan simgesini değiştir",
   "roster.createForm.descriptionLabel": "Açıklama",
-  "roster.createForm.descriptionOptional": "(isteğe bağlı)",
   "roster.createForm.descriptionPlaceholder": "örn. Bir konuda kaynak toplar ve temel bulguları özetler",
   "roster.createForm.nameLabel": "Ad",
   "roster.createForm.namePlaceholder": "örn. Max",

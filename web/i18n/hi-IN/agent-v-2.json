@@ -340,7 +340,6 @@
   "roster.createDialog.title": "एजेंट बनाएँ",
   "roster.createForm.changeIcon": "एजेंट आइकन बदलें",
   "roster.createForm.descriptionLabel": "विवरण",
-  "roster.createForm.descriptionOptional": "(वैकल्पिक)",
   "roster.createForm.descriptionPlaceholder": "उदा. किसी विषय पर स्रोत एकत्र करता है और मुख्य निष्कर्षों का सारांश देता है",
   "roster.createForm.nameLabel": "नाम",
   "roster.createForm.namePlaceholder": "उदा. Max",

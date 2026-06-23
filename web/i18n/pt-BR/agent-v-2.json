@@ -340,7 +340,6 @@
   "roster.createDialog.title": "Criar agente",
   "roster.createForm.changeIcon": "Alterar ícone do agente",
   "roster.createForm.descriptionLabel": "Descrição",
-  "roster.createForm.descriptionOptional": "(opcional)",
   "roster.createForm.descriptionPlaceholder": "ex.: Reúne fontes sobre um tópico e resume as principais descobertas",
   "roster.createForm.nameLabel": "Nome",
   "roster.createForm.namePlaceholder": "ex.: Max",

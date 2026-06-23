@@ -340,7 +340,6 @@
   "roster.createDialog.title": "Creează agent",
   "roster.createForm.changeIcon": "Schimbă pictograma agentului",
   "roster.createForm.descriptionLabel": "Descriere",
-  "roster.createForm.descriptionOptional": "(opțional)",
   "roster.createForm.descriptionPlaceholder": "de ex. Adună surse pe o temă și rezumă principalele constatări",
   "roster.createForm.nameLabel": "Nume",
   "roster.createForm.namePlaceholder": "de ex. Max",

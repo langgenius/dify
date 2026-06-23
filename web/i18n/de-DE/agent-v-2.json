@@ -340,7 +340,6 @@
   "roster.createDialog.title": "Agent erstellen",
   "roster.createForm.changeIcon": "Agenten-Symbol ändern",
   "roster.createForm.descriptionLabel": "Beschreibung",
-  "roster.createForm.descriptionOptional": "(optional)",
   "roster.createForm.descriptionPlaceholder": "z. B. Sammelt Quellen zu einem Thema und fasst die wichtigsten Erkenntnisse zusammen",
   "roster.createForm.nameLabel": "Name",
   "roster.createForm.namePlaceholder": "z. B. Max",
