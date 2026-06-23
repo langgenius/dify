@@ -116,9 +116,12 @@ function setFormFieldValue<
   value: Updater<DeepValue<TValues, TField>>,
   options?: UpdateMetaOptions,
 ) {
-  form.api.setFieldValue(name, value, options)
+  const shouldValidate = !options?.dontValidate
+    && !(options?.dontUpdateMeta && !form.api.getFieldMeta(name)?.isTouched)
 
-  if (options?.dontUpdateMeta || options?.dontValidate)
+  form.api.setFieldValue(name, value, shouldValidate ? options : { ...(options ?? {}), dontValidate: true })
+
+  if (!shouldValidate)
     return
 
   const fieldMeta = form.api.getFieldMeta(name)

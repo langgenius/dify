@@ -228,6 +228,48 @@ describe('jotai-tanstack-form', () => {
     unsubscribe()
   })
 
+  it('keeps stale submit errors when dontUpdateMeta keeps a field untouched', async () => {
+    const onSubmit = vi.fn()
+    const formAtoms = createFormAtoms(createSubmitValidatedFormAtom(onSubmit))
+    const nameFieldAtom = formAtoms.fieldAtom('name')
+    const store = createStore()
+    const unsubscribe = store.sub(formAtoms.stateAtom, () => undefined)
+
+    await store.set(formAtoms.submitAtom)
+    store.set(nameFieldAtom, 'Ada', { dontUpdateMeta: true })
+
+    expect(store.get(nameFieldAtom).meta).toMatchObject({
+      isTouched: false,
+      errorMap: {
+        onSubmit: 'required',
+      },
+    })
+    expect(onSubmit).not.toHaveBeenCalled()
+
+    unsubscribe()
+  })
+
+  it('clears stale submit errors with dontUpdateMeta when the field is already touched', async () => {
+    const onSubmit = vi.fn()
+    const formAtoms = createFormAtoms(createSubmitValidatedFormAtom(onSubmit))
+    const nameFieldAtom = formAtoms.fieldAtom('name')
+    const store = createStore()
+    const unsubscribe = store.sub(formAtoms.stateAtom, () => undefined)
+
+    store.set(nameFieldAtom, '')
+    await store.set(formAtoms.submitAtom)
+    store.set(nameFieldAtom, 'Ada', { dontUpdateMeta: true })
+
+    expect(store.get(nameFieldAtom).meta).toMatchObject({
+      isTouched: true,
+      errorMap: {
+        onSubmit: undefined,
+      },
+    })
+
+    unsubscribe()
+  })
+
   it('creates and mounts form instances from atom lifecycle', () => {
     const cleanup = vi.fn()
     const formAtom = createTestFormAtom()
