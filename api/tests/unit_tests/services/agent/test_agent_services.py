@@ -1883,8 +1883,11 @@ class TestAgentAppBackingAgent:
         monkeypatch.setattr(service, "_copy_agent_active_snapshot", lambda **_: None)
         monkeypatch.setattr(service, "_next_duplicate_agent_name", lambda **_: "Iris copy")
 
+        captured: dict[str, object] = {}
+
         class FakeAppService:
             def create_app(self, tenant_id: str, params, account: object) -> object:
+                captured["params"] = params
                 return target_app
 
         access_mode_updates = []
@@ -1910,9 +1913,11 @@ class TestAgentAppBackingAgent:
             tenant_id="tenant-1",
             agent_id="source-agent",
             account=SimpleNamespace(id="account-1"),
+            role="Custom Analyst",
         )
 
         assert duplicated is target_app
+        assert captured["params"].agent_role == "Custom Analyst"
         assert access_mode_updates == [("target-app", "private")]
 
     def test_duplicate_agent_app_falls_back_to_public_access_mode(self, monkeypatch: pytest.MonkeyPatch):
