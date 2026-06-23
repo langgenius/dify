@@ -125,10 +125,7 @@ function setFormFieldValue<
   if (!fieldMeta?.errorMap.onSubmit)
     return
 
-  const hasFieldError = Object.entries(fieldMeta.errorMap).some(([key, error]) => {
-    return key !== 'onSubmit' && error !== undefined
-  })
-  if (hasFieldError)
+  if (fieldMeta.errorMap.onChange || fieldMeta.errorMap.onDynamic)
     return
 
   form.api.setFieldMeta(name, prev => ({

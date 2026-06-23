@@ -192,6 +192,42 @@ describe('jotai-tanstack-form', () => {
     unsubscribe()
   })
 
+  it('clears stale submit errors when a field atom update only has existing blur errors', async () => {
+    const onSubmit = vi.fn()
+    const formAtoms = createFormAtoms(createSubmitValidatedFormAtom(onSubmit))
+    const nameFieldAtom = formAtoms.fieldAtom('name')
+    const store = createStore()
+    const unsubscribe = store.sub(formAtoms.stateAtom, () => undefined)
+
+    await store.set(formAtoms.submitAtom)
+    store.get(formAtoms.formAtom).api.setFieldMeta('name', prev => ({
+      ...prev,
+      errorMap: {
+        ...prev.errorMap,
+        onBlur: 'blurred',
+      },
+      errorSourceMap: {
+        ...prev.errorSourceMap,
+        onBlur: 'field',
+      },
+    }))
+
+    expect(store.get(nameFieldAtom).meta?.errorMap).toMatchObject({
+      onBlur: 'blurred',
+      onSubmit: 'required',
+    })
+
+    store.set(nameFieldAtom, 'ready')
+
+    expect(store.get(nameFieldAtom).meta?.errorMap).toMatchObject({
+      onBlur: 'blurred',
+      onSubmit: undefined,
+    })
+    expect(onSubmit).not.toHaveBeenCalled()
+
+    unsubscribe()
+  })
+
   it('creates and mounts form instances from atom lifecycle', () => {
     const cleanup = vi.fn()
     const formAtom = createTestFormAtom()
