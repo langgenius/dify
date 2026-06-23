@@ -8,7 +8,7 @@ import type {
 import type { Getter } from 'jotai/vanilla'
 import type { UnsupportedDslNode } from '../../shared/domain/error'
 import type { App } from '@/types/app'
-import { keepPreviousData, queryOptions } from '@tanstack/react-query'
+import { keepPreviousData, queryOptions, skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import {
   atomWithForm,
@@ -132,13 +132,15 @@ const latestSourceReleaseQueryAtom = atomWithQuery((get) => {
   const appInstanceId = get(createReleaseAppInstanceIdAtom)
 
   return consoleQuery.enterprise.releaseService.listReleases.queryOptions({
-    input: {
-      params: { appInstanceId: appInstanceId ?? '' },
-      query: {
-        pageNumber: 1,
-        resultsPerPage: DEFAULT_SOURCE_RELEASE_PAGE_SIZE,
-      },
-    },
+    input: appInstanceId
+      ? {
+          params: { appInstanceId },
+          query: {
+            pageNumber: 1,
+            resultsPerPage: DEFAULT_SOURCE_RELEASE_PAGE_SIZE,
+          },
+        }
+      : skipToken,
     enabled: Boolean(appInstanceId && get(createReleaseDialogOpenAtom)),
   })
 })
@@ -153,9 +155,11 @@ const defaultSourceAppQueryAtom = atomWithQuery((get) => {
   const latestSourceAppId = latestReleaseSourceAppId(get)
 
   return consoleQuery.apps.byAppId.get.queryOptions({
-    input: {
-      params: { app_id: latestSourceAppId ?? '' },
-    },
+    input: latestSourceAppId
+      ? {
+          params: { app_id: latestSourceAppId },
+        }
+      : skipToken,
     enabled: Boolean(get(createReleaseDialogOpenAtom) && latestSourceAppId),
   })
 })
@@ -358,14 +362,23 @@ const precheckReleaseQueryAtom = atomWithQuery((get) => {
   const canCheck = canCheckReleaseContent(get)
 
   return consoleQuery.enterprise.releaseService.precheckRelease.queryOptions({
-    input: {
-      body: {
-        appInstanceId: appInstanceId ?? '',
-        ...(releaseSourceMode === 'dsl'
-          ? { dsl: get(createReleaseEncodedDslContentAtom) }
-          : { sourceAppId: sourceAppId ?? '' }),
-      },
-    },
+    input: appInstanceId
+      ? releaseSourceMode === 'dsl'
+        ? {
+            body: {
+              appInstanceId,
+              dsl: get(createReleaseEncodedDslContentAtom),
+            },
+          }
+        : sourceAppId
+          ? {
+              body: {
+                appInstanceId,
+                sourceAppId,
+              },
+            }
+          : skipToken
+      : skipToken,
     enabled: canCheck,
     retry: false,
   })

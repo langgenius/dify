@@ -1,53 +1,59 @@
 'use client'
 
 import type { ListReleaseSummariesResponse } from '@dify/contracts/enterprise/types.gen'
-import { keepPreviousData } from '@tanstack/react-query'
+import { keepPreviousData, skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithQuery } from 'jotai-tanstack-query'
 import { consoleQuery } from '@/service/client'
+import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
 import { RELEASE_HISTORY_PAGE_SIZE } from '../../shared/domain/pagination'
-import { deploymentDetailAppInstanceIdAtom } from '../state'
 
 export const releaseHistoryCurrentPageAtom = atom(0)
 export const deployReleaseMenuOpenReleaseIdAtom = atom<string | undefined>(undefined)
 
 export const releaseHistoryQueryAtom = atomWithQuery<ListReleaseSummariesResponse>((get) => {
-  const appInstanceId = get(deploymentDetailAppInstanceIdAtom)
+  const appInstanceId = get(deploymentRouteAppInstanceIdAtom)
   const currentPage = get(releaseHistoryCurrentPageAtom)
 
   return consoleQuery.enterprise.releaseService.listReleaseSummaries.queryOptions({
-    input: {
-      params: { appInstanceId },
-      query: {
-        pageNumber: currentPage + 1,
-        resultsPerPage: RELEASE_HISTORY_PAGE_SIZE,
-      },
-    },
+    input: appInstanceId
+      ? {
+          params: { appInstanceId },
+          query: {
+            pageNumber: currentPage + 1,
+            resultsPerPage: RELEASE_HISTORY_PAGE_SIZE,
+          },
+        }
+      : skipToken,
     enabled: Boolean(appInstanceId),
     placeholderData: keepPreviousData,
   })
 })
 
 export const deployReleaseMenuEnvironmentDeploymentsQueryAtom = atomWithQuery((get) => {
-  const appInstanceId = get(deploymentDetailAppInstanceIdAtom)
+  const appInstanceId = get(deploymentRouteAppInstanceIdAtom)
   const openReleaseId = get(deployReleaseMenuOpenReleaseIdAtom)
 
   return consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({
-    input: {
-      params: { appInstanceId },
-    },
+    input: appInstanceId
+      ? {
+          params: { appInstanceId },
+        }
+      : skipToken,
     enabled: Boolean(appInstanceId && openReleaseId),
   })
 })
 
 export const deployReleaseMenuAppInstanceQueryAtom = atomWithQuery((get) => {
-  const appInstanceId = get(deploymentDetailAppInstanceIdAtom)
+  const appInstanceId = get(deploymentRouteAppInstanceIdAtom)
   const openReleaseId = get(deployReleaseMenuOpenReleaseIdAtom)
 
   return consoleQuery.enterprise.appInstanceService.getAppInstance.queryOptions({
-    input: {
-      params: { appInstanceId },
-    },
+    input: appInstanceId
+      ? {
+          params: { appInstanceId },
+        }
+      : skipToken,
     enabled: Boolean(appInstanceId && openReleaseId),
   })
 })

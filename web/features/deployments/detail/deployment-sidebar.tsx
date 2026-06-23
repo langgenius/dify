@@ -21,10 +21,8 @@ import { usePathname, useRouter } from '@/next/navigation'
 import { DeploymentActionsMenu } from '../components/deployment-actions'
 import { deploymentActionsLocalAtoms } from '../components/deployment-actions/state'
 import { TitleTooltip } from '../components/title-tooltip'
-import {
-  deploymentDetailAppInstanceIdAtom,
-  deploymentDetailAppInstanceQueryAtom,
-} from './state'
+import { deploymentRouteAppInstanceIdAtom } from '../route-state'
+import { deploymentDetailAppInstanceQueryAtom } from './state'
 
 type TabDef = {
   key: InstanceDetailTabKey
@@ -77,11 +75,6 @@ const DEPLOYMENT_TABS: TabDef[] = [
 ]
 
 const SEARCH_SHORTCUT = ['Mod', 'K']
-
-const getDeploymentIdFromPathname = (pathname: string) => {
-  const [section, appInstanceId] = pathname.split('/').filter(Boolean)
-  return section === 'deployments' ? appInstanceId : undefined
-}
 
 function DeploymentIcon({ expand }: {
   expand: boolean
@@ -285,7 +278,7 @@ export function DeploymentDetailSection({
 }) {
   const { t } = useTranslation('deployments')
   const pathname = usePathname()
-  const appInstanceId = getDeploymentIdFromPathname(pathname)
+  const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
 
   if (!appInstanceId)
     return null
@@ -305,7 +298,6 @@ export function DeploymentDetailSection({
         <ScopeProvider
           key={appInstanceId}
           atoms={[
-            [deploymentDetailAppInstanceIdAtom, appInstanceId],
             ...deploymentActionsLocalAtoms,
           ]}
           name="DeploymentDetailSidebar"

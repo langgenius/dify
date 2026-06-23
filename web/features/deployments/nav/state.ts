@@ -2,18 +2,20 @@
 
 import type {
   AppInstance,
+  GetAppInstanceResponse,
   ListAppInstancesResponse,
 } from '@dify/contracts/enterprise/types.gen'
 import type { InfiniteData, QueryKey } from '@tanstack/react-query'
 import type { NavItem } from '@/app/components/header/nav/nav-selector'
-import { keepPreviousData } from '@tanstack/react-query'
+import { keepPreviousData, skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithQuery } from 'jotai-tanstack-query'
 import { consoleQuery } from '@/service/client'
+import {
+  deploymentRouteAppInstanceIdAtom,
+  deploymentsRouteActiveAtom,
+} from '../route-state'
 import { getNextPageParamFromPagination, SOURCE_APPS_PAGE_SIZE } from '../shared/domain/pagination'
-
-export const deploymentsNavActiveAtom = atom(false)
-export const deploymentsNavAppInstanceIdAtom = atom<string | undefined>(undefined)
 
 function navItemFromListApp(app: AppInstance): NavItem {
   const id = app.id
@@ -46,17 +48,19 @@ function navItemFromOverview(instance?: AppInstance, fallbackId?: string): NavIt
 }
 
 export const deploymentsNavCurrentInstanceQueryAtom = atomWithQuery((get) => {
-  const appInstanceId = get(deploymentsNavAppInstanceIdAtom)
-  const isActive = get(deploymentsNavActiveAtom)
+  const appInstanceId = get(deploymentRouteAppInstanceIdAtom)
+  const isActive = get(deploymentsRouteActiveAtom)
 
   return consoleQuery.enterprise.appInstanceService.getAppInstance.queryOptions({
-    input: {
-      params: {
-        appInstanceId: appInstanceId ?? '',
-      },
-    },
+    input: appInstanceId
+      ? {
+          params: {
+            appInstanceId,
+          },
+        }
+      : skipToken,
     enabled: isActive && Boolean(appInstanceId),
-    select: data => data.appInstance,
+    select: (data: GetAppInstanceResponse) => data.appInstance,
   })
 })
 
@@ -67,7 +71,7 @@ export const deploymentsNavListQueryAtom = atomWithInfiniteQuery<
   QueryKey,
   number
 >((get) => {
-  const isActive = get(deploymentsNavActiveAtom)
+  const isActive = get(deploymentsRouteActiveAtom)
 
   return consoleQuery.enterprise.appInstanceService.listAppInstances.infiniteOptions({
     input: pageParam => ({
@@ -84,10 +88,10 @@ export const deploymentsNavListQueryAtom = atomWithInfiniteQuery<
 })
 
 export const deploymentsNavItemsAtom = atom((get): NavItem[] => {
-  if (!get(deploymentsNavActiveAtom))
+  if (!get(deploymentsRouteActiveAtom))
     return []
 
-  const appInstanceId = get(deploymentsNavAppInstanceIdAtom)
+  const appInstanceId = get(deploymentRouteAppInstanceIdAtom)
   const currentInstance = get(deploymentsNavCurrentInstanceQueryAtom).data
   const appNavItems = get(deploymentsNavListQueryAtom).data?.pages.flatMap(page =>
     page.appInstances.map(navItemFromListApp),
@@ -100,7 +104,7 @@ export const deploymentsNavItemsAtom = atom((get): NavItem[] => {
 })
 
 export const deploymentsNavCurrentItemAtom = atom((get) => {
-  const appInstanceId = get(deploymentsNavAppInstanceIdAtom)
+  const appInstanceId = get(deploymentRouteAppInstanceIdAtom)
   if (!appInstanceId)
     return undefined
 

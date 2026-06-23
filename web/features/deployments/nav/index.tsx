@@ -1,19 +1,16 @@
 'use client'
 
 import { useAtomValue } from 'jotai'
-import { ScopeProvider } from 'jotai-scope'
 import { useTranslation } from 'react-i18next'
 import Nav from '@/app/components/header/nav'
-import { useParams, useRouter, useSelectedLayoutSegment } from '@/next/navigation'
+import { useRouter } from '@/next/navigation'
 import {
-  deploymentsNavActiveAtom,
-  deploymentsNavAppInstanceIdAtom,
   deploymentsNavCurrentItemAtom,
   deploymentsNavItemsAtom,
   deploymentsNavListQueryAtom,
 } from './state'
 
-function DeploymentsNavContent() {
+export function DeploymentsNav() {
   const { t } = useTranslation()
   const router = useRouter()
   const navigationItems = useAtomValue(deploymentsNavItemsAtom)
@@ -44,25 +41,5 @@ function DeploymentsNavContent() {
       onLoadMore={handleLoadMore}
       isLoadingMore={listQuery.isFetchingNextPage}
     />
-  )
-}
-
-export function DeploymentsNav() {
-  const selectedSegment = useSelectedLayoutSegment()
-  const isActive = selectedSegment === 'deployments'
-  const params = useParams<{ appInstanceId?: string }>()
-  const appInstanceId = params?.appInstanceId
-
-  return (
-    <ScopeProvider
-      key={`${isActive}:${appInstanceId ?? ''}`}
-      atoms={[
-        [deploymentsNavActiveAtom, isActive],
-        [deploymentsNavAppInstanceIdAtom, appInstanceId],
-      ]}
-      name="DeploymentsNav"
-    >
-      <DeploymentsNavContent />
-    </ScopeProvider>
   )
 }

@@ -10,9 +10,6 @@ import { useSelectedLayoutSegment } from '@/next/navigation'
 import { CreateReleaseControl } from '../create-release'
 import { NewDeploymentHeaderAction } from './deploy-tab/new-deployment-button'
 import { DeveloperApiHeaderSwitch } from './settings-tab/access/developer-api-section'
-import {
-  deploymentDetailAppInstanceIdAtom,
-} from './state'
 import { INSTANCE_DETAIL_TAB_KEYS, isInstanceDetailTabKey } from './tabs'
 import { versionsTabLocalAtoms } from './versions-tab/state'
 
@@ -61,7 +58,6 @@ export function InstanceDetail({ appInstanceId, children }: {
     <ScopeProvider
       key={appInstanceId}
       atoms={[
-        [deploymentDetailAppInstanceIdAtom, appInstanceId],
         ...versionsTabLocalAtoms,
       ]}
       name="DeploymentDetail"
