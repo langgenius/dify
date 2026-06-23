@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Sequence
+from typing import Any, cast
 
 import httpx
 from yarl import URL
@@ -19,7 +20,7 @@ def get_plugin_pkg_url(plugin_unique_identifier: str) -> str:
     return str((marketplace_api_url / "api/v1/plugins/download").with_query(unique_identifier=plugin_unique_identifier))
 
 
-def download_plugin_pkg(plugin_unique_identifier: str):
+def download_plugin_pkg(plugin_unique_identifier: str) -> bytes:
     return download_with_size_limit(get_plugin_pkg_url(plugin_unique_identifier), dify_config.PLUGIN_MAX_PACKAGE_SIZE)
 
 
@@ -39,7 +40,7 @@ def batch_fetch_plugin_manifests(plugin_ids: list[str]) -> Sequence[MarketplaceP
     return [MarketplacePluginDeclaration.model_validate(plugin) for plugin in response.json()["data"]["plugins"]]
 
 
-def batch_fetch_plugin_by_ids(plugin_ids: list[str]) -> list[dict]:
+def batch_fetch_plugin_by_ids(plugin_ids: list[str]) -> list[dict[str, Any]]:
     if not plugin_ids:
         return []
 
@@ -53,10 +54,10 @@ def batch_fetch_plugin_by_ids(plugin_ids: list[str]) -> list[dict]:
     response.raise_for_status()
 
     data = response.json()
-    return data.get("data", {}).get("plugins", [])
+    return cast(list[dict[str, Any]], data.get("data", {}).get("plugins", []))
 
 
-def record_install_plugin_event(plugin_unique_identifier: str):
+def record_install_plugin_event(plugin_unique_identifier: str) -> None:
     url = str(marketplace_api_url / "api/v1/stats/plugins/install_count")
     response = httpx.post(url, json={"unique_identifier": plugin_unique_identifier}, timeout=MARKETPLACE_TIMEOUT)
     response.raise_for_status()

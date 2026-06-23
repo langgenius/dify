@@ -17,7 +17,7 @@ def is_credential_exists(credential_id: str, credential_type: "PluginCredentialT
     from sqlalchemy import select
     from sqlalchemy.orm import Session
 
-    from extensions.ext_database import db
+    from models.engine import db
     from models.provider import ProviderCredential, ProviderModelCredential
     from models.tools import BuiltinToolProvider
 
@@ -42,7 +42,7 @@ def is_credential_exists(credential_id: str, credential_type: "PluginCredentialT
 
 def runtime_check_credential_policy_compliance(
     credential_id: str, provider: str, credential_type: "PluginCredentialType", check_existence: bool = True
-):
+) -> None:
     if dify_config.ENTERPRISE_DISABLE_RUNTIME_CREDENTIAL_CHECK:
         return
     check_credential_policy_compliance(

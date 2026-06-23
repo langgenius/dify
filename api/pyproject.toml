@@ -294,3 +294,9 @@ python-version = "3.12.0"
 infer-with-first-use = true
 min-severity = "warn"
 errors = { missing-override-decorator = "error" }
+
+[tool.mypy]
+
+[[tool.mypy.overrides]]
+module = "core.helper.*"
+strict = true

@@ -3,7 +3,7 @@ import re
 from abc import ABC, abstractmethod
 from base64 import b64encode
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 from graphon.variables.utils import dumps_with_segments
 
@@ -36,7 +36,7 @@ class TemplateTransformer(ABC):
         return runner_script, preload_script
 
     @classmethod
-    def extract_result_str_from_response(cls, response: str):
+    def extract_result_str_from_response(cls, response: str) -> str:
         result = re.search(rf"{cls._result_tag}(.*){cls._result_tag}", response, re.DOTALL)
         if not result:
             raise ValueError(f"Failed to parse result: no result tag found in response. Response: {response[:200]}...")
@@ -89,7 +89,7 @@ class TemplateTransformer(ABC):
                     return [convert_scientific_notation(v) for v in value]
             return value
 
-        return convert_scientific_notation(result)
+        return cast(dict[Any, Any], convert_scientific_notation(result))
 
     @classmethod
     @abstractmethod

@@ -26,7 +26,7 @@ def upload_dsl(dsl_file_bytes: bytes, filename: str = "template.yaml") -> str:
     claim_code = data.get("data", {}).get("claim_code")
     if not claim_code:
         raise ValueError("Creators Platform did not return a valid claim_code")
-    return claim_code
+    return str(claim_code)
 
 
 def get_redirect_url(user_account_id: str, claim_code: str) -> str:
