@@ -95,11 +95,8 @@ export const SnippetSidebarContent = ({
   return (
     <div className={cn('flex h-full min-h-0 flex-col overflow-hidden bg-background-default', className)}>
       <div className="shrink-0 px-3 py-2">
-        <div className="flex items-start gap-3">
-          <SnippetPlaceholderIcon
-            className="size-12 shrink-0 rounded-[16px]"
-            graphicClassName="size-9"
-          />
+        <div className="flex items-center gap-3">
+          <SnippetPlaceholderIcon />
           <div className="min-w-0 grow">
             <div className="truncate system-xl-semibold text-text-primary" title={snippet.name}>{snippet.name}</div>
           </div>
