@@ -613,6 +613,7 @@
   "versions.releaseDescriptionLabel": "Beschrijving",
   "versions.releaseDescriptionPlaceholder": "Beschrijf deze release",
   "versions.releaseHistory": "Releasegeschiedenis",
+  "versions.releaseNameConflict": "Er bestaat al een release met deze naam. Kies een andere naam.",
   "versions.releaseNameLabel": "Releasenaam",
   "versions.releaseNamePlaceholder": "Releasenaam",
   "versions.releaseNameRequired": "Voer een releasenaam in.",

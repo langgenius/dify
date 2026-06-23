@@ -529,7 +529,7 @@ def test_delete_snippet_removes_related_records() -> None:
     session.delete.assert_called_once_with(snippet)
 
 
-def test_delete_draft_variable_files_removes_storage_objects(monkeypatch) -> None:
+def test_delete_draft_variable_files_removes_storage_objects(monkeypatch: pytest.MonkeyPatch) -> None:
     from extensions.ext_storage import storage
 
     snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
@@ -554,7 +554,7 @@ def test_delete_draft_variable_files_removes_storage_objects(monkeypatch) -> Non
     assert "workflow_draft_variable_files" in executed_sql
 
 
-def test_delete_archived_workflow_run_files_removes_prefixed_objects(monkeypatch) -> None:
+def test_delete_archived_workflow_run_files_removes_prefixed_objects(monkeypatch: pytest.MonkeyPatch) -> None:
     from configs import dify_config
 
     snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")

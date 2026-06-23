@@ -11,6 +11,8 @@ import { AgentSkills } from '../index'
 
 const mocks = vi.hoisted(() => ({
   driveFilesQueryOptions: vi.fn(),
+  driveFileDownloadQueryOptions: vi.fn(),
+  driveFilePreviewQueryOptions: vi.fn(),
   uploadSkillMutationOptions: vi.fn(),
 }))
 
@@ -29,6 +31,16 @@ vi.mock('@/service/client', () => ({
           files: {
             get: {
               queryOptions: mocks.driveFilesQueryOptions,
+            },
+            download: {
+              get: {
+                queryOptions: mocks.driveFileDownloadQueryOptions,
+              },
+            },
+            preview: {
+              get: {
+                queryOptions: mocks.driveFilePreviewQueryOptions,
+              },
             },
           },
         },
@@ -51,7 +63,7 @@ const agentSkillsDraft = {
       id: 'tender-analyzer',
       name: 'Tender Analyzer',
       description: 'Extracts tender requirements and scoring criteria.',
-      files: ['SKILL.md', 'schema.json'],
+      files: ['__MACOSX/._hatch-pet', 'SKILL.md', 'schema.json'],
       path: 'tender-analyzer',
       skillMdKey: 'tender-analyzer/SKILL.md',
     },
@@ -129,6 +141,18 @@ describe('AgentSkills', () => {
         ],
       }),
     }))
+    mocks.driveFilePreviewQueryOptions.mockImplementation(({ input }) => ({
+      queryKey: ['agent-drive-file-preview', input],
+      queryFn: async () => ({
+        text: `Preview content for ${input.query.key}`,
+      }),
+    }))
+    mocks.driveFileDownloadQueryOptions.mockImplementation(({ input }) => ({
+      queryKey: ['agent-drive-file-download', input],
+      queryFn: async () => ({
+        url: `https://example.com/${input.query.key}`,
+      }),
+    }))
     mocks.uploadSkillMutationOptions.mockReturnValue({
       mutationFn: vi.fn(),
       mutationKey: ['upload-skill'],
@@ -152,14 +176,60 @@ describe('AgentSkills', () => {
           agent_id: 'agent-1',
         },
         query: {
-          prefix: 'tender-analyzer',
+          prefix: 'tender-analyzer/',
         },
       },
     })
     expect(within(dialog).getByText('Tender Analyzer')).toBeInTheDocument()
     expect(within(dialog).getByText('Extracts tender requirements and scoring criteria.')).toBeInTheDocument()
+    expect(within(dialog).queryByText('__MACOSX/._hatch-pet')).not.toBeInTheDocument()
     expect(await within(dialog).findByText('scripts/extract.py')).toBeInTheDocument()
     expect(within(dialog).getByText('SKILL.md')).toBeInTheDocument()
+    expect(await within(dialog).findByText('Preview content for tender-analyzer/SKILL.md')).toBeInTheDocument()
+    expect(mocks.driveFilePreviewQueryOptions).toHaveBeenCalledWith({
+      input: {
+        params: {
+          agent_id: 'agent-1',
+        },
+        query: {
+          key: 'tender-analyzer/SKILL.md',
+        },
+      },
+    })
+    expect(mocks.driveFilePreviewQueryOptions).not.toHaveBeenCalledWith({
+      input: {
+        params: {
+          agent_id: 'agent-1',
+        },
+        query: {
+          key: 'tender-analyzer/__MACOSX/._hatch-pet',
+        },
+      },
+    })
+  })
+
+  it('should preview the selected skill file from the detail file tree', async () => {
+    renderAgentSkills()
+
+    fireEvent.click(screen.getByRole('button', {
+      name: 'Tender Analyzer',
+    }))
+
+    const dialog = screen.getByRole('dialog')
+    const scriptFile = await within(dialog).findByRole('button', { name: 'scripts/extract.py' })
+    fireEvent.click(scriptFile)
+
+    expect(await within(dialog).findByText('Preview content for tender-analyzer/scripts/extract.py')).toBeInTheDocument()
+    expect(mocks.driveFilePreviewQueryOptions).toHaveBeenCalledWith({
+      input: {
+        params: {
+          agent_id: 'agent-1',
+        },
+        query: {
+          key: 'tender-analyzer/scripts/extract.py',
+        },
+      },
+    })
   })
 
   // The hover/focus remove action updates the composer draft without opening preview.
@@ -235,7 +305,7 @@ describe('AgentSkills', () => {
           agent_id: 'agent-1',
         },
         query: {
-          prefix: 'invoice-helper',
+          prefix: 'invoice-helper/',
         },
       },
     })

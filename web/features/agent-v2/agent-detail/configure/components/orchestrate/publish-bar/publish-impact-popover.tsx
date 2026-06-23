@@ -1,76 +1,122 @@
 'use client'
 
-import type { AgentPublishedReferenceResponse } from '@dify/contracts/api/console/agent/types.gen'
-import type { MouseEvent, ReactElement } from 'react'
+import type { AgentIconType, AgentReferencingWorkflowResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
+import type { MouseEvent, ReactElement, ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useHotkey } from '@tanstack/react-hotkeys'
+import { useQuery } from '@tanstack/react-query'
 import { cloneElement, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import AppIcon from '@/app/components/base/app-icon'
 import Link from '@/next/link'
+import { consoleQuery } from '@/service/client'
 
 type AgentPublishImpactPopoverProps = {
   actionLabel: string
+  actionShortcut?: ReactNode
+  hotkey: RegisterableHotkey
+  agentId: string
   agentName?: string | null
   disabled?: boolean
-  publishedReferenceCount?: number
-  publishedReferences?: AgentPublishedReferenceResponse[]
   trigger: ReactElement<{
     onClick?: (event: MouseEvent<HTMLElement>) => void
   }>
+  onOpenChange?: (open: boolean) => void
   onPublish: () => void
 }
 
-const workflowReferenceAvatarClassNames = [
-  'bg-components-icon-bg-green-soft text-components-icon-bg-green-solid',
-  'bg-components-icon-bg-orange-dark-soft text-components-icon-bg-orange-dark-solid',
-  'bg-components-icon-bg-pink-soft text-components-icon-bg-pink-solid',
-  'bg-components-icon-bg-blue-soft text-components-icon-bg-blue-solid',
-] as const
-
-const getWorkflowReferenceHref = (reference: AgentPublishedReferenceResponse) => `/app/${reference.app_id}/workflow`
-
-const getWorkflowReferenceInitial = (name: string) => {
-  return name.trim().charAt(0).toUpperCase() || '?'
-}
+const getWorkflowReferenceHref = (reference: AgentReferencingWorkflowResponse) => `/app/${reference.app_id}/workflow`
 
 export function AgentPublishImpactPopover({
   actionLabel,
+  actionShortcut,
+  hotkey,
+  agentId,
   agentName,
   disabled = false,
-  publishedReferenceCount = 0,
-  publishedReferences = [],
   trigger,
+  onOpenChange,
   onPublish,
 }: AgentPublishImpactPopoverProps) {
   const { t } = useTranslation('agentV2')
   const [open, setOpen] = useState(false)
-  const hasPublishedReferences = publishedReferenceCount > 0 && publishedReferences.length > 0
-
-  if (!hasPublishedReferences || disabled)
-    return trigger
-
-  const triggerWithImpact = cloneElement(trigger, {
-    onClick: (event: MouseEvent<HTMLElement>) => {
-      event.preventDefault()
-      setOpen(true)
-    },
+  const [isCheckingReferences, setIsCheckingReferences] = useState(false)
+  const workflowReferencesQuery = useQuery({
+    ...consoleQuery.agent.byAgentId.referencingWorkflows.get.queryOptions({
+      input: {
+        params: {
+          agent_id: agentId,
+        },
+      },
+    }),
+    enabled: false,
   })
+  const publishedReferences = workflowReferencesQuery.data?.data ?? []
+
+  const updateOpen = (nextOpen: boolean) => {
+    setOpen(nextOpen)
+    onOpenChange?.(nextOpen)
+  }
 
   const handlePublish = () => {
-    setOpen(false)
+    updateOpen(false)
     onPublish()
   }
 
+  const handlePublishRequest = async () => {
+    if (disabled || isCheckingReferences)
+      return
+
+    if (open) {
+      handlePublish()
+      return
+    }
+
+    setIsCheckingReferences(true)
+    try {
+      const result = await workflowReferencesQuery.refetch()
+      const references = result.data?.data ?? []
+      if (references.length > 0) {
+        updateOpen(true)
+        return
+      }
+
+      onPublish()
+    }
+    finally {
+      setIsCheckingReferences(false)
+    }
+  }
+
+  useHotkey(hotkey, (event) => {
+    event.preventDefault()
+    void handlePublishRequest()
+  }, {
+    enabled: !disabled,
+    ignoreInputs: false,
+  })
+
+  if (disabled)
+    return trigger
+
+  const triggerWithImpact = cloneElement(trigger, {
+    onClick: async (event: MouseEvent<HTMLElement>) => {
+      event.preventDefault()
+      await handlePublishRequest()
+    },
+  })
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={updateOpen}>
       <PopoverTrigger
         render={triggerWithImpact}
       />
       <PopoverContent
         placement="top-end"
-        sideOffset={-40}
-        popupClassName="w-96 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]"
+        sideOffset={-32}
+        popupClassName="w-96 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px] transition-[transform,scale,opacity] duration-150 ease-out data-starting-style:translate-y-5 data-ending-style:translate-y-5 motion-reduce:transition-none motion-reduce:data-starting-style:translate-y-0 motion-reduce:data-ending-style:translate-y-0"
       >
         <div className="flex flex-col gap-0">
           <div className="flex flex-col gap-0.5 px-3 pt-3.5 pb-1">
@@ -84,7 +130,7 @@ export function AgentPublishImpactPopover({
               {t('agentDetail.configure.publishImpact.descriptionPrefix')}
               {' '}
               <span className="system-xs-medium">
-                {t('agentDetail.configure.publishImpact.workflowCount', { count: publishedReferenceCount })}
+                {t('agentDetail.configure.publishImpact.workflowCount', { count: publishedReferences.length })}
               </span>
               {t('agentDetail.configure.publishImpact.descriptionSuffix')}
             </p>
@@ -95,8 +141,8 @@ export function AgentPublishImpactPopover({
               {t('agentDetail.configure.publishImpact.affectedWorkflows')}
             </div>
             <div className="flex max-h-44 flex-col gap-px overflow-y-auto rounded-xl border border-components-panel-border p-1">
-              {publishedReferences.map((reference, index) => (
-                <ReferenceLink key={`${reference.app_id}-${reference.workflow_id}`} reference={reference} index={index} />
+              {publishedReferences.map(reference => (
+                <ReferenceLink key={`${reference.app_id}-${reference.workflow_id}`} reference={reference} />
               ))}
             </div>
           </div>
@@ -106,17 +152,18 @@ export function AgentPublishImpactPopover({
               type="button"
               variant="secondary"
               className="h-8 min-w-18 rounded-lg px-3"
-              onClick={() => setOpen(false)}
+              onClick={() => updateOpen(false)}
             >
               {t('agentDetail.configure.publishImpact.cancel')}
             </Button>
             <Button
               type="button"
               variant="primary"
-              className="h-8 min-w-18 rounded-lg px-3"
+              className="h-8 min-w-18 gap-1 rounded-lg px-3"
               onClick={handlePublish}
             >
-              {actionLabel}
+              <span className="shrink-0">{actionLabel}</span>
+              {actionShortcut}
             </Button>
           </div>
         </div>
@@ -127,11 +174,12 @@ export function AgentPublishImpactPopover({
 
 function ReferenceLink({
   reference,
-  index,
 }: {
-  reference: AgentPublishedReferenceResponse
-  index: number
+  reference: AgentReferencingWorkflowResponse
 }) {
+  const imageUrl = (reference.app_icon_type === 'image' || reference.app_icon_type === 'link') ? reference.app_icon : undefined
+  const iconType = (imageUrl ? 'image' : reference.app_icon_type) as AgentIconType | null | undefined
+
   return (
     <Link
       href={getWorkflowReferenceHref(reference)}
@@ -139,14 +187,14 @@ function ReferenceLink({
       rel="noopener noreferrer"
       className="flex min-w-0 items-center gap-2 rounded-lg py-1 pr-2.5 pl-2 system-sm-regular text-text-secondary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
     >
-      <span
-        aria-hidden
-        className={cn(
-          'flex size-5 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-regular system-xs-medium',
-          workflowReferenceAvatarClassNames[index % workflowReferenceAvatarClassNames.length],
-        )}
-      >
-        {getWorkflowReferenceInitial(reference.app_name)}
+      <span aria-hidden className="shrink-0">
+        <AppIcon
+          size="tiny"
+          iconType={iconType}
+          icon={reference.app_icon ?? undefined}
+          background={reference.app_icon_background}
+          imageUrl={imageUrl}
+        />
       </span>
       <span className="min-w-0 flex-1 truncate">{reference.app_name}</span>
       <span aria-hidden className="i-ri-external-link-line size-3 shrink-0 text-text-tertiary" />

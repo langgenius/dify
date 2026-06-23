@@ -64,9 +64,19 @@ describe('Marketplace', () => {
     expect(getByTestId('list-wrapper')).toBeInTheDocument()
   })
 
-  it('should pass showInstallButton=true by default to ListWrapper', async () => {
+  it('should pass showInstallButton=false by default to ListWrapper', async () => {
     const Marketplace = (await import('../index')).default
     const element = await Marketplace({})
+
+    const { getByTestId } = render(element as React.ReactElement)
+
+    const listWrapper = getByTestId('list-wrapper')
+    expect(listWrapper.getAttribute('data-show-install')).toBe('false')
+  })
+
+  it('should pass showInstallButton=true when specified', async () => {
+    const Marketplace = (await import('../index')).default
+    const element = await Marketplace({ showInstallButton: true })
 
     const { getByTestId } = render(element as React.ReactElement)
 

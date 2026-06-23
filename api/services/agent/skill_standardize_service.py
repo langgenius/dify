@@ -17,13 +17,15 @@ normalization.
 
 from __future__ import annotations
 
+import mimetypes
+import posixpath
 import re
 from typing import Any
 
 from core.tools.tool_file_manager import ToolFileManager
 from models.agent_config_entities import AgentSkillRefConfig
 from services.agent.skill_package_service import SkillPackageService
-from services.agent_drive_service import AgentDriveService, DriveCommitItem, DriveFileRef
+from services.agent_drive_service import AgentDriveService, DriveCommitItem, DriveFileRef, DriveSkillMetadata
 
 _FULL_ARCHIVE_NAME = ".DIFY-SKILL-FULL.zip"
 _SKILL_MD_NAME = "SKILL.md"
@@ -62,7 +64,8 @@ class SkillStandardizeService:
         skill_md_bytes = self._package.read_member_bytes(content=content, member_path=manifest.entry_path)
         slug = slugify_skill_name(manifest.name)
 
-        # Two drive-owned ToolFiles: canonical SKILL.md + the full archive.
+        # Drive-owned files: canonical SKILL.md, every inspectable archive file,
+        # and the full archive for future restore/export.
         md_tool_file = self._tool_files.create_file_by_raw(
             user_id=user_id,
             tenant_id=tenant_id,
@@ -82,6 +85,30 @@ class SkillStandardizeService:
 
         skill_md_key = f"{slug}/{_SKILL_MD_NAME}"
         archive_key = f"{slug}/{_FULL_ARCHIVE_NAME}"
+        member_items: list[DriveCommitItem] = []
+        for member_path in sorted(set(manifest.files)):
+            member_key = f"{slug}/{member_path}"
+            if member_key in {skill_md_key, archive_key}:
+                continue
+
+            member_bytes = self._package.read_member_bytes(content=content, member_path=member_path)
+            mimetype = mimetypes.guess_type(member_path)[0] or "application/octet-stream"
+            member_tool_file = self._tool_files.create_file_by_raw(
+                user_id=user_id,
+                tenant_id=tenant_id,
+                conversation_id=None,
+                file_binary=member_bytes,
+                mimetype=mimetype,
+                filename=posixpath.basename(member_path),
+            )
+            member_items.append(
+                DriveCommitItem(
+                    key=member_key,
+                    file_ref=DriveFileRef(kind="tool_file", id=member_tool_file.id),
+                    value_owned_by_drive=True,
+                )
+            )
+
         self._drive.commit(
             tenant_id=tenant_id,
             user_id=user_id,
@@ -91,12 +118,19 @@ class SkillStandardizeService:
                     key=skill_md_key,
                     file_ref=DriveFileRef(kind="tool_file", id=md_tool_file.id),
                     value_owned_by_drive=True,
+                    is_skill=True,
+                    skill_metadata=DriveSkillMetadata(
+                        name=manifest.name,
+                        description=manifest.description,
+                        manifest_files=manifest.files,
+                    ),
                 ),
                 DriveCommitItem(
                     key=archive_key,
                     file_ref=DriveFileRef(kind="tool_file", id=archive_tool_file.id),
                     value_owned_by_drive=True,
                 ),
+                *member_items,
             ],
         )
 

@@ -70,6 +70,7 @@ describe('NavSelector Component', () => {
     vi.mocked(useAppStore).mockReturnValue(mockSetAppDetail)
     vi.mocked(useAppContext).mockReturnValue({
       isCurrentWorkspaceEditor: true,
+      workspacePermissionKeys: ['app.create_and_management', 'dataset.create_and_management'],
     } as unknown as AppContextValue)
   })
 
@@ -195,16 +196,45 @@ describe('NavSelector Component', () => {
       expect(await screen.findByText(/app\.newApp\.startFromBlank/i))!.toBeInTheDocument()
     })
 
-    it('should not show create button for non-editors', async () => {
+    it('should show create button when dataset.create_and_management permission is present', async () => {
       vi.mocked(useAppContext).mockReturnValue({
         isCurrentWorkspaceEditor: false,
+        workspacePermissionKeys: ['dataset.create_and_management'],
       } as unknown as AppContextValue)
       render(<NavSelector {...defaultProps} />)
       const button = screen.getByRole('button')
       await act(async () => {
         fireEvent.click(button)
       })
+      expect(screen.getByText('Create New')).toBeInTheDocument()
+    })
+
+    it('should hide dataset create button without dataset.create_and_management permission', async () => {
+      vi.mocked(useAppContext).mockReturnValue({
+        isCurrentWorkspaceEditor: true,
+        workspacePermissionKeys: ['app.create_and_management'],
+      } as unknown as AppContextValue)
+      render(<NavSelector {...defaultProps} />)
+      const button = screen.getByRole('button')
+      await act(async () => {
+        fireEvent.click(button)
+      })
+
       expect(screen.queryByText('Create New')).not.toBeInTheDocument()
+    })
+
+    it('should hide app create menu without app.create_and_management permission', async () => {
+      vi.mocked(useAppContext).mockReturnValue({
+        isCurrentWorkspaceEditor: true,
+        workspacePermissionKeys: ['dataset.create_and_management'],
+      } as unknown as AppContextValue)
+      render(<NavSelector {...defaultProps} isApp />)
+      const button = screen.getByRole('button')
+      await act(async () => {
+        fireEvent.click(button)
+      })
+
+      expect(screen.queryByRole('menuitem', { name: /Create New/i })).not.toBeInTheDocument()
     })
   })
 

@@ -56,7 +56,13 @@ const mockDataset = {
     score_threshold: 0.5,
   },
   is_multimodal: false,
+  permission_keys: ['dataset.acl.retrieval_recall'],
 } as Partial<DataSet>
+
+let mockAppContextState = {
+  userProfile: { id: 'user-1' },
+  workspacePermissionKeys: [] as string[],
+}
 
 vi.mock('use-context-selector', () => ({
   useContext: vi.fn(() => ({ dataset: mockDataset })),
@@ -71,6 +77,10 @@ vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: vi.fn((selector: (v: { dataset?: typeof mockDataset }) => unknown) =>
     selector({ dataset: mockDataset as DataSet }),
   ),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector(mockAppContextState),
 }))
 
 const mockRecordsRefetch = vi.fn()
@@ -304,6 +314,11 @@ const _createMockRetrievalConfig = (overrides = {}): RetrievalConfig => ({
 describe('HitTestingPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockDataset.permission_keys = ['dataset.acl.retrieval_recall']
+    mockAppContextState = {
+      userProfile: { id: 'user-1' },
+      workspacePermissionKeys: [],
+    }
   })
 
   describe('Rendering', () => {
@@ -329,6 +344,16 @@ describe('HitTestingPage', () => {
     it('should render query input', () => {
       renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
       expect(screen.getByRole('textbox'))!.toBeInTheDocument()
+    })
+
+    it('should disable testing-record queries and hide query input when retrieval recall permission is missing', async () => {
+      const { useDatasetTestingRecords } = await import('@/service/knowledge/use-dataset')
+      mockDataset.permission_keys = []
+
+      renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
+
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+      expect(vi.mocked(useDatasetTestingRecords)).toHaveBeenCalledWith('dataset-1', { limit: 10, page: 1 }, { enabled: false })
     })
   })
 
@@ -589,6 +614,7 @@ describe('HitTestingPage', () => {
 describe('Integration: Hit Testing Flow', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
+    mockDataset.permission_keys = ['dataset.acl.retrieval_recall']
     mockHitTestingMutateAsync.mockReset()
     mockExternalHitTestingMutateAsync.mockReset()
 

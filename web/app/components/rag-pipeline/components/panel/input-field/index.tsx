@@ -16,6 +16,7 @@ import Divider from '@/app/components/base/divider'
 import { Infotip } from '@/app/components/base/infotip'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import FieldList from './field-list'
@@ -32,6 +33,9 @@ const InputFieldPanel = () => {
     isPreviewing,
     isEditing,
   } = useInputFieldPanel()
+  const canEdit = useHooksStore(s => s.accessControl.canEdit)
+  const shouldIgnoreInputFieldChange = !canEdit || isPreviewing
+  const isReadonly = shouldIgnoreInputFieldChange || isEditing
   const ragPipelineVariables = useStore(state => state.ragPipelineVariables)
   const setRagPipelineVariables = useStore(state => state.setRagPipelineVariables)
 
@@ -61,6 +65,9 @@ const InputFieldPanel = () => {
   }, [nodes])
 
   const updateInputFields = useCallback(async (key: string, value: InputVar[]) => {
+    if (shouldIgnoreInputFieldChange)
+      return
+
     inputFieldsMap.current[key] = value
     const datasourceNodeInputFields: RAGPipelineVariables = []
     const globalInputFields: RAGPipelineVariables = []
@@ -85,7 +92,7 @@ const InputFieldPanel = () => {
     const newRagPipelineVariables = [...datasourceNodeInputFields, ...globalInputFields]
     setRagPipelineVariables?.(newRagPipelineVariables)
     handleSyncWorkflowDraft()
-  }, [setRagPipelineVariables, handleSyncWorkflowDraft])
+  }, [shouldIgnoreInputFieldChange, setRagPipelineVariables, handleSyncWorkflowDraft])
 
   const closePanel = useCallback(() => {
     closeAllInputFieldPanels()
@@ -154,7 +161,7 @@ const InputFieldPanel = () => {
                   nodeId={key}
                   LabelRightContent={<Datasource nodeData={datasourceNodeDataMap[key]!} />}
                   inputFields={inputFields}
-                  readonly={isPreviewing || isEditing}
+                  readonly={isReadonly}
                   labelClassName="pt-1 pb-1"
                   handleInputFieldsChange={updateInputFields}
                   allVariableNames={allVariableNames}
@@ -168,7 +175,7 @@ const InputFieldPanel = () => {
           nodeId="shared"
           LabelRightContent={<GlobalInputs />}
           inputFields={inputFieldsMap.current.shared || []}
-          readonly={isPreviewing || isEditing}
+          readonly={isReadonly}
           labelClassName="pt-2 pb-1"
           handleInputFieldsChange={updateInputFields}
           allVariableNames={allVariableNames}

@@ -14,8 +14,11 @@ from controllers.common.schema import (
 )
 from controllers.console import console_ns
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     is_admin_or_owner_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -217,6 +220,7 @@ class DefaultModelApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def post(self, tenant_id: str):
@@ -263,6 +267,7 @@ class ModelProviderModelApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def post(self, tenant_id: str, provider: str):
@@ -310,6 +315,7 @@ class ModelProviderModelApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def delete(self, tenant_id: str, provider: str):
@@ -389,6 +395,7 @@ class ModelProviderModelCredentialApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_CREATE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def post(self, tenant_id: str, provider: str):
@@ -421,6 +428,7 @@ class ModelProviderModelCredentialApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def put(self, current_tenant_id: str, provider: str):
@@ -448,6 +456,7 @@ class ModelProviderModelCredentialApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def delete(self, current_tenant_id: str, provider: str):
@@ -472,6 +481,7 @@ class ModelProviderModelCredentialSwitchApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_USE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def post(self, current_tenant_id: str, provider: str):
@@ -498,6 +508,7 @@ class ModelProviderModelEnableApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     def patch(self, tenant_id: str, provider: str):
         args = ParserDeleteModels.model_validate(console_ns.payload)
 
@@ -519,6 +530,7 @@ class ModelProviderModelDisableApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     def patch(self, tenant_id: str, provider: str):
         args = ParserDeleteModels.model_validate(console_ns.payload)
 

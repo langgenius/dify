@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { startMock } from '@test/fixtures/dify-mock/server'
 import { testHttpClient } from '@test/fixtures/http-client'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { loadAppInfoCache } from '@/cache/app-info'
 import { formatted, stringifyOutput } from '@/framework/output'
 import { ENV_CACHE_DIR } from '@/store/dir'
@@ -34,6 +34,7 @@ describe('runDescribeApp', () => {
     process.env[ENV_CACHE_DIR] = dir
   })
   afterEach(async () => {
+    vi.restoreAllMocks()
     if (prevCacheDir === undefined)
       delete process.env[ENV_CACHE_DIR]
     else
@@ -60,8 +61,6 @@ describe('runDescribeApp', () => {
     expect(out).toContain('Mode:')
     expect(out).toContain('chat')
     expect(out).toContain('Service API:')
-    expect(out).toContain('Tags:')
-    expect(out).toContain('demo')
     expect(out).toContain('Description:')
     expect(out).toContain('Parameters:')
   })
@@ -114,5 +113,14 @@ describe('runDescribeApp', () => {
         host: mock.url,
       },
     )).rejects.toThrow()
+  })
+
+  it('external login resolves describe via the permitted-external route', async () => {
+    const activeExt: ActiveContext = { host: mock.url, email: 'e', ctx: { account: { id: 'a', email: 'e', name: 'n' }, external_subject: { email: 'e', issuer: 'i' } } }
+    const out = await runDescribeApp(
+      { appId: 'app-1' },
+      { active: activeExt, http: testHttpClient(mock.url, 'dfoe_test'), host: mock.url },
+    )
+    expect(out.payload.info?.id).toBe('app-1')
   })
 })

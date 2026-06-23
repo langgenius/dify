@@ -50,10 +50,10 @@ describe('agent topic', () => {
 })
 
 describe('external topic', () => {
-  it('mentions external bearer prefix and login flag', () => {
+  it('mentions external bearer prefix and DIFY_TOKEN onboarding', () => {
     const out = render('external')
     expect(out).toContain('dfoe_')
-    expect(out).toContain('--external')
+    expect(out).toContain('export DIFY_TOKEN')
     expect(out).toContain('DIFY_TOKEN')
   })
 

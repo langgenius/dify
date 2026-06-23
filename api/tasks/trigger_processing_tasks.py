@@ -15,7 +15,6 @@ from celery import shared_task
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.db.session_factory import session_factory
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerInvokeEventResponse
@@ -32,6 +31,7 @@ from graphon.enums import WorkflowExecutionStatus
 from models.enums import (
     AppTriggerType,
     CreatorUserRole,
+    EndUserType,
     WorkflowRunTriggeredFrom,
     WorkflowTriggerStatus,
 )
@@ -265,7 +265,7 @@ def dispatch_triggered_workflow(
         workflows: Mapping[str, Workflow] = _get_latest_workflows_by_app_ids(session, subscribers)
 
     end_users: Mapping[str, EndUser] = EndUserService.create_end_user_batch(
-        type=InvokeFrom.TRIGGER,
+        type=EndUserType.TRIGGER,
         tenant_id=subscription.tenant_id,
         app_ids=[plugin_trigger.app_id for plugin_trigger in subscribers],
         user_id=user_id,

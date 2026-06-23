@@ -20,6 +20,8 @@ import type explore from '../i18n/en-US/explore.json'
 import type layout from '../i18n/en-US/layout.json'
 import type login from '../i18n/en-US/login.json'
 import type oauth from '../i18n/en-US/oauth.json'
+import type permissionKeys from '../i18n/en-US/permission-keys.json'
+import type permission from '../i18n/en-US/permission.json'
 import type pipeline from '../i18n/en-US/pipeline.json'
 import type pluginTags from '../i18n/en-US/plugin-tags.json'
 import type pluginTrigger from '../i18n/en-US/plugin-trigger.json'
@@ -56,6 +58,8 @@ export type Resources = {
   layout: typeof layout
   login: typeof login
   oauth: typeof oauth
+  permission: typeof permission
+  permissionKeys: typeof permissionKeys
   pipeline: typeof pipeline
   plugin: typeof plugin
   pluginTags: typeof pluginTags
@@ -92,6 +96,8 @@ export const namespaces = [
   'layout',
   'login',
   'oauth',
+  'permission',
+  'permissionKeys',
   'pipeline',
   'plugin',
   'pluginTags',

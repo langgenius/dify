@@ -50,6 +50,7 @@ import {
   generateNewNode,
   genNewNodeTitleFromOld,
   getNestedNodePosition,
+  getNodeCatalogType,
   getNodeCustomTypeByNodeDataType,
   getNodesConnectedSourceOrTargetHandleIdsMap,
   getNodesWithSameDefaultDataType,
@@ -747,7 +748,7 @@ export const useNodesInteractions = () => {
         return
 
       if (
-        nodesMetaDataMap?.[currentNode.data.type as BlockEnum]?.metaData
+        nodesMetaDataMap?.[getNodeCatalogType(currentNode.data)]?.metaData
           .isUndeletable
       ) {
         return
@@ -1791,7 +1792,7 @@ export const useNodesInteractions = () => {
     if (node.type === CUSTOM_NOTE_NODE)
       return true
 
-    const nodeMeta = nodesMetaDataMap?.[isAgentV2NodeData(node.data) ? BlockEnum.AgentV2 : node.data.type as BlockEnum]
+    const nodeMeta = nodesMetaDataMap?.[getNodeCatalogType(node.data)]
     if (!nodeMeta)
       return false
 
@@ -1803,7 +1804,7 @@ export const useNodesInteractions = () => {
     if (node.type === CUSTOM_NOTE_NODE)
       return {}
 
-    const nodeMeta = nodesMetaDataMap?.[isAgentV2NodeData(node.data) ? BlockEnum.AgentV2 : node.data.type as BlockEnum]
+    const nodeMeta = nodesMetaDataMap?.[getNodeCatalogType(node.data)]
     return nodeMeta?.defaultValue
   }, [nodesMetaDataMap])
 

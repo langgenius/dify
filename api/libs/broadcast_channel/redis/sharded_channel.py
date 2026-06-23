@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import logging
 from typing import Any, override
 
 from extensions.redis_names import serialize_redis_name
 from libs.broadcast_channel.channel import Producer, Subscriber, Subscription
+from libs.broadcast_channel.signals import SIG_CLOSE
 from redis import Redis, RedisCluster
 
 from ._subscription import RedisSubscriptionBase
+
+logger = logging.getLogger(__name__)
 
 
 class ShardedRedisBroadcastChannel:
@@ -20,14 +24,11 @@ class ShardedRedisBroadcastChannel:
     def __init__(
         self,
         redis_client: Redis | RedisCluster,
-        *,
-        join_timeout_ms: int = 2000,
     ):
         self._client = redis_client
-        self._join_timeout_ms = max(int(join_timeout_ms or 0), 0)
 
     def topic(self, topic: str) -> ShardedTopic:
-        return ShardedTopic(self._client, topic, join_timeout_ms=self._join_timeout_ms)
+        return ShardedTopic(self._client, topic)
 
 
 class ShardedTopic:
@@ -35,13 +36,10 @@ class ShardedTopic:
         self,
         redis_client: Redis | RedisCluster,
         topic: str,
-        *,
-        join_timeout_ms: int = 2000,
     ):
         self._client = redis_client
         self._topic = topic
         self._redis_topic = serialize_redis_name(topic)
-        self._join_timeout_ms = max(int(join_timeout_ms or 0), 0)
 
     def as_producer(self) -> Producer:
         return self
@@ -57,7 +55,6 @@ class ShardedTopic:
             client=self._client,
             pubsub=self._client.pubsub(),
             topic=self._redis_topic,
-            join_timeout_ms=self._join_timeout_ms,
         )
 
 
@@ -67,6 +64,13 @@ class _RedisShardedSubscription(RedisSubscriptionBase):
     @override
     def _get_subscription_type(self) -> str:
         return "sharded"
+
+    @override
+    def _publish_close_event(self) -> None:
+        try:
+            self._client.spublish(self._topic, SIG_CLOSE)  # type: ignore[attr-defined,union-attr]
+        except Exception:
+            logger.exception("failed to publish close event")
 
     @override
     def _subscribe(self) -> None:
