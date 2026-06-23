@@ -47,10 +47,12 @@ const NavLink = ({
   const NavIcon = isActive ? iconMap.selected : iconMap.normal
 
   const isCollapsed = mode !== 'expand'
+  const borderClassName = 'border-t-[0.75px] border-r-[0.25px] border-b-[0.25px] border-l-[0.75px]'
   const linkClassName = cn(
+    borderClassName,
     isActive
-      ? 'border-t-[0.75px] border-r-[0.25px] border-b-[0.25px] border-l-[0.75px] border-effects-highlight-lightmode-off bg-components-menu-item-bg-active system-sm-semibold text-text-accent-light-mode-only'
-      : 'system-sm-medium text-components-menu-item-text hover:bg-components-menu-item-bg-hover hover:text-components-menu-item-text-hover',
+      ? 'border-effects-highlight-lightmode-off bg-components-menu-item-bg-active system-sm-semibold text-text-accent-light-mode-only'
+      : 'border-transparent system-sm-medium text-components-menu-item-text hover:bg-components-menu-item-bg-hover hover:text-components-menu-item-text-hover',
     isCollapsed ? 'flex size-8 items-center justify-center p-1.5' : 'flex h-8 items-center rounded-lg pr-1 pl-3',
     'rounded-lg',
   )
@@ -68,7 +70,9 @@ const NavLink = ({
         type="button"
         disabled
         className={cn(
+          borderClassName,
           'cursor-not-allowed rounded-lg system-sm-medium text-components-menu-item-text opacity-30 hover:bg-components-menu-item-bg-hover',
+          'border-transparent',
           isCollapsed ? 'flex size-8 items-center justify-center p-1.5' : 'flex h-8 items-center pr-1 pl-3',
         )}
         title={mode === 'collapse' ? name : ''}
