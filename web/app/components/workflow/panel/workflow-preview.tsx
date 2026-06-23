@@ -10,6 +10,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import ReasoningPanel from '@/app/components/base/chat/chat/answer/reasoning-panel'
 import Loading from '@/app/components/base/loading'
 import { submitHumanInputForm } from '@/service/workflow'
 import {
@@ -201,6 +202,12 @@ const WorkflowPreview = () => {
               {humanInputFilledFormDataList && humanInputFilledFormDataList.length > 0 && (
                 <HumanInputFilledFormList
                   humanInputFilledFormDataList={humanInputFilledFormDataList}
+                />
+              )}
+              {workflowRunningData?.reasoningContent && Object.values(workflowRunningData.reasoningContent).some(Boolean) && (
+                <ReasoningPanel
+                  content={workflowRunningData.reasoningContent}
+                  done={!!workflowRunningData?.reasoningFinished || workflowRunningData?.result?.status !== WorkflowRunningStatus.Running}
                 />
               )}
               <ResultText

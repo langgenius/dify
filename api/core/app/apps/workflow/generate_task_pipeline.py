@@ -31,6 +31,7 @@ from core.app.entities.queue_entities import (
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
     QueuePingEvent,
+    QueueReasoningChunkEvent,
     QueueStopEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
@@ -47,6 +48,7 @@ from core.app.entities.task_entities import (
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
     PingStreamResponse,
+    ReasoningChunkStreamResponse,
     StreamResponse,
     TextChunkStreamResponse,
     WorkflowAppBlockingResponse,
@@ -571,6 +573,27 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
         yield self._text_chunk_to_stream_response(delta_text, from_variable_selector=event.from_variable_selector)
 
+    def _handle_reasoning_chunk_event(
+        self, event: QueueReasoningChunkEvent, **kwargs
+    ) -> Generator[StreamResponse, None, None]:
+        """Handle out-of-band reasoning chunk events.
+
+        Pure emit: reasoning is streamed on its own channel and never written to the
+        workflow output. The terminal marker (is_final) may carry an empty reasoning
+        string, in which case it is still forwarded as the "thinking finished" signal.
+        Workflow runs have no message id, so it is omitted from the response.
+        """
+        if not event.reasoning and not event.is_final:
+            return
+        yield ReasoningChunkStreamResponse(
+            task_id=self._application_generate_entity.task_id,
+            data=ReasoningChunkStreamResponse.Data(
+                reasoning=event.reasoning,
+                node_id=event.from_node_id,
+                is_final=event.is_final,
+            ),
+        )
+
     def _handle_agent_log_event(self, event: QueueAgentLogEvent, **kwargs) -> Generator[StreamResponse, None, None]:
         """Handle agent log events."""
         yield self._workflow_response_converter.handle_agent_log(
@@ -600,6 +623,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             QueuePingEvent: self._handle_ping_event,
             QueueErrorEvent: self._handle_error_event,
             QueueTextChunkEvent: self._handle_text_chunk_event,
+            QueueReasoningChunkEvent: self._handle_reasoning_chunk_event,
             # Workflow events
             QueueWorkflowStartedEvent: self._handle_workflow_started_event,
             QueueWorkflowSucceededEvent: self._handle_workflow_succeeded_event,

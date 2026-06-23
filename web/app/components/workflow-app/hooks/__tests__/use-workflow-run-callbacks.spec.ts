@@ -40,6 +40,7 @@ const createHandlers = () => ({
   handleWorkflowAgentLog: vi.fn(),
   handleWorkflowTextChunk: vi.fn(),
   handleWorkflowTextReplace: vi.fn(),
+  handleWorkflowReasoning: vi.fn(),
   handleWorkflowPaused: vi.fn(),
 })
 
