@@ -131,7 +131,7 @@ def _normalize_invitee_emails(emails: list[str]) -> list[str]:
 def _count_new_member_invites(tenant_id: str, emails: list[str]) -> int:
     new_member_count = 0
     for email in emails:
-        account = AccountService.get_account_by_email_with_case_fallback(email)
+        account = AccountService.get_account_by_email_with_case_fallback(db.session, email)
         if not account:
             new_member_count += 1
             continue

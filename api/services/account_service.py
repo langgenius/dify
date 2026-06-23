@@ -981,19 +981,18 @@ class AccountService:
         return token
 
     @staticmethod
-    def get_account_by_email_with_case_fallback(email: str) -> Account | None:
+    def get_account_by_email_with_case_fallback(session: Session, email: str) -> Account | None:
         """
         Retrieve an account by email and fall back to the lowercase email if the original lookup fails.
 
         This keeps backward compatibility for older records that stored uppercase emails while the
         rest of the system gradually normalizes new inputs.
         """
-        with session_factory.create_session() as session:
-            account = session.execute(select(Account).where(Account.email == email)).scalar_one_or_none()
-            if account or email == email.lower():
-                return account
+        account = session.execute(select(Account).where(Account.email == email)).scalar_one_or_none()
+        if account or email == email.lower():
+            return account
 
-            return session.execute(select(Account).where(Account.email == email.lower())).scalar_one_or_none()
+        return session.execute(select(Account).where(Account.email == email.lower())).scalar_one_or_none()
 
     @classmethod
     def get_email_code_login_data(cls, token: str) -> dict[str, Any] | None:
@@ -1958,7 +1957,7 @@ class RegisterService:
 
         check_workspace_member_invite_permission(tenant.id)
 
-        account = AccountService.get_account_by_email_with_case_fallback(email)
+        account = AccountService.get_account_by_email_with_case_fallback(db.session, email)
 
         requires_setup = False
         if not account:

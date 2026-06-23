@@ -1,3 +1,4 @@
+from extensions.ext_database import db
 import inspect
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -697,7 +698,7 @@ def test_get_account_by_email_with_case_fallback_uses_lowercase_lookup():
     mock_factory.create_session.return_value.__exit__ = MagicMock(return_value=False)
 
     with patch("services.account_service.session_factory", mock_factory):
-        result = AccountService.get_account_by_email_with_case_fallback("Mixed@Test.com")
+        result = AccountService.get_account_by_email_with_case_fallback(db.session, "Mixed@Test.com")
 
     assert result is expected_account
     assert mock_session.execute.call_count == 2
