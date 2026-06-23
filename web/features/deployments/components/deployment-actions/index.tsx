@@ -9,15 +9,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useSetAtom } from 'jotai'
+import { ScopeProvider } from 'jotai-scope'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DeleteDeploymentDialog } from './delete-dialog'
 import { EditDeploymentDialog } from './edit-dialog'
 import {
-  deploymentActionDialogAtom,
-  openDeploymentActionDialogAtom,
-  setDeploymentActionDialogOpenAtom,
+  deleteDeploymentDialogOpenAtom,
+  deploymentActionAppInstanceIdHydrationAtom,
+  deploymentActionsLocalAtoms,
+  editDeploymentDialogOpenAtom,
 } from './state'
 
 const ACTION_TRIGGER_CLASS_NAME = cn(
@@ -28,37 +30,33 @@ const ACTION_TRIGGER_CLASS_NAME = cn(
 
 type DeploymentActionsMenuProps = {
   appInstanceId: string
-  appName?: string
   className?: string
   triggerClassName?: string
   placement: ComponentProps<typeof DropdownMenuContent>['placement']
   sideOffset?: ComponentProps<typeof DropdownMenuContent>['sideOffset']
 }
 
-export function DeploymentActionsMenu({
-  appInstanceId,
-  appName,
+type DeploymentActionsMenuContentProps = Omit<DeploymentActionsMenuProps, 'appInstanceId'>
+
+function DeploymentActionsMenuContent({
   className,
   triggerClassName,
   placement,
   sideOffset,
-}: DeploymentActionsMenuProps) {
+}: DeploymentActionsMenuContentProps) {
   const { t } = useTranslation('deployments')
-  const actionDialog = useAtomValue(deploymentActionDialogAtom)
-  const openDialog = useSetAtom(openDeploymentActionDialogAtom)
-  const setDialogOpen = useSetAtom(setDeploymentActionDialogOpenAtom)
+  const setEditOpen = useSetAtom(editDeploymentDialogOpenAtom)
+  const setDeleteOpen = useSetAtom(deleteDeploymentDialogOpenAtom)
   const [menuOpen, setMenuOpen] = useState(false)
-  const editOpen = actionDialog?.appInstanceId === appInstanceId && actionDialog.type === 'edit'
-  const deleteOpen = actionDialog?.appInstanceId === appInstanceId && actionDialog.type === 'delete'
 
   function openEditDialog() {
     setMenuOpen(false)
-    openDialog({ appInstanceId, type: 'edit' })
+    setEditOpen(true)
   }
 
   function openDeleteDialog() {
     setMenuOpen(false)
-    openDialog({ appInstanceId, type: 'delete' })
+    setDeleteOpen(true)
   }
 
   return (
@@ -75,36 +73,43 @@ export function DeploymentActionsMenu({
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
         </DropdownMenuTrigger>
-        {menuOpen && (
-          <DropdownMenuContent placement={placement} sideOffset={sideOffset} popupClassName="min-w-44">
-            <DropdownMenuItem className="gap-2 px-3" onClick={openEditDialog}>
-              <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
-              <span className="system-sm-regular text-text-secondary">{t('card.menu.editInfo')}</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              className="gap-2 px-3"
-              onClick={openDeleteDialog}
-            >
-              <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-              <span className="system-sm-regular">{t('card.menu.delete')}</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        )}
+        <DropdownMenuContent placement={placement} sideOffset={sideOffset} popupClassName="min-w-44">
+          <DropdownMenuItem className="gap-2 px-3" onClick={openEditDialog}>
+            <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
+            <span className="system-sm-regular text-text-secondary">{t('card.menu.editInfo')}</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            variant="destructive"
+            className="gap-2 px-3"
+            onClick={openDeleteDialog}
+          >
+            <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+            <span className="system-sm-regular">{t('card.menu.delete')}</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
       </DropdownMenu>
 
-      <EditDeploymentDialog
-        appInstanceId={appInstanceId}
-        open={editOpen}
-        onOpenChange={open => setDialogOpen({ appInstanceId, type: 'edit', open })}
-      />
-      <DeleteDeploymentDialog
-        appInstanceId={appInstanceId}
-        appName={appName}
-        open={deleteOpen}
-        onOpenChange={open => setDialogOpen({ appInstanceId, type: 'delete', open })}
-      />
+      <EditDeploymentDialog />
+      <DeleteDeploymentDialog />
     </div>
+  )
+}
+
+export function DeploymentActionsMenu({
+  appInstanceId,
+  ...props
+}: DeploymentActionsMenuProps) {
+  return (
+    <ScopeProvider
+      key={appInstanceId}
+      atoms={[
+        [deploymentActionAppInstanceIdHydrationAtom, appInstanceId],
+        ...deploymentActionsLocalAtoms,
+      ]}
+      name="DeploymentActionsMenu"
+    >
+      <DeploymentActionsMenuContent {...props} />
+    </ScopeProvider>
   )
 }

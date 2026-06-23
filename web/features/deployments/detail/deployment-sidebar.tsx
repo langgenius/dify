@@ -8,7 +8,6 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useAtomValue } from 'jotai'
-import { ScopeProvider } from 'jotai-scope'
 import { useTranslation } from 'react-i18next'
 import NavLink from '@/app/components/app-sidebar/nav-link'
 import ToggleButton from '@/app/components/app-sidebar/toggle-button'
@@ -19,7 +18,6 @@ import { useSetGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import Link from '@/next/link'
 import { usePathname, useRouter } from '@/next/navigation'
 import { DeploymentActionsMenu } from '../components/deployment-actions'
-import { deploymentActionsLocalAtoms } from '../components/deployment-actions/state'
 import { TitleTooltip } from '../components/title-tooltip'
 import { deploymentRouteAppInstanceIdAtom } from '../route-state'
 import { deploymentDetailAppInstanceQueryAtom } from './state'
@@ -167,7 +165,6 @@ function DeploymentDetailInstanceInfo({ appInstanceId, expand }: {
                     </div>
                     <DeploymentActionsMenu
                       appInstanceId={appInstanceId}
-                      appName={instanceName}
                       placement="bottom-end"
                       sideOffset={4}
                       className="shrink-0"
@@ -295,15 +292,7 @@ export function DeploymentDetailSection({
         </div>
       )}
       <div className="px-1 py-2">
-        <ScopeProvider
-          key={appInstanceId}
-          atoms={[
-            ...deploymentActionsLocalAtoms,
-          ]}
-          name="DeploymentDetailSidebar"
-        >
-          <DeploymentDetailInstanceInfo appInstanceId={appInstanceId} expand={expand} />
-        </ScopeProvider>
+        <DeploymentDetailInstanceInfo appInstanceId={appInstanceId} expand={expand} />
       </div>
 
       <nav className={cn('flex flex-col gap-y-0.5 py-1', expand ? 'px-1' : 'px-3')}>
