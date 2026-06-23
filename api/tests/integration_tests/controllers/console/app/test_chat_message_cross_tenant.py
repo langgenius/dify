@@ -16,11 +16,13 @@ from unittest import mock
 
 import pytest
 from flask.testing import FlaskClient
+from sqlalchemy import select
 
 from constants import HEADER_NAME_CSRF_TOKEN
 from controllers.console.app import message as message_api
 from controllers.console.app import wraps
 from controllers.console import wraps as console_wraps
+from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.token import _real_cookie_name, generate_csrf_token
 from models import App, Tenant
@@ -195,3 +197,215 @@ class TestChatMessageCrossTenant:
         assert payload is not None
         assert "data" in payload
         assert isinstance(payload["data"], list)
+
+
+class TestChatMessageCrossTenantRealDB:
+    """Real-DB verification of the WHERE App.tenant_id == current_tenant_id clause.
+
+    The mock-based ``TestChatMessageCrossTenant`` tests above verify the decorator
+    chain ("load returns None → controller returns 404"), but they mock the load
+    function itself, so reverting the WHERE clause would not cause them to fail.
+    This class exercises the *real* ``_load_app_model_from_scoped_session``
+    against a real cross-tenant App row in PostgreSQL, so it actually exercises
+    the WHERE clause the CVE fix added. R5 in the plan asks us to verify the
+    regression tests fail against unpatched code — that verification lives here.
+    """
+
+    @pytest.fixture
+    def cross_tenant_app(self, flask_app, setup_account):
+        """Create a real App row in a tenant distinct from ``setup_account``'s tenant.
+
+        Uses ``db.session`` (scoped via ``flask_app``) so the row is visible to
+        the real load function. Cleans up the row, the tenant, and the owning
+        account on teardown so the suite does not accumulate rows across runs.
+
+        The fixture uses ``flask_app`` (function-scoped) to provide a Flask app
+        context for ``db.session`` writes. ``setup_account`` is requested to
+        force its setup (which itself needs a request context, handled inside
+        that fixture).
+        """
+        from sqlalchemy import delete as sql_delete
+
+        cross_app_id = None
+        owner_b_id = None
+        tenant_b_id = None
+        cross_app = None
+
+        with flask_app.test_request_context():
+            owner_b = Account(
+                name="Cross-Tenant Owner",
+                email=f"cross-tenant-{uuid.uuid4()}@example.com",
+                status="active",
+                interface_language="en-US",
+            )
+            db.session.add(owner_b)
+            db.session.flush()
+
+            tenant_b = Tenant(name="Test Tenant B (cross-tenant)", status="normal")
+            db.session.add(tenant_b)
+            db.session.flush()
+
+            join_b = TenantAccountJoin(
+                tenant_id=tenant_b.id,
+                account_id=owner_b.id,
+                role=TenantAccountRole.OWNER,
+                current=True,
+            )
+            db.session.add(join_b)
+
+            cross_app = App(
+                tenant_id=tenant_b.id,
+                name="cross-tenant-app",
+                description="App owned by tenant B, should not be visible to tenant A",
+                mode=AppMode.CHAT,
+                enable_site=True,
+                enable_api=True,
+                api_rpm=60,
+                api_rph=3600,
+                is_demo=False,
+                is_public=False,
+                created_by=owner_b.id,
+                updated_by=owner_b.id,
+            )
+            db.session.add(cross_app)
+            db.session.commit()
+
+            # Capture IDs inside the request context, before objects expire.
+            cross_app_id = cross_app.id
+            owner_b_id = owner_b.id
+            tenant_b_id = tenant_b.id
+
+        yield cross_app
+
+        with flask_app.test_request_context():
+            db.session.execute(sql_delete(App).where(App.id == cross_app_id))
+            db.session.execute(
+                sql_delete(TenantAccountJoin).where(TenantAccountJoin.account_id == owner_b_id)
+            )
+            db.session.execute(sql_delete(Account).where(Account.id == owner_b_id))
+            db.session.execute(sql_delete(Tenant).where(Tenant.id == tenant_b_id))
+            db.session.commit()
+
+    def test_real_load_filters_cross_tenant_app(
+        self, flask_app, cross_tenant_app, setup_account, monkeypatch
+    ):
+        """The real ``_load_app_model_from_scoped_session`` must return ``None``
+        for an app whose tenant does not match the current user's tenant.
+
+        Without the ``WHERE App.tenant_id == current_tenant_id`` clause added by
+        the CVE fix, this test would fail (the load would return the
+        cross-tenant App row instead of ``None``). With the clause in place, the
+        load correctly filters out the row.
+
+        We patch ``current_account_with_tenant`` to return ``setup_account``'s
+        real tenant (read from the DB) so the test exercises the real SQL
+        WHERE clause rather than a mocked-out one. The patch only supplies the
+        identity input; the SQL filter itself is the production code.
+        """
+        cross_app_id = cross_tenant_app.id
+        with flask_app.test_request_context():
+            # setup_account is the real account created by the conftest
+            # setup_account fixture. Its _current_tenant is not auto-set by
+            # the fixture, so look up the tenant via the join to get a real
+            # tenant id.
+            from models.account import TenantAccountJoin
+
+            current_tenant_id = db.session.scalar(
+                select(TenantAccountJoin.tenant_id)
+                .where(TenantAccountJoin.account_id == setup_account.id)
+                .limit(1)
+            )
+            assert current_tenant_id is not None, (
+                "Test setup error: setup_account has no tenant join"
+            )
+            assert cross_tenant_app.tenant_id != current_tenant_id, (
+                "Test fixture error: cross-tenant app must be in a different tenant "
+                "from setup_account"
+            )
+
+            # Sanity check: the row is actually visible via the same session the
+            # load function uses, with no tenant filter. If this assertion fails,
+            # the fixture is broken, not the production code.
+            unfiltered = db.session.scalar(
+                select(App).where(App.id == cross_app_id, App.status == AppStatus.NORMAL).limit(1)
+            )
+            assert unfiltered is not None and unfiltered.id == cross_app_id, (
+                "Test fixture error: cross-tenant App row is not visible via db.session. "
+                "Check that the fixture committed the row."
+            )
+
+            # Provide the current user's tenant id. This is the only thing
+            # mocked: the SQL clause that consumes it is the production code.
+            monkeypatch.setattr(
+                wraps,
+                "current_account_with_tenant",
+                lambda: (setup_account, current_tenant_id),
+            )
+
+            # The real load. setup_account's tenant_id does not match
+            # cross_tenant_app.tenant_id, so the WHERE clause must filter the
+            # row out and return None.
+            result = wraps._load_app_model_from_scoped_session(cross_app_id)
+
+            assert result is None, (
+                f"_load_app_model_from_scoped_session returned {result!r} for a "
+                "cross-tenant app — the tenant filter in the WHERE clause is missing"
+            )
+
+    def test_real_load_returns_same_tenant_app(
+        self, flask_app, setup_account, monkeypatch
+    ):
+        """Positive case: a real App in the current user's tenant is returned.
+
+        Guards against the WHERE clause being too restrictive (e.g. always
+        returning ``None``). Uses the same load function as the cross-tenant
+        test, but with the tenant ids aligned so the SQL matches.
+        """
+        from sqlalchemy import delete as sql_delete
+
+        with flask_app.test_request_context():
+            from models.account import TenantAccountJoin
+
+            current_tenant_id = db.session.scalar(
+                select(TenantAccountJoin.tenant_id)
+                .where(TenantAccountJoin.account_id == setup_account.id)
+                .limit(1)
+            )
+            assert current_tenant_id is not None, (
+                "Test setup error: setup_account has no tenant join"
+            )
+
+            same_tenant_app = App(
+                tenant_id=current_tenant_id,
+                name="same-tenant-app",
+                description="App owned by setup_account's tenant",
+                mode=AppMode.CHAT,
+                enable_site=True,
+                enable_api=True,
+                api_rpm=60,
+                api_rph=3600,
+                is_demo=False,
+                is_public=False,
+                created_by=setup_account.id,
+                updated_by=setup_account.id,
+            )
+            db.session.add(same_tenant_app)
+            db.session.commit()
+            same_tenant_app_id = same_tenant_app.id
+
+            try:
+                monkeypatch.setattr(
+                    wraps,
+                    "current_account_with_tenant",
+                    lambda: (setup_account, current_tenant_id),
+                )
+
+                result = wraps._load_app_model_from_scoped_session(same_tenant_app_id)
+                assert result is not None, (
+                    "_load_app_model_from_scoped_session returned None for a "
+                    "same-tenant app — the WHERE clause is too restrictive"
+                )
+                assert result.id == same_tenant_app_id
+            finally:
+                db.session.execute(sql_delete(App).where(App.id == same_tenant_app_id))
+                db.session.commit()
