@@ -1,10 +1,8 @@
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type {
   AgentCliTool,
-  AgentFileNode,
   AgentKnowledgeRetrievalItem,
   AgentProviderTool,
-  AgentSkill,
   AgentSoulConfigFormState,
   AgentTool,
   EnvVariable,
@@ -16,78 +14,7 @@ import { defaultAgentSoulConfigFormState } from './form-state'
 type AgentSoulDifyToolConfig = NonNullable<NonNullable<AgentSoulConfig['tools']>['dify_tools']>[number]
 type AgentSoulCliToolConfig = NonNullable<NonNullable<AgentSoulConfig['tools']>['cli_tools']>[number]
 type AgentSoulToolRuntimeParameterValue = NonNullable<AgentSoulDifyToolConfig['runtime_parameters']>[string]
-type AgentSoulFileRefConfig = NonNullable<NonNullable<AgentSoulConfig['skills_files']>['files']>[number]
 type AgentSoulEnvVariableConfig = NonNullable<NonNullable<AgentSoulConfig['env']>['variables']>[number]
-
-const flattenFileNodes = (files: AgentFileNode[]): AgentFileNode[] => files.flatMap(file => [
-  file,
-  ...flattenFileNodes(file.children ?? []),
-])
-
-const toSkillRefs = (skills: AgentSkill[]) => skills.map(skill => ({
-  description: skill.description,
-  file_id: skill.fileId,
-  full_archive_file_id: skill.fullArchiveFileId,
-  full_archive_key: skill.fullArchiveKey,
-  id: skill.id,
-  manifest_files: skill.files,
-  name: skill.name,
-  path: skill.path,
-  skill_md_file_id: skill.skillMdFileId,
-  skill_md_key: skill.skillMdKey,
-}))
-
-const toSkillFormState = (config?: AgentSoulConfig): AgentSkill[] => (
-  config?.skills_files?.skills ?? []
-).flatMap((skill) => {
-  const id = skill.id ?? skill.file_id ?? skill.path
-  if (!id)
-    return []
-
-  return [{
-    description: skill.description ?? undefined,
-    fileId: skill.file_id ?? undefined,
-    files: skill.manifest_files ?? undefined,
-    fullArchiveFileId: skill.full_archive_file_id ?? undefined,
-    fullArchiveKey: skill.full_archive_key ?? undefined,
-    id,
-    name: skill.name ?? id,
-    path: skill.path ?? undefined,
-    skillMdFileId: skill.skill_md_file_id ?? undefined,
-    skillMdKey: skill.skill_md_key ?? undefined,
-  }]
-})
-
-const toFileIcon = (file: AgentSoulFileRefConfig): AgentFileNode['icon'] => {
-  const type = file.type?.toLowerCase()
-
-  if (type === 'image' || type === 'pdf' || type === 'markdown' || type === 'json' || type === 'table' || type === 'archive' || type === 'code' || type === 'text' || type === 'folder')
-    return type
-
-  return 'file'
-}
-
-const toFileFormState = (config?: AgentSoulConfig): AgentFileNode[] => (
-  config?.skills_files?.files ?? []
-).flatMap((file) => {
-  const id = file.id ?? file.file_id ?? file.upload_file_id ?? file.reference ?? file.remote_url ?? file.url
-  if (!id)
-    return []
-
-  return [{
-    id,
-    name: file.name ?? id,
-    icon: toFileIcon(file),
-    driveKey: file.drive_key ?? undefined,
-  }]
-})
-
-const toFileRefs = (files: AgentFileNode[]) => flattenFileNodes(files).map(file => ({
-  ...(file.driveKey ? { drive_key: file.driveKey } : {}),
-  id: file.id,
-  name: file.name,
-  type: file.icon,
-}))
 
 const getKnowledgeRetrievalName = (item: AgentKnowledgeRetrievalItem) => item.name ?? item.nameKey ?? item.id
 
@@ -448,34 +375,31 @@ export const formStateToAgentSoulConfig = ({
   baseConfig?: AgentSoulConfig
   formState: AgentSoulConfigFormState
   currentModel?: DefaultModel
-}): AgentSoulConfig => ({
-  ...baseConfig,
-  prompt: {
-    ...baseConfig?.prompt,
-    system_prompt: formState.prompt,
-  },
-  model: currentModel
-    ? {
-        ...baseConfig?.model,
-        model_provider: currentModel.provider,
-        model: currentModel.model,
-        plugin_id: getModelProviderPluginId(currentModel, baseConfig?.model),
-      }
-    : baseConfig?.model,
-  skills_files: {
-    ...baseConfig?.skills_files,
-    skills: toSkillRefs(formState.skills),
-    files: toFileRefs(formState.files),
-  },
-  tools: {
-    ...baseConfig?.tools,
-    dify_tools: toDifyToolConfigs(formState.tools, formState.toolSettings),
-    cli_tools: toCliToolConfigs(formState.tools),
-  },
-  app_features: formState.appFeatures ?? baseConfig?.app_features,
-  knowledge: toKnowledgeConfig(baseConfig?.knowledge, formState.knowledgeRetrievals),
-  env: toEnvConfig(formState.envVariables),
-})
+}): AgentSoulConfig => {
+  return {
+    ...baseConfig,
+    prompt: {
+      ...baseConfig?.prompt,
+      system_prompt: formState.prompt,
+    },
+    model: currentModel
+      ? {
+          ...baseConfig?.model,
+          model_provider: currentModel.provider,
+          model: currentModel.model,
+          plugin_id: getModelProviderPluginId(currentModel, baseConfig?.model),
+        }
+      : baseConfig?.model,
+    tools: {
+      ...baseConfig?.tools,
+      dify_tools: toDifyToolConfigs(formState.tools, formState.toolSettings),
+      cli_tools: toCliToolConfigs(formState.tools),
+    },
+    app_features: formState.appFeatures ?? baseConfig?.app_features,
+    knowledge: toKnowledgeConfig(baseConfig?.knowledge, formState.knowledgeRetrievals),
+    env: toEnvConfig(formState.envVariables),
+  }
+}
 
 export const agentSoulConfigToFormState = (
   config?: AgentSoulConfig,
@@ -488,8 +412,6 @@ export const agentSoulConfigToFormState = (
     prompt: config?.prompt?.system_prompt ?? '',
     model: toDraftModel(config),
     appFeatures: config?.app_features,
-    skills: toSkillFormState(config),
-    files: toFileFormState(config),
     tools: [
       ...providerToolState.tools,
       ...toCliToolFormState(config),

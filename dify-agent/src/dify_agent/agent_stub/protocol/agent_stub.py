@@ -19,8 +19,10 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 
 AGENT_STUB_PROTOCOL_VERSION: Final[int] = 1
-AGENT_STUB_URL_ENV_VAR: Final[str] = "DIFY_AGENT_STUB_URL"
+AGENT_STUB_API_BASE_URL_ENV_VAR: Final[str] = "DIFY_AGENT_STUB_API_BASE_URL"
 AGENT_STUB_AUTH_JWE_ENV_VAR: Final[str] = "DIFY_AGENT_STUB_AUTH_JWE"
+AGENT_STUB_DRIVE_BASE_ENV_VAR: Final[str] = "DIFY_AGENT_STUB_DRIVE_BASE"
+DEFAULT_AGENT_STUB_DRIVE_BASE: Final[str] = "/mnt/drive"
 
 type AgentStubURLScheme = Literal["http", "https", "grpc"]
 
@@ -44,14 +46,25 @@ class AgentStubEndpoint:
         return self.scheme == "grpc"
 
 
+def agent_stub_drive_base_for_ref(drive_ref: str | None) -> str:
+    """Return the fixed sandbox-local Agent Stub drive base for one drive ref."""
+    normalized_ref = (drive_ref or "").strip()
+    if not normalized_ref:
+        return DEFAULT_AGENT_STUB_DRIVE_BASE
+    drive_ref_parts = normalized_ref.split("/")
+    if normalized_ref.startswith("/") or any(part in {"", ".", ".."} for part in drive_ref_parts):
+        raise ValueError("Agent Stub drive_ref must be a safe relative path")
+    return f"{DEFAULT_AGENT_STUB_DRIVE_BASE.rstrip('/')}/{'/'.join(drive_ref_parts)}"
+
+
 def parse_agent_stub_endpoint(url: str) -> AgentStubEndpoint:
     """Parse one Agent Stub endpoint URL for HTTP or gRPC transport selection.
 
-    HTTP(S) endpoints are normalized by trimming whitespace and removing a final
-    trailing slash from the path while preserving the configured base path.
-    gRPC endpoints must be plain ``grpc://host:port`` targets with no path,
-    query string, or fragment because transport routing happens on the gRPC
-    service name instead of an HTTP URL path.
+    HTTP(S) endpoints accept either the service root or the explicit
+    ``/agent-stub`` API root and normalize to the latter. gRPC endpoints must be
+    plain ``grpc://host:port`` targets with no path, query string, or fragment
+    because transport routing happens on the gRPC service name instead of an
+    HTTP URL path.
     """
     stripped = url.strip()
     if not stripped:
@@ -85,6 +98,10 @@ def parse_agent_stub_endpoint(url: str) -> AgentStubEndpoint:
         )
 
     normalized_path = parsed.path.rstrip("/")
+    if normalized_path in {"", "/"}:
+        normalized_path = "/agent-stub"
+    elif normalized_path != "/agent-stub":
+        raise ValueError("HTTP Agent Stub API base URL path must be empty or /agent-stub")
     normalized_url = urlunsplit((scheme, parsed.netloc, normalized_path, "", ""))
     return AgentStubEndpoint(
         url=normalized_url,
@@ -95,8 +112,8 @@ def parse_agent_stub_endpoint(url: str) -> AgentStubEndpoint:
     )
 
 
-def normalize_agent_stub_url(url: str) -> str:
-    """Return the normalized Agent Stub URL used across settings and CLI env."""
+def normalize_agent_stub_api_base_url(url: str) -> str:
+    """Return the normalized Agent Stub API base URL used across settings and CLI env."""
     return parse_agent_stub_endpoint(url).url
 
 
@@ -233,8 +250,10 @@ class AgentStubDriveCommitItem(BaseModel):
     """One drive key to file binding committed through the Agent Stub."""
 
     key: str
-    file_ref: AgentStubDriveFileRef
+    file_ref: AgentStubDriveFileRef | None = None
     value_owned_by_drive: bool = True
+    is_skill: bool = False
+    skill_metadata: dict[str, str] | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -254,11 +273,14 @@ class AgentStubDriveItem(BaseModel):
     size: int | None = None
     hash: str | None = None
     mime_type: str | None = None
-    file_kind: Literal["upload_file", "tool_file"]
-    file_id: str
+    file_kind: Literal["upload_file", "tool_file"] | None = None
+    file_id: str | None = None
     created_at: int | None = None
     download_url: str | None = None
     value_owned_by_drive: bool | None = None
+    removed: bool | None = None
+    is_skill: bool | None = None
+    skill_metadata: str | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -292,8 +314,10 @@ def _format_url_host(host: str) -> str:
 
 __all__ = [
     "AGENT_STUB_AUTH_JWE_ENV_VAR",
+    "AGENT_STUB_DRIVE_BASE_ENV_VAR",
     "AGENT_STUB_PROTOCOL_VERSION",
-    "AGENT_STUB_URL_ENV_VAR",
+    "AGENT_STUB_API_BASE_URL_ENV_VAR",
+    "DEFAULT_AGENT_STUB_DRIVE_BASE",
     "AgentStubConnectRequest",
     "AgentStubConnectResponse",
     "AgentStubEndpoint",
@@ -310,11 +334,12 @@ __all__ = [
     "AgentStubFileUploadResponse",
     "AgentStubURLScheme",
     "agent_stub_connections_url",
+    "agent_stub_drive_base_for_ref",
     "agent_stub_drive_commit_url",
     "agent_stub_drive_manifest_url",
     "agent_stub_file_download_request_url",
     "agent_stub_file_upload_request_url",
     "is_canonical_dify_file_reference",
-    "normalize_agent_stub_url",
+    "normalize_agent_stub_api_base_url",
     "parse_agent_stub_endpoint",
 ]

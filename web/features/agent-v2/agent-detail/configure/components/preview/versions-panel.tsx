@@ -10,6 +10,7 @@ import { consoleQuery } from '@/service/client'
 type AgentPreviewVersionsPanelProps = {
   agentId: string
   activeVersionId?: string | null
+  onSelectVersion: (versionId: string | null) => void
   onClose: () => void
 }
 
@@ -63,12 +64,14 @@ function VersionItem({
   isLatest,
   isFirst,
   isLast,
+  onSelect,
 }: {
   version: AgentConfigSnapshotSummaryResponse
   activeVersionId?: string | null
   isLatest: boolean
   isFirst: boolean
   isLast: boolean
+  onSelect: (versionId: string) => void
 }) {
   const { t } = useTranslation('agentV2')
   const { t: tWorkflow } = useTranslation('workflow')
@@ -78,6 +81,8 @@ function VersionItem({
   return (
     <button
       type="button"
+      aria-current={isActive ? 'true' : undefined}
+      onClick={() => onSelect(version.id)}
       className={cn(
         'group relative flex w-full items-start gap-1 rounded-lg py-1 pr-1.5 pl-2 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
         isActive ? 'bg-state-accent-active' : 'hover:bg-state-base-hover',
@@ -107,27 +112,40 @@ function VersionItem({
 }
 
 function CurrentDraftItem({
+  isActive,
   isLast,
+  onSelect,
 }: {
+  isActive: boolean
   isLast: boolean
+  onSelect: () => void
 }) {
   const { t: tWorkflow } = useTranslation('workflow')
 
   return (
-    <div className="flex w-full items-start gap-1 rounded-lg py-1 pr-1.5 pl-2">
-      <VersionTimelineDot isActive={false} isFirst isLast={isLast} />
+    <button
+      type="button"
+      aria-current={isActive ? 'true' : undefined}
+      onClick={onSelect}
+      className={cn(
+        'flex w-full items-start gap-1 rounded-lg py-1 pr-1.5 pl-2 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+        isActive ? 'bg-state-accent-active' : 'hover:bg-state-base-hover',
+      )}
+    >
+      <VersionTimelineDot isActive={isActive} isFirst isLast={isLast} />
       <div className="min-w-0 flex-1 py-1">
-        <p className="truncate system-sm-semibold text-text-secondary">
+        <p className={cn('truncate system-sm-semibold', isActive ? 'text-text-accent' : 'text-text-secondary')}>
           {tWorkflow('versionHistory.currentDraft')}
         </p>
       </div>
-    </div>
+    </button>
   )
 }
 
 export function AgentPreviewVersionsPanel({
   agentId,
   activeVersionId,
+  onSelectVersion,
   onClose,
 }: AgentPreviewVersionsPanelProps) {
   const { t } = useTranslation('agentV2')
@@ -182,7 +200,11 @@ export function AgentPreviewVersionsPanel({
         )}
         {!versionsQuery.isPending && versions.length > 0 && (
           <div className="flex flex-col gap-px">
-            <CurrentDraftItem isLast={versions.length === 0} />
+            <CurrentDraftItem
+              isActive={!activeVersionId}
+              isLast={versions.length === 0}
+              onSelect={() => onSelectVersion(null)}
+            />
             {versions.map((version, index) => (
               <VersionItem
                 key={version.id}
@@ -191,6 +213,7 @@ export function AgentPreviewVersionsPanel({
                 isLatest={version.id === latestVersionId}
                 isFirst={false}
                 isLast={index === versions.length - 1}
+                onSelect={onSelectVersion}
               />
             ))}
           </div>

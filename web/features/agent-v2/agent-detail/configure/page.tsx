@@ -38,10 +38,11 @@ function AgentConfigurePageContent({
   agentId,
 }: AgentConfigurePageProps) {
   const { t } = useTranslation('agentV2')
-  const configureData = useAgentConfigureData(agentId)
+  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null)
+  const configureData = useAgentConfigureData(agentId, selectedVersionId)
   const isConfigureDataPending = configureData.agentQuery.isPending
     || configureData.composerQuery.isPending
-    || (configureData.shouldLoadPublishedVersion && configureData.versionQuery.isPending)
+    || (configureData.shouldLoadVersion && configureData.versionQuery.isPending)
 
   if (isConfigureDataPending) {
     return (
@@ -59,6 +60,7 @@ function AgentConfigurePageContent({
     <AgentConfigurePageLoadedContent
       agentId={agentId}
       configureData={configureData}
+      onSelectVersion={setSelectedVersionId}
     />
   )
 }
@@ -66,8 +68,10 @@ function AgentConfigurePageContent({
 function AgentConfigurePageLoadedContent({
   agentId,
   configureData,
+  onSelectVersion,
 }: AgentConfigurePageProps & {
   configureData: ReturnType<typeof useAgentConfigureData>
+  onSelectVersion: (versionId: string | null) => void
 }) {
   const { t } = useTranslation('agentV2')
   const [showChatFeatures, setShowChatFeatures] = useState(false)
@@ -77,11 +81,13 @@ function AgentConfigurePageLoadedContent({
     agentQuery,
     composerQuery,
     versionQuery,
+    selectedVersionId,
     activeVersionId,
     activeConfigSnapshot,
     agentSoulConfig,
   } = configureData
   const agentIconType = agentQuery.data?.icon_type as AgentIconType | null | undefined
+  const isViewingVersion = !!selectedVersionId
 
   useHydrateAgentSoulConfigDraft({
     agentId,
@@ -102,7 +108,7 @@ function AgentConfigurePageLoadedContent({
     agentId,
     baseConfig: agentSoulConfig,
     currentModel,
-    enabled: composerQuery.isSuccess,
+    enabled: composerQuery.isSuccess && !selectedVersionId,
   })
 
   return (
@@ -121,9 +127,12 @@ function AgentConfigurePageLoadedContent({
         textGenerationModelList={textGenerationModelList}
         draftSavedAt={draftSavedAt}
         isPublishing={isPublishing}
+        readOnly={isViewingVersion}
+        selectedVersionSnapshot={isViewingVersion ? activeConfigSnapshot : undefined}
         onSelectModel={setConfigureModel}
         onPublish={publishDraft}
         onOpenVersions={() => setShowPreviewVersions(true)}
+        onExitVersions={() => onSelectVersion(null)}
       />
 
       {/* Preview area */}
@@ -144,6 +153,7 @@ function AgentConfigurePageLoadedContent({
               agentName={agentQuery.data?.name}
               agentSoulConfig={agentSoulConfig}
               clearChatList={clearPreviewChat}
+              debugConversationId={agentQuery.data?.debug_conversation_id}
               onClearChatListChange={setClearPreviewChat}
               onSaveDraftBeforeRun={saveDraft}
             />
@@ -154,6 +164,7 @@ function AgentConfigurePageLoadedContent({
           <AgentPreviewVersionsPanel
             agentId={agentId}
             activeVersionId={activeVersionId}
+            onSelectVersion={onSelectVersion}
             onClose={() => setShowPreviewVersions(false)}
           />
         )}
@@ -185,7 +196,7 @@ function AgentPreviewChatWithDraftConfig({
   )
 }
 
-function useAgentConfigureData(agentId: string) {
+function useAgentConfigureData(agentId: string, selectedVersionId: string | null) {
   const agentQuery = useQuery(consoleQuery.agent.byAgentId.get.queryOptions({
     input: {
       params: {
@@ -200,27 +211,31 @@ function useAgentConfigureData(agentId: string) {
       },
     },
   }))
-  const activeVersionId = composerQuery.data?.active_config_snapshot?.id
-  const shouldLoadPublishedVersion = !composerQuery.data?.agent_soul
+  const publishedVersionId = composerQuery.data?.active_config_snapshot?.id
+  const shouldLoadPublishedVersion = !selectedVersionId && !composerQuery.data?.agent_soul
+  const versionIdToLoad = selectedVersionId ?? (shouldLoadPublishedVersion ? publishedVersionId : undefined)
+  const shouldLoadVersion = !!versionIdToLoad
   const versionQuery = useQuery(consoleQuery.agent.byAgentId.versions.byVersionId.get.queryOptions({
-    input: activeVersionId && shouldLoadPublishedVersion
+    input: versionIdToLoad
       ? {
           params: {
             agent_id: agentId,
-            version_id: activeVersionId,
+            version_id: versionIdToLoad,
           },
         }
       : skipToken,
   }))
   const versionDetail = versionQuery.data as AgentConfigSnapshotDetailResponse | undefined
-  const activeConfigSnapshot = composerQuery.data?.active_config_snapshot ?? versionDetail
-  const agentSoulConfig = composerQuery.data?.agent_soul ?? versionDetail?.config_snapshot
+  const activeVersionId = selectedVersionId ?? (shouldLoadPublishedVersion ? publishedVersionId : null)
+  const activeConfigSnapshot = selectedVersionId ? versionDetail : (composerQuery.data?.active_config_snapshot ?? versionDetail)
+  const agentSoulConfig = selectedVersionId ? versionDetail?.config_snapshot : (composerQuery.data?.agent_soul ?? versionDetail?.config_snapshot)
 
   return {
     agentQuery,
     composerQuery,
     versionQuery,
-    shouldLoadPublishedVersion,
+    shouldLoadVersion,
+    selectedVersionId,
     activeVersionId,
     activeConfigSnapshot,
     agentSoulConfig,

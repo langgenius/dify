@@ -3,7 +3,7 @@ import pytest
 from models.agent_config_entities import AgentKnowledgeQueryMode, AgentSoulModelConfig, DeclaredOutputType
 from services.agent.composer_service import AgentComposerService
 from services.agent.composer_validator import ComposerConfigValidator
-from services.agent.errors import AgentSoulLockedError, PlaintextSecretNotAllowedError
+from services.agent.errors import AgentSoulLockedError, InvalidComposerConfigError, PlaintextSecretNotAllowedError
 from services.entities.agent_entities import (
     AgentSoulConfig,
     ComposerSavePayload,
@@ -62,6 +62,24 @@ def test_locked_workflow_node_job_only_allows_inline_soul_payload():
     )
 
     ComposerConfigValidator.validate_save_payload(payload)
+
+
+def test_draft_save_payload_skips_publish_only_agent_soul_validation():
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": ComposerVariant.AGENT_APP,
+            "save_strategy": ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION,
+            "agent_soul": {
+                "prompt": {"system_prompt": "no human reference yet"},
+                "human": {"contacts": [{"id": "human-1", "name": "Reviewer"}]},
+                "env": {"variables": [{"name": "bad-name"}]},
+            },
+        }
+    )
+
+    ComposerConfigValidator.validate_draft_save_payload(payload)
+    with pytest.raises(InvalidComposerConfigError):
+        ComposerConfigValidator.validate_publish_payload(payload)
 
 
 def test_agent_app_soul_allows_app_features_and_variables():

@@ -132,6 +132,9 @@ describe('useCreateInlineAgentBinding', () => {
       body: {
         variant: 'workflow',
         save_strategy: 'node_job_only',
+        binding: {
+          binding_type: 'inline_agent',
+        },
         soul_lock: {
           locked: false,
         },
@@ -189,6 +192,9 @@ describe('useCreateInlineAgentBinding', () => {
       body: {
         variant: 'workflow',
         save_strategy: 'node_job_only',
+        binding: {
+          binding_type: 'inline_agent',
+        },
         soul_lock: {
           locked: false,
         },

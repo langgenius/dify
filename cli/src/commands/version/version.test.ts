@@ -158,6 +158,6 @@ describe('Version command', () => {
     if (output?.kind !== 'formatted')
       throw new Error('expected formatted output')
 
-    expect(output.data.text()).toContain('WARNING: This build is a release candidate')
+    expect(output.data.text()).toContain('WARNING: This build is a rc release')
   })
 })

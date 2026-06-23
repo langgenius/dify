@@ -1,10 +1,38 @@
 import type { Getter } from 'jotai'
 import { atom, createStore } from 'jotai'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+type QueryOptions = {
+  enabled?: boolean
+  input?: unknown
+  queryKey?: readonly unknown[]
+  retry?: boolean
+}
+
+type InfiniteQueryOptions = QueryOptions & {
+  input?: (pageParam: number) => unknown
+}
+
+type QueryResult = {
+  data?: unknown
+  hasNextPage?: boolean
+  isError?: boolean
+  isFetching?: boolean
+  isFetchingNextPage?: boolean
+  isLoading?: boolean
+  isPlaceholderData?: boolean
+  isSuccess?: boolean
+}
+
+const mockQueryResults = vi.hoisted(() => ({
+  current: new Map<string, QueryResult>(),
+}))
 
 vi.mock('jotai-tanstack-query', () => ({
-  atomWithInfiniteQuery: (createOptions: (get: Getter) => Record<string, unknown>) => atom((get) => {
+  atomWithInfiniteQuery: (createOptions: (get: Getter) => InfiniteQueryOptions) => atom((get) => {
     const options = createOptions(get)
+    const queryName = String(options.queryKey?.[0] ?? 'unknown')
+    const queryResult = mockQueryResults.current.get(queryName)
 
     return {
       ...options,
@@ -14,31 +42,78 @@ vi.mock('jotai-tanstack-query', () => ({
       isFetchingNextPage: false,
       isLoading: false,
       isPlaceholderData: false,
+      isSuccess: Boolean(queryResult?.data),
       fetchNextPage: vi.fn(),
+      ...queryResult,
     }
   }),
   atomWithMutation: () => atom(() => ({
     isPending: false,
     mutateAsync: vi.fn(),
   })),
-  atomWithQuery: (createOptions: (get: Getter) => Record<string, unknown>) => atom(get => ({
-    ...createOptions(get),
-    data: undefined,
-    isError: false,
-    isFetching: false,
-    isLoading: false,
-    isSuccess: false,
-  })),
+  atomWithQuery: (createOptions: (get: Getter) => QueryOptions) => atom((get) => {
+    const options = createOptions(get)
+    const queryName = String(options.queryKey?.[0] ?? 'unknown')
+    const queryResult = options.enabled === false
+      ? undefined
+      : mockQueryResults.current.get(queryName)
+
+    return {
+      ...options,
+      data: undefined,
+      isError: false,
+      isFetching: false,
+      isLoading: false,
+      isSuccess: false,
+      ...queryResult,
+    }
+  }),
 }))
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     apps: {
       list: {
-        infiniteOptions: (options: Record<string, unknown>) => ({
+        infiniteOptions: (options: InfiniteQueryOptions) => ({
           ...options,
-          queryKey: ['apps', 'list'],
+          queryKey: ['sourceApps'],
         }),
+      },
+    },
+    enterprise: {
+      appInstanceService: {
+        listAppInstances: {
+          infiniteOptions: (options: InfiniteQueryOptions) => ({
+            ...options,
+            queryKey: ['existingInstanceNames'],
+          }),
+          queryOptions: (options: QueryOptions) => ({
+            ...options,
+            queryKey: ['instanceNameConflict'],
+          }),
+        },
+      },
+      environmentService: {
+        listEnvironments: {
+          queryOptions: (options: QueryOptions) => ({
+            ...options,
+            queryKey: ['environments'],
+          }),
+        },
+      },
+      releaseService: {
+        computeDeploymentOptions: {
+          queryOptions: (options: QueryOptions) => ({
+            ...options,
+            queryKey: ['deploymentOptions'],
+          }),
+        },
+        precheckRelease: {
+          queryOptions: (options: QueryOptions) => ({
+            ...options,
+            queryKey: ['precheckRelease'],
+          }),
+        },
       },
     },
   },
@@ -49,6 +124,11 @@ async function loadState() {
 }
 
 describe('create deployment guide state', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockQueryResults.current.clear()
+  })
+
   it('should keep the guide on source app mode when DSL import is disabled', async () => {
     const state = await loadState()
     const store = createStore()
@@ -69,5 +149,70 @@ describe('create deployment guide state', () => {
 
     expect(store.get(state.effectiveMethodAtom)).toBe('bindApp')
     expect(sourceAppsQuery.enabled).toBe(true)
+  })
+
+  it('should continue from source app mode and auto-fill unique release metadata', async () => {
+    const state = await loadState()
+    const store = createStore()
+    mockQueryResults.current.set('sourceApps', {
+      data: {
+        pages: [
+          {
+            data: [
+              {
+                id: 'source-app-1',
+                name: 'Customer Service',
+                mode: 'workflow',
+              },
+            ],
+          },
+        ],
+      },
+      isSuccess: true,
+    })
+    mockQueryResults.current.set('precheckRelease', {
+      data: {
+        canCreate: true,
+        unsupportedNodes: [],
+      },
+      isSuccess: true,
+    })
+    mockQueryResults.current.set('deploymentOptions', {
+      data: {
+        options: {
+          credentialSlots: [],
+          envVarSlots: [],
+        },
+      },
+      isSuccess: true,
+    })
+    mockQueryResults.current.set('existingInstanceNames', {
+      data: {
+        pages: [
+          {
+            appInstances: [
+              { displayName: 'Customer Service' },
+              { displayName: 'Customer Service 1' },
+            ],
+          },
+        ],
+      },
+      isSuccess: true,
+    })
+
+    expect(store.get(state.sourceCanGoNextAtom)).toBe(true)
+
+    store.set(state.continueFromSourceAtom, {
+      defaultDslAppName: 'Imported DSL',
+      defaultReleaseName: 'Initial Release',
+    })
+
+    expect(store.get(state.selectedAppAtom)).toMatchObject({
+      id: 'source-app-1',
+      name: 'Customer Service',
+    })
+    expect(store.get(state.instanceNameAtom)).toMatch(/^Customer Service-[a-z]{4}$/)
+    expect(store.get(state.releaseNameAtom)).toBe('Initial Release')
+    expect(store.get(state.stepAtom)).toBe('release')
   })
 })
