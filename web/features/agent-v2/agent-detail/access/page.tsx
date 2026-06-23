@@ -135,7 +135,7 @@ export function AgentAccessPage({
                 {t('agentDetail.access.webApp.actions.customize')}
               </Button>
               <Button variant="secondary" size="medium" className="gap-1.5 px-3" onClick={handleUnavailableAction}>
-                <span aria-hidden className="i-ri-equalizer-line size-4" />
+                <span aria-hidden className="i-ri-equalizer-2-line size-4" />
                 {t('agentDetail.access.webApp.actions.settings')}
               </Button>
             </AccessSurfaceCard>
