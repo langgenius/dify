@@ -15,6 +15,7 @@ export type Scenario
     | 'server-version-unsupported'
     | 'run-422-stale'
     | 'workflow-think'
+    | 'chat-reasoning'
     | 'import-pending'
     | 'import-failed'
 

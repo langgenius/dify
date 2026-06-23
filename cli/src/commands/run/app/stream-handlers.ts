@@ -4,6 +4,7 @@ import type { SseEvent } from '@/http/sse'
 import { newError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
+import { parseReasoningChunk, ReasoningChunkRenderer } from '@/sys/io/reasoning'
 import { filterThinkInOutputs, ThinkChunkFilter } from '@/sys/io/think-filter'
 import { RUN_MODES } from './handlers'
 import { HitlPauseError } from './sse-collector'
@@ -43,9 +44,12 @@ function handleCommonEvents(ev: SseEvent): boolean {
 class ChatStreamPrinter implements StreamPrinter {
   private convoId = ''
   private readonly filter: ThinkChunkFilter
+  private readonly reasoning = new ReasoningChunkRenderer()
+  private readonly think: boolean
   private readonly isTTY: boolean
   constructor(think: boolean, isTTY = false) {
     this.filter = new ThinkChunkFilter(think)
+    this.think = think
     this.isTTY = isTTY
   }
 
@@ -62,6 +66,16 @@ class ChatStreamPrinter implements StreamPrinter {
           this.convoId = c.conversation_id
         return
       }
+      // Separated-mode reasoning: stream the out-of-band chain-of-thought to
+      // stderr under --think, mirroring how inline <think> blocks are surfaced.
+      case 'reasoning_chunk': {
+        if (!this.think)
+          return
+        const chunk = parseReasoningChunk(c)
+        if (chunk !== undefined)
+          this.reasoning.push(chunk, errOut)
+        return
+      }
       case 'agent_thought':
         if (typeof c.thought === 'string' && c.thought !== '')
           errOut.write(`thought: ${c.thought}\n`)
@@ -73,6 +87,7 @@ class ChatStreamPrinter implements StreamPrinter {
   }
 
   onEnd(out: NodeJS.WritableStream, errOut: NodeJS.WritableStream): void {
+    this.reasoning.flush(errOut)
     this.filter.flush(out, errOut)
     out.write('\n')
     if (this.convoId !== '') {

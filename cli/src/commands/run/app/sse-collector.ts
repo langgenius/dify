@@ -2,6 +2,7 @@ import type { BaseError } from '@/errors/base'
 import type { SseEvent } from '@/http/sse'
 import { HttpClientError, newError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
+import { parseReasoningChunk } from '@/sys/io/reasoning'
 import { RUN_MODES } from './handlers'
 
 export type HitlPauseData = {
@@ -67,6 +68,7 @@ class ChatCollector implements Collector {
   private base: Record<string, unknown> = {}
   private metadata: Record<string, unknown> | undefined
   private thoughts: unknown[] = []
+  private readonly reasoning: Record<string, string> = {}
   private readonly mode: string
   private readonly isAgent: boolean
   constructor(mode: string, isAgent: boolean) {
@@ -84,6 +86,15 @@ class ChatCollector implements Collector {
         copyScalar(this.base, c, ['id', 'conversation_id', 'message_id', 'task_id', 'created_at'])
         return
       }
+      // Accumulate out-of-band (separated-mode) reasoning deltas per LLM node.
+      case 'reasoning_chunk': {
+        const chunk = parseReasoningChunk(c)
+        if (chunk !== undefined && chunk.reasoning !== '') {
+          const key = chunk.nodeId !== '' ? chunk.nodeId : '_'
+          this.reasoning[key] = (this.reasoning[key] ?? '') + chunk.reasoning
+        }
+        return
+      }
       case 'agent_thought':
         this.thoughts.push(c)
         return
@@ -98,10 +109,22 @@ class ChatCollector implements Collector {
     const out: Record<string, unknown> = { mode: this.mode, answer: this.answer, ...this.base }
     if (this.metadata !== undefined)
       out.metadata = this.metadata
+    // The server persists terminal reasoning into message_end metadata; fall back
+    // to the live deltas only when that authoritative copy is absent.
+    if (Object.keys(this.reasoning).length > 0 && !hasReasoning(this.metadata))
+      out.metadata = { ...(this.metadata ?? {}), reasoning: this.reasoning }
     if (this.isAgent || this.thoughts.length > 0)
       out.agent_thoughts = this.thoughts
     return out
   }
+}
+
+function hasReasoning(metadata: Record<string, unknown> | undefined): boolean {
+  const reasoning = metadata?.reasoning
+  return reasoning !== null
+    && typeof reasoning === 'object'
+    && !Array.isArray(reasoning)
+    && Object.keys(reasoning as object).length > 0
 }
 
 class CompletionCollector implements Collector {

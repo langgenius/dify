@@ -37,6 +37,42 @@ describe('streamPrinterFor — chat', () => {
   })
 })
 
+function reasoningEvent(reasoning: string, isFinal: boolean) {
+  return ev('reasoning_chunk', { data: { message_id: 'm1', reasoning, node_id: 'llm-1', is_final: isFinal } })
+}
+
+describe('streamPrinterFor — chat separated reasoning', () => {
+  it('think: true frames reasoning_chunk deltas to stderr, answer stays clean on stdout', () => {
+    const sp = streamPrinterFor('advanced-chat', true)
+    const cap = captures()
+    sp.onEvent(cap.out, cap.err, reasoningEvent('pon', false))
+    sp.onEvent(cap.out, cap.err, reasoningEvent('dering', false))
+    sp.onEvent(cap.out, cap.err, reasoningEvent('', true))
+    sp.onEvent(cap.out, cap.err, ev('message', { conversation_id: 'c1', answer: 'final answer' }))
+    sp.onEnd(cap.out, cap.err)
+    expect(cap.errBuf()).toContain('<think>\npondering</think>')
+    expect(cap.outBuf()).toBe('final answer\n')
+  })
+
+  it('think: false ignores reasoning_chunk entirely', () => {
+    const sp = streamPrinterFor('advanced-chat', false)
+    const cap = captures()
+    sp.onEvent(cap.out, cap.err, reasoningEvent('secret', true))
+    sp.onEvent(cap.out, cap.err, ev('message', { answer: 'hi' }))
+    sp.onEnd(cap.out, cap.err)
+    expect(cap.errBuf()).not.toContain('secret')
+    expect(cap.outBuf()).toBe('hi\n')
+  })
+
+  it('closes an unterminated reasoning block on stream end', () => {
+    const sp = streamPrinterFor('advanced-chat', true)
+    const cap = captures()
+    sp.onEvent(cap.out, cap.err, reasoningEvent('thinking', false))
+    sp.onEnd(cap.out, cap.err)
+    expect(cap.errBuf()).toContain('<think>\nthinking</think>')
+  })
+})
+
 describe('streamPrinterFor — agent-chat', () => {
   it('writes agent_thought to stderr', () => {
     const sp = streamPrinterFor('agent-chat')

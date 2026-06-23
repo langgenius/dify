@@ -370,6 +370,18 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
       ])
       return new Response(thinkSse, { status: 200, headers: { 'content-type': 'text/event-stream' } })
     }
+    if (scenario === 'chat-reasoning') {
+      // Separated mode: reasoning streams out-of-band on `reasoning_chunk` (nested
+      // under `data`), the answer stays free of <think>, and the terminal reasoning
+      // is persisted into message_end metadata.
+      const reasoningSse = sseChunks([
+        { event: 'reasoning_chunk', data: { data: { message_id: 'msg-1', reasoning: 'secret reasoning', node_id: 'llm-1', is_final: false } } },
+        { event: 'reasoning_chunk', data: { data: { message_id: 'msg-1', reasoning: '', node_id: 'llm-1', is_final: true } } },
+        { event: 'message', data: { message_id: 'msg-1', conversation_id: 'conv-1', mode: app.mode, answer: 'final answer' } },
+        { event: 'message_end', data: { message_id: 'msg-1', conversation_id: 'conv-1', task_id: 'task-1', metadata: { reasoning: { 'llm-1': 'secret reasoning' } } } },
+      ])
+      return new Response(reasoningSse, { status: 200, headers: { 'content-type': 'text/event-stream' } })
+    }
     const sse = streamingRunResponse(app.mode, query, isAgent)
     return new Response(sse, { status: 200, headers: { 'content-type': 'text/event-stream' } })
   })
