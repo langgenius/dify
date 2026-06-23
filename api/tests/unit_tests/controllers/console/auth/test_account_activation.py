@@ -560,9 +560,7 @@ class TestActivateApi:
             response = api.post()
 
         assert response["result"] == "success"
-        mock_get_invitation.assert_called_once_with(
-            "workspace-123", "Invitee@Example.com", "valid_token", session=ANY
-        )
+        mock_get_invitation.assert_called_once_with("workspace-123", "Invitee@Example.com", "valid_token", session=ANY)
         mock_revoke_token.assert_called_once_with("workspace-123", "invitee@example.com", "valid_token")
 
     @patch("controllers.console.auth.activate.TenantService.create_tenant_member")
