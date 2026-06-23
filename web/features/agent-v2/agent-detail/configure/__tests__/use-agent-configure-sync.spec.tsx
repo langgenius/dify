@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
@@ -241,15 +241,19 @@ describe('useAgentConfigureSync', () => {
       publishPromise = result.current.publishDraft(publishPayload)
     })
 
-    await waitFor(() => {
-      expect(result.current.isPublishing).toBe(true)
+    await act(async () => {
+      await Promise.resolve()
+      await vi.advanceTimersByTimeAsync(0)
     })
+
+    expect(result.current.isPublishing).toBe(true)
 
     await act(async () => {
       publishDeferred.resolve({
         agent_soul: publishPayload.config_snapshot,
       })
       await publishPromise
+      await vi.advanceTimersByTimeAsync(0)
     })
 
     expect(result.current.isPublishing).toBe(false)
