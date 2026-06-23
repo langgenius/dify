@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidationError
 from models.agent import (
     Agent,
     AgentConfigRevisionOperation,
@@ -168,7 +169,7 @@ def test_save_workflow_composer_dispatches_save_strategy(monkeypatch, strategy, 
     calls = []
 
     monkeypatch.setattr(composer_service.db, "session", fake_session)
-    monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_save_payload", lambda payload: None)
+    monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_draft_save_payload", lambda payload: None)
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: None)
     monkeypatch.setattr(
@@ -221,12 +222,52 @@ def test_save_workflow_composer_rejects_agent_app_variant():
         )
 
 
+def _duplicate_env_secret_payload(strategy: ComposerSaveStrategy) -> ComposerSavePayload:
+    return ComposerSavePayload.model_validate(
+        {
+            "variant": ComposerVariant.AGENT_APP.value,
+            "save_strategy": strategy.value,
+            "agent_soul": {
+                "prompt": {"system_prompt": "x"},
+                "env": {
+                    "variables": [{"name": "TOKEN", "value": "plain"}],
+                    "secret_refs": [{"name": "TOKEN", "value": "credential-1"}],
+                },
+            },
+        }
+    )
+
+
+@pytest.mark.parametrize(
+    "strategy",
+    [
+        ComposerSaveStrategy.NODE_JOB_ONLY,
+        ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION,
+    ],
+)
+def test_draft_save_strategies_skip_publish_validation(strategy: ComposerSaveStrategy):
+    composer_service._validate_composer_payload_for_strategy(_duplicate_env_secret_payload(strategy))
+
+
+@pytest.mark.parametrize(
+    "strategy",
+    [
+        ComposerSaveStrategy.SAVE_AS_NEW_VERSION,
+        ComposerSaveStrategy.SAVE_AS_NEW_AGENT,
+        ComposerSaveStrategy.SAVE_TO_ROSTER,
+    ],
+)
+def test_publish_save_strategies_run_publish_validation(strategy: ComposerSaveStrategy):
+    with pytest.raises(InvalidComposerConfigError, match="duplicate env/secret name 'TOKEN'"):
+        composer_service._validate_composer_payload_for_strategy(_duplicate_env_secret_payload(strategy))
+
+
 def test_save_agent_app_composer_creates_agent_when_missing(monkeypatch: pytest.MonkeyPatch):
     fake_session = FakeSession(scalar=[None])
     created_version = SimpleNamespace(id="version-1")
 
     monkeypatch.setattr(composer_service.db, "session", fake_session)
-    monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_save_payload", lambda payload: None)
+    monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_draft_save_payload", lambda payload: None)
     monkeypatch.setattr(AgentComposerService, "_create_config_version", lambda **kwargs: created_version)
     monkeypatch.setattr(AgentComposerService, "load_agent_app_composer", lambda **kwargs: {"loaded": True})
     payload = ComposerSavePayload.model_validate(
@@ -256,7 +297,7 @@ def test_save_agent_app_composer_updates_current_version(monkeypatch: pytest.Mon
     updated = {}
 
     monkeypatch.setattr(composer_service.db, "session", fake_session)
-    monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_save_payload", lambda payload: None)
+    monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_draft_save_payload", lambda payload: None)
     monkeypatch.setattr(AgentComposerService, "_require_version", lambda **kwargs: SimpleNamespace(id="version-1"))
     monkeypatch.setattr(
         AgentComposerService,
@@ -2060,6 +2101,97 @@ class TestListWorkflowsReferencingAppAgent:
 
 
 class TestWorkflowAgentDraftBindingSync:
+    def _agent_workflow(self) -> Workflow:
+        return Workflow(
+            id="workflow-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps(
+                {
+                    "nodes": [{"id": "agent-node", "data": {"type": "agent", "version": "2"}}],
+                    "edges": [],
+                }
+            ),
+        )
+
+    def _agent_binding(self) -> WorkflowAgentNodeBinding:
+        return WorkflowAgentNodeBinding(
+            id="binding-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_id="workflow-1",
+            workflow_version=Workflow.VERSION_DRAFT,
+            node_id="agent-node",
+            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+            agent_id="agent-1",
+            current_snapshot_id="snapshot-1",
+            node_job_config=WorkflowNodeJobConfig(),
+        )
+
+    def _publish_agent(self) -> Agent:
+        return Agent(
+            id="agent-1",
+            tenant_id="tenant-1",
+            name="Iris",
+            status=AgentStatus.ACTIVE,
+            active_config_snapshot_id="snapshot-1",
+        )
+
+    def _snapshot(self, agent_soul: AgentSoulConfig) -> AgentConfigSnapshot:
+        return AgentConfigSnapshot(
+            id="snapshot-1",
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            version=1,
+            config_snapshot=agent_soul,
+        )
+
+    def test_publish_validation_rejects_agent_soul_publish_only_errors(self):
+        binding = self._agent_binding()
+        agent_soul = AgentSoulConfig.model_validate(
+            {
+                "model": {
+                    "plugin_id": "langgenius/openai/openai",
+                    "model_provider": "openai",
+                    "model": "gpt-4o",
+                },
+                "prompt": {"system_prompt": "no human reference yet"},
+                "human": {"contacts": [{"id": "human-1", "name": "Reviewer"}]},
+            }
+        )
+        agent = self._publish_agent()
+        snapshot = self._snapshot(agent_soul)
+        session = FakeSession(scalar=[binding, agent, snapshot, agent, snapshot], scalars=[[binding]])
+
+        with pytest.raises(InvalidComposerConfigError, match="human_involvement_not_referenced"):
+            WorkflowAgentPublishService.validate_agent_nodes_for_publish(
+                session=session,
+                draft_workflow=self._agent_workflow(),
+            )
+
+    def test_publish_validation_rejects_dangling_agent_soul_drive_refs(self):
+        binding = self._agent_binding()
+        agent_soul = AgentSoulConfig.model_validate(
+            {
+                "model": {
+                    "plugin_id": "langgenius/openai/openai",
+                    "model_provider": "openai",
+                    "model": "gpt-4o",
+                },
+                "prompt": {"system_prompt": "Use [§skill:research%2FSKILL.md:Research§]."},
+            }
+        )
+        agent = self._publish_agent()
+        snapshot = self._snapshot(agent_soul)
+        session = FakeSession(scalar=[binding, agent, snapshot, agent, snapshot], scalars=[[binding], []])
+
+        with pytest.raises(WorkflowAgentNodeValidationError, match="skill_ref_dangling"):
+            WorkflowAgentPublishService.validate_agent_nodes_for_publish(
+                session=session,
+                draft_workflow=self._agent_workflow(),
+            )
+
     def test_projects_binding_declared_outputs_to_draft_graph_response(self):
         workflow = Workflow(
             id="workflow-1",

@@ -8159,7 +8159,7 @@ Get all published workflows for a snippet
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Published workflows retrieved successfully | **application/json**: [WorkflowPaginationResponse](#workflowpaginationresponse)<br> |
+| 200 | Published workflows retrieved successfully | **application/json**: [SnippetWorkflowPaginationResponse](#snippetworkflowpaginationresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/default-workflow-block-configs
 **Get default block configurations for snippet workflow**
@@ -19416,6 +19416,15 @@ Query parameters for listing snippet published workflows.
 | ---- | ---- | ----------- | -------- |
 | limit | integer, <br>**Default:** 10 |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
+
+#### SnippetWorkflowPaginationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| has_more | boolean |  | Yes |
+| items | [ [SnippetWorkflowResponse](#snippetworkflowresponse) ] |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
 
 #### SnippetWorkflowResponse
 
