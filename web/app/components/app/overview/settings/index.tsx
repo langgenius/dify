@@ -118,6 +118,7 @@ const getSettingsResetKey = (appInfo: ISettingsModalProps['appInfo']) => JSON.st
   appInfo.site.copyright,
   appInfo.site.privacy_policy,
   appInfo.site.custom_disclaimer,
+  appInfo.site.input_placeholder,
   appInfo.site.default_language,
   appInfo.site.icon_type,
   appInfo.site.icon,
@@ -155,6 +156,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const isFreePlan = plan.type === 'sandbox'
   const showUpgradeAction = IS_CLOUD_EDITION && enableBilling && isFreePlan
   const selectedLanguage = LANGUAGE_OPTIONS.find(item => item.value === language)
+  const inputPlaceholderLabelId = React.useId()
+  const inputPlaceholderDescriptionId = React.useId()
 
   const inputPlaceholderValue = inputInfo.inputPlaceholder ?? ''
   // Paid + has value + blurred → preview as gray placeholder text (matches how it'll render in chat).
@@ -169,12 +172,16 @@ const SettingsModal: FC<ISettingsModalProps> = ({
     >
       <input
         type="text"
+        name="input_placeholder"
         value={inputPlaceholderValue}
         onChange={e => setInputInfo(item => ({ ...item, inputPlaceholder: e.target.value }))}
         onFocus={() => setInputPlaceholderFocused(true)}
         onBlur={() => setInputPlaceholderFocused(false)}
         disabled={!webappCopyrightEnabled}
         maxLength={INPUT_PLACEHOLDER_MAX_LENGTH}
+        autoComplete="off"
+        aria-labelledby={inputPlaceholderLabelId}
+        aria-describedby={inputPlaceholderDescriptionId}
         placeholder={t(`${prefixSettings}.more.inputPlaceholderPlaceholder`, { ns: 'appOverview' }) as string}
         className={cn(
           'flex-1 bg-transparent body-md-regular outline-hidden',
@@ -444,7 +451,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                   <div className="w-full">
                     <div className="flex items-center">
                       <div className="flex grow items-center">
-                        <div className={cn('mr-1 py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.inputPlaceholder`, { ns: 'appOverview' })}</div>
+                        <div id={inputPlaceholderLabelId} className={cn('mr-1 py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.inputPlaceholder`, { ns: 'appOverview' })}</div>
                         {showUpgradeAction && (
                           <div className="h-[18px] select-none">
                             <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
@@ -459,7 +466,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                         )}
                       </div>
                     </div>
-                    <p className="pb-0.5 body-xs-regular text-text-tertiary">{t(`${prefixSettings}.more.inputPlaceholderTip`, { ns: 'appOverview' })}</p>
+                    <p id={inputPlaceholderDescriptionId} className="pb-0.5 body-xs-regular text-text-tertiary">{t(`${prefixSettings}.more.inputPlaceholderTip`, { ns: 'appOverview' })}</p>
                     {webappCopyrightEnabled
                       ? inputPlaceholderField
                       : (

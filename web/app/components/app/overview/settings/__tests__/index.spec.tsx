@@ -109,6 +109,7 @@ const mockAppInfo = {
     copyright: '© Dify',
     privacy_policy: '',
     custom_disclaimer: 'Disclaimer',
+    input_placeholder: 'Ask me anything',
     default_language: 'en-US',
     show_workflow_steps: true,
     use_icon_as_answer_icon: true,
@@ -126,6 +127,8 @@ const renderSettingsModal = (appInfo = mockAppInfo) => render(
     onSave={mockOnSave}
   />,
 )
+
+const inputPlaceholderName = 'appOverview.overview.appInfo.settings.more.inputPlaceholder'
 
 describe('SettingsModal', () => {
   beforeEach(() => {
@@ -157,6 +160,7 @@ describe('SettingsModal', () => {
     fireEvent.click(showMoreEntry)
 
     await waitFor(() => {
+      expect(screen.getByRole('textbox', { name: inputPlaceholderName })).toBeInTheDocument()
       expect(screen.getByPlaceholderText('appOverview.overview.appInfo.settings.more.copyRightPlaceholder')).toBeInTheDocument()
       expect(screen.getByPlaceholderText('appOverview.overview.appInfo.settings.more.privacyPolicyPlaceholder')).toBeInTheDocument()
     })
@@ -221,6 +225,7 @@ describe('SettingsModal', () => {
       copyright: mockAppInfo.site.copyright,
       privacy_policy: mockAppInfo.site.privacy_policy,
       custom_disclaimer: mockAppInfo.site.custom_disclaimer,
+      input_placeholder: mockAppInfo.site.input_placeholder,
       icon_type: 'emoji',
       icon: mockAppInfo.site.icon,
       icon_background: mockAppInfo.site.icon_background,
@@ -278,11 +283,45 @@ describe('SettingsModal', () => {
     expect(screen.getByText('appOverview.overview.appInfo.settings.more.entry')).toBeInTheDocument()
   })
 
+  it('should reset the input placeholder when app info changes while open', () => {
+    const { rerender } = render(
+      <SettingsModal
+        isChat
+        isShow={true}
+        appInfo={mockAppInfo}
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('appOverview.overview.appInfo.settings.more.entry'))
+    expect(screen.getByRole('textbox', { name: inputPlaceholderName })).toHaveValue('Ask me anything')
+
+    rerender(
+      <SettingsModal
+        isChat
+        isShow={true}
+        appInfo={{
+          ...mockAppInfo,
+          site: {
+            ...mockAppInfo.site,
+            input_placeholder: 'Updated prompt',
+          },
+        } as typeof mockAppInfo}
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('appOverview.overview.appInfo.settings.more.entry'))
+    expect(screen.getByRole('textbox', { name: inputPlaceholderName })).toHaveValue('Updated prompt')
+  })
+
   it('should open the pricing modal from the copyright upgrade badge for sandbox plans', async () => {
     renderSettingsModal()
 
     fireEvent.click(screen.getByText('appOverview.overview.appInfo.settings.more.entry'))
-    fireEvent.click(await screen.findByText('billing.upgradeBtn.encourageShort'))
+    fireEvent.click((await screen.findAllByText('billing.upgradeBtn.encourageShort'))[0]!)
 
     expect(mockSetShowPricingModal).toHaveBeenCalled()
     expect(mockSetShowAccountSettingModal).not.toHaveBeenCalled()
