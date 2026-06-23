@@ -613,6 +613,7 @@
   "versions.releaseDescriptionLabel": "Açıklama",
   "versions.releaseDescriptionPlaceholder": "Bu sürümü açıklayın",
   "versions.releaseHistory": "Sürüm geçmişi",
+  "versions.releaseNameConflict": "Bu ada sahip bir sürüm zaten var. Başka bir ad seçin.",
   "versions.releaseNameLabel": "Sürüm Adı",
   "versions.releaseNamePlaceholder": "Sürüm Adı",
   "versions.releaseNameRequired": "Bir sürüm adı girin.",
