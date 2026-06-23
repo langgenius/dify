@@ -4,18 +4,10 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { DeployReleaseMenu } from '../deploy-release-menu'
 
-const mockUseMutation = vi.hoisted(() => vi.fn())
-const mockDeleteRelease = vi.fn()
+const mockDeleteRelease = vi.hoisted(() => vi.fn())
+const mockExportReleaseDsl = vi.hoisted(() => vi.fn())
 
 vi.mock('@langgenius/dify-ui/dropdown-menu', () => import('@/__mocks__/base-ui-dropdown-menu'))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useMutation: (...args: unknown[]) => mockUseMutation(...args),
-  }
-})
 
 vi.mock('../state', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../state')>()
@@ -25,6 +17,14 @@ vi.mock('../state', async (importOriginal) => {
     ...actual,
     deployReleaseMenuEnvironmentDeploymentsQueryAtom: atom(environmentDeploymentsErrorResult()),
     deployReleaseMenuAppInstanceQueryAtom: atom(appInstanceResult()),
+    deleteReleaseMutationAtom: atom({
+      isPending: false,
+      mutate: mockDeleteRelease,
+    }),
+    exportReleaseDslMutationAtom: atom({
+      isPending: false,
+      mutate: mockExportReleaseDsl,
+    }),
   }
 })
 
@@ -78,10 +78,6 @@ function appInstanceResult() {
 describe('DeployReleaseMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseMutation.mockReturnValue({
-      isPending: false,
-      mutate: mockDeleteRelease,
-    })
   })
 
   it('should disable release deletion when deployment usage cannot be checked', () => {

@@ -3,14 +3,16 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { ApiKeyGenerateMenu } from '../api-key-generate-menu'
 
-const mockMutate = vi.fn()
-const mockUseMutation = vi.hoisted(() => vi.fn())
+const mockMutate = vi.hoisted(() => vi.fn())
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+vi.mock('../state', async () => {
+  const { atom } = await import('jotai')
+
   return {
-    ...actual,
-    useMutation: (...args: unknown[]) => mockUseMutation(...args),
+    createApiKeyMutationAtom: atom({
+      isPending: false,
+      mutate: mockMutate,
+    }),
   }
 })
 
@@ -24,10 +26,6 @@ function createEnvironment(): Environment {
 describe('ApiKeyGenerateMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseMutation.mockReturnValue({
-      isPending: false,
-      mutate: mockMutate,
-    })
   })
 
   it('should show the required name error when submitting an empty name', () => {

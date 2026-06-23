@@ -11,10 +11,9 @@ import type {
 } from './access-policy'
 import type { AccessSubjectSelectionValue } from '@/app/components/app/app-access-control/access-subject-selector/types'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useAtomValue } from 'jotai'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
 import {
   accessControlSelectionFromSubjects,
   accessModeToPermissionKey,
@@ -29,6 +28,7 @@ import {
   DeploymentAccessControlDialog,
   PermissionSummaryButton,
 } from './permission-row-components'
+import { createUpdateAccessPolicyMutationAtom } from './state'
 
 type AccessPermissionDraft = {
   fingerprint: string
@@ -53,7 +53,8 @@ export function EnvironmentPermissionRow({
 }: EnvironmentPermissionRowProps) {
   const { t } = useTranslation('deployments')
   const environmentId = environment.id
-  const setEnvironmentAccessPolicy = useMutation(consoleQuery.enterprise.accessService.updateAccessPolicy.mutationOptions())
+  const updateAccessPolicyMutationAtom = useMemo(() => createUpdateAccessPolicyMutationAtom(), [])
+  const setEnvironmentAccessPolicy = useAtomValue(updateAccessPolicyMutationAtom)
   const policy = summaryPolicy
   const policyKind = accessModeToPermissionKey(policy?.mode)
   const policyFingerprint = policy

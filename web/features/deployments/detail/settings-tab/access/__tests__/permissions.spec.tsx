@@ -7,14 +7,16 @@ import { describe, expect, it, vi } from 'vitest'
 import { EnvironmentPermissionRow } from '../permissions'
 import { AccessPermissionsSection } from '../permissions-section'
 
-const mockMutate = vi.fn()
-const mockUseMutation = vi.hoisted(() => vi.fn())
+const mockMutate = vi.hoisted(() => vi.fn())
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+vi.mock('../state', async () => {
+  const { atom } = await import('jotai')
+
   return {
-    ...actual,
-    useMutation: (...args: unknown[]) => mockUseMutation(...args),
+    createUpdateAccessPolicyMutationAtom: () => atom({
+      isPending: false,
+      mutate: mockMutate,
+    }),
   }
 })
 
@@ -77,10 +79,6 @@ describe('EnvironmentPermissionRow', () => {
     mockMutate.mockImplementation((_variables: unknown, options?: { onError?: () => void }) => {
       options?.onError?.()
     })
-    mockUseMutation.mockReturnValue({
-      isPending: false,
-      mutate: mockMutate,
-    })
   })
 
   it('should keep the previous permission visible when updating the policy fails', () => {
@@ -121,10 +119,6 @@ describe('EnvironmentPermissionRow', () => {
 describe('AccessPermissionsSection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseMutation.mockReturnValue({
-      isPending: false,
-      mutate: mockMutate,
-    })
   })
 
   it('should render permission rows without column headers', () => {
