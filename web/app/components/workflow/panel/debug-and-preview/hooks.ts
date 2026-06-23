@@ -809,7 +809,11 @@ export const useChat = (
           if (!responseItem.workflowProcess.tracing)
             responseItem.workflowProcess.tracing = []
 
-          const currentIndex = responseItem.workflowProcess.tracing.findIndex(item => item.id === nodeStartedData.id)
+          const currentIndex = responseItem.workflowProcess.tracing.findIndex((item) => {
+            if (nodeStartedData.execution_metadata?.parallel_id)
+              return item.id === nodeStartedData.id
+            return item.node_id === nodeStartedData.node_id
+          })
           if (currentIndex > -1) {
             responseItem.workflowProcess.tracing[currentIndex] = {
               ...nodeStartedData,
