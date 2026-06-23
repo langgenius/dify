@@ -50,7 +50,7 @@ from graphon.enums import WorkflowExecutionStatus
 from libs.helper import build_icon_url, dump_response, to_timestamp
 from libs.login import login_required
 from models import Account, App, DatasetPermissionEnum, Workflow
-from models.model import AppMode, IconType
+from models.model import IconType
 from services.app_dsl_service import AppDslService
 from services.app_service import AppListParams, AppListSortBy, AppService, CreateAppParams, StarredAppListParams
 from services.enterprise import rbac_service as enterprise_rbac_service
@@ -77,7 +77,7 @@ register_enum_models(console_ns, IconType)
 _logger = logging.getLogger(__name__)
 _TAG_IDS_BRACKET_PATTERN = re.compile(r"^tag_ids\[(\d+)\]$")
 _CREATOR_IDS_BRACKET_PATTERN = re.compile(r"^creator_ids\[(\d+)\]$")
-AppListMode = AppMode | Literal["all"]
+AppListMode = Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"]
 DEFAULT_APP_LIST_MODE: AppListMode = "all"
 
 
