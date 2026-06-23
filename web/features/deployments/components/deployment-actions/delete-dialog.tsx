@@ -10,47 +10,37 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation } from '@tanstack/react-query'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
+import {
+  deleteDeploymentDialogOpenAtom,
+  deleteDeploymentInstanceMutationAtom,
+  deploymentActionDisplayNameAtom,
+  submitDeleteDeploymentInstanceAtom,
+} from './state'
 
-export function DeleteDeploymentDialog({
-  appInstanceId,
-  appName,
-  open,
-  onOpenChange,
-}: {
-  appInstanceId: string
-  appName?: string
-  open: boolean
-  onOpenChange: (open: boolean) => void
-}) {
+export function DeleteDeploymentDialog() {
   const { t } = useTranslation('deployments')
   const router = useRouter()
-  const deleteInstance = useMutation(consoleQuery.enterprise.appInstanceService.deleteAppInstance.mutationOptions())
-  const displayName = appName || appInstanceId
+  const [open, setOpen] = useAtom(deleteDeploymentDialogOpenAtom)
+  const deleteInstance = useAtomValue(deleteDeploymentInstanceMutationAtom)
+  const submitDeleteInstance = useSetAtom(submitDeleteDeploymentInstanceAtom)
+  const displayName = useAtomValue(deploymentActionDisplayNameAtom)
 
   function handleDelete() {
-    deleteInstance.mutate(
-      {
-        params: {
-          appInstanceId,
-        },
+    submitDeleteInstance({
+      onSuccess: () => {
+        toast.success(t('settings.deleted'))
+        router.push('/deployments')
       },
-      {
-        onSuccess: () => {
-          toast.success(t('settings.deleted'))
-          router.push('/deployments')
-        },
-        onError: () => {
-          toast.error(t('settings.deleteFailed'))
-        },
-        onSettled: () => {
-          onOpenChange(false)
-        },
+      onError: () => {
+        toast.error(t('settings.deleteFailed'))
       },
-    )
+      onSettled: () => {
+        setOpen(false)
+      },
+    })
   }
 
   return (
@@ -59,7 +49,7 @@ export function DeleteDeploymentDialog({
       onOpenChange={(nextOpen) => {
         if (!nextOpen && deleteInstance.isPending)
           return
-        onOpenChange(nextOpen)
+        setOpen(nextOpen)
       }}
     >
       <AlertDialogContent className="w-120">

@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { AppACLPermission } from '@/utils/permission'
 import AppDetailSection from '../app-detail-section'
 import { useAppInfoActions } from '../app-info/use-app-info-actions'
@@ -6,6 +7,13 @@ import { useAppInfoActions } from '../app-info/use-app-info-actions'
 let mockAppMode = 'chat'
 let mockPathname = '/app/app-1/logs'
 let mockAppPermissionKeys: string[] = []
+let mockIsRbacEnabled = true
+
+const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) => renderWithSystemFeatures(ui, {
+  systemFeatures: {
+    rbac_enabled: mockIsRbacEnabled,
+  },
+})
 
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
@@ -56,6 +64,7 @@ describe('AppDetailSection', () => {
     mockAppMode = 'chat'
     mockPathname = '/app/app-1/logs'
     mockAppPermissionKeys = [AppACLPermission.Monitor]
+    mockIsRbacEnabled = true
   })
 
   // Rendering behavior for app detail navigation entries.
@@ -196,6 +205,18 @@ describe('AppDetailSection', () => {
     })
 
     it('should hide resource access navigation when app access config permission is missing', () => {
+      // Act
+      render(<AppDetailSection />)
+
+      // Assert
+      expect(screen.queryByRole('link', { name: 'common.settings.resourceAccess' })).not.toBeInTheDocument()
+    })
+
+    it('should hide resource access navigation when RBAC is disabled', () => {
+      // Arrange
+      mockIsRbacEnabled = false
+      mockAppPermissionKeys = [AppACLPermission.AccessConfig]
+
       // Act
       render(<AppDetailSection />)
 

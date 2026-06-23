@@ -8,8 +8,7 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { hasPermission } from '@/utils/permission'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import AddApiKeyButton from './add-api-key-button'
 import AddOAuthButton from './add-oauth-button'
 
@@ -40,8 +39,7 @@ const Authorize = ({
   onApiKeyClick,
 }: AuthorizeProps) => {
   const { t } = useTranslation()
-  const workspacePermissionKeys = useAppContextWithSelector(s => s.workspacePermissionKeys)
-  const canManageCredential = hasPermission(workspacePermissionKeys, 'credential.manage')
+  const { canCreateCredential } = useCredentialPermissions()
 
   const oAuthButtonProps: AddOAuthButtonProps = useMemo(() => {
     if (theme === 'secondary') {
@@ -84,7 +82,7 @@ const Authorize = ({
       <div className={cn('min-w-0 flex-1', notAllowCustomCredential && 'opacity-50')}>
         <AddOAuthButton
           {...oAuthButtonProps}
-          disabled={!canManageCredential || notAllowCustomCredential}
+          disabled={!canCreateCredential || notAllowCustomCredential}
           onUpdate={onUpdate}
         />
       </div>
@@ -101,14 +99,14 @@ const Authorize = ({
       )
     }
     return Item
-  }, [notAllowCustomCredential, oAuthButtonProps, canManageCredential, onUpdate, t])
+  }, [notAllowCustomCredential, oAuthButtonProps, canCreateCredential, onUpdate, t])
 
   const ApiKeyButton = useMemo(() => {
     const Item = (
       <div className={cn('min-w-0 flex-1', notAllowCustomCredential && 'opacity-50')}>
         <AddApiKeyButton
           {...apiKeyButtonProps}
-          disabled={!canManageCredential || notAllowCustomCredential}
+          disabled={!canCreateCredential || notAllowCustomCredential}
           onUpdate={onUpdate}
         />
       </div>
@@ -125,7 +123,7 @@ const Authorize = ({
       )
     }
     return Item
-  }, [notAllowCustomCredential, apiKeyButtonProps, canManageCredential, onUpdate, t])
+  }, [notAllowCustomCredential, apiKeyButtonProps, canCreateCredential, onUpdate, t])
 
   return (
     <>

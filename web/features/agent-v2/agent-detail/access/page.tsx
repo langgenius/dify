@@ -84,7 +84,7 @@ export function AgentAccessPage({
           <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-0.5 system-xs-regular text-text-tertiary">
             <span>{t('agentDetail.access.description')}</span>
             <a
-              href={docLink('/use-dify/publish/webapp/web-app-access')}
+              href={docLink('/use-dify/publish/webapp/web-app-settings')}
               target="_blank"
               rel="noreferrer"
               className="inline-flex shrink-0 items-center gap-0.5 rounded-sm text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"

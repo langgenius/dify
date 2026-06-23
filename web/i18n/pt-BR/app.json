@@ -226,6 +226,7 @@
   "newAppFromTemplate.sidebar.Workflow": "Fluxo de trabalho",
   "newAppFromTemplate.sidebar.Writing": "Escrita",
   "noAccessPermission": "Sem permissão para acessar o aplicativo web",
+  "noAccessResourcePermission": "Sem permissão para acessar este recurso",
   "noUserInputNode": "Nodo de entrada do usuário ausente",
   "notPublishedYet": "O aplicativo ainda não foi publicado",
   "openInExplore": "Abrir no Explore",

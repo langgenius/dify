@@ -46,6 +46,7 @@
   "group.credential": "認証情報",
   "group.dataset": "ナレッジベース",
   "group.dataset_acl": "ナレッジベースアクセス権限",
+  "group.integration": "インテグレーション",
   "group.plugin": "プラグイン",
   "group.tool_mcp": "ツールとMCP",
   "group.workspace": "ワークスペース",

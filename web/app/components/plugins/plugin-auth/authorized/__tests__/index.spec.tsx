@@ -77,7 +77,7 @@ vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/bas
 
 const mockAppContext = vi.hoisted(() => ({
   userProfile: { id: 'test-user', name: 'Test User', email: 'test@example.com', avatar_url: '' },
-  workspacePermissionKeys: ['credential.manage', 'credential.use'] as string[],
+  workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'] as string[],
 }))
 vi.mock('@/context/app-context', () => ({
   useSelector: (selector: (state: {
@@ -141,7 +141,7 @@ const createCredential = (overrides: Partial<Credential> = {}): Credential => ({
 describe('Authorized Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAppContext.workspacePermissionKeys = ['credential.manage', 'credential.use']
+    mockAppContext.workspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
     mockDeletePluginCredential.mockResolvedValue({})
     mockSetPluginDefaultCredential.mockResolvedValue({})
     mockUpdatePluginCredential.mockResolvedValue({})

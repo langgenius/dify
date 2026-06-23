@@ -291,6 +291,11 @@ class AgentConfigSnapshotListResponse(ResponseModel):
     data: list[AgentConfigSnapshotSummaryResponse]
 
 
+class AgentConfigSnapshotRestoreResponse(ResponseModel):
+    result: Literal["success"]
+    active_config_snapshot_id: str
+
+
 class AgentComposerAgentResponse(ResponseModel):
     id: str
     name: str

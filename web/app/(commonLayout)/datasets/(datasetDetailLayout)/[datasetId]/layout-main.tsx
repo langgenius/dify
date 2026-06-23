@@ -2,12 +2,14 @@
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
 import DatasetDetailContext from '@/context/dataset-detail'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useDatasetDetail } from '@/service/knowledge/use-dataset'
@@ -56,12 +58,14 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const { t } = useTranslation()
   const router = useRouter()
   const pathname = usePathname()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const {
     isLoadingCurrentWorkspace,
     isLoadingWorkspacePermissionKeys,
     userProfile,
     workspacePermissionKeys,
   } = useAppContext()
+  const isRbacEnabled = systemFeatures.rbac_enabled
 
   const { data: datasetRes, error, refetch: mutateDatasetRes } = useDatasetDetail(datasetId)
   const shouldRedirect = shouldRedirectToDatasetList(error)
@@ -69,7 +73,8 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     currentUserId: userProfile?.id,
     resourceMaintainer: datasetRes?.maintainer,
     workspacePermissionKeys,
-  }), [datasetRes?.maintainer, datasetRes?.permission_keys, userProfile?.id, workspacePermissionKeys])
+    isRbacEnabled,
+  }), [datasetRes?.maintainer, datasetRes?.permission_keys, isRbacEnabled, userProfile?.id, workspacePermissionKeys])
   const isAccessConfigPath = pathname.endsWith('/access-config')
   const isHitTestingPath = pathname.endsWith('/hitTesting')
   const isPermissionControlledPath = isAccessConfigPath || isHitTestingPath

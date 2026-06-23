@@ -152,7 +152,7 @@ export function EditReleaseDialog({
         onSuccess: (data) => {
           const updatedName = data.release.displayName
           toast.success(t('versions.editSuccess', { name: updatedName }))
-          onOpenChange(false)
+          handleOpenChange(false)
         },
         onError: () => {
           toast.error(t('versions.editFailed'))

@@ -2,6 +2,7 @@ import type { PermissionKey } from '@/models/access-control'
 import { DatasetPermission } from '@/models/datasets'
 
 export const AppACLPermission = {
+  Preview: 'app.acl.preview',
   ViewLayout: 'app.acl.view_layout',
   TestAndRun: 'app.acl.test_and_run',
   Edit: 'app.acl.edit',
@@ -13,6 +14,7 @@ export const AppACLPermission = {
 } as const
 
 export const DatasetACLPermission = {
+  Preview: 'dataset.acl.preview',
   Readonly: 'dataset.acl.readonly',
   Edit: 'dataset.acl.edit',
   ImportExportDSL: 'dataset.acl.import_export_dsl',
@@ -36,6 +38,7 @@ export type ResourceMaintainerPermissionOptions = {
   currentUserId?: string | null
   resourceMaintainer?: string | null
   workspacePermissionKeys?: readonly PermissionKey[] | null
+  isRbacEnabled?: boolean
 }
 
 type AppACLCapabilities = {
@@ -94,6 +97,14 @@ export const hasPermission = (permissionKeys: readonly PermissionKey[] | null | 
   return permissionKeys.includes(singlePermissionKey)
 }
 
+export const hasOnlyAppPreviewPermission = (permissionKeys: readonly PermissionKey[] | null | undefined) => {
+  return permissionKeys?.length === 1 && permissionKeys[0] === AppACLPermission.Preview
+}
+
+export const hasOnlyDatasetPreviewPermission = (permissionKeys: readonly PermissionKey[] | null | undefined) => {
+  return permissionKeys?.length === 1 && permissionKeys[0] === DatasetACLPermission.Preview
+}
+
 const shouldGrantMaintainerPermissions = (
   options: ResourceMaintainerPermissionOptions | undefined,
   createPermissionKey: PermissionKey,
@@ -131,7 +142,7 @@ export const getAppACLCapabilities = (
     canDelete: hasResourcePermission(permissionKeys, AppACLPermission.Delete, hasMaintainerPermissions),
     canReleaseAndVersion: hasResourcePermission(permissionKeys, AppACLPermission.ReleaseAndVersion, hasMaintainerPermissions),
     canMonitor: hasResourcePermission(permissionKeys, AppACLPermission.Monitor, hasMaintainerPermissions),
-    canAccessConfig: hasResourcePermission(permissionKeys, AppACLPermission.AccessConfig, hasMaintainerPermissions),
+    canAccessConfig: Boolean(options?.isRbacEnabled) && hasResourcePermission(permissionKeys, AppACLPermission.AccessConfig, hasMaintainerPermissions),
   }
 }
 
@@ -152,6 +163,6 @@ export const getDatasetACLCapabilities = (
     canDeleteFile: hasResourcePermission(permissionKeys, DatasetACLPermission.DeleteFile, hasMaintainerPermissions),
     canPipelineRelease: hasResourcePermission(permissionKeys, DatasetACLPermission.PipelineRelease, hasMaintainerPermissions),
     canDelete: hasResourcePermission(permissionKeys, DatasetACLPermission.Delete, hasMaintainerPermissions),
-    canAccessConfig: hasResourcePermission(permissionKeys, DatasetACLPermission.AccessConfig, hasMaintainerPermissions),
+    canAccessConfig: Boolean(options?.isRbacEnabled) && hasResourcePermission(permissionKeys, DatasetACLPermission.AccessConfig, hasMaintainerPermissions),
   }
 }

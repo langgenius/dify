@@ -8,8 +8,6 @@ on:
       - "build/**"
       - "release/e-*"
       - "hotfix/**"
-      - "feat/hitl-backend"
-      - "feat/rbac"
     tags:
       - "*"
 

@@ -5,6 +5,7 @@ import type { App } from '@/models/explore'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiRobot2Line } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
@@ -17,6 +18,7 @@ import Loading from '@/app/components/base/loading'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { useAppContext } from '@/context/app-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { DSLImportMode } from '@/models/app'
 import { useRouter } from '@/next/navigation'
 import { importDSL } from '@/service/apps'
@@ -45,7 +47,9 @@ const Apps = ({
   onCreateFromBlank,
 }: AppsProps) => {
   const { t } = useTranslation()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { workspacePermissionKeys } = useAppContext()
+  const isRbacEnabled = systemFeatures.rbac_enabled
   const canCreateAppFromTemplate = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const { push } = useRouter()
   const invalidateAppList = useInvalidateAppList()
@@ -144,7 +148,7 @@ const Apps = ({
       setNeedRefresh('1')
       invalidateAppList()
       if (app.app_id)
-        getRedirection({ id: app.app_id, mode: app.app_mode, permission_keys: app.permission_keys }, push)
+        getRedirection({ id: app.app_id, mode: app.app_mode, permission_keys: app.permission_keys }, push, { isRbacEnabled })
     }
     catch {
       toast.error(t('newApp.appCreateFailed', { ns: 'app' }))

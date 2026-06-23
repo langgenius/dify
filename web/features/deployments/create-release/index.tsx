@@ -2,17 +2,21 @@
 
 import type { ButtonProps } from '@langgenius/dify-ui/button'
 import { Button } from '@langgenius/dify-ui/button'
-import { useSetAtom } from 'jotai'
+import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { useTranslation } from 'react-i18next'
 import {
-  createReleaseConfigAtom,
+  createReleaseAppInstanceIdAtom,
+  createReleaseDialogOpenAtom,
   createReleaseLocalAtoms,
+  isCreatingReleaseAtom,
   openCreateReleaseDialogAtom,
+  requestCloseCreateReleaseDialogAtom,
 } from './state'
-import { CreateReleaseDialog } from './ui/dialog'
+import { CreateReleaseDialogContent } from './ui/dialog'
 
-function CreateReleaseTrigger({
+function CreateReleaseScopedControl({
   variant,
   size,
   label,
@@ -24,17 +28,39 @@ function CreateReleaseTrigger({
   className?: string
 }) {
   const { t } = useTranslation('deployments')
+  const open = useAtomValue(createReleaseDialogOpenAtom)
+  const isCreatingRelease = useAtomValue(isCreatingReleaseAtom)
   const openDialog = useSetAtom(openCreateReleaseDialogAtom)
+  const requestCloseDialog = useSetAtom(requestCloseCreateReleaseDialogAtom)
+
+  function handleDialogOpenChange(nextOpen: boolean) {
+    if (nextOpen) {
+      openDialog()
+      return
+    }
+
+    if (!isCreatingRelease)
+      requestCloseDialog()
+  }
 
   return (
-    <Button
-      size={size}
-      variant={variant}
-      className={className}
-      onClick={openDialog}
+    <Dialog
+      open={open}
+      onOpenChange={handleDialogOpenChange}
     >
-      {label ?? t('versions.createRelease')}
-    </Button>
+      <DialogTrigger
+        render={(
+          <Button
+            size={size}
+            variant={variant}
+            className={className}
+          />
+        )}
+      >
+        {label ?? t('versions.createRelease')}
+      </DialogTrigger>
+      <CreateReleaseDialogContent />
+    </Dialog>
   )
 }
 
@@ -55,18 +81,17 @@ export function CreateReleaseControl({
     <ScopeProvider
       key={appInstanceId}
       atoms={[
-        [createReleaseConfigAtom, { appInstanceId }],
+        [createReleaseAppInstanceIdAtom, appInstanceId],
         ...createReleaseLocalAtoms,
       ]}
       name="CreateRelease"
     >
-      <CreateReleaseTrigger
+      <CreateReleaseScopedControl
         variant={variant}
         size={size}
         label={label}
         className={className}
       />
-      <CreateReleaseDialog />
     </ScopeProvider>
   )
 }

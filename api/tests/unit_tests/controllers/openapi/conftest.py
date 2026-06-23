@@ -20,6 +20,7 @@ def _stub_execute(
     edition=None,
     workspace_membership=False,
     allowed_roles=None,
+    rbac=None,
 ):
     """Bypass all auth logic; inject minimal AuthData and call the view directly."""
     kwargs["auth_data"] = AuthData(
@@ -30,6 +31,7 @@ def _stub_execute(
         scopes=frozenset({Scope.FULL}),
         required_scope=scope,
         allowed_roles=allowed_roles,
+        rbac=rbac,
     )
     return view(*args, **kwargs)
 

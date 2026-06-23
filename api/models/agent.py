@@ -83,6 +83,8 @@ class AgentConfigRevisionOperation(StrEnum):
     SAVE_NEW_AGENT = "save_new_agent"
     # Promotes a workflow-only Agent into the reusable Agent Roster.
     SAVE_TO_ROSTER = "save_to_roster"
+    # Switches the Agent's current published config back to an existing version.
+    RESTORE_VERSION = "restore_version"
 
 
 class WorkflowAgentBindingType(StrEnum):
@@ -178,6 +180,34 @@ class Agent(DefaultFieldsMixin, Base):
     updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     archived_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class AgentDebugConversation(DefaultFieldsMixin, Base):
+    """Per-account console debug conversation for an Agent App.
+
+    Agent App preview state must be isolated by editor account. The Agent row is
+    shared by everyone in the workspace, so this table owns the user-specific
+    conversation pointer used by console debug chat.
+    """
+
+    __tablename__ = "agent_debug_conversations"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="agent_debug_conversation_pkey"),
+        UniqueConstraint(
+            "tenant_id",
+            "agent_id",
+            "account_id",
+            name="agent_debug_conversation_agent_account_unique",
+        ),
+        Index("agent_debug_conversation_conversation_idx", "conversation_id"),
+        Index("agent_debug_conversation_account_idx", "tenant_id", "account_id"),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
 
 class AgentConfigSnapshot(DefaultFieldsMixin, Base):
@@ -430,14 +460,17 @@ class AgentDriveFile(DefaultFieldsMixin, Base):
     synced. ``value_owned_by_drive`` gates physical cleanup: only drive-owned values
     (created by the agent runtime or Skill standardization, not shared with other
     business records) have their storage object + record deleted when the KV entry is
-    overwritten or removed; otherwise only the KV row is dropped. Lifecycle never relies
-    on ``UploadFile.used/used_by`` (not a reliable refcount).
+    overwritten or removed; otherwise only the KV row is dropped. Skills are represented
+    by the canonical ``<path>/SKILL.md`` row with ``is_skill=True`` and a serialized
+    ``skill_metadata`` string. Lifecycle never relies on ``UploadFile.used/used_by``
+    (not a reliable refcount).
     """
 
     __tablename__ = "agent_drive_files"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="agent_drive_file_pkey"),
         UniqueConstraint("tenant_id", "agent_id", "key", name="agent_drive_file_scope_key_unique"),
+        Index("agent_drive_files_tenant_agent_is_skill_key_idx", "tenant_id", "agent_id", "is_skill", "key"),
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -453,6 +486,8 @@ class AgentDriveFile(DefaultFieldsMixin, Base):
     value_owned_by_drive: Mapped[bool] = mapped_column(
         sa.Boolean, nullable=False, default=False, server_default=sa.text("false")
     )
+    is_skill: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False, server_default=sa.text("false"))
+    skill_metadata: Mapped[str | None] = mapped_column(LongText, nullable=True)
     size: Mapped[int | None] = mapped_column(sa.BigInteger, nullable=True)
     hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     mime_type: Mapped[str | None] = mapped_column(String(255), nullable=True)

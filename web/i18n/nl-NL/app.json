@@ -226,6 +226,7 @@
   "newAppFromTemplate.sidebar.Workflow": "Workflow",
   "newAppFromTemplate.sidebar.Writing": "Writing",
   "noAccessPermission": "No permission to access web app",
+  "noAccessResourcePermission": "Geen toestemming om deze resource te openen",
   "noUserInputNode": "Missing user input node",
   "notPublishedYet": "App is not published yet",
   "openInExplore": "Open in Explore",
