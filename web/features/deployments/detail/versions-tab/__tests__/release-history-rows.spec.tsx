@@ -8,6 +8,21 @@ vi.mock('../deploy-release-menu', () => ({
   DeployReleaseMenu: () => <button type="button">Actions</button>,
 }))
 
+vi.mock('../../state', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../state')>()
+  const { atom } = await import('jotai')
+
+  return {
+    ...actual,
+    deploymentSourceAppIdAtom: atom<string | undefined>(undefined),
+    deploymentSourceAppQueryAtom: atom({
+      data: {
+        name: 'Source Workflow',
+      },
+    }),
+  }
+})
+
 function createReleaseRow(overrides: Partial<ReleaseWithSummaryDeployments> = {}): ReleaseWithSummaryDeployments {
   return {
     id: 'release-1',
@@ -73,5 +88,24 @@ describe('ReleaseHistoryRows', () => {
     expect(deploymentLabel).not.toHaveClass('border', 'rounded-md', 'bg-util-colors-green-green-50')
     expect(deploymentLabel).not.toHaveAttribute('data-base-ui-tooltip-trigger')
     expect(container.querySelector('.shadow-status-indicator-green-shadow')).toBeInTheDocument()
+  })
+
+  it('should render release source app links with scoped source app state', () => {
+    const { container } = render(
+      <ReleaseHistoryRows
+        appInstanceId="app-instance-1"
+        releaseRows={[
+          createReleaseRow({
+            sourceAppId: 'source-app-1',
+          }),
+        ]}
+      />,
+    )
+
+    const table = container.querySelector('table')
+    const sourceLink = within(table!).getByRole('link', { name: /Source Workflow/ })
+
+    expect(sourceLink).toHaveAttribute('href', '/app/source-app-1/workflow')
+    expect(sourceLink).toHaveAttribute('target', '_blank')
   })
 })

@@ -7,7 +7,7 @@ import { consoleQuery } from '@/service/client'
 import { deploymentRouteAppInstanceIdAtom } from '../route-state'
 import { deploymentStatusPollingInterval } from '../shared/domain/runtime-status'
 
-export const deploymentSourceAppIdAtom = atom('')
+export const deploymentSourceAppIdAtom = atom<string | undefined>(undefined)
 
 export const deploymentDetailAppInstanceQueryAtom = atomWithQuery((get) => {
   const appInstanceId = get(deploymentRouteAppInstanceIdAtom)
@@ -53,7 +53,9 @@ export const deploymentSourceAppQueryAtom = atomWithQuery((get) => {
   const sourceAppId = get(deploymentSourceAppIdAtom)
 
   return consoleQuery.apps.byAppId.get.queryOptions({
-    input: { params: { app_id: sourceAppId } },
+    input: sourceAppId
+      ? { params: { app_id: sourceAppId } }
+      : skipToken,
     enabled: Boolean(sourceAppId),
   })
 })

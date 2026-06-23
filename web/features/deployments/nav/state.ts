@@ -47,7 +47,7 @@ function navItemFromOverview(instance?: AppInstance, fallbackId?: string): NavIt
   }
 }
 
-export const deploymentsNavCurrentInstanceQueryAtom = atomWithQuery((get) => {
+const deploymentsNavCurrentInstanceQueryAtom = atomWithQuery((get) => {
   const appInstanceId = get(deploymentRouteAppInstanceIdAtom)
   const isActive = get(deploymentsRouteActiveAtom)
 

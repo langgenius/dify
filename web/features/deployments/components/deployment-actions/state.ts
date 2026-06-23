@@ -32,11 +32,11 @@ export const editDeploymentFormAtom = atomWithForm({
 
 const editDeploymentFormAtoms = createFormAtoms(editDeploymentFormAtom)
 
-export const editDeploymentFormValuesAtom = editDeploymentFormAtoms.valuesAtom
+const editDeploymentFormValuesAtom = editDeploymentFormAtoms.valuesAtom
 export const editDeploymentNameFieldAtom = editDeploymentFormAtoms.fieldAtom('name')
 export const editDeploymentDescriptionFieldAtom = editDeploymentFormAtoms.fieldAtom('description')
 
-export const deploymentActionAppInstanceIdAtom = atom((get): string => {
+const deploymentActionAppInstanceIdAtom = atom((get): string => {
   const appInstanceId = get(deploymentActionAppInstanceIdHydrationAtom)
   if (!appInstanceId)
     throw new Error('Missing deployment action app instance id.')
@@ -121,7 +121,7 @@ export const editDeploymentFormCanSaveAtom = atom((get) => {
     && !get(editDeploymentFormSavePendingAtom)
 })
 
-export const submitEditDeploymentInstanceAtom = atom(null, async (get, _set, value: EditDeploymentFormValues) => {
+const submitEditDeploymentInstanceAtom = atom(null, async (get, _set, value: EditDeploymentFormValues) => {
   if (!canSubmitEditDeploymentForm(get, value))
     return undefined
 
