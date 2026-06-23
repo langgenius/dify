@@ -231,6 +231,7 @@ export function AgentRosterField({
   portalContainerRef,
   onChange,
   onPanelOpenChange,
+  onStartFromScratch,
 }: {
   agent?: AgentRosterDisplayData
   agentId?: string
@@ -245,6 +246,7 @@ export function AgentRosterField({
   portalContainerRef: RefObject<HTMLDivElement | null>
   onChange: (agent: AgentRosterNodeData) => void
   onPanelOpenChange?: (open: boolean) => void
+  onStartFromScratch?: () => void
 }) {
   const { t } = useTranslation()
   const [localPanelOpen, setLocalPanelOpen] = useState(false)
@@ -321,6 +323,12 @@ export function AgentRosterField({
                 setIsSelectorOpen(false)
                 onChange(nextAgent)
               }}
+              onStartFromScratch={onStartFromScratch
+                ? () => {
+                    setIsSelectorOpen(false)
+                    onStartFromScratch()
+                  }
+                : undefined}
             />
           </PopoverContent>
         </Popover>
