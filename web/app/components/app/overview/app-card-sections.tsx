@@ -43,6 +43,7 @@ import EmbeddedModal from './embedded'
 import SettingsModal from './settings'
 import style from './style.module.css'
 import WorkflowHiddenInputFields from './workflow-hidden-input-fields'
+import { normalizeAppBaseUrl } from './app-card-utils'
 
 type AppInfo = AppDetailResponse & Partial<AppSSO>
 
@@ -459,7 +460,7 @@ export const AppCardDialogs = ({
         siteInfo={appInfo.site}
         isShow={showEmbedded}
         onClose={onCloseEmbedded}
-        appBaseUrl={appInfo.site?.app_base_url}
+        appBaseUrl={normalizeAppBaseUrl(appInfo.site?.app_base_url ?? '')}
         accessToken={appInfo.site?.access_token}
         hiddenInputs={hiddenInputs}
       />
