@@ -86,9 +86,11 @@ const renderWithProviders = (ui: ReactNode) => {
             useSelector: vi.fn(),
             isLoadingCurrentWorkspace: false,
             isValidatingCurrentWorkspace: false,
+            workspacePermissionKeys: [],
           }),
           isLoadingCurrentWorkspace: false,
           isValidatingCurrentWorkspace: false,
+          workspacePermissionKeys: [],
         }}
       >
         <HooksStoreContext.Provider value={hooksStore}>

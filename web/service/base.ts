@@ -509,6 +509,7 @@ export const ssePost = async (
       [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode!),
     }),
   } as RequestInit, fetchOptions)
+  options.headers = new Headers(options.headers)
 
   const contentType = (options.headers as Headers).get('Content-Type')
   if (!contentType)
@@ -660,6 +661,7 @@ export const sseGet = async (
       [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode!),
     }),
   } as RequestInit, fetchOptions)
+  options.headers = new Headers(options.headers)
 
   const contentType = (options.headers as Headers).get('Content-Type')
   if (!contentType)

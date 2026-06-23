@@ -16,6 +16,7 @@ const mockCloseAllInputFieldPanels = vi.fn()
 const mockToggleInputFieldPreviewPanel = vi.fn()
 let mockIsPreviewing = false
 let mockIsEditing = false
+let mockCanEdit = true
 
 vi.mock('@/app/components/rag-pipeline/hooks', () => ({
   useInputFieldPanel: () => ({
@@ -24,6 +25,15 @@ vi.mock('@/app/components/rag-pipeline/hooks', () => ({
     isPreviewing: mockIsPreviewing,
     isEditing: mockIsEditing,
   }),
+}))
+
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: <T,>(selector: (state: { accessControl: { canEdit: boolean } }) => T): T =>
+    selector({
+      accessControl: {
+        canEdit: mockCanEdit,
+      },
+    }),
 }))
 
 let mockRagPipelineVariables: RAGPipelineVariables = []
@@ -178,11 +188,13 @@ const setupMocks = (options?: {
   ragPipelineVariables?: RAGPipelineVariables
   isPreviewing?: boolean
   isEditing?: boolean
+  canEdit?: boolean
 }) => {
   mockNodesData = options?.nodes || []
   mockRagPipelineVariables = options?.ragPipelineVariables || []
   mockIsPreviewing = options?.isPreviewing || false
   mockIsEditing = options?.isEditing || false
+  mockCanEdit = options?.canEdit ?? true
 }
 
 describe('InputFieldPanel', () => {
@@ -429,6 +441,16 @@ describe('InputFieldPanel', () => {
         'false',
       )
     })
+
+    it('should set readonly to true when access control cannot edit', () => {
+      setupMocks({ canEdit: false })
+
+      render(<InputFieldPanel />)
+
+      expect(screen.getByTestId('field-list-readonly-shared'))!.toHaveTextContent(
+        'true',
+      )
+    })
   })
 
   describe('Input Fields Change Handler', () => {
@@ -513,6 +535,41 @@ describe('InputFieldPanel', () => {
       const isSharedField = (v: RAGPipelineVariable) => v.belong_to_node_id === 'shared'
       const hasSharedField = setVarsCall.some(isSharedField)
       expect(hasSharedField).toBe(true)
+    })
+
+    it('should ignore input field changes when access control cannot edit', () => {
+      const nodes = [createDataSourceNode('node-1', 'DataSource 1')]
+      setupMocks({ nodes, canEdit: false })
+      render(<InputFieldPanel />)
+
+      fireEvent.click(screen.getByTestId('trigger-change-node-1'))
+
+      expect(mockSetRagPipelineVariables).not.toHaveBeenCalled()
+      expect(mockHandleSyncWorkflowDraft).not.toHaveBeenCalled()
+    })
+
+    it('should ignore input field changes while previewing', () => {
+      const nodes = [createDataSourceNode('node-1', 'DataSource 1')]
+      setupMocks({ nodes, isPreviewing: true })
+      render(<InputFieldPanel />)
+
+      fireEvent.click(screen.getByTestId('trigger-change-node-1'))
+
+      expect(mockSetRagPipelineVariables).not.toHaveBeenCalled()
+      expect(mockHandleSyncWorkflowDraft).not.toHaveBeenCalled()
+    })
+
+    it('should still persist input field changes while edit panel is open if access control can edit', async () => {
+      const nodes = [createDataSourceNode('node-1', 'DataSource 1')]
+      setupMocks({ nodes, isEditing: true, canEdit: true })
+      render(<InputFieldPanel />)
+
+      fireEvent.click(screen.getByTestId('trigger-change-node-1'))
+
+      await waitFor(() => {
+        expect(mockSetRagPipelineVariables).toHaveBeenCalled()
+      })
+      expect(mockHandleSyncWorkflowDraft).toHaveBeenCalled()
     })
   })
 

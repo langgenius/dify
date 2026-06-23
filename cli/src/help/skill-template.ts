@@ -26,7 +26,7 @@ output formats, error envelope, HITL protocol). Treat that JSON as the
 source of truth; this file only bootstraps you into it.
 
 ## The one non-obvious thing: HITL pauses are not failures
-A run can pause for human input. It exits with **code 2** and emits a
+A run can pause for human input. It exits with **code 0** and emits a
 \`paused\` JSON payload — this is success-with-pending, NOT a crash.
 Resume as the payload instructs (see \`difyctl resume app --help\`).
 

@@ -73,6 +73,7 @@ function Operation({
     onAnnotationRemoved,
     onFeedback,
     onRegenerate,
+    readonly,
   } = useChatContext()
   const [isShowReplyModal, setIsShowReplyModal] = useState(false)
   const [isShowFeedbackModal, setIsShowFeedbackModal] = useState(false)
@@ -108,6 +109,8 @@ function Operation({
 
   const shouldShowUserFeedbackBar = !isOpeningStatement && config?.supportFeedback && !!onFeedback && !config?.supportAnnotation
   const shouldShowAdminFeedbackBar = !isOpeningStatement && config?.supportFeedback && !!onFeedback && !!config?.supportAnnotation
+  const canManageAnnotation = !readonly && !!onAnnotationAdded && !!onAnnotationEdited && !!onAnnotationRemoved
+  const shouldShowAnnotationAction = canManageAnnotation && !!config?.supportAnnotation && !!config.annotation_reply?.enabled && !humanInputFormDataList?.length
 
   const userFeedbackLabel = t('table.header.userRate', { ns: 'appLog' }) || 'User feedback'
   const adminFeedbackLabel = t('table.header.adminRate', { ns: 'appLog' }) || 'Admin feedback'
@@ -174,7 +177,7 @@ function Operation({
       width += 28 + 8
     if (!isOpeningStatement && config?.text_to_speech?.enabled)
       width += 26
-    if (!isOpeningStatement && config?.supportAnnotation && config?.annotation_reply?.enabled)
+    if (!isOpeningStatement && shouldShowAnnotationAction)
       width += 26
     if (shouldShowUserFeedbackBar)
       width += hasUserFeedback ? 28 + 8 : 60 + 8
@@ -182,7 +185,7 @@ function Operation({
       width += (hasAdminFeedback ? 28 : 60) + 8 + (hasUserFeedback ? 28 : 0)
 
     return width
-  }, [config?.annotation_reply?.enabled, config?.supportAnnotation, config?.text_to_speech?.enabled, hasAdminFeedback, hasUserFeedback, isOpeningStatement, shouldShowAdminFeedbackBar, shouldShowUserFeedbackBar, showPromptLog])
+  }, [config?.text_to_speech?.enabled, hasAdminFeedback, hasUserFeedback, isOpeningStatement, shouldShowAdminFeedbackBar, shouldShowAnnotationAction, shouldShowUserFeedbackBar, showPromptLog])
 
   const positionRight = useMemo(() => operationWidth < maxSize, [operationWidth, maxSize])
 
@@ -339,7 +342,7 @@ function Operation({
                 <span aria-hidden="true" className="i-ri-reset-left-line size-4" />
               </ActionButton>
             )}
-            {config?.supportAnnotation && config.annotation_reply?.enabled && !humanInputFormDataList?.length && (
+            {shouldShowAnnotationAction && (
               <AnnotationCtrlButton
                 appId={config?.appId || ''}
                 messageId={id}
@@ -353,19 +356,21 @@ function Operation({
           </div>
         )}
       </div>
-      <EditReplyModal
-        isShow={isShowReplyModal}
-        onHide={() => setIsShowReplyModal(false)}
-        query={question}
-        answer={content}
-        onEdited={(editedQuery, editedAnswer) => onAnnotationEdited?.(editedQuery, editedAnswer, index)}
-        onAdded={(annotationId, authorName, editedQuery, editedAnswer) => onAnnotationAdded?.(annotationId, authorName, editedQuery, editedAnswer, index)}
-        appId={config?.appId || ''}
-        messageId={id}
-        annotationId={annotation?.id || ''}
-        createdAt={annotation?.created_at}
-        onRemove={() => onAnnotationRemoved?.(index)}
-      />
+      {canManageAnnotation && (
+        <EditReplyModal
+          isShow={isShowReplyModal}
+          onHide={() => setIsShowReplyModal(false)}
+          query={question}
+          answer={content}
+          onEdited={(editedQuery, editedAnswer) => onAnnotationEdited?.(editedQuery, editedAnswer, index)}
+          onAdded={(annotationId, authorName, editedQuery, editedAnswer) => onAnnotationAdded?.(annotationId, authorName, editedQuery, editedAnswer, index)}
+          appId={config?.appId || ''}
+          messageId={id}
+          annotationId={annotation?.id || ''}
+          createdAt={annotation?.created_at}
+          onRemove={() => onAnnotationRemoved?.(index)}
+        />
+      )}
       {isShowFeedbackModal && (
         <Dialog
           open

@@ -46,7 +46,7 @@ const NotFoundWarn = (props: {
       <TooltipTrigger
         render={<div><span className="i-ri-error-warning-fill size-4 text-text-destructive" aria-hidden="true" /></div>}
       />
-      <TooltipContent className="w-[180px]">
+      <TooltipContent className="w-45">
         <div className="space-y-1 text-xs">
           <h3 className="font-semibold text-text-primary">
             {title}
@@ -208,7 +208,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
                 <SwitchPluginVersion
                   uniqueIdentifier={value.plugin_unique_identifier}
                   tooltip={(
-                    <div className="w-[180px] space-y-1 text-xs">
+                    <div className="w-45 space-y-1 text-xs">
                       <h3 className="font-semibold text-text-primary">
                         {t('nodes.agent.unsupportedStrategy', { ns: 'workflow' })}
                       </h3>
@@ -231,12 +231,12 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
         sideOffset={0}
         popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
-        <div className="w-[388px] overflow-hidden rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow">
+        <div className="w-97 overflow-hidden rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow">
           <header className="flex gap-1 p-2">
             <SearchInput placeholder={t('nodes.agent.strategy.searchPlaceholder', { ns: 'workflow' })} value={query} onValueChange={setQuery} className="w-full" />
             <ViewTypeSelect viewType={viewType} onChange={setViewType} />
           </header>
-          <main className="relative flex w-full flex-col overflow-hidden md:max-h-[300px] xl:max-h-[400px] 2xl:max-h-[564px]" ref={wrapElemRef}>
+          <div className="relative flex w-full flex-col overflow-hidden md:max-h-75 xl:max-h-100 2xl:max-h-141" ref={wrapElemRef}>
             <Tools
               tools={filteredTools}
               viewType={viewType}
@@ -268,7 +268,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
                 disableMaxWidth
               />
             )}
-          </main>
+          </div>
         </div>
       </PopoverContent>
     </Popover>

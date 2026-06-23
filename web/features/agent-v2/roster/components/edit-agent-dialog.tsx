@@ -136,9 +136,6 @@ export function EditAgentDialog({
         toast.success(t('roster.updateSuccess'))
         onOpenChange(false)
       },
-      onError: () => {
-        toast.error(t('roster.updateFailed'))
-      },
     })
   }
 

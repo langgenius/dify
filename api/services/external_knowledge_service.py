@@ -280,6 +280,7 @@ class ExternalDatasetService:
             provider="external",
             retrieval_model=args.get("external_retrieval_model"),
             created_by=user_id,
+            maintainer=user_id,
         )
 
         db.session.add(dataset)

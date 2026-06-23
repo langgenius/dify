@@ -288,6 +288,7 @@ class HumanInputRequiredResponse(StreamResponse):
         actions: Sequence[UserActionConfig] = Field(default_factory=list)
         display_in_ui: bool = False
         form_token: str | None = None
+        approval_channels: list[str] = Field(default_factory=list)
         resolved_default_values: Mapping[str, Any] = Field(default_factory=dict)
         expiration_time: int = Field(..., description="Unix timestamp in seconds")
 
@@ -311,6 +312,7 @@ class HumanInputRequiredPauseReasonPayload(BaseModel):
     actions: Sequence[UserActionConfig] = Field(default_factory=list)
     display_in_ui: bool = False
     form_token: str | None = None
+    approval_channels: list[str] = Field(default_factory=list)
     resolved_default_values: Mapping[str, Any] = Field(default_factory=dict)
     expiration_time: int
 
@@ -325,6 +327,7 @@ class HumanInputRequiredPauseReasonPayload(BaseModel):
             actions=data.actions,
             display_in_ui=data.display_in_ui,
             form_token=data.form_token,
+            approval_channels=data.approval_channels,
             resolved_default_values=data.resolved_default_values,
             expiration_time=data.expiration_time,
         )

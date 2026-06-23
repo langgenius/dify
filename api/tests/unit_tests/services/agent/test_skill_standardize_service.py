@@ -32,13 +32,14 @@ def test_slugify_skill_name():
     assert slugify_skill_name("") == "skill"
 
 
-def test_standardize_creates_two_drive_owned_toolfiles_and_commits():
+def test_standardize_creates_drive_owned_toolfiles_and_commits_archive_members():
     content = _zip({"SKILL.md": _SKILL_MD, "scripts/run.py": b"print('x')\n"})
 
     tool_files = MagicMock()
     tool_files.create_file_by_raw.side_effect = [
         SimpleNamespace(id="md-tool-file"),
         SimpleNamespace(id="zip-tool-file"),
+        SimpleNamespace(id="script-tool-file"),
     ]
     drive = MagicMock()
     drive.commit.return_value = []
@@ -52,21 +53,33 @@ def test_standardize_creates_two_drive_owned_toolfiles_and_commits():
         agent_id="agent-1",
     )
 
-    # Two ToolFiles: SKILL.md (markdown) + full archive (zip).
-    assert tool_files.create_file_by_raw.call_count == 2
-    md_call, zip_call = tool_files.create_file_by_raw.call_args_list
+    # ToolFiles: SKILL.md, full archive, and each inspectable package member.
+    assert tool_files.create_file_by_raw.call_count == 3
+    md_call, zip_call, script_call = tool_files.create_file_by_raw.call_args_list
     assert md_call.kwargs["mimetype"] == "text/markdown"
     assert md_call.kwargs["file_binary"] == _SKILL_MD
     assert zip_call.kwargs["mimetype"] == "application/zip"
     assert zip_call.kwargs["file_binary"] == content
+    assert script_call.kwargs["mimetype"] in {"text/x-python", "text/plain", "application/octet-stream"}
+    assert script_call.kwargs["file_binary"] == b"print('x')\n"
+    assert script_call.kwargs["filename"] == "run.py"
 
     # Committed as drive-owned with the standardized keys.
     commit_kwargs = drive.commit.call_args.kwargs
     assert commit_kwargs["agent_id"] == "agent-1"
     items = commit_kwargs["items"]
-    assert [item.key for item in items] == ["pdf-toolkit/SKILL.md", "pdf-toolkit/.DIFY-SKILL-FULL.zip"]
+    assert [item.key for item in items] == [
+        "pdf-toolkit/SKILL.md",
+        "pdf-toolkit/.DIFY-SKILL-FULL.zip",
+        "pdf-toolkit/scripts/run.py",
+    ]
     assert all(item.value_owned_by_drive for item in items)
-    assert [item.file_ref.id for item in items] == ["md-tool-file", "zip-tool-file"]
+    assert [item.file_ref.id for item in items] == ["md-tool-file", "zip-tool-file", "script-tool-file"]
+    assert items[0].is_skill is True
+    assert items[0].skill_metadata.name == "PDF Toolkit"
+    assert items[0].skill_metadata.manifest_files == ["SKILL.md", "scripts/run.py"]
+    assert items[1].is_skill is False
+    assert items[2].is_skill is False
 
     # The returned skill ref carries stable drive paths + file ids.
     skill = result["skill"]

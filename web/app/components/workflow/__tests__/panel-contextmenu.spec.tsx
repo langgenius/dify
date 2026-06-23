@@ -1,5 +1,6 @@
 import { ContextMenu } from '@langgenius/dify-ui/context-menu'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fullWorkflowAccessControl } from '../hooks-store'
 import { PanelContextmenu } from '../panel-contextmenu'
 import { BlockEnum } from '../types'
 import { createNode } from './fixtures'
@@ -166,5 +167,27 @@ describe('PanelContextmenu', () => {
       expect(mockHandleStartWorkflowRun).not.toHaveBeenCalled()
       expect(mockClose).toHaveBeenCalled()
     })
+  })
+
+  it('should hide add note when editing is denied but comments are allowed', async () => {
+    mockUseWorkflowMoveMode.mockReturnValue({
+      isCommentModeAvailable: true,
+    })
+
+    renderPanelContextmenu({
+      initialStoreState: {
+        contextMenuTarget: { type: 'panel' },
+      },
+      hooksStoreProps: {
+        accessControl: {
+          ...fullWorkflowAccessControl,
+          canEdit: false,
+          canComment: true,
+        },
+      },
+    })
+
+    expect(await screen.findByText('comments.actions.addComment')).toBeInTheDocument()
+    expect(screen.queryByText('nodes.note.addNote')).not.toBeInTheDocument()
   })
 })

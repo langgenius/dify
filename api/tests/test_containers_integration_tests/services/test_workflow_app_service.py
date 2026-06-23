@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from graphon.enums import WorkflowExecutionStatus
 from models import EndUser, Workflow, WorkflowAppLog, WorkflowArchiveLog, WorkflowRun
-from models.enums import AppTriggerType, CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import AppTriggerType, CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowAppLogCreatedFrom
 from services.account_service import AccountService, TenantService
 
@@ -821,7 +821,7 @@ class TestWorkflowAppService:
             id=str(uuid.uuid4()),
             tenant_id=app.tenant_id,
             app_id=app.id,
-            type="web",
+            type=EndUserType.BROWSER,
             is_anonymous=False,
             session_id="test_session_123",
             created_at=datetime.now(UTC),
@@ -1567,7 +1567,7 @@ class TestWorkflowAppService:
         end_user = EndUser(
             tenant_id=app.tenant_id,
             app_id=app.id,
-            type="browser",
+            type=EndUserType.BROWSER,
             is_anonymous=False,
             session_id="session-1",
         )

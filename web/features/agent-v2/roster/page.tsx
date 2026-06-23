@@ -84,7 +84,7 @@ export default function RosterPage() {
   useDocumentTitle(tCommon('menus.roster'))
 
   return (
-    <main className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body">
+    <div className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body">
       <Tabs defaultValue="agent" className="flex min-h-0 flex-1 flex-col">
         <div className="h-25.5 shrink-0 bg-background-body px-8 pt-4 pb-4">
           <div className="flex min-w-0 items-center justify-between gap-4">
@@ -145,6 +145,6 @@ export default function RosterPage() {
           </ScrollAreaRoot>
         </TabsPanel>
       </Tabs>
-    </main>
+    </div>
   )
 }
