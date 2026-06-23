@@ -98,8 +98,8 @@ export type ResultResponse = {
   result: string
 }
 
-export type MessageInfiniteScrollPagination = {
-  data: Array<MessageListItem>
+export type ExploreMessageInfiniteScrollPagination = {
+  data: Array<ExploreMessageListItem>
   has_more: boolean
   limit: number
 }
@@ -187,7 +187,7 @@ export type JsonValue
     | Array<unknown>
     | null
 
-export type MessageListItem = {
+export type ExploreMessageListItem = {
   agent_thoughts: Array<AgentThought>
   answer: string
   conversation_id: string
@@ -200,6 +200,7 @@ export type MessageListItem = {
     [key: string]: JsonValueType
   }
   message_files: Array<MessageFile>
+  metadata?: JsonValueType | null
   parent_message_id?: string | null
   query: string
   retriever_resources: Array<RetrieverResource>
@@ -644,7 +645,7 @@ export type GetInstalledAppsByInstalledAppIdMessagesData = {
 }
 
 export type GetInstalledAppsByInstalledAppIdMessagesResponses = {
-  200: MessageInfiniteScrollPagination
+  200: ExploreMessageInfiniteScrollPagination
 }
 
 export type GetInstalledAppsByInstalledAppIdMessagesResponse

@@ -6,10 +6,7 @@ import type {
 import type { Getter } from 'jotai'
 import { atom, createStore } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  deploymentRouteAppInstanceIdAtom,
-  deploymentsRouteActiveAtom,
-} from '../../route-state'
+import { setNextRouteStateAtom } from '@/app/components/next-route-state/atoms'
 
 type QueryOptions = {
   enabled?: boolean
@@ -120,6 +117,13 @@ function setListAppInstances(appInstances: AppInstance[]) {
   })
 }
 
+function setDeploymentRoute(store: ReturnType<typeof createStore>, appInstanceId = 'app-instance-1') {
+  store.set(setNextRouteStateAtom, {
+    pathname: `/deployments/${appInstanceId}/overview`,
+    params: { appInstanceId },
+  })
+}
+
 describe('deployments nav state', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -137,8 +141,7 @@ describe('deployments nav state', () => {
   it('should append the current route item when it is missing from the list query', async () => {
     const state = await loadState()
     const store = createStore()
-    store.set(deploymentsRouteActiveAtom, true)
-    store.set(deploymentRouteAppInstanceIdAtom, 'app-instance-1')
+    setDeploymentRoute(store)
     setListAppInstances([
       appInstance({
         id: 'app-instance-2',
@@ -172,8 +175,7 @@ describe('deployments nav state', () => {
   it('should use the route id as a fallback current item name', async () => {
     const state = await loadState()
     const store = createStore()
-    store.set(deploymentsRouteActiveAtom, true)
-    store.set(deploymentRouteAppInstanceIdAtom, 'app-instance-1')
+    setDeploymentRoute(store)
     setListAppInstances([])
 
     expect(store.get(state.deploymentsNavItemsAtom)).toMatchObject([
