@@ -6,6 +6,7 @@ import { genNodeMetaData } from '@/app/components/workflow/utils'
 const metaData = genNodeMetaData({
   sort: 2.1,
   type: BlockEnum.End,
+  helpLinkUri: 'output',
   isRequired: false,
 })
 const nodeDefault: NodeDefault<EndNodeType> = {

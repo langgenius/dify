@@ -3,6 +3,8 @@ from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+import pytest
+
 from core.app.layers.trigger_post_layer import TriggerPostLayer
 from core.workflow.system_variables import build_system_variables
 from graphon.graph_events import (
@@ -115,7 +117,7 @@ class TestTriggerPostLayer:
         repo.update.assert_called_once_with(trigger_log)
         session.commit.assert_called_once()
 
-    def test_on_event_handles_missing_trigger_log(self, caplog):
+    def test_on_event_handles_missing_trigger_log(self, caplog: pytest.LogCaptureFixture):
         runtime_state = SimpleNamespace(
             outputs={},
             variable_pool=VariablePool.from_bootstrap(

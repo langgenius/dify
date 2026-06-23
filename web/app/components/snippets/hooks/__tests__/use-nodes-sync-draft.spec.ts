@@ -6,6 +6,7 @@ import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 
 const mockGetNodes = vi.fn()
 const mockGetNodesReadOnly = vi.fn()
+const mockUseNodesReadOnlyByCanEdit = vi.fn()
 const mockPostWithKeepalive = vi.fn()
 const mockSyncDraftWorkflow = vi.fn()
 const mockSetDraftUpdatedAt = vi.fn()
@@ -30,7 +31,10 @@ vi.mock('reactflow', () => ({
 }))
 
 vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
-  useNodesReadOnly: () => ({ getNodesReadOnly: mockGetNodesReadOnly }),
+  useNodesReadOnly: () => {
+    throw new Error('Missing HooksStoreContext.Provider in the tree')
+  },
+  useNodesReadOnlyByCanEdit: (canEdit: boolean) => mockUseNodesReadOnlyByCanEdit(canEdit),
 }))
 
 vi.mock('@/app/components/workflow/hooks/use-serial-async-callback', () => ({
@@ -96,6 +100,7 @@ describe('snippet/use-nodes-sync-draft', () => {
       setDraftUpdatedAt: mockSetDraftUpdatedAt,
       setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash,
     }
+    mockUseNodesReadOnlyByCanEdit.mockReturnValue({ getNodesReadOnly: mockGetNodesReadOnly })
     mockGetNodesReadOnly.mockReturnValue(false)
     mockGetNodes.mockReturnValue([
       { id: 'node-1', position: { x: 0, y: 0 }, data: { title: 'Start', _temp: 'drop' } },
@@ -131,6 +136,7 @@ describe('snippet/use-nodes-sync-draft', () => {
         hash: 'draft-hash',
       },
     })
+    expect(mockUseNodesReadOnlyByCanEdit).toHaveBeenCalledWith(true)
   })
 
   it('should snapshot graph before queued draft sync executes', async () => {

@@ -2,7 +2,6 @@ from typing import Literal, Protocol, cast
 from urllib.parse import quote_plus, urlunparse
 
 from pydantic import AliasChoices, Field
-from pydantic.types import NonNegativeInt
 from pydantic_settings import BaseSettings
 
 
@@ -69,24 +68,6 @@ class RedisPubSubConfig(BaseSettings):
             "Also accepts ENV: EVENT_BUS_STREAMS_RETENTION_SECONDS."
         ),
         default=600,
-    )
-
-    PUBSUB_LISTENER_JOIN_TIMEOUT_MS: NonNegativeInt = Field(
-        validation_alias=AliasChoices("EVENT_BUS_LISTENER_JOIN_TIMEOUT_MS", "PUBSUB_LISTENER_JOIN_TIMEOUT_MS"),
-        description=(
-            "Maximum time (milliseconds) that ``Subscription.close()`` waits for its listener thread to "
-            "finish before returning. Bounds the tail latency between a terminal event being delivered to "
-            "an SSE client and the response stream actually closing.\n\n"
-            "The listener thread blocks on a polling read (XREAD BLOCK for streams, get_message timeout "
-            "for pubsub/sharded) with a fixed 1s window, so close() naturally has to wait up to ~1s for "
-            "the thread to notice the subscription was closed. Setting this lower (e.g. 100) lets close() "
-            "return promptly while the daemon listener thread cleans itself up on the next poll "
-            "boundary - safe because the listener holds no critical state and exits within one poll "
-            "window. Setting it higher (e.g. 5000) gives the listener more grace before close() gives up "
-            "and logs a warning. Default 2000ms preserves the pre-change behaviour.\n\n"
-            "Also accepts ENV: EVENT_BUS_LISTENER_JOIN_TIMEOUT_MS."
-        ),
-        default=2000,
     )
 
     def _build_default_pubsub_url(self) -> str:

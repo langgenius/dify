@@ -15,7 +15,6 @@ const labelClass = 'flex items-center shrink-0 w-[180px] h-7 pt-1'
 
 type BasicInfoSectionProps = {
   currentDataset: DataSet | undefined
-  isCurrentWorkspaceDatasetOperator: boolean
   name: string
   setName: (value: string) => void
   description: string
@@ -30,11 +29,11 @@ type BasicInfoSectionProps = {
   selectedMemberIDs: string[]
   setSelectedMemberIDs: (value: string[]) => void
   memberList: Member[]
+  readonly?: boolean
 }
 
 const BasicInfoSection = ({
   currentDataset,
-  isCurrentWorkspaceDatasetOperator,
   name,
   setName,
   description,
@@ -49,6 +48,7 @@ const BasicInfoSection = ({
   selectedMemberIDs,
   setSelectedMemberIDs,
   memberList,
+  readonly = false,
 }: BasicInfoSectionProps) => {
   const { t } = useTranslation()
 
@@ -62,16 +62,16 @@ const BasicInfoSection = ({
         <div className="flex grow items-center gap-x-2">
           <AppIcon
             size="small"
-            onClick={handleOpenAppIconPicker}
-            className="cursor-pointer"
+            onClick={readonly ? undefined : handleOpenAppIconPicker}
+            className={readonly ? undefined : 'cursor-pointer'}
             iconType={iconInfo.icon_type as AppIconType}
             icon={iconInfo.icon}
             background={iconInfo.icon_background}
             imageUrl={iconInfo.icon_url}
-            showEditIcon
+            showEditIcon={!readonly}
           />
           <Input
-            disabled={!currentDataset?.embedding_available}
+            disabled={!currentDataset?.embedding_available || readonly}
             value={name}
             onChange={e => setName(e.target.value)}
           />
@@ -86,7 +86,7 @@ const BasicInfoSection = ({
         <div className="grow">
           <Textarea
             aria-label={t('form.desc', { ns: 'datasetSettings' })}
-            disabled={!currentDataset?.embedding_available}
+            disabled={!currentDataset?.embedding_available || readonly}
             className="resize-none"
             placeholder={t('form.descPlaceholder', { ns: 'datasetSettings' }) || ''}
             value={description}
@@ -102,7 +102,7 @@ const BasicInfoSection = ({
         </div>
         <div className="grow">
           <PermissionSelector
-            disabled={!currentDataset?.embedding_available || isCurrentWorkspaceDatasetOperator}
+            disabled={!currentDataset?.embedding_available || readonly}
             permission={permission}
             value={selectedMemberIDs}
             onChange={v => setPermission(v)}

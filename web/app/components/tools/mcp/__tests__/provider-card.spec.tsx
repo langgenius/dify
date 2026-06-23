@@ -81,11 +81,11 @@ vi.mock('../detail/operation-dropdown', () => ({
   ),
 }))
 
-// Mock the app context
+let mockWorkspacePermissionKeys: string[] = ['mcp.manage']
+
 vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: true,
-    isCurrentWorkspaceEditor: true,
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -155,6 +155,7 @@ describe('MCPCard', () => {
     mockDeleteMCP.mockClear()
     mockUpdateMCP.mockResolvedValue({ result: 'success' })
     mockDeleteMCP.mockResolvedValue({ result: 'success' })
+    mockWorkspacePermissionKeys = ['mcp.manage']
   })
 
   describe('Rendering', () => {
@@ -335,10 +336,18 @@ describe('MCPCard', () => {
   })
 
   describe('Operation Dropdown', () => {
-    it('should render operation dropdown for workspace managers', () => {
+    it('should render operation dropdown when user has mcp.manage', () => {
       render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
 
       expect(screen.getByTestId('operation-dropdown')).toBeInTheDocument()
+    })
+
+    it('should not render operation dropdown when user lacks mcp.manage', () => {
+      mockWorkspacePermissionKeys = []
+
+      render(<MCPCard {...defaultProps} />, { wrapper: createWrapper() })
+
+      expect(screen.queryByTestId('operation-dropdown')).not.toBeInTheDocument()
     })
 
     it('should stop propagation when clicking on dropdown container', () => {

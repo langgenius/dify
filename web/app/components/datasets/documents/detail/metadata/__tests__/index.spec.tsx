@@ -175,6 +175,7 @@ describe('Metadata', () => {
     docDetail: createMockDocDetail(),
     loading: false,
     onUpdate: vi.fn(),
+    canEdit: true,
   }
 
   describe('Rendering', () => {
@@ -194,6 +195,20 @@ describe('Metadata', () => {
       render(<Metadata {...defaultProps} />)
 
       expect(screen.getByText(/operation\.edit/i))!.toBeInTheDocument()
+    })
+
+    it('should hide edit button when canEdit is false', () => {
+      render(<Metadata {...defaultProps} canEdit={false} />)
+
+      expect(screen.queryByText(/operation\.edit/i)).not.toBeInTheDocument()
+    })
+
+    it('should hide edit button by default when canEdit is omitted', () => {
+      const { canEdit: _canEdit, ...propsWithoutCanEdit } = defaultProps
+
+      render(<Metadata {...propsWithoutCanEdit} />)
+
+      expect(screen.queryByText(/operation\.edit/i)).not.toBeInTheDocument()
     })
 
     it('should show loading state', () => {
@@ -332,6 +347,17 @@ describe('Metadata', () => {
       render(<Metadata {...defaultProps} docDetail={docDetail} />)
 
       expect(screen.getByText(/metadata\.docTypeSelectTitle/i))!.toBeInTheDocument()
+    })
+
+    it('should keep doc type selection read-only when canEdit is false', () => {
+      const docDetail = createMockDocDetail({ doc_type: '' })
+
+      render(<Metadata {...defaultProps} docDetail={docDetail} canEdit={false} />)
+
+      expect(screen.queryByText(/metadata\.docTypeSelectTitle/i)).not.toBeInTheDocument()
+      expect(screen.queryByText(/metadata\.firstMetaAction/i)).not.toBeInTheDocument()
+      expect(screen.queryByText(/operation\.save/i)).not.toBeInTheDocument()
+      expect(mockModifyDocMetadata).not.toHaveBeenCalled()
     })
 
     it('should show description when no doc_type exists', () => {
@@ -535,6 +561,7 @@ describe('useMetadataState coverage', () => {
     docDetail: createMockDocDetail(),
     loading: false,
     onUpdate: vi.fn(),
+    canEdit: true,
   }
 
   describe('cancelDocType', () => {

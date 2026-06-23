@@ -27,6 +27,8 @@ type AuthorizedItemProps = {
   showModelTitle?: boolean
   disableDeleteButShowAction?: boolean
   disableDeleteTip?: string
+  disableEdit?: boolean
+  disableDelete?: boolean
 }
 export const AuthorizedItem = ({
   provider,
@@ -42,6 +44,8 @@ export const AuthorizedItem = ({
   showModelTitle,
   disableDeleteButShowAction,
   disableDeleteTip,
+  disableEdit,
+  disableDelete,
 }: AuthorizedItemProps) => {
   const handleEdit = useCallback((credential?: Credential) => {
     onEdit?.(credential, model)
@@ -86,6 +90,8 @@ export const AuthorizedItem = ({
             disabled={disabled}
             onDelete={handleDelete}
             onEdit={handleEdit}
+            disableEdit={disableEdit}
+            disableDelete={disableDelete}
             showSelectedIcon={showItemSelectedIcon}
             selectedCredentialId={selectedCredentialId}
             onItemClick={handleItemClick}

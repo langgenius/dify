@@ -52,6 +52,13 @@ from models.agent_config_entities import AgentSoulConfig
 logger = logging.getLogger(__name__)
 
 
+class _DefaultSessionScopeSnapshotId:
+    pass
+
+
+_DEFAULT_SESSION_SCOPE_SNAPSHOT_ID = _DefaultSessionScopeSnapshotId()
+
+
 def _prompt_messages_from_query(user_query: str | None) -> list[PromptMessage]:
     if not user_query:
         return []
@@ -155,13 +162,18 @@ class AgentAppRunner:
         message_id: str,
         model_name: str,
         queue_manager: AppQueueManager,
+        session_scope_snapshot_id: str | None | _DefaultSessionScopeSnapshotId = _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID,
     ) -> None:
+        if isinstance(session_scope_snapshot_id, _DefaultSessionScopeSnapshotId):
+            effective_session_scope_snapshot_id: str | None = agent_config_snapshot_id
+        else:
+            effective_session_scope_snapshot_id = session_scope_snapshot_id
         scope = AgentAppSessionScope(
             tenant_id=dify_context.tenant_id,
             app_id=dify_context.app_id,
             conversation_id=conversation_id,
             agent_id=agent_id,
-            agent_config_snapshot_id=agent_config_snapshot_id,
+            agent_config_snapshot_id=effective_session_scope_snapshot_id,
         )
         # ENG-638: if a prior turn paused on ask_human and the form is now answered,
         # resume by threading the human's reply into this run as deferred_tool_results.

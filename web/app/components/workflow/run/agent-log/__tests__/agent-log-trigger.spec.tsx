@@ -2,7 +2,7 @@ import type { AgentLogItemWithChildren, NodeTracing } from '@/types/workflow'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '../../../types'
-import AgentLogTrigger from '../agent-log-trigger'
+import { AgentLogTrigger } from '../agent-log-trigger'
 
 const createAgentLogItem = (overrides: Partial<AgentLogItemWithChildren> = {}): AgentLogItemWithChildren => ({
   node_execution_id: 'exec-1',
@@ -63,7 +63,7 @@ describe('AgentLogTrigger', () => {
 
   // Agent triggers should expose strategy text and open the log stack payload.
   describe('User Interactions', () => {
-    it('should show the agent strategy and pass the log payload on click', async () => {
+    it('should show the legacy agent strategy and pass the log payload on click', async () => {
       const user = userEvent.setup()
       const onShowAgentOrToolLog = vi.fn()
       const agentLog = [createAgentLogItem({ message_id: 'message-1' })]
@@ -87,7 +87,7 @@ describe('AgentLogTrigger', () => {
       })
     })
 
-    it('should still open the detail view when no strategy label is available', async () => {
+    it('should open the detail view when execution metadata is unavailable', async () => {
       const user = userEvent.setup()
       const onShowAgentOrToolLog = vi.fn()
 

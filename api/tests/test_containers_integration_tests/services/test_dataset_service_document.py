@@ -30,11 +30,13 @@ class DocumentServiceIntegrationFactory:
         created_by: str | None = None,
         name: str | None = None,
     ) -> Dataset:
+        resolved_created_by = created_by or str(uuid4())
         dataset = Dataset(
             tenant_id=tenant_id or str(uuid4()),
             name=name or f"dataset-{uuid4()}",
             data_source_type=DataSourceType.UPLOAD_FILE,
-            created_by=created_by or str(uuid4()),
+            created_by=resolved_created_by,
+            maintainer=resolved_created_by,
         )
         db_session_with_containers.add(dataset)
         db_session_with_containers.commit()

@@ -30,10 +30,12 @@ const sectionProps = vi.hoisted(() => ({
   actions: null as null | Record<string, any>,
 }))
 const hotkeyMocks = vi.hoisted(() => ({
+  hotkeys: [] as string[],
   handlers: [] as Array<(event: { preventDefault: () => void }) => void>,
 }))
 
 let mockAppDetail: Record<string, any> | null = null
+let mockWorkspacePermissionKeys: string[] = ['tool.manage']
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -43,7 +45,8 @@ vi.mock('react-i18next', () => ({
 }))
 
 vi.mock('@tanstack/react-hotkeys', () => ({
-  useHotkey: (_hotkey: string, handler: (event: { preventDefault: () => void }) => void) => {
+  useHotkey: (hotkey: string, handler: (event: { preventDefault: () => void }) => void) => {
+    hotkeyMocks.hotkeys.push(hotkey)
     hotkeyMocks.handlers.push(handler)
   },
 }))
@@ -65,7 +68,7 @@ vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => mockOpenAsyncWindow,
 }))
 
-vi.mock('@/service/access-control', () => ({
+vi.mock('@/service/access-control/use-app-access-control', () => ({
   useGetUserCanAccessApp: (params: unknown) => {
     mockUseGetUserCanAccessApp(params)
     return {
@@ -107,6 +110,9 @@ vi.mock('@/service/use-tools', () => ({
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceManager: true,
+  }),
+  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -186,10 +192,12 @@ vi.mock('../sections', () => ({
 describe('AppPublisher', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    hotkeyMocks.hotkeys.length = 0
     hotkeyMocks.handlers.length = 0
     sectionProps.summary = null
     sectionProps.access = null
     sectionProps.actions = null
+    mockWorkspacePermissionKeys = ['tool.manage']
     mockAppDetail = {
       id: 'app-1',
       name: 'Demo App',
@@ -235,6 +243,7 @@ describe('AppPublisher', () => {
         enabled: true,
       })
     })
+    expect(sectionProps.summary?.publishShortcut).toEqual(['Mod', 'Shift', 'P'])
     expect(mockRefetch).not.toHaveBeenCalled()
   })
 
@@ -362,6 +371,26 @@ describe('AppPublisher', () => {
     expect(screen.getByTestId('workflow-tool-drawer')).toBeInTheDocument()
   })
 
+  it('should not open workflow tool drawer without tool.manage', () => {
+    mockWorkspacePermissionKeys = []
+    mockAppDetail = {
+      ...mockAppDetail,
+      mode: AppModeEnum.WORKFLOW,
+    }
+
+    render(
+      <AppPublisher
+        publishedAt={Date.now()}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('common.publish'))
+    fireEvent.click(screen.getByText('publisher-workflow-tool'))
+
+    expect(screen.queryByTestId('workflow-tool-drawer')).not.toBeInTheDocument()
+    expect(sectionProps.actions?.workflowToolAvailable).toBe(false)
+  })
+
   it('should close embedded and access control panels through child callbacks', async () => {
     render(
       <AppPublisher
@@ -382,11 +411,12 @@ describe('AppPublisher', () => {
   })
 
   it('should refresh app detail after access control confirmation', async () => {
-    render(
+    const { queryClient } = render(
       <AppPublisher
         publishedAt={Date.now()}
       />,
     )
+    const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
 
     fireEvent.click(screen.getByText('common.publish'))
     fireEvent.click(screen.getByText('publisher-access-control'))
@@ -396,11 +426,7 @@ describe('AppPublisher', () => {
     fireEvent.click(screen.getByText('confirm-access-control'))
 
     await waitFor(() => {
-      expect(mockFetchAppDetailDirect).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
-      expect(mockSetAppDetail).toHaveBeenCalledWith({
-        id: 'app-1',
-        access_mode: AccessMode.PUBLIC,
-      })
+      expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['apps', 'detail', 'app-1'] })
     })
   })
 
@@ -455,6 +481,7 @@ describe('AppPublisher', () => {
       />,
     )
 
+    expect(hotkeyMocks.hotkeys).toContain('Mod+Shift+P')
     hotkeyMocks.handlers[0]!({ preventDefault })
 
     await waitFor(() => {

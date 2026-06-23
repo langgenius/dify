@@ -5,10 +5,10 @@ export type ClientOptions = {
 }
 
 export type AppPagination = {
-  has_next: boolean
-  items: Array<AppPartial>
+  data: Array<AppPartial>
+  has_more: boolean
+  limit: number
   page: number
-  per_page: number
   total: number
 }
 
@@ -23,7 +23,6 @@ export type CreateAppPayload = {
 
 export type AppDetailWithSite = {
   access_mode?: string | null
-  active_config_is_published?: boolean
   api_base_url?: string | null
   app_id?: string | null
   bound_agent_id?: string | null
@@ -38,11 +37,12 @@ export type AppDetailWithSite = {
   icon_type?: string | null
   readonly icon_url: string | null
   id: string
+  maintainer?: string | null
   max_active_requests?: number | null
   mode: string
   model_config?: ModelConfig | null
   name: string
-  role?: string | null
+  permission_keys?: Array<string>
   site?: Site | null
   tags?: Array<Tag>
   tracing?: JsonValue | null
@@ -71,6 +71,7 @@ export type Import = {
   error?: string
   id: string
   imported_dsl_version?: string
+  permission_keys?: Array<string>
   status: ImportStatus
 }
 
@@ -192,6 +193,29 @@ export type AgentDrivePreviewResponse = {
   truncated: boolean
 }
 
+export type AgentDriveSkillListResponse = {
+  items?: Array<AgentDriveSkillItemResponse>
+}
+
+export type AgentDriveSkillInspectResponse = {
+  archive_key?: string | null
+  created_at?: number | null
+  description: string
+  file_tree?: Array<{
+    [key: string]: unknown
+  }>
+  files?: Array<AgentDriveSkillFileResponse>
+  hash?: string | null
+  mime_type?: string | null
+  name: string
+  path: string
+  size?: number | null
+  skill_md: AgentDriveSkillMarkdownResponse
+  skill_md_key: string
+  source: string
+  warnings?: Array<string>
+}
+
 export type AgentDriveDeleteResponse = {
   config_version_id?: string | null
   removed_keys?: Array<string>
@@ -211,11 +235,6 @@ export type AgentLogResponse = {
   files?: Array<unknown>
   iterations: Array<AgentIterationLogResponse>
   meta: AgentLogMetaResponse
-}
-
-export type AgentSkillStandardizeResponse = {
-  manifest: SkillManifest
-  skill: AgentSkillRefConfig
 }
 
 export type AgentSkillUploadResponse = {
@@ -319,8 +338,10 @@ export type AppDetail = {
   icon?: string | null
   icon_background?: string | null
   id: string
+  maintainer?: string | null
   mode_compatible_with_agent: string
   name: string
+  permission_keys?: Array<string>
   tags?: Array<Tag>
   tracing?: JsonValue | null
   updated_at?: number | null
@@ -420,6 +441,7 @@ export type ConvertToWorkflowPayload = {
 
 export type NewAppResponse = {
   new_app_id: string
+  permission_keys?: Array<string>
 }
 
 export type CopyAppPayload = {
@@ -1156,25 +1178,26 @@ export type ApiKeyItem = {
 
 export type AppPartial = {
   access_mode?: string | null
-  active_config_is_published?: boolean
   app_id?: string | null
-  app_model_config?: ModelConfigPartial | null
   author_name?: string | null
   bound_agent_id?: string | null
   create_user_name?: string | null
   created_at?: number | null
   created_by?: string | null
-  desc_or_prompt?: string | null
+  description?: string | null
   has_draft_trigger?: boolean | null
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
+  readonly icon_url: string | null
   id: string
   is_starred?: boolean
+  maintainer?: string | null
   max_active_requests?: number | null
-  mode_compatible_with_agent: string
+  mode: string
+  model_config?: ModelConfigPartial | null
   name: string
-  role?: string | null
+  permission_keys?: Array<string>
   tags?: Array<Tag>
   updated_at?: number | null
   updated_by?: string | null
@@ -1274,9 +1297,39 @@ export type AgentDriveItemResponse = {
   created_at?: number | null
   file_kind: string
   hash?: string | null
+  is_skill?: boolean | null
   key: string
   mime_type?: string | null
   size?: number | null
+  skill_metadata?: string | null
+}
+
+export type AgentDriveSkillItemResponse = {
+  archive_key?: string | null
+  created_at?: number | null
+  description: string
+  hash?: string | null
+  mime_type?: string | null
+  name: string
+  path: string
+  size?: number | null
+  skill_md_key: string
+}
+
+export type AgentDriveSkillFileResponse = {
+  available_in_drive: boolean
+  drive_key?: string | null
+  name: string
+  path: string
+  type: string
+}
+
+export type AgentDriveSkillMarkdownResponse = {
+  binary: boolean
+  key: string
+  size?: number | null
+  text?: string | null
+  truncated: boolean
 }
 
 export type AgentDriveFileResponse = {
@@ -1624,6 +1677,9 @@ export type AccountWithRole = {
   last_login_at?: number | null
   name: string
   role: string
+  roles?: Array<{
+    [key: string]: string
+  }>
   status: string
 }
 
@@ -1718,7 +1774,9 @@ export type AgentConfigSnapshotSummaryResponse = {
   agent_id?: string | null
   created_at?: number | null
   created_by?: string | null
+  display_version?: number | null
   id: string
+  snapshot_version?: number | null
   summary?: string | null
   version: number
   version_note?: string | null
@@ -2575,9 +2633,16 @@ export type AgentModerationIoConfig = {
 
 export type ValueSourceType = 'constant' | 'variable'
 
+export type AppPaginationWritable = {
+  data: Array<AppPartialWritable>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
+}
+
 export type AppDetailWithSiteWritable = {
   access_mode?: string | null
-  active_config_is_published?: boolean
   api_base_url?: string | null
   app_id?: string | null
   bound_agent_id?: string | null
@@ -2591,11 +2656,12 @@ export type AppDetailWithSiteWritable = {
   icon_background?: string | null
   icon_type?: string | null
   id: string
+  maintainer?: string | null
   max_active_requests?: number | null
   mode: string
   model_config?: ModelConfig | null
   name: string
-  role?: string | null
+  permission_keys?: Array<string>
   site?: SiteWritable | null
   tags?: Array<Tag>
   tracing?: JsonValue | null
@@ -2626,6 +2692,34 @@ export type WorkflowCommentDetailWritable = {
   resolved_by?: string | null
   resolved_by_account?: WorkflowCommentAccountWritable | null
   updated_at?: number | null
+}
+
+export type AppPartialWritable = {
+  access_mode?: string | null
+  app_id?: string | null
+  author_name?: string | null
+  bound_agent_id?: string | null
+  create_user_name?: string | null
+  created_at?: number | null
+  created_by?: string | null
+  description?: string | null
+  has_draft_trigger?: boolean | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  id: string
+  is_starred?: boolean
+  maintainer?: string | null
+  max_active_requests?: number | null
+  mode: string
+  model_config?: ModelConfigPartial | null
+  name: string
+  permission_keys?: Array<string>
+  tags?: Array<Tag>
+  updated_at?: number | null
+  updated_by?: string | null
+  use_icon_as_answer_icon?: boolean | null
+  workflow?: WorkflowPartial | null
 }
 
 export type SiteWritable = {
@@ -3084,6 +3178,44 @@ export type GetAppsByAppIdAgentDriveFilesPreviewResponses = {
 export type GetAppsByAppIdAgentDriveFilesPreviewResponse
   = GetAppsByAppIdAgentDriveFilesPreviewResponses[keyof GetAppsByAppIdAgentDriveFilesPreviewResponses]
 
+export type GetAppsByAppIdAgentDriveSkillsData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    node_id?: string
+    prefix?: string
+  }
+  url: '/apps/{app_id}/agent/drive/skills'
+}
+
+export type GetAppsByAppIdAgentDriveSkillsResponses = {
+  200: AgentDriveSkillListResponse
+}
+
+export type GetAppsByAppIdAgentDriveSkillsResponse
+  = GetAppsByAppIdAgentDriveSkillsResponses[keyof GetAppsByAppIdAgentDriveSkillsResponses]
+
+export type GetAppsByAppIdAgentDriveSkillsBySkillPathInspectData = {
+  body?: never
+  path: {
+    app_id: string
+    skill_path: string
+  }
+  query?: {
+    node_id?: string
+  }
+  url: '/apps/{app_id}/agent/drive/skills/{skill_path}/inspect'
+}
+
+export type GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponses = {
+  200: AgentDriveSkillInspectResponse
+}
+
+export type GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponse
+  = GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponses[keyof GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponses]
+
 export type DeleteAppsByAppIdAgentFilesData = {
   body?: never
   path: {
@@ -3144,34 +3276,16 @@ export type GetAppsByAppIdAgentLogsResponses = {
 export type GetAppsByAppIdAgentLogsResponse
   = GetAppsByAppIdAgentLogsResponses[keyof GetAppsByAppIdAgentLogsResponses]
 
-export type PostAppsByAppIdAgentSkillsStandardizeData = {
-  body?: never
+export type PostAppsByAppIdAgentSkillsUploadData = {
+  body: {
+    file: Blob | File
+  }
   path: {
     app_id: string
   }
   query?: {
     node_id?: string
   }
-  url: '/apps/{app_id}/agent/skills/standardize'
-}
-
-export type PostAppsByAppIdAgentSkillsStandardizeErrors = {
-  400: unknown
-}
-
-export type PostAppsByAppIdAgentSkillsStandardizeResponses = {
-  201: AgentSkillStandardizeResponse
-}
-
-export type PostAppsByAppIdAgentSkillsStandardizeResponse
-  = PostAppsByAppIdAgentSkillsStandardizeResponses[keyof PostAppsByAppIdAgentSkillsStandardizeResponses]
-
-export type PostAppsByAppIdAgentSkillsUploadData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query?: never
   url: '/apps/{app_id}/agent/skills/upload'
 }
 
