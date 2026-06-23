@@ -226,6 +226,7 @@
   "newAppFromTemplate.sidebar.Workflow": "Quy trình làm việc",
   "newAppFromTemplate.sidebar.Writing": "Văn",
   "noAccessPermission": "Không được phép truy cập ứng dụng web",
+  "noAccessResourcePermission": "Không có quyền truy cập tài nguyên này",
   "noUserInputNode": "Thiếu nút nhập liệu của người dùng",
   "notPublishedYet": "Ứng dụng chưa được phát hành",
   "openInExplore": "Mở trong Khám phá",

@@ -36,7 +36,6 @@ describe('AppsClient.list', () => {
     // Optional filters are omitted entirely when not supplied.
     expect(q.has('mode')).toBe(false)
     expect(q.has('name')).toBe(false)
-    expect(q.has('tag')).toBe(false)
   })
 
   it('forwards explicit pagination and filters', async () => {
@@ -48,7 +47,6 @@ describe('AppsClient.list', () => {
       limit: 50,
       mode: 'chat',
       name: 'support bot',
-      tag: 'prod',
     })
 
     const q = queryOf(stub.captured.url)
@@ -56,18 +54,16 @@ describe('AppsClient.list', () => {
     expect(q.get('limit')).toBe('50')
     expect(q.get('mode')).toBe('chat')
     expect(q.get('name')).toBe('support bot')
-    expect(q.get('tag')).toBe('prod')
   })
 
   it('treats empty-string filters as absent (not blank query params)', async () => {
     stub = await startStubServer(cap => jsonResponder(200, LIST_BODY, cap))
 
-    await makeClient(stub.url).list({ workspaceId: 'ws-1', mode: '', name: '', tag: '' })
+    await makeClient(stub.url).list({ workspaceId: 'ws-1', mode: '', name: '' })
 
     const q = queryOf(stub.captured.url)
     expect(q.has('mode')).toBe(false)
     expect(q.has('name')).toBe(false)
-    expect(q.has('tag')).toBe(false)
   })
 
   it('propagates server 403 as a classified BaseError', async () => {

@@ -1,22 +1,25 @@
 'use client'
 
-import type { CreateReleaseFormValues } from '../state/types'
+import type { CreateReleaseFormValues } from '../state'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
+import { isDeploymentDslImportEnabled } from '../../shared/domain/feature-flags'
 import {
   closeCreateReleaseDialogAtom,
   createReleaseDialogOpenAtom,
   createReleaseFormAtom,
+  createReleaseFormIsSubmittingAtom,
+  createReleaseFormValuesAtom,
   openCreateReleaseDialogAtom,
+  setCreateReleaseFormFieldAtom,
+  submitCreateReleaseFormAtom,
   useCreateReleaseConfig,
-  useCreateReleaseFormApi,
 } from '../state'
-import { useCreateReleaseForm } from '../state/use-create-release-form'
 import { CreateReleaseActions } from './actions'
 import { ReleaseContentFeedback } from './content-feedback'
 import { ReleaseMetadataFields } from './metadata-fields'
@@ -60,7 +63,7 @@ function CreateReleaseDefaultSourceApp({ formValues }: {
   formValues: CreateReleaseFormValues
 }) {
   const { appInstanceId } = useCreateReleaseConfig()
-  const form = useCreateReleaseFormApi()
+  const setCreateReleaseFormField = useSetAtom(setCreateReleaseFormFieldAtom)
   const isDialogOpen = useAtomValue(createReleaseDialogOpenAtom)
   const latestReleaseQuery = useQuery(consoleQuery.enterprise.releaseService.listReleases.queryOptions({
     input: {
@@ -87,60 +90,40 @@ function CreateReleaseDefaultSourceApp({ formValues }: {
   const defaultSourceApp = latestSourceAppId
     ? workflowSourceAppPickerValue(defaultSourceAppQuery.data, latestSourceAppId)
     : undefined
+  const sourceAppLocked = !isDeploymentDslImportEnabled
+  const releaseSourceMode = formValues.releaseSourceMode === 'dsl' && !isDeploymentDslImportEnabled
+    ? 'sourceApp'
+    : formValues.releaseSourceMode
 
   useEffect(() => {
-    if (!isDialogOpen || formValues.releaseSourceMode !== 'sourceApp' || formValues.sourceApp || !defaultSourceApp)
+    if (!isDialogOpen || releaseSourceMode !== 'sourceApp' || !defaultSourceApp)
+      return
+    if (formValues.sourceApp && (!sourceAppLocked || formValues.sourceApp.id === defaultSourceApp.id))
       return
 
-    form.setFieldValue('sourceApp', defaultSourceApp)
-  }, [defaultSourceApp, form, formValues.releaseSourceMode, formValues.sourceApp, isDialogOpen])
+    setCreateReleaseFormField({ name: 'sourceApp', value: defaultSourceApp })
+  }, [defaultSourceApp, formValues.sourceApp, isDialogOpen, releaseSourceMode, setCreateReleaseFormField, sourceAppLocked])
 
   return null
 }
 
 function CreateReleaseDialogForm() {
-  const submitReleaseRef = useRef<(value: CreateReleaseFormValues) => Promise<void> | void>(() => undefined)
-  const form = useCreateReleaseForm({
-    onSubmit: value => submitReleaseRef.current(value),
-  })
-
   return (
-    <ScopeProvider atoms={[[createReleaseFormAtom, form]]}>
-      <form.Subscribe selector={state => ({
-        isSubmitting: state.isSubmitting,
-        values: state.values,
-      })}
-      >
-        {({ isSubmitting, values }) => (
-          <CreateReleaseDialogSurface
-            formValues={values}
-            isSubmitting={isSubmitting}
-            submitReleaseRef={submitReleaseRef}
-          />
-        )}
-      </form.Subscribe>
+    <ScopeProvider atoms={[createReleaseFormAtom]}>
+      <CreateReleaseDialogSurface />
     </ScopeProvider>
   )
 }
 
-function CreateReleaseDialogSurface({
-  formValues,
-  isSubmitting,
-  submitReleaseRef,
-}: {
-  formValues: CreateReleaseFormValues
-  isSubmitting: boolean
-  submitReleaseRef: {
-    current: (value: CreateReleaseFormValues) => Promise<void> | void
-  }
-}) {
+function CreateReleaseDialogSurface() {
   const open = useAtomValue(createReleaseDialogOpenAtom)
+  const formValues = useAtomValue(createReleaseFormValuesAtom)
+  const isSubmitting = useAtomValue(createReleaseFormIsSubmittingAtom)
   const openDialog = useSetAtom(openCreateReleaseDialogAtom)
   const closeDialog = useSetAtom(closeCreateReleaseDialogAtom)
+  const submitCreateReleaseForm = useSetAtom(submitCreateReleaseFormAtom)
   const { t } = useTranslation('deployments')
-  const form = useCreateReleaseFormApi()
   const submission = useCreateReleaseSubmission(formValues)
-  submitReleaseRef.current = submission.createRelease
 
   function handleDialogOpenChange(nextOpen: boolean) {
     if (nextOpen) {
@@ -166,7 +149,7 @@ function CreateReleaseDialogSurface({
           onSubmit={(event) => {
             event.preventDefault()
             event.stopPropagation()
-            void form.handleSubmit()
+            void submitCreateReleaseForm(submission.createRelease)
           }}
         >
           <div className="border-b border-divider-subtle px-6 py-5 pr-14">

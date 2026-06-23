@@ -1,12 +1,12 @@
 'use client'
 
-import type { CreateReleaseFormValues } from '../state/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { useSetAtom } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import {
   closeCreateReleaseDialogAtom,
-  useCreateReleaseFormApi,
+  createReleaseFormIsSubmittingAtom,
+  createReleaseFormValuesAtom,
 } from '../state'
 import {
   createReleaseReadiness,
@@ -15,33 +15,10 @@ import {
 } from './use-release-content-check'
 
 export function CreateReleaseActions() {
-  const form = useCreateReleaseFormApi()
-
-  return (
-    <form.Subscribe selector={state => ({
-      isSubmitting: state.isSubmitting,
-      values: state.values,
-    })}
-    >
-      {({ isSubmitting, values }) => (
-        <CreateReleaseActionsContent
-          formValues={values}
-          isSubmitting={isSubmitting}
-        />
-      )}
-    </form.Subscribe>
-  )
-}
-
-function CreateReleaseActionsContent({
-  formValues,
-  isSubmitting,
-}: {
-  formValues: CreateReleaseFormValues
-  isSubmitting: boolean
-}) {
   const { t } = useTranslation('deployments')
   const closeDialog = useSetAtom(closeCreateReleaseDialogAtom)
+  const formValues = useAtomValue(createReleaseFormValuesAtom)
+  const isSubmitting = useAtomValue(createReleaseFormIsSubmittingAtom)
   const sourceSelection = useCreateReleaseSourceSelection(formValues)
   const releaseContent = useReleaseContentCheck(sourceSelection)
   const { canCreate, isCheckingReleaseContent } = createReleaseReadiness({

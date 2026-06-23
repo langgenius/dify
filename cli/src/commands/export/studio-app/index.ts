@@ -1,16 +1,17 @@
 import { DifyCommand } from '@/commands/_shared/dify-command'
 import { httpRetryFlag } from '@/commands/_shared/global-flags'
 import { Args, Flags } from '@/framework/flags'
+import { agentGuide } from './guide'
 import { runExportApp } from './run'
 
-export default class ExportApp extends DifyCommand {
-  static override description = 'Export an app\'s DSL configuration as YAML'
+export default class ExportStudioApp extends DifyCommand {
+  static override description = 'Export a studio app\'s DSL configuration as YAML'
 
   static override examples = [
-    '<%= config.bin %> export app <app-id>',
-    '<%= config.bin %> export app <app-id> --output ./my-app.yaml',
-    '<%= config.bin %> export app <app-id> --include-secret',
-    '<%= config.bin %> export app <app-id> --workflow-id <workflow-id>',
+    '<%= config.bin %> export studio-app <app-id>',
+    '<%= config.bin %> export studio-app <app-id> --output ./my-app.yaml',
+    '<%= config.bin %> export studio-app <app-id> --include-secret',
+    '<%= config.bin %> export studio-app <app-id> --workflow-id <workflow-id>',
   ]
 
   static override args = {
@@ -26,7 +27,7 @@ export default class ExportApp extends DifyCommand {
   }
 
   async run(argv: string[]) {
-    const { args, flags } = this.parse(ExportApp, argv)
+    const { args, flags } = this.parse(ExportStudioApp, argv)
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'] })
     const result = await runExportApp({
       appId: args.id,
@@ -41,5 +42,9 @@ export default class ExportApp extends DifyCommand {
       if (!result.yaml.endsWith('\n'))
         ctx.io.out.write('\n')
     }
+  }
+
+  override agentGuide(): string {
+    return agentGuide
   }
 }

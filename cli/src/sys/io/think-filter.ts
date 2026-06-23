@@ -14,6 +14,28 @@ export function extractThinkBlocks(s: string): { clean: string, thinking: string
   return { clean, thinking: parts.join('\n---\n') }
 }
 
+// Workflow outputs carry their answer text in top-level string fields rather than
+// a single `answer`, so think filtering navigates the outputs object. Nested
+// strings (inside arrays/objects) are left untouched.
+export function filterThinkInOutputs(
+  outputs: Record<string, unknown>,
+  showThink: boolean,
+): { outputs: Record<string, unknown>, thinking: string } {
+  const thoughts: string[] = []
+  const clean: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(outputs)) {
+    if (typeof value !== 'string') {
+      clean[key] = value
+      continue
+    }
+    const extracted = extractThinkBlocks(value)
+    clean[key] = extracted.clean
+    if (showThink && extracted.thinking !== '')
+      thoughts.push(extracted.thinking)
+  }
+  return { outputs: clean, thinking: thoughts.join('\n---\n') }
+}
+
 function splitAtPotentialTag(s: string, tag: string): [string, string] {
   const maxHold = tag.length - 1
   for (let len = Math.min(maxHold, s.length); len > 0; len--) {

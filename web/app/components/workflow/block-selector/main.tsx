@@ -132,7 +132,7 @@ function NodeSelector({
   const defaultAllowUserInputSelection = !hasUserInputNode && !hasTriggerNode
   const canSelectUserInput = allowUserInputSelection ?? defaultAllowUserInputSelection
   const disableStartTab = flowType === FlowType.snippet
-  const disableSnippetsTab = flowType === FlowType.snippet
+  const disableSnippetsTab = true
   const {
     activeTab,
     resetActiveTab,

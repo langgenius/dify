@@ -375,19 +375,19 @@ class TestFileService:
         file_service.delete_file("file_id")
         # Should return without doing anything
 
-    @patch("services.file_service.db")
-    def test_get_upload_files_by_ids_empty(self, mock_db):
-        result = FileService.get_upload_files_by_ids("tenant_id", [])
+    def test_get_upload_files_by_ids_empty(self):
+        session = MagicMock()
+        result = FileService.get_upload_files_by_ids(session, "tenant_id", [])
         assert result == {}
 
-    @patch("services.file_service.db")
-    def test_get_upload_files_by_ids(self, mock_db):
+    def test_get_upload_files_by_ids(self):
         upload_file = MagicMock(spec=UploadFile)
         upload_file.id = "550e8400-e29b-41d4-a716-446655440000"
         upload_file.tenant_id = "tenant_id"
-        mock_db.session.scalars().all.return_value = [upload_file]
+        session = MagicMock()
+        session.scalars().all.return_value = [upload_file]
 
-        result = FileService.get_upload_files_by_ids("tenant_id", ["550e8400-e29b-41d4-a716-446655440000"])
+        result = FileService.get_upload_files_by_ids(session, "tenant_id", ["550e8400-e29b-41d4-a716-446655440000"])
         assert result["550e8400-e29b-41d4-a716-446655440000"] == upload_file
 
     def test_sanitize_zip_entry_name(self):
