@@ -7,6 +7,8 @@ type NextRouteState = {
   params: NextRouteParams
 }
 
+// Mirrors Next router state. NextRouteStateBridge force-hydrates this atom on
+// render so feature atoms can read route state without calling router hooks.
 const nextRouteStateAtom = atom<NextRouteState>({
   pathname: '',
   params: {},
