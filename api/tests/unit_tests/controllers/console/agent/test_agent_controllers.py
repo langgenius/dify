@@ -464,6 +464,7 @@ def test_agent_app_copy_uses_agent_id_and_returns_agent_detail(
         json={
             "name": "Iris copy",
             "description": "Copied",
+            "role": "Copied role",
             "icon_type": "emoji",
             "icon": "sparkles",
             "icon_background": "#fff",
@@ -479,6 +480,7 @@ def test_agent_app_copy_uses_agent_id_and_returns_agent_detail(
         "account": current_user,
         "name": "Iris copy",
         "description": "Copied",
+        "role": "Copied role",
         "icon_type": "emoji",
         "icon": "sparkles",
         "icon_background": "#fff",
