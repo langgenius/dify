@@ -8,6 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
+import Link from '@/next/link'
 import { AppSortFilter } from './app-sort-filter'
 import { AppTypeFilter } from './app-type-filter'
 import CreatorsFilter from './creators-filter'
@@ -70,6 +71,12 @@ export function AppListHeaderFilters({
         />
       </div>
       <div className="flex items-center gap-2">
+        <Link
+          href="/snippets"
+          className="flex h-8 items-center rounded-lg px-3 text-sm font-semibold text-text-secondary outline-hidden hover:bg-state-base-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        >
+          {t('studio.viewSnippets', { ns: 'app' })}
+        </Link>
         {showCreateButton && (
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger
