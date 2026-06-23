@@ -20,9 +20,21 @@ const hotkeyRegistrations = vi.hoisted(() => new Map<string, {
 const mockFormatForDisplay = vi.hoisted(() => vi.fn((hotkey: string) => `display:${hotkey}`))
 const mockFormatTimeFromNow = vi.hoisted(() => vi.fn(() => 'just now'))
 const mockFormatTime = vi.hoisted(() => vi.fn((timestamp: number) => `formatted:${timestamp}`))
+const restoreVersionMutation = vi.hoisted(() => vi.fn(async (_input: unknown) => ({
+  active_config_snapshot_id: 'snapshot-2',
+  result: 'success',
+})))
+const toastMock = vi.hoisted(() => ({
+  error: vi.fn(),
+  success: vi.fn(),
+}))
 const workflowReferences = vi.hoisted(() => ({
   fetchCount: 0,
   data: [] as AgentReferencingWorkflowResponse[],
+}))
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: toastMock,
 }))
 
 vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
@@ -52,6 +64,14 @@ vi.mock('@/service/client', () => ({
   consoleQuery: {
     agent: {
       byAgentId: {
+        get: {
+          queryKey: ({ input }: { input: { params: { agent_id: string } } }) => ['agent', input],
+        },
+        composer: {
+          get: {
+            queryKey: ({ input }: { input: { params: { agent_id: string } } }) => ['agent-composer', input],
+          },
+        },
         referencingWorkflows: {
           get: {
             queryOptions: ({ input }: { input: { params: { agent_id: string } } }) => ({
@@ -60,6 +80,18 @@ vi.mock('@/service/client', () => ({
                 data: (workflowReferences.fetchCount++, workflowReferences.data),
               }),
             }),
+          },
+        },
+        versions: {
+          byVersionId: {
+            restore: {
+              post: {
+                mutationOptions: () => ({ mutationFn: restoreVersionMutation }),
+              },
+            },
+          },
+          get: {
+            key: () => ['agent-versions'],
           },
         },
       },
@@ -125,6 +157,7 @@ function renderPublishBar({
   draftSavedAt,
   isPublishing,
   onPublish = vi.fn<PublishHandler>(),
+  onExitVersions = vi.fn(),
   prompt = '',
   selectedVersionSnapshot,
   setupStore,
@@ -135,6 +168,7 @@ function renderPublishBar({
   draftSavedAt?: number
   isPublishing?: boolean
   onPublish?: PublishMock
+  onExitVersions?: Mock<() => void>
   prompt?: string
   selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
   setupStore?: (store: ReturnType<typeof createStore>) => void
@@ -165,7 +199,7 @@ function renderPublishBar({
           isPublishing={nextProps?.isPublishing ?? isPublishing}
           selectedVersionSnapshot={selectedVersionSnapshot}
           onPublish={onPublish}
-          onExitVersions={vi.fn()}
+          onExitVersions={onExitVersions}
           onOpenVersions={vi.fn()}
         />
       </JotaiProvider>
@@ -175,6 +209,8 @@ function renderPublishBar({
 
   return {
     ...view,
+    queryClient,
+    onExitVersions,
     onPublish,
     rerenderPublishBar: renderPublishBarTree,
   }
@@ -184,6 +220,10 @@ describe('AgentConfigurePublishBar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     hotkeyRegistrations.clear()
+    restoreVersionMutation.mockResolvedValue({
+      active_config_snapshot_id: 'snapshot-2',
+      result: 'success',
+    })
     workflowReferences.data = []
     workflowReferences.fetchCount = 0
     vi.spyOn(console, 'log').mockImplementation(() => {})
@@ -208,7 +248,7 @@ describe('AgentConfigurePublishBar', () => {
     )
   })
 
-  it('should render selected version in view-only restore mode', () => {
+  it('should restore the selected version from view-only mode', async () => {
     const selectedVersionSnapshot = {
       ...activeConfigSnapshot,
       id: 'snapshot-2',
@@ -217,14 +257,26 @@ describe('AgentConfigurePublishBar', () => {
       created_by: 'Alice',
     }
 
-    renderPublishBar({
+    const { onExitVersions } = renderPublishBar({
       selectedVersionSnapshot,
     })
 
     expect(screen.getByText('Stable version')).toBeInTheDocument()
     expect(screen.getByText('agentV2.agentDetail.versionHistory.viewOnly')).toBeInTheDocument()
     expect(screen.getByText('formatted:1710000000 · Alice')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.versionHistory.restore' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'agentV2.agentDetail.versionHistory.restore' }))
+
+    await waitFor(() => {
+      expect(restoreVersionMutation).toHaveBeenCalled()
+    })
+    expect(restoreVersionMutation.mock.calls[0]?.[0]).toEqual({
+      params: {
+        agent_id: 'agent-1',
+        version_id: 'snapshot-2',
+      },
+    })
+    expect(onExitVersions).toHaveBeenCalled()
+    expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
   })
 
   it('should render saved time from the latest draft save timestamp', () => {

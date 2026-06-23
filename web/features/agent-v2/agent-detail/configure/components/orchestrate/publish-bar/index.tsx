@@ -7,8 +7,9 @@ import { Button } from '@langgenius/dify-ui/button'
 import { CollapsiblePanel, CollapsibleRoot } from '@langgenius/dify-ui/collapsible'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
+import { toast } from '@langgenius/dify-ui/toast'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useConfigPublishPayload, useHasAgentComposerUnpublishedChanges } from '@/features/agent-v2/agent-composer/store'
@@ -95,6 +96,7 @@ export function AgentConfigurePublishBar({
   onOpenVersions,
 }: AgentConfigurePublishBarProps) {
   const { t } = useTranslation('agentV2')
+  const { t: tCommon } = useTranslation('common')
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
   const [publishBarMode, setPublishBarMode] = useState<PublishBarMode>({ status: 'compact' })
@@ -128,7 +130,49 @@ export function AgentConfigurePublishBar({
     ...workflowReferencesQueryOptions,
     enabled: publishIsAvailable && !selectedVersionSnapshot,
   })
+  const restoreVersionMutation = useMutation(consoleQuery.agent.byAgentId.versions.byVersionId.restore.post.mutationOptions())
   const canPublish = publishIsAvailable
+
+  const handleRestoreVersion = (versionId: string) => {
+    if (restoreVersionMutation.isPending)
+      return
+
+    restoreVersionMutation.mutate({
+      params: {
+        agent_id: agentId,
+        version_id: versionId,
+      },
+    }, {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({
+          queryKey: consoleQuery.agent.byAgentId.get.queryKey({
+            input: {
+              params: {
+                agent_id: agentId,
+              },
+            },
+          }),
+        })
+        void queryClient.invalidateQueries({
+          queryKey: consoleQuery.agent.byAgentId.composer.get.queryKey({
+            input: {
+              params: {
+                agent_id: agentId,
+              },
+            },
+          }),
+        })
+        void queryClient.invalidateQueries({
+          queryKey: consoleQuery.agent.byAgentId.versions.get.key(),
+        })
+        onExitVersions?.()
+        toast.success(tCommon('api.actionSuccess'))
+      },
+      onError: () => {
+        toast.error(tCommon('api.actionFailed'))
+      },
+    })
+  }
 
   const handlePublish = async () => {
     if (!canPublish)
@@ -170,7 +214,9 @@ export function AgentConfigurePublishBar({
     return (
       <AgentVersionRestoreBar
         version={selectedVersionSnapshot}
+        isRestoring={restoreVersionMutation.isPending}
         onExitVersions={onExitVersions}
+        onRestoreVersion={handleRestoreVersion}
       />
     )
   }
@@ -360,10 +406,14 @@ function PublishBarActions({
 
 function AgentVersionRestoreBar({
   version,
+  isRestoring = false,
   onExitVersions,
+  onRestoreVersion,
 }: {
   version: AgentConfigSnapshotSummaryResponse
+  isRestoring?: boolean
   onExitVersions?: () => void
+  onRestoreVersion?: (versionId: string) => void
 }) {
   const { t } = useTranslation('agentV2')
   const { formatTime } = useTimestamp()
@@ -395,8 +445,10 @@ function AgentVersionRestoreBar({
         <Button
           type="button"
           variant="primary"
-          disabled
+          disabled={!onRestoreVersion}
+          loading={isRestoring}
           className="h-8 rounded-lg px-3"
+          onClick={() => onRestoreVersion?.(version.id)}
         >
           {t('agentDetail.versionHistory.restore')}
         </Button>

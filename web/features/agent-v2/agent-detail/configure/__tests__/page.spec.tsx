@@ -16,13 +16,13 @@ const mocks = vi.hoisted(() => ({
       isSuccess: true,
     },
     composer: {
-      data: undefined,
+      data: undefined as unknown,
       isFetching: true,
       isPending: true,
       isSuccess: false,
     },
     version: {
-      data: undefined,
+      data: undefined as unknown,
       isFetching: false,
       isPending: false,
       isSuccess: false,
@@ -61,10 +61,15 @@ vi.mock('@/service/client', () => ({
       byAgentId: {
         get: {
           queryOptions: () => ({ queryKey: ['agent'] }),
+          queryKey: () => ['agent'],
         },
         composer: {
           get: {
             queryOptions: () => ({ queryKey: ['composer'] }),
+            queryKey: () => ['composer'],
+          },
+          put: {
+            mutationOptions: () => ({ mutationFn: vi.fn() }),
           },
         },
         versions: {
@@ -72,6 +77,9 @@ vi.mock('@/service/client', () => ({
             get: {
               queryOptions: () => ({ queryKey: ['version'] }),
             },
+          },
+          get: {
+            key: () => ['versions'],
           },
         },
       },
@@ -103,7 +111,9 @@ vi.mock('../components/preview/header', () => ({
 }))
 
 vi.mock('../components/preview/versions-panel', () => ({
-  AgentPreviewVersionsPanel: () => null,
+  AgentPreviewVersionsPanel: (props: { onSelectVersion: (versionId: string) => void }) => (
+    <button type="button" onClick={() => props.onSelectVersion('snapshot-2')}>select version</button>
+  ),
 }))
 
 describe('AgentConfigurePage', () => {
@@ -121,13 +131,13 @@ describe('AgentConfigurePage', () => {
       isSuccess: true,
     }
     mocks.queryState.composer = {
-      data: undefined,
+      data: undefined as unknown,
       isFetching: true,
       isPending: true,
       isSuccess: false,
     }
     mocks.queryState.version = {
-      data: undefined,
+      data: undefined as unknown,
       isFetching: false,
       isPending: false,
       isSuccess: false,
