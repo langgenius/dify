@@ -503,9 +503,9 @@ export const zHumanInputContent = z.object({
 })
 
 /**
- * MessageListItem
+ * ExploreMessageListItem
  */
-export const zMessageListItem = z.object({
+export const zExploreMessageListItem = z.object({
   agent_thoughts: z.array(zAgentThought),
   answer: z.string(),
   conversation_id: z.string(),
@@ -516,6 +516,7 @@ export const zMessageListItem = z.object({
   id: z.string(),
   inputs: z.record(z.string(), zJsonValueType),
   message_files: z.array(zMessageFile),
+  metadata: zJsonValueType.nullish(),
   parent_message_id: z.string().nullish(),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),
@@ -523,10 +524,10 @@ export const zMessageListItem = z.object({
 })
 
 /**
- * MessageInfiniteScrollPagination
+ * ExploreMessageInfiniteScrollPagination
  */
-export const zMessageInfiniteScrollPagination = z.object({
-  data: z.array(zMessageListItem),
+export const zExploreMessageInfiniteScrollPagination = z.object({
+  data: z.array(zExploreMessageListItem),
   has_more: z.boolean(),
   limit: z.int(),
 })
@@ -693,7 +694,8 @@ export const zGetInstalledAppsByInstalledAppIdMessagesQuery = z.object({
 /**
  * Success
  */
-export const zGetInstalledAppsByInstalledAppIdMessagesResponse = zMessageInfiniteScrollPagination
+export const zGetInstalledAppsByInstalledAppIdMessagesResponse
+  = zExploreMessageInfiniteScrollPagination
 
 export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksBody
   = zMessageFeedbackPayload
