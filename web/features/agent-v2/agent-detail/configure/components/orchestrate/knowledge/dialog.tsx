@@ -227,7 +227,11 @@ export function AgentKnowledgeRetrievalDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[520px] max-h-[calc(100dvh-2rem)] w-[400px] flex-col overflow-hidden p-0">
+      <DialogContent
+        backdropProps={{ forceRender: true }}
+        backdropClassName="fixed"
+        className="flex h-[520px] max-h-[calc(100dvh-2rem)] w-[400px] flex-col overflow-hidden p-0"
+      >
         <DialogTitle className="sr-only">
           {t('agentDetail.configure.knowledgeRetrieval.dialog.title')}
         </DialogTitle>

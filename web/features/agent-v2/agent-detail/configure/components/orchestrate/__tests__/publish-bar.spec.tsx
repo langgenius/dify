@@ -306,6 +306,19 @@ describe('AgentConfigurePublishBar', () => {
     expect(onPublish).not.toHaveBeenCalled()
   })
 
+  it('should keep published state when the published detail updates before the active snapshot is refreshed', () => {
+    renderPublishBar({
+      activeConfigIsPublished: true,
+      activeConfigSnapshot: null,
+    })
+
+    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' })).toBeDisabled()
+    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
+      expect.objectContaining({ enabled: false, ignoreInputs: false }),
+    )
+  })
+
   it('should initialize unpublished state when active config is not published', async () => {
     const { onPublish } = renderPublishBar({
       activeConfigIsPublished: false,
