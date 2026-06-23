@@ -10,6 +10,7 @@ from models.agent import (
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
     AgentDebugConversation,
+    AgentDriveFile,
     AgentKind,
     AgentScope,
     AgentSource,
@@ -31,7 +32,7 @@ from services.agent import composer_service, roster_service
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_service import AgentComposerService
 from services.agent.composer_validator import ComposerConfigValidator
-from services.agent.errors import InvalidComposerConfigError
+from services.agent.errors import AgentVersionConflictError, InvalidComposerConfigError
 from services.agent.roster_service import AgentRosterService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.app_service import AppListParams, AppService
@@ -415,9 +416,28 @@ def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.Monk
     fake_session = FakeSession()
     monkeypatch.setattr(composer_service.db, "session", fake_session)
     workflow_agent = SimpleNamespace(id="inline-agent-1", active_config_snapshot_id="inline-version-1")
-    roster_agent = SimpleNamespace(id="roster-agent-1", active_config_snapshot_id="roster-version-1", name="Roster")
+    roster_agent = SimpleNamespace(
+        id="roster-agent-1",
+        active_config_snapshot_id="roster-version-1",
+        name="Roster",
+        description="Source description",
+        role="Source role",
+        icon_type="emoji",
+        icon="source",
+        icon_background="#FFFFFF",
+    )
+    create_roster_calls = []
     monkeypatch.setattr(AgentComposerService, "_create_workflow_only_agent", lambda **kwargs: workflow_agent)
-    monkeypatch.setattr(AgentComposerService, "_create_roster_agent_for_composer", lambda **kwargs: roster_agent)
+
+    def fake_create_roster_agent_for_composer(**kwargs):
+        create_roster_calls.append(kwargs)
+        return roster_agent
+
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_create_roster_agent_for_composer",
+        fake_create_roster_agent_for_composer,
+    )
     monkeypatch.setattr(AgentComposerService, "_require_agent", lambda **kwargs: roster_agent)
     monkeypatch.setattr(
         AgentComposerService,
@@ -443,6 +463,11 @@ def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.Monk
             "agent_soul": {"prompt": {"system_prompt": "new"}},
             "node_job": {"workflow_prompt": "use prior output"},
             "new_agent_name": "Copied Agent",
+            "description": "Copied description",
+            "role": "Copied role",
+            "icon_type": "emoji",
+            "icon": "copied",
+            "icon_background": "#E0F2FE",
         }
     )
     existing_binding = WorkflowAgentNodeBinding(agent_id="inline-agent-1", current_snapshot_id="inline-version-1")
@@ -500,6 +525,14 @@ def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.Monk
     assert new_agent_binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
     assert save_to_roster_binding.agent_id == "roster-agent-1"
     assert new_version_binding.current_snapshot_id == "new-version-1"
+    assert create_roster_calls[0]["description"] == "Copied description"
+    assert create_roster_calls[0]["role"] == "Copied role"
+    assert create_roster_calls[0]["icon"] == "copied"
+    assert create_roster_calls[0]["icon_background"] == "#E0F2FE"
+    assert create_roster_calls[1]["description"] == "Copied description"
+    assert create_roster_calls[1]["role"] == "Copied role"
+    assert create_roster_calls[1]["icon"] == "copied"
+    assert create_roster_calls[1]["icon_background"] == "#E0F2FE"
 
 
 def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch):
@@ -713,6 +746,428 @@ def test_node_job_only_rejects_inline_binding_pointing_to_roster_agent(monkeypat
             binding=binding,
             payload=payload,
         )
+
+
+def test_copy_workflow_composer_from_roster_creates_inline_agent_and_preserves_node_job(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    fake_session = FakeSession()
+    monkeypatch.setattr(composer_service.db, "session", fake_session)
+    workflow = SimpleNamespace(id="workflow-1")
+    node_job = WorkflowNodeJobConfig(workflow_prompt="keep this node task")
+    binding = WorkflowAgentNodeBinding(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        workflow_version="draft",
+        node_id="node-1",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+        agent_id="roster-agent-1",
+        current_snapshot_id="old-roster-version",
+        node_job_config=node_job,
+    )
+    roster_agent = Agent(
+        id="roster-agent-1",
+        tenant_id="tenant-1",
+        name="Nadia",
+        description="Clarification Drafter",
+        role="Clarifies tenders",
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="roster-version-2",
+    )
+    source_version = AgentConfigSnapshot(
+        id="roster-version-2",
+        tenant_id="tenant-1",
+        agent_id="roster-agent-1",
+        version=2,
+        config_snapshot='{"prompt":{"system_prompt":"copy me"}}',
+    )
+    inline_agent = Agent(
+        id="inline-agent-1",
+        tenant_id="tenant-1",
+        name="Nadia",
+        description="Clarification Drafter",
+        role="Clarifies tenders",
+        scope=AgentScope.WORKFLOW_ONLY,
+        source=AgentSource.WORKFLOW,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="inline-version-1",
+    )
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: workflow)
+    monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: binding)
+    monkeypatch.setattr(AgentComposerService, "_require_agent", lambda **kwargs: roster_agent)
+    monkeypatch.setattr(AgentComposerService, "_require_version", lambda **kwargs: source_version)
+
+    def fake_create_workflow_only_agent(**kwargs):
+        captured["create"] = kwargs
+        return inline_agent
+
+    def fake_copy_drive_rows(**kwargs):
+        captured["drive"] = kwargs
+
+    monkeypatch.setattr(AgentComposerService, "_create_workflow_only_agent", fake_create_workflow_only_agent)
+    monkeypatch.setattr(AgentComposerService, "_copy_agent_drive_rows", fake_copy_drive_rows)
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_serialize_workflow_state",
+        lambda **kwargs: {
+            "binding": {
+                "binding_type": kwargs["binding"].binding_type.value,
+                "agent_id": kwargs["binding"].agent_id,
+                "current_snapshot_id": kwargs["binding"].current_snapshot_id,
+            },
+            "node_job": kwargs["binding"].node_job_config_dict,
+        },
+    )
+
+    state = AgentComposerService.copy_workflow_composer_from_roster(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        node_id="node-1",
+        account_id="account-1",
+        source_agent_id="roster-agent-1",
+        source_snapshot_id="roster-version-2",
+    )
+
+    assert state["binding"]["binding_type"] == WorkflowAgentBindingType.INLINE_AGENT.value
+    assert state["binding"]["agent_id"] == "inline-agent-1"
+    assert state["node_job"]["workflow_prompt"] == "keep this node task"
+    assert binding.node_job_config is node_job
+    create_kwargs = captured["create"]
+    assert create_kwargs["agent_soul"].prompt.system_prompt == "copy me"
+    assert create_kwargs["name"] == "Nadia"
+    assert create_kwargs["role"] == "Clarifies tenders"
+    drive_kwargs = captured["drive"]
+    assert drive_kwargs["source_agent_id"] == "roster-agent-1"
+    assert drive_kwargs["target_agent_id"] == "inline-agent-1"
+    assert fake_session.commits == 1
+
+
+def test_copy_workflow_composer_from_roster_rejects_stale_source_snapshot(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_get_workflow_binding",
+        lambda **kwargs: WorkflowAgentNodeBinding(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_id="workflow-1",
+            workflow_version="draft",
+            node_id="node-1",
+            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+            agent_id="roster-agent-1",
+            current_snapshot_id="roster-version-1",
+            node_job_config=WorkflowNodeJobConfig(),
+        ),
+    )
+    roster_agent = Agent(
+        id="roster-agent-1",
+        tenant_id="tenant-1",
+        name="Nadia",
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="roster-version-2",
+    )
+    source_version = AgentConfigSnapshot(
+        id="roster-version-2",
+        tenant_id="tenant-1",
+        agent_id="roster-agent-1",
+        version=2,
+        config_snapshot='{"prompt":{"system_prompt":"copy me"}}',
+    )
+    monkeypatch.setattr(AgentComposerService, "_require_agent", lambda **kwargs: roster_agent)
+    monkeypatch.setattr(AgentComposerService, "_require_version", lambda **kwargs: source_version)
+
+    with pytest.raises(AgentVersionConflictError):
+        AgentComposerService.copy_workflow_composer_from_roster(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            node_id="node-1",
+            account_id="account-1",
+            source_agent_id="roster-agent-1",
+            source_snapshot_id="roster-version-1",
+        )
+
+
+def test_copy_workflow_composer_from_roster_is_idempotent_when_already_inline(monkeypatch: pytest.MonkeyPatch):
+    inline_binding = WorkflowAgentNodeBinding(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        workflow_version="draft",
+        node_id="node-1",
+        binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+        agent_id="inline-agent-1",
+        current_snapshot_id="inline-version-1",
+    )
+    inline_agent = Agent(
+        id="inline-agent-1",
+        tenant_id="tenant-1",
+        name="Inline",
+        scope=AgentScope.WORKFLOW_ONLY,
+        source=AgentSource.WORKFLOW,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="inline-version-1",
+    )
+    inline_version = AgentConfigSnapshot(
+        id="inline-version-1",
+        tenant_id="tenant-1",
+        agent_id="inline-agent-1",
+        version=1,
+        config_snapshot='{"prompt":{"system_prompt":"inline"}}',
+    )
+    monkeypatch.setattr(composer_service.db, "session", FakeSession())
+    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
+    monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: inline_binding)
+    monkeypatch.setattr(AgentComposerService, "_get_agent_if_present", lambda **kwargs: inline_agent)
+    monkeypatch.setattr(AgentComposerService, "_get_version_if_present", lambda **kwargs: inline_version)
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_serialize_workflow_state",
+        lambda **kwargs: {"binding_type": kwargs["binding"].binding_type.value},
+    )
+
+    state = AgentComposerService.copy_workflow_composer_from_roster(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        node_id="node-1",
+        account_id="account-1",
+        source_agent_id="roster-agent-1",
+        idempotency_key="same-click",
+    )
+
+    assert state == {"binding_type": WorkflowAgentBindingType.INLINE_AGENT.value}
+
+
+@pytest.mark.parametrize(
+    ("binding_agent_id", "binding_type", "source_scope", "source_status", "expected_message"),
+    [
+        (
+            "roster-agent-1",
+            WorkflowAgentBindingType.INLINE_AGENT,
+            AgentScope.ROSTER,
+            AgentStatus.ACTIVE,
+            "must be bound to a roster agent",
+        ),
+        (
+            "other-agent",
+            WorkflowAgentBindingType.ROSTER_AGENT,
+            AgentScope.ROSTER,
+            AgentStatus.ACTIVE,
+            "does not match",
+        ),
+        (
+            "roster-agent-1",
+            WorkflowAgentBindingType.ROSTER_AGENT,
+            AgentScope.WORKFLOW_ONLY,
+            AgentStatus.ACTIVE,
+            "must be an active roster agent",
+        ),
+        (
+            "roster-agent-1",
+            WorkflowAgentBindingType.ROSTER_AGENT,
+            AgentScope.ROSTER,
+            AgentStatus.ARCHIVED,
+            "must be an active roster agent",
+        ),
+    ],
+)
+def test_copy_workflow_composer_from_roster_rejects_invalid_source_binding(
+    monkeypatch: pytest.MonkeyPatch,
+    binding_agent_id: str,
+    binding_type: WorkflowAgentBindingType,
+    source_scope: AgentScope,
+    source_status: AgentStatus,
+    expected_message: str,
+):
+    binding = WorkflowAgentNodeBinding(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        workflow_version="draft",
+        node_id="node-1",
+        binding_type=binding_type,
+        agent_id=binding_agent_id,
+        current_snapshot_id="version-1",
+        node_job_config=WorkflowNodeJobConfig(),
+    )
+    source_agent = Agent(
+        id="roster-agent-1",
+        tenant_id="tenant-1",
+        name="Source",
+        scope=source_scope,
+        source=AgentSource.AGENT_APP,
+        status=source_status,
+        active_config_snapshot_id="version-1",
+    )
+    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
+    monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: binding)
+    monkeypatch.setattr(AgentComposerService, "_require_agent", lambda **kwargs: source_agent)
+
+    with pytest.raises(InvalidComposerConfigError, match=expected_message):
+        AgentComposerService.copy_workflow_composer_from_roster(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            node_id="node-1",
+            account_id="account-1",
+            source_agent_id="roster-agent-1",
+        )
+
+
+def test_copy_agent_drive_rows_copies_skill_prefix_and_files(monkeypatch: pytest.MonkeyPatch):
+    skill_row = AgentDriveFile(
+        tenant_id="tenant-1",
+        agent_id="roster-agent-1",
+        key="tender-analyzer/SKILL.md",
+        file_kind="tool_file",
+        file_id="tool-file-1",
+        value_owned_by_drive=True,
+        is_skill=True,
+        skill_metadata='{"name":"Tender Analyzer"}',
+        size=10,
+        mime_type="text/markdown",
+    )
+    script_row = AgentDriveFile(
+        tenant_id="tenant-1",
+        agent_id="roster-agent-1",
+        key="tender-analyzer/scripts/run.sh",
+        file_kind="tool_file",
+        file_id="tool-file-2",
+        value_owned_by_drive=True,
+        size=20,
+        mime_type="text/x-shellscript",
+    )
+    file_row = AgentDriveFile(
+        tenant_id="tenant-1",
+        agent_id="roster-agent-1",
+        key="files/qna.pdf",
+        file_kind="upload_file",
+        file_id="upload-file-1",
+        value_owned_by_drive=False,
+        size=30,
+        mime_type="application/pdf",
+    )
+    fake_session = FakeSession(scalars=[[skill_row, script_row, file_row], []])
+    monkeypatch.setattr(composer_service.db, "session", fake_session)
+    agent_soul = AgentSoulConfig.model_validate(
+        {
+            "prompt": {
+                "system_prompt": "[§skill:tender-analyzer/SKILL.md:Tender Analyzer§]",
+            },
+        }
+    )
+    node_job = WorkflowNodeJobConfig.model_validate(
+        {"metadata": {"file_refs": [{"name": "qna.pdf", "drive_key": "files/qna.pdf"}]}}
+    )
+
+    AgentComposerService._copy_agent_drive_rows(
+        tenant_id="tenant-1",
+        source_agent_id="roster-agent-1",
+        target_agent_id="inline-agent-1",
+        account_id="account-1",
+        agent_soul=agent_soul,
+        node_job=node_job,
+    )
+
+    copied = [row for row in fake_session.added if isinstance(row, AgentDriveFile)]
+    assert [row.key for row in copied] == [
+        "tender-analyzer/SKILL.md",
+        "tender-analyzer/scripts/run.sh",
+        "files/qna.pdf",
+    ]
+    assert {row.agent_id for row in copied} == {"inline-agent-1"}
+    assert copied[0].file_id == "tool-file-1"
+    assert copied[0].is_skill is True
+    assert copied[2].value_owned_by_drive is False
+
+
+def test_copy_agent_drive_rows_skips_when_no_referenced_drive_keys(monkeypatch: pytest.MonkeyPatch):
+    fake_session = FakeSession()
+    monkeypatch.setattr(composer_service.db, "session", fake_session)
+    agent_soul = AgentSoulConfig.model_validate({"prompt": {"system_prompt": "No drive mentions."}})
+
+    AgentComposerService._copy_agent_drive_rows(
+        tenant_id="tenant-1",
+        source_agent_id="roster-agent-1",
+        target_agent_id="inline-agent-1",
+        account_id="account-1",
+        agent_soul=agent_soul,
+    )
+
+    assert fake_session.added == []
+
+
+def test_copy_agent_drive_rows_skips_existing_target_keys(monkeypatch: pytest.MonkeyPatch):
+    source_row = AgentDriveFile(
+        tenant_id="tenant-1",
+        agent_id="roster-agent-1",
+        key="files/qna.pdf",
+        file_kind="upload_file",
+        file_id="upload-file-1",
+        value_owned_by_drive=False,
+        size=30,
+        mime_type="application/pdf",
+    )
+    fake_session = FakeSession(scalars=[[source_row], ["files/qna.pdf"]])
+    monkeypatch.setattr(composer_service.db, "session", fake_session)
+    agent_soul = AgentSoulConfig.model_validate({"prompt": {"system_prompt": "[§file:files/qna.pdf:qna.pdf§]"}})
+
+    AgentComposerService._copy_agent_drive_rows(
+        tenant_id="tenant-1",
+        source_agent_id="roster-agent-1",
+        target_agent_id="inline-agent-1",
+        account_id="account-1",
+        agent_soul=agent_soul,
+    )
+
+    assert [row for row in fake_session.added if isinstance(row, AgentDriveFile)] == []
+
+
+def test_drive_copy_scopes_include_declared_output_benchmark_files():
+    agent_soul = AgentSoulConfig.model_validate(
+        {
+            "prompt": {
+                "system_prompt": (
+                    "[§file:files/source.pdf:source.pdf§] "
+                    "[§knowledge:dataset-1:Docs§] "
+                    "[§skill:tender-analyzer/SKILL.md:Tender Analyzer§]"
+                )
+            },
+        }
+    )
+    node_job = WorkflowNodeJobConfig.model_validate(
+        {
+            "declared_outputs": [
+                {
+                    "name": "qna_report",
+                    "type": "file",
+                    "check": {
+                        "enabled": True,
+                        "prompt": "Compare the generated file with the benchmark.",
+                        "benchmark_file_ref": {"name": "expected.pdf", "drive_key": "files/expected.pdf"},
+                    },
+                },
+                {
+                    "name": "summary",
+                    "type": "string",
+                    "check": {"enabled": False, "benchmark_file_ref": {"drive_key": "files/ignored.pdf"}},
+                },
+            ],
+        }
+    )
+
+    exact_keys, prefixes = AgentComposerService._drive_copy_scopes_from_agent_configs(
+        agent_soul=agent_soul,
+        node_job=node_job,
+    )
+
+    assert exact_keys == {"files/source.pdf", "files/expected.pdf"}
+    assert prefixes == {"tender-analyzer/"}
 
 
 def test_composer_create_agents_syncs_active_config_has_model(monkeypatch: pytest.MonkeyPatch):

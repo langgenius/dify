@@ -643,6 +643,15 @@ export const zHumanInputDeliveryTestPayload = z.object({
 export const zEmptyObjectResponse = z.record(z.string(), z.unknown())
 
 /**
+ * WorkflowComposerCopyFromRosterPayload
+ */
+export const zWorkflowComposerCopyFromRosterPayload = z.object({
+  idempotency_key: z.string().max(255).nullish(),
+  source_agent_id: z.string().min(1).max(255),
+  source_snapshot_id: z.string().max(255).nullish(),
+})
+
+/**
  * DraftWorkflowNodeRunPayload
  */
 export const zDraftWorkflowNodeRunPayload = z.object({
@@ -1834,6 +1843,13 @@ export const zComposerBindingPayload = z.object({
   binding_type: z.enum(['inline_agent', 'roster_agent']),
   current_snapshot_id: z.string().nullish(),
 })
+
+/**
+ * AgentIconType
+ *
+ * Supported icon storage formats for Agent roster entries.
+ */
+export const zAgentIconType = z.enum(['emoji', 'image', 'link'])
 
 /**
  * ComposerSoulLockPayload
@@ -3336,9 +3352,14 @@ export const zComposerSavePayload = z.object({
   agent_soul: zAgentSoulConfig.nullish(),
   binding: zComposerBindingPayload.nullish(),
   client_revision_id: z.string().nullish(),
+  description: z.string().nullish(),
+  icon: z.string().max(255).nullish(),
+  icon_background: z.string().max(255).nullish(),
+  icon_type: zAgentIconType.nullish(),
   idempotency_key: z.string().nullish(),
   new_agent_name: z.string().min(1).max(255).nullish(),
   node_job: zWorkflowNodeJobConfig.nullish(),
+  role: z.string().max(255).nullish(),
   save_strategy: zComposerSaveStrategy,
   soul_lock: zComposerSoulLockPayload.optional(),
   variant: zComposerVariant,
@@ -5341,6 +5362,20 @@ export const zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesPa
  */
 export const zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponse
   = zAgentComposerCandidatesResponse
+
+export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterBody
+  = zWorkflowComposerCopyFromRosterPayload
+
+export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterPath = z.object({
+  app_id: z.uuid(),
+  node_id: z.string(),
+})
+
+/**
+ * Workflow roster agent copied to inline agent
+ */
+export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponse
+  = zWorkflowAgentComposerResponse
 
 export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactBody
   = zComposerSavePayload

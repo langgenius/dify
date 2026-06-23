@@ -15,6 +15,7 @@ from controllers.console.agent.composer import (
     AgentComposerValidateApi,
     WorkflowAgentComposerApi,
     WorkflowAgentComposerCandidatesApi,
+    WorkflowAgentComposerCopyFromRosterApi,
     WorkflowAgentComposerImpactApi,
     WorkflowAgentComposerSaveToRosterApi,
     WorkflowAgentComposerValidateApi,
@@ -1015,6 +1016,58 @@ def test_workflow_composer_get_put_validate_candidates_impact_and_save(
         assert unwrap(WorkflowAgentComposerSaveToRosterApi.post)(
             WorkflowAgentComposerSaveToRosterApi(), "tenant-1", account_id, app_model, "node-1"
         )["save_options"] == ["node_job_only"]
+
+
+def test_workflow_composer_copy_from_roster(app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str) -> None:
+    app_model = SimpleNamespace(id="app-1")
+    captured: dict[str, object] = {}
+
+    def fake_copy_from_roster(**kwargs):
+        captured.update(kwargs)
+        return _workflow_composer_response(
+            binding={
+                "id": "binding-1",
+                "binding_type": "inline_agent",
+                "agent_id": "inline-agent-1",
+                "current_snapshot_id": "inline-version-1",
+                "workflow_id": "workflow-1",
+                "node_id": kwargs["node_id"],
+            },
+            agent={
+                "id": "inline-agent-1",
+                "name": "Nadia",
+                "description": "",
+                "scope": "workflow_only",
+                "status": "active",
+            },
+            active_config_snapshot={"id": "inline-version-1", "version": 1},
+        )
+
+    monkeypatch.setattr(
+        composer_controller.AgentComposerService, "copy_workflow_composer_from_roster", fake_copy_from_roster
+    )
+
+    with app.test_request_context(
+        json={
+            "source_agent_id": "roster-agent-1",
+            "source_snapshot_id": "roster-version-1",
+            "idempotency_key": "copy-1",
+        }
+    ):
+        result = unwrap(WorkflowAgentComposerCopyFromRosterApi.post)(
+            WorkflowAgentComposerCopyFromRosterApi(), "tenant-1", account_id, app_model, "node-1"
+        )
+
+    assert result["binding"]["binding_type"] == "inline_agent"
+    assert captured == {
+        "tenant_id": "tenant-1",
+        "app_id": "app-1",
+        "node_id": "node-1",
+        "account_id": account_id,
+        "source_agent_id": "roster-agent-1",
+        "source_snapshot_id": "roster-version-1",
+        "idempotency_key": "copy-1",
+    }
 
 
 def test_workflow_impact_returns_empty_without_version(app: Flask) -> None:

@@ -392,6 +392,9 @@ import {
   zPostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunBody,
   zPostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunPath,
   zPostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponse,
+  zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterBody,
+  zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterPath,
+  zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponse,
   zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactBody,
   zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactPath,
   zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponse,
@@ -3482,6 +3485,26 @@ export const post51 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
+    operationId: 'postAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRoster',
+    path: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterBody,
+      params: zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterPath,
+    }),
+  )
+  .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponse)
+
+export const copyFromRoster = {
+  post: post51,
+}
+
+export const post52 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
     operationId: 'postAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpact',
     path: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/impact',
     tags: ['console'],
@@ -3495,10 +3518,10 @@ export const post51 = oc
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponse)
 
 export const impact = {
-  post: post51,
+  post: post52,
 }
 
-export const post52 = oc
+export const post53 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3515,10 +3538,10 @@ export const post52 = oc
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponse)
 
 export const saveToRoster = {
-  post: post52,
+  post: post53,
 }
 
-export const post53 = oc
+export const post54 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3535,7 +3558,7 @@ export const post53 = oc
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponse)
 
 export const validate = {
-  post: post53,
+  post: post54,
 }
 
 export const get62 = oc
@@ -3569,6 +3592,7 @@ export const agentComposer = {
   get: get62,
   put: put4,
   candidates,
+  copyFromRoster,
   impact,
   saveToRoster,
   validate,
@@ -3598,7 +3622,7 @@ export const lastRun = {
  *
  * Run draft workflow node
  */
-export const post54 = oc
+export const post55 = oc
   .route({
     description: 'Run draft workflow node',
     inputStructure: 'detailed',
@@ -3617,7 +3641,7 @@ export const post54 = oc
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdRunResponse)
 
 export const run8 = {
-  post: post54,
+  post: post55,
 }
 
 /**
@@ -3625,7 +3649,7 @@ export const run8 = {
  *
  * Poll for trigger events and execute single node when event arrives
  */
-export const post55 = oc
+export const post56 = oc
   .route({
     description: 'Poll for trigger events and execute single node when event arrives',
     inputStructure: 'detailed',
@@ -3639,7 +3663,7 @@ export const post55 = oc
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponse)
 
 export const run9 = {
-  post: post55,
+  post: post56,
 }
 
 export const trigger = {
@@ -3699,7 +3723,7 @@ export const nodes7 = {
  *
  * Run draft workflow
  */
-export const post56 = oc
+export const post57 = oc
   .route({
     description: 'Run draft workflow',
     inputStructure: 'detailed',
@@ -3718,7 +3742,7 @@ export const post56 = oc
   .output(zPostAppsByAppIdWorkflowsDraftRunResponse)
 
 export const run10 = {
-  post: post56,
+  post: post57,
 }
 
 /**
@@ -3840,7 +3864,7 @@ export const systemVariables = {
  *
  * Poll for trigger events and execute full workflow when event arrives
  */
-export const post57 = oc
+export const post58 = oc
   .route({
     description: 'Poll for trigger events and execute full workflow when event arrives',
     inputStructure: 'detailed',
@@ -3859,7 +3883,7 @@ export const post57 = oc
   .output(zPostAppsByAppIdWorkflowsDraftTriggerRunResponse)
 
 export const run11 = {
-  post: post57,
+  post: post58,
 }
 
 /**
@@ -3867,7 +3891,7 @@ export const run11 = {
  *
  * Full workflow debug when the start node is a trigger
  */
-export const post58 = oc
+export const post59 = oc
   .route({
     description: 'Full workflow debug when the start node is a trigger',
     inputStructure: 'detailed',
@@ -3886,7 +3910,7 @@ export const post58 = oc
   .output(zPostAppsByAppIdWorkflowsDraftTriggerRunAllResponse)
 
 export const runAll = {
-  post: post58,
+  post: post59,
 }
 
 export const trigger2 = {
@@ -4039,7 +4063,7 @@ export const get72 = oc
  *
  * Sync draft workflow configuration
  */
-export const post59 = oc
+export const post60 = oc
   .route({
     description: 'Sync draft workflow configuration',
     inputStructure: 'detailed',
@@ -4059,7 +4083,7 @@ export const post59 = oc
 
 export const draft2 = {
   get: get72,
-  post: post59,
+  post: post60,
   conversationVariables: conversationVariables2,
   environmentVariables,
   features,
@@ -4095,7 +4119,7 @@ export const get73 = oc
 /**
  * Publish workflow
  */
-export const post60 = oc
+export const post61 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4114,7 +4138,7 @@ export const post60 = oc
 
 export const publish = {
   get: get73,
-  post: post60,
+  post: post61,
 }
 
 /**
@@ -4251,7 +4275,7 @@ export const triggers2 = {
 /**
  * Restore a published workflow version into the draft workflow
  */
-export const post61 = oc
+export const post62 = oc
   .route({
     description: 'Restore a published workflow version into the draft workflow',
     inputStructure: 'detailed',
@@ -4264,7 +4288,7 @@ export const post61 = oc
   .output(zPostAppsByAppIdWorkflowsByWorkflowIdRestoreResponse)
 
 export const restore = {
-  post: post61,
+  post: post62,
 }
 
 /**
@@ -4489,7 +4513,7 @@ export const get81 = oc
  *
  * Create a new API key for an app
  */
-export const post62 = oc
+export const post63 = oc
   .route({
     description: 'Create a new API key for an app',
     inputStructure: 'detailed',
@@ -4505,7 +4529,7 @@ export const post62 = oc
 
 export const apiKeys = {
   get: get81,
-  post: post62,
+  post: post63,
   byApiKeyId,
 }
 
@@ -4563,7 +4587,7 @@ export const get83 = oc
  *
  * Create a new application
  */
-export const post63 = oc
+export const post64 = oc
   .route({
     description: 'Create a new application',
     inputStructure: 'detailed',
@@ -4579,7 +4603,7 @@ export const post63 = oc
 
 export const apps = {
   get: get83,
-  post: post63,
+  post: post64,
   imports,
   starred,
   workflows,
