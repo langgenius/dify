@@ -12,6 +12,7 @@ import { AgentSkills } from '../index'
 
 const mocks = vi.hoisted(() => ({
   driveSkillsQueryOptions: vi.fn(),
+  driveSkillInspectQueryOptions: vi.fn(),
   driveFilesQueryOptions: vi.fn(),
   driveFileDownloadQueryOptions: vi.fn(),
   driveFilePreviewQueryOptions: vi.fn(),
@@ -34,6 +35,13 @@ vi.mock('@/service/client', () => ({
           skills: {
             get: {
               queryOptions: mocks.driveSkillsQueryOptions,
+            },
+            bySkillPath: {
+              inspect: {
+                get: {
+                  queryOptions: mocks.driveSkillInspectQueryOptions,
+                },
+              },
             },
           },
           files: {
@@ -73,6 +81,13 @@ vi.mock('@/service/client', () => ({
             skills: {
               get: {
                 queryOptions: mocks.driveSkillsQueryOptions,
+              },
+              bySkillPath: {
+                inspect: {
+                  get: {
+                    queryOptions: mocks.driveSkillInspectQueryOptions,
+                  },
+                },
               },
             },
             files: {
@@ -210,6 +225,54 @@ describe('AgentSkills', () => {
         items: skillItems,
       }),
     }))
+    mocks.driveSkillInspectQueryOptions.mockImplementation(({ input }) => ({
+      queryKey: ['agent-drive-skill-inspect', input],
+      queryFn: async () => ({
+        archive_key: 'tender-analyzer/.DIFY-SKILL-FULL.zip',
+        description: 'Extracts tender requirements and scoring criteria.',
+        files: [
+          {
+            available_in_drive: true,
+            drive_key: 'tender-analyzer/SKILL.md',
+            name: 'SKILL.md',
+            path: 'SKILL.md',
+            type: 'file',
+          },
+          {
+            available_in_drive: true,
+            drive_key: 'tender-analyzer/references/guide.md',
+            name: 'guide.md',
+            path: 'references/guide.md',
+            type: 'file',
+          },
+          {
+            available_in_drive: true,
+            drive_key: 'tender-analyzer/scripts/extract.py',
+            name: 'extract.py',
+            path: 'scripts/extract.py',
+            type: 'file',
+          },
+          {
+            available_in_drive: true,
+            drive_key: 'tender-analyzer/.DIFY-SKILL-FULL.zip',
+            name: '.DIFY-SKILL-FULL.zip',
+            path: '.DIFY-SKILL-FULL.zip',
+            type: 'file',
+          },
+        ],
+        name: 'Tender Analyzer',
+        path: 'tender-analyzer',
+        skill_md: {
+          binary: false,
+          key: 'tender-analyzer/SKILL.md',
+          text: 'Skill markdown content',
+          truncated: false,
+        },
+        skill_md_key: 'tender-analyzer/SKILL.md',
+        source: 'drive',
+        warnings: [],
+      }),
+    }))
     mocks.driveFilesQueryOptions.mockImplementation(({ input }) => ({
       queryKey: ['agent-drive-files', input],
       queryFn: async () => ({
@@ -257,18 +320,24 @@ describe('AgentSkills', () => {
     const dialog = screen.getByRole('dialog')
 
     expect(dialog).toBeInTheDocument()
-    expect(mocks.driveFilesQueryOptions).toHaveBeenCalledWith({
-      input: {
-        params: {
-          agent_id: 'agent-1',
+    await waitFor(() => {
+      expect(mocks.driveSkillInspectQueryOptions).toHaveBeenCalledWith({
+        input: {
+          params: {
+            agent_id: 'agent-1',
+            skill_path: 'tender-analyzer',
+          },
         },
-        query: {
-          prefix: 'tender-analyzer/',
-        },
-      },
+      })
     })
+    expect(mocks.driveFilesQueryOptions).not.toHaveBeenCalled()
     expect(within(dialog).getByText('Tender Analyzer')).toBeInTheDocument()
     expect(within(dialog).getByText('Extracts tender requirements and scoring criteria.')).toBeInTheDocument()
+    expect(await within(dialog).findByText('references')).toBeInTheDocument()
+    expect(within(dialog).getByText('guide.md')).toBeInTheDocument()
+    expect(within(dialog).getByText('scripts')).toBeInTheDocument()
+    expect(within(dialog).getByText('extract.py')).toBeInTheDocument()
+    expect(within(dialog).queryByText('.DIFY-SKILL-FULL.zip')).not.toBeInTheDocument()
   })
 
   it('should keep the detail dialog open after selecting a skill', async () => {
@@ -279,6 +348,146 @@ describe('AgentSkills', () => {
     }))
 
     expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('should preview selected package file content in the skill detail dialog', async () => {
+    const user = userEvent.setup()
+    renderAgentSkills()
+
+    await user.click(screen.getByRole('button', {
+      name: 'Tender Analyzer',
+    }))
+
+    const dialog = screen.getByRole('dialog')
+    await user.click(await within(dialog).findByText('guide.md'))
+
+    expect(await within(dialog).findByText('Preview content for tender-analyzer/references/guide.md')).toBeInTheDocument()
+    expect(mocks.driveFilePreviewQueryOptions).toHaveBeenCalledWith({
+      input: {
+        params: {
+          agent_id: 'agent-1',
+        },
+        query: {
+          key: 'tender-analyzer/references/guide.md',
+        },
+      },
+    })
+  })
+
+  it('should not request preview for package files without a drive entry', async () => {
+    const user = userEvent.setup()
+    mocks.driveSkillInspectQueryOptions.mockImplementation(({ input }) => ({
+      queryKey: ['agent-drive-skill-inspect', input],
+      queryFn: async () => ({
+        archive_key: 'tender-analyzer/.DIFY-SKILL-FULL.zip',
+        description: 'Extracts tender requirements and scoring criteria.',
+        files: [
+          {
+            available_in_drive: true,
+            drive_key: 'tender-analyzer/SKILL.md',
+            name: 'SKILL.md',
+            path: 'SKILL.md',
+            type: 'file',
+          },
+          {
+            available_in_drive: false,
+            drive_key: null,
+            name: 'animation-rows.md',
+            path: 'references/animation-rows.md',
+            type: 'file',
+          },
+        ],
+        name: 'Tender Analyzer',
+        path: 'tender-analyzer',
+        skill_md: {
+          binary: false,
+          key: 'tender-analyzer/SKILL.md',
+          text: 'Skill markdown content',
+          truncated: false,
+        },
+        skill_md_key: 'tender-analyzer/SKILL.md',
+        source: 'drive',
+        warnings: [],
+      }),
+    }))
+
+    renderAgentSkills()
+
+    await user.click(screen.getByRole('button', {
+      name: 'Tender Analyzer',
+    }))
+
+    const dialog = screen.getByRole('dialog')
+    await user.click(await within(dialog).findByText('animation-rows.md'))
+
+    expect(mocks.driveFilePreviewQueryOptions).not.toHaveBeenCalledWith({
+      input: {
+        params: {
+          agent_id: 'agent-1',
+        },
+        query: {
+          key: 'tender-analyzer/references/animation-rows.md',
+        },
+      },
+    })
+    expect(within(dialog).getByText('agentV2.agentDetail.configure.files.preview.empty')).toBeInTheDocument()
+  })
+
+  it('should deduplicate package files by path in the skill detail dialog', async () => {
+    const user = userEvent.setup()
+    mocks.driveSkillInspectQueryOptions.mockImplementation(({ input }) => ({
+      queryKey: ['agent-drive-skill-inspect', input],
+      queryFn: async () => ({
+        archive_key: 'tender-analyzer/.DIFY-SKILL-FULL.zip',
+        description: 'Extracts tender requirements and scoring criteria.',
+        files: [
+          {
+            available_in_drive: true,
+            drive_key: 'tender-analyzer/SKILL.md',
+            name: 'SKILL.md',
+            path: 'SKILL.md',
+            type: 'file',
+          },
+          {
+            available_in_drive: false,
+            drive_key: null,
+            name: 'SKILL.md',
+            path: 'tender-analyzer/SKILL.md',
+            type: 'file',
+          },
+          {
+            available_in_drive: true,
+            drive_key: 'tender-analyzer/scripts/extract.py',
+            name: 'extract.py',
+            path: 'scripts/extract.py',
+            type: 'file',
+          },
+        ],
+        name: 'Tender Analyzer',
+        path: 'tender-analyzer',
+        skill_md: {
+          binary: false,
+          key: 'tender-analyzer/SKILL.md',
+          text: 'Skill markdown content',
+          truncated: false,
+        },
+        skill_md_key: 'tender-analyzer/SKILL.md',
+        source: 'drive',
+        warnings: [],
+      }),
+    }))
+
+    renderAgentSkills()
+
+    await user.click(screen.getByRole('button', {
+      name: 'Tender Analyzer',
+    }))
+
+    const dialog = screen.getByRole('dialog')
+
+    expect(await within(dialog).findByText('SKILL.md')).toBeInTheDocument()
+    expect(within(dialog).getAllByText('SKILL.md')).toHaveLength(1)
+    expect(within(dialog).getByText('agentV2.agentDetail.configure.skills.detail.fileCount:{"count":2}')).toBeInTheDocument()
   })
 
   it('should use workflow node drive routes for skill list and preview in inline workflow mode', async () => {
@@ -299,27 +508,33 @@ describe('AgentSkills', () => {
       name: 'Tender Analyzer',
     }))
 
-    expect(mocks.driveFilesQueryOptions).toHaveBeenCalledWith({
-      input: {
-        params: {
-          app_id: 'app-1',
+    await waitFor(() => {
+      expect(mocks.driveSkillInspectQueryOptions).toHaveBeenCalledWith({
+        input: {
+          params: {
+            app_id: 'app-1',
+            skill_path: 'tender-analyzer',
+          },
+          query: {
+            node_id: 'node-1',
+          },
         },
-        query: {
-          node_id: 'node-1',
-          prefix: 'tender-analyzer/',
-        },
-      },
+      })
     })
-    expect(mocks.driveFilePreviewQueryOptions).toHaveBeenCalledWith({
-      input: {
-        params: {
-          app_id: 'app-1',
+    fireEvent.click(await screen.findByText('guide.md'))
+
+    await waitFor(() => {
+      expect(mocks.driveFilePreviewQueryOptions).toHaveBeenCalledWith({
+        input: {
+          params: {
+            app_id: 'app-1',
+          },
+          query: {
+            node_id: 'node-1',
+            key: 'tender-analyzer/references/guide.md',
+          },
         },
-        query: {
-          node_id: 'node-1',
-          key: 'tender-analyzer/SKILL.md',
-        },
-      },
+      })
     })
   })
 

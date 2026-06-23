@@ -13,6 +13,30 @@ type AgentDriveSkillItem = {
   created_at?: number | null
 }
 
+type AgentDriveSkillFile = {
+  available_in_drive: boolean
+  drive_key?: string | null
+  name: string
+  path: string
+  type: string
+}
+
+type AgentDriveSkillMarkdown = {
+  binary: boolean
+  key: string
+  size?: number | null
+  text?: string | null
+  truncated: boolean
+}
+
+type AgentDriveSkillInspect = AgentDriveSkillItem & {
+  file_tree?: Array<Record<string, unknown>>
+  files?: AgentDriveSkillFile[]
+  skill_md: AgentDriveSkillMarkdown
+  source: string
+  warnings?: string[]
+}
+
 const agentDriveSkillsByAgentContract = base
   .route({
     path: '/agent/{agent_id}/drive/skills',
@@ -24,6 +48,19 @@ const agentDriveSkillsByAgentContract = base
     }
   }>())
   .output(type<{ items: AgentDriveSkillItem[] }>())
+
+const agentDriveSkillInspectByAgentContract = base
+  .route({
+    path: '/agent/{agent_id}/drive/skills/{skill_path}/inspect',
+    method: 'GET',
+  })
+  .input(type<{
+    params: {
+      agent_id: string
+      skill_path: string
+    }
+  }>())
+  .output(type<AgentDriveSkillInspect>())
 
 const agentDriveSkillsByAppContract = base
   .route({
@@ -40,11 +77,32 @@ const agentDriveSkillsByAppContract = base
   }>())
   .output(type<{ items: AgentDriveSkillItem[] }>())
 
+const agentDriveSkillInspectByAppContract = base
+  .route({
+    path: '/apps/{app_id}/agent/drive/skills/{skill_path}/inspect',
+    method: 'GET',
+  })
+  .input(type<{
+    params: {
+      app_id: string
+      skill_path: string
+    }
+    query?: {
+      node_id?: string
+    }
+  }>())
+  .output(type<AgentDriveSkillInspect>())
+
 export const agentDriveContracts = {
   byAgentId: {
     drive: {
       skills: {
         get: agentDriveSkillsByAgentContract,
+        bySkillPath: {
+          inspect: {
+            get: agentDriveSkillInspectByAgentContract,
+          },
+        },
       },
     },
   },
@@ -53,6 +111,11 @@ export const agentDriveContracts = {
       drive: {
         skills: {
           get: agentDriveSkillsByAppContract,
+          bySkillPath: {
+            inspect: {
+              get: agentDriveSkillInspectByAppContract,
+            },
+          },
         },
       },
     },
