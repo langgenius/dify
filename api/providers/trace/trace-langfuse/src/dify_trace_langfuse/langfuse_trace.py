@@ -357,6 +357,7 @@ class LangFuseDataTrace(BaseTraceInstance):
         )
 
         langfuse_generation_data = LangfuseGeneration(
+            id=str(uuid.uuid4()),
             name="llm",
             trace_id=trace_id,
             start_time=trace_info.start_time,
@@ -405,6 +406,7 @@ class LangFuseDataTrace(BaseTraceInstance):
         )
 
         generation_data = LangfuseGeneration(
+            id=str(uuid.uuid4()),
             name=TraceTaskName.SUGGESTED_QUESTION_TRACE,
             input=trace_info.inputs,
             output=str(trace_info.suggested_question),
