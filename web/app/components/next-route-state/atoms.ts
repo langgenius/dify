@@ -21,7 +21,7 @@ function normalizedParamEntries(params: NextRouteParams) {
     })
 }
 
-export function normalizeNextRouteParams(params: NextRouteParams): NextRouteParams {
+function normalizeNextRouteParams(params: NextRouteParams): NextRouteParams {
   return Object.fromEntries(normalizedParamEntries(params)) as NextRouteParams
 }
 
