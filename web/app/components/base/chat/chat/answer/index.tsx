@@ -236,7 +236,7 @@ const Answer: FC<AnswerProps> = ({
         )}
 
         {/* Block 2: Response Content (when human inputs exist) */}
-        {hasHumanInputs && (responding || !contentIsEmpty || hasAgentThoughts) && (
+        {hasHumanInputs && (responding || !contentIsEmpty || hasAgentThoughts || hasReasoning) && (
           <div className={cn('group relative mt-2 pr-10', chatAnswerContainerInner)}>
             <div className="absolute -top-2 left-6 h-3 w-0.5 bg-chat-answer-human-input-form-divider-bg" />
             <div

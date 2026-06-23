@@ -199,6 +199,24 @@ describe('Answer Component', () => {
       expect(screen.getByText(/chat\.(thinking|thought)/)).toBeInTheDocument()
     })
 
+    it('should render the reasoning panel in the human-input layout when the answer is empty (history reload)', () => {
+      // Regression: the human-input slot outer guard must include hasReasoning, otherwise a
+      // rehydrated message with forms + reasoning but an empty answer drops the panel entirely.
+      render(
+        <Answer
+          {...defaultProps}
+          item={{
+            ...defaultProps.item,
+            content: '',
+            reasoningContent: { llm: 'reload reasoning' },
+            reasoningFinished: true,
+            humanInputFilledFormDataList: [{ id: 'form1' }],
+          } as unknown as ChatItem}
+        />,
+      )
+      expect(screen.getByText(/chat\.thought/)).toBeInTheDocument()
+    })
+
     it('should not render the reasoning panel when reasoningContent is absent', () => {
       render(<Answer {...defaultProps} />)
       expect(screen.queryByText(/chat\.(thinking|thought)/)).not.toBeInTheDocument()
