@@ -67,6 +67,7 @@ class _RedisSubscription(RedisSubscriptionBase):
     def _get_subscription_type(self) -> str:
         return "regular"
 
+    @override
     def _publish_close_event(self) -> None:
         try:
             self._client.publish(self._topic, SIG_CLOSE)
