@@ -613,6 +613,7 @@
   "versions.releaseDescriptionLabel": "설명",
   "versions.releaseDescriptionPlaceholder": "이 릴리스를 설명하세요",
   "versions.releaseHistory": "릴리스 기록",
+  "versions.releaseNameConflict": "이 릴리스 이름은 이미 존재합니다. 다른 이름을 선택하세요.",
   "versions.releaseNameLabel": "릴리스 이름",
   "versions.releaseNamePlaceholder": "릴리스 이름",
   "versions.releaseNameRequired": "릴리스 이름을 입력하세요.",

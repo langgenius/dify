@@ -3,11 +3,12 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { useAtom } from 'jotai'
+import { useAtom, useAtomValue } from 'jotai'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   createReleaseDescriptionFieldAtom,
+  createReleaseHasNameConflictAtom,
   createReleaseNameFieldAtom,
   RELEASE_NAME_REQUIRED_ERROR,
 } from '../state'
@@ -40,8 +41,15 @@ export function ReleaseMetadataFields() {
   const { t } = useTranslation('deployments')
   const [releaseNameField, setReleaseNameField] = useAtom(createReleaseNameFieldAtom)
   const [releaseDescriptionField, setReleaseDescriptionField] = useAtom(createReleaseDescriptionFieldAtom)
+  const hasReleaseNameConflict = useAtomValue(createReleaseHasNameConflictAtom)
   const releaseNameInputRef = useRef<HTMLInputElement>(null)
   const releaseNameErrors = releaseNameField.meta?.errors ?? []
+  const hasReleaseNameRequired = hasReleaseNameRequiredError(releaseNameErrors)
+  const releaseNameError = hasReleaseNameRequired
+    ? t('versions.releaseNameRequired')
+    : hasReleaseNameConflict
+      ? t('versions.releaseNameConflict')
+      : ''
 
   useEffect(() => {
     releaseNameInputRef.current?.focus()
@@ -61,16 +69,16 @@ export function ReleaseMetadataFields() {
           maxLength={128}
           autoComplete="off"
           value={releaseNameField.value}
-          aria-invalid={hasReleaseNameRequiredError(releaseNameErrors) || undefined}
-          aria-describedby={hasReleaseNameRequiredError(releaseNameErrors) ? 'release-name-error' : undefined}
+          aria-invalid={Boolean(releaseNameError) || undefined}
+          aria-describedby={releaseNameError ? 'release-name-error' : undefined}
           onChange={(event) => {
             setReleaseNameField(event.target.value)
           }}
           className="h-9"
         />
-        {hasReleaseNameRequiredError(releaseNameErrors) && (
+        {releaseNameError && (
           <div id="release-name-error" role="alert" className="system-xs-regular text-text-destructive">
-            {t('versions.releaseNameRequired')}
+            {releaseNameError}
           </div>
         )}
       </div>
