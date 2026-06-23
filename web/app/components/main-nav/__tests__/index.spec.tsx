@@ -677,6 +677,8 @@ describe('MainNav', () => {
     expect(screen.getByRole('complementary')).toHaveClass('p-1')
     expect(screen.getByTestId('snippet-detail-top')).toHaveAttribute('data-expand', 'false')
     expect(screen.queryByTestId('snippet-sidebar-content')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Snippet collapsed preview')).toBeInTheDocument()
+    expect(screen.getByLabelText('1 input fields')).toBeInTheDocument()
     expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('collapse')
   })
 
