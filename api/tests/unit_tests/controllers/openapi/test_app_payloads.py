@@ -10,9 +10,11 @@ import pytest
 
 from controllers.openapi.apps import (  # pyright: ignore[reportPrivateUsage]
     _EMPTY_PARAMETERS,
+    _is_listable,
     parameters_payload,
 )
 from controllers.service_api.app.error import AppUnavailableError
+from models.model import AppMode
 
 
 def _fake_app(**overrides):
@@ -53,3 +55,16 @@ def test_empty_parameters_constant_matches_describe_fallback_shape():
     assert _EMPTY_PARAMETERS["opening_statement"] is None
     assert _EMPTY_PARAMETERS["file_upload"] is None
     assert _EMPTY_PARAMETERS["system_parameters"] == {}
+
+
+@pytest.mark.parametrize(
+    "mode",
+    [AppMode.COMPLETION, AppMode.CHAT, AppMode.ADVANCED_CHAT, AppMode.WORKFLOW, AppMode.AGENT_CHAT],
+)
+def test_is_listable_accepts_supported_app_types(mode):
+    assert _is_listable(_fake_app(mode=mode)) is True
+
+
+@pytest.mark.parametrize("mode", [AppMode.AGENT, AppMode.CHANNEL, AppMode.RAG_PIPELINE])
+def test_is_listable_hides_non_app_modes(mode):
+    assert _is_listable(_fake_app(mode=mode)) is False

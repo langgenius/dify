@@ -182,6 +182,10 @@ class EnterpriseRequest(BaseRequest):
         inner_headers: dict[str, str] = {INNER_TENANT_ID_HEADER: tenant_id}
         if account_id:
             inner_headers[INNER_ACCOUNT_ID_HEADER] = account_id
+
+        if not cls.base_url.startswith("http") or not cls.base_url.startswith("https") or not cls.base_url:
+            raise ValueError("ENTERPRISE_RBAC_API_URL is required when RBAC_ENABLED=true")
+
         url = f"{cls.rbac_base_url}{endpoint}"
         mounts = cls._build_mounts()
 
