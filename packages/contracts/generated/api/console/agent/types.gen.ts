@@ -166,6 +166,10 @@ export type CopyAppPayload = {
   name?: string | null
 }
 
+export type AgentDebugConversationRefreshResponse = {
+  debug_conversation_id: string
+}
+
 export type AgentDriveListResponse = {
   items?: Array<AgentDriveItemResponse>
 }
@@ -1967,6 +1971,26 @@ export type PostAgentByAgentIdCopyResponses = {
 
 export type PostAgentByAgentIdCopyResponse
   = PostAgentByAgentIdCopyResponses[keyof PostAgentByAgentIdCopyResponses]
+
+export type PostAgentByAgentIdDebugConversationRefreshData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/debug-conversation/refresh'
+}
+
+export type PostAgentByAgentIdDebugConversationRefreshErrors = {
+  403: unknown
+}
+
+export type PostAgentByAgentIdDebugConversationRefreshResponses = {
+  200: AgentDebugConversationRefreshResponse
+}
+
+export type PostAgentByAgentIdDebugConversationRefreshResponse
+  = PostAgentByAgentIdDebugConversationRefreshResponses[keyof PostAgentByAgentIdDebugConversationRefreshResponses]
 
 export type GetAgentByAgentIdDriveFilesData = {
   body?: never
