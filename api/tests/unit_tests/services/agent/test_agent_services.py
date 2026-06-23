@@ -1115,9 +1115,7 @@ def test_copy_agent_drive_rows_skips_existing_target_keys(monkeypatch: pytest.Mo
     )
     fake_session = FakeSession(scalars=[[source_row], ["files/qna.pdf"]])
     monkeypatch.setattr(composer_service.db, "session", fake_session)
-    agent_soul = AgentSoulConfig.model_validate(
-        {"prompt": {"system_prompt": "[§file:files/qna.pdf:qna.pdf§]"}}
-    )
+    agent_soul = AgentSoulConfig.model_validate({"prompt": {"system_prompt": "[§file:files/qna.pdf:qna.pdf§]"}})
 
     AgentComposerService._copy_agent_drive_rows(
         tenant_id="tenant-1",
