@@ -1,4 +1,3 @@
-from extensions.ext_database import db
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
@@ -16,6 +15,7 @@ from controllers.console.auth.error import (
     InvalidTokenError,
     PasswordMismatchError,
 )
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import EmailStr, extract_remote_ip
 from libs.helper import timezone as validate_timezone_string

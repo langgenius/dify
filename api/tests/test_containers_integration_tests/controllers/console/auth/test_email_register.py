@@ -1,4 +1,3 @@
-from extensions.ext_database import db
 """Testcontainers integration tests for email register controller endpoints."""
 
 from __future__ import annotations
@@ -14,6 +13,7 @@ from controllers.console.auth.email_register import (
     EmailRegisterResetApi,
     EmailRegisterSendEmailApi,
 )
+from extensions.ext_database import db
 from services.account_service import AccountService
 
 

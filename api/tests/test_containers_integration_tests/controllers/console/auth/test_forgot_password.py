@@ -1,4 +1,3 @@
-from extensions.ext_database import db
 """Testcontainers integration tests for forgot password controller endpoints."""
 
 from __future__ import annotations
@@ -14,6 +13,7 @@ from controllers.console.auth.forgot_password import (
     ForgotPasswordResetApi,
     ForgotPasswordSendEmailApi,
 )
+from extensions.ext_database import db
 from services.account_service import AccountService
 
 
