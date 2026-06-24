@@ -96,6 +96,7 @@ class _CacheSnapshot(Protocol):
 class _ProviderConfigurationCacheSource[T: _CacheSnapshot]:
     name: str
     snapshot_cls: type[T]
+    load_records: Callable[[str], list[T]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -327,32 +328,6 @@ class _LoadBalancingModelConfigSnapshot:
         }
 
 
-_PROVIDER_MODELS_CACHE_SOURCE = _ProviderConfigurationCacheSource(
-    name=_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_MODELS,
-    snapshot_cls=_ProviderModelSnapshot,
-)
-_PREFERRED_MODEL_PROVIDERS_CACHE_SOURCE = _ProviderConfigurationCacheSource(
-    name=_PROVIDER_CONFIGURATION_SOURCE_PREFERRED_MODEL_PROVIDERS,
-    snapshot_cls=_TenantPreferredModelProviderSnapshot,
-)
-_PROVIDER_MODEL_SETTINGS_CACHE_SOURCE = _ProviderConfigurationCacheSource(
-    name=_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_MODEL_SETTINGS,
-    snapshot_cls=_ProviderModelSettingSnapshot,
-)
-_PROVIDER_MODEL_CREDENTIALS_CACHE_SOURCE = _ProviderConfigurationCacheSource(
-    name=_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_MODEL_CREDENTIALS,
-    snapshot_cls=_ProviderModelCredentialSnapshot,
-)
-_PROVIDER_CREDENTIALS_CACHE_SOURCE = _ProviderConfigurationCacheSource(
-    name=_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_CREDENTIALS,
-    snapshot_cls=_ProviderCredentialSnapshot,
-)
-_PROVIDER_LOAD_BALANCING_CONFIGS_CACHE_SOURCE = _ProviderConfigurationCacheSource(
-    name=_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_LOAD_BALANCING_CONFIGS,
-    snapshot_cls=_LoadBalancingModelConfigSnapshot,
-)
-
-
 class _ProviderConfigurationSourceCache:
     """Redis-backed cache for tenant provider DB snapshots.
 
@@ -428,7 +403,6 @@ def _get_cached_or_load_records[T: _CacheSnapshot](
     *,
     tenant_id: str,
     cache_source: _ProviderConfigurationCacheSource[T],
-    load_records: Callable[[], list[T]],
 ) -> list[T]:
     cached_records = _ProviderConfigurationSourceCache.get_records(
         tenant_id=tenant_id,
@@ -438,7 +412,7 @@ def _get_cached_or_load_records[T: _CacheSnapshot](
     if cached_records is not None:
         return cached_records
 
-    records = load_records()
+    records = cache_source.load_records(tenant_id)
     _ProviderConfigurationSourceCache.set_records(tenant_id=tenant_id, source=cache_source.name, records=records)
     return records
 
@@ -458,6 +432,95 @@ def _attach_active_credentials(
     for record in records:
         if getattr(record, "credential_id", None):
             record.__dict__["credential"] = credential_by_id.get(record.credential_id)
+
+
+def _load_provider_model_snapshots(tenant_id: str) -> list[_ProviderModelSnapshot]:
+    with session_factory.create_session() as session:
+        stmt = select(ProviderModel).where(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid == True)
+        provider_models = list(session.scalars(stmt))
+        _attach_active_credentials(
+            session=session,
+            records=provider_models,
+            credential_model_cls=ProviderModelCredential,
+        )
+        return [_ProviderModelSnapshot.from_record(provider_model) for provider_model in provider_models]
+
+
+def _load_preferred_model_provider_snapshots(tenant_id: str) -> list[_TenantPreferredModelProviderSnapshot]:
+    with session_factory.create_session() as session:
+        stmt = select(TenantPreferredModelProvider).where(TenantPreferredModelProvider.tenant_id == tenant_id)
+        return [
+            _TenantPreferredModelProviderSnapshot.from_record(preferred_model_provider)
+            for preferred_model_provider in session.scalars(stmt)
+        ]
+
+
+def _load_provider_model_setting_snapshots(tenant_id: str) -> list[_ProviderModelSettingSnapshot]:
+    with session_factory.create_session() as session:
+        stmt = select(ProviderModelSetting).where(ProviderModelSetting.tenant_id == tenant_id)
+        return [
+            _ProviderModelSettingSnapshot.from_record(provider_model_setting)
+            for provider_model_setting in session.scalars(stmt)
+        ]
+
+
+def _load_provider_model_credential_snapshots(tenant_id: str) -> list[_ProviderModelCredentialSnapshot]:
+    with session_factory.create_session() as session:
+        stmt = select(ProviderModelCredential).where(ProviderModelCredential.tenant_id == tenant_id)
+        return [
+            _ProviderModelCredentialSnapshot.from_record(provider_model_credential)
+            for provider_model_credential in session.scalars(stmt)
+        ]
+
+
+def _load_provider_credential_snapshots(tenant_id: str) -> list[_ProviderCredentialSnapshot]:
+    with session_factory.create_session() as session:
+        stmt = select(ProviderCredential).where(ProviderCredential.tenant_id == tenant_id)
+        return [
+            _ProviderCredentialSnapshot.from_record(provider_credential)
+            for provider_credential in session.scalars(stmt)
+        ]
+
+
+def _load_provider_load_balancing_config_snapshots(tenant_id: str) -> list[_LoadBalancingModelConfigSnapshot]:
+    with session_factory.create_session() as session:
+        stmt = select(LoadBalancingModelConfig).where(LoadBalancingModelConfig.tenant_id == tenant_id)
+        return [
+            _LoadBalancingModelConfigSnapshot.from_record(load_balancing_model_config)
+            for load_balancing_model_config in session.scalars(stmt)
+        ]
+
+
+_PROVIDER_MODELS_CACHE_SOURCE = _ProviderConfigurationCacheSource(
+    name=_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_MODELS,
+    snapshot_cls=_ProviderModelSnapshot,
+    load_records=_load_provider_model_snapshots,
+)
+_PREFERRED_MODEL_PROVIDERS_CACHE_SOURCE = _ProviderConfigurationCacheSource(
+    name=_PROVIDER_CONFIGURATION_SOURCE_PREFERRED_MODEL_PROVIDERS,
+    snapshot_cls=_TenantPreferredModelProviderSnapshot,
+    load_records=_load_preferred_model_provider_snapshots,
+)
+_PROVIDER_MODEL_SETTINGS_CACHE_SOURCE = _ProviderConfigurationCacheSource(
+    name=_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_MODEL_SETTINGS,
+    snapshot_cls=_ProviderModelSettingSnapshot,
+    load_records=_load_provider_model_setting_snapshots,
+)
+_PROVIDER_MODEL_CREDENTIALS_CACHE_SOURCE = _ProviderConfigurationCacheSource(
+    name=_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_MODEL_CREDENTIALS,
+    snapshot_cls=_ProviderModelCredentialSnapshot,
+    load_records=_load_provider_model_credential_snapshots,
+)
+_PROVIDER_CREDENTIALS_CACHE_SOURCE = _ProviderConfigurationCacheSource(
+    name=_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_CREDENTIALS,
+    snapshot_cls=_ProviderCredentialSnapshot,
+    load_records=_load_provider_credential_snapshots,
+)
+_PROVIDER_LOAD_BALANCING_CONFIGS_CACHE_SOURCE = _ProviderConfigurationCacheSource(
+    name=_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_LOAD_BALANCING_CONFIGS,
+    snapshot_cls=_LoadBalancingModelConfigSnapshot,
+    load_records=_load_provider_load_balancing_config_snapshots,
+)
 
 
 class ProviderManager:
@@ -887,21 +950,9 @@ class ProviderManager:
         :param tenant_id: workspace id
         :return:
         """
-        def load_records() -> list[_ProviderModelSnapshot]:
-            with session_factory.create_session() as session:
-                stmt = select(ProviderModel).where(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid == True)
-                provider_models = list(session.scalars(stmt))
-                _attach_active_credentials(
-                    session=session,
-                    records=provider_models,
-                    credential_model_cls=ProviderModelCredential,
-                )
-                return [_ProviderModelSnapshot.from_record(provider_model) for provider_model in provider_models]
-
         provider_models = _get_cached_or_load_records(
             tenant_id=tenant_id,
             cache_source=_PROVIDER_MODELS_CACHE_SOURCE,
-            load_records=load_records,
         )
 
         provider_name_to_provider_model_records_dict = defaultdict(list)
@@ -917,18 +968,9 @@ class ProviderManager:
         :param tenant_id: workspace id
         :return:
         """
-        def load_records() -> list[_TenantPreferredModelProviderSnapshot]:
-            with session_factory.create_session() as session:
-                stmt = select(TenantPreferredModelProvider).where(TenantPreferredModelProvider.tenant_id == tenant_id)
-                return [
-                    _TenantPreferredModelProviderSnapshot.from_record(preferred_model_provider)
-                    for preferred_model_provider in session.scalars(stmt)
-                ]
-
         preferred_provider_types = _get_cached_or_load_records(
             tenant_id=tenant_id,
             cache_source=_PREFERRED_MODEL_PROVIDERS_CACHE_SOURCE,
-            load_records=load_records,
         )
 
         return {
@@ -944,18 +986,9 @@ class ProviderManager:
         :param tenant_id: workspace id
         :return:
         """
-        def load_records() -> list[_ProviderModelSettingSnapshot]:
-            with session_factory.create_session() as session:
-                stmt = select(ProviderModelSetting).where(ProviderModelSetting.tenant_id == tenant_id)
-                return [
-                    _ProviderModelSettingSnapshot.from_record(provider_model_setting)
-                    for provider_model_setting in session.scalars(stmt)
-                ]
-
         provider_model_settings = _get_cached_or_load_records(
             tenant_id=tenant_id,
             cache_source=_PROVIDER_MODEL_SETTINGS_CACHE_SOURCE,
-            load_records=load_records,
         )
 
         provider_name_to_provider_model_settings_dict = defaultdict(list)
@@ -973,18 +1006,9 @@ class ProviderManager:
         :param tenant_id: workspace id
         :return:
         """
-        def load_records() -> list[_ProviderModelCredentialSnapshot]:
-            with session_factory.create_session() as session:
-                stmt = select(ProviderModelCredential).where(ProviderModelCredential.tenant_id == tenant_id)
-                return [
-                    _ProviderModelCredentialSnapshot.from_record(provider_model_credential)
-                    for provider_model_credential in session.scalars(stmt)
-                ]
-
         provider_model_credentials = _get_cached_or_load_records(
             tenant_id=tenant_id,
             cache_source=_PROVIDER_MODEL_CREDENTIALS_CACHE_SOURCE,
-            load_records=load_records,
         )
 
         provider_name_to_provider_model_credentials_dict = defaultdict(list)
@@ -1002,18 +1026,9 @@ class ProviderManager:
         :param tenant_id: workspace id
         :return:
         """
-        def load_records() -> list[_ProviderCredentialSnapshot]:
-            with session_factory.create_session() as session:
-                stmt = select(ProviderCredential).where(ProviderCredential.tenant_id == tenant_id)
-                return [
-                    _ProviderCredentialSnapshot.from_record(provider_credential)
-                    for provider_credential in session.scalars(stmt)
-                ]
-
         provider_credentials = _get_cached_or_load_records(
             tenant_id=tenant_id,
             cache_source=_PROVIDER_CREDENTIALS_CACHE_SOURCE,
-            load_records=load_records,
         )
 
         provider_name_to_provider_credentials_dict = defaultdict(list)
@@ -1045,18 +1060,9 @@ class ProviderManager:
         if not model_load_balancing_enabled:
             return {}
 
-        def load_records() -> list[_LoadBalancingModelConfigSnapshot]:
-            with session_factory.create_session() as session:
-                stmt = select(LoadBalancingModelConfig).where(LoadBalancingModelConfig.tenant_id == tenant_id)
-                return [
-                    _LoadBalancingModelConfigSnapshot.from_record(load_balancing_model_config)
-                    for load_balancing_model_config in session.scalars(stmt)
-                ]
-
         provider_load_balancing_configs = _get_cached_or_load_records(
             tenant_id=tenant_id,
             cache_source=_PROVIDER_LOAD_BALANCING_CONFIGS_CACHE_SOURCE,
-            load_records=load_records,
         )
 
         provider_name_to_provider_load_balancing_model_configs_dict = defaultdict(list)
