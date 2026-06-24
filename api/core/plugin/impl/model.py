@@ -25,6 +25,24 @@ _POLLING_UNSUPPORTED_INVOKE_ERROR_TYPES = frozenset((NotImplementedError.__name_
 _POLLING_UNSUPPORTED_ERROR_MESSAGE = "does not support polling"
 
 
+def _normalize_llm_chunk_finish_reason(response_frame: dict[str, Any]) -> dict[str, Any]:
+    data = response_frame.get("data")
+    if not isinstance(data, dict):
+        return response_frame
+
+    delta = data.get("delta")
+    if not isinstance(delta, dict):
+        return response_frame
+
+    finish_reason = delta.get("finish_reason")
+    if isinstance(finish_reason, dict):
+        finish_type = finish_reason.get("type")
+        if isinstance(finish_type, str):
+            delta["finish_reason"] = finish_type
+
+    return response_frame
+
+
 class PluginModelClient(BasePluginClient):
     @staticmethod
     def _dispatch_payload(*, user_id: str | None, data: dict[str, Any]) -> dict[str, Any]:
@@ -194,6 +212,7 @@ class PluginModelClient(BasePluginClient):
                 "X-Plugin-ID": plugin_id,
                 "Content-Type": "application/json",
             },
+            transformer=_normalize_llm_chunk_finish_reason,
         )
 
         try:
