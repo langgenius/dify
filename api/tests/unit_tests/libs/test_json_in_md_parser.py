@@ -88,6 +88,11 @@ def test_parse_and_check_json_markdown_multiple_blocks_fails():
         parse_and_check_json_markdown(src, [])
 
 
+def test_parse_json_markdown_top_level_array():
+    src = '[{"a": 1}, {"b": 2}]'
+    assert parse_json_markdown(src) == [{"a": 1}, {"b": 2}]
+
+
 def test_parse_and_check_json_markdown_handles_think_fenced_and_raw_variants():
     expected = {"keywords": ["2"], "category_id": "2", "category_name": "2"}
     cases = [

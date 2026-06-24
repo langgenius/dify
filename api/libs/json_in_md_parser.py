@@ -6,24 +6,40 @@ from core.llm_generator.output_parser.errors import OutputParserError
 def parse_json_markdown(json_string: str):
     # Get json from the backticks/braces
     json_string = json_string.strip()
-    starts = ["```json", "```", "``", "`", "{", "["]
-    ends = ["```", "``", "`", "}", "]"]
     end_index = -1
     start_index = 0
     parsed: dict = {}
-    for s in starts:
-        start_index = json_string.find(s)
-        if start_index != -1:
-            if json_string[start_index] not in ("{", "["):
-                start_index += len(s)
+
+    # Try markdown fences first (explicit delimiters)
+    for s in ["```json", "```", "``", "`"]:
+        idx = json_string.find(s)
+        if idx != -1:
+            start_index = idx + len(s)
             break
+
+    # If no fence found, find the earliest opening bracket
+    if start_index == 0:
+        bracket_candidates = [(json_string.find("["), "["), (json_string.find("{"), "{")]
+        bracket_candidates = [(i, c) for i, c in bracket_candidates if i != -1]
+        if bracket_candidates:
+            start_index = min(bracket_candidates)[0]
+
     if start_index != -1:
-        for e in ends:
+        # Try markdown fences first
+        for e in ["```", "``", "`"]:
             end_index = json_string.rfind(e, start_index)
             if end_index != -1:
                 if json_string[end_index] in ("}", "]"):
                     end_index += 1
                 break
+
+        # If no fence found, find the latest closing bracket
+        if end_index == -1:
+            bracket_ends = [json_string.rfind(e, start_index) for e in ("]", "}")]
+            bracket_ends = [i for i in bracket_ends if i != -1]
+            if bracket_ends:
+                end_index = max(bracket_ends) + 1
+
     if start_index != -1 and end_index != -1 and start_index < end_index:
         extracted_content = json_string[start_index:end_index].strip()
         parsed = json.loads(extracted_content)
