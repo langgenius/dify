@@ -1,6 +1,18 @@
+import type { ReactNode } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook } from '@testing-library/react'
+import { createElement } from 'react'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { createAccountProfileQueryWrapper } from '@/test/account-profile-query'
 import useTimestamp from './use-timestamp'
+
+const navigationMocks = vi.hoisted(() => ({
+  pathname: '/apps',
+}))
+
+vi.mock('@/next/navigation', () => ({
+  usePathname: () => navigationMocks.pathname,
+}))
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(() => ({
@@ -21,7 +33,27 @@ vi.mock('@/context/app-context', () => ({
   })),
 }))
 
+const createEmptyQueryWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
+
+  function EmptyQueryWrapper({ children }: { children: ReactNode }) {
+    return createElement(QueryClientProvider, { client: queryClient }, children)
+  }
+
+  return { queryClient, wrapper: EmptyQueryWrapper }
+}
+
 describe('useTimestamp', () => {
+  beforeEach(() => {
+    navigationMocks.pathname = '/apps'
+  })
+
   describe('formatTime', () => {
     it('should format unix timestamp correctly', () => {
       const { result } = renderHook(() => useTimestamp(), { wrapper: createAccountProfileQueryWrapper() })
@@ -62,5 +94,16 @@ describe('useTimestamp', () => {
       expect(result.current.formatDate(dateString, 'HH:mm'))
         .toBe('20:00')
     })
+  })
+
+  it('should not request account profile on public webapp routes', () => {
+    navigationMocks.pathname = '/chatbot/share-token'
+    const { queryClient, wrapper } = createEmptyQueryWrapper()
+
+    const { result } = renderHook(() => useTimestamp(), { wrapper })
+
+    expect(result.current.formatTime(1704132000, 'YYYY')).toBe('2024')
+    expect(queryClient.isFetching({ queryKey: userProfileQueryOptions().queryKey })).toBe(0)
+    expect(queryClient.getQueryState(userProfileQueryOptions().queryKey)?.fetchStatus).toBe('idle')
   })
 })
