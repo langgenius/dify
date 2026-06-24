@@ -1600,7 +1600,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 3
+      "count": 1
     }
   },
   "web/app/components/base/form/form-scenarios/input-field/__tests__/field.spec.tsx": {
@@ -3508,11 +3508,6 @@
   "web/app/components/header/account-setting/data-source-page-new/types.ts": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/app/components/header/account-setting/key-validator/declarations.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/header/account-setting/language-page/__tests__/index.spec.tsx": {
@@ -6748,16 +6743,6 @@
   "web/app/components/workflow/run/utils/format-log/index.ts": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/app/components/workflow/run/utils/format-log/iteration/index.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/run/utils/format-log/loop/index.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/workflow/run/utils/format-log/parallel/index.ts": {
