@@ -7,9 +7,10 @@ import Loading from '@/app/components/base/loading'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { useHydrateAgentSoulConfigDraft } from '@/features/agent-v2/agent-composer/store'
 import { AgentOrchestratePanel } from './components/orchestrate'
-import { AgentPreviewChat } from './components/preview/chat'
+import { AgentBuildChat } from './components/preview/build-chat'
 import { AgentChatFeaturesPanel } from './components/preview/chat-features-panel'
 import { AgentPreviewHeader } from './components/preview/header'
+import { AgentPreviewChat } from './components/preview/preview-chat'
 import { AgentPreviewVersionsPanel } from './components/preview/versions-panel'
 import { useAgentConfigureData, useAgentConfigureModelOptions, useAgentPreviewSoulConfig } from './hooks'
 import { useAgentConfigureSync } from './use-agent-configure-sync'
@@ -17,6 +18,8 @@ import { useAgentConfigureSync } from './use-agent-configure-sync'
 type AgentConfigurePageProps = {
   agentId: string
 }
+
+type AgentConfigureRightPanelMode = 'build' | 'preview'
 
 export function AgentConfigurePage({
   agentId,
@@ -71,6 +74,7 @@ function AgentConfigurePageLoadedContent({
   const [showChatFeatures, setShowChatFeatures] = useState(false)
   const [showPreviewVersions, setShowPreviewVersions] = useState(false)
   const [clearPreviewChat, setClearPreviewChat] = useState(false)
+  const [rightPanelMode, setRightPanelMode] = useState<AgentConfigureRightPanelMode>('build')
   const {
     agentQuery,
     composerQuery,
@@ -134,13 +138,16 @@ function AgentConfigurePageLoadedContent({
         <div className="flex min-w-105 flex-1 flex-col overflow-hidden rounded-lg bg-background-gradient-bg-fill-chat-bg-2 shadow-xl shadow-shadow-shadow-5">
           <AgentPreviewHeader
             agentId={agentId}
+            mode={rightPanelMode}
             isChatFeaturesOpen={showChatFeatures}
+            onModeChange={setRightPanelMode}
             onToggleChatFeatures={() => setShowChatFeatures(open => !open)}
+            onOpenVersions={() => setShowPreviewVersions(true)}
             onRestart={() => setClearPreviewChat(true)}
           />
 
           <div className="min-h-0 flex-1">
-            <AgentPreviewChatWithDraftConfig
+            <AgentRightPanelChatWithDraftConfig
               agentId={agentId}
               agentIcon={agentQuery.data?.icon}
               agentIconBackground={agentQuery.data?.icon_background}
@@ -149,6 +156,7 @@ function AgentConfigurePageLoadedContent({
               agentSoulConfig={agentSoulConfig}
               clearChatList={clearPreviewChat}
               debugConversationId={agentQuery.data?.debug_conversation_id}
+              mode={rightPanelMode}
               onClearChatListChange={setClearPreviewChat}
               onSaveDraftBeforeRun={saveDraft}
             />
@@ -174,18 +182,27 @@ function AgentConfigurePageLoadedContent({
   )
 }
 
-function AgentPreviewChatWithDraftConfig({
+function AgentRightPanelChatWithDraftConfig({
   agentSoulConfig,
+  mode,
   ...props
 }: Omit<Parameters<typeof AgentPreviewChat>[0], 'agentSoulConfig'> & {
   agentSoulConfig?: AgentSoulConfig
+  mode: AgentConfigureRightPanelMode
 }) {
   const previewAgentSoulConfig = useAgentPreviewSoulConfig(agentSoulConfig)
 
-  return (
-    <AgentPreviewChat
-      {...props}
-      agentSoulConfig={previewAgentSoulConfig}
-    />
-  )
+  return mode === 'build'
+    ? (
+        <AgentBuildChat
+          {...props}
+          agentSoulConfig={previewAgentSoulConfig}
+        />
+      )
+    : (
+        <AgentPreviewChat
+          {...props}
+          agentSoulConfig={previewAgentSoulConfig}
+        />
+      )
 }

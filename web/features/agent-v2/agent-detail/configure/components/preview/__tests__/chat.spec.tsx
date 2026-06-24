@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
-import { AgentPreviewChat } from '../chat'
+import { AgentChatRuntime } from '../chat-runtime'
 
 const useChatMock = vi.hoisted(() => vi.fn())
 const handleSendMock = vi.hoisted(() => vi.fn())
@@ -103,7 +103,7 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-function renderPreviewChat(props?: Partial<ComponentProps<typeof AgentPreviewChat>>) {
+function renderPreviewChat(props?: Partial<ComponentProps<typeof AgentChatRuntime>>) {
   const store = createStore()
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -121,9 +121,11 @@ function renderPreviewChat(props?: Partial<ComponentProps<typeof AgentPreviewCha
   return render(
     <QueryClientProvider client={queryClient}>
       <JotaiProvider store={store}>
-        <AgentPreviewChat
+        <AgentChatRuntime
           agentId="agent-1"
           clearChatList={false}
+          inputPlaceholder="Message agent"
+          renderEmptyState={() => null}
           onClearChatListChange={vi.fn()}
           {...props}
         />

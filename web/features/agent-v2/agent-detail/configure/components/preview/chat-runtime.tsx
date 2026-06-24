@@ -8,6 +8,9 @@ import type {
   AgentThought,
   MessageDetailResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
+import type {
+  ReactNode,
+} from 'react'
 import type { FeedbackType, IChatItem, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
@@ -20,8 +23,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import AppIcon from '@/app/components/base/app-icon'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { buildChatItemTree, getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
@@ -388,60 +389,15 @@ const buildChatConfig = ({
   }
 }
 
-function AgentPreviewChatEmptyState({
-  agentIcon,
-  agentIconBackground,
-  agentIconType,
-  agentName,
-  hasInstructions,
-}: {
+export type AgentChatRuntimeEmptyStateProps = {
   agentIcon?: string | null
   agentIconBackground?: string | null
   agentIconType?: AgentIconType | null
   agentName?: string
   hasInstructions: boolean
-}) {
-  const { t } = useTranslation('agentV2')
-  const imageUrl = (agentIconType === 'image' || agentIconType === 'link') ? agentIcon : undefined
-  const iconType = imageUrl ? 'image' : agentIconType
-
-  return (
-    <div className="pointer-events-none absolute inset-x-12 bottom-[calc(27%+84px)] flex flex-col items-center text-center">
-      <AppIcon
-        size="xxl"
-        rounded
-        iconType={iconType}
-        icon={agentIcon ?? undefined}
-        background={agentIconBackground}
-        imageUrl={imageUrl}
-        className="bg-background-default"
-      />
-      <div className="mt-3 max-w-full truncate system-md-semibold text-text-secondary">
-        {agentName || t('agentDetail.configure.preview.empty.defaultAgentName')}
-      </div>
-      <div className="mt-4 h-px w-73 max-w-full bg-divider-subtle" />
-      <div className="mt-5 max-w-91 body-md-regular text-text-tertiary">
-        <p>{t('agentDetail.configure.preview.empty.description')}</p>
-        {!hasInstructions && (
-          <p>{t('agentDetail.configure.preview.empty.noInstructionsDescription')}</p>
-        )}
-      </div>
-    </div>
-  )
 }
 
-export function AgentPreviewChat({
-  agentId,
-  agentIcon,
-  agentIconBackground,
-  agentIconType,
-  agentName,
-  agentSoulConfig,
-  clearChatList,
-  debugConversationId,
-  onClearChatListChange,
-  onSaveDraftBeforeRun,
-}: {
+export type AgentChatRuntimeProps = {
   agentId: string
   agentIcon?: string | null
   agentIconBackground?: string | null
@@ -450,9 +406,26 @@ export function AgentPreviewChat({
   agentSoulConfig?: AgentSoulConfig
   clearChatList: boolean
   debugConversationId?: string | null
+  inputPlaceholder: string
+  renderEmptyState: (props: AgentChatRuntimeEmptyStateProps) => ReactNode
   onClearChatListChange: (clearChatList: boolean) => void
   onSaveDraftBeforeRun?: () => Promise<void>
-}) {
+}
+
+export function AgentChatRuntime({
+  agentId,
+  agentIcon,
+  agentIconBackground,
+  agentIconType,
+  agentName,
+  agentSoulConfig,
+  clearChatList,
+  debugConversationId,
+  inputPlaceholder,
+  renderEmptyState,
+  onClearChatListChange,
+  onSaveDraftBeforeRun,
+}: AgentChatRuntimeProps) {
   const historyQuery = useQuery({
     queryKey: ['agent-preview-debug-conversation', agentId, debugConversationId],
     queryFn: () => fetchAgentConversationMessages(agentId, debugConversationId!),
@@ -483,6 +456,8 @@ export function AgentPreviewChat({
       clearChatList={clearChatList}
       debugConversationId={debugConversationId}
       initialChatTree={initialChatTree}
+      inputPlaceholder={inputPlaceholder}
+      renderEmptyState={renderEmptyState}
       onClearChatListChange={onClearChatListChange}
       onSaveDraftBeforeRun={onSaveDraftBeforeRun}
     />
@@ -499,6 +474,8 @@ function AgentPreviewChatSession({
   clearChatList,
   debugConversationId,
   initialChatTree,
+  inputPlaceholder,
+  renderEmptyState,
   onClearChatListChange,
   onSaveDraftBeforeRun,
 }: {
@@ -511,6 +488,8 @@ function AgentPreviewChatSession({
   clearChatList: boolean
   debugConversationId?: string | null
   initialChatTree: ChatItemInTree[]
+  inputPlaceholder: string
+  renderEmptyState: (props: AgentChatRuntimeEmptyStateProps) => ReactNode
   onClearChatListChange: (clearChatList: boolean) => void
   onSaveDraftBeforeRun?: () => Promise<void>
 }) {
@@ -608,20 +587,21 @@ function AgentPreviewChatSession({
       config={config}
       chatList={chatList}
       isResponding={isResponding}
-      chatNode={isEmptyChat && (
-        <AgentPreviewChatEmptyState
-          agentIcon={agentIcon}
-          agentIconBackground={agentIconBackground}
-          agentIconType={agentIconType}
-          agentName={agentName}
-          hasInstructions={hasInstructions}
-        />
-      )}
+      chatNode={isEmptyChat
+        ? renderEmptyState({
+            agentIcon,
+            agentIconBackground,
+            agentIconType,
+            agentName,
+            hasInstructions,
+          })
+        : null}
       chatContainerClassName={cn('pt-6', isEmptyChat ? 'px-12' : 'px-3')}
       chatFooterClassName={cn(
         'pb-0',
         isEmptyChat ? '!bottom-[27%] px-12 pt-3' : 'px-3 pt-10',
       )}
+      inputPlaceholder={inputPlaceholder}
       showFileUpload={false}
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}

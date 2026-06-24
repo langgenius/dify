@@ -29,8 +29,14 @@ vi.mock('@/service/client', () => ({
 }))
 
 function renderHeader({
+  mode = 'preview',
+  onModeChange = vi.fn(),
+  onOpenVersions = vi.fn(),
   onRestart = vi.fn(),
 }: {
+  mode?: 'build' | 'preview'
+  onModeChange?: (mode: 'build' | 'preview') => void
+  onOpenVersions?: () => void
   onRestart?: () => void
 } = {}) {
   const queryClient = new QueryClient()
@@ -43,8 +49,11 @@ function renderHeader({
     <QueryClientProvider client={queryClient}>
       <AgentPreviewHeader
         agentId="agent-1"
+        mode={mode}
         isChatFeaturesOpen={false}
+        onModeChange={onModeChange}
         onToggleChatFeatures={vi.fn()}
+        onOpenVersions={onOpenVersions}
         onRestart={onRestart}
       />
     </QueryClientProvider>,
