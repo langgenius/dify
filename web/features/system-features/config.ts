@@ -103,4 +103,5 @@ export const cloudSystemFeatures = {
   enable_trial_app: env.NEXT_PUBLIC_ENABLE_TRIAL_APP,
   enable_explore_banner: env.NEXT_PUBLIC_ENABLE_EXPLORE_BANNER,
   enable_learn_app: env.NEXT_PUBLIC_ENABLE_LEARN_APP,
+  rbac_enabled: env.NEXT_PUBLIC_RBAC_ENABLED,
 } satisfies GetSystemFeaturesResponse

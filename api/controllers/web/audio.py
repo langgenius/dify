@@ -22,6 +22,7 @@ from controllers.web.error import (
 )
 from controllers.web.wraps import WebApiResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.helper import uuid_value
 from models.model import App, EndUser
@@ -130,7 +131,12 @@ class TextApi(WebApiResource):
             text = payload.text
             voice = payload.voice
             response = AudioService.transcript_tts(
-                app_model=app_model, text=text, voice=voice, end_user=end_user.external_user_id, message_id=message_id
+                app_model=app_model,
+                session=db.session,
+                text=text,
+                voice=voice,
+                end_user=end_user.external_user_id,
+                message_id=message_id,
             )
 
             return response
