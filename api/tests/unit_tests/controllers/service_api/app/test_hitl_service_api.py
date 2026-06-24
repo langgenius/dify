@@ -673,7 +673,14 @@ class TestHitlServiceApi:
         def session_maker() -> _SessionContext:
             return _SessionContext(
                 SimpleNamespace(
-                    execute=lambda _stmt: [("form-1", datetime(2024, 1, 1, tzinfo=UTC), '{"display_in_ui": true}')],
+                    execute=lambda _stmt: [
+                        (
+                            "form-1",
+                            datetime(2024, 1, 1, tzinfo=UTC),
+                            "persisted content",
+                            '{"display_in_ui": true}',
+                        )
+                    ],
                 )
             )
 
@@ -710,6 +717,7 @@ class TestHitlServiceApi:
             "workflow_paused",
         ]
         assert events[2]["data"]["status"] == WorkflowNodeExecutionStatus.PAUSED.value
+        assert events[3]["data"]["form_content"] == "persisted content"
         assert events[3]["data"]["form_token"] == "wtok"
         assert events[3]["data"]["expiration_time"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())
         pause_data = events[-1]["data"]

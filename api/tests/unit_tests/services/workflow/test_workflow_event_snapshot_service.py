@@ -773,7 +773,7 @@ def test_build_snapshot_events_preserves_public_form_token(monkeypatch: pytest.M
     )
     session_maker = _SessionMaker(
         SimpleNamespace(
-            execute=lambda _stmt: [("form-1", datetime(2024, 1, 1, tzinfo=UTC), '{"display_in_ui": true}')],
+            execute=lambda _stmt: [("form-1", datetime(2024, 1, 1, tzinfo=UTC), "content", '{"display_in_ui": true}')],
         )
     )
     pause_entity = _FakePauseEntity(
@@ -809,6 +809,71 @@ def test_build_snapshot_events_preserves_public_form_token(monkeypatch: pytest.M
     assert pause_data["reasons"][0]["expiration_time"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())
 
 
+def test_build_snapshot_events_replays_persisted_human_input_rendering(monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow_run = _build_workflow_run(WorkflowExecutionStatus.PAUSED)
+    snapshot = _build_snapshot(WorkflowNodeExecutionStatus.PAUSED)
+    resumption_context = _build_resumption_context("task-ctx")
+    monkeypatch.setattr(
+        service_module,
+        "load_form_dispositions_by_form_id",
+        lambda form_ids, session=None, surface=None: {
+            "form-1": FormDisposition(form_token="wtok", approval_channels=[])
+        },
+    )
+    persisted_defaults = {"review_note": "LLM completed response"}
+    form_definition = json.dumps(
+        {
+            "display_in_ui": True,
+            "default_values": persisted_defaults,
+        }
+    )
+    session_maker = _SessionMaker(
+        SimpleNamespace(
+            execute=lambda _stmt: [
+                (
+                    "form-1",
+                    datetime(2024, 1, 1, tzinfo=UTC),
+                    "Summary: LLM completed response",
+                    form_definition,
+                )
+            ],
+        )
+    )
+    pause_entity = _FakePauseEntity(
+        pause_id="pause-1",
+        workflow_run_id="run-1",
+        paused_at_value=datetime(2024, 1, 1, tzinfo=UTC),
+        pause_reasons=[
+            HumanInputRequired(
+                form_id="form-1",
+                form_content="Summary: {{#llm.text#}}",
+                node_id="node-1",
+                node_title="Human Input",
+                resolved_default_values={"review_note": "{{#llm.text#}}"},
+            )
+        ],
+    )
+
+    events = _build_snapshot_events(
+        workflow_run=workflow_run,
+        node_snapshots=[snapshot],
+        task_id="task-ctx",
+        message_context=None,
+        pause_entity=pause_entity,
+        resumption_context=resumption_context,
+        session_maker=cast(sessionmaker[Session], session_maker),
+    )
+
+    human_input_event = events[-2]
+    assert human_input_event["event"] == StreamEvent.HUMAN_INPUT_REQUIRED
+    assert human_input_event["data"]["form_content"] == "Summary: LLM completed response"
+    assert human_input_event["data"]["resolved_default_values"] == persisted_defaults
+
+    pause_reason = events[-1]["data"]["reasons"][0]
+    assert pause_reason["form_content"] == "Summary: LLM completed response"
+    assert pause_reason["resolved_default_values"] == persisted_defaults
+
+
 def _build_recipient_snapshot_events(recipients: Sequence[Any]) -> list[Mapping[str, Any]]:
     """Drive the reconnect snapshot pause path for the OPENAPI surface.
 
@@ -822,7 +887,7 @@ def _build_recipient_snapshot_events(recipients: Sequence[Any]) -> list[Mapping[
     expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
     session_maker = _SessionMaker(
         SimpleNamespace(
-            execute=lambda _stmt: [("form-1", expiration_time, '{"display_in_ui": true}')],
+            execute=lambda _stmt: [("form-1", expiration_time, "content", '{"display_in_ui": true}')],
             scalars=lambda _stmt: list(recipients),
         )
     )
@@ -905,7 +970,7 @@ def test_build_snapshot_events_resolves_pause_reason_select_options(monkeypatch:
     )
     session_maker = _SessionMaker(
         SimpleNamespace(
-            execute=lambda _stmt: [("form-1", datetime(2024, 1, 1, tzinfo=UTC), '{"display_in_ui": true}')],
+            execute=lambda _stmt: [("form-1", datetime(2024, 1, 1, tzinfo=UTC), "content", '{"display_in_ui": true}')],
         )
     )
     pause_entity = _FakePauseEntity(
@@ -988,7 +1053,7 @@ def test_build_workflow_event_stream_loads_pause_tokens_without_flask_app_contex
 
     session = SimpleNamespace(
         scalar=MagicMock(return_value=None),
-        execute=lambda _stmt: [("form-1", datetime(2024, 1, 1, tzinfo=UTC), '{"display_in_ui": true}')],
+        execute=lambda _stmt: [("form-1", datetime(2024, 1, 1, tzinfo=UTC), "content", '{"display_in_ui": true}')],
     )
     session_maker = _SessionMaker(session)
 
