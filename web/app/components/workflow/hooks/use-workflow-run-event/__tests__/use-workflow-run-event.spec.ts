@@ -16,6 +16,7 @@ const handlers = vi.hoisted(() => ({
   handleWorkflowNodeRetry: vi.fn(),
   handleWorkflowTextChunk: vi.fn(),
   handleWorkflowTextReplace: vi.fn(),
+  handleWorkflowReasoning: vi.fn(),
   handleWorkflowAgentLog: vi.fn(),
   handleWorkflowPaused: vi.fn(),
   handleWorkflowNodeHumanInputRequired: vi.fn(),
@@ -43,6 +44,10 @@ vi.mock('..', () => ({
   useWorkflowNodeHumanInputRequired: () => ({ handleWorkflowNodeHumanInputRequired: handlers.handleWorkflowNodeHumanInputRequired }),
   useWorkflowNodeHumanInputFormFilled: () => ({ handleWorkflowNodeHumanInputFormFilled: handlers.handleWorkflowNodeHumanInputFormFilled }),
   useWorkflowNodeHumanInputFormTimeout: () => ({ handleWorkflowNodeHumanInputFormTimeout: handlers.handleWorkflowNodeHumanInputFormTimeout }),
+}))
+
+vi.mock('../use-workflow-reasoning', () => ({
+  useWorkflowReasoning: () => ({ handleWorkflowReasoning: handlers.handleWorkflowReasoning }),
 }))
 
 describe('useWorkflowRunEvent', () => {
