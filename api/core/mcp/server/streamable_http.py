@@ -38,7 +38,8 @@ def negotiate_protocol_version(header_value: str | None, is_initialize: bool) ->
     """
     if is_initialize:
         return mcp_types.DEFAULT_NEGOTIATED_VERSION
-    if header_value is None:
+    # Treat an absent or empty header as "not specified" -> default version.
+    if not header_value:
         return mcp_types.DEFAULT_NEGOTIATED_VERSION
     if header_value not in mcp_types.SERVER_SUPPORTED_PROTOCOL_VERSIONS:
         return None

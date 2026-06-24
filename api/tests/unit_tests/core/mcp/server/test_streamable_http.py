@@ -710,6 +710,10 @@ class TestNegotiateProtocolVersion:
         """An absent header defaults to 2025-03-26 per the spec back-compat rule."""
         assert negotiate_protocol_version(None, False) == types.DEFAULT_NEGOTIATED_VERSION
 
+    def test_empty_header_treated_as_absent(self):
+        """An empty header value is treated as absent and defaults to 2025-03-26."""
+        assert negotiate_protocol_version("", False) == types.DEFAULT_NEGOTIATED_VERSION
+
     def test_supported_header_passes_through(self):
         """All supported header values are used as the negotiated version."""
         assert negotiate_protocol_version("2025-06-18", False) == "2025-06-18"
